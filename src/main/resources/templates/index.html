@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="layout :: layout">
+<div th:fragment="content">
+    <section style="text-align:center; padding:50px;">
+        <img src="/images/banner.jpg" alt="Kraft 배너" style="width:80%; border-radius:10px; margin-bottom:30px;">
+        <h2>🌤 커뮤니티에 오신 걸 환영합니다!</h2>
+        <p><a href="/login">로그인</a> 후 글을 쓰고, 댓글을 달 수 있어요.</p>
+
+        <div class="category-tabs" style="margin-top: 40px;">
+            <a href="/posts?category=free" class="tab">자유게시판</a>
+            <a href="/posts?category=notice" class="tab">공지사항</a>
+            <a href="/posts?category=dev" class="tab">개발게시판</a>
+        </div>
+    </section>
+</div>
+</html>

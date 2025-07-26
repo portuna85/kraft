@@ -10,9 +10,14 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update               # DB 테이블 자동 생성 및 변경 적용
+      ddl-auto: create-drop               # DB 테이블 자동 생성 및 변경 적용
     show-sql: true                   # SQL System.out에 출력 (기본)
     properties:
       hibernate:
         format_sql: true            # SQL 예쁘게 출력
         use_sql_comments: true      # JPQL 문장을 주석 형태로 함께 출력
+
+logging:
+  level:
+    org.springframework.web: DEBUG
+    org.thymeleaf: TRACE

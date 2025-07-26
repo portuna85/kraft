@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<div th:fragment="header">
+    <nav class="navbar">
+        <div class="navbar-left">
+            <a href="/" class="logo">🌤 Kraft</a>
+            <a href="/posts">게시판</a>
+            <a href="/posts/write">글쓰기</a>
+        </div>
+        <div class="navbar-right">
+            <span th:if="${#authorization.expression('isAuthenticated()')}">
+                <span th:text="'환영합니다, ' + ${#authentication.principal.user.nickname} + '님'">로그인유저</span>
+                <a href="/logout">로그아웃</a>
+            </span>
+            <span th:unless="${#authorization.expression('isAuthenticated()')}">
+                <a href="/login">로그인</a>
+                <a href="/signup">회원가입</a>
+            </span>
+        </div>
+    </nav>
+</div>

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="layout :: layout">
+<div th:fragment="content">
+  <section style="max-width: 400px; margin: 100px auto; padding: 30px; border: 1px solid #ccc; border-radius: 8px; background: white;">
+    <h2 style="text-align: center;">회원가입</h2>
+    <form method="post" th:action="@{/api/users/signup}">
+      <div style="margin-bottom: 15px;">
+        <label for="username">아이디</label>
+        <input type="text" id="username" name="username" required/>
+      </div>
+      <div style="margin-bottom: 15px;">
+        <label for="password">비밀번호</label>
+        <input type="password" id="password" name="password" required/>
+      </div>
+      <div style="margin-bottom: 15px;">
+        <label for="nickname">닉네임</label>
+        <input type="text" id="nickname" name="nickname" required/>
+      </div>
+      <button type="submit" style="width:100%;">가입하기</button>
+    </form>
+  </section>
+</div>
+</html>
