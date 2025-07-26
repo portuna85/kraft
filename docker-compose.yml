@@ -1,0 +1,28 @@
+# ========================================
+# 3. docker-compose.yml (MySQL DB 컨테이너 실행 구성)
+# ========================================
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-kraft
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root1234
+      MYSQL_DATABASE: kraft
+      MYSQL_USER: kraftuser
+      MYSQL_PASSWORD: kraftpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - kraft-net
+
+volumes:
+  mysql-data:
+
+networks:
+  kraft-net:
+    driver: bridge
