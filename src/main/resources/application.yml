@@ -15,6 +15,16 @@ spring:
       enabled: true
       path: /h2-console
   thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
+    encoding: UTF-8
     cache: false
+
+  security:
+    user:
+      name: none
+      password: none
+
 server:
   port: 8080

@@ -1,9 +1,25 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Kraft 프로젝트 시작</title>
+    <title>Kraft 메인</title>
+    <meta charset="UTF-8">
 </head>
 <body>
-<h1>Kraft 프로젝트가 시작되었습니다!</h1>
+
+<h2 th:if="${username != null}">
+    환영합니다, <span th:text="${username}">사용자</span>님!
+</h2>
+
+<h2 th:if="${username == null}">
+    방문을 환영합니다! <a th:href="@{/login}">로그인</a> 또는 <a th:href="@{/signup}">회원가입</a> 해주세요.
+</h2>
+
+<!-- 로그인 상태일 경우 로그아웃 버튼 표시 -->
+<div th:if="${username != null}">
+    <form th:action="@{/logout}" method="post">
+        <button type="submit">로그아웃</button>
+    </form>
+</div>
+
 </body>
 </html>
