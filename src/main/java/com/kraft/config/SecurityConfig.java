@@ -19,27 +19,19 @@ public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
 
-    /**
-     * 비밀번호 암호화용 Bean
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    /**
-     * Spring Security 6.x 방식의 보안 설정
-     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/login", "/signup", "/css/**", "/js/**").permitAll()
+                        .requestMatchers("/", "/login", "/join", "/css/**", "/js/**").permitAll()
                         .anyRequest().authenticated()
                 )
-
                 .formLogin(form -> form
                         .loginPage("/login")
                         .loginProcessingUrl("/login")
@@ -47,26 +39,19 @@ public class SecurityConfig {
                         .failureUrl("/login?error=true")
                         .permitAll()
                 )
-
                 .logout(logout -> logout
-                        .logoutSuccessUrl("/")
+                        .logoutSuccessUrl("/login?logout=true")
                         .permitAll()
                 );
 
         return http.build();
     }
 
-    /**
-     * AuthenticationManager 설정 (람다 방식)
-     */
     @Bean
     public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
         AuthenticationManagerBuilder authBuilder = http.getSharedObject(AuthenticationManagerBuilder.class);
-
-        authBuilder
-                .userDetailsService(userDetailsService)
+        authBuilder.userDetailsService(userDetailsService)
                 .passwordEncoder(passwordEncoder());
-
         return authBuilder.build();
     }
 }
