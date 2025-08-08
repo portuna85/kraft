@@ -15,3 +15,11 @@ spring:
     console:
       enabled: true
       path: /h2-console
+  mustache:
+    charset: UTF-8
+server:
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
