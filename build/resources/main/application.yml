@@ -15,11 +15,19 @@ spring:
     console:
       enabled: true
       path: /h2-console
-  mustache:
-    charset: UTF-8
+  thymeleaf:
+    enabled: true
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
+    encoding: UTF-8
+    cache: false
+
 server:
   servlet:
     encoding:
       charset: UTF-8
       enabled: true
       force: true
+  error:
+    include-message: always
