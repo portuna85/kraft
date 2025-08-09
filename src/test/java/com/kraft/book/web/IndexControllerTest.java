@@ -11,22 +11,17 @@ import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@AutoConfigureMockMvc
 class IndexControllerTest {
 
     @Autowired
-    private TestRestTemplate restTemplate;
+    TestRestTemplate rest;
 
     @Test
-    void 메인페이지_로딩() throws Exception {
-
-
-
-
-        // when
-        String body = this.restTemplate.getForObject("/", String.class);
-        // then
-        assertThat(body).contains("스프링부트로 시작하는 웹 서비스");
+    void 메인페이지_로딩() {
+        String body = rest.getForObject("/", String.class);
+        assertThat(body).contains("<h2>게시글 목록</h2>");
+        assertThat(body).contains("/posts/save");
+        assertThat(body).contains("/oauth2/authorization/google");
+        assertThat(body).contains("/oauth2/authorization/naver");
     }
-
 }

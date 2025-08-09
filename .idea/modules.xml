@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/kraft.iml" filepath="$PROJECT_DIR$/kraft.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/kraft.main.iml" filepath="$PROJECT_DIR$/.idea/modules/kraft.main.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/kraft.test.iml" filepath="$PROJECT_DIR$/.idea/modules/kraft.test.iml" />
     </modules>

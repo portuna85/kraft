@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.kraft.book.domain.posts.PostsRepositoryTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2025-08-09T10:58:01" hostname="JSBAE" time="0.446">
+<testsuite name="com.kraft.book.domain.posts.PostsRepositoryTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2025-08-09T12:06:07" hostname="JSBAE" time="0.425">
   <properties/>
-  <testcase name="게시글저장_불러오기()" classname="com.kraft.book.domain.posts.PostsRepositoryTest" time="0.421"/>
-  <testcase name="BaseTimeEntity_등록()" classname="com.kraft.book.domain.posts.PostsRepositoryTest" time="0.024"/>
-  <system-out><![CDATA[19:57:58.584 [Test worker] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.kraft.book.domain.posts.PostsRepositoryTest]: PostsRepositoryTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
-19:57:58.641 [Test worker] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.kraft.book.Application for test class com.kraft.book.domain.posts.PostsRepositoryTest
+  <testcase name="게시글저장_불러오기()" classname="com.kraft.book.domain.posts.PostsRepositoryTest" time="0.409"/>
+  <testcase name="BaseTimeEntity_등록()" classname="com.kraft.book.domain.posts.PostsRepositoryTest" time="0.014"/>
+  <system-out><![CDATA[21:06:04.276 [Test worker] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.kraft.book.domain.posts.PostsRepositoryTest]: PostsRepositoryTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+21:06:04.335 [Test worker] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.kraft.book.Application for test class com.kraft.book.domain.posts.PostsRepositoryTest
 
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
@@ -15,28 +15,28 @@
 
  :: Spring Boot ::                (v3.3.2)
 
-2025-08-09T19:57:58.897+09:00  INFO 18972 --- [    Test worker] c.k.b.domain.posts.PostsRepositoryTest   : Starting PostsRepositoryTest using Java 21.0.2 with PID 18972 (started by portu in D:\workspace\spring\kraft)
-2025-08-09T19:57:58.898+09:00  INFO 18972 --- [    Test worker] c.k.b.domain.posts.PostsRepositoryTest   : The following 1 profile is active: "oauth"
-2025-08-09T19:57:59.343+09:00  INFO 18972 --- [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
-2025-08-09T19:57:59.374+09:00  INFO 18972 --- [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 26 ms. Found 2 JPA repository interfaces.
-2025-08-09T19:57:59.688+09:00  INFO 18972 --- [    Test worker] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
-2025-08-09T19:57:59.812+09:00  INFO 18972 --- [    Test worker] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@33751d49
-2025-08-09T19:57:59.814+09:00  INFO 18972 --- [    Test worker] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
-2025-08-09T19:57:59.921+09:00  INFO 18972 --- [    Test worker] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
-2025-08-09T19:57:59.958+09:00  INFO 18972 --- [    Test worker] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.5.2.Final
-2025-08-09T19:57:59.980+09:00  INFO 18972 --- [    Test worker] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
-2025-08-09T19:58:00.177+09:00  INFO 18972 --- [    Test worker] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
-2025-08-09T19:58:00.212+09:00  WARN 18972 --- [    Test worker] org.hibernate.orm.deprecation            : HHH90000025: MySQL8Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
-2025-08-09T19:58:00.213+09:00  WARN 18972 --- [    Test worker] org.hibernate.orm.deprecation            : HHH90000026: MySQL8Dialect has been deprecated; use org.hibernate.dialect.MySQLDialect instead
-2025-08-09T19:58:00.622+09:00  INFO 18972 --- [    Test worker] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-08-09T21:06:04.599+09:00  INFO 20340 --- [    Test worker] c.k.b.domain.posts.PostsRepositoryTest   : Starting PostsRepositoryTest using Java 21.0.2 with PID 20340 (started by portu in D:\workspace\spring\kraft)
+2025-08-09T21:06:04.600+09:00  INFO 20340 --- [    Test worker] c.k.b.domain.posts.PostsRepositoryTest   : The following 1 profile is active: "oauth"
+2025-08-09T21:06:05.022+09:00  INFO 20340 --- [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-08-09T21:06:05.061+09:00  INFO 20340 --- [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 34 ms. Found 2 JPA repository interfaces.
+2025-08-09T21:06:05.394+09:00  INFO 20340 --- [    Test worker] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2025-08-09T21:06:05.522+09:00  INFO 20340 --- [    Test worker] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@14a1769d
+2025-08-09T21:06:05.524+09:00  INFO 20340 --- [    Test worker] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2025-08-09T21:06:05.624+09:00  INFO 20340 --- [    Test worker] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-08-09T21:06:05.666+09:00  INFO 20340 --- [    Test worker] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.5.2.Final
+2025-08-09T21:06:05.693+09:00  INFO 20340 --- [    Test worker] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2025-08-09T21:06:05.884+09:00  INFO 20340 --- [    Test worker] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-08-09T21:06:05.918+09:00  WARN 20340 --- [    Test worker] org.hibernate.orm.deprecation            : HHH90000025: MySQL8Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2025-08-09T21:06:05.918+09:00  WARN 20340 --- [    Test worker] org.hibernate.orm.deprecation            : HHH90000026: MySQL8Dialect has been deprecated; use org.hibernate.dialect.MySQLDialect instead
+2025-08-09T21:06:06.329+09:00  INFO 20340 --- [    Test worker] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
 Hibernate: 
     alter table posts 
        modify column content text not null
-2025-08-09T19:58:00.658+09:00  INFO 18972 --- [    Test worker] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
-2025-08-09T19:58:00.890+09:00  INFO 18972 --- [    Test worker] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
-2025-08-09T19:58:01.241+09:00  WARN 18972 --- [    Test worker] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
-2025-08-09T19:58:01.307+09:00  INFO 18972 --- [    Test worker] o.s.b.a.w.s.WelcomePageHandlerMapping    : Adding welcome page template: index
-2025-08-09T19:58:01.834+09:00  INFO 18972 --- [    Test worker] c.k.b.domain.posts.PostsRepositoryTest   : Started PostsRepositoryTest in 3.102 seconds (process running for 3.791)
+2025-08-09T21:06:06.365+09:00  INFO 20340 --- [    Test worker] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-08-09T21:06:06.593+09:00  INFO 20340 --- [    Test worker] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2025-08-09T21:06:06.939+09:00  WARN 20340 --- [    Test worker] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-08-09T21:06:06.992+09:00  INFO 20340 --- [    Test worker] o.s.b.a.w.s.WelcomePageHandlerMapping    : Adding welcome page template: index
+2025-08-09T21:06:07.470+09:00  INFO 20340 --- [    Test worker] c.k.b.domain.posts.PostsRepositoryTest   : Started PostsRepositoryTest in 3.036 seconds (process running for 3.744)
 Hibernate: 
     insert 
     into
@@ -65,12 +65,6 @@ Hibernate:
     from
         posts p1_0
 Hibernate: 
-    delete 
-    from
-        posts 
-    where
-        id=?
-Hibernate: 
     insert 
     into
         posts
@@ -87,7 +81,7 @@ Hibernate:
         p1_0.title 
     from
         posts p1_0
->>>>>>>>>> createdDate = 2025-08-09T19:58:02.273524, modifiedDate = 2025-08-09T19:58:02.273524
+>>>>>>>>>> createdDate = 2025-08-09T21:06:07.896085300, modifiedDate = 2025-08-09T21:06:07.896085300
 Hibernate: 
     select
         p1_0.id,
@@ -98,12 +92,6 @@ Hibernate:
         p1_0.title 
     from
         posts p1_0
-Hibernate: 
-    delete 
-    from
-        posts 
-    where
-        id=?
 ]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>
