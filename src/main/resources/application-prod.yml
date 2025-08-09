@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASS}
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+  session:
+    jdbc:
+      initialize-schema: never
+logging:
+  level:
+    org.springframework: info
