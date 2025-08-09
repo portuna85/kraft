@@ -34,9 +34,11 @@ dependencies {
 
     implementation "org.springframework.session:spring-session-jdbc"
 
+    implementation "org.springframework.boot:spring-boot-starter-validation"
+
     // H2 (메모리 DB)
 
-    testRuntimeOnly 'com.h2database:h2'
+    testImplementation 'com.h2database:h2'
 
     // 테스트 코드에서 Lombok 사용 시
     testCompileOnly 'org.projectlombok:lombok'
