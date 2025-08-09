@@ -25,9 +25,6 @@ dependencies {
 
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 
-    // 기존 Mustache 제거
-    // implementation 'org.springframework.boot:spring-boot-starter-mustache'
-
     runtimeOnly 'com.mysql:mysql-connector-j'
     // JPA
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
