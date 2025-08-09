@@ -1,10 +1,13 @@
 package com.kraft.book.web;
 
+import ch.qos.logback.core.model.Model;
 import com.kraft.book.service.PostsService;
 import com.kraft.book.web.dto.PostsResponseDto;
 import com.kraft.book.web.dto.PostsSaveRequestDto;
 import com.kraft.book.web.dto.PostsUpdateRequestDto;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 @RequiredArgsConstructor
@@ -14,9 +17,10 @@ public class PostsApiController {
     private final PostsService postsService;
 
     @PostMapping("/api/v1/posts")
-    public Long save(@RequestBody PostsSaveRequestDto requestDto) {
+    public Long save(@Valid @RequestBody PostsSaveRequestDto requestDto) {
         return postsService.save(requestDto);
     }
+
 
     @PutMapping("/api/v1/posts/{id}")
     public Long update(@PathVariable Long id, @RequestBody PostsUpdateRequestDto requestDto) {

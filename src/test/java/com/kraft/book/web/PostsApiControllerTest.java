@@ -15,12 +15,12 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -62,5 +62,19 @@ class PostsApiControllerTest {
                         .content(objectMapper.writeValueAsString(dto))
                         .with(csrf()))                        // ★ 중요
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "USER") // ← 엔드포인트가 인증 필요 없다면 제거해도 됨
+    void save_validation_fail() throws Exception {
+        String body = """
+            {"title":"","author":"","content":""}
+        """;
+
+        mockMvc.perform(post("/api/v1/posts")
+                        .with(csrf()) // ★ CSRF 토큰 추가
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest()); // ★ 기대값 400
     }
 }
