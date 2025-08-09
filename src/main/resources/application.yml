@@ -1,33 +1,21 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+    url: jdbc:mysql://localhost:3306/kraft_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: portuna85
+    password: Gkstmvns1!
+
   jpa:
-    hibernate:
-      ddl-auto: update   # 개발용. 테스트면 create-drop 추천
     show-sql: true
+    hibernate:
+      ddl-auto: update
     properties:
       hibernate:
         format_sql: true
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-  thymeleaf:
-    enabled: true
-    prefix: classpath:/templates/
-    suffix: .html
-    mode: HTML
-    encoding: UTF-8
-    cache: false
+        dialect: org.hibernate.dialect.MySQL8Dialect   # 메타데이터 의존 회피
+  profiles:
+    include: oauth
 
-server:
-  servlet:
-    encoding:
-      charset: UTF-8
-      enabled: true
-      force: true
-  error:
-    include-message: always
+logging:
+  level:
+    org.hibernate: INFO

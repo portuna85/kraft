@@ -4,7 +4,8 @@
 .gradle
 .idea
 
-application-real-oauth.properties
+application-oauth.yml
+application-real-oauth.yml
 
 build
 out
