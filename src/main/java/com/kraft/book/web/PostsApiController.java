@@ -7,8 +7,11 @@ import com.kraft.book.web.dto.PostsSaveRequestDto;
 import com.kraft.book.web.dto.PostsUpdateRequestDto;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+
+import java.net.URI;
 
 @RequiredArgsConstructor
 @RestController
@@ -17,8 +20,10 @@ public class PostsApiController {
     private final PostsService postsService;
 
     @PostMapping("/api/v1/posts")
-    public Long save(@Valid @RequestBody PostsSaveRequestDto requestDto) {
-        return postsService.save(requestDto);
+    public ResponseEntity<?> save(@Valid @RequestBody PostsSaveRequestDto req) {
+        Long id = postsService.save(req);
+        URI location = URI.create("/api/v1/posts/" + id);
+        return ResponseEntity.created(location).build(); // 201 Created
     }
 
 

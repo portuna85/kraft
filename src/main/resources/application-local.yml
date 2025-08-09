@@ -11,6 +11,9 @@ spring:
   session:
     jdbc:
       initialize-schema: always   # 로컬은 자동 생성
+  messages:
+    basename: messages
+    encoding: UTF-8
 logging:
   level:
     org.hibernate.SQL: debug
