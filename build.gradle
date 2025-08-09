@@ -35,6 +35,8 @@ dependencies {
     implementation "org.springframework.boot:spring-boot-starter-oauth2-client"
     implementation "org.springframework.boot:spring-boot-starter-security"
 
+    implementation "org.springframework.session:spring-session-jdbc"
+
     // H2 (메모리 DB)
     // runtimeOnly 'com.h2database:h2'
     //testRuntimeOnly 'com.h2database:h2'

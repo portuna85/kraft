@@ -1,5 +1,6 @@
 package com.kraft.book.web;
 
+import com.kraft.book.config.auth.LoginUser;
 import com.kraft.book.config.auth.dto.SessionUser;
 import com.kraft.book.service.PostsService;
 import com.kraft.book.web.dto.PostsResponseDto;
@@ -18,9 +19,8 @@ public class IndexController {
     private final HttpSession httpSession;
 
     @GetMapping(value = "/", produces = "text/html; charset=UTF-8")
-    public String index(Model model) {
+    public String index(Model model, @LoginUser SessionUser user) {
         model.addAttribute("posts", postsService.findAllDesc());
-        SessionUser user = (SessionUser) httpSession.getAttribute("user");
 
         if (user != null) {
             model.addAttribute("userName", user.getName());
