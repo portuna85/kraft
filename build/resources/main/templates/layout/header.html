@@ -1,0 +1,13 @@
+<head th:fragment="common_header">
+    <meta charset="UTF-8"/>
+    <title>Kraft</title>
+
+    <!-- CSRF: _csrf가 있을 때만 출력 -->
+    <th:block th:if="${_csrf != null}">
+        <meta name="_csrf" th:content="${_csrf.token}"/>
+        <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    </th:block>
+
+    <!-- 정적 리소스 -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+</head>
