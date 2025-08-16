@@ -1,0 +1,31 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/kraft?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
+    username: kraft
+    password: kraft1234
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect  # ★ H2Dialect 제거
+    hibernate:
+      ddl-auto: update   # 최초 1회 create로 돌려도 됨(데이터 초기화 주의)
+    properties:
+      hibernate:
+        format_sql: true
+
+  thymeleaf:
+    cache: false
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 20MB
+
+logging:
+  level:
+    org.hibernate.SQL: debug
+    org.hibernate.orm.jdbc.bind: trace
+
+app:
+  upload:
+    dir: uploads

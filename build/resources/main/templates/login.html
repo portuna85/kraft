@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<th:block th:replace="~{fragments/layout :: layout(~{::title}, ~{::content})}">
+  <th:block th:fragment="title">로그인</th:block>
+
+  <th:block th:fragment="content">
+    <h1>로그인</h1>
+    <form method="post" th:action="@{/login}">
+      <input type="hidden" name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <div style="margin-bottom:8px">
+        <label>이메일</label>
+        <input type="email" name="username" placeholder="email@example.com" required>
+      </div>
+      <div style="margin-bottom:8px">
+        <label>비밀번호</label>
+        <input type="password" name="password" required>
+      </div>
+      <button class="btn btn-primary">로그인</button>
+      <a class="btn" th:href="@{/signup}">회원가입</a>
+    </form>
+  </th:block>
+</th:block>
+</html>

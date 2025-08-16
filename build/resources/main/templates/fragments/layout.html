@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko"
+      th:fragment="layout(title, content)">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title th:replace="${title}">게시판</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <style>
+        body{max-width:960px;margin:0 auto;padding:24px;font-family:system-ui,Segoe UI,Roboto,Apple SD Gothic Neo,Malgun Gothic,sans-serif}
+        header,footer{padding:12px 0;color:#444}
+        nav a{margin-right:12px}
+        .meta{color:#666;font-size:.9rem}
+        .danger{color:#b00}
+        .btn{display:inline-block;padding:6px 12px;border:1px solid #ccc;border-radius:6px;background:#f7f7f7;text-decoration:none}
+        .btn-primary{background:#0d6efd;border-color:#0d6efd;color:#fff}
+        .btn-danger{background:#dc3545;border-color:#dc3545;color:#fff}
+        .btn-sm{padding:4px 8px;font-size:.875rem}
+        form{margin:0}
+        textarea{width:100%;min-height:120px}
+        input[type="text"],input[type="email"],input[type="password"]{width:100%;padding:8px}
+        .list{list-style:none;padding:0}
+        .list li{padding:8px 0;border-bottom:1px solid #eee}
+        .thumb{max-width:300px;display:block}
+        .errors{margin:8px 0;color:#b00}
+        .right{float:right}
+        .muted{color:#888}
+    </style>
+</head>
+<body>
+<header>
+    <nav>
+        <a th:href="@{/}">Home</a>
+        <a th:href="@{/posts}">Posts</a>
+        <a th:href="@{/signup}">Signup</a>
+        <a th:href="@{/login}">Login</a>
+    </nav>
+</header>
+
+<main th:replace="${content}">
+    <!-- 자식에서 보낸 content fragment가 여기 들어옵니다 -->
+</main>
+
+<footer>
+    <small class="muted">&copy; Board</small>
+</footer>
+
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

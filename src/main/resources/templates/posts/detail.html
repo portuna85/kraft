@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<th:block th:replace="~{fragments/layout :: layout(~{::title}, ~{::content})}">
+  <th:block th:fragment="title" th:text="${post.title}">게시글 상세</th:block>
+
+  <th:block th:fragment="content">
+    <div>
+      <h1 th:text="${post.title}">제목</h1>
+      <div class="meta">
+        <span th:text="${#temporals.format(post.createdAt,'yyyy-MM-dd HH:mm')}">2025-01-01</span>
+        · <span th:text="${post.author != null ? post.author.username : '익명'}">작성자</span>
+      </div>
+      <article th:utext="${post.content}">내용</article>
+    </div>
+
+    <!-- (선택) 첨부 이미지 미리보기 -->
+    <section th:if="${post.attachments != null and !#lists.isEmpty(post.attachments)}" style="margin-top:12px">
+      <h3>첨부</h3>
+      <div th:each="att : ${post.attachments}">
+        <a th:href="${att.url}" target="_blank" th:text="${att.originalName}">파일</a>
+        <img th:if="${att.thumbnailUrl != null}" th:src="${att.thumbnailUrl}" alt="thumb" class="thumb">
+      </div>
+    </section>
+
+    <div style="margin-top:16px">
+      <a class="btn btn-sm" th:href="@{|/posts/${post.id}/edit|}">수정</a>
+      <form th:action="@{|/posts/${post.id}/delete|}" method="post" style="display:inline">
+        <input type="hidden" name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <button class="btn btn-danger btn-sm" onclick="return confirm('삭제하시겠습니까?')">삭제</button>
+      </form>
+      <a class="btn btn-sm" th:href="@{/posts}">목록</a>
+    </div>
+
+    <hr>
+
+    <!-- 댓글 작성 -->
+    <section>
+      <h3>댓글</h3>
+      <form th:action="@{|/posts/${post.id}/comments|}" method="post" th:object="${form != null ? form : new com.example.board.web.CommentController.CommentForm()}">
+        <input type="hidden" name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <textarea th:field="*{content}" placeholder="댓글을 입력하세요."></textarea>
+        <div style="margin-top:6px">
+          <button class="btn btn-primary btn-sm">등록</button>
+        </div>
+      </form>
+
+      <!-- 상위 댓글 페이지 -->
+      <div style="margin-top:16px" th:if="${commentsPage != null}">
+        <div th:each="c : ${commentsPage.content}" style="padding:12px 0;border-bottom:1px solid #eee">
+          <div>
+            <b th:text="${c.author != null ? c.author.username : '익명'}">작성자</b>
+            <span class="meta" th:text="${#temporals.format(c.createdAt, 'yyyy-MM-dd HH:mm')}">날짜</span>
+          </div>
+          <div th:text="${c.content}">내용</div>
+
+          <!-- 대댓글 수 표시 -->
+          <div class="muted" th:if="${childCounts != null}" th:text="'답글 ' + ${childCounts[c.id]} + '개'">답글 0개</div>
+
+          <!-- 대댓글 작성 폼 -->
+          <form th:action="@{|/posts/${post.id}/comments/${c.id}/reply|}" method="post" th:object="${new com.example.board.web.CommentController.CommentForm()}" style="margin-top:8px">
+            <input type="hidden" name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <textarea th:field="*{content}" placeholder="답글을 입력하세요." style="min-height:60px"></textarea>
+            <button class="btn btn-sm" style="margin-top:6px">답글 등록</button>
+          </form>
+
+          <!-- 댓글 삭제 -->
+          <form th:action="@{|/comments/${c.id}/delete|}" method="post" style="margin-top:6px">
+            <input type="hidden" name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <input type="hidden" name="postId" th:value="${post.id}">
+            <button class="btn btn-danger btn-sm" onclick="return confirm('댓글을 삭제하시겠습니까?')">댓글 삭제</button>
+          </form>
+        </div>
+
+        <!-- 댓글 페이지 네비 -->
+        <nav style="margin-top:12px">
+          <a class="btn btn-sm" th:if="${commentsPage.hasPrevious()}"
+             th:href="@{|/posts/${post.id}?cpage=${commentsPage.number - 1}|}">이전</a>
+          <span th:text="${commentsPage.number + 1} + ' / ' + ${commentsPage.totalPages}"></span>
+          <a class="btn btn-sm" th:if="${commentsPage.hasNext()}"
+             th:href="@{|/posts/${post.id}?cpage=${commentsPage.number + 1}|}">다음</a>
+        </nav>
+      </div>
+    </section>
+  </th:block>
+</th:block>
+</html>
