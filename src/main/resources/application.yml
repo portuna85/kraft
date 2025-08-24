@@ -1,3 +1,9 @@
 spring:
   profiles:
     active: local
+  messages:
+    basename: message
+  mvc:
+    hidden-method:
+      filter:
+        enabled: true
