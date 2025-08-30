@@ -1,29 +1,25 @@
 package com.kraft.book.domain.posts;
 
-import org.aspectj.lang.annotation.After;
-import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
-public class PostsRepositoryTest {
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY) // H2 강제(선택)
+class PostsRepositoryTest {
 
     @Autowired
     PostsRepository postsRepository;
 
-    @AfterEach
-    public void cleanup() {
-        postsRepository.deleteAll();
-    }
-
     @Test
-    void 게시글저장_불러오기() throws Exception {
+    @DisplayName("게시글 저장 후 조회된다")
+    void 게시글저장_불러오기() {
         // given
         String title = "테스트 게시글";
         String content = "테스트 본문";
@@ -32,6 +28,7 @@ public class PostsRepositoryTest {
                 .content(content)
                 .author("아서스")
                 .build());
+
         // when
         List<Posts> postsList = postsRepository.findAll();
 
@@ -39,6 +36,5 @@ public class PostsRepositoryTest {
         Posts posts = postsList.get(0);
         assertThat(posts.getTitle()).isEqualTo(title);
         assertThat(posts.getContent()).isEqualTo(content);
-
     }
 }
