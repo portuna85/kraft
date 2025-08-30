@@ -1,5 +1,6 @@
 package com.kraft.book.domain.posts;
 
+import com.kraft.book.domain.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;

@@ -1,4 +1,4 @@
-package com.kraft.book.domain.posts;
+package com.kraft.book.domain;
 
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.MappedSuperclass;
@@ -12,8 +12,7 @@ import java.time.LocalDateTime;
 @Getter
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
-public class BaseTimeEntity {
-
+public abstract class BaseTimeEntity {
     @CreatedDate
     private LocalDateTime createdDate;
 

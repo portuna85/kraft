@@ -1,9 +1,13 @@
 package com.kraft.book.web;
 
+import com.kraft.book.config.JpaConfig; // ★ JPA 감사 설정 분리해두셨다면 이걸 제외
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -11,7 +15,14 @@ import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(controllers = HelloController.class)
+@WebMvcTest(
+        controllers = HelloController.class,
+        excludeFilters = @ComponentScan.Filter(
+                type = FilterType.ASSIGNABLE_TYPE,
+                classes = JpaConfig.class               // ★ 감사를 웹 슬라이스에서 제외
+        )
+)
+@AutoConfigureMockMvc(addFilters = false)       // ★ Security 의존성이 있으면 401 대비
 class HelloControllerTest {
 
     @Autowired

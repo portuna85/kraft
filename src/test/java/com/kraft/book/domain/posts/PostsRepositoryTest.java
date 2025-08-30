@@ -1,10 +1,12 @@
 package com.kraft.book.domain.posts;
 
+import com.kraft.book.config.JpaConfig;            // ★ 추가
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import; // ★ 추가
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
@@ -13,8 +15,9 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY) // 항상 내장 H2 사용
-@ActiveProfiles("test") // src/test/resources/application-test.yml 적용
+@Import(JpaConfig.class) // ★ Auditing 설정 주입
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
+@ActiveProfiles("test")
 class PostsRepositoryTest {
 
     @Autowired
@@ -42,9 +45,9 @@ class PostsRepositoryTest {
     }
 
     @Test
-    void BaseTimeEntity_등록() throws Exception {
+    void BaseTimeEntity_등록() {
         // given
-        LocalDateTime now = LocalDateTime.of(2019, 6, 4, 0, 0, 0);
+        LocalDateTime baseline = LocalDateTime.of(2019, 6, 4, 0, 0);
         postsRepository.save(Posts.builder()
                 .title("타이틀 입니다")
                 .content("콘텐츠 입니다")
@@ -52,12 +55,12 @@ class PostsRepositoryTest {
                 .build());
 
         // when
-        List<Posts> postsList = postsRepository.findAll();
-        // then
-        Posts posts = postsList.get(0);
+        List<Posts> all = postsRepository.findAll();
 
-        System.out.println(">>>>>>>>>>>>> createdDate = " + posts.getCreatedDate() + ", modifiedDate = " + posts.getModifiedDate());
-        assertThat(posts.getCreatedDate()).isAfter(now);
-        assertThat(posts.getModifiedDate()).isAfter(now);
+        // then
+        Posts posts = all.get(0);
+        System.out.println(">>>> createdDate=" + posts.getCreatedDate() + ", modifiedDate=" + posts.getModifiedDate());
+        assertThat(posts.getCreatedDate()).isAfter(baseline);
+        assertThat(posts.getModifiedDate()).isAfter(baseline);
     }
 }

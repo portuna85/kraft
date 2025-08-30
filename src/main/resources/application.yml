@@ -22,6 +22,10 @@ spring:
       enabled: true
       path: /h2-console
 
+  mustache:
+    charset: UTF-8
+    cache: false   # 개발 중 즉시 반영
+    suffix: .mustache
   # 웹 계층에서 지연 쿼리 발생을 원치 않으면 false 권장 (개발 중엔 상황에 따라 true도 가능)
   # jpa.open-in-view: false
 
