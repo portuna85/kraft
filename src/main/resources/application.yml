@@ -1,6 +1,30 @@
+# application.yml — 기본 프로파일(개발용). H2 인메모리 DB로 바로 실행 가능.
 spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    # MODE=MySQL: H2가 MySQL 문법을 최대한 따라가게 하여 이식성 ↑
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
   jpa:
     show-sql: true
+    hibernate:
+      ddl-auto: update
+      # 개발 편의를 위해 update. (운영은 절대 금지 → mysql 프로파일에서 validate 권장)
     properties:
-      hibernate:
-        dialect: org.hibernate.dialect.MySQL8Dialect
+      hibernate.format_sql: true
+      # dialect는 미지정(자동 감지). H2 + MODE=MySQL 조합으로 개발 흐름 원활.
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  # 웹 계층에서 지연 쿼리 발생을 원치 않으면 false 권장 (개발 중엔 상황에 따라 true도 가능)
+  # jpa.open-in-view: false
+
+logging:
+  level:
+    org.hibernate.SQL: debug
+    org.hibernate.orm.jdbc.bind: trace   # 바인딩 파라미터까지 보고 싶으면 trace 유지

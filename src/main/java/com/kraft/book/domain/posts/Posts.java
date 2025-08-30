@@ -1,4 +1,3 @@
-// src/main/java/com/kraft/book/domain/posts/Posts.java
 package com.kraft.book.domain.posts;
 
 import jakarta.persistence.*;
@@ -20,19 +19,19 @@ public class Posts {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(length = 500, nullable = false)
     @Comment("제목")
+    @Column(length = 500, nullable = false)
     private String title;
 
-    // 이식성 높은 CLOB: 대부분의 DB에서 TEXT로 매핑
+    // 이식성 높은 CLOB 매핑 (필요 시 @Column(columnDefinition="TEXT")로 교체)
     @Lob
     @Basic(fetch = FetchType.LAZY)
-    @Column(nullable = false)
     @Comment("본문")
+    @Column(nullable = false)
     private String content;
 
-    @Column(length = 255)
     @Comment("작성자")
+    @Column(length = 255)
     private String author;
 
     @Builder
@@ -40,5 +39,11 @@ public class Posts {
         this.title = title;
         this.content = content;
         this.author = author;
+    }
+
+    /** 제목/본문 수정 */
+    public void update(String title, String content) {
+        this.title = title;
+        this.content = content;
     }
 }

@@ -1,0 +1,33 @@
+# src/main/resources/application-mysql.yml
+spring:
+  datasource:
+    # 컨테이너: mysql:8.4, DB: kraft, 포트: 3306, TZ/charset: Asia/Seoul + utf8mb4
+    # 호스트(스프링 앱) → 도커(MySQL)로 접속: localhost:3306
+    url: jdbc:mysql://localhost:3306/kraft?useSSL=false&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_0900_ai_ci&serverTimezone=Asia/Seoul
+    username: kraft
+    password: kraft1234
+    # driver-class-name 은 생략 가능(부트가 URL로 자동 추론). 의존성: com.mysql:mysql-connector-j (runtimeOnly)
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000       # ms
+      idle-timeout: 300000            # ms
+      validation-timeout: 5000        # ms
+      # 서버가 utf8mb4로 떠 있어도 세션을 확실히 맞추고 싶으면 유지
+      connectionInitSql: "SET NAMES utf8mb4 COLLATE utf8mb4_0900_ai_ci"
+
+  jpa:
+    show-sql: false                   # 운영/실DB에선 보통 비활성
+    hibernate:
+      ddl-auto: validate              # 스키마는 마이그레이션 도구로 관리 권장
+    properties:
+      hibernate.format_sql: true
+      hibernate.dialect: org.hibernate.dialect.MySQL8Dialect
+      hibernate.jdbc.time_zone: Asia/Seoul
+
+  # 운영에선 false 권장 (지연조회로 인한 N+1 발생 방지 등)
+  jpa.open-in-view: false
+
+logging:
+  level:
+    org.hibernate.SQL: info
