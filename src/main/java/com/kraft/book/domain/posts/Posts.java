@@ -13,7 +13,7 @@ import org.hibernate.annotations.Comment;
 @Table(name = "posts", indexes = {
         @Index(name = "idx_posts_author", columnList = "author")
 })
-public class Posts {
+public class Posts extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -41,7 +41,9 @@ public class Posts {
         this.author = author;
     }
 
-    /** 제목/본문 수정 */
+    /**
+     * 제목/본문 수정
+     */
     public void update(String title, String content) {
         this.title = title;
         this.content = content;
