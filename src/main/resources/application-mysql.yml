@@ -24,6 +24,7 @@ spring:
       hibernate.format_sql: true
       hibernate.dialect: org.hibernate.dialect.MySQL8Dialect
       hibernate.jdbc.time_zone: Asia/Seoul
+    open-in-view: false
 
   # 운영에선 false 권장 (지연조회로 인한 N+1 발생 방지 등)
   jpa.open-in-view: false
