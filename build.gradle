@@ -1,0 +1,54 @@
+plugins {
+    id 'org.springframework.boot' version '3.5.5'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'java'
+}
+
+group = 'com.kraft.book'
+version = '1.0-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    // Mockito를 javaagent로 쓰기 위한 별도 구성 (경로만 필요, 의존성 전이 방지)
+    mockitoAgent {
+        transitive = false
+    }
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.projectlombok:lombok'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa' // JPA(Hibernate)
+    runtimeOnly   'com.h2database:h2'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+    // 에이전트로 로딩할 파일 경로 확보용
+    mockitoAgent 'org.mockito:mockito-core'
+}
+
+// 공통 컴파일/테스트 옵션
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+
+    // 인코딩 고정 (IDE/OS 영향 방지)
+    systemProperty 'file.encoding', 'UTF-8'
+
+    // Mockito 인라인 모커 에이전트를 명시적으로 로딩
+    jvmArgs "-javaagent:${configurations.mockitoAgent.asPath}"
+
+    // (선택) Hotspot의 “Sharing is only supported …” 경고 회피
+    jvmArgs "-Xshare:off"
+}
