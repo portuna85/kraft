@@ -1,36 +1,38 @@
 <!DOCTYPE html>
-<html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="layout/fragments :: head('글 수정')"></head>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head th:replace="~{layout/fragments :: head('글 수정')}"></head>
 <body>
-<header th:replace="layout/fragments :: navbar"></header>
+<div th:replace="~{layout/fragments :: navbar}"></div>
 
-<main class="container py-4" th:with="p=${post}">
-    <h1 class="h4 mb-3">글 수정</h1>
+<main class="container py-4" th:object="${post}">
+    <h1 class="h3 mb-3">글 수정</h1>
 
-    <input type="hidden" id="id" th:value="${p.id}"/>
+    <form>
+        <input id="id" type="hidden" th:value="*{id}"/>
 
-    <div class="mb-3">
-        <label for="title" class="form-label">제목</label>
-        <input id="title" class="form-control" type="text" th:value="${p.title}"/>
-    </div>
+        <div class="mb-3">
+            <label for="title" class="form-label">제목</label>
+            <input id="title" type="text" class="form-control" th:value="*{title}" required/>
+        </div>
 
-    <div class="mb-3">
-        <label for="author" class="form-label">작성자</label>
-        <input id="author" class="form-control" type="text" th:value="${p.author}" disabled/>
-    </div>
+        <div class="mb-3">
+            <label for="author" class="form-label">작성자</label>
+            <input id="author" type="text" class="form-control" th:value="*{author}" disabled/>
+        </div>
 
-    <div class="mb-4">
-        <label for="content" class="form-label">내용</label>
-        <textarea id="content" class="form-control" rows="8" th:text="${p.content}"></textarea>
-    </div>
+        <div class="mb-3">
+            <label for="content" class="form-label">내용</label>
+            <textarea id="content" class="form-control" rows="8" th:text="*{content}" required></textarea>
+        </div>
 
-    <div class="d-flex gap-2">
-        <button id="btn-update" class="btn btn-primary">수정</button>
-        <button id="btn-delete" class="btn btn-danger">삭제</button>
-        <a class="btn btn-outline-secondary" href="/">목록</a>
-    </div>
+        <div class="d-flex gap-2">
+            <button id="btn-update" type="button" class="btn btn-primary">수정</button>
+            <button id="btn-delete" type="button" class="btn btn-danger">삭제</button>
+            <a class="btn btn-outline-secondary" th:href="@{/}">목록</a>
+        </div>
+    </form>
 </main>
 
-<footer th:replace="layout/fragments :: scripts"></footer>
+<div th:replace="~{layout/fragments :: scripts}"></div>
 </body>
 </html>

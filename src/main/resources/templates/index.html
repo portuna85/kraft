@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
 <head th:replace="~{layout/fragments :: head('Kraft Book')}"></head>
 <body>
 <div th:replace="~{layout/fragments :: navbar}"></div>
@@ -7,7 +7,7 @@
 <main class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1 class="h3 m-0">게시글 목록</h1>
-        <a class="btn btn-primary" href="/posts/save">글 등록</a>
+        <a class="btn btn-primary" th:href="@{/posts/save}">글 등록</a>
     </div>
 
     <div class="table-responsive">
@@ -16,21 +16,23 @@
             <tr>
                 <th style="width: 80px;">ID</th>
                 <th>제목</th>
-                <th style="width: 200px;">작성자</th>
+                <th style="width: 180px;">작성자</th>
+                <th style="width: 200px;">생성일</th>
                 <th style="width: 200px;">수정일</th>
             </tr>
             </thead>
             <tbody>
-            <tr th:each="post : ${posts}">
-                <td th:text="${post.id}">1</td>
+            <tr th:each="p : ${posts}">
+                <td th:text="${p.id}">1</td>
                 <td>
-                    <a th:href="@{/posts/update/{id}(id=${post.id})}" th:text="${post.title}">제목</a>
+                    <a th:href="@{|/posts/update/${p.id}|}" th:text="${p.title}">제목</a>
                 </td>
-                <td th:text="${post.author}">작성자</td>
-                <td th:text="${#temporals.format(post.modifiedDate, 'yyyy-MM-dd HH:mm')}">2025-08-30 11:22</td>
+                <td th:text="${p.author}">작성자</td>
+                <td th:text="${#temporals.format(p.createdDate, 'yyyy-MM-dd HH:mm')}">-</td>
+                <td th:text="${#temporals.format(p.modifiedDate, 'yyyy-MM-dd HH:mm')}">-</td>
             </tr>
             <tr th:if="${#lists.isEmpty(posts)}">
-                <td colspan="4" class="text-center text-muted py-4">등록된 글이 없습니다.</td>
+                <td colspan="5" class="text-center text-muted py-4">등록된 글이 없습니다.</td>
             </tr>
             </tbody>
         </table>

@@ -1,31 +1,33 @@
 <!DOCTYPE html>
-<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
 <head th:replace="~{layout/fragments :: head('글 등록')}"></head>
 <body>
 <div th:replace="~{layout/fragments :: navbar}"></div>
 
 <main class="container py-4">
-    <h1 class="h4 mb-3">글 등록</h1>
+    <h1 class="h3 mb-3">글 등록</h1>
 
-    <div class="mb-3">
-        <label for="title" class="form-label">제목</label>
-        <input id="title" class="form-control" type="text" placeholder="제목을 입력하세요"/>
-    </div>
+    <form id="postForm">
+        <div class="mb-3">
+            <label for="title" class="form-label">제목</label>
+            <input id="title" type="text" class="form-control" placeholder="제목을 입력하세요" required/>
+        </div>
 
-    <div class="mb-3">
-        <label for="author" class="form-label">작성자</label>
-        <input id="author" class="form-control" type="text" placeholder="작성자를 입력하세요"/>
-    </div>
+        <div class="mb-3">
+            <label for="author" class="form-label">작성자</label>
+            <input id="author" type="text" class="form-control" placeholder="작성자를 입력하세요" required/>
+        </div>
 
-    <div class="mb-4">
-        <label for="content" class="form-label">내용</label>
-        <textarea id="content" class="form-control" rows="8" placeholder="내용을 입력하세요"></textarea>
-    </div>
+        <div class="mb-3">
+            <label for="content" class="form-label">내용</label>
+            <textarea id="content" class="form-control" rows="8" placeholder="내용을 입력하세요" required></textarea>
+        </div>
 
-    <div class="d-flex gap-2">
-        <button id="btn-save" class="btn btn-primary">등록</button>
-        <a class="btn btn-outline-secondary" href="/">취소</a>
-    </div>
+        <div class="d-flex gap-2">
+            <button id="btn-save" type="button" class="btn btn-primary">저장</button>
+            <a class="btn btn-outline-secondary" th:href="@{/}">취소</a>
+        </div>
+    </form>
 </main>
 
 <div th:replace="~{layout/fragments :: scripts}"></div>

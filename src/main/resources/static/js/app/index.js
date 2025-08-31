@@ -1,89 +1,118 @@
-// /src/main/resources/static/js/app/index.js
-// jQuery → 바닐라 JS + Fetch 버전 (Spring Security CSRF 메타 태그 있으면 자동 적용)
+// src/main/resources/static/js/app/index.js
+(function () {
+    'use strict';
 
-const $ = (sel) => document.querySelector(sel);
-const val = (sel) => (($(sel) || {}).value || "").trim();
+    const $id = (id) => document.getElementById(id);
 
-function getCsrf() {
-    const token = document.querySelector('meta[name="_csrf"]')?.getAttribute("content");
-    const header = document.querySelector('meta[name="_csrf_header"]')?.getAttribute("content");
-    return token && header ? { header, token } : null;
-}
+    async function http(url, method, data) {
+        const headers = {'Content-Type': 'application/json;charset=UTF-8'};
 
-async function http(method, url, data) {
-    const headers = { "Content-Type": "application/json; charset=UTF-8" };
-    const csrf = getCsrf();
-    if (csrf) headers[csrf.header] = csrf.token;
+        // Spring Security CSRF 메타태그가 있으면 자동 첨부
+        const csrfTokenMeta = document.querySelector('meta[name="_csrf"]');
+        const csrfHeaderMeta = document.querySelector('meta[name="_csrf_header"]');
+        if (csrfTokenMeta && csrfHeaderMeta) {
+            headers[csrfHeaderMeta.content] = csrfTokenMeta.content;
+        }
 
-    const res = await fetch(url, {
-        method,
-        headers,
-        body: data ? JSON.stringify(data) : undefined,
-    });
+        const res = await fetch(url, {
+            method,
+            headers,
+            body: data ? JSON.stringify(data) : undefined,
+        });
 
-    if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(text || `${res.status} ${res.statusText}`);
+        if (!res.ok) {
+            const body = await res.text().catch(() => '');
+            throw new Error(`HTTP ${res.status} ${res.statusText}\n${body}`);
+        }
+
+        const ct = res.headers.get('content-type') || '';
+        if (ct.includes('application/json')) return res.json();
+        return res.text().catch(() => null);
     }
-    // 성공 시 응답이 비어있을 수도 있으므로 안전 처리
-    const ct = res.headers.get("content-type") || "";
-    return ct.includes("application/json") ? res.json() : res.text();
-}
 
-const main = {
-    init() {
-        $("#btn-save")?.addEventListener("click", () => this.save());
-        $("#btn-update")?.addEventListener("click", () => this.update());
-        $("#btn-delete")?.addEventListener("click", () => this.remove());
-    },
-
-    async save() {
-        const data = {
-            title: val("#title"),
-            author: val("#author"),
-            content: val("#content"),
+    function withBusy(btn, fn) {
+        return async function (e) {
+            e && e.preventDefault();
+            if (btn?.dataset.busy === '1') return;
+            try {
+                if (btn) {
+                    btn.dataset.busy = '1';
+                    btn.disabled = true;
+                }
+                await fn();
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.dataset.busy = '0';
+                }
+            }
         };
+    }
 
-        try {
-            await http("POST", "/api/v1/posts", data);
-            alert("글이 등록되었습니다.");
-            location.assign("/");
-        } catch (e) {
-            alert(`등록 실패: ${e.message}`);
+    async function save() {
+        const title = ($id('title')?.value || '').trim();
+        const author = ($id('author')?.value || '').trim();
+        const content = ($id('content')?.value || '').trim();
+
+        if (!title || !author || !content) {
+            alert('제목/작성자/내용을 모두 입력해 주세요.');
+            return;
         }
-    },
 
-    async update() {
-        const id = val("#id");
-        if (!id) return alert("ID를 찾을 수 없습니다.");
+        await http('/api/v1/posts', 'POST', {title, author, content});
+        alert('글이 등록되었습니다.');
+        window.location.assign('/');
+    }
 
-        const data = {
-            title: val("#title"),
-            content: val("#content"),
-        };
+    async function update() {
+        const id = ($id('id')?.value || '').trim();
+        const title = ($id('title')?.value || '').trim();
+        const content = ($id('content')?.value || '').trim();
 
-        try {
-            await http("PUT", `/api/v1/posts/${encodeURIComponent(id)}`, data);
-            alert("글이 수정되었습니다.");
-            location.assign("/");
-        } catch (e) {
-            alert(`수정 실패: ${e.message}`);
+        if (!id) {
+            alert('게시글 ID가 없습니다.');
+            return;
         }
-    },
-
-    async remove() {
-        const id = val("#id");
-        if (!id) return alert("ID를 찾을 수 없습니다.");
-        if (!confirm("정말 삭제하시겠습니까?")) return;
-
-        try {
-            await http("DELETE", `/api/v1/posts/${encodeURIComponent(id)}`);
-            alert("글이 삭제되었습니다.");
-            location.assign("/");
-        } catch (e) {
-            alert(`삭제 실패: ${e.message}`);
+        if (!title || !content) {
+            alert('제목/내용을 입력해 주세요.');
+            return;
         }
-    },
-};
 
-document.addEventListener("DOMContentLoaded", () => main.init());
+        await http(`/api/v1/posts/${encodeURIComponent(id)}`, 'PUT', {title, content});
+        alert('글이 수정되었습니다.');
+        window.location.assign('/');
+    }
+
+    async function remove() {
+        const id = ($id('id')?.value || '').trim();
+        if (!id) {
+            alert('게시글 ID가 없습니다.');
+            return;
+        }
+        if (!confirm('정말 삭제하시겠습니까?')) return;
+
+        await http(`/api/v1/posts/${encodeURIComponent(id)}`, 'DELETE');
+        alert('글이 삭제되었습니다.');
+        window.location.assign('/');
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = $id('postForm');
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const btn = $id('btn-save');
+                withBusy(btn, save)();
+            });
+        }
+
+        const btnSave = $id('btn-save');
+        if (btnSave) btnSave.addEventListener('click', withBusy(btnSave, save));
+
+        const btnUpdate = $id('btn-update');
+        if (btnUpdate) btnUpdate.addEventListener('click', withBusy(btnUpdate, update));
+
+        const btnDelete = $id('btn-delete');
+        if (btnDelete) btnDelete.addEventListener('click', withBusy(btnDelete, remove));
+    });
+})();
