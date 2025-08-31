@@ -1,35 +1,46 @@
-# application.yml — 기본 프로파일(개발용). H2 인메모리 DB로 바로 실행 가능.
 spring:
-  datasource:
-    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    # MODE=MySQL: H2가 MySQL 문법을 최대한 따라가게 하여 이식성 ↑
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+  application:
+    name: kraft-book
 
+  # 공통 JPA 옵션(DDL 생성은 프로파일별로)
   jpa:
-    show-sql: true
-    hibernate:
-      ddl-auto: update
-      # 개발 편의를 위해 update. (운영은 절대 금지 → mysql 프로파일에서 validate 권장)
     properties:
-      hibernate.format_sql: true
-      # dialect는 미지정(자동 감지). H2 + MODE=MySQL 조합으로 개발 흐름 원활.
-    open-in-view: false
+      hibernate:
+        format_sql: true         # SQL 포맷팅
+        use_sql_comments: true
+    open-in-view: false          # OSIV 비활성 (웹 뷰에서 지연 로딩 막기)
 
-  h2:
-    console:
+  # SQL 스크립트 자동 실행 방지 (스키마 관리는 Flyway가 담당)
+  sql:
+    init:
+      mode: never
+
+  # Thymeleaf 공통
+  thymeleaf:
+    mode: HTML
+    encoding: UTF-8
+    servlet:
+      content-type: text/html
+    # 템플릿 캐시는 dev에서만 끄고, 공통은 켜둠 (프로파일에서 override)
+    cache: true
+
+  jackson:
+    time-zone: Asia/Seoul
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: 8080
+  servlet:
+    encoding:
+      charset: UTF-8
       enabled: true
-      path: /h2-console
-
-  mustache:
-    charset: UTF-8
-    cache: false   # 개발 중 즉시 반영
-    suffix: .mustache
-  # 웹 계층에서 지연 쿼리 발생을 원치 않으면 false 권장 (개발 중엔 상황에 따라 true도 가능)
-  # jpa.open-in-view: false
+      force: true
 
 logging:
   level:
-    org.hibernate.SQL: debug
-    org.hibernate.orm.jdbc.bind: trace   # 바인딩 파라미터까지 보고 싶으면 trace 유지
+    # 애플리케이션 로그
+    com.kraft.book: INFO
+    # Hibernate SQL/바인딩 로그 (프로파일에서 더 자세히 조정)
+    org.hibernate.SQL: INFO
+    org.hibernate.orm.jdbc.bind: INFO   # 파라미터 바인딩 (Hibernate 6)
