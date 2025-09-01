@@ -1,7 +1,10 @@
 package com.kraft.book.web;
 
+import com.kraft.book.config.auth.dto.SessionUser;
 import com.kraft.book.service.PostsService;
 import com.kraft.book.web.dto.PostsResponseDto;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,9 +19,12 @@ public class IndexController {
     }
 
     @GetMapping("/")
-    public String index(Model model) {
+    public String index(Model model,
+                        @AuthenticationPrincipal OAuth2User principal) {
         model.addAttribute("posts", postsService.findAllDesc());
-
+        if (principal != null) {
+            model.addAttribute("userName", principal.getAttribute("name")); // 구글: name
+        }
         return "index";
     }
 

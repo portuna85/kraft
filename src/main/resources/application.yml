@@ -29,6 +29,13 @@ spring:
     serialization:
       write-dates-as-timestamps: false
 
+  profiles:
+    include: oauth
+    active: dev                   # 기본 프로파일 (로컬 개발용)
+    group:
+      dev: dev,h2
+      mysql: mysql
+
 server:
   port: 8080
   servlet:

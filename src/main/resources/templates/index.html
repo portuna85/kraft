@@ -5,9 +5,22 @@
 <div th:replace="~{layout/fragments :: navbar}"></div>
 
 <main class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1 class="h3 m-0">게시글 목록</h1>
-        <a class="btn btn-primary" th:href="@{/posts/save}">글 등록</a>
+    <div class="row mb-3">
+        <div class="col-md-6 d-flex align-items-center">
+            <a href="/posts/save" role="button" class="btn btn-primary me-3">글 등록</a>
+
+            <!-- 로그인 상태 -->
+            <span th:if="${userName}">
+                Logged in as: <span id="user" th:text="${userName}">사용자</span>
+                <a href="/logout" class="btn btn-info ms-2" role="button">Logout</a>
+            </span>
+
+            <!-- 비로그인 상태 -->
+            <span th:unless="${userName}">
+                <a href="/oauth2/authorization/google" class="btn btn-success me-1" role="button">Google Login</a>
+                <a href="/oauth2/authorization/naver" class="btn btn-secondary" role="button">Naver Login</a>
+            </span>
+        </div>
     </div>
 
     <div class="table-responsive">
@@ -28,9 +41,18 @@
                     <a th:href="@{|/posts/update/${p.id}|}" th:text="${p.title}">제목</a>
                 </td>
                 <td th:text="${p.author}">작성자</td>
+
+                <!-- 포매팅 (널이 생길 수 있으면 아래 줄을 주석처리하고 그 밑의 안전한 버전 사용) -->
                 <td th:text="${#temporals.format(p.createdDate, 'yyyy-MM-dd HH:mm')}">-</td>
                 <td th:text="${#temporals.format(p.modifiedDate, 'yyyy-MM-dd HH:mm')}">-</td>
+
+                <!-- 만약 createdDate/modifiedDate가 null일 수 있으면 이런 식으로 안전하게 처리 -->
+                <!--
+                <td th:text="${p.createdDate != null ? #temporals.format(p.createdDate, 'yyyy-MM-dd HH:mm') : '-'}">-</td>
+                <td th:text="${p.modifiedDate != null ? #temporals.format(p.modifiedDate, 'yyyy-MM-dd HH:mm') : '-'}">-</td>
+                -->
             </tr>
+
             <tr th:if="${#lists.isEmpty(posts)}">
                 <td colspan="5" class="text-center text-muted py-4">등록된 글이 없습니다.</td>
             </tr>

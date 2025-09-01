@@ -29,6 +29,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     // ✅ Java 8 시간 포맷용 (버전 명시 필수)
     implementation 'org.thymeleaf.extras:thymeleaf-extras-java8time:3.0.4.RELEASE'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
+
 
     // 선택) 레이아웃 다이얼렉트 (템플릿 레이아웃 격자화가 필요하면)
     // implementation 'nz.net.ultraq.thymeleaf:thymeleaf-layout-dialect:3.3.0'

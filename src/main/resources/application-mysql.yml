@@ -13,7 +13,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate           # ← 스키마 자동생성 금지(검증만). 스키마는 Flyway가 생성/관리
+      ddl-auto: update           # ← 스키마 자동생성 금지(검증만). 스키마는 Flyway가 생성/관리
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect

@@ -6,7 +6,7 @@ spring:
     password:
   jpa:
     hibernate:
-      ddl-auto: create-drop        # 개발용: 매번 새로 생성/삭제
+      ddl-auto: update        # 개발용: 매번 새로 생성/삭제
     properties:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
