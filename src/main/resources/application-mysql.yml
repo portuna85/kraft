@@ -4,32 +4,14 @@ spring:
     url: jdbc:mysql://localhost:3306/kraft?useSSL=false&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_0900_ai_ci&serverTimezone=Asia/Seoul
     username: kraft
     password: kraft1234
-    hikari:
-      maximum-pool-size: 10
-      minimum-idle: 2
-      connection-timeout: 30000
-      # 세션 문자셋 강제
-      connectionInitSql: "SET NAMES utf8mb4 COLLATE utf8mb4_0900_ai_ci"
-
   jpa:
     hibernate:
-      ddl-auto: update           # ← 스키마 자동생성 금지(검증만). 스키마는 Flyway가 생성/관리
+      ddl-auto: validate   # 운영/실DB는 validate 권장
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
-
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true       # 빈 DB가 아니어도 초기 마이그레이션 허용
-    # 필요 시 스키마 지정
-    # schemas: kraft
-
-  thymeleaf:
-    cache: true                     # 운영/실DB 프로필에서는 캐시 유지 권장
-
-logging:
-  level:
-    com.kraft.book: INFO
-    org.hibernate.SQL: DEBUG
-    org.hibernate.orm.jdbc.bind: TRACE
+        format_sql: true
+  sql:
+    init:
+      mode: always         # 처음 스키마 올릴 때만 on → 이후에는 never 권장
+      schema-locations: classpath:schema-mysql.sql

@@ -4,10 +4,17 @@
 
     const $id = (id) => document.getElementById(id);
 
+    // 공통 HTTP 유틸
     async function http(url, method, data) {
-        const headers = {'Content-Type': 'application/json;charset=UTF-8'};
+        const headers = {};
 
-        // Spring Security CSRF 메타태그가 있으면 자동 첨부
+        // JSON 본문이 있을 때만 Content-Type 명시
+        if (data !== undefined) {
+            headers['Content-Type'] = 'application/json;charset=UTF-8';
+            headers['Accept'] = 'application/json';
+        }
+
+        // Thymeleaf(Spring Security) CSRF 메타태그 자동 첨부
         const csrfTokenMeta = document.querySelector('meta[name="_csrf"]');
         const csrfHeaderMeta = document.querySelector('meta[name="_csrf_header"]');
         if (csrfTokenMeta && csrfHeaderMeta) {
@@ -17,12 +24,24 @@
         const res = await fetch(url, {
             method,
             headers,
-            body: data ? JSON.stringify(data) : undefined,
+            body: data !== undefined ? JSON.stringify(data) : undefined,
         });
 
+        // 204(No Content) 처리
+        if (res.status === 204) return null;
+
         if (!res.ok) {
-            const body = await res.text().catch(() => '');
-            throw new Error(`HTTP ${res.status} ${res.statusText}\n${body}`);
+            let detail = '';
+            try {
+                const ct = res.headers.get('content-type') || '';
+                if (ct.includes('application/json')) {
+                    const j = await res.json();
+                    detail = j.message || JSON.stringify(j);
+                } else {
+                    detail = await res.text();
+                }
+            } catch (_) {}
+            throw new Error(`HTTP ${res.status} ${res.statusText}\n${detail}`);
         }
 
         const ct = res.headers.get('content-type') || '';
@@ -30,10 +49,11 @@
         return res.text().catch(() => null);
     }
 
+    // 버튼 중복 클릭 방지
     function withBusy(btn, fn) {
         return async function (e) {
             e && e.preventDefault();
-            if (btn?.dataset.busy === '1') return;
+            if (btn && btn.dataset.busy === '1') return;
             try {
                 if (btn) {
                     btn.dataset.busy = '1';
@@ -49,6 +69,7 @@
         };
     }
 
+    // 글 등록
     async function save() {
         const title = ($id('title')?.value || '').trim();
         const author = ($id('author')?.value || '').trim();
@@ -59,11 +80,12 @@
             return;
         }
 
-        await http('/api/v1/posts', 'POST', {title, author, content});
+        await http('/api/v1/posts', 'POST', { title, author, content });
         alert('글이 등록되었습니다.');
         window.location.assign('/');
     }
 
+    // 글 수정
     async function update() {
         const id = ($id('id')?.value || '').trim();
         const title = ($id('title')?.value || '').trim();
@@ -78,11 +100,12 @@
             return;
         }
 
-        await http(`/api/v1/posts/${encodeURIComponent(id)}`, 'PUT', {title, content});
+        await http(`/api/v1/posts/${encodeURIComponent(id)}`, 'PUT', { title, content });
         alert('글이 수정되었습니다.');
         window.location.assign('/');
     }
 
+    // 글 삭제
     async function remove() {
         const id = ($id('id')?.value || '').trim();
         if (!id) {
@@ -96,7 +119,9 @@
         window.location.assign('/');
     }
 
+    // 이벤트 바인딩 (페이지별로 요소가 있을 때만 바인딩)
     document.addEventListener('DOMContentLoaded', function () {
+        // 등록 폼이 있는 경우(예: posts-save.html)
         const form = $id('postForm');
         if (form) {
             form.addEventListener('submit', function (e) {
@@ -109,6 +134,7 @@
         const btnSave = $id('btn-save');
         if (btnSave) btnSave.addEventListener('click', withBusy(btnSave, save));
 
+        // 수정/삭제 버튼이 있는 경우(예: posts-update.html)
         const btnUpdate = $id('btn-update');
         if (btnUpdate) btnUpdate.addEventListener('click', withBusy(btnUpdate, update));
 

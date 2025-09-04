@@ -1,28 +1,26 @@
 spring:
   datasource:
+    url: jdbc:h2:mem:kraft;MODE=MySQL;NON_KEYWORDS=USER
     driver-class-name: org.h2.Driver
-    url: jdbc:h2:mem:kraft;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     username: sa
     password:
   jpa:
     hibernate:
-      ddl-auto: update        # 개발용: 매번 새로 생성/삭제
+      ddl-auto: none      # ← 반드시 none 또는 validate
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
-  # 개발에서는 Flyway 굳이 안 써도 됨(메모리 DB니까)
-  flyway:
-    enabled: false
-
-  thymeleaf:
-    cache: false                   # 템플릿 수정 즉시 반영
-
-# H2 콘솔(선택)
-spring.h2.console.enabled: true
-spring.h2.console.path: /h2-console
+        format_sql: true
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-h2.sql
+      data-locations: classpath:data-h2.sql
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
 
 logging:
   level:
-    com.kraft.book: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.orm.jdbc.bind: TRACE
+    org.hibernate.SQL: debug
+    org.hibernate.orm.jdbc.bind: trace
