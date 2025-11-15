@@ -70,7 +70,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
 
     steps:
-    - name: Deploy to server
+    - name: Blue-Green Deploy via SSH
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.SERVER_HOST }}
@@ -78,20 +78,49 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: ${{ secrets.SERVER_PORT }}
         script: |
+          set -e
           cd /app/kraft
-          docker-compose -f docker-compose.prod.yml pull
-          docker-compose -f docker-compose.prod.yml up -d
-          docker system prune -f
-          
-          # Health check
-          echo "Waiting for application to be ready..."
-          sleep 30
-          
-          if curl -f http://localhost:8080/actuator/health; then
-            echo "✅ Deployment successful!"
+          echo "Pulling latest image..."
+          docker compose -f docker-compose.prod.yml pull app_a app_b nginx || docker-compose -f docker-compose.prod.yml pull app_a app_b nginx
+
+          echo "Determining active container..."
+          ACTIVE="$(docker ps --filter name=kraft-app-a --filter status=running -q)"
+          if [ -n "$ACTIVE" ]; then
+            ACTIVE_NAME="kraft-app-a"
+            IDLE_NAME="kraft-app-b"
           else
-            echo "❌ Health check failed!"
-            docker-compose -f docker-compose.prod.yml logs --tail=50 app
-            exit 1
+            ACTIVE_NAME="kraft-app-b"
+            IDLE_NAME="kraft-app-a"
+          fi
+          echo "Active: $ACTIVE_NAME, Idle target: $IDLE_NAME"
+
+          echo "Starting idle container with new image..."
+          docker compose -f docker-compose.prod.yml up -d $IDLE_NAME || docker-compose -f docker-compose.prod.yml up -d $IDLE_NAME
+
+          echo "Waiting for health of $IDLE_NAME ..."
+          for i in $(seq 1 20); do
+             STATUS=$(docker inspect --format='{{json .State.Health.Status}}' $IDLE_NAME | tr -d '"')
+             if [ "$STATUS" = "healthy" ]; then
+               echo "$IDLE_NAME is healthy"
+               break
+             fi
+             echo "Health check attempt $i: status=$STATUS"
+             sleep 5
+          done
+          STATUS=$(docker inspect --format='{{json .State.Health.Status}}' $IDLE_NAME | tr -d '"')
+          if [ "$STATUS" != "healthy" ]; then
+             echo "New container failed health checks. Rolling back." && exit 1
           fi
 
+          echo "New version healthy. Nginx already load balances both. Optionally drain old container $ACTIVE_NAME."
+          echo "Draining old container by removing from upstream not implemented (requires dynamic reload). Proceed to stop old container."
+
+          docker stop $ACTIVE_NAME || true
+          docker rm $ACTIVE_NAME || true
+
+          echo "Deployment complete: Active now $IDLE_NAME"
+
+          echo "Perform final health verification via Nginx /healthz"
+          curl -f http://localhost:8080/healthz || (echo "Final health check failed" && exit 1)
+
+          echo "✅ Zero-downtime deployment succeeded"

@@ -1,4 +1,5 @@
 # Production Docker Compose Configuration
+# Blue-Green setup: app_a + app_b behind nginx for zero-downtime deploy
 services:
   # MariaDB Database
   mariadb:
@@ -94,57 +95,85 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # Spring Boot Application
-  app:
+  # Blue-Green Deployment Apps
+  app_a:
     image: ghcr.io/${GITHUB_REPOSITORY:-your-username/kraft}:latest
-    container_name: kraft-app-prod
-    environment:
+    container_name: kraft-app-a
+    environment: &app_env
       - SPRING_PROFILES_ACTIVE=prod
       - JAVA_OPTS=-Xmx2g -Xms1g -XX:+UseG1GC -XX:MaxGCPauseMillis=200
-      
-      # Database
       - SPRING_DATASOURCE_URL=jdbc:mariadb://mariadb:3306/${MARIADB_DATABASE:-kraft_db}?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Seoul
       - SPRING_DATASOURCE_USERNAME=${MARIADB_USER}
       - SPRING_DATASOURCE_PASSWORD=${MARIADB_PASSWORD}
-      
-      # Redis
       - SPRING_REDIS_HOST=redis
       - SPRING_REDIS_PORT=6379
-      
-      # OAuth
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - NAVER_CLIENT_ID=${NAVER_CLIENT_ID}
       - NAVER_CLIENT_SECRET=${NAVER_CLIENT_SECRET}
-      
-      # MinIO
       - MINIO_ENDPOINT=http://minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
-      
-    ports:
-      - "8080:8080"
-    depends_on:
+    expose: ["8080"]
+    depends_on: &app_depends
       mariadb:
         condition: service_healthy
       redis:
         condition: service_healthy
       minio:
         condition: service_healthy
-    healthcheck:
+    healthcheck: &app_health
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      start_period: 90s
+      interval: 20s
+      timeout: 5s
+      start_period: 60s
       retries: 5
+    restart: always
+    networks: [kraft_network]
+    logging: &app_logging
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  app_b:
+    image: ghcr.io/${GITHUB_REPOSITORY:-your-username/kraft}:latest
+    container_name: kraft-app-b
+    environment: *app_env
+    expose: ["8080"]
+    depends_on: *app_depends
+    healthcheck: *app_health
+    restart: always
+    networks: [kraft_network]
+    logging: *app_logging
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: kraft-nginx
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      app_a:
+        condition: service_started
+      app_b:
+        condition: service_started
     restart: always
     networks:
       - kraft_network
     logging:
       driver: "json-file"
       options:
-        max-size: "50m"
-        max-file: "5"
+        max-size: "10m"
+        max-file: "3"
+
+# Legacy single app service (deprecated for zero-downtime)
+#  app:
+#    image: ghcr.io/${GITHUB_REPOSITORY:-your-username/kraft}:latest
+#    container_name: kraft-app-prod
+#    # ...existing code...
 
 volumes:
   mariadb_data:
@@ -157,4 +186,3 @@ volumes:
 networks:
   kraft_network:
     driver: bridge
-

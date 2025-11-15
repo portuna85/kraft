@@ -30,7 +30,6 @@ import java.util.List;
 @RequiredArgsConstructor
 @EnableWebSecurity
 @Configuration
-@Profile("!test")
 public class SecurityConfig {
 
     private final ObjectProvider<CustomOAuth2UserService> customOAuth2UserServiceProvider;
@@ -43,6 +42,22 @@ public class SecurityConfig {
                         .ignoringRequestMatchers("/api/**", "/h2-console/**")
                 )
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((req, res, exAuth) -> {
+                            if (req.getRequestURI().startsWith("/api/")) {
+                                res.setStatus(401);
+                                res.setContentType("application/json;charset=UTF-8");
+                                res.getWriter().write("{\"error\":\"UNAUTHORIZED\",\"message\":\"Authentication required\"}");
+                            } else {
+                                res.sendRedirect("/login");
+                            }
+                        })
+                        .accessDeniedHandler((req, res, exDenied) -> {
+                            res.setStatus(403);
+                            res.setContentType("application/json;charset=UTF-8");
+                            res.getWriter().write("{\"error\":\"FORBIDDEN\",\"message\":\"Access is denied\"}");
+                        })
+                )
                 .headers(headers -> headers
                         .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)
                 )
@@ -52,10 +67,12 @@ public class SecurityConfig {
                         .requestMatchers("/profile").permitAll()
                         .requestMatchers("/login/oauth2/code/*", "/oauth2/**", "/oauth2/authorization/*").permitAll()
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/post", "/api/post/*", "/api/post/list").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/post").hasRole(Role.USER.name())
-                        .requestMatchers(HttpMethod.PUT, "/api/post/*").hasRole(Role.USER.name())
-                        .requestMatchers(HttpMethod.DELETE, "/api/post/*").hasRole(Role.USER.name())
+                        // 게시글 조회 (다건/단건) 익명 허용
+                        .requestMatchers(HttpMethod.GET, "/api/posts", "/api/posts/*", "/api/post", "/api/post/*", "/api/post/list").permitAll()
+                        // 생성/수정/삭제는 인증 사용자(ROLE_USER)만 허용
+                        .requestMatchers(HttpMethod.POST, "/api/posts", "/api/post").hasRole(Role.USER.name())
+                        .requestMatchers(HttpMethod.PUT, "/api/posts/*", "/api/post/*").hasRole(Role.USER.name())
+                        .requestMatchers(HttpMethod.DELETE, "/api/posts/*", "/api/post/*").hasRole(Role.USER.name())
                         .requestMatchers("/posts/save", "/posts/update/**").authenticated()
                         .anyRequest().permitAll()
                 )

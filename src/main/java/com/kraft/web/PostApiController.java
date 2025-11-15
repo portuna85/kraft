@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import java.util.List;
 
 /**
@@ -19,7 +20,7 @@ import java.util.List;
  * 게시글 CRUD 작업을 처리합니다.
  */
 @RestController
-@RequestMapping("/api/posts")
+@RequestMapping({"/api/posts", "/api/post"}) // support legacy singular '/api/post' used in some clients/logs
 @RequiredArgsConstructor
 public class PostApiController {
 
@@ -32,10 +33,10 @@ public class PostApiController {
      * @return 생성된 게시글 ID
      */
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public Long save(@RequestBody PostSaveRequestDto requestDto, @LoginUser SessionUser user) {
+    public ResponseEntity<Long> save(@RequestBody @Valid PostSaveRequestDto requestDto, @LoginUser SessionUser user) {
         String email = getUserEmail(user);
-        return postService.save(requestDto, email);
+        Long id = postService.save(requestDto, email);
+        return ResponseEntity.status(HttpStatus.CREATED).body(id);
     }
 
     /**
@@ -48,7 +49,7 @@ public class PostApiController {
     @PutMapping("/{id}")
     public ResponseEntity<Long> update(
             @PathVariable Long id,
-            @RequestBody PostUpdateRequestDto requestDto,
+            @RequestBody @Valid PostUpdateRequestDto requestDto,
             @LoginUser SessionUser user) {
         String email = getUserEmail(user);
         Long updatedId = postService.update(id, requestDto, email);

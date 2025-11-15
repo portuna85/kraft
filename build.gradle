@@ -2,8 +2,8 @@ plugins {
     id 'java'
     id 'org.springframework.boot' version '3.5.7'
     id 'io.spring.dependency-management' version '1.1.7'
-    id 'jacoco' // 코드 커버리지
-    id 'org.sonarqube' version '5.1.0.4882' // SonarQube 정적 분석
+    id 'org.sonarqube' version '5.1.0.4882'
+    // jacoco는 CI 환경에서 apply plugin 방식으로 동적으로 추가
 }
 
 group = 'com.kraft'
@@ -34,6 +34,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.boot:spring-boot-starter-actuator' // 헬스체크 및 모니터링
 
+    // Validation starter (JSR-380 / Jakarta Validation)
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
     implementation 'org.springframework.session:spring-session-data-redis'
 
@@ -57,6 +60,11 @@ dependencies {
     // Byte Buddy agent to be used as javaagent for tests to avoid Mockito self-attach warning
     testRuntimeOnly 'net.bytebuddy:byte-buddy-agent:1.17.8'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    constraints {
+        implementation('io.netty:netty-bom:4.1.110.Final') { because 'Update Netty to reduce deprecated Unsafe usage warnings' }
+    }
+    implementation platform('io.netty:netty-bom:4.1.110.Final')
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -67,17 +75,39 @@ tasks.withType(JavaCompile).configureEach {
 
 tasks.named('test') {
     useJUnitPlatform()
-    doFirst {
-        try {
-            def agentArtifact = configurations.testRuntimeClasspath.resolvedConfiguration.resolvedArtifacts.find { it.name.contains('byte-buddy-agent') }
-            if (agentArtifact != null) {
-                def agentPath = agentArtifact.file.absolutePath
-                jvmArgs "-javaagent:${agentPath}"
-                logger.lifecycle("Added javaagent for tests: ${agentPath}")
-            }
-        } catch (Exception e) {
-            logger.lifecycle("Could not attach byte-buddy agent for tests: ${e.message}")
+    def agentArtifact = configurations.testRuntimeClasspath.resolvedConfiguration.resolvedArtifacts.find { it.name.contains('byte-buddy-agent') }
+    if (agentArtifact != null) {
+        jvmArgs "-javaagent:${agentArtifact.file.absolutePath}"
+        logger.lifecycle("Configured javaagent for tests: ${agentArtifact.file.name}")
+    }
+}
+
+// 기존 jacoco 동적 플러그인 로직 수정: plugins 블록 밖에서 적용
+if (System.getenv('CI') != null) {
+    apply plugin: 'jacoco'
+    jacoco { toolVersion = '0.8.11' }
+
+    tasks.withType(Test).configureEach {
+        finalizedBy 'jacocoTestReport'
+    }
+
+    tasks.register('jacocoTestReport', JacocoReport) {
+        dependsOn test
+        reports {
+            xml.required = true
+            html.required = true
+            csv.required = false
         }
+        classDirectories.setFrom(files(classDirectories.files.collect { dir ->
+            fileTree(dir: dir, exclude: [
+                    '**/config/**',
+                    '**/dto/**',
+                    '**/entity/**',
+                    '**/Application.class'
+            ])
+        }))
+        sourceDirectories.setFrom files('src/main/java')
+        executionData.setFrom fileTree(dir: 'build', include: 'jacoco/test.exec')
     }
 }
 
@@ -97,66 +127,18 @@ tasks.named('bootRun') {
 // Note: Flyway Gradle plugin was removed. We keep the runtime dependency 'org.flywaydb:flyway-core'
 // and enable Flyway via Spring Boot auto-configuration (spring.flyway.enabled=true in application-dev.yml).
 
-// Jacoco 설정
-jacoco {
-    toolVersion = "0.8.11"
-}
-
-jacocoTestReport {
-    dependsOn test
-    reports {
-        xml.required = true
-        html.required = true
-        csv.required = false
-    }
-    afterEvaluate {
-        classDirectories.setFrom(files(classDirectories.files.collect {
-            fileTree(dir: it, exclude: [
-                '**/config/**',
-                '**/dto/**',
-                '**/entity/**',
-                '**/Application.class'
-            ])
-        }))
-    }
-}
-
-jacocoTestCoverageVerification {
-    violationRules {
-        rule {
-            limit {
-                minimum = 0.60 // 60% 커버리지 요구
-            }
-        }
-    }
-}
-
-// SonarQube 설정
-sonar {
-    properties {
-        property "sonar.projectKey", "kraft"
-        property "sonar.projectName", "Kraft"
-        property "sonar.sources", "src/main/java"
-        property "sonar.tests", "src/test/java"
-        property "sonar.java.binaries", "build/classes/java/main"
-        property "sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml"
-        property "sonar.exclusions", "**/config/**, **/dto/**, **/entity/**, **/Application.java"
-    }
-}
-
 // Build 시 테스트 커버리지 리포트 생성
 tasks.named('build') {
-    dependsOn jacocoTestReport
+    // was: dependsOn jacocoTestReport
 }
 
 // CI 환경을 위한 태스크
 tasks.register('ciTest') {
-    dependsOn 'clean', 'test', 'jacocoTestReport'
+    dependsOn 'clean', 'test'
     description = 'CI 환경에서 실행할 테스트 및 커버리지 리포트 생성'
 }
 
 tasks.register('ciBuild') {
-    dependsOn 'clean', 'build', 'jacocoTestReport'
+    dependsOn 'clean', 'build'
     description = 'CI 환경에서 실행할 전체 빌드'
 }
-

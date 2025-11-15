@@ -54,11 +54,11 @@ public class PostService {
         // 소유자 검증: 게시글에 user가 설정되어 있으면 로그인 사용자와 이메일 비교
         if (post.getUser() != null) {
             if (userEmail == null) {
-                throw new AccessDeniedException("인증된 사용자만 이 게시글을 수정할 수 있습니다.");
+                throw new AccessDeniedException("인증 필요: 이 게시글을 수정하려면 로그인하세요 (Authentication required).");
             }
             String ownerEmail = post.getUser().getEmail();
             if (!ownerEmail.equals(userEmail)) {
-                throw new AccessDeniedException("게시글 소유자가 아니므로 수정할 권한이 없습니다.");
+                throw new AccessDeniedException("권한 없음: 게시글 소유자만 수정할 수 있습니다 (Forbidden - not the owner).");
             }
         }
 
@@ -77,11 +77,11 @@ public class PostService {
 
         if (post.getUser() != null) {
             if (userEmail == null) {
-                throw new AccessDeniedException("인증된 사용자만 이 게시글을 삭제할 수 있습니다.");
+                throw new AccessDeniedException("인증 필요: 이 게시글을 삭제하려면 로그인하세요 (Authentication required).");
             }
             String ownerEmail = post.getUser().getEmail();
             if (!ownerEmail.equals(userEmail)) {
-                throw new AccessDeniedException("게시글 소유자가 아니므로 삭제할 권한이 없습니다.");
+                throw new AccessDeniedException("권한 없음: 게시글 소유자만 삭제할 수 있습니다 (Forbidden - not the owner).");
             }
         }
 

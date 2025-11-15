@@ -1,3 +1,4 @@
+````markdown
 # Kraft - Spring Boot Application
 
 [![CI](https://github.com/YOUR_USERNAME/kraft/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/kraft/actions/workflows/ci.yml)
@@ -212,4 +213,4 @@ docker-compose logs -f app
 - [MariaDB](https://mariadb.org/)
 - [Redis](https://redis.io/)
 - [MinIO](https://min.io/)
-
+````

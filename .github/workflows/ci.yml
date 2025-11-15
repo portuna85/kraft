@@ -1,60 +1,77 @@
-name: CI - Build and Test
-        retention-days: 7
-        path: build/reports/tests/
-        name: test-results
-      with:
-      uses: actions/upload-artifact@v4
-      if: always()
-    - name: Archive test results
+# CI - Build and Test
+name: CI
 
-        retention-days: 7
-        path: build/libs/*.jar
-        name: kraft-jar
-      with:
-      uses: actions/upload-artifact@v4
-      if: success()
-    - name: Upload build artifacts
-
-        reporter: java-junit
-        path: build/test-results/test/*.xml
-        name: Test Results
-      with:
-      uses: dorny/test-reporter@v1
-      if: always()
-    - name: Generate test report
-
-      run: ./gradlew test
-    - name: Run tests
-
-      run: ./gradlew clean build -x test
-    - name: Build with Gradle
-
-      run: chmod +x gradlew
-    - name: Grant execute permission for gradlew
-
-        cache: 'gradle'
-        distribution: 'temurin'
-        java-version: '25'
-      with:
-      uses: actions/setup-java@v4
-    - name: Set up JDK 25
-
-      uses: actions/checkout@v4
-    - name: Checkout code
-    steps:
-
-    runs-on: ubuntu-latest
-  build:
-jobs:
-
-      - develop
-      - main
-    branches:
-  pull_request:
-      - develop
-      - main
-    branches:
-  push:
 on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
 
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Show Gradle and Java version
+        run: ./gradlew --version
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Clean & Build (skip tests first for dependency warm-up)
+        run: ./gradlew clean build -x test
+
+      - name: Run tests
+        run: ./gradlew test
+
+      - name: Publish JUnit report
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Test Results
+          path: build/test-results/test/*.xml
+          reporter: java-junit
+
+      - name: Upload test reports (HTML)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: build/reports/tests/test
+          retention-days: 7
+
+      - name: Upload build artifacts (JARs)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kraft-jars
+          path: build/libs/*.jar
+          retention-days: 7
+
+      # - name: Generate coverage report (JaCoCo)
+      #   if: success()
+      #   run: ./gradlew jacocoTestReport
+      #
+      # - name: Upload coverage report
+      #   if: success()
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: coverage-report
+      #     path: build/reports/jacoco/test/html
+      #     retention-days: 7
+
+      - name: Dependency vulnerability check (optional)
+        if: success()
+        run: |
+          ./gradlew dependencies --configuration runtimeClasspath | head -n 50

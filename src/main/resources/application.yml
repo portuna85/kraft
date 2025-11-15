@@ -24,6 +24,7 @@ spring:
 
   jpa:
     open-in-view: false  # OSIV 비활성화 (성능 최적화, N+1 문제 방지)
+    defer-datasource-initialization: true  # Flyway가 먼저 실행되도록 지연 초기화
     properties:
       hibernate:
         jdbc:
@@ -86,4 +87,3 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
-

@@ -61,11 +61,15 @@
             <pattern>${LOG_PATTERN}</pattern>
             <charset>UTF-8</charset>
         </encoder>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${ARCHIVE_DIR}/kraft-sql.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${ARCHIVE_DIR}/kraft-sql.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
             <maxHistory>7</maxHistory>
-            <totalSizeCap>100MB</totalSizeCap>
+            <totalSizeCap>200MB</totalSizeCap>
         </rollingPolicy>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>DEBUG</level>
+        </filter>
     </appender>
 
     <!-- 보안/인증 로그 파일 -->
@@ -113,11 +117,11 @@
         <appender-ref ref="CONSOLE"/>
     </logger>
 
-    <logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="TRACE" additivity="false">
+    <logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="INFO" additivity="false">
         <appender-ref ref="FILE_SQL"/>
     </logger>
 
-    <logger name="org.hibernate.orm.jdbc.bind" level="TRACE" additivity="false">
+    <logger name="org.hibernate.orm.jdbc.bind" level="INFO" additivity="false">
         <appender-ref ref="FILE_SQL"/>
     </logger>
 
@@ -153,11 +157,12 @@
         <logger name="com.kraft.config.FlywayDevInitializer" level="INFO"/>
     </springProfile>
 
-    <!-- 프로덕션 환경용 프로파일 -->
     <springProfile name="prod">
         <logger name="com.kraft" level="INFO"/>
         <logger name="org.hibernate.SQL" level="WARN"/>
         <logger name="org.springframework" level="WARN"/>
+        <logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="WARN"/>
+        <logger name="org.hibernate.orm.jdbc.bind" level="WARN"/>
     </springProfile>
 
     <!-- 테스트 환경용 프로파일 -->

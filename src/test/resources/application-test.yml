@@ -31,11 +31,13 @@ spring:
     timeout: 1800s
 
   # 테스트 환경에서는 자동 보안/ OAuth 자동구성으로 인한 빈 충돌을 피하기 위해 명시적으로 제외
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
-      - org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration
-      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+  spring:
+    autoconfigure:
+      exclude:
+        - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+        - org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration
+        - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+        - org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration
 
 logging:
   level:
