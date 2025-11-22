@@ -1,0 +1,9 @@
+spring:
+  profiles:
+    active: dev
+  application:
+    name: kraft
+
+logging:
+  level:
+    org.hibernate.SQL: debug
