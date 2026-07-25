@@ -32,4 +32,20 @@ for (const width of [320, 1280] as const) {
     await expect(page.locator(".freq-summary")).toBeVisible();
     await expectNoOverflow(page);
   });
+
+  test(`다크 모드 /community/posts/1 — ${width}px, 오버플로 없음`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.route("**/api/v1/community/posts/1/comments*", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ topLevel: [], totalTopLevelComments: 0, page: 0, totalPages: 0 }),
+      })
+    );
+    await gotoAndWaitForRealContent(page, "/community/posts/1");
+
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await expect(page.getByRole("heading", { name: "테스트 게시글" })).toBeVisible();
+    await expectNoOverflow(page);
+  });
 }

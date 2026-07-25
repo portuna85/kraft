@@ -5,22 +5,22 @@ import {
   createComment,
   deleteComment,
   fetchCommunityComments,
-  getCommunitySession,
-  type CommunitySession,
 } from "@/lib/community-client";
 import { BrowserApiError } from "@/lib/browser-api";
 import type { CommunityComment } from "@/lib/community-api";
+import { useCommunitySession } from "@/components/community/community-session-provider";
 
 export function CommentSection({ postId }: { postId: number }) {
   const [topLevel, setTopLevel] = useState<CommunityComment[]>([]);
   const [totalTopLevelComments, setTotalTopLevelComments] = useState(0);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const [session, setSession] = useState<CommunitySession | null>(null);
+  const { session } = useCommunitySession();
   const [content, setContent] = useState("");
   const [replyTo, setReplyTo] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   // 목록 재조회 race 방지 — 오래된 응답이 최신 상태를 덮어쓰지 않도록 요청 시퀀스를 비교한다.
   const fetchSeqRef = useRef(0);
 
@@ -33,6 +33,7 @@ export function CommentSection({ postId }: { postId: number }) {
         setTotalTopLevelComments(result.totalTopLevelComments);
         setPage(result.page);
         setTotalPages(result.totalPages);
+        setError(null);
       })
       .catch((fetchError) => {
         if (seq !== fetchSeqRef.current) return;
@@ -41,14 +42,15 @@ export function CommentSection({ postId }: { postId: number }) {
             ? fetchError.message
             : "댓글을 불러오지 못했습니다."
         );
+      })
+      .finally(() => {
+        if (seq !== fetchSeqRef.current) return;
+        setLoading(false);
       });
   };
 
   useEffect(() => {
     loadComments();
-    getCommunitySession()
-      .then(setSession)
-      .catch(() => setSession({ loggedIn: false, userId: null, nickname: null, activeProviders: [] }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId]);
 
@@ -85,11 +87,11 @@ export function CommentSection({ postId }: { postId: number }) {
       <p>{comment.content}</p>
       {!comment.deleted && session?.loggedIn && (
         <div className="community-comment-actions">
-          <button type="button" onClick={() => setReplyTo(comment.id)}>
+          <button type="button" className="button secondary" onClick={() => setReplyTo(comment.id)}>
             답글
           </button>
           {session.userId === comment.ownerId && (
-            <button type="button" onClick={() => handleDelete(comment.id)}>
+            <button type="button" className="button secondary" onClick={() => handleDelete(comment.id)}>
               삭제
             </button>
           )}
@@ -103,7 +105,7 @@ export function CommentSection({ postId }: { postId: number }) {
               <p>{reply.content}</p>
               {!reply.deleted && session?.loggedIn && session.userId === reply.ownerId && (
                 <div className="community-comment-actions">
-                  <button type="button" onClick={() => handleDelete(reply.id)}>
+                  <button type="button" className="button secondary" onClick={() => handleDelete(reply.id)}>
                     삭제
                   </button>
                 </div>
@@ -118,19 +120,39 @@ export function CommentSection({ postId }: { postId: number }) {
   return (
     <section className="community-comment-section" aria-label="댓글">
       <h2>댓글 {totalTopLevelComments}개</h2>
-      {error && <p role="alert">{error}</p>}
+      {error && (
+        <p role="alert" id="comment-section-error">
+          {error}
+        </p>
+      )}
 
-      <ul className="community-comment-list">{topLevel.map(renderComment)}</ul>
+      {loading ? (
+        <p className="muted">불러오는 중…</p>
+      ) : topLevel.length === 0 ? (
+        <p className="muted">아직 댓글이 없습니다.</p>
+      ) : (
+        <ul className="community-comment-list">{topLevel.map(renderComment)}</ul>
+      )}
 
       {totalPages > 1 && (
         <nav className="community-comment-pagination" aria-label="댓글 페이지">
-          <button type="button" disabled={page <= 0} onClick={() => loadComments(page - 1)}>
+          <button
+            type="button"
+            className="button secondary"
+            disabled={page <= 0}
+            onClick={() => loadComments(page - 1)}
+          >
             이전
           </button>
           <span>
             {page + 1} / {totalPages}
           </span>
-          <button type="button" disabled={page >= totalPages - 1} onClick={() => loadComments(page + 1)}>
+          <button
+            type="button"
+            className="button secondary"
+            disabled={page >= totalPages - 1}
+            onClick={() => loadComments(page + 1)}
+          >
             다음
           </button>
         </nav>
@@ -141,7 +163,7 @@ export function CommentSection({ postId }: { postId: number }) {
           {replyTo !== null && (
             <p className="community-comment-reply-target">
               답글 작성 중
-              <button type="button" onClick={() => setReplyTo(null)}>
+              <button type="button" className="button secondary" onClick={() => setReplyTo(null)}>
                 취소
               </button>
             </p>
@@ -153,6 +175,8 @@ export function CommentSection({ postId }: { postId: number }) {
             maxLength={1000}
             onChange={(event) => setContent(event.target.value)}
             required
+            aria-invalid={error ? "true" : undefined}
+            aria-describedby={error ? "comment-section-error" : undefined}
           />
           <button type="submit" disabled={submitting || !content.trim()}>
             {submitting ? "등록 중…" : "등록"}

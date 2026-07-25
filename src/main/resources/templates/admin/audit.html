@@ -4,6 +4,7 @@
 <th:block th:fragment="content">
   <h1>감사 로그</h1>
 
+  <div class="table-scroll">
   <table>
     <thead>
     <tr>
@@ -25,6 +26,7 @@
     </tr>
     </tbody>
   </table>
+  </div>
 
   <div class="pagination">
     <span th:text="'전체 ' + ${logs.totalElements} + '건 (페이지 ' + (${logs.number} + 1) + ' / ' + ${logs.totalPages} + ')'"></span>

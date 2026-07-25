@@ -59,3 +59,20 @@ test("200% 텍스트 확대 — 모바일(390px)에서도 홈이 잘리거나 �
   await expectNoInternalTextClipping(page);
   await expectNoOverflow(page);
 });
+
+test("200% 텍스트 확대 — 모바일(390px)에서 커뮤니티 상세가 잘리거나 넘치지 않는다", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.route("**/api/v1/community/posts/1/comments*", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ topLevel: [], totalTopLevelComments: 0, page: 0, totalPages: 0 }),
+    })
+  );
+  await gotoAndWaitForRealContent(page, "/community/posts/1");
+  await setTextZoom200(page);
+
+  await expect(page.getByRole("heading", { name: "테스트 게시글" })).toBeVisible();
+  await expectNoInternalTextClipping(page);
+  await expectNoOverflow(page);
+});

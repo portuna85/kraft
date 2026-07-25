@@ -41,8 +41,16 @@ export function loginUrl(provider: "google" | "naver"): string {
 }
 
 export async function logout(): Promise<boolean> {
-  const response = await fetch("/logout", { method: "POST", headers: writeHeaders() });
-  return response.ok;
+  try {
+    const response = await fetch("/logout", {
+      method: "POST",
+      headers: writeHeaders(),
+      signal: AbortSignal.timeout(5000),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
 
 export async function createPost(title: string, content: string): Promise<CommunityPost> {

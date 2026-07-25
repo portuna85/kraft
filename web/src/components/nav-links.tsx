@@ -77,7 +77,9 @@ export function NavLinks() {
       }
       if (event.key !== "Tab" || !mobileNavRef.current) return;
 
-      const focusable = mobileNavRef.current.querySelectorAll<HTMLElement>("a[href]");
+      const focusable = mobileNavRef.current.querySelectorAll<HTMLElement>(
+        "a[href], button:not([disabled])"
+      );
       if (focusable.length === 0) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
@@ -96,17 +98,28 @@ export function NavLinks() {
   }, [open]);
 
   useEffect(() => {
+    const main = document.getElementById("main-content");
+    const footer = document.querySelector("footer");
+
     if (!open) {
       document.body.style.overflow = "";
+      main?.removeAttribute("inert");
+      footer?.removeAttribute("inert");
       return;
     }
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    // R-42: 드로어가 열린 동안 스크린리더 가상 커서가 뒤의 본문을 계속 탐색하지
+    // 못하도록 배경 콘텐츠를 inert 처리한다(dialog 패턴의 일부).
+    main?.setAttribute("inert", "");
+    footer?.setAttribute("inert", "");
     mobileNavRef.current?.querySelector<HTMLElement>("a[href]")?.focus();
 
     return () => {
       document.body.style.overflow = previousOverflow;
+      main?.removeAttribute("inert");
+      footer?.removeAttribute("inert");
     };
   }, [open]);
 
@@ -198,7 +211,14 @@ export function NavLinks() {
         <>
           <div className="nav-backdrop" aria-hidden="true" onClick={closeAndReturnFocus} />
           <div className="nav-mobile-wrap" onClick={closeAndReturnFocus}>
-            <nav id="nav-mobile" ref={mobileNavRef} className="nav-mobile" aria-label="주요 메뉴">
+            <nav
+              id="nav-mobile"
+              ref={mobileNavRef}
+              className="nav-mobile"
+              aria-label="주요 메뉴"
+              role="dialog"
+              aria-modal="true"
+            >
               {mobileItems}
             </nav>
           </div>

@@ -76,11 +76,15 @@ const AD_DESKTOP: Record<PageAdProps["slot"], string> = {
 export function PageAd({ slot }: PageAdProps) {
   const mobile = AD_MOBILE[slot];
   const desktop = AD_DESKTOP[slot];
-  const { ref, format } = useAdSlotFormat(320);
+  const { ref, width, format } = useAdSlotFormat(320);
   if (!mobile && !desktop) return null;
 
+  // width===null: 마운트 전이라 100px 자리를 잡아둔다. width가 측정됐는데도
+  // format이 null이면 "포맷 불가"가 확정된 것이므로 자리를 접는다(R-29②).
+  const minHeight = width === null || format ? 100 : 0;
+
   return (
-    <div ref={ref} className="ad-slot--article" style={{ minHeight: 100 }} aria-hidden={!format}>
+    <div ref={ref} className="ad-slot--article" style={{ minHeight }} aria-hidden={!format}>
       {format === "desktop" && desktop && (
         <AdUnit unit={desktop} width={728} height={90} className="ad-desktop" />
       )}
@@ -160,12 +164,16 @@ const IN_ARTICLE_ADSENSE_DESKTOP_ENV: Record<PageAdProps["slot"], string | undef
 // R-06: 애드센스 모바일 포맷(300×250)도 372px 미만 컨테이너에서는 잘리므로 동일하게
 // 컨테이너 실폭 기준으로 포맷을 고른다.
 function InArticleAdSense({ slot }: PageAdProps) {
-  const { ref, format } = useAdSlotFormat(300);
+  const { ref, width, format } = useAdSlotFormat(300);
   const desktopSlot = IN_ARTICLE_ADSENSE_DESKTOP_ENV[slot] ?? "";
   const mobileSlot = IN_ARTICLE_ADSENSE_MOBILE_ENV[slot] ?? "";
 
+  // width===null: 마운트 전이라 250px 자리를 잡아둔다. 측정 후 포맷 불가가
+  // 확정되면 빈 자리가 남지 않도록 접는다(R-29②).
+  const minHeight = width === null || format ? 250 : 0;
+
   return (
-    <div ref={ref} className="ad-slot--article" style={{ minHeight: 250 }} aria-hidden={!format}>
+    <div ref={ref} className="ad-slot--article" style={{ minHeight }} aria-hidden={!format}>
       {format === "desktop" && (
         <AdSenseUnit slot={desktopSlot} width={728} height={90} className="ad-desktop" />
       )}

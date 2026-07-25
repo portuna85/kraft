@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AccountMenu } from "@/components/community/account-menu";
+import { CommunitySessionProvider } from "@/components/community/community-session-provider";
 
 function mockFetch(body: unknown) {
   return vi.fn().mockResolvedValue({
@@ -8,6 +9,14 @@ function mockFetch(body: unknown) {
     status: 200,
     json: () => Promise.resolve(body),
   });
+}
+
+function renderAccountMenu() {
+  return render(
+    <CommunitySessionProvider>
+      <AccountMenu />
+    </CommunitySessionProvider>
+  );
 }
 
 describe("커뮤니티 계정 메뉴", () => {
@@ -23,7 +32,7 @@ describe("커뮤니티 계정 메뉴", () => {
       activeProviders: ["google", "naver"],
     });
 
-    render(<AccountMenu />);
+    renderAccountMenu();
 
     expect(await screen.findByText("Google 로그인")).toBeInTheDocument();
     expect(screen.getByText("Naver 로그인")).toBeInTheDocument();
@@ -37,7 +46,7 @@ describe("커뮤니티 계정 메뉴", () => {
       activeProviders: ["google"],
     });
 
-    render(<AccountMenu />);
+    renderAccountMenu();
 
     expect(await screen.findByText("Google 로그인")).toBeInTheDocument();
     expect(screen.queryByText("Naver 로그인")).not.toBeInTheDocument();
@@ -51,7 +60,7 @@ describe("커뮤니티 계정 메뉴", () => {
       activeProviders: ["naver"],
     });
 
-    render(<AccountMenu />);
+    renderAccountMenu();
 
     expect(await screen.findByText("Naver 로그인")).toBeInTheDocument();
     expect(screen.queryByText("Google 로그인")).not.toBeInTheDocument();
@@ -67,7 +76,7 @@ describe("커뮤니티 계정 메뉴", () => {
       activeProviders: [],
     });
 
-    const { container } = render(<AccountMenu />);
+    const { container } = renderAccountMenu();
 
     await waitFor(() => {
       expect(container).toBeEmptyDOMElement();
@@ -82,7 +91,7 @@ describe("커뮤니티 계정 메뉴", () => {
       activeProviders: ["google", "naver"],
     });
 
-    render(<AccountMenu />);
+    renderAccountMenu();
 
     await waitFor(() => {
       expect(screen.getByText("글쓴이님")).toBeInTheDocument();
@@ -93,7 +102,7 @@ describe("커뮤니티 계정 메뉴", () => {
   it("세션 조회가 실패하면 아무 것도 렌더링하지 않는다", async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error("network error"));
 
-    const { container } = render(<AccountMenu />);
+    const { container } = renderAccountMenu();
 
     await waitFor(() => {
       expect(container).toBeEmptyDOMElement();
@@ -124,7 +133,7 @@ describe("커뮤니티 계정 메뉴", () => {
       });
     });
 
-    render(<AccountMenu />);
+    renderAccountMenu();
 
     const logoutButton = await screen.findByRole("button", { name: "로그아웃" });
     fireEvent.click(logoutButton);

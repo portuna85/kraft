@@ -6,8 +6,12 @@ type Props = {
 };
 
 export function LottoBalls({ numbers, bonusNumber }: Props) {
+  const label = `번호 ${numbers.join(", ")}${
+    bonusNumber !== undefined ? ` + 보너스 ${bonusNumber}` : ""
+  }`;
+
   return (
-    <div className="balls" data-allow-overflow>
+    <div className="balls" data-allow-overflow aria-label={label}>
       {numbers.map((number) => (
         <span key={number} className={`ball ${ballColorClass(number)}`}>
           {number}

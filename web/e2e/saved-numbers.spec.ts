@@ -57,18 +57,37 @@ test("저장 번호 목록을 표시한다", async ({ page }) => {
   await expect(list.locator(".saved-item")).toHaveCount(1);
 });
 
-test("삭제 버튼 클릭 시 행이 즉시 제거되고 삭제 요청이 전송된다", async ({ page }) => {
+// R-44: 삭제는 즉시 실행되지 않고 5초 유예("실행 취소") 후에 실제 요청이 나간다.
+test("삭제 버튼 클릭 시 실행취소 상태가 되고, 5초 뒤 삭제 요청이 전송되어 행이 제거된다", async ({ page }) => {
   const { deleteCalls } = mockSavedApi(page);
   await page.goto("/saved");
 
   const list = page.locator(".saved-list");
   await expect(list.locator(".saved-item")).toHaveCount(1);
 
-  await page.getByRole("button", { name: "삭제" }).click();
-  await expect(list.locator(".saved-item")).toHaveCount(0);
+  await page.getByRole("button", { name: "1, 2, 3, 4, 5, 6 조합 삭제" }).click();
+  // 유예 중에는 행이 남아 있고 실행취소 버튼으로 바뀐다 — 즉시 삭제 요청은 없다.
+  await expect(list.locator(".saved-item")).toHaveCount(1);
+  await expect(list.locator(".saved-item")).toHaveClass(/is-pending-delete/);
+  await expect(page.getByRole("button", { name: "실행 취소" })).toBeVisible();
+  expect(deleteCalls).toHaveLength(0);
 
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(5200);
   expect(deleteCalls.filter((m) => m === "DELETE")).toHaveLength(1);
+  await expect(list.locator(".saved-item")).toHaveCount(0);
+});
+
+test("실행취소를 누르면 삭제 요청이 전송되지 않고 행이 유지된다", async ({ page }) => {
+  const { deleteCalls } = mockSavedApi(page);
+  await page.goto("/saved");
+
+  const list = page.locator(".saved-list");
+  await page.getByRole("button", { name: "1, 2, 3, 4, 5, 6 조합 삭제" }).click();
+  await page.getByRole("button", { name: "실행 취소" }).click();
+
+  await page.waitForTimeout(5200);
+  expect(deleteCalls).toHaveLength(0);
+  await expect(list.locator(".saved-item")).toHaveCount(1);
 });
 
 test("삭제 실패 시 삭제 요청이 전송됐고 행이 복구된다", async ({ page }) => {
@@ -76,10 +95,9 @@ test("삭제 실패 시 삭제 요청이 전송됐고 행이 복구된다", asyn
   await page.goto("/saved");
 
   const list = page.locator(".saved-list");
-  await page.getByRole("button", { name: "삭제" }).click();
+  await page.getByRole("button", { name: "1, 2, 3, 4, 5, 6 조합 삭제" }).click();
 
-  // mock이 즉각 응답하므로 삭제+복구가 거의 동시에 발생 — 최종 상태만 검증
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(5200);
   expect(deleteCalls.filter((m) => m === "DELETE")).toHaveLength(1);
   await expect(list.locator(".saved-item")).toHaveCount(1);
 });

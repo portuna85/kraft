@@ -17,16 +17,33 @@ export function generateNonce(): string {
   return Buffer.from(array).toString("base64");
 }
 
+// ad-unit.tsx의 네트워크 판정과 동일한 기준 — 슬롯당 한 네트워크만 렌더하므로(주석 참고)
+// CSP도 실제로 스크립트를 로드하는 네트워크의 출처만 허용한다.
+const isAdSense = process.env.NEXT_PUBLIC_AD_NETWORK === "adsense";
+
+const AD_SCRIPT_SRC = isAdSense
+  ? "https://pagead2.googlesyndication.com"
+  : "https://t1.kakaocdn.net";
+const AD_IMG_SRC = isAdSense
+  ? "https://*.googlesyndication.com https://*.g.doubleclick.net"
+  : "https://*.daumcdn.net https://*.kakao.com https://*.kakaocdn.net";
+const AD_CONNECT_SRC = isAdSense
+  ? "https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net"
+  : "https://*.kakao.com https://*.daumcdn.net https://*.kakaocdn.net";
+const AD_FRAME_SRC = isAdSense
+  ? "https://googleads.g.doubleclick.net https://tpc.googlesyndication.com"
+  : "https://t1.kakaocdn.net https://*.kakao.com";
+
 export function buildCsp(nonce: string): string {
   const isDev = process.env.NODE_ENV !== "production";
   return [
     `default-src 'self'`,
-    `script-src 'self' 'nonce-${nonce}' https://t1.kakaocdn.net https://pagead2.googlesyndication.com${isDev ? " 'unsafe-eval'" : ""}`,
+    `script-src 'self' 'nonce-${nonce}' ${AD_SCRIPT_SRC}${isDev ? " 'unsafe-eval'" : ""}`,
     `style-src 'self' 'unsafe-inline'`,
-    `img-src 'self' data: https://*.daumcdn.net https://*.kakao.com https://*.kakaocdn.net https://*.googlesyndication.com https://*.g.doubleclick.net`,
+    `img-src 'self' data: ${AD_IMG_SRC}`,
     `font-src 'self'`,
-    `connect-src 'self' https://*.kakao.com https://*.daumcdn.net https://*.kakaocdn.net https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net`,
-    `frame-src https://t1.kakaocdn.net https://*.kakao.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com`,
+    `connect-src 'self' ${AD_CONNECT_SRC}`,
+    `frame-src ${AD_FRAME_SRC}`,
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,

@@ -15,7 +15,7 @@
 .freq-filter-tab.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent, #fff);
   box-shadow: 0 6px 16px rgba(141, 47, 16, 0.2);
 }
 .freq-filter-tab:disabled {

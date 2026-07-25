@@ -47,6 +47,30 @@ describe("CSP nonce 미들웨어", () => {
 
       expect(buildCsp("nonce")).toContain("unsafe-eval");
     });
+
+    it("NEXT_PUBLIC_AD_NETWORK 미설정 시 AdFit 출처만 포함한다(기본값)", async () => {
+      delete process.env.NEXT_PUBLIC_AD_NETWORK;
+      vi.resetModules();
+      const { buildCsp } = await import("@/proxy");
+
+      const csp = buildCsp("nonce");
+
+      expect(csp).toContain("t1.kakaocdn.net");
+      expect(csp).not.toContain("googlesyndication.com");
+      expect(csp).not.toContain("doubleclick.net");
+    });
+
+    it("NEXT_PUBLIC_AD_NETWORK=adsense면 AdSense 출처만 포함한다", async () => {
+      process.env = { ...process.env, NEXT_PUBLIC_AD_NETWORK: "adsense" };
+      vi.resetModules();
+      const { buildCsp } = await import("@/proxy");
+
+      const csp = buildCsp("nonce");
+
+      expect(csp).toContain("googlesyndication.com");
+      expect(csp).toContain("doubleclick.net");
+      expect(csp).not.toContain("kakao");
+    });
   });
 
   describe("proxy", () => {

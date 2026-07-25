@@ -43,7 +43,7 @@ export interface ParseExcludedResult {
 export function parseExcludedNumbers(input: string): ParseExcludedResult {
   const valid: number[] = [];
   const ignored: string[] = [];
-  for (const token of input.split(",")) {
+  for (const token of input.split(/[\s,]+/)) {
     const trimmed = token.trim();
     if (!trimmed) continue;
     const n = Number(trimmed);

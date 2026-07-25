@@ -31,6 +31,7 @@ function isWin(prizeTier: string): boolean {
 }
 
 const RECENT_ROUND_OPTIONS = 20;
+const DELETE_UNDO_MS = 5000;
 
 type Props = {
   latestRound: number;
@@ -45,6 +46,17 @@ export function SavedNumbersClient({ latestRound }: Props) {
   const [matchMap, setMatchMap] = useState<Map<number, SavedNumberMatchResult>>(new Map());
   const [matchState, setMatchState] = useState<MatchState>("idle");
   const matchFetchSeqRef = useRef(0);
+  // R-44: 즉시 삭제 대신 5초 유예 후 실제 삭제 — 모바일에서 확인 dialog보다 흐름을
+  // 덜 끊으면서도 실수로 지운 항목을 되돌릴 수 있게 한다.
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<number>>(new Set());
+  const deleteTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+
+  useEffect(() => {
+    const timers = deleteTimers.current;
+    return () => {
+      timers.forEach((timer) => clearTimeout(timer));
+    };
+  }, []);
 
   useEffect(() => {
     browserFetch<SavedNumber[]>("/api/v1/saved", {
@@ -94,20 +106,41 @@ export function SavedNumbersClient({ latestRound }: Props) {
     fetchMatches();
   }, [fetchMatches]);
 
-  async function handleDelete(item: SavedNumber) {
-    setItems((prev) => prev.filter((x) => x.id !== item.id));
-    try {
-      await browserFetch(`/api/v1/saved/${item.id}`, {
-        method: "DELETE",
-        headers: { "X-Device-Token": getDeviceToken() },
-      });
-    } catch (err) {
-      if (err instanceof BrowserApiError || err instanceof Error) {
-        setItems((prev) =>
-          [...prev, item].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-        );
+  function scheduleDelete(item: SavedNumber) {
+    setPendingDeleteIds((prev) => new Set(prev).add(item.id));
+    const timer = setTimeout(async () => {
+      deleteTimers.current.delete(item.id);
+      try {
+        await browserFetch(`/api/v1/saved/${item.id}`, {
+          method: "DELETE",
+          headers: { "X-Device-Token": getDeviceToken() },
+        });
+        setItems((prev) => prev.filter((x) => x.id !== item.id));
+      } catch (err) {
+        // 삭제 실패 — 대기 상태만 풀고 항목은 그대로 유지한다.
+        if (!(err instanceof BrowserApiError || err instanceof Error)) throw err;
+      } finally {
+        setPendingDeleteIds((prev) => {
+          const next = new Set(prev);
+          next.delete(item.id);
+          return next;
+        });
       }
+    }, DELETE_UNDO_MS);
+    deleteTimers.current.set(item.id, timer);
+  }
+
+  function cancelDelete(id: number) {
+    const timer = deleteTimers.current.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      deleteTimers.current.delete(id);
     }
+    setPendingDeleteIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
   }
 
   // 회차 변경 즉시(사용자 조작 시점에) 이전 회차의 대조 결과를 비우고 로딩 상태로
@@ -193,20 +226,34 @@ export function SavedNumbersClient({ latestRound }: Props) {
           <ul className="saved-list">
             {items.map((item) => {
               const match = matchMap.get(item.id);
+              const isPending = pendingDeleteIds.has(item.id);
               return (
-                <li key={item.id} className="saved-item">
+                <li
+                  key={item.id}
+                  className={`saved-item${isPending ? " is-pending-delete" : ""}`}
+                >
                   <div className="saved-item-row">
                     <LottoBalls numbers={item.numbers} />
-                    <button
-                      type="button"
-                      className="saved-delete-btn"
-                      onClick={() => handleDelete(item)}
-                      aria-label="삭제"
-                    >
-                      삭제
-                    </button>
+                    {isPending ? (
+                      <button
+                        type="button"
+                        className="button secondary saved-undo-btn"
+                        onClick={() => cancelDelete(item.id)}
+                      >
+                        실행 취소
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="saved-delete-btn"
+                        onClick={() => scheduleDelete(item)}
+                        aria-label={`${item.numbers.join(", ")} 조합 삭제`}
+                      >
+                        삭제
+                      </button>
+                    )}
                   </div>
-                  {match ? (
+                  {!isPending && match ? (
                     <div className="saved-match-info">
                       <span className="saved-draw-ref">{match.round}회 ({match.drawDate})</span>
                       <span className={`saved-prize-badge${isWin(match.prizeTier) ? " prize-win" : ""}`}>

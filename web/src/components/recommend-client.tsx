@@ -41,7 +41,7 @@ export function RecommendClient() {
   const [maximizePrize, setMaximizePrize] = useState(DEFAULT_MAXIMIZE_PRIZE);
   const [recommendations, setRecommendations] = useState<number[][]>([]);
   const [message, setMessage] = useState("");
-  const [savingIndex, setSavingIndex] = useState<number | null>(null);
+  const [savingIndexes, setSavingIndexes] = useState<Set<number>>(new Set());
   const [savedIndexes, setSavedIndexes] = useState<Set<number>>(new Set());
   const [isPending, setIsPending] = useState(true);
   const fetchSeqRef = useRef(0);
@@ -56,6 +56,7 @@ export function RecommendClient() {
     setMessage(initialMessage);
     setIsPending(true);
     setSavedIndexes(new Set());
+    setSavingIndexes(new Set());
 
     try {
       const payload = await browserFetch<RecommendationResponse>("/api/v1/numbers/recommend", {
@@ -125,7 +126,7 @@ export function RecommendClient() {
   }
 
   async function handleSave(numbers: number[], index: number) {
-    setSavingIndex(index);
+    setSavingIndexes((previous) => new Set(previous).add(index));
     setMessage("");
 
     try {
@@ -148,7 +149,11 @@ export function RecommendClient() {
         err instanceof BrowserApiError && err.message ? err.message : TEXT.saveFailed,
       );
     } finally {
-      setSavingIndex(null);
+      setSavingIndexes((previous) => {
+        const next = new Set(previous);
+        next.delete(index);
+        return next;
+      });
     }
   }
 
@@ -214,12 +219,12 @@ export function RecommendClient() {
                 <button
                   type="button"
                   onClick={() => handleSave(numbers, index)}
-                  disabled={savingIndex === index || savedIndexes.has(index)}
+                  disabled={savingIndexes.has(index) || savedIndexes.has(index)}
                   className={`recommend-save-btn${savedIndexes.has(index) ? " saved" : ""}`}
                 >
                   {savedIndexes.has(index)
                     ? TEXT.saved
-                    : savingIndex === index
+                    : savingIndexes.has(index)
                       ? TEXT.saving
                       : TEXT.save}
                 </button>

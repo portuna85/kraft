@@ -10,7 +10,7 @@
 @import "./styles/components/skeleton.css";
 @import "./styles/components/layout-mobile-base.css";
 @import "./styles/components/mobile-unconditional.css";
+@import "./styles/components/ads.css";
 @import "./styles/responsive/tablet.css";
 @import "./styles/responsive/desktop.css";
-@import "./styles/components/ads.css";
 @import "./styles/reduced-motion.css";

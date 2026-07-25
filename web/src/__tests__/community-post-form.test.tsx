@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { PostForm } from "@/components/community/post-form";
+import { CommunitySessionProvider } from "@/components/community/community-session-provider";
 
 const replace = vi.fn();
 const push = vi.fn();
@@ -8,6 +9,14 @@ const push = vi.fn();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace, push }),
 }));
+
+function renderPostForm(props: Parameters<typeof PostForm>[0]) {
+  return render(
+    <CommunitySessionProvider>
+      <PostForm {...props} />
+    </CommunitySessionProvider>
+  );
+}
 
 function mockFetch(handlers: {
   session?: unknown;
@@ -40,7 +49,7 @@ describe("커뮤니티 게시글 작성·수정 폼", () => {
   it("로그인하지 않은 사용자는 커뮤니티 목록으로 돌려보낸다", async () => {
     global.fetch = mockFetch({ session: { loggedIn: false, userId: null, nickname: null } });
 
-    render(<PostForm mode="create" />);
+    renderPostForm({ mode: "create" });
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/community"));
   });
@@ -54,16 +63,14 @@ describe("커뮤니티 게시글 작성·수정 폼", () => {
       }),
     });
 
-    render(
-      <PostForm
-        mode="edit"
-        postId={1}
-        ownerId={1}
-        initialTitle="원래 제목"
-        initialContent="원래 내용"
-        initialVersion={0}
-      />
-    );
+    renderPostForm({
+      mode: "edit",
+      postId: 1,
+      ownerId: 1,
+      initialTitle: "원래 제목",
+      initialContent: "원래 내용",
+      initialVersion: 0,
+    });
 
     const titleInput = await screen.findByLabelText("제목");
     fireEvent.change(titleInput, { target: { value: "수정된 제목" } });
@@ -91,7 +98,7 @@ describe("커뮤니티 게시글 작성·수정 폼", () => {
       });
     });
 
-    render(<PostForm mode="create" />);
+    renderPostForm({ mode: "create" });
 
     fireEvent.change(await screen.findByLabelText("제목"), { target: { value: "제목" } });
     fireEvent.change(screen.getByLabelText("내용"), { target: { value: "내용" } });

@@ -95,6 +95,19 @@ const COMMUNITY_POSTS_PAGE = {
   totalPages: 1,
 };
 
+// R-35: 극단 입력 — 공백 없는 200자 제목과 URL 덩어리 본문이 좁은 뷰포트에서
+// 오버플로를 유발하지 않는지 검사하기 위한 픽스처(community-responsive.spec.ts).
+const COMMUNITY_POST_EXTREME = {
+  id: 2,
+  ownerId: 42,
+  authorNickname: "글쓴이",
+  title: "가".repeat(200),
+  content: "https://example.com/" + "a".repeat(180) + "\n" + "나".repeat(300),
+  version: 0,
+  createdAt: "2026-07-01T00:00:00Z",
+  updatedAt: "2026-07-01T00:00:00Z",
+};
+
 const ROUTES = {
   "/api/v1/rounds/latest": ROUNDS_LATEST,
   "/api/v1/rounds/freshness": ROUNDS_FRESHNESS,
@@ -106,6 +119,7 @@ const ROUTES = {
   // 증명하는 e2e 전용 픽스처(community-privacy.spec.ts).
   "/api/v1/community/posts": COMMUNITY_POSTS_PAGE,
   "/api/v1/community/posts/1": COMMUNITY_POST,
+  "/api/v1/community/posts/2": COMMUNITY_POST_EXTREME,
 };
 
 const server = createServer((req, res) => {

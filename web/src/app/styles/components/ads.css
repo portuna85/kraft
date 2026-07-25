@@ -40,7 +40,7 @@
   display: flex;
   justify-content: center;
   background: var(--surface, #fff);
-  border-top: 1px solid var(--border, #e5e5e5);
+  border-top: 1px solid var(--line);
   padding-bottom: env(safe-area-inset-bottom);
 }
 
@@ -56,7 +56,7 @@
   z-index: 1;
   font-size: 0.75rem;
   line-height: 1;
-  color: var(--text-muted, #999);
+  color: var(--muted);
   background: none;
   border: none;
   cursor: pointer;
@@ -94,5 +94,11 @@
   .theme-toggle,
   .nav-toggle {
     min-height: var(--target-min);
+  }
+
+  /* R-32: 헤더는 공간이 좁아 44px 전체 목표 대신 40px로 절충한다 */
+  .account-login-link,
+  .account-logout-button {
+    min-height: 40px;
   }
 }

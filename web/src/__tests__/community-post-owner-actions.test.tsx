@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { PostOwnerActions } from "@/components/community/post-owner-actions";
+import { CommunitySessionProvider } from "@/components/community/community-session-provider";
 
 const push = vi.fn();
 const getCommunitySession = vi.fn();
@@ -15,6 +16,14 @@ vi.mock("@/lib/community-client", () => ({
   deletePost: (postId: number, version: number) => deletePost(postId, version),
 }));
 
+function renderOwnerActions(props: { postId: number; ownerId: number; version: number }) {
+  return render(
+    <CommunitySessionProvider>
+      <PostOwnerActions {...props} />
+    </CommunitySessionProvider>
+  );
+}
+
 describe("커뮤니티 게시글 소유자 액션", () => {
   beforeEach(() => {
     push.mockClear();
@@ -26,7 +35,7 @@ describe("커뮤니티 게시글 소유자 액션", () => {
   it("로그인하지 않은 사용자에게는 아무 것도 보이지 않는다", async () => {
     getCommunitySession.mockResolvedValue({ loggedIn: false, userId: null, nickname: null });
 
-    const { container } = render(<PostOwnerActions postId={1} ownerId={10} version={0} />);
+    const { container } = renderOwnerActions({ postId: 1, ownerId: 10, version: 0 });
 
     await waitFor(() => expect(getCommunitySession).toHaveBeenCalled());
     expect(container).toBeEmptyDOMElement();
@@ -35,7 +44,7 @@ describe("커뮤니티 게시글 소유자 액션", () => {
   it("로그인했지만 소유자가 아니면 아무 것도 보이지 않는다", async () => {
     getCommunitySession.mockResolvedValue({ loggedIn: true, userId: 999, nickname: "다른사람" });
 
-    const { container } = render(<PostOwnerActions postId={1} ownerId={10} version={0} />);
+    const { container } = renderOwnerActions({ postId: 1, ownerId: 10, version: 0 });
 
     await waitFor(() => expect(getCommunitySession).toHaveBeenCalled());
     expect(container).toBeEmptyDOMElement();
@@ -44,7 +53,7 @@ describe("커뮤니티 게시글 소유자 액션", () => {
   it("소유자에게는 수정 링크와 삭제 버튼이 보인다", async () => {
     getCommunitySession.mockResolvedValue({ loggedIn: true, userId: 10, nickname: "글쓴이" });
 
-    render(<PostOwnerActions postId={1} ownerId={10} version={0} />);
+    renderOwnerActions({ postId: 1, ownerId: 10, version: 0 });
 
     expect(await screen.findByRole("link", { name: "수정" })).toHaveAttribute(
       "href",
@@ -57,7 +66,7 @@ describe("커뮤니티 게시글 소유자 액션", () => {
     getCommunitySession.mockResolvedValue({ loggedIn: true, userId: 10, nickname: "글쓴이" });
     vi.spyOn(window, "confirm").mockReturnValue(false);
 
-    render(<PostOwnerActions postId={1} ownerId={10} version={0} />);
+    renderOwnerActions({ postId: 1, ownerId: 10, version: 0 });
     fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
 
     expect(deletePost).not.toHaveBeenCalled();
@@ -67,7 +76,7 @@ describe("커뮤니티 게시글 소유자 액션", () => {
     getCommunitySession.mockResolvedValue({ loggedIn: true, userId: 10, nickname: "글쓴이" });
     deletePost.mockResolvedValue(undefined);
 
-    render(<PostOwnerActions postId={1} ownerId={10} version={2} />);
+    renderOwnerActions({ postId: 1, ownerId: 10, version: 2 });
     fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
 
     await waitFor(() => expect(deletePost).toHaveBeenCalledWith(1, 2));
@@ -78,7 +87,7 @@ describe("커뮤니티 게시글 소유자 액션", () => {
     getCommunitySession.mockResolvedValue({ loggedIn: true, userId: 10, nickname: "글쓴이" });
     deletePost.mockRejectedValue(new Error("version conflict"));
 
-    render(<PostOwnerActions postId={1} ownerId={10} version={0} />);
+    renderOwnerActions({ postId: 1, ownerId: 10, version: 0 });
     const deleteButton = await screen.findByRole("button", { name: "삭제" });
     fireEvent.click(deleteButton);
 
@@ -98,7 +107,7 @@ describe("커뮤니티 게시글 소유자 액션", () => {
         })
     );
 
-    render(<PostOwnerActions postId={1} ownerId={10} version={0} />);
+    renderOwnerActions({ postId: 1, ownerId: 10, version: 0 });
     fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
 
     await waitFor(() => expect(screen.getByRole("button", { name: "삭제 중…" })).toBeDisabled());

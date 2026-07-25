@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import localFont from "next/font/local";
 import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
+import { CommunitySessionProvider } from "@/components/community/community-session-provider";
 import { StickyMobileAd } from "@/components/ad-unit";
 import { JsonLdWebSite } from "@/components/json-ld";
 import { getPublicBaseUrl } from "@/lib/api";
@@ -98,12 +99,14 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         />
         <JsonLdWebSite baseUrl={baseUrl} nonce={nonce} />
         <a href="#main-content" className="skip-nav">본문으로 건너뛰기</a>
-        <Header />
-        <main id="main-content" className="page">
-          <div className="shell">{children}</div>
-        </main>
-        <Footer />
-        <StickyMobileAd unit={process.env.NEXT_PUBLIC_KAKAO_ADFIT_UNIT_STICKY ?? ""} />
+        <CommunitySessionProvider>
+          <Header />
+          <main id="main-content" className="page">
+            <div className="shell">{children}</div>
+          </main>
+          <Footer />
+          <StickyMobileAd unit={process.env.NEXT_PUBLIC_KAKAO_ADFIT_UNIT_STICKY ?? ""} />
+        </CommunitySessionProvider>
       </body>
     </html>
   );

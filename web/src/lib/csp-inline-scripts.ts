@@ -2,7 +2,7 @@
 // 허용할 수 없어 전 페이지 하이드레이션이 CSP에 막히는 문제가 있었다(회귀 이력은 web/src/proxy.ts 참고).
 // 그래서 이 스크립트는 layout.tsx에서 매 요청 발급되는 nonce로 허용한다.
 export const THEME_INIT_SCRIPT =
-  "try{if(localStorage.getItem('kraft-theme')==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}";
+  "try{var t=localStorage.getItem('kraft-theme');if(t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}";
 
 export const FAQ_ITEMS: { question: string; answer: string }[] = [
   {

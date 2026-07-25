@@ -9,6 +9,7 @@
   --line: rgba(29, 26, 23, 0.14);
   --accent: #c94f24;
   --accent-strong: #8d2f10;
+  --on-accent: #fff;
   --ball: #ffc857;
   --bonus: #3a7d44;
   --shadow: 0 22px 48px rgba(64, 39, 22, 0.1);
@@ -55,6 +56,8 @@
   --line: rgba(240, 235, 227, 0.1);
   --accent: #e05a28;
   --accent-strong: #f07845;
+  /* R-41: white/#e05a28는 3.71:1로 AA(4.5:1) 미달 — 어두운 텍스트가 5.66:1로 통과한다 */
+  --on-accent: #1c1813;
   --ball: #e8a820;
   --bonus: #4a9654;
   --shadow: 0 18px 40px rgba(0, 0, 0, 0.45);

@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import { getCommunityPost } from "@/lib/community-api";
-import { BackendError } from "@/lib/api";
+import { BackendError, getPublicBaseUrl } from "@/lib/api";
 import { PostOwnerActions } from "@/components/community/post-owner-actions";
 import { CommentSection } from "@/components/community/comment-section";
+import { JsonLdBreadcrumb } from "@/components/json-ld";
+import { formatDateTime } from "@/lib/format";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -34,13 +37,21 @@ export default async function CommunityPostDetailPage({ params }: Props) {
     throw error;
   }
 
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  const baseUrl = getPublicBaseUrl();
+
   return (
     <article className="panel community-post-detail">
+      <JsonLdBreadcrumb
+        baseUrl={baseUrl}
+        nonce={nonce}
+        items={[{ name: "커뮤니티", item: `${baseUrl}/community` }, { name: post.title }]}
+      />
       <p className="eyebrow">커뮤니티</p>
       <h1 className="page-title">{post.title}</h1>
       <p className="community-post-meta">
         <span>{post.authorNickname}</span>
-        <time dateTime={post.createdAt}>{new Date(post.createdAt).toLocaleString("ko-KR")}</time>
+        <time dateTime={post.createdAt}>{formatDateTime(post.createdAt)}</time>
       </p>
       <div className="community-post-content">
         {post.content.split("\n").map((line, index) => (

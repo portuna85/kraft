@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
+import { JsonLdBreadcrumb } from "@/components/json-ld";
+import { getPublicBaseUrl } from "@/lib/api";
 import { getCommunityPosts } from "@/lib/community-api";
 
 export const metadata: Metadata = {
@@ -13,12 +16,15 @@ type Props = { searchParams: Promise<{ page?: string }> };
 export default async function CommunityPage({ searchParams }: Props) {
   const { page: pageParam } = await searchParams;
   const page = Math.max(0, Number(pageParam ?? 0) || 0);
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  const baseUrl = getPublicBaseUrl();
   // 백엔드 오류를 "게시글 없음"으로 감추지 않는다(§P1-03) — 실패는 최상위 error.tsx
   // 경계로 넘겨 재시도 UI를 보여주고, 정상 응답이 실제로 비어 있을 때만 빈 상태 문구를 쓴다.
   const result = await getCommunityPosts(page);
 
   return (
     <section className="panel">
+      <JsonLdBreadcrumb baseUrl={baseUrl} nonce={nonce} items={[{ name: "커뮤니티", item: `${baseUrl}/community` }]} />
       <p className="eyebrow">커뮤니티</p>
       <h1 className="page-title">커뮤니티</h1>
       <Link href="/community/write" className="button">

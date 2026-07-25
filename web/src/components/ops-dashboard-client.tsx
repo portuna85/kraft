@@ -218,6 +218,7 @@ export function OpsDashboardClient() {
               <span>특정 회차</span>
               <input
                 type="number"
+                inputMode="numeric"
                 min="1"
                 value={round}
                 onChange={(event) => setRound(event.target.value)}
@@ -240,6 +241,7 @@ export function OpsDashboardClient() {
             <span>회차</span>
             <input
               type="number"
+              inputMode="numeric"
               min="1"
               value={manualEntry.round}
               onChange={(event) => setManualEntry((current) => ({ ...current, round: event.target.value }))}
@@ -266,6 +268,7 @@ export function OpsDashboardClient() {
             <span>보너스 번호</span>
             <input
               type="number"
+              inputMode="numeric"
               min="1"
               max="45"
               value={manualEntry.bonusNumber}
@@ -277,6 +280,7 @@ export function OpsDashboardClient() {
             <span>1등 당첨금</span>
             <input
               type="number"
+              inputMode="numeric"
               min="0"
               value={manualEntry.firstPrizeAmount}
               onChange={(event) => setManualEntry((current) => ({ ...current, firstPrizeAmount: event.target.value }))}

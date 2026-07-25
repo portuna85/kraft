@@ -1,27 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getCommunitySession, loginUrl, logout, type CommunitySession } from "@/lib/community-client";
+import { useState } from "react";
+import { loginUrl, logout } from "@/lib/community-client";
+import { useCommunitySession } from "@/components/community/community-session-provider";
 
 export function AccountMenu() {
-  const [session, setSession] = useState<CommunitySession | null>(null);
+  const { session, loading } = useCommunitySession();
   const [logoutError, setLogoutError] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    getCommunitySession()
-      .then((result) => {
-        if (!cancelled) setSession(result);
-      })
-      .catch(() => {
-        if (!cancelled) setSession({ loggedIn: false, userId: null, nickname: null, activeProviders: [] });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (!session) {
+  if (loading || !session) {
     return null;
   }
 

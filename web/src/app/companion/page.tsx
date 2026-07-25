@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { CompanionFilterClient } from "@/components/companion-filter-client";
-import { getCompanionStats } from "@/lib/api";
+import { JsonLdBreadcrumb } from "@/components/json-ld";
+import { getCompanionStats, getPublicBaseUrl } from "@/lib/api";
 import logger from "@/lib/logger";
 
 export const metadata: Metadata = {
@@ -10,6 +12,9 @@ export const metadata: Metadata = {
 };
 
 export default async function CompanionPage() {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  const baseUrl = getPublicBaseUrl();
+
   // 이 페이지의 유일한 핵심 데이터 — 실패를 200 폴백으로 숨기지 않고 error.tsx(5xx)로 넘긴다.
   let stats;
   try {
@@ -25,6 +30,7 @@ export default async function CompanionPage() {
 
   return (
     <section className="panel">
+      <JsonLdBreadcrumb baseUrl={baseUrl} nonce={nonce} items={[{ name: "동반 출현", item: `${baseUrl}/companion` }]} />
       <p className="eyebrow">동반 출현</p>
       <h1 className="page-title">동반 출현 번호</h1>
       <p className="muted panel-lead">총 {stats.totalRounds}회 기준 전체 {stats.topPairs.length}개 조합 (기본 상위 50개 표시)</p>

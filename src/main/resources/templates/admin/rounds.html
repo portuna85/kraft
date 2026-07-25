@@ -22,6 +22,7 @@
     </form>
   </div>
 
+  <div class="table-scroll">
   <table>
     <thead>
     <tr>
@@ -40,6 +41,7 @@
     </tr>
     </tbody>
   </table>
+  </div>
 
   <div class="pagination">
     <span th:text="'전체 ' + ${rounds.totalElements} + '건 (페이지 ' + (${rounds.page} + 1) + ' / ' + ${rounds.totalPages} + ')'"></span>

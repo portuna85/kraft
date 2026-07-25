@@ -16,10 +16,65 @@ type FilterState =
   | { status: "success"; ball: number; pairs: CompanionPair[] }
   | { status: "error"; ball: number };
 
+const BALL_COUNT = 45;
+
 export function CompanionFilterClient({ pairs, totalRounds }: Props) {
   const [selected, setSelected] = useState<number | null>(null);
   const [filterState, setFilterState] = useState<FilterState>({ status: "idle" });
+  const [focusedIndex, setFocusedIndex] = useState(0);
   const fetchSeqRef = useRef(0);
+  const ballRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // 브레이크포인트마다 그리드 열 수가 달라(모바일 5·태블릿 7·데스크톱 9) 고정 상수 대신
+  // 실제 렌더된 첫 행의 버튼 개수를 측정해 상하 이동 간격을 구한다.
+  function getColumnCount(): number {
+    const first = ballRefs.current[0];
+    if (!first) return 1;
+    const firstTop = first.offsetTop;
+    let count = 0;
+    for (const el of ballRefs.current) {
+      if (!el || el.offsetTop !== firstTop) break;
+      count += 1;
+    }
+    return count || 1;
+  }
+
+  function moveFocus(nextIndex: number) {
+    const clamped = Math.max(0, Math.min(BALL_COUNT - 1, nextIndex));
+    setFocusedIndex(clamped);
+    ballRefs.current[clamped]?.focus();
+  }
+
+  function handleGridKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    switch (event.key) {
+      case "ArrowRight":
+        event.preventDefault();
+        moveFocus(focusedIndex + 1);
+        break;
+      case "ArrowLeft":
+        event.preventDefault();
+        moveFocus(focusedIndex - 1);
+        break;
+      case "ArrowDown":
+        event.preventDefault();
+        moveFocus(focusedIndex + getColumnCount());
+        break;
+      case "ArrowUp":
+        event.preventDefault();
+        moveFocus(focusedIndex - getColumnCount());
+        break;
+      case "Home":
+        event.preventDefault();
+        moveFocus(0);
+        break;
+      case "End":
+        event.preventDefault();
+        moveFocus(BALL_COUNT - 1);
+        break;
+      default:
+        break;
+    }
+  }
 
   function fetchPairsForBall(ball: number) {
     const seq = ++fetchSeqRef.current;
@@ -66,12 +121,17 @@ export function CompanionFilterClient({ pairs, totalRounds }: Props) {
     <>
       <div className="companion-filter">
         <p className="companion-filter-label">번호로 필터</p>
-        <div className="companion-filter-balls">
-          {Array.from({ length: 45 }, (_, index) => index + 1).map((number) => (
+        <div className="companion-filter-balls" onKeyDown={handleGridKeyDown}>
+          {Array.from({ length: BALL_COUNT }, (_, index) => index + 1).map((number, index) => (
             <button
               key={number}
+              ref={(el) => {
+                ballRefs.current[index] = el;
+              }}
               type="button"
               onClick={() => selectNumber(number)}
+              onFocus={() => setFocusedIndex(index)}
+              tabIndex={focusedIndex === index ? 0 : -1}
               className={`ball ball-sm ${ballColorClass(number)}${selected === number ? " ball-selected" : ""}`}
               aria-pressed={selected === number}
             >

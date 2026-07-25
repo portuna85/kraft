@@ -2,39 +2,37 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createPost, updatePost, getCommunitySession } from "@/lib/community-client";
+import { createPost, updatePost } from "@/lib/community-client";
 import { BrowserApiError } from "@/lib/browser-api";
+import { useCommunitySession } from "@/components/community/community-session-provider";
 
 type CreateMode = { mode: "create" };
 type EditMode = { mode: "edit"; postId: number; ownerId: number; initialTitle: string; initialContent: string; initialVersion: number };
 
 export function PostForm(props: CreateMode | EditMode) {
   const router = useRouter();
+  const { session, loading } = useCommunitySession();
   const [title, setTitle] = useState(props.mode === "edit" ? props.initialTitle : "");
   const [content, setContent] = useState(props.mode === "edit" ? props.initialContent : "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [versionConflict, setVersionConflict] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
-  const [allowed, setAllowed] = useState(false);
+
+  const allowed = Boolean(
+    session?.loggedIn && (props.mode === "create" || session.userId === props.ownerId)
+  );
 
   useEffect(() => {
-    getCommunitySession()
-      .then((session) => {
-        if (!session.loggedIn) {
-          router.replace("/community");
-          return;
-        }
-        if (props.mode === "edit" && session.userId !== props.ownerId) {
-          router.replace(`/community/posts/${props.postId}`);
-          return;
-        }
-        setAllowed(true);
-      })
-      .catch(() => router.replace("/community"))
-      .finally(() => setAuthChecked(true));
+    if (loading || !session) return;
+    if (!session.loggedIn) {
+      router.replace("/community");
+      return;
+    }
+    if (props.mode === "edit" && session.userId !== props.ownerId) {
+      router.replace(`/community/posts/${props.postId}`);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loading, session]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -62,8 +60,14 @@ export function PostForm(props: CreateMode | EditMode) {
     }
   };
 
-  if (!authChecked) {
-    return null;
+  if (loading) {
+    return (
+      <div className="community-post-form" aria-busy="true">
+        <span className="skeleton-line skeleton-eyebrow" />
+        <span className="skeleton-line skeleton-body" />
+        <span className="skeleton-line skeleton-body" />
+      </div>
+    );
   }
   if (!allowed) {
     return null;
@@ -72,11 +76,15 @@ export function PostForm(props: CreateMode | EditMode) {
   return (
     <form onSubmit={handleSubmit} className="community-post-form">
       {versionConflict && (
-        <p role="alert" className="community-version-conflict">
+        <p role="alert" id="post-form-error" className="community-version-conflict">
           다른 곳에서 먼저 수정되었습니다. 새로고침 후 다시 시도하세요.
         </p>
       )}
-      {error && <p role="alert">{error}</p>}
+      {error && (
+        <p role="alert" id="post-form-error">
+          {error}
+        </p>
+      )}
 
       <label htmlFor="post-title">제목</label>
       <input
@@ -85,6 +93,8 @@ export function PostForm(props: CreateMode | EditMode) {
         maxLength={200}
         onChange={(event) => setTitle(event.target.value)}
         required
+        aria-invalid={error || versionConflict ? "true" : undefined}
+        aria-describedby={error || versionConflict ? "post-form-error" : undefined}
       />
 
       <label htmlFor="post-content">내용</label>
@@ -94,6 +104,8 @@ export function PostForm(props: CreateMode | EditMode) {
         maxLength={20000}
         onChange={(event) => setContent(event.target.value)}
         required
+        aria-invalid={error || versionConflict ? "true" : undefined}
+        aria-describedby={error || versionConflict ? "post-form-error" : undefined}
       />
 
       <button type="submit" disabled={submitting || !title.trim() || !content.trim()}>

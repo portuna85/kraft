@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { getPatternStats, type PatternBucket } from "@/lib/api";
+import { headers } from "next/headers";
+import { JsonLdBreadcrumb } from "@/components/json-ld";
+import { getPatternStats, getPublicBaseUrl, type PatternBucket } from "@/lib/api";
 import logger from "@/lib/logger";
 
 export const metadata: Metadata = {
@@ -51,6 +53,9 @@ function PatternSection({
 }
 
 export default async function StatsPage() {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  const baseUrl = getPublicBaseUrl();
+
   // 이 페이지의 유일한 핵심 데이터 — 실패를 200 "준비 중" 폴백으로 숨기지 않고
   // error.tsx(5xx)로 넘긴다(F4: /frequency, /companion과 동일한 정책).
   let stats;
@@ -63,6 +68,7 @@ export default async function StatsPage() {
 
   return (
     <section className="panel">
+      <JsonLdBreadcrumb baseUrl={baseUrl} nonce={nonce} items={[{ name: "패턴 통계", item: `${baseUrl}/stats` }]} />
       <p className="eyebrow">패턴 통계</p>
       <h1 className="page-title">패턴 통계</h1>
       <p className="muted stats-summary">총 {stats.totalRounds}회 기준</p>

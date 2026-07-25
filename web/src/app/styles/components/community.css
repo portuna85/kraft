@@ -74,14 +74,55 @@
   margin-left: 28px;
 }
 
+@media (max-width: 379px) {
+  .community-comment.is-reply {
+    margin-left: 16px;
+  }
+}
+
 .community-comment-author {
-  font-weight: 600;
+  font-weight: 700;
   font-size: var(--fs-sm);
+}
+
+.community-comment p {
+  margin: 4px 0 0;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .community-comment-actions {
   display: flex;
   gap: 8px;
+}
+
+.community-comment-replies {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.community-comment-pagination {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: var(--panel-gap);
+}
+
+.community-comment-reply-target {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.account-nickname {
+  color: var(--muted);
 }
 
 .community-post-form,
@@ -92,7 +133,7 @@
   max-width: 640px;
 }
 
-.community-post-form input,
+.community-post-form input:not([type="hidden"]),
 .community-post-form textarea,
 .community-comment-form textarea {
   width: 100%;
@@ -114,7 +155,7 @@
 
 .community-version-conflict {
   color: var(--accent-strong);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .account-menu {
@@ -127,10 +168,23 @@
 
 .account-login-link {
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 12px;
+  min-height: 40px;
 }
 
+/* R-32: 로그인 상태 320px 헤더에서 전역 46px 주황 pill CTA를 그대로 쓰면
+   브랜드+로그아웃+햄버거+테마 합산이 뷰포트 폭을 넘는다 — compact outline로 축소. */
 .account-logout-button {
   width: auto;
+  min-height: 40px;
+  padding: 8px 12px;
+  font-size: var(--fs-sm);
+  background-color: transparent;
+  color: var(--text);
+  border: 1px solid var(--line);
+  box-shadow: none;
 }
 
 /* 모바일 기본: 축약 로그인 링크만 노출, 데스크톱 전용 요소는 숨긴다 —
