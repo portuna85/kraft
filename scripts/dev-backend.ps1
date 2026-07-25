@@ -4,7 +4,7 @@
     Spring Boot 백엔드를 로컬에서 실행합니다.
 .DESCRIPTION
     기본값: H2 인메모리 DB (Docker 불필요).
-    -MariaDB 스위치를 주면 로컬 MariaDB 컨테이너에 연결합니다 (dev-db.ps1 선행 필요).
+    -MariaDB 스위치를 주면 로컬 MariaDB에 연결합니다 (docker compose up -d mariadb로 미리 기동해 두세요).
 .PARAMETER MariaDB
     MariaDB 모드로 실행합니다. .env.local 의 MariaDB 주석을 활성화해야 합니다.
 .EXAMPLE
@@ -34,9 +34,9 @@ if (-not (Test-Path $envLocal)) {
 }
 
 if ($MariaDB) {
-    Write-Host "[dev-backend] MariaDB 모드로 시작합니다 (localhost:3306)"
+    Write-Host "[local-backend] MariaDB 모드로 시작합니다 (localhost:3306)"
 } else {
-    Write-Host "[dev-backend] H2 인메모리 DB 모드로 시작합니다"
+    Write-Host "[local-backend] H2 인메모리 DB 모드로 시작합니다"
     Write-Host "  H2 콘솔: http://localhost:8080/h2-console"
 }
 Write-Host "  백엔드:  http://localhost:8080"

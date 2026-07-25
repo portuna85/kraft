@@ -35,14 +35,14 @@ if (-not (Test-Path $envLocal)) {
 # node_modules 없으면 설치
 $nodeModules = Join-Path $webDir 'node_modules'
 if (-not (Test-Path $nodeModules)) {
-    Write-Host "[dev-web] node_modules 없음 — npm ci 실행 중..."
+    Write-Host "[local-web] node_modules 없음 — npm ci 실행 중..."
     & npm --prefix $webDir ci
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
-Write-Host "[dev-web] Next.js 개발 서버를 시작합니다"
+Write-Host "[local-web] Next.js 개발 서버를 시작합니다"
 Write-Host "  프론트:  http://localhost:3000"
-Write-Host "  백엔드:  http://localhost:8080 (별도 터미널에서 dev-backend.ps1 실행)"
+Write-Host "  백엔드:  http://localhost:8080 (별도 터미널에서 local-backend 스크립트 실행)"
 Write-Host ""
 
-& npm --prefix $webDir run dev
+& npm --prefix $webDir run local
