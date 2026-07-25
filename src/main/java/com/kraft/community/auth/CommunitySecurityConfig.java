@@ -6,6 +6,11 @@ import com.kraft.common.config.CommunityProperties;
 import com.kraft.common.error.ApiErrorResponse;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.time.Instant;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -25,7 +30,10 @@ import org.springframework.security.web.authentication.SimpleUrlAuthenticationFa
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfException;
+import org.springframework.security.web.csrf.CsrfFilter;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * 커뮤니티 OAuth2 로그인 체인. admin(@Order(1))보다 뒤, public API(@Order(2)→(3)으로
@@ -72,6 +80,7 @@ public class CommunitySecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/community/posts/**").permitAll()
                         .anyRequest().authenticated())
                 .addFilterAfter(new CommunityWriteRateLimitFilter(communityProperties), AuthorizationFilter.class)
+                .addFilterAfter(csrfCookieFilter(), CsrfFilter.class)
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.userService(communityOAuth2UserService))
                         .successHandler(successHandler())
@@ -113,6 +122,28 @@ public class CommunitySecurityConfig {
                     isCsrf ? "요청을 검증할 수 없습니다. 새로고침 후 다시 시도하세요." : "접근이 거부되었습니다.",
                     request.getRequestURI());
             OBJECT_MAPPER.writeValue(response.getWriter(), body);
+        };
+    }
+
+    // CookieCsrfTokenRepository는 토큰을 지연 로딩한다(Spring Security 6+) — Thymeleaf 폼처럼
+    // ${_csrf}를 렌더링해 CsrfToken.getToken()을 호출하는 곳이 있어야 실제로 쿠키가 써진다.
+    // 커뮤니티는 순수 JSON API(Next.js)라 그런 렌더링 지점이 없으므로, 이 필터가 매 요청마다
+    // 강제로 getToken()을 호출해 XSRF-TOKEN 쿠키를 발급한다 — 없으면 프런트가 보낼 토큰이
+    // 영영 생기지 않아 로그아웃·글쓰기·댓글 등 모든 쓰기 요청이 CSRF 403으로 거부된다.
+    // (공식 가이드: https://docs.spring.io/spring-security/reference/servlet/exploits/csrf.html
+    // "Javascript 애플리케이션" 섹션의 권장 패턴)
+    private static OncePerRequestFilter csrfCookieFilter() {
+        return new OncePerRequestFilter() {
+            @Override
+            protected void doFilterInternal(HttpServletRequest request,
+                                            HttpServletResponse response,
+                                            FilterChain filterChain) throws ServletException, IOException {
+                CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
+                if (csrfToken != null) {
+                    csrfToken.getToken();
+                }
+                filterChain.doFilter(request, response);
+            }
         };
     }
 
