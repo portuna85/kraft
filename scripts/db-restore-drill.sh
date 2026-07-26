@@ -61,4 +61,9 @@ done
 DRILL_SECONDS=$(( $(date +%s) - DRILL_START ))
 echo "==> RTO(복구 소요 시간): ${DRILL_SECONDS}초"
 
-[[ $FAIL -eq 0 ]] && echo "==> Drill PASSED" || { echo "==> Drill FAILED" >&2; exit 1; }
+if [[ $FAIL -eq 0 ]]; then
+  echo "==> Drill PASSED"
+else
+  echo "==> Drill FAILED" >&2
+  exit 1
+fi

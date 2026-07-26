@@ -4,7 +4,7 @@ import { FrequencyFilterClient } from "@/components/frequency-filter-client";
 import { AdSenseSidebar, InArticleAd } from "@/components/ad-unit";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
 import { getFrequencyStats, getPublicBaseUrl } from "@/lib/api";
-import logger from "@/lib/logger";
+import { logCoreDataFailure } from "@/lib/logger";
 
 export const metadata: Metadata = {
   title: "출현 통계",
@@ -21,7 +21,7 @@ export default async function FrequencyPage() {
   try {
     stats = await getFrequencyStats();
   } catch (error) {
-    logger.error({ err: error }, "출현 통계 조회 실패 — 핵심 데이터 실패로 페이지 오류 처리");
+    logCoreDataFailure(error, "출현 통계 조회 실패 — 핵심 데이터 실패로 페이지 오류 처리");
     throw error;
   }
 

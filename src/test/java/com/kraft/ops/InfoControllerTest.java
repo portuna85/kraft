@@ -17,11 +17,11 @@ class InfoControllerTest {
         Clock clock = Clock.fixed(Instant.parse("2026-06-20T12:00:00Z"), ZoneId.of("Asia/Seoul"));
         InfoController controller = new InfoController(clock);
 
-        var result = controller.status();
+        InfoStatusResponse result = controller.status();
 
-        assertThat(result.get("checkedAt")).isEqualTo(
+        assertThat(result.checkedAt()).isEqualTo(
                 Instant.parse("2026-06-20T12:00:00Z").atZone(ZoneId.of("Asia/Seoul")).toString());
-        assertThat(result.get("service")).isEqualTo("kraft-lotto");
-        assertThat(result.get("timezone")).isEqualTo("Asia/Seoul");
+        assertThat(result.service()).isEqualTo("kraft-lotto");
+        assertThat(result.timezone()).isEqualTo("Asia/Seoul");
     }
 }

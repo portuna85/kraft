@@ -32,6 +32,8 @@ mkdir -p "$BACKUP_DIR"
 chmod 700 "$BACKUP_DIR"
 
 echo "==> Backing up $DB_NAME to $FILENAME"
+# shellcheck disable=SC2016 # 작은따옴표가 의도적 — 컨테이너 안 sh -c에서 그 환경(mariadb)의
+# $MARIADB_PASSWORD 등으로 전개돼야 하며, 이 스크립트의 셸에서 전개되면 안 된다.
 "${COMPOSE[@]}" exec -T mariadb sh -c \
   'MYSQL_PWD="$MARIADB_PASSWORD" mariadb-dump --single-transaction --routines --triggers --set-gtid-purged=OFF -u"$MARIADB_USER" "$MARIADB_DATABASE"' \
   | gzip -9 > "$FILENAME"

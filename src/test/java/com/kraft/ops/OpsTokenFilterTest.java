@@ -30,19 +30,29 @@ class OpsTokenFilterTest {
     }
 
     @Test
-    @DisplayName("토큰이 없으면 401을 반환한다")
+    @DisplayName("토큰이 없으면 401과 공용 ApiErrorResponse 계약(B-02)을 반환한다")
     void missingToken_returnsUnauthorized() throws Exception {
         mockMvc.perform(get("/ops/summary"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("OPS_UNAUTHORIZED"));
+                .andExpect(jsonPath("$.code").value("OPS_UNAUTHORIZED"))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.error").value("Unauthorized"))
+                .andExpect(jsonPath("$.message").isNotEmpty())
+                .andExpect(jsonPath("$.timestamp").isNotEmpty())
+                .andExpect(jsonPath("$.path").value("/ops/summary"));
     }
 
     @Test
-    @DisplayName("틀린 토큰이면 401을 반환한다")
+    @DisplayName("틀린 토큰이면 401과 공용 ApiErrorResponse 계약(B-02)을 반환한다")
     void wrongToken_returnsUnauthorized() throws Exception {
         mockMvc.perform(get("/ops/summary").header("X-Ops-Token", "wrong-token"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("OPS_UNAUTHORIZED"));
+                .andExpect(jsonPath("$.code").value("OPS_UNAUTHORIZED"))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.error").value("Unauthorized"))
+                .andExpect(jsonPath("$.message").isNotEmpty())
+                .andExpect(jsonPath("$.timestamp").isNotEmpty())
+                .andExpect(jsonPath("$.path").value("/ops/summary"));
     }
 
     @Test

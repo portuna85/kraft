@@ -15,6 +15,11 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * 캐싱 가능한 엔드포인트의 ETag를 도메인 버전(회차 번호)에서 파생한다.
  * 과거 회차 상세는 보정 후에도 값이 바뀌어야 하므로 MD5 폴백(바디 해시)에 맡기고,
  * 변경 가능 경로는 최신 회차 번호 + 단조 증가 성분으로 계산한다.
+ * NOTE: bump 카운터는 인스턴스별 상태다 — 수평 확장 시 인스턴스마다 부팅 시점부터
+ * 독립적으로 증가하므로, 같은 회차 데이터라도 인스턴스마다 다른 ETag 문자열을 낼 수
+ * 있다. 이는 캐시 조회에서 잘못된 데이터를 주는 문제가 아니라(값이 다르면 클라이언트가
+ * 그냥 다시 받아갈 뿐), 로드밸런서가 요청을 인스턴스 사이로 분산할 때 If-None-Match가
+ * 실제보다 자주 미스로 판정되는 정도의 캐시 효율 저하다.
  */
 @Component
 public class ETagVersionProvider {

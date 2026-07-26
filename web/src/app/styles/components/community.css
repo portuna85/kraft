@@ -70,14 +70,12 @@
   background: var(--surface-card-sm);
 }
 
+/* F-10: 이전엔 379px라는 규격 외(§2.3 640/1024 기준과 무관한) 매직 브레이크포인트로
+   좁은 화면에서만 16px로 줄였다. .ball의 R-20과 같은 방식으로 뷰포트 폭에 따라
+   부드럽게 흐르는 clamp()로 바꾼다 — 380px 근처에서 ~16px, 667px 이상에서 28px로
+   자연스럽게 수렴해 하드 컷오프 자체가 없어진다. */
 .community-comment.is-reply {
-  margin-left: 28px;
-}
-
-@media (max-width: 379px) {
-  .community-comment.is-reply {
-    margin-left: 16px;
-  }
+  margin-left: clamp(16px, 4.2vw, 28px);
 }
 
 .community-comment-author {

@@ -38,3 +38,7 @@ logging:
   level:
     root: warn
     com.kraft: info
+
+springdoc:
+  swagger-ui:
+    enabled: false

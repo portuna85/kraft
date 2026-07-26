@@ -4,6 +4,19 @@ import {
   TAG_ROUNDS_LATEST,
   TAG_STATS,
 } from "@/lib/revalidate";
+import type { components } from "@/lib/generated/api-types";
+
+// F-03: 백엔드 OpenAPI 계약(B-01, /v3/api-docs)에서 생성된 스키마를 그대로 쓰지 않고
+// 이 유틸로 감싼다 — springdoc은 record 필드의 not-null 보장을 모르므로 모든 필드를
+// optional로 생성한다. 백엔드는 항상 완전한 레코드를 반환하므로, 손으로 유지하던
+// 타입들과 동일하게 전 필드를 필수로 되돌린다(중첩 객체·배열까지 재귀 적용).
+type Req<T> = {
+  [K in keyof T]-?: NonNullable<T[K]> extends (infer U)[]
+    ? Req<U>[]
+    : NonNullable<T[K]> extends object
+      ? Req<NonNullable<T[K]>>
+      : NonNullable<T[K]>;
+};
 
 const backendBaseUrl = process.env.KRAFT_BACKEND_INTERNAL_URL ?? "http://backend:8080";
 const publicBaseUrl = resolvePublicBaseUrl();
@@ -24,17 +37,7 @@ function resolvePublicBaseUrl(): string {
   return "http://localhost";
 }
 
-export type WinningNumber = {
-  round: number;
-  drawDate: string;
-  numbers: number[];
-  bonusNumber: number;
-  firstPrizeAmount: number;
-  secondPrize: number;
-  secondWinners: number;
-  totalSales: number;
-  firstAccumAmount: number;
-};
+export type WinningNumber = Req<components["schemas"]["WinningNumberResponse"]>;
 
 export type RecommendationResponse = {
   recommendations: number[][];
@@ -43,12 +46,7 @@ export type RecommendationResponse = {
   historyThroughRound: number;
 };
 
-export type RoundFreshness = {
-  latestRound: number;
-  latestDrawDate: string;
-  fresh: boolean;
-  checkedAt: string;
-};
+export type RoundFreshness = Req<components["schemas"]["RoundFreshnessResponse"]>;
 
 export type PublicIncident = {
   round: number | null;
@@ -118,31 +116,18 @@ export async function getPublicIncidents(): Promise<PublicIncident[]> {
   });
 }
 
-export type BallFrequency = { ballNumber: number; frequency: number; lastRound: number };
-export type PatternBucket = { bucketKey: string; count: number };
-export type CompanionPair = { ballA: number; ballB: number; coCount: number };
+export type BallFrequency = Req<components["schemas"]["BallFrequencyDto"]>;
+export type PatternBucket = Req<components["schemas"]["PatternBucketDto"]>;
+export type CompanionPair = Req<components["schemas"]["CompanionPairDto"]>;
 export type RangeDistribution = { range: string; count: number };
 
-export type RankedCombination = { balls: BallFrequency[]; wonFirstPrize: boolean };
+export type RankedCombination = Req<components["schemas"]["RankedCombinationDto"]>;
 
-export type FrequencyStatsResponse = {
-  totalRounds: number;
-  frequencies: BallFrequency[];
-  topSix: RankedCombination;
-  bottomSix: RankedCombination;
-};
+export type FrequencyStatsResponse = Req<components["schemas"]["FrequencyStatsResponse"]>;
 
-export type PatternStatsResponse = {
-  totalRounds: number;
-  oddCounts: PatternBucket[];
-  highCounts: PatternBucket[];
-  sumBuckets: PatternBucket[];
-};
+export type PatternStatsResponse = Req<components["schemas"]["PatternStatsResponse"]>;
 
-export type CompanionStatsResponse = {
-  totalRounds: number;
-  topPairs: CompanionPair[];
-};
+export type CompanionStatsResponse = Req<components["schemas"]["CompanionStatsResponse"]>;
 
 export type AnalysisResponse = {
   numbers: number[];

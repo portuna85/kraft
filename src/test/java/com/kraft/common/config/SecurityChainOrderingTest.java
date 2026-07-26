@@ -3,6 +3,7 @@ package com.kraft.common.config;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.kraft.Application;
@@ -51,7 +52,14 @@ class SecurityChainOrderingTest {
         mockMvc.perform(get("/api/v1/community/notifications"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(header().string("Content-Type", "application/json;charset=UTF-8"))
-                .andExpect(cookie().doesNotExist("JSESSIONID"));
+                .andExpect(cookie().doesNotExist("JSESSIONID"))
+                // B-02: 인증 실패도 다른 오류 경로와 동일한 ApiErrorResponse 계약을 지키는지 확인.
+                .andExpect(jsonPath("$.code").value("COMMUNITY_LOGIN_REQUIRED"))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.error").value("Unauthorized"))
+                .andExpect(jsonPath("$.message").isNotEmpty())
+                .andExpect(jsonPath("$.timestamp").isNotEmpty())
+                .andExpect(jsonPath("$.path").value("/api/v1/community/notifications"));
     }
 
     @Test

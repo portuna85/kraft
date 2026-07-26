@@ -1,7 +1,6 @@
 package com.kraft.common.config;
 
 import java.util.List;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,13 +11,17 @@ import org.springframework.web.filter.CorsFilter;
 @Configuration
 public class CorsConfig {
 
-    @Value("${kraft.public-base-url:}")
-    private String publicBaseUrl;
+    private final PublicBaseUrlProperties publicBaseUrlProperties;
+
+    public CorsConfig(PublicBaseUrlProperties publicBaseUrlProperties) {
+        this.publicBaseUrlProperties = publicBaseUrlProperties;
+    }
 
     // 허용 출처 목록: kraft.public-base-url이 설정된 경우 그 값만 허용.
     // 미설정 시 "*" 폴백(로컬 개발용). prod 프로파일에서는 ProdEnvironmentValidator가
     // kraft.public-base-url 필수 설정을 강제하므로 프로덕션에서 "*"가 사용되지 않는다.
     List<String> resolvedOrigins() {
+        String publicBaseUrl = publicBaseUrlProperties.publicBaseUrl();
         return publicBaseUrl != null && !publicBaseUrl.isBlank()
                 ? List.of(publicBaseUrl)
                 : List.of("*");

@@ -160,4 +160,73 @@ class CombinationScorerTest {
     void version_isHeuristicV1() {
         assertThat(CombinationScorer.VERSION).isEqualTo("heuristic-v1");
     }
+
+    // ── 정확한 경계값·가중치 검증 (B-07: 뮤테이션 테스트로 드러난 공백 보완) ──
+    //
+    // 위 테스트들은 전부 "A가 B보다 높다/낮다"는 상대 비교라, 개별 가중치의 부호나
+    // 크기가 조금 바뀌어도(예: -5 → +5, > 31 → >= 31) 다른 항이 차이를 압도해 통과해
+    // 버릴 수 있다. 실제로 뮤테이션 테스트(./gradlew pitest)를 돌려보니 score() 안의
+    // 개별 항 22곳 중 11곳이 이 방식으로는 안 잡혔다. 각 분기를 한 번에 하나씩만
+    // 격리해 정확한 값으로 고정한다. 기준(baseline={11,13,16,18,22,24})은 어떤 분기도
+    // 건드리지 않는 6개 조합으로, score()가 정확히 0을 반환한다.
+    @Nested
+    @DisplayName("개별 분기 정확값 고정(뮤테이션 가드)")
+    class ExactBoundaryValues {
+
+        @Test
+        @DisplayName("32 이상 가산(+3)은 31에서는 발동하지 않고 32에서 정확히 발동한다")
+        void over31Bonus_exactBoundaryAndMagnitude() {
+            assertThat(scorer.score(List.of(11, 13, 16, 18, 22, 31))).isEqualTo(0);
+            assertThat(scorer.score(List.of(11, 13, 16, 18, 22, 32))).isEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("한 자리 숫자 페널티는 정확히 -4다")
+        void singleDigitPenalty_exactMagnitude() {
+            assertThat(scorer.score(List.of(8, 13, 16, 18, 22, 24))).isEqualTo(-4);
+        }
+
+        @Test
+        @DisplayName("5 배수 페널티는 정확히 -2다")
+        void multipleOf5Penalty_exactMagnitude() {
+            assertThat(scorer.score(List.of(10, 13, 16, 18, 22, 24))).isEqualTo(-2);
+        }
+
+        @Test
+        @DisplayName("7 배수 페널티는 정확히 -1이다")
+        void multipleOf7Penalty_exactMagnitude() {
+            assertThat(scorer.score(List.of(13, 16, 18, 22, 24, 28))).isEqualTo(-1);
+        }
+
+        @Test
+        @DisplayName("합계 130 미만(129)은 보너스가 없고, 130에서 정확히 +4 보너스가 발동한다")
+        void sumBonusRange_exactBoundaryAndMagnitude() {
+            assertThat(scorer.score(List.of(13, 16, 18, 24, 27, 31))).isEqualTo(0);
+            assertThat(scorer.score(List.of(13, 16, 22, 24, 26, 29))).isEqualTo(4);
+        }
+
+        @Test
+        @DisplayName("합계 100 미만 페널티(-5)는 99에서 발동하고 100에서는 발동하지 않는다")
+        void sumPenaltyRange_exactBoundaryAndMagnitude() {
+            // 두 조합 모두 18·19가 연속(-1 공통)이라 그 부분은 상쇄되고, sum<100 분기
+            // 자체의 경계와 크기(-5)만 델타로 드러난다.
+            assertThat(scorer.score(List.of(11, 13, 16, 18, 19, 22))).isEqualTo(-6); // 합계 99: -5(합계) -1(연속)
+            assertThat(scorer.score(List.of(11, 13, 16, 18, 19, 23))).isEqualTo(-1); // 합계 100: -1(연속만)
+        }
+
+        @Test
+        @DisplayName("아무 분기도 건드리지 않는 중립 조합은 정확히 0점이다")
+        void neutralCombo_isExactlyZero() {
+            assertThat(scorer.score(List.of(11, 13, 16, 18, 22, 24))).isEqualTo(0);
+        }
+
+        @Test
+        @DisplayName("합계 220은 보너스 구간에 포함되고 221은 포함되지 않는다(상한 경계)")
+        void sumBonusUpperBoundary_isInclusiveAt220() {
+            // 두 조합 모두 32 이상 번호 5개(+15 공통)로 맞춰, 합계 상한 경계(<=220)의
+            // 포함 여부와 크기(+4)만 델타로 드러나게 한다.
+            assertThat(scorer.score(List.of(26, 33, 37, 39, 41, 44))).isEqualTo(19); // 합계 220: +15 +4
+            assertThat(scorer.score(List.of(26, 34, 37, 39, 41, 44))).isEqualTo(15); // 합계 221: +15만
+        }
+    }
 }

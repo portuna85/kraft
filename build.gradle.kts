@@ -4,6 +4,7 @@ plugins {
     jacoco
     checkstyle
     id("com.github.spotbugs") version "6.5.6"
+    id("info.solidsoft.pitest") version "1.19.0"
 }
 
 group = "com.kraft"
@@ -52,6 +53,7 @@ dependencies {
     implementation("net.javacrumbs.shedlock:shedlock-spring:7.7.0")
     implementation("net.javacrumbs.shedlock:shedlock-provider-jdbc-template:7.7.0")
     implementation("io.github.resilience4j:resilience4j-spring-boot4:2.4.0")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor:4.1.0")
     runtimeOnly("org.mariadb.jdbc:mariadb-java-client")
 
@@ -70,6 +72,8 @@ dependencies {
     testImplementation(platform("org.testcontainers:testcontainers-bom:2.0.5"))
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")
     testImplementation("org.testcontainers:testcontainers-mariadb")
+    testImplementation("com.tngtech.archunit:archunit-junit5:1.4.2")
+    testImplementation("org.pitest:pitest-junit5-plugin:1.2.3")
 }
 
 tasks.withType<Test> {
@@ -228,4 +232,26 @@ spotbugs {
 tasks.withType<com.github.spotbugs.snom.SpotBugsTask> {
     reports.create("html") { required = true }
     reports.create("xml") { required = false }
+}
+
+// ── Mutation testing (B-07) ─────────────────────────────────────────────────
+// 라인 커버리지는 "실행됐다"만 보고 "검증됐다"는 못 본다 — 로또 검증·등수처럼 값이
+// 하나만 틀려도 실제 돈(당첨 판정)에 영향을 주는 소형 순수 로직에 한해 뮤테이션
+// 테스트를 붙인다. 전체 코드베이스에 걸면 느리고 signal 대비 비용이 크므로,
+// 완료 조건이 예시로 든 "로또 검증·등수·추천 제약"에 해당하는 클래스만 좁혀서 돈다.
+pitest {
+    junit5PluginVersion = "1.2.3"
+    targetClasses = listOf(
+        "com.kraft.common.lotto.LottoNumbersValidator",
+        "com.kraft.common.lotto.LottoRank",
+        "com.kraft.common.lotto.LottoNumberCodec",
+        "com.kraft.recommend.CombinationScorer"
+    )
+    targetTests = listOf(
+        "com.kraft.common.lotto.*",
+        "com.kraft.recommend.*"
+    )
+    outputFormats = listOf("HTML")
+    timestampedReports = false
+    threads = 4
 }

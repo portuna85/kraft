@@ -9,6 +9,7 @@ groups:
         annotations:
           summary: "KRAFT backend is down"
           description: "Backend has been unreachable for more than 1 minute."
+          runbook: "docker compose -f docker-compose.prod.yml logs --tail=200 backend; docker compose -f docker-compose.prod.yml ps backend"
 
       - alert: HighErrorRate
         expr: |
@@ -20,6 +21,7 @@ groups:
         annotations:
           summary: "High 5xx error rate ({{ $value | humanizePercentage }})"
           description: "Backend 5xx rate exceeded 5% for 2 minutes."
+          runbook: "docker compose -f docker-compose.prod.yml logs --tail=200 backend | grep -i error; Grafana에서 status=~\"5..\" 대시보드로 어느 경로가 원인인지 확인"
 
       - alert: SlowResponseTime
         expr: |
@@ -32,6 +34,7 @@ groups:
         annotations:
           summary: "P95 response time > 2s"
           description: "95th percentile response time has exceeded 2 seconds for 5 minutes."
+          runbook: "Grafana에서 어느 경로/DB 쿼리가 느려졌는지 확인; HikariCP 커넥션 풀 포화(kraft_ops 대시보드) 여부 확인"
 
       - alert: HighHeapUsage
         expr: |
@@ -43,6 +46,7 @@ groups:
         annotations:
           summary: "JVM heap usage > 85%"
           description: "JVM heap memory utilisation has been above 85% for 5 minutes."
+          runbook: "GC 로그·heap dump 확인 필요 시 docker compose exec backend jcmd 1 GC.heap_info; 지속되면 backend 재기동 고려"
 
       - alert: KraftLottoDataStale
         expr: kraft_lotto_data_stale_days{job="kraft-backend"} >= 1
@@ -52,6 +56,7 @@ groups:
         annotations:
           summary: "KRAFT Lotto 데이터가 최신 회차보다 지연됨"
           description: "kraft_lotto_data_stale_days가 1일 이상 지속됨. 최신 회차={{ $labels.instance }}, 자동 수집 또는 외부 소스 점검 필요."
+          runbook: "kraft_lotto_external_collect_failures_total 추이 확인; scripts/server의 수집 스케줄러 로그 확인 후 필요 시 /ops에서 수동 수집 트리거"
 
       - alert: KraftLottoWinningDataMissing
         expr: kraft_lotto_winning_data_present{job="kraft-backend"} == 0
@@ -61,6 +66,7 @@ groups:
         annotations:
           summary: "로또 당첨번호 DB가 완전히 비어 있음"
           description: "kraft_lotto_winning_data_present가 15분 이상 0을 유지함. staleDays가 0으로 나와 겉으로는 최신처럼 보이므로 이 지표로만 감지된다 — 초기 시딩 실패 또는 DB 손상 가능성."
+          runbook: "SELECT COUNT(*) FROM winning_numbers로 실제 DB 상태 확인; 비어있다면 scripts/db-restore-drill.sh로 최근 백업 복원 가능성부터 확인"
 
       - alert: KraftLottoStatisticsLagging
         expr: kraft_lotto_latest_round{job="kraft-backend"} - kraft_lotto_statistics_projected_round{job="kraft-backend"} >= 1
@@ -70,6 +76,7 @@ groups:
         annotations:
           summary: "통계 summary가 최신 회차보다 뒤처짐"
           description: "kraft_lotto_latest_round와 kraft_lotto_statistics_projected_round의 차이가 6시간 이상 1 이상 유지됨. 수동 보정 이벤트 발행 실패나 재조정 스케줄러 점검 필요."
+          runbook: "statistics_summary_rebuild_total{outcome=\"failure\"} 확인; /ops에서 summary 재구축 수동 트리거"
 
       - alert: KraftLottoExternalCollectFailing
         expr: increase(kraft_lotto_external_collect_failures_total{job="kraft-backend"}[1h]) >= 3
@@ -79,6 +86,7 @@ groups:
         annotations:
           summary: "외부 회차 수집이 반복 실패 중"
           description: "최근 1시간 동안 외부 회차 수집 실패가 3회 이상 발생함."
+          runbook: "docker compose -f docker-compose.prod.yml logs backend | grep -i 'external.*collect'; 외부 소스 URL·응답 스키마 변경 여부 확인"
 
   - name: kraft_recommend
     rules:
@@ -90,6 +98,7 @@ groups:
         annotations:
           summary: "추천 이력 데이터가 준비되지 않음"
           description: "kraft_lotto_history_ready가 10분 이상 0을 유지함. 추천 API가 503으로 거절 중일 수 있음. kraft_lotto_history_data_present가 0이면 이력이 완전히 비어 있는 것이고, 1이면 1회부터 최신까지 중간에 누락된 회차가 있는 것이다."
+          runbook: "kraft_lotto_history_data_present와 kraft_lotto_history_first_missing_round 확인해 완전 결손인지 부분 누락인지 판별 후 백필 필요 여부 결정"
 
       - alert: KraftLottoRecommendHighErrorRate
         expr: |
@@ -101,6 +110,7 @@ groups:
         annotations:
           summary: "추천 API 실패율 5% 초과"
           description: "최근 10분 추천 요청 대비 실패 비율이 5%를 넘는 상태가 5분 이상 지속됨."
+          runbook: "kraft_lotto_history_ready와 함께 확인 — 이력 미준비로 인한 fail-closed 거부인지, 다른 원인인지 구분"
 
       - alert: KraftLottoRecommendHighCollisionRate
         expr: rate(kraft_lotto_recommend_historical_collisions_total{job="kraft-backend"}[10m]) > 5
@@ -110,6 +120,7 @@ groups:
         annotations:
           summary: "추천 생성 시 과거 1등 충돌이 급증"
           description: "과거 1등 조합과의 충돌율이 높음. 제외 번호 조건이 지나치게 좁을 가능성이 있음."
+          runbook: "요청 패턴(제외 번호 개수 분포) 확인 — 클라이언트가 비정상적으로 많은 번호를 제외 요청하는지 점검"
 
       - alert: KraftLottoRevalidateFailing
         expr: increase(kraft_lotto_revalidate_failures_total{job="kraft-backend"}[1h]) >= 5
@@ -119,6 +130,7 @@ groups:
         annotations:
           summary: "ISR revalidation 요청이 반복 실패 중"
           description: "최근 1시간 동안 revalidation 요청 실패가 5회 이상 발생함. web 컨테이너 또는 revalidate secret 점검 필요."
+          runbook: "docker compose -f docker-compose.prod.yml logs web | grep -i revalidate; KRAFT_REVALIDATE_SECRET 양쪽(backend/web) 일치 여부 확인"
 
   - name: kraft_ops
     rules:
@@ -130,6 +142,7 @@ groups:
         annotations:
           summary: "통계 summary 재구축이 실패함"
           description: "최근 1시간 동안 summary rebuild가 실패로 기록됨."
+          runbook: "docker compose -f docker-compose.prod.yml logs backend | grep -i 'summary.*rebuild'로 예외 스택 확인"
 
       - alert: KraftAdminLockoutSpike
         expr: increase(kraft_admin_lockout_total{job="kraft-backend"}[15m]) >= 3
@@ -139,6 +152,7 @@ groups:
         annotations:
           summary: "관리자 로그인 lockout이 급증"
           description: "최근 15분 동안 lockout으로 거부된 로그인 시도가 3회 이상 발생함. brute-force 시도 가능성."
+          runbook: "admin_audit_log에서 실패 시도 IP·계정 확인; 필요 시 KRAFT_ADMIN_ALLOWED_CIDR로 접근 자체를 더 좁힘"
 
       - alert: KraftBackupStale
         expr: time() - kraft_backup_last_success_timestamp_seconds > 90000
@@ -148,6 +162,7 @@ groups:
         annotations:
           summary: "DB 백업이 25시간 이상 성공하지 못함"
           description: "kraft_backup_last_success_timestamp_seconds 기준 마지막 성공 백업이 25시간을 초과함."
+          runbook: "crontab -l로 백업 스케줄 등록 확인; bash scripts/db-backup.sh를 서버에서 직접 실행해 실패 원인(디스크 공간 등) 확인"
 
       - alert: NodeFilesystemLowSpace
         expr: |
@@ -159,6 +174,7 @@ groups:
         annotations:
           summary: "서버 디스크 여유 공간이 10% 미만"
           description: "루트 파일시스템 여유 공간이 10% 미만인 상태가 15분 이상 지속됨."
+          runbook: "docker system df && du -sh /var/backups/kraft — 오래된 이미지/백업 정리(백업 보존 정책은 db-backup.sh의 RETENTION_DAYS)"
 
       - alert: CaddyDown
         expr: up{job="caddy"} == 0
@@ -168,6 +184,7 @@ groups:
         annotations:
           summary: "Caddy가 응답하지 않음"
           description: "Caddy admin metrics endpoint가 2분 이상 scrape 실패."
+          runbook: "docker compose -f docker-compose.prod.yml logs --tail=200 caddy; Caddyfile 문법 오류 여부 확인(가장 흔한 원인)"
 
       - alert: PrometheusDown
         expr: up{job="prometheus"} == 0
@@ -177,6 +194,7 @@ groups:
         annotations:
           summary: "Prometheus self-scrape 실패"
           description: "Prometheus 자체 /metrics가 2분 이상 응답하지 않음."
+          runbook: "docker compose -f docker-compose.prod.yml logs prometheus; 이 경보가 안 오면 Grafana에서 직접 up{job=\"prometheus\"} 확인"
 
       - alert: AlertmanagerDown
         expr: up{job="alertmanager"} == 0
@@ -186,6 +204,7 @@ groups:
         annotations:
           summary: "Alertmanager가 응답하지 않음"
           description: "Alertmanager가 2분 이상 scrape 실패. 이 경보 자체가 전달되지 않을 수 있으니 별도 채널로 상태를 확인해야 함."
+          runbook: "docker compose -f docker-compose.prod.yml logs alertmanager; Discord webhook URL 만료 여부 별도 확인(이 경보로는 전달 안 될 수 있음)"
 
   - name: kraft_community
     rules:
@@ -197,6 +216,7 @@ groups:
         annotations:
           summary: "커뮤니티 OAuth 로그인 실패가 급증"
           description: "최근 15분 동안 OAuth 로그인 실패가 10회 이상 발생함. provider({{ $labels.provider }}) 장애나 misconfiguration 가능성."
+          runbook: "provider 상태 페이지 확인(Google/Naver); KRAFT_COMMUNITY_*_CLIENT_ID/SECRET 만료·변경 여부 확인"
 
       - alert: KraftCommunityWriteAbuseSuspected
         expr: |
@@ -208,3 +228,4 @@ groups:
         annotations:
           summary: "커뮤니티 쓰기 API에서 비정상 트래픽 의심"
           description: "CSRF 거부 또는 낙관적 잠금 409가 짧은 시간에 급증함. 어뷰징 시도이거나 클라이언트 버그일 수 있음."
+          runbook: "출처 IP 분포 확인(Grafana); 심하면 CommunityWriteRateLimitFilter의 writeRateLimitPerMinute 임시 하향 조정"

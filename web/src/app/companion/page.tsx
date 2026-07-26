@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { CompanionFilterClient } from "@/components/companion-filter-client";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
 import { getCompanionStats, getPublicBaseUrl } from "@/lib/api";
-import logger from "@/lib/logger";
+import { logCoreDataFailure } from "@/lib/logger";
 
 export const metadata: Metadata = {
   title: "동반 출현",
@@ -20,7 +20,7 @@ export default async function CompanionPage() {
   try {
     stats = await getCompanionStats();
   } catch (error) {
-    logger.error({ err: error }, "동반 출현 통계 조회 실패 — 핵심 데이터 실패로 페이지 오류 처리");
+    logCoreDataFailure(error, "동반 출현 통계 조회 실패 — 핵심 데이터 실패로 페이지 오류 처리");
     throw error;
   }
 

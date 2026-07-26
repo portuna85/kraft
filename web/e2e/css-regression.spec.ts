@@ -2,18 +2,18 @@ import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-// R-19(globals.css 캐스케이드를 3중 구조 → 모바일 퍼스트 2벌로 재편) 작업의 안전망.
+// globals.css 캐스케이드(모바일 퍼스트, 여러 파일로 분할된 구조)의 계산값 회귀 방지망.
 // 실제 앱은 이 e2e 환경에 백엔드가 없어 홈/`/frequency` 등 데이터 페이지가 항상
-// error.tsx를 렌더하므로(§6-2), 그 페이지들의 실제 마크업을 통해 회귀를 잡을 수 없다.
+// error.tsx를 렌더하므로, 그 페이지들의 실제 마크업을 통해 회귀를 잡을 수 없다.
 // 대신 globals.css 원본을 그대로 빈 페이지에 주입하고, 실제 컴포넌트와 동일한 부모-자식
-// 중첩 구조(예: .balls의 부모가 .panel인 것 — R-01 inherit 버그가 바로 이 중첩 때문에
-// 생겼었다)를 가진 최소 마크업으로 계산값을 스냅숏한다. 순수 CSS라 빌드 도구 없이도
-// 브라우저에 그대로 주입 가능하다.
+// 중첩 구조(예: .balls의 부모가 .panel인 것 — 부모의 속성이 의도치 않게 상속되는
+// 버그가 바로 이 중첩 때문에 생길 수 있다)를 가진 최소 마크업으로 계산값을 스냅숏한다.
+// 순수 CSS라 빌드 도구 없이도 브라우저에 그대로 주입 가능하다.
 //
-// R-19 파일 분할 이후 globals.css는 @import만 나열한 매니페스트라, page.addStyleTag로
-// 빈 페이지(about:blank 기반 page.setContent)에 그대로 넣으면 상대 경로 @import를
-// 해석할 기반 URL이 없어 실패한다 — 매니페스트를 직접 읽어 각 @import 대상을
-// 순서대로 이어붙인다(Next 빌드가 하는 일을 테스트에서도 그대로 재현).
+// globals.css는 @import만 나열한 매니페스트라, page.addStyleTag로 빈 페이지(about:blank
+// 기반 page.setContent)에 그대로 넣으면 상대 경로 @import를 해석할 기반 URL이 없어
+// 실패한다 — 매니페스트를 직접 읽어 각 @import 대상을 순서대로 이어붙인다(Next 빌드가
+// 하는 일을 테스트에서도 그대로 재현).
 function loadGlobalsCss(): string {
   const appDir = path.join(__dirname, "../src/app");
   const manifest = readFileSync(path.join(appDir, "globals.css"), "utf8");
@@ -118,12 +118,10 @@ async function snapshot(page: import("@playwright/test").Page, width: number): P
   });
 }
 
-// 골든 마스터: R-19 착수 직전 실측값(390/768/1280px). .companion-item만 예외 —
-// ≥640px에서 gap: inherit로 부모 .companion-list의 gap(6px)을 잘못 상속하던 버그를
-// 이번 R-19 작업에서 함께 고치므로(의도한 14px), 여기는 "현재값"이 아니라 "고친 뒤
-// 값"을 기대치로 박아둔다. 즉 이 테스트는 R-19 작업 착수 시점엔 companion-item 항목만
-// 실패해야 정상이고, 작업 완료 후 전부 통과해야 한다.
-test.describe("globals.css 컴퓨티드 스타일 회귀 방지 (R-19 안전망)", () => {
+// 골든 마스터: 390/768/1280px 각 너비에서 기대하는 계산값. .companion-item은
+// ≥640px에서 gap이 부모 .companion-list의 gap(6px)을 상속하지 않고 자신의 값(14px)을
+// 갖는지가 핵심 — 부모 gap을 잘못 상속하면 이 값이 6px로 나타난다.
+test.describe("globals.css 컴퓨티드 스타일 회귀 방지", () => {
   test("390px(모바일)", async ({ page }) => {
     const s = await snapshot(page, 390);
     expect(s.ballsGap).toBe("6px");
@@ -133,8 +131,8 @@ test.describe("globals.css 컴퓨티드 스타일 회귀 방지 (R-19 안전망)
     expect(s.piPadding).toBe("12px");
     expect(s.pcTextAlign).toBe("left");
     expect(s.ppTextAlign).toBe("left");
-    // 모바일은 1열 스택 레이아웃이라 10px이 의도값(:2196) — 14px은 ≥640px의
-    // 3열 가로 레이아웃(:1358 기본 선언)에서만 적용된다.
+    // 모바일은 1열 스택 레이아웃이라 10px이 의도값 — 14px은 ≥640px의 3열 가로
+    // 레이아웃에서만 적용된다.
     expect(s.ciGap).toBe("10px");
   });
 
@@ -142,8 +140,8 @@ test.describe("globals.css 컴퓨티드 스타일 회귀 방지 (R-19 안전망)
     const s = await snapshot(page, 768);
     expect(s.ballsGap).toBe("10px");
     expect(s.prizeTdPadding).toBe("16px");
-    // R-24: font-size가 --fs-base(clamp(0.92rem, 0.87rem + 0.3vw, 0.98rem))로
-    // 토큰화되면서 ≥640px에서는 상한(0.98rem=15.68px)에 항상 닿는다(의도된 변화).
+    // font-size는 --fs-base(clamp(0.92rem, 0.87rem + 0.3vw, 0.98rem)) 토큰을 쓴다 —
+    // ≥640px에서는 상한(0.98rem=15.68px)에 항상 닿는 게 의도된 값이다.
     expect(s.rankFontSize).toBe("15.68px");
     expect(s.amountFontSize).toBe("20px");
     expect(s.fgGap).toBe("12px");
@@ -158,8 +156,8 @@ test.describe("globals.css 컴퓨티드 스타일 회귀 방지 (R-19 안전망)
     const s = await snapshot(page, 1280);
     expect(s.ballsGap).toBe("10px");
     expect(s.prizeTdPadding).toBe("16px");
-    // R-24: font-size가 --fs-base(clamp(0.92rem, 0.87rem + 0.3vw, 0.98rem))로
-    // 토큰화되면서 ≥640px에서는 상한(0.98rem=15.68px)에 항상 닿는다(의도된 변화).
+    // font-size는 --fs-base(clamp(0.92rem, 0.87rem + 0.3vw, 0.98rem)) 토큰을 쓴다 —
+    // ≥640px에서는 상한(0.98rem=15.68px)에 항상 닿는 게 의도된 값이다.
     expect(s.rankFontSize).toBe("15.68px");
     expect(s.amountFontSize).toBe("20px");
     expect(s.fgGap).toBe("12px");
@@ -184,10 +182,10 @@ test.describe("globals.css 컴퓨티드 스타일 회귀 방지 (R-19 안전망)
   });
 });
 
-// R-21: 브레이크포인트 값이 src/lib/breakpoints.ts(BP)와 globals.css 양쪽에 문자열로
+// 브레이크포인트 값이 src/lib/breakpoints.ts(BP)와 globals.css 양쪽에 문자열로
 // 흩어져 있어 CSS만 바꾸면 JS가 조용히 어긋날 수 있다. CSS가 실제로 쓰는 min-width
 // 리터럴 집합이 BP의 값과 정확히 일치하는지 빌드 없이 정적으로 검증한다.
-test("R-21: CSS의 min-width 브레이크포인트가 breakpoints.ts(BP)와 일치한다", async () => {
+test("CSS의 min-width 브레이크포인트가 breakpoints.ts(BP)와 일치한다", async () => {
   const { BP } = await import("../src/lib/breakpoints");
   const literals = new Set(
     [...CSS.matchAll(/@media\s*\(min-width:\s*(\d+)px\)/g)].map((m) => Number(m[1])),

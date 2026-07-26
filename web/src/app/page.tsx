@@ -5,7 +5,7 @@ import { PrizeTable } from "@/components/prize-table";
 import { DataFreshnessNote } from "@/components/data-freshness-note";
 import { getLatestWinningNumber, getRoundFreshness, type RoundFreshness, type WinningNumber } from "@/lib/api";
 import { formatDrawDate } from "@/lib/format";
-import logger from "@/lib/logger";
+import { logCoreDataFailure } from "@/lib/logger";
 
 // 루트 레이아웃의 title.template("%s | KRAFT Lotto")은 "/" 페이지에는 적용되지 않으므로
 // (검증됨: 다른 페이지는 템플릿이 적용되지만 홈은 적용 안 됨) 접미사를 직접 포함해야 한다.
@@ -43,7 +43,7 @@ export default async function HomePage() {
       getRoundFreshness().catch(() => null),
     ]);
   } catch (error) {
-    logger.error({ err: error }, "최신 당첨번호 조회 실패 — 핵심 데이터 실패로 페이지 오류 처리");
+    logCoreDataFailure(error, "최신 당첨번호 조회 실패 — 핵심 데이터 실패로 페이지 오류 처리");
     throw error;
   }
 

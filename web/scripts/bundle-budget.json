@@ -1,0 +1,47 @@
+{
+  "/": {
+    "maxKB": 43
+  },
+  "/_not-found": {
+    "maxKB": 43
+  },
+  "/status": {
+    "maxKB": 43
+  },
+  "/stats": {
+    "maxKB": 43
+  },
+  "/saved": {
+    "maxKB": 50
+  },
+  "/recommend": {
+    "maxKB": 50
+  },
+  "/ops": {
+    "maxKB": 53
+  },
+  "/info/[slug]": {
+    "maxKB": 43
+  },
+  "/frequency": {
+    "maxKB": 47
+  },
+  "/companion": {
+    "maxKB": 47
+  },
+  "/community": {
+    "maxKB": 43
+  },
+  "/community/write": {
+    "maxKB": 46
+  },
+  "/community/posts/[id]": {
+    "maxKB": 48
+  },
+  "/community/posts/[id]/edit": {
+    "maxKB": 46
+  },
+  "/analysis": {
+    "maxKB": 48
+  }
+}

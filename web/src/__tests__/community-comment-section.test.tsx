@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { CommentSection } from "@/components/community/comment-section";
 import { CommunitySessionProvider } from "@/components/community/community-session-provider";
 
@@ -125,5 +125,287 @@ describe("커뮤니티 댓글 섹션", () => {
     await waitFor(() => {
       expect(screen.getByText("댓글 2개")).toBeInTheDocument();
     });
+  });
+
+  it("로그인하지 않은 사용자에게는 댓글 작성 폼 대신 로그인 안내 문구를 보여준다", async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/session")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ loggedIn: false, userId: null, nickname: null, activeProviders: [] }),
+        });
+      }
+      if (url.includes("/comments")) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(COMMENTS) });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) });
+    });
+
+    renderCommentSection(1);
+
+    await waitFor(() => {
+      expect(screen.getByText("댓글을 작성하려면 로그인이 필요합니다.")).toBeInTheDocument();
+    });
+    expect(screen.queryByLabelText("댓글 작성")).not.toBeInTheDocument();
+    expect(screen.queryAllByRole("button", { name: "답글" })).toHaveLength(0);
+  });
+
+  it("내용이 비어 있으면 등록 버튼이 비활성화되고, 입력하면 활성화된다", async () => {
+    global.fetch = mockFetch();
+
+    renderCommentSection(1);
+
+    const submitButton = await screen.findByRole("button", { name: "등록" });
+    expect(submitButton).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("댓글 작성"), { target: { value: "새 댓글" } });
+    expect(submitButton).toBeEnabled();
+
+    fireEvent.change(screen.getByLabelText("댓글 작성"), { target: { value: "   " } });
+    expect(submitButton).toBeDisabled();
+  });
+
+  it("댓글을 작성하면 입력값을 비우고 목록을 새로고침한다", async () => {
+    let commentsCallCount = 0;
+    let createBody: unknown = null;
+    global.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("/session")) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(SESSION) });
+      }
+      if (init?.method === "POST" && url.includes("/comments")) {
+        createBody = JSON.parse(init.body as string);
+        return Promise.resolve({
+          ok: true,
+          status: 201,
+          json: () => Promise.resolve({ id: 20, targetPage: 0 }),
+        });
+      }
+      if (url.includes("/comments")) {
+        commentsCallCount++;
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(COMMENTS) });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) });
+    });
+
+    renderCommentSection(1);
+
+    fireEvent.change(await screen.findByLabelText("댓글 작성"), { target: { value: "새 댓글 내용" } });
+    fireEvent.click(screen.getByRole("button", { name: "등록" }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("댓글 작성")).toHaveValue("");
+    });
+    expect(createBody).toEqual({ content: "새 댓글 내용", parentId: null });
+    // 초기 로드 1회 + 작성 후 재조회 1회
+    expect(commentsCallCount).toBe(2);
+  });
+
+  it("댓글 작성에 실패하면 오류 메시지를 보여주고 입력값을 지우지 않는다", async () => {
+    global.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("/session")) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(SESSION) });
+      }
+      if (init?.method === "POST" && url.includes("/comments")) {
+        return Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) });
+      }
+      if (url.includes("/comments")) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(COMMENTS) });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) });
+    });
+
+    renderCommentSection(1);
+
+    fireEvent.change(await screen.findByLabelText("댓글 작성"), { target: { value: "실패할 댓글" } });
+    fireEvent.click(screen.getByRole("button", { name: "등록" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("댓글 작성에 실패했습니다.");
+    });
+    expect(screen.getByLabelText("댓글 작성")).toHaveValue("실패할 댓글");
+  });
+
+  it("답글 버튼을 누르면 답글 작성 중 배너가 뜨고, 취소하면 사라진다", async () => {
+    global.fetch = mockFetch();
+
+    renderCommentSection(1);
+
+    fireEvent.click(await screen.findByRole("button", { name: "답글" }));
+    expect(screen.getByText("답글 작성 중")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "취소" }));
+    expect(screen.queryByText("답글 작성 중")).not.toBeInTheDocument();
+  });
+
+  it("본인 댓글의 삭제 버튼을 누르면 확인 후 삭제 요청을 보내고 목록을 새로고침한다", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    let commentsCallCount = 0;
+    let deletedId: number | null = null;
+    global.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("/session")) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(SESSION) });
+      }
+      if (init?.method === "DELETE") {
+        deletedId = Number(url.split("/").pop());
+        return Promise.resolve({ ok: true, status: 204, json: () => Promise.resolve(null) });
+      }
+      if (url.includes("/comments")) {
+        commentsCallCount++;
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(COMMENTS) });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) });
+    });
+
+    renderCommentSection(1);
+
+    fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
+
+    await waitFor(() => {
+      expect(commentsCallCount).toBe(2);
+    });
+    expect(deletedId).toBe(10);
+  });
+
+  it("삭제 확인 창에서 취소하면 삭제 요청을 보내지 않는다", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    const fetchSpy = mockFetch();
+    global.fetch = fetchSpy;
+
+    renderCommentSection(1);
+
+    fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
+
+    expect(fetchSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining("/community/comments/"),
+      expect.anything()
+    );
+  });
+
+  it("댓글 삭제에 실패하면 오류 메시지를 보여준다", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    global.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("/session")) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(SESSION) });
+      }
+      if (init?.method === "DELETE") {
+        return Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) });
+      }
+      if (url.includes("/comments")) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(COMMENTS) });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) });
+    });
+
+    renderCommentSection(1);
+
+    fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("댓글 삭제에 실패했습니다.");
+    });
+  });
+
+  it("페이지가 여러 개면 이전/다음 버튼으로 다른 페이지를 불러온다", async () => {
+    const requestedPages: number[] = [];
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/session")) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(SESSION) });
+      }
+      if (url.includes("/comments")) {
+        const page = Number(new URL(url, "http://localhost").searchParams.get("page"));
+        requestedPages.push(page);
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ ...COMMENTS, page, totalPages: 3 }),
+        });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) });
+    });
+
+    renderCommentSection(1);
+
+    await screen.findByText("1 / 3");
+    expect(screen.getByRole("button", { name: "이전" })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "다음" }));
+    await waitFor(() => {
+      expect(screen.getByText("2 / 3")).toBeInTheDocument();
+    });
+    expect(screen.getByRole("button", { name: "이전" })).toBeEnabled();
+
+    expect(requestedPages).toEqual([0, 1]);
+  });
+
+  it("댓글 목록 조회가 실패하면 백엔드가 준 오류 메시지를 보여준다", async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/session")) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(SESSION) });
+      }
+      if (url.includes("/comments")) {
+        return Promise.resolve({
+          ok: false,
+          status: 500,
+          json: () => Promise.resolve({ message: "일시적인 서버 오류입니다." }),
+        });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) });
+    });
+
+    renderCommentSection(1);
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("일시적인 서버 오류입니다.");
+    });
+  });
+
+  it("댓글 목록 조회 중 네트워크 오류가 나면 일반 오류 문구로 대체한다", async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/session")) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(SESSION) });
+      }
+      if (url.includes("/comments")) {
+        return Promise.reject(new Error("network down"));
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) });
+    });
+
+    renderCommentSection(1);
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("댓글을 불러오지 못했습니다.");
+    });
+  });
+
+  // F-04: 이 컴포넌트의 로딩 useEffect는 [postId]에만 반응하도록 exhaustive-deps를
+  // 의도적으로 억제한다(loadComments는 매 렌더 재생성되는 클로저라 deps에 넣으면 무한
+  // 재조회 루프가 된다). postId가 그대로인 리렌더링에서는 다시 fetch하지 않아야
+  // 이 억제가 안전하다는 것을 증명한다.
+  it("postId가 바뀌지 않으면 리렌더링돼도 댓글을 다시 불러오지 않는다(F-04 exhaustive-deps 억제 근거)", async () => {
+    let commentsCallCount = 0;
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/session")) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(SESSION) });
+      }
+      if (url.includes("/comments")) {
+        commentsCallCount++;
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(COMMENTS) });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) });
+    });
+
+    const { rerender } = renderCommentSection(1);
+    await screen.findByText("최상위 댓글");
+    expect(commentsCallCount).toBe(1);
+
+    rerender(
+      <CommunitySessionProvider>
+        <CommentSection postId={1} />
+      </CommunitySessionProvider>
+    );
+
+    // 리렌더링 직후에도 재조회가 없어야 한다 — 있다면 억제가 감추고 있던 루프 회귀다.
+    expect(commentsCallCount).toBe(1);
   });
 });

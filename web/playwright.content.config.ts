@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// §6-2: playwright.config.ts(기본 설정)는 백엔드가 없다는 전제로 에러 경계·폴백 UI를
+// playwright.config.ts(기본 설정)는 백엔드가 없다는 전제로 에러 경계·폴백 UI를
 // 검증한다(stats-family.spec.ts, status.spec.ts 등). 이 설정은 그 반대 — 서버 컴포넌트가
 // 백엔드를 직접 호출하는 페이지(/, /frequency, /stats, /companion)가 실제 콘텐츠를
 // 렌더한 상태에서만 검증 가능한 것(반응형 오버플로 등)을 다룬다. e2e/fixtures/backend.mjs

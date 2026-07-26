@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "node scripts/start-standalone.mjs",
-    "lint": "eslint src",
+    "lint": "eslint src e2e scripts *.config.ts *.config.mjs",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
@@ -15,29 +15,39 @@
     "test:e2e": "playwright test",
     "test:e2e:content": "playwright test --config=playwright.content.config.ts",
     "test:e2e:ad-overlay": "playwright test --config=playwright.ad-overlay.config.ts",
-    "e2e:serve": "node scripts/start-standalone.mjs"
+    "e2e:serve": "node scripts/start-standalone.mjs",
+    "generate:api-types": "node scripts/generate-api-types.mjs",
+    "verify:api-types": "node scripts/generate-api-types.mjs --verify",
+    "budget:bundle": "node scripts/bundle-budget.mjs",
+    "budget:lighthouse": "node scripts/lighthouse-budget.mjs"
   },
   "dependencies": {
     "next": "16.2.11",
     "pino": "^10.3.1",
     "pino-rotating-file-stream": "^0.0.2",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "web-vitals": "^6.0.0"
   },
   "engines": {
     "node": ">=24"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@playwright/test": "^1.61.0",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^26.1.1",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "@vitest/coverage-v8": "^4.1.8",
+    "chrome-launcher": "^1.2.1",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.11",
     "jsdom": "^29.1.1",
+    "lighthouse": "^13.4.1",
+    "openapi-typescript": "^7.13.0",
     "subset-font": "^2.5.0",
     "typescript": "6.0.3",
     "vitest": "^4.1.8"

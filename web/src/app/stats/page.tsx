@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
 import { getPatternStats, getPublicBaseUrl, type PatternBucket } from "@/lib/api";
-import logger from "@/lib/logger";
+import { logCoreDataFailure } from "@/lib/logger";
 
 export const metadata: Metadata = {
   title: "패턴 통계",
@@ -62,7 +62,7 @@ export default async function StatsPage() {
   try {
     stats = await getPatternStats();
   } catch (error) {
-    logger.error({ err: error }, "패턴 통계 조회 실패 — 핵심 데이터 실패로 페이지 오류 처리");
+    logCoreDataFailure(error, "패턴 통계 조회 실패 — 핵심 데이터 실패로 페이지 오류 처리");
     throw error;
   }
 

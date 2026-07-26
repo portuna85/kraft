@@ -49,6 +49,10 @@ export function CommentSection({ postId }: { postId: number }) {
       });
   };
 
+  // F-04: loadComments는 매 렌더 새로 만들어지는 클로저라 deps에 넣으면 그 자체가
+  // 매번 "바뀐 의존성"이 되어 무한 재조회 루프가 된다. 오직 postId가 바뀔 때만
+  // 다시 불러오면 되므로 postId만 감시한다(회귀 테스트: community-comment-section.test.tsx
+  // "postId가 바뀌지 않으면 리렌더링돼도 댓글을 다시 불러오지 않는다").
   useEffect(() => {
     loadComments();
     // eslint-disable-next-line react-hooks/exhaustive-deps

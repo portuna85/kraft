@@ -1,0 +1,20 @@
+{
+  "/": {
+    "maxLcpMs": 404,
+    "maxClsScore": 0.189,
+    "maxTbtMs": 0,
+    "minPerformanceScore": 85
+  },
+  "/recommend": {
+    "maxLcpMs": 216,
+    "maxClsScore": 0.057,
+    "maxTbtMs": 0,
+    "minPerformanceScore": 90
+  },
+  "/frequency": {
+    "maxLcpMs": 138,
+    "maxClsScore": 0.05,
+    "maxTbtMs": 0,
+    "minPerformanceScore": 90
+  }
+}

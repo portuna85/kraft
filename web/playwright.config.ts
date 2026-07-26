@@ -4,12 +4,13 @@ import { defineConfig, devices } from "@playwright/test";
 // 브라우저 fetch를 라우트 모킹으로 가로채 검증하고, 서버 컴포넌트 페이지(/, /frequency 등)는
 // 백엔드가 없다는 전제로 에러 경계(error.tsx)·폴백 UI가 정상 렌더되는지를 검증한다
 // (stats-family.spec.ts, status.spec.ts 등). responsive.spec.ts의 오버플로 검사도 현재
-// 이 상태(에러 화면) 기준이라는 한계가 있다 — docs/improvement.md §6-2, 백엔드 픽스처를
-// 도입해 정상 상태까지 커버하려면 테스트별로 백엔드 상태를 분리할 방법이 필요해 별도 작업으로 남겨둔다.
+// 이 상태(에러 화면) 기준이다 — 실콘텐츠 상태의 오버플로는 픽스처 백엔드를 쓰는
+// playwright.content.config.ts(e2e/content/**)가 별도로 검증한다.
 export default defineConfig({
   testDir: "./e2e",
-  // e2e/content/**(§6-2, 픽스처 백엔드 전제)·e2e/ad-overlay/**(§6-5, 광고 env 빌드 전제)는
-  // 각각 전용 설정에서만 돌린다 — 이 설정(백엔드 없음, 광고 env 없음)으로 돌리면 항상 실패한다.
+  // e2e/content/**(픽스처 백엔드 전제, playwright.content.config.ts)·e2e/ad-overlay/**
+  // (광고 env 빌드 전제, playwright.ad-overlay.config.ts)는 각각 전용 설정에서만 돌린다 —
+  // 이 설정(백엔드 없음, 광고 env 없음)으로 돌리면 항상 실패한다.
   testIgnore: ["content/**", "ad-overlay/**"],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,

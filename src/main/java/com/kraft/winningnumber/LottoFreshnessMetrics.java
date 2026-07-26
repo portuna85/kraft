@@ -16,6 +16,9 @@ import org.springframework.stereotype.Component;
  * 운영 데이터 신선도를 Prometheus gauge로 노출한다. 값은 항상 DB 최신 상태를 반영하되,
  * 동일 scrape 안에서 gauge 3개가 각각 조회하는 중복 쿼리를 막기 위해 짧은 TTL로만 결과를
  * 재사용한다(scrape 주기 15초 대비 무시할 수 있는 지연).
+ * NOTE: 인스턴스별 상태이지만 여기서는 문제가 되지 않는 설계다 — Prometheus가 인스턴스별로
+ * 스크랩해 집계하므로, 수평 확장 시 인스턴스 수가 늘어나도 공유 저장소 없이 그대로
+ * 작동한다(다른 인메모리 상태와 달리 인스턴스 간 일치가 애초에 요구되지 않는다).
  */
 @Component
 public class LottoFreshnessMetrics {

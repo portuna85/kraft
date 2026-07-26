@@ -32,6 +32,8 @@ ALLOWED_VARS=(
   KRAFT_COMMUNITY_NAVER_CLIENT_ID KRAFT_COMMUNITY_NAVER_CLIENT_SECRET
 )
 
+# shellcheck disable=SC2016 # 작은따옴표가 의도적 — ${VAR} 리터럴을 그대로 printf에 넘겨야
+# envsubst가 치환 대상 목록으로 해석한다. 지금 이 셸에서 전개되면 안 된다.
 substitution_list=$(printf '${%s} ' "${ALLOWED_VARS[@]}")
 # shellcheck disable=SC2086 # substitution_list는 envsubst가 요구하는 공백 구분 목록 형태라 unquoted 확장이 의도된 것
 envsubst "$substitution_list" < "$TEMPLATE" > "$OUTPUT"

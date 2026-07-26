@@ -22,6 +22,11 @@ export function PostForm(props: CreateMode | EditMode) {
     session?.loggedIn && (props.mode === "create" || session.userId === props.ownerId)
   );
 
+  // F-04: router와 props는 매 렌더 새 참조라 deps에 넣으면 렌더될 때마다 이 인가
+  // 판단이 재실행돼 router.replace/push가 반복 호출된다. 리다이렉트 여부는 오직
+  // loading·session이 바뀔 때만 다시 판단하면 되므로 그 둘만 감시한다(회귀 테스트:
+  // community-post-form.test.tsx "session이 바뀌지 않으면 입력값 변경으로 리렌더링돼도
+  // 리다이렉트를 다시 판단하지 않는다").
   useEffect(() => {
     if (loading || !session) return;
     if (!session.loggedIn) {

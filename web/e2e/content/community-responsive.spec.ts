@@ -2,10 +2,10 @@ import { test, expect } from "@playwright/test";
 import { expectNoOverflow } from "../lib/expect-no-overflow";
 import { gotoAndWaitForRealContent } from "../lib/goto-real-content";
 
-// §9 제안 2/4 (docs/improvement.md): R-30·R-31·R-32는 뷰포트 스냅숏 하나면 잡혔을
-// 결함이었다 — /community* 라우트에는 responsive/dark/text-zoom 검사가 전혀 없었다.
-// 이 스펙은 §6-2 픽스처 백엔드(playwright.content.config.ts)로 실콘텐츠를 렌더한 뒤,
-// 익명 상태와 로그인 상태(page.route로 세션 목킹) 양쪽에서 오버플로·터치 타깃을 검사한다.
+// /community* 라우트는 뷰포트 스냅숏 하나만 있어도 잡혔을 반응형 결함이 방치되기
+// 쉬운 영역이었다 — 이 스펙은 픽스처 백엔드(playwright.content.config.ts)로 실콘텐츠를
+// 렌더한 뒤, 익명 상태와 로그인 상태(page.route로 세션 목킹) 양쪽에서 오버플로·터치
+// 타깃을 검사한다.
 const WIDTHS = [320, 360, 390, 768] as const;
 
 for (const width of WIDTHS) {

@@ -97,6 +97,15 @@ management:
       probes:
         enabled: true
 
+# 계약(B-01): pathsToMatch를 패키지가 아닌 경로 기준으로 잡는다. com.kraft.ops 패키지에는
+# 공개 API인 InfoController(/api/v1)와 토큰 가드인 OpsController(/ops)가 같이 있어 패키지
+# 기준 스캔은 InfoController까지 실수로 빠뜨릴 수 있다. 경로 기준이면 /ops, /admin,
+# /actuator, /oauth2, /login, /logout은 자동으로 제외되고 /api/**만 정확히 포함된다.
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  pathsToMatch: /api/**
+
 resilience4j:
   circuitbreaker:
     instances:

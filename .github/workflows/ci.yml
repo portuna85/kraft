@@ -205,6 +205,37 @@ jobs:
       - name: Check no removed features
         run: bash scripts/check-no-removed-features.sh
 
+  shellcheck-guard:
+    name: Shellcheck Guard (C-05)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+      - name: Shellcheck active scripts
+        # scripts/archive/**는 완료된 일회성 마이그레이션의 불변 이력이라 제외한다 —
+        # 지금 다시 실행될 일이 없는 스크립트를 계속 린트 대상으로 두면 신호 대 잡음비만 나빠진다.
+        run: |
+          mapfile -t ACTIVE_SCRIPTS < <(find scripts -name '*.sh' -not -path 'scripts/archive/*')
+          shellcheck "${ACTIVE_SCRIPTS[@]}"
+
+  container-hardening-guard:
+    name: Container Hardening Guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+      - name: Check container hardening matrix (C-03)
+        run: node scripts/check-container-hardening.mjs
+
+  env-drift-guard:
+    name: Env Var Drift Guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+      - name: Check env var drift (C-02)
+        run: bash scripts/check-env-drift.sh
+
   docker-publish-backend:
     name: Docker Publish (backend)
     runs-on: ubuntu-latest
@@ -349,7 +380,7 @@ jobs:
   promote:
     name: Promote to latest
     runs-on: ubuntu-latest
-    needs: [security-scan-backend, security-scan-web, removed-feature-guard]
+    needs: [security-scan-backend, security-scan-web, removed-feature-guard, env-drift-guard, container-hardening-guard, shellcheck-guard]
     if: github.ref == 'refs/heads/main'
     timeout-minutes: 10
     permissions:

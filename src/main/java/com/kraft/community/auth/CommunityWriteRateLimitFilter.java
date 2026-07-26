@@ -31,6 +31,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * 전역 서블릿 필터로 한 번 더 실행되어(AdminSecurityConfig의 adminLoginCsrfRedirectFilter와
  * 동일한 이유) 카운트가 두 번 증가한다. CommunitySecurityConfig가 직접 new로 생성해 체인에만
  * 끼워 넣는다.
+ * NOTE: Caffeine 기반 — 단일 인스턴스 전용. 인스턴스마다 독립된 카운터를 가지므로 수평
+ * 확장 시 사용자당 실효 한도가 인스턴스 수만큼 배로 늘어난다(로드밸런서가 같은 사용자를
+ * 매번 다른 인스턴스로 보낼 경우). 인스턴스 간 공유가 필요해지면 Redis 전환 필요.
  */
 public class CommunityWriteRateLimitFilter extends OncePerRequestFilter {
 

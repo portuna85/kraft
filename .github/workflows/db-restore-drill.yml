@@ -1,0 +1,43 @@
+name: DB Restore Drill
+
+# C-04: 백업이 실제로 복원 가능한지 사람이 기억해서 수동으로 돌리는 대신 주기적으로
+# 자동 검증한다. scripts/db-restore-drill.sh는 mariadb 컨테이너 안에 임시 DB를 만들어
+# 최신 백업을 복원하고 필수 테이블에 행이 있는지 확인한 뒤 임시 DB를 지운다 —
+# 운영 데이터베이스 자체는 건드리지 않는다(읽기 전용 검증).
+on:
+  schedule:
+    # 매주 월요일 04:00 UTC(한국시간 13:00) — 배포 트래픽이 적은 시간대.
+    - cron: "0 4 * * 1"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  restore-drill:
+    name: Restore drill against production backup
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+    steps:
+      - name: Run restore drill via SSH
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        with:
+          host:     ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key:      ${{ secrets.DEPLOY_SSH_KEY }}
+          port:     ${{ secrets.DEPLOY_PORT }}
+          command_timeout: 10m
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd /srv/kraft
+            COMPOSE_FILE=docker-compose.prod.yml COMPOSE_ENV_FILE=.env.prod \
+              bash scripts/db-restore-drill.sh
+
+      - name: Notify failure
+        if: failure()
+        run: |
+          echo "::error::DB 복원 훈련 실패 — 백업이 실제로 복원 가능한지 확인 필요."
+          echo "::error::런북: scripts/db-restore-drill.sh를 운영 서버에서 직접 실행해 원인을 확인하라."

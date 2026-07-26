@@ -23,6 +23,19 @@ services:
   caddy:
     image: caddy:2-alpine@sha256:77c07d5ebfa5be9fd6c820d2094ae662c9e7eeb9bf98346b7f639900263ee2a2
     container_name: kraft-caddy-local
+    security_opt:
+      - "no-new-privileges:true"
+    read_only: true
+    tmpfs:
+      - "/tmp:size=16m,noexec,nosuid"
+      - "/data:size=16m"
+      - "/config:size=16m"
+    # 80 바인드에 NET_BIND_SERVICE가 필요하다(docker-compose.prod.yml의 caddy와 동일 근거,
+    # 실측 확인됨). 로컬 전용이라 /data·/config는 인증서 영속화가 필요 없어 tmpfs로 충분하다.
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
     depends_on:
       backend:
         condition: service_healthy

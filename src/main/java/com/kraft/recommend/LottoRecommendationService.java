@@ -43,6 +43,11 @@ public class LottoRecommendationService {
     // 한 번에 갱신되는 원자적 스냅샷으로 묶는다. 별개 필드로 뒀다면 refresh 도중 masks만
     // 갱신되고 metadata는 이전 값인 순간이 생겨(비원자적 갱신), ready 판정이 masks 상태와
     // 어긋날 수 있다.
+    // NOTE: 인스턴스별 상태다 — DB가 단일 진실 공급원이라 인스턴스 수가 늘어나도 정합성
+    // 문제는 없지만, 각 인스턴스가 독립적으로 리빌드하므로 롤링 배포로 막 뜬 인스턴스는
+    // 리빌드가 끝나기 전까지 ready()==false라 추천 요청을 fail-closed로 거부한다(요청
+    // 실패지 오답이 아니다). 헬스체크가 이 gauge(kraft_lotto_history_ready)를 트래픽
+    // 유입 조건으로 삼지 않으면 롤링 배포 중 일시적 503이 노출될 수 있다.
     private volatile HistorySnapshot historySnapshot = HistorySnapshot.empty();
 
     record HistorySnapshot(Set<Long> masks, int roundCount, int historyThroughRound,
@@ -191,6 +196,11 @@ public class LottoRecommendationService {
         }
     }
 
+    // B-08: 검증·메트릭·조합·샘플링이 한 메서드에 섞여 있던 것을, 로직은 그대로 두고
+    // "요청 해석 → 실행 가능성 검증 → 샘플링 → 응답 조립" 네 단계로만 나눈다(동작 동일
+    // 보장은 기존 LottoRecommendationServiceTest의 속성 기반 테스트가 검증).
+    private record RequestContext(int count, boolean reduceSharedWinnerRisk, String strategy, Set<Integer> excluded) {}
+
     private RecommendNumbersResponse doRecommend(RecommendNumbersRequest request) {
         HistorySnapshot snapshot = historySnapshot;
         if (!snapshot.ready()) {
@@ -199,56 +209,69 @@ public class LottoRecommendationService {
                             .formatted(snapshot.roundCount(), snapshot.firstMissingRound()));
         }
 
+        RequestContext ctx = parseRequest(request);
+        meterRegistry.counter("kraft_lotto_recommend_requests_total", "strategy", ctx.strategy()).increment();
+        validateFeasibility(ctx, snapshot);
+
+        List<List<Integer>> recommendations = sampleRecommendations(ctx, snapshot);
+
+        String algorithmVersion = ctx.reduceSharedWinnerRisk() ? CombinationScorer.VERSION : RANDOM_ALGORITHM_VERSION;
+        return new RecommendNumbersResponse(recommendations, ctx.strategy(), algorithmVersion, snapshot.historyThroughRound());
+    }
+
+    private RequestContext parseRequest(RecommendNumbersRequest request) {
         int count = request == null || request.count() == null ? 1 : request.count();
         boolean reduceSharedWinnerRisk = request != null && Boolean.TRUE.equals(request.reduceSharedWinnerRisk());
         String strategy = reduceSharedWinnerRisk ? STRATEGY_REDUCE_SHARED_WINNER_RISK : STRATEGY_RANDOM;
-        meterRegistry.counter("kraft_lotto_recommend_requests_total", "strategy", strategy).increment();
         Set<Integer> excluded = request == null || request.excludedNumbers() == null
                 ? Set.of()
                 : new HashSet<>(lottoNumberCodec.normalizeSubset(request.excludedNumbers()));
+        return new RequestContext(count, reduceSharedWinnerRisk, strategy, excluded);
+    }
 
-        if (45 - excluded.size() < 6) {
+    private void validateFeasibility(RequestContext ctx, HistorySnapshot snapshot) {
+        if (45 - ctx.excluded().size() < 6) {
             throw fail(HttpStatus.BAD_REQUEST, "TOO_MANY_EXCLUSIONS",
                     "제외 번호를 적용한 뒤에도 최소 6개 번호가 남아야 합니다.");
         }
 
-        long available = 45L - excluded.size();
+        long available = 45L - ctx.excluded().size();
         long possible = combinations(available, 6);
-        long excludedMask = excludedMaskOf(excluded);
+        long excludedMask = excludedMaskOf(ctx.excluded());
         long compatibleHistoricalCount = snapshot.masks().stream()
                 .filter(mask -> (mask & excludedMask) == 0L)
                 .count();
         long allowedPossible = possible - compatibleHistoricalCount;
-        if (count > allowedPossible) {
+        if (ctx.count() > allowedPossible) {
             throw fail(HttpStatus.BAD_REQUEST, "INSUFFICIENT_UNIQUE_COMBINATIONS",
-                    "요청한 조합 수(" + count + ")가 역대 1등 조합을 제외하고 가능한 고유 조합 수("
+                    "요청한 조합 수(" + ctx.count() + ")가 역대 1등 조합을 제외하고 가능한 고유 조합 수("
                             + allowedPossible + ")를 초과합니다.");
         }
+    }
 
-        List<Integer> candidates = buildCandidates(excluded);
+    private List<List<Integer>> sampleRecommendations(RequestContext ctx, HistorySnapshot snapshot) {
+        List<Integer> candidates = buildCandidates(ctx.excluded());
         List<List<Integer>> recommendations = new ArrayList<>();
         Set<Long> seen = new HashSet<>();
         int attempts = 0;
-        int maxAttempts = count * MAX_ATTEMPTS;
+        int maxAttempts = ctx.count() * MAX_ATTEMPTS;
         Set<Long> historicalMasks = snapshot.masks();
-        while (recommendations.size() < count && attempts++ < maxAttempts) {
-            List<Integer> candidate = reduceSharedWinnerRisk
+        while (recommendations.size() < ctx.count() && attempts++ < maxAttempts) {
+            List<Integer> candidate = ctx.reduceSharedWinnerRisk()
                     ? generateBest(candidates, historicalMasks)
                     : generateOne(candidates, historicalMasks);
             if (candidate != null && seen.add(bitmaskOf(candidate))) {
                 recommendations.add(candidate);
             }
         }
-        // 이론상 가능한 조합 수(possible) 안에서도, 역대 당첨 조합 회피와 중복 회피가 겹쳐
-        // maxAttempts 안에 count만큼 못 채울 수 있다 — 부족분을 조용히 반환하지 않고 명시한다.
-        if (recommendations.size() < count) {
+        // 이론상 가능한 조합 수(allowedPossible) 안에서도, 역대 당첨 조합 회피와 중복 회피가
+        // 겹쳐 maxAttempts 안에 count만큼 못 채울 수 있다 — 부족분을 조용히 반환하지 않고 명시한다.
+        if (recommendations.size() < ctx.count()) {
             throw fail(HttpStatus.BAD_REQUEST, "INSUFFICIENT_UNIQUE_COMBINATIONS",
                     "생성 가능한 고유 조합이 부족합니다(생성 %d / 요청 %d)."
-                            .formatted(recommendations.size(), count));
+                            .formatted(recommendations.size(), ctx.count()));
         }
-
-        String algorithmVersion = reduceSharedWinnerRisk ? CombinationScorer.VERSION : RANDOM_ALGORITHM_VERSION;
-        return new RecommendNumbersResponse(recommendations, strategy, algorithmVersion, snapshot.historyThroughRound());
+        return recommendations;
     }
 
     private ApiException fail(HttpStatus status, String code, String message) {

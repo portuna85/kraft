@@ -5,6 +5,7 @@ import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
 import { CommunitySessionProvider } from "@/components/community/community-session-provider";
 import { StickyMobileAd } from "@/components/ad-unit";
+import { WebVitalsReporter } from "@/components/web-vitals-reporter";
 import { JsonLdWebSite } from "@/components/json-ld";
 import { getPublicBaseUrl } from "@/lib/api";
 import { THEME_INIT_SCRIPT } from "@/lib/csp-inline-scripts";
@@ -98,6 +99,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}
         />
         <JsonLdWebSite baseUrl={baseUrl} nonce={nonce} />
+        <WebVitalsReporter />
         <a href="#main-content" className="skip-nav">본문으로 건너뛰기</a>
         <CommunitySessionProvider>
           <Header />

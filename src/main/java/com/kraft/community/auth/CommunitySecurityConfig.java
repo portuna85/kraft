@@ -3,6 +3,7 @@ package com.kraft.community.auth;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.kraft.common.config.CommunityProperties;
+import com.kraft.common.config.PublicBaseUrlProperties;
 import com.kraft.common.error.ApiErrorResponse;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -12,7 +13,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Instant;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -49,21 +49,21 @@ public class CommunitySecurityConfig {
     // 타입 빈을 노출하지 않는다) — 소규모 고정 DTO 직렬화만 필요하므로 로컬 인스턴스로 충분하다.
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());
 
-    @Value("${kraft.public-base-url:}")
-    private String publicBaseUrl;
-
     private final CommunityOAuth2UserService communityOAuth2UserService;
     private final CommunityAuthEntryPoint communityAuthEntryPoint;
     private final CommunityProperties communityProperties;
+    private final PublicBaseUrlProperties publicBaseUrlProperties;
     private final MeterRegistry meterRegistry;
 
     public CommunitySecurityConfig(CommunityOAuth2UserService communityOAuth2UserService,
                                     CommunityAuthEntryPoint communityAuthEntryPoint,
                                     CommunityProperties communityProperties,
+                                    PublicBaseUrlProperties publicBaseUrlProperties,
                                     MeterRegistry meterRegistry) {
         this.communityOAuth2UserService = communityOAuth2UserService;
         this.communityAuthEntryPoint = communityAuthEntryPoint;
         this.communityProperties = communityProperties;
+        this.publicBaseUrlProperties = publicBaseUrlProperties;
         this.meterRegistry = meterRegistry;
     }
 
@@ -160,6 +160,7 @@ public class CommunitySecurityConfig {
     // 프런트(Next.js)가 별도로 존재하므로(4단계 이식 예정) 로그인/로그아웃 완료 후에는
     // kraft.public-base-url로 돌려보낸다 — 로컬/테스트처럼 값이 없으면 "/"로 대체.
     private String redirectTarget() {
+        String publicBaseUrl = publicBaseUrlProperties.publicBaseUrl();
         return (publicBaseUrl == null || publicBaseUrl.isBlank()) ? "/" : publicBaseUrl;
     }
 }

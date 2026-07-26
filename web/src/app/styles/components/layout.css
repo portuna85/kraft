@@ -105,8 +105,9 @@
 }
 
 /* hamburger button — hidden on desktop */
+/* display는 mobile-unconditional.css(flex)·desktop.css(none)가 소유한다 — 여기서
+   선언해도 항상 그 둘에 덮여써 죽은 코드였다(F-02). */
 .nav-toggle {
-  display: none;
   align-items: center;
   justify-content: center;
   width: 40px;
@@ -151,15 +152,17 @@
   flex: 1 0 auto;
 }
 
+/* border-radius는 layout-mobile-base.css(--card-radius)가 소유한다 — 여기 선언은
+   .panel/.stat-card에 항상 덮여써 죽은 코드였다(F-02). .ops-grid는 자신의 전용 규칙
+   (아래)에서 배경·테두리·radius를 전부 무효화하므로 이 셋 중 이 값들이 실제로
+   쓰이는 건 없다 — .ops-grid가 실제로 쓰는 position/overflow만 전용 규칙으로 옮긴다. */
 .panel,
-.ops-grid,
 .stat-card {
   background-color: var(--surface, rgba(255, 252, 247, 0.92));
   border-width: 1px;
   border-style: solid;
   border-color: var(--line, rgba(29, 26, 23, 0.14));
   box-shadow: var(--shadow, 0 22px 48px rgba(64, 39, 22, 0.1));
-  border-radius: 28px;
   position: relative;
   overflow: hidden;
 }
@@ -188,9 +191,8 @@
   line-height: 1.72;
 }
 
-.page-subtitle {
-  max-width: 46ch;
-}
+/* max-width는 mobile-unconditional.css(none)·tablet.css(560px)가 소유한다 — 여기
+   선언은 항상 덮여써 죽은 코드였다(F-02). */
 
 .result-panel {
   text-align: center;
@@ -300,14 +302,11 @@ button:disabled {
   min-width: 0;
 }
 
-.grid-3 {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
+/* .grid-3의 grid-template-columns는 mobile-unconditional.css(1fr)·tablet.css·
+   desktop.css(각 breakpoint)가 소유한다 — 여기 선언은 항상 덮여써 죽은 코드였다(F-02). */
 
-.panel,
-.stat-card {
-  padding: 26px;
-}
+/* padding은 layout-mobile-base.css(--panel-pad)가 소유한다 — 여기 선언은 항상
+   덮여써 죽은 코드였다(F-02). */
 
 .stat-card {
   gap: 8px;
@@ -362,9 +361,9 @@ button:disabled {
   display: none;
 }
 
+/* width/height는 mobile-unconditional.css(clamp 기반 cqw 계산, R-20)가 소유한다 —
+   여기 고정값 선언은 항상 덮여써 죽은 코드였다(F-02). */
 .ball {
-  width: 50px;
-  height: 50px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
@@ -401,9 +400,9 @@ button:disabled {
   display: none;
 }
 
+/* grid-template-columns는 mobile-unconditional.css(1fr)·tablet.css·desktop.css가 소유한다. */
 .recommend-form {
   display: grid;
-  grid-template-columns: 0.7fr 1.3fr 1fr auto;
   gap: 18px;
   align-items: stretch;
 }
@@ -500,10 +499,10 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible {
   line-height: 1.6;
 }
 
+/* grid-template-columns는 mobile-unconditional.css(1fr)·tablet.css·desktop.css가 소유한다. */
 .recommend-grid {
   margin-top: 24px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -514,6 +513,8 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible {
   border: 0;
   box-shadow: none;
   border-radius: 0;
+  position: relative;
+  overflow: hidden;
 }
 
 .ops-title {
@@ -529,16 +530,15 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible {
   gap: 16px;
 }
 
+/* grid-template-columns는 mobile-unconditional.css(1fr)·tablet.css·desktop.css가 소유한다. */
 .ops-manual-form {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   align-items: end;
 }
 
 .ops-inline {
   display: grid;
-  grid-template-columns: 1fr auto;
   gap: 12px;
   align-items: end;
 }
@@ -550,9 +550,9 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible {
   font-size: var(--fs-base);
 }
 
+/* grid-template-columns는 mobile-unconditional.css(1fr)·tablet.css·desktop.css가 소유한다. */
 .ops-summary-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -642,17 +642,17 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible {
   opacity: 0.55;
 }
 
+/* align-items는 mobile-unconditional.css(flex-start)가 소유한다. */
 .saved-item-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
   gap: 16px;
   flex-wrap: wrap;
 }
 
+/* align-items는 mobile-unconditional.css(flex-start)가 소유한다. */
 .saved-match-info {
   display: flex;
-  align-items: center;
   gap: 8px;
   font-size: 0.82rem;
   color: var(--muted);
@@ -776,8 +776,8 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible {
   color: var(--text);
 }
 
+/* max-width는 mobile-unconditional.css(none)·tablet.css(560px)가 소유한다. */
 .footer-copy {
-  max-width: 70ch;
   font-size: var(--fs-xs);
   margin: 0;
   line-height: 1.5;

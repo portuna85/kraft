@@ -26,6 +26,8 @@ read -r -p "Type 'yes' to continue: " confirm
 [[ "$confirm" == "yes" ]] || { echo "Aborted."; exit 0; }
 
 echo "==> Restoring $BACKUP_FILE into $DB_NAME ..."
+# shellcheck disable=SC2016 # 작은따옴표가 의도적 — 컨테이너 안 sh -c에서 그 환경(mariadb)의
+# $MARIADB_PASSWORD 등으로 전개돼야 하며, 이 스크립트의 셸에서 전개되면 안 된다.
 gunzip -c "$BACKUP_FILE" | "${COMPOSE[@]}" exec -T mariadb sh -c \
   'MYSQL_PWD="$MARIADB_PASSWORD" mariadb -u"$MARIADB_USER" "$MARIADB_DATABASE"'
 

@@ -56,7 +56,10 @@
 .companion-filter-balls .ball:hover {
   opacity: 0.85;
 }
-.ball-selected {
-  border-color: var(--accent) !important;
+/* F-10: !important 대신 .companion-filter-balls .ball(0,2,0)보다 확실히 높은
+   특이도(0,3,0)를 줘서 이긴다 — companion.css가 layout-mobile-base.css보다 먼저
+   로드되므로(globals.css 순서) 특이도를 같게만 맞추면 소스 순서 때문에 여전히 진다. */
+.companion-filter-balls .ball.ball-selected {
+  border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent);
 }

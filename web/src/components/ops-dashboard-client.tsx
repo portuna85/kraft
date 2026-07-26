@@ -195,6 +195,7 @@ export function OpsDashboardClient() {
             <span>운영 토큰</span>
             <input
               type="password"
+              autoComplete="off"
               value={token}
               onChange={(event) => setToken(event.target.value)}
               placeholder="X-Ops-Token 값을 입력하세요"

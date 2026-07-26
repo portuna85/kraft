@@ -1,4 +1,4 @@
-// §6-2 전용 경량 백엔드 픽스처. playwright.content.config.ts가 이 서버를
+// 콘텐츠 e2e 트랙 전용 경량 백엔드 픽스처. playwright.content.config.ts가 이 서버를
 // KRAFT_BACKEND_INTERNAL_URL로 가리켜, 서버 컴포넌트가 백엔드를 직접 호출하는
 // 페이지(/, /frequency, /stats, /companion)가 폴백/에러 화면이 아니라 실제 콘텐츠를
 // 렌더하게 한다. 기존 e2e/*.spec.ts(백엔드 없음 전제)는 별도 설정(playwright.config.ts,

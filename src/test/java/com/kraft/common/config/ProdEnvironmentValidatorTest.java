@@ -47,15 +47,11 @@ class ProdEnvironmentValidatorTest {
     void corsOrigin_neverWildcardInProd() throws Exception {
         // prod에서 ProdEnvironmentValidator가 publicBaseUrl 필수를 강제하므로
         // CorsConfig.resolvedOrigins()는 반드시 명시적 URL을 반환해야 한다.
-        CorsConfig corsConfig = new CorsConfig();
-        Field field = CorsConfig.class.getDeclaredField("publicBaseUrl");
-        field.setAccessible(true);
+        assertThat(new CorsConfig(new PublicBaseUrlProperties("https://kraft.io.kr")).resolvedOrigins())
+                .doesNotContain("*");
 
-        field.set(corsConfig, "https://kraft.io.kr");
-        assertThat(corsConfig.resolvedOrigins()).doesNotContain("*");
-
-        field.set(corsConfig, "");
-        assertThat(corsConfig.resolvedOrigins()).containsExactly("*"); // 개발 환경에서만 허용
+        assertThat(new CorsConfig(new PublicBaseUrlProperties("")).resolvedOrigins())
+                .containsExactly("*"); // 개발 환경에서만 허용
     }
 
     @Test

@@ -32,6 +32,18 @@ services:
       - --max-connections=100
       - --innodb-buffer-pool-size=512M
       - --innodb-log-file-size=128M
+    security_opt:
+      - "no-new-privileges:true"
+    # 엔트리포인트가 root로 시작해 mysql 사용자로 전환하는 gosu 단계에 이 4개가
+    # 필요하다(실측 확인: cap_drop:ALL만 걸면 "failed switching to mysql: operation
+    # not permitted"로 기동 실패). 그 외 권한은 모두 제거.
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - CHOWN
     environment:
       MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
       MARIADB_DATABASE: ${MARIADB_DATABASE:-kraft_lotto}
@@ -65,6 +77,9 @@ services:
     container_name: kraft-backend
     restart: unless-stopped
     init: true
+    read_only: true
+    tmpfs:
+      - "/tmp:size=64m,noexec,nosuid"
     security_opt:
       - "no-new-privileges:true"
     cap_drop:
@@ -184,6 +199,8 @@ services:
     read_only: true
     tmpfs:
       - /tmp
+    cap_drop:
+      - ALL
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9090/-/healthy | grep -q 'Prometheus Server is Healthy'"]
       interval: 30s
@@ -216,6 +233,8 @@ services:
       retries: 3
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
     deploy:
       resources:
         limits:
@@ -241,6 +260,8 @@ services:
     read_only: true
     tmpfs:
       - /tmp
+    cap_drop:
+      - ALL
     deploy:
       resources:
         limits:
@@ -264,6 +285,8 @@ services:
     security_opt:
       - no-new-privileges:true
     read_only: true
+    cap_drop:
+      - ALL
     deploy:
       resources:
         limits:

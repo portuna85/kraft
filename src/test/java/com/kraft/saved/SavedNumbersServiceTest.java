@@ -140,6 +140,22 @@ class SavedNumbersServiceTest {
     }
 
     @Test
+    @DisplayName("[B-05 객체 수준 인가] 실존하는 ID라도 다른 토큰 소유라면 조회되지 않아 삭제할 수 없다")
+    void delete_idBelongsToDifferentTokenHash_throwsNotFoundApiException() {
+        // id=1은 실제로 존재하지만 소유 토큰이 다르다 — 리포지토리 쿼리 자체가
+        // (id, clientTokenHash) 복합 조건이라 다른 토큰으로 조회하면 항상 empty를 반환한다.
+        // id 단독 조회(findById)로 바뀌면 이 테스트가 실패해 회귀를 잡는다.
+        String attackerTokenHash = "attacker-token-hash";
+        given(savedNumberRepository.findByIdAndClientTokenHash(1L, attackerTokenHash))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.delete(attackerTokenHash, 1L))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> assertThat(((ApiException) ex).getStatus()).isEqualTo(HttpStatus.NOT_FOUND));
+        verify(savedNumberRepository).findByIdAndClientTokenHash(1L, attackerTokenHash);
+    }
+
+    @Test
     @DisplayName("번호 목록 조회 시 해시 기준으로 내림차순 반환")
     void list_returnsItemsForTokenHash() {
         String encoded = lottoNumberCodec.toStorageValue(VALID_NUMBERS);

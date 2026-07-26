@@ -10,7 +10,8 @@ import org.springframework.context.annotation.Configuration;
     ExternalLottoProperties.class,
     SecurityProperties.class,
     RevalidateProperties.class,
-    CommunityProperties.class
+    CommunityProperties.class,
+    PublicBaseUrlProperties.class
 })
 public class PropertiesConfig {
 }

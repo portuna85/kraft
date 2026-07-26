@@ -33,7 +33,7 @@ sleep 2
 # overall deploy success via the full smoke-test.sh.
 echo "==> Verifying Caddy is responding after revert..."
 code="000"
-for attempt in 1 2 3 4 5; do
+for _ in 1 2 3 4 5; do
   code=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 5 \
     --resolve "${KRAFT_DOMAIN}:443:127.0.0.1" "https://${KRAFT_DOMAIN}/" 2>/dev/null || echo "000")
   [[ "$code" != "000" ]] && break
