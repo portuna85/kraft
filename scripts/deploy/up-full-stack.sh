@@ -22,7 +22,10 @@ echo "==> [1/4] Alertmanager 설정 렌더링"
 bash scripts/deploy/render-alertmanager.sh
 
 echo "==> [2/4] 전체 스택 빌드·기동 (docker-compose.yml + docker-compose.local.yml)"
-docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+# mariadb를 뺀 나머지(backend/web/모니터링/caddy-local)는 기본 프로필에서 빠져 있다
+# (docker-compose.yml 주석 참고 — IntelliJ 직접 실행 워크플로용 기본값). 이 스크립트는
+# 전체 스택이 목적이므로 --profile full을 명시해야 한다.
+docker compose -f docker-compose.yml -f docker-compose.local.yml --profile full up -d --build
 
 echo "==> [3/4] 컨테이너 준비 대기"
 CADDY_CONTAINER=kraft-caddy-local bash scripts/deploy/wait-readiness.sh

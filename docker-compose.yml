@@ -23,6 +23,10 @@ x-backend-common-env: &backend-common-env
   KRAFT_COMMUNITY_NAVER_CLIENT_ID: ${KRAFT_COMMUNITY_NAVER_CLIENT_ID:-}
   KRAFT_COMMUNITY_NAVER_CLIENT_SECRET: ${KRAFT_COMMUNITY_NAVER_CLIENT_SECRET:-}
 
+# mariadb는 프로필 없음(항상 기동) — IntelliJ에서 backend(8080)/web(3000)을 직접 실행하며
+# 개발할 때 `docker compose up -d`만으로 DB만 뜨게 하기 위함이다. backend/web과 모니터링
+# 스택은 profiles: [full]로 묶어 기본 실행에서 빠지게 하고, 전체 스택이 필요할 때만
+# `docker compose --profile full up -d`로 명시적으로 올린다.
 services:
   mariadb:
     image: mariadb:11.7@sha256:fcc7fcd7114adb5d41f14d116b8aac45f94280d2babfbbb71b4782922ee6d8d4
@@ -71,6 +75,7 @@ services:
       start_period: 20s
 
   backend:
+    profiles: ["full"]
     build:
       context: .
       dockerfile: Dockerfile
@@ -127,6 +132,7 @@ services:
       start_period: 30s
 
   web:
+    profiles: ["full"]
     build:
       context: ./web
       dockerfile: Dockerfile
@@ -182,6 +188,7 @@ services:
       start_period: 30s
 
   prometheus:
+    profiles: ["full"]
     image: prom/prometheus:v3.4.0@sha256:78ed1f9050eb9eaf766af6e580230b1c4965728650e332cd1ee918c0c4699775
     container_name: kraft-prometheus
     restart: unless-stopped
@@ -212,6 +219,7 @@ services:
           memory: 256m
 
   grafana:
+    profiles: ["full"]
     image: grafana/grafana:11.6.1@sha256:52c3e20686b860c6dc1f623811565773cf51eefa378817a4896dfc863c3c82c8
     container_name: kraft-grafana
     restart: unless-stopped
@@ -241,6 +249,7 @@ services:
           memory: 256m
 
   alertmanager:
+    profiles: ["full"]
     image: prom/alertmanager:v0.28.1@sha256:27c475db5fb156cab31d5c18a4251ac7ed567746a2483ff264516437a39b15ba
     container_name: kraft-alertmanager
     restart: unless-stopped
@@ -268,6 +277,7 @@ services:
           memory: 64m
 
   node-exporter:
+    profiles: ["full"]
     image: prom/node-exporter:v1.9.1@sha256:d00a542e409ee618a4edc67da14dd48c5da66726bbd5537ab2af9c1dfc442c8a
     container_name: kraft-node-exporter
     restart: unless-stopped

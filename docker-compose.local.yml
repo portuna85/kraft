@@ -1,19 +1,17 @@
+# docker-compose.yml(base)가 이미 mariadb/backend/web을 127.0.0.1:<port>로 게시한다.
+# 여기서 같은 포트를 다시 선언하면 Compose가 리스트를 병합(append)해 같은 컨테이너가
+# 같은 호스트 포트를 두 번(127.0.0.1 한 번 + 0.0.0.0 한 번) 게시하려다 충돌한다
+# (Windows/WSL2에서 "address already in use"로 재현됨 — Linux에서는 우연히 통과할 수 있음).
+# caddy-local은 같은 kraft-net 안에서 backend:8080/web:3000으로 직접 통신하므로
+# 호스트 포트 게시가 애초에 필요 없다 — 그래서 여기서는 포트 재선언을 하지 않는다.
 services:
-  mariadb:
-    ports:
-      - "3306:3306"
-
   backend:
-    ports:
-      - "8080:8080"
     # OAuth 로그인을 로컬에서 켜려면 SPRING_PROFILES_ACTIVE와 4개 client id/secret 변수를
     # .env에서 설정한다(docker-compose.yml의 backend-common-env가 이미 전달함) — .env.example 참고.
     environment:
       KRAFT_PUBLIC_BASE_URL: ${KRAFT_PUBLIC_BASE_URL:-http://localhost}
 
   web:
-    ports:
-      - "3000:3000"
     environment:
       KRAFT_PUBLIC_BASE_URL: ${KRAFT_PUBLIC_BASE_URL:-http://localhost}
 
@@ -21,6 +19,9 @@ services:
   # http://localhost 하나로 묶는다 — Next 라우트 핸들러 프록시(backend-proxy.ts)는
   # Set-Cookie를 전달하지 않아 이 경로로는 세션 쿠키가 확정적으로 소실되기 때문이다.
   caddy:
+    # backend/web에 의존하므로 그 둘과 같은 profile — 기본 `docker compose up -d`(mariadb만)
+    # 에서는 빠지고, `--profile full`을 줄 때만(OAuth 동일 출처 테스트 등) 함께 뜬다.
+    profiles: ["full"]
     image: caddy:2-alpine@sha256:77c07d5ebfa5be9fd6c820d2094ae662c9e7eeb9bf98346b7f639900263ee2a2
     container_name: kraft-caddy-local
     security_opt:

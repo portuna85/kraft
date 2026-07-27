@@ -166,8 +166,10 @@ Copy-Item .env.example .env
 
 ```bash
 ALERTING_DISABLED=true bash scripts/deploy/render-alertmanager.sh
-docker compose up -d --build
+docker compose --profile full up -d --build
 ```
+
+`mariadb`만 필요하면(백엔드/프론트를 IntelliJ 등에서 직접 실행하는 경우) `--profile full` 없이 `docker compose up -d`만 실행합니다 — backend/web/모니터링/Caddy는 기본 프로필에서 빠져 있습니다.
 
 `ALERTING_DISABLED=true`는 로컬·스테이징에서만 사용합니다. 운영에서는 실제 경보 webhook을 설정해야 합니다.
 
@@ -180,7 +182,7 @@ docker compose up -d --build
 공급자 callback과 세션 쿠키를 운영과 같은 동일 출처 구조로 시험하려면 로컬 Caddy를 사용합니다.
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.local.yml --profile full up -d --build
 ```
 
 접속 주소는 반드시 <http://localhost>를 사용합니다. `.env`에 사용할 공급자의 ID와 secret을 넣고 해당 Spring profile을 활성화합니다.

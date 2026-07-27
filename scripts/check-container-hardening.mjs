@@ -118,7 +118,10 @@ function checkOverlay(label, composeArgs, envFileStub) {
 }
 
 const allFailures = [
-  ...checkOverlay("local", ["-f", "docker-compose.yml", "-f", "docker-compose.local.yml"]),
+  // --profile full: mariadb를 제외한 나머지(backend/web/모니터링/caddy-local)는 기본
+  // 프로필에서 빠져 있다(로컬 IntelliJ 직접 실행 워크플로용) — 이 검증은 전체 서비스를
+  // 대상으로 해야 하므로 명시적으로 full 프로필까지 포함해 렌더링한다.
+  ...checkOverlay("local", ["-f", "docker-compose.yml", "-f", "docker-compose.local.yml", "--profile", "full"]),
   ...checkOverlay("prod", ["-f", "docker-compose.prod.yml"], ".env.community-oauth-flags"),
 ];
 
