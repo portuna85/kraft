@@ -1,0 +1,44 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 50;
+}
+
+.panel {
+  position: fixed;
+  background: var(--color-surface-3);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-6);
+  overflow-y: auto;
+}
+
+.left {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: min(320px, 85vw);
+}
+
+.right {
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: min(320px, 85vw);
+}
+
+.bottom {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 85vh;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding-bottom: max(var(--space-6), env(safe-area-inset-bottom));
+}
+
+.title {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 0 0 var(--space-4);
+}

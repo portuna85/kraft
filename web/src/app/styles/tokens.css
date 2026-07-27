@@ -43,6 +43,68 @@
   --fs-sm: clamp(0.88rem, 0.83rem + 0.3vw, 0.94rem);
   --fs-base: clamp(0.92rem, 0.87rem + 0.3vw, 0.98rem);
   --fs-md: clamp(1.05rem, 0.99rem + 0.35vw, 1.12rem);
+
+  /* ── Phase 1 신규/별칭 토큰(docs/phase0-design-tokens-mapping.md) ──────────
+     기존 토큰은 하나도 이름을 바꾸거나 지우지 않는다 — 아래는 전부 추가만.
+     별칭은 기존 값을 그대로 참조하므로 기존 페이지 시각 변화가 없다. */
+
+  /* 색상 별칭 */
+  --color-canvas: var(--bg);
+  --color-ink: var(--text);
+  --color-muted: var(--muted);
+  --color-brand: var(--accent);
+  --color-brand-strong: var(--accent-strong);
+  --color-surface-1: var(--surface-card-sm);
+  --color-surface-2: var(--surface-card-md);
+  --color-surface-3: var(--surface-card);
+
+  /* 신규 색상 — --bg(#f6f1e8) 대비 직접 계산해 WCAG AA(4.5:1) 확인.
+     상대휘도 L_bg ≈ 0.884 (sRGB 선형화 후 0.2126R+0.7152G+0.0722B). */
+  --color-success: #1b5e20; /* L≈0.083 → 대비 7.00:1 */
+  --color-warning: #8a5a00; /* L≈0.127 → 대비 5.27:1 */
+  --color-danger: #a6231d; /* L≈0.094 → 대비 6.48:1 */
+
+  /* 간격 스케일 — 4px 기반. 기존 --shell-gutter/--panel-pad 등은 유지하되
+     새 프리미티브는 이 스케일만 참조한다. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-9: 36px;
+  --space-10: 40px;
+  --space-11: 44px;
+  --space-12: 48px;
+
+  /* 반경 스케일 — --radius-lg는 기존 --card-radius(20px)와 동일하게 별칭 처리 */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: var(--card-radius);
+  --radius-xl: 28px;
+
+  /* 그림자 — --shadow-1은 기존 --shadow 별칭, --shadow-2는 더 낮은 대비의 2단계 */
+  --shadow-1: var(--shadow);
+  --shadow-2: 0 8px 20px rgba(64, 39, 22, 0.06);
+
+  /* 유동 타입 스케일 확장 — 기존 --fs-2xs~--fs-md(본문·라벨 전용)를 흡수하고
+     제목급까지 확장한다. */
+  --text-xs: var(--fs-2xs);
+  --text-sm: var(--fs-xs);
+  --text-base: var(--fs-base);
+  --text-md: var(--fs-md);
+  --text-lg: clamp(1.2rem, 1.1rem + 0.5vw, 1.35rem);
+  --text-xl: clamp(1.45rem, 1.3rem + 0.75vw, 1.7rem);
+  --text-2xl: clamp(1.75rem, 1.5rem + 1.25vw, 2.2rem);
+  --text-display: clamp(2.1rem, 1.7rem + 2vw, 2.75rem);
+
+  /* 움직임 — reduced-motion.css가 이미 전역으로 0.01ms를 강제하므로
+     별도 reduced-motion 대응 없이 그대로 var(--duration-*)를 쓰면 된다. */
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 240ms;
 }
 
 [data-theme="dark"] {
@@ -70,4 +132,22 @@
   --nav-active-bg:   rgba(255, 255, 255, 0.06);
   --shimmer-highlight: rgba(255, 255, 255, 0.04);
   --ring: rgba(224, 90, 40, 0.2);
+
+  /* Phase 1 색상 별칭 — 다크 값이 라이트와 다르므로 여기서 재선언 */
+  --color-canvas: var(--bg);
+  --color-ink: var(--text);
+  --color-muted: var(--muted);
+  --color-brand: var(--accent);
+  --color-brand-strong: var(--accent-strong);
+  --color-surface-1: var(--surface-card-sm);
+  --color-surface-2: var(--surface-card-md);
+  --color-surface-3: var(--surface-card);
+
+  /* 다크 --bg(#1c1813) 대비 직접 계산. 상대휘도 L_bg ≈ 0.0095. */
+  --color-success: #5fbe6b; /* L≈0.403 → 대비 7.61:1 */
+  --color-warning: #e0a030; /* L≈0.412 → 대비 7.77:1 */
+  --color-danger: #f0715f; /* L≈0.312 → 대비 6.08:1 */
+
+  --shadow-1: var(--shadow);
+  --shadow-2: 0 8px 20px rgba(0, 0, 0, 0.28);
 }

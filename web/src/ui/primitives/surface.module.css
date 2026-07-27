@@ -1,0 +1,19 @@
+.surface {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-2);
+}
+
+.level1 {
+  background: var(--color-surface-1);
+}
+
+.level2 {
+  background: var(--color-surface-2);
+}
+
+.level3 {
+  background: var(--color-surface-3);
+  box-shadow: var(--shadow-1);
+}
