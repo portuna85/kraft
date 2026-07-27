@@ -43,6 +43,9 @@ class LottoRecommendationServiceTest {
     @Mock
     private CombinationScorer combinationScorer;
 
+    @Mock
+    private RecommendationSetHistoryService recommendationSetHistoryService;
+
     private LottoNumberCodec lottoNumberCodec;
     private LottoRecommendationService service;
     private SimpleMeterRegistry meterRegistry;
@@ -72,7 +75,7 @@ class LottoRecommendationServiceTest {
                 .willReturn(List.of(ballsOnly(1, 1, 2, 3, 4, 5, 6)));
         meterRegistry = new SimpleMeterRegistry();
         service = new LottoRecommendationService(lottoNumberCodec, winningNumberRepository, combinationScorer,
-                Clock.systemUTC(), meterRegistry);
+                new BalancedScorer(), recommendationSetHistoryService, Clock.systemUTC(), meterRegistry);
         service.loadHistoricalCombinations();
     }
 
@@ -85,9 +88,9 @@ class LottoRecommendationServiceTest {
         @Test
         @DisplayName("요청한 개수만큼 조합을 반환한다")
         void recommend_returnsRequestedCount() {
-            RecommendNumbersRequest request = new RecommendNumbersRequest(5, null, false);
+            RecommendNumbersRequest request = new RecommendNumbersRequest(5, null, false, null, null);
 
-            RecommendNumbersResponse response = service.recommend(request);
+            RecommendNumbersResponse response = service.recommend(request, null);
 
             assertThat(response.recommendations()).hasSize(5);
         }
@@ -95,7 +98,7 @@ class LottoRecommendationServiceTest {
         @Test
         @DisplayName("요청이 없으면 기본값 1개를 반환한다")
         void recommend_nullRequest_returnsOneCombo() {
-            RecommendNumbersResponse response = service.recommend(null);
+            RecommendNumbersResponse response = service.recommend(null, null);
 
             assertThat(response.recommendations()).hasSize(1);
         }
@@ -103,18 +106,18 @@ class LottoRecommendationServiceTest {
         @Test
         @DisplayName("각 조합은 정확히 6개의 번호를 포함한다")
         void recommend_eachComboHasSixNumbers() {
-            RecommendNumbersRequest request = new RecommendNumbersRequest(3, null, false);
+            RecommendNumbersRequest request = new RecommendNumbersRequest(3, null, false, null, null);
 
-            service.recommend(request).recommendations()
+            service.recommend(request, null).recommendations()
                     .forEach(combo -> assertThat(combo).hasSize(6));
         }
 
         @Test
         @DisplayName("모든 번호는 1~45 범위 내에 있다")
         void recommend_allNumbersInValidRange() {
-            RecommendNumbersRequest request = new RecommendNumbersRequest(3, null, false);
+            RecommendNumbersRequest request = new RecommendNumbersRequest(3, null, false, null, null);
 
-            service.recommend(request).recommendations()
+            service.recommend(request, null).recommendations()
                     .forEach(combo ->
                             assertThat(combo).allMatch(n -> n >= 1 && n <= 45));
         }
@@ -122,9 +125,9 @@ class LottoRecommendationServiceTest {
         @Test
         @DisplayName("각 조합 내 번호는 중복 없이 오름차순으로 정렬된다")
         void recommend_numbersAreSortedAndUnique() {
-            RecommendNumbersRequest request = new RecommendNumbersRequest(3, null, false);
+            RecommendNumbersRequest request = new RecommendNumbersRequest(3, null, false, null, null);
 
-            service.recommend(request).recommendations().forEach(combo -> {
+            service.recommend(request, null).recommendations().forEach(combo -> {
                 assertThat(combo).doesNotHaveDuplicates();
                 assertThat(combo).isSorted();
             });
@@ -133,7 +136,7 @@ class LottoRecommendationServiceTest {
         @Test
         @DisplayName("당첨금 최대화 모드가 아니면 점수 계산기를 호출하지 않는다")
         void recommend_notMaximizePrize_scorerNotCalled() {
-            service.recommend(new RecommendNumbersRequest(3, null, false));
+            service.recommend(new RecommendNumbersRequest(3, null, false, null, null), null);
 
             verify(combinationScorer, never()).score(anyList());
         }
@@ -149,9 +152,9 @@ class LottoRecommendationServiceTest {
         @DisplayName("제외 번호는 추천 조합에 포함되지 않는다")
         void recommend_excludedNumbersAbsentFromResult() {
             List<Integer> excluded = List.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
-            RecommendNumbersRequest request = new RecommendNumbersRequest(3, excluded, false);
+            RecommendNumbersRequest request = new RecommendNumbersRequest(3, excluded, false, null, null);
 
-            service.recommend(request).recommendations()
+            service.recommend(request, null).recommendations()
                     .forEach(combo ->
                             assertThat(combo).doesNotContainAnyElementsOf(excluded));
         }
@@ -167,7 +170,7 @@ class LottoRecommendationServiceTest {
             ); // 40개 제외 → 후보 5개
 
             assertThatThrownBy(() ->
-                    service.recommend(new RecommendNumbersRequest(1, excluded, false))
+                    service.recommend(new RecommendNumbersRequest(1, excluded, false, null, null), null)
             )
                     .isInstanceOf(ApiException.class)
                     .satisfies(ex -> {
@@ -189,7 +192,7 @@ class LottoRecommendationServiceTest {
             );
 
             assertThatThrownBy(() ->
-                    service.recommend(new RecommendNumbersRequest(2, excluded, false))
+                    service.recommend(new RecommendNumbersRequest(2, excluded, false, null, null), null)
             )
                     .isInstanceOf(ApiException.class)
                     .satisfies(ex -> {
@@ -214,7 +217,7 @@ class LottoRecommendationServiceTest {
             given(winningNumberRepository.findAllBalls()).willReturn(List.of(ballsOnly(1, 1, 2, 3, 4, 5, 6)));
             service.loadHistoricalCombinations();
 
-            service.recommend(new RecommendNumbersRequest(5, null, false))
+            service.recommend(new RecommendNumbersRequest(5, null, false, null, null), null)
                     .recommendations()
                     .forEach(combo ->
                             assertThat(combo).isNotEqualTo(List.of(1, 2, 3, 4, 5, 6)));
@@ -224,7 +227,7 @@ class LottoRecommendationServiceTest {
         @DisplayName("역대 당첨 조합 로드 후 변경된 새 회차 이벤트를 받으면 갱신된다")
         void onCollected_dataChanged_refreshesHistoricalCombinations() {
             // 초기: setUp 기본값(회차 1)만 등록된 상태에서도 정상 추천된다
-            assertThat(service.recommend(new RecommendNumbersRequest(1, null, false))
+            assertThat(service.recommend(new RecommendNumbersRequest(1, null, false, null, null), null)
                     .recommendations()).hasSize(1);
 
             // 새 회차 수집 — 기존 회차 1 위에 이어지는 연속 회차(2)이므로 이력은 계속 ready 상태를 유지한다.
@@ -235,7 +238,7 @@ class LottoRecommendationServiceTest {
 
             // 갱신 후 해당 조합 제외 확인 (반복 시도로 확률적 검증)
             for (int i = 0; i < 20; i++) {
-                service.recommend(new RecommendNumbersRequest(1, null, false))
+                service.recommend(new RecommendNumbersRequest(1, null, false, null, null), null)
                         .recommendations()
                         .forEach(combo ->
                                 assertThat(combo).isNotEqualTo(List.of(3, 11, 19, 28, 34, 42)));
@@ -292,7 +295,7 @@ class LottoRecommendationServiceTest {
             given(winningNumberRepository.findAllBalls()).willReturn(List.of());
             service.loadHistoricalCombinations();
 
-            assertThatThrownBy(() -> service.recommend(new RecommendNumbersRequest(1, null, false)))
+            assertThatThrownBy(() -> service.recommend(new RecommendNumbersRequest(1, null, false, null, null), null))
                     .isInstanceOf(ApiException.class)
                     .satisfies(ex -> {
                         ApiException apiEx = (ApiException) ex;
@@ -311,7 +314,7 @@ class LottoRecommendationServiceTest {
             ));
             service.loadHistoricalCombinations();
 
-            assertThatThrownBy(() -> service.recommend(new RecommendNumbersRequest(1, null, false)))
+            assertThatThrownBy(() -> service.recommend(new RecommendNumbersRequest(1, null, false, null, null), null))
                     .isInstanceOf(ApiException.class)
                     .satisfies(ex -> {
                         ApiException apiEx = (ApiException) ex;
@@ -332,7 +335,7 @@ class LottoRecommendationServiceTest {
             ));
             service.loadHistoricalCombinations();
 
-            assertThat(service.recommend(new RecommendNumbersRequest(1, null, false))
+            assertThat(service.recommend(new RecommendNumbersRequest(1, null, false, null, null), null)
                     .recommendations()).hasSize(1);
             assertThat(meterRegistry.get("kraft_lotto_first_missing_round").gauge().value()).isEqualTo(0d);
             assertThat(meterRegistry.get("kraft_lotto_history_ready").gauge().value()).isEqualTo(1d);
@@ -378,7 +381,7 @@ class LottoRecommendationServiceTest {
             service.loadHistoricalCombinations();
 
             assertThatThrownBy(() ->
-                    service.recommend(new RecommendNumbersRequest(1, excluded, false))
+                    service.recommend(new RecommendNumbersRequest(1, excluded, false, null, null), null)
             )
                     .isInstanceOf(ApiException.class)
                     .satisfies(ex -> {
@@ -402,7 +405,7 @@ class LottoRecommendationServiceTest {
             service.setRandomSource(bound -> 0);
 
             assertThatThrownBy(() ->
-                    service.recommend(new RecommendNumbersRequest(1, excluded, false))
+                    service.recommend(new RecommendNumbersRequest(1, excluded, false, null, null), null)
             )
                     .isInstanceOf(ApiException.class)
                     .satisfies(ex -> {
@@ -428,7 +431,7 @@ class LottoRecommendationServiceTest {
             service.loadHistoricalCombinations();
 
             List<List<Integer>> combos = service.recommend(
-                    new RecommendNumbersRequest(10, excluded, false)).recommendations();
+                    new RecommendNumbersRequest(10, excluded, false, null, null), null).recommendations();
 
             assertThat(combos).hasSize(10);
             Set<Long> seenMasks = new HashSet<>();
@@ -464,9 +467,9 @@ class LottoRecommendationServiceTest {
             service.loadHistoricalCombinations();
 
             List<Integer> excluded = List.of(9, 18, 27, 36, 45);
-            RecommendNumbersRequest request = new RecommendNumbersRequest(4, excluded, false);
+            RecommendNumbersRequest request = new RecommendNumbersRequest(4, excluded, false, null, null);
 
-            List<List<Integer>> combos = service.recommend(request).recommendations();
+            List<List<Integer>> combos = service.recommend(request, null).recommendations();
 
             assertThat(combos).hasSize(4);
             Set<Long> seenMasks = new HashSet<>();
@@ -500,7 +503,7 @@ class LottoRecommendationServiceTest {
         @Test
         @DisplayName("당첨금 최대화 모드이면 후보 풀 크기만큼 점수 계산기를 호출한다")
         void recommend_maximizePrize_callsScorerForCandidatePool() {
-            service.recommend(new RecommendNumbersRequest(1, null, true));
+            service.recommend(new RecommendNumbersRequest(1, null, true, null, null), null);
 
             // 조합 1개당 후보 50개 생성 → score 50회 호출
             verify(combinationScorer, atLeast(50)).score(anyList());
@@ -509,7 +512,7 @@ class LottoRecommendationServiceTest {
         @Test
         @DisplayName("당첨금 최대화 모드에서 3세트를 요청하면 점수 계산기를 최소 150회 호출한다")
         void recommend_maximizePrize_multipleCount_callsScorerPerCombo() {
-            service.recommend(new RecommendNumbersRequest(3, null, true));
+            service.recommend(new RecommendNumbersRequest(3, null, true, null, null), null);
 
             verify(combinationScorer, atLeast(150)).score(anyList());
         }
@@ -524,7 +527,7 @@ class LottoRecommendationServiceTest {
                 return combo.stream().mapToInt(Integer::intValue).sum();
             });
 
-            List<Integer> result = service.recommend(new RecommendNumbersRequest(1, null, true))
+            List<Integer> result = service.recommend(new RecommendNumbersRequest(1, null, true, null, null), null)
                     .recommendations().get(0);
 
             ArgumentCaptor<List<Integer>> captor = ArgumentCaptor.forClass(List.class);
@@ -541,7 +544,7 @@ class LottoRecommendationServiceTest {
         @Test
         @DisplayName("당첨금 최대화 모드에서도 반환 조합은 유효한 로또 번호 형식이다")
         void recommend_maximizePrize_returnsValidCombos() {
-            service.recommend(new RecommendNumbersRequest(3, null, true))
+            service.recommend(new RecommendNumbersRequest(3, null, true, null, null), null)
                     .recommendations()
                     .forEach(combo -> {
                         assertThat(combo).hasSize(6);
@@ -556,7 +559,7 @@ class LottoRecommendationServiceTest {
         void recommend_maximizePrize_respectsExcludedNumbers() {
             List<Integer> excluded = List.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
 
-            service.recommend(new RecommendNumbersRequest(3, excluded, true))
+            service.recommend(new RecommendNumbersRequest(3, excluded, true, null, null), null)
                     .recommendations()
                     .forEach(combo ->
                             assertThat(combo).doesNotContainAnyElementsOf(excluded));
@@ -574,10 +577,141 @@ class LottoRecommendationServiceTest {
             Set<List<Integer>> results = new HashSet<>();
             for (int i = 0; i < 20; i++) {
                 results.addAll(service.recommend(
-                        new RecommendNumbersRequest(1, null, true)).recommendations());
+                        new RecommendNumbersRequest(1, null, true, null, null), null).recommendations());
             }
 
             assertThat(results).doesNotContain(List.of(1, 2, 3, 4, 5, 6));
+        }
+    }
+
+    // ── 신규: strategy 필드, 고정 번호, BALANCED 전략 ────────────────────────────
+
+    @Nested
+    @DisplayName("strategy 필드")
+    class StrategyField {
+
+        @Test
+        @DisplayName("strategy=balanced이면 balanced-v1 알고리즘 버전으로 응답한다")
+        void recommend_balancedStrategy_returnsBalancedAlgorithmVersion() {
+            RecommendNumbersRequest request = new RecommendNumbersRequest(3, null, null, "balanced", null);
+
+            RecommendNumbersResponse response = service.recommend(request, null);
+
+            assertThat(response.strategy()).isEqualTo("balanced");
+            assertThat(response.algorithmVersion()).isEqualTo(BalancedScorer.VERSION);
+            assertThat(response.items()).hasSize(3);
+            response.items().forEach(item -> assertThat(item.explanationCodes()).isNotEmpty());
+        }
+
+        @Test
+        @DisplayName("알 수 없는 strategy 값은 400 INVALID_RECOMMENDATION_STRATEGY로 거절된다")
+        void recommend_unknownStrategy_throwsApiException() {
+            RecommendNumbersRequest request = new RecommendNumbersRequest(1, null, null, "not_a_strategy", null);
+
+            assertThatThrownBy(() -> service.recommend(request, null))
+                    .isInstanceOf(ApiException.class)
+                    .satisfies(ex -> {
+                        ApiException apiEx = (ApiException) ex;
+                        assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+                        assertThat(apiEx.getCode()).isEqualTo("INVALID_RECOMMENDATION_STRATEGY");
+                    });
+        }
+
+        @Test
+        @DisplayName("strategy가 reduceSharedWinnerRisk보다 우선한다")
+        void recommend_strategyOverridesLegacyBooleanField() {
+            // reduceSharedWinnerRisk=true지만 strategy=random을 함께 보내면 random이 이긴다
+            RecommendNumbersRequest request = new RecommendNumbersRequest(1, null, true, "random", null);
+
+            RecommendNumbersResponse response = service.recommend(request, null);
+
+            assertThat(response.strategy()).isEqualTo("random");
+            verify(combinationScorer, never()).score(anyList());
+        }
+    }
+
+    @Nested
+    @DisplayName("고정 번호(lockedNumbers)")
+    class LockedNumbers {
+
+        @RepeatedTest(10)
+        @DisplayName("고정 번호는 모든 결과 조합에 포함된다")
+        void recommend_lockedNumbersAlwaysIncluded() {
+            List<Integer> locked = List.of(1, 2, 3);
+            RecommendNumbersRequest request = new RecommendNumbersRequest(3, null, null, null, locked);
+
+            service.recommend(request, null).recommendations()
+                    .forEach(combo -> assertThat(combo).containsAll(locked));
+        }
+
+        @Test
+        @DisplayName("고정 번호가 6개 이상이면 TOO_MANY_LOCKED_NUMBERS로 거절된다")
+        void recommend_tooManyLocked_throwsApiException() {
+            List<Integer> locked = List.of(1, 2, 3, 4, 5, 6);
+            RecommendNumbersRequest request = new RecommendNumbersRequest(1, null, null, null, locked);
+
+            assertThatThrownBy(() -> service.recommend(request, null))
+                    .isInstanceOf(ApiException.class)
+                    .satisfies(ex -> {
+                        ApiException apiEx = (ApiException) ex;
+                        assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+                        assertThat(apiEx.getCode()).isEqualTo("TOO_MANY_LOCKED_NUMBERS");
+                    });
+        }
+
+        @Test
+        @DisplayName("고정 번호와 제외 번호가 겹치면 LOCKED_EXCLUDED_CONFLICT로 거절된다")
+        void recommend_lockedExcludedOverlap_throwsApiException() {
+            RecommendNumbersRequest request =
+                    new RecommendNumbersRequest(1, List.of(1, 2), null, null, List.of(2, 3));
+
+            assertThatThrownBy(() -> service.recommend(request, null))
+                    .isInstanceOf(ApiException.class)
+                    .satisfies(ex -> {
+                        ApiException apiEx = (ApiException) ex;
+                        assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+                        assertThat(apiEx.getCode()).isEqualTo("LOCKED_EXCLUDED_CONFLICT");
+                    });
+        }
+    }
+
+    @Nested
+    @DisplayName("익명 이력 영속화")
+    class AnonymousHistoryPersistence {
+
+        @Test
+        @DisplayName("clientTokenHash가 있으면 추천 세트를 영속화하고 setId를 응답에 채운다")
+        void recommend_withClientTokenHash_persistsAndReturnsSetId() {
+            given(recommendationSetHistoryService.persist(
+                    org.mockito.ArgumentMatchers.eq("hash-1"), org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyInt(),
+                    anyList(), anyList(), org.mockito.ArgumentMatchers.anyList(),
+                    org.mockito.ArgumentMatchers.any()))
+                    .willReturn(42L);
+
+            RecommendNumbersRequest request = new RecommendNumbersRequest(1, null, null, null, null);
+            RecommendNumbersResponse response = service.recommend(request, "hash-1");
+
+            assertThat(response.setId()).isEqualTo(42L);
+            assertThat(response.createdAt()).isNotNull();
+            assertThat(response.items()).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("clientTokenHash가 없으면 영속화하지 않고 setId/items/createdAt이 비어있지 않은 items만 채운다")
+        void recommend_withoutClientTokenHash_skipsPersistence() {
+            RecommendNumbersRequest request = new RecommendNumbersRequest(1, null, null, null, null);
+
+            RecommendNumbersResponse response = service.recommend(request, null);
+
+            assertThat(response.setId()).isNull();
+            assertThat(response.createdAt()).isNull();
+            assertThat(response.items()).hasSize(1);
+            verify(recommendationSetHistoryService, never()).persist(
+                    org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyInt(),
+                    org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
         }
     }
 }

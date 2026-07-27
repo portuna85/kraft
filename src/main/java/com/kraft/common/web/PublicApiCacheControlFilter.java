@@ -75,6 +75,7 @@ public class PublicApiCacheControlFilter extends OncePerRequestFilter {
         return path.startsWith("/api/v1/stats/")
                 || path.equals("/api/v1/rounds/latest")
                 || path.equals("/api/v1/rounds/freshness")
-                || path.equals("/api/v1/status/incidents");
+                || path.equals("/api/v1/status/incidents")
+                || path.equals("/api/v1/home");
     }
 }

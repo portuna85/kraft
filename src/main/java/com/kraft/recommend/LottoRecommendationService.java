@@ -11,7 +11,9 @@ import io.micrometer.core.instrument.Timer;
 import jakarta.annotation.PostConstruct;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -28,13 +30,18 @@ public class LottoRecommendationService {
 
     private static final int MAX_ATTEMPTS = 100;
     private static final int PRIZE_CANDIDATE_POOL = 50;
+    private static final int BALANCED_CANDIDATE_POOL = 50;
+    private static final int MAX_LOCKED_NUMBERS = 5;
     static final String STRATEGY_REDUCE_SHARED_WINNER_RISK = "reduce_shared_winner_risk";
     static final String STRATEGY_RANDOM = "random";
+    static final String STRATEGY_BALANCED = "balanced";
     private static final String RANDOM_ALGORITHM_VERSION = "uniform-random-v1";
 
     private final LottoNumberCodec lottoNumberCodec;
     private final WinningNumberRepository winningNumberRepository;
     private final CombinationScorer combinationScorer;
+    private final BalancedScorer balancedScorer;
+    private final RecommendationSetHistoryService recommendationSetHistoryService;
     private final Clock clock;
     private final MeterRegistry meterRegistry;
     private final Timer recommendTimer;
@@ -80,11 +87,15 @@ public class LottoRecommendationService {
     public LottoRecommendationService(LottoNumberCodec lottoNumberCodec,
                                       WinningNumberRepository winningNumberRepository,
                                       CombinationScorer combinationScorer,
+                                      BalancedScorer balancedScorer,
+                                      RecommendationSetHistoryService recommendationSetHistoryService,
                                       Clock clock,
                                       MeterRegistry meterRegistry) {
         this.lottoNumberCodec = lottoNumberCodec;
         this.winningNumberRepository = winningNumberRepository;
         this.combinationScorer = combinationScorer;
+        this.balancedScorer = balancedScorer;
+        this.recommendationSetHistoryService = recommendationSetHistoryService;
         this.clock = clock;
         this.meterRegistry = meterRegistry;
         this.recommendTimer = Timer.builder("kraft_lotto_recommend_duration_seconds")
@@ -179,18 +190,24 @@ public class LottoRecommendationService {
         return mask;
     }
 
-    private static long excludedMaskOf(Set<Integer> excluded) {
+    private static long maskOf(Set<Integer> numbers) {
         long mask = 0L;
-        for (int n : excluded) {
+        for (int n : numbers) {
             mask |= 1L << (n - 1);
         }
         return mask;
     }
 
-    public RecommendNumbersResponse recommend(RecommendNumbersRequest request) {
+    /**
+     * clientTokenHash가 있으면(X-Device-Token 헤더 제공) 결과를 recommendation_sets/items에
+     * 영속화하고 응답에 setId/items/createdAt을 채운다. 없으면(기존 호환 클라이언트) 영속화를
+     * 건너뛰고 그 필드들은 null로 남긴다 — recommendation_sets는 소유권 없는 행을 허용하지
+     * 않으므로(문서 9.4절) 익명 이력을 남기지 않을 요청까지 강제로 소유자 없는 행을 만들지 않는다.
+     */
+    public RecommendNumbersResponse recommend(RecommendNumbersRequest request, String clientTokenHash) {
         Timer.Sample sample = Timer.start(meterRegistry);
         try {
-            return doRecommend(request);
+            return doRecommend(request, clientTokenHash);
         } finally {
             sample.stop(recommendTimer);
         }
@@ -199,9 +216,9 @@ public class LottoRecommendationService {
     // B-08: 검증·메트릭·조합·샘플링이 한 메서드에 섞여 있던 것을, 로직은 그대로 두고
     // "요청 해석 → 실행 가능성 검증 → 샘플링 → 응답 조립" 네 단계로만 나눈다(동작 동일
     // 보장은 기존 LottoRecommendationServiceTest의 속성 기반 테스트가 검증).
-    private record RequestContext(int count, boolean reduceSharedWinnerRisk, String strategy, Set<Integer> excluded) {}
+    private record RequestContext(int count, String strategy, List<Integer> locked, Set<Integer> excluded) {}
 
-    private RecommendNumbersResponse doRecommend(RecommendNumbersRequest request) {
+    private RecommendNumbersResponse doRecommend(RecommendNumbersRequest request, String clientTokenHash) {
         HistorySnapshot snapshot = historySnapshot;
         if (!snapshot.ready()) {
             throw fail(HttpStatus.SERVICE_UNAVAILABLE, "RECOMMENDATION_HISTORY_NOT_READY",
@@ -213,20 +230,69 @@ public class LottoRecommendationService {
         meterRegistry.counter("kraft_lotto_recommend_requests_total", "strategy", ctx.strategy()).increment();
         validateFeasibility(ctx, snapshot);
 
-        List<List<Integer>> recommendations = sampleRecommendations(ctx, snapshot);
+        List<RecommendationItemView> items = sampleRecommendations(ctx, snapshot);
+        List<List<Integer>> recommendations = items.stream().map(RecommendationItemView::numbers).toList();
 
-        String algorithmVersion = ctx.reduceSharedWinnerRisk() ? CombinationScorer.VERSION : RANDOM_ALGORITHM_VERSION;
-        return new RecommendNumbersResponse(recommendations, ctx.strategy(), algorithmVersion, snapshot.historyThroughRound());
+        String algorithmVersion = algorithmVersionOf(ctx.strategy());
+
+        Long setId = null;
+        OffsetDateTime createdAt = null;
+        if (clientTokenHash != null) {
+            createdAt = OffsetDateTime.now(clock);
+            setId = recommendationSetHistoryService.persist(clientTokenHash, ctx.strategy(), algorithmVersion,
+                    snapshot.historyThroughRound(), ctx.locked(), ctx.excluded().stream().sorted().toList(),
+                    items, createdAt);
+        }
+
+        return new RecommendNumbersResponse(
+                recommendations, ctx.strategy(), algorithmVersion, snapshot.historyThroughRound(),
+                setId, items, createdAt);
+    }
+
+    private static String algorithmVersionOf(String strategy) {
+        return switch (strategy) {
+            case STRATEGY_REDUCE_SHARED_WINNER_RISK -> CombinationScorer.VERSION;
+            case STRATEGY_BALANCED -> BalancedScorer.VERSION;
+            default -> RANDOM_ALGORITHM_VERSION;
+        };
     }
 
     private RequestContext parseRequest(RecommendNumbersRequest request) {
         int count = request == null || request.count() == null ? 1 : request.count();
-        boolean reduceSharedWinnerRisk = request != null && Boolean.TRUE.equals(request.reduceSharedWinnerRisk());
-        String strategy = reduceSharedWinnerRisk ? STRATEGY_REDUCE_SHARED_WINNER_RISK : STRATEGY_RANDOM;
+
+        List<Integer> locked = request == null || request.lockedNumbers() == null
+                ? List.of()
+                : lottoNumberCodec.normalizeSubset(request.lockedNumbers());
+        if (locked.size() > MAX_LOCKED_NUMBERS) {
+            throw fail(HttpStatus.BAD_REQUEST, "TOO_MANY_LOCKED_NUMBERS",
+                    "고정 번호는 최대 " + MAX_LOCKED_NUMBERS + "개까지 지정할 수 있습니다.");
+        }
+
         Set<Integer> excluded = request == null || request.excludedNumbers() == null
                 ? Set.of()
                 : new HashSet<>(lottoNumberCodec.normalizeSubset(request.excludedNumbers()));
-        return new RequestContext(count, reduceSharedWinnerRisk, strategy, excluded);
+
+        if (!Collections.disjoint(locked, excluded)) {
+            throw fail(HttpStatus.BAD_REQUEST, "LOCKED_EXCLUDED_CONFLICT",
+                    "고정 번호와 제외 번호가 겹칠 수 없습니다.");
+        }
+
+        String strategy = resolveStrategy(request);
+        return new RequestContext(count, strategy, locked, excluded);
+    }
+
+    private String resolveStrategy(RecommendNumbersRequest request) {
+        String strategyParam = request == null ? null : request.strategy();
+        if (strategyParam != null && !strategyParam.isBlank()) {
+            String normalized = strategyParam.trim().toLowerCase();
+            return switch (normalized) {
+                case STRATEGY_RANDOM, STRATEGY_BALANCED, STRATEGY_REDUCE_SHARED_WINNER_RISK -> normalized;
+                default -> throw fail(HttpStatus.BAD_REQUEST, "INVALID_RECOMMENDATION_STRATEGY",
+                        "지원하지 않는 추천 전략입니다: " + strategyParam);
+            };
+        }
+        boolean reduceSharedWinnerRisk = request != null && Boolean.TRUE.equals(request.reduceSharedWinnerRisk());
+        return reduceSharedWinnerRisk ? STRATEGY_REDUCE_SHARED_WINNER_RISK : STRATEGY_RANDOM;
     }
 
     private void validateFeasibility(RequestContext ctx, HistorySnapshot snapshot) {
@@ -235,31 +301,42 @@ public class LottoRecommendationService {
                     "제외 번호를 적용한 뒤에도 최소 6개 번호가 남아야 합니다.");
         }
 
-        long available = 45L - ctx.excluded().size();
-        long possible = combinations(available, 6);
-        long excludedMask = excludedMaskOf(ctx.excluded());
+        long available = 45L - ctx.excluded().size() - ctx.locked().size();
+        int need = 6 - ctx.locked().size();
+        long possible = combinations(available, need);
+        long excludedMask = maskOf(ctx.excluded());
+        long lockedMask = maskOf(new HashSet<>(ctx.locked()));
         long compatibleHistoricalCount = snapshot.masks().stream()
-                .filter(mask -> (mask & excludedMask) == 0L)
+                .filter(mask -> (mask & excludedMask) == 0L && (mask & lockedMask) == lockedMask)
                 .count();
         long allowedPossible = possible - compatibleHistoricalCount;
-        if (ctx.count() > allowedPossible) {
+        if (ctx.count() > allowedPossible && !STRATEGY_BALANCED.equals(ctx.strategy())) {
+            // BALANCED는 부족분을 오류로 취급하지 않고 있는 만큼만 반환한다(문서 9.1절).
             throw fail(HttpStatus.BAD_REQUEST, "INSUFFICIENT_UNIQUE_COMBINATIONS",
                     "요청한 조합 수(" + ctx.count() + ")가 역대 1등 조합을 제외하고 가능한 고유 조합 수("
                             + allowedPossible + ")를 초과합니다.");
         }
     }
 
-    private List<List<Integer>> sampleRecommendations(RequestContext ctx, HistorySnapshot snapshot) {
-        List<Integer> candidates = buildCandidates(ctx.excluded());
+    private List<RecommendationItemView> sampleRecommendations(RequestContext ctx, HistorySnapshot snapshot) {
+        return switch (ctx.strategy()) {
+            case STRATEGY_BALANCED -> sampleBalanced(ctx, snapshot);
+            case STRATEGY_REDUCE_SHARED_WINNER_RISK -> sampleSimple(ctx, snapshot, true);
+            default -> sampleSimple(ctx, snapshot, false);
+        };
+    }
+
+    private List<RecommendationItemView> sampleSimple(RequestContext ctx, HistorySnapshot snapshot, boolean reduceSharedWinnerRisk) {
+        List<Integer> candidates = buildCandidates(ctx.excluded(), ctx.locked());
         List<List<Integer>> recommendations = new ArrayList<>();
         Set<Long> seen = new HashSet<>();
         int attempts = 0;
         int maxAttempts = ctx.count() * MAX_ATTEMPTS;
         Set<Long> historicalMasks = snapshot.masks();
         while (recommendations.size() < ctx.count() && attempts++ < maxAttempts) {
-            List<Integer> candidate = ctx.reduceSharedWinnerRisk()
-                    ? generateBest(candidates, historicalMasks)
-                    : generateOne(candidates, historicalMasks);
+            List<Integer> candidate = reduceSharedWinnerRisk
+                    ? generateBest(candidates, historicalMasks, ctx.locked())
+                    : generateOne(candidates, historicalMasks, ctx.locked());
             if (candidate != null && seen.add(bitmaskOf(candidate))) {
                 recommendations.add(candidate);
             }
@@ -271,7 +348,51 @@ public class LottoRecommendationService {
                     "생성 가능한 고유 조합이 부족합니다(생성 %d / 요청 %d)."
                             .formatted(recommendations.size(), ctx.count()));
         }
-        return recommendations;
+        List<RecommendationItemView> items = new ArrayList<>();
+        int position = 1;
+        for (List<Integer> numbers : recommendations) {
+            items.add(new RecommendationItemView(position++, numbers, null, List.of()));
+        }
+        return items;
+    }
+
+    /**
+     * 무작위로 유일한 후보를 최대한 모아 형태 균형 점수로 정렬한 뒤 상위 count개를 반환한다.
+     * 후보 풀이 count보다 작으면(제외·고정 조건이 매우 빡빡한 경우) 오류를 내지 않고 있는
+     * 만큼만 반환한다(문서 9.1절 BALANCED).
+     */
+    private List<RecommendationItemView> sampleBalanced(RequestContext ctx, HistorySnapshot snapshot) {
+        List<Integer> candidates = buildCandidates(ctx.excluded(), ctx.locked());
+        Set<Long> historicalMasks = snapshot.masks();
+        Set<Long> seen = new HashSet<>();
+        List<List<Integer>> pool = new ArrayList<>();
+        int poolTarget = Math.max(BALANCED_CANDIDATE_POOL, ctx.count() * 10);
+        int attempts = 0;
+        int maxAttempts = poolTarget * MAX_ATTEMPTS;
+        while (pool.size() < poolTarget && attempts++ < maxAttempts) {
+            List<Integer> candidate = generateOne(candidates, historicalMasks, ctx.locked());
+            if (candidate != null && seen.add(bitmaskOf(candidate))) {
+                pool.add(candidate);
+            }
+        }
+
+        List<RecommendationItemView> scored = new ArrayList<>();
+        for (List<Integer> candidate : pool) {
+            BalancedEvaluation evaluation = balancedScorer.evaluate(candidate);
+            scored.add(new RecommendationItemView(0, candidate, evaluation.score(), evaluation.explanationCodes()));
+        }
+        scored.sort((a, b) -> b.score() - a.score());
+
+        List<RecommendationItemView> result = new ArrayList<>();
+        int position = 1;
+        for (RecommendationItemView item : scored.stream().limit(ctx.count()).toList()) {
+            result.add(new RecommendationItemView(position++, item.numbers(), item.score(), item.explanationCodes()));
+        }
+        if (result.isEmpty() && ctx.count() > 0) {
+            throw fail(HttpStatus.BAD_REQUEST, "INSUFFICIENT_UNIQUE_COMBINATIONS",
+                    "생성 가능한 고유 조합이 없습니다.");
+        }
+        return result;
     }
 
     private ApiException fail(HttpStatus status, String code, String message) {
@@ -285,12 +406,12 @@ public class LottoRecommendationService {
      * generateOne이 충돌 상한 도달로 null을 반환하면(과거 1등과의 충돌을 해소하지 못함)
      * 그 시도는 후보 풀에서 제외한다 — 점수 비교 대상에 과거 1등 조합이 섞이면 안 된다.
      */
-    private List<Integer> generateBest(List<Integer> candidates, Set<Long> historicalMasks) {
+    private List<Integer> generateBest(List<Integer> candidates, Set<Long> historicalMasks, List<Integer> locked) {
         List<Integer> best = null;
         int bestScore = Integer.MIN_VALUE;
 
         for (int i = 0; i < PRIZE_CANDIDATE_POOL; i++) {
-            List<Integer> candidate = generateOne(candidates, historicalMasks);
+            List<Integer> candidate = generateOne(candidates, historicalMasks, locked);
             if (candidate == null) {
                 continue;
             }
@@ -304,6 +425,9 @@ public class LottoRecommendationService {
     }
 
     private static long combinations(long n, int k) {
+        if (n < k) {
+            return 0;
+        }
         long result = 1;
         for (int i = 0; i < k; i++) {
             result = result * (n - i) / (i + 1);
@@ -311,32 +435,37 @@ public class LottoRecommendationService {
         return result;
     }
 
-    private static List<Integer> buildCandidates(Set<Integer> excluded) {
-        List<Integer> candidates = new ArrayList<>(45 - excluded.size());
+    private static List<Integer> buildCandidates(Set<Integer> excluded, List<Integer> locked) {
+        Set<Integer> lockedSet = new HashSet<>(locked);
+        List<Integer> candidates = new ArrayList<>(45 - excluded.size() - lockedSet.size());
         for (int i = 1; i <= 45; i++) {
-            if (!excluded.contains(i)) {
+            if (!excluded.contains(i) && !lockedSet.contains(i)) {
                 candidates.add(i);
             }
         }
         return candidates;
     }
 
-    // 부분 Fisher-Yates(k=6): 전체 ~45개 대신 앞 6개 위치만 셔플해 O(n) → O(k) 로 단축.
+    // 부분 Fisher-Yates(k = 6 - locked.size()): candidates(고정·제외 번호를 뺀 나머지 풀)의
+    // 앞 k개 위치만 셔플해 O(n) → O(k)로 단축한 뒤 고정 번호와 합쳐 최종 조합을 만든다.
     // candidates 배열을 호출 간 재사용하므로 요청당 한 번만 빌드한다.
     // MAX_ATTEMPTS 안에 과거 1등과 겹치지 않는 조합을 못 찾으면, 마지막 셔플 결과를
     // 그대로 반환하지 않고 null을 돌려준다 — 과거 1등 조합이 추천으로 새어나가지 않도록
-    // 호출자(recommend())가 이 시도를 버리고 재시도하거나 최종적으로 명시적 오류를 낸다.
-    private List<Integer> generateOne(List<Integer> candidates, Set<Long> historicalMasks) {
+    // 호출자가 이 시도를 버리고 재시도하거나 최종적으로 명시적 오류를 낸다.
+    private List<Integer> generateOne(List<Integer> candidates, Set<Long> historicalMasks, List<Integer> locked) {
         int n = candidates.size();
+        int need = 6 - locked.size();
 
         for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-            for (int i = 0; i < 6; i++) {
+            for (int i = 0; i < need; i++) {
                 int j = i + randomSource.applyAsInt(n - i);
                 int tmp = candidates.get(i);
                 candidates.set(i, candidates.get(j));
                 candidates.set(j, tmp);
             }
-            List<Integer> result = lottoNumberCodec.normalize(candidates.subList(0, 6));
+            List<Integer> combined = new ArrayList<>(locked);
+            combined.addAll(candidates.subList(0, need));
+            List<Integer> result = lottoNumberCodec.normalize(combined);
             if (!historicalMasks.contains(bitmaskOf(result))) {
                 return result;
             }

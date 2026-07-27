@@ -17,6 +17,12 @@ public class LottoNumberCodec {
                 .collect(Collectors.joining(","));
     }
 
+    public String toStorageValueSubset(List<Integer> numbers) {
+        return normalizeSubset(numbers).stream()
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+    }
+
     public List<Integer> fromStorageValue(String value) {
         return value == null || value.isBlank()
                 ? List.of()

@@ -227,6 +227,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/recommendation-sets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_3"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recommendation-sets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get"];
+        put?: never;
+        post?: never;
+        delete: operations["delete_1"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/numbers/check": {
         parameters: {
             query?: never;
@@ -235,6 +267,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["check"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/home": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["home"];
         put?: never;
         post?: never;
         delete?: never;
@@ -269,7 +317,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete: operations["delete_1"];
+        delete: operations["delete_2"];
         options?: never;
         head?: never;
         patch?: never;
@@ -285,7 +333,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete: operations["delete_2"];
+        delete: operations["delete_3"];
         options?: never;
         head?: never;
         patch?: never;
@@ -364,6 +412,8 @@ export interface components {
             count?: number;
             excludedNumbers?: number[];
             reduceSharedWinnerRisk?: boolean;
+            strategy?: string;
+            lockedNumbers?: number[];
         };
         RecommendNumbersResponse: {
             recommendations?: number[][];
@@ -371,6 +421,19 @@ export interface components {
             algorithmVersion?: string;
             /** Format: int32 */
             historyThroughRound?: number;
+            /** Format: int64 */
+            setId?: number;
+            items?: components["schemas"]["RecommendationItemView"][];
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        RecommendationItemView: {
+            /** Format: int32 */
+            position?: number;
+            numbers?: number[];
+            /** Format: int32 */
+            score?: number;
+            explanationCodes?: ("ODD_EVEN_BALANCED" | "LOW_HIGH_BALANCED" | "SUM_IN_RANGE" | "CONSECUTIVE_PAIR_LIMITED" | "DECADE_SPREAD")[];
         };
         CreatePostRequest: {
             title: string;
@@ -501,8 +564,35 @@ export interface components {
             /** Format: date-time */
             checkedAt?: string;
         };
+        RecommendationSetSummary: {
+            /** Format: int64 */
+            id?: number;
+            strategy?: string;
+            algorithmVersion?: string;
+            /** Format: int32 */
+            historyThroughRound?: number;
+            lockedNumbers?: number[];
+            excludedNumbers?: number[];
+            /** Format: date-time */
+            createdAt?: string;
+            items?: components["schemas"]["RecommendationItemView"][];
+        };
         CombinationCheckResponse: {
             wonFirstPrize?: boolean;
+        };
+        HomeCommunityPostSummary: {
+            /** Format: int64 */
+            id?: number;
+            title?: string;
+            authorNameSnapshot?: string;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        HomeResponse: {
+            latestRound?: components["schemas"]["WinningNumberResponse"];
+            freshness?: components["schemas"]["RoundFreshnessResponse"];
+            latestPosts?: components["schemas"]["HomeCommunityPostSummary"][];
+            weeklyPopularPosts?: components["schemas"]["HomeCommunityPostSummary"][];
         };
         CommunitySessionResponse: {
             loggedIn?: boolean;
@@ -687,7 +777,9 @@ export interface operations {
     recommend: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Device-Token"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -974,12 +1066,12 @@ export interface operations {
             };
         };
     };
-    check: {
+    list_3: {
         parameters: {
-            query: {
-                numbers: number[];
+            query?: never;
+            header: {
+                "X-Device-Token": string;
             };
-            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -991,16 +1083,20 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["CombinationCheckResponse"];
+                    "*/*": components["schemas"]["RecommendationSetSummary"][];
                 };
             };
         };
     };
-    session: {
+    get: {
         parameters: {
             query?: never;
-            header?: never;
-            path?: never;
+            header: {
+                "X-Device-Token": string;
+            };
+            path: {
+                id: number;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -1011,7 +1107,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["CommunitySessionResponse"];
+                    "*/*": components["schemas"]["RecommendationSetSummary"];
                 };
             };
         };
@@ -1038,7 +1134,91 @@ export interface operations {
             };
         };
     };
+    check: {
+        parameters: {
+            query: {
+                numbers: number[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CombinationCheckResponse"];
+                };
+            };
+        };
+    };
+    home: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["HomeResponse"];
+                };
+            };
+        };
+    };
+    session: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CommunitySessionResponse"];
+                };
+            };
+        };
+    };
     delete_2: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Device-Token": string;
+            };
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_3: {
         parameters: {
             query?: never;
             header?: never;
