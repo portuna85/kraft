@@ -15,11 +15,15 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",
-  // maxDiffPixelRatio를 느슨하게 주면(0.02 등) 전체 페이지 스크린샷에서 강조색(accent)
-  // 하나가 완전히 바뀌어도 잡히지 않는 걸 실제로 확인했다 — Playwright 기본값(비율 제한
-  // 없음, 픽셀 단위 threshold 0.2)을 그대로 쓴다. 베이스라인은 CI와 동일한 Linux/Chromium
-  // 조합(Docker mcr.microsoft.com/playwright 이미지)에서만 생성해야 폰트 렌더링 차이로
-  // 인한 오탐을 피할 수 있다.
+  // 두 극단을 모두 실측으로 확인했다: maxDiffPixelRatio 0.02(2%)는 전체 페이지 스크린샷에서
+  // 강조색(accent)이 완전히 바뀌어도 못 잡았고, 반대로 비율 제한을 아예 없애면(Playwright
+  // 기본값) 로컬(Docker mcr.microsoft.com/playwright 이미지)에서 만든 베이스라인이 실제
+  // GitHub Actions 러너(같은 OS·브라우저 버전이어도 물리 머신이 다름)에서 몇 픽셀 단위
+  // 안티에일리어싱 노이즈로 매번 깨졌다(실제 PR #70 CI 실행에서 확인). 노이즈보다는
+  // 넉넉하고 실제 회귀(수천~수만 픽셀)보다는 훨씬 작은 값으로 둔다.
+  expect: {
+    toHaveScreenshot: { maxDiffPixelRatio: 0.002 },
+  },
   use: {
     baseURL: "http://127.0.0.1:3102",
     trace: "retain-on-failure",

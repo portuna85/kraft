@@ -251,6 +251,9 @@ jobs:
           done
           echo "::error::App did not become ready in time"
           exit 1
+        env:
+          KRAFT_BACKEND_INTERNAL_URL: http://127.0.0.1:4101
+          KRAFT_PUBLIC_BASE_URL: http://127.0.0.1:3101
       - run: npm run budget:lighthouse
         env:
           PERF_BASE_URL: http://127.0.0.1:3101
