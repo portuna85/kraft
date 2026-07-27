@@ -65,6 +65,6 @@ public class AdminBootstrap implements CommandLineRunner {
                 "ROLE_ADMIN",
                 now
         ));
-        log.info("AdminBootstrap: initial admin account '{}' created.", username.trim());
+        log.info("AdminBootstrap: initial admin account created.");
     }
 }

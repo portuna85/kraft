@@ -1,5 +1,37 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import logger, { logCoreDataFailure } from "@/lib/logger";
+import logger, { logCoreDataFailure, serializeError } from "@/lib/logger";
+
+describe("serializeError", () => {
+  it("DOMException의 진단 필드만 남기고 열거 가능한 상수는 제외한다", () => {
+    const serialized = serializeError(
+      new DOMException("The operation timed out", "TimeoutError")
+    );
+
+    expect(serialized).toMatchObject({
+      type: "DOMException",
+      name: "TimeoutError",
+      message: "The operation timed out",
+    });
+    expect(serialized).not.toHaveProperty("INDEX_SIZE_ERR");
+    expect(serialized).not.toHaveProperty("TIMEOUT_ERR");
+  });
+
+  it("Error cause는 한 단계까지만 안전하게 직렬화한다", () => {
+    const rootCause = new Error("connection refused", {
+      cause: new Error("nested"),
+    });
+    const error = new TypeError("fetch failed", { cause: rootCause });
+
+    const serialized = serializeError(error);
+
+    expect(serialized.type).toBe("TypeError");
+    expect(serialized.cause).toMatchObject({
+      type: "Error",
+      message: "connection refused",
+    });
+    expect(serialized.cause).not.toHaveProperty("cause");
+  });
+});
 
 describe("logCoreDataFailure", () => {
   const originalPhase = process.env.NEXT_PHASE;

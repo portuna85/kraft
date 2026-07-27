@@ -120,8 +120,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     ResponseEntity<ApiErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException exception,
                                                         HttpServletRequest request) {
-        log.warn("파라미터 타입 불일치: param={} value={} path={}", exception.getName(), exception.getValue(),
-                request.getRequestURI());
+        // 거부된 값은 사용자 입력이며 토큰·식별자 등의 민감정보일 수 있으므로 로그에 남기지 않는다.
+        log.warn("파라미터 타입 불일치: param={} path={}", exception.getName(), request.getRequestURI());
         return ResponseEntity.badRequest()
                 .body(errorBody(HttpStatus.BAD_REQUEST, "INVALID_PARAMETER_TYPE",
                         exception.getName() + " 파라미터의 값이 올바르지 않습니다.", request));

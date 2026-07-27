@@ -91,7 +91,13 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const nonce = (await headers()).get("x-nonce") ?? undefined;
 
   return (
-    <html lang="ko" className={`${notoSansKR.variable} ${notoSerifKR.variable} ${spaceGrotesk.variable}`}>
+    // THEME_INIT_SCRIPT가 hydration 전에 저장된 테마를 data-theme에 반영한다.
+    // 서버는 localStorage를 읽을 수 없어 이 속성 차이가 의도적으로 발생한다.
+    <html
+      lang="ko"
+      className={`${notoSansKR.variable} ${notoSerifKR.variable} ${spaceGrotesk.variable}`}
+      suppressHydrationWarning
+    >
       <body>
         <script
           nonce={nonce}

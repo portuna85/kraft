@@ -18,10 +18,11 @@ spring:
     init:
       mode: always
 logging:
-  file:
-    path: build/test-logs
   level:
     root: warn
+    org.springdoc: error
+    org.hibernate.orm.jdbc.error: error
+    com.zaxxer.hikari: error
 
 kraft:
   ops:

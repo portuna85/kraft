@@ -10,6 +10,62 @@ const logDir = process.env.KRAFT_LOG_PATH
   ? join(process.env.KRAFT_LOG_PATH, "web")
   : join(process.cwd(), "logs", "web");
 
+type SerializedError = {
+  type: string;
+  name?: string;
+  message: string;
+  stack?: string;
+  code?: string | number;
+  cause?: SerializedError;
+};
+
+/**
+ * Error와 DOMException의 진단 필드만 남긴다. DOMException에는 브라우저 오류 코드
+ * 상수가 열거 가능한 속성으로 다수 노출될 수 있어 객체 전체를 직렬화하지 않는다.
+ */
+export function serializeError(error: unknown, includeCause = true): SerializedError {
+  const isError =
+    error instanceof Error ||
+    (typeof DOMException !== "undefined" && error instanceof DOMException);
+  if (!isError) {
+    const constructorName =
+      typeof error === "object" && error !== null
+        ? error.constructor?.name
+        : undefined;
+    return {
+      type: constructorName || typeof error,
+      message:
+        typeof error === "string" ||
+        typeof error === "number" ||
+        typeof error === "boolean"
+          ? String(error)
+          : "Non-Error value thrown",
+    };
+  }
+
+  const errorLike = error as Error;
+  const serialized: SerializedError = {
+    type: errorLike.constructor.name || "Error",
+    message: errorLike.message,
+  };
+  if (errorLike.name && errorLike.name !== serialized.type) {
+    serialized.name = errorLike.name;
+  }
+  if (errorLike.stack) {
+    serialized.stack = errorLike.stack;
+  }
+
+  const code = Reflect.get(errorLike, "code");
+  if (typeof code === "string" || typeof code === "number") {
+    serialized.code = code;
+  }
+  const cause = Reflect.get(errorLike, "cause");
+  if (includeCause && cause !== undefined && cause !== error) {
+    serialized.cause = serializeError(cause, false);
+  }
+  return serialized;
+}
+
 function buildStream() {
   if (isDev) return process.stdout;
 
@@ -19,6 +75,8 @@ function buildStream() {
       filename: "web.log",
       interval: "1d",
       rotate: 30,
+      size: "10M",
+      maxSize: "200M",
       path: logDir,
       compress: "gzip",
     });
@@ -37,6 +95,9 @@ const logger = pino(
       level(label) {
         return { level: label.toUpperCase() };
       },
+    },
+    serializers: {
+      err: serializeError,
     },
   },
   buildStream()

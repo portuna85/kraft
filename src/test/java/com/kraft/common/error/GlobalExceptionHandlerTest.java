@@ -1,8 +1,12 @@
 package com.kraft.common.error;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -11,9 +15,11 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -50,6 +56,9 @@ class GlobalExceptionHandlerTest {
 
         @PostMapping(value = "/test/body", consumes = MediaType.APPLICATION_JSON_VALUE)
         void acceptBody(@RequestBody BodyDto body) {}
+
+        @GetMapping("/test/typed")
+        void acceptTypedValue(@RequestParam Integer number) {}
     }
 
     @BeforeEach
@@ -119,5 +128,31 @@ class GlobalExceptionHandlerTest {
                 .andExpect(status().isUnsupportedMediaType())
                 .andExpect(jsonPath("$.code").value("UNSUPPORTED_MEDIA_TYPE"))
                 .andExpect(jsonPath("$.status").value(415));
+    }
+
+    @Test
+    @DisplayName("파라미터 타입 불일치 로그에는 거부된 사용자 입력을 남기지 않는다")
+    void handleTypeMismatch_doesNotLogRejectedValue() throws Exception {
+        ch.qos.logback.classic.Logger handlerLogger =
+                (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(GlobalExceptionHandler.class);
+        Level previousLevel = handlerLogger.getLevel();
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        handlerLogger.setLevel(Level.WARN);
+        handlerLogger.addAppender(appender);
+
+        try {
+            mockMvc.perform(get("/test/typed").param("number", "sensitive-value"))
+                    .andExpect(status().isBadRequest());
+        } finally {
+            handlerLogger.detachAppender(appender);
+            handlerLogger.setLevel(previousLevel);
+            appender.stop();
+        }
+
+        assertThat(appender.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .anyMatch(message -> message.contains("param=number"))
+                .noneMatch(message -> message.contains("sensitive-value"));
     }
 }
