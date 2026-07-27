@@ -166,6 +166,138 @@ jobs:
           path: web/playwright-report/
           retention-days: 7
 
+  # Phase 0 기준선(docs/improvement.md §17): OpenAPI 계약이 바뀌었는데
+  # web/src/lib/generated/api-types.ts를 갱신하지 않고 커밋한 경우를 잡는다.
+  # local 프로파일(H2 인메모리)로 백엔드를 띄우므로 MariaDB/Docker가 필요 없다.
+  api-types-drift-guard:
+    name: API Types Drift Guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        with:
+          java-version: "25"
+          distribution: temurin
+          cache: gradle
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Start backend (local profile, H2 in-memory)
+        run: |
+          ./gradlew bootRun --args="--spring.profiles.active=local" --no-daemon > backend.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8080/actuator/health >/dev/null 2>&1; then
+              echo "Backend is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::Backend did not become ready in time"
+          cat backend.log
+          exit 1
+      - run: npm ci
+        working-directory: web
+      - name: Verify generated API types match backend contract
+        working-directory: web
+        run: npm run verify:api-types
+        env:
+          KRAFT_BACKEND_INTERNAL_URL: http://localhost:8080
+      - name: Upload backend log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: api-types-backend-log
+          path: backend.log
+          retention-days: 3
+
+  # Phase 0 기준선(docs/improvement.md §17): 번들·Lighthouse 예산 스크립트는 이미
+  # 있었지만 로컬 전용이었다 — CI 게이트로 승격해 회귀를 자동으로 잡는다.
+  web-performance-budget:
+    name: Web Performance Budget
+    runs-on: ubuntu-latest
+    needs: [web-build-test]
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      # 픽스처 백엔드(e2e/fixtures/backend.mjs)로 실콘텐츠를 렌더한 상태에서 측정한다 —
+      # 백엔드 없는 상태(에러 경계 폴백)로 재면 LCP/CLS가 의미 없어진다.
+      - run: npm run build
+        env:
+          KRAFT_BACKEND_INTERNAL_URL: http://127.0.0.1:4101
+          KRAFT_PUBLIC_BASE_URL: http://127.0.0.1:3101
+      - run: npm run budget:bundle
+      - name: Start fixture backend + app
+        run: |
+          node e2e/fixtures/backend.mjs &
+          PORT=3101 npm run e2e:serve &
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:3101 >/dev/null 2>&1; then
+              echo "App is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::App did not become ready in time"
+          exit 1
+      - run: npm run budget:lighthouse
+        env:
+          PERF_BASE_URL: http://127.0.0.1:3101
+      - name: Upload budget results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: performance-budget-results
+          path: |
+            web/scripts/bundle-results.json
+            web/scripts/lighthouse-results.json
+          retention-days: 7
+
+  # Phase 0 기준선(docs/improvement.md §17 Phase 0): 픽셀 스크린샷 회귀 베이스라인.
+  # playwright.visual.config.ts가 픽스처 백엔드로 실콘텐츠를 렌더해 대표 라우트×테마
+  # 조합을 고정한다. 다른 e2e 트랙과 산출물이 겹치지 않게 NEXT_DIST_DIR=.next-visual 사용.
+  web-e2e-visual:
+    name: Web E2E Visual Baseline (Phase 0)
+    runs-on: ubuntu-latest
+    needs: [web-build-test]
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+        env:
+          NEXT_DIST_DIR: .next-visual
+          KRAFT_BACKEND_INTERNAL_URL: http://127.0.0.1:4102
+          KRAFT_PUBLIC_BASE_URL: http://127.0.0.1:3102
+      - run: npm run test:e2e:visual
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: playwright-report-visual
+          path: web/playwright-report/
+          retention-days: 7
+
   # runs fully parallel — Gradle dep cache is enough; compiled classes aren't shared between jobs anyway
   static-analysis:
     name: Static Analysis
@@ -235,6 +367,18 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
       - name: Check env var drift (C-02)
         run: bash scripts/check-env-drift.sh
+
+  # Phase 0 기준선(docs/improvement.md §16.4, docs/phase0-photo-asset-policy.md): 사진 자산이
+  # 아직 없는 동안은 항상 통과하고, Phase 2 이후 실제 자산이 추가되면 라이선스·출처
+  # 메타데이터 누락을 잡는다.
+  photo-asset-metadata-guard:
+    name: Photo Asset Metadata Guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+      - name: Check photo asset metadata
+        run: node scripts/check-photo-asset-metadata.mjs
 
   docker-publish-backend:
     name: Docker Publish (backend)
@@ -380,7 +524,7 @@ jobs:
   promote:
     name: Promote to latest
     runs-on: ubuntu-latest
-    needs: [security-scan-backend, security-scan-web, removed-feature-guard, env-drift-guard, container-hardening-guard, shellcheck-guard]
+    needs: [security-scan-backend, security-scan-web, removed-feature-guard, env-drift-guard, container-hardening-guard, shellcheck-guard, photo-asset-metadata-guard]
     if: github.ref == 'refs/heads/main'
     timeout-minutes: 10
     permissions:

@@ -41,6 +41,31 @@ section "Backend Build & Test + Static Analysis (backend-build-test + static-ana
 section "Container Hardening Guard (container-hardening-guard, C-03)"
 node scripts/check-container-hardening.mjs
 
+section "Photo Asset Metadata Guard (photo-asset-metadata-guard, Phase 0)"
+node scripts/check-photo-asset-metadata.mjs
+
+section "API Types Drift Guard (api-types-drift-guard, Phase 0)"
+(
+  ./gradlew bootRun --args="--spring.profiles.active=local" --console=plain > /tmp/kraft-backend-verify-api-types.log 2>&1 &
+  BACKEND_PID=$!
+  trap 'kill "$BACKEND_PID" >/dev/null 2>&1 || true' EXIT
+  ready=0
+  for _ in $(seq 1 60); do
+    if curl -sf http://localhost:8080/actuator/health >/dev/null 2>&1; then
+      ready=1
+      break
+    fi
+    sleep 2
+  done
+  if [[ "$ready" -ne 1 ]]; then
+    echo "backend did not become ready in time" >&2
+    cat /tmp/kraft-backend-verify-api-types.log >&2
+    exit 1
+  fi
+  cd web
+  KRAFT_BACKEND_INTERNAL_URL=http://localhost:8080 npm run verify:api-types
+)
+
 section "Env Var Drift Guard (env-drift-guard, C-02)"
 bash scripts/check-env-drift.sh
 
@@ -110,6 +135,29 @@ section "Web E2E — ad-overlay 트랙(web-e2e-ad-overlay, 별도 빌드 디렉�
 NEXT_DIST_DIR=.next-ad-overlay NEXT_PUBLIC_KAKAO_ADFIT_UNIT_STICKY=DAN-ci-ad-overlay-test \
   KRAFT_BACKEND_INTERNAL_URL=http://127.0.0.1:59999 KRAFT_PUBLIC_BASE_URL=http://127.0.0.1:3103 npm run build
 npm run test:e2e:ad-overlay
+
+section "Web Performance Budget (web-performance-budget, Phase 0)"
+KRAFT_BACKEND_INTERNAL_URL=http://127.0.0.1:4101 KRAFT_PUBLIC_BASE_URL=http://127.0.0.1:3101 npm run build
+npm run budget:bundle
+node e2e/fixtures/backend.mjs &
+FIXTURE_PID=$!
+PORT=3101 npm run e2e:serve &
+APP_PID=$!
+trap 'kill "$FIXTURE_PID" "$APP_PID" >/dev/null 2>&1 || true' EXIT
+for _ in $(seq 1 30); do
+  curl -sf http://127.0.0.1:3101 >/dev/null 2>&1 && break
+  sleep 1
+done
+PERF_BASE_URL=http://127.0.0.1:3101 npm run budget:lighthouse
+kill "$FIXTURE_PID" "$APP_PID" >/dev/null 2>&1 || true
+trap - EXIT
+
+section "Web E2E — visual 베이스라인 트랙(web-e2e-visual, Phase 0)"
+echo "주의: 베이스라인 PNG는 CI(ubuntu-latest, Linux Chromium)에서 생성된 것과 맞춰야 한다 —"
+echo "로컬(특히 Windows/macOS)에서 이 트랙을 실행하면 폰트 렌더링 차이로 오탐이 날 수 있다."
+echo "베이스라인 갱신은 CI와 동일한 mcr.microsoft.com/playwright Docker 이미지 안에서 하는 것을 권장한다."
+NEXT_DIST_DIR=.next-visual KRAFT_BACKEND_INTERNAL_URL=http://127.0.0.1:4102 KRAFT_PUBLIC_BASE_URL=http://127.0.0.1:3102 npm run build
+npm run test:e2e:visual
 
 cd "$ROOT"
 echo ""
