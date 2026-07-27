@@ -184,7 +184,8 @@ test.describe("실제 콘텐츠가 채워진 라우트의 오버플로", () => {
     test(`/analysis — ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 800 });
       await page.goto("/analysis");
-      await page.getByPlaceholder("예: 3, 11, 19, 28, 34, 42").fill("1, 2, 3, 4, 5, 6");
+      await page.getByPlaceholder("예: 3, 11, 19, 28, 34, 42")
+        .pressSequentially("1, 2, 3, 4, 5, 6");
       await page.getByRole("button", { name: "분석하기" }).click();
       await expect(page.getByRole("heading", { name: "분석 결과" })).toBeVisible();
       await expectNoOverflow(page);

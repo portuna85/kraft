@@ -1,121 +1,97 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <springProperty scope="context" name="logPath" source="logging.file.path" defaultValue="logs"/>
-    <springProperty scope="context" name="rootLevel" source="logging.level.root" defaultValue="INFO"/>
+    <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="logs"/>
+    <springProperty scope="context" name="ROOT_LEVEL" source="logging.level.root" defaultValue="INFO"/>
 
-    <property name="consolePattern"
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS, Asia/Seoul} %-5level [%thread] [%X{requestId:-no-request}] %logger{36} - %msg%n"/>
-    <property name="filePattern"
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS, Asia/Seoul} %-5level [%thread] [%X{requestId:-no-request}] %logger{36} - %msg%n"/>
+    <property name="CONSOLE_LOG_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS, Asia/Seoul} %-5level [%thread] [%X{requestId:-no-request}] %logger{36} - %msg%n%ex"/>
+    <property name="FILE_LOG_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS, Asia/Seoul} %-5level [%thread] [%X{requestId:-no-request}] %logger{60} - %msg%n%ex"/>
+    <property name="MAX_FILE_SIZE" value="10MB"/>
+    <property name="MAX_HISTORY" value="30"/>
+    <property name="TOTAL_SIZE_CAP" value="1GB"/>
+    <property name="ERROR_TOTAL_SIZE_CAP" value="200MB"/>
+    <property name="LOCAL_MAX_HISTORY" value="7"/>
+    <property name="LOCAL_TOTAL_SIZE_CAP" value="100MB"/>
 
-    <!-- Console: unchanged -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>${consolePattern}</pattern>
+            <charset>UTF-8</charset>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
         </encoder>
     </appender>
 
-    <!-- 로컬(local 프로필): 레벨 분리·로테이션 없이 단일 파일에 전부 기록 — 운영 구조는 개발 중엔 과함 -->
+    <!-- 로컬: 단일 활성 파일을 유지하되 개발 중 무제한으로 커지지 않도록 7일 동안 롤링한다. -->
     <springProfile name="local">
-        <appender name="LOCAL_FILE" class="ch.qos.logback.core.FileAppender">
-            <file>${logPath}/kraft-local.log</file>
+        <appender name="LOCAL_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${LOG_PATH}/kraft-local.log</file>
+            <append>true</append>
             <encoder>
-                <pattern>${filePattern}</pattern>
+                <charset>UTF-8</charset>
+                <pattern>${FILE_LOG_PATTERN}</pattern>
             </encoder>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>${LOG_PATH}/archive/kraft-local.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+                <maxFileSize>${MAX_FILE_SIZE}</maxFileSize>
+                <maxHistory>${LOCAL_MAX_HISTORY}</maxHistory>
+                <totalSizeCap>${LOCAL_TOTAL_SIZE_CAP}</totalSizeCap>
+            </rollingPolicy>
         </appender>
     </springProfile>
 
-    <!-- 운영(local 이외 프로필): 레벨별 분리 파일 + 30일 로테이션 -->
-    <springProfile name="!local">
-        <!-- kraft.log: INFO only, 30-day rolling -->
-        <appender name="INFO_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-            <file>${logPath}/kraft.log</file>
-            <filter class="ch.qos.logback.classic.filter.LevelFilter">
-                <level>INFO</level>
-                <onMatch>ACCEPT</onMatch>
-                <onMismatch>DENY</onMismatch>
-            </filter>
+    <!-- 테스트는 예상 예외를 대량으로 발생시키므로 파일을 만들지 않고 콘솔로만 확인한다. -->
+    <springProfile name="!local &amp; !test &amp; !oauth-registration-test">
+        <appender name="APP_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${LOG_PATH}/kraft.log</file>
+            <append>true</append>
             <encoder>
-                <pattern>${filePattern}</pattern>
+                <charset>UTF-8</charset>
+                <pattern>${FILE_LOG_PATTERN}</pattern>
             </encoder>
             <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-                <fileNamePattern>${logPath}/archive/kraft.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
-                <maxFileSize>10MB</maxFileSize>
-                <maxHistory>30</maxHistory>
-                <totalSizeCap>1GB</totalSizeCap>
+                <fileNamePattern>${LOG_PATH}/archive/kraft.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+                <maxFileSize>${MAX_FILE_SIZE}</maxFileSize>
+                <maxHistory>${MAX_HISTORY}</maxHistory>
+                <totalSizeCap>${TOTAL_SIZE_CAP}</totalSizeCap>
             </rollingPolicy>
         </appender>
 
-        <!-- kraft-debug.log: DEBUG only, 30-day rolling -->
-        <appender name="DEBUG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-            <file>${logPath}/kraft-debug.log</file>
-            <filter class="ch.qos.logback.classic.filter.LevelFilter">
-                <level>DEBUG</level>
-                <onMatch>ACCEPT</onMatch>
-                <onMismatch>DENY</onMismatch>
-            </filter>
-            <encoder>
-                <pattern>${filePattern}</pattern>
-            </encoder>
-            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-                <fileNamePattern>${logPath}/archive/kraft-debug.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
-                <maxFileSize>10MB</maxFileSize>
-                <maxHistory>30</maxHistory>
-                <totalSizeCap>1GB</totalSizeCap>
-            </rollingPolicy>
-        </appender>
-
-        <!-- kraft-warn.log: WARN only, 30-day rolling -->
-        <appender name="WARN_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-            <file>${logPath}/kraft-warn.log</file>
-            <filter class="ch.qos.logback.classic.filter.LevelFilter">
-                <level>WARN</level>
-                <onMatch>ACCEPT</onMatch>
-                <onMismatch>DENY</onMismatch>
-            </filter>
-            <encoder>
-                <pattern>${filePattern}</pattern>
-            </encoder>
-            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-                <fileNamePattern>${logPath}/archive/kraft-warn.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
-                <maxFileSize>10MB</maxFileSize>
-                <maxHistory>30</maxHistory>
-                <totalSizeCap>200MB</totalSizeCap>
-            </rollingPolicy>
-        </appender>
-
-        <!-- kraft-error.log: ERROR only. 개인정보처리방침의 "서버 로그는 최대 30일 보관" 고지와 일치시킨다. -->
         <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-            <file>${logPath}/kraft-error.log</file>
+            <file>${LOG_PATH}/kraft-error.log</file>
+            <append>true</append>
             <filter class="ch.qos.logback.classic.filter.LevelFilter">
                 <level>ERROR</level>
                 <onMatch>ACCEPT</onMatch>
                 <onMismatch>DENY</onMismatch>
             </filter>
             <encoder>
-                <pattern>${filePattern}</pattern>
+                <charset>UTF-8</charset>
+                <pattern>${FILE_LOG_PATTERN}</pattern>
             </encoder>
             <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-                <fileNamePattern>${logPath}/archive/kraft-error.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
-                <maxFileSize>10MB</maxFileSize>
-                <maxHistory>30</maxHistory>
-                <totalSizeCap>200MB</totalSizeCap>
+                <fileNamePattern>${LOG_PATH}/archive/kraft-error.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+                <maxFileSize>${MAX_FILE_SIZE}</maxFileSize>
+                <maxHistory>${MAX_HISTORY}</maxHistory>
+                <totalSizeCap>${ERROR_TOTAL_SIZE_CAP}</totalSizeCap>
             </rollingPolicy>
         </appender>
     </springProfile>
 
     <springProfile name="local">
-        <root level="${rootLevel}">
+        <root level="${ROOT_LEVEL}">
             <appender-ref ref="CONSOLE"/>
             <appender-ref ref="LOCAL_FILE"/>
         </root>
     </springProfile>
-    <springProfile name="!local">
-        <root level="${rootLevel}">
+    <springProfile name="test | oauth-registration-test">
+        <root level="${ROOT_LEVEL}">
             <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="INFO_FILE"/>
-            <appender-ref ref="DEBUG_FILE"/>
-            <appender-ref ref="WARN_FILE"/>
+        </root>
+    </springProfile>
+    <springProfile name="!local &amp; !test &amp; !oauth-registration-test">
+        <root level="${ROOT_LEVEL}">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="APP_FILE"/>
             <appender-ref ref="ERROR_FILE"/>
         </root>
     </springProfile>

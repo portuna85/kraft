@@ -1,17 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Backend (8080)" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
     <option name="ACTIVE_PROFILES" value="local" />
-    <envs>
-      <env name="KRAFT_DB_URL" value="jdbc:mariadb://localhost:3306/kraft_lotto?useUnicode=true&amp;characterEncoding=UTF-8&amp;serverTimezone=Asia/Seoul" />
-      <env name="KRAFT_DB_USERNAME" value="kraft_lotto" />
-      <env name="KRAFT_DB_PASSWORD" value="devpass" />
-      <env name="KRAFT_FLYWAY_ENABLED" value="true" />
-      <env name="KRAFT_FLYWAY_BASELINE_ON_MIGRATE" value="false" />
-      <env name="KRAFT_JPA_DDL_AUTO" value="validate" />
-      <env name="KRAFT_REVALIDATE_WEB_URL" value="http://localhost:3000" />
-      <env name="KRAFT_PUBLIC_BASE_URL" value="http://localhost:3000" />
-      <env name="KRAFT_LOG_PATH" value="build/logs" />
-    </envs>
     <module name="Kraft.main" />
     <option name="SPRING_BOOT_MAIN_CLASS" value="com.kraft.Application" />
     <method v="2">
