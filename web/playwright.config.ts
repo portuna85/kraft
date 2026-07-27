@@ -9,9 +9,10 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./e2e",
   // e2e/content/**(픽스처 백엔드 전제, playwright.content.config.ts)·e2e/ad-overlay/**
-  // (광고 env 빌드 전제, playwright.ad-overlay.config.ts)는 각각 전용 설정에서만 돌린다 —
+  // (광고 env 빌드 전제, playwright.ad-overlay.config.ts)·e2e/visual/**(픽스처 백엔드 전제 +
+  // 스크린샷 베이스라인, playwright.visual.config.ts)는 각각 전용 설정에서만 돌린다 —
   // 이 설정(백엔드 없음, 광고 env 없음)으로 돌리면 항상 실패한다.
-  testIgnore: ["content/**", "ad-overlay/**"],
+  testIgnore: ["content/**", "ad-overlay/**", "visual/**"],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

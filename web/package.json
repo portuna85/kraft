@@ -15,6 +15,7 @@
     "test:e2e": "playwright test",
     "test:e2e:content": "playwright test --config=playwright.content.config.ts",
     "test:e2e:ad-overlay": "playwright test --config=playwright.ad-overlay.config.ts",
+    "test:e2e:visual": "playwright test --config=playwright.visual.config.ts",
     "e2e:serve": "node scripts/start-standalone.mjs",
     "generate:api-types": "node scripts/generate-api-types.mjs",
     "verify:api-types": "node scripts/generate-api-types.mjs --verify",
