@@ -1,6 +1,15 @@
+/* backdrop-filter를 가진 조상(예: .site-header) 아래에서 position:fixed 자식을 렌더하면
+   그 조상이 containing block이 돼 bottom:0/inset:0이 뷰포트가 아니라 조상의 높이 기준으로
+   계산된다(크로미움 확인됨, mobile-unconditional.css의 기존 .nav-backdrop/.nav-mobile-wrap
+   수정과 동일한 버그). top/left/right는 0으로 고정하고 bottom 대신 dvh 기반 height로
+   뷰포트 실높이를 직접 계산해 containing block과 무관하게 만든다. */
 .backdrop {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
+  height: 100dvh;
   background: rgba(0, 0, 0, 0.4);
   z-index: 50;
 }
@@ -15,18 +24,23 @@
 
 .left {
   top: 0;
-  bottom: 0;
   left: 0;
+  height: 100vh;
+  height: 100dvh;
   width: min(320px, 85vw);
 }
 
 .right {
   top: 0;
-  bottom: 0;
   right: 0;
+  height: 100vh;
+  height: 100dvh;
   width: min(320px, 85vw);
 }
 
+/* side="bottom"은 이 프로젝트에서 아직 쓰이지 않는다 — bottom:0 앵커는 top/height
+   방식으로 우회할 수 없어(콘텐츠에 따라 높이가 가변) 동일한 containing-block 버그에
+   여전히 노출돼 있다. 실제로 쓰기 전에 별도 검증이 필요하다. */
 .bottom {
   left: 0;
   right: 0;

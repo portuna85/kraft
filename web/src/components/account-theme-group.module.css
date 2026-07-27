@@ -1,0 +1,9 @@
+.group {
+  display: flex;
+  flex-direction: row;
+  /* align-items 기본값(stretch)을 유지 — Divider(orientation=vertical)가 height:100%로
+     행 전체 높이를 채우려면 형제 항목들이 교차축으로 늘어나 있어야 한다. AccountMenu/
+     ThemeToggle은 이미 자체 크기(theme-toggle 44px 등)를 갖고 있어 stretch의 영향을
+     받지 않는다. */
+  gap: var(--space-3);
+}

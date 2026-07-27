@@ -103,7 +103,11 @@ test.describe("로그인 상태", () => {
       await page.setViewportSize({ width, height: 900 });
       await gotoAndWaitForRealContent(page, "/community/posts/1");
 
-      await expect(page.getByRole("button", { name: "로그아웃" })).toBeVisible();
+      // Phase 1 2단계: 이 폭(<1024px)에서는 로그아웃 버튼(AccountMenu)이 보조 메뉴
+      // 드로어 안으로 이동했다 — 열어야 보인다.
+      await page.getByRole("button", { name: "메뉴 열기" }).click();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog.getByRole("button", { name: "로그아웃" })).toBeVisible();
       await expect(page.getByRole("button", { name: "삭제" }).first()).toBeVisible();
       await expectNoOverflow(page);
     });
@@ -113,7 +117,8 @@ test.describe("로그인 상태", () => {
     await page.setViewportSize({ width: 320, height: 900 });
     await gotoAndWaitForRealContent(page, "/community/posts/1");
 
-    const box = await page.getByRole("button", { name: "로그아웃" }).boundingBox();
+    await page.getByRole("button", { name: "메뉴 열기" }).click();
+    const box = await page.getByRole("dialog").getByRole("button", { name: "로그아웃" }).boundingBox();
     expect(box).not.toBeNull();
     expect(box!.height).toBeGreaterThanOrEqual(40);
   });

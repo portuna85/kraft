@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import localFont from "next/font/local";
 import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { CommunitySessionProvider } from "@/components/community/community-session-provider";
 import { StickyMobileAd } from "@/components/ad-unit";
 import { WebVitalsReporter } from "@/components/web-vitals-reporter";
@@ -113,6 +114,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
             <div className="shell">{children}</div>
           </main>
           <Footer />
+          <MobileBottomNav />
           <StickyMobileAd unit={process.env.NEXT_PUBLIC_KAKAO_ADFIT_UNIT_STICKY ?? ""} />
         </CommunitySessionProvider>
       </body>

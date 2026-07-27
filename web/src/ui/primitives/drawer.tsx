@@ -18,13 +18,14 @@ export function Drawer({ open, onClose, restoreFocusRef, side, titleId, title, c
   if (!open) return null;
 
   return (
-    <div className={styles.backdrop} onClick={onClose}>
+    <div className={styles.backdrop} data-drawer-backdrop onClick={onClose}>
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         className={`${styles.panel} ${SIDE_CLASS[side]}`}
+        data-drawer-panel
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id={titleId} className={styles.title}>

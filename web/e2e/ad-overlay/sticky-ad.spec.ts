@@ -88,6 +88,30 @@ test("하단 고정 광고가 푸터 내비게이션을 가리지 않는다 (페
   }
 });
 
+// Phase 1 2단계: 모바일 하단 내비게이션(MobileBottomNav)이 상시 bottom:0을 차지하게
+// 되면서, 광고는 그 위(bottom: var(--bottom-nav-h))로 옮겼다 — 광고가 내비 탭을
+// 가리거나, 반대로 내비 위에 어정쩡하게 겹쳐 뜨지 않는지 직접 확인한다.
+test("하단 고정 광고와 모바일 하단 내비게이션이 서로 겹치지 않고 광고가 내비 바로 위에 얹힌다", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto("/this-page-does-not-exist");
+
+  const ad = page.locator(".ad-sticky-mobile");
+  const nav = page.getByTestId("mobile-bottom-nav");
+  await expect(ad).toBeVisible();
+  await expect(nav).toBeVisible();
+
+  const adBox = await ad.boundingBox();
+  const navBox = await nav.boundingBox();
+  expect(adBox).not.toBeNull();
+  expect(navBox).not.toBeNull();
+
+  expect(isOverlapping(adBox!, navBox!)).toBe(false);
+  // 광고 바닥과 내비 상단 사이에 뜬 공간(빈 틈)이 없어야 한다 — 둘이 바로 붙어 있어야 한다.
+  expect(Math.abs(adBox!.y + adBox!.height - navBox!.y)).toBeLessThan(2);
+});
+
 test("닫기 버튼을 누르면 광고가 사라지고 body.has-sticky-ad도 해제된다", async ({ page }) => {
   await page.goto("/this-page-does-not-exist");
 

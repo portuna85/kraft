@@ -1,28 +1,29 @@
 import { test, expect, type Page } from "@playwright/test";
 import { expectNoOverflow } from "./lib/expect-no-overflow";
 
-// .site-header의 backdrop-filter가 자식 fixed 요소(.nav-backdrop/.nav-mobile-wrap)의
+// .site-header의 backdrop-filter가 자식 fixed 요소(1단계 Drawer 프리미티브의 backdrop/panel)의
 // containing block이 되어 bottom:0/inset:0이 뷰포트가 아니라 헤더 자신의 높이 기준으로
 // 계산되던 버그가 있었다 — top==bottom이 되어 드로어가 찌그러졌다(npm run dev 육안 확인으로
-// 발견). #nav-mobile의 "보임" 여부만으로는 이 레이아웃 붕괴를 잡지 못하므로, 배경·패널의
-// 실제 bounding box가 뷰포트 전체를 덮는지 직접 검사한다.
+// 발견, Phase 1 1단계 Drawer 프리미티브가 2단계에서 처음 실사용되며 재현 확인). role=dialog의
+// "보임" 여부만으로는 이 레이아웃 붕괴를 잡지 못하므로, 배경·패널의 실제 bounding box가
+// 뷰포트 전체 높이를 덮는지 직접 검사한다(패널은 side="right"라 폭은 뷰포트 전체가 아니다).
 async function expectDrawerCoversViewport(page: Page) {
   const viewport = page.viewportSize();
   if (!viewport) throw new Error("viewport size unavailable");
 
-  const backdropBox = await page.locator(".nav-backdrop").boundingBox();
-  const wrapBox = await page.locator(".nav-mobile-wrap").boundingBox();
+  const backdropBox = await page.locator("[data-drawer-backdrop]").boundingBox();
+  const panelBox = await page.locator("[data-drawer-panel]").boundingBox();
   expect(backdropBox).not.toBeNull();
-  expect(wrapBox).not.toBeNull();
+  expect(panelBox).not.toBeNull();
 
   // 서브픽셀 반올림 오차 허용치
   const TOLERANCE = 2;
   expect(Math.abs(backdropBox!.y)).toBeLessThan(TOLERANCE);
   expect(Math.abs(backdropBox!.y + backdropBox!.height - viewport.height)).toBeLessThan(TOLERANCE);
 
-  // 드로어 패널은 헤더 아래부터 시작해 뷰포트 하단까지 닿아야 한다
-  expect(wrapBox!.y).toBeGreaterThan(0);
-  expect(Math.abs(wrapBox!.y + wrapBox!.height - viewport.height)).toBeLessThan(TOLERANCE);
+  // 패널(오른쪽 사이드)은 뷰포트 맨 위부터 바닥까지 전체 높이를 차지해야 한다
+  expect(Math.abs(panelBox!.y)).toBeLessThan(TOLERANCE);
+  expect(Math.abs(panelBox!.y + panelBox!.height - viewport.height)).toBeLessThan(TOLERANCE);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -230,34 +231,46 @@ test.describe("정적 라우트·에러 경계 오버플로", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 모바일 네비게이션 드로어
+// 모바일 하단 내비게이션 + 보조 메뉴 드로어 (Phase 1 2단계)
 // ─────────────────────────────────────────────────────────────────────────────
-test.describe("모바일 내비게이션 드로어", () => {
-  // Pixel 5 너비 = 393px — CSS 기준 640px 미만 → 햄버거 메뉴
+test.describe("모바일 하단 내비게이션과 보조 메뉴", () => {
+  // Pixel 5 너비 = 393px — CSS 기준 1024px 미만 → 하단 내비 + 보조 메뉴 햄버거
   test.use({ viewport: { width: 393, height: 851 } });
 
-  test("햄버거 버튼이 보이고 데스크톱 내비게이션은 숨겨진다", async ({ page }) => {
+  test("하단 내비게이션과 보조 메뉴 버튼이 보이고, 데스크톱 내비게이션은 숨겨진다", async ({ page }) => {
     await page.goto("/");
 
-    const toggle = page.getByRole("button", { name: "메뉴 열기" });
-    await expect(toggle).toBeVisible();
-    await expect(page.locator(".nav-desktop")).toBeHidden();
+    await expect(page.getByTestId("mobile-bottom-nav")).toBeVisible();
+    await expect(page.getByRole("button", { name: "메뉴 열기" })).toBeVisible();
+    await expect(page.getByTestId("desktop-nav")).toBeHidden();
   });
 
-  test("햄버거 클릭 → 드로어 열림", async ({ page }) => {
+  test("하단 내비게이션 탭 4개(홈/추천/커뮤니티/보관함)에 이동 링크가 있고, 현재 경로에 aria-current가 붙는다", async ({
+    page,
+  }) => {
+    await page.goto("/recommend");
+
+    const nav = page.getByTestId("mobile-bottom-nav");
+    for (const label of ["홈", "추천", "커뮤니티", "보관함"]) {
+      await expect(nav.getByRole("link", { name: new RegExp(label) })).toBeVisible();
+    }
+    await expect(nav.getByRole("link", { name: /추천/ })).toHaveAttribute("aria-current", "page");
+  });
+
+  test("햄버거 클릭 → 보조 메뉴 드로어 열림", async ({ page }) => {
     await page.goto("/");
 
     await page.getByRole("button", { name: "메뉴 열기" }).click();
-    await expect(page.locator("#nav-mobile")).toBeVisible();
+    await expect(page.getByRole("dialog")).toBeVisible();
     await expect(page.getByRole("button", { name: "메뉴 닫기" })).toBeVisible();
   });
 
-  test("드로어 배경·패널이 뷰포트 전체를 덮는다 (backdrop-filter containing block 회귀 방지)", async ({
+  test("드로어 배경·패널이 뷰포트 전체 높이를 덮는다 (backdrop-filter containing block 회귀 방지)", async ({
     page,
   }) => {
     await page.goto("/");
     await page.getByRole("button", { name: "메뉴 열기" }).click();
-    await expect(page.locator("#nav-mobile")).toBeVisible();
+    await expect(page.getByRole("dialog")).toBeVisible();
 
     await expectDrawerCoversViewport(page);
   });
@@ -266,10 +279,10 @@ test.describe("모바일 내비게이션 드로어", () => {
     await page.goto("/");
 
     await page.getByRole("button", { name: "메뉴 열기" }).click();
-    await expect(page.locator("#nav-mobile")).toBeVisible();
+    await expect(page.getByRole("dialog")).toBeVisible();
 
     await page.keyboard.press("Escape");
-    await expect(page.locator("#nav-mobile")).not.toBeVisible();
+    await expect(page.getByRole("dialog")).not.toBeVisible();
     await expect(page.getByRole("button", { name: "메뉴 열기" })).toBeVisible();
   });
 
@@ -277,53 +290,54 @@ test.describe("모바일 내비게이션 드로어", () => {
     await page.goto("/");
 
     await page.getByRole("button", { name: "메뉴 열기" }).click();
-    await expect(page.locator("#nav-mobile")).toBeVisible();
+    await expect(page.getByRole("dialog")).toBeVisible();
 
-    await page.locator(".nav-mobile-wrap").evaluate((element) => {
+    await page.locator("[data-drawer-backdrop]").evaluate((element) => {
       (element as HTMLElement).click();
     });
-    await expect(page.locator("#nav-mobile")).not.toBeVisible();
+    await expect(page.getByRole("dialog")).not.toBeVisible();
   });
 
   test("데스크톱 너비로 리사이즈 시 드로어 자동 닫힘", async ({ page }) => {
     await page.goto("/");
 
     await page.getByRole("button", { name: "메뉴 열기" }).click();
-    await expect(page.locator("#nav-mobile")).toBeVisible();
+    await expect(page.getByRole("dialog")).toBeVisible();
 
     // matchMedia change 이벤트를 트리거하기 위해 1024px 이상으로 리사이즈
     await page.setViewportSize({ width: 1280, height: 800 });
-    await expect(page.locator("#nav-mobile")).not.toBeVisible();
+    await expect(page.getByRole("dialog")).not.toBeVisible();
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 태블릿 네비게이션 드로어
+// 태블릿: 모바일과 동일하게 하단 내비 + 보조 메뉴 (1024px 미만)
 // ─────────────────────────────────────────────────────────────────────────────
-test.describe("태블릿 내비게이션 드로어", () => {
-  // 640px ≤ width < 1024px → 햄버거 메뉴 (전폭 드로어)
+test.describe("태블릿 하단 내비게이션과 보조 메뉴", () => {
+  // 640px ≤ width < 1024px → 하단 내비 + 보조 메뉴 햄버거(모바일과 동일 구조)
   test.use({ viewport: { width: 768, height: 1024 } });
 
-  test("햄버거 버튼이 보이고 데스크톱 내비게이션은 숨겨진다", async ({ page }) => {
+  test("하단 내비게이션과 보조 메뉴 버튼이 보이고, 데스크톱 내비게이션은 숨겨진다", async ({ page }) => {
     await page.goto("/");
 
+    await expect(page.getByTestId("mobile-bottom-nav")).toBeVisible();
     await expect(page.getByRole("button", { name: "메뉴 열기" })).toBeVisible();
-    await expect(page.locator(".nav-desktop")).toBeHidden();
+    await expect(page.getByTestId("desktop-nav")).toBeHidden();
   });
 
-  test("햄버거 클릭 → 전폭 드로어 열림", async ({ page }) => {
+  test("햄버거 클릭 → 드로어 열림", async ({ page }) => {
     await page.goto("/");
 
     await page.getByRole("button", { name: "메뉴 열기" }).click();
-    await expect(page.locator("#nav-mobile")).toBeVisible();
+    await expect(page.getByRole("dialog")).toBeVisible();
   });
 
-  test("드로어 배경·패널이 뷰포트 전체를 덮는다 (backdrop-filter containing block 회귀 방지)", async ({
+  test("드로어 배경·패널이 뷰포트 전체 높이를 덮는다 (backdrop-filter containing block 회귀 방지)", async ({
     page,
   }) => {
     await page.goto("/");
     await page.getByRole("button", { name: "메뉴 열기" }).click();
-    await expect(page.locator("#nav-mobile")).toBeVisible();
+    await expect(page.getByRole("dialog")).toBeVisible();
 
     await expectDrawerCoversViewport(page);
   });
@@ -332,24 +346,65 @@ test.describe("태블릿 내비게이션 드로어", () => {
     await page.goto("/");
 
     await page.getByRole("button", { name: "메뉴 열기" }).click();
-    await expect(page.locator("#nav-mobile")).toBeVisible();
+    await expect(page.getByRole("dialog")).toBeVisible();
 
     await page.keyboard.press("Escape");
-    await expect(page.locator("#nav-mobile")).not.toBeVisible();
+    await expect(page.getByRole("dialog")).not.toBeVisible();
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 데스크톱: 데스크톱 nav 보임, 햄버거 숨겨짐
+// 데스크톱: 데스크톱 nav + 계정/테마 그룹 보임, 하단 내비·햄버거 숨겨짐
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe("데스크톱 내비게이션", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  test("데스크톱 내비게이션이 보이고 햄버거 버튼은 숨겨진다", async ({ page }) => {
+  test("데스크톱 내비게이션이 보이고 하단 내비게이션·햄버거 버튼은 숨겨진다", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.locator(".nav-desktop")).toBeVisible();
+    await expect(page.getByTestId("desktop-nav")).toBeVisible();
+    await expect(page.getByTestId("mobile-bottom-nav")).toBeHidden();
     await expect(page.getByRole("button", { name: "메뉴 열기" })).toBeHidden();
+  });
+
+  test("데이터 드롭다운에 4개 하위 링크가 있다", async ({ page }) => {
+    await page.goto("/");
+
+    await page.getByRole("button", { name: "데이터" }).click();
+    for (const label of ["출현 통계", "패턴 통계", "동반 출현", "번호 분석"]) {
+      await expect(page.getByRole("link", { name: label })).toBeVisible();
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 1 2단계: 모바일 하단 내비게이션이 상시 노출되므로, 페이지 끝까지 스크롤해도
+// 푸터 링크를 가리지 않는지 확인한다(광고 유무와 무관 — 광고 자체 겹침은
+// e2e/ad-overlay/sticky-ad.spec.ts가 별도로 검증).
+// ─────────────────────────────────────────────────────────────────────────────
+test.describe("모바일 하단 내비게이션과 푸터의 공존", () => {
+  test.use({ viewport: { width: 320, height: 568 } });
+
+  test("페이지 끝까지 스크롤해도 하단 내비가 푸터 링크를 가리지 않는다", async ({ page }) => {
+    await page.goto("/info/faq");
+
+    await page.locator(".footer-nav").scrollIntoViewIfNeeded();
+    const navBox = await page.getByTestId("mobile-bottom-nav").boundingBox();
+    expect(navBox).not.toBeNull();
+
+    const footerLinks = page.locator(".footer-nav a");
+    const count = await footerLinks.count();
+    expect(count).toBeGreaterThan(0);
+    for (let i = 0; i < count; i++) {
+      const box = await footerLinks.nth(i).boundingBox();
+      expect(box).not.toBeNull();
+      const overlaps =
+        navBox!.x < box!.x + box!.width &&
+        navBox!.x + navBox!.width > box!.x &&
+        navBox!.y < box!.y + box!.height &&
+        navBox!.y + navBox!.height > box!.y;
+      expect(overlaps).toBe(false);
+    }
   });
 });
 
@@ -359,14 +414,29 @@ test.describe("데스크톱 내비게이션", () => {
 // (pointer: fine)에서는 44px을 강제하지 않는 게 의도이므로 그 프로젝트에서는 skip.
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe("터치 타깃 최소 크기", () => {
-  test("nav-toggle·theme-toggle이 44px 이상이다", async ({ page }) => {
+  test("보조 메뉴 버튼·테마 토글·하단 내비 탭이 44px 이상이다", async ({ page }) => {
     await page.goto("/");
 
     const isCoarse = await page.evaluate(() => window.matchMedia("(pointer: coarse)").matches);
     test.skip(!isCoarse, "pointer: fine 프로젝트에는 해당 없음");
 
-    for (const selector of [".nav-toggle", ".theme-toggle"]) {
-      const box = await page.locator(selector).boundingBox();
+    const hamburgerBox = await page.locator('button[aria-label="메뉴 열기"]').boundingBox();
+    expect(hamburgerBox).not.toBeNull();
+    expect(hamburgerBox!.height).toBeGreaterThanOrEqual(44);
+
+    // 데스크톱용 ThemeToggle(AccountThemeGroup 안, CSS로만 숨김)도 DOM에는 늘 있으므로
+    // 드로어 안의 것으로 범위를 좁힌다. 모바일에서는 이게 실제로 보이는 유일한 ThemeToggle이다.
+    await page.getByRole("button", { name: "메뉴 열기" }).click();
+    const themeToggleBox = await page.getByRole("dialog").locator(".theme-toggle").boundingBox();
+    expect(themeToggleBox).not.toBeNull();
+    expect(themeToggleBox!.height).toBeGreaterThanOrEqual(44);
+    await page.keyboard.press("Escape");
+
+    const bottomNavLinks = page.getByTestId("mobile-bottom-nav").getByRole("link");
+    const count = await bottomNavLinks.count();
+    expect(count).toBeGreaterThan(0);
+    for (let i = 0; i < count; i++) {
+      const box = await bottomNavLinks.nth(i).boundingBox();
       expect(box).not.toBeNull();
       expect(box!.height).toBeGreaterThanOrEqual(44);
     }

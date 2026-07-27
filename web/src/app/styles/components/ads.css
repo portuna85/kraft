@@ -35,7 +35,9 @@
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  /* Phase 1 2단계: 모바일 하단 고정 내비(MobileBottomNav, z-index:30)가 항상 bottom:0을
+     차지하므로, 광고는 그 위에 얹는다. */
+  bottom: var(--bottom-nav-h);
   z-index: 40;
   display: flex;
   justify-content: center;
@@ -78,10 +80,15 @@
 }
 
 @media (max-width: 1023px) {
-  /* 하단 고정 광고(50px + close 버튼)가 마지막 콘텐츠를 가리지 않도록 여백 확보.
-     광고가 없거나 닫힌 상태에서도 항상 여백을 예약하지 않도록 body.has-sticky-ad로 게이트한다. */
+  /* 모바일 하단 고정 내비(MobileBottomNav)는 상시 노출이므로 무조건 여백을 예약한다.
+     하단 고정 광고(50px + close 버튼)는 광고가 실제로 떠 있을 때만(body.has-sticky-ad)
+     추가로 더한다 — 두 여백은 누적된다(광고가 내비 위에 얹히므로). */
+  .page {
+    padding-bottom: calc(var(--page-pad-bottom) + var(--bottom-nav-h));
+  }
+
   body.has-sticky-ad .page {
-    padding-bottom: calc(var(--page-pad-bottom) + var(--sticky-ad-h));
+    padding-bottom: calc(var(--page-pad-bottom) + var(--bottom-nav-h) + var(--sticky-ad-h));
   }
 }
 

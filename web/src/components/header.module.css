@@ -1,0 +1,21 @@
+.desktopOnly {
+  display: none;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.mobileOnly {
+  display: flex;
+  align-items: center;
+}
+
+/* BP 변경 시 src/lib/breakpoints.ts(BP.desktop)도 함께 동기화할 것. */
+@media (min-width: 1024px) {
+  .desktopOnly {
+    display: flex;
+  }
+
+  .mobileOnly {
+    display: none;
+  }
+}
