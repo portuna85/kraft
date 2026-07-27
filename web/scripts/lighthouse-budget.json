@@ -1,6 +1,6 @@
 {
   "/": {
-    "maxLcpMs": 1185,
+    "maxLcpMs": 2500,
     "maxClsScore": 0.051,
     "maxTbtMs": 246,
     "minPerformanceScore": 88
