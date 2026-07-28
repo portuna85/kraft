@@ -16,8 +16,11 @@ public class SavedNumber {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "client_token_hash", nullable = false, length = 64)
+    @Column(name = "client_token_hash", length = 64)
     private String clientTokenHash;
+
+    @Column(name = "owner_user_id")
+    private Long ownerUserId;
 
     @Column(name = "numbers", nullable = false, length = 32)
     private String numbers;
@@ -50,6 +53,10 @@ public class SavedNumber {
         return clientTokenHash;
     }
 
+    public Long getOwnerUserId() {
+        return ownerUserId;
+    }
+
     public String getNumbers() {
         return numbers;
     }
@@ -64,5 +71,11 @@ public class SavedNumber {
 
     public OffsetDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    /** 로그인 계정 귀속(Phase 4) — 익명 소유권을 계정 소유권으로 상호 배타 전환한다. */
+    void claimTo(Long ownerUserId) {
+        this.ownerUserId = ownerUserId;
+        this.clientTokenHash = null;
     }
 }

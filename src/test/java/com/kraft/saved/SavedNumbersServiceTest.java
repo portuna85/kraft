@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -275,5 +276,53 @@ class SavedNumbersServiceTest {
         given(winningNumberQueryService.findLatest()).willReturn(Optional.of(draw));
 
         assertThat(service.compareWithRound(TOKEN_HASH, "latest")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("귀속 시 계정에 없는 조합은 계정 소유권으로 옮긴다")
+    void claimAll_newCombination_movesToOwner() {
+        String encoded = lottoNumberCodec.toStorageValue(VALID_NUMBERS);
+        SavedNumber anonymous = savedEntity(encoded, null, "MANUAL");
+        given(savedNumberRepository.findByClientTokenHashOrderByCreatedAtDesc(TOKEN_HASH))
+                .willReturn(List.of(anonymous));
+        given(savedNumberRepository.findByOwnerUserIdAndNumbers(99L, encoded)).willReturn(Optional.empty());
+
+        SavedNumberClaimResult result = service.claimAll(TOKEN_HASH, 99L);
+
+        assertThat(result.mergedCount()).isEqualTo(1);
+        assertThat(result.duplicateCount()).isEqualTo(0);
+        assertThat(anonymous.getOwnerUserId()).isEqualTo(99L);
+        assertThat(anonymous.getClientTokenHash()).isNull();
+        verify(savedNumberRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("귀속 시 계정에 이미 같은 조합이 있으면 익명 쪽 중복 행을 삭제한다")
+    void claimAll_duplicateCombination_deletesAnonymousRow() {
+        String encoded = lottoNumberCodec.toStorageValue(VALID_NUMBERS);
+        SavedNumber anonymous = savedEntity(encoded, null, "MANUAL");
+        given(savedNumberRepository.findByClientTokenHashOrderByCreatedAtDesc(TOKEN_HASH))
+                .willReturn(List.of(anonymous));
+        given(savedNumberRepository.findByOwnerUserIdAndNumbers(99L, encoded))
+                .willReturn(Optional.of(savedEntity(encoded, null, "MANUAL")));
+
+        SavedNumberClaimResult result = service.claimAll(TOKEN_HASH, 99L);
+
+        assertThat(result.mergedCount()).isEqualTo(0);
+        assertThat(result.duplicateCount()).isEqualTo(1);
+        verify(savedNumberRepository).delete(anonymous);
+    }
+
+    @Test
+    @DisplayName("계정으로 귀속된 저장 번호 목록을 owner_user_id 기준으로 조회한다")
+    void listForOwner_returnsOwnedSavedNumbers() {
+        String encoded = lottoNumberCodec.toStorageValue(VALID_NUMBERS);
+        given(savedNumberRepository.findByOwnerUserIdOrderByCreatedAtDesc(99L))
+                .willReturn(List.of(savedEntity(encoded, "즐겨찾기", "MANUAL")));
+
+        List<SavedNumberResponse> result = service.listForOwner(99L);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).numbers()).containsExactlyElementsOf(VALID_NUMBERS);
     }
 }

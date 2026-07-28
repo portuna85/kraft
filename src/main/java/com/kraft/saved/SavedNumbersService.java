@@ -52,6 +52,35 @@ public class SavedNumbersService {
     }
 
     @Transactional(readOnly = true)
+    public List<SavedNumberResponse> listForOwner(Long ownerUserId) {
+        return savedNumberRepository.findByOwnerUserIdOrderByCreatedAtDesc(ownerUserId).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    /**
+     * 로그인 계정 귀속(Phase 4, 문서 10.2 4단계) — 익명 기기 토큰의 저장 번호를 정규화된
+     * 번호 조합 기준으로 중복 제거하며 계정 소유권으로 옮긴다. 사용자가 이미 같은 조합을
+     * 갖고 있으면(다른 기기에서 먼저 귀속한 경우 등) 익명 쪽 중복 행은 지운다 — 계정에는
+     * 정규화된 조합당 한 행만 남아야 한다(uk_saved_owner_numbers).
+     */
+    public SavedNumberClaimResult claimAll(String clientTokenHash, Long ownerUserId) {
+        List<SavedNumber> anonymous = savedNumberRepository.findByClientTokenHashOrderByCreatedAtDesc(clientTokenHash);
+        int merged = 0;
+        int duplicates = 0;
+        for (SavedNumber saved : anonymous) {
+            if (savedNumberRepository.findByOwnerUserIdAndNumbers(ownerUserId, saved.getNumbers()).isPresent()) {
+                savedNumberRepository.delete(saved);
+                duplicates++;
+            } else {
+                saved.claimTo(ownerUserId);
+                merged++;
+            }
+        }
+        return new SavedNumberClaimResult(merged, duplicates);
+    }
+
+    @Transactional(readOnly = true)
     public List<SavedNumberMatchResult> compareWithRound(String clientTokenHash, String roundParam) {
         WinningNumberResponse draw = "latest".equalsIgnoreCase(roundParam)
                 ? winningNumberQueryService.findLatest()

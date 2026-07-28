@@ -67,6 +67,23 @@ public class RecommendationSetHistoryService {
         return toSummary(set);
     }
 
+    @Transactional(readOnly = true)
+    public List<RecommendationSetSummary> listForOwner(Long ownerUserId) {
+        return recommendationSetRepository.findByOwnerUserIdOrderByCreatedAtDesc(ownerUserId).stream()
+                .map(this::toSummary)
+                .toList();
+    }
+
+    /**
+     * 로그인 계정 귀속(Phase 4, 문서 10.2 5단계) — 추천 세트는 각각이 독립된 이력
+     * 레코드라 저장 번호와 달리 중복 제거 없이 전부 옮긴다.
+     */
+    public int claimAll(String clientTokenHash, Long ownerUserId, OffsetDateTime claimedAt) {
+        List<RecommendationSet> anonymous = recommendationSetRepository.findByClientTokenHashOrderByCreatedAtDesc(clientTokenHash);
+        anonymous.forEach(set -> set.claimTo(ownerUserId, claimedAt));
+        return anonymous.size();
+    }
+
     /**
      * 소유권 검증 없이 세트를 조회한다 — 커뮤니티 게시글에 첨부된 추천 세트를 방문자에게
      * 보여줄 때 쓴다. 게시글이 공개된 이상 첨부된 추천 정보도 공개 데이터로 취급한다

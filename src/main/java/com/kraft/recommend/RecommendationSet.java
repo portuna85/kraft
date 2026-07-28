@@ -16,7 +16,6 @@ public class RecommendationSet {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Phase 4(로그인 계정 귀속)에서 채워질 컬럼 — 지금은 항상 null.
     @Column(name = "owner_user_id")
     private Long ownerUserId;
 
@@ -97,5 +96,12 @@ public class RecommendationSet {
 
     public OffsetDateTime getClaimedAt() {
         return claimedAt;
+    }
+
+    /** 로그인 계정 귀속(Phase 4) — 익명 소유권을 계정 소유권으로 상호 배타 전환한다. */
+    void claimTo(Long ownerUserId, OffsetDateTime claimedAt) {
+        this.ownerUserId = ownerUserId;
+        this.claimedAt = claimedAt;
+        this.clientTokenHash = null;
     }
 }

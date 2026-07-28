@@ -137,4 +137,35 @@ class RecommendationSetHistoryServiceTest {
                 });
         verify(recommendationItemRepository, org.mockito.Mockito.never()).deleteBySetId(org.mockito.ArgumentMatchers.any());
     }
+
+    @Test
+    @DisplayName("계정 귀속 시 해당 토큰의 모든 세트를 소유권 이전하고 client_token_hash를 비운다")
+    void claimAll_movesAllSetsToOwnerAndClearsToken() {
+        RecommendationSet set1 = setEntity(1L, TOKEN_HASH);
+        RecommendationSet set2 = setEntity(2L, TOKEN_HASH);
+        given(recommendationSetRepository.findByClientTokenHashOrderByCreatedAtDesc(TOKEN_HASH))
+                .willReturn(List.of(set1, set2));
+        OffsetDateTime claimedAt = OffsetDateTime.now();
+
+        int moved = service.claimAll(TOKEN_HASH, 99L, claimedAt);
+
+        assertThat(moved).isEqualTo(2);
+        assertThat(set1.getOwnerUserId()).isEqualTo(99L);
+        assertThat(set1.getClientTokenHash()).isNull();
+        assertThat(set1.getClaimedAt()).isEqualTo(claimedAt);
+        assertThat(set2.getOwnerUserId()).isEqualTo(99L);
+    }
+
+    @Test
+    @DisplayName("계정으로 귀속된 추천 세트 목록을 owner_user_id 기준으로 조회한다")
+    void listForOwner_returnsOwnedSets() {
+        given(recommendationSetRepository.findByOwnerUserIdOrderByCreatedAtDesc(99L))
+                .willReturn(List.of(setEntity(1L, null)));
+        given(recommendationItemRepository.findBySetIdOrderByPosition(1L)).willReturn(List.of());
+
+        List<RecommendationSetSummary> result = service.listForOwner(99L);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).id()).isEqualTo(1L);
+    }
 }

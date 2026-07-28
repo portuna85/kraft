@@ -9,4 +9,6 @@ public interface RecommendationSetRepository extends JpaRepository<Recommendatio
     List<RecommendationSet> findByClientTokenHashOrderByCreatedAtDesc(String clientTokenHash);
 
     Optional<RecommendationSet> findByIdAndClientTokenHash(Long id, String clientTokenHash);
+
+    List<RecommendationSet> findByOwnerUserIdOrderByCreatedAtDesc(Long ownerUserId);
 }

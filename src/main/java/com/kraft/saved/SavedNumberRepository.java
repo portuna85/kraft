@@ -13,4 +13,8 @@ public interface SavedNumberRepository extends JpaRepository<SavedNumber, Long> 
     Optional<SavedNumber> findByClientTokenHashAndNumbers(String clientTokenHash, String numbers);
 
     Optional<SavedNumber> findByIdAndClientTokenHash(Long id, String clientTokenHash);
+
+    List<SavedNumber> findByOwnerUserIdOrderByCreatedAtDesc(Long ownerUserId);
+
+    Optional<SavedNumber> findByOwnerUserIdAndNumbers(Long ownerUserId, String numbers);
 }
