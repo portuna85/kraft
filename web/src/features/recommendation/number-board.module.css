@@ -1,0 +1,60 @@
+.legend {
+  display: flex;
+  gap: var(--space-4, 1rem);
+  flex-wrap: wrap;
+  align-items: center;
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--color-muted, #666);
+}
+
+.legendSwatch {
+  display: inline-block;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: var(--radius-sm, 4px);
+  margin-right: 0.35rem;
+  vertical-align: middle;
+  border: 1px solid currentColor;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2.5rem, 1fr));
+  gap: 0.4rem;
+}
+
+.cell {
+  min-height: 44px;
+  min-width: 44px;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--color-surface-3, #ccc);
+  background: var(--color-surface-1, #fff);
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  line-height: 1;
+}
+
+.cell:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.cellLocked {
+  border-color: var(--color-brand, #2563eb);
+  border-width: 2px;
+}
+
+.cellExcluded {
+  border-style: dashed;
+  text-decoration: line-through;
+  color: var(--color-muted, #666);
+}
+
+.stateLabel {
+  font-size: 0.6rem;
+}

@@ -39,14 +39,21 @@ function resolvePublicBaseUrl(): string {
 
 export type WinningNumber = Req<components["schemas"]["WinningNumberResponse"]>;
 
-export type RecommendationResponse = {
-  recommendations: number[][];
-  strategy: "reduce_shared_winner_risk" | "random";
-  algorithmVersion: string;
-  historyThroughRound: number;
+export type RoundFreshness = Req<components["schemas"]["RoundFreshnessResponse"]>;
+
+export type HomeCommunityPostSummary = {
+  id: number;
+  title: string;
+  authorNameSnapshot: string;
+  createdAt: string;
 };
 
-export type RoundFreshness = Req<components["schemas"]["RoundFreshnessResponse"]>;
+export type HomeSummary = {
+  latestRound: WinningNumber | null;
+  freshness: RoundFreshness | null;
+  latestPosts: HomeCommunityPostSummary[];
+  weeklyPopularPosts: HomeCommunityPostSummary[];
+};
 
 export type PublicIncident = {
   round: number | null;
@@ -107,6 +114,12 @@ export async function getLatestWinningNumber(): Promise<WinningNumber> {
 export async function getRoundFreshness(): Promise<RoundFreshness> {
   return fetchJson<RoundFreshness>("/api/v1/rounds/freshness", {
     next: { revalidate: REVALIDATE_LATEST, tags: [TAG_ROUNDS_LATEST] }
+  });
+}
+
+export async function getHomeSummary(): Promise<HomeSummary> {
+  return fetchJson<HomeSummary>("/api/v1/home", {
+    next: { revalidate: REVALIDATE_LATEST }
   });
 }
 

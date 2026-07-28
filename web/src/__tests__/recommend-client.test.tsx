@@ -6,81 +6,69 @@ vi.mock("@/lib/device-token", () => ({
   getDeviceToken: () => "a".repeat(64),
 }));
 
-function mockFetch(body: unknown, status = 200) {
-  return vi.fn().mockResolvedValue({
-    ok: status >= 200 && status < 300,
-    status,
-    json: () => Promise.resolve(body),
-  });
-}
+const EMPTY_RESULT = { recommendations: [], strategy: "random", algorithmVersion: "uniform-random-v1", historyThroughRound: 1189 };
 
-const EMPTY_RESULT = { recommendations: [] };
+function jsonResponse(body: unknown, ok = true, status = 200) {
+  return { ok, status, json: () => Promise.resolve(body) };
+}
 
 describe("번호 추천 화면", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    global.fetch = mockFetch(EMPTY_RESULT);
+    global.fetch = vi.fn().mockResolvedValue(jsonResponse(EMPTY_RESULT));
   });
 
-  it("기본값으로 폼을 렌더링한다", async () => {
+  it("기본값으로 전략 선택·번호선택판·조합 수 입력을 렌더링한다", async () => {
     render(<RecommendClient />);
 
-    expect(await screen.findByRole("button")).toBeInTheDocument();
+    await screen.findByRole("button", { name: "추천 생성" });
+    expect(screen.getByRole("radio", { name: "무작위" })).toBeChecked();
+    expect(screen.getByRole("group", { name: "1부터 45까지 번호 선택판" })).toBeInTheDocument();
     expect(screen.getByRole("spinbutton")).toHaveValue(5);
-    expect(screen.getByRole("textbox")).toHaveValue("");
-    expect(screen.getByRole("checkbox")).toBeChecked();
   });
 
-  it("최초 로드 시 추천을 요청한다", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(EMPTY_RESULT),
-    });
-
+  it("최초 로드 시 X-Device-Token과 함께 추천을 요청한다", async () => {
     render(<RecommendClient />);
 
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(1);
-    });
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
 
     expect(global.fetch).toHaveBeenCalledWith(
       "/api/v1/numbers/recommend",
       expect.objectContaining({
         method: "POST",
+        headers: expect.objectContaining({ "X-Device-Token": "a".repeat(64) }),
         body: JSON.stringify({
           count: 5,
           excludedNumbers: [],
-          reduceSharedWinnerRisk: true,
+          lockedNumbers: [],
+          strategy: "random",
         }),
       }),
     );
   });
 
   it("마운트 시 반환된 초기 추천을 렌더링한다", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve({ recommendations: [[4, 8, 12, 16, 20, 24]] }),
-    });
+    global.fetch = vi.fn().mockResolvedValue(
+      jsonResponse({
+        recommendations: [[4, 8, 12, 16, 20, 24]],
+        strategy: "random",
+        algorithmVersion: "uniform-random-v1",
+        historyThroughRound: 1189,
+        setId: null,
+        items: [{ position: 1, numbers: [4, 8, 12, 16, 20, 24], score: null, explanationCodes: [] }],
+        createdAt: null,
+      }),
+    );
 
     render(<RecommendClient />);
 
     await waitFor(() => {
-      expect(screen.getAllByRole("button")).toHaveLength(2);
-    });
-
-    [4, 8, 12, 16, 20, 24].forEach((n) => {
-      expect(screen.getByText(String(n))).toBeInTheDocument();
+      [4, 8, 12, 16, 20, 24].forEach((n) => expect(screen.getByText(String(n))).toBeInTheDocument());
     });
   });
 
   it("초기 로드가 응답 오류로 실패하면 서버 메시지를 보여준다", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 503,
-      json: () => Promise.resolve({ message: "temporary outage" }),
-    });
+    global.fetch = vi.fn().mockResolvedValue(jsonResponse({ message: "temporary outage" }, false, 503));
 
     render(<RecommendClient />);
 
@@ -89,219 +77,103 @@ describe("번호 추천 화면", () => {
     });
   });
 
-  it("초기 로드가 예외를 던지면 폴백 메시지를 보여준다", async () => {
-    global.fetch = vi.fn().mockRejectedValue(new Error("network down"));
+  it("전략을 바꾸고 번호를 고정하면 다음 요청에 반영된다", async () => {
+    global.fetch = vi.fn().mockResolvedValue(jsonResponse(EMPTY_RESULT));
 
     render(<RecommendClient />);
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
 
-    await waitFor(() => {
-      expect(screen.getByRole("status").textContent).not.toBe("");
-    });
-  });
+    fireEvent.click(screen.getByRole("radio", { name: "균형 조합" }));
+    fireEvent.click(screen.getByRole("button", { name: "번호 3" }));
+    fireEvent.click(screen.getByRole("button", { name: "추천 생성" }));
 
-  it("번호 추천 요청을 보내고 반환된 숫자를 렌더링한다", async () => {
-    global.fetch = vi.fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(EMPTY_RESULT),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ recommendations: [[1, 7, 15, 23, 38, 45]] }),
-      });
-
-    render(<RecommendClient />);
-    fireEvent.submit((await screen.findByRole("button")).closest("form")!);
-
-    await waitFor(() => {
-      expect(screen.getAllByRole("button")).toHaveLength(2);
-    });
-
-    [1, 7, 15, 23, 38, 45].forEach((n) => {
-      expect(screen.getByText(String(n))).toBeInTheDocument();
-    });
-  });
-
-  it("서버가 비정상 상태를 반환하면 오류 메시지를 보여준다", async () => {
-    global.fetch = vi.fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(EMPTY_RESULT),
-      })
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        json: () => Promise.resolve({ message: "server error" }),
-      });
-
-    render(<RecommendClient />);
-    fireEvent.submit((await screen.findByRole("button")).closest("form")!);
-
-    await waitFor(() => {
-      expect(screen.getByRole("status")).toHaveTextContent("server error");
-    });
-  });
-
-  it("서버가 메시지를 주지 않으면 폴백 오류를 보여준다", async () => {
-    global.fetch = vi.fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(EMPTY_RESULT),
-      })
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 503,
-        json: () => Promise.resolve({}),
-      });
-
-    render(<RecommendClient />);
-    fireEvent.submit((await screen.findByRole("button")).closest("form")!);
-
-    await waitFor(() => {
-      expect(screen.getByRole("status").textContent).not.toBe("");
-    });
-  });
-
-  it("변경된 추천 개수와 당첨금 최대화 값을 제출한다", async () => {
-    global.fetch = vi.fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(EMPTY_RESULT),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(EMPTY_RESULT),
-      });
-
-    render(<RecommendClient />);
-    const submitButton = await screen.findByRole("button");
-
-    fireEvent.change(screen.getByRole("spinbutton"), { target: { value: "7" } });
-    fireEvent.click(screen.getByRole("checkbox"));
-    fireEvent.submit(submitButton.closest("form")!);
-
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(2);
-    });
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
 
     expect(global.fetch).toHaveBeenLastCalledWith(
       "/api/v1/numbers/recommend",
       expect.objectContaining({
-        method: "POST",
         body: JSON.stringify({
-          count: 7,
+          count: 5,
           excludedNumbers: [],
-          reduceSharedWinnerRisk: false,
+          lockedNumbers: [3],
+          strategy: "balanced",
         }),
       }),
     );
   });
 
-  it("추천 제출이 예외를 던지면 폴백 메시지를 보여준다", async () => {
-    global.fetch = vi.fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(EMPTY_RESULT),
-      })
-      .mockRejectedValueOnce(new Error("network down"));
-
+  it("번호를 세 번 누르면 고정 → 제외 → 해제 순으로 순환한다", async () => {
     render(<RecommendClient />);
-    fireEvent.submit((await screen.findByRole("button")).closest("form")!);
+    await screen.findByRole("button", { name: "추천 생성" });
 
-    await waitFor(() => {
-      expect(screen.getByRole("status").textContent).not.toBe("");
-    });
+    const cell = screen.getByRole("button", { name: "번호 3" });
+    fireEvent.click(cell);
+    expect(screen.getByRole("button", { name: "번호 3, 고정" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "번호 3, 고정" }));
+    expect(screen.getByRole("button", { name: "번호 3, 제외" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "번호 3, 제외" }));
+    expect(screen.getByRole("button", { name: "번호 3" })).toBeInTheDocument();
   });
 
-  it("무시된 제외 숫자에 대해 경고한다", async () => {
-    global.fetch = vi.fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(EMPTY_RESULT),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ recommendations: [[2, 8, 14, 20, 30, 40]] }),
-      });
+  it("확률 고지 문구를 표시한다", async () => {
+    render(<RecommendClient />);
+    await screen.findByRole("button", { name: "추천 생성" });
+
+    expect(
+      screen.getByText(
+        "모든 유효한 로또 6/45 조합의 1등 당첨 확률은 동일합니다. 추천 전략은 번호를 선택하는 방식을 설명할 뿐 당첨 확률을 높이지 않습니다.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("응답에 세트 정보가 있으면 전략·알고리즘 버전·반영 회차를 표시한다", async () => {
+    global.fetch = vi.fn().mockResolvedValue(
+      jsonResponse({
+        recommendations: [[1, 2, 3, 4, 5, 6]],
+        strategy: "balanced",
+        algorithmVersion: "balanced-v1",
+        historyThroughRound: 1189,
+        setId: 42,
+        items: [{ position: 1, numbers: [1, 2, 3, 4, 5, 6], score: 5, explanationCodes: ["SUM_IN_RANGE"] }],
+        createdAt: "2026-07-28T00:00:00Z",
+      }),
+    );
 
     render(<RecommendClient />);
-    const submitButton = await screen.findByRole("button");
-
-    fireEvent.change(screen.getByRole("textbox"), { target: { value: "3, abc, 99" } });
-    fireEvent.submit(submitButton.closest("form")!);
 
     await waitFor(() => {
-      expect(screen.getByRole("status").textContent).toContain("abc");
+      expect(screen.getByText(/balanced-v1/)).toBeInTheDocument();
+      expect(screen.getByText(/1189회/)).toBeInTheDocument();
+      expect(screen.getByText("번호 합계가 일반적인 범위 안에 있어요")).toBeInTheDocument();
     });
   });
 
   it("추천을 저장한 뒤 저장 완료 상태를 보여준다", async () => {
     global.fetch = vi.fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(EMPTY_RESULT),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ recommendations: [[1, 7, 15, 23, 38, 45]] }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 201,
-        json: () => Promise.resolve({ created: true }),
-      });
+      .mockResolvedValueOnce(jsonResponse(EMPTY_RESULT))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          recommendations: [[1, 7, 15, 23, 38, 45]],
+          strategy: "random",
+          algorithmVersion: "uniform-random-v1",
+          historyThroughRound: 1189,
+          setId: null,
+          items: [{ position: 1, numbers: [1, 7, 15, 23, 38, 45], score: null, explanationCodes: [] }],
+          createdAt: null,
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ created: true }, true, 201));
 
     render(<RecommendClient />);
-    fireEvent.submit((await screen.findByRole("button")).closest("form")!);
+    fireEvent.click(await screen.findByRole("button", { name: "추천 생성" }));
 
-    await waitFor(() => {
-      expect(screen.getAllByRole("button").length).toBeGreaterThan(1);
-    });
-
-    const saveButton = screen.getAllByRole("button")[1];
+    const saveButton = await screen.findByRole("button", { name: "저장" });
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect((screen.getAllByRole("button"))[1]).toBeDisabled();
-    });
-  });
-
-  it("저장이 실패하면 폴백 메시지를 보여준다", async () => {
-    global.fetch = vi.fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(EMPTY_RESULT),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ recommendations: [[1, 7, 15, 23, 38, 45]] }),
-      })
-      .mockRejectedValueOnce(new Error("save failed"));
-
-    render(<RecommendClient />);
-    fireEvent.submit((await screen.findByRole("button")).closest("form")!);
-
-    await waitFor(() => {
-      expect(screen.getAllByRole("button").length).toBeGreaterThan(1);
-    });
-
-    fireEvent.click(screen.getAllByRole("button")[1]);
-
-    await waitFor(() => {
-      expect(screen.getByRole("status").textContent).not.toBe("");
+      expect(screen.getByRole("button", { name: "저장됨" })).toBeInTheDocument();
     });
   });
 });
