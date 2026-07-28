@@ -115,6 +115,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/community/session/claim-device": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["claimDevice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/community/reports": {
         parameters: {
             query?: never;
@@ -371,6 +387,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/community/me/saved-numbers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["savedNumbers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/community/me/recommendation-sets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["recommendationSets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/community/me/interactions": {
         parameters: {
             query?: never;
@@ -534,6 +582,14 @@ export interface components {
             items?: components["schemas"]["RecommendationItemView"][];
             /** Format: date-time */
             createdAt?: string;
+        };
+        IdentityMergeResult: {
+            /** Format: int32 */
+            mergedSavedNumberCount?: number;
+            /** Format: int32 */
+            duplicateSavedNumberCount?: number;
+            /** Format: int32 */
+            mergedRecommendationSetCount?: number;
         };
         CreateReportRequest: {
             /** @enum {string} */
@@ -1036,6 +1092,28 @@ export interface operations {
             };
         };
     };
+    claimDevice: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Device-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["IdentityMergeResult"];
+                };
+            };
+        };
+    };
     report: {
         parameters: {
             query?: never;
@@ -1455,6 +1533,46 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CommunitySessionResponse"];
+                };
+            };
+        };
+    };
+    savedNumbers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SavedNumberResponse"][];
+                };
+            };
+        };
+    };
+    recommendationSets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RecommendationSetSummary"][];
                 };
             };
         };

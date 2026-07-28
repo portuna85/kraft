@@ -1,5 +1,6 @@
 import { browserFetch } from "@/lib/browser-api";
 import { getDeviceToken } from "@/lib/device-token";
+import type { RecommendationSetSummary } from "@/features/recommendation/types";
 import {
   DEFAULT_COMMENT_PAGE_SIZE,
   type CommunityComment,
@@ -170,5 +171,38 @@ export async function unblockUser(userId: number): Promise<void> {
   await browserFetch<void>(`/api/v1/community/users/${userId}/block`, {
     method: "DELETE",
     headers: writeHeaders(),
+  });
+}
+
+export type IdentityMergeResult = {
+  mergedSavedNumberCount: number;
+  duplicateSavedNumberCount: number;
+  mergedRecommendationSetCount: number;
+};
+
+export type MySavedNumber = {
+  id: number;
+  numbers: number[];
+  label: string | null;
+  source: string;
+  createdAt: string;
+};
+
+// 로그인 계정 귀속(Phase 4) — 같은 브라우저의 익명 기기 토큰 기록을 계정으로 옮긴다.
+// X-Device-Token은 CSRF 토큰과 별개로 여전히 필요하다(어떤 기기의 기록을 옮길지 지정).
+export async function claimDevice(): Promise<IdentityMergeResult> {
+  return browserFetch<IdentityMergeResult>("/api/v1/community/session/claim-device", {
+    method: "POST",
+    headers: writeHeaders({ "X-Device-Token": getDeviceToken() }),
+  });
+}
+
+export async function getMySavedNumbers(): Promise<MySavedNumber[]> {
+  return browserFetch<MySavedNumber[]>("/api/v1/community/me/saved-numbers", { cache: "no-store" });
+}
+
+export async function getMyRecommendationSets(): Promise<RecommendationSetSummary[]> {
+  return browserFetch<RecommendationSetSummary[]>("/api/v1/community/me/recommendation-sets", {
+    cache: "no-store",
   });
 }

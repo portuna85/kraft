@@ -47,4 +47,24 @@ describe("디바이스 토큰 조회", () => {
       }
     }
   });
+
+  it("회전하면 새 토큰을 생성해 이전 토큰을 대체한다", async () => {
+    const { getDeviceToken, rotateDeviceToken } = await import("@/lib/device-token");
+    const original = getDeviceToken();
+
+    const rotated = rotateDeviceToken();
+
+    expect(rotated).toBeTruthy();
+    expect(rotated).not.toBe(original);
+    expect(getDeviceToken()).toBe(rotated);
+  });
+
+  it("서버 렌더링 환경에서 회전을 호출하면 빈 문자열을 반환한다", async () => {
+    const win = globalThis.window;
+    // @ts-expect-error — intentional SSR simulation
+    delete globalThis.window;
+    const { rotateDeviceToken } = await import("@/lib/device-token");
+    expect(rotateDeviceToken()).toBe("");
+    globalThis.window = win;
+  });
 });

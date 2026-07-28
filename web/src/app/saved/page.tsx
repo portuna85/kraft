@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SavedNumbersClient } from "@/components/saved-numbers-client";
+import { AccountLibrarySection } from "@/features/identity/account-library-section";
 import { getLatestWinningNumber } from "@/lib/api";
 
 export const metadata: Metadata = {
@@ -20,6 +21,7 @@ export default async function SavedPage() {
       <p className="eyebrow">저장 번호</p>
       <h1 className="page-title">저장 번호</h1>
       <SavedNumbersClient latestRound={latest?.round ?? 0} />
+      <AccountLibrarySection />
     </section>
   );
 }
