@@ -143,7 +143,7 @@ test.describe("실제 콘텐츠가 채워진 라우트의 오버플로", () => {
         }),
       );
       await page.goto("/recommend");
-      await page.getByRole("button", { name: "추천받기" }).click();
+      await page.getByRole("button", { name: "추천 생성" }).click();
       await expect(page.locator(".recommend-card").first()).toBeVisible();
       await expectNoOverflow(page);
     });
@@ -160,7 +160,7 @@ test.describe("실제 콘텐츠가 채워진 라우트의 오버플로", () => {
       );
       await page.goto("/recommend");
       await page.getByLabel("조합 수").fill("10");
-      await page.getByRole("button", { name: "추천받기" }).click();
+      await page.getByRole("button", { name: "추천 생성" }).click();
       await expect(page.locator(".recommend-card")).toHaveCount(10);
       await expectNoOverflow(page);
     });
@@ -175,7 +175,7 @@ test.describe("실제 콘텐츠가 채워진 라우트의 오버플로", () => {
         }),
       );
       await page.goto("/recommend");
-      await page.getByRole("button", { name: "추천받기" }).click();
+      await page.getByRole("button", { name: "추천 생성" }).click();
       await expect(page.locator(".status-text")).toBeVisible();
       await expectNoOverflow(page);
     });
