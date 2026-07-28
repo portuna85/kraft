@@ -5,6 +5,8 @@ import { FAQ_ITEMS, buildFaqPageJsonLd } from "@/lib/csp-inline-scripts";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
 import { getPublicBaseUrl } from "@/lib/api";
 import { serializeJsonLd } from "@/lib/json-ld-serialize";
+import { EditorialPhoto } from "@/ui/domain/editorial-photo";
+import styles from "./info.module.css";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -19,7 +21,7 @@ const infoPages: Record<string, InfoPage> = {
     title: "데이터 출처",
     description: "KRAFT Lotto에서 사용하는 당첨 결과 데이터의 출처와 반영 기준을 안내합니다.",
     content: (
-      <article className="info-article">
+      <article className={styles.article}>
         <h2>공식 데이터 출처</h2>
         <p>
           KRAFT Lotto에 표시되는 로또 6/45 당첨 번호와 당첨 금액 정보는
@@ -46,6 +48,10 @@ const infoPages: Record<string, InfoPage> = {
           공개된 당첨 결과 데이터는 이용자가 쉽게 확인하고 비교할 수 있도록 재구성해 제공합니다.
           KRAFT Lotto는 원본 데이터의 공식성을 존중하며 출처를 명시합니다.
         </p>
+
+        <div className={styles.photo}>
+          <EditorialPhoto slug="data-source-desk" alt="" aspectRatio="4/3" />
+        </div>
       </article>
     ),
   },
@@ -54,7 +60,7 @@ const infoPages: Record<string, InfoPage> = {
     title: "분석 방법론",
     description: "빈도, 패턴, 동반 출현 등 KRAFT Lotto 통계 화면의 계산 기준을 설명합니다.",
     content: (
-      <article className="info-article">
+      <article className={styles.article}>
         <h2>통계 분석 개요</h2>
         <p>
           KRAFT Lotto의 통계 기능은 제1회부터 최신 회차까지의 실제 당첨 번호를 기준으로
@@ -106,9 +112,9 @@ const infoPages: Record<string, InfoPage> = {
     title: "자주 묻는 질문",
     description: "추천 번호, 저장함, 데이터 반영 시점 등 자주 묻는 질문을 모았습니다.",
     content: (
-      <article className="info-article">
+      <article className={styles.article}>
         {FAQ_ITEMS.map((item) => (
-          <div className="faq-item" key={item.question}>
+          <div className={styles.faqItem} key={item.question}>
             <h3>{item.question}</h3>
             <p>{item.answer}</p>
           </div>
@@ -121,7 +127,7 @@ const infoPages: Record<string, InfoPage> = {
     title: "개인정보처리방침",
     description: "KRAFT Lotto의 기기 토큰, 로그 보관, 삭제 요청 처리 기준을 안내합니다.",
     content: (
-      <article className="info-article">
+      <article className={styles.article}>
         <p className="muted">시행일: 2026년 1월 1일</p>
 
         <h2>수집하는 정보</h2>
@@ -173,7 +179,7 @@ const infoPages: Record<string, InfoPage> = {
     title: "이용약관",
     description: "KRAFT Lotto 서비스 이용 조건과 책임 범위를 안내합니다.",
     content: (
-      <article className="info-article">
+      <article className={styles.article}>
         <p className="muted">시행일: 2026년 1월 1일</p>
 
         <h2>제1조 목적</h2>
@@ -214,14 +220,14 @@ const infoPages: Record<string, InfoPage> = {
     title: "문의하기",
     description: "서비스 오류, 개선 제안, 데이터 수정 요청을 보낼 수 있는 연락처를 안내합니다.",
     content: (
-      <article className="info-article">
+      <article className={styles.article}>
         <h2>문의 방법</h2>
         <p>
           서비스 이용 중 발견한 오류, 데이터 수정 요청, 개선 제안, 개인정보 관련 문의는
           아래 이메일로 보내 주세요.
         </p>
 
-        <div className="contact-box">
+        <div className={styles.contactBox}>
           <p>
             <strong>이메일:</strong>{" "}
             <a href="mailto:portuna85@gmail.com">portuna85@gmail.com</a>
@@ -251,8 +257,8 @@ const infoPages: Record<string, InfoPage> = {
     title: "건전한 이용",
     description: "로또를 무리 없이 즐기기 위한 기본 원칙과 도움 받을 수 있는 기관을 안내합니다.",
     content: (
-      <article className="info-article">
-        <div className="notice-box">
+      <article className={styles.article}>
+        <div className={styles.noticeBox}>
           <strong>로또는 오락의 한 형태로 가볍게 즐기는 것이 바람직합니다.</strong>
           <p>당첨 기대를 과도하게 키우기보다 여유 자금 안에서만 이용해 주세요.</p>
         </div>
@@ -291,6 +297,10 @@ const infoPages: Record<string, InfoPage> = {
             </a>
           </li>
         </ul>
+
+        <div className={styles.photo}>
+          <EditorialPhoto slug="responsible-play-note" alt="" aspectRatio="4/3" />
+        </div>
       </article>
     ),
   },

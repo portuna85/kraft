@@ -190,16 +190,6 @@
     font-size: 1.25rem;
   }
 
-  .status-incident-item {
-    grid-template-columns: minmax(52px, auto) minmax(0, 1fr) auto;
-    align-items: center;
-  }
-
-  .status-incident-time {
-    grid-column: 2 / -1;
-    justify-self: start;
-  }
-
   .footer-nav {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px 16px;

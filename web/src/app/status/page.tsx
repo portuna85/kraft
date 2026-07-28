@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getPublicIncidents, getRoundFreshness } from "@/lib/api";
 import { formatDateTime, formatDrawDate } from "@/lib/format";
 import logger from "@/lib/logger";
+import styles from "./status.module.css";
 
 export const metadata: Metadata = {
   title: "서비스 상태",
@@ -43,21 +44,18 @@ export default async function StatusPage() {
       ) : incidents.length === 0 ? (
         <p className="muted">최근 30일 동안 기록된 수집 지연이나 보정 이력이 없습니다.</p>
       ) : (
-        <ul className="status-incident-list">
+        <ul className={styles.list} data-testid="status-incident-list">
           {incidents.map((incident) => (
-            <li
-              key={`${incident.type}-${incident.round}`}
-              className="status-incident-item"
-            >
-              <span className="status-incident-round">{incident.round ? `${incident.round}회` : "-"}</span>
-              <span className="status-incident-type">
+            <li key={`${incident.type}-${incident.round}`} className={styles.item}>
+              <span className={styles.round}>{incident.round ? `${incident.round}회` : "-"}</span>
+              <span>
                 {incident.type}
                 {incident.occurrences > 1 ? ` (시도 ${incident.occurrences}회)` : ""}
               </span>
-              <span className={`status-incident-state${incident.resolved ? " resolved" : ""}`}>
+              <span className={`${styles.state}${incident.resolved ? ` ${styles.stateResolved}` : ""}`}>
                 {incident.resolved ? "해결됨" : "확인 중"}
               </span>
-              <span className="status-incident-time muted">{formatDateTime(incident.occurredAt)}</span>
+              <span className={`${styles.time} muted`}>{formatDateTime(incident.occurredAt)}</span>
             </li>
           ))}
         </ul>

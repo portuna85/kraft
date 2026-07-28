@@ -11,6 +11,11 @@ const ROUTES: readonly { path: string; label: string; readySelector: string }[] 
   { path: "/community", label: "커뮤니티", readySelector: "main" },
   { path: "/recommend", label: "번호 추천", readySelector: "main" },
   { path: "/saved", label: "저장 번호", readySelector: "main" },
+  { path: "/stats", label: "패턴 통계", readySelector: "main" },
+  { path: "/companion", label: "동반 출현", readySelector: "main" },
+  { path: "/analysis", label: "번호 분석", readySelector: "main" },
+  { path: "/status", label: "서비스 상태", readySelector: "main" },
+  { path: "/info/data-source", label: "데이터 출처", readySelector: "main" },
 ];
 
 const THEMES = ["light", "dark"] as const;

@@ -52,7 +52,7 @@ for (const width of WIDTHS) {
     // 검증해왔다 — 여기서는 정상 데이터(freshness+incidents) 상태를 검증한다.
     test("/status — 정상 데이터 실렌더 후 오버플로 없음", async ({ page }) => {
       await gotoAndWaitForRealContent(page, "/status");
-      await expect(page.locator(".status-incident-list")).toBeVisible();
+      await expect(page.getByTestId("status-incident-list")).toBeVisible();
       await expectNoOverflow(page);
     });
   });
