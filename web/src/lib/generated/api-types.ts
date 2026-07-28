@@ -570,6 +570,7 @@ export interface components {
             reduceSharedWinnerRisk?: boolean;
             strategy?: string;
             lockedNumbers?: number[];
+            maximizePrize?: boolean;
         };
         RecommendNumbersResponse: {
             recommendations?: number[][];
