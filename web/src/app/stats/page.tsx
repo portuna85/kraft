@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
 import { getPatternStats, getPublicBaseUrl, type PatternBucket } from "@/lib/api";
 import { logCoreDataFailure } from "@/lib/logger";
+import styles from "./stats.module.css";
 
 export const metadata: Metadata = {
   title: "패턴 통계",
@@ -29,21 +30,21 @@ function PatternSection({
   const maxCount = Math.max(...sorted.map((bucket) => bucket.count), 1);
 
   return (
-    <div className="pattern-section">
+    <div className={styles.section}>
       <h2 className="section-title">{title}</h2>
-      <ul className="pattern-list">
+      <ul className={styles.list} data-testid="pattern-list">
         {sorted.map((bucket) => {
           const pct = totalRounds > 0 ? ((bucket.count / totalRounds) * 100).toFixed(1) : "0.0";
           const barWidth = Math.round((bucket.count / maxCount) * 100);
 
           return (
-            <li key={bucket.bucketKey} className="pattern-item">
-              <span className="pattern-key">{bucket.bucketKey}</span>
+            <li key={bucket.bucketKey} className={styles.item}>
+              <span className={styles.key}>{bucket.bucketKey}</span>
               <div className="bar-track">
                 <div className="bar-fill" style={{ width: `${barWidth}%` }} />
               </div>
-              <span className="pattern-count">{bucket.count}회</span>
-              <span className="pattern-pct">{pct}%</span>
+              <span className={styles.count}>{bucket.count}회</span>
+              <span className={styles.pct}>{pct}%</span>
             </li>
           );
         })}
@@ -71,7 +72,7 @@ export default async function StatsPage() {
       <JsonLdBreadcrumb baseUrl={baseUrl} nonce={nonce} items={[{ name: "패턴 통계", item: `${baseUrl}/stats` }]} />
       <p className="eyebrow">패턴 통계</p>
       <h1 className="page-title">패턴 통계</h1>
-      <p className="muted stats-summary">총 {stats.totalRounds}회 기준</p>
+      <p className={`muted ${styles.summary}`}>총 {stats.totalRounds}회 기준</p>
       <PatternSection title="홀수 개수 분포" buckets={stats.oddCounts} totalRounds={stats.totalRounds} />
       <PatternSection title="고번호 개수 분포" buckets={stats.highCounts} totalRounds={stats.totalRounds} />
       <PatternSection

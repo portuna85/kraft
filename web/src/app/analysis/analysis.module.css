@@ -1,0 +1,96 @@
+.form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  align-items: end;
+}
+.form label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: var(--fs-base);
+}
+
+.error {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.result {
+  padding: 24px;
+  background: var(--surface-card);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  display: grid;
+  gap: 18px;
+}
+
+.sectionTitle {
+  margin-bottom: 10px;
+}
+
+.resultGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+.resultCell {
+  padding: 16px 18px;
+  background: var(--surface-card-sm);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.resultLabel {
+  font-size: var(--fs-2xs);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  /* Noto Sans KR은 400/700만 임베드한다 — 600은 700으로 대체 렌더링되므로 일치시킨다. */
+  font-weight: 700;
+}
+.resultValue {
+  font-family: var(--font-accent), var(--font-sans), sans-serif;
+  font-size: 1.15rem;
+  /* Space Grotesk는 500/700만 임베드한다 — 800은 700으로 대체 렌더링되므로 일치시킨다. */
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+.resultSub {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.rangeDistList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+.rangeDistItem {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fs-sm);
+  min-width: 0;
+}
+
+/* Noto Sans KR은 400/700만 임베드한다 — 600은 700으로 대체 렌더링되므로 일치시킨다. */
+.rangeLabel {
+  font-weight: 700;
+  color: var(--muted);
+}
+.rangeCount {
+  font-weight: 700;
+  text-align: right;
+}
+
+@media (min-width: 640px) {
+  .form {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}

@@ -24,7 +24,7 @@ for (const width of WIDTHS) {
     test("/frequency — 출현 통계 실렌더 후 오버플로 없음", async ({ page }) => {
       await gotoAndWaitForRealContent(page, "/frequency");
       await expect(page.locator(".freq-summary")).toBeVisible();
-      await expect(page.locator(".frequency-grid .frequency-item").first()).toBeVisible();
+      await expect(page.getByTestId("frequency-grid").getByTestId("frequency-item").first()).toBeVisible();
       await expectNoOverflow(page);
     });
 
@@ -32,19 +32,19 @@ for (const width of WIDTHS) {
       await gotoAndWaitForRealContent(page, "/frequency");
       await page.getByRole("button", { name: "최근 100회" }).click();
       await expect(page.getByRole("button", { name: "최근 100회" })).toHaveAttribute("aria-pressed", "true");
-      await expect(page.locator(".frequency-grid .frequency-item").first()).toBeVisible();
+      await expect(page.getByTestId("frequency-grid").getByTestId("frequency-item").first()).toBeVisible();
       await expectNoOverflow(page);
     });
 
     test("/stats — 패턴 통계 실렌더 후 오버플로 없음", async ({ page }) => {
       await gotoAndWaitForRealContent(page, "/stats");
-      await expect(page.locator(".pattern-list").first()).toBeVisible();
+      await expect(page.getByTestId("pattern-list").first()).toBeVisible();
       await expectNoOverflow(page);
     });
 
     test("/companion — 동반 출현 실렌더 후 오버플로 없음", async ({ page }) => {
       await gotoAndWaitForRealContent(page, "/companion");
-      await expect(page.locator(".companion-list")).toBeVisible();
+      await expect(page.getByTestId("companion-list")).toBeVisible();
       await expectNoOverflow(page);
     });
 

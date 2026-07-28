@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { ballColorClass } from "@/lib/ball-color";
 import type { CompanionPair, CompanionStatsResponse } from "@/lib/api";
 import { browserFetch } from "@/lib/browser-api";
+import styles from "@/app/companion/companion.module.css";
 
 type Props = {
   pairs: CompanionPair[];
@@ -119,9 +120,9 @@ export function CompanionFilterClient({ pairs, totalRounds }: Props) {
 
   return (
     <>
-      <div className="companion-filter">
-        <p className="companion-filter-label">번호로 필터</p>
-        <div className="companion-filter-balls" onKeyDown={handleGridKeyDown}>
+      <div className={styles.filter}>
+        <p className={styles.filterLabel}>번호로 필터</p>
+        <div className={styles.filterBalls} onKeyDown={handleGridKeyDown}>
           {Array.from({ length: BALL_COUNT }, (_, index) => index + 1).map((number, index) => (
             <button
               key={number}
@@ -153,7 +154,7 @@ export function CompanionFilterClient({ pairs, totalRounds }: Props) {
         {selected !== null && (
           <button
             type="button"
-            className="button secondary companion-clear"
+            className={`button secondary ${styles.filterClear}`}
             onClick={() => {
               setSelected(null);
               setFilterState({ status: "idle" });
@@ -165,34 +166,34 @@ export function CompanionFilterClient({ pairs, totalRounds }: Props) {
       </div>
 
       {filtered !== null && (
-        <ol className="companion-list">
+        <ol className={styles.list} data-testid="companion-list">
           {filtered.map((pair, index) => {
             const pct = totalRounds > 0
               ? ((pair.coCount / totalRounds) * 100).toFixed(1)
               : "0.0";
 
             return (
-              <li key={`${pair.ballA}-${pair.ballB}`} className="companion-item">
-                <span className="rank">{index + 1}</span>
-                <div className="pair-balls">
+              <li key={`${pair.ballA}-${pair.ballB}`} className={styles.item}>
+                <span className={styles.rank}>{index + 1}</span>
+                <div className={styles.pairBalls}>
                   <span className={`ball ball-sm ${ballColorClass(pair.ballA)}`}>
                     {pair.ballA}
                   </span>
-                  <span className="pair-sep">×</span>
+                  <span className={styles.pairSep}>×</span>
                   <span className={`ball ball-sm ${ballColorClass(pair.ballB)}`}>
                     {pair.ballB}
                   </span>
                 </div>
-                <div className="pair-info">
-                  <span className="pair-count">{pair.coCount}회 동반 출현</span>
-                  <span className="pair-pct">{pct}%</span>
+                <div className={styles.pairInfo}>
+                  <span className={styles.pairCount}>{pair.coCount}회 동반 출현</span>
+                  <span className={styles.pairPct}>{pct}%</span>
                 </div>
               </li>
             );
           })}
 
           {filtered.length === 0 && (
-            <li className="companion-item companion-empty">
+            <li className={`${styles.item} ${styles.empty}`}>
               <p className="muted">해당 번호를 포함한 동반 출현 기록이 없습니다.</p>
             </li>
           )}

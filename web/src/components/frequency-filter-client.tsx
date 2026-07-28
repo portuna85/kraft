@@ -5,6 +5,7 @@ import { LottoBalls } from "@/components/lotto-balls";
 import type { BallFrequency, FrequencyStatsResponse, RankedCombination } from "@/lib/api";
 import { ballColorClass } from "@/lib/ball-color";
 import { browserFetch } from "@/lib/browser-api";
+import styles from "@/app/frequency/frequency.module.css";
 
 const FILTERS = [
   { label: "전체", value: null },
@@ -21,20 +22,20 @@ function BallWithStats({ item, sampleSize }: { item: BallFrequency; sampleSize: 
   const pct = sampleSize > 0 ? ((item.frequency / sampleSize) * 100).toFixed(1) : "0.0";
 
   return (
-    <div className="freq-ball-item frequency-item">
+    <div className={`${styles.ballItem} ${styles.item}`} data-testid="frequency-item">
       <span className={`ball ball-sm ${ballColorClass(item.ballNumber)}`}>{item.ballNumber}</span>
-      <span className="freq-count">{item.frequency}회</span>
-      <span className="freq-pct">{pct}%</span>
+      <span className={styles.count}>{item.frequency}회</span>
+      <span className={styles.pct}>{pct}%</span>
     </div>
   );
 }
 
 function CombinationGroup({ label, combination }: { label: string; combination: RankedCombination }) {
   return (
-    <div className="freq-rank-group">
-      <p className="freq-rank-label">{label}</p>
+    <div className={styles.rankGroup}>
+      <p className={styles.rankLabel}>{label}</p>
       <LottoBalls numbers={combination.balls.map((item) => item.ballNumber)} />
-      <p className="freq-win-record">
+      <p className={styles.winRecord}>
         {combination.wonFirstPrize ? "1등 당첨 이력 있음" : "1등 당첨 이력 없음"}
       </p>
     </div>
@@ -99,7 +100,7 @@ export function FrequencyFilterClient({ initial }: Props) {
         ))}
       </div>
 
-      <p className="freq-filter-desc" aria-live="polite">
+      <p className={styles.desc} aria-live="polite">
         {activeLimit === null ? `총 ${stats.totalRounds}회 전체 기준` : `최근 ${stats.totalRounds}회 기준`}으로 각 번호가
         당첨 번호에 포함된 누적 횟수를 보여줍니다.
         {filterState === "loading" && <span className="muted"> 불러오는 중...</span>}
@@ -119,7 +120,7 @@ export function FrequencyFilterClient({ initial }: Props) {
         <CombinationGroup label="가장 적게 나온 번호 BOTTOM 6" combination={stats.bottomSix} />
       </div>
 
-      <div className="frequency-grid">
+      <div className={styles.grid} data-testid="frequency-grid">
         {byNumber.map((item) => (
           <BallWithStats key={item.ballNumber} item={item} sampleSize={sampleSize} />
         ))}

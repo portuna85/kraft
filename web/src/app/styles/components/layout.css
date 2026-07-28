@@ -185,6 +185,15 @@
   text-transform: uppercase;
 }
 
+/* /stats, /status, /analysis(analysis-result.tsx)가 공유하는 섹션 제목 스타일 */
+.section-title {
+  font-family: var(--font-display), "Noto Serif KR", serif;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 14px;
+}
+
 .page-subtitle,
 .muted {
   color: var(--muted, #5e564c);

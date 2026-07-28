@@ -41,10 +41,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .analysis-form {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
   .recommend-form {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -66,11 +62,6 @@
 
   .not-found-actions .button {
     width: auto;
-  }
-
-  .freq-filter-tabs {
-    display: flex;
-    gap: 4px;
   }
 
   .balls {
@@ -99,67 +90,10 @@
     font-size: inherit;
   }
 
-  .freq-rank-group .ball {
-    width: 32px;
-    height: 32px;
-    font-size: var(--fs-xs);
-  }
-
   .recommend-card-info .ball {
     width: 46px;
     height: 46px;
     font-size: inherit;
-  }
-
-  .frequency-grid {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  .companion-filter-balls {
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-  }
-
-  .freq-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-  }
-
-  .freq-rank-group {
-    padding: 14px 16px;
-  }
-
-  .pattern-item {
-    grid-template-columns: 88px minmax(0, 1fr) 52px 52px;
-    gap: 10px;
-    padding: 7px 10px;
-  }
-
-  .pattern-key,
-  .bar-track {
-    grid-column: auto;
-  }
-
-  .pattern-count,
-  .pattern-pct {
-    text-align: right;
-  }
-
-  .companion-item {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
-    /* R-19: gap: inherit는 부모 .companion-list의 gap(6px)을 상속해 의도한 14px(:1358)과
-       달라지는 inherit 오용이었다 — 원래 값으로 명시. flex-direction은 .companion-item이
-       grid라 no-op이라 함께 정리한다. */
-    gap: 14px;
-  }
-
-  .pair-info {
-    align-items: center;
-  }
-
-  .rank {
-    text-align: right;
   }
 
   .saved-item-row,

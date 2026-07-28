@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
@@ -25,11 +25,23 @@ function loadGlobalsCss(): string {
   }
   return combined;
 }
+function loadAppCss(relPath: string): string {
+  return readFileSync(path.join(__dirname, "../src/app", relPath), "utf8");
+}
 const CSS = loadGlobalsCss();
+
+// Phase 5: /frequency, /stats, /companion의 페이지 전용 규칙은 CSS Modules로 이관됐다
+// — globals.css 매니페스트에는 더 이상 없으므로 각 페이지 모듈 파일을 직접 읽는다.
+// 세 모듈이 전부 로컬 클래스명 `.item`을 쓰므로(각기 다른 gap 값), 한 페이지에 동시
+// 주입하면 마지막에 로드된 모듈이 나머지를 덮어써 충돌한다 — 그래서 페이지마다
+// setContent를 새로 해 격리한다(아래 snapshot() 참고).
+const FREQUENCY_CSS = loadAppCss("frequency/frequency.module.css");
+const STATS_CSS = loadAppCss("stats/stats.module.css");
+const COMPANION_CSS = loadAppCss("companion/companion.module.css");
 
 // 실제 페이지에서의 부모-자식 관계를 그대로 재현한다 — 이 중첩이 어긋나면 gap/padding
 // 상속 계산이 실제와 달라져 테스트가 무의미해진다.
-const BODY = `
+const SHARED_BODY = `
 <div class="panel result-panel hero-panel">
   <div class="balls">
     <span class="ball">1</span><span class="ball">2</span><span class="ball">3</span>
@@ -49,27 +61,39 @@ const BODY = `
   </div>
 </div>
 
-<div class="panel">
-  <div class="frequency-grid">
-    <div class="frequency-item">1</div>
-  </div>
-</div>
-
-<ul class="pattern-list">
-  <li class="pattern-item">
-    <span class="pattern-key">k</span><span class="bar-track"></span>
-    <span class="pattern-count">1</span><span class="pattern-pct">1%</span>
-  </li>
-</ul>
-
-<ol class="companion-list">
-  <li class="companion-item"><span>1</span><span class="pair-info">a</span><span class="rank">1</span></li>
-</ol>
-
 <div class="page-with-sidebar">
   <div class="ad-sidebar">sidebar</div>
 </div>
 `;
+
+// frequency.module.css/stats.module.css/companion.module.css의 로컬 클래스명(.grid,
+// .item, .count, .pct 등)을 그대로 마크업에 쓴다 — 빌드 시 해시되기 전 소스 그대로다.
+const FREQUENCY_BODY = `
+<div class="panel">
+  <div class="grid">
+    <div class="item">1</div>
+  </div>
+</div>
+`;
+
+const STATS_BODY = `
+<ul class="list">
+  <li class="item">
+    <span class="key">k</span><span class="bar-track"></span>
+    <span class="count">1</span><span class="pct">1%</span>
+  </li>
+</ul>
+`;
+
+const COMPANION_BODY = `
+<ol class="list">
+  <li class="item"><span>1</span><span class="pairInfo">a</span><span class="rank">1</span></li>
+</ol>
+`;
+
+function page1(body: string): string {
+  return `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>${body}</body></html>`;
+}
 
 type Snapshot = {
   ballsGap: string | undefined;
@@ -84,12 +108,12 @@ type Snapshot = {
   ciGap: string | undefined;
 };
 
-async function snapshot(page: import("@playwright/test").Page, width: number): Promise<Snapshot> {
+async function snapshot(page: Page, width: number): Promise<Snapshot> {
   await page.setViewportSize({ width, height: 900 });
-  await page.setContent(`<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>${BODY}</body></html>`);
-  await page.addStyleTag({ content: CSS });
 
-  return page.evaluate(() => {
+  await page.setContent(page1(SHARED_BODY));
+  await page.addStyleTag({ content: CSS });
+  const shared = await page.evaluate(() => {
     const cs = (sel: string) => {
       const el = document.querySelector(sel);
       return el ? getComputedStyle(el) : null;
@@ -98,28 +122,51 @@ async function snapshot(page: import("@playwright/test").Page, width: number): P
     const td = cs(".prize-table td");
     const rank = cs(".prize-table-rank");
     const amount = cs(".prize-table-amount");
-    const fg = cs(".frequency-grid");
-    const pi = cs(".pattern-item");
-    const pc = cs(".pattern-count");
-    const pp = cs(".pattern-pct");
-    const ci = cs(".companion-item");
     return {
       ballsGap: balls?.columnGap,
       prizeTdPadding: td?.padding,
       rankFontSize: rank?.fontSize,
       amountFontSize: amount?.fontSize,
-      fgGap: fg?.columnGap,
+    };
+  });
+
+  await page.setContent(page1(FREQUENCY_BODY));
+  await page.addStyleTag({ content: FREQUENCY_CSS });
+  const freq = await page.evaluate(() => {
+    const el = document.querySelector(".grid");
+    return { fgGap: el ? getComputedStyle(el).columnGap : undefined };
+  });
+
+  await page.setContent(page1(STATS_BODY));
+  await page.addStyleTag({ content: STATS_CSS });
+  const stats = await page.evaluate(() => {
+    const cs = (sel: string) => {
+      const el = document.querySelector(sel);
+      return el ? getComputedStyle(el) : null;
+    };
+    const pi = cs(".item");
+    const pc = cs(".count");
+    const pp = cs(".pct");
+    return {
       piGap: pi?.columnGap,
       piPadding: pi?.padding,
       pcTextAlign: pc?.textAlign,
       ppTextAlign: pp?.textAlign,
-      ciGap: ci?.columnGap,
     };
   });
+
+  await page.setContent(page1(COMPANION_BODY));
+  await page.addStyleTag({ content: COMPANION_CSS });
+  const companion = await page.evaluate(() => {
+    const el = document.querySelector(".item");
+    return { ciGap: el ? getComputedStyle(el).columnGap : undefined };
+  });
+
+  return { ...shared, ...freq, ...stats, ...companion };
 }
 
-// 골든 마스터: 390/768/1280px 각 너비에서 기대하는 계산값. .companion-item은
-// ≥640px에서 gap이 부모 .companion-list의 gap(6px)을 상속하지 않고 자신의 값(14px)을
+// 골든 마스터: 390/768/1280px 각 너비에서 기대하는 계산값. .item(companion)은
+// ≥640px에서 gap이 부모 .list의 gap(6px)을 상속하지 않고 자신의 값(14px)을
 // 갖는지가 핵심 — 부모 gap을 잘못 상속하면 이 값이 6px로 나타난다.
 test.describe("globals.css 컴퓨티드 스타일 회귀 방지", () => {
   test("390px(모바일)", async ({ page }) => {
@@ -170,7 +217,7 @@ test.describe("globals.css 컴퓨티드 스타일 회귀 방지", () => {
 
   test("사이드바 광고 top이 헤더 높이만큼 오프셋된다 (1280px)", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.setContent(`<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>${BODY}</body></html>`);
+    await page.setContent(page1(SHARED_BODY));
     await page.addStyleTag({ content: CSS });
 
     const top = await page.evaluate(() => {

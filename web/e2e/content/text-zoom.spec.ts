@@ -35,7 +35,7 @@ test("200% 텍스트 확대 — /stats 패턴 항목이 내부에서 잘리지 �
   await gotoAndWaitForRealContent(page, "/stats");
   await setTextZoom200(page);
 
-  await expect(page.locator(".pattern-list").first()).toBeVisible();
+  await expect(page.getByTestId("pattern-list").first()).toBeVisible();
   await expectNoInternalTextClipping(page);
   await expectNoOverflow(page);
 });

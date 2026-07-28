@@ -5,6 +5,7 @@ import type { AnalysisResponse } from "@/lib/api";
 import { analyzeNumbers } from "@/lib/analyze";
 import { AnalysisResult } from "@/components/analysis-result";
 import { validateLottoNumbers } from "@/lib/lotto-validation";
+import styles from "@/app/analysis/analysis.module.css";
 
 export function AnalysisClient() {
   const [input, setInput] = useState("");
@@ -29,7 +30,7 @@ export function AnalysisClient() {
 
   return (
     <div className="analysis-layout">
-      <form onSubmit={handleSubmit} className="analysis-form">
+      <form onSubmit={handleSubmit} className={styles.form}>
         <label>
           번호 6개
           <input
@@ -43,7 +44,7 @@ export function AnalysisClient() {
       </form>
 
       {error ? (
-        <p className="status-text error" role="alert" aria-live="assertive">
+        <p className={`status-text ${styles.error}`} role="alert" aria-live="assertive">
           {error}
         </p>
       ) : null}

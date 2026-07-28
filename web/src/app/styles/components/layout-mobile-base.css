@@ -18,12 +18,8 @@
   align-items: stretch;
 }
 
-.panel-lead,
-.stats-summary {
-  margin-top: 0;
-}
-
 .panel-lead {
+  margin-top: 0;
   margin-bottom: 0;
 }
 
@@ -63,18 +59,8 @@
   min-height: 48px;
 }
 
-.companion-clear {
-  margin-top: 12px;
-}
-
-.companion-empty {
-  justify-content: center;
-}
-
-.analysis-section-title {
-  margin-bottom: 10px;
-}
-
+/* /stats, /analysis(analysis-result.tsx)가 공유하는 진행 막대 — 두 페이지 모두 쓰므로
+   전역 유지(F-02 재확인: CSS Modules 전환 대상에서 제외). */
 .bar-track {
   position: relative;
   overflow: hidden;
@@ -95,45 +81,10 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
-/* grid-template-columns는 .pattern-item은 mobile-unconditional.css가, .range-dist-item은
-   바로 아래 전용 규칙이 각자 소유한다 — 여기 공용 선언은 항상 덮여써 죽은 코드였다(F-02).
-   gap도 .pattern-item은 mobile-unconditional.css(8px 12px)가 덮어써 죽었지만
-   .range-dist-item은 다른 곳에서 안 건드리므로 전용 규칙으로 옮긴다. */
-.pattern-item,
-.range-dist-item {
-  display: grid;
-  align-items: center;
-  font-size: var(--fs-sm);
-  min-width: 0;
-}
-
-.range-dist-item {
-  grid-template-columns: 72px minmax(0, 1fr) 28px;
-  gap: 10px;
-}
-
-.freq-summary,
 .ops-summary-grid {
   align-items: stretch;
 }
 
-.frequency-item,
-.companion-item,
-.result-cell,
 .ops-summary-card {
   min-width: 0;
-}
-
-.companion-filter-balls {
-  display: grid;
-  gap: 6px;
-}
-
-.companion-filter-balls .ball {
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: border-color 0.15s, opacity 0.15s;
-  width: 100%;
-  aspect-ratio: 1;
-  height: auto;
 }

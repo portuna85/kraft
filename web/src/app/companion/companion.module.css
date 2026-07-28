@@ -1,0 +1,132 @@
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 24px 0 0;
+  display: grid;
+  gap: 6px;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--surface-card-md);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  min-width: 0;
+}
+@media (hover: hover) and (pointer: fine) {
+  .item:hover {
+    transform: translateX(2px);
+    border-color: rgba(201, 79, 36, 0.2);
+    background: var(--surface-card);
+    box-shadow: 0 4px 14px rgba(64, 39, 22, 0.08);
+  }
+}
+
+.empty {
+  justify-content: center;
+}
+
+.rank {
+  font-family: var(--font-accent), var(--font-sans), sans-serif;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  color: var(--muted);
+  text-align: left;
+}
+
+.pairBalls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.pairSep {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.pairInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+.pairCount {
+  font-family: var(--font-accent), var(--font-sans), sans-serif;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+.pairPct {
+  font-size: var(--fs-2xs);
+  color: var(--muted);
+}
+
+.filter {
+  margin-top: 20px;
+}
+.filterLabel {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 10px;
+}
+.filterClear {
+  margin-top: 12px;
+}
+
+.filterBalls {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.filterBalls :global(.ball) {
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color 0.15s, opacity 0.15s;
+  width: 100%;
+  aspect-ratio: 1;
+  height: auto;
+}
+.filterBalls :global(.ball):hover {
+  opacity: 0.85;
+}
+/* F-10: !important 대신 :global(.ball.ball-selected)의 특이도(0,3,0)로 이긴다 —
+   companion.module.css가 layout-mobile-base.css보다 소스 순서상 뒤에 로드되므로
+   특이도를 같게만 맞추면 여전히 소스 순서 때문에 진다. */
+.filterBalls :global(.ball.ball-selected) {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+@media (min-width: 640px) {
+  .item {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+  }
+  .pairInfo {
+    align-items: center;
+  }
+  .rank {
+    text-align: right;
+  }
+  .filterBalls {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .filterBalls {
+    grid-template-columns: repeat(9, minmax(0, 1fr));
+  }
+}
