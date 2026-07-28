@@ -55,5 +55,38 @@ for (const width of WIDTHS) {
       await expect(page.getByTestId("status-incident-list")).toBeVisible();
       await expectNoOverflow(page);
     });
+
+    // /ops는 픽스처 백엔드가 아니라 ops.spec.ts와 동일하게 page.route()로 /ops-api/*를
+    // 목킹한다 — route-level loading.tsx가 없는 순수 클라이언트 셸이라
+    // gotoAndWaitForRealContent(스켈레톤 소멸 대기)가 필요 없다.
+    test("/ops — 토큰 없는 기본 상태 오버플로 없음", async ({ page }) => {
+      await page.goto("/ops");
+      await expect(page.getByRole("heading", { name: "회차 운영 대시보드" })).toBeVisible();
+      await expectNoOverflow(page);
+    });
+
+    test("/ops — 운영 상태 조회 후 오버플로 없음", async ({ page }) => {
+      await page.route("**/ops-api/summary", (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            service: "kraft-lotto",
+            timezone: "Asia/Seoul",
+            status: "정상",
+            latestRound: 1230,
+            latestDrawDate: "2026-01-03",
+            checkedAt: "2026-01-03T12:00:00Z",
+            fresh: true,
+          }),
+        })
+      );
+
+      await page.goto("/ops");
+      await page.getByPlaceholder("X-Ops-Token 값을 입력하세요").fill("secret-token");
+      await page.getByRole("button", { name: "운영 상태 확인" }).click();
+      await expect(page.getByText("1230회")).toBeVisible();
+      await expectNoOverflow(page);
+    });
   });
 }

@@ -1,11 +1,65 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { gotoAndWaitForRealContent } from "../lib/goto-real-content";
 
 // Phase 0 기준선(docs/improvement.md §17 Phase 0): Phase 1~6에서 디자인 토큰/셸/컴포넌트를
 // 옮기다 시각적으로 뭔가 깨지면 여기서 잡는다. 라우트·테마 조합마다 전체 페이지
 // 스크린샷을 고정한다 — 베이스라인 갱신은 `npx playwright test --config=playwright.visual.config.ts
 // --update-snapshots`.
-const ROUTES: readonly { path: string; label: string; readySelector: string }[] = [
+//
+// beforeGoto/afterGoto: 로그인 세션·추천 이력처럼 픽스처 백엔드(e2e/fixtures/backend.mjs)가
+// 모르는 상태가 필요한 라우트(글쓰기·수정·추천 이력·운영 대시보드 조회 성공)를 위한 훅.
+// beforeGoto는 이동 전 page.route() 등록에, afterGoto는 이동 후 상호작용(토큰 입력 등)에 쓴다.
+type Route = {
+  path: string;
+  label: string;
+  readySelector: string;
+  beforeGoto?: (page: Page) => Promise<void>;
+  afterGoto?: (page: Page) => Promise<void>;
+};
+
+async function mockCommunitySession(page: Page, overrides?: Partial<{ userId: number }>) {
+  await page.route("**/api/v1/community/session", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        loggedIn: true,
+        userId: overrides?.userId ?? 42,
+        nickname: "테스트유저",
+        activeProviders: ["google"],
+      }),
+    })
+  );
+}
+
+async function mockEmptyComments(page: Page, postId: number) {
+  await page.route(`**/api/v1/community/posts/${postId}/comments*`, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ topLevel: [], totalTopLevelComments: 0, page: 0, totalPages: 0 }),
+    })
+  );
+}
+
+async function mockRecommendationSets(page: Page, sets: unknown[]) {
+  await page.route("**/api/v1/recommendation-sets", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(sets) })
+  );
+}
+
+const SAMPLE_RECOMMENDATION_SET = {
+  id: 1,
+  strategy: "balanced",
+  algorithmVersion: "v1",
+  historyThroughRound: 1189,
+  lockedNumbers: [],
+  excludedNumbers: [],
+  createdAt: "2026-01-03T12:00:00Z",
+  items: [{ position: 1, numbers: [3, 11, 19, 28, 34, 42], score: 80, explanationCodes: [] }],
+};
+
+const ROUTES: readonly Route[] = [
   { path: "/", label: "홈", readySelector: ".result-panel .balls" },
   { path: "/frequency", label: "출현 통계", readySelector: ".freq-summary" },
   { path: "/community", label: "커뮤니티", readySelector: "main" },
@@ -16,6 +70,64 @@ const ROUTES: readonly { path: string; label: string; readySelector: string }[] 
   { path: "/analysis", label: "번호 분석", readySelector: "main" },
   { path: "/status", label: "서비스 상태", readySelector: "main" },
   { path: "/info/data-source", label: "데이터 출처", readySelector: "main" },
+  { path: "/info/methodology", label: "분석 방법론", readySelector: "main" },
+  { path: "/info/faq", label: "자주 묻는 질문", readySelector: "main" },
+  { path: "/info/privacy", label: "개인정보처리방침", readySelector: "main" },
+  { path: "/info/terms", label: "이용약관", readySelector: "main" },
+  { path: "/info/contact", label: "문의하기", readySelector: "main" },
+  {
+    path: "/community/posts/1",
+    label: "커뮤니티 상세",
+    readySelector: "main",
+    beforeGoto: (page) => mockEmptyComments(page, 1),
+  },
+  {
+    path: "/community/write",
+    label: "커뮤니티 글쓰기",
+    readySelector: "main",
+    beforeGoto: async (page) => {
+      await mockCommunitySession(page);
+      await mockRecommendationSets(page, []);
+    },
+  },
+  {
+    path: "/community/posts/1/edit",
+    label: "커뮤니티 글수정",
+    readySelector: "main",
+    beforeGoto: (page) => mockCommunitySession(page, { userId: 42 }),
+  },
+  {
+    path: "/recommend/history",
+    label: "추천 이력",
+    readySelector: "main",
+    beforeGoto: (page) => mockRecommendationSets(page, [SAMPLE_RECOMMENDATION_SET]),
+  },
+  {
+    path: "/ops",
+    label: "운영 대시보드",
+    readySelector: ".ops-summary-grid",
+    beforeGoto: async (page) => {
+      await page.route("**/ops-api/summary", (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            service: "kraft-lotto",
+            timezone: "Asia/Seoul",
+            status: "정상",
+            latestRound: 1230,
+            latestDrawDate: "2026-01-03",
+            checkedAt: "2026-01-03T12:00:00Z",
+            fresh: true,
+          }),
+        })
+      );
+    },
+    afterGoto: async (page) => {
+      await page.getByPlaceholder("X-Ops-Token 값을 입력하세요").fill("secret-token");
+      await page.getByRole("button", { name: "운영 상태 확인" }).click();
+    },
+  },
 ];
 
 const THEMES = ["light", "dark"] as const;
@@ -32,7 +144,9 @@ for (const theme of THEMES) {
 
     for (const route of ROUTES) {
       test(`${route.label} (${route.path})`, async ({ page }) => {
+        await route.beforeGoto?.(page);
         await gotoAndWaitForRealContent(page, route.path);
+        await route.afterGoto?.(page);
         await expect(page.locator(route.readySelector).first()).toBeVisible();
         await expect(page).toHaveScreenshot(`${route.label}-${theme}.png`, { fullPage: true });
       });
