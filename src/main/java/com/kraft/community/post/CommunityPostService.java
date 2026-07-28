@@ -5,6 +5,7 @@ import com.kraft.recommend.RecommendationSetHistoryService;
 import com.kraft.recommend.RecommendationSetSummary;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -30,6 +31,8 @@ public class CommunityPostService {
     private final RecommendationSetHistoryService recommendationSetHistoryService;
     private final Clock clock;
     private final Counter versionConflictCounter;
+    private final Counter createdCounter;
+    private final MeterRegistry meterRegistry;
 
     public CommunityPostService(CommunityPostRepository communityPostRepository,
                                  CommunityPostMetricsRepository communityPostMetricsRepository,
@@ -40,8 +43,12 @@ public class CommunityPostService {
         this.communityPostMetricsRepository = communityPostMetricsRepository;
         this.recommendationSetHistoryService = recommendationSetHistoryService;
         this.clock = clock;
+        this.meterRegistry = meterRegistry;
         this.versionConflictCounter = Counter.builder("kraft_community_post_version_conflict_total")
                 .description("게시글 낙관적 잠금 버전 충돌(409)로 거부된 수정 요청 수")
+                .register(meterRegistry);
+        this.createdCounter = Counter.builder("kraft_community_post_created_total")
+                .description("생성된 게시글 수")
                 .register(meterRegistry);
     }
 
@@ -67,6 +74,7 @@ public class CommunityPostService {
                 ownerId, authorNickname, request.title(), request.content(), category, recommendationSetId,
                 now, now));
         communityPostMetricsRepository.save(new CommunityPostMetrics(post.getId(), now));
+        createdCounter.increment();
         return post;
     }
 
@@ -83,13 +91,22 @@ public class CommunityPostService {
         int clampedSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
         String normalizedQuery = normalizeQuery(query);
         PageRequest pageRequest = PageRequest.of(clampedPage, clampedSize, Sort.unsorted());
-
-        if ("weekly_popular".equalsIgnoreCase(sort)) {
-            OffsetDateTime since = OffsetDateTime.now(clock).minusDays(WEEKLY_WINDOW_DAYS);
-            return communityPostRepository.findWeeklyPopular(
-                    category == null ? null : category.name(), normalizedQuery, since, pageRequest);
+        // §15.4: 목록/검색 지연 p50/p95/p99 산출용 — search 태그로 순수 목록 조회와
+        // 검색어 있는 조회를 구분한다(검색은 LIKE 매칭이 섞여 지연 특성이 다르다).
+        Timer.Sample sample = Timer.start(meterRegistry);
+        try {
+            if ("weekly_popular".equalsIgnoreCase(sort)) {
+                OffsetDateTime since = OffsetDateTime.now(clock).minusDays(WEEKLY_WINDOW_DAYS);
+                return communityPostRepository.findWeeklyPopular(
+                        category == null ? null : category.name(), normalizedQuery, since, pageRequest);
+            }
+            return communityPostRepository.findLatest(category, normalizedQuery, pageRequest);
+        } finally {
+            sample.stop(Timer.builder("kraft_community_post_list_duration_seconds")
+                    .description("커뮤니티 목록/검색 조회 지연")
+                    .tag("search", normalizedQuery == null ? "false" : "true")
+                    .register(meterRegistry));
         }
-        return communityPostRepository.findLatest(category, normalizedQuery, pageRequest);
     }
 
     @Transactional

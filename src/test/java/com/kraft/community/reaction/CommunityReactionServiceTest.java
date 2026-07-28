@@ -2,6 +2,7 @@ package com.kraft.community.reaction;
 
 import com.kraft.community.block.CommunityBlockService;
 import com.kraft.community.post.CommunityPostMetricsRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -43,7 +44,7 @@ class CommunityReactionServiceTest {
     void setUp() {
         Clock clock = Clock.fixed(Instant.parse("2026-07-28T00:00:00Z"), ZoneOffset.UTC);
         service = new CommunityReactionService(communityPostLikeRepository, communityPostBookmarkRepository,
-                communityPostMetricsRepository, communityBlockService, clock);
+                communityPostMetricsRepository, communityBlockService, clock, new SimpleMeterRegistry());
     }
 
     @Test

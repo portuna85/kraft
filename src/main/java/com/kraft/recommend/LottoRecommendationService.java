@@ -230,7 +230,17 @@ public class LottoRecommendationService {
         meterRegistry.counter("kraft_lotto_recommend_requests_total", "strategy", ctx.strategy()).increment();
         validateFeasibility(ctx, snapshot);
 
-        List<RecommendationItemView> items = sampleRecommendations(ctx, snapshot);
+        List<RecommendationItemView> items;
+        Timer.Sample strategySample = Timer.start(meterRegistry);
+        try {
+            items = sampleRecommendations(ctx, snapshot);
+        } finally {
+            strategySample.stop(Timer.builder("kraft_lotto_recommend_strategy_duration_seconds")
+                    .description("추천 모드별 샘플링 처리 시간")
+                    .tag("strategy", ctx.strategy())
+                    .register(meterRegistry));
+        }
+        meterRegistry.counter("kraft_lotto_recommend_success_total", "strategy", ctx.strategy()).increment();
         List<List<Integer>> recommendations = items.stream().map(RecommendationItemView::numbers).toList();
 
         String algorithmVersion = algorithmVersionOf(ctx.strategy());
@@ -282,6 +292,11 @@ public class LottoRecommendationService {
     }
 
     private String resolveStrategy(RecommendNumbersRequest request) {
+        if (request != null && request.maximizePrize() != null) {
+            // §17 Phase 6: 구 필드명(maximizePrize) 사용량 추적 — 이 값이 계속 0에 머물면
+            // 별도 변경에서 필드 자체를 제거해도 안전하다고 판단할 근거가 된다.
+            meterRegistry.counter("kraft_recommend_legacy_field_used_total").increment();
+        }
         String strategyParam = request == null ? null : request.strategy();
         if (strategyParam != null && !strategyParam.isBlank()) {
             String normalized = strategyParam.trim().toLowerCase();
@@ -291,7 +306,8 @@ public class LottoRecommendationService {
                         "지원하지 않는 추천 전략입니다: " + strategyParam);
             };
         }
-        boolean reduceSharedWinnerRisk = request != null && Boolean.TRUE.equals(request.reduceSharedWinnerRisk());
+        boolean reduceSharedWinnerRisk = request != null
+                && Boolean.TRUE.equals(request.effectiveReduceSharedWinnerRisk());
         return reduceSharedWinnerRisk ? STRATEGY_REDUCE_SHARED_WINNER_RISK : STRATEGY_RANDOM;
     }
 

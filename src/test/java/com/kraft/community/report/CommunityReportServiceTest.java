@@ -1,6 +1,7 @@
 package com.kraft.community.report;
 
 import com.kraft.common.error.ApiException;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -31,7 +32,7 @@ class CommunityReportServiceTest {
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(Instant.parse("2026-07-28T00:00:00Z"), ZoneOffset.UTC);
-        service = new CommunityReportService(communityReportRepository, clock);
+        service = new CommunityReportService(communityReportRepository, clock, new SimpleMeterRegistry());
     }
 
     @Test

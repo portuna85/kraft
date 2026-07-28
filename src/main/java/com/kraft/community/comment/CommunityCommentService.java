@@ -32,6 +32,7 @@ public class CommunityCommentService {
     private final CommunityPostMetricsRepository communityPostMetricsRepository;
     private final Clock clock;
     private final Counter tombstoneCounter;
+    private final Counter createdCounter;
 
     public CommunityCommentService(CommunityCommentRepository communityCommentRepository,
                                     CommunityPostRepository communityPostRepository,
@@ -44,6 +45,9 @@ public class CommunityCommentService {
         this.clock = clock;
         this.tombstoneCounter = Counter.builder("kraft_community_comment_tombstoned_total")
                 .description("tombstone 처리(삭제)된 댓글 누적 수")
+                .register(meterRegistry);
+        this.createdCounter = Counter.builder("kraft_community_comment_created_total")
+                .description("생성된 댓글 수")
                 .register(meterRegistry);
     }
 
@@ -108,6 +112,7 @@ public class CommunityCommentService {
         long countUpToAnchor = communityCommentRepository.countTopLevelUpToId(postId, anchorId);
         int targetPage = (int) ((Math.max(1, countUpToAnchor) - 1) / DEFAULT_PAGE_SIZE);
 
+        createdCounter.increment();
         return new CommunityCommentCreationResult(saved, targetPage);
     }
 

@@ -1,6 +1,8 @@
 package com.kraft.community.report;
 
 import com.kraft.common.error.ApiException;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import org.springframework.http.HttpStatus;
@@ -13,10 +15,15 @@ public class CommunityReportService {
 
     private final CommunityReportRepository communityReportRepository;
     private final Clock clock;
+    private final Counter createdCounter;
 
-    public CommunityReportService(CommunityReportRepository communityReportRepository, Clock clock) {
+    public CommunityReportService(CommunityReportRepository communityReportRepository, Clock clock,
+                                   MeterRegistry meterRegistry) {
         this.communityReportRepository = communityReportRepository;
         this.clock = clock;
+        this.createdCounter = Counter.builder("kraft_community_report_created_total")
+                .description("생성된 신고 수")
+                .register(meterRegistry);
     }
 
     /**
@@ -32,5 +39,6 @@ public class CommunityReportService {
         communityReportRepository.save(new CommunityReport(
                 reporterUserId, request.targetType(), request.targetId(), request.reason(),
                 OffsetDateTime.now(clock)));
+        createdCounter.increment();
     }
 }

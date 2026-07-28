@@ -6,6 +6,7 @@ import com.kraft.saved.SavedNumberClaimResult;
 import com.kraft.saved.SavedNumberClientLockInitializer;
 import com.kraft.saved.SavedNumberClientLockRepository;
 import com.kraft.saved.SavedNumbersService;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -53,7 +54,8 @@ class IdentityMergeServiceTest {
     @BeforeEach
     void setUp() {
         service = new IdentityMergeService(deviceClaimRepository, savedNumberClientLockRepository,
-                savedNumberClientLockInitializer, savedNumbersService, recommendationSetHistoryService, CLOCK);
+                savedNumberClientLockInitializer, savedNumbersService, recommendationSetHistoryService, CLOCK,
+                new SimpleMeterRegistry());
     }
 
     @Test

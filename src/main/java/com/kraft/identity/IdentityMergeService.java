@@ -6,6 +6,8 @@ import com.kraft.saved.SavedNumberClaimResult;
 import com.kraft.saved.SavedNumberClientLockInitializer;
 import com.kraft.saved.SavedNumberClientLockRepository;
 import com.kraft.saved.SavedNumbersService;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.Optional;
@@ -29,19 +31,35 @@ public class IdentityMergeService {
     private final SavedNumbersService savedNumbersService;
     private final RecommendationSetHistoryService recommendationSetHistoryService;
     private final Clock clock;
+    private final Counter successCounter;
+    private final Counter duplicateCounter;
+    private final Counter conflictCounter;
 
     public IdentityMergeService(DeviceClaimRepository deviceClaimRepository,
                                  SavedNumberClientLockRepository savedNumberClientLockRepository,
                                  SavedNumberClientLockInitializer savedNumberClientLockInitializer,
                                  SavedNumbersService savedNumbersService,
                                  RecommendationSetHistoryService recommendationSetHistoryService,
-                                 Clock clock) {
+                                 Clock clock,
+                                 MeterRegistry meterRegistry) {
         this.deviceClaimRepository = deviceClaimRepository;
         this.savedNumberClientLockRepository = savedNumberClientLockRepository;
         this.savedNumberClientLockInitializer = savedNumberClientLockInitializer;
         this.savedNumbersService = savedNumbersService;
         this.recommendationSetHistoryService = recommendationSetHistoryService;
         this.clock = clock;
+        this.successCounter = Counter.builder("kraft_identity_merge_total")
+                .description("익명 기록 병합(기기 귀속) 성공 수")
+                .tag("outcome", "success")
+                .register(meterRegistry);
+        this.duplicateCounter = Counter.builder("kraft_identity_merge_total")
+                .description("익명 기록 병합(기기 귀속) 성공 수")
+                .tag("outcome", "duplicate")
+                .register(meterRegistry);
+        this.conflictCounter = Counter.builder("kraft_identity_merge_total")
+                .description("익명 기록 병합(기기 귀속) 성공 수")
+                .tag("outcome", "conflict")
+                .register(meterRegistry);
     }
 
     /**
@@ -55,17 +73,21 @@ public class IdentityMergeService {
 
         Optional<DeviceClaim> existing = deviceClaimRepository.findByDeviceTokenHash(deviceTokenHash);
         if (existing.isPresent() && !existing.get().getClaimedByUserId().equals(userId)) {
+            conflictCounter.increment();
             throw new ApiException(HttpStatus.CONFLICT, "DEVICE_ALREADY_CLAIMED",
                     "이 기기는 이미 다른 계정에 연결되어 있습니다.");
         }
         if (existing.isEmpty()) {
             deviceClaimRepository.save(new DeviceClaim(deviceTokenHash, userId, OffsetDateTime.now(clock)));
+        } else {
+            duplicateCounter.increment();
         }
 
         SavedNumberClaimResult savedResult = savedNumbersService.claimAll(deviceTokenHash, userId);
         int recommendationCount = recommendationSetHistoryService.claimAll(
                 deviceTokenHash, userId, OffsetDateTime.now(clock));
 
+        successCounter.increment();
         return new IdentityMergeResult(
                 savedResult.mergedCount(), savedResult.duplicateCount(), recommendationCount);
     }
