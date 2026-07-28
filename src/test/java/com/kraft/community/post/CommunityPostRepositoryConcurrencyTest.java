@@ -70,7 +70,8 @@ class CommunityPostRepositoryConcurrencyTest {
         CommunityUser owner = communityUserRepository.save(new CommunityUser(
                 "google", "owner-" + System.nanoTime(), "글쓴이", null, OffsetDateTime.now()));
         ownerId = owner.getId();
-        CommunityPost post = communityPostService.create(ownerId, "글쓴이", new CreatePostRequest("제목", "내용"));
+        CommunityPost post = communityPostService.create(
+                ownerId, "글쓴이", null, new CreatePostRequest("제목", "내용", "GENERAL", null));
         postId = post.getId();
     }
 

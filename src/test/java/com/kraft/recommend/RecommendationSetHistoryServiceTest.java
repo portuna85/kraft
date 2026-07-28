@@ -28,6 +28,9 @@ class RecommendationSetHistoryServiceTest {
     @Mock
     private RecommendationItemRepository recommendationItemRepository;
 
+    @Mock
+    private RecommendationSetAttachmentChecker attachmentChecker;
+
     private RecommendationSetHistoryService service;
 
     private static final String TOKEN_HASH = "hash-1";
@@ -48,7 +51,7 @@ class RecommendationSetHistoryServiceTest {
     @BeforeEach
     void setUp() {
         service = new RecommendationSetHistoryService(recommendationSetRepository, recommendationItemRepository,
-                new LottoNumberCodec());
+                new LottoNumberCodec(), attachmentChecker);
     }
 
     @Test
@@ -110,10 +113,28 @@ class RecommendationSetHistoryServiceTest {
     void delete_removesItemsThenSet() {
         RecommendationSet entity = setEntity(1L, TOKEN_HASH);
         given(recommendationSetRepository.findById(1L)).willReturn(Optional.of(entity));
+        given(attachmentChecker.isAttachedToPost(1L)).willReturn(false);
 
         service.delete(TOKEN_HASH, 1L);
 
         verify(recommendationItemRepository).deleteBySetId(1L);
         verify(recommendationSetRepository).delete(entity);
+    }
+
+    @Test
+    @DisplayName("커뮤니티 게시글에 첨부된 추천 세트는 삭제 시 409로 거부된다")
+    void delete_attachedToPost_throwsConflict() {
+        RecommendationSet entity = setEntity(1L, TOKEN_HASH);
+        given(recommendationSetRepository.findById(1L)).willReturn(Optional.of(entity));
+        given(attachmentChecker.isAttachedToPost(1L)).willReturn(true);
+
+        assertThatThrownBy(() -> service.delete(TOKEN_HASH, 1L))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> {
+                    ApiException apiEx = (ApiException) ex;
+                    assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(apiEx.getCode()).isEqualTo("RECOMMENDATION_SET_ATTACHED_TO_POST");
+                });
+        verify(recommendationItemRepository, org.mockito.Mockito.never()).deleteBySetId(org.mockito.ArgumentMatchers.any());
     }
 }

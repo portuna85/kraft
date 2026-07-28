@@ -84,7 +84,7 @@ class CommunityPostCommentApiTest {
         mockMvc.perform(post("/api/v1/community/posts")
                         .with(csrf())
                         .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(new CreatePostRequest("제목", "내용"))))
+                        .content(objectMapper.writeValueAsString(new CreatePostRequest("제목", "내용", "GENERAL", null))))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -153,7 +153,7 @@ class CommunityPostCommentApiTest {
         mockMvc.perform(post("/api/v1/community/posts")
                         .with(asUser(owner))
                         .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(new CreatePostRequest("제목", "내용"))))
+                        .content(objectMapper.writeValueAsString(new CreatePostRequest("제목", "내용", "GENERAL", null))))
                 .andExpect(status().isForbidden())
                 .andExpect(header().string("Content-Type", "application/json;charset=UTF-8"))
                 .andExpect(jsonPath("$.code").value("COMMUNITY_CSRF_REJECTED"))
@@ -338,7 +338,7 @@ class CommunityPostCommentApiTest {
                         .with(asUser(owner))
                         .with(csrf())
                         .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(new CreatePostRequest("제목", "내용"))))
+                        .content(objectMapper.writeValueAsString(new CreatePostRequest("제목", "내용", "GENERAL", null))))
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("/api/v1/community/posts/")))
                 .andExpect(header().string("ETag", "\"0\""));
@@ -435,7 +435,7 @@ class CommunityPostCommentApiTest {
                         .with(asUser(author))
                         .with(csrf())
                         .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(new CreatePostRequest(title, content))))
+                        .content(objectMapper.writeValueAsString(new CreatePostRequest(title, content, "GENERAL", null))))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(body).get("id").asLong();

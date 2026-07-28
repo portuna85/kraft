@@ -1,10 +1,14 @@
 package com.kraft.community.post;
 
 import com.kraft.common.error.ApiException;
+import com.kraft.recommend.RecommendationSetHistoryService;
+import com.kraft.recommend.RecommendationSetSummary;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Map;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -17,14 +21,24 @@ import org.springframework.transaction.annotation.Transactional;
 public class CommunityPostService {
 
     private static final int MAX_PAGE_SIZE = 50;
+    private static final int MIN_QUERY_LENGTH = 2;
+    private static final int MAX_QUERY_LENGTH = 50;
+    private static final int WEEKLY_WINDOW_DAYS = 7;
 
     private final CommunityPostRepository communityPostRepository;
+    private final CommunityPostMetricsRepository communityPostMetricsRepository;
+    private final RecommendationSetHistoryService recommendationSetHistoryService;
     private final Clock clock;
     private final Counter versionConflictCounter;
 
-    public CommunityPostService(CommunityPostRepository communityPostRepository, Clock clock,
+    public CommunityPostService(CommunityPostRepository communityPostRepository,
+                                 CommunityPostMetricsRepository communityPostMetricsRepository,
+                                 RecommendationSetHistoryService recommendationSetHistoryService,
+                                 Clock clock,
                                  MeterRegistry meterRegistry) {
         this.communityPostRepository = communityPostRepository;
+        this.communityPostMetricsRepository = communityPostMetricsRepository;
+        this.recommendationSetHistoryService = recommendationSetHistoryService;
         this.clock = clock;
         this.versionConflictCounter = Counter.builder("kraft_community_post_version_conflict_total")
                 .description("게시글 낙관적 잠금 버전 충돌(409)로 거부된 수정 요청 수")
@@ -32,30 +46,55 @@ public class CommunityPostService {
     }
 
     @Transactional
-    public CommunityPost create(Long ownerId, String authorNickname, CreatePostRequest request) {
+    public CommunityPost create(Long ownerId, String authorNickname, String clientTokenHash,
+                                 CreatePostRequest request) {
+        PostCategory category = parseCategory(request.category());
+
+        Long recommendationSetId = request.recommendationSetId();
+        if (recommendationSetId != null) {
+            // 소유권 교차검증: 로그인 사용자가 첨부하려는 세트가 "지금 이 브라우저"의 익명
+            // 기기 토큰으로 만든 세트인지 확인한다(문서 11.7, 설계 판단 5 — Phase 4 계정
+            // 귀속 이전에도 같은 브라우저 세션이면 검증 가능하다).
+            if (clientTokenHash == null) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "DEVICE_TOKEN_REQUIRED",
+                        "추천 세트를 첨부하려면 X-Device-Token 헤더가 필요합니다.");
+            }
+            recommendationSetHistoryService.get(clientTokenHash, recommendationSetId);
+        }
+
         OffsetDateTime now = OffsetDateTime.now(clock);
-        return communityPostRepository.save(
-                new CommunityPost(ownerId, authorNickname, request.title(), request.content(), now, now));
+        CommunityPost post = communityPostRepository.save(new CommunityPost(
+                ownerId, authorNickname, request.title(), request.content(), category, recommendationSetId,
+                now, now));
+        communityPostMetricsRepository.save(new CommunityPostMetrics(post.getId(), now));
+        return post;
     }
 
     @Transactional(readOnly = true)
-    public CommunityPost get(Long postId) {
-        return communityPostRepository.findById(postId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_POST_NOT_FOUND",
-                        "게시글을 찾을 수 없습니다."));
+    public CommunityPost get(Long postId, Long requesterId) {
+        CommunityPost post = findById(postId);
+        requireVisible(post, requesterId);
+        return post;
     }
 
     @Transactional(readOnly = true)
-    public Page<CommunityPost> list(int page, int size) {
+    public Page<CommunityPost> list(PostCategory category, String sort, String query, int page, int size) {
         int clampedPage = Math.max(0, page);
         int clampedSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
-        return communityPostRepository.findAll(
-                PageRequest.of(clampedPage, clampedSize, Sort.by(Sort.Direction.DESC, "createdAt", "id")));
+        String normalizedQuery = normalizeQuery(query);
+        PageRequest pageRequest = PageRequest.of(clampedPage, clampedSize, Sort.unsorted());
+
+        if ("weekly_popular".equalsIgnoreCase(sort)) {
+            OffsetDateTime since = OffsetDateTime.now(clock).minusDays(WEEKLY_WINDOW_DAYS);
+            return communityPostRepository.findWeeklyPopular(
+                    category == null ? null : category.name(), normalizedQuery, since, pageRequest);
+        }
+        return communityPostRepository.findLatest(category, normalizedQuery, pageRequest);
     }
 
     @Transactional
     public CommunityPost update(Long ownerId, Long postId, UpdatePostRequest request) {
-        CommunityPost post = get(postId);
+        CommunityPost post = findById(postId);
         requireOwner(post, ownerId);
         if (post.getVersion() != request.expectedVersion()) {
             throw versionConflict(null);
@@ -74,20 +113,61 @@ public class CommunityPostService {
         }
     }
 
+    /**
+     * 일반 사용자의 삭제 — 하드 삭제 대신 {@code HIDDEN_BY_AUTHOR}로 상태만 바꾼다(문서 11.2).
+     * 본문·참조·감사 관계는 그대로 유지되고, 이후 목록/비소유자 조회에서만 제외된다.
+     */
     @Transactional
     public void delete(Long ownerId, Long postId, long expectedVersion) {
-        CommunityPost post = get(postId);
+        CommunityPost post = findById(postId);
         requireOwner(post, ownerId);
         if (post.getVersion() != expectedVersion) {
             throw versionConflict(null);
         }
         try {
-            communityPostRepository.delete(post);
-            communityPostRepository.flush();
+            post.hideByAuthor(OffsetDateTime.now(clock));
+            communityPostRepository.saveAndFlush(post);
         } catch (DataAccessException raceLostAfterCheck) {
-            // update()와 동일한 이유(§6 개선②, §P1-04) — 버전 사전 검증 이후 삭제 flush
-            // 시점에 끼어든 동시 수정/삭제 경합을 광역 500 대신 이 리소스에 특정된 409로 변환한다.
             throw versionConflict(raceLostAfterCheck);
+        }
+    }
+
+    public CommunityPostResponse toResponse(CommunityPost post) {
+        CommunityPostMetrics metrics = communityPostMetricsRepository.findByPostId(post.getId()).orElse(null);
+        RecommendationAttachmentView attachment = post.getRecommendationSetId() == null
+                ? null
+                : toAttachmentView(recommendationSetHistoryService.getForAttachment(post.getRecommendationSetId()));
+        return CommunityPostResponse.from(post, metrics, attachment);
+    }
+
+    public Page<CommunityPostResponse> toResponsePage(Page<CommunityPost> posts) {
+        List<Long> ids = posts.getContent().stream().map(CommunityPost::getId).toList();
+        Map<Long, CommunityPostMetrics> metricsById = communityPostMetricsRepository.findAllById(ids).stream()
+                .collect(java.util.stream.Collectors.toMap(CommunityPostMetrics::getPostId, m -> m));
+        return posts.map(post -> {
+            RecommendationAttachmentView attachment = post.getRecommendationSetId() == null
+                    ? null
+                    : toAttachmentView(recommendationSetHistoryService.getForAttachment(post.getRecommendationSetId()));
+            return CommunityPostResponse.from(post, metricsById.get(post.getId()), attachment);
+        });
+    }
+
+    private static RecommendationAttachmentView toAttachmentView(RecommendationSetSummary summary) {
+        return new RecommendationAttachmentView(
+                summary.id(), summary.strategy(), summary.algorithmVersion(), summary.historyThroughRound(),
+                summary.items());
+    }
+
+    private CommunityPost findById(Long postId) {
+        return communityPostRepository.findById(postId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_POST_NOT_FOUND",
+                        "게시글을 찾을 수 없습니다."));
+    }
+
+    /** 공개 상태가 아닌 게시글은 소유자 본인에게만 보인다(문서 13.5 COMMUNITY_POST_NOT_VISIBLE). */
+    private void requireVisible(CommunityPost post, Long requesterId) {
+        if (post.getStatus() != PostStatus.PUBLISHED && !post.getOwnerId().equals(requesterId)) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_POST_NOT_VISIBLE", "게시글을 찾을 수 없습니다.");
         }
     }
 
@@ -95,6 +175,27 @@ public class CommunityPostService {
         if (!post.getOwnerId().equals(ownerId)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "COMMUNITY_POST_NOT_OWNER", "본인 게시글만 수정·삭제할 수 있습니다.");
         }
+    }
+
+    private static PostCategory parseCategory(String category) {
+        try {
+            return PostCategory.valueOf(category.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "COMMUNITY_CATEGORY_INVALID",
+                    "지원하지 않는 카테고리입니다: " + category);
+        }
+    }
+
+    private static String normalizeQuery(String query) {
+        if (query == null || query.isBlank()) {
+            return null;
+        }
+        String trimmed = query.trim();
+        if (trimmed.length() < MIN_QUERY_LENGTH || trimmed.length() > MAX_QUERY_LENGTH) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "COMMUNITY_SEARCH_QUERY_INVALID",
+                    "검색어는 " + MIN_QUERY_LENGTH + "~" + MAX_QUERY_LENGTH + "자여야 합니다.");
+        }
+        return trimmed;
     }
 
     // B-08: update()/delete() 양쪽에서 사전 검증(버전 불일치)과 사후 경합(저장/삭제 시점에

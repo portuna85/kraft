@@ -21,13 +21,16 @@ public class RecommendationSetHistoryService {
     private final RecommendationSetRepository recommendationSetRepository;
     private final RecommendationItemRepository recommendationItemRepository;
     private final LottoNumberCodec lottoNumberCodec;
+    private final RecommendationSetAttachmentChecker attachmentChecker;
 
     public RecommendationSetHistoryService(RecommendationSetRepository recommendationSetRepository,
                                             RecommendationItemRepository recommendationItemRepository,
-                                            LottoNumberCodec lottoNumberCodec) {
+                                            LottoNumberCodec lottoNumberCodec,
+                                            RecommendationSetAttachmentChecker attachmentChecker) {
         this.recommendationSetRepository = recommendationSetRepository;
         this.recommendationItemRepository = recommendationItemRepository;
         this.lottoNumberCodec = lottoNumberCodec;
+        this.attachmentChecker = attachmentChecker;
     }
 
     public Long persist(String clientTokenHash, String strategy, String algorithmVersion, int historyThroughRound,
@@ -64,8 +67,25 @@ public class RecommendationSetHistoryService {
         return toSummary(set);
     }
 
+    /**
+     * 소유권 검증 없이 세트를 조회한다 — 커뮤니티 게시글에 첨부된 추천 세트를 방문자에게
+     * 보여줄 때 쓴다. 게시글이 공개된 이상 첨부된 추천 정보도 공개 데이터로 취급한다
+     * (문서 11.7: 첨부는 생성 당시 결과의 불변 스냅샷).
+     */
+    @Transactional(readOnly = true)
+    public RecommendationSetSummary getForAttachment(long id) {
+        RecommendationSet set = recommendationSetRepository.findById(id)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "RECOMMENDATION_SET_NOT_FOUND",
+                        "추천 세트를 찾을 수 없습니다."));
+        return toSummary(set);
+    }
+
     public void delete(String clientTokenHash, long id) {
         RecommendationSet set = findOwned(clientTokenHash, id);
+        if (attachmentChecker.isAttachedToPost(set.getId())) {
+            throw new ApiException(HttpStatus.CONFLICT, "RECOMMENDATION_SET_ATTACHED_TO_POST",
+                    "커뮤니티 게시글에 첨부된 추천 세트는 삭제할 수 없습니다.");
+        }
         recommendationItemRepository.deleteBySetId(set.getId());
         recommendationSetRepository.delete(set);
     }

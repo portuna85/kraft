@@ -2,6 +2,8 @@ package com.kraft.community.post;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -29,6 +31,17 @@ public class CommunityPost {
     @Column(name = "content", nullable = false)
     private String content;
 
+    @Column(name = "category", nullable = false, length = 30)
+    @Enumerated(EnumType.STRING)
+    private PostCategory category;
+
+    @Column(name = "status", nullable = false, length = 20)
+    @Enumerated(EnumType.STRING)
+    private PostStatus status;
+
+    @Column(name = "recommendation_set_id")
+    private Long recommendationSetId;
+
     @Version
     @Column(name = "version", nullable = false)
     private long version;
@@ -43,11 +56,15 @@ public class CommunityPost {
     }
 
     public CommunityPost(Long ownerId, String authorNameSnapshot, String title, String content,
+                          PostCategory category, Long recommendationSetId,
                           OffsetDateTime createdAt, OffsetDateTime updatedAt) {
         this.ownerId = ownerId;
         this.authorNameSnapshot = authorNameSnapshot;
         this.title = title;
         this.content = content;
+        this.category = category;
+        this.status = PostStatus.PUBLISHED;
+        this.recommendationSetId = recommendationSetId;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -72,6 +89,18 @@ public class CommunityPost {
         return content;
     }
 
+    public PostCategory getCategory() {
+        return category;
+    }
+
+    public PostStatus getStatus() {
+        return status;
+    }
+
+    public Long getRecommendationSetId() {
+        return recommendationSetId;
+    }
+
     public long getVersion() {
         return version;
     }
@@ -87,6 +116,12 @@ public class CommunityPost {
     void update(String title, String content, OffsetDateTime updatedAt) {
         this.title = title;
         this.content = content;
+        this.updatedAt = updatedAt;
+    }
+
+    /** 일반 사용자의 삭제 — 본문은 보존하고 공개 노출만 끈다(문서 11.2). */
+    void hideByAuthor(OffsetDateTime updatedAt) {
+        this.status = PostStatus.HIDDEN_BY_AUTHOR;
         this.updatedAt = updatedAt;
     }
 }

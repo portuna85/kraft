@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import com.kraft.common.error.ApiException;
 import com.kraft.community.post.CommunityPost;
+import com.kraft.community.post.CommunityPostMetricsRepository;
 import com.kraft.community.post.CommunityPostRepository;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Clock;
@@ -34,19 +35,23 @@ class CommunityCommentServiceTest {
     @Mock
     private CommunityPostRepository communityPostRepository;
 
+    @Mock
+    private CommunityPostMetricsRepository communityPostMetricsRepository;
+
     private CommunityCommentService service;
 
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(Instant.parse("2026-07-24T00:00:00Z"), ZoneOffset.UTC);
-        service = new CommunityCommentService(communityCommentRepository, communityPostRepository, clock,
-                new SimpleMeterRegistry());
+        service = new CommunityCommentService(communityCommentRepository, communityPostRepository,
+                communityPostMetricsRepository, clock, new SimpleMeterRegistry());
     }
 
     @Test
     @DisplayName("저장 직전 게시글이 동시 삭제되면 404로 변환한다")
     void concurrentPostDeletion_isTranslatedToPostNotFound() {
         CommunityPost post = new CommunityPost(1L, "작성자", "제목", "내용",
+                com.kraft.community.post.PostCategory.GENERAL, null,
                 java.time.OffsetDateTime.now(), java.time.OffsetDateTime.now());
         when(communityPostRepository.findById(10L)).thenReturn(Optional.of(post));
         when(communityCommentRepository.save(any()))

@@ -58,14 +58,14 @@ class CommunityWriteRateLimitFilterTest {
                         .with(asUser(owner))
                         .with(csrf())
                         .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(new CreatePostRequest("제목1", "내용1"))))
+                        .content(objectMapper.writeValueAsString(new CreatePostRequest("제목1", "내용1", "GENERAL", null))))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(post("/api/v1/community/posts")
                         .with(asUser(owner))
                         .with(csrf())
                         .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(new CreatePostRequest("제목2", "내용2"))))
+                        .content(objectMapper.writeValueAsString(new CreatePostRequest("제목2", "내용2", "GENERAL", null))))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().string("Content-Type", "application/json;charset=UTF-8"))
                 .andExpect(header().string("Retry-After", "60"))

@@ -63,7 +63,8 @@ class CommunityCommentCascadeDeleteTest {
         CommunityUser author = communityUserRepository.save(new CommunityUser(
                 "google", "cascade-test-" + System.nanoTime(), "글쓴이", null, OffsetDateTime.now()));
         CommunityPost post = communityPostRepository.save(new CommunityPost(
-                author.getId(), author.getNickname(), "제목", "내용", OffsetDateTime.now(), OffsetDateTime.now()));
+                author.getId(), author.getNickname(), "제목", "내용",
+                com.kraft.community.post.PostCategory.GENERAL, null, OffsetDateTime.now(), OffsetDateTime.now()));
         CommunityComment topLevel = communityCommentRepository.save(new CommunityComment(
                 post.getId(), null, author.getId(), author.getNickname(), "댓글", OffsetDateTime.now()));
         communityCommentRepository.save(new CommunityComment(

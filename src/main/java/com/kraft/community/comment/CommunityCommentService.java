@@ -2,6 +2,7 @@ package com.kraft.community.comment;
 
 import com.kraft.common.error.ApiException;
 import com.kraft.community.post.CommunityPost;
+import com.kraft.community.post.CommunityPostMetricsRepository;
 import com.kraft.community.post.CommunityPostRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -28,15 +29,18 @@ public class CommunityCommentService {
 
     private final CommunityCommentRepository communityCommentRepository;
     private final CommunityPostRepository communityPostRepository;
+    private final CommunityPostMetricsRepository communityPostMetricsRepository;
     private final Clock clock;
     private final Counter tombstoneCounter;
 
     public CommunityCommentService(CommunityCommentRepository communityCommentRepository,
                                     CommunityPostRepository communityPostRepository,
+                                    CommunityPostMetricsRepository communityPostMetricsRepository,
                                     Clock clock,
                                     MeterRegistry meterRegistry) {
         this.communityCommentRepository = communityCommentRepository;
         this.communityPostRepository = communityPostRepository;
+        this.communityPostMetricsRepository = communityPostMetricsRepository;
         this.clock = clock;
         this.tombstoneCounter = Counter.builder("kraft_community_comment_tombstoned_total")
                 .description("tombstone 처리(삭제)된 댓글 누적 수")
@@ -95,6 +99,8 @@ public class CommunityCommentService {
             throw new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_POST_NOT_FOUND",
                     "게시글을 찾을 수 없습니다.", concurrentlyDeletedPost);
         }
+        // 원자적 증감(문서 16.1 "댓글·좋아요·집계 동시 갱신") — 읽고 고쳐 쓰지 않는다.
+        communityPostMetricsRepository.incrementCommentCount(postId);
 
         // targetPage: 상위 댓글이면 자기 자신, 답글이면 부모(항상 상위 댓글)의 목록 내 위치를
         // 기준으로 계산한다(§6: "mutation 후 target page 계산" — Blitz의 동일 의도 이식).
@@ -114,7 +120,11 @@ public class CommunityCommentService {
             throw new ApiException(HttpStatus.FORBIDDEN, "COMMUNITY_COMMENT_NOT_OWNER", "본인 댓글만 삭제할 수 있습니다.");
         }
         comment.markDeleted();
-        communityCommentRepository.save(comment);
+        // saveAndFlush로 즉시 반영해야 한다 — 아래 decrementCommentCount는 벌크 UPDATE라
+        // clearAutomatically가 영속성 컨텍스트 전체를 비운다. 이 tombstone 변경이 먼저
+        // flush되지 않은 채로 컨텍스트가 비워지면 markDeleted() 변경 자체가 유실된다.
+        communityCommentRepository.saveAndFlush(comment);
+        communityPostMetricsRepository.decrementCommentCount(comment.getPostId());
         tombstoneCounter.increment();
     }
 }
