@@ -1,4 +1,5 @@
 import { browserFetch } from "@/lib/browser-api";
+import { getDeviceToken } from "@/lib/device-token";
 import {
   DEFAULT_COMMENT_PAGE_SIZE,
   type CommunityComment,
@@ -53,11 +54,16 @@ export async function logout(): Promise<boolean> {
   }
 }
 
-export async function createPost(title: string, content: string): Promise<CommunityPost> {
+export async function createPost(
+  title: string,
+  content: string,
+  category: string,
+  recommendationSetId: number | null
+): Promise<CommunityPost> {
   return browserFetch<CommunityPost>("/api/v1/community/posts", {
     method: "POST",
-    headers: writeHeaders(),
-    body: JSON.stringify({ title, content }),
+    headers: writeHeaders(recommendationSetId ? { "X-Device-Token": getDeviceToken() } : undefined),
+    body: JSON.stringify({ title, content, category, recommendationSetId }),
   });
 }
 
@@ -106,6 +112,62 @@ export async function createComment(
 
 export async function deleteComment(id: number): Promise<void> {
   await browserFetch<void>(`/api/v1/community/comments/${id}`, {
+    method: "DELETE",
+    headers: writeHeaders(),
+  });
+}
+
+export type CommunityInteractions = {
+  likedPostIds: number[];
+  bookmarkedPostIds: number[];
+  blockedUserIds: number[];
+};
+
+export async function likePost(postId: number): Promise<void> {
+  await browserFetch<void>(`/api/v1/community/posts/${postId}/like`, { method: "PUT", headers: writeHeaders() });
+}
+
+export async function unlikePost(postId: number): Promise<void> {
+  await browserFetch<void>(`/api/v1/community/posts/${postId}/like`, { method: "DELETE", headers: writeHeaders() });
+}
+
+export async function bookmarkPost(postId: number): Promise<void> {
+  await browserFetch<void>(`/api/v1/community/posts/${postId}/bookmark`, { method: "PUT", headers: writeHeaders() });
+}
+
+export async function unbookmarkPost(postId: number): Promise<void> {
+  await browserFetch<void>(`/api/v1/community/posts/${postId}/bookmark`, {
+    method: "DELETE",
+    headers: writeHeaders(),
+  });
+}
+
+export async function getMyInteractions(postIds: number[]): Promise<CommunityInteractions> {
+  const params = new URLSearchParams();
+  postIds.forEach((id) => params.append("postIds", String(id)));
+  return browserFetch<CommunityInteractions>(`/api/v1/community/me/interactions?${params.toString()}`, {
+    cache: "no-store",
+  });
+}
+
+export async function reportContent(
+  targetType: "POST" | "COMMENT" | "USER",
+  targetId: number,
+  reason: string
+): Promise<void> {
+  await browserFetch<void>("/api/v1/community/reports", {
+    method: "POST",
+    headers: writeHeaders(),
+    body: JSON.stringify({ targetType, targetId, reason }),
+  });
+}
+
+export async function blockUser(userId: number): Promise<void> {
+  await browserFetch<void>(`/api/v1/community/users/${userId}/block`, { method: "PUT", headers: writeHeaders() });
+}
+
+export async function unblockUser(userId: number): Promise<void> {
+  await browserFetch<void>(`/api/v1/community/users/${userId}/block`, {
     method: "DELETE",
     headers: writeHeaders(),
   });

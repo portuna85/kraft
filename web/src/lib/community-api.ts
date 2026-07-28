@@ -6,15 +6,38 @@ const backendBaseUrl = process.env.KRAFT_BACKEND_INTERNAL_URL ?? "http://backend
 // 이 응답에 절대 섞이지 않는다 — 로그인 상태·소유권은 클라이언트가 /session과 대조한다.
 const REVALIDATE_COMMUNITY_LIST = 30;
 
+export type PostCategory = "RECOMMENDATION_SHARE" | "ROUND_ANALYSIS" | "WIN_STORY" | "QUESTION" | "GENERAL";
+export type PostStatus = "PUBLISHED" | "HIDDEN_BY_AUTHOR" | "HIDDEN_BY_MODERATOR" | "DELETED";
+export type PostSort = "latest" | "weekly_popular";
+
+export type RecommendationAttachment = {
+  setId: number;
+  strategy: string;
+  algorithmVersion: string;
+  historyThroughRound: number;
+  items: {
+    position: number;
+    numbers: number[];
+    score: number | null;
+    explanationCodes: string[];
+  }[];
+};
+
 export type CommunityPost = {
   id: number;
   ownerId: number;
   authorNickname: string;
   title: string;
   content: string;
+  category: PostCategory;
+  status: PostStatus;
   version: number;
   createdAt: string;
   updatedAt: string;
+  likeCount: number;
+  commentCount: number;
+  viewCount: number;
+  recommendationAttachment: RecommendationAttachment | null;
 };
 
 export type CommunityComment = {
@@ -72,10 +95,16 @@ async function fetchCommunityJson<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function getCommunityPosts(page = 0, size = 20): Promise<PageResponse<CommunityPost>> {
-  return fetchCommunityJson<PageResponse<CommunityPost>>(
-    `/api/v1/community/posts?page=${page}&size=${size}`
-  );
+export async function getCommunityPosts(
+  page = 0,
+  size = 20,
+  options: { category?: PostCategory; sort?: PostSort; query?: string } = {}
+): Promise<PageResponse<CommunityPost>> {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  if (options.category) params.set("category", options.category);
+  if (options.sort) params.set("sort", options.sort);
+  if (options.query) params.set("query", options.query);
+  return fetchCommunityJson<PageResponse<CommunityPost>>(`/api/v1/community/posts?${params.toString()}`);
 }
 
 export async function getCommunityPost(id: number): Promise<CommunityPost> {

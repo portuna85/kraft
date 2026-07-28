@@ -7,6 +7,11 @@ import { PostOwnerActions } from "@/components/community/post-owner-actions";
 import { CommentSection } from "@/components/community/comment-section";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
 import { formatDateTime } from "@/lib/format";
+import { ReactionBar } from "@/features/community/reaction-bar";
+import { ReportDialog } from "@/features/community/report-dialog";
+import { BlockButton } from "@/features/community/block-button";
+import { RecommendationAttachmentView } from "@/features/community/recommendation-attachment-view";
+import { CATEGORY_LABELS } from "@/features/community/types";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -47,7 +52,9 @@ export default async function CommunityPostDetailPage({ params }: Props) {
         nonce={nonce}
         items={[{ name: "커뮤니티", item: `${baseUrl}/community` }, { name: post.title }]}
       />
-      <p className="eyebrow">커뮤니티</p>
+      <p className="eyebrow">
+        {CATEGORY_LABELS[post.category]} · 커뮤니티
+      </p>
       <h1 className="page-title">{post.title}</h1>
       <p className="community-post-meta">
         <span>{post.authorNickname}</span>
@@ -59,6 +66,14 @@ export default async function CommunityPostDetailPage({ params }: Props) {
           <p key={index}>{line}</p>
         ))}
       </div>
+
+      {post.recommendationAttachment ? (
+        <RecommendationAttachmentView attachment={post.recommendationAttachment} />
+      ) : null}
+
+      <ReactionBar postId={post.id} initialLikeCount={post.likeCount} />
+      <ReportDialog targetType="POST" targetId={post.id} />
+      <BlockButton userId={post.ownerId} />
 
       <PostOwnerActions postId={post.id} ownerId={post.ownerId} version={post.version} />
       <CommentSection postId={post.id} />

@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { createPost, updatePost } from "@/lib/community-client";
 import { BrowserApiError } from "@/lib/browser-api";
 import { useCommunitySession } from "@/components/community/community-session-provider";
+import { CATEGORY_LABELS, CATEGORY_OPTIONS } from "@/features/community/types";
+import { RecommendationAttachmentPicker } from "@/features/community/recommendation-attachment-picker";
+import type { PostCategory } from "@/lib/community-api";
 
 type CreateMode = { mode: "create" };
 type EditMode = { mode: "edit"; postId: number; ownerId: number; initialTitle: string; initialContent: string; initialVersion: number };
@@ -14,6 +17,8 @@ export function PostForm(props: CreateMode | EditMode) {
   const { session, loading } = useCommunitySession();
   const [title, setTitle] = useState(props.mode === "edit" ? props.initialTitle : "");
   const [content, setContent] = useState(props.mode === "edit" ? props.initialContent : "");
+  const [category, setCategory] = useState<PostCategory>("GENERAL");
+  const [recommendationSetId, setRecommendationSetId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [versionConflict, setVersionConflict] = useState(false);
@@ -48,7 +53,7 @@ export function PostForm(props: CreateMode | EditMode) {
     setVersionConflict(false);
     try {
       if (props.mode === "create") {
-        const post = await createPost(title.trim(), content.trim());
+        const post = await createPost(title.trim(), content.trim(), category, recommendationSetId);
         router.push(`/community/posts/${post.id}`);
       } else {
         const post = await updatePost(props.postId, title.trim(), content.trim(), props.initialVersion);
@@ -90,6 +95,24 @@ export function PostForm(props: CreateMode | EditMode) {
           {error}
         </p>
       )}
+
+      {props.mode === "create" ? (
+        <>
+          <label htmlFor="post-category">카테고리</label>
+          <select
+            id="post-category"
+            value={category}
+            onChange={(event) => setCategory(event.target.value as PostCategory)}
+          >
+            {CATEGORY_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {CATEGORY_LABELS[option]}
+              </option>
+            ))}
+          </select>
+          <RecommendationAttachmentPicker value={recommendationSetId} onChange={setRecommendationSetId} />
+        </>
+      ) : null}
 
       <label htmlFor="post-title">제목</label>
       <input

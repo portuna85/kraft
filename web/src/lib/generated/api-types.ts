@@ -3,6 +3,22 @@
 // Regenerate: npm run generate:api-types (backend must be running locally)
 
 export interface paths {
+    "/api/v1/community/users/{id}/block": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["block"];
+        post?: never;
+        delete: operations["unblock"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/community/posts/{id}": {
         parameters: {
             query?: never;
@@ -14,6 +30,38 @@ export interface paths {
         put: operations["update"];
         post?: never;
         delete: operations["delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/community/posts/{id}/like": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["like"];
+        post?: never;
+        delete: operations["unlike"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/community/posts/{id}/bookmark": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["bookmark"];
+        post?: never;
+        delete: operations["unbookmark"];
         options?: never;
         head?: never;
         patch?: never;
@@ -61,6 +109,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["recommend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/community/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["report"];
         delete?: never;
         options?: never;
         head?: never;
@@ -307,6 +371,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/community/me/interactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["interactions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/saved/{id}": {
         parameters: {
             query?: never;
@@ -357,12 +437,40 @@ export interface components {
             authorNickname?: string;
             title?: string;
             content?: string;
+            /** @enum {string} */
+            category?: "RECOMMENDATION_SHARE" | "ROUND_ANALYSIS" | "WIN_STORY" | "QUESTION" | "GENERAL";
+            /** @enum {string} */
+            status?: "PUBLISHED" | "HIDDEN_BY_AUTHOR" | "HIDDEN_BY_MODERATOR" | "DELETED";
             /** Format: int64 */
             version?: number;
             /** Format: date-time */
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+            /** Format: int32 */
+            likeCount?: number;
+            /** Format: int32 */
+            commentCount?: number;
+            /** Format: int64 */
+            viewCount?: number;
+            recommendationAttachment?: components["schemas"]["RecommendationAttachmentView"];
+        };
+        RecommendationAttachmentView: {
+            /** Format: int64 */
+            setId?: number;
+            strategy?: string;
+            algorithmVersion?: string;
+            /** Format: int32 */
+            historyThroughRound?: number;
+            items?: components["schemas"]["RecommendationItemView"][];
+        };
+        RecommendationItemView: {
+            /** Format: int32 */
+            position?: number;
+            numbers?: number[];
+            /** Format: int32 */
+            score?: number;
+            explanationCodes?: ("ODD_EVEN_BALANCED" | "LOW_HIGH_BALANCED" | "SUM_IN_RANGE" | "CONSECUTIVE_PAIR_LIMITED" | "DECADE_SPREAD")[];
         };
         AnalysisRequest: {
             numbers: number[];
@@ -427,17 +535,20 @@ export interface components {
             /** Format: date-time */
             createdAt?: string;
         };
-        RecommendationItemView: {
-            /** Format: int32 */
-            position?: number;
-            numbers?: number[];
-            /** Format: int32 */
-            score?: number;
-            explanationCodes?: ("ODD_EVEN_BALANCED" | "LOW_HIGH_BALANCED" | "SUM_IN_RANGE" | "CONSECUTIVE_PAIR_LIMITED" | "DECADE_SPREAD")[];
+        CreateReportRequest: {
+            /** @enum {string} */
+            targetType: "POST" | "COMMENT" | "USER";
+            /** Format: int64 */
+            targetId: number;
+            /** @enum {string} */
+            reason: "SPAM" | "COMMERCIAL_PROMOTION" | "HARASSMENT" | "PERSONAL_INFO" | "FAKE_WIN" | "GAMBLING_GLORIFICATION" | "OTHER";
         };
         CreatePostRequest: {
             title: string;
             content: string;
+            category: string;
+            /** Format: int64 */
+            recommendationSetId?: number;
         };
         CreateCommentRequest: {
             content: string;
@@ -623,6 +734,11 @@ export interface components {
             /** Format: int32 */
             totalPages?: number;
         };
+        CommunityInteractionsResponse: {
+            likedPostIds?: number[];
+            bookmarkedPostIds?: number[];
+            blockedUserIds?: number[];
+        };
     };
     responses: never;
     parameters: never;
@@ -632,6 +748,46 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    block: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    unblock: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     detail: {
         parameters: {
             query?: never;
@@ -685,6 +841,86 @@ export interface operations {
             query: {
                 expectedVersion: number;
             };
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    like: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    unlike: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    bookmark: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    unbookmark: {
+        parameters: {
+            query?: never;
             header?: never;
             path: {
                 id: number;
@@ -800,9 +1036,34 @@ export interface operations {
             };
         };
     };
+    report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateReportRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     list_1: {
         parameters: {
             query?: {
+                category?: string;
+                sort?: string;
+                query?: string;
                 page?: number;
                 size?: number;
             };
@@ -826,7 +1087,9 @@ export interface operations {
     create: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Device-Token"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1192,6 +1455,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CommunitySessionResponse"];
+                };
+            };
+        };
+    };
+    interactions: {
+        parameters: {
+            query: {
+                postIds: number[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CommunityInteractionsResponse"];
                 };
             };
         };
