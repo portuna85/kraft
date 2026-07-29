@@ -26,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
@@ -50,7 +51,11 @@ class CommunityReactionServiceTest {
     @Mock
     private CommunityBlockService communityBlockService;
 
+    @Mock
+    private CommunityReactionWriter communityReactionWriter;
+
     private CommunityReactionService service;
+    private SimpleMeterRegistry meterRegistry;
 
     private static CommunityPost publishedPost() {
         return new CommunityPost(1L, "글쓴이", "제목", "내용", PostCategory.GENERAL, null,
@@ -60,9 +65,10 @@ class CommunityReactionServiceTest {
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(Instant.parse("2026-07-28T00:00:00Z"), ZoneOffset.UTC);
+        meterRegistry = new SimpleMeterRegistry();
         service = new CommunityReactionService(communityPostRepository, communityPostLikeRepository,
-                communityPostBookmarkRepository, communityPostMetricsRepository, communityBlockService, clock,
-                new SimpleMeterRegistry());
+                communityPostBookmarkRepository, communityPostMetricsRepository, communityBlockService,
+                communityReactionWriter, clock, meterRegistry);
     }
 
     @Test
@@ -73,7 +79,7 @@ class CommunityReactionServiceTest {
 
         service.like(1L, 10L);
 
-        verify(communityPostLikeRepository).save(any());
+        verify(communityReactionWriter).insertLike(eq(1L), eq(10L), any());
         verify(communityPostMetricsRepository).incrementLikeCount(1L);
     }
 
@@ -86,7 +92,7 @@ class CommunityReactionServiceTest {
 
         service.like(1L, 10L);
 
-        verify(communityPostLikeRepository, never()).save(any());
+        verify(communityReactionWriter, never()).insertLike(anyLong(), anyLong(), any());
         verify(communityPostMetricsRepository, never()).incrementLikeCount(anyLong());
     }
 
@@ -106,12 +112,12 @@ class CommunityReactionServiceTest {
     }
 
     @Test
-    @DisplayName("B-P0-4: 좋아요 exists 확인과 저장 사이 경쟁이 나면 500 대신 멱등하게 흡수한다")
+    @DisplayName("KB-02: 좋아요 exists 확인과 insert 사이 경쟁이 나면(writer가 DIVE 전파) 500 대신 멱등하게 흡수한다")
     void like_raceLostAfterCheck_absorbsIdempotently() {
         given(communityPostRepository.findById(1L)).willReturn(Optional.of(publishedPost()));
         given(communityPostLikeRepository.findByPostIdAndUserId(1L, 10L)).willReturn(Optional.empty());
         willThrow(new DataIntegrityViolationException("uk_community_post_likes_post_user"))
-                .given(communityPostLikeRepository).save(any());
+                .given(communityReactionWriter).insertLike(eq(1L), eq(10L), any());
 
         service.like(1L, 10L);
 
@@ -149,7 +155,9 @@ class CommunityReactionServiceTest {
 
         service.bookmark(1L, 10L);
 
-        verify(communityPostBookmarkRepository).save(any());
+        verify(communityReactionWriter).insertBookmark(eq(1L), eq(10L), any());
+        assertThat(meterRegistry.get("kraft_community_reaction_created_total").tag("type", "bookmark")
+                .counter().count()).isEqualTo(1.0);
     }
 
     @Test
@@ -161,7 +169,7 @@ class CommunityReactionServiceTest {
 
         service.bookmark(1L, 10L);
 
-        verify(communityPostBookmarkRepository, never()).save(any());
+        verify(communityReactionWriter, never()).insertBookmark(anyLong(), anyLong(), any());
     }
 
     @Test
@@ -175,14 +183,17 @@ class CommunityReactionServiceTest {
     }
 
     @Test
-    @DisplayName("B-P0-4: 북마크 exists 확인과 저장 사이 경쟁이 나면 500 대신 멱등하게 흡수한다")
+    @DisplayName("KB-02: 북마크 exists 확인과 insert 사이 경쟁이 나면(writer가 DIVE 전파) 500 대신 멱등하게 흡수한다")
     void bookmark_raceLostAfterCheck_absorbsIdempotently() {
         given(communityPostRepository.findById(1L)).willReturn(Optional.of(publishedPost()));
         given(communityPostBookmarkRepository.findByPostIdAndUserId(1L, 10L)).willReturn(Optional.empty());
         willThrow(new DataIntegrityViolationException("uk_community_post_bookmarks_post_user"))
-                .given(communityPostBookmarkRepository).save(any());
+                .given(communityReactionWriter).insertBookmark(eq(1L), eq(10L), any());
 
         service.bookmark(1L, 10L);
+
+        assertThat(meterRegistry.get("kraft_community_reaction_created_total").tag("type", "bookmark")
+                .counter().count()).isEqualTo(0.0);
     }
 
     @Test
