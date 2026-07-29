@@ -79,6 +79,25 @@ class CommunityPostCommentApiTest {
     }
 
     @Test
+    @DisplayName("KB-03/KB-11: 게시글 목록·상세·댓글 GET은 명시적으로 no-store를 응답하고 상세에는 ETag가 없다")
+    void publicGetEndpoints_returnNoStoreWithoutStaleEtagCaching() throws Exception {
+        long postId = createPost(owner, "제목", "내용");
+
+        mockMvc.perform(get("/api/v1/community/posts"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store"));
+
+        mockMvc.perform(get("/api/v1/community/posts/" + postId))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(header().doesNotExist("ETag"));
+
+        mockMvc.perform(get("/api/v1/community/posts/" + postId + "/comments"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store"));
+    }
+
+    @Test
     @DisplayName("인증되지 않은 요청은 게시글 작성이 거부된다")
     void unauthenticatedRequest_cannotCreatePost() throws Exception {
         mockMvc.perform(post("/api/v1/community/posts")
@@ -342,16 +361,6 @@ class CommunityPostCommentApiTest {
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("/api/v1/community/posts/")))
                 .andExpect(header().string("ETag", "\"0\""));
-    }
-
-    @Test
-    @DisplayName("게시글 상세 조회 응답은 ETag 헤더를 포함한다")
-    void postDetail_returnsETagHeader() throws Exception {
-        long postId = createPost(owner, "제목", "내용");
-
-        mockMvc.perform(get("/api/v1/community/posts/" + postId))
-                .andExpect(status().isOk())
-                .andExpect(header().exists("ETag"));
     }
 
     @Test

@@ -45,9 +45,17 @@ public class CommunityPostController {
             @RequestParam(defaultValue = "20") int size) {
         PostCategory parsedCategory = category == null || category.isBlank() ? null : parseCategoryParam(category);
         Page<CommunityPost> result = communityPostService.list(parsedCategory, sort, query, page, size);
-        return ResponseEntity.ok().body(PageResponse.from(communityPostService.toResponsePage(result)));
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(PageResponse.from(communityPostService.toResponsePage(result)));
     }
 
+    /**
+     * KB-03: ETag를 version으로 걸었던 이전 구현은 응답 본문에 like/comment/view count처럼
+     * version과 무관하게 바뀌는 휘발성 지표가 섞여 있어, 글 수정 없이 반응만 바뀐 사이에
+     * 브라우저가 304로 옛 지표를 계속 보여줄 수 있었다. KB-11: 목록·댓글과 마찬가지로
+     * 명시적 no-store로 통일한다(휴리스틱 캐시 제거).
+     */
     @GetMapping("/{id}")
     public ResponseEntity<CommunityPostResponse> detail(
             @AuthenticationPrincipal CommunityPrincipal principal,
@@ -55,7 +63,7 @@ public class CommunityPostController {
         Long requesterId = principal == null ? null : principal.getUserId();
         CommunityPost post = communityPostService.get(id, requesterId);
         return ResponseEntity.ok()
-                .eTag(String.valueOf(post.getVersion()))
+                .cacheControl(CacheControl.noStore())
                 .body(communityPostService.toResponse(post));
     }
 
