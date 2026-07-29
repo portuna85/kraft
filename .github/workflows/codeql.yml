@@ -58,7 +58,7 @@ jobs:
         with:
           languages: java-kotlin
       - name: Build backend classes
-        run: ./gradlew classes --build-cache --no-daemon
+        run: ./gradlew clean classes --no-build-cache --no-daemon
       - name: Perform Java CodeQL analysis
         uses: github/codeql-action/analyze@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
 
