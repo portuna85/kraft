@@ -9,7 +9,6 @@ KRAFT Lotto는 로또 6/45 당첨 데이터 조회와 통계, 번호 추천, 저
 [![MariaDB](https://img.shields.io/badge/MariaDB-11.7-003545?logo=mariadb&logoColor=white)](#기술-구성)
 
 - 운영 서비스: [https://kraft.io.kr](https://kraft.io.kr/)
-- 개선 현황 및 실행 계획: [`docs/improvement.md`](docs/improvement.md) (Git 추적 설계·검증 기록)
 
 Google·Naver 로그인부터 세션 유지, 게시글·댓글·답글 작성, 수정·삭제, 로그아웃까지 실제 브라우저 사용자 흐름을 검증했습니다.
 
@@ -322,10 +321,6 @@ bash scripts/deploy/smoke-test.sh
 
 ## 문서 정책
 
-프로젝트 Markdown 문서 중에는 README와 [`docs/improvement.md`](docs/improvement.md) 두 개만 존재합니다.
+프로젝트 문서는 `README.md` 하나만 유지합니다. 서비스 소개, 실행, API, 검증, 배포 관련 설명은 이 파일에서 공동 관리합니다.
 
-- `README.md`: 서비스 소개, 실행, API, 검증, 배포의 시작점
-- `docs/improvement.md`: 상세 설계 결정, OAuth 설정, 운영 노트, 구현 이력, 우선순위별 개선 과제
-
-`docs/**/*.md`는 기본적으로 로컬 전용이지만, 개선·검증 기록인 `docs/improvement.md`와
-향후 API 계약 문서 경로로 예약한 `docs/api.md`는 예외로 Git에서 공동 관리합니다.
+`docs/**/*.md`는 생성하거나 Git에서 추적하지 않습니다. 별도 장기 문서가 필요하면 README에 통합합니다.

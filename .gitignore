@@ -87,5 +87,3 @@ scripts/archive/migrate-2026-06/env-migration.sh
 ### Local-only docs (never commit) ###
 docs/*.md
 docs/**/*.md
-!docs/api.md
-!docs/improvement.md
