@@ -25,7 +25,10 @@ public class RecommendationHistoryHealthIndicator implements HealthIndicator {
                 .withDetail("databaseVersion", status.databaseVersion())
                 .withDetail("roundCount", status.roundCount())
                 .withDetail("historyThroughRound", status.historyThroughRound())
-                .withDetail("firstMissingRound", status.firstMissingRound())
+                // Health.Builder는 null detail을 허용하지 않아 이력이 완전한 정상 상태에서
+                // readiness 자체가 500이 된다. 지표와 동일하게 0을 "누락 없음"으로 쓴다.
+                .withDetail("firstMissingRound",
+                        status.firstMissingRound() == null ? 0 : status.firstMissingRound())
                 .withDetail("snapshotAgeSeconds", Duration.between(
                         recommendationService.historyLoadedAt(), Instant.now()).toSeconds())
                 .build();

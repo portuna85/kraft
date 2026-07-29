@@ -163,10 +163,14 @@ if command -v docker >/dev/null 2>&1 && docker inspect kraft-mariadb >/dev/null 
   applied_version=$(docker exec kraft-mariadb sh -c \
     'MYSQL_PWD=$MARIADB_PASSWORD mariadb -u"$MARIADB_USER" kraft_lotto -N -e \
     "SELECT MAX(CAST(version AS UNSIGNED)) FROM flyway_schema_history WHERE success=1"' 2>/dev/null || echo "")
-  if [[ -n "$expected_version" && "$applied_version" == "$expected_version" ]]; then
-    echo "  OK  [flyway v$applied_version] Flyway 최신 버전 도달"
+  # Flyway 마이그레이션은 비가역 expand 방식이라 애플리케이션 이미지 롤백 후에도 DB 버전은
+  # 앞으로 나가 있을 수 있다. DB가 코드 기대 버전 이상이면 호환 가능한 정상 상태이며,
+  # DB가 뒤처진 경우만 실패시킨다.
+  if [[ "$expected_version" =~ ^[0-9]+$ && "$applied_version" =~ ^[0-9]+$ ]] \
+      && (( applied_version >= expected_version )); then
+    echo "  OK  [flyway applied=$applied_version expected-at-least=$expected_version] Flyway 호환 버전 도달"
   else
-    echo "  FAIL[flyway applied=$applied_version expected=$expected_version] Flyway 최신 버전 미도달" >&2
+    echo "  FAIL[flyway applied=$applied_version expected-at-least=$expected_version] Flyway 호환 버전 미도달" >&2
     FAIL=1
   fi
 else

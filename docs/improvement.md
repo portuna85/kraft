@@ -49,6 +49,9 @@
 | B-02 | k6 부하 검증의 릴리스 게이트화 | 외부 의존성으로 차단됨 | 임계값·정확성 검사를 포함한 스크립트는 준비됐으나 운영과 격리된 성능 환경·대표 데이터·실행 용량이 저장소에 없어 CI/운영 대상 실행은 안전하게 수행할 수 없음 |
 | P-01 | 홈 추천 스튜디오 축소 A/B 실험 | 외부 의존성으로 차단됨 | 기능 축소 전 실제 사용자 행동 표본과 제품 지표 선택이 필요하며 저장소만으로 결과를 검증할 수 없음 |
 | P-02 | API 계약 산출물 보존 | 완료 및 검증 | CI가 OpenAPI 명세·생성 타입·계약 diff를 항상 artifact로 보존하고 로컬 실제 H2 명세 일치를 검증 |
+| P-03 | 운영 readiness 정상 상태의 null detail 처리 | 완료 및 검증 | 첫 배포에서 `firstMissingRound=null`이 health 500을 만든 로그를 확인하고 0으로 직렬화, 정상·누락 단위 테스트 추가 |
+| P-04 | 비가역 Flyway expand 이후 이미지 롤백 smoke | 완료 및 검증 | DB 적용 버전이 롤백 코드 기대 버전 이상이면 호환 상태로 인정하고 뒤처진 경우만 실패하도록 수정 |
+| P-05 | V29 이후 구버전 이미지 쓰기 호환성 | 완료 및 검증 | V30 BEFORE trigger가 구버전 INSERT/UPDATE의 마스크를 계산하고 역사 조합 거부 순서를 보장, MariaDB 통합 테스트 추가 |
 
 ## 1. 결론
 
@@ -78,7 +81,7 @@ Git 추적 파일 830개를 경로, 확장자, 크기, 역할 기준으로 분�
 | 영역 | 파일 수 | 주요 내용 |
 |---|---:|---|
 | `web/` | 427 | Next.js App Router, React 컴포넌트, CSS, API 프록시, Vitest, Playwright, 120개 시각 기준 이미지 |
-| `src/` | 334 | Spring Boot 소스·테스트, Thymeleaf 관리자 화면, 설정, 29개 SQL 마이그레이션 |
+| `src/` | 334 | Spring Boot 소스·테스트, Thymeleaf 관리자 화면, 설정, 30개 SQL 마이그레이션 |
 | `scripts/` | 31 | 배포, 검증, 드리프트 검사, 부하 테스트, 데이터 마이그레이션 |
 | 저장소 루트 | 17 | Gradle, Docker Compose, 환경 예시, README, 패키지 설정 |
 | `.github/` | 6 | CI, CodeQL 및 자동화 설정 |
@@ -717,7 +720,7 @@ TSX 프리미티브 21개 중 프로덕션에서 확인된 사용은 Badge, Dial
 | 추천 응답·저장 이력 | `RecommendNumbersResponse.java`, `RecommendationSet*.java`, `RecommendationSetHistoryService.java` |
 | 당첨 번호 이벤트·조회 | `src/main/java/com/kraft/winningnumber/` |
 | 역사 관련 테스트 | `src/test/java/com/kraft/recommend/LottoRecommendationServiceTest.java`, `RecommendApiIntegrationTest.java` |
-| DB 구조 | `src/main/resources/db/migration/V1__baseline.sql`, `V19__recommendation_sets.sql`, `V20__recommendation_items.sql` 및 신규 마이그레이션 |
+| DB 구조 | `src/main/resources/db/migration/V1__baseline.sql`, `V19__recommendation_sets.sql`, `V20__recommendation_items.sql`, `V29__recommendation_history_integrity.sql`, `V30__recommendation_mask_rollback_compatibility.sql` |
 | readiness·설정 | `src/main/resources/application.yml`, `docker-compose.yml`, `docker-compose.prod.yml` |
 | 관측·경보 | `infra/prometheus/rules/kraft_alerts.yml`, 운영 runbook |
 | 추천 UI | `web/src/components/recommend-client.tsx`, `web/src/features/recommendation/` |

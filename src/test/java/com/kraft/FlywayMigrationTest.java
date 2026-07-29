@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -42,6 +43,9 @@ class FlywayMigrationTest {
 
     @Autowired
     private RecommendationItemRepository recommendationItemRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Container
     static MariaDBContainer<?> mariadb = new MariaDBContainer<>("mariadb:11.7")
@@ -97,6 +101,50 @@ class FlywayMigrationTest {
                 "historical-first-prize-v1", null, null, OffsetDateTime.now()));
         assertThatThrownBy(() -> recommendationItemRepository.saveAndFlush(new RecommendationItem(
                 throughRoundTwo.getId(), 1, "1,2,3,4,5,6", maskOf(1, 2, 3, 4, 5, 6), null, null)))
+                .isInstanceOf(DataAccessException.class)
+                .hasMessageContaining("historical first-prize combination cannot be persisted");
+    }
+
+    @Test
+    @DisplayName("V29 이전 INSERT도 마스크를 채우고 역사 조합 방어선을 유지한다")
+    void legacyInsertWithoutCombinationMask_remainsCompatibleAndProtected() {
+        recommendationItemRepository.deleteAll();
+        recommendationSetRepository.deleteAll();
+        winningNumberRepository.deleteAll();
+
+        jdbcTemplate.update("""
+                INSERT INTO winning_numbers (
+                    round_no, draw_date, n1, n2, n3, n4, n5, n6, bonus_number,
+                    first_prize_amount, second_prize, second_winners, total_sales,
+                    first_accum_amount, version, created_at
+                ) VALUES (1, '2026-01-03', 1, 2, 3, 4, 5, 6, 7, 1, 0, 0, 0, 0, 0, NOW(6))
+                """);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT combination_mask FROM winning_numbers WHERE round_no = 1", Long.class))
+                .isEqualTo(maskOf(1, 2, 3, 4, 5, 6));
+
+        jdbcTemplate.update("""
+                INSERT INTO recommendation_sets (
+                    client_token_hash, strategy, algorithm_version, history_through_round,
+                    locked_numbers, excluded_numbers, created_at
+                ) VALUES (?, 'random', 'uniform-random-v1', 1, NULL, NULL, NOW(6))
+                """, "legacy-token-hash");
+        Long setId = jdbcTemplate.queryForObject(
+                "SELECT id FROM recommendation_sets WHERE client_token_hash = ?", Long.class,
+                "legacy-token-hash");
+
+        jdbcTemplate.update("""
+                INSERT INTO recommendation_items (set_id, position, numbers, score, explanation_codes)
+                VALUES (?, 1, '7,8,9,10,11,12', NULL, NULL)
+                """, setId);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT combination_mask FROM recommendation_items WHERE set_id = ? AND position = 1",
+                Long.class, setId)).isEqualTo(maskOf(7, 8, 9, 10, 11, 12));
+
+        assertThatThrownBy(() -> jdbcTemplate.update("""
+                INSERT INTO recommendation_items (set_id, position, numbers, score, explanation_codes)
+                VALUES (?, 2, '1,2,3,4,5,6', NULL, NULL)
+                """, setId))
                 .isInstanceOf(DataAccessException.class)
                 .hasMessageContaining("historical first-prize combination cannot be persisted");
     }
