@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { deletePost } from "@/lib/community-client";
+import { revalidateCommunityPost } from "@/lib/community-revalidate";
 import { useCommunitySession } from "@/components/community/community-session-provider";
 
 // 소유권 판정은 서버 응답에 canEdit 같은 파생 필드로 섞지 않고, 클라이언트가
@@ -40,7 +41,9 @@ export function PostOwnerActions({
           setError(null);
           try {
             await deletePost(postId, version);
+            await revalidateCommunityPost(postId);
             router.push("/community");
+            router.refresh();
           } catch {
             setError("다른 곳에서 먼저 수정·삭제되었습니다. 새로고침 후 다시 시도하세요.");
           } finally {

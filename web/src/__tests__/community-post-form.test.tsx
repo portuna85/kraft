@@ -5,9 +5,15 @@ import { CommunitySessionProvider } from "@/components/community/community-sessi
 
 const replace = vi.fn();
 const push = vi.fn();
+const refresh = vi.fn();
+const revalidateCommunityPost = vi.fn();
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace, push }),
+  useRouter: () => ({ replace, push, refresh }),
+}));
+
+vi.mock("@/lib/community-revalidate", () => ({
+  revalidateCommunityPost: (...args: unknown[]) => revalidateCommunityPost(...args),
 }));
 
 function renderPostForm(props: Parameters<typeof PostForm>[0]) {
@@ -44,6 +50,8 @@ describe("커뮤니티 게시글 작성·수정 폼", () => {
     vi.restoreAllMocks();
     replace.mockClear();
     push.mockClear();
+    refresh.mockClear();
+    revalidateCommunityPost.mockClear();
   });
 
   it("로그인하지 않은 사용자는 커뮤니티 목록으로 돌려보낸다", async () => {
@@ -97,7 +105,7 @@ describe("커뮤니티 게시글 작성·수정 폼", () => {
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/community/posts/5"));
   });
 
-  it("게시글 작성에 성공하면 새 글 상세 페이지로 이동한다", async () => {
+  it("게시글 작성에 성공하면 캐시를 무효화하고 새 글 상세 페이지로 이동한다", async () => {
     global.fetch = mockFetch({
       session: { loggedIn: true, userId: 1, nickname: "글쓴이" },
       onWrite: () => ({ status: 201, body: { id: 42 } }),
@@ -110,6 +118,31 @@ describe("커뮤니티 게시글 작성·수정 폼", () => {
     fireEvent.click(screen.getByRole("button", { name: "저장" }));
 
     await waitFor(() => expect(push).toHaveBeenCalledWith("/community/posts/42"));
+    expect(revalidateCommunityPost).toHaveBeenCalledWith(42);
+    expect(refresh).toHaveBeenCalled();
+  });
+
+  it("게시글 수정에 성공하면 캐시를 무효화하고 상세 페이지로 이동한다", async () => {
+    global.fetch = mockFetch({
+      session: { loggedIn: true, userId: 1, nickname: "글쓴이" },
+      onWrite: () => ({ status: 200, body: { id: 7 } }),
+    });
+
+    renderPostForm({
+      mode: "edit",
+      postId: 7,
+      ownerId: 1,
+      initialTitle: "원래 제목",
+      initialContent: "원래 내용",
+      initialVersion: 0,
+    });
+
+    fireEvent.change(await screen.findByLabelText("제목"), { target: { value: "수정된 제목" } });
+    fireEvent.click(screen.getByRole("button", { name: "저장" }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/community/posts/7"));
+    expect(revalidateCommunityPost).toHaveBeenCalledWith(7);
+    expect(refresh).toHaveBeenCalled();
   });
 
   it("버전 충돌이 아닌 저장 실패는 일반 오류 메시지를 보여준다", async () => {

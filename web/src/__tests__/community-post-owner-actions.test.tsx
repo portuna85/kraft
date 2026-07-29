@@ -4,20 +4,26 @@ import { PostOwnerActions } from "@/components/community/post-owner-actions";
 import { CommunitySessionProvider } from "@/components/community/community-session-provider";
 
 const push = vi.fn();
+const refresh = vi.fn();
 const getCommunitySession = vi.fn();
 const deletePost = vi.fn();
+const revalidateCommunityPost = vi.fn();
 // F-P0-10 이후 CommunitySessionProvider가 로그인 세션을 확인하면 claimDevice()도
 // 함께 호출한다 — 이 테스트는 소유자 액션만 검증 대상이라 항상 성공으로 흘려보낸다.
 const claimDevice = vi.fn();
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push }),
+  useRouter: () => ({ push, refresh }),
 }));
 
 vi.mock("@/lib/community-client", () => ({
   getCommunitySession: () => getCommunitySession(),
   deletePost: (postId: number, version: number) => deletePost(postId, version),
   claimDevice: () => claimDevice(),
+}));
+
+vi.mock("@/lib/community-revalidate", () => ({
+  revalidateCommunityPost: (postId: number) => revalidateCommunityPost(postId),
 }));
 
 function renderOwnerActions(props: { postId: number; ownerId: number; version: number }) {
@@ -31,8 +37,10 @@ function renderOwnerActions(props: { postId: number; ownerId: number; version: n
 describe("커뮤니티 게시글 소유자 액션", () => {
   beforeEach(() => {
     push.mockClear();
+    refresh.mockClear();
     getCommunitySession.mockReset();
     deletePost.mockReset();
+    revalidateCommunityPost.mockReset();
     claimDevice.mockReset().mockResolvedValue({
       mergedSavedNumberCount: 0,
       duplicateSavedNumberCount: 0,
@@ -82,7 +90,7 @@ describe("커뮤니티 게시글 소유자 액션", () => {
     expect(deletePost).not.toHaveBeenCalled();
   });
 
-  it("삭제를 확인하면 게시글을 삭제하고 목록으로 이동한다", async () => {
+  it("삭제를 확인하면 게시글을 삭제하고 캐시를 무효화한 뒤 목록으로 이동한다", async () => {
     getCommunitySession.mockResolvedValue({ loggedIn: true, userId: 10, nickname: "글쓴이" });
     deletePost.mockResolvedValue(undefined);
 
@@ -91,6 +99,8 @@ describe("커뮤니티 게시글 소유자 액션", () => {
 
     await waitFor(() => expect(deletePost).toHaveBeenCalledWith(1, 2));
     await waitFor(() => expect(push).toHaveBeenCalledWith("/community"));
+    expect(revalidateCommunityPost).toHaveBeenCalledWith(1);
+    expect(refresh).toHaveBeenCalled();
   });
 
   it("삭제 중 충돌이 나면 에러 메시지를 보여주고 버튼을 다시 활성화한다", async () => {

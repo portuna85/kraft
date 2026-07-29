@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPost, updatePost } from "@/lib/community-client";
+import { revalidateCommunityPost } from "@/lib/community-revalidate";
 import { BrowserApiError } from "@/lib/browser-api";
 import { useCommunitySession } from "@/components/community/community-session-provider";
 import { CATEGORY_LABELS, CATEGORY_OPTIONS } from "@/features/community/types";
@@ -54,10 +55,14 @@ export function PostForm(props: CreateMode | EditMode) {
     try {
       if (props.mode === "create") {
         const post = await createPost(title.trim(), content.trim(), category, recommendationSetId);
+        await revalidateCommunityPost(post.id);
         router.push(`/community/posts/${post.id}`);
+        router.refresh();
       } else {
         const post = await updatePost(props.postId, title.trim(), content.trim(), props.initialVersion);
+        await revalidateCommunityPost(post.id);
         router.push(`/community/posts/${post.id}`);
+        router.refresh();
       }
     } catch (err) {
       if (err instanceof BrowserApiError && err.code === "COMMUNITY_POST_VERSION_CONFLICT") {

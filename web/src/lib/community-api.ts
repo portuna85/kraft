@@ -59,12 +59,9 @@ export type CommunityCommentPage = {
 
 export const DEFAULT_COMMENT_PAGE_SIZE = 50;
 
-async function fetchCommunityJson<T>(path: string): Promise<T> {
+async function fetchCommunityJson<T>(path: string, init: RequestInit): Promise<T> {
   const signal = AbortSignal.timeout(5000);
-  const response = await fetch(`${backendBaseUrl}${path}`, {
-    signal,
-    next: { revalidate: REVALIDATE_COMMUNITY_LIST },
-  });
+  const response = await fetch(`${backendBaseUrl}${path}`, { ...init, signal });
   if (!response.ok) {
     let code = "BACKEND_ERROR";
     let message = `Backend request failed: ${path} (${response.status})`;
@@ -89,11 +86,24 @@ export async function getCommunityPosts(
   if (options.category) params.set("category", options.category);
   if (options.sort) params.set("sort", options.sort);
   if (options.query) params.set("query", options.query);
-  return fetchCommunityJson<PageResponse<CommunityPost>>(`/api/v1/community/posts?${params.toString()}`);
+  return fetchCommunityJson<PageResponse<CommunityPost>>(
+    `/api/v1/community/posts?${params.toString()}`,
+    { next: { revalidate: REVALIDATE_COMMUNITY_LIST, tags: ["community:posts"] } }
+  );
 }
 
 export async function getCommunityPost(id: number): Promise<CommunityPost> {
-  return fetchCommunityJson<CommunityPost>(`/api/v1/community/posts/${id}`);
+  return fetchCommunityJson<CommunityPost>(`/api/v1/community/posts/${id}`, {
+    next: { revalidate: REVALIDATE_COMMUNITY_LIST, tags: ["community:posts", `community:post:${id}`] },
+  });
+}
+
+// edit 폼 초기화 전용 — ISR 캐시를 완전히 우회해 자기-409 루프(캐시된 옛 version으로
+// 폼을 채운 뒤 본인이 연속 수정하면 "다른 곳에서 먼저 수정" 오탐)를 근본적으로 막는다.
+export async function getCommunityPostFresh(id: number): Promise<CommunityPost> {
+  return fetchCommunityJson<CommunityPost>(`/api/v1/community/posts/${id}`, {
+    cache: "no-store",
+  });
 }
 
 export async function getCommunityComments(
@@ -102,6 +112,7 @@ export async function getCommunityComments(
   size = DEFAULT_COMMENT_PAGE_SIZE
 ): Promise<CommunityCommentPage> {
   return fetchCommunityJson<CommunityCommentPage>(
-    `/api/v1/community/posts/${postId}/comments?page=${page}&size=${size}`
+    `/api/v1/community/posts/${postId}/comments?page=${page}&size=${size}`,
+    { next: { revalidate: REVALIDATE_COMMUNITY_LIST, tags: [`community:post:${postId}`] } }
   );
 }
