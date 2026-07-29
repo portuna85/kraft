@@ -91,6 +91,21 @@ class CommunityCommentServiceTest {
     }
 
     @Test
+    @DisplayName("KB-01: 숨김 게시글에 댓글을 작성하려 하면 404를 던진다(list()와 동일한 계약)")
+    void create_hiddenPost_throwsNotFound() {
+        given(communityPostRepository.findById(10L)).willReturn(Optional.of(hiddenPost()));
+
+        assertThatThrownBy(() -> service.create(1L, "작성자", 10L, new CreateCommentRequest("댓글", null)))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> {
+                    ApiException apiEx = (ApiException) ex;
+                    assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
+                    assertThat(apiEx.getCode()).isEqualTo("COMMUNITY_POST_NOT_FOUND");
+                });
+        verify(communityCommentRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("B-P0-7: 존재하지 않는 게시글의 댓글 목록을 요청하면 404를 던진다")
     void list_nonexistentPost_throwsNotFound() {
         given(communityPostRepository.findById(10L)).willReturn(Optional.empty());

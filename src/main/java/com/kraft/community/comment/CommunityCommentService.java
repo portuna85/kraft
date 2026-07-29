@@ -78,12 +78,20 @@ public class CommunityCommentService {
         return new CommunityCommentListResult(topLevel, repliesByParentId);
     }
 
+    /**
+     * KB-01: 게시글이 존재하고 공개(PUBLISHED) 상태인지 먼저 확인한다 — list()(B-P0-7)·
+     * CommunityReactionService.requireVisiblePost()와 동일한 404 계약. 이전에는 존재만
+     * 확인해 숨김·삭제된 글의 postId로도 댓글을 남기고 commentCount를 증가시킬 수 있었다.
+     */
     @Transactional
     public CommunityCommentCreationResult create(Long ownerId, String authorNickname, Long postId,
                                                    CreateCommentRequest request) {
         CommunityPost post = communityPostRepository.findById(postId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_POST_NOT_FOUND",
                         "게시글을 찾을 수 없습니다."));
+        if (post.getStatus() != PostStatus.PUBLISHED) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_POST_NOT_FOUND", "게시글을 찾을 수 없습니다.");
+        }
 
         CommunityComment parent = null;
         if (request.parentId() != null) {
