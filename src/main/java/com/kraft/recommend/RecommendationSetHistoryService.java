@@ -3,7 +3,10 @@ package com.kraft.recommend;
 import com.kraft.common.error.ApiException;
 import com.kraft.common.lotto.LottoNumberCodec;
 import java.time.OffsetDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,9 +60,7 @@ public class RecommendationSetHistoryService {
 
     @Transactional(readOnly = true)
     public List<RecommendationSetSummary> list(String clientTokenHash) {
-        return recommendationSetRepository.findByClientTokenHashOrderByCreatedAtDesc(clientTokenHash).stream()
-                .map(this::toSummary)
-                .toList();
+        return toSummaries(recommendationSetRepository.findByClientTokenHashOrderByCreatedAtDesc(clientTokenHash));
     }
 
     @Transactional(readOnly = true)
@@ -70,9 +71,7 @@ public class RecommendationSetHistoryService {
 
     @Transactional(readOnly = true)
     public List<RecommendationSetSummary> listForOwner(Long ownerUserId) {
-        return recommendationSetRepository.findByOwnerUserIdOrderByCreatedAtDesc(ownerUserId).stream()
-                .map(this::toSummary)
-                .toList();
+        return toSummaries(recommendationSetRepository.findByOwnerUserIdOrderByCreatedAtDesc(ownerUserId));
     }
 
     /**
@@ -108,6 +107,34 @@ public class RecommendationSetHistoryService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "RECOMMENDATION_SET_NOT_FOUND",
                         "추천 세트를 찾을 수 없습니다."));
         return toSummary(set);
+    }
+
+    /**
+     * KB-05: {@link #getForAttachment(long)}의 배치 버전 — 게시글 목록 렌더링(CommunityPostService
+     * .toResponsePage)에서 첨부된 추천 세트가 있는 게시글마다 개별 조회하던 N+1을 없앤다.
+     * 요청한 id 중 하나라도 없으면 단건 버전과 동일하게 404를 던진다(게시글에 달린 첨부는
+     * FK로 실존이 보장되므로 정상 경로에서는 발생하지 않아야 하는 불변조건).
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, RecommendationSetSummary> getForAttachments(List<Long> setIds) {
+        List<Long> distinctIds = setIds.stream().distinct().toList();
+        if (distinctIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, RecommendationSet> setsById = recommendationSetRepository.findAllById(distinctIds).stream()
+                .collect(Collectors.toMap(RecommendationSet::getId, set -> set));
+        for (Long id : distinctIds) {
+            if (!setsById.containsKey(id)) {
+                throw new ApiException(HttpStatus.NOT_FOUND, "RECOMMENDATION_SET_NOT_FOUND", "추천 세트를 찾을 수 없습니다.");
+            }
+        }
+        Map<Long, List<RecommendationItemView>> itemsBySetId = itemViewsBySetId(distinctIds);
+
+        Map<Long, RecommendationSetSummary> result = new LinkedHashMap<>();
+        for (Long id : distinctIds) {
+            result.put(id, toSummary(setsById.get(id), itemsBySetId.getOrDefault(id, List.of())));
+        }
+        return result;
     }
 
     public void delete(String clientTokenHash, long id) {
@@ -153,15 +180,34 @@ public class RecommendationSetHistoryService {
         return set;
     }
 
+    // KB-05: 세트 목록(list/listForOwner)도 세트마다 아이템을 개별 조회하던 N+1이었다 —
+    // 세트 ID를 모아 IN 배치 조회 1회로 그룹핑한 뒤 세트당 O(1) 맵 조회로 요약을 만든다.
+    private List<RecommendationSetSummary> toSummaries(List<RecommendationSet> sets) {
+        if (sets.isEmpty()) {
+            return List.of();
+        }
+        List<Long> setIds = sets.stream().map(RecommendationSet::getId).toList();
+        Map<Long, List<RecommendationItemView>> itemsBySetId = itemViewsBySetId(setIds);
+        return sets.stream()
+                .map(set -> toSummary(set, itemsBySetId.getOrDefault(set.getId(), List.of())))
+                .toList();
+    }
+
+    private Map<Long, List<RecommendationItemView>> itemViewsBySetId(List<Long> setIds) {
+        return recommendationItemRepository.findBySetIdInOrderBySetIdAscPositionAsc(setIds).stream()
+                .collect(Collectors.groupingBy(RecommendationItem::getSetId, LinkedHashMap::new,
+                        Collectors.mapping(this::toItemView, Collectors.toList())));
+    }
+
     private RecommendationSetSummary toSummary(RecommendationSet set) {
         List<RecommendationItemView> items = recommendationItemRepository.findBySetIdOrderByPosition(set.getId())
                 .stream()
-                .map(item -> new RecommendationItemView(
-                        item.getPosition(),
-                        lottoNumberCodec.fromStorageValue(item.getNumbers()),
-                        item.getScore(),
-                        parseExplanationCodes(item.getExplanationCodes())))
+                .map(this::toItemView)
                 .toList();
+        return toSummary(set, items);
+    }
+
+    private RecommendationSetSummary toSummary(RecommendationSet set, List<RecommendationItemView> items) {
         return new RecommendationSetSummary(
                 set.getId(),
                 set.getStrategy(),
@@ -172,6 +218,14 @@ public class RecommendationSetHistoryService {
                 lottoNumberCodec.fromStorageValue(set.getExcludedNumbers()),
                 set.getCreatedAt(),
                 items);
+    }
+
+    private RecommendationItemView toItemView(RecommendationItem item) {
+        return new RecommendationItemView(
+                item.getPosition(),
+                lottoNumberCodec.fromStorageValue(item.getNumbers()),
+                item.getScore(),
+                parseExplanationCodes(item.getExplanationCodes()));
     }
 
     private static List<ExplanationCode> parseExplanationCodes(String value) {

@@ -216,11 +216,69 @@ class RecommendationSetHistoryServiceTest {
     void listForOwner_returnsOwnedSets() {
         given(recommendationSetRepository.findByOwnerUserIdOrderByCreatedAtDesc(99L))
                 .willReturn(List.of(setEntity(1L, null)));
-        given(recommendationItemRepository.findBySetIdOrderByPosition(1L)).willReturn(List.of());
+        given(recommendationItemRepository.findBySetIdInOrderBySetIdAscPositionAsc(List.of(1L)))
+                .willReturn(List.of());
 
         List<RecommendationSetSummary> result = service.listForOwner(99L);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).id()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("KB-05: 세트가 여러 건이어도 아이템 조회는 세트별이 아니라 IN 배치 조회 한 번으로 끝낸다")
+    void list_multipleSets_batchLoadsItemsInSingleQuery() {
+        RecommendationSet set1 = setEntity(1L, TOKEN_HASH);
+        RecommendationSet set2 = setEntity(2L, TOKEN_HASH);
+        given(recommendationSetRepository.findByClientTokenHashOrderByCreatedAtDesc(TOKEN_HASH))
+                .willReturn(List.of(set1, set2));
+        given(recommendationItemRepository.findBySetIdInOrderBySetIdAscPositionAsc(List.of(1L, 2L)))
+                .willReturn(List.of());
+
+        List<RecommendationSetSummary> result = service.list(TOKEN_HASH);
+
+        assertThat(result).extracting(RecommendationSetSummary::id).containsExactly(1L, 2L);
+        verify(recommendationItemRepository, org.mockito.Mockito.never()).findBySetIdOrderByPosition(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    @DisplayName("KB-05: getForAttachments는 게시글 여러 건의 첨부 세트를 IN 배치 조회 한 번으로 가져온다")
+    void getForAttachments_batchLoadsMultipleSets() {
+        RecommendationSet set1 = setEntity(5L, TOKEN_HASH);
+        RecommendationSet set2 = setEntity(6L, TOKEN_HASH);
+        given(recommendationSetRepository.findAllById(List.of(5L, 6L))).willReturn(List.of(set1, set2));
+        given(recommendationItemRepository.findBySetIdInOrderBySetIdAscPositionAsc(List.of(5L, 6L)))
+                .willReturn(List.of());
+
+        var result = service.getForAttachments(List.of(5L, 6L));
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(5L).id()).isEqualTo(5L);
+        assertThat(result.get(6L).id()).isEqualTo(6L);
+        verify(recommendationSetRepository, org.mockito.Mockito.never()).findById(org.mockito.ArgumentMatchers.anyLong());
+    }
+
+    @Test
+    @DisplayName("KB-05: getForAttachments에 존재하지 않는 세트 id가 섞이면 404를 던진다(단건 버전과 동일한 계약)")
+    void getForAttachments_missingSet_throwsNotFound() {
+        given(recommendationSetRepository.findAllById(List.of(5L, 6L)))
+                .willReturn(List.of(setEntity(5L, TOKEN_HASH)));
+
+        assertThatThrownBy(() -> service.getForAttachments(List.of(5L, 6L)))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> {
+                    ApiException apiEx = (ApiException) ex;
+                    assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
+                    assertThat(apiEx.getCode()).isEqualTo("RECOMMENDATION_SET_NOT_FOUND");
+                });
+    }
+
+    @Test
+    @DisplayName("KB-05: getForAttachments에 빈 목록을 넘기면 리포지토리를 호출하지 않고 빈 맵을 반환한다")
+    void getForAttachments_emptyIds_returnsEmptyMapWithoutQuerying() {
+        var result = service.getForAttachments(List.of());
+
+        assertThat(result).isEmpty();
+        verify(recommendationSetRepository, org.mockito.Mockito.never()).findAllById(org.mockito.ArgumentMatchers.anyList());
     }
 }

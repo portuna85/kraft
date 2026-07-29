@@ -165,10 +165,20 @@ public class CommunityPostService {
         List<Long> ids = posts.getContent().stream().map(CommunityPost::getId).toList();
         Map<Long, CommunityPostMetrics> metricsById = communityPostMetricsRepository.findAllById(ids).stream()
                 .collect(java.util.stream.Collectors.toMap(CommunityPostMetrics::getPostId, m -> m));
+
+        // KB-05: 첨부된 추천 세트가 있는 게시글마다 getForAttachment()를 개별 호출하던 N+1을
+        // 없애기 위해 세트 ID를 모아 한 번에 배치 조회한다.
+        List<Long> recommendationSetIds = posts.getContent().stream()
+                .map(CommunityPost::getRecommendationSetId)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        Map<Long, RecommendationSetSummary> attachmentsBySetId = recommendationSetHistoryService
+                .getForAttachments(recommendationSetIds);
+
         return posts.map(post -> {
             RecommendationAttachmentView attachment = post.getRecommendationSetId() == null
                     ? null
-                    : toAttachmentView(recommendationSetHistoryService.getForAttachment(post.getRecommendationSetId()));
+                    : toAttachmentView(attachmentsBySetId.get(post.getRecommendationSetId()));
             return CommunityPostResponse.from(post, metricsById.get(post.getId()), attachment);
         });
     }

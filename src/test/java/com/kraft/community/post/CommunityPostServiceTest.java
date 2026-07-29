@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -23,6 +24,7 @@ import org.springframework.http.HttpStatus;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
@@ -260,6 +262,30 @@ class CommunityPostServiceTest {
 
         assertThat(result.getContent()).hasSize(2);
         assertThat(result.getContent()).allMatch(r -> r.recommendationAttachment() == null);
+        verify(recommendationSetHistoryService, never()).getForAttachment(anyLong());
+    }
+
+    @Test
+    @DisplayName("KB-05: toResponsePage는 첨부된 추천 세트를 게시글마다 개별 조회하지 않고 한 번에 배치 조회한다")
+    void toResponsePage_batchLoadsAttachments() {
+        CommunityPost post1 = postEntity(1L, 1L, PostStatus.PUBLISHED);
+        setRecommendationSetId(post1, 5L);
+        CommunityPost post2 = postEntity(2L, 1L, PostStatus.PUBLISHED);
+        setRecommendationSetId(post2, 6L);
+        Page<CommunityPost> page = new PageImpl<>(List.of(post1, post2));
+        given(communityPostMetricsRepository.findAllById(List.of(1L, 2L))).willReturn(List.of());
+        given(recommendationSetHistoryService.getForAttachments(List.of(5L, 6L))).willReturn(Map.of(
+                5L, new RecommendationSetSummary(5L, "balanced", "balanced-v1", 1189, "historical-first-prize-v1",
+                        List.of(), List.of(), OffsetDateTime.now(CLOCK), List.of()),
+                6L, new RecommendationSetSummary(6L, "balanced", "balanced-v1", 1189, "historical-first-prize-v1",
+                        List.of(), List.of(), OffsetDateTime.now(CLOCK), List.of())));
+
+        Page<CommunityPostResponse> result = service.toResponsePage(page);
+
+        assertThat(result.getContent()).extracting(r -> r.recommendationAttachment().setId())
+                .containsExactly(5L, 6L);
+        verify(recommendationSetHistoryService, never()).getForAttachment(anyLong());
+        verify(recommendationSetHistoryService).getForAttachments(List.of(5L, 6L));
     }
 
     private static void setRecommendationSetId(CommunityPost post, Long recommendationSetId) {
