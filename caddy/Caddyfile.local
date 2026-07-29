@@ -1,10 +1,10 @@
 # 로컬 개발용 동일 출처(same-origin) Caddy 구성(§4.5). 운영 Caddyfile을 TLS/도메인
 # 분기 없이 단순화한 버전 — web:3000과 backend:8080을 http://localhost 하나의 origin으로
 # 묶어야 OAuth2 로그인 콜백의 세션 쿠키가 브라우저에 정상적으로 저장된다.
-# `web/src/lib/backend-proxy.ts`(Next 라우트 핸들러 경유 프록시)는 Set-Cookie를 전달하지
-# 않아 로컬에서 OAuth 로그인을 재현할 수 없다 — 이 Caddy 구성이 그 표준 대체 경로다.
+# KF-06 이후로 web/src/app/api/v1/**의 Next 라우트 핸들러가 전량 제거됐다 — 이 Caddy
+# 구성이 OAuth뿐 아니라 /api/v1/*를 쓰는 모든 로컬 개발의 유일한 경로다(README 참고).
 #
-# 실행: docker compose -f docker-compose.yml -f docker-compose.local.yml up
+# 실행: docker compose -f docker-compose.yml -f docker-compose.local.yml --profile full up
 # 접속: http://localhost (반드시 "localhost"로 접속할 것 — 127.0.0.1이나 다른 호스트명은
 # 세션 쿠키가 Secure 플래그로 발급되어 저장되지 않는다. 최신 Chrome/Edge는 "localhost"만
 # HTTPS 없이도 보안 컨텍스트로 취급해 Secure 쿠키를 예외적으로 허용한다.)
@@ -12,25 +12,52 @@
 # Google/Naver OAuth 콘솔의 개발용 클라이언트에 아래 redirect URI를 등록해야 한다(수동 1회):
 #   http://localhost/login/oauth2/code/google
 #   http://localhost/login/oauth2/code/naver
+#
+# 업스트림 주소는 환경변수로 오버라이드 가능 — docker compose 사용 시 기본값
+# backend:8080 / web:3000이 그대로 맞는다. CI의 Caddy 프록시 검증 트랙(KF-06,
+# playwright.proxy.config.ts)은 컨테이너 없이 호스트에서 뜬 standalone Next +
+# 픽스처 백엔드를 가리키도록 이 값을 host.docker.internal:<port>로 주입한다.
 {
 	auto_https off
 }
 
 :80 {
 	route {
+		# 운영 Caddyfile과 동일하게 actuator/ops/admin/revalidate 웹훅을 외부(브라우저)에서
+		# 차단한다 — 로컬이라고 이 경계를 열어두면 운영과 동작이 달라 회귀를 놓친다.
+		@blocked path /actuator* /ops* /admin* /api/revalidate
+		respond @blocked 403
+
+		# 타임아웃은 운영 Caddyfile과 동일값(dial 3s / response 5s). KF-06 이전에는
+		# backend-proxy.ts의 5초 AbortController가 유일한 타임아웃이었으나, 그 프록시가
+		# 사라져 이 값이 로컬에서 백엔드 무응답을 방어하는 유일한 장치가 됐다.
 		handle /api/v1/* {
-			reverse_proxy backend:8080
+			reverse_proxy {$KRAFT_LOCAL_BACKEND_UPSTREAM:backend:8080} {
+				header_up X-Real-IP {remote_host}
+				transport http {
+					dial_timeout 3s
+					response_header_timeout 5s
+				}
+			}
 		}
 
 		# 커뮤니티 OAuth2 로그인 플로우는 Spring Security가 직접 서빙한다 — Next.js에는
 		# 이 경로들이 없다(운영 Caddyfile과 동일 규칙).
 		@community_auth path /oauth2/* /login* /logout
 		handle @community_auth {
-			reverse_proxy backend:8080
+			reverse_proxy {$KRAFT_LOCAL_BACKEND_UPSTREAM:backend:8080} {
+				header_up X-Real-IP {remote_host}
+				transport http {
+					dial_timeout 3s
+					response_header_timeout 5s
+				}
+			}
 		}
 
 		handle {
-			reverse_proxy web:3000
+			reverse_proxy {$KRAFT_LOCAL_WEB_UPSTREAM:web:3000} {
+				header_up X-Real-IP {remote_host}
+			}
 		}
 	}
 }

@@ -122,6 +122,54 @@ const ROUTES = {
   "/api/v1/community/posts/2": COMMUNITY_POST_EXTREME,
 };
 
+// KF-06: playwright.proxy.config.ts가 이 픽스처를 Caddy(Caddyfile.local) 뒤에 세워,
+// 삭제된 backend-proxy.ts 대신 Caddy가 쿠키·CSRF·기기토큰·응답헤더를 실제로
+// 백엔드까지/브라우저까지 전달하는지 검증한다. 이 경로들은 실 백엔드 API가 아니라
+// 그 검증만을 위한 프로브(probe)다 — 실제 엔드포인트와 이름이 겹치지 않도록
+// `/api/v1/_proxy-probe/*` 네임스페이스로 분리했다.
+function handleProxyProbe(req, res, requestPath) {
+  if (requestPath === "/api/v1/_proxy-probe/echo") {
+    // 요청에 실린 Cookie/X-XSRF-TOKEN/X-Device-Token을 그대로 반사해 Caddy가
+    // 브라우저→백엔드 방향 전달을 누락하지 않았는지 확인하고, 동시에 Set-Cookie를
+    // 내려보내 백엔드→브라우저 방향(로그인 응답 등) 전달도 함께 검증한다.
+    res.writeHead(200, {
+      "content-type": "application/json",
+      "set-cookie": ["proxy-probe-session=echoed; Path=/; HttpOnly"],
+    });
+    res.end(
+      JSON.stringify({
+        cookie: req.headers.cookie ?? null,
+        xsrfToken: req.headers["x-xsrf-token"] ?? null,
+        deviceToken: req.headers["x-device-token"] ?? null,
+      })
+    );
+    return true;
+  }
+  if (requestPath === "/api/v1/_proxy-probe/headers") {
+    // Caddy가 white-list 없이 헤더를 있는 그대로 통과시키는지 확인용 —
+    // 과거 backend-proxy.ts는 이 헤더들을 명시적으로 allowlist해야 했다(copyHeaders).
+    res.writeHead(200, {
+      "content-type": "application/json",
+      "retry-after": "30",
+      "x-ratelimit-limit": "100",
+      "x-ratelimit-remaining": "5",
+      etag: '"proxy-probe-etag"',
+    });
+    res.end(JSON.stringify({}));
+    return true;
+  }
+  if (requestPath === "/api/v1/_proxy-probe/slow") {
+    // Caddyfile.local의 response_header_timeout 5s보다 긴 지연 — 삭제된
+    // backend-proxy.ts의 5초 AbortController를 Caddy 타임아웃이 대신하는지 검증.
+    setTimeout(() => {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: true }));
+    }, 6000);
+    return true;
+  }
+  return false;
+}
+
 const server = createServer((req, res) => {
   const requestPath = (req.url ?? "").split("?")[0];
   // playwright.content.config.ts의 webServer 준비 확인(GET /)용 — 2xx가 아니면
@@ -129,6 +177,9 @@ const server = createServer((req, res) => {
   if (requestPath === "/") {
     res.writeHead(200, { "content-type": "text/plain" });
     res.end("ok");
+    return;
+  }
+  if (requestPath.startsWith("/api/v1/_proxy-probe/") && handleProxyProbe(req, res, requestPath)) {
     return;
   }
   const body = ROUTES[requestPath];

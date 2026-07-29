@@ -15,12 +15,12 @@ services:
     environment:
       KRAFT_PUBLIC_BASE_URL: ${KRAFT_PUBLIC_BASE_URL:-http://localhost}
 
-  # 로컬 OAuth2 로그인 개발용 동일 출처(same-origin) 진입점(§4.5). backend:8080/web:3000을
-  # http://localhost 하나로 묶는다 — Next 라우트 핸들러 프록시(backend-proxy.ts)는
-  # Set-Cookie를 전달하지 않아 이 경로로는 세션 쿠키가 확정적으로 소실되기 때문이다.
+  # 로컬 개발 표준 동일 출처(same-origin) 게이트웨이(§4.5, KF-06). backend:8080/web:3000을
+  # http://localhost 하나로 묶는다 — web/src/app/api/v1/**의 Next 라우트 핸들러가 제거된
+  # 뒤로는 OAuth2 로그인뿐 아니라 /api/v1/*를 쓰는 모든 로컬 개발이 이 경로를 거쳐야 한다.
   caddy:
     # backend/web에 의존하므로 그 둘과 같은 profile — 기본 `docker compose up -d`(mariadb만)
-    # 에서는 빠지고, `--profile full`을 줄 때만(OAuth 동일 출처 테스트 등) 함께 뜬다.
+    # 에서는 빠지고, `--profile full`을 줄 때만(표준 게이트웨이·OAuth 동일 출처 등) 함께 뜬다.
     profiles: ["full"]
     image: caddy:2-alpine@sha256:77c07d5ebfa5be9fd6c820d2094ae662c9e7eeb9bf98346b7f639900263ee2a2
     container_name: kraft-caddy-local

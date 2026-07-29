@@ -39,6 +39,28 @@ for (const width of WIDTHS) {
     });
 
     test("/frequency — 필터 전환 후 오버플로 없음", async ({ page }) => {
+      // KF-06: 필터 클릭은 브라우저에서 /api/v1/stats/frequency?limit=100을 직접 호출한다
+      // (frequency-filter-client.tsx). 이 트랙은 Caddy 없이 standalone Next만 떠 있어
+      // 그 경로를 프록시할 게 없다 — 프록시 계약 자체는 playwright.proxy.config.ts가
+      // 전담하므로, 여기서는 /ops 오버플로 테스트(위)와 동일하게 응답을 목킹해 이 테스트
+      // 본연의 목적(필터 전환 후 CSS 오버플로 여부)에 집중한다.
+      await page.route("**/api/v1/stats/frequency**", (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            totalRounds: 100,
+            frequencies: Array.from({ length: 45 }, (_, i) => ({
+              ballNumber: i + 1,
+              frequency: 10 + ((i * 3) % 15),
+              lastRound: 1189 - (i % 10),
+            })),
+            topSix: { balls: [], wonFirstPrize: false, firstPrizeHistory: [] },
+            bottomSix: { balls: [], wonFirstPrize: false, firstPrizeHistory: [] },
+          }),
+        })
+      );
+
       await gotoAndWaitForRealContent(page, "/frequency");
       await page.getByRole("button", { name: "최근 100회" }).click();
       await expect(page.getByRole("button", { name: "최근 100회" })).toHaveAttribute("aria-pressed", "true");

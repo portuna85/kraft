@@ -4,7 +4,7 @@
 # render-alertmanager.sh + pull-and-up.sh를 docker-compose.prod.yml 대상으로 직접 사용한다
 # (.github/workflows/cd.yml 참고).
 #
-# OAuth 로컬 가이드(README "OAuth2 로컬 설정")와 동일하게 docker-compose.local.yml을 얹어
+# 로컬 개발 표준 게이트웨이 가이드(README "로컬 개발 표준 게이트웨이")와 동일하게 docker-compose.local.yml을 얹어
 # Caddy까지 띄운다 — smoke-test.sh는 Caddy가 만드는 단일 진입점(http://localhost)을
 # 전제로 하므로, Caddy가 없는 기본 docker-compose.yml 단독 구성으로는 검증할 수 없다.
 set -euo pipefail

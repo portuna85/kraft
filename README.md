@@ -115,7 +115,7 @@ web/
   src/app/        Next.js 페이지와 Route Handler
   src/components/ 화면 구성과 클라이언트 상태
   src/lib/        API, 검증, 분석, CSRF, 로깅
-  e2e/            기본·콘텐츠·광고 Playwright 테스트
+  e2e/            기본·콘텐츠·광고·Caddy 프록시 게이트웨이 Playwright 테스트
 caddy/            운영·로컬 동일 출처 라우팅
 infra/            모니터링과 경보 설정
 scripts/          개발, 검증, 배포, 롤백, 백업·복구
@@ -156,6 +156,12 @@ docs/             통합 기술 문서와 개선 로드맵
 - 프론트엔드: <http://localhost:3000>
 - 기본 백엔드 주소: `http://localhost:8080`
 
+`next dev` 단독 실행은 서버 컴포넌트가 백엔드를 직접 호출하는 읽기 전용 페이지(홈·통계·빈도 등)만
+정상 동작합니다. `/api/v1/*`를 쓰는 브라우저 측 호출(추천 생성, 저장 번호, 커뮤니티 글쓰기·좋아요
+등)은 이 모드에서 프록시할 경로가 없어 전부 실패합니다(KF-06 — `web/src/app/api/v1/**` 라우트
+핸들러를 제거하고 아래 "로컬 개발 표준 게이트웨이"로 일원화했습니다). 이런 기능을 다루려면 아래
+Caddy 게이트웨이로 전체 스택을 띄우세요.
+
 ### 전체 Docker Compose
 
 ```powershell
@@ -175,17 +181,23 @@ docker compose --profile full up -d --build
 
 `infra/alertmanager/alertmanager.yml`은 Git에 커밋하지 않으므로(clean clone에는 없음) 렌더 스크립트보다 `docker compose up`을 먼저 실행하면 Docker가 그 경로를 빈 디렉터리로 자동 생성해버립니다. 이후 렌더 스크립트를 실행하면 "Is a directory" 오류로 실패합니다. 이 경우 `rmdir infra/alertmanager/alertmanager.yml` 실행 후 렌더 스크립트를 다시 실행하세요.
 
-`scripts/deploy/up-full-stack.sh`는 렌더(Caddy 포함) 기동부터 smoke test를 한 번에 실행하는 로컬 전용 편의 스크립트입니다. smoke test는 Caddy가 만드는 단일 진입점(`http://localhost`)이 실제로 동작하는지 확인합니다 — 아래 OAuth2 로컬 설정과 같은 `docker-compose.local.yml` 조합으로 띄웁니다. clean clone 직후 전체 스택이 정상 동작하는지 한 번에 확인하고 싶을 때 사용합니다.
+`scripts/deploy/up-full-stack.sh`는 렌더(Caddy 포함) 기동부터 smoke test를 한 번에 실행하는 로컬 전용 편의 스크립트입니다. smoke test는 Caddy가 만드는 단일 진입점(`http://localhost`)이 실제로 동작하는지 확인합니다 — 아래 "로컬 개발 표준 게이트웨이"와 같은 `docker-compose.local.yml` 조합으로 띄웁니다. clean clone 직후 전체 스택이 정상 동작하는지 한 번에 확인하고 싶을 때 사용합니다.
 
-## OAuth2 로컬 설정
+## 로컬 개발 표준 게이트웨이
 
-공급자 callback과 세션 쿠키를 운영과 같은 동일 출처 구조로 시험하려면 로컬 Caddy를 사용합니다.
+`/api/v1/*`를 실제로 쓰는 개발(추천·저장 번호·커뮤니티·OAuth2 로그인 등)은 web:3000과
+backend:8080을 하나의 동일 출처(`http://localhost`)로 묶는 로컬 Caddy(`caddy/Caddyfile.local`)
+를 표준 진입점으로 씁니다. `web/src/app/api/v1/**`의 Next 라우트 핸들러가 이 역할을 대신하던
+시절(→ KF-06)에는 `next dev` 단독 실행만으로도 됐지만, 그 핸들러가 제거된 지금은 이 방법이 유일한
+경로입니다.
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.local.yml --profile full up -d --build
 ```
 
-접속 주소는 반드시 <http://localhost>를 사용합니다. `.env`에 사용할 공급자의 ID와 secret을 넣고 해당 Spring profile을 활성화합니다.
+접속 주소는 반드시 <http://localhost>를 사용합니다. OAuth2 공급자 callback과 세션 쿠키도 이
+경로로만 운영과 동일하게 재현됩니다 — `.env`에 사용할 공급자의 ID와 secret을 넣고 해당 Spring
+profile을 활성화합니다.
 
 ```dotenv
 SPRING_PROFILES_ACTIVE=local,community-google-oauth,community-naver-oauth

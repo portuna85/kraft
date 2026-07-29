@@ -10,9 +10,10 @@ export default defineConfig({
   testDir: "./e2e",
   // e2e/content/**(픽스처 백엔드 전제, playwright.content.config.ts)·e2e/ad-overlay/**
   // (광고 env 빌드 전제, playwright.ad-overlay.config.ts)·e2e/visual/**(픽스처 백엔드 전제 +
-  // 스크린샷 베이스라인, playwright.visual.config.ts)는 각각 전용 설정에서만 돌린다 —
-  // 이 설정(백엔드 없음, 광고 env 없음)으로 돌리면 항상 실패한다.
-  testIgnore: ["content/**", "ad-overlay/**", "visual/**"],
+  // 스크린샷 베이스라인, playwright.visual.config.ts)·e2e/proxy/**(실 Caddy 컨테이너 전제,
+  // playwright.proxy.config.ts)는 각각 전용 설정에서만 돌린다 — 이 설정(백엔드 없음, 광고
+  // env 없음, Caddy 없음)으로 돌리면 항상 실패한다.
+  testIgnore: ["content/**", "ad-overlay/**", "visual/**", "proxy/**"],
   fullyParallel: true,
   workers: process.env.CI ? 4 : undefined,
   forbidOnly: !!process.env.CI,
