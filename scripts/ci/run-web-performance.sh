@@ -23,7 +23,7 @@ export PORT=3101
 npm run e2e:serve > /tmp/kraft-performance-web.log 2>&1 &
 app_pid=$!
 
-# shellcheck disable=SC2329 # invoked indirectly by trap
+# shellcheck disable=SC2317,SC2329
 cleanup() {
   pkill -TERM -P "$app_pid" 2>/dev/null || true
   pkill -TERM -P "$fixture_pid" 2>/dev/null || true
