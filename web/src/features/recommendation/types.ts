@@ -1,26 +1,20 @@
 import type { RequiredApi } from "@/lib/api";
 import type { components } from "@/lib/generated/api-types";
+// KF-07: RecommendationItem/RecommendationSetSummary/Strategy/ExplanationCode는 커뮤니티
+// 첨부 뷰(lib/community-api)도 똑같이 파생해 쓰는 중립 타입이라 lib/domain에 있다 —
+// features가 lib을 참조하는 방향(정상)이지, lib이 features를 참조하면 안 된다. 이 파일에서
+// 계속 쓰는 이름들이라 import와 재노출(export type) 둘 다 필요하다.
+import type {
+  ExplanationCode,
+  RecommendationItem,
+  RecommendationSetSummary,
+  Strategy,
+} from "@/lib/domain/recommendation";
+
+export type { ExplanationCode, RecommendationItem, RecommendationSetSummary, Strategy };
 
 // OpenAPI 생성 타입을 원시 계약으로 사용하고, springdoc이 표현하지 못하는 nullable 필드와
 // 호환 응답의 optional 정책 메타데이터만 UI 경계에서 좁힌다.
-
-export type Strategy = "random" | "balanced" | "reduce_shared_winner_risk";
-
-export type ExplanationCode = NonNullable<
-  components["schemas"]["RecommendationItemView"]["explanationCodes"]
->[number];
-
-type RecommendationItemContract = RequiredApi<
-  components["schemas"]["RecommendationItemView"]
->;
-
-export type RecommendationItem = Omit<
-  RecommendationItemContract,
-  "score" | "explanationCodes"
-> & {
-  score: number | null;
-  explanationCodes: ExplanationCode[];
-};
 
 type RecommendationResponseContract = RequiredApi<
   components["schemas"]["RecommendNumbersResponse"]
@@ -42,18 +36,6 @@ export type RecommendationResponse = Omit<
   setId: number | null;
   items: RecommendationItem[] | null;
   createdAt: string | null;
-};
-
-type RecommendationSetSummaryContract = RequiredApi<
-  components["schemas"]["RecommendationSetSummary"]
->;
-
-export type RecommendationSetSummary = Omit<
-  RecommendationSetSummaryContract,
-  "strategy" | "items"
-> & {
-  strategy: Strategy;
-  items: RecommendationItem[];
 };
 
 /** 번호선택판의 3단 상태 — 한 번 누름: 고정, 두 번째: 제외, 세 번째: 해제. */

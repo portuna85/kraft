@@ -1,6 +1,10 @@
+import { type RequiredApi } from "@/lib/api";
 import { browserFetch } from "@/lib/browser-api";
 import { getDeviceToken } from "@/lib/device-token";
-import type { RecommendationSetSummary } from "@/features/recommendation/types";
+// KF-07: RecommendationSetSummary는 lib/domain(중립 위치)에 있다 — 이전에는
+// features/recommendation/types를 직접 참조해 lib→features 역방향 의존이었다.
+import type { RecommendationSetSummary } from "@/lib/domain/recommendation";
+import type { components } from "@/lib/generated/api-types";
 import {
   DEFAULT_COMMENT_PAGE_SIZE,
   type CommunityComment,
@@ -9,8 +13,15 @@ import {
   type PageResponse,
 } from "@/lib/community-api";
 
-export type CommunitySession = {
-  loggedIn: boolean;
+// KF-07: 생성 스키마(CommunitySessionResponse)가 이미 있는데 이 타입을 완전 수동으로
+// 다시 정의하고 있었다. springdoc은 nullable 여부와 무관하게 전 필드를 optional(`?`)로만
+// 표기하므로(required/nullable 구분 메타데이터 없음), RequiredApi로 "항상 응답에 포함됨"을
+// 복원하고, 실제로 null일 수 있는 userId/nickname과 리터럴 유니온으로 좁혀야 하는
+// activeProviders만 개별적으로 덮어쓴다(community-api.ts의 기존 Omit 패턴과 동일).
+export type CommunitySession = Omit<
+  RequiredApi<components["schemas"]["CommunitySessionResponse"]>,
+  "userId" | "nickname" | "activeProviders"
+> & {
   userId: number | null;
   nickname: string | null;
   activeProviders: ("google" | "naver")[];
@@ -174,18 +185,15 @@ export async function unblockUser(userId: number): Promise<void> {
   });
 }
 
-export type IdentityMergeResult = {
-  mergedSavedNumberCount: number;
-  duplicateSavedNumberCount: number;
-  mergedRecommendationSetCount: number;
-};
+// KF-07: 세 필드 모두 백엔드에서 primitive int라 항상 존재한다 — RequiredApi만으로 정확하다.
+export type IdentityMergeResult = RequiredApi<components["schemas"]["IdentityMergeResult"]>;
 
-export type MySavedNumber = {
-  id: number;
-  numbers: number[];
+// KF-07: label만 백엔드에서 정당하게 nullable(String)이라 개별적으로 덮어쓴다.
+export type MySavedNumber = Omit<
+  RequiredApi<components["schemas"]["SavedNumberResponse"]>,
+  "label"
+> & {
   label: string | null;
-  source: string;
-  createdAt: string;
 };
 
 // 로그인 계정 귀속 — 같은 브라우저의 익명 기기 토큰 기록을 계정으로 옮긴다.

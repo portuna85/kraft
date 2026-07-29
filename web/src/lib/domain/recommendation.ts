@@ -1,0 +1,35 @@
+import type { RequiredApi } from "@/lib/api";
+import type { components } from "@/lib/generated/api-types";
+
+// KF-07: features/recommendation(추천 생성 플로우)와 lib/community-api(커뮤니티 첨부 뷰)가
+// 같은 백엔드 스키마(RecommendationItemView/RecommendationSetSummary)를 각자 따로
+// 파생시키고 있었다 — community-client.ts가 그중 features 쪽을 직접 import해 lib→features
+// 역방향 의존까지 생겼다. 이 중립 위치(lib/domain)에 한 번만 파생시키고 양쪽이 이걸 쓴다.
+
+export type ExplanationCode = NonNullable<
+  components["schemas"]["RecommendationItemView"]["explanationCodes"]
+>[number];
+
+type RecommendationItemContract = RequiredApi<components["schemas"]["RecommendationItemView"]>;
+
+export type RecommendationItem = Omit<
+  RecommendationItemContract,
+  "score" | "explanationCodes"
+> & {
+  score: number | null;
+  explanationCodes: ExplanationCode[];
+};
+
+export type Strategy = "random" | "balanced" | "reduce_shared_winner_risk";
+
+type RecommendationSetSummaryContract = RequiredApi<
+  components["schemas"]["RecommendationSetSummary"]
+>;
+
+export type RecommendationSetSummary = Omit<
+  RecommendationSetSummaryContract,
+  "strategy" | "items"
+> & {
+  strategy: Strategy;
+  items: RecommendationItem[];
+};

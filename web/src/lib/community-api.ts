@@ -1,6 +1,10 @@
 import { BackendError, type RequiredApi } from "@/lib/api";
 import { backendBaseUrl } from "@/lib/backend-url";
 import type { components } from "@/lib/generated/api-types";
+// KF-07: RecommendationItemView는 추천 생성 응답과 커뮤니티 첨부 뷰가 공유하는 스키마다 —
+// 이 파일이 따로 파생시키던 버전은 explanationCodes를 좁히지 않아 features 쪽보다
+// 부정확했다. lib/domain의 공유 정의로 통일한다.
+import type { RecommendationItem } from "@/lib/domain/recommendation";
 
 // 커뮤니티 목록/상세는 짧은 주기로 갱신되는 공개 콘텐츠라 ISR을 쓰되, 사용자 정보는
 // 이 응답에 절대 섞이지 않는다 — 로그인 상태·소유권은 클라이언트가 /session과 대조한다.
@@ -9,10 +13,6 @@ const REVALIDATE_COMMUNITY_LIST = 30;
 export type PostCategory = NonNullable<components["schemas"]["CommunityPostResponse"]["category"]>;
 export type PostStatus = NonNullable<components["schemas"]["CommunityPostResponse"]["status"]>;
 export type PostSort = "latest" | "weekly_popular";
-
-type RecommendationItem = Omit<RequiredApi<components["schemas"]["RecommendationItemView"]>, "score"> & {
-    score: number | null;
-};
 
 export type RecommendationAttachment = Omit<
   RequiredApi<components["schemas"]["RecommendationAttachmentView"]>,
