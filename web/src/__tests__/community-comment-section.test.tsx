@@ -3,6 +3,12 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { CommentSection } from "@/components/community/comment-section";
 import { CommunitySessionProvider } from "@/components/community/community-session-provider";
 
+// KF-05: CommunitySessionProvider가 usePathname으로 세션 스코프를 판단한다 — 이 컴포넌트는
+// 항상 게시글 상세(/community/posts/:id) 하위에서만 쓰이므로 스코프 안 경로로 고정한다.
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/community/posts/1",
+}));
+
 function renderCommentSection(postId: number) {
   return render(
     <CommunitySessionProvider>

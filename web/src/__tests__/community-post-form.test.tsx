@@ -10,6 +10,9 @@ const revalidateCommunityPost = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace, push, refresh }),
+  // KF-05: CommunitySessionProvider가 usePathname으로 세션 스코프를 판단한다 — 이 컴포넌트는
+  // 항상 /community 하위에서만 쓰이므로 스코프 안 경로로 고정해 기존 동작을 유지한다.
+  usePathname: () => "/community/write",
 }));
 
 vi.mock("@/lib/community-revalidate", () => ({

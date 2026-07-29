@@ -3,6 +3,13 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AccountMenu } from "@/components/community/account-menu";
 import { CommunitySessionProvider } from "@/components/community/community-session-provider";
 
+// KF-05: 이 파일의 기존 케이스는 전부 세션이 실제로 확인되는 상황(/community)을
+// 전제로 한다 — 스코프 밖(공개 페이지) 렌더링은 별도 테스트에서 pathname을 바꿔 검증한다.
+const mockUsePathname = vi.fn(() => "/community");
+vi.mock("next/navigation", () => ({
+  usePathname: () => mockUsePathname(),
+}));
+
 function mockFetch(body: unknown) {
   return vi.fn().mockResolvedValue({
     ok: true,
@@ -22,6 +29,18 @@ function renderAccountMenu() {
 describe("커뮤니티 계정 메뉴", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockUsePathname.mockReset().mockReturnValue("/community");
+  });
+
+  it("KF-05: 공개 페이지(스코프 밖)에서는 세션을 조회하지 않고 일반 로그인 링크만 보여준다", async () => {
+    mockUsePathname.mockReturnValue("/stats");
+    global.fetch = mockFetch({ loggedIn: true, userId: 1, nickname: "글쓴이", activeProviders: ["google"] });
+
+    renderAccountMenu();
+
+    const link = await screen.findByText("로그인");
+    expect(link).toHaveAttribute("href", "/community");
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it("로그인하지 않은 경우 활성화된 Google·Naver 로그인 링크를 모두 보여준다", async () => {

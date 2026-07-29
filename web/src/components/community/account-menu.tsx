@@ -8,8 +8,21 @@ export function AccountMenu() {
   const { session, loading } = useCommunitySession();
   const [logoutError, setLogoutError] = useState(false);
 
-  if (loading || !session) {
+  if (loading) {
     return null;
+  }
+
+  // KF-05: 공개 페이지에서는 세션을 아예 조회하지 않으므로 session이 null이다 — 실제
+  // 로그인 여부를 모르는 채 "확인됨(비로그인)"과 혼동하지 않도록 별도로 일반 진입
+  // 링크만 보여준다. 실제 로그인 상태는 /community·/saved 진입 시 확인된다.
+  if (session === null) {
+    return (
+      <div className="account-menu">
+        <a href="/community" className="account-login-link">
+          로그인
+        </a>
+      </div>
+    );
   }
 
   if (!session.loggedIn) {

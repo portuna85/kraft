@@ -14,6 +14,9 @@ const claimDevice = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, refresh }),
+  // KF-05: CommunitySessionProvider가 usePathname으로 세션 스코프를 판단한다 — 이 컴포넌트는
+  // 항상 게시글 상세(/community/posts/:id) 하위에서만 쓰이므로 스코프 안 경로로 고정한다.
+  usePathname: () => "/community/posts/1",
 }));
 
 vi.mock("@/lib/community-client", () => ({
