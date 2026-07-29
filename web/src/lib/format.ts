@@ -1,33 +1,46 @@
-const dateFormatter = new Intl.DateTimeFormat("ko-KR", {
-  timeZone: "Asia/Seoul",
-  year: "numeric",
-  month: "long",
-  day: "numeric",
-  weekday: "short"
-});
+let dateFormatter: Intl.DateTimeFormat | undefined;
+let dateTimeFormatter: Intl.DateTimeFormat | undefined;
+let numberFormatter: Intl.NumberFormat | undefined;
 
-const dateTimeFormatter = new Intl.DateTimeFormat("ko-KR", {
-  timeZone: "Asia/Seoul",
-  year: "numeric",
-  month: "long",
-  day: "numeric",
-  weekday: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-  hour12: false
-});
+function getDateFormatter(): Intl.DateTimeFormat {
+  dateFormatter ??= new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  });
+  return dateFormatter;
+}
 
-const numberFormatter = new Intl.NumberFormat("ko-KR");
+function getDateTimeFormatter(): Intl.DateTimeFormat {
+  dateTimeFormatter ??= new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+  return dateTimeFormatter;
+}
+
+function getNumberFormatter(): Intl.NumberFormat {
+  numberFormatter ??= new Intl.NumberFormat("ko-KR");
+  return numberFormatter;
+}
 
 export function formatDrawDate(value: string): string {
-  return dateFormatter.format(new Date(`${value}T00:00:00+09:00`));
+  return getDateFormatter().format(new Date(`${value}T00:00:00+09:00`));
 }
 
 export function formatDateTime(value: string): string {
-  return dateTimeFormatter.format(new Date(value));
+  return getDateTimeFormatter().format(new Date(value));
 }
 
 export function formatCurrency(value: number): string {
-  return `${numberFormatter.format(value)}원`;
+  return `${getNumberFormatter().format(value)}원`;
 }
