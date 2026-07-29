@@ -3,7 +3,8 @@ package com.kraft.statistics;
 import com.kraft.common.config.CacheConfig;
 import com.kraft.common.lotto.BallClassification;
 import com.kraft.common.lotto.SumBuckets;
-import com.kraft.recommend.LottoRecommendationService;
+import com.kraft.winningnumber.FirstPrizeHistoryDto;
+import com.kraft.winningnumber.FirstPrizeHistoryService;
 import com.kraft.winningnumber.WinningBallsOnly;
 import com.kraft.winningnumber.WinningNumberRepository;
 import java.util.ArrayList;
@@ -41,20 +42,20 @@ public class WinningStatisticsCacheService {
     private final PatternStatsSummaryRepository patternStatsSummaryRepository;
     private final CompanionPairSummaryRepository companionPairSummaryRepository;
     private final StatisticsSummaryRebuilder summaryRebuilder;
-    private final LottoRecommendationService lottoRecommendationService;
+    private final FirstPrizeHistoryService firstPrizeHistoryService;
 
     public WinningStatisticsCacheService(WinningNumberRepository winningNumberRepository,
                                          FrequencySummaryRepository frequencySummaryRepository,
                                          PatternStatsSummaryRepository patternStatsSummaryRepository,
                                          CompanionPairSummaryRepository companionPairSummaryRepository,
                                          StatisticsSummaryRebuilder summaryRebuilder,
-                                         LottoRecommendationService lottoRecommendationService) {
+                                         FirstPrizeHistoryService firstPrizeHistoryService) {
         this.winningNumberRepository = winningNumberRepository;
         this.frequencySummaryRepository = frequencySummaryRepository;
         this.patternStatsSummaryRepository = patternStatsSummaryRepository;
         this.companionPairSummaryRepository = companionPairSummaryRepository;
         this.summaryRebuilder = summaryRebuilder;
-        this.lottoRecommendationService = lottoRecommendationService;
+        this.firstPrizeHistoryService = firstPrizeHistoryService;
     }
 
     // ──────────────────────────────────────────────
@@ -111,7 +112,8 @@ public class WinningStatisticsCacheService {
         return toFrequencyResponse(rounds.size(), frequencies);
     }
 
-    private static final RankedCombinationDto EMPTY_RANKED_GROUP = new RankedCombinationDto(List.of(), false);
+    private static final RankedCombinationDto EMPTY_RANKED_GROUP =
+            new RankedCombinationDto(List.of(), false, List.of());
 
     private FrequencyStatsResponse toFrequencyResponse(int totalRounds, List<BallFrequencyDto> frequencies) {
         // 회차 데이터가 아직 없으면(초기 상태) summary가 45개 미만일 수 있다 — top/bottom 6을
@@ -135,8 +137,8 @@ public class WinningStatisticsCacheService {
                 .sorted(Comparator.comparingInt(BallFrequencyDto::ballNumber))
                 .toList();
         List<Integer> numbers = sortedByBall.stream().map(BallFrequencyDto::ballNumber).toList();
-        boolean wonFirstPrize = lottoRecommendationService.isHistoricalFirstPrizeCombination(numbers);
-        return new RankedCombinationDto(sortedByBall, wonFirstPrize);
+        List<FirstPrizeHistoryDto> history = firstPrizeHistoryService.findByNumbers(numbers);
+        return new RankedCombinationDto(sortedByBall, history);
     }
 
     @Cacheable(CacheConfig.STATS_PATTERN)
@@ -225,9 +227,10 @@ public class WinningStatisticsCacheService {
         }
 
         List<AnalysisResponse.RangeDistribution> ranges = computeRangeDistribution(numbers);
+        List<FirstPrizeHistoryDto> history = firstPrizeHistoryService.findByNumbers(numbers);
 
         return new AnalysisResponse(numbers, oddCount, evenCount, lowCount, highCount,
-                sum, sumBucket, consecutivePairCount, ranges);
+                sum, sumBucket, consecutivePairCount, ranges, !history.isEmpty(), history);
     }
 
     /**

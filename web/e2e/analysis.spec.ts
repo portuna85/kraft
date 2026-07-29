@@ -1,8 +1,35 @@
 import { test, expect } from "@playwright/test";
 
-// /analysis는 순수 클라이언트 계산(백엔드 미의존)이라 실제 입력→결과 흐름을 검증할 수 있다.
+const analysisResponse = {
+  numbers: [1, 2, 3, 4, 5, 6],
+  oddCount: 3,
+  evenCount: 3,
+  lowCount: 6,
+  highCount: 0,
+  sumOfNumbers: 21,
+  sumBucket: "21-65",
+  consecutivePairCount: 5,
+  rangeDistribution: [
+    { range: "1-9", count: 6 },
+    { range: "10-19", count: 0 },
+    { range: "20-29", count: 0 },
+    { range: "30-39", count: 0 },
+    { range: "40-45", count: 0 },
+  ],
+  wonFirstPrize: true,
+  firstPrizeHistory: [
+    { round: 1, drawDate: "2002-12-07", firstPrizeAmount: 0 },
+  ],
+};
 
 test("유효한 번호 6개를 입력하면 분석 결과가 렌더된다", async ({ page }) => {
+  await page.route("**/api/v1/stats/analysis", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(analysisResponse),
+    }),
+  );
   await page.goto("/analysis");
 
   await page.getByPlaceholder("예: 3, 11, 19, 28, 34, 42")
@@ -11,6 +38,8 @@ test("유효한 번호 6개를 입력하면 분석 결과가 렌더된다", asyn
 
   await expect(page.getByRole("heading", { name: "분석 결과" })).toBeVisible();
   await expect(page.getByText("3 / 3")).toBeVisible();
+  await expect(page.getByText("역대 1등 당첨 이력 1건")).toBeVisible();
+  await expect(page.getByText("1회")).toBeVisible();
 });
 
 test("번호가 6개가 아니면 에러 메시지를 보여준다", async ({ page }) => {

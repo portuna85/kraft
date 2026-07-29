@@ -588,6 +588,16 @@ export interface components {
             /** Format: int32 */
             consecutivePairCount?: number;
             rangeDistribution?: components["schemas"]["RangeDistribution"][];
+            wonFirstPrize?: boolean;
+            firstPrizeHistory?: components["schemas"]["FirstPrizeHistoryDto"][];
+        };
+        FirstPrizeHistoryDto: {
+            /** Format: int32 */
+            round?: number;
+            /** Format: date */
+            drawDate?: string;
+            /** Format: int64 */
+            firstPrizeAmount?: number;
         };
         RangeDistribution: {
             range?: string;
@@ -727,6 +737,7 @@ export interface components {
         RankedCombinationDto: {
             balls?: components["schemas"]["BallFrequencyDto"][];
             wonFirstPrize?: boolean;
+            firstPrizeHistory?: components["schemas"]["FirstPrizeHistoryDto"][];
         };
         CompanionPairDto: {
             /** Format: int32 */
@@ -799,6 +810,7 @@ export interface components {
         };
         CombinationCheckResponse: {
             wonFirstPrize?: boolean;
+            firstPrizeHistory?: components["schemas"]["FirstPrizeHistoryDto"][];
         };
         HomeCommunityPostSummary: {
             /** Format: int64 */

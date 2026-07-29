@@ -86,13 +86,6 @@
   flex-shrink: 0;
 }
 
-.winRecord {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
 .item {
   display: flex;
   flex-direction: column;

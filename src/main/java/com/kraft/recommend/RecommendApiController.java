@@ -2,6 +2,7 @@ package com.kraft.recommend;
 
 import com.kraft.common.lotto.LottoNumbers;
 import com.kraft.common.web.DeviceTokenSupport;
+import com.kraft.winningnumber.FirstPrizeHistoryService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.validation.annotation.Validated;
@@ -20,11 +21,14 @@ public class RecommendApiController {
 
     private final LottoRecommendationService lottoRecommendationService;
     private final DeviceTokenSupport deviceTokenSupport;
+    private final FirstPrizeHistoryService firstPrizeHistoryService;
 
     public RecommendApiController(LottoRecommendationService lottoRecommendationService,
-                                  DeviceTokenSupport deviceTokenSupport) {
+                                  DeviceTokenSupport deviceTokenSupport,
+                                  FirstPrizeHistoryService firstPrizeHistoryService) {
         this.lottoRecommendationService = lottoRecommendationService;
         this.deviceTokenSupport = deviceTokenSupport;
+        this.firstPrizeHistoryService = firstPrizeHistoryService;
     }
 
     @PostMapping("/recommend")
@@ -41,6 +45,6 @@ public class RecommendApiController {
 
     @GetMapping("/check")
     public CombinationCheckResponse check(@RequestParam @LottoNumbers List<Integer> numbers) {
-        return new CombinationCheckResponse(lottoRecommendationService.isHistoricalFirstPrizeCombination(numbers));
+        return new CombinationCheckResponse(firstPrizeHistoryService.findByNumbers(numbers));
     }
 }

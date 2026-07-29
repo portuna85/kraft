@@ -1,4 +1,5 @@
 import type { AnalysisResponse } from "@/lib/api";
+import { FirstPrizeHistoryList } from "@/components/first-prize-history";
 import styles from "@/app/analysis/analysis.module.css";
 
 type AnalysisResultProps = {
@@ -10,6 +11,8 @@ export function AnalysisResult({ analysis, title }: AnalysisResultProps) {
   return (
     <div className={styles.result}>
       <h2 className="section-title">{title}</h2>
+
+      <FirstPrizeHistoryList history={analysis.firstPrizeHistory} />
 
       <div className={styles.resultGrid}>
         <div className={styles.resultCell}>

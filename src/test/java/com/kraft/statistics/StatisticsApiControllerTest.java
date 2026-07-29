@@ -148,7 +148,23 @@ class StatisticsApiControllerTest {
                 .andExpect(jsonPath("$.sumBucket").value("21-65"))
                 .andExpect(jsonPath("$.consecutivePairCount").value(5))
                 .andExpect(jsonPath("$.lowCount").value(6))
-                .andExpect(jsonPath("$.highCount").value(0));
+                .andExpect(jsonPath("$.highCount").value(0))
+                .andExpect(jsonPath("$.wonFirstPrize").value(true))
+                .andExpect(jsonPath("$.firstPrizeHistory", hasSize(1)))
+                .andExpect(jsonPath("$.firstPrizeHistory[0].round").value(1))
+                .andExpect(jsonPath("$.firstPrizeHistory[0].drawDate").value("2026-01-04"))
+                .andExpect(jsonPath("$.firstPrizeHistory[0].firstPrizeAmount").value(1_000_000_000L));
+    }
+
+    @Test
+    @DisplayName("당첨 이력이 없는 조합은 명시적인 false와 빈 내역을 반환한다")
+    void analysis_returnsEmptyFirstPrizeHistory_forNeverWinningCombination() throws Exception {
+        mockMvc.perform(post("/api/v1/stats/analysis")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"numbers\":[7,8,9,10,11,12]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.wonFirstPrize").value(false))
+                .andExpect(jsonPath("$.firstPrizeHistory", hasSize(0)));
     }
 
     @Test

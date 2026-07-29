@@ -126,6 +126,7 @@ export type BallFrequency = RequiredApi<components["schemas"]["BallFrequencyDto"
 export type PatternBucket = RequiredApi<components["schemas"]["PatternBucketDto"]>;
 export type CompanionPair = RequiredApi<components["schemas"]["CompanionPairDto"]>;
 export type RangeDistribution = RequiredApi<components["schemas"]["RangeDistribution"]>;
+export type FirstPrizeHistory = RequiredApi<components["schemas"]["FirstPrizeHistoryDto"]>;
 
 export type RankedCombination = RequiredApi<components["schemas"]["RankedCombinationDto"]>;
 

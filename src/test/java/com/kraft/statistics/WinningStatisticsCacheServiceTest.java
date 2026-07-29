@@ -161,6 +161,12 @@ class WinningStatisticsCacheServiceTest {
                 .isSortedAccordingTo((a, b) -> Integer.compare(a.ballNumber(), b.ballNumber()));
         assertThat(response.bottomSix().balls())
                 .isSortedAccordingTo((a, b) -> Integer.compare(a.ballNumber(), b.ballNumber()));
+        assertThat(response.topSix().wonFirstPrize()).isTrue();
+        assertThat(response.topSix().firstPrizeHistory())
+                .extracting("round")
+                .containsExactly(1);
+        assertThat(response.bottomSix().wonFirstPrize()).isFalse();
+        assertThat(response.bottomSix().firstPrizeHistory()).isEmpty();
     }
 
     @Test
@@ -270,17 +276,27 @@ class WinningStatisticsCacheServiceTest {
         assertThat(result.consecutivePairCount()).isEqualTo(5); // 1-2, 2-3, 3-4, 4-5, 5-6
         assertThat(result.lowCount()).isEqualTo(6); // 모두 1-22 범위
         assertThat(result.highCount()).isEqualTo(0);
+        assertThat(result.wonFirstPrize()).isTrue();
+        assertThat(result.firstPrizeHistory())
+                .extracting("round")
+                .containsExactly(1);
     }
 
-    /**
-     * BE-14 골든 픽스처 — web/src/__tests__/analyze.test.ts의 "백엔드 통계 캐시 서비스
-     * 픽스처와 동일한 결과를 낸다" 테스트와 입력·기댓값이 반드시 일치해야 한다.
-     * WinningStatisticsCacheService.analyze()(Java)와 lib/analyze.ts의 analyzeNumbers()(TS)는
-     * 같은 계산을 독립적으로 구현하므로, 어느 한쪽만 고쳐도 이 두 테스트가 함께 깨져야 드리프트를
-     * 잡을 수 있다.
-     */
     @Test
-    @DisplayName("골든 픽스처: 범위 분산 조합(9,10,19,20,40,45)이 TS 구현과 동일한 결과를 낸다")
+    @DisplayName("같은 번호 조합이 여러 번 1등이면 최신 회차부터 모든 내역을 반환한다")
+    void analyze_returnsEveryMatchingFirstPrizeRoundNewestFirst() {
+        winningNumberRepository.save(round(3, 1, 2, 3, 4, 5, 6, 8));
+
+        AnalysisResponse result = service.analyze(List.of(6, 5, 4, 3, 2, 1));
+
+        assertThat(result.wonFirstPrize()).isTrue();
+        assertThat(result.firstPrizeHistory())
+                .extracting("round")
+                .containsExactly(3, 1);
+    }
+
+    @Test
+    @DisplayName("범위 분산 조합(9,10,19,20,40,45)의 모든 분석 지표를 계산한다")
     void analyze_goldenFixture_rangeDistributionCombo() {
         AnalysisResponse result = service.analyze(List.of(9, 10, 19, 20, 40, 45));
 
@@ -300,7 +316,7 @@ class WinningStatisticsCacheServiceTest {
     }
 
     @Test
-    @DisplayName("골든 픽스처: 7의 배수 조합(7,14,21,28,35,42)이 TS 구현과 동일한 결과를 낸다")
+    @DisplayName("7의 배수 조합(7,14,21,28,35,42)의 모든 분석 지표를 계산한다")
     void analyze_goldenFixture_multiplesOfSevenCombo() {
         AnalysisResponse result = service.analyze(List.of(7, 14, 21, 28, 35, 42));
 

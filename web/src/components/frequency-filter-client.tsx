@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { LottoBalls } from "@/components/lotto-balls";
+import { FirstPrizeHistoryList } from "@/components/first-prize-history";
 import type { BallFrequency, FrequencyStatsResponse, RankedCombination } from "@/lib/api";
 import { ballColorClass } from "@/lib/ball-color";
 import { browserFetch } from "@/lib/browser-api";
@@ -35,9 +36,7 @@ function CombinationGroup({ label, combination }: { label: string; combination: 
     <div className={styles.rankGroup}>
       <p className={styles.rankLabel}>{label}</p>
       <LottoBalls numbers={combination.balls.map((item) => item.ballNumber)} />
-      <p className={styles.winRecord}>
-        {combination.wonFirstPrize ? "1등 당첨 이력 있음" : "1등 당첨 이력 없음"}
-      </p>
+      <FirstPrizeHistoryList history={combination.firstPrizeHistory} compact />
     </div>
   );
 }

@@ -13,10 +13,14 @@ const INITIAL: FrequencyStatsResponse = {
   topSix: {
     balls: [1, 2, 3, 4, 5, 6].map((n) => ball(n, 45 - n + 1)),
     wonFirstPrize: true,
+    firstPrizeHistory: [
+      { round: 1, drawDate: "2002-12-07", firstPrizeAmount: 0 },
+    ],
   },
   bottomSix: {
     balls: [40, 41, 42, 43, 44, 45].map((n) => ball(n, 45 - n + 1)),
     wonFirstPrize: false,
+    firstPrizeHistory: [],
   },
 };
 
@@ -38,8 +42,9 @@ describe("frequency 필터", () => {
 
     render(<FrequencyFilterClient initial={INITIAL} />);
 
-    expect(screen.getByText("1등 당첨 이력 있음")).toBeInTheDocument();
-    expect(screen.getByText("1등 당첨 이력 없음")).toBeInTheDocument();
+    expect(screen.getByText("역대 1등 당첨 이력 1건")).toBeInTheDocument();
+    expect(screen.getByText("역대 1등 당첨 이력 없음")).toBeInTheDocument();
+    expect(screen.getByText("2002년 12월 7일 토")).toBeInTheDocument();
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
@@ -54,14 +59,14 @@ describe("frequency 필터", () => {
     });
 
     // 실패했으므로 초기 topSix/bottomSix가 그대로 유지된다
-    expect(screen.getByText("1등 당첨 이력 있음")).toBeInTheDocument();
+    expect(screen.getByText("역대 1등 당첨 이력 1건")).toBeInTheDocument();
   });
 
   it("재시도 클릭 시 실패했던 필터 값으로 다시 요청한다", async () => {
     const updated: FrequencyStatsResponse = {
       ...INITIAL,
       totalRounds: 100,
-      topSix: { balls: INITIAL.topSix.balls, wonFirstPrize: false },
+      topSix: { balls: INITIAL.topSix.balls, wonFirstPrize: false, firstPrizeHistory: [] },
     };
     global.fetch = vi.fn()
       .mockRejectedValueOnce(new Error("network down"))
@@ -92,19 +97,19 @@ describe("frequency 필터", () => {
   it("전체 필터로 되돌리면 초기 값을 다시 표시한다", async () => {
     global.fetch = mockFetch({
       ...INITIAL,
-      topSix: { balls: INITIAL.topSix.balls, wonFirstPrize: false },
+      topSix: { balls: INITIAL.topSix.balls, wonFirstPrize: false, firstPrizeHistory: [] },
     });
 
     render(<FrequencyFilterClient initial={INITIAL} />);
     fireEvent.click(screen.getByRole("button", { name: "최근 100회" }));
 
     await waitFor(() => {
-      expect(screen.getAllByText("1등 당첨 이력 없음")).toHaveLength(2);
+      expect(screen.getAllByText("역대 1등 당첨 이력 없음")).toHaveLength(2);
     });
 
     fireEvent.click(screen.getByRole("button", { name: "전체" }));
 
-    expect(screen.getByText("1등 당첨 이력 있음")).toBeInTheDocument();
-    expect(screen.getAllByText("1등 당첨 이력 없음")).toHaveLength(1);
+    expect(screen.getByText("역대 1등 당첨 이력 1건")).toBeInTheDocument();
+    expect(screen.getAllByText("역대 1등 당첨 이력 없음")).toHaveLength(1);
   });
 });

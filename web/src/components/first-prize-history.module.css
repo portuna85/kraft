@@ -1,0 +1,42 @@
+.history {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.summary {
+  margin: 0;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.hasHistory {
+  color: var(--accent);
+}
+
+.noHistory {
+  color: var(--muted);
+}
+
+.list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+
+.item strong {
+  color: var(--text);
+}

@@ -20,6 +20,7 @@ Google·Naver 로그인부터 세션 유지, 게시글·댓글·답글 작성, �
 
 - 최신·과거 당첨 회차의 데이터 신선도 조회
 - 번호별 빈도, 홀짝·고저·합계 구간, 동반 출현 통계
+- 임의 번호와 빈도 TOP/BOTTOM 조합의 역대 1등 당첨 회차·추첨일·당첨금 표시
 - 제외 번호와 공동 당첨 위험 완화 옵션을 반영한 조합 추천
 - 과거 1등 조합과 추천 조합의 중복 검사
 - 익명 기기 토큰 기반 번호 저장과 회차별 당첨 결과 확인
@@ -47,7 +48,7 @@ Google·Naver 로그인부터 세션 유지, 게시글·댓글·답글 작성, �
 | 영역 | 기술 |
 | --- | --- |
 | 백엔드 | Java 25, Spring Boot 4.1.0, Spring Security, OAuth2 Client, Spring Data JPA, Validation, Actuator, Thymeleaf |
-| 데이터 | MariaDB 11.7, Flyway V1~V17, H2, Caffeine |
+| 데이터 | MariaDB 11.7, Flyway V1~V30, H2, Caffeine |
 | 복원력 | Virtual Threads, ShedLock, Resilience4j, 트랜잭션 이벤트 |
 | 프론트엔드 | Next.js 16.2.11 App Router, React 19.2.8, TypeScript 6.0.3, ISR, CSP nonce |
 | 테스트 | JUnit 5, Testcontainers, JaCoCo, Checkstyle, SpotBugs, Vitest, Testing Library, Playwright |
@@ -212,11 +213,11 @@ http://localhost/login/oauth2/code/naver
 | `GET` | `/api/v1/rounds/latest` | 최신 당첨 회차 |
 | `GET` | `/api/v1/rounds/freshness` | 데이터 신선도 |
 | `POST` | `/api/v1/numbers/recommend` | 추천 조합 생성 |
-| `GET` | `/api/v1/numbers/check` | 과거 1등 조합 검사 |
+| `GET` | `/api/v1/numbers/check` | 과거 1등 조합과 상세 당첨 내역 검사 |
 | `GET` | `/api/v1/stats/frequency` | 번호별 빈도 |
 | `GET` | `/api/v1/stats/patterns` | 홀짝·고저·합계 패턴 |
 | `GET` | `/api/v1/stats/companion` | 동반 출현 통계 |
-| `POST` | `/api/v1/stats/analysis` | 임의 번호 조합 분석 |
+| `POST` | `/api/v1/stats/analysis` | 임의 번호 조합 통계와 역대 1등 당첨 내역 분석 |
 | `GET`, `POST`, `DELETE` | `/api/v1/saved/**` | 저장 번호 관리 |
 | `GET` | `/api/v1/status`, `/api/v1/status/incidents` | 서비스 상태와 공개 이력 |
 

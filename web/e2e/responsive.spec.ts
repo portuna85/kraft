@@ -183,10 +183,35 @@ test.describe("실제 콘텐츠가 채워진 라우트의 오버플로", () => {
       await expectNoOverflow(page);
     });
 
-    // /analysis는 순수 클라이언트 계산(analyzeNumbers, 백엔드 미의존)이라
-    // page.route 없이도 실제 결과 콘텐츠를 렌더할 수 있다.
     test(`/analysis — ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 800 });
+      await page.route("**/api/v1/stats/analysis", (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            numbers: [1, 2, 3, 4, 5, 6],
+            oddCount: 3,
+            evenCount: 3,
+            lowCount: 6,
+            highCount: 0,
+            sumOfNumbers: 21,
+            sumBucket: "21-65",
+            consecutivePairCount: 5,
+            rangeDistribution: [
+              { range: "1-9", count: 6 },
+              { range: "10-19", count: 0 },
+              { range: "20-29", count: 0 },
+              { range: "30-39", count: 0 },
+              { range: "40-45", count: 0 },
+            ],
+            wonFirstPrize: true,
+            firstPrizeHistory: [
+              { round: 1, drawDate: "2002-12-07", firstPrizeAmount: 0 },
+            ],
+          }),
+        }),
+      );
       await page.goto("/analysis");
       await page.getByPlaceholder("예: 3, 11, 19, 28, 34, 42")
         .pressSequentially("1, 2, 3, 4, 5, 6");

@@ -47,8 +47,8 @@ function ballFrequencies() {
 const STATS_FREQUENCY = {
   totalRounds: 1189,
   frequencies: ballFrequencies(),
-  topSix: { balls: ballFrequencies().slice(0, 6), wonFirstPrize: false },
-  bottomSix: { balls: ballFrequencies().slice(-6), wonFirstPrize: false },
+  topSix: { balls: ballFrequencies().slice(0, 6), wonFirstPrize: false, firstPrizeHistory: [] },
+  bottomSix: { balls: ballFrequencies().slice(-6), wonFirstPrize: false, firstPrizeHistory: [] },
 };
 
 const STATS_PATTERNS = {

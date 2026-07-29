@@ -13,6 +13,8 @@ public interface WinningNumberRepository extends JpaRepository<WinningNumber, Lo
 
     Optional<WinningNumber> findByRound(Integer round);
 
+    List<WinningNumber> findAllByCombinationMaskOrderByRoundDesc(Long combinationMask);
+
     Page<WinningNumber> findAllByOrderByRoundDesc(Pageable pageable);
 
     @Query("select w.round from WinningNumber w order by w.round asc")
