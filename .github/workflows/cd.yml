@@ -9,6 +9,7 @@ on:
 permissions:
   contents: read
   packages: read
+  actions: read
 
 # 동시 배포 방지 — 진행 중인 배포는 취소하지 않음
 concurrency:
@@ -28,6 +29,22 @@ jobs:
       url: https://kraft.io.kr
 
     steps:
+      - name: Download affected-component plan from CI
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: deployment-plan
+          path: .deployment
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Load affected-component plan
+        id: deployment-plan
+        run: |
+          source .deployment/deployment-plan.env
+          {
+            echo "backend=$DEPLOY_BACKEND_CHANGED"
+            echo "web=$DEPLOY_WEB_CHANGED"
+            echo "infra=$DEPLOY_INFRA_CHANGED"
+          } >> "$GITHUB_OUTPUT"
       - name: Set lowercase repo name
         run: echo "REPO_LC=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
       - name: Deploy via SSH
@@ -39,6 +56,9 @@ jobs:
           KRAFT_WEB_IMAGE_REF:     ghcr.io/${{ env.REPO_LC }}/web
           KRAFT_BACKEND_IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
           KRAFT_WEB_IMAGE_TAG:     ${{ github.event.workflow_run.head_sha }}
+          DEPLOY_BACKEND_CHANGED: ${{ steps.deployment-plan.outputs.backend }}
+          DEPLOY_WEB_CHANGED:     ${{ steps.deployment-plan.outputs.web }}
+          DEPLOY_INFRA_CHANGED:   ${{ steps.deployment-plan.outputs.infra }}
           # DB / 서비스 시크릿
           # KRAFT_DB_URL, KRAFT_DB_USERNAME 은 .env.prod.example에 하드코딩됨
           # (Docker Compose는 shell env가 --env-file보다 우선하므로 shell에서 제외)
@@ -80,6 +100,7 @@ jobs:
             DEPLOY_SHA,
             KRAFT_BACKEND_IMAGE_REF,KRAFT_WEB_IMAGE_REF,
             KRAFT_BACKEND_IMAGE_TAG,KRAFT_WEB_IMAGE_TAG,
+            DEPLOY_BACKEND_CHANGED,DEPLOY_WEB_CHANGED,DEPLOY_INFRA_CHANGED,
             MARIADB_ROOT_PASSWORD,MARIADB_PASSWORD,
             KRAFT_DB_PASSWORD,
             KRAFT_OPS_TOKEN,KRAFT_REVALIDATE_SECRET,

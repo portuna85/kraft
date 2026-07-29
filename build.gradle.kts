@@ -10,6 +10,13 @@ plugins {
 group = "com.kraft"
 version = "1.0-SNAPSHOT"
 
+tasks.bootJar {
+    archiveFileName.set("kraft-backend.jar")
+}
+tasks.jar {
+    enabled = false
+}
+
 // Lock runtime and compile classpaths for reproducible Dockerfile builds (blueprint §10.3)
 dependencyLocking {
     lockAllConfigurations()
@@ -76,9 +83,15 @@ dependencies {
     testImplementation("org.pitest:pitest-junit5-plugin:1.2.3")
 }
 
+val requestedTestWorkers = providers.gradleProperty("testWorkers").orNull?.toIntOrNull()
+
 tasks.withType<Test> {
     useJUnitPlatform()
-    finalizedBy(tasks.jacocoTestReport)
+    if (requestedTestWorkers != null) {
+        maxParallelForks = requestedTestWorkers
+            .coerceAtLeast(1)
+            .coerceAtMost(Runtime.getRuntime().availableProcessors())
+    }
     // Mockito 5.x의 inline mock maker는 byte-buddy-agent를 self-attach하는데, 향후 JDK에서
     // 이 방식이 기본 차단될 예정이라 경고가 발생한다(JEP 451). Mockito 공식 권장대로 agent를
     // 명시적으로 등록해 self-attach를 피한다.
@@ -87,6 +100,32 @@ tasks.withType<Test> {
     if (mockitoAgentJar != null) {
         jvmArgs("-javaagent:${mockitoAgentJar.absolutePath}")
     }
+}
+
+val isolatedLoggingTest = tasks.register<Test>("isolatedLoggingTest") {
+    description = "Runs the process-global Logback configuration tests in isolation."
+    group = "verification"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    maxParallelForks = 1
+    filter {
+        includeTestsMatching("com.kraft.common.config.LogbackConfigurationTest")
+    }
+    onlyIf { (requestedTestWorkers ?: 1) > 1 }
+    shouldRunAfter(tasks.test)
+}
+
+tasks.test {
+    finalizedBy(tasks.jacocoTestReport)
+    if ((requestedTestWorkers ?: 1) > 1) {
+        filter {
+            excludeTestsMatching("com.kraft.common.config.LogbackConfigurationTest")
+        }
+    }
+}
+
+tasks.check {
+    dependsOn(isolatedLoggingTest)
 }
 
 // ── JaCoCo ─────────────────────────────────────────────────────────────────
@@ -132,7 +171,8 @@ fun jacocoClassDirs() = fileTree(layout.buildDirectory.dir("classes/java/main"))
 }
 
 tasks.jacocoTestReport {
-    dependsOn(tasks.test)
+    dependsOn(tasks.test, isolatedLoggingTest)
+    executionData(fileTree(layout.buildDirectory.dir("jacoco")) { include("*.exec") })
     reports {
         xml.required = true
         html.required = true
@@ -144,6 +184,7 @@ val strictCoverage = project.findProperty("strictCoverage") as String?
 if (strictCoverage == "true") {
     tasks.jacocoTestCoverageVerification {
         dependsOn(tasks.jacocoTestReport)
+        executionData(fileTree(layout.buildDirectory.dir("jacoco")) { include("*.exec") })
         classDirectories.setFrom(jacocoClassDirs())
         violationRules {
             // 전체 프로젝트 임계값

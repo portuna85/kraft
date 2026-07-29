@@ -14,6 +14,7 @@ export default defineConfig({
   // 이 설정(백엔드 없음, 광고 env 없음)으로 돌리면 항상 실패한다.
   testIgnore: ["content/**", "ad-overlay/**", "visual/**"],
   fullyParallel: true,
+  workers: process.env.CI ? 4 : undefined,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",

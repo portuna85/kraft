@@ -48,7 +48,11 @@ async function runLighthouseFor(route, chrome) {
   };
 }
 
-const chrome = await chromeLauncher.launch({ chromeFlags: ["--headless=new"] });
+const chromeFlags = ["--headless=new"];
+if (typeof process.getuid === "function" && process.getuid() === 0) {
+  chromeFlags.push("--no-sandbox");
+}
+const chrome = await chromeLauncher.launch({ chromeFlags });
 const results = {};
 try {
   for (const route of ROUTES) {

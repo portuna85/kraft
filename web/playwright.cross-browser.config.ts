@@ -9,6 +9,7 @@ export default defineConfig({
   testMatch: ["accessibility.spec.ts", "responsive.spec.ts"],
   testIgnore: ["content/**", "ad-overlay/**", "visual/**"],
   fullyParallel: true,
+  workers: process.env.CI ? 4 : undefined,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",

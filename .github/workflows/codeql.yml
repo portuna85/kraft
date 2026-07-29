@@ -3,37 +3,74 @@ name: CodeQL
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
   schedule:
     - cron: "0 3 * * 1"
 
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  analyze:
-    name: Analyze
+  changes:
+    name: Detect Code Changes
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
+    outputs:
+      backend: ${{ steps.scope.outputs.backend }}
+      web: ${{ steps.scope.outputs.web }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          fetch-depth: 2
+      - name: Detect affected languages
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: bash scripts/ci/detect-changes.sh "$BASE_SHA" "$GITHUB_SHA"
+
+  analyze-java:
+    name: Analyze (java)
+    runs-on: ubuntu-latest
+    needs: changes
+    if: github.event_name == 'schedule' || needs.changes.outputs.backend == 'true'
+    timeout-minutes: 15
     permissions:
       security-events: write
       actions: read
       contents: read
-    strategy:
-      matrix:
-        language: [java-kotlin, javascript-typescript]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
-      - name: Initialize CodeQL
+      - name: Initialize Java CodeQL without a duplicate application build
         uses: github/codeql-action/init@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
         with:
-          languages: ${{ matrix.language }}
-      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
-        if: matrix.language == 'java-kotlin'
+          languages: java-kotlin
+          build-mode: none
+      - name: Perform Java CodeQL analysis
+        uses: github/codeql-action/analyze@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
+
+  analyze-web:
+    name: Analyze (javascript-typescript)
+    runs-on: ubuntu-latest
+    needs: changes
+    if: github.event_name == 'schedule' || needs.changes.outputs.web == 'true'
+    timeout-minutes: 15
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+      - name: Initialize web CodeQL
+        uses: github/codeql-action/init@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
         with:
-          java-version: "25"
-          distribution: temurin
-          cache: gradle
-      - name: Build backend
-        if: matrix.language == 'java-kotlin'
-        run: ./gradlew classes --no-daemon
-      - name: Perform CodeQL Analysis
+          languages: javascript-typescript
+      - name: Perform web CodeQL analysis
         uses: github/codeql-action/analyze@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4

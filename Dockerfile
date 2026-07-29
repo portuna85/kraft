@@ -1,20 +1,32 @@
-FROM eclipse-temurin:25-jdk@sha256:edb3aa0f621796d8f5f9d602c7611ffdf015cd89e6ddda1894d85a3a99d170a8 AS build
+# syntax=docker/dockerfile:1.7
+FROM eclipse-temurin:25-jdk@sha256:edb3aa0f621796d8f5f9d602c7611ffdf015cd89e6ddda1894d85a3a99d170a8 AS source-build
 WORKDIR /workspace
 
 # 의존성 레이어 분리 — build.gradle.kts 변경 시에만 재다운로드
-COPY gradlew gradlew.bat settings.gradle.kts build.gradle.kts gradle.lockfile ./
+COPY gradlew gradlew.bat settings.gradle.kts build.gradle.kts gradle.properties gradle.lockfile ./
 COPY gradle ./gradle
-RUN chmod +x gradlew && ./gradlew dependencies --no-daemon --quiet
+RUN --mount=type=cache,target=/root/.gradle \
+    chmod +x gradlew \
+    && ./gradlew dependencies --no-daemon --quiet
 
-# 소스 빌드
 COPY src ./src
-RUN ./gradlew bootJar --no-daemon -x test
+COPY config ./config
+# 소스 빌드
+RUN --mount=type=cache,target=/root/.gradle \
+    ./gradlew bootJar --no-daemon -x test \
+    && java -Djarmode=tools -jar build/libs/kraft-backend.jar extract \
+      --layers --launcher --destination /workspace/extracted
 
 # 레이어 추출 — 의존성(dependencies)은 build.gradle.kts가 안 바뀌는 한 그대로라 별도
 # 레이어로 캐시되고, 코드만 바뀐 빌드는 application 레이어만 재푸시하면 된다.
-RUN java -Djarmode=tools -jar build/libs/*.jar extract --layers --launcher --destination /workspace/extracted
+FROM eclipse-temurin:25-jre@sha256:5cf92df78f6dba978777d5cffa3c856e583f86814fde82a6c3534ccdfd794f2f AS prebuilt-extract
+WORKDIR /workspace
+COPY build/libs/kraft-backend.jar app.jar
+RUN java -Djarmode=tools -jar app.jar extract \
+      --layers --launcher --destination /workspace/extracted \
+    && rm app.jar
 
-FROM eclipse-temurin:25-jre@sha256:5cf92df78f6dba978777d5cffa3c856e583f86814fde82a6c3534ccdfd794f2f
+FROM eclipse-temurin:25-jre@sha256:5cf92df78f6dba978777d5cffa3c856e583f86814fde82a6c3534ccdfd794f2f AS runtime-base
 WORKDIR /app
 
 # 컨테이너 친화적 JVM 옵션
@@ -33,16 +45,23 @@ RUN apt-get update \
     && mkdir -p /app/logs \
     && chown -R spring:spring /app
 
-# 변경 빈도가 낮은 레이어부터 복사 — 의존성 레이어는 build.gradle.kts가 그대로면 캐시 재사용된다.
-COPY --from=build /workspace/extracted/dependencies/ ./
-COPY --from=build /workspace/extracted/spring-boot-loader/ ./
-COPY --from=build /workspace/extracted/snapshot-dependencies/ ./
-COPY --from=build /workspace/extracted/application/ ./
-
 USER 10001:10001
 EXPOSE 8080
 
-HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=10 \
+HEALTHCHECK --interval=5s --timeout=5s --start-period=30s --retries=30 \
     CMD curl -fsS http://127.0.0.1:8080/actuator/health/readiness | grep -q '"status":"UP"' || exit 1
 
 ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
+
+# 변경 빈도가 낮은 레이어부터 복사 — 의존성 레이어는 build.gradle.kts가 그대로면 캐시 재사용된다.
+FROM runtime-base AS prebuilt
+COPY --from=prebuilt-extract /workspace/extracted/dependencies/ ./
+COPY --from=prebuilt-extract /workspace/extracted/spring-boot-loader/ ./
+COPY --from=prebuilt-extract /workspace/extracted/snapshot-dependencies/ ./
+COPY --from=prebuilt-extract /workspace/extracted/application/ ./
+
+FROM runtime-base AS production
+COPY --from=source-build /workspace/extracted/dependencies/ ./
+COPY --from=source-build /workspace/extracted/spring-boot-loader/ ./
+COPY --from=source-build /workspace/extracted/snapshot-dependencies/ ./
+COPY --from=source-build /workspace/extracted/application/ ./

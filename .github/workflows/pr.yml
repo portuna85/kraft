@@ -3,9 +3,16 @@ name: PR Check
 on:
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
 
 permissions:
   contents: read
+
+concurrency:
+  group: pr-security-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   dependency-scan:

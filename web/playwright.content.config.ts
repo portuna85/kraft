@@ -15,6 +15,7 @@ const FIXTURE_BACKEND_URL = "http://127.0.0.1:4101";
 export default defineConfig({
   testDir: "./e2e/content",
   fullyParallel: true,
+  workers: process.env.CI ? 4 : undefined,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",
@@ -40,6 +41,7 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
       env: {
+        NEXT_DIST_DIR: ".next-content",
         KRAFT_BACKEND_INTERNAL_URL: FIXTURE_BACKEND_URL,
         KRAFT_PUBLIC_BASE_URL: "http://127.0.0.1:3101",
         PORT: "3101",

@@ -2,7 +2,10 @@
 # gradlew*, settings.gradle.kts, build.gradle.kts, gradle.lockfile, gradle/, src/ 만 필요하다.
 # 아래 항목들은 데몬으로 전송될 필요가 없는 빌드 산출물/이력/무관 디렉터리다.
 .git
-build
+build/*
+!build/libs/
+build/libs/*
+!build/libs/kraft-backend.jar
 .gradle
 out
 

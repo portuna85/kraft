@@ -65,9 +65,9 @@ services:
       # 비밀번호를 -p CLI 인자로 넘기면 컨테이너 내 ps(1) 출력에 평문 노출된다.
       # MYSQL_PWD 환경변수 경유로 전달해 프로세스 목록 노출을 막는다.
       test: ["CMD-SHELL", "MYSQL_PWD=$$MARIADB_PASSWORD mariadb-admin ping -h 127.0.0.1 -u$$MARIADB_USER --silent"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
       start_period: 20s
     networks:
       - app
@@ -119,9 +119,9 @@ services:
         max-file: "3"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/actuator/health/readiness | grep -q '\"status\":\"UP\"'"]
-      interval: 15s
+      interval: 5s
       timeout: 5s
-      retries: 12
+      retries: 36
       start_period: 120s
     networks:
       - app
@@ -164,9 +164,9 @@ services:
         max-file: "3"
     healthcheck:
       test: ["CMD", "node", "healthcheck.js"]
-      interval: 15s
+      interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 30
       start_period: 30s
     networks:
       - app
@@ -225,9 +225,9 @@ services:
         max-file: "3"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO/dev/null http://127.0.0.1:2019/config/ 2>&1"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 6
+      retries: 12
       start_period: 10s
     networks:
       - edge
