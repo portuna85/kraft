@@ -242,6 +242,24 @@ class WinningStatisticsCacheServiceTest {
     }
 
     @Test
+    @DisplayName("KB-16: rebuild 이후 새 회차가 수집되면(구조적으로는 여전히 완전) totalRounds는 실시간 count가 아니라 마지막 rebuild 시점 스냅숏을 반환한다")
+    void getFrequencyStats_newRoundCollectedAfterRebuild_totalRoundsReflectsLastRebuildSnapshotNotLiveCount() {
+        // setUp에 이미 회차 1, 2가 있다 — 여기서 명시적으로 rebuild해 summary/프로젝션
+        // 상태를 "회차 2개" 스냅숏으로 고정한다.
+        summaryRebuilder.rebuildAllSummaries();
+
+        // rebuild 없이 회차를 하나 더 추가한다 — summary는 여전히 45개(구조적으로 완전)라
+        // getFrequencyStats()의 불완전성 검사(size != 45)로는 이 staleness를 못 잡는다.
+        // 예전 구현(winningNumberRepository.count())이라면 여기서 totalRounds=3이 나와
+        // summary 내용(2개 회차 기준 빈도)과 분모(3)가 서로 다른 시점을 가리키게 된다.
+        winningNumberRepository.save(round(3, 9, 10, 11, 12, 13, 14, 15));
+
+        FrequencyStatsResponse response = service.getFrequencyStats();
+
+        assertThat(response.totalRounds()).isEqualTo(2);
+    }
+
+    @Test
     @DisplayName("limit이 실제 저장된 회차 수보다 크면 totalRounds는 요청 limit이 아니라 실제 표본 수를 반환한다")
     void getFrequencyStatsByLimit_limitExceedsAvailableRounds_totalRoundsReflectsActualCount() {
         FrequencyStatsResponse response = service.getFrequencyStatsByLimit(500);

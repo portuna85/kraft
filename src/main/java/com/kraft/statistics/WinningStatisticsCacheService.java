@@ -41,6 +41,7 @@ public class WinningStatisticsCacheService {
     private final FrequencySummaryRepository frequencySummaryRepository;
     private final PatternStatsSummaryRepository patternStatsSummaryRepository;
     private final CompanionPairSummaryRepository companionPairSummaryRepository;
+    private final StatisticsProjectionStateRepository statisticsProjectionStateRepository;
     private final StatisticsSummaryRebuilder summaryRebuilder;
     private final FirstPrizeHistoryService firstPrizeHistoryService;
 
@@ -48,12 +49,14 @@ public class WinningStatisticsCacheService {
                                          FrequencySummaryRepository frequencySummaryRepository,
                                          PatternStatsSummaryRepository patternStatsSummaryRepository,
                                          CompanionPairSummaryRepository companionPairSummaryRepository,
+                                         StatisticsProjectionStateRepository statisticsProjectionStateRepository,
                                          StatisticsSummaryRebuilder summaryRebuilder,
                                          FirstPrizeHistoryService firstPrizeHistoryService) {
         this.winningNumberRepository = winningNumberRepository;
         this.frequencySummaryRepository = frequencySummaryRepository;
         this.patternStatsSummaryRepository = patternStatsSummaryRepository;
         this.companionPairSummaryRepository = companionPairSummaryRepository;
+        this.statisticsProjectionStateRepository = statisticsProjectionStateRepository;
         this.summaryRebuilder = summaryRebuilder;
         this.firstPrizeHistoryService = firstPrizeHistoryService;
     }
@@ -250,12 +253,17 @@ public class WinningStatisticsCacheService {
     // ──────────────────────────────────────────────
 
     /**
-     * summary 기반(전체 이력) 응답의 totalRounds. summary는 winning_numbers 전체 행으로
-     * 만들어지므로, 실제 표본 수는 최신 회차 번호(latestRound)가 아니라 실제 저장된
-     * 회차 수(row count)다 — 중간 누락 회차가 있으면 두 값이 달라진다(T1).
+     * summary 기반(전체 이력) 응답의 totalRounds. KB-16: 예전에는 winning_numbers의
+     * 실시간 count()를 썼는데, summary(분자)는 마지막 rebuild 시점 스냅숏인 반면 이 값(분모)은
+     * 서빙 시점 값이라 그 사이 새 회차가 수집되면 분자·분모가 서로 다른 시점을 가리켰다.
+     * 프로젝션 상태에 rebuild가 원자적으로 남긴 sourceRowCount를 대신 써서, summary 내용과
+     * 항상 같은 스냅숏을 보장한다. 상태 행이 아직 없으면(이론상 마이그레이션이 항상 백필하므로
+     * 발생하지 않음) 실시간 count로 폴백한다.
      */
     private int sampleRoundCount() {
-        return (int) winningNumberRepository.count();
+        return statisticsProjectionStateRepository.findById(StatisticsProjectionState.SINGLETON_ID)
+                .map(state -> (int) state.getSourceRowCount())
+                .orElseGet(() -> (int) winningNumberRepository.count());
     }
 
     private static List<AnalysisResponse.RangeDistribution> computeRangeDistribution(List<Integer> numbers) {

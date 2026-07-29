@@ -43,6 +43,7 @@ public class StatisticsSummaryRebuilder {
     private final FrequencySummaryRepository frequencySummaryRepository;
     private final PatternStatsSummaryRepository patternStatsSummaryRepository;
     private final CompanionPairSummaryRepository companionPairSummaryRepository;
+    private final StatisticsProjectionStateRepository statisticsProjectionStateRepository;
     private final Clock clock;
     private final LockingTaskExecutor lockingTaskExecutor;
     private final MeterRegistry meterRegistry;
@@ -52,6 +53,7 @@ public class StatisticsSummaryRebuilder {
                                       FrequencySummaryRepository frequencySummaryRepository,
                                       PatternStatsSummaryRepository patternStatsSummaryRepository,
                                       CompanionPairSummaryRepository companionPairSummaryRepository,
+                                      StatisticsProjectionStateRepository statisticsProjectionStateRepository,
                                       Clock clock,
                                       LockProvider lockProvider,
                                       MeterRegistry meterRegistry,
@@ -60,6 +62,7 @@ public class StatisticsSummaryRebuilder {
         this.frequencySummaryRepository = frequencySummaryRepository;
         this.patternStatsSummaryRepository = patternStatsSummaryRepository;
         this.companionPairSummaryRepository = companionPairSummaryRepository;
+        this.statisticsProjectionStateRepository = statisticsProjectionStateRepository;
         this.clock = clock;
         this.lockingTaskExecutor = new DefaultLockingTaskExecutor(lockProvider);
         this.meterRegistry = meterRegistry;
@@ -96,6 +99,7 @@ public class StatisticsSummaryRebuilder {
         Timer.Sample sample = Timer.start(meterRegistry);
         try {
             List<WinningBallsOnly> all = winningNumberRepository.findAllBalls();
+            OffsetDateTime now = OffsetDateTime.now(clock);
             if (all.isEmpty()) {
                 // 원본이 비었는데 기존 summary를 그대로 두면(T2), 예를 들어 DB 초기화나 복원
                 // 직후 조회 API가 실제로는 존재하지 않는 이전 이력을 계속 정상 응답처럼 보여준다.
@@ -104,16 +108,18 @@ public class StatisticsSummaryRebuilder {
                 frequencySummaryRepository.deleteAllInBatch();
                 patternStatsSummaryRepository.deleteAllInBatch();
                 companionPairSummaryRepository.deleteAllInBatch();
+                recordProjectionState(0, 0, now);
                 recordRebuildOutcome("empty");
                 return true;
             }
 
             log.info("Starting statistics summary rebuild: totalRounds={}", all.size());
-            OffsetDateTime now = OffsetDateTime.now(clock);
 
             rebuildFrequency(all, now);
             rebuildPatterns(all, now);
             rebuildCompanions(all, now);
+            int lastProcessedRound = all.stream().mapToInt(WinningBallsOnly::getRound).max().orElse(0);
+            recordProjectionState(lastProcessedRound, all.size(), now);
             recordRebuildOutcome("success");
             log.info("Completed statistics summary rebuild");
             return true;
@@ -125,6 +131,19 @@ public class StatisticsSummaryRebuilder {
                     .description("Time spent rebuilding cached statistics summaries")
                     .register(meterRegistry));
         }
+    }
+
+    /**
+     * KB-16: summary 테이블 쓰기와 같은(REQUIRES_NEW) 트랜잭션 안에서 프로젝션 상태를
+     * 원자적으로 갱신한다 — 이 메서드가 커밋되지 않으면 summary도 커밋되지 않으므로,
+     * 상태 행의 sourceRowCount는 항상 방금 커밋된 summary 내용과 같은 스냅숏을 가리킨다.
+     */
+    private void recordProjectionState(int lastProcessedRound, long sourceRowCount, OffsetDateTime now) {
+        StatisticsProjectionState state = statisticsProjectionStateRepository
+                .findById(StatisticsProjectionState.SINGLETON_ID)
+                .orElseGet(() -> new StatisticsProjectionState(StatisticsProjectionState.SINGLETON_ID));
+        state.recordSuccess(lastProcessedRound, sourceRowCount, now);
+        statisticsProjectionStateRepository.save(state);
     }
 
     private void recordRebuildOutcome(String outcome) {
