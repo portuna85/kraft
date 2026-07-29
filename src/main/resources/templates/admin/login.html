@@ -11,9 +11,10 @@
     h1 { color: #f1f5f9; font-size: 1.4rem; margin-bottom: 0.25rem; }
     p.sub { color: #94a3b8; font-size: 0.85rem; margin-bottom: 1.75rem; }
     label { display: block; color: #cbd5e1; font-size: 0.8rem; margin-bottom: 0.35rem; }
-    input { width: 100%; background: #0f172a; border: 1px solid #475569; border-radius: 6px; color: #f1f5f9; font-size: 0.95rem; padding: 0.6rem 0.75rem; margin-bottom: 1rem; }
+    input { width: 100%; min-height: 44px; background: #0f172a; border: 1px solid #475569; border-radius: 6px; color: #f1f5f9; font-size: 0.95rem; padding: 0.6rem 0.75rem; margin-bottom: 1rem; }
     input:focus { outline: 2px solid #6366f1; border-color: transparent; }
-    button { width: 100%; background: #6366f1; color: #fff; border: none; border-radius: 6px; padding: 0.65rem; font-size: 0.95rem; cursor: pointer; margin-top: 0.25rem; }
+    button { width: 100%; min-height: 44px; background: #6366f1; color: #fff; border: none; border-radius: 6px; padding: 0.65rem; font-size: 0.95rem; cursor: pointer; margin-top: 0.25rem; }
+    @media (max-width: 480px) { body { padding: 1rem; } .card { padding: 1.5rem 1.25rem; } }
     button:hover { background: #4f46e5; }
     .alert { border-radius: 6px; font-size: 0.85rem; padding: 0.6rem 0.75rem; margin-bottom: 1rem; }
     .alert-error { background: #450a0a; border: 1px solid #ef4444; color: #fca5a5; }

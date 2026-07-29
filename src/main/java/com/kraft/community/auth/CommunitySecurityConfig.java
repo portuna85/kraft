@@ -38,8 +38,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 /**
  * 커뮤니티 OAuth2 로그인 체인. admin(@Order(1))보다 뒤, public API(@Order(2)→(3)으로
  * 재번호)보다 앞에 위치해야 /api/v1/community/**가 public 체인의 넓은 /api/** matcher에
- * 선점당하지 않는다(§4.1). ADR-0001: Phase 1 servlet 세션. ADR-0002: CookieCsrfTokenRepository
- * double-submit.
+ * 선점당하지 않는다. 세션 인증과 CookieCsrfTokenRepository double-submit을 사용한다.
  */
 @Configuration
 public class CommunitySecurityConfig {
@@ -100,7 +99,7 @@ public class CommunitySecurityConfig {
                 .build();
     }
 
-    // CSRF 거부율 관측(§7 5단계: "409/CSRF 거부율" 메트릭)과 공통 오류 계약(§P1-03) —
+    // CSRF 거부율 관측 메트릭과 공통 오류 계약 —
     // CsrfException 외의 접근 거부도 동일한 ApiErrorResponse JSON으로 403을 내려보낸다.
     private AccessDeniedHandler accessDeniedHandler() {
         Counter csrfRejectedCounter = Counter.builder("kraft_community_csrf_rejected_total")

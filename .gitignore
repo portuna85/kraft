@@ -88,3 +88,4 @@ scripts/archive/migrate-2026-06/env-migration.sh
 docs/*.md
 docs/**/*.md
 !docs/api.md
+!docs/improvement.md

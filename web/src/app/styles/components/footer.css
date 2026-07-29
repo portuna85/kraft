@@ -1,0 +1,29 @@
+.footer {
+  padding: 32px 0 max(60px, env(safe-area-inset-bottom));
+  color: var(--muted);
+}
+
+.site-footer-bottom {
+  margin-top: auto;
+  padding: 36px 0 60px;
+  border-top: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 252, 247, 0.72));
+  color: var(--muted);
+}
+
+.footer-inner {
+  display: grid;
+  gap: 12px;
+  max-width: 72rem;
+}
+
+.footer-nav a:hover {
+  color: var(--text);
+}
+
+/* Responsive layers own the narrower mobile/tablet max-width. */
+.footer-copy {
+  font-size: var(--fs-xs);
+  margin: 0;
+  line-height: 1.5;
+}

@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { gotoAndWaitForRealContent } from "../lib/goto-real-content";
 
-// Phase 0 기준선(docs/improvement_gpt.md §17 Phase 0): Phase 1~6에서 디자인 토큰/셸/컴포넌트를
+// 시각 회귀 기준선: 이후 디자인 토큰/셸/컴포넌트를
 // 옮기다 시각적으로 뭔가 깨지면 여기서 잡는다. 라우트·테마 조합마다 전체 페이지
 // 스크린샷을 고정한다 — 베이스라인 갱신은 `npx playwright test --config=playwright.visual.config.ts
 // --update-snapshots`.

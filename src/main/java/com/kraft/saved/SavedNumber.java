@@ -73,7 +73,7 @@ public class SavedNumber {
         return createdAt;
     }
 
-    /** 로그인 계정 귀속(Phase 4) — 익명 소유권을 계정 소유권으로 상호 배타 전환한다. */
+    /** 로그인 계정 귀속 — 익명 소유권을 계정 소유권으로 상호 배타 전환한다. */
     void claimTo(Long ownerUserId) {
         this.ownerUserId = ownerUserId;
         this.clientTokenHash = null;

@@ -18,7 +18,7 @@
   margin-top: 28px;
 }
 
-/* Phase 1 2단계: 320×568(문서 기준 최소 참조 뷰포트, 여유 없음)처럼 짧은 화면에서는
+/* 320×568 최소 참조 뷰포트처럼 짧은 화면에서는
    .not-found 콘텐츠(제목+본문+버튼)가 이미 40vh를 넘어서 min-height 자체는 효과가
    없다 — 실제 병목은 세로 간격이다. 모바일 하단 내비게이션이 상시 56px를 차지하게
    되면서, 광고가 뜬 상태에서 CTA 버튼이 광고 영역과 겹치는 걸 실측으로 확인했다.
@@ -84,4 +84,56 @@
   font-size: 0.98rem;
   font-weight: 700;
   color: var(--text);
+}
+
+.prize-table-mobile-label {
+  display: none;
+}
+
+@media (max-width: 639px) {
+  .prize-table-wrap {
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .prize-table,
+  .prize-table tbody,
+  .prize-table tr,
+  .prize-table th,
+  .prize-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .prize-table tr {
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    margin-bottom: 10px;
+  }
+
+  .prize-table td,
+  .prize-table th {
+    padding: 4px 0;
+    text-align: left;
+    white-space: normal;
+    border: 0;
+  }
+
+  .prize-table-mobile-label {
+    display: block;
+    margin-bottom: 2px;
+    color: var(--muted);
+    font-size: var(--fs-sm);
+    font-weight: 700;
+  }
+
+  .prize-table-after-tax {
+    align-items: flex-start;
+  }
+
+  .prize-table-after-tax-label {
+    display: none;
+  }
 }

@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-// §6-5: 하단 고정 광고(StickyMobileAd)가 CTA·푸터를 실제로 가리는지 검증한다.
+// 하단 고정 광고(StickyMobileAd)가 CTA·푸터를 실제로 가리는지 검증한다.
 // playwright.ad-overlay.config.ts 전용 — NEXT_PUBLIC_KAKAO_ADFIT_UNIT_STICKY가
 // baked-in된 빌드에서만 광고가 mount된다. 카카오 애드핏 스크립트가 실제로 로드되는지는
 // 검증 대상이 아니다(오프라인 CI에서 무관) — .ad-unit의 min-height로 예약된 자리
@@ -88,7 +88,7 @@ test("하단 고정 광고가 푸터 내비게이션을 가리지 않는다 (페
   }
 });
 
-// Phase 1 2단계: 모바일 하단 내비게이션(MobileBottomNav)이 상시 bottom:0을 차지하게
+// 모바일 하단 내비게이션(MobileBottomNav)이 상시 bottom:0을 차지하게
 // 되면서, 광고는 그 위(bottom: var(--bottom-nav-h))로 옮겼다 — 광고가 내비 탭을
 // 가리거나, 반대로 내비 위에 어정쩡하게 겹쳐 뜨지 않는지 직접 확인한다.
 test("하단 고정 광고와 모바일 하단 내비게이션이 서로 겹치지 않고 광고가 내비 바로 위에 얹힌다", async ({

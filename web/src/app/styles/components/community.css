@@ -71,7 +71,7 @@
   background: var(--surface-card-sm);
 }
 
-/* F-10: 이전엔 379px라는 규격 외(§2.3 640/1024 기준과 무관한) 매직 브레이크포인트로
+/* F-10: 이전엔 379px라는 640/1024 기준과 무관한 매직 브레이크포인트로
    좁은 화면에서만 16px로 줄였다. .ball의 R-20과 같은 방식으로 뷰포트 폭에 따라
    부드럽게 흐르는 clamp()로 바꾼다 — 380px 근처에서 ~16px, 667px 이상에서 28px로
    자연스럽게 수렴해 하드 컷오프 자체가 없어진다. */
@@ -170,14 +170,14 @@
   display: inline-flex;
   align-items: center;
   padding: 9px 12px;
-  min-height: 40px;
+  min-height: var(--target-min);
 }
 
 /* R-32: 로그인 상태 320px 헤더에서 전역 46px 주황 pill CTA를 그대로 쓰면
    브랜드+로그아웃+햄버거+테마 합산이 뷰포트 폭을 넘는다 — compact outline로 축소. */
 .account-logout-button {
   width: auto;
-  min-height: 40px;
+  min-height: var(--target-min);
   padding: 8px 12px;
   font-size: var(--fs-sm);
   background-color: transparent;
@@ -192,7 +192,7 @@
   display: none;
 }
 
-/* F-P0-2: JSX에서 쓰지만 대응 규칙이 없어 무스타일이던 클래스들(감사 §4.1) — 최소한의
+/* F-P0-2: JSX에서 쓰지만 대응 규칙이 없어 무스타일이던 클래스들 — 최소한의
    레이아웃·간격만 잡는다. 세부 시각 다듬기는 이후 Phase에서. */
 .community-search-form {
   display: flex;
@@ -233,6 +233,36 @@
   color: var(--muted);
   font-size: var(--fs-sm);
   white-space: nowrap;
+}
+
+@media (max-width: 639px) {
+  .community-post-list-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px 10px;
+    padding: 14px 0;
+  }
+
+  .community-post-list-item > a {
+    grid-column: 1 / -1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-weight: 700;
+    line-height: 1.45;
+  }
+
+  .community-post-author {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .community-post-counts {
+    text-align: right;
+    font-size: 0.75rem;
+  }
 }
 
 .community-post-detail {

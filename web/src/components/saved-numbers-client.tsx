@@ -41,6 +41,7 @@ export function SavedNumbersClient({ latestRound }: Props) {
   const [items, setItems] = useState<SavedNumber[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [message, setMessage] = useState("");
   const [selectedRound, setSelectedRound] = useState<string>("latest");
   const [customRoundInput, setCustomRoundInput] = useState("");
   const [matchMap, setMatchMap] = useState<Map<number, SavedNumberMatchResult>>(new Map());
@@ -119,6 +120,7 @@ export function SavedNumbersClient({ latestRound }: Props) {
       } catch (err) {
         // 삭제 실패 — 대기 상태만 풀고 항목은 그대로 유지한다.
         if (!(err instanceof BrowserApiError || err instanceof Error)) throw err;
+        setMessage("저장 번호를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
       } finally {
         setPendingDeleteIds((prev) => {
           const next = new Set(prev);
@@ -169,6 +171,7 @@ export function SavedNumbersClient({ latestRound }: Props) {
 
   return (
     <div className="saved-layout">
+      {message ? <p className="status-text" role="status" aria-live="polite">{message}</p> : null}
       {isLoading ? (
         <p className="saved-empty-state">저장된 번호를 불러오는 중입니다.</p>
       ) : hasError ? (

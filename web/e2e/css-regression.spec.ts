@@ -30,7 +30,7 @@ function loadAppCss(relPath: string): string {
 }
 const CSS = loadGlobalsCss();
 
-// Phase 5: /frequency, /stats, /companion의 페이지 전용 규칙은 CSS Modules로 이관됐다
+// /frequency, /stats, /companion의 페이지 전용 규칙은 CSS Modules로 이관됐다
 // — globals.css 매니페스트에는 더 이상 없으므로 각 페이지 모듈 파일을 직접 읽는다.
 // 세 모듈이 전부 로컬 클래스명 `.item`을 쓰므로(각기 다른 gap 값), 한 페이지에 동시
 // 주입하면 마지막에 로드된 모듈이 나머지를 덮어써 충돌한다 — 그래서 페이지마다

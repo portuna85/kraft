@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { expectNoA11yViolations } from "./lib/expect-no-a11y-violations";
 
-// F-01: 백엔드가 없다는 전제(§6-2 기본 트랙)에서도 실제로 사용자가 보는 화면 —
+// F-01: 백엔드가 없다는 기본 트랙에서도 실제로 사용자가 보는 화면 —
 // 폼 전용 페이지, 에러/폴백 경계, 404 — 을 axe로 스캔한다. 실콘텐츠 상태(홈·통계
 // 등)는 픽스처 백엔드가 있는 content 트랙(e2e/content/accessibility.spec.ts)이 맡는다.
 const PAGES: Array<{ name: string; path: string }> = [

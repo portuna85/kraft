@@ -25,7 +25,7 @@ public class CommunityBlockService {
         this.clock = clock;
     }
 
-    /** 멱등 — 이미 차단돼 있어도 오류 대신 성공으로 흡수한다(문서 13.5 USER_ALREADY_BLOCKED). */
+    /** 멱등 — 이미 차단돼 있어도 USER_ALREADY_BLOCKED 오류 대신 성공으로 흡수한다. */
     public void block(Long blockerUserId, Long blockedUserId) {
         if (blockerUserId.equals(blockedUserId)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "COMMUNITY_SELF_BLOCK_NOT_ALLOWED",

@@ -1,8 +1,7 @@
 // 운영에서는 Caddy가 /api/v1/* 를 backend:8080으로 직결하므로 web/src/app/api/v1/**의
 // route handler(이 함수를 호출하는 쪽)는 도달하지 않는다. 이 프록시는 `npm run dev`로
 // Next.js만 단독 실행할 때(Caddy 없이) 백엔드를 호출하기 위한 로컬 개발용 폴백이다.
-const backendBaseUrl =
-  process.env.KRAFT_BACKEND_INTERNAL_URL ?? "http://backend:8080";
+import { backendBaseUrl } from "@/lib/backend-url";
 
 const passthroughHeaders = [
   "cache-control",
@@ -45,6 +44,15 @@ export function communityProxyHeaders(
   const xsrfToken = req.headers.get("x-xsrf-token");
   if (xsrfToken) headers["x-xsrf-token"] = xsrfToken;
   return headers;
+}
+
+/** Headers permitted for anonymous device-scoped API routes. */
+export function deviceProxyHeaders(req: Request, json = false): Record<string, string> {
+  const token = req.headers.get("X-Device-Token");
+  return {
+    ...(json ? { "Content-Type": "application/json" } : {}),
+    ...(token ? { "X-Device-Token": token } : {}),
+  };
 }
 
 export async function proxyBackend(

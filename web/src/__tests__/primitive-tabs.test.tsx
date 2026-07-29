@@ -34,5 +34,6 @@ describe("Tabs 프리미티브", () => {
     render(<Tabs items={ITEMS} value="latest" onChange={onChange} panelIdPrefix="feed" />);
     fireEvent.keyDown(screen.getByRole("tab", { name: "최신" }), { key: "ArrowLeft" });
     expect(onChange).toHaveBeenCalledWith("weekly");
+    expect(screen.getByRole("tab", { name: "이번 주 인기" })).toHaveFocus();
   });
 });

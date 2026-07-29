@@ -4,21 +4,23 @@ import { notFound } from "next/navigation";
 import { FAQ_ITEMS, buildFaqPageJsonLd } from "@/lib/csp-inline-scripts";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
 import { getPublicBaseUrl } from "@/lib/api";
+import {
+  INFO_PAGE_METADATA,
+  INFO_PAGE_SLUGS,
+  isInfoPageSlug,
+  type InfoPageSlug,
+} from "@/lib/info-page-metadata";
 import { serializeJsonLd } from "@/lib/json-ld-serialize";
 import styles from "./info.module.css";
 
 type Props = { params: Promise<{ slug: string }> };
 
 type InfoPage = {
-  title: string;
-  description: string;
   content: React.ReactNode;
 };
 
-const infoPages: Record<string, InfoPage> = {
+const infoPages: Record<InfoPageSlug, InfoPage> = {
   "data-source": {
-    title: "데이터 출처",
-    description: "KRAFT Lotto에서 사용하는 당첨 결과 데이터의 출처와 반영 기준을 안내합니다.",
     content: (
       <article className={styles.article}>
         <h2>공식 데이터 출처</h2>
@@ -53,8 +55,6 @@ const infoPages: Record<string, InfoPage> = {
   },
 
   methodology: {
-    title: "분석 방법론",
-    description: "빈도, 패턴, 동반 출현 등 KRAFT Lotto 통계 화면의 계산 기준을 설명합니다.",
     content: (
       <article className={styles.article}>
         <h2>통계 분석 개요</h2>
@@ -74,7 +74,7 @@ const infoPages: Record<string, InfoPage> = {
         <ul>
           <li><strong>홀짝 비율:</strong> 당첨 번호 6개 중 홀수 개수를 0~6으로 분류합니다.</li>
           <li><strong>고저 비율:</strong> 1~22를 저번호, 23~45를 고번호로 분류하여 고번호 개수를 집계합니다.</li>
-          <li><strong>합계 구간:</strong> 6개 번호의 합계를 50단위 구간(~100, 101~150, …)으로 나눕니다.</li>
+          <li><strong>합계 구간:</strong> 6개 번호의 합계를 21~65, 66~110, 111~155, 156~200, 201~255 구간으로 나눕니다.</li>
         </ul>
 
         <h2>동반 분석 (Companion)</h2>
@@ -89,7 +89,7 @@ const infoPages: Record<string, InfoPage> = {
           역대 1등 당첨 조합은 결과에서 제외하며, 제외 번호를 입력하면 해당 숫자는 후보에서 제거합니다.
         </p>
         <p>
-          <strong>공동 당첨 분산형 추천</strong>을 활성화하면 비인기 조합을 우선 선택합니다.
+          <strong>공동 당첨 위험 완화 추천</strong>은 비인기 조합을 우선 선택합니다.
           같은 회차에 동일 조합을 구매한 공동 당첨자가 적을수록 개인 수령액이 높아지는 원리를 활용합니다.
           생일 번호(1~31) 편향, 라운드 번호(5·7 배수) 편향, 낮은 합계 편향을 역이용해
           후보 50개 중 비인기도 점수가 가장 높은 조합을 반환합니다.
@@ -105,8 +105,6 @@ const infoPages: Record<string, InfoPage> = {
   },
 
   faq: {
-    title: "자주 묻는 질문",
-    description: "추천 번호, 저장함, 데이터 반영 시점 등 자주 묻는 질문을 모았습니다.",
     content: (
       <article className={styles.article}>
         {FAQ_ITEMS.map((item) => (
@@ -120,22 +118,24 @@ const infoPages: Record<string, InfoPage> = {
   },
 
   privacy: {
-    title: "개인정보처리방침",
-    description: "KRAFT Lotto의 기기 토큰, 로그 보관, 삭제 요청 처리 기준을 안내합니다.",
     content: (
       <article className={styles.article}>
         <p className="muted">시행일: 2026년 1월 1일</p>
 
         <h2>수집하는 정보</h2>
         <p>
-          KRAFT Lotto는 회원가입 없이 이용할 수 있습니다. 저장함 기능을 사용할 때는
-          브라우저에 익명 기기 토큰(UUID)이 생성되며, 이 토큰과 연결된 저장 번호만 서버에 보관합니다.
-          이름, 이메일, 연락처 같은 직접 식별 정보는 기본적으로 수집하지 않습니다.
+          KRAFT Lotto의 당첨 조회·추천 기능은 회원가입 없이 이용할 수 있습니다. 저장함 기능을 사용할 때는
+          브라우저에 익명 기기 토큰(UUID)이 생성되며, 이 토큰과 연결된 저장 번호와 추천 이력이 서버에 보관될 수 있습니다.
+          커뮤니티 로그인 시에는 OAuth 제공자명과 제공자별 식별자, 닉네임, 프로필 이미지 URL, 로그인 세션을 처리합니다.
+          이메일과 회원 이름은 서비스에서 수집·저장하지 않습니다.
         </p>
 
         <h2>정보 이용 목적</h2>
         <ul>
           <li>기기 토큰: 저장한 번호를 현재 브라우저와 연결하기 위한 익명 식별자</li>
+          <li>커뮤니티 계정: 로그인, 작성자 표시, 신고·차단과 운영 조치를 위한 OAuth 식별자·닉네임·프로필 이미지</li>
+          <li>커뮤니티 활동: 게시글·댓글, 반응, 신고, 차단 및 관련 운영 기록</li>
+          <li>추천·저장 이력: 사용자가 생성하거나 저장한 번호를 표시·관리하고 계정 귀속을 처리하기 위한 정보</li>
           <li>서버 로그: 장애 대응과 보안 점검을 위해 IP 주소, 접근 시각 등을 단기 보관</li>
         </ul>
 
@@ -144,25 +144,26 @@ const infoPages: Record<string, InfoPage> = {
 
         <h2>제3자 광고 서비스</h2>
         <p>
-          KRAFT Lotto는 카카오 애드핏(Kakao Adfit) 광고 서비스를 사용합니다.
-          광고 제공을 위해 카카오의 스크립트가 로드되며, 카카오는 쿠키 또는 유사 기술을 사용해
+          KRAFT Lotto는 배포 설정에 따라 카카오 애드핏(Kakao Adfit) 또는 Google AdSense 광고 서비스를 사용할 수 있습니다.
+          광고 제공을 위해 해당 사업자의 스크립트가 로드되며, 각 사업자는 쿠키 또는 유사 기술을 사용해
           관심 기반 광고를 제공할 수 있습니다. 수집·이용되는 정보와 거부 방법은
           <a href="https://www.kakao.com/policy/privacy" target="_blank" rel="noopener noreferrer">
             카카오 개인정보처리방침
           </a>
-          을 참고하세요.
+          을 참고하세요. Google AdSense가 활성화된 배포에서는 Google의 개인정보처리방침도 함께 적용됩니다.
         </p>
 
         <h2>보관 기간</h2>
         <p>
-          저장 번호는 사용자가 삭제할 때까지 유지되며, 서비스 종료 시 안전하게 파기합니다.
+          저장 번호와 추천 이력은 사용자가 삭제하거나 계정을 탈퇴할 때까지 유지됩니다. 게시글·댓글·신고·운영 기록의
+          보관 기간과 탈퇴 후 처리 기준, 광고 관련 처리의 세부 사항은 법률 검토를 거쳐 별도 개정 고지로 확정합니다.
           서버 로그는 최대 30일 동안 보관한 뒤 삭제합니다.
         </p>
 
         <h2>이용자의 권리</h2>
         <p>
-          저장한 번호는 저장함 페이지에서 언제든 직접 삭제할 수 있습니다.
-          추가 삭제 요청이나 문의가 필요한 경우 문의하기 페이지를 이용해 주세요.
+          저장한 번호와 추천 이력은 각 보관함에서 직접 삭제할 수 있습니다. 커뮤니티 계정의 탈퇴, 게시물 처리,
+          추가 열람·정정·삭제 요청은 문의하기 페이지를 통해 접수할 수 있습니다.
         </p>
 
         <h2>문의</h2>
@@ -172,8 +173,6 @@ const infoPages: Record<string, InfoPage> = {
   },
 
   terms: {
-    title: "이용약관",
-    description: "KRAFT Lotto 서비스 이용 조건과 책임 범위를 안내합니다.",
     content: (
       <article className={styles.article}>
         <p className="muted">시행일: 2026년 1월 1일</p>
@@ -213,8 +212,6 @@ const infoPages: Record<string, InfoPage> = {
   },
 
   contact: {
-    title: "문의하기",
-    description: "서비스 오류, 개선 제안, 데이터 수정 요청을 보낼 수 있는 연락처를 안내합니다.",
     content: (
       <article className={styles.article}>
         <h2>문의 방법</h2>
@@ -250,8 +247,6 @@ const infoPages: Record<string, InfoPage> = {
   },
 
   "responsible-play": {
-    title: "건전한 이용",
-    description: "로또를 무리 없이 즐기기 위한 기본 원칙과 도움 받을 수 있는 기관을 안내합니다.",
     content: (
       <article className={styles.article}>
         <div className={styles.noticeBox}>
@@ -300,13 +295,13 @@ const infoPages: Record<string, InfoPage> = {
 };
 
 export function generateStaticParams() {
-  return Object.keys(infoPages).map((slug) => ({ slug }));
+  return INFO_PAGE_SLUGS.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const info = infoPages[slug];
-  if (!info) return {};
+  if (!isInfoPageSlug(slug)) return {};
+  const info = INFO_PAGE_METADATA[slug];
   return {
     title: info.title,
     description: info.description,
@@ -316,17 +311,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function InfoPage({ params }: Props) {
   const { slug } = await params;
+  if (!isInfoPageSlug(slug)) notFound();
   const info = infoPages[slug];
-  if (!info) notFound();
+  const metadata = INFO_PAGE_METADATA[slug];
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   const baseUrl = getPublicBaseUrl();
 
   return (
     <section className="panel">
-      <JsonLdBreadcrumb baseUrl={baseUrl} nonce={nonce} items={[{ name: info.title, item: `${baseUrl}/info/${slug}` }]} />
+      <JsonLdBreadcrumb baseUrl={baseUrl} nonce={nonce} items={[{ name: metadata.title, item: `${baseUrl}/info/${slug}` }]} />
       <p className="eyebrow">서비스 안내</p>
-      <h1 className="page-title">{info.title}</h1>
-      <p className="page-subtitle">{info.description}</p>
+      <h1 className="page-title">{metadata.title}</h1>
+      <p className="page-subtitle">{metadata.description}</p>
       {slug === "faq" ? (
         <script
           type="application/ld+json"

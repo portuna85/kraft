@@ -98,7 +98,7 @@ class CommunityPostServiceTest {
     @DisplayName("추천 세트 첨부 시 기기 토큰 소유권을 교차검증한다")
     void create_withAttachment_verifiesOwnershipThenPersists() {
         given(recommendationSetHistoryService.get("hash-1", 5L))
-                .willReturn(new RecommendationSetSummary(5L, "random", "uniform-random-v1", 1189,
+                .willReturn(new RecommendationSetSummary(5L, "random", "uniform-random-v1", 1189, "historical-first-prize-v1",
                         List.of(), List.of(), OffsetDateTime.now(CLOCK), List.of()));
         given(communityPostRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
@@ -224,7 +224,7 @@ class CommunityPostServiceTest {
         CommunityPostMetrics metrics = new CommunityPostMetrics(1L, OffsetDateTime.now(CLOCK));
         given(communityPostMetricsRepository.findByPostId(1L)).willReturn(Optional.of(metrics));
         given(recommendationSetHistoryService.getForAttachment(5L)).willReturn(
-                new RecommendationSetSummary(5L, "balanced", "balanced-v1", 1189, List.of(), List.of(),
+                new RecommendationSetSummary(5L, "balanced", "balanced-v1", 1189, "historical-first-prize-v1", List.of(), List.of(),
                         OffsetDateTime.now(CLOCK), List.of()));
 
         CommunityPostResponse response = service.toResponse(post);

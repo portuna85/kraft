@@ -82,7 +82,8 @@ class IdentityMergeApiTest {
                 deviceTokenHash, lottoNumberCodec.toStorageValue(java.util.List.of(1, 2, 3, 4, 5, 6)),
                 "즐겨찾기", "MANUAL", OffsetDateTime.now()));
         recommendationSetRepository.save(new RecommendationSet(
-                deviceTokenHash, "random", "uniform-random-v1", 1189, null, null, OffsetDateTime.now()));
+                deviceTokenHash, "random", "uniform-random-v1", 1189,
+                "historical-first-prize-v1", null, null, OffsetDateTime.now()));
 
         mockMvc.perform(post("/api/v1/community/session/claim-device")
                         .with(asUser(owner))

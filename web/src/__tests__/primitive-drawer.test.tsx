@@ -22,6 +22,8 @@ describe("Drawer 프리미티브", () => {
     );
     const drawer = screen.getByRole("dialog");
     expect(drawer).toHaveAttribute("aria-labelledby", "drawer-title");
+    expect(drawer).toHaveAttribute("tabindex", "-1");
+    expect(screen.getByRole("button", { name: "닫기" })).toHaveFocus();
   });
 
   it("Escape 키를 누르면 onClose를 호출한다", () => {

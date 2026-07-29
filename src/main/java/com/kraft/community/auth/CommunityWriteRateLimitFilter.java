@@ -23,7 +23,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * community 쓰기(POST/PUT/DELETE)에 대해 PublicRateLimitFilter(IP 키, 공개 조회용)보다
- * 엄격한 사용자 ID 키 한도를 추가로 건다(§7 3단계: "쓰기 레이트리밋, userId 키"). 이 필터는
+ * 엄격한 사용자 ID 키 한도를 추가로 건다. 이 필터는
  * Spring Security 체인 내부에 등록되어 인증 이후(AuthorizationFilter 다음)에 실행되므로
  * SecurityContext에서 CommunityPrincipal을 안전하게 읽을 수 있다.
  *

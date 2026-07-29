@@ -16,6 +16,8 @@ public record RecommendNumbersResponse(
         String strategy,
         String algorithmVersion,
         int historyThroughRound,
+        boolean historicalExclusionApplied,
+        String exclusionPolicyVersion,
         Long setId,
         List<RecommendationItemView> items,
         OffsetDateTime createdAt

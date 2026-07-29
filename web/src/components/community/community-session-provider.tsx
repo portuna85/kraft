@@ -43,7 +43,7 @@ export function CommunitySessionProvider({ children }: { children: ReactNode }) 
             })
             .catch(() => {
               // 409(다른 계정이 이미 귀속) 등은 조용히 무시 — 사용자에게 에러로 노출하지 않는다.
-              // 회전은 하지 않으므로 다음 세션 조회 시 재시도된다(멱등, 문서 10.2 8단계).
+              // 회전은 하지 않으므로 다음 세션 조회 시 멱등하게 재시도된다.
             });
         }
       })

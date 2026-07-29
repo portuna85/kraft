@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
  * 조합의 "형태 균형" 정도를 평가하는 소프트 점수기 — 버전 {@link #VERSION}.
  *
  * 당첨 확률을 높이는 목적이 아니라, 과거 분포와 형태를 참고해 한쪽으로 치우치지 않은
- * 조합을 선호하도록 정렬하는 데만 쓰인다(문서 9.1절 BALANCED). 조건은 절대 필터가
+ * 조합을 선호하도록 정렬하는 데만 쓰인다(BALANCED 정책). 조건은 절대 필터가
  * 아니라 가점이며, 만족한 조건마다 {@link ExplanationCode}를 함께 반환해 프런트가
  * 근거를 표시할 수 있게 한다.
  */

@@ -160,7 +160,7 @@
     padding: 12px 8px;
     border-radius: 10px;
     border-bottom: 1px solid var(--line);
-    min-height: 40px;
+    min-height: var(--target-min);
     font-size: 1rem;
   }
 

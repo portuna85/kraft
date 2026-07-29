@@ -9,6 +9,7 @@ public record RecommendationSetSummary(
         String strategy,
         String algorithmVersion,
         int historyThroughRound,
+        String exclusionPolicyVersion,
         List<Integer> lockedNumbers,
         List<Integer> excludedNumbers,
         OffsetDateTime createdAt,

@@ -119,7 +119,7 @@ public class CommunityPost {
         this.updatedAt = updatedAt;
     }
 
-    /** 일반 사용자의 삭제 — 본문은 보존하고 공개 노출만 끈다(문서 11.2). */
+    /** 일반 사용자의 삭제 — 본문은 보존하고 공개 노출만 끈다. */
     void hideByAuthor(OffsetDateTime updatedAt) {
         this.status = PostStatus.HIDDEN_BY_AUTHOR;
         this.updatedAt = updatedAt;

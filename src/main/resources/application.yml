@@ -96,6 +96,9 @@ management:
     health:
       probes:
         enabled: true
+      group:
+        readiness:
+          include: readinessState,recommendationHistory
 
 # 계약(B-01): pathsToMatch를 패키지가 아닌 경로 기준으로 잡는다. com.kraft.ops 패키지에는
 # 공개 API인 InfoController(/api/v1)와 토큰 가드인 OpsController(/ops)가 같이 있어 패키지

@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { expectNoA11yViolations } from "../lib/expect-no-a11y-violations";
 import { gotoAndWaitForRealContent } from "../lib/goto-real-content";
 
-// F-01: §6-2 픽스처 백엔드로 실콘텐츠를 렌더한 상태에서 axe를 돌린다. 폴백/에러
+// F-01: 픽스처 백엔드로 실콘텐츠를 렌더한 상태에서 axe를 돌린다. 폴백/에러
 // 상태는 기본 트랙(e2e/accessibility.spec.ts)이 맡는다.
 const REAL_CONTENT_PAGES: Array<{ name: string; path: string }> = [
   { name: "홈", path: "/" },

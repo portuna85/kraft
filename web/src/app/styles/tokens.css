@@ -34,7 +34,7 @@
   --header-offset: calc(var(--header-h) + env(safe-area-inset-top));
   --target-min: 44px;
   --sticky-ad-h: calc(50px + env(safe-area-inset-bottom));
-  /* Phase 1 2단계: 모바일 하단 고정 내비 높이. 광고(--sticky-ad-h)는 이 위에 얹힌다
+  /* 모바일 하단 고정 내비 높이. 광고(--sticky-ad-h)는 이 위에 얹힌다
      (ads.css의 .ad-sticky-mobile bottom 참고). */
   --bottom-nav-h: calc(56px + env(safe-area-inset-bottom));
   /* 본문·라벨용 유동 타입 스케일. 각 토큰의 하한을 모바일(320px 부근) 렌더 크기로
@@ -47,7 +47,7 @@
   --fs-base: clamp(0.92rem, 0.87rem + 0.3vw, 0.98rem);
   --fs-md: clamp(1.05rem, 0.99rem + 0.35vw, 1.12rem);
 
-  /* ── Phase 1 신규/별칭 토큰(docs/phase0-design-tokens-mapping.md) ──────────
+  /* ── 신규/별칭 토큰 ────────────────────────────────────────────────────────
      기존 토큰은 하나도 이름을 바꾸거나 지우지 않는다 — 아래는 전부 추가만.
      별칭은 기존 값을 그대로 참조하므로 기존 페이지 시각 변화가 없다. */
 
@@ -136,7 +136,7 @@
   --shimmer-highlight: rgba(255, 255, 255, 0.04);
   --ring: rgba(224, 90, 40, 0.2);
 
-  /* Phase 1 색상 별칭 — 다크 값이 라이트와 다르므로 여기서 재선언 */
+  /* 색상 별칭 — 다크 값이 라이트와 다르므로 여기서 재선언 */
   --color-canvas: var(--bg);
   --color-ink: var(--text);
   --color-muted: var(--muted);

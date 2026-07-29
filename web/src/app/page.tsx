@@ -55,9 +55,15 @@ export default async function HomePage() {
     throw error;
   }
 
-  // 홈 API(커뮤니티 최신·이번 주 인기)는 회차 정보와 달리 부가 콘텐츠라 실패해도
-  // 홈 페이지 전체를 죽이지 않는다 — 실패하면 두 목록만 비워 보여준다.
-  const homeSummary: HomeSummary | null = await getHomeSummary().catch(() => null);
+  // 홈 API(커뮤니티 최신·이번 주 인기)는 부가 콘텐츠다. 다만 실패를 빈 목록으로 바꾸면
+  // 실제 빈 상태와 구분할 수 없으므로, 화면에서 명시적인 부분 장애 상태를 보여준다.
+  let homeSummary: HomeSummary | null = null;
+  let homeSummaryUnavailable = false;
+  try {
+    homeSummary = await getHomeSummary();
+  } catch {
+    homeSummaryUnavailable = true;
+  }
 
   return (
     <div className="section-stack">
@@ -82,24 +88,26 @@ export default async function HomePage() {
           <p className="eyebrow">최신 커뮤니티</p>
           <h3>최신 글</h3>
           <ul className="home-community-list">
-            {(homeSummary?.latestPosts ?? []).map((post) => (
+            {homeSummaryUnavailable ? <li className="status-text">글 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</li> : null}
+            {!homeSummaryUnavailable && (homeSummary?.latestPosts ?? []).map((post) => (
               <li key={post.id}>
                 <Link href={`/community/posts/${post.id}`}>{post.title}</Link>
               </li>
             ))}
-            {(homeSummary?.latestPosts ?? []).length === 0 ? <li className="muted">아직 글이 없습니다.</li> : null}
+            {!homeSummaryUnavailable && (homeSummary?.latestPosts ?? []).length === 0 ? <li className="muted">아직 글이 없습니다.</li> : null}
           </ul>
         </div>
         <div className="panel">
           <p className="eyebrow">이번 주 인기</p>
           <h3>주간 인기 글</h3>
           <ul className="home-community-list">
-            {(homeSummary?.weeklyPopularPosts ?? []).map((post) => (
+            {homeSummaryUnavailable ? <li className="status-text">글 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</li> : null}
+            {!homeSummaryUnavailable && (homeSummary?.weeklyPopularPosts ?? []).map((post) => (
               <li key={post.id}>
                 <Link href={`/community/posts/${post.id}`}>{post.title}</Link>
               </li>
             ))}
-            {(homeSummary?.weeklyPopularPosts ?? []).length === 0 ? <li className="muted">아직 글이 없습니다.</li> : null}
+            {!homeSummaryUnavailable && (homeSummary?.weeklyPopularPosts ?? []).length === 0 ? <li className="muted">아직 글이 없습니다.</li> : null}
           </ul>
         </div>
       </section>

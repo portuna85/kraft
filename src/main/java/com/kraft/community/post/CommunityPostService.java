@@ -60,8 +60,8 @@ public class CommunityPostService {
         Long recommendationSetId = request.recommendationSetId();
         if (recommendationSetId != null) {
             // 소유권 교차검증: 로그인 사용자가 첨부하려는 세트가 "지금 이 브라우저"의 익명
-            // 기기 토큰으로 만든 세트인지 확인한다(문서 11.7, 설계 판단 5 — Phase 4 계정
-            // 귀속 이전에도 같은 브라우저 세션이면 검증 가능하다).
+            // 기기 토큰으로 만든 세트인지 확인한다. 계정 귀속 이전에도 같은 브라우저
+            // 세션이면 검증할 수 있다.
             if (clientTokenHash == null) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "DEVICE_TOKEN_REQUIRED",
                         "추천 세트를 첨부하려면 X-Device-Token 헤더가 필요합니다.");
@@ -95,7 +95,7 @@ public class CommunityPostService {
         int clampedSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
         String normalizedQuery = normalizeQuery(query);
         PageRequest pageRequest = PageRequest.of(clampedPage, clampedSize, Sort.unsorted());
-        // §15.4: 목록/검색 지연 p50/p95/p99 산출용 — search 태그로 순수 목록 조회와
+        // 목록/검색 지연 p50/p95/p99 산출용 — search 태그로 순수 목록 조회와
         // 검색어 있는 조회를 구분한다(검색은 LIKE 매칭이 섞여 지연 특성이 다르다).
         Timer.Sample sample = Timer.start(meterRegistry);
         try {
@@ -124,7 +124,7 @@ public class CommunityPostService {
         try {
             return communityPostRepository.saveAndFlush(post);
         } catch (DataAccessException raceLostAfterCheck) {
-            // 버전 사전 검증 이후에도 동시 수정이 끼어든 경우(§6 개선②) — 광역 예외 대신
+            // 버전 사전 검증 이후에도 동시 수정이 끼어든 경우 — 광역 예외 대신
             // 이 리소스에 특정된 409로 변환한다. Hibernate의 자체 행 수 검증은
             // ObjectOptimisticLockingFailureException으로 오지만, 실 MariaDB에서는 드라이버가
             // "Record has changed since last read"(1020)를 먼저 던져 JpaSystemException으로도
@@ -135,7 +135,7 @@ public class CommunityPostService {
     }
 
     /**
-     * 일반 사용자의 삭제 — 하드 삭제 대신 {@code HIDDEN_BY_AUTHOR}로 상태만 바꾼다(문서 11.2).
+     * 일반 사용자의 삭제 — 하드 삭제 대신 {@code HIDDEN_BY_AUTHOR}로 상태만 바꾼다.
      * 본문·참조·감사 관계는 그대로 유지되고, 이후 목록/비소유자 조회에서만 제외된다.
      */
     @Transactional
@@ -176,6 +176,7 @@ public class CommunityPostService {
     private static RecommendationAttachmentView toAttachmentView(RecommendationSetSummary summary) {
         return new RecommendationAttachmentView(
                 summary.id(), summary.strategy(), summary.algorithmVersion(), summary.historyThroughRound(),
+                summary.exclusionPolicyVersion(),
                 summary.items());
     }
 
@@ -185,7 +186,7 @@ public class CommunityPostService {
                         "게시글을 찾을 수 없습니다."));
     }
 
-    /** 공개 상태가 아닌 게시글은 소유자 본인에게만 보인다(문서 13.5 COMMUNITY_POST_NOT_VISIBLE). */
+    /** 공개 상태가 아닌 게시글은 소유자 본인에게만 보이며 그 외에는 COMMUNITY_POST_NOT_VISIBLE이다. */
     private void requireVisible(CommunityPost post, Long requesterId) {
         if (post.getStatus() != PostStatus.PUBLISHED && !post.getOwnerId().equals(requesterId)) {
             throw new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_POST_NOT_VISIBLE", "게시글을 찾을 수 없습니다.");

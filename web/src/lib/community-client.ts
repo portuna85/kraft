@@ -16,7 +16,7 @@ export type CommunitySession = {
   activeProviders: ("google" | "naver")[];
 };
 
-// CookieCsrfTokenRepository(double-submit, §4.3 ADR-0002)가 발급하는 쿠키를 읽어
+// CookieCsrfTokenRepository(double-submit)가 발급하는 쿠키를 읽어
 // 상태 변경 요청에 X-XSRF-TOKEN 헤더로 그대로 되돌려 보낸다.
 function readXsrfToken(): string | null {
   const match = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/);
@@ -188,7 +188,7 @@ export type MySavedNumber = {
   createdAt: string;
 };
 
-// 로그인 계정 귀속(Phase 4) — 같은 브라우저의 익명 기기 토큰 기록을 계정으로 옮긴다.
+// 로그인 계정 귀속 — 같은 브라우저의 익명 기기 토큰 기록을 계정으로 옮긴다.
 // X-Device-Token은 CSRF 토큰과 별개로 여전히 필요하다(어떤 기기의 기록을 옮길지 지정).
 export async function claimDevice(): Promise<IdentityMergeResult> {
   return browserFetch<IdentityMergeResult>("/api/v1/community/session/claim-device", {

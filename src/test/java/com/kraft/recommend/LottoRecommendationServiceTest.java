@@ -11,7 +11,9 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,6 +48,12 @@ class LottoRecommendationServiceTest {
     @Mock
     private RecommendationSetHistoryService recommendationSetHistoryService;
 
+    @Mock
+    private RecommendationHistoryStateRepository historyStateRepository;
+
+    @Mock
+    private RecommendationHistoryState historyState;
+
     private LottoNumberCodec lottoNumberCodec;
     private LottoRecommendationService service;
     private SimpleMeterRegistry meterRegistry;
@@ -73,9 +81,12 @@ class LottoRecommendationServiceTest {
         // 그 경로를 검증하는 InvariantEnforcement 테스트에서만 별도로 List.of()를 재설정한다.
         given(winningNumberRepository.findAllBalls())
                 .willReturn(List.of(ballsOnly(1, 1, 2, 3, 4, 5, 6)));
+        given(historyStateRepository.findById(1)).willReturn(Optional.of(historyState));
+        given(historyState.getVersion()).willReturn(1L);
         meterRegistry = new SimpleMeterRegistry();
         service = new LottoRecommendationService(lottoNumberCodec, winningNumberRepository, combinationScorer,
-                new BalancedScorer(), recommendationSetHistoryService, Clock.systemUTC(), meterRegistry);
+                new BalancedScorer(), recommendationSetHistoryService, historyStateRepository,
+                Clock.systemUTC(), meterRegistry);
         service.loadHistoricalCombinations();
     }
 
@@ -139,6 +150,56 @@ class LottoRecommendationServiceTest {
             service.recommend(new RecommendNumbersRequest(3, null, false, null, null, null), null);
 
             verify(combinationScorer, never()).score(anyList());
+        }
+    }
+
+    @Nested
+    @DisplayName("이력 버전 일관성")
+    class HistoryVersionConsistency {
+
+        @Test
+        @DisplayName("DB 이력 버전이 스냅샷보다 새로우면 현재 요청은 503으로 닫고 스냅샷을 갱신한다")
+        void recommend_whenHistoryVersionIsStale_failsClosedAndRefreshes() {
+            given(historyState.getVersion()).willReturn(2L);
+
+            assertThatThrownBy(() -> service.recommend(new RecommendNumbersRequest(1, null, null, null, null, null), null))
+                    .isInstanceOf(ApiException.class)
+                    .satisfies(ex -> {
+                        ApiException apiEx = (ApiException) ex;
+                        assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+                        assertThat(apiEx.getCode()).isEqualTo("RECOMMENDATION_HISTORY_NOT_READY");
+                    });
+
+            verify(winningNumberRepository, atLeast(2)).findAllBalls();
+            assertThat(service.historyStatus().ready()).isTrue();
+            assertThat(service.historyStatus().snapshotVersion()).isEqualTo(2L);
+        }
+
+        @Test
+        @DisplayName("다른 인스턴스가 신규 회차를 반영하면 stale 인스턴스는 성공하지 않고 스냅샷을 갱신한다")
+        void recommend_whenAnotherInstanceAdvancesHistory_failsClosedThenRefreshes() {
+            AtomicLong sharedVersion = new AtomicLong(1L);
+            given(historyState.getVersion()).willAnswer(invocation -> sharedVersion.get());
+
+            LottoRecommendationService otherInstance = new LottoRecommendationService(
+                    lottoNumberCodec, winningNumberRepository, combinationScorer, new BalancedScorer(),
+                    recommendationSetHistoryService, historyStateRepository, Clock.systemUTC(),
+                    new SimpleMeterRegistry());
+            otherInstance.loadHistoricalCombinations();
+
+            given(winningNumberRepository.findAllBalls()).willReturn(List.of(
+                    ballsOnly(1, 1, 2, 3, 4, 5, 6),
+                    ballsOnly(2, 7, 8, 9, 10, 11, 12)));
+            sharedVersion.set(2L);
+            service.refreshHistoryCache();
+
+            assertThatThrownBy(() -> otherInstance.recommend(
+                    new RecommendNumbersRequest(1, null, null, null, null, null), null))
+                    .isInstanceOf(ApiException.class)
+                    .satisfies(ex -> assertThat(((ApiException) ex).getCode())
+                            .isEqualTo("RECOMMENDATION_HISTORY_NOT_READY"));
+            assertThat(otherInstance.historyStatus().ready()).isTrue();
+            assertThat(otherInstance.historyStatus().snapshotVersion()).isEqualTo(2L);
         }
     }
 
@@ -340,6 +401,12 @@ class LottoRecommendationServiceTest {
             assertThat(meterRegistry.get("kraft_lotto_first_missing_round").gauge().value()).isEqualTo(0d);
             assertThat(meterRegistry.get("kraft_lotto_history_ready").gauge().value()).isEqualTo(1d);
             assertThat(meterRegistry.get("kraft_lotto_history_data_present").gauge().value()).isEqualTo(1d);
+            assertThat(meterRegistry.get("kraft_lotto_history_db_version").gauge().value())
+                    .isEqualTo(historyState.getVersion());
+            assertThat(meterRegistry.get("kraft_lotto_history_snapshot_age_seconds").gauge().value())
+                    .isGreaterThanOrEqualTo(0d);
+            assertThat(meterRegistry.get("kraft_lotto_history_refresh_duration_seconds").timer().count())
+                    .isGreaterThanOrEqualTo(1L);
         }
 
         @Test
@@ -685,6 +752,7 @@ class LottoRecommendationServiceTest {
             given(recommendationSetHistoryService.persist(
                     org.mockito.ArgumentMatchers.eq("hash-1"), org.mockito.ArgumentMatchers.anyString(),
                     org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyInt(),
+                    org.mockito.ArgumentMatchers.eq(LottoRecommendationService.EXCLUSION_POLICY_VERSION),
                     anyList(), anyList(), org.mockito.ArgumentMatchers.anyList(),
                     org.mockito.ArgumentMatchers.any()))
                     .willReturn(42L);
@@ -711,7 +779,8 @@ class LottoRecommendationServiceTest {
                     org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
                     org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyInt(),
                     org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
-                    org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+                    org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.any());
         }
     }
 }

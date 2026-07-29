@@ -100,6 +100,16 @@ groups:
           description: "kraft_lotto_history_ready가 10분 이상 0을 유지함. 추천 API가 503으로 거절 중일 수 있음. kraft_lotto_history_data_present가 0이면 이력이 완전히 비어 있는 것이고, 1이면 1회부터 최신까지 중간에 누락된 회차가 있는 것이다."
           runbook: "kraft_lotto_history_data_present와 kraft_lotto_history_first_missing_round 확인해 완전 결손인지 부분 누락인지 판별 후 백필 필요 여부 결정"
 
+      - alert: KraftLottoHistorySnapshotStale
+        expr: kraft_lotto_history_snapshot_age_seconds{job="kraft-backend"} > 900
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Recommendation history snapshot has not refreshed"
+          description: "The in-memory history snapshot is older than 15 minutes. Check collection events and database connectivity."
+          runbook: "Compare kraft_lotto_history_db_version and kraft_lotto_history_snapshot_version; inspect backend logs for history refresh failures before restarting an instance."
+
       - alert: KraftLottoRecommendHighErrorRate
         expr: |
           sum(rate(kraft_lotto_recommend_failures_total{job="kraft-backend"}[10m]))

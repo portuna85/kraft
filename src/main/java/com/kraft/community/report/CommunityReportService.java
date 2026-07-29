@@ -41,9 +41,9 @@ public class CommunityReportService {
     }
 
     /**
-     * 동일 사용자의 동일 대상 중복 신고는 오류로 거절한다(문서 13.5 REPORT_ALREADY_EXISTS —
-     * 좋아요/차단과 달리 멱등 흡수 대상이 아니다). 임계치 기반 자동 상태 전환·운영 검토 큐는
-     * 이번 Phase 범위 밖이다(설계 판단 4 — 오탐으로 게시글이 부당하게 숨겨지는 리스크 회피).
+     * 동일 사용자의 동일 대상 중복 신고는 REPORT_ALREADY_EXISTS 오류로 거절하며,
+     * 좋아요/차단과 달리 멱등 흡수하지 않는다. 오탐으로 게시글이 부당하게 숨겨지지 않도록
+     * 임계치 기반 자동 상태 전환 없이 운영 검토 대상으로만 기록한다.
      */
     public void report(Long reporterUserId, CreateReportRequest request) {
         // B-P0-5: target_id는 폴리모픽이라 FK가 없다 — 대상 종류별로 실존 여부를 직접 확인해

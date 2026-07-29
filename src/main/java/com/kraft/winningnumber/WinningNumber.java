@@ -41,6 +41,9 @@ public class WinningNumber {
     @Column(name = "n6", nullable = false)
     private Integer n6;
 
+    @Column(name = "combination_mask", nullable = false, columnDefinition = "BIGINT UNSIGNED")
+    private Long combinationMask;
+
     @Column(name = "bonus_number", nullable = false)
     private Integer bonusNumber;
 
@@ -92,6 +95,7 @@ public class WinningNumber {
         this.n4 = n4;
         this.n5 = n5;
         this.n6 = n6;
+        this.combinationMask = bitmaskOf(n1, n2, n3, n4, n5, n6);
         this.bonusNumber = bonusNumber;
         this.firstPrizeAmount = firstPrizeAmount;
         this.secondPrize = secondPrize;
@@ -217,6 +221,7 @@ public class WinningNumber {
         this.n4 = n4;
         this.n5 = n5;
         this.n6 = n6;
+        this.combinationMask = bitmaskOf(n1, n2, n3, n4, n5, n6);
         this.bonusNumber = bonusNumber;
         this.firstPrizeAmount = firstPrizeAmount;
         this.secondPrize = secondPrize;
@@ -261,6 +266,10 @@ public class WinningNumber {
         return n6;
     }
 
+    public Long getCombinationMask() {
+        return combinationMask;
+    }
+
     public Integer getBonusNumber() {
         return bonusNumber;
     }
@@ -291,5 +300,10 @@ public class WinningNumber {
 
     public OffsetDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    private static long bitmaskOf(int n1, int n2, int n3, int n4, int n5, int n6) {
+        return (1L << (n1 - 1)) | (1L << (n2 - 1)) | (1L << (n3 - 1))
+                | (1L << (n4 - 1)) | (1L << (n5 - 1)) | (1L << (n6 - 1));
     }
 }

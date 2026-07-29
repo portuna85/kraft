@@ -7,7 +7,7 @@ import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 
 /**
- * 좋아요·댓글·조회 집계의 단일 진실 공급원(문서 11.3/14.2). 값 갱신은 이 엔티티를 읽어
+ * 좋아요·댓글·조회 집계의 단일 진실 공급원. 값 갱신은 이 엔티티를 읽어
  * 고쳐 쓰는 방식이 아니라 항상 {@link CommunityPostMetricsRepository}의 원자적 UPDATE
  * 쿼리로만 이뤄진다 — 동시 좋아요·댓글 생성에서 갱신 유실을 막기 위함이다.
  */

@@ -245,7 +245,7 @@ form button,
 }
 
 /* F-P0-2: .button.secondary와 함께 쓰여 기본 버튼 스타일은 이미 갖췄고, 삭제
-   행 안에서 폭을 줄이는 보정만 필요하다(감사 §4.1). */
+   행 안에서 폭을 줄이는 보정만 필요하다. */
 .saved-undo-btn {
   flex-shrink: 0;
   min-height: 0;

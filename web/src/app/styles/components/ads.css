@@ -35,7 +35,7 @@
   position: fixed;
   left: 0;
   right: 0;
-  /* Phase 1 2단계: 모바일 하단 고정 내비(MobileBottomNav, z-index:30)가 항상 bottom:0을
+  /* 모바일 하단 고정 내비(MobileBottomNav, z-index:30)가 항상 bottom:0을
      차지하므로, 광고는 그 위에 얹는다. */
   bottom: var(--bottom-nav-h);
   z-index: 40;
@@ -103,9 +103,13 @@
     min-height: var(--target-min);
   }
 
-  /* R-32: 헤더는 공간이 좁아 44px 전체 목표 대신 40px로 절충한다 */
+  .theme-toggle,
+  .nav-toggle {
+    min-width: var(--target-min);
+  }
+
   .account-login-link,
   .account-logout-button {
-    min-height: 40px;
+    min-height: var(--target-min);
   }
 }

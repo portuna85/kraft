@@ -19,7 +19,7 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
     Page<CommunityPost> findLatest(@Param("category") PostCategory category, @Param("query") String query,
                                     Pageable pageable);
 
-    // 문서 11.3절 popular_score 공식을 7일 이내 게시글로 범위를 좁혀 요청 시점에 계산한다
+    // popular_score 공식을 7일 이내 게시글로 범위를 좁혀 요청 시점에 계산한다
     // (사전 집계 랭킹 테이블 없이 — 이 규모에서는 매 요청 계산 비용이 무시할 만하다).
     @Query(value = "SELECT p.* FROM community_posts p JOIN community_post_metrics m ON m.post_id = p.id "
             + "WHERE p.status = 'PUBLISHED' AND p.created_at >= :since "

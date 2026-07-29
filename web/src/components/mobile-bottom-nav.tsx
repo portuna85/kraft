@@ -6,7 +6,7 @@ import { isCurrent } from "@/lib/nav-items";
 import styles from "./mobile-bottom-nav.module.css";
 
 // primaryLinks(nav-items.ts)와 href는 같지만, 하단 탭 바는 공간이 좁아 더 짧은
-// 라벨을 쓴다(목표 IA §3.2: "홈/추천/커뮤니티/보관함").
+// 라벨은 "홈/추천/커뮤니티/보관함"으로 고정한다.
 const BOTTOM_NAV_ITEMS = [
   {
     href: "/",

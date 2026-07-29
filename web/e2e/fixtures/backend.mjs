@@ -115,7 +115,7 @@ const ROUTES = {
   "/api/v1/stats/frequency": STATS_FREQUENCY,
   "/api/v1/stats/patterns": STATS_PATTERNS,
   "/api/v1/stats/companion": STATS_COMPANION,
-  // §6-6/§4.4: 커뮤니티 공개 목록·상세 ISR이 사용자 세션 정보를 절대 embed하지 않는지
+  // 커뮤니티 공개 목록·상세 ISR이 사용자 세션 정보를 절대 embed하지 않는지
   // 증명하는 e2e 전용 픽스처(community-privacy.spec.ts).
   "/api/v1/community/posts": COMMUNITY_POSTS_PAGE,
   "/api/v1/community/posts/1": COMMUNITY_POST,

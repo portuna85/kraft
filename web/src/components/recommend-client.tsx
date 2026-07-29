@@ -68,6 +68,8 @@ export function RecommendClient() {
         <p className="muted recommend-set-meta">
           전략: {STRATEGY_LABELS[studio.meta.strategy]} · 알고리즘 버전: {studio.meta.algorithmVersion} · 반영 회차:{" "}
           {studio.meta.historyThroughRound}회
+          {studio.meta.historicalExclusionApplied ? " · 역대 1등 조합 제외 적용" : ""}
+          {studio.meta.exclusionPolicyVersion ? ` · 정책: ${studio.meta.exclusionPolicyVersion}` : ""}
         </p>
       ) : null}
 

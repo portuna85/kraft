@@ -94,7 +94,7 @@ public class CommunityCommentService {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "COMMUNITY_COMMENT_PARENT_MISMATCH",
                         "다른 게시글의 댓글에는 답글을 달 수 없습니다.");
             }
-            // 1단계 대댓글만 허용 — 답글의 답글은 거부한다(§3-3).
+            // 1단계 대댓글만 허용 — 답글의 답글은 거부한다.
             if (parent.getParentId() != null) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "COMMUNITY_COMMENT_REPLY_DEPTH_EXCEEDED",
                         "답글에는 답글을 달 수 없습니다.");
@@ -111,15 +111,15 @@ public class CommunityCommentService {
                     postId, request.parentId(), ownerId, authorNickname, request.content(),
                     OffsetDateTime.now(clock)));
         } catch (DataIntegrityViolationException concurrentlyDeletedPost) {
-            // 저장 직전 게시글/부모가 동시 삭제된 경합(FK race) → 사용자에게는 404로 보인다(§3-3).
+            // 저장 직전 게시글/부모가 동시 삭제된 경합(FK race) → 사용자에게는 404로 보인다.
             throw new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_POST_NOT_FOUND",
                     "게시글을 찾을 수 없습니다.", concurrentlyDeletedPost);
         }
-        // 원자적 증감(문서 16.1 "댓글·좋아요·집계 동시 갱신") — 읽고 고쳐 쓰지 않는다.
+        // 댓글·좋아요 집계는 원자적으로 증감하며 읽고 고쳐 쓰지 않는다.
         communityPostMetricsRepository.incrementCommentCount(postId);
 
         // targetPage: 상위 댓글이면 자기 자신, 답글이면 부모(항상 상위 댓글)의 목록 내 위치를
-        // 기준으로 계산한다(§6: "mutation 후 target page 계산" — Blitz의 동일 의도 이식).
+        // 기준으로 계산한다(mutation 후 target page 계산).
         Long anchorId = parent != null ? parent.getId() : saved.getId();
         long countUpToAnchor = communityCommentRepository.countTopLevelUpToId(postId, anchorId);
         int targetPage = (int) ((Math.max(1, countUpToAnchor) - 1) / DEFAULT_PAGE_SIZE);

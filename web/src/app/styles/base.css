@@ -11,6 +11,13 @@
 html {
   font-family: var(--font-sans), "Pretendard", system-ui, sans-serif;
   scroll-padding-top: calc(var(--header-offset) + 8px);
+  scroll-padding-bottom: calc(var(--bottom-nav-h) + 16px);
+}
+
+@media (min-width: 1024px) {
+  html {
+    scroll-padding-bottom: 16px;
+  }
 }
 
 body {

@@ -34,13 +34,14 @@ public class RecommendationSetHistoryService {
     }
 
     public Long persist(String clientTokenHash, String strategy, String algorithmVersion, int historyThroughRound,
+                         String exclusionPolicyVersion,
                          List<Integer> locked, List<Integer> excluded, List<RecommendationItemView> items,
                          OffsetDateTime createdAt) {
         String lockedStorage = locked.isEmpty() ? null : lottoNumberCodec.toStorageValueSubset(locked);
         String excludedStorage = excluded.isEmpty() ? null : lottoNumberCodec.toStorageValueSubset(excluded);
 
         RecommendationSet set = recommendationSetRepository.save(new RecommendationSet(
-                clientTokenHash, strategy, algorithmVersion, historyThroughRound,
+                clientTokenHash, strategy, algorithmVersion, historyThroughRound, exclusionPolicyVersion,
                 lockedStorage, excludedStorage, createdAt));
 
         for (RecommendationItemView item : items) {
@@ -48,7 +49,7 @@ public class RecommendationSetHistoryService {
                     ? null
                     : item.explanationCodes().stream().map(Enum::name).reduce((a, b) -> a + "," + b).orElse(null);
             recommendationItemRepository.save(new RecommendationItem(
-                    set.getId(), item.position(), lottoNumberCodec.toStorageValueSubset(item.numbers()),
+                    set.getId(), item.position(), lottoNumberCodec.toStorageValueSubset(item.numbers()), bitmaskOf(item.numbers()),
                     item.score(), explanationCodes));
         }
         return set.getId();
@@ -87,7 +88,7 @@ public class RecommendationSetHistoryService {
     }
 
     /**
-     * 로그인 계정 귀속(Phase 4, 문서 10.2 5단계) — 추천 세트는 각각이 독립된 이력
+     * 로그인 계정 귀속 — 추천 세트는 각각이 독립된 이력
      * 레코드라 저장 번호와 달리 중복 제거 없이 전부 옮긴다.
      */
     public int claimAll(String clientTokenHash, Long ownerUserId, OffsetDateTime claimedAt) {
@@ -99,7 +100,7 @@ public class RecommendationSetHistoryService {
     /**
      * 소유권 검증 없이 세트를 조회한다 — 커뮤니티 게시글에 첨부된 추천 세트를 방문자에게
      * 보여줄 때 쓴다. 게시글이 공개된 이상 첨부된 추천 정보도 공개 데이터로 취급한다
-     * (문서 11.7: 첨부는 생성 당시 결과의 불변 스냅샷).
+     * 첨부는 생성 당시 결과의 불변 스냅샷으로 유지한다.
      */
     @Transactional(readOnly = true)
     public RecommendationSetSummary getForAttachment(long id) {
@@ -166,6 +167,7 @@ public class RecommendationSetHistoryService {
                 set.getStrategy(),
                 set.getAlgorithmVersion(),
                 set.getHistoryThroughRound(),
+                set.getExclusionPolicyVersion(),
                 lottoNumberCodec.fromStorageValue(set.getLockedNumbers()),
                 lottoNumberCodec.fromStorageValue(set.getExcludedNumbers()),
                 set.getCreatedAt(),
@@ -177,5 +179,13 @@ public class RecommendationSetHistoryService {
             return List.of();
         }
         return java.util.Arrays.stream(value.split(",")).map(ExplanationCode::valueOf).toList();
+    }
+
+    private static long bitmaskOf(List<Integer> numbers) {
+        long mask = 0L;
+        for (int number : numbers) {
+            mask |= 1L << (number - 1);
+        }
+        return mask;
     }
 }

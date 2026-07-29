@@ -31,6 +31,9 @@ public class RecommendationSet {
     @Column(name = "history_through_round", nullable = false)
     private int historyThroughRound;
 
+    @Column(name = "exclusion_policy_version", nullable = false, length = 40)
+    private String exclusionPolicyVersion;
+
     @Column(name = "locked_numbers", length = 32)
     private String lockedNumbers;
 
@@ -47,12 +50,14 @@ public class RecommendationSet {
     }
 
     public RecommendationSet(String clientTokenHash, String strategy, String algorithmVersion,
-                              int historyThroughRound, String lockedNumbers, String excludedNumbers,
+                              int historyThroughRound, String exclusionPolicyVersion,
+                              String lockedNumbers, String excludedNumbers,
                               OffsetDateTime createdAt) {
         this.clientTokenHash = clientTokenHash;
         this.strategy = strategy;
         this.algorithmVersion = algorithmVersion;
         this.historyThroughRound = historyThroughRound;
+        this.exclusionPolicyVersion = exclusionPolicyVersion;
         this.lockedNumbers = lockedNumbers;
         this.excludedNumbers = excludedNumbers;
         this.createdAt = createdAt;
@@ -82,6 +87,10 @@ public class RecommendationSet {
         return historyThroughRound;
     }
 
+    public String getExclusionPolicyVersion() {
+        return exclusionPolicyVersion;
+    }
+
     public String getLockedNumbers() {
         return lockedNumbers;
     }
@@ -98,7 +107,7 @@ public class RecommendationSet {
         return claimedAt;
     }
 
-    /** 로그인 계정 귀속(Phase 4) — 익명 소유권을 계정 소유권으로 상호 배타 전환한다. */
+    /** 로그인 계정 귀속 — 익명 소유권을 계정 소유권으로 상호 배타 전환한다. */
     void claimTo(Long ownerUserId, OffsetDateTime claimedAt) {
         this.ownerUserId = ownerUserId;
         this.claimedAt = claimedAt;

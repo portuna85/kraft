@@ -1,6 +1,6 @@
 import { test, expect, type Locator, type Page } from "@playwright/test";
 
-// Phase 1 2단계: 모바일/태블릿 폭에서는 ThemeToggle이 MobileSecondaryMenu 드로어 안으로
+// 모바일/태블릿 폭에서는 ThemeToggle이 MobileSecondaryMenu 드로어 안으로
 // 옮겨갔다(데스크톱용 ThemeToggle은 CSS로만 숨겨진 채 DOM에 남아 있어 범위를 좁히지 않으면
 // 2개가 매치된다). 햄버거("메뉴 열기")가 보이면 드로어를 열고 그 안에서, 아니면(데스크톱)
 // 페이지에서 직접 버튼을 찾는다.

@@ -29,7 +29,7 @@ public interface CommunityCommentRepository extends JpaRepository<CommunityComme
     List<CommunityComment> findByPostIdAndParentIdIn(Long postId, List<Long> parentIds);
 
     // 부모 댓글에 답글을 붙이거나 삭제(tombstone)할 때 동시 경합을 막기 위한 행 잠금 조회
-    // (Blitz "부모 row lock으로 삭제 경합 차단" §3-3).
+    // 부모 row lock으로 삭제 경합을 차단한다.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from CommunityComment c where c.id = :id")
     Optional<CommunityComment> findByIdForUpdate(@Param("id") Long id);

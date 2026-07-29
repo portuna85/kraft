@@ -38,7 +38,7 @@ class RecommendationSetHistoryServiceTest {
     private static RecommendationSet setEntity(long id, String clientTokenHash) {
         try {
             RecommendationSet entity = new RecommendationSet(clientTokenHash, "random", "uniform-random-v1",
-                    1189, null, null, OffsetDateTime.now());
+                    1189, "historical-first-prize-v1", null, null, OffsetDateTime.now());
             var field = RecommendationSet.class.getDeclaredField("id");
             field.setAccessible(true);
             field.set(entity, id);
@@ -69,7 +69,7 @@ class RecommendationSetHistoryServiceTest {
 
         RecommendationItemView item = new RecommendationItemView(1, List.of(1, 2, 3, 4, 5, 6), null, List.of());
         Long id = service.persist(TOKEN_HASH, "random", "uniform-random-v1", 1189,
-                List.of(), List.of(), List.of(item), OffsetDateTime.now());
+                "historical-first-prize-v1", List.of(), List.of(), List.of(item), OffsetDateTime.now());
 
         assertThat(id).isEqualTo(1L);
         verify(recommendationItemRepository).save(org.mockito.ArgumentMatchers.any());

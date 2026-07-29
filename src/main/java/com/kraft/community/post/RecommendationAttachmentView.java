@@ -13,6 +13,7 @@ public record RecommendationAttachmentView(
         String strategy,
         String algorithmVersion,
         int historyThroughRound,
+        String exclusionPolicyVersion,
         List<RecommendationItemView> items
 ) {
 }

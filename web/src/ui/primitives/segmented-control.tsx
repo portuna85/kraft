@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from "react";
+import { useRef, type KeyboardEvent } from "react";
 import type { SegmentedControlContract } from "./contracts";
 import styles from "./segmented-control.module.css";
 
@@ -8,13 +8,16 @@ export function SegmentedControl<T extends string = string>({
   onChange,
   "aria-label": ariaLabel,
 }: SegmentedControlContract<T>) {
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const selectableIndexes = options.map((o, i) => (o.disabled ? -1 : i)).filter((i) => i !== -1);
 
   const moveSelection = (currentIndex: number, direction: 1 | -1) => {
     if (selectableIndexes.length === 0) return;
     const pos = selectableIndexes.indexOf(currentIndex);
     const nextPos = (pos + direction + selectableIndexes.length) % selectableIndexes.length;
-    onChange(options[selectableIndexes[nextPos]].value);
+    const nextIndex = selectableIndexes[nextPos];
+    onChange(options[nextIndex].value);
+    optionRefs.current[nextIndex]?.focus();
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
@@ -34,6 +37,7 @@ export function SegmentedControl<T extends string = string>({
         return (
           <button
             key={option.value}
+            ref={(element) => { optionRefs.current[index] = element; }}
             type="button"
             role="radio"
             aria-checked={isSelected}

@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { expectNoOverflow } from "../lib/expect-no-overflow";
 import { gotoAndWaitForRealContent } from "../lib/goto-real-content";
 
-// §6-5: 브라우저/OS의 "텍스트 크기 확대" 접근성 설정(WCAG 1.4.4)을 흉내낸다. 실제 페이지
+// 브라우저/OS의 "텍스트 크기 확대" 접근성 설정(WCAG 1.4.4)을 흉내낸다. 실제 페이지
 // 줌(Ctrl/Cmd +)과 달리 레이아웃 컨테이너는 그대로 두고 텍스트만 커지는 상황이라, 오히려
 // 이쪽이 "라벨·값이 잘리거나 겹치는" 실패 유형을 더 정확히 재현한다. html의 font-size를
 // 200%로 올려 rem 기반 텍스트는 커지되 px 기반 그리드 칸은 그대로인 상태를 만든다.

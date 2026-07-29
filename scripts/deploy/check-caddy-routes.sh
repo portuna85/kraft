@@ -29,7 +29,7 @@ check_status() {
 }
 
 # 이 스크립트는 "Caddy가 backend로 제대로 라우팅하는가"만 검증하는 것이지 커뮤니티
-# OAuth 앱이 실제로 설정됐는지는 관심사가 아니다(§4.5 — provider 미설정이면
+# OAuth 앱이 실제로 설정됐는지는 관심사가 아니다(provider 미설정이면
 # CommunityOAuth2FallbackConfig가 앱을 정상 기동시키되 로그인 시도는 500을 반환한다,
 # 2026-07-24). 그래서 "정확히 302"가 아니라 "404가 아님"(=Next.js catch-all로 새지
 # 않고 backend까지는 도달함)으로 판정한다 — Caddyfile 설정 오류와 OAuth 미설정을 혼동하지 않는다.

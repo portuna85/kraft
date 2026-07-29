@@ -16,9 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 로그인 계정 귀속(문서 10.2) 오케스트레이션. 동시성 잠금은 새로 만들지 않고 saved 패키지의
+ * 로그인 계정 귀속 오케스트레이션. 동시성 잠금은 새로 만들지 않고 saved 패키지의
  * 클라이언트별 잠금 행({@link SavedNumberClientLockRepository}, B2 사건으로 채택된 레코드
- * 락 패턴)을 그대로 재사용한다 — "기기 토큰 잠금 행 획득"(문서 10.2 2단계)이 정확히 이
+ * 락 패턴)을 그대로 재사용한다. 기기 토큰 잠금 행 획득이 정확히 이
  * 목적이다.
  */
 @Service

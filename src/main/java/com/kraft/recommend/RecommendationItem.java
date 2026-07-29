@@ -24,6 +24,9 @@ public class RecommendationItem {
     @Column(name = "numbers", nullable = false, length = 32)
     private String numbers;
 
+    @Column(name = "combination_mask", nullable = false)
+    private long combinationMask;
+
     @Column(name = "score")
     private Integer score;
 
@@ -33,10 +36,12 @@ public class RecommendationItem {
     protected RecommendationItem() {
     }
 
-    public RecommendationItem(Long setId, int position, String numbers, Integer score, String explanationCodes) {
+    public RecommendationItem(Long setId, int position, String numbers, long combinationMask,
+                              Integer score, String explanationCodes) {
         this.setId = setId;
         this.position = position;
         this.numbers = numbers;
+        this.combinationMask = combinationMask;
         this.score = score;
         this.explanationCodes = explanationCodes;
     }
@@ -55,6 +60,10 @@ public class RecommendationItem {
 
     public String getNumbers() {
         return numbers;
+    }
+
+    public long getCombinationMask() {
+        return combinationMask;
     }
 
     public Integer getScore() {

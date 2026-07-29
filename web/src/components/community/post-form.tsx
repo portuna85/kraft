@@ -46,7 +46,7 @@ export function PostForm(props: CreateMode | EditMode) {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    // 중복 제출 방지 — 진행 중이면 재클릭·중복 Enter를 무시한다(§7 4단계).
+    // 중복 제출 방지 — 진행 중이면 재클릭·중복 Enter를 무시한다.
     if (submitting || !title.trim() || !content.trim()) return;
     setSubmitting(true);
     setError(null);

@@ -31,7 +31,7 @@ public class WebSecurityConfig {
     //
     // @Order(3): admin(@Order(1)) → community(@Order(2), CommunitySecurityConfig)보다
     // 뒤로 밀려야 한다. 이 체인의 matcher("/api/**")가 "/api/v1/community/**"를 포함하므로,
-    // 순서가 community보다 앞서면 커뮤니티 인증이 무음으로 우회된다(§4.1).
+    // 순서가 community보다 앞서면 커뮤니티 인증이 무음으로 우회된다.
     //
     // /v3/api-docs, /swagger-ui/**(springdoc, B-01)도 이 matcher에 명시적으로 포함한다.
     // 어떤 SecurityFilterChain의 securityMatcher에도 걸리지 않는 요청은 Spring Security

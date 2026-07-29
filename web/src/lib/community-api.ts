@@ -1,54 +1,39 @@
-import { BackendError } from "@/lib/api";
+import { BackendError, type RequiredApi } from "@/lib/api";
+import { backendBaseUrl } from "@/lib/backend-url";
+import type { components } from "@/lib/generated/api-types";
 
-const backendBaseUrl = process.env.KRAFT_BACKEND_INTERNAL_URL ?? "http://backend:8080";
-
-// 커뮤니티 목록/상세는 짧은 주기로 갱신되는 공개 콘텐츠라 ISR을 쓰되(§4.4), 사용자 정보는
+// 커뮤니티 목록/상세는 짧은 주기로 갱신되는 공개 콘텐츠라 ISR을 쓰되, 사용자 정보는
 // 이 응답에 절대 섞이지 않는다 — 로그인 상태·소유권은 클라이언트가 /session과 대조한다.
 const REVALIDATE_COMMUNITY_LIST = 30;
 
-export type PostCategory = "RECOMMENDATION_SHARE" | "ROUND_ANALYSIS" | "WIN_STORY" | "QUESTION" | "GENERAL";
-export type PostStatus = "PUBLISHED" | "HIDDEN_BY_AUTHOR" | "HIDDEN_BY_MODERATOR" | "DELETED";
+export type PostCategory = NonNullable<components["schemas"]["CommunityPostResponse"]["category"]>;
+export type PostStatus = NonNullable<components["schemas"]["CommunityPostResponse"]["status"]>;
 export type PostSort = "latest" | "weekly_popular";
 
-export type RecommendationAttachment = {
-  setId: number;
-  strategy: string;
-  algorithmVersion: string;
-  historyThroughRound: number;
-  items: {
-    position: number;
-    numbers: number[];
+type RecommendationItem = Omit<RequiredApi<components["schemas"]["RecommendationItemView"]>, "score"> & {
     score: number | null;
-    explanationCodes: string[];
-  }[];
 };
 
-export type CommunityPost = {
-  id: number;
-  ownerId: number;
-  authorNickname: string;
-  title: string;
-  content: string;
-  category: PostCategory;
-  status: PostStatus;
-  version: number;
-  createdAt: string;
-  updatedAt: string;
-  likeCount: number;
-  commentCount: number;
-  viewCount: number;
+export type RecommendationAttachment = Omit<
+  RequiredApi<components["schemas"]["RecommendationAttachmentView"]>,
+  "items"
+> & {
+  items: RecommendationItem[];
+};
+
+export type CommunityPost = Omit<
+  RequiredApi<components["schemas"]["CommunityPostResponse"]>,
+  "recommendationAttachment"
+> & {
   recommendationAttachment: RecommendationAttachment | null;
 };
 
-export type CommunityComment = {
-  id: number;
-  postId: number;
+export type CommunityComment = Omit<
+  RequiredApi<components["schemas"]["CommunityCommentResponse"]>,
+  "parentId" | "ownerId" | "targetPage" | "replies"
+> & {
   parentId: number | null;
   ownerId: number | null;
-  authorNickname: string;
-  content: string;
-  deleted: boolean;
-  createdAt: string;
   targetPage: number | null;
   replies: CommunityComment[];
 };

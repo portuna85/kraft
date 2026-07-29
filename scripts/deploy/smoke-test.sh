@@ -119,7 +119,7 @@ check_status "GET /data-source -> 308" "$BASE/data-source" "308"
 # /admin* is blocked with 403 on the public domain (Caddyfile security rule).
 check_status "GET /admin -> 403 on public domain" "$BASE/admin" "403"
 
-# 커뮤니티: 세션 조회는 익명이어도 200 + no-store(§4.4 개인화 응답), 로그인 리다이렉트는
+# 커뮤니티: 세션 조회는 익명이어도 200 + no-store(개인화 응답), 로그인 리다이렉트는
 # Caddy가 Next.js가 아니라 backend로 라우팅해야 한다(빠뜨리면 오탐 없이 404로 조용히 샌다).
 check_status "GET /api/v1/community/session -> 200(익명)" "$API/community/session" "200"
 check_header_contains "GET /api/v1/community/session no-store" "$API/community/session" "Cache-Control" "no-store"

@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { gotoAndWaitForRealContent } from "../lib/goto-real-content";
 
-// §4.4/§7 4단계: 커뮤니티 공개 목록·상세는 ISR로 캐시되므로, 서버가 내려주는 초기 HTML에
+// 커뮤니티 공개 목록·상세는 ISR로 캐시되므로, 서버가 내려주는 초기 HTML에
 // 로그인 상태·개인화 정보가 절대 섞여 들어가지 않아야 한다(그래야 서로 다른 사용자가 같은
 // 캐시된 HTML을 봐도 안전하다). 로그인 상태는 클라이언트가 /api/v1/community/session을
 // no-store로 별도 조회해서만 얻는다 — 이 테스트는 그 경계가 실제로 지켜지는지 증명한다.

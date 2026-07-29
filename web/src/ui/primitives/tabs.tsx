@@ -1,15 +1,18 @@
-import type { KeyboardEvent } from "react";
+import { useRef, type KeyboardEvent } from "react";
 import type { TabsContract } from "./contracts";
 import styles from "./tabs.module.css";
 
 export function Tabs<T extends string = string>({ items, value, onChange, panelIdPrefix }: TabsContract<T>) {
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const selectableIndexes = items.map((item, i) => (item.disabled ? -1 : i)).filter((i) => i !== -1);
 
   const moveSelection = (currentIndex: number, direction: 1 | -1) => {
     if (selectableIndexes.length === 0) return;
     const pos = selectableIndexes.indexOf(currentIndex);
     const nextPos = (pos + direction + selectableIndexes.length) % selectableIndexes.length;
-    onChange(items[selectableIndexes[nextPos]].value);
+    const nextIndex = selectableIndexes[nextPos];
+    onChange(items[nextIndex].value);
+    tabRefs.current[nextIndex]?.focus();
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
@@ -29,6 +32,7 @@ export function Tabs<T extends string = string>({ items, value, onChange, panelI
         return (
           <button
             key={item.value}
+            ref={(element) => { tabRefs.current[index] = element; }}
             type="button"
             role="tab"
             id={`${panelIdPrefix}-tab-${item.value}`}

@@ -10,8 +10,12 @@ function PrizeRow({ rank, prizeAmount }: { rank: string; prizeAmount: number }) 
   return (
     <tr>
       <th scope="row" className="prize-table-rank">{rank} 당첨금</th>
-      <td className="prize-table-amount">{formatCurrency(prizeAmount)}</td>
+      <td className="prize-table-amount">
+        <span className="prize-table-mobile-label">세전 당첨금</span>
+        {formatCurrency(prizeAmount)}
+      </td>
       <td className="prize-table-after-tax">
+        <span className="prize-table-mobile-label">세후 예상 금액</span>
         <span className="prize-table-after-tax-label">세후 예상 금액</span>
         <span className="prize-table-after-tax-value">{formatCurrency(calcAfterTax(prizeAmount))}</span>
       </td>

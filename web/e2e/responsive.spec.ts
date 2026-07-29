@@ -4,7 +4,7 @@ import { expectNoOverflow } from "./lib/expect-no-overflow";
 // .site-header의 backdrop-filter가 자식 fixed 요소(1단계 Drawer 프리미티브의 backdrop/panel)의
 // containing block이 되어 bottom:0/inset:0이 뷰포트가 아니라 헤더 자신의 높이 기준으로
 // 계산되던 버그가 있었다 — top==bottom이 되어 드로어가 찌그러졌다(npm run dev 육안 확인으로
-// 발견, Phase 1 1단계 Drawer 프리미티브가 2단계에서 처음 실사용되며 재현 확인). role=dialog의
+// 발견했고 Drawer 프리미티브가 실제 화면에 적용되며 재현을 확인했다). role=dialog의
 // "보임" 여부만으로는 이 레이아웃 붕괴를 잡지 못하므로, 배경·패널의 실제 bounding box가
 // 뷰포트 전체 높이를 덮는지 직접 검사한다(패널은 side="right"라 폭은 뷰포트 전체가 아니다).
 async function expectDrawerCoversViewport(page: Page) {
@@ -34,9 +34,12 @@ async function expectDrawerCoversViewport(page: Page) {
 const VIEWPORTS = [
   { width: 320, height: 568, label: "320px" },
   { width: 639, height: 900, label: "639px (태블릿 경계 −1px)" },
+  { width: 640, height: 900, label: "640px (태블릿 경계)" },
   { width: 768, height: 1024, label: "768px" },
   { width: 1023, height: 900, label: "1023px (데스크톱 경계 −1px)" },
+  { width: 1024, height: 900, label: "1024px (데스크톱 경계)" },
   { width: 1280, height: 800, label: "1280px" },
+  { width: 1440, height: 900, label: "1440px" },
 ] as const;
 
 for (const vp of VIEWPORTS) {
@@ -231,7 +234,7 @@ test.describe("정적 라우트·에러 경계 오버플로", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 모바일 하단 내비게이션 + 보조 메뉴 드로어 (Phase 1 2단계)
+// 모바일 하단 내비게이션 + 보조 메뉴 드로어
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe("모바일 하단 내비게이션과 보조 메뉴", () => {
   // Pixel 5 너비 = 393px — CSS 기준 1024px 미만 → 하단 내비 + 보조 메뉴 햄버거
@@ -378,7 +381,7 @@ test.describe("데스크톱 내비게이션", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Phase 1 2단계: 모바일 하단 내비게이션이 상시 노출되므로, 페이지 끝까지 스크롤해도
+// 모바일 하단 내비게이션이 상시 노출되므로, 페이지 끝까지 스크롤해도
 // 푸터 링크를 가리지 않는지 확인한다(광고 유무와 무관 — 광고 자체 겹침은
 // e2e/ad-overlay/sticky-ad.spec.ts가 별도로 검증).
 // ─────────────────────────────────────────────────────────────────────────────
@@ -423,6 +426,7 @@ test.describe("터치 타깃 최소 크기", () => {
     const hamburgerBox = await page.locator('button[aria-label="메뉴 열기"]').boundingBox();
     expect(hamburgerBox).not.toBeNull();
     expect(hamburgerBox!.height).toBeGreaterThanOrEqual(44);
+    expect(hamburgerBox!.width).toBeGreaterThanOrEqual(44);
 
     // 데스크톱용 ThemeToggle(AccountThemeGroup 안, CSS로만 숨김)도 DOM에는 늘 있으므로
     // 드로어 안의 것으로 범위를 좁힌다. 모바일에서는 이게 실제로 보이는 유일한 ThemeToggle이다.
@@ -430,6 +434,7 @@ test.describe("터치 타깃 최소 크기", () => {
     const themeToggleBox = await page.getByRole("dialog").locator(".theme-toggle").boundingBox();
     expect(themeToggleBox).not.toBeNull();
     expect(themeToggleBox!.height).toBeGreaterThanOrEqual(44);
+    expect(themeToggleBox!.width).toBeGreaterThanOrEqual(44);
     await page.keyboard.press("Escape");
 
     const bottomNavLinks = page.getByTestId("mobile-bottom-nav").getByRole("link");
@@ -439,6 +444,7 @@ test.describe("터치 타깃 최소 크기", () => {
       const box = await bottomNavLinks.nth(i).boundingBox();
       expect(box).not.toBeNull();
       expect(box!.height).toBeGreaterThanOrEqual(44);
+      expect(box!.width).toBeGreaterThanOrEqual(44);
     }
   });
 });

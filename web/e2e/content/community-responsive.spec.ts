@@ -103,7 +103,7 @@ test.describe("로그인 상태", () => {
       await page.setViewportSize({ width, height: 900 });
       await gotoAndWaitForRealContent(page, "/community/posts/1");
 
-      // Phase 1 2단계: 이 폭(<1024px)에서는 로그아웃 버튼(AccountMenu)이 보조 메뉴
+      // 이 폭(<1024px)에서는 로그아웃 버튼(AccountMenu)이 보조 메뉴
       // 드로어 안으로 이동했다 — 열어야 보인다.
       await page.getByRole("button", { name: "메뉴 열기" }).click();
       const dialog = page.getByRole("dialog");
@@ -113,13 +113,13 @@ test.describe("로그인 상태", () => {
     });
   }
 
-  test("320px — 로그아웃 버튼 터치 타깃 ≥40px", async ({ page }) => {
+  test("320px — 로그아웃 버튼 터치 타깃 ≥44px", async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 900 });
     await gotoAndWaitForRealContent(page, "/community/posts/1");
 
     await page.getByRole("button", { name: "메뉴 열기" }).click();
     const box = await page.getByRole("dialog").getByRole("button", { name: "로그아웃" }).boundingBox();
     expect(box).not.toBeNull();
-    expect(box!.height).toBeGreaterThanOrEqual(40);
+    expect(box!.height).toBeGreaterThanOrEqual(44);
   });
 });

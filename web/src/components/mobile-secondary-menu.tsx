@@ -54,6 +54,7 @@ export function MobileSecondaryMenu() {
         side="right"
         titleId="mobile-secondary-menu-title"
         title="더 보기"
+        closeLabel="메뉴 닫기"
       >
         <nav className={styles.list} aria-label="보조 메뉴">
           <p className={styles.heading}>데이터</p>

@@ -50,7 +50,7 @@ class RecommendApiIntegrationTest extends BaseApiIntegrationTest {
     }
 
     @Test
-    @DisplayName("응답에 strategy·algorithmVersion·historyThroughRound 메타데이터가 포함된다")
+    @DisplayName("응답에 전략·이력·역대 1등 조합 제외 정책 메타데이터가 포함된다")
     void recommendResponseIncludesAlgorithmMetadata() throws Exception {
         mockMvc.perform(post("/api/v1/numbers/recommend")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -60,7 +60,9 @@ class RecommendApiIntegrationTest extends BaseApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.strategy", is("random")))
                 .andExpect(jsonPath("$.algorithmVersion", is("uniform-random-v1")))
-                .andExpect(jsonPath("$.historyThroughRound", is(2)));
+                .andExpect(jsonPath("$.historyThroughRound", is(2)))
+                .andExpect(jsonPath("$.historicalExclusionApplied", is(true)))
+                .andExpect(jsonPath("$.exclusionPolicyVersion", is("historical-first-prize-v1")));
 
         mockMvc.perform(post("/api/v1/numbers/recommend")
                         .contentType(MediaType.APPLICATION_JSON)

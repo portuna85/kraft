@@ -62,7 +62,7 @@ export default async function CommunityPostDetailPage({ params }: Props) {
       </p>
       <div className="community-post-content">
         {post.content.split("\n").map((line, index) => (
-          // 콘텐츠는 plain text 렌더링이 기본이다(§6 XSS 방어) — dangerouslySetInnerHTML 미사용.
+          // 콘텐츠는 XSS 방어를 위해 plain text로 렌더링하며 dangerouslySetInnerHTML을 사용하지 않는다.
           <p key={index}>{line}</p>
         ))}
       </div>

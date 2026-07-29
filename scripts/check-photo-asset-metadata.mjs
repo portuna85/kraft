@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Phase 0 산출물(docs/improvement_gpt.md §16.4, docs/phase0-photo-asset-policy.md): 사진 자산마다
+// 사진 자산마다
 // meta.json이 라이선스·출처·alt 원칙을 갖추고 있는지 검사한다. web/public/photos/에 아직
-// 실제 자산이 없는 동안은 대상 디렉터리가 비어 있어 항상 통과한다 — Phase 2 이후 실제
+// 실제 자산이 없는 동안은 대상 디렉터리가 비어 있어 항상 통과한다 — 승인된 실제
 // 사진이 추가되면 이 스크립트가 실질적으로 작동한다.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";

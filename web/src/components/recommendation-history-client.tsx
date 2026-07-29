@@ -16,6 +16,7 @@ export function RecommendationHistoryClient() {
   const [items, setItems] = useState<RecommendationSetSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [message, setMessage] = useState("");
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
@@ -31,6 +32,7 @@ export function RecommendationHistoryClient() {
   }, []);
 
   async function handleDelete(id: number) {
+    setMessage("");
     setDeletingIds((prev) => new Set(prev).add(id));
     try {
       await browserFetch(`/api/v1/recommendation-sets/${id}`, {
@@ -40,6 +42,7 @@ export function RecommendationHistoryClient() {
       setItems((prev) => prev.filter((item) => item.id !== id));
     } catch (err) {
       if (!(err instanceof BrowserApiError || err instanceof Error)) throw err;
+      setMessage("추천 이력을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setDeletingIds((prev) => {
         const next = new Set(prev);
@@ -60,8 +63,10 @@ export function RecommendationHistoryClient() {
   }
 
   return (
-    <ul className="saved-list">
-      {items.map((item) => (
+    <>
+      {message ? <p className="status-text" role="status" aria-live="polite">{message}</p> : null}
+      <ul className="saved-list">
+        {items.map((item) => (
         <li key={item.id} className="saved-item">
           <p className="muted">
             {STRATEGY_LABELS[item.strategy]} · {item.algorithmVersion} · {item.historyThroughRound}회 반영
@@ -81,7 +86,8 @@ export function RecommendationHistoryClient() {
             {deletingIds.has(item.id) ? "삭제 중..." : "삭제"}
           </button>
         </li>
-      ))}
-    </ul>
+        ))}
+      </ul>
+    </>
   );
 }

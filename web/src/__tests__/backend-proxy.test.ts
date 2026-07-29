@@ -51,4 +51,15 @@ describe("백엔드 프록시", () => {
       code: "BACKEND_UNAVAILABLE",
     });
   });
+
+  it("기기 범위 요청에는 토큰과 필요한 JSON 헤더만 전달한다", async () => {
+    const { deviceProxyHeaders } = await import("@/lib/backend-proxy");
+    const headers = new Headers(deviceProxyHeaders(new Request("http://localhost", {
+      headers: { "X-Device-Token": "device-token", Cookie: "must-not-forward" },
+    }), true));
+
+    expect(headers.get("x-device-token")).toBe("device-token");
+    expect(headers.get("content-type")).toBe("application/json");
+    expect(headers.get("cookie")).toBeNull();
+  });
 });

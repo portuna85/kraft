@@ -558,6 +558,7 @@ export interface components {
             algorithmVersion?: string;
             /** Format: int32 */
             historyThroughRound?: number;
+            exclusionPolicyVersion?: string;
             items?: components["schemas"]["RecommendationItemView"][];
         };
         RecommendationItemView: {
@@ -626,6 +627,8 @@ export interface components {
             algorithmVersion?: string;
             /** Format: int32 */
             historyThroughRound?: number;
+            historicalExclusionApplied?: boolean;
+            exclusionPolicyVersion?: string;
             /** Format: int64 */
             setId?: number;
             items?: components["schemas"]["RecommendationItemView"][];
@@ -787,6 +790,7 @@ export interface components {
             algorithmVersion?: string;
             /** Format: int32 */
             historyThroughRound?: number;
+            exclusionPolicyVersion?: string;
             lockedNumbers?: number[];
             excludedNumbers?: number[];
             /** Format: date-time */

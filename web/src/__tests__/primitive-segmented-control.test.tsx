@@ -38,5 +38,6 @@ describe("SegmentedControl 프리미티브", () => {
     const current = screen.getByRole("radio", { name: "공동 당첨 위험 완화" });
     fireEvent.keyDown(current, { key: "ArrowRight" });
     expect(onChange).toHaveBeenCalledWith("random");
+    expect(screen.getByRole("radio", { name: "무작위" })).toHaveFocus();
   });
 });

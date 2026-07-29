@@ -33,7 +33,13 @@ export function useRecommendationStudio(options: UseRecommendationStudioOptions 
   // F-P0-6/7: 이전에는 마운트 시 곧바로 POST가 나가 방문마다 recommendation_sets에 영속
   // 기록이 쌓였다 — 사용자가 명시적으로 생성 버튼을 눌러야만 요청이 나가도록 idle에서 시작한다.
   const [isPending, setIsPending] = useState(false);
-  const [meta, setMeta] = useState<{ strategy: Strategy; algorithmVersion: string; historyThroughRound: number } | null>(
+  const [meta, setMeta] = useState<{
+    strategy: Strategy;
+    algorithmVersion: string;
+    historyThroughRound: number;
+    historicalExclusionApplied: boolean;
+    exclusionPolicyVersion: string | null;
+  } | null>(
     null,
   );
   const [savingPositions, setSavingPositions] = useState<Set<number>>(new Set());
@@ -55,6 +61,8 @@ export function useRecommendationStudio(options: UseRecommendationStudioOptions 
       strategy: payload.strategy,
       algorithmVersion: payload.algorithmVersion,
       historyThroughRound: payload.historyThroughRound,
+      historicalExclusionApplied: payload.historicalExclusionApplied ?? true,
+      exclusionPolicyVersion: payload.exclusionPolicyVersion ?? null,
     });
   }
 

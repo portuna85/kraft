@@ -10,6 +10,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import jakarta.annotation.PostConstruct;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -36,15 +37,18 @@ public class LottoRecommendationService {
     static final String STRATEGY_RANDOM = "random";
     static final String STRATEGY_BALANCED = "balanced";
     private static final String RANDOM_ALGORITHM_VERSION = "uniform-random-v1";
+    public static final String EXCLUSION_POLICY_VERSION = "historical-first-prize-v1";
 
     private final LottoNumberCodec lottoNumberCodec;
     private final WinningNumberRepository winningNumberRepository;
     private final CombinationScorer combinationScorer;
     private final BalancedScorer balancedScorer;
     private final RecommendationSetHistoryService recommendationSetHistoryService;
+    private final RecommendationHistoryStateRepository historyStateRepository;
     private final Clock clock;
     private final MeterRegistry meterRegistry;
     private final Timer recommendTimer;
+    private final Timer historyRefreshTimer;
 
     // 조합 비트마스크(ball n → bit n-1)와 이력 완전성(회차 수·최신 반영 회차·최초 누락 회차)을
     // 한 번에 갱신되는 원자적 스냅샷으로 묶는다. 별개 필드로 뒀다면 refresh 도중 masks만
@@ -58,9 +62,9 @@ public class LottoRecommendationService {
     private volatile HistorySnapshot historySnapshot = HistorySnapshot.empty();
 
     record HistorySnapshot(Set<Long> masks, int roundCount, int historyThroughRound,
-                            Integer firstMissingRound, Instant loadedAt) {
+                            Integer firstMissingRound, long version, Instant loadedAt) {
         static HistorySnapshot empty() {
-            return new HistorySnapshot(Set.of(), 0, 0, null, Instant.EPOCH);
+            return new HistorySnapshot(Set.of(), 0, 0, null, 0L, Instant.EPOCH);
         }
 
         /**
@@ -73,6 +77,11 @@ public class LottoRecommendationService {
         boolean ready() {
             return roundCount > 0 && firstMissingRound == null;
         }
+    }
+
+    /** readiness와 운영 지표가 사용하는 이력 상태의 읽기 전용 표현. */
+    public record HistoryStatus(boolean ready, long snapshotVersion, long databaseVersion,
+                                int roundCount, int historyThroughRound, Integer firstMissingRound) {
     }
 
     // 부분 Fisher-Yates 셔플의 난수 소스. 기본은 ThreadLocalRandom이지만, 경계 시나리오
@@ -89,6 +98,7 @@ public class LottoRecommendationService {
                                       CombinationScorer combinationScorer,
                                       BalancedScorer balancedScorer,
                                       RecommendationSetHistoryService recommendationSetHistoryService,
+                                      RecommendationHistoryStateRepository historyStateRepository,
                                       Clock clock,
                                       MeterRegistry meterRegistry) {
         this.lottoNumberCodec = lottoNumberCodec;
@@ -96,10 +106,14 @@ public class LottoRecommendationService {
         this.combinationScorer = combinationScorer;
         this.balancedScorer = balancedScorer;
         this.recommendationSetHistoryService = recommendationSetHistoryService;
+        this.historyStateRepository = historyStateRepository;
         this.clock = clock;
         this.meterRegistry = meterRegistry;
         this.recommendTimer = Timer.builder("kraft_lotto_recommend_duration_seconds")
                 .description("추천 생성 1회 처리 시간(검증·재추첨 포함)")
+                .register(meterRegistry);
+        this.historyRefreshTimer = Timer.builder("kraft_lotto_history_refresh_duration_seconds")
+                .description("Time spent loading and validating the recommendation history snapshot")
                 .register(meterRegistry);
 
         Gauge.builder("kraft_lotto_history_ready", this, s -> s.historySnapshot.ready() ? 1d : 0d)
@@ -117,6 +131,17 @@ public class LottoRecommendationService {
                         s -> (double) (s.historySnapshot.firstMissingRound() == null
                                 ? 0 : s.historySnapshot.firstMissingRound()))
                 .description("1회부터 최신 회차까지 중 최초로 누락된 회차(0=누락 없음)")
+                .register(meterRegistry);
+        Gauge.builder("kraft_lotto_history_snapshot_version", this, s -> (double) s.historySnapshot.version())
+                .description("현재 인스턴스 추천 이력 스냅샷 버전")
+                .register(meterRegistry);
+        Gauge.builder("kraft_lotto_history_db_version", this,
+                        s -> (double) Math.max(-1L, s.historyStatus().databaseVersion()))
+                .description("Current recommendation-history version read from the database; -1 means unavailable")
+                .register(meterRegistry);
+        Gauge.builder("kraft_lotto_history_snapshot_age_seconds", this,
+                        s -> Duration.between(s.historySnapshot.loadedAt(), Instant.now(s.clock)).toSeconds())
+                .description("Age of the in-memory recommendation-history snapshot")
                 .register(meterRegistry);
     }
 
@@ -147,6 +172,9 @@ public class LottoRecommendationService {
     }
 
     private void refreshHistoricalCombinations() {
+        Timer.Sample sample = Timer.start(meterRegistry);
+        try {
+        long versionBeforeLoad = currentHistoryVersion();
         List<WinningBallsOnly> all = winningNumberRepository.findAllBalls();
         Set<Long> combos = new HashSet<>();
         List<Integer> rounds = new ArrayList<>(all.size());
@@ -168,7 +196,36 @@ public class LottoRecommendationService {
         int historyThroughRound = rounds.isEmpty() ? 0 : rounds.get(rounds.size() - 1);
 
         historySnapshot = new HistorySnapshot(
-                Set.copyOf(combos), rounds.size(), historyThroughRound, firstMissingRound, Instant.now(clock));
+                Set.copyOf(combos), rounds.size(), historyThroughRound, firstMissingRound,
+                versionBeforeLoad, Instant.now(clock));
+        } finally {
+            sample.stop(historyRefreshTimer);
+        }
+    }
+
+    /** DB 버전과 스냅샷 버전을 함께 확인한다. DB 장애도 안전하게 추천 중단으로 처리한다. */
+    public HistoryStatus historyStatus() {
+        HistorySnapshot snapshot = historySnapshot;
+        long databaseVersion;
+        try {
+            databaseVersion = currentHistoryVersion();
+        } catch (RuntimeException ignored) {
+            return new HistoryStatus(false, snapshot.version(), -1L, snapshot.roundCount(),
+                    snapshot.historyThroughRound(), snapshot.firstMissingRound());
+        }
+        return new HistoryStatus(snapshot.ready() && snapshot.version() == databaseVersion,
+                snapshot.version(), databaseVersion, snapshot.roundCount(), snapshot.historyThroughRound(),
+                snapshot.firstMissingRound());
+    }
+
+    Instant historyLoadedAt() {
+        return historySnapshot.loadedAt();
+    }
+
+    private long currentHistoryVersion() {
+        return historyStateRepository.findById(1)
+                .map(RecommendationHistoryState::getVersion)
+                .orElse(0L);
     }
 
     public boolean isHistoricalFirstPrizeCombination(List<Integer> numbers) {
@@ -202,7 +259,7 @@ public class LottoRecommendationService {
      * clientTokenHash가 있으면(X-Device-Token 헤더 제공) 결과를 recommendation_sets/items에
      * 영속화하고 응답에 setId/items/createdAt을 채운다. 없으면(기존 호환 클라이언트) 영속화를
      * 건너뛰고 그 필드들은 null로 남긴다 — recommendation_sets는 소유권 없는 행을 허용하지
-     * 않으므로(문서 9.4절) 익명 이력을 남기지 않을 요청까지 강제로 소유자 없는 행을 만들지 않는다.
+     * 않으므로 익명 이력을 남기지 않을 요청까지 강제로 소유자 없는 행을 만들지 않는다.
      */
     public RecommendNumbersResponse recommend(RecommendNumbersRequest request, String clientTokenHash) {
         Timer.Sample sample = Timer.start(meterRegistry);
@@ -220,10 +277,18 @@ public class LottoRecommendationService {
 
     private RecommendNumbersResponse doRecommend(RecommendNumbersRequest request, String clientTokenHash) {
         HistorySnapshot snapshot = historySnapshot;
-        if (!snapshot.ready()) {
+        HistoryStatus status = historyStatus();
+        if (!status.ready()) {
+            meterRegistry.counter("kraft_recommendation_rejected_total", "reason", "history_not_ready").increment();
+            // 다른 인스턴스에서 새 회차를 반영한 경우에도 다음 요청에는 최신 스냅샷을 쓸 수 있게
+            // 현재 요청을 성공시키지 않은 채 동기 재구축한다. 이 요청은 항상 fail-closed다.
+            if (status.databaseVersion() >= 0 && snapshot.version() != status.databaseVersion()) {
+                refreshHistoricalCombinations();
+            }
             throw fail(HttpStatus.SERVICE_UNAVAILABLE, "RECOMMENDATION_HISTORY_NOT_READY",
-                    "역대 1등 배제 이력이 아직 준비되지 않았습니다(회차 수 %d, 최초 누락 회차 %s)."
-                            .formatted(snapshot.roundCount(), snapshot.firstMissingRound()));
+                    "역대 1등 배제 이력이 아직 준비되지 않았습니다(스냅샷 버전 %d, DB 버전 %d, 회차 수 %d, 최초 누락 회차 %s)."
+                            .formatted(status.snapshotVersion(), status.databaseVersion(), status.roundCount(),
+                                    status.firstMissingRound()));
         }
 
         RequestContext ctx = parseRequest(request);
@@ -240,6 +305,18 @@ public class LottoRecommendationService {
                     .tag("strategy", ctx.strategy())
                     .register(meterRegistry));
         }
+        // 샘플링 중 새 당첨 회차가 커밋됐으면 생성 시점의 이력이 더 최신이므로, 이 응답을
+        // 성공시키지 않는다. 이 검사는 추천의 선형화 지점을 응답 조립 직전으로 만든다.
+        HistoryStatus statusAfterSampling = historyStatus();
+        if (!statusAfterSampling.ready() || snapshot.version() != statusAfterSampling.databaseVersion()) {
+            meterRegistry.counter("kraft_recommendation_rejected_total", "reason", "history_changed").increment();
+            if (statusAfterSampling.databaseVersion() >= 0
+                    && historySnapshot.version() != statusAfterSampling.databaseVersion()) {
+                refreshHistoricalCombinations();
+            }
+            throw fail(HttpStatus.SERVICE_UNAVAILABLE, "RECOMMENDATION_HISTORY_NOT_READY",
+                    "추천 중 당첨 이력 버전이 변경되어 다시 확인해야 합니다.");
+        }
         meterRegistry.counter("kraft_lotto_recommend_success_total", "strategy", ctx.strategy()).increment();
         List<List<Integer>> recommendations = items.stream().map(RecommendationItemView::numbers).toList();
 
@@ -250,12 +327,14 @@ public class LottoRecommendationService {
         if (clientTokenHash != null) {
             createdAt = OffsetDateTime.now(clock);
             setId = recommendationSetHistoryService.persist(clientTokenHash, ctx.strategy(), algorithmVersion,
-                    snapshot.historyThroughRound(), ctx.locked(), ctx.excluded().stream().sorted().toList(),
+                    snapshot.historyThroughRound(), EXCLUSION_POLICY_VERSION,
+                    ctx.locked(), ctx.excluded().stream().sorted().toList(),
                     items, createdAt);
         }
 
         return new RecommendNumbersResponse(
                 recommendations, ctx.strategy(), algorithmVersion, snapshot.historyThroughRound(),
+                true, EXCLUSION_POLICY_VERSION,
                 setId, items, createdAt);
     }
 
@@ -293,7 +372,7 @@ public class LottoRecommendationService {
 
     private String resolveStrategy(RecommendNumbersRequest request) {
         if (request != null && request.maximizePrize() != null) {
-            // §17 Phase 6: 구 필드명(maximizePrize) 사용량 추적 — 이 값이 계속 0에 머물면
+            // 구 필드명(maximizePrize) 사용량 추적 — 이 값이 계속 0에 머물면
             // 별도 변경에서 필드 자체를 제거해도 안전하다고 판단할 근거가 된다.
             meterRegistry.counter("kraft_recommend_legacy_field_used_total").increment();
         }
@@ -327,7 +406,7 @@ public class LottoRecommendationService {
                 .count();
         long allowedPossible = possible - compatibleHistoricalCount;
         if (ctx.count() > allowedPossible && !STRATEGY_BALANCED.equals(ctx.strategy())) {
-            // BALANCED는 부족분을 오류로 취급하지 않고 있는 만큼만 반환한다(문서 9.1절).
+            // BALANCED는 부족분을 오류로 취급하지 않고 있는 만큼만 반환한다.
             throw fail(HttpStatus.BAD_REQUEST, "INSUFFICIENT_UNIQUE_COMBINATIONS",
                     "요청한 조합 수(" + ctx.count() + ")가 역대 1등 조합을 제외하고 가능한 고유 조합 수("
                             + allowedPossible + ")를 초과합니다.");
@@ -375,7 +454,7 @@ public class LottoRecommendationService {
     /**
      * 무작위로 유일한 후보를 최대한 모아 형태 균형 점수로 정렬한 뒤 상위 count개를 반환한다.
      * 후보 풀이 count보다 작으면(제외·고정 조건이 매우 빡빡한 경우) 오류를 내지 않고 있는
-     * 만큼만 반환한다(문서 9.1절 BALANCED).
+     * 만큼만 반환한다(BALANCED 정책).
      */
     private List<RecommendationItemView> sampleBalanced(RequestContext ctx, HistorySnapshot snapshot) {
         List<Integer> candidates = buildCandidates(ctx.excluded(), ctx.locked());

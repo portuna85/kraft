@@ -93,11 +93,11 @@ jobs:
           path: web/playwright-report/
           retention-days: 7
 
-  # §6-2: web-e2e와 별도 트랙 — 백엔드가 없다는 전제(web-e2e)가 아니라 픽스처 백엔드로
+  # web-e2e와 별도 트랙 — 백엔드가 없다는 전제(web-e2e)가 아니라 픽스처 백엔드로
   # 실제 콘텐츠가 렌더된 상태의 반응형 오버플로를 검증한다. web-e2e와 완전히 분리된
   # Playwright 설정(playwright.content.config.ts, 앱/픽스처 포트도 다름)이라 서로 간섭하지 않는다.
   web-e2e-content:
-    name: Web E2E Content (§6-2 픽스처 백엔드)
+    name: Web E2E Content (fixture backend)
     runs-on: ubuntu-latest
     needs: [web-build-test]
     # 138개 케이스라 web-e2e보다 여유를 더 둔다. 2026-07-24에 CI 러너 flake로 22분까지
@@ -129,13 +129,44 @@ jobs:
           path: web/playwright-report/
           retention-days: 7
 
-  # §6-5: 하단 고정 광고가 CTA·푸터를 가리지 않는지 검증하려면 광고 env가 baked-in된
+  web-e2e-cross-browser:
+    name: Web E2E Cross-browser Smoke
+    runs-on: ubuntu-latest
+    needs: [web-build-test]
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps firefox webkit
+      - run: npm run build
+        env:
+          KRAFT_BACKEND_INTERNAL_URL: http://127.0.0.1:59999
+          KRAFT_PUBLIC_BASE_URL: http://127.0.0.1:3103
+          NEXT_PUBLIC_UNDO_WINDOW_MS: "200"
+      - run: npm run test:e2e:cross-browser
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: playwright-report-cross-browser
+          path: web/playwright-report/
+          retention-days: 7
+
+  # 하단 고정 광고가 CTA·푸터를 가리지 않는지 검증하려면 광고 env가 baked-in된
   # 별도 빌드가 필요하다. NEXT_DIST_DIR로 산출물 디렉터리를 분리해 web-e2e/web-e2e-content
   # 잡과 겹치지 않게 한다(어차피 잡마다 별도 체크아웃이라 로컬처럼 실제로 꼬일 일은 없지만,
   # 스크립트 동작을 로컬과 동일하게 유지한다). 백엔드는 필요 없다 — 광고는 루트 레이아웃에
   # 있어 모든 라우트에서 mount된다.
   web-e2e-ad-overlay:
-    name: Web E2E Ad Overlay (§6-5)
+    name: Web E2E Ad Overlay
     runs-on: ubuntu-latest
     needs: [web-build-test]
     timeout-minutes: 10
@@ -166,7 +197,7 @@ jobs:
           path: web/playwright-report/
           retention-days: 7
 
-  # Phase 0 기준선(docs/improvement_gpt.md §17): OpenAPI 계약이 바뀌었는데
+  # OpenAPI 계약이 바뀌었는데
   # web/src/lib/generated/api-types.ts를 갱신하지 않고 커밋한 경우를 잡는다.
   # local 프로파일(H2 인메모리)로 백엔드를 띄우므로 MariaDB/Docker가 필요 없다.
   api-types-drift-guard:
@@ -188,8 +219,8 @@ jobs:
       - name: Start backend (local profile, H2 in-memory)
         run: |
           ./gradlew bootRun --args="--spring.profiles.active=local" --no-daemon > backend.log 2>&1 &
-          for i in $(seq 1 60); do
-            if curl -sf http://localhost:8080/actuator/health >/dev/null 2>&1; then
+          for _ in $(seq 1 60); do
+            if curl -sf http://localhost:8080/actuator/health/liveness >/dev/null 2>&1; then
               echo "Backend is up"
               exit 0
             fi
@@ -205,15 +236,28 @@ jobs:
         run: npm run verify:api-types
         env:
           KRAFT_BACKEND_INTERNAL_URL: http://localhost:8080
-      - name: Upload backend log
+      - name: Capture API contract evidence
+        if: always()
+        working-directory: web
+        run: |
+          curl -fsS http://localhost:8080/v3/api-docs --output ../api-openapi.json || true
+          npm run generate:api-types || true
+          git diff -- src/lib/generated/api-types.ts > api-types.diff
+        env:
+          KRAFT_BACKEND_INTERNAL_URL: http://localhost:8080
+      - name: Upload API contract evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: api-types-backend-log
-          path: backend.log
-          retention-days: 3
+          name: api-types-contract-evidence
+          path: |
+            backend.log
+            api-openapi.json
+            web/src/lib/generated/api-types.ts
+            web/api-types.diff
+          retention-days: 7
 
-  # Phase 0 기준선(docs/improvement_gpt.md §17): 번들·Lighthouse 예산 스크립트는 이미
+  # 번들·Lighthouse 예산 스크립트는 이미
   # 있었지만 로컬 전용이었다 — CI 게이트로 승격해 회귀를 자동으로 잡는다.
   web-performance-budget:
     name: Web Performance Budget
@@ -242,7 +286,7 @@ jobs:
         run: |
           node e2e/fixtures/backend.mjs &
           PORT=3101 npm run e2e:serve &
-          for i in $(seq 1 30); do
+          for _ in $(seq 1 30); do
             if curl -sf http://127.0.0.1:3101 >/dev/null 2>&1; then
               echo "App is up"
               exit 0
@@ -267,11 +311,11 @@ jobs:
             web/scripts/lighthouse-results.json
           retention-days: 7
 
-  # Phase 0 기준선(docs/improvement_gpt.md §17 Phase 0): 픽셀 스크린샷 회귀 베이스라인.
+  # 픽셀 스크린샷 회귀 베이스라인.
   # playwright.visual.config.ts가 픽스처 백엔드로 실콘텐츠를 렌더해 대표 라우트×테마
   # 조합을 고정한다. 다른 e2e 트랙과 산출물이 겹치지 않게 NEXT_DIST_DIR=.next-visual 사용.
   web-e2e-visual:
-    name: Web E2E Visual Baseline (Phase 0)
+    name: Web E2E Visual Baseline
     runs-on: ubuntu-latest
     needs: [web-build-test]
     timeout-minutes: 15
@@ -371,8 +415,8 @@ jobs:
       - name: Check env var drift (C-02)
         run: bash scripts/check-env-drift.sh
 
-  # Phase 0 기준선(docs/improvement_gpt.md §16.4, docs/phase0-photo-asset-policy.md): 사진 자산이
-  # 아직 없는 동안은 항상 통과하고, Phase 2 이후 실제 자산이 추가되면 라이선스·출처
+  # 사진 자산이
+  # 아직 없는 동안은 항상 통과하고, 승인된 실제 자산이 추가되면 라이선스·출처
   # 메타데이터 누락을 잡는다.
   photo-asset-metadata-guard:
     name: Photo Asset Metadata Guard
@@ -527,7 +571,7 @@ jobs:
   promote:
     name: Promote to latest
     runs-on: ubuntu-latest
-    needs: [security-scan-backend, security-scan-web, removed-feature-guard, env-drift-guard, container-hardening-guard, shellcheck-guard, photo-asset-metadata-guard, web-e2e, web-e2e-content, web-e2e-visual, web-e2e-ad-overlay, web-performance-budget, api-types-drift-guard]
+    needs: [security-scan-backend, security-scan-web, removed-feature-guard, env-drift-guard, container-hardening-guard, shellcheck-guard, photo-asset-metadata-guard, web-e2e, web-e2e-content, web-e2e-cross-browser, web-e2e-visual, web-e2e-ad-overlay, web-performance-budget, api-types-drift-guard]
     if: github.ref == 'refs/heads/main'
     timeout-minutes: 10
     permissions:

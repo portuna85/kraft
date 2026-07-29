@@ -9,6 +9,19 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import openapiTS, { astToString } from "openapi-typescript";
 
+export const EXIT_CONTRACT_DRIFT = 1;
+export const EXIT_ENVIRONMENT_FAILURE = 2;
+
+export class ApiTypeGenerationError extends Error {
+  constructor(kind, message, options = {}) {
+    super(message, options);
+    this.name = "ApiTypeGenerationError";
+    this.kind = kind;
+    this.exitCode =
+      kind === "ENVIRONMENT_FAILURE" ? EXIT_ENVIRONMENT_FAILURE : EXIT_CONTRACT_DRIFT;
+  }
+}
+
 const webDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const outputPath = path.join(webDir, "src", "lib", "generated", "api-types.ts");
 const backendUrl = process.env.KRAFT_BACKEND_INTERNAL_URL ?? "http://localhost:8080";
@@ -25,32 +38,59 @@ async function generate() {
   try {
     ast = await openapiTS(new URL(specUrl));
   } catch (cause) {
-    console.error(`ERROR: failed to fetch OpenAPI spec from ${specUrl}.`);
-    console.error("Is the backend running locally? (./gradlew.bat bootRun, local profile)");
-    console.error(cause);
-    process.exit(1);
+    throw new ApiTypeGenerationError(
+      "ENVIRONMENT_FAILURE",
+      `Could not fetch the OpenAPI spec from ${specUrl}. Start the backend with the local profile and retry.`,
+      { cause },
+    );
   }
   return HEADER + astToString(ast);
 }
 
-const generated = await generate();
+export function verifyGeneratedContract(generated, committed) {
+  return committed === generated;
+}
 
-if (isVerify) {
+async function main() {
+  const generated = await generate();
+
+  if (!isVerify) {
+    mkdirSync(path.dirname(outputPath), { recursive: true });
+    writeFileSync(outputPath, generated);
+    console.log(`Wrote ${outputPath}`);
+    return;
+  }
+
   if (!existsSync(outputPath)) {
-    console.error(`ERROR: ${outputPath} does not exist. Run "npm run generate:api-types" first.`);
-    process.exit(1);
+    throw new ApiTypeGenerationError(
+      "CONTRACT_DRIFT",
+      `${outputPath} does not exist. Run "npm run generate:api-types" and commit it.`,
+    );
   }
   const committed = readFileSync(outputPath, "utf8");
-  if (committed !== generated) {
-    console.error(
-      "ERROR: generated/api-types.ts is out of date with the backend OpenAPI contract.\n" +
-        "Run \"npm run generate:api-types\" and commit the result."
+  if (!verifyGeneratedContract(generated, committed)) {
+    throw new ApiTypeGenerationError(
+      "CONTRACT_DRIFT",
+      "generated/api-types.ts is out of date with the backend OpenAPI contract. " +
+        "Run \"npm run generate:api-types\" and commit the result.",
     );
-    process.exit(1);
   }
   console.log("OK: generated/api-types.ts matches the current backend contract.");
-} else {
-  mkdirSync(path.dirname(outputPath), { recursive: true });
-  writeFileSync(outputPath, generated);
-  console.log(`Wrote ${outputPath}`);
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try {
+    await main();
+  } catch (error) {
+    if (error instanceof ApiTypeGenerationError) {
+      console.error(`[${error.kind}] ${error.message}`);
+      if (process.env.GITHUB_ACTIONS === "true") {
+        console.error(`::error title=API type check ${error.kind}::${error.message}`);
+      }
+      if (error.cause) console.error(error.cause);
+      process.exitCode = error.exitCode;
+    } else {
+      throw error;
+    }
+  }
 }

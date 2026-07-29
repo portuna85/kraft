@@ -18,7 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 /**
  * 보안 체인 순서(Admin=@Order(1), Community=@Order(2), Public=@Order(3))와 matcher
  * 선점 상태를 고정하는 회귀 가드. community 체인이 public 체인보다 먼저 평가되지 않으면
- * "/api/v1/community/**"가 public 체인의 넓은 "/api/**" matcher에 무음으로 선점당한다(§4.1).
+ * "/api/v1/community/**"가 public 체인의 넓은 "/api/**" matcher에 무음으로 선점당한다.
  */
 @SpringBootTest(classes = Application.class)
 @AutoConfigureMockMvc

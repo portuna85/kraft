@@ -11,7 +11,7 @@ import {
 import type { RecommendationSetSummary } from "@/features/recommendation/types";
 
 /**
- * 로그인 계정으로 귀속된 저장 번호·추천 이력의 "통합 보관함"(문서 Phase 4) — 새 라우트 없이
+ * 로그인 계정으로 귀속된 저장 번호·추천 이력의 "통합 보관함" — 새 라우트 없이
  * /saved 페이지에 이 섹션을 더해 보여준다. 익명 기기 토큰 목록(SavedNumbersClient)과는
  * 별개로 계정(owner_user_id) 기준 데이터만 다룬다.
  */
@@ -19,6 +19,8 @@ export function AccountLibrarySection() {
   const { session, loading } = useCommunitySession();
   const [savedNumbers, setSavedNumbers] = useState<MySavedNumber[] | null>(null);
   const [recommendationSets, setRecommendationSets] = useState<RecommendationSetSummary[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     if (!session?.loggedIn) return;
@@ -32,17 +34,26 @@ export function AccountLibrarySection() {
       })
       .catch(() => {
         if (!cancelled) {
-          setSavedNumbers([]);
-          setRecommendationSets([]);
+          setLoadError(true);
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [session?.loggedIn]);
+  }, [session?.loggedIn, retryKey]);
 
   if (loading || !session?.loggedIn) {
     return null;
+  }
+
+  if (loadError) {
+    return (
+      <section className="saved-account-library" aria-live="polite">
+        <h2>계정에 연결된 기록</h2>
+        <p className="status-text">계정 보관함을 불러오지 못했습니다.</p>
+        <button type="button" onClick={() => { setLoadError(false); setRetryKey((value) => value + 1); }}>다시 시도</button>
+      </section>
+    );
   }
 
   const hasAccountData =

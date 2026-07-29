@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyBackend } from "@/lib/backend-proxy";
+import { deviceProxyHeaders, proxyBackend } from "@/lib/backend-proxy";
 
 export async function DELETE(
   req: NextRequest,
@@ -8,6 +8,6 @@ export async function DELETE(
   const { id } = await params;
   return proxyBackend(`/api/v1/saved/${id}`, {
     method: "DELETE",
-    headers: { "X-Device-Token": req.headers.get("X-Device-Token") ?? "" },
+    headers: deviceProxyHeaders(req),
   });
 }

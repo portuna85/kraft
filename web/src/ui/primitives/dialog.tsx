@@ -15,6 +15,7 @@ export function Dialog({ open, onClose, restoreFocusRef, titleId, title, childre
     <div className={styles.backdrop} onClick={onClose}>
       <div
         ref={panelRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

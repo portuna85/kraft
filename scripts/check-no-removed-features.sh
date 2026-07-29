@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # scripts/check-no-removed-features.sh
-# blueprint §17: 제거된 기능 잔재 검사 (자기참조 결함 수정판)
+# 제거된 기능 잔재 검사 (자기참조 결함 수정판)
 set -euo pipefail
 FAIL=0
 

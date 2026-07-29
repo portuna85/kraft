@@ -12,7 +12,7 @@ export function RecommendationAttachmentView({ attachment }: { attachment: Recom
     <section className="community-recommendation-attachment">
       <p className="muted">
         {STRATEGY_LABELS[attachment.strategy] ?? attachment.strategy} · {attachment.algorithmVersion} · 반영 회차{" "}
-        {attachment.historyThroughRound}회
+        {attachment.historyThroughRound}회 · 정책: {attachment.exclusionPolicyVersion}
       </p>
       {attachment.items.map((item) => (
         <div key={item.position}>
