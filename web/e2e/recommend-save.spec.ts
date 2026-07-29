@@ -30,6 +30,10 @@ test("추천 생성 후 저장하면 저장됨으로 표시된다", async ({ pag
 
   await page.goto("/recommend");
 
+  // F-P0-6/7: 홈/추천 페이지가 더 이상 마운트 시 자동으로 추천을 요청하지 않는다 —
+  // 사용자가 명시적으로 생성 버튼을 눌러야 한다.
+  await page.getByRole("button", { name: "추천 생성" }).click();
+
   const firstCard = page.locator(".recommend-card").first();
   await expect(firstCard).toBeVisible();
 

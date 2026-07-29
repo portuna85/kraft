@@ -179,6 +179,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/community/me/saved-numbers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["savedNumbers"];
+        put?: never;
+        post: operations["saveSavedNumber"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/status": {
         parameters: {
             query?: never;
@@ -387,14 +403,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/community/me/saved-numbers": {
+    "/api/v1/community/me/saved-numbers/matches": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["savedNumbers"];
+        get: operations["savedNumberMatches"];
         put?: never;
         post?: never;
         delete?: never;
@@ -414,6 +430,22 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/community/me/recommendation-sets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["recommendationSet"];
+        put?: never;
+        post?: never;
+        delete: operations["deleteRecommendationSet"];
         options?: never;
         head?: never;
         patch?: never;
@@ -446,6 +478,22 @@ export interface paths {
         put?: never;
         post?: never;
         delete: operations["delete_2"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/community/me/saved-numbers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteSavedNumber"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1240,6 +1288,50 @@ export interface operations {
             };
         };
     };
+    savedNumbers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SavedNumberResponse"][];
+                };
+            };
+        };
+    };
+    saveSavedNumber: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSavedNumberRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SaveNumberResult"];
+                };
+            };
+        };
+    };
     status: {
         parameters: {
             query?: never;
@@ -1538,9 +1630,11 @@ export interface operations {
             };
         };
     };
-    savedNumbers: {
+    savedNumberMatches: {
         parameters: {
-            query?: never;
+            query?: {
+                round?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1553,7 +1647,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["SavedNumberResponse"][];
+                    "*/*": components["schemas"]["SavedNumberMatchResult"][];
                 };
             };
         };
@@ -1575,6 +1669,48 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["RecommendationSetSummary"][];
                 };
+            };
+        };
+    };
+    recommendationSet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RecommendationSetSummary"];
+                };
+            };
+        };
+    };
+    deleteRecommendationSet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -1606,6 +1742,26 @@ export interface operations {
             header: {
                 "X-Device-Token": string;
             };
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteSavedNumber: {
+        parameters: {
+            query?: never;
+            header?: never;
             path: {
                 id: number;
             };
