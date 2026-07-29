@@ -3,6 +3,8 @@ package com.kraft.saved;
 import com.kraft.common.config.SavedProperties;
 import com.kraft.common.error.ApiException;
 import com.kraft.common.lotto.LottoNumberCodec;
+import com.kraft.community.user.CommunityUser;
+import com.kraft.community.user.CommunityUserRepository;
 import com.kraft.winningnumber.WinningNumberQueryService;
 import com.kraft.winningnumber.WinningNumberResponse;
 import java.time.Clock;
@@ -17,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,6 +42,9 @@ class SavedNumbersServiceTest {
 
     @Mock
     private SavedNumberClientLockInitializer savedNumberClientLockInitializer;
+
+    @Mock
+    private CommunityUserRepository communityUserRepository;
 
     @Mock
     private WinningNumberQueryService winningNumberQueryService;
@@ -72,7 +78,21 @@ class SavedNumbersServiceTest {
         savedProperties = new SavedProperties(100);
         clock = Clock.fixed(Instant.parse("2026-06-13T10:00:00Z"), ZoneId.of("Asia/Seoul"));
         service = new SavedNumbersService(savedNumberRepository, savedNumberClientLockRepository,
-                savedNumberClientLockInitializer, lottoNumberCodec, savedProperties, winningNumberQueryService, clock);
+                savedNumberClientLockInitializer, communityUserRepository, lottoNumberCodec, savedProperties,
+                winningNumberQueryService, clock);
+    }
+
+    private CommunityUser communityUser(long id) {
+        try {
+            CommunityUser user = new CommunityUser("google", "provider-" + id, "닉네임", null,
+                    java.time.OffsetDateTime.now(clock));
+            var field = CommunityUser.class.getDeclaredField("id");
+            field.setAccessible(true);
+            field.set(user, id);
+            return user;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Test
@@ -349,6 +369,7 @@ class SavedNumbersServiceTest {
     @DisplayName("B-P0-3: 계정 저장 시 계정에 이미 같은 조합이 있으면 생성되지 않았음을 반환한다(claim 후 dedup 복원)")
     void saveForOwner_duplicateNumbers_returnsCreatedFalse() {
         String encoded = lottoNumberCodec.toStorageValue(VALID_NUMBERS);
+        given(communityUserRepository.lockById(99L)).willReturn(Optional.of(communityUser(99L)));
         given(savedNumberRepository.findByOwnerUserIdAndNumbers(99L, encoded))
                 .willReturn(Optional.of(savedEntity(encoded, "기존", "MANUAL")));
 
@@ -361,6 +382,7 @@ class SavedNumbersServiceTest {
     @Test
     @DisplayName("B-P0-3: 계정 저장 한도 초과 시 충돌 예외가 발생한다(claim 후 한도 복원)")
     void saveForOwner_overLimit_throwsConflictApiException() {
+        given(communityUserRepository.lockById(99L)).willReturn(Optional.of(communityUser(99L)));
         given(savedNumberRepository.findByOwnerUserIdAndNumbers(99L,
                 lottoNumberCodec.toStorageValue(VALID_NUMBERS))).willReturn(Optional.empty());
         given(savedNumberRepository.countByOwnerUserId(99L)).willReturn(100L);
@@ -379,6 +401,7 @@ class SavedNumbersServiceTest {
     @DisplayName("B-P0-3: 새 조합은 계정 소유로 바로 저장된다")
     void saveForOwner_newCombination_returnsCreatedTrue() {
         String encoded = lottoNumberCodec.toStorageValue(VALID_NUMBERS);
+        given(communityUserRepository.lockById(99L)).willReturn(Optional.of(communityUser(99L)));
         given(savedNumberRepository.findByOwnerUserIdAndNumbers(99L, encoded)).willReturn(Optional.empty());
         given(savedNumberRepository.countByOwnerUserId(99L)).willReturn(0L);
         given(savedNumberRepository.save(any(SavedNumber.class)))
@@ -388,6 +411,56 @@ class SavedNumbersServiceTest {
 
         assertThat(result.created()).isTrue();
         verify(savedNumberClientLockInitializer, never()).ensureExists(any());
+    }
+
+    @Test
+    @DisplayName("KB-14: 계정 저장은 owner 행을 레코드 락으로 잠근 뒤 dedup·한도를 확인한다")
+    void saveForOwner_locksOwnerRowBeforeDedupCheck() {
+        String encoded = lottoNumberCodec.toStorageValue(VALID_NUMBERS);
+        given(communityUserRepository.lockById(99L)).willReturn(Optional.of(communityUser(99L)));
+        given(savedNumberRepository.findByOwnerUserIdAndNumbers(99L, encoded)).willReturn(Optional.empty());
+        given(savedNumberRepository.countByOwnerUserId(99L)).willReturn(0L);
+        given(savedNumberRepository.save(any(SavedNumber.class)))
+                .willAnswer(inv -> savedEntity(encoded, null, "MANUAL"));
+
+        service.saveForOwner(99L, new CreateSavedNumberRequest(VALID_NUMBERS, null, "MANUAL"));
+
+        var inOrder = org.mockito.Mockito.inOrder(communityUserRepository, savedNumberRepository);
+        inOrder.verify(communityUserRepository).lockById(99L);
+        inOrder.verify(savedNumberRepository).findByOwnerUserIdAndNumbers(99L, encoded);
+    }
+
+    @Test
+    @DisplayName("KB-14: 존재하지 않는 계정으로 저장을 시도하면 404가 발생한다")
+    void saveForOwner_ownerNotFound_throwsNotFound() {
+        given(communityUserRepository.lockById(404L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() ->
+                service.saveForOwner(404L, new CreateSavedNumberRequest(VALID_NUMBERS, null, null)))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> {
+                    ApiException apiEx = (ApiException) ex;
+                    assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
+                    assertThat(apiEx.getCode()).isEqualTo("COMMUNITY_USER_NOT_FOUND");
+                });
+        verify(savedNumberRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("KB-14: 유니크 키 경합으로 저장이 실패하면 500 대신 멱등 응답으로 흡수한다")
+    void saveForOwner_uniqueKeyRace_absorbsAsIdempotentResponse() {
+        String encoded = lottoNumberCodec.toStorageValue(VALID_NUMBERS);
+        given(communityUserRepository.lockById(99L)).willReturn(Optional.of(communityUser(99L)));
+        given(savedNumberRepository.findByOwnerUserIdAndNumbers(99L, encoded))
+                .willReturn(Optional.empty())
+                .willReturn(Optional.of(savedEntity(encoded, null, "MANUAL")));
+        given(savedNumberRepository.countByOwnerUserId(99L)).willReturn(0L);
+        given(savedNumberRepository.save(any(SavedNumber.class)))
+                .willThrow(new DataIntegrityViolationException("uk_saved_owner_numbers"));
+
+        SaveNumberResult result = service.saveForOwner(99L, new CreateSavedNumberRequest(VALID_NUMBERS, null, "MANUAL"));
+
+        assertThat(result.created()).isFalse();
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.kraft.common.config.SavedProperties;
 import com.kraft.common.error.ApiException;
 import com.kraft.common.lotto.LottoNumberCodec;
 import com.kraft.common.lotto.LottoRank;
+import com.kraft.community.user.CommunityUserRepository;
 import com.kraft.winningnumber.WinningNumberQueryService;
 import com.kraft.winningnumber.WinningNumberResponse;
 import java.time.Clock;
@@ -12,6 +13,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +25,7 @@ public class SavedNumbersService {
     private final SavedNumberRepository savedNumberRepository;
     private final SavedNumberClientLockRepository savedNumberClientLockRepository;
     private final SavedNumberClientLockInitializer savedNumberClientLockInitializer;
+    private final CommunityUserRepository communityUserRepository;
     private final LottoNumberCodec lottoNumberCodec;
     private final SavedProperties savedProperties;
     private final WinningNumberQueryService winningNumberQueryService;
@@ -31,6 +34,7 @@ public class SavedNumbersService {
     public SavedNumbersService(SavedNumberRepository savedNumberRepository,
                                SavedNumberClientLockRepository savedNumberClientLockRepository,
                                SavedNumberClientLockInitializer savedNumberClientLockInitializer,
+                               CommunityUserRepository communityUserRepository,
                                LottoNumberCodec lottoNumberCodec,
                                SavedProperties savedProperties,
                                WinningNumberQueryService winningNumberQueryService,
@@ -38,6 +42,7 @@ public class SavedNumbersService {
         this.savedNumberRepository = savedNumberRepository;
         this.savedNumberClientLockRepository = savedNumberClientLockRepository;
         this.savedNumberClientLockInitializer = savedNumberClientLockInitializer;
+        this.communityUserRepository = communityUserRepository;
         this.lottoNumberCodec = lottoNumberCodec;
         this.savedProperties = savedProperties;
         this.winningNumberQueryService = winningNumberQueryService;
@@ -145,13 +150,18 @@ public class SavedNumbersService {
     }
 
     /**
-     * B-P0-3: claim 이후 계정 소유 저장 번호에 대한 중복검사·한도 검사 경로. 기기 토큰
-     * 잠금(client_token_locks)은 client_token_hash 기준 인프라라 owner_user_id에는 대응하는
-     * 잠금 테이블이 없다 — 계정 저장은 세션 인증이 이미 요구되고 동일 계정에서의 동시 저장은
-     * 기기 익명 저장보다 드물다고 보아 이번 수정 범위에서는 잠금 없이 dedup/한도만 복원한다.
+     * KB-14: claim 이후 계정 소유 저장 번호에 대한 중복검사·한도 검사·저장을 owner 행의
+     * 레코드 락으로 직렬화한다. 기기 토큰 잠금(client_token_locks)은 client_token_hash 기준
+     * 인프라라 owner_user_id에는 대응하는 잠금 테이블이 없었지만, community_users는 계정당
+     * 정확히 한 행이 이미 존재하므로 새 잠금 테이블 없이 그 행 자체를 잠근다(save()의
+     * 클라이언트 잠금 행 패턴과 동일한 목적, 다른 대상). 유니크 키(uk_saved_owner_numbers)
+     * 경합이 그래도 발생하면(예: 락 없는 claimAll과의 경합) 500 대신 멱등 응답으로 흡수한다.
      */
     public SaveNumberResult saveForOwner(Long ownerUserId, CreateSavedNumberRequest request) {
         String normalizedNumbers = lottoNumberCodec.toStorageValue(request.numbers());
+
+        communityUserRepository.lockById(ownerUserId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_USER_NOT_FOUND", "계정을 찾을 수 없습니다."));
 
         Optional<SavedNumber> duplicate = savedNumberRepository.findByOwnerUserIdAndNumbers(ownerUserId, normalizedNumbers);
         if (duplicate.isPresent()) {
@@ -166,7 +176,13 @@ public class SavedNumbersService {
         String label = request.label() == null || request.label().isBlank() ? null : request.label().trim();
         SavedNumber savedNumber = new SavedNumber(null, normalizedNumbers, label, source, OffsetDateTime.now(clock));
         savedNumber.claimTo(ownerUserId);
-        return new SaveNumberResult(toResponse(savedNumberRepository.save(savedNumber)), true);
+        try {
+            return new SaveNumberResult(toResponse(savedNumberRepository.save(savedNumber)), true);
+        } catch (DataIntegrityViolationException concurrentSave) {
+            return savedNumberRepository.findByOwnerUserIdAndNumbers(ownerUserId, normalizedNumbers)
+                    .map(existing -> new SaveNumberResult(toResponse(existing), false))
+                    .orElseThrow(() -> concurrentSave);
+        }
     }
 
     // saved_number_client_locks 행은 의도적으로 여기서 지우지 않는다 — 클라이언트가 방금

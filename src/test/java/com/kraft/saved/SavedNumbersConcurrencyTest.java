@@ -1,6 +1,9 @@
 package com.kraft.saved;
 
 import com.kraft.common.lotto.LottoNumberCodec;
+import com.kraft.community.user.CommunityUser;
+import com.kraft.community.user.CommunityUserRepository;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -59,11 +62,21 @@ class SavedNumbersConcurrencyTest {
     @Autowired
     private SavedNumberRepository savedNumberRepository;
 
+    @Autowired
+    private CommunityUserRepository communityUserRepository;
+
     private final LottoNumberCodec lottoNumberCodec = new LottoNumberCodec();
 
     @BeforeEach
     void cleanUp() {
         savedNumberRepository.deleteAll();
+        communityUserRepository.deleteAll();
+    }
+
+    private Long createOwner() {
+        CommunityUser owner = communityUserRepository.save(new CommunityUser(
+                "google", "owner-" + System.nanoTime(), "테스트유저", null, OffsetDateTime.now()));
+        return owner.getId();
     }
 
     @Test
@@ -105,6 +118,43 @@ class SavedNumbersConcurrencyTest {
         assertThat(1 + succeeded).isLessThanOrEqualTo(2);
         assertThat(succeeded + rejected).isEqualTo(threadCount);
         assertThat(savedNumberRepository.findByClientTokenHashOrderByCreatedAtDesc(token).size())
+                .isLessThanOrEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("KB-14: 계정으로 같은 번호를 동시에 저장해도 정확히 한 행만 만들어지고 나머지는 멱등 응답을 받는다")
+    void concurrentDuplicateSaveForOwner_createsExactlyOneRow() throws Exception {
+        Long ownerUserId = createOwner();
+        List<Integer> numbers = List.of(3, 11, 19, 28, 34, 42);
+        int threadCount = 4;
+
+        List<SaveNumberResult> results = runConcurrently(threadCount,
+                () -> savedNumbersService.saveForOwner(ownerUserId, new CreateSavedNumberRequest(numbers, null, "MANUAL")));
+
+        long createdCount = results.stream().filter(SaveNumberResult::created).count();
+        assertThat(createdCount).isEqualTo(1);
+        assertThat(savedNumberRepository.findByOwnerUserIdOrderByCreatedAtDesc(ownerUserId)).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("KB-14: 계정 한도 경계에서 서로 다른 번호를 동시에 저장해도 한도를 넘기지 않고 500도 나지 않는다")
+    void concurrentDifferentSavesForOwner_neverExceedsLimit() throws Exception {
+        Long ownerUserId = createOwner();
+        // maxPerClient=2(테스트 오버라이드) — 이미 1개 저장된 상태에서 서로 다른 번호 2건을 동시 요청
+        savedNumbersService.saveForOwner(ownerUserId, new CreateSavedNumberRequest(List.of(1, 2, 3, 4, 5, 6), null, "MANUAL"));
+
+        int threadCount = 2;
+        List<Object> outcomes = runConcurrentlyAllowingFailure(threadCount, i -> {
+            List<Integer> numbers = IntStream.rangeClosed(1, 6).map(n -> n + i + 1).boxed().toList();
+            return savedNumbersService.saveForOwner(ownerUserId, new CreateSavedNumberRequest(numbers, null, "MANUAL"));
+        });
+
+        long succeeded = outcomes.stream().filter(o -> o instanceof SaveNumberResult).count();
+        long rejected = outcomes.stream().filter(o -> o instanceof Exception).count();
+
+        assertThat(1 + succeeded).isLessThanOrEqualTo(2);
+        assertThat(succeeded + rejected).isEqualTo(threadCount);
+        assertThat(savedNumberRepository.findByOwnerUserIdOrderByCreatedAtDesc(ownerUserId).size())
                 .isLessThanOrEqualTo(2);
     }
 
