@@ -82,14 +82,30 @@ public class SavedNumbersService {
 
     @Transactional(readOnly = true)
     public List<SavedNumberMatchResult> compareWithRound(String clientTokenHash, String roundParam) {
-        WinningNumberResponse draw = "latest".equalsIgnoreCase(roundParam)
-                ? winningNumberQueryService.findLatest()
-                        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "ROUND_NOT_FOUND", "집계된 회차가 없습니다."))
-                : winningNumberQueryService.getByRound(parseRound(roundParam));
-
+        WinningNumberResponse draw = resolveDraw(roundParam);
         return savedNumberRepository.findByClientTokenHashOrderByCreatedAtDesc(clientTokenHash).stream()
                 .map(saved -> toMatchResult(saved, draw))
                 .toList();
+    }
+
+    /**
+     * B-P0-3: claim(계정 귀속) 이후에는 client_token_hash가 null로 지워지므로 기기 토큰
+     * 기준의 {@link #compareWithRound}는 그 저장 번호를 더 이상 찾지 못한다. 로그인 세션으로
+     * owner_user_id 기준 대조가 가능한 경로를 별도로 둔다.
+     */
+    @Transactional(readOnly = true)
+    public List<SavedNumberMatchResult> compareWithRoundForOwner(Long ownerUserId, String roundParam) {
+        WinningNumberResponse draw = resolveDraw(roundParam);
+        return savedNumberRepository.findByOwnerUserIdOrderByCreatedAtDesc(ownerUserId).stream()
+                .map(saved -> toMatchResult(saved, draw))
+                .toList();
+    }
+
+    private WinningNumberResponse resolveDraw(String roundParam) {
+        return "latest".equalsIgnoreCase(roundParam)
+                ? winningNumberQueryService.findLatest()
+                        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "ROUND_NOT_FOUND", "집계된 회차가 없습니다."))
+                : winningNumberQueryService.getByRound(parseRound(roundParam));
     }
 
     public SaveNumberResult save(String clientTokenHash, CreateSavedNumberRequest request) {
@@ -128,12 +144,44 @@ public class SavedNumbersService {
         return new SaveNumberResult(toResponse(savedNumber), true);
     }
 
+    /**
+     * B-P0-3: claim 이후 계정 소유 저장 번호에 대한 중복검사·한도 검사 경로. 기기 토큰
+     * 잠금(client_token_locks)은 client_token_hash 기준 인프라라 owner_user_id에는 대응하는
+     * 잠금 테이블이 없다 — 계정 저장은 세션 인증이 이미 요구되고 동일 계정에서의 동시 저장은
+     * 기기 익명 저장보다 드물다고 보아 이번 수정 범위에서는 잠금 없이 dedup/한도만 복원한다.
+     */
+    public SaveNumberResult saveForOwner(Long ownerUserId, CreateSavedNumberRequest request) {
+        String normalizedNumbers = lottoNumberCodec.toStorageValue(request.numbers());
+
+        Optional<SavedNumber> duplicate = savedNumberRepository.findByOwnerUserIdAndNumbers(ownerUserId, normalizedNumbers);
+        if (duplicate.isPresent()) {
+            return new SaveNumberResult(toResponse(duplicate.get()), false);
+        }
+
+        if (savedNumberRepository.countByOwnerUserId(ownerUserId) >= savedProperties.maxPerClient()) {
+            throw new ApiException(HttpStatus.CONFLICT, "SAVED_LIMIT_REACHED", "저장 가능한 번호 개수를 초과했습니다.");
+        }
+
+        String source = request.source() == null || request.source().isBlank() ? "MANUAL" : request.source().trim();
+        String label = request.label() == null || request.label().isBlank() ? null : request.label().trim();
+        SavedNumber savedNumber = new SavedNumber(null, normalizedNumbers, label, source, OffsetDateTime.now(clock));
+        savedNumber.claimTo(ownerUserId);
+        return new SaveNumberResult(toResponse(savedNumberRepository.save(savedNumber)), true);
+    }
+
     // saved_number_client_locks 행은 의도적으로 여기서 지우지 않는다 — 클라이언트가 방금
     // 저장번호를 모두 지웠어도 곧 다시 저장할 수 있으므로, 마지막 저장번호 삭제 직후 잠금
     // 행까지 없애면 다음 저장 때 재생성 비용만 늘어난다. 고아 잠금 정리는 전적으로
     // SavedNumberClientLockCleanupScheduler(P1-06)가 보관기간을 두고 담당한다.
     public void delete(String clientTokenHash, long id) {
         SavedNumber savedNumber = savedNumberRepository.findByIdAndClientTokenHash(id, clientTokenHash)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "SAVED_NUMBER_NOT_FOUND", "저장된 번호를 찾을 수 없습니다."));
+        savedNumberRepository.delete(savedNumber);
+    }
+
+    /** B-P0-3: claim된 저장 번호는 client_token_hash가 없으므로 owner_user_id 기준 삭제 경로가 필요하다. */
+    public void deleteForOwner(Long ownerUserId, long id) {
+        SavedNumber savedNumber = savedNumberRepository.findByIdAndOwnerUserId(id, ownerUserId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "SAVED_NUMBER_NOT_FOUND", "저장된 번호를 찾을 수 없습니다."));
         savedNumberRepository.delete(savedNumber);
     }

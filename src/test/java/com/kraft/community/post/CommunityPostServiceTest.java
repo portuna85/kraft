@@ -26,6 +26,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("커뮤니티 게시글 서비스 단위 테스트")
@@ -155,6 +157,28 @@ class CommunityPostServiceTest {
         CommunityPost result = service.get(1L, null);
 
         assertThat(result.getId()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("B-P0-8: 가시성 검증을 통과한 상세 조회는 view_count를 1 증가시킨다")
+    void get_visiblePost_incrementsViewCount() {
+        CommunityPost post = postEntity(1L, 1L, PostStatus.PUBLISHED);
+        given(communityPostRepository.findById(1L)).willReturn(Optional.of(post));
+
+        service.get(1L, null);
+
+        verify(communityPostMetricsRepository).incrementViewCount(1L);
+    }
+
+    @Test
+    @DisplayName("B-P0-8: 가시성 검증에 실패하면 view_count를 증가시키지 않는다")
+    void get_notVisiblePost_doesNotIncrementViewCount() {
+        CommunityPost post = postEntity(1L, 1L, PostStatus.HIDDEN_BY_AUTHOR);
+        given(communityPostRepository.findById(1L)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> service.get(1L, 2L)).isInstanceOf(ApiException.class);
+
+        verify(communityPostMetricsRepository, never()).incrementViewCount(any());
     }
 
     @Test

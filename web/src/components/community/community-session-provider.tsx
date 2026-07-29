@@ -31,16 +31,19 @@ export function CommunitySessionProvider({ children }: { children: ReactNode }) 
       .then((session) => {
         if (!cancelled) setState({ session, loading: false });
         if (session.loggedIn && !window.sessionStorage.getItem(CLAIM_ATTEMPTED_KEY)) {
-          window.sessionStorage.setItem(CLAIM_ATTEMPTED_KEY, "1");
-          // 귀속 성공·실패(다른 계정이 이미 귀속한 기기 토큰 등)와 무관하게 토큰을 회전한다 —
-          // 성공 시엔 이전 토큰이 더 이상 아무 것도 가리키지 않으므로, 실패 시엔 이 브라우저가
-          // 계속 같은 토큰으로 재시도해 매번 충돌하는 것을 막기 위해서다(문서 10.2 8단계).
+          // F-P0-10: 이전에는 성공/실패와 무관하게 토큰을 회전시켰다 — claim이 실패하면
+          // (네트워크 오류 등, 409 "이미 귀속됨"과는 다른 경우) 회전된 새 토큰은 서버에
+          // 아무 데이터도 연결돼 있지 않아 이 브라우저의 익명 활동 이력에 계속 접근할 수
+          // 없게 된다. 성공했을 때만 회전하고, 실패 시엔 플래그도 세우지 않아 다음 세션
+          // 조회 때 같은(유효한) 토큰으로 재시도할 수 있게 한다.
           claimDevice()
+            .then(() => {
+              window.sessionStorage.setItem(CLAIM_ATTEMPTED_KEY, "1");
+              rotateDeviceToken();
+            })
             .catch(() => {
               // 409(다른 계정이 이미 귀속) 등은 조용히 무시 — 사용자에게 에러로 노출하지 않는다.
-            })
-            .finally(() => {
-              rotateDeviceToken();
+              // 회전은 하지 않으므로 다음 세션 조회 시 재시도된다(멱등, 문서 10.2 8단계).
             });
         }
       })

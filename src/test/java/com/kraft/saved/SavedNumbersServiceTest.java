@@ -325,4 +325,89 @@ class SavedNumbersServiceTest {
         assertThat(result).hasSize(1);
         assertThat(result.get(0).numbers()).containsExactlyElementsOf(VALID_NUMBERS);
     }
+
+    // --- B-P0-3: claim(계정 귀속) 이후에는 client_token_hash가 null로 지워져 기기 토큰 기준
+    // 조회로는 저장 번호를 찾을 수 없다. owner_user_id 기준 대조·저장·삭제 경로를 검증한다. ---
+
+    @Test
+    @DisplayName("B-P0-3: claim된 저장 번호는 owner_user_id 기준으로 회차 대조가 된다(기기 토큰 목록에는 더 이상 없음)")
+    void compareWithRoundForOwner_claimedNumbers_returnsMatchResults() {
+        String encoded = lottoNumberCodec.toStorageValue(VALID_NUMBERS);
+        given(savedNumberRepository.findByOwnerUserIdOrderByCreatedAtDesc(99L))
+                .willReturn(List.of(savedEntity(encoded, null, "MANUAL")));
+        WinningNumberResponse draw = new WinningNumberResponse(
+                1234, LocalDate.of(2026, 6, 13), VALID_NUMBERS, 7, 1_000_000_000L, 0L, 0, 0L, 0L);
+        given(winningNumberQueryService.findLatest()).willReturn(Optional.of(draw));
+
+        List<SavedNumberMatchResult> result = service.compareWithRoundForOwner(99L, "latest");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).matchedCount()).isEqualTo(6);
+    }
+
+    @Test
+    @DisplayName("B-P0-3: 계정 저장 시 계정에 이미 같은 조합이 있으면 생성되지 않았음을 반환한다(claim 후 dedup 복원)")
+    void saveForOwner_duplicateNumbers_returnsCreatedFalse() {
+        String encoded = lottoNumberCodec.toStorageValue(VALID_NUMBERS);
+        given(savedNumberRepository.findByOwnerUserIdAndNumbers(99L, encoded))
+                .willReturn(Optional.of(savedEntity(encoded, "기존", "MANUAL")));
+
+        SaveNumberResult result = service.saveForOwner(99L, new CreateSavedNumberRequest(VALID_NUMBERS, null, null));
+
+        assertThat(result.created()).isFalse();
+        verify(savedNumberRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("B-P0-3: 계정 저장 한도 초과 시 충돌 예외가 발생한다(claim 후 한도 복원)")
+    void saveForOwner_overLimit_throwsConflictApiException() {
+        given(savedNumberRepository.findByOwnerUserIdAndNumbers(99L,
+                lottoNumberCodec.toStorageValue(VALID_NUMBERS))).willReturn(Optional.empty());
+        given(savedNumberRepository.countByOwnerUserId(99L)).willReturn(100L);
+
+        assertThatThrownBy(() ->
+                service.saveForOwner(99L, new CreateSavedNumberRequest(VALID_NUMBERS, null, null)))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> {
+                    ApiException apiEx = (ApiException) ex;
+                    assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(apiEx.getCode()).isEqualTo("SAVED_LIMIT_REACHED");
+                });
+    }
+
+    @Test
+    @DisplayName("B-P0-3: 새 조합은 계정 소유로 바로 저장된다")
+    void saveForOwner_newCombination_returnsCreatedTrue() {
+        String encoded = lottoNumberCodec.toStorageValue(VALID_NUMBERS);
+        given(savedNumberRepository.findByOwnerUserIdAndNumbers(99L, encoded)).willReturn(Optional.empty());
+        given(savedNumberRepository.countByOwnerUserId(99L)).willReturn(0L);
+        given(savedNumberRepository.save(any(SavedNumber.class)))
+                .willAnswer(inv -> savedEntity(encoded, null, "MANUAL"));
+
+        SaveNumberResult result = service.saveForOwner(99L, new CreateSavedNumberRequest(VALID_NUMBERS, null, "MANUAL"));
+
+        assertThat(result.created()).isTrue();
+        verify(savedNumberClientLockInitializer, never()).ensureExists(any());
+    }
+
+    @Test
+    @DisplayName("B-P0-3: claim된 저장 번호는 owner_user_id 기준으로 삭제할 수 있다(기기 토큰 삭제는 더 이상 불가)")
+    void deleteForOwner_claimedNumber_deletesRow() {
+        SavedNumber owned = savedEntity(lottoNumberCodec.toStorageValue(VALID_NUMBERS), null, "MANUAL");
+        given(savedNumberRepository.findByIdAndOwnerUserId(1L, 99L)).willReturn(Optional.of(owned));
+
+        service.deleteForOwner(99L, 1L);
+
+        verify(savedNumberRepository).delete(owned);
+    }
+
+    @Test
+    @DisplayName("B-P0-3: 다른 계정 소유의 저장 번호를 삭제하려 하면 404가 발생한다")
+    void deleteForOwner_notOwned_throwsNotFound() {
+        given(savedNumberRepository.findByIdAndOwnerUserId(1L, 42L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.deleteForOwner(42L, 1L))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> assertThat(((ApiException) ex).getCode()).isEqualTo("SAVED_NUMBER_NOT_FOUND"));
+    }
 }

@@ -111,7 +111,7 @@ describe("CSP nonce 미들웨어", () => {
       expect(response.status).not.toBe(404);
     });
 
-    it("KRAFT_OPS_ALLOWED_HOST가 없으면 /ops를 그대로 통과시킨다", async () => {
+    it("F-P0-12: KRAFT_OPS_ALLOWED_HOST가 없으면 fail-closed로 /ops를 404 처리한다", async () => {
       delete process.env.KRAFT_OPS_ALLOWED_HOST;
       vi.resetModules();
       const { proxy } = await import("@/proxy");
@@ -121,7 +121,7 @@ describe("CSP nonce 미들웨어", () => {
 
       const response = proxy(req);
 
-      expect(response.status).not.toBe(404);
+      expect(response.status).toBe(404);
     });
   });
 });

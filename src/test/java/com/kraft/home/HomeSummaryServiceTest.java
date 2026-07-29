@@ -20,10 +20,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("홈 요약 서비스 단위 테스트")
@@ -48,8 +52,8 @@ class HomeSummaryServiceTest {
     @DisplayName("최신 회차가 없으면 신선도 없이 빈 목록을 반환한다")
     void summarize_noLatestRound_returnsEmptyWithoutFreshness() {
         given(winningNumberQueryService.findLatest()).willReturn(Optional.empty());
-        given(communityPostRepository.findAllByOrderByCreatedAtDesc(any())).willReturn(List.of());
-        given(communityPostRepository.findByCreatedAtAfterOrderByCreatedAtDesc(any(), any())).willReturn(List.of());
+        given(communityPostRepository.findLatest(any(), any(), any())).willReturn(Page.empty());
+        given(communityPostRepository.findWeeklyPopular(any(), any(), any(), any())).willReturn(Page.empty());
 
         HomeResponse response = service.summarize();
 
@@ -70,8 +74,9 @@ class HomeSummaryServiceTest {
 
         CommunityPost post = new CommunityPost(1L, "글쓴이", "제목", "내용", PostCategory.GENERAL, null,
                 OffsetDateTime.now(CLOCK), OffsetDateTime.now(CLOCK));
-        given(communityPostRepository.findAllByOrderByCreatedAtDesc(any())).willReturn(List.of(post));
-        given(communityPostRepository.findByCreatedAtAfterOrderByCreatedAtDesc(any(), any())).willReturn(List.of(post));
+        given(communityPostRepository.findLatest(any(), any(), any())).willReturn(new PageImpl<>(List.of(post)));
+        given(communityPostRepository.findWeeklyPopular(any(), any(), any(), any()))
+                .willReturn(new PageImpl<>(List.of(post)));
 
         HomeResponse response = service.summarize();
 
@@ -79,5 +84,22 @@ class HomeSummaryServiceTest {
         assertThat(response.freshness().fresh()).isTrue();
         assertThat(response.latestPosts()).hasSize(1);
         assertThat(response.weeklyPopularPosts()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("숨김·삭제 상태 게시글은 리포지토리 쿼리 단계에서 걸러지므로 서비스는 category/query에 null을 넘겨 status=PUBLISHED 전체를 조회한다")
+    void summarize_alwaysQueriesWithoutCategoryOrSearchFilter_relyingOnPublishedStatusFilter() {
+        given(winningNumberQueryService.findLatest()).willReturn(Optional.empty());
+        given(communityPostRepository.findLatest(isNull(), isNull(), any())).willReturn(Page.empty());
+        given(communityPostRepository.findWeeklyPopular(isNull(), isNull(), any(), any())).willReturn(Page.empty());
+
+        service.summarize();
+
+        // B-P0-1 회귀 방지: 과거에는 status 필터가 없는
+        // findAllByOrderByCreatedAtDesc/findByCreatedAtAfterOrderByCreatedAtDesc를 사용해
+        // 숨김(HIDDEN_BY_AUTHOR)·삭제 게시글이 홈에 그대로 노출됐다. findLatest/findWeeklyPopular는
+        // 둘 다 JPQL/native 쿼리에 status = PUBLISHED 조건이 있어 이 결함이 구조적으로 재발하지 않는다.
+        verify(communityPostRepository).findLatest(isNull(), isNull(), any());
+        verify(communityPostRepository).findWeeklyPopular(isNull(), isNull(), any(), any());
     }
 }

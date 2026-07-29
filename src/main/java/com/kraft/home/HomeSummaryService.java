@@ -37,14 +37,18 @@ public class HomeSummaryService {
         Optional<WinningNumberResponse> latestRound = winningNumberQueryService.findLatest();
         RoundFreshnessResponse freshness = latestRound.isPresent() ? winningNumberQueryService.getFreshness() : null;
 
+        // B-P0-1: 홈은 category/query 필터가 없는 화면이므로 null을 넘겨 PUBLISHED 전체를 대상으로
+        // 한다. findLatest/findWeeklyPopular는 둘 다 status = PUBLISHED 조건이 있어 숨김·삭제
+        // 게시글이 노출되지 않는다(과거에는 이 필터가 없는 findAllByOrderByCreatedAtDesc /
+        // findByCreatedAtAfterOrderByCreatedAtDesc를 써서 숨김 글이 그대로 노출되는 결함이 있었다).
         List<HomeCommunityPostSummary> latestPosts = communityPostRepository
-                .findAllByOrderByCreatedAtDesc(PageRequest.of(0, LATEST_POSTS_LIMIT)).stream()
+                .findLatest(null, null, PageRequest.of(0, LATEST_POSTS_LIMIT)).getContent().stream()
                 .map(HomeSummaryService::toSummary)
                 .toList();
 
         OffsetDateTime since = OffsetDateTime.now(clock).minusDays(WEEKLY_WINDOW_DAYS);
         List<HomeCommunityPostSummary> weeklyPopularPosts = communityPostRepository
-                .findByCreatedAtAfterOrderByCreatedAtDesc(since, PageRequest.of(0, WEEKLY_POPULAR_POSTS_LIMIT)).stream()
+                .findWeeklyPopular(null, null, since, PageRequest.of(0, WEEKLY_POPULAR_POSTS_LIMIT)).getContent().stream()
                 .map(HomeSummaryService::toSummary)
                 .toList();
 

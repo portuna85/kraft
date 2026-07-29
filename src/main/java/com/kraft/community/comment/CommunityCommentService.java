@@ -4,6 +4,7 @@ import com.kraft.common.error.ApiException;
 import com.kraft.community.post.CommunityPost;
 import com.kraft.community.post.CommunityPostMetricsRepository;
 import com.kraft.community.post.CommunityPostRepository;
+import com.kraft.community.post.PostStatus;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
@@ -51,8 +52,19 @@ public class CommunityCommentService {
                 .register(meterRegistry);
     }
 
+    /**
+     * B-P0-7: 게시글이 존재하고 공개(PUBLISHED) 상태인지 먼저 확인한다 — 이전에는 postId만으로
+     * 곧바로 댓글을 조회해 숨김·삭제된 글의 댓글이 permitAll 엔드포인트로 계속 읽혔다.
+     */
     @Transactional(readOnly = true)
     public CommunityCommentListResult list(Long postId, int page, int size) {
+        CommunityPost post = communityPostRepository.findById(postId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_POST_NOT_FOUND",
+                        "게시글을 찾을 수 없습니다."));
+        if (post.getStatus() != PostStatus.PUBLISHED) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_POST_NOT_FOUND", "게시글을 찾을 수 없습니다.");
+        }
+
         int clampedPage = Math.max(0, page);
         int clampedSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
         Page<CommunityComment> topLevel = communityCommentRepository.findByPostIdAndParentIdIsNull(postId,
@@ -123,6 +135,12 @@ public class CommunityCommentService {
                         "댓글을 찾을 수 없습니다."));
         if (!comment.getOwnerId().equals(ownerId)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "COMMUNITY_COMMENT_NOT_OWNER", "본인 댓글만 삭제할 수 있습니다.");
+        }
+        // B-P0-6: 이미 tombstone된 댓글을 재삭제 요청하면 멱등하게 아무 것도 하지 않는다 —
+        // 가드가 없으면 재삭제할 때마다 decrementCommentCount가 다시 불려 카운터가 실제
+        // 좋아요·댓글 수보다 더 많이 깎이고 tombstoneCounter도 중복 집계된다.
+        if (comment.isDeleted()) {
+            return;
         }
         comment.markDeleted();
         // saveAndFlush로 즉시 반영해야 한다 — 아래 decrementCommentCount는 벌크 UPDATE라

@@ -250,6 +250,11 @@ services:
       - prometheus-data:/prometheus
     expose:
       - "9090"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9090/-/healthy | grep -q 'Prometheus Server is Healthy'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     security_opt:
       - no-new-privileges:true
     read_only: true
@@ -288,6 +293,11 @@ services:
       - grafana-data:/var/lib/grafana
     expose:
       - "3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health | grep -q '\"database\": \"ok\"'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -317,6 +327,11 @@ services:
       - alertmanager-data:/alertmanager
     expose:
       - "9093"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9093/-/healthy | grep -q 'OK'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     security_opt:
       - no-new-privileges:true
     read_only: true

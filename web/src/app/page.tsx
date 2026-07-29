@@ -4,7 +4,6 @@ import { LottoBalls } from "@/components/lotto-balls";
 import { PrizeTable } from "@/components/prize-table";
 import { DataFreshnessNote } from "@/components/data-freshness-note";
 import { RecommendClient } from "@/components/recommend-client";
-import { EditorialPhoto } from "@/ui/domain/editorial-photo";
 import {
   getLatestWinningNumber,
   getRoundFreshness,
@@ -76,7 +75,6 @@ export default async function HomePage() {
         <p className="eyebrow">번호 추천</p>
         <h2 className="page-title">오늘의 번호를 만들어 보세요</h2>
         <RecommendClient />
-        <EditorialPhoto slug="home-recommendation-journal" alt="" aspectRatio="16/9" />
       </section>
 
       <section className="grid grid-2 home-community-columns">

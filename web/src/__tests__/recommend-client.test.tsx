@@ -27,8 +27,17 @@ describe("번호 추천 화면", () => {
     expect(screen.getByRole("spinbutton")).toHaveValue(5);
   });
 
-  it("최초 로드 시 X-Device-Token과 함께 추천을 요청한다", async () => {
+  it("F-P0-6/7: 마운트만 해서는 추천을 요청하지 않는다", async () => {
     render(<RecommendClient />);
+
+    await screen.findByRole("button", { name: "추천 생성" });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("생성 버튼을 누르면 X-Device-Token과 함께 추천을 요청한다", async () => {
+    render(<RecommendClient />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "추천 생성" }));
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
 
@@ -47,7 +56,7 @@ describe("번호 추천 화면", () => {
     );
   });
 
-  it("마운트 시 반환된 초기 추천을 렌더링한다", async () => {
+  it("생성 버튼을 누르면 반환된 추천을 렌더링한다", async () => {
     global.fetch = vi.fn().mockResolvedValue(
       jsonResponse({
         recommendations: [[4, 8, 12, 16, 20, 24]],
@@ -61,33 +70,35 @@ describe("번호 추천 화면", () => {
     );
 
     render(<RecommendClient />);
+    fireEvent.click(await screen.findByRole("button", { name: "추천 생성" }));
 
     await waitFor(() => {
       [4, 8, 12, 16, 20, 24].forEach((n) => expect(screen.getByText(String(n))).toBeInTheDocument());
     });
   });
 
-  it("초기 로드가 응답 오류로 실패하면 서버 메시지를 보여준다", async () => {
+  it("생성 요청이 응답 오류로 실패하면 서버 메시지를 보여준다", async () => {
     global.fetch = vi.fn().mockResolvedValue(jsonResponse({ message: "temporary outage" }, false, 503));
 
     render(<RecommendClient />);
+    fireEvent.click(await screen.findByRole("button", { name: "추천 생성" }));
 
     await waitFor(() => {
       expect(screen.getByRole("status")).toHaveTextContent("temporary outage");
     });
   });
 
-  it("전략을 바꾸고 번호를 고정하면 다음 요청에 반영된다", async () => {
+  it("전략을 바꾸고 번호를 고정한 뒤 생성하면 요청에 반영된다", async () => {
     global.fetch = vi.fn().mockResolvedValue(jsonResponse(EMPTY_RESULT));
 
     render(<RecommendClient />);
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+    await screen.findByRole("button", { name: "추천 생성" });
 
     fireEvent.click(screen.getByRole("radio", { name: "균형 조합" }));
     fireEvent.click(screen.getByRole("button", { name: "번호 3" }));
     fireEvent.click(screen.getByRole("button", { name: "추천 생성" }));
 
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
 
     expect(global.fetch).toHaveBeenLastCalledWith(
       "/api/v1/numbers/recommend",
@@ -142,6 +153,7 @@ describe("번호 추천 화면", () => {
     );
 
     render(<RecommendClient />);
+    fireEvent.click(await screen.findByRole("button", { name: "추천 생성" }));
 
     await waitFor(() => {
       expect(screen.getByText(/balanced-v1/)).toBeInTheDocument();
@@ -152,7 +164,6 @@ describe("번호 추천 화면", () => {
 
   it("추천을 저장한 뒤 저장 완료 상태를 보여준다", async () => {
     global.fetch = vi.fn()
-      .mockResolvedValueOnce(jsonResponse(EMPTY_RESULT))
       .mockResolvedValueOnce(
         jsonResponse({
           recommendations: [[1, 7, 15, 23, 38, 45]],

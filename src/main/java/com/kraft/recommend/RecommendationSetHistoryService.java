@@ -63,7 +63,7 @@ public class RecommendationSetHistoryService {
 
     @Transactional(readOnly = true)
     public RecommendationSetSummary get(String clientTokenHash, long id) {
-        RecommendationSet set = findOwned(clientTokenHash, id);
+        RecommendationSet set = findOwnedByDevice(clientTokenHash, id);
         return toSummary(set);
     }
 
@@ -72,6 +72,18 @@ public class RecommendationSetHistoryService {
         return recommendationSetRepository.findByOwnerUserIdOrderByCreatedAtDesc(ownerUserId).stream()
                 .map(this::toSummary)
                 .toList();
+    }
+
+    /**
+     * B-P0-2: claim(계정 귀속) 이후 세트는 clientTokenHash가 null로 지워지므로 익명 기기
+     * 토큰으로는 더 이상 찾을 수 없다(의도된 동작 — claim 후에는 로그인 세션만 접근해야 한다).
+     * {@code /api/v1/recommendation-sets/{id}}는 STATELESS 기기 토큰 체인이라 로그인 여부를
+     * 알 수 없으므로, 로그인 사용자를 위한 별도 조회·삭제 경로(ownerUserId 기준)를 제공한다.
+     */
+    @Transactional(readOnly = true)
+    public RecommendationSetSummary getForOwner(Long ownerUserId, long id) {
+        RecommendationSet set = findOwnedByOwner(ownerUserId, id);
+        return toSummary(set);
     }
 
     /**
@@ -98,7 +110,16 @@ public class RecommendationSetHistoryService {
     }
 
     public void delete(String clientTokenHash, long id) {
-        RecommendationSet set = findOwned(clientTokenHash, id);
+        RecommendationSet set = findOwnedByDevice(clientTokenHash, id);
+        deleteOwnedSet(set);
+    }
+
+    public void deleteForOwner(Long ownerUserId, long id) {
+        RecommendationSet set = findOwnedByOwner(ownerUserId, id);
+        deleteOwnedSet(set);
+    }
+
+    private void deleteOwnedSet(RecommendationSet set) {
         if (attachmentChecker.isAttachedToPost(set.getId())) {
             throw new ApiException(HttpStatus.CONFLICT, "RECOMMENDATION_SET_ATTACHED_TO_POST",
                     "커뮤니티 게시글에 첨부된 추천 세트는 삭제할 수 없습니다.");
@@ -107,11 +128,24 @@ public class RecommendationSetHistoryService {
         recommendationSetRepository.delete(set);
     }
 
-    private RecommendationSet findOwned(String clientTokenHash, long id) {
-        RecommendationSet set = recommendationSetRepository.findById(id)
+    private RecommendationSet findById(long id) {
+        return recommendationSetRepository.findById(id)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "RECOMMENDATION_SET_NOT_FOUND",
                         "추천 세트를 찾을 수 없습니다."));
+    }
+
+    private RecommendationSet findOwnedByDevice(String clientTokenHash, long id) {
+        RecommendationSet set = findById(id);
         if (!clientTokenHash.equals(set.getClientTokenHash())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "RECOMMENDATION_SET_NOT_OWNED",
+                    "이 추천 세트에 대한 권한이 없습니다.");
+        }
+        return set;
+    }
+
+    private RecommendationSet findOwnedByOwner(Long ownerUserId, long id) {
+        RecommendationSet set = findById(id);
+        if (!ownerUserId.equals(set.getOwnerUserId())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "RECOMMENDATION_SET_NOT_OWNED",
                     "이 추천 세트에 대한 권한이 없습니다.");
         }

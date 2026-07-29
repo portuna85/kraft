@@ -15,7 +15,14 @@ public interface CommunityCommentRepository extends JpaRepository<CommunityComme
     Page<CommunityComment> findByPostId(Long postId, Pageable pageable);
 
     // 상위 댓글(parentId is null)만 페이징 대상으로 삼는다 — 답글은 목록 페이지네이션
-    // 카운트에서 제외하고 상위 댓글에 중첩해 내려준다(§P1-02).
+    // 카운트에서 제외하고 상위 댓글에 중첩해 내려준다(§P1-02). tombstone(deleted=true)된
+    // 댓글도 "삭제된 댓글입니다" 마스킹 placeholder로 목록에 그대로 남는다 — 스레드 구조·
+    // 페이지 위치를 삭제로 흔들지 않기 위한 의도된 설계(CommunityPostCommentApiTest
+    // #deletingComment_tombstonesInsteadOfHardDelete가 이 계약을 검증한다). 따라서
+    // community_post_metrics.commentCount(살아있는 댓글만 카운트)와 이 목록의 총계는
+    // 서로 다른 것을 센다 — "총 스레드 슬롯 수" vs "실제 댓글 수"로, 불일치가 아니라 각자
+    // 다른 질문에 답하는 두 숫자다. B-P0-6에서 실제로 고친 문제는 delete()의 재삭제
+    // 멱등성(아래) — 카운터가 삭제 요청 재시도마다 추가로 깎이던 부분이다.
     Page<CommunityComment> findByPostIdAndParentIdIsNull(Long postId, Pageable pageable);
 
     // 한 페이지의 상위 댓글 id들에 달린 답글을 한 번에 일괄 조회(N+1 방지).

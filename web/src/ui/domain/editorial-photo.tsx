@@ -1,4 +1,4 @@
-// Phase 1 산출물(docs/improvement.md §17 Phase 1 "EditorialPhoto 계약만 구현"). §4.3에서는
+// Phase 1 산출물(docs/improvement_gpt.md §17 Phase 1 "EditorialPhoto 계약만 구현"). §4.3에서는
 // "도메인 컴포넌트"로 분류되지만(기반 프리미티브 아님), 로드맵이 Phase 1에 명시적으로 못박아
 // 계약만 여기서 만든다. docs/phase0-photo-asset-policy.md의 meta.json 스키마를 props로 받되,
 // 승인된 사진 자산이 아직 없으므로(§5.3 "실제 파일은 이 문서 작성 단계에서 추가하지 않는다")

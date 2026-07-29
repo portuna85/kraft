@@ -17,4 +17,8 @@ public interface SavedNumberRepository extends JpaRepository<SavedNumber, Long> 
     List<SavedNumber> findByOwnerUserIdOrderByCreatedAtDesc(Long ownerUserId);
 
     Optional<SavedNumber> findByOwnerUserIdAndNumbers(Long ownerUserId, String numbers);
+
+    long countByOwnerUserId(Long ownerUserId);
+
+    Optional<SavedNumber> findByIdAndOwnerUserId(Long id, Long ownerUserId);
 }

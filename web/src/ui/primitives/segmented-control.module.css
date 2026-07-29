@@ -1,5 +1,6 @@
 .group {
   display: inline-flex;
+  flex-wrap: wrap;
   gap: var(--space-1);
   padding: var(--space-1);
   background: var(--color-surface-1);
@@ -16,6 +17,14 @@
   font-size: var(--text-sm);
   font-weight: 600;
   cursor: pointer;
+  /* F-P0-1: 이전에는 전역 button 리셋이 너비를 결정해 줄바꿈이 안 일어났다 —
+     리셋 특이도를 낮추자 좁은 flex 부모 안에서 한글 라벨이 글자 단위로
+     줄바꿈됐다(base.css의 word-break: keep-all + overflow-wrap: anywhere가
+     극단적으로 좁아진 min-content에 적용된 결과). 세그먼트 라벨은 항상 한 줄로
+     유지되어야 하므로 줄바꿈을 막고, flex-shrink도 막아 좁은 공간에서 짓눌리지
+     않게 한다. */
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: background-color var(--duration-base) ease, color var(--duration-base) ease;
 }
 

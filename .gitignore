@@ -65,11 +65,6 @@ web/playwright-report/
 web/blob-report/
 web/playwright/.cache/
 
-### 성능 베이스라인(B-06) ###
-# results.json은 마지막 실행 결과(재실행마다 갱신) — budget.json(버전 관리되는
-# 회귀 예산)만 커밋한다.
-scripts/perf/results.json
-
 ### 번들·Lighthouse 베이스라인(F-06) ###
 web/scripts/bundle-results.json
 web/scripts/lighthouse-results.json

@@ -1,10 +1,14 @@
 package com.kraft.community.report;
 
 import com.kraft.common.error.ApiException;
+import com.kraft.community.comment.CommunityCommentRepository;
+import com.kraft.community.post.CommunityPostRepository;
+import com.kraft.community.user.CommunityUserRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,12 +18,22 @@ import org.springframework.transaction.annotation.Transactional;
 public class CommunityReportService {
 
     private final CommunityReportRepository communityReportRepository;
+    private final CommunityPostRepository communityPostRepository;
+    private final CommunityCommentRepository communityCommentRepository;
+    private final CommunityUserRepository communityUserRepository;
     private final Clock clock;
     private final Counter createdCounter;
 
-    public CommunityReportService(CommunityReportRepository communityReportRepository, Clock clock,
+    public CommunityReportService(CommunityReportRepository communityReportRepository,
+                                   CommunityPostRepository communityPostRepository,
+                                   CommunityCommentRepository communityCommentRepository,
+                                   CommunityUserRepository communityUserRepository,
+                                   Clock clock,
                                    MeterRegistry meterRegistry) {
         this.communityReportRepository = communityReportRepository;
+        this.communityPostRepository = communityPostRepository;
+        this.communityCommentRepository = communityCommentRepository;
+        this.communityUserRepository = communityUserRepository;
         this.clock = clock;
         this.createdCounter = Counter.builder("kraft_community_report_created_total")
                 .description("생성된 신고 수")
@@ -32,13 +46,34 @@ public class CommunityReportService {
      * 이번 Phase 범위 밖이다(설계 판단 4 — 오탐으로 게시글이 부당하게 숨겨지는 리스크 회피).
      */
     public void report(Long reporterUserId, CreateReportRequest request) {
+        // B-P0-5: target_id는 폴리모픽이라 FK가 없다 — 대상 종류별로 실존 여부를 직접 확인해
+        // 존재하지 않는 게시글/댓글/사용자를 조용히 신고 테이블에 쌓지 않는다.
+        requireTargetExists(request.targetType(), request.targetId());
+
         if (communityReportRepository.existsByReporterUserIdAndTargetTypeAndTargetId(
                 reporterUserId, request.targetType(), request.targetId())) {
             throw new ApiException(HttpStatus.CONFLICT, "REPORT_ALREADY_EXISTS", "이미 신고한 대상입니다.");
         }
-        communityReportRepository.save(new CommunityReport(
-                reporterUserId, request.targetType(), request.targetId(), request.reason(),
-                OffsetDateTime.now(clock)));
+        try {
+            communityReportRepository.save(new CommunityReport(
+                    reporterUserId, request.targetType(), request.targetId(), request.reason(),
+                    OffsetDateTime.now(clock)));
+        } catch (DataIntegrityViolationException concurrentReport) {
+            // B-P0-4: exists 확인과 save 사이에 동시 신고가 먼저 uk_community_reports_reporter_target을
+            // 채운 경쟁 — 500 대신 신규 신고와 같은 409로 통일한다.
+            throw new ApiException(HttpStatus.CONFLICT, "REPORT_ALREADY_EXISTS", "이미 신고한 대상입니다.", concurrentReport);
+        }
         createdCounter.increment();
+    }
+
+    private void requireTargetExists(ReportTargetType targetType, Long targetId) {
+        boolean exists = switch (targetType) {
+            case POST -> communityPostRepository.existsById(targetId);
+            case COMMENT -> communityCommentRepository.existsById(targetId);
+            case USER -> communityUserRepository.existsById(targetId);
+        };
+        if (!exists) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "REPORT_TARGET_NOT_FOUND", "신고 대상을 찾을 수 없습니다.");
+        }
     }
 }

@@ -3,14 +3,24 @@ package com.kraft.identity;
 import com.kraft.community.auth.CommunityPrincipal;
 import com.kraft.recommend.RecommendationSetHistoryService;
 import com.kraft.recommend.RecommendationSetSummary;
+import com.kraft.saved.CreateSavedNumberRequest;
+import com.kraft.saved.SaveNumberResult;
+import com.kraft.saved.SavedNumberMatchResult;
 import com.kraft.saved.SavedNumberResponse;
 import com.kraft.saved.SavedNumbersService;
+import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -39,11 +49,60 @@ public class MyLibraryController {
                 .body(savedNumbersService.listForOwner(principal.getUserId()));
     }
 
+    /**
+     * B-P0-3: {@code /api/v1/saved}는 기기 토큰(STATELESS) 전용이라 claim 이후에는 그 저장
+     * 번호를 더 이상 찾지 못한다(client_token_hash가 null로 지워지기 때문). 로그인 세션으로
+     * 저장·회차 대조·삭제가 가능한 경로를 별도로 둔다.
+     */
+    @GetMapping("/saved-numbers/matches")
+    public ResponseEntity<List<SavedNumberMatchResult>> savedNumberMatches(
+            @AuthenticationPrincipal CommunityPrincipal principal,
+            @RequestParam(name = "round", defaultValue = "latest") String round) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(savedNumbersService.compareWithRoundForOwner(principal.getUserId(), round));
+    }
+
+    @PostMapping("/saved-numbers")
+    public ResponseEntity<SaveNumberResult> saveSavedNumber(
+            @AuthenticationPrincipal CommunityPrincipal principal,
+            @Valid @RequestBody CreateSavedNumberRequest request) {
+        SaveNumberResult result = savedNumbersService.saveForOwner(principal.getUserId(), request);
+        return ResponseEntity.status(result.created() ? HttpStatus.CREATED : HttpStatus.OK).body(result);
+    }
+
+    @DeleteMapping("/saved-numbers/{id}")
+    public ResponseEntity<Void> deleteSavedNumber(
+            @AuthenticationPrincipal CommunityPrincipal principal, @PathVariable long id) {
+        savedNumbersService.deleteForOwner(principal.getUserId(), id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/recommendation-sets")
     public ResponseEntity<List<RecommendationSetSummary>> recommendationSets(
             @AuthenticationPrincipal CommunityPrincipal principal) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(recommendationSetHistoryService.listForOwner(principal.getUserId()));
+    }
+
+    /**
+     * B-P0-2: {@code /api/v1/recommendation-sets/{id}}는 기기 토큰(STATELESS) 전용이라
+     * claim(계정 귀속) 이후에는 더 이상 그 세트를 찾지 못한다(clientTokenHash가 null로
+     * 지워지기 때문 — 의도된 동작). 로그인 세션으로 단건 조회·삭제가 가능한 경로를 별도로 둔다.
+     */
+    @GetMapping("/recommendation-sets/{id}")
+    public ResponseEntity<RecommendationSetSummary> recommendationSet(
+            @AuthenticationPrincipal CommunityPrincipal principal, @PathVariable long id) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(recommendationSetHistoryService.getForOwner(principal.getUserId(), id));
+    }
+
+    @DeleteMapping("/recommendation-sets/{id}")
+    public ResponseEntity<Void> deleteRecommendationSet(
+            @AuthenticationPrincipal CommunityPrincipal principal, @PathVariable long id) {
+        recommendationSetHistoryService.deleteForOwner(principal.getUserId(), id);
+        return ResponseEntity.noContent().build();
     }
 }

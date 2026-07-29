@@ -1,4 +1,4 @@
-// Phase 0 산출물(docs/improvement.md §4.3, §17 Phase 0): 기반 UI 프리미티브의 props/접근성
+// Phase 0 산출물(docs/improvement_gpt.md §4.3, §17 Phase 0): 기반 UI 프리미티브의 props/접근성
 // 계약 초안이다. 이 파일은 타입만 정의하며 컴포넌트 구현은 없다 — 실제 구현은 Phase 1
 // ("토큰, 테마, reset, 기반 프리미티브")에서 이 계약을 기준으로 진행한다. 어디서도
 // import되지 않으므로 빌드·런타임에 영향을 주지 않는다.

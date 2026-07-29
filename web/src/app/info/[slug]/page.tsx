@@ -5,7 +5,6 @@ import { FAQ_ITEMS, buildFaqPageJsonLd } from "@/lib/csp-inline-scripts";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
 import { getPublicBaseUrl } from "@/lib/api";
 import { serializeJsonLd } from "@/lib/json-ld-serialize";
-import { EditorialPhoto } from "@/ui/domain/editorial-photo";
 import styles from "./info.module.css";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -49,9 +48,6 @@ const infoPages: Record<string, InfoPage> = {
           KRAFT Lotto는 원본 데이터의 공식성을 존중하며 출처를 명시합니다.
         </p>
 
-        <div className={styles.photo}>
-          <EditorialPhoto slug="data-source-desk" alt="" aspectRatio="4/3" />
-        </div>
       </article>
     ),
   },
@@ -298,9 +294,6 @@ const infoPages: Record<string, InfoPage> = {
           </li>
         </ul>
 
-        <div className={styles.photo}>
-          <EditorialPhoto slug="responsible-play-note" alt="" aspectRatio="4/3" />
-        </div>
       </article>
     ),
   },

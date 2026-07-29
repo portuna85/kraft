@@ -248,8 +248,14 @@
   min-width: 0;
 }
 
+/* F-P0-1: 이전에는 button:not(×8) 체인 전체가 특이도(0,8,1)를 그대로 지녀 CSS Modules의
+   단일 클래스 규칙(.cellLocked, .selected 등, 특이도 0,1,0)을 항상 이겼다 — 소스 순서상
+   Modules가 나중에 로드돼도 특이도가 밀려 절대 못 이겼다(NumberBoard 45칸이 항상 주황
+   알약, SegmentedControl 선택 상태가 안 보이던 원인). :where()로 이 체인 전체를 감싸면
+   매칭 동작은 완전히 동일하게 유지하면서 특이도만 0으로 낮아져, 이후의 스코프 규칙이
+   정상적인 명세대로 이긴다. */
 .button,
-button:not(.nav-stats-toggle):not(.nav-toggle):not(.theme-toggle):not(.saved-delete-btn):not(.recommend-save-btn):not(.freq-filter-tab):not(.link-button):not(.ball) {
+:where(button:not(.nav-stats-toggle):not(.nav-toggle):not(.theme-toggle):not(.saved-delete-btn):not(.recommend-save-btn):not(.freq-filter-tab):not(.link-button):not(.ball)) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -271,7 +277,7 @@ button:not(.nav-stats-toggle):not(.nav-toggle):not(.theme-toggle):not(.saved-del
    탭 후 hover가 "붙은 채" 남는 것을 막는다. */
 @media (hover: hover) and (pointer: fine) {
   .button:hover,
-  button:not(.nav-stats-toggle):not(.nav-toggle):not(.theme-toggle):not(.saved-delete-btn):not(.recommend-save-btn):not(.freq-filter-tab):not(.link-button):not(.ball):hover {
+  :where(button:not(.nav-stats-toggle):not(.nav-toggle):not(.theme-toggle):not(.saved-delete-btn):not(.recommend-save-btn):not(.freq-filter-tab):not(.link-button):not(.ball)):hover {
     transform: translateY(-1px);
     box-shadow: 0 14px 28px rgba(141, 47, 16, 0.22);
   }
@@ -603,6 +609,19 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible {
   width: 38px;
   height: 38px;
   font-size: 0.86rem;
+}
+
+/* F-P0-2: 추천 근거 배지 묶음 — 여러 Badge가 줄바꿈되며 흐르도록(감사 §4.1). */
+.recommend-card-explanations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* F-P0-2: .muted와 함께 쓰여 텍스트 색은 이미 갖췄고, 위쪽 간격만 필요하다. */
+.recommend-set-meta,
+.data-freshness-note {
+  margin-top: 8px;
 }
 
 .recommend-save-btn {

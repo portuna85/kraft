@@ -91,7 +91,7 @@ describe("커뮤니티 세션 프로바이더의 기기 귀속 트리거", () =>
     expect(claimDevice).toHaveBeenCalledTimes(1);
   });
 
-  it("기기 귀속이 실패해도(다른 계정이 이미 귀속) 토큰은 회전한다", async () => {
+  it("F-P0-10: 기기 귀속이 실패하면(다른 계정이 이미 귀속 등) 토큰을 회전하지 않는다", async () => {
     global.fetch = mockSessionFetch(true);
     claimDevice.mockRejectedValue(new Error("DEVICE_ALREADY_CLAIMED"));
 
@@ -102,6 +102,26 @@ describe("커뮤니티 세션 프로바이더의 기기 귀속 트리거", () =>
     );
 
     await waitFor(() => expect(claimDevice).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(rotateDeviceToken).toHaveBeenCalledTimes(1));
+    expect(rotateDeviceToken).not.toHaveBeenCalled();
+  });
+
+  it("F-P0-10: 귀속 실패 후 재마운트되면(플래그가 세팅되지 않았으므로) 귀속을 재시도한다", async () => {
+    global.fetch = mockSessionFetch(true);
+    claimDevice.mockRejectedValue(new Error("DEVICE_ALREADY_CLAIMED"));
+
+    const { unmount } = render(
+      <CommunitySessionProvider>
+        <Probe />
+      </CommunitySessionProvider>
+    );
+    await waitFor(() => expect(claimDevice).toHaveBeenCalledTimes(1));
+    unmount();
+
+    render(
+      <CommunitySessionProvider>
+        <Probe />
+      </CommunitySessionProvider>
+    );
+    await waitFor(() => expect(claimDevice).toHaveBeenCalledTimes(2));
   });
 });

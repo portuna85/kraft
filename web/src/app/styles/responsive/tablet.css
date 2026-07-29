@@ -36,6 +36,7 @@
     padding-block: 30px;
   }
 
+  .grid-2,
   .grid-3,
   .recommend-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

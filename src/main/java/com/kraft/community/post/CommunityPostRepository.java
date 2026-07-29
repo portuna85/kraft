@@ -1,7 +1,6 @@
 package com.kraft.community.post;
 
 import java.time.OffsetDateTime;
-import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,12 +8,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface CommunityPostRepository extends JpaRepository<CommunityPost, Long> {
-
-    List<CommunityPost> findAllByOrderByCreatedAtDesc(Pageable pageable);
-
-    // 홈 API의 "이번 주 인기" 절충 구현(Phase 2) — 실제 랭킹 점수는 아래 findWeeklyPopular가
-    // 담당하고, 이건 홈 화면 전용 단순 최신순 유지.
-    List<CommunityPost> findByCreatedAtAfterOrderByCreatedAtDesc(OffsetDateTime since, Pageable pageable);
 
     boolean existsByRecommendationSetId(Long recommendationSetId);
 

@@ -53,12 +53,12 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: npm ci
       - run: npm run lint
-      - run: npx tsc --noEmit
       - run: npm run test:coverage
       - run: npm run build
         env:
           KRAFT_BACKEND_INTERNAL_URL: http://localhost:8080
           KRAFT_PUBLIC_BASE_URL: http://localhost
+      - run: npm run typecheck
 
   web-e2e:
     name: Web E2E (Playwright)
@@ -166,7 +166,7 @@ jobs:
           path: web/playwright-report/
           retention-days: 7
 
-  # Phase 0 기준선(docs/improvement.md §17): OpenAPI 계약이 바뀌었는데
+  # Phase 0 기준선(docs/improvement_gpt.md §17): OpenAPI 계약이 바뀌었는데
   # web/src/lib/generated/api-types.ts를 갱신하지 않고 커밋한 경우를 잡는다.
   # local 프로파일(H2 인메모리)로 백엔드를 띄우므로 MariaDB/Docker가 필요 없다.
   api-types-drift-guard:
@@ -213,7 +213,7 @@ jobs:
           path: backend.log
           retention-days: 3
 
-  # Phase 0 기준선(docs/improvement.md §17): 번들·Lighthouse 예산 스크립트는 이미
+  # Phase 0 기준선(docs/improvement_gpt.md §17): 번들·Lighthouse 예산 스크립트는 이미
   # 있었지만 로컬 전용이었다 — CI 게이트로 승격해 회귀를 자동으로 잡는다.
   web-performance-budget:
     name: Web Performance Budget
@@ -267,7 +267,7 @@ jobs:
             web/scripts/lighthouse-results.json
           retention-days: 7
 
-  # Phase 0 기준선(docs/improvement.md §17 Phase 0): 픽셀 스크린샷 회귀 베이스라인.
+  # Phase 0 기준선(docs/improvement_gpt.md §17 Phase 0): 픽셀 스크린샷 회귀 베이스라인.
   # playwright.visual.config.ts가 픽스처 백엔드로 실콘텐츠를 렌더해 대표 라우트×테마
   # 조합을 고정한다. 다른 e2e 트랙과 산출물이 겹치지 않게 NEXT_DIST_DIR=.next-visual 사용.
   web-e2e-visual:
@@ -371,7 +371,7 @@ jobs:
       - name: Check env var drift (C-02)
         run: bash scripts/check-env-drift.sh
 
-  # Phase 0 기준선(docs/improvement.md §16.4, docs/phase0-photo-asset-policy.md): 사진 자산이
+  # Phase 0 기준선(docs/improvement_gpt.md §16.4, docs/phase0-photo-asset-policy.md): 사진 자산이
   # 아직 없는 동안은 항상 통과하고, Phase 2 이후 실제 자산이 추가되면 라이선스·출처
   # 메타데이터 누락을 잡는다.
   photo-asset-metadata-guard:
@@ -527,7 +527,7 @@ jobs:
   promote:
     name: Promote to latest
     runs-on: ubuntu-latest
-    needs: [security-scan-backend, security-scan-web, removed-feature-guard, env-drift-guard, container-hardening-guard, shellcheck-guard, photo-asset-metadata-guard]
+    needs: [security-scan-backend, security-scan-web, removed-feature-guard, env-drift-guard, container-hardening-guard, shellcheck-guard, photo-asset-metadata-guard, web-e2e, web-e2e-content, web-e2e-visual, web-e2e-ad-overlay, web-performance-budget, api-types-drift-guard]
     if: github.ref == 'refs/heads/main'
     timeout-minutes: 10
     permissions:

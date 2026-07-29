@@ -78,10 +78,14 @@ public class CommunityPostService {
         return post;
     }
 
-    @Transactional(readOnly = true)
+    // B-P0-8: view_count가 항상 0으로 남던 문제 — incrementViewCount는 이미 존재했으나
+    // 어디서도 호출되지 않았다. 상세 조회가 가시성 검증을 통과할 때마다 1회 증가시킨다
+    // (세션/중복 방지는 이번 범위에서 과설계라 생략 — 단순 조회수).
+    @Transactional
     public CommunityPost get(Long postId, Long requesterId) {
         CommunityPost post = findById(postId);
         requireVisible(post, requesterId);
+        communityPostMetricsRepository.incrementViewCount(postId);
         return post;
     }
 

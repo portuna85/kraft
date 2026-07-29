@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { getDeviceToken } from "@/lib/device-token";
 import { browserFetch, BrowserApiError } from "@/lib/browser-api";
 import type { RecommendationItem, RecommendationResponse, Strategy } from "./types";
@@ -30,9 +30,9 @@ export function useRecommendationStudio(options: UseRecommendationStudioOptions 
   const [excluded, setExcluded] = useState<number[]>([]);
   const [items, setItems] = useState<RecommendationItem[]>([]);
   const [message, setMessage] = useState("");
-  // 마운트 시 최초 요청이 곧바로 나가므로 기본값부터 pending이다 — 이렇게 하면 초기
-  // 이펙트에서 별도로 setIsPending(true)를 동기 호출할 필요가 없다(react-hooks/set-state-in-effect).
-  const [isPending, setIsPending] = useState(true);
+  // F-P0-6/7: 이전에는 마운트 시 곧바로 POST가 나가 방문마다 recommendation_sets에 영속
+  // 기록이 쌓였다 — 사용자가 명시적으로 생성 버튼을 눌러야만 요청이 나가도록 idle에서 시작한다.
+  const [isPending, setIsPending] = useState(false);
   const [meta, setMeta] = useState<{ strategy: Strategy; algorithmVersion: string; historyThroughRound: number } | null>(
     null,
   );
@@ -66,31 +66,6 @@ export function useRecommendationStudio(options: UseRecommendationStudioOptions 
       strategy,
     });
   }
-
-  // 마운트 시 최초 조회는 이펙트 안에서 프로미스 체인(.then/.catch/.finally)으로 직접
-  // 처리한다 — 별도의 async 함수를 이펙트가 동기적으로 호출하면(예: void fetchX())
-  // "effect 안에서 setState를 동기 호출"로 오탐하는 린트 규칙(react-hooks/set-state-in-effect)에
-  // 걸린다. 콜백 안의 setState는 프로미스가 실제로 resolve된 뒤에만 실행되므로 문제 없다.
-  useEffect(() => {
-    const seq = ++fetchSeqRef.current;
-    browserFetch<RecommendationResponse>("/api/v1/numbers/recommend", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Device-Token": getDeviceToken(),
-      },
-      body: requestBody(),
-    })
-      .then((payload) => applyResponse(seq, payload))
-      .catch((err) => {
-        if (seq !== fetchSeqRef.current) return;
-        setMessage(err instanceof BrowserApiError && err.message ? err.message : TEXT.generateFailed);
-      })
-      .finally(() => {
-        if (seq === fetchSeqRef.current) setIsPending(false);
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   /** 사용자 조작(제출 버튼 등)으로 호출하는 공개 API — 이전 결과·메시지를 리셋한 뒤 재조회한다. */
   async function generate() {

@@ -122,6 +122,7 @@
   padding-block: 24px;
 }
 
+.grid-2,
 .grid-3,
 .recommend-form,
 .ops-manual-form,
@@ -241,6 +242,14 @@ form button,
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   align-self: stretch;
+}
+
+/* F-P0-2: .button.secondary와 함께 쓰여 기본 버튼 스타일은 이미 갖췄고, 삭제
+   행 안에서 폭을 줄이는 보정만 필요하다(감사 §4.1). */
+.saved-undo-btn {
+  flex-shrink: 0;
+  min-height: 0;
+  padding: 6px 14px;
 }
 
 .footer-nav {

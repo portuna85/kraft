@@ -61,6 +61,11 @@ export function proxy(req: NextRequest) {
       if (hostname !== opsAllowedHost) {
         return NextResponse.rewrite(new URL("/not-found", req.url), { status: 404 });
       }
+    } else {
+      // F-P0-12: KRAFT_OPS_ALLOWED_HOST 미설정 시 fail-open이었다 — 게이트가 사실상
+      // 없는 것과 같아 /ops가 배포 환경에서 항상 열려 있었다. 기본은 차단, 로컬
+      // 개발에서 /ops를 쓰려면 .env.local에 KRAFT_OPS_ALLOWED_HOST=localhost 등을 명시해야 한다.
+      return NextResponse.rewrite(new URL("/not-found", req.url), { status: 404 });
     }
   }
 

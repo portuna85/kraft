@@ -1,4 +1,4 @@
-// Phase 6(운영 전환과 정리): docs/improvement.md §16.5 성능 예산과 대조할 기준선을 재는
+// Phase 6(운영 전환과 정리): docs/improvement_gpt.md §16.5 성능 예산과 대조할 기준선을 재는
 // k6 스크립트. HikariCP maximum-pool-size=5(운영과 동일, application.yml)를 넘는 동시성으로
 // 돌리면 API 자체 성능이 아니라 커넥션 풀 고갈만 측정하게 된다(B2/B3 동시성 테스트에서 이미
 // 확인된 제약) — 기본 VU 수를 그 이하로 제한한다.

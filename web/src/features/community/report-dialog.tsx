@@ -20,18 +20,29 @@ export function ReportDialog({
   const [submitting, setSubmitting] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
+  const [submitted, setSubmitted] = useState(false);
+
   async function submit() {
     setSubmitting(true);
     setMessage("");
     try {
       await reportContent(targetType, targetId, reason);
       setMessage("신고가 접수되었습니다.");
-      setOpen(false);
+      setSubmitted(true);
+      // F-P0-8: 이전에는 여기서 곧바로 setOpen(false)를 호출했다 — Dialog는 !open이면
+      // null을 반환하므로 메시지가 화면에 뜨는 순간이 아예 없었다. 성공해도 다이얼로그는
+      // 열어둔 채 메시지를 보여주고, 사용자가 "확인"을 눌러야 닫히도록 바꾼다.
     } catch {
       setMessage("이미 신고했거나 처리하지 못했습니다.");
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function close() {
+    setOpen(false);
+    setMessage("");
+    setSubmitted(false);
   }
 
   return (
@@ -41,28 +52,41 @@ export function ReportDialog({
       </button>
       <Dialog
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={close}
         restoreFocusRef={triggerRef}
         titleId="report-dialog-title"
         title="신고하기"
       >
-        <label htmlFor="report-reason">신고 사유</label>
-        <select id="report-reason" value={reason} onChange={(event) => setReason(event.target.value)}>
-          {Object.entries(REPORT_REASON_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <div>
-          <button type="button" onClick={() => setOpen(false)}>
-            취소
-          </button>
-          <button type="button" onClick={submit} disabled={submitting}>
-            {submitting ? "제출 중..." : "신고 제출"}
-          </button>
-        </div>
-        {message ? <p role="status">{message}</p> : null}
+        {submitted ? (
+          <>
+            <p role="status">{message}</p>
+            <div>
+              <button type="button" onClick={close}>
+                확인
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <label htmlFor="report-reason">신고 사유</label>
+            <select id="report-reason" value={reason} onChange={(event) => setReason(event.target.value)}>
+              {Object.entries(REPORT_REASON_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <div>
+              <button type="button" onClick={close}>
+                취소
+              </button>
+              <button type="button" onClick={submit} disabled={submitting}>
+                {submitting ? "제출 중..." : "신고 제출"}
+              </button>
+            </div>
+            {message ? <p role="status">{message}</p> : null}
+          </>
+        )}
       </Dialog>
     </>
   );

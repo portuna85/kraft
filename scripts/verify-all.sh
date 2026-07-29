@@ -101,14 +101,14 @@ fi
 section "Web Build & Test — lint"
 npm run lint
 
-section "Web Build & Test — typecheck"
-npx tsc --noEmit
-
 section "Web Build & Test — test:coverage"
 npm run test:coverage
 
 section "Web Build & Test — build (offline, 백엔드 없음 전제)"
 KRAFT_BACKEND_INTERNAL_URL=http://localhost:8080 KRAFT_PUBLIC_BASE_URL=http://localhost npm run build
+
+section "Web Build & Test — typecheck (next typegen 이후 실행 — .next/types 필요)"
+npm run typecheck
 
 if [[ "$FAST" -eq 1 ]]; then
   cd "$ROOT"

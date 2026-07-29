@@ -43,6 +43,9 @@ export default defineConfig({
         KRAFT_BACKEND_INTERNAL_URL: FIXTURE_BACKEND_URL,
         KRAFT_PUBLIC_BASE_URL: "http://127.0.0.1:3101",
         PORT: "3101",
+        // F-P0-12: /ops가 기본 fail-closed로 바뀌어, 이 값이 없으면 /ops 관련 테스트가
+        // 전부 404를 받는다 — baseURL 호스트(127.0.0.1)와 일치시켜 허용한다.
+        KRAFT_OPS_ALLOWED_HOST: "127.0.0.1",
       },
     },
   ],

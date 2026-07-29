@@ -1,4 +1,4 @@
-// docs/improvement.md §9 추천 도메인 재설계와 대응하는 프런트 타입.
+// docs/improvement_gpt.md §9 추천 도메인 재설계와 대응하는 프런트 타입.
 // 서버 응답 계약(recommendations/strategy/algorithmVersion/historyThroughRound)은
 // 호환 유지 대상이라 절대 이름을 바꾸지 않는다 — setId/items/createdAt은 신규 필드.
 

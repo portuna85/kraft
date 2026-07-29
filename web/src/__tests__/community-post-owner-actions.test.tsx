@@ -6,6 +6,9 @@ import { CommunitySessionProvider } from "@/components/community/community-sessi
 const push = vi.fn();
 const getCommunitySession = vi.fn();
 const deletePost = vi.fn();
+// F-P0-10 이후 CommunitySessionProvider가 로그인 세션을 확인하면 claimDevice()도
+// 함께 호출한다 — 이 테스트는 소유자 액션만 검증 대상이라 항상 성공으로 흘려보낸다.
+const claimDevice = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
@@ -14,6 +17,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/community-client", () => ({
   getCommunitySession: () => getCommunitySession(),
   deletePost: (postId: number, version: number) => deletePost(postId, version),
+  claimDevice: () => claimDevice(),
 }));
 
 function renderOwnerActions(props: { postId: number; ownerId: number; version: number }) {
@@ -29,6 +33,12 @@ describe("커뮤니티 게시글 소유자 액션", () => {
     push.mockClear();
     getCommunitySession.mockReset();
     deletePost.mockReset();
+    claimDevice.mockReset().mockResolvedValue({
+      mergedSavedNumberCount: 0,
+      duplicateSavedNumberCount: 0,
+      mergedRecommendationSetCount: 0,
+    });
+    window.sessionStorage.clear();
     vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 

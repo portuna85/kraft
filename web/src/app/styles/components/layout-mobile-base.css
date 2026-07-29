@@ -14,7 +14,8 @@
   gap: var(--panel-gap);
 }
 
-.home-shortcuts {
+.home-shortcuts,
+.home-community-columns {
   align-items: stretch;
 }
 
@@ -32,6 +33,16 @@
 }
 
 .saved-layout {
+  gap: 16px;
+}
+
+/* F-P0-2: 계정 귀속 보관함 섹션(감사 §4.1) — 익명 저장 목록과 시각적으로 구분되도록
+   위 구분선을 둔다. */
+.saved-account-library {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  display: grid;
   gap: 16px;
 }
 
