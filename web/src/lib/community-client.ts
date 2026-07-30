@@ -43,10 +43,28 @@ function writeHeaders(extra?: Record<string, string>): HeadersInit {
   };
 }
 
+// KF-09: 이 4개 응답은 원시 `as T` 캐스트만 하고 있어, 백엔드 계약이 어긋나도
+// 런타임에 곧장 오류가 나지 않고 필드가 undefined인 채 화면 깊숙이 전파됐다 —
+// 새 검증 라이브러리는 번들 예산(bundle-budget.json) 제약으로 못 쓰므로, 최상위
+// 형태만 확인하는 손으로 쓴 가드로 최소한의 방어선을 둔다. 형태가 어긋나면
+// 기존 BrowserApiError 경로로 실패시켜 호출부가 이미 처리하는 오류 UI를 재사용한다.
+function isCommunitySession(body: unknown): body is CommunitySession {
+  if (typeof body !== "object" || body === null) return false;
+  const b = body as Record<string, unknown>;
+  return (
+    typeof b.loggedIn === "boolean" &&
+    (typeof b.userId === "number" || b.userId === null) &&
+    (typeof b.nickname === "string" || b.nickname === null) &&
+    Array.isArray(b.activeProviders)
+  );
+}
+
 export async function getCommunitySession(): Promise<CommunitySession> {
-  return browserFetch<CommunitySession>("/api/v1/community/session", {
-    cache: "no-store",
-  });
+  return browserFetch<CommunitySession>(
+    "/api/v1/community/session",
+    { cache: "no-store" },
+    isCommunitySession
+  );
 }
 
 export function loginUrl(provider: "google" | "naver"): string {
@@ -211,21 +229,63 @@ export type MySavedNumber = Omit<
   label: string | null;
 };
 
+function isIdentityMergeResult(body: unknown): body is IdentityMergeResult {
+  if (typeof body !== "object" || body === null) return false;
+  const b = body as Record<string, unknown>;
+  return (
+    typeof b.mergedSavedNumberCount === "number" &&
+    typeof b.duplicateSavedNumberCount === "number" &&
+    typeof b.mergedRecommendationSetCount === "number"
+  );
+}
+
+function isMySavedNumberArray(body: unknown): body is MySavedNumber[] {
+  return (
+    Array.isArray(body) &&
+    body.every((item) => {
+      if (typeof item !== "object" || item === null) return false;
+      const i = item as Record<string, unknown>;
+      return typeof i.id === "number" && Array.isArray(i.numbers);
+    })
+  );
+}
+
+function isRecommendationSetSummaryArray(body: unknown): body is RecommendationSetSummary[] {
+  return (
+    Array.isArray(body) &&
+    body.every((item) => {
+      if (typeof item !== "object" || item === null) return false;
+      const i = item as Record<string, unknown>;
+      return typeof i.id === "number" && typeof i.strategy === "string" && Array.isArray(i.items);
+    })
+  );
+}
+
 // 로그인 계정 귀속 — 같은 브라우저의 익명 기기 토큰 기록을 계정으로 옮긴다.
 // X-Device-Token은 CSRF 토큰과 별개로 여전히 필요하다(어떤 기기의 기록을 옮길지 지정).
 export async function claimDevice(): Promise<IdentityMergeResult> {
-  return browserFetch<IdentityMergeResult>("/api/v1/community/session/claim-device", {
-    method: "POST",
-    headers: writeHeaders({ "X-Device-Token": getDeviceToken() }),
-  });
+  return browserFetch<IdentityMergeResult>(
+    "/api/v1/community/session/claim-device",
+    {
+      method: "POST",
+      headers: writeHeaders({ "X-Device-Token": getDeviceToken() }),
+    },
+    isIdentityMergeResult
+  );
 }
 
 export async function getMySavedNumbers(): Promise<MySavedNumber[]> {
-  return browserFetch<MySavedNumber[]>("/api/v1/community/me/saved-numbers", { cache: "no-store" });
+  return browserFetch<MySavedNumber[]>(
+    "/api/v1/community/me/saved-numbers",
+    { cache: "no-store" },
+    isMySavedNumberArray
+  );
 }
 
 export async function getMyRecommendationSets(): Promise<RecommendationSetSummary[]> {
-  return browserFetch<RecommendationSetSummary[]>("/api/v1/community/me/recommendation-sets", {
-    cache: "no-store",
-  });
+  return browserFetch<RecommendationSetSummary[]>(
+    "/api/v1/community/me/recommendation-sets",
+    { cache: "no-store" },
+    isRecommendationSetSummaryArray
+  );
 }

@@ -36,7 +36,7 @@ function mockFetch(handlers: {
       return Promise.resolve({
         ok: true,
         status: 200,
-        json: () => Promise.resolve(handlers.session),
+        json: () => Promise.resolve({ activeProviders: [], ...(handlers.session as object) }),
       });
     }
     const { status, body } = handlers.onWrite?.(url, init) ?? { status: 200, body: {} };
@@ -210,7 +210,8 @@ describe("커뮤니티 게시글 작성·수정 폼", () => {
         return Promise.resolve({
           ok: true,
           status: 200,
-          json: () => Promise.resolve({ loggedIn: true, userId: 1, nickname: "글쓴이" }),
+          json: () =>
+            Promise.resolve({ loggedIn: true, userId: 1, nickname: "글쓴이", activeProviders: [] }),
         });
       }
       return new Promise((resolve) => {

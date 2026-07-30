@@ -58,8 +58,8 @@ export default async function CommunityPage({ searchParams }: Props) {
       </Link>
 
       <form method="get" className="community-search-form">
-        <input type="hidden" name="category" value={category ?? ""} />
-        <input type="hidden" name="sort" value={sort} />
+        {category && <input type="hidden" name="category" value={category} />}
+        {sort !== "latest" && <input type="hidden" name="sort" value={sort} />}
         <label htmlFor="community-search">검색</label>
         <input id="community-search" type="search" name="query" defaultValue={query ?? ""} minLength={2} maxLength={50} />
         <button type="submit">검색</button>

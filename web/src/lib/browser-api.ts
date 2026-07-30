@@ -11,6 +11,7 @@ export class BrowserApiError extends Error {
 export async function browserFetch<T>(
   url: string,
   init?: RequestInit,
+  isValid?: (body: unknown) => boolean,
 ): Promise<T> {
   const res = await fetch(url, {
     signal: AbortSignal.timeout(5000),
@@ -28,6 +29,9 @@ export async function browserFetch<T>(
       message?: string;
     };
     throw new BrowserApiError(code ?? "UNKNOWN", message ?? res.statusText ?? "");
+  }
+  if (isValid && !isValid(body)) {
+    throw new BrowserApiError("INVALID_RESPONSE_SHAPE", `${url} 응답 형식이 예상과 다릅니다.`);
   }
   return body as T;
 }
