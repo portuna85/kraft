@@ -14,6 +14,7 @@ import {
 } from "@/lib/api";
 import { formatDrawDate } from "@/lib/format";
 import { logCoreDataFailure } from "@/lib/logger";
+import { communitySectionsIdentical } from "@/lib/home-community-sections";
 
 // 루트 레이아웃의 title.template("%s | KRAFT Lotto")은 "/" 페이지에는 적용되지 않으므로
 // (검증됨: 다른 페이지는 템플릿이 적용되지만 홈은 적용 안 됨) 접미사를 직접 포함해야 한다.
@@ -65,6 +66,10 @@ export default async function HomePage() {
     homeSummaryUnavailable = true;
   }
 
+  const latestPosts = homeSummary?.latestPosts ?? [];
+  const weeklyPopularPosts = homeSummary?.weeklyPopularPosts ?? [];
+  const mergeCommunitySections = !homeSummaryUnavailable && communitySectionsIdentical(latestPosts, weeklyPopularPosts);
+
   return (
     <div className="section-stack">
       <section className="panel result-panel hero-panel">
@@ -83,34 +88,49 @@ export default async function HomePage() {
         <RecommendClient />
       </section>
 
-      <section className="grid grid-2 home-community-columns">
-        <div className="panel">
+      {mergeCommunitySections ? (
+        <section className="panel">
           <p className="eyebrow">최신 커뮤니티</p>
-          <h3>최신 글</h3>
+          <h3>커뮤니티</h3>
           <ul className="home-community-list">
-            {homeSummaryUnavailable ? <li className="status-text">글 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</li> : null}
-            {!homeSummaryUnavailable && (homeSummary?.latestPosts ?? []).map((post) => (
+            {latestPosts.map((post) => (
               <li key={post.id}>
                 <Link href={`/community/posts/${post.id}`}>{post.title}</Link>
               </li>
             ))}
-            {!homeSummaryUnavailable && (homeSummary?.latestPosts ?? []).length === 0 ? <li className="muted">아직 글이 없습니다.</li> : null}
+            {latestPosts.length === 0 ? <li className="muted">아직 글이 없습니다.</li> : null}
           </ul>
-        </div>
-        <div className="panel">
-          <p className="eyebrow">이번 주 인기</p>
-          <h3>주간 인기 글</h3>
-          <ul className="home-community-list">
-            {homeSummaryUnavailable ? <li className="status-text">글 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</li> : null}
-            {!homeSummaryUnavailable && (homeSummary?.weeklyPopularPosts ?? []).map((post) => (
-              <li key={post.id}>
-                <Link href={`/community/posts/${post.id}`}>{post.title}</Link>
-              </li>
-            ))}
-            {!homeSummaryUnavailable && (homeSummary?.weeklyPopularPosts ?? []).length === 0 ? <li className="muted">아직 글이 없습니다.</li> : null}
-          </ul>
-        </div>
-      </section>
+        </section>
+      ) : (
+        <section className="grid grid-2 home-community-columns">
+          <div className="panel">
+            <p className="eyebrow">최신 커뮤니티</p>
+            <h3>최신 글</h3>
+            <ul className="home-community-list">
+              {homeSummaryUnavailable ? <li className="status-text">글 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</li> : null}
+              {!homeSummaryUnavailable && latestPosts.map((post) => (
+                <li key={post.id}>
+                  <Link href={`/community/posts/${post.id}`}>{post.title}</Link>
+                </li>
+              ))}
+              {!homeSummaryUnavailable && latestPosts.length === 0 ? <li className="muted">아직 글이 없습니다.</li> : null}
+            </ul>
+          </div>
+          <div className="panel">
+            <p className="eyebrow">이번 주 인기</p>
+            <h3>주간 인기 글</h3>
+            <ul className="home-community-list">
+              {homeSummaryUnavailable ? <li className="status-text">글 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</li> : null}
+              {!homeSummaryUnavailable && weeklyPopularPosts.map((post) => (
+                <li key={post.id}>
+                  <Link href={`/community/posts/${post.id}`}>{post.title}</Link>
+                </li>
+              ))}
+              {!homeSummaryUnavailable && weeklyPopularPosts.length === 0 ? <li className="muted">아직 글이 없습니다.</li> : null}
+            </ul>
+          </div>
+        </section>
+      )}
 
       <section className="grid grid-3 home-shortcuts">
         <Link href="/saved" className="stat-card stat-link">
