@@ -15,7 +15,8 @@ export default defineConfig({
   workers: process.env.CI ? 4 : undefined,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? "github" : "list",
+  // KF-10: 실측 데이터 수집(§계측 후 샤드 재조정) — playwright.config.ts와 동일 이유.
+  reporter: process.env.CI ? [["github"], ["json", { outputFile: "playwright-timing.json" }]] : "list",
   // 두 극단을 모두 실측으로 확인했다: maxDiffPixelRatio 0.02(2%)는 전체 페이지 스크린샷에서
   // 강조색(accent)이 완전히 바뀌어도 못 잡았고, 반대로 비율 제한을 아예 없애면(Playwright
   // 기본값) 로컬(Docker mcr.microsoft.com/playwright 이미지)에서 만든 베이스라인이 실제

@@ -393,6 +393,16 @@ jobs:
             web/playwright-report/
           if-no-files-found: ignore
           retention-days: 7
+      # KF-10: 실측 없이 정해온 샤드 수를 재조정할 근거를 쌓는다 — 성공/실패 무관하게
+      # 항상 업로드(pass 케이스의 소요시간도 재조정 판단에 필요).
+      - name: Upload timing report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: timing-${{ matrix.suite }}-${{ matrix.shard_id }}
+          path: web/playwright-timing.json
+          if-no-files-found: ignore
+          retention-days: 14
 
   web-e2e-proxy:
     name: Web E2E (Caddy proxy gateway)
@@ -437,6 +447,14 @@ jobs:
             web/playwright-report/
           if-no-files-found: ignore
           retention-days: 7
+      - name: Upload timing report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: timing-proxy
+          path: web/playwright-timing.json
+          if-no-files-found: ignore
+          retention-days: 14
 
   web-performance-budget:
     name: Web Performance Budget

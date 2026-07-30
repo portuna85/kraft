@@ -18,7 +18,10 @@ export default defineConfig({
   workers: process.env.CI ? 4 : undefined,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? "github" : "list",
+  // KF-10: 샤드 수를 실측 없이 정해왔다 — CI에서만 json 리포터로 스텝별/테스트별
+  // 소요시간을 아티팩트로 남겨, 나중에 샤드 재조정 근거로 쓸 실측 데이터를 쌓는다.
+  // github 리포터(PR 어노테이션)는 그대로 유지, json은 추가일 뿐 기존 동작을 안 바꾼다.
+  reporter: process.env.CI ? [["github"], ["json", { outputFile: "playwright-timing.json" }]] : "list",
   use: {
     baseURL: "http://127.0.0.1:3100",
     trace: "retain-on-failure",
