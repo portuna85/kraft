@@ -31,17 +31,9 @@
 		# 타임아웃은 운영 Caddyfile과 동일값(dial 3s / response 5s). KF-06 이전에는
 		# backend-proxy.ts의 5초 AbortController가 유일한 타임아웃이었으나, 그 프록시가
 		# 사라져 이 값이 로컬에서 백엔드 무응답을 방어하는 유일한 장치가 됐다.
-		# lb_retries: CI의 Caddy 프록시 검증 트랙(playwright.proxy.config.ts)은
-		# host.docker.internal:host-gateway로 호스트의 standalone Next/픽스처 백엔드를
-		# 가리키는데, 이 게이트웨이 라우팅이 컨테이너 시작 직후 잠깐 안정화되지 않아 첫
-		# 요청 몇 개가 dial 실패로 502를 받는 경우가 있었다(docker-compose 서비스명 DNS를
-		# 쓰는 운영/일반 로컬 환경에는 없는 문제 — 이 파일에만 해당). 같은 업스트림으로
-		# 짧게 재시도해 이 워밍업 구간을 흡수한다.
 		handle /api/v1/* {
 			reverse_proxy {$KRAFT_LOCAL_BACKEND_UPSTREAM:backend:8080} {
 				header_up X-Real-IP {remote_host}
-				lb_retries 3
-				lb_try_duration 5s
 				transport http {
 					dial_timeout 3s
 					response_header_timeout 5s
@@ -55,8 +47,6 @@
 		handle @community_auth {
 			reverse_proxy {$KRAFT_LOCAL_BACKEND_UPSTREAM:backend:8080} {
 				header_up X-Real-IP {remote_host}
-				lb_retries 3
-				lb_try_duration 5s
 				transport http {
 					dial_timeout 3s
 					response_header_timeout 5s

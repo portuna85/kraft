@@ -51,7 +51,18 @@ export default defineConfig({
     {
       // host.docker.internal은 Docker Desktop(Win/Mac)에서 기본 제공되고, Linux CI
       // 러너에서는 --add-host=host.docker.internal:host-gateway로 명시해야 해석된다.
+      //
+      // 워밍업 대기: 이 배열의 앞선 두 항목(픽스처 백엔드·Next)은 이미 127.0.0.1로
+      // 준비 완료를 확인했지만, 그건 "호스트에서 직접" 확인한 것이지 "컨테이너 안에서
+      // host.docker.internal을 거쳐" 확인한 게 아니다 — GitHub Actions(Ubuntu) 러너에서
+      // host-gateway NAT 라우팅이 컨테이너 시작 직후 몇 초간 안정화되지 않아, Caddy가
+      // 뜨자마자 첫 요청 몇 개가 "connection refused"로 실패하는 걸 실제 CI 실행에서
+      // 확인했다(Windows Docker Desktop에서는 재현 안 됨 — 이 경로 특유의 문제). Caddy를
+      // 시작하기 전에, 같은 --add-host 플래그를 쓰는 일회성 컨테이너로 그 정확한 경로가
+      // 실제로 뚫렸는지 먼저 확인한다.
       command:
+        "docker run --rm --add-host=host.docker.internal:host-gateway busybox:1.36 sh -c " +
+        `"until nc -z host.docker.internal ${FIXTURE_BACKEND_PORT} && nc -z host.docker.internal ${NEXT_PORT}; do sleep 0.3; done" && ` +
         `docker run --rm -p ${CADDY_PORT}:80 ` +
         "--add-host=host.docker.internal:host-gateway " +
         `-e KRAFT_LOCAL_BACKEND_UPSTREAM=host.docker.internal:${FIXTURE_BACKEND_PORT} ` +
