@@ -66,7 +66,7 @@ public class HttpExternalWinningNumberFetchClient implements ExternalWinningNumb
             throw new ApiException(HttpStatus.BAD_GATEWAY, "LOTTO_SOURCE_EMPTY", "외부 수집 응답이 비어 있습니다.");
         }
 
-        Map<String, Object> payload = extractPayloadForRound(body, round);
+        Map<?, ?> payload = extractPayloadForRound(body, round);
         WinningNumberUpsertRequest request = payloadMapper.toRequest(payload);
         requireRoundMatch(round, request);
         log.info("외부 회차 수집 요청 완료: round={} drawDate={}", request.round(), request.drawDate());
@@ -82,20 +82,21 @@ public class HttpExternalWinningNumberFetchClient implements ExternalWinningNumb
     }
 
     // Handles both the new { data: { list: [...] } } envelope and the old flat response.
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> extractPayloadForRound(Map<String, Object> body, int round) {
+    // KB-18: Map<?,?>로 읽기만 하므로(쓰기 없음) unchecked 캐스트가 필요 없다 — Map.get(Object)/
+    // containsKey(Object)는 키·값 타입 파라미터와 무관하게 호출 가능하다. package-private은
+    // 테스트(HttpExternalWinningNumberFetchClientTest)에서 미지 envelope 폴백을 직접 검증하기 위함.
+    Map<?, ?> extractPayloadForRound(Map<String, Object> body, int round) {
         Object dataObj = body.get("data");
         if (!(dataObj instanceof Map<?, ?> dataMap)) {
             return body;
         }
-        Object listObj = ((Map<String, Object>) dataMap).get("list");
+        Object listObj = dataMap.get("list");
         if (!(listObj instanceof List<?> list)) {
             return body;
         }
         for (Object item : list) {
             if (item instanceof Map<?, ?> itemMap) {
-                Map<String, Object> itemData = (Map<String, Object>) itemMap;
-                Object ltEpsd = itemData.get("ltEpsd");
+                Object ltEpsd = itemMap.get("ltEpsd");
                 if (ltEpsd != null) {
                     int itemRound;
                     try {
@@ -105,7 +106,7 @@ public class HttpExternalWinningNumberFetchClient implements ExternalWinningNumb
                                 "회차 번호 파싱 실패: " + ltEpsd);
                     }
                     if (itemRound == round) {
-                        return itemData;
+                        return itemMap;
                     }
                 }
             }

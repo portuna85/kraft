@@ -13,7 +13,8 @@ import org.springframework.stereotype.Component;
 public class ExternalWinningNumberPayloadMapper {
 
     // Parses both the old common.do format and the new lt645/selectPstLt645InfoNew.do item format.
-    public WinningNumberUpsertRequest toRequest(Map<String, Object> payload) {
+    // KB-18: Map<?,?>로 읽기만 하므로 unchecked 캐스트가 필요 없다.
+    public WinningNumberUpsertRequest toRequest(Map<?, ?> payload) {
         String returnValue = asString(payload.get("returnValue"));
         if (returnValue != null && !returnValue.isBlank() && !"success".equalsIgnoreCase(returnValue)) {
             throw new ApiException(HttpStatus.BAD_GATEWAY, "LOTTO_SOURCE_ROUND_NOT_FOUND", "외부 응답이 성공 상태가 아닙니다(회차 미공개로 간주).");
@@ -48,7 +49,7 @@ public class ExternalWinningNumberPayloadMapper {
         );
     }
 
-    private List<Integer> extractNumbers(Map<String, Object> payload) {
+    private List<Integer> extractNumbers(Map<?, ?> payload) {
         Object directNumbers = payload.get("numbers");
         if (directNumbers instanceof List<?> values) {
             List<Integer> result = values.stream().map(this::asInteger).toList();
@@ -89,7 +90,15 @@ public class ExternalWinningNumberPayloadMapper {
         return Collections.unmodifiableList(result);
     }
 
+    // KB-18: "numbers" 직접 리스트 분기는 개수를 스스로 보장하지 않는다 — drwtNo1..6/tm1WnNo..6
+    // 분기는 varargs 6개 고정이라 구조적으로 항상 6개지만, 이 분기는 상류가 빈 배열이나
+    // 5/7개짜리 배열을 보내도 그대로 통과시켜 왔다. 이 어댑터 밖(WinningNumberCommandService의
+    // Bean Validation)에서야 잡히던 것을 여기서 먼저 명시적으로 끊는다.
     private void validateNumbers(List<Integer> numbers) {
+        if (numbers.size() != 6) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "LOTTO_SOURCE_PARSE_ERROR",
+                    "당첨 번호는 정확히 6개여야 합니다 (실제 " + numbers.size() + "개).");
+        }
         for (int i = 0; i < numbers.size(); i++) {
             if (numbers.get(i) == null) {
                 throw new ApiException(HttpStatus.BAD_GATEWAY, "LOTTO_SOURCE_PARSE_ERROR",
@@ -109,7 +118,7 @@ public class ExternalWinningNumberPayloadMapper {
         return raw;
     }
 
-    private Object firstOf(Map<String, Object> payload, String... keys) {
+    private Object firstOf(Map<?, ?> payload, String... keys) {
         for (String key : keys) {
             if (payload.containsKey(key)) {
                 return payload.get(key);

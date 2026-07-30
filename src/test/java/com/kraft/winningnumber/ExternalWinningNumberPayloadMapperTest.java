@@ -1,10 +1,13 @@
 package com.kraft.winningnumber;
 
+import com.kraft.common.error.ApiException;
 import org.junit.jupiter.api.DisplayName;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("외부 당첨 번호 페이로드 매퍼 테스트")
 class ExternalWinningNumberPayloadMapperTest {
@@ -64,5 +67,76 @@ class ExternalWinningNumberPayloadMapperTest {
         assertThat(request.secondPrize()).isEqualTo(50000000L);
         assertThat(request.secondWinners()).isEqualTo(60);
         assertThat(request.totalSales()).isEqualTo(55000000000L);
+    }
+
+    @Test
+    @DisplayName("KB-18: 필수 필드(보너스 번호)가 누락되면 LOTTO_SOURCE_PARSE_ERROR를 던진다")
+    void missingRequiredField_throwsParseError() {
+        // bnusNo/bnsWnNo 둘 다 없음 — round/drawDate/numbers는 있어도 필수 필드 하나만
+        // 빠져도 조용히 null로 저장되지 않고 여기서 막혀야 한다.
+        Map<String, Object> payload = Map.ofEntries(
+                Map.entry("drwNo", 1201),
+                Map.entry("drwNoDate", "2026-06-20"),
+                Map.entry("drwtNo1", 5),
+                Map.entry("drwtNo2", 12),
+                Map.entry("drwtNo3", 18),
+                Map.entry("drwtNo4", 27),
+                Map.entry("drwtNo5", 36),
+                Map.entry("drwtNo6", 44),
+                Map.entry("firstWinamnt", 2100000000L)
+        );
+
+        assertThatThrownBy(() -> mapper.toRequest(payload))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> {
+                    ApiException apiEx = (ApiException) ex;
+                    assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY);
+                    assertThat(apiEx.getCode()).isEqualTo("LOTTO_SOURCE_PARSE_ERROR");
+                });
+    }
+
+    @Test
+    @DisplayName("KB-18: 숫자 필드에 숫자로 변환할 수 없는 값이 오면 LOTTO_SOURCE_PARSE_ERROR를 던진다")
+    void fieldWithWrongType_throwsParseError() {
+        Map<String, Object> payload = Map.ofEntries(
+                Map.entry("drwNo", 1201),
+                Map.entry("drwNoDate", "2026-06-20"),
+                Map.entry("drwtNo1", "다섯"), // 숫자가 아닌 문자열
+                Map.entry("drwtNo2", 12),
+                Map.entry("drwtNo3", 18),
+                Map.entry("drwtNo4", 27),
+                Map.entry("drwtNo5", 36),
+                Map.entry("drwtNo6", 44),
+                Map.entry("bnusNo", 9),
+                Map.entry("firstWinamnt", 2100000000L)
+        );
+
+        assertThatThrownBy(() -> mapper.toRequest(payload))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> {
+                    ApiException apiEx = (ApiException) ex;
+                    assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY);
+                    assertThat(apiEx.getCode()).isEqualTo("LOTTO_SOURCE_PARSE_ERROR");
+                });
+    }
+
+    @Test
+    @DisplayName("KB-18: numbers가 빈 리스트로 오면 6개가 아니므로 LOTTO_SOURCE_PARSE_ERROR를 던진다")
+    void emptyNumbersList_throwsParseError() {
+        Map<String, Object> payload = Map.ofEntries(
+                Map.entry("drwNo", 1201),
+                Map.entry("drwNoDate", "2026-06-20"),
+                Map.entry("numbers", java.util.List.of()),
+                Map.entry("bnusNo", 9),
+                Map.entry("firstWinamnt", 2100000000L)
+        );
+
+        assertThatThrownBy(() -> mapper.toRequest(payload))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> {
+                    ApiException apiEx = (ApiException) ex;
+                    assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY);
+                    assertThat(apiEx.getCode()).isEqualTo("LOTTO_SOURCE_PARSE_ERROR");
+                });
     }
 }
