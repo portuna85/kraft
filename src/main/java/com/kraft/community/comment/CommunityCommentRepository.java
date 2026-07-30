@@ -7,10 +7,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface CommunityCommentRepository extends JpaRepository<CommunityComment, Long> {
+
+    // KB-04: 탈퇴 처리 시 기존 댓글의 작성자 표기를 일괄로 익명화한다(CommunityPostRepository와 동일 근거).
+    @Modifying
+    @Query("update CommunityComment c set c.authorNameSnapshot = :name where c.ownerId = :ownerId")
+    int renameAuthorForOwner(@Param("ownerId") Long ownerId, @Param("name") String name);
 
     Page<CommunityComment> findByPostId(Long postId, Pageable pageable);
 

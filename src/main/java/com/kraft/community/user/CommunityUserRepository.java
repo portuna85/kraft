@@ -17,4 +17,8 @@ public interface CommunityUserRepository extends JpaRepository<CommunityUser, Lo
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select u from CommunityUser u where u.id = :id")
     Optional<CommunityUser> lockById(@Param("id") Long id);
+
+    // KB-04: 요청마다 세션 principal이 탈퇴 계정인지 확인하는 경량 조회 —
+    // PK 조회라 인덱스 스캔 1행으로 끝난다.
+    boolean existsByIdAndWithdrawnAtIsNotNull(Long id);
 }

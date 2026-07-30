@@ -128,6 +128,102 @@ describe("커뮤니티 계정 메뉴", () => {
     });
   });
 
+  it("KB-04: 탈퇴 확인 대화상자에서 취소하면 요청이 전송되지 않는다", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/withdrawal")) {
+        throw new Error("취소했는데 호출되면 안 된다");
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            loggedIn: true,
+            userId: 1,
+            nickname: "글쓴이",
+            activeProviders: ["google", "naver"],
+          }),
+      });
+    });
+
+    renderAccountMenu();
+
+    const withdrawButton = await screen.findByRole("button", { name: "탈퇴" });
+    fireEvent.click(withdrawButton);
+
+    expect(window.confirm).toHaveBeenCalled();
+  });
+
+  it("KB-04: 탈퇴를 확인하면 성공 시 새로고침한다", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const reload = vi.fn();
+    Object.defineProperty(window, "location", {
+      value: { ...window.location, reload },
+      writable: true,
+    });
+
+    global.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (init?.method === "POST" && url.includes("/withdrawal")) {
+        return Promise.resolve({ ok: true, status: 204, json: () => Promise.resolve({}) });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            loggedIn: true,
+            userId: 1,
+            nickname: "글쓴이",
+            activeProviders: ["google", "naver"],
+          }),
+      });
+    });
+
+    renderAccountMenu();
+
+    const withdrawButton = await screen.findByRole("button", { name: "탈퇴" });
+    fireEvent.click(withdrawButton);
+
+    await waitFor(() => {
+      expect(reload).toHaveBeenCalled();
+    });
+  });
+
+  it("KB-04: 탈퇴 요청이 실패하면 새로고침 없이 오류 문구를 보여준다", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const reload = vi.fn();
+    Object.defineProperty(window, "location", {
+      value: { ...window.location, reload },
+      writable: true,
+    });
+
+    global.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (init?.method === "POST" && url.includes("/withdrawal")) {
+        return Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            loggedIn: true,
+            userId: 1,
+            nickname: "글쓴이",
+            activeProviders: ["google", "naver"],
+          }),
+      });
+    });
+
+    renderAccountMenu();
+
+    const withdrawButton = await screen.findByRole("button", { name: "탈퇴" });
+    fireEvent.click(withdrawButton);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("탈퇴에 실패했습니다");
+    expect(reload).not.toHaveBeenCalled();
+  });
+
   it("로그아웃 요청이 실패하면 새로고침 없이 오류 문구를 보여준다", async () => {
     const reload = vi.fn();
     Object.defineProperty(window, "location", {

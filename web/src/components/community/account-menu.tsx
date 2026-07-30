@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { loginUrl, logout } from "@/lib/community-client";
+import { loginUrl, logout, withdraw } from "@/lib/community-client";
 import { useCommunitySession } from "@/components/community/community-session-provider";
 
 export function AccountMenu() {
   const { session, loading } = useCommunitySession();
   const [logoutError, setLogoutError] = useState(false);
+  const [withdrawError, setWithdrawError] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
 
   if (loading) {
     return null;
@@ -60,13 +62,37 @@ export function AccountMenu() {
     }
   };
 
+  const handleWithdraw = async () => {
+    if (!window.confirm("탈퇴하면 로그인한 계정 정보가 사라지고, 기존에 작성한 글·댓글은 익명으로 표시됩니다. 계속할까요?")) {
+      return;
+    }
+    setWithdrawError(false);
+    setWithdrawing(true);
+    const ok = await withdraw();
+    if (ok) {
+      window.location.reload();
+    } else {
+      setWithdrawing(false);
+      setWithdrawError(true);
+    }
+  };
+
   return (
     <div className="account-menu">
       <span className="account-nickname account-login-full">{session.nickname}님</span>
       <button type="button" className="account-logout-button" onClick={handleLogout}>
         로그아웃
       </button>
+      <button
+        type="button"
+        className="account-withdraw-button"
+        disabled={withdrawing}
+        onClick={handleWithdraw}
+      >
+        {withdrawing ? "탈퇴 처리 중…" : "탈퇴"}
+      </button>
       {logoutError && <p role="alert">로그아웃에 실패했습니다. 다시 시도해 주세요.</p>}
+      {withdrawError && <p role="alert">탈퇴에 실패했습니다. 다시 시도해 주세요.</p>}
     </div>
   );
 }

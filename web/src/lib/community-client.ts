@@ -66,6 +66,21 @@ export async function logout(): Promise<boolean> {
   }
 }
 
+// KB-04: 탈퇴 — 백엔드가 같은 요청 안에서 세션을 무효화하므로 별도로 /logout을 호출할
+// 필요는 없다. 204만 성공으로 본다(백엔드가 항상 그렇게 응답).
+export async function withdraw(): Promise<boolean> {
+  try {
+    const response = await fetch("/api/v1/community/me/withdrawal", {
+      method: "POST",
+      headers: writeHeaders(),
+      signal: AbortSignal.timeout(5000),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function createPost(
   title: string,
   content: string,

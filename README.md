@@ -245,6 +245,9 @@ http://localhost/login/oauth2/code/naver
 | `GET` | `/api/v1/community/posts/{id}/comments` | 공개 |
 | `POST` | `/api/v1/community/posts/{id}/comments` | OAuth2 세션 + CSRF |
 | `DELETE` | `/api/v1/community/comments/{id}` | OAuth2 세션 + CSRF |
+| `POST` | `/api/v1/community/me/withdrawal` | OAuth2 세션 + CSRF |
+
+탈퇴(`me/withdrawal`)는 닉네임을 익명화하고 기존 게시글·댓글의 작성자 표기까지 일괄로 재작성합니다(`adr/0001-community-withdrawal.md`). 같은 OAuth 계정으로 재로그인하면 자동으로 재활성화됩니다.
 
 `/ops/**`는 `X-Ops-Token`이 필요합니다. `/admin/**`은 별도 관리자 도메인의 세션 인증과 IP allowlist를 사용합니다.
 

@@ -65,7 +65,20 @@ public class CommunityOAuth2UserService extends DefaultOAuth2UserService {
     @Transactional
     CommunityUser upsert(CommunityOAuthAttributes attributes) {
         return communityUserRepository.findByProviderAndProviderId(attributes.provider(), attributes.providerId())
+                .map(existing -> reactivateIfWithdrawn(existing, attributes))
                 .orElseGet(() -> createNewUser(attributes));
+    }
+
+    // KB-04: 탈퇴한 계정이 같은 OAuth 계정으로 재로그인하면 새 행을 만들지 않고
+    // (provider, provider_id) unique 제약상 만들 수도 없다 — 기존 행을 재활성화한다.
+    // 탈퇴 시 익명화된 옛 닉네임은 복구하지 않고, 이번 로그인에서 provider가 내려준
+    // 최신 닉네임·프로필 이미지로 새로 채운다.
+    private CommunityUser reactivateIfWithdrawn(CommunityUser user, CommunityOAuthAttributes attributes) {
+        if (!user.isWithdrawn()) {
+            return user;
+        }
+        user.reactivate(attributes.nickname(), attributes.profileImageUrl());
+        return communityUserRepository.save(user);
     }
 
     private CommunityUser createNewUser(CommunityOAuthAttributes attributes) {

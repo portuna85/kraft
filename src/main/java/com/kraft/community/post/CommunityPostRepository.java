@@ -4,12 +4,20 @@ import java.time.OffsetDateTime;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface CommunityPostRepository extends JpaRepository<CommunityPost, Long> {
 
     boolean existsByRecommendationSetId(Long recommendationSetId);
+
+    // KB-04: 탈퇴 처리 시 기존 게시글의 작성자 표기를 일괄로 익명화한다.
+    // 대량 JPQL update라 개별 행의 @Version은 증가하지 않는다 — 표기 정정일 뿐
+    // 게시글 내용 자체의 낙관적 락 대상이 아니므로 의도된 동작이다.
+    @Modifying
+    @Query("update CommunityPost p set p.authorNameSnapshot = :name where p.ownerId = :ownerId")
+    int renameAuthorForOwner(@Param("ownerId") Long ownerId, @Param("name") String name);
 
     @Query("SELECT p FROM CommunityPost p WHERE p.status = com.kraft.community.post.PostStatus.PUBLISHED "
             + "AND (:category IS NULL OR p.category = :category) "

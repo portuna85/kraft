@@ -5,6 +5,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.kraft.common.config.CommunityProperties;
 import com.kraft.common.config.PublicBaseUrlProperties;
 import com.kraft.common.error.ApiErrorResponse;
+import com.kraft.community.user.CommunityUserRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.servlet.FilterChain;
@@ -53,17 +54,20 @@ public class CommunitySecurityConfig {
     private final CommunityProperties communityProperties;
     private final PublicBaseUrlProperties publicBaseUrlProperties;
     private final MeterRegistry meterRegistry;
+    private final CommunityUserRepository communityUserRepository;
 
     public CommunitySecurityConfig(CommunityOAuth2UserService communityOAuth2UserService,
                                     CommunityAuthEntryPoint communityAuthEntryPoint,
                                     CommunityProperties communityProperties,
                                     PublicBaseUrlProperties publicBaseUrlProperties,
-                                    MeterRegistry meterRegistry) {
+                                    MeterRegistry meterRegistry,
+                                    CommunityUserRepository communityUserRepository) {
         this.communityOAuth2UserService = communityOAuth2UserService;
         this.communityAuthEntryPoint = communityAuthEntryPoint;
         this.communityProperties = communityProperties;
         this.publicBaseUrlProperties = publicBaseUrlProperties;
         this.meterRegistry = meterRegistry;
+        this.communityUserRepository = communityUserRepository;
     }
 
     @Bean
@@ -80,6 +84,8 @@ public class CommunitySecurityConfig {
                         .anyRequest().authenticated())
                 .addFilterAfter(new CommunityWriteRateLimitFilter(communityProperties), AuthorizationFilter.class)
                 .addFilterAfter(csrfCookieFilter(), CsrfFilter.class)
+                .addFilterBefore(new CommunityWithdrawnAccountFilter(communityUserRepository),
+                        AuthorizationFilter.class)
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.userService(communityOAuth2UserService))
                         .successHandler(successHandler())
