@@ -21,8 +21,8 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
 
     @Query("SELECT p FROM CommunityPost p WHERE p.status = com.kraft.community.post.PostStatus.PUBLISHED "
             + "AND (:category IS NULL OR p.category = :category) "
-            + "AND (:query IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) "
-            + "     OR LOWER(p.content) LIKE LOWER(CONCAT('%', :query, '%'))) "
+            + "AND (:query IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) ESCAPE '!' "
+            + "     OR LOWER(p.content) LIKE LOWER(CONCAT('%', :query, '%')) ESCAPE '!') "
             + "ORDER BY p.createdAt DESC, p.id DESC")
     Page<CommunityPost> findLatest(@Param("category") PostCategory category, @Param("query") String query,
                                     Pageable pageable);
@@ -32,15 +32,15 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
     @Query(value = "SELECT p.* FROM community_posts p JOIN community_post_metrics m ON m.post_id = p.id "
             + "WHERE p.status = 'PUBLISHED' AND p.created_at >= :since "
             + "AND (:category IS NULL OR p.category = :category) "
-            + "AND (:query IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) "
-            + "     OR LOWER(p.content) LIKE LOWER(CONCAT('%', :query, '%'))) "
+            + "AND (:query IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) ESCAPE '!' "
+            + "     OR LOWER(p.content) LIKE LOWER(CONCAT('%', :query, '%')) ESCAPE '!') "
             + "ORDER BY (m.like_count * 3 + m.comment_count * 2 + LEAST(m.view_count, 1000) / 20) "
             + "  / POW(TIMESTAMPDIFF(SECOND, p.created_at, UTC_TIMESTAMP(6)) / 3600.0 + 2, 1.35) DESC",
             countQuery = "SELECT COUNT(*) FROM community_posts p "
                     + "WHERE p.status = 'PUBLISHED' AND p.created_at >= :since "
                     + "AND (:category IS NULL OR p.category = :category) "
-                    + "AND (:query IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) "
-                    + "     OR LOWER(p.content) LIKE LOWER(CONCAT('%', :query, '%')))",
+                    + "AND (:query IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) ESCAPE '!' "
+                    + "     OR LOWER(p.content) LIKE LOWER(CONCAT('%', :query, '%')) ESCAPE '!')",
             nativeQuery = true)
     Page<CommunityPost> findWeeklyPopular(@Param("category") String category, @Param("query") String query,
                                            @Param("since") OffsetDateTime since, Pageable pageable);

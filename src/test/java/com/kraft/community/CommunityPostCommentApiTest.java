@@ -79,6 +79,20 @@ class CommunityPostCommentApiTest {
     }
 
     @Test
+    @DisplayName("검색어의 LIKE 메타문자는 최신순 목록에서 리터럴로 취급된다")
+    void searchLikeMetacharacters_areLiteralForLatestSort() throws Exception {
+        createPost(owner, "정확 50%_sale! 행사", "검색 대상");
+        createPost(owner, "정확 50AAAsale! 행사", "와일드카드라면 잘못 포함될 글");
+
+        mockMvc.perform(get("/api/v1/community/posts")
+                        .param("sort", "latest")
+                        .param("query", "50%_sale!"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.items[0].title").value("정확 50%_sale! 행사"));
+    }
+
+    @Test
     @DisplayName("KB-03/KB-11: 게시글 목록·상세·댓글 GET은 명시적으로 no-store를 응답하고 상세에는 ETag가 없다")
     void publicGetEndpoints_returnNoStoreWithoutStaleEtagCaching() throws Exception {
         long postId = createPost(owner, "제목", "내용");

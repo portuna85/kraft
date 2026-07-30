@@ -208,6 +208,30 @@ class CommunityPostServiceTest {
     }
 
     @Test
+    @DisplayName("검색어의 %, _, !는 최신순 쿼리에서 LIKE 와일드카드가 아닌 리터럴로 이스케이프된다")
+    void list_latestSort_escapesLikeMetacharacters() {
+        Page<CommunityPost> page = new PageImpl<>(List.of());
+        given(communityPostRepository.findLatest(isNull(), eq("50!%!_sale!!"), any())).willReturn(page);
+
+        Page<CommunityPost> result = service.list(null, "latest", " 50%_sale! ", 0, 20);
+
+        assertThat(result).isSameAs(page);
+    }
+
+    @Test
+    @DisplayName("검색어의 %, _, !는 주간 인기 쿼리에서도 동일하게 이스케이프된다")
+    void list_weeklyPopularSort_escapesLikeMetacharacters() {
+        Page<CommunityPost> page = new PageImpl<>(List.of());
+        given(communityPostRepository.findWeeklyPopular(
+                isNull(), eq("50!%!_sale!!"), any(OffsetDateTime.class), any()))
+                .willReturn(page);
+
+        Page<CommunityPost> result = service.list(null, "weekly_popular", " 50%_sale! ", 0, 20);
+
+        assertThat(result).isSameAs(page);
+    }
+
+    @Test
     @DisplayName("기본 정렬(latest)은 최신순 쿼리로 위임한다")
     void list_defaultSort_delegatesToLatestQuery() {
         Page<CommunityPost> page = new PageImpl<>(List.of());

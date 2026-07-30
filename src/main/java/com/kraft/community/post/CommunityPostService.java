@@ -93,7 +93,7 @@ public class CommunityPostService {
     public Page<CommunityPost> list(PostCategory category, String sort, String query, int page, int size) {
         int clampedPage = Math.max(0, page);
         int clampedSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
-        String normalizedQuery = normalizeQuery(query);
+        String normalizedQuery = normalizeAndEscapeQuery(query);
         PageRequest pageRequest = PageRequest.of(clampedPage, clampedSize, Sort.unsorted());
         // 목록/검색 지연 p50/p95/p99 산출용 — search 태그로 순수 목록 조회와
         // 검색어 있는 조회를 구분한다(검색은 LIKE 매칭이 섞여 지연 특성이 다르다).
@@ -218,7 +218,7 @@ public class CommunityPostService {
         }
     }
 
-    private static String normalizeQuery(String query) {
+    private static String normalizeAndEscapeQuery(String query) {
         if (query == null || query.isBlank()) {
             return null;
         }
@@ -227,7 +227,13 @@ public class CommunityPostService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "COMMUNITY_SEARCH_QUERY_INVALID",
                     "검색어는 " + MIN_QUERY_LENGTH + "~" + MAX_QUERY_LENGTH + "자여야 합니다.");
         }
-        return trimmed;
+        // 사용자 입력의 LIKE 메타문자를 리터럴로 취급한다. ESCAPE 문자는 저장 데이터에
+        // 등장할 수 있는 역슬래시 대신 '!'로 고정해 SQL 모드(NO_BACKSLASH_ESCAPES)와
+        // 무관한 계약을 만들고, escape 문자 자신을 먼저 이중화한다.
+        return trimmed
+                .replace("!", "!!")
+                .replace("%", "!%")
+                .replace("_", "!_");
     }
 
     // B-08: update()/delete() 양쪽에서 사전 검증(버전 불일치)과 사후 경합(저장/삭제 시점에

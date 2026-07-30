@@ -109,6 +109,23 @@ class CommunityPostRepositoryConcurrencyTest {
         assertExactlyOneSucceedsWithConflict(outcomes);
     }
 
+    @Test
+    @DisplayName("LIKE 메타문자는 최신순·주간 인기 검색 모두에서 실제 MariaDB 리터럴로 취급된다")
+    void searchLikeMetacharacters_areLiteralForEverySort() {
+        communityPostService.create(ownerId, "글쓴이", null,
+                new CreatePostRequest("정확 50%_sale! 행사", "검색 대상", "GENERAL", null));
+        communityPostService.create(ownerId, "글쓴이", null,
+                new CreatePostRequest("정확 50AAAsale! 행사", "와일드카드라면 잘못 포함될 글", "GENERAL", null));
+
+        for (String sort : List.of("latest", "weekly_popular")) {
+            List<String> titles = communityPostService.list(null, sort, "50%_sale!", 0, 20)
+                    .map(CommunityPost::getTitle)
+                    .getContent();
+
+            assertThat(titles).containsExactly("정확 50%_sale! 행사");
+        }
+    }
+
     private void assertExactlyOneSucceedsWithConflict(List<Object> outcomes) {
         long succeeded = outcomes.stream().filter(o -> !(o instanceof ApiException)).count();
         long conflicted = outcomes.stream()
