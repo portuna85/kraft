@@ -1,4 +1,4 @@
-package com.kraft.community.common;
+package com.kraft.common.web;
 
 import java.util.List;
 import org.springframework.data.domain.Page;
