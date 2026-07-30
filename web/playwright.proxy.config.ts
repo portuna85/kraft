@@ -60,9 +60,13 @@ export default defineConfig({
       // 확인했다(Windows Docker Desktop에서는 재현 안 됨 — 이 경로 특유의 문제). Caddy를
       // 시작하기 전에, 같은 --add-host 플래그를 쓰는 일회성 컨테이너로 그 정확한 경로가
       // 실제로 뚫렸는지 먼저 확인한다.
+      // nc -z에 -w(연결 타임아웃)를 반드시 줘야 한다 — 이게 없으면 라우팅이 아직
+      // 안 뚫렸을 때 커널 TCP 재전송 타임아웃(수십 초)까지 한 번의 시도가 그대로
+      // 블로킹돼, 루프가 짧은 간격으로 재시도한다는 게 무의미해진다(실제 CI에서
+      // 이 때문에 -w 없는 버전이 20초 안에 단 한 번도 재시도하지 못하고 타임아웃났다).
       command:
         "docker run --rm --add-host=host.docker.internal:host-gateway busybox:1.36 sh -c " +
-        `"until nc -z host.docker.internal ${FIXTURE_BACKEND_PORT} && nc -z host.docker.internal ${NEXT_PORT}; do sleep 0.3; done" && ` +
+        `"until nc -z -w 1 host.docker.internal ${FIXTURE_BACKEND_PORT} && nc -z -w 1 host.docker.internal ${NEXT_PORT}; do sleep 0.3; done" && ` +
         `docker run --rm -p ${CADDY_PORT}:80 ` +
         "--add-host=host.docker.internal:host-gateway " +
         `-e KRAFT_LOCAL_BACKEND_UPSTREAM=host.docker.internal:${FIXTURE_BACKEND_PORT} ` +
@@ -73,7 +77,8 @@ export default defineConfig({
         `${CADDY_IMAGE} caddy run --config /etc/caddy/Caddyfile.local --adapter caddyfile`,
       url: `http://127.0.0.1:${CADDY_PORT}`,
       reuseExistingServer: !process.env.CI,
-      timeout: 20_000,
+      // 워밍업 루프(위 주석) + 이미지 pull + Caddy 자체 기동을 넉넉히 감안해 20s→60s로 올림.
+      timeout: 60_000,
     },
   ],
 });
