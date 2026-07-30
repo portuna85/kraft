@@ -1,5 +1,6 @@
 package com.kraft.community.post;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
 
 // owner 판정에 필요한 ownerId는 포함하되, canEdit 같은 개인화 파생 필드는 넣지 않는다 —
@@ -19,7 +20,7 @@ public record CommunityPostResponse(
         int likeCount,
         int commentCount,
         long viewCount,
-        RecommendationAttachmentView recommendationAttachment
+        @Schema(nullable = true) RecommendationAttachmentView recommendationAttachment
 ) {
 
     public static CommunityPostResponse from(CommunityPost post, CommunityPostMetrics metrics,

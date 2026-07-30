@@ -1,4 +1,3 @@
-import { type RequiredApi } from "@/lib/api";
 import { browserFetch } from "@/lib/browser-api";
 import { getDeviceToken } from "@/lib/device-token";
 // KF-07: RecommendationSetSummary는 lib/domain(중립 위치)에 있다 — 이전에는
@@ -13,17 +12,11 @@ import {
   type PageResponse,
 } from "@/lib/community-api";
 
-// KF-07: 생성 스키마(CommunitySessionResponse)가 이미 있는데 이 타입을 완전 수동으로
-// 다시 정의하고 있었다. springdoc은 nullable 여부와 무관하게 전 필드를 optional(`?`)로만
-// 표기하므로(required/nullable 구분 메타데이터 없음), RequiredApi로 "항상 응답에 포함됨"을
-// 복원하고, 실제로 null일 수 있는 userId/nickname과 리터럴 유니온으로 좁혀야 하는
-// activeProviders만 개별적으로 덮어쓴다(community-api.ts의 기존 Omit 패턴과 동일).
+// OpenAPI가 필드 존재와 nullability를 정확히 표현하므로 공급자 리터럴만 UI 경계에서 좁힌다.
 export type CommunitySession = Omit<
-  RequiredApi<components["schemas"]["CommunitySessionResponse"]>,
-  "userId" | "nickname" | "activeProviders"
+  components["schemas"]["CommunitySessionResponse"],
+  "activeProviders"
 > & {
-  userId: number | null;
-  nickname: string | null;
   activeProviders: ("google" | "naver")[];
 };
 
@@ -218,16 +211,9 @@ export async function unblockUser(userId: number): Promise<void> {
   });
 }
 
-// KF-07: 세 필드 모두 백엔드에서 primitive int라 항상 존재한다 — RequiredApi만으로 정확하다.
-export type IdentityMergeResult = RequiredApi<components["schemas"]["IdentityMergeResult"]>;
+export type IdentityMergeResult = components["schemas"]["IdentityMergeResult"];
 
-// KF-07: label만 백엔드에서 정당하게 nullable(String)이라 개별적으로 덮어쓴다.
-export type MySavedNumber = Omit<
-  RequiredApi<components["schemas"]["SavedNumberResponse"]>,
-  "label"
-> & {
-  label: string | null;
-};
+export type MySavedNumber = components["schemas"]["SavedNumberResponse"];
 
 function isIdentityMergeResult(body: unknown): body is IdentityMergeResult {
   if (typeof body !== "object" || body === null) return false;

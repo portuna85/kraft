@@ -7,18 +7,6 @@ import {
 import type { components } from "@/lib/generated/api-types";
 import { backendBaseUrl } from "@/lib/backend-url";
 
-// F-03: 백엔드 OpenAPI 계약(B-01, /v3/api-docs)에서 생성된 스키마를 그대로 쓰지 않고
-// 이 유틸로 감싼다 — springdoc은 record 필드의 not-null 보장을 모르므로 모든 필드를
-// optional로 생성한다. 백엔드는 항상 완전한 레코드를 반환하므로, 손으로 유지하던
-// 타입들과 동일하게 전 필드를 필수로 되돌린다(중첩 객체·배열까지 재귀 적용).
-export type RequiredApi<T> = {
-  [K in keyof T]-?: NonNullable<T[K]> extends (infer U)[]
-    ? RequiredApi<U>[]
-    : NonNullable<T[K]> extends object
-      ? RequiredApi<NonNullable<T[K]>>
-      : NonNullable<T[K]>;
-};
-
 const publicBaseUrl = resolvePublicBaseUrl();
 
 function resolvePublicBaseUrl(): string {
@@ -37,24 +25,15 @@ function resolvePublicBaseUrl(): string {
   return "http://localhost";
 }
 
-export type WinningNumber = RequiredApi<components["schemas"]["WinningNumberResponse"]>;
+export type WinningNumber = components["schemas"]["WinningNumberResponse"];
 
-export type RoundFreshness = RequiredApi<components["schemas"]["RoundFreshnessResponse"]>;
+export type RoundFreshness = components["schemas"]["RoundFreshnessResponse"];
 
-export type HomeCommunityPostSummary = RequiredApi<components["schemas"]["HomeCommunityPostSummary"]>;
+export type HomeCommunityPostSummary = components["schemas"]["HomeCommunityPostSummary"];
 
-export type HomeSummary = Omit<RequiredApi<components["schemas"]["HomeResponse"]>, "latestRound" | "freshness"> & {
-  latestRound: WinningNumber | null;
-  freshness: RoundFreshness | null;
-};
+export type HomeSummary = components["schemas"]["HomeResponse"];
 
-export type PublicIncident = {
-  round: number | null;
-  type: string;
-  resolved: boolean;
-  occurredAt: string;
-  occurrences: number;
-};
+export type PublicIncident = components["schemas"]["PublicIncidentResponse"];
 
 type RequestInitWithNext = RequestInit & {
   next?: {
@@ -122,21 +101,21 @@ export async function getPublicIncidents(): Promise<PublicIncident[]> {
   });
 }
 
-export type BallFrequency = RequiredApi<components["schemas"]["BallFrequencyDto"]>;
-export type PatternBucket = RequiredApi<components["schemas"]["PatternBucketDto"]>;
-export type CompanionPair = RequiredApi<components["schemas"]["CompanionPairDto"]>;
-export type RangeDistribution = RequiredApi<components["schemas"]["RangeDistribution"]>;
-export type FirstPrizeHistory = RequiredApi<components["schemas"]["FirstPrizeHistoryDto"]>;
+export type BallFrequency = components["schemas"]["BallFrequencyDto"];
+export type PatternBucket = components["schemas"]["PatternBucketDto"];
+export type CompanionPair = components["schemas"]["CompanionPairDto"];
+export type RangeDistribution = components["schemas"]["RangeDistribution"];
+export type FirstPrizeHistory = components["schemas"]["FirstPrizeHistoryDto"];
 
-export type RankedCombination = RequiredApi<components["schemas"]["RankedCombinationDto"]>;
+export type RankedCombination = components["schemas"]["RankedCombinationDto"];
 
-export type FrequencyStatsResponse = RequiredApi<components["schemas"]["FrequencyStatsResponse"]>;
+export type FrequencyStatsResponse = components["schemas"]["FrequencyStatsResponse"];
 
-export type PatternStatsResponse = RequiredApi<components["schemas"]["PatternStatsResponse"]>;
+export type PatternStatsResponse = components["schemas"]["PatternStatsResponse"];
 
-export type CompanionStatsResponse = RequiredApi<components["schemas"]["CompanionStatsResponse"]>;
+export type CompanionStatsResponse = components["schemas"]["CompanionStatsResponse"];
 
-export type AnalysisResponse = RequiredApi<components["schemas"]["AnalysisResponse"]>;
+export type AnalysisResponse = components["schemas"]["AnalysisResponse"];
 
 export async function getFrequencyStats(): Promise<FrequencyStatsResponse> {
   return fetchJson<FrequencyStatsResponse>("/api/v1/stats/frequency", {

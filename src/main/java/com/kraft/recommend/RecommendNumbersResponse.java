@@ -1,5 +1,6 @@
 package com.kraft.recommend;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -18,8 +19,8 @@ public record RecommendNumbersResponse(
         int historyThroughRound,
         boolean historicalExclusionApplied,
         String exclusionPolicyVersion,
-        Long setId,
-        List<RecommendationItemView> items,
-        OffsetDateTime createdAt
+        @Schema(nullable = true) Long setId,
+        @Schema(nullable = true) List<RecommendationItemView> items,
+        @Schema(nullable = true) OffsetDateTime createdAt
 ) {
 }

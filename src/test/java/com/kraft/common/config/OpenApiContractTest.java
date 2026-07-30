@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kraft.Application;
 import java.util.Iterator;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,5 +51,43 @@ class OpenApiContractTest {
             assertThat(path).as("ops 경로가 계약에 섞였다: %s", path).doesNotStartWith("/ops");
             assertThat(path).as("admin 경로가 계약에 섞였다: %s", path).doesNotStartWith("/admin");
         }
+    }
+
+    @Test
+    @DisplayName("응답 record 필드는 항상 required이며 실제 nullable 필드만 null을 허용한다")
+    void apiDocs_responseRecordsDistinguishPresenceFromNullability() throws Exception {
+        JsonNode schemas = apiDocs().path("components").path("schemas");
+
+        assertRequiredExactly(schemas.path("CommunitySessionResponse"),
+                "loggedIn", "userId", "nickname", "activeProviders");
+        assertThat(schemas.path("CommunitySessionResponse").path("properties").path("userId")
+                .path("type")).anySatisfy(type -> assertThat(type.asText()).isEqualTo("null"));
+        assertThat(schemas.path("CommunitySessionResponse").path("properties").path("nickname")
+                .path("type")).anySatisfy(type -> assertThat(type.asText()).isEqualTo("null"));
+
+        assertRequiredExactly(schemas.path("SavedNumberResponse"),
+                "id", "numbers", "label", "source", "createdAt");
+        assertThat(schemas.path("SavedNumberResponse").path("properties").path("label")
+                .path("type")).anySatisfy(type -> assertThat(type.asText()).isEqualTo("null"));
+
+        JsonNode attachment = schemas.path("CommunityPostResponse").path("properties")
+                .path("recommendationAttachment");
+        assertThat(attachment.path("oneOf")).hasSize(2);
+        assertThat(attachment.path("oneOf").toString())
+                .contains("#/components/schemas/RecommendationAttachmentView")
+                .contains("\"null\"");
+    }
+
+    private JsonNode apiDocs() throws Exception {
+        String body = mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return OBJECT_MAPPER.readTree(body);
+    }
+
+    private static void assertRequiredExactly(JsonNode schema, String... names) {
+        assertThat(schema.path("required"))
+                .extracting(JsonNode::asText)
+                .containsExactlyInAnyOrderElementsOf(Set.of(names));
     }
 }

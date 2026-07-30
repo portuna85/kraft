@@ -1,18 +1,19 @@
 package com.kraft.community.comment;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
 import java.util.List;
 
 public record CommunityCommentResponse(
         Long id,
         Long postId,
-        Long parentId,
-        Long ownerId,
+        @Schema(nullable = true) Long parentId,
+        @Schema(nullable = true) Long ownerId,
         String authorNickname,
         String content,
         boolean deleted,
         OffsetDateTime createdAt,
-        Integer targetPage,
+        @Schema(nullable = true) Integer targetPage,
         List<CommunityCommentResponse> replies
 ) {
 

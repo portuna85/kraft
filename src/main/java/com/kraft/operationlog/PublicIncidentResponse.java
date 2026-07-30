@@ -1,5 +1,6 @@
 package com.kraft.operationlog;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
 
 /**
@@ -8,7 +9,7 @@ import java.time.OffsetDateTime;
  * 같은 (유형, 회차)의 반복 이력은 카드 1개로 집계되며, occurrences는 그 발생 횟수다.
  */
 public record PublicIncidentResponse(
-        Integer round,
+        @Schema(nullable = true) Integer round,
         String type,
         boolean resolved,
         OffsetDateTime occurredAt,

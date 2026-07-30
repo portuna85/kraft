@@ -1,4 +1,3 @@
-import type { RequiredApi } from "@/lib/api";
 import type { components } from "@/lib/generated/api-types";
 // KF-07: RecommendationItem/RecommendationSetSummary/Strategy/ExplanationCode는 커뮤니티
 // 첨부 뷰(lib/community-api)도 똑같이 파생해 쓰는 중립 타입이라 lib/domain에 있다 —
@@ -13,12 +12,8 @@ import type {
 
 export type { ExplanationCode, RecommendationItem, RecommendationSetSummary, Strategy };
 
-// OpenAPI 생성 타입을 원시 계약으로 사용하고, springdoc이 표현하지 못하는 nullable 필드와
-// 호환 응답의 optional 정책 메타데이터만 UI 경계에서 좁힌다.
-
-type RecommendationResponseContract = RequiredApi<
-  components["schemas"]["RecommendNumbersResponse"]
->;
+// OpenAPI 생성 타입을 원시 계약으로 사용하고, UI의 리터럴/호환 정책만 경계에서 좁힌다.
+type RecommendationResponseContract = components["schemas"]["RecommendNumbersResponse"];
 
 export type RecommendationResponse = Omit<
   RecommendationResponseContract,

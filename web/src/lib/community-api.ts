@@ -1,4 +1,4 @@
-import { BackendError, type RequiredApi } from "@/lib/api";
+import { BackendError } from "@/lib/api";
 import { backendBaseUrl } from "@/lib/backend-url";
 import type { components } from "@/lib/generated/api-types";
 // KF-07: RecommendationItemView는 추천 생성 응답과 커뮤니티 첨부 뷰가 공유하는 스키마다 —
@@ -15,28 +15,20 @@ export type PostStatus = NonNullable<components["schemas"]["CommunityPostRespons
 export type PostSort = "latest" | "weekly_popular";
 
 export type RecommendationAttachment = Omit<
-  RequiredApi<components["schemas"]["RecommendationAttachmentView"]>,
+  components["schemas"]["RecommendationAttachmentView"],
   "items"
 > & {
   items: RecommendationItem[];
 };
 
 export type CommunityPost = Omit<
-  RequiredApi<components["schemas"]["CommunityPostResponse"]>,
+  components["schemas"]["CommunityPostResponse"],
   "recommendationAttachment"
 > & {
   recommendationAttachment: RecommendationAttachment | null;
 };
 
-export type CommunityComment = Omit<
-  RequiredApi<components["schemas"]["CommunityCommentResponse"]>,
-  "parentId" | "ownerId" | "targetPage" | "replies"
-> & {
-  parentId: number | null;
-  ownerId: number | null;
-  targetPage: number | null;
-  replies: CommunityComment[];
-};
+export type CommunityComment = components["schemas"]["CommunityCommentResponse"];
 
 export type PageResponse<T> = {
   items: T[];

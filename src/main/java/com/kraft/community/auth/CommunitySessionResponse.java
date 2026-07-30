@@ -1,8 +1,14 @@
 package com.kraft.community.auth;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 
-public record CommunitySessionResponse(boolean loggedIn, Long userId, String nickname, List<String> activeProviders) {
+public record CommunitySessionResponse(
+        boolean loggedIn,
+        @Schema(nullable = true) Long userId,
+        @Schema(nullable = true) String nickname,
+        List<String> activeProviders
+) {
 
     public static CommunitySessionResponse anonymous(List<String> activeProviders) {
         return new CommunitySessionResponse(false, null, null, activeProviders);

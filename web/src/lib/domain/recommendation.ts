@@ -1,4 +1,3 @@
-import type { RequiredApi } from "@/lib/api";
 import type { components } from "@/lib/generated/api-types";
 
 // KF-07: features/recommendation(추천 생성 플로우)와 lib/community-api(커뮤니티 첨부 뷰)가
@@ -10,7 +9,7 @@ export type ExplanationCode = NonNullable<
   components["schemas"]["RecommendationItemView"]["explanationCodes"]
 >[number];
 
-type RecommendationItemContract = RequiredApi<components["schemas"]["RecommendationItemView"]>;
+type RecommendationItemContract = components["schemas"]["RecommendationItemView"];
 
 export type RecommendationItem = Omit<
   RecommendationItemContract,
@@ -22,9 +21,7 @@ export type RecommendationItem = Omit<
 
 export type Strategy = "random" | "balanced" | "reduce_shared_winner_risk";
 
-type RecommendationSetSummaryContract = RequiredApi<
-  components["schemas"]["RecommendationSetSummary"]
->;
+type RecommendationSetSummaryContract = components["schemas"]["RecommendationSetSummary"];
 
 export type RecommendationSetSummary = Omit<
   RecommendationSetSummaryContract,

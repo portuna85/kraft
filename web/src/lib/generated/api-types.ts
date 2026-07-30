@@ -543,82 +543,82 @@ export interface components {
         };
         CommunityPostResponse: {
             /** Format: int64 */
-            id?: number;
+            id: number;
             /** Format: int64 */
-            ownerId?: number;
-            authorNickname?: string;
-            title?: string;
-            content?: string;
+            ownerId: number;
+            authorNickname: string;
+            title: string;
+            content: string;
             /** @enum {string} */
-            category?: "RECOMMENDATION_SHARE" | "ROUND_ANALYSIS" | "WIN_STORY" | "QUESTION" | "GENERAL";
+            category: "RECOMMENDATION_SHARE" | "ROUND_ANALYSIS" | "WIN_STORY" | "QUESTION" | "GENERAL";
             /** @enum {string} */
-            status?: "PUBLISHED" | "HIDDEN_BY_AUTHOR" | "HIDDEN_BY_MODERATOR" | "DELETED";
+            status: "PUBLISHED" | "HIDDEN_BY_AUTHOR" | "HIDDEN_BY_MODERATOR" | "DELETED";
             /** Format: int64 */
-            version?: number;
+            version: number;
             /** Format: date-time */
-            createdAt?: string;
+            createdAt: string;
             /** Format: date-time */
-            updatedAt?: string;
+            updatedAt: string;
             /** Format: int32 */
-            likeCount?: number;
+            likeCount: number;
             /** Format: int32 */
-            commentCount?: number;
+            commentCount: number;
             /** Format: int64 */
-            viewCount?: number;
-            recommendationAttachment?: components["schemas"]["RecommendationAttachmentView"];
+            viewCount: number;
+            recommendationAttachment: components["schemas"]["RecommendationAttachmentView"] | null;
         };
         RecommendationAttachmentView: {
             /** Format: int64 */
-            setId?: number;
-            strategy?: string;
-            algorithmVersion?: string;
+            setId: number;
+            strategy: string;
+            algorithmVersion: string;
             /** Format: int32 */
-            historyThroughRound?: number;
-            exclusionPolicyVersion?: string;
-            items?: components["schemas"]["RecommendationItemView"][];
+            historyThroughRound: number;
+            exclusionPolicyVersion: string;
+            items: components["schemas"]["RecommendationItemView"][];
         };
         RecommendationItemView: {
             /** Format: int32 */
-            position?: number;
-            numbers?: number[];
+            position: number;
+            numbers: number[];
             /** Format: int32 */
-            score?: number;
-            explanationCodes?: ("ODD_EVEN_BALANCED" | "LOW_HIGH_BALANCED" | "SUM_IN_RANGE" | "CONSECUTIVE_PAIR_LIMITED" | "DECADE_SPREAD")[];
+            score: number | null;
+            explanationCodes: ("ODD_EVEN_BALANCED" | "LOW_HIGH_BALANCED" | "SUM_IN_RANGE" | "CONSECUTIVE_PAIR_LIMITED" | "DECADE_SPREAD")[];
         };
         AnalysisRequest: {
             numbers: number[];
         };
         AnalysisResponse: {
-            numbers?: number[];
+            numbers: number[];
             /** Format: int32 */
-            oddCount?: number;
+            oddCount: number;
             /** Format: int32 */
-            evenCount?: number;
+            evenCount: number;
             /** Format: int32 */
-            lowCount?: number;
+            lowCount: number;
             /** Format: int32 */
-            highCount?: number;
+            highCount: number;
             /** Format: int32 */
-            sumOfNumbers?: number;
-            sumBucket?: string;
+            sumOfNumbers: number;
+            sumBucket: string;
             /** Format: int32 */
-            consecutivePairCount?: number;
-            rangeDistribution?: components["schemas"]["RangeDistribution"][];
-            wonFirstPrize?: boolean;
-            firstPrizeHistory?: components["schemas"]["FirstPrizeHistoryDto"][];
+            consecutivePairCount: number;
+            rangeDistribution: components["schemas"]["RangeDistribution"][];
+            wonFirstPrize: boolean;
+            firstPrizeHistory: components["schemas"]["FirstPrizeHistoryDto"][];
         };
         FirstPrizeHistoryDto: {
             /** Format: int32 */
-            round?: number;
+            round: number;
             /** Format: date */
-            drawDate?: string;
+            drawDate: string;
             /** Format: int64 */
-            firstPrizeAmount?: number;
+            firstPrizeAmount: number;
         };
         RangeDistribution: {
-            range?: string;
+            range: string;
             /** Format: int32 */
-            count?: number;
+            count: number;
         };
         CreateSavedNumberRequest: {
             numbers: number[];
@@ -626,17 +626,17 @@ export interface components {
             source?: string;
         };
         SaveNumberResult: {
-            savedNumber?: components["schemas"]["SavedNumberResponse"];
-            created?: boolean;
+            savedNumber: components["schemas"]["SavedNumberResponse"];
+            created: boolean;
         };
         SavedNumberResponse: {
             /** Format: int64 */
-            id?: number;
-            numbers?: number[];
-            label?: string;
-            source?: string;
+            id: number;
+            numbers: number[];
+            label: string | null;
+            source: string;
             /** Format: date-time */
-            createdAt?: string;
+            createdAt: string;
         };
         RecommendNumbersRequest: {
             /** Format: int32 */
@@ -648,26 +648,26 @@ export interface components {
             maximizePrize?: boolean;
         };
         RecommendNumbersResponse: {
-            recommendations?: number[][];
-            strategy?: string;
-            algorithmVersion?: string;
+            recommendations: number[][];
+            strategy: string;
+            algorithmVersion: string;
             /** Format: int32 */
-            historyThroughRound?: number;
-            historicalExclusionApplied?: boolean;
-            exclusionPolicyVersion?: string;
+            historyThroughRound: number;
+            historicalExclusionApplied: boolean;
+            exclusionPolicyVersion: string;
             /** Format: int64 */
-            setId?: number;
-            items?: components["schemas"]["RecommendationItemView"][];
+            setId: number | null;
+            items: components["schemas"]["RecommendationItemView"][] | null;
             /** Format: date-time */
-            createdAt?: string;
+            createdAt: string | null;
         };
         IdentityMergeResult: {
             /** Format: int32 */
-            mergedSavedNumberCount?: number;
+            mergedSavedNumberCount: number;
             /** Format: int32 */
-            duplicateSavedNumberCount?: number;
+            duplicateSavedNumberCount: number;
             /** Format: int32 */
-            mergedRecommendationSetCount?: number;
+            mergedRecommendationSetCount: number;
         };
         CreateReportRequest: {
             /** @enum {string} */
@@ -691,201 +691,201 @@ export interface components {
         };
         CommunityCommentResponse: {
             /** Format: int64 */
-            id?: number;
+            id: number;
             /** Format: int64 */
-            postId?: number;
+            postId: number;
             /** Format: int64 */
-            parentId?: number;
+            parentId: number | null;
             /** Format: int64 */
-            ownerId?: number;
-            authorNickname?: string;
-            content?: string;
-            deleted?: boolean;
+            ownerId: number | null;
+            authorNickname: string;
+            content: string;
+            deleted: boolean;
             /** Format: date-time */
-            createdAt?: string;
+            createdAt: string;
             /** Format: int32 */
-            targetPage?: number;
-            replies?: components["schemas"]["CommunityCommentResponse"][];
+            targetPage: number | null;
+            replies: components["schemas"]["CommunityCommentResponse"][];
         };
         InfoStatusResponse: {
-            service?: string;
-            status?: string;
-            timezone?: string;
-            checkedAt?: string;
+            service: string;
+            status: string;
+            timezone: string;
+            checkedAt: string;
         };
         PublicIncidentResponse: {
             /** Format: int32 */
-            round?: number;
-            type?: string;
-            resolved?: boolean;
+            round: number | null;
+            type: string;
+            resolved: boolean;
             /** Format: date-time */
-            occurredAt?: string;
+            occurredAt: string;
             /** Format: int32 */
-            occurrences?: number;
+            occurrences: number;
         };
         PatternBucketDto: {
-            bucketKey?: string;
+            bucketKey: string;
             /** Format: int32 */
-            count?: number;
+            count: number;
         };
         PatternStatsResponse: {
             /** Format: int32 */
-            totalRounds?: number;
-            oddCounts?: components["schemas"]["PatternBucketDto"][];
-            highCounts?: components["schemas"]["PatternBucketDto"][];
-            sumBuckets?: components["schemas"]["PatternBucketDto"][];
+            totalRounds: number;
+            oddCounts: components["schemas"]["PatternBucketDto"][];
+            highCounts: components["schemas"]["PatternBucketDto"][];
+            sumBuckets: components["schemas"]["PatternBucketDto"][];
         };
         BallFrequencyDto: {
             /** Format: int32 */
-            ballNumber?: number;
+            ballNumber: number;
             /** Format: int32 */
-            frequency?: number;
+            frequency: number;
             /** Format: int32 */
-            lastRound?: number;
+            lastRound: number;
         };
         FrequencyStatsResponse: {
             /** Format: int32 */
-            totalRounds?: number;
-            frequencies?: components["schemas"]["BallFrequencyDto"][];
-            topSix?: components["schemas"]["RankedCombinationDto"];
-            bottomSix?: components["schemas"]["RankedCombinationDto"];
+            totalRounds: number;
+            frequencies: components["schemas"]["BallFrequencyDto"][];
+            topSix: components["schemas"]["RankedCombinationDto"];
+            bottomSix: components["schemas"]["RankedCombinationDto"];
         };
         RankedCombinationDto: {
-            balls?: components["schemas"]["BallFrequencyDto"][];
-            wonFirstPrize?: boolean;
-            firstPrizeHistory?: components["schemas"]["FirstPrizeHistoryDto"][];
+            balls: components["schemas"]["BallFrequencyDto"][];
+            wonFirstPrize: boolean;
+            firstPrizeHistory: components["schemas"]["FirstPrizeHistoryDto"][];
         };
         CompanionPairDto: {
             /** Format: int32 */
-            ballA?: number;
+            ballA: number;
             /** Format: int32 */
-            ballB?: number;
+            ballB: number;
             /** Format: int32 */
-            coCount?: number;
+            coCount: number;
         };
         CompanionStatsResponse: {
             /** Format: int32 */
-            totalRounds?: number;
-            topPairs?: components["schemas"]["CompanionPairDto"][];
+            totalRounds: number;
+            topPairs: components["schemas"]["CompanionPairDto"][];
         };
         SavedNumberMatchResult: {
-            savedNumber?: components["schemas"]["SavedNumberResponse"];
+            savedNumber: components["schemas"]["SavedNumberResponse"];
             /** Format: int32 */
-            round?: number;
+            round: number;
             /** Format: date */
-            drawDate?: string;
-            drawNumbers?: number[];
+            drawDate: string;
+            drawNumbers: number[];
             /** Format: int32 */
-            bonusNumber?: number;
+            bonusNumber: number;
             /** Format: int32 */
-            matchedCount?: number;
-            bonusMatch?: boolean;
-            prizeTier?: string;
+            matchedCount: number;
+            bonusMatch: boolean;
+            prizeTier: string;
         };
         WinningNumberResponse: {
             /** Format: int32 */
-            round?: number;
+            round: number;
             /** Format: date */
-            drawDate?: string;
-            numbers?: number[];
+            drawDate: string;
+            numbers: number[];
             /** Format: int32 */
-            bonusNumber?: number;
+            bonusNumber: number;
             /** Format: int64 */
-            firstPrizeAmount?: number;
+            firstPrizeAmount: number;
             /** Format: int64 */
-            secondPrize?: number;
+            secondPrize: number;
             /** Format: int32 */
-            secondWinners?: number;
+            secondWinners: number;
             /** Format: int64 */
-            totalSales?: number;
+            totalSales: number;
             /** Format: int64 */
-            firstAccumAmount?: number;
+            firstAccumAmount: number;
         };
         RoundFreshnessResponse: {
             /** Format: int32 */
-            latestRound?: number;
+            latestRound: number;
             /** Format: date */
-            latestDrawDate?: string;
-            fresh?: boolean;
+            latestDrawDate: string;
+            fresh: boolean;
             /** Format: date-time */
-            checkedAt?: string;
+            checkedAt: string;
         };
         PageResponseRecommendationSetSummary: {
-            items?: components["schemas"]["RecommendationSetSummary"][];
+            items: components["schemas"]["RecommendationSetSummary"][];
             /** Format: int32 */
-            page?: number;
+            page: number;
             /** Format: int32 */
-            size?: number;
+            size: number;
             /** Format: int64 */
-            totalElements?: number;
+            totalElements: number;
             /** Format: int32 */
-            totalPages?: number;
+            totalPages: number;
         };
         RecommendationSetSummary: {
             /** Format: int64 */
-            id?: number;
-            strategy?: string;
-            algorithmVersion?: string;
+            id: number;
+            strategy: string;
+            algorithmVersion: string;
             /** Format: int32 */
-            historyThroughRound?: number;
-            exclusionPolicyVersion?: string;
-            lockedNumbers?: number[];
-            excludedNumbers?: number[];
+            historyThroughRound: number;
+            exclusionPolicyVersion: string;
+            lockedNumbers: number[];
+            excludedNumbers: number[];
             /** Format: date-time */
-            createdAt?: string;
-            items?: components["schemas"]["RecommendationItemView"][];
+            createdAt: string;
+            items: components["schemas"]["RecommendationItemView"][];
         };
         CombinationCheckResponse: {
-            wonFirstPrize?: boolean;
-            firstPrizeHistory?: components["schemas"]["FirstPrizeHistoryDto"][];
+            wonFirstPrize: boolean;
+            firstPrizeHistory: components["schemas"]["FirstPrizeHistoryDto"][];
         };
         HomeCommunityPostSummary: {
             /** Format: int64 */
-            id?: number;
-            title?: string;
-            authorNameSnapshot?: string;
+            id: number;
+            title: string;
+            authorNameSnapshot: string;
             /** Format: date-time */
-            createdAt?: string;
+            createdAt: string;
         };
         HomeResponse: {
-            latestRound?: components["schemas"]["WinningNumberResponse"];
-            freshness?: components["schemas"]["RoundFreshnessResponse"];
-            latestPosts?: components["schemas"]["HomeCommunityPostSummary"][];
-            weeklyPopularPosts?: components["schemas"]["HomeCommunityPostSummary"][];
+            latestRound: components["schemas"]["WinningNumberResponse"] | null;
+            freshness: components["schemas"]["RoundFreshnessResponse"] | null;
+            latestPosts: components["schemas"]["HomeCommunityPostSummary"][];
+            weeklyPopularPosts: components["schemas"]["HomeCommunityPostSummary"][];
         };
         CommunitySessionResponse: {
-            loggedIn?: boolean;
+            loggedIn: boolean;
             /** Format: int64 */
-            userId?: number;
-            nickname?: string;
-            activeProviders?: string[];
+            userId: number | null;
+            nickname: string | null;
+            activeProviders: string[];
         };
         PageResponseCommunityPostResponse: {
-            items?: components["schemas"]["CommunityPostResponse"][];
+            items: components["schemas"]["CommunityPostResponse"][];
             /** Format: int32 */
-            page?: number;
+            page: number;
             /** Format: int32 */
-            size?: number;
+            size: number;
             /** Format: int64 */
-            totalElements?: number;
+            totalElements: number;
             /** Format: int32 */
-            totalPages?: number;
+            totalPages: number;
         };
         CommunityCommentPageResponse: {
-            topLevel?: components["schemas"]["CommunityCommentResponse"][];
+            topLevel: components["schemas"]["CommunityCommentResponse"][];
             /** Format: int64 */
-            totalTopLevelComments?: number;
+            totalTopLevelComments: number;
             /** Format: int32 */
-            page?: number;
+            page: number;
             /** Format: int32 */
-            size?: number;
+            size: number;
             /** Format: int32 */
-            totalPages?: number;
+            totalPages: number;
         };
         CommunityInteractionsResponse: {
-            likedPostIds?: number[];
-            bookmarkedPostIds?: number[];
-            blockedUserIds?: number[];
+            likedPostIds: number[];
+            bookmarkedPostIds: number[];
+            blockedUserIds: number[];
         };
     };
     responses: never;

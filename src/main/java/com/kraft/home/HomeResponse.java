@@ -2,6 +2,7 @@ package com.kraft.home;
 
 import com.kraft.winningnumber.RoundFreshnessResponse;
 import com.kraft.winningnumber.WinningNumberResponse;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 
 /**
@@ -12,8 +13,8 @@ import java.util.List;
  * 정렬한다. 홈과 커뮤니티 목록의 "주간 인기" 표현은 이 동일한 정렬 의미를 가리킨다.
  */
 public record HomeResponse(
-        WinningNumberResponse latestRound,
-        RoundFreshnessResponse freshness,
+        @Schema(nullable = true) WinningNumberResponse latestRound,
+        @Schema(nullable = true) RoundFreshnessResponse freshness,
         List<HomeCommunityPostSummary> latestPosts,
         List<HomeCommunityPostSummary> weeklyPopularPosts
 ) {
