@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PostForm } from "@/components/community/post-form";
+import { PostForm } from "@/features/community/post-form";
 
 export const metadata: Metadata = {
   title: "글쓰기",

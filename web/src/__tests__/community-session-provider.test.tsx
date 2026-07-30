@@ -4,7 +4,7 @@ import {
   CommunitySessionProvider,
   isSessionScopedPath,
   useCommunitySession,
-} from "@/components/community/community-session-provider";
+} from "@/lib/community-session-provider";
 
 const claimDevice = vi.fn();
 const rotateDeviceToken = vi.fn();

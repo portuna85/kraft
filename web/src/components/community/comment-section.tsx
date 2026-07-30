@@ -8,7 +8,7 @@ import {
 } from "@/lib/community-client";
 import { BrowserApiError } from "@/lib/browser-api";
 import type { CommunityComment } from "@/lib/community-api";
-import { useCommunitySession } from "@/components/community/community-session-provider";
+import { useCommunitySession } from "@/lib/community-session-provider";
 
 export function CommentSection({ postId }: { postId: number }) {
   const [topLevel, setTopLevel] = useState<CommunityComment[]>([]);

@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { ballColorClass } from "@/lib/ball-color";
 import type { CompanionPair, CompanionStatsResponse } from "@/lib/api";
 import { browserFetch } from "@/lib/browser-api";
-import styles from "@/app/companion/companion.module.css";
+import styles from "./companion.module.css";
 
 type Props = {
   pairs: CompanionPair[];

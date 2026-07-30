@@ -1,6 +1,6 @@
 import type { AnalysisResponse } from "@/lib/api";
 import { FirstPrizeHistoryList } from "@/components/first-prize-history";
-import styles from "@/app/analysis/analysis.module.css";
+import styles from "./analysis.module.css";
 
 type AnalysisResultProps = {
   analysis: AnalysisResponse;

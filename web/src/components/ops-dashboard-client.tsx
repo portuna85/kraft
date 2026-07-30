@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LottoBalls } from "@/components/lotto-balls";
+import { LottoBalls } from "@/ui/domain/lotto-balls";
 import { formatCurrency, formatDateTime, formatDrawDate } from "@/lib/format";
 
 type OpsSummary = {

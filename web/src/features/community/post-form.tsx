@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createPost, updatePost } from "@/lib/community-client";
 import { revalidateCommunityPost } from "@/lib/community-revalidate";
 import { BrowserApiError } from "@/lib/browser-api";
-import { useCommunitySession } from "@/components/community/community-session-provider";
+import { useCommunitySession } from "@/lib/community-session-provider";
 import { CATEGORY_LABELS, CATEGORY_OPTIONS } from "@/features/community/types";
 import { RecommendationAttachmentPicker } from "@/features/community/recommendation-attachment-picker";
 import type { PostCategory } from "@/lib/community-api";

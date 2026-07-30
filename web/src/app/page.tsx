@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { LottoBalls } from "@/components/lotto-balls";
+import { LottoBalls } from "@/ui/domain/lotto-balls";
 import { PrizeTable } from "@/components/prize-table";
 import { DataFreshnessNote } from "@/components/data-freshness-note";
-import { RecommendClient } from "@/components/recommend-client";
+import { RecommendClient } from "@/features/recommendation/recommend-client";
 import {
   getLatestWinningNumber,
   getRoundFreshness,

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { PostForm } from "@/components/community/post-form";
-import { CommunitySessionProvider } from "@/components/community/community-session-provider";
+import { PostForm } from "@/features/community/post-form";
+import { CommunitySessionProvider } from "@/lib/community-session-provider";
 
 const replace = vi.fn();
 const push = vi.fn();

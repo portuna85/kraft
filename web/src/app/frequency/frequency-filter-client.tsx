@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { LottoBalls } from "@/components/lotto-balls";
+import { LottoBalls } from "@/ui/domain/lotto-balls";
 import { FirstPrizeHistoryList } from "@/components/first-prize-history";
 import type { BallFrequency, FrequencyStatsResponse, RankedCombination } from "@/lib/api";
 import { ballColorClass } from "@/lib/ball-color";
 import { browserFetch } from "@/lib/browser-api";
-import styles from "@/app/frequency/frequency.module.css";
+import styles from "./frequency.module.css";
 
 const FILTERS = [
   { label: "전체", value: null },

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { RecommendationHistoryClient } from "@/components/recommendation-history-client";
+import { RecommendationHistoryClient } from "@/features/recommendation/recommendation-history-client";
 
 export const metadata: Metadata = {
   title: "추천 이력",

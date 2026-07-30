@@ -1,4 +1,4 @@
-import { LottoBalls } from "@/components/lotto-balls";
+import { LottoBalls } from "@/ui/domain/lotto-balls";
 import type { RecommendationAttachment } from "@/lib/community-api";
 
 const STRATEGY_LABELS: Record<string, string> = {

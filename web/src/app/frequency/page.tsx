@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { FrequencyFilterClient } from "@/components/frequency-filter-client";
+import { FrequencyFilterClient } from "./frequency-filter-client";
 import { AdSenseSidebar, InArticleAd } from "@/components/ad-unit";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
 import { getFrequencyStats, getPublicBaseUrl } from "@/lib/api";

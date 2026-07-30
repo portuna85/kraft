@@ -2,10 +2,10 @@
 
 import { useState, type FormEvent } from "react";
 import type { AnalysisResponse } from "@/lib/api";
-import { AnalysisResult } from "@/components/analysis-result";
+import { AnalysisResult } from "./analysis-result";
 import { browserFetch, BrowserApiError } from "@/lib/browser-api";
 import { validateLottoNumbers } from "@/lib/lotto-validation";
-import styles from "@/app/analysis/analysis.module.css";
+import styles from "./analysis.module.css";
 
 export function AnalysisClient() {
   const [input, setInput] = useState("");

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { blockUser } from "@/lib/community-client";
-import { useCommunitySession } from "@/components/community/community-session-provider";
+import { useCommunitySession } from "@/lib/community-session-provider";
 
 export function BlockButton({ userId }: { userId: number }) {
   const { session } = useCommunitySession();

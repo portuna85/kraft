@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useCommunitySession } from "@/components/community/community-session-provider";
+import { useCommunitySession } from "@/lib/community-session-provider";
 import {
   bookmarkPost,
   getMyInteractions,

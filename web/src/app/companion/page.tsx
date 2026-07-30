@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { CompanionFilterClient } from "@/components/companion-filter-client";
+import { CompanionFilterClient } from "./companion-filter-client";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
 import { getCompanionStats, getPublicBaseUrl } from "@/lib/api";
 import { logCoreDataFailure } from "@/lib/logger";

@@ -4,7 +4,7 @@ import localFont from "next/font/local";
 import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
-import { CommunitySessionProvider } from "@/components/community/community-session-provider";
+import { CommunitySessionProvider } from "@/lib/community-session-provider";
 import { StickyMobileAd } from "@/components/ad-unit";
 import { WebVitalsReporter } from "@/components/web-vitals-reporter";
 import { JsonLdWebSite } from "@/components/json-ld";

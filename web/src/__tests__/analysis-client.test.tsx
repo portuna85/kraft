@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { AnalysisClient } from "@/components/analysis-client";
+import { AnalysisClient } from "@/app/analysis/analysis-client";
 
 const ANALYSIS_RESPONSE = {
   numbers: [3, 11, 19, 28, 34, 42],

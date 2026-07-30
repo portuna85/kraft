@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { deletePost } from "@/lib/community-client";
 import { revalidateCommunityPost } from "@/lib/community-revalidate";
-import { useCommunitySession } from "@/components/community/community-session-provider";
+import { useCommunitySession } from "@/lib/community-session-provider";
 
 // 소유권 판정은 서버 응답에 canEdit 같은 파생 필드로 섞지 않고, 클라이언트가
 // 세션 엔드포인트의 로그인 사용자 ID와 게시글 ownerId를 직접 대조한다.

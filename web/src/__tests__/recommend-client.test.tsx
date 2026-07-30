@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { RecommendClient } from "@/components/recommend-client";
+import { RecommendClient } from "@/features/recommendation/recommend-client";
 
 vi.mock("@/lib/device-token", () => ({
   getDeviceToken: () => "a".repeat(64),

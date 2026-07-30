@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getCommunityPostFresh } from "@/lib/community-api";
 import { BackendError } from "@/lib/api";
-import { PostForm } from "@/components/community/post-form";
+import { PostForm } from "@/features/community/post-form";
 
 type Props = { params: Promise<{ id: string }> };
 

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { AnalysisClient } from "@/components/analysis-client";
+import { AnalysisClient } from "./analysis-client";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
 import { getPublicBaseUrl } from "@/lib/api";
 

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LottoBalls } from "@/components/lotto-balls";
-import { useCommunitySession } from "@/components/community/community-session-provider";
+import { LottoBalls } from "@/ui/domain/lotto-balls";
+import { useCommunitySession } from "@/lib/community-session-provider";
 import {
   getMyRecommendationSets,
   getMySavedNumbers,

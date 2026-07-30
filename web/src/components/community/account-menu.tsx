@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { loginUrl, logout, withdraw } from "@/lib/community-client";
-import { useCommunitySession } from "@/components/community/community-session-provider";
+import { useCommunitySession } from "@/lib/community-session-provider";
 
 export function AccountMenu() {
   const { session, loading } = useCommunitySession();

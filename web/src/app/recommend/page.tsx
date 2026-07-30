@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { RecommendClient } from "@/components/recommend-client";
+import { RecommendClient } from "@/features/recommendation/recommend-client";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
 import { getPublicBaseUrl } from "@/lib/api";
 

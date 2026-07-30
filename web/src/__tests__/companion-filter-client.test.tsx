@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { CompanionFilterClient } from "@/components/companion-filter-client";
+import { CompanionFilterClient } from "@/app/companion/companion-filter-client";
 
 const INITIAL_PAIRS = [
   { ballA: 1, ballB: 2, coCount: 10 },

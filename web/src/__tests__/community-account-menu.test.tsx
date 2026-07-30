@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AccountMenu } from "@/components/community/account-menu";
-import { CommunitySessionProvider } from "@/components/community/community-session-provider";
+import { CommunitySessionProvider } from "@/lib/community-session-provider";
 
 // KF-05: 이 파일의 기존 케이스는 전부 세션이 실제로 확인되는 상황(/community)을
 // 전제로 한다 — 스코프 밖(공개 페이지) 렌더링은 별도 테스트에서 pathname을 바꿔 검증한다.

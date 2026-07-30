@@ -1,4 +1,4 @@
-import { LottoBalls } from "@/components/lotto-balls";
+import { LottoBalls } from "@/ui/domain/lotto-balls";
 import { Badge } from "@/ui/primitives/badge";
 import { explanationLabel } from "./explanation-codes";
 import type { RecommendationItem } from "./types";

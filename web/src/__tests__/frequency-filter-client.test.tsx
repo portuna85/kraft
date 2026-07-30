@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { FrequencyFilterClient } from "@/components/frequency-filter-client";
+import { FrequencyFilterClient } from "@/app/frequency/frequency-filter-client";
 import type { FrequencyStatsResponse } from "@/lib/api";
 
 function ball(ballNumber: number, frequency: number) {

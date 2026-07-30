@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { AnalysisResult } from "@/components/analysis-result";
+import { AnalysisResult } from "@/app/analysis/analysis-result";
 import type { AnalysisResponse } from "@/lib/api";
 
 const analysis: AnalysisResponse = {

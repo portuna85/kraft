@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { PostOwnerActions } from "@/components/community/post-owner-actions";
-import { CommunitySessionProvider } from "@/components/community/community-session-provider";
+import { CommunitySessionProvider } from "@/lib/community-session-provider";
 
 const push = vi.fn();
 const refresh = vi.fn();
