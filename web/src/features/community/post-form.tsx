@@ -1,20 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { createPost, updatePost } from "@/lib/community-client";
+import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { createPost, loginUrl, updatePost } from "@/lib/community-client";
 import { revalidateCommunityPost } from "@/lib/community-revalidate";
 import { BrowserApiError } from "@/lib/browser-api";
 import { useCommunitySession } from "@/lib/community-session-provider";
+import { saveReturnTo } from "@/lib/return-to";
 import { CATEGORY_LABELS, CATEGORY_OPTIONS } from "@/features/community/types";
 import { RecommendationAttachmentPicker } from "@/features/community/recommendation-attachment-picker";
 import type { PostCategory } from "@/lib/community-api";
+
+const PROVIDER_LABELS: Record<"google" | "naver", string> = {
+  google: "Google 로그인",
+  naver: "Naver 로그인",
+};
 
 type CreateMode = { mode: "create" };
 type EditMode = { mode: "edit"; postId: number; ownerId: number; initialTitle: string; initialContent: string; initialVersion: number };
 
 export function PostForm(props: CreateMode | EditMode) {
   const router = useRouter();
+  const pathname = usePathname();
   const { session, loading } = useCommunitySession();
   const [title, setTitle] = useState(props.mode === "edit" ? props.initialTitle : "");
   const [content, setContent] = useState(props.mode === "edit" ? props.initialContent : "");
@@ -23,27 +30,6 @@ export function PostForm(props: CreateMode | EditMode) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [versionConflict, setVersionConflict] = useState(false);
-
-  const allowed = Boolean(
-    session?.loggedIn && (props.mode === "create" || session.userId === props.ownerId)
-  );
-
-  // F-04: router와 props는 매 렌더 새 참조라 deps에 넣으면 렌더될 때마다 이 인가
-  // 판단이 재실행돼 router.replace/push가 반복 호출된다. 리다이렉트 여부는 오직
-  // loading·session이 바뀔 때만 다시 판단하면 되므로 그 둘만 감시한다(회귀 테스트:
-  // community-post-form.test.tsx "session이 바뀌지 않으면 입력값 변경으로 리렌더링돼도
-  // 리다이렉트를 다시 판단하지 않는다").
-  useEffect(() => {
-    if (loading || !session) return;
-    if (!session.loggedIn) {
-      router.replace("/community");
-      return;
-    }
-    if (props.mode === "edit" && session.userId !== props.ownerId) {
-      router.replace(`/community/posts/${props.postId}`);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, session]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -84,8 +70,31 @@ export function PostForm(props: CreateMode | EditMode) {
       </div>
     );
   }
-  if (!allowed) {
-    return null;
+  if (!session?.loggedIn) {
+    const providers = session?.activeProviders ?? [];
+    return (
+      <div className="community-post-form-login-required">
+        <p>이 기능을 사용하려면 로그인이 필요합니다.</p>
+        {providers.map((provider) => (
+          <a
+            key={provider}
+            href={loginUrl(provider)}
+            className="account-login-link"
+            onClick={() => saveReturnTo(pathname)}
+          >
+            {PROVIDER_LABELS[provider]}
+          </a>
+        ))}
+      </div>
+    );
+  }
+  if (props.mode === "edit" && session.userId !== props.ownerId) {
+    return (
+      <div className="community-post-form-forbidden">
+        <p role="alert">본인이 작성한 글만 수정할 수 있습니다.</p>
+        <a href={`/community/posts/${props.postId}`}>게시글로 돌아가기</a>
+      </div>
+    );
   }
 
   return (
