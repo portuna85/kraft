@@ -56,6 +56,34 @@ for (const width of WIDTHS) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// RW-P1-07: 기존 짧은 높이 테스트(responsive.spec.ts)는 백엔드 없는 홈의 error.tsx
+// 상태만 다뤘고, 실콘텐츠 테스트(위 WIDTHS 루프)는 height:900 고정이었다 — "짧은
+// 높이 + 실콘텐츠(그것도 극단 길이)"가 함께인 조합은 검사망에 없었다. 844×390(가로
+// 모드 태블릿/폴더블)에서 기존 극단 입력 픽스처(post 2)로 이 사각지대를 메운다.
+// ─────────────────────────────────────────────────────────────────────────────
+test.describe("짧은 높이(844×390) + 실콘텐츠", () => {
+  test.use({ viewport: { width: 844, height: 390 } });
+
+  test("/community/posts/2 — 극단 입력(200자 제목·URL 덩어리) 오버플로 없음", async ({ page }) => {
+    await page.route("**/api/v1/community/posts/2/comments*", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ topLevel: [], totalTopLevelComments: 0, page: 0, totalPages: 0 }),
+      })
+    );
+    await gotoAndWaitForRealContent(page, "/community/posts/2");
+    await expectNoOverflow(page);
+  });
+
+  test("/community — 목록 오버플로 없음", async ({ page }) => {
+    await gotoAndWaitForRealContent(page, "/community");
+    await expect(page.getByText("테스트 게시글")).toBeVisible();
+    await expectNoOverflow(page);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 로그인 상태: 헤더 로그아웃 버튼·소유자 액션·댓글 폼까지 렌더시켜 R-30·R-31·R-32가
 // 실제로 고쳐졌는지 하나의 매트릭스로 검증한다.
 // ─────────────────────────────────────────────────────────────────────────────

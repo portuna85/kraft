@@ -344,6 +344,17 @@ jobs:
             command: test:e2e:ad-overlay
             artifact: web-build-ad-overlay
             archive: web-build-ad-overlay.tar.gz
+          # RW-P1-07: content 트랙(실콘텐츠·픽스처 백엔드 전제)이 지금까지 Firefox/WebKit에서
+          # 한 번도 실행되지 않았다 — playwright.content.cross-browser.config.ts는 만들어져
+          # 있었지만 어디에도 연결돼 있지 않았다. KF-10이 지적한 CI 팽창을 반복하지 않도록
+          # 반응형/오버플로/시각 계약에 실제로 민감한 스펙 몇 개만 골라(설정 파일의
+          # testMatch 참고) 샤딩 없이 한 잡에서 Firefox+WebKit을 순차 실행한다.
+          - suite: content-cross-browser
+            shard: 1/1
+            shard_id: 1-of-1
+            command: test:e2e:content:cross-browser
+            artifact: web-build-content
+            archive: web-build-content.tar.gz
     defaults:
       run:
         working-directory: web

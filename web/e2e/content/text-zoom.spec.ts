@@ -19,12 +19,20 @@ async function setTextZoom(page: Page, percent: number) {
 // .balls/.prize-table-wrap처럼 의도된 가로 스크롤 컨테이너는 data-allow-overflow로
 // 이미 표시돼 있다(e2e/lib/expect-no-overflow.ts와 동일한 관례) — 그 안의 텍스트가
 // 스크롤 컨테이너보다 넓어지는 건 잘림이 아니라 정상 동작이므로 제외한다.
+//
+// RW-P1-07(크로스브라우저 확장) 중 발견: display:inline인 비대체 요소는 CSSOM 스펙상
+// clientWidth가 항상 0이다(Firefox는 이 규정을 엄격히 따르고, 이 스위트가 지금까지
+// 돌던 Chromium 계열은 관대하게 실제 폭을 반환해왔다) — clientWidth===0인 요소에
+// scrollWidth>clientWidth 검사를 그대로 적용하면 실제로는 안 잘린 순수 inline 링크/텍스트도
+// 전부 "잘림"으로 오탐한다(예: 홈 "자세히 보기" 링크, Firefox에서만 재현·시각적으로는
+// 정상). clientWidth>0(블록/inline-block처럼 실제 내용 상자를 갖는 요소)일 때만
+// 이 검사를 적용해 오탐을 없앤다.
 async function expectNoInternalTextClipping(page: Page) {
   const clipped = await page.evaluate(() =>
     [...document.querySelectorAll("body *")]
       .filter((el) => el.closest("[data-allow-overflow]") === null)
       .filter((el) => el.children.length === 0 && (el.textContent ?? "").trim().length > 0)
-      .filter((el) => el.scrollWidth > el.clientWidth + 1)
+      .filter((el) => el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 1)
       .map((el) => ({ class: el.className || el.tagName, text: (el.textContent ?? "").slice(0, 30) })),
   );
   expect(clipped).toEqual([]);
