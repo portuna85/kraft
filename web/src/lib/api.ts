@@ -91,7 +91,7 @@ export async function getRoundFreshness(): Promise<RoundFreshness> {
 
 export async function getHomeSummary(): Promise<HomeSummary> {
   return fetchJson<HomeSummary>("/api/v1/home", {
-    next: { revalidate: REVALIDATE_LATEST }
+    next: { revalidate: REVALIDATE_LATEST, tags: ["community:posts"] }
   });
 }
 
