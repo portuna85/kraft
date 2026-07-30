@@ -4,7 +4,6 @@ import com.kraft.recommend.RecommendationItem;
 import com.kraft.recommend.RecommendationItemRepository;
 import com.kraft.recommend.RecommendationSet;
 import com.kraft.recommend.RecommendationSetRepository;
-import com.kraft.winningnumber.WinningNumber;
 import com.kraft.winningnumber.WinningNumberRepository;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -84,9 +83,9 @@ class FlywayMigrationTest {
         recommendationItemRepository.deleteAll();
         recommendationSetRepository.deleteAll();
 
-        winningNumberRepository.save(new WinningNumber(1, LocalDate.of(2026, 1, 3),
+        winningNumberRepository.save(com.kraft.winningnumber.WinningNumberTestFactory.create(1, LocalDate.of(2026, 1, 3),
                 1, 2, 3, 4, 5, 6, 7, 1L, 0L, 0, 0L, 0L, OffsetDateTime.now()));
-        winningNumberRepository.save(new WinningNumber(2, LocalDate.of(2026, 1, 10),
+        winningNumberRepository.save(com.kraft.winningnumber.WinningNumberTestFactory.create(2, LocalDate.of(2026, 1, 10),
                 7, 8, 9, 10, 11, 12, 13, 1L, 0L, 0, 0L, 0L, OffsetDateTime.now()));
 
         RecommendationSet throughRoundOne = recommendationSetRepository.save(new RecommendationSet(

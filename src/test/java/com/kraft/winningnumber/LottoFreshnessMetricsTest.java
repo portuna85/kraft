@@ -48,7 +48,7 @@ class LottoFreshnessMetricsTest {
     @DisplayName("최신 회차가 있으면 최신 회차와 예상 회차와 지연 일수를 한 번에 계산한다")
     void snapshot_returnsDerivedFreshnessValues() {
         Clock clock = Clock.fixed(Instant.parse("2026-06-20T12:00:00Z"), ZoneId.of("Asia/Seoul"));
-        WinningNumber latest = new WinningNumber(
+        WinningNumber latest = WinningNumberTestFactory.create(
                 1200,
                 LocalDate.of(2026, 6, 13),
                 3, 11, 19, 28, 34, 42,

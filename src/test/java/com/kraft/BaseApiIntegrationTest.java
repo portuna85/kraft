@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kraft.operationlog.WinningNumberOperationLogRepository;
 import com.kraft.recommend.LottoRecommendationService;
 import com.kraft.saved.SavedNumberRepository;
-import com.kraft.winningnumber.WinningNumber;
 import com.kraft.winningnumber.WinningNumberRepository;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -58,7 +57,7 @@ abstract class BaseApiIntegrationTest {
         // 회차 번호는 1부터 연속(1, 2)이어야 한다 — 추천 서비스의 이력 완전성 게이트(P1-05)가
         // 1회부터 최신 회차까지 빈틈없이 로드됐는지를 요구하므로, 중간에 구멍이 있는 회차 번호를
         // 쓰면 이 기본 픽스처를 상속하는 모든 통합 테스트가 추천 API에서 503을 받는다.
-        winningNumberRepository.save(new WinningNumber(
+        winningNumberRepository.save(com.kraft.winningnumber.WinningNumberTestFactory.create(
                 2,
                 LocalDate.of(2026, 6, 13),
                 3, 11, 19, 28, 34, 42,
@@ -67,7 +66,7 @@ abstract class BaseApiIntegrationTest {
                 0L, 0, 0L, 0L,
                 OffsetDateTime.now(ZoneId.of("Asia/Seoul"))
         ));
-        winningNumberRepository.save(new WinningNumber(
+        winningNumberRepository.save(com.kraft.winningnumber.WinningNumberTestFactory.create(
                 1,
                 LocalDate.of(2026, 6, 6),
                 1, 9, 17, 23, 31, 45,

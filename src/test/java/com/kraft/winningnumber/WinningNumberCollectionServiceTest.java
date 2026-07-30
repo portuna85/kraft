@@ -28,7 +28,7 @@ class WinningNumberCollectionServiceTest {
         WinningNumberCommandService commandService = mock(WinningNumberCommandService.class);
         ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
 
-        when(repository.findTopByOrderByRoundDesc()).thenReturn(Optional.of(new WinningNumber(
+        when(repository.findTopByOrderByRoundDesc()).thenReturn(Optional.of(WinningNumberTestFactory.create(
                 1200,
                 LocalDate.of(2026, 6, 13),
                 3, 11, 19, 28, 34, 42,
@@ -85,7 +85,7 @@ class WinningNumberCollectionServiceTest {
         ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
         WinningNumberCollectionEventPublisher collectionEventPublisher = mock(WinningNumberCollectionEventPublisher.class);
 
-        WinningNumber latest = new WinningNumber(
+        WinningNumber latest = WinningNumberTestFactory.create(
                 1200,
                 LocalDate.of(2026, 6, 13),
                 3, 11, 19, 28, 34, 42,
@@ -136,7 +136,7 @@ class WinningNumberCollectionServiceTest {
         ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
         WinningNumberCollectionEventPublisher collectionEventPublisher = mock(WinningNumberCollectionEventPublisher.class);
 
-        WinningNumber round1200 = new WinningNumber(
+        WinningNumber round1200 = WinningNumberTestFactory.create(
                 1200,
                 LocalDate.of(2026, 6, 13),
                 3, 11, 19, 28, 34, 42,
@@ -145,7 +145,7 @@ class WinningNumberCollectionServiceTest {
                 0L, 0, 0L, 0L,
                 OffsetDateTime.now(ZoneId.of("Asia/Seoul"))
         );
-        WinningNumber round1201 = new WinningNumber(
+        WinningNumber round1201 = WinningNumberTestFactory.create(
                 1201,
                 LocalDate.of(2026, 6, 20),
                 5, 12, 18, 27, 36, 44,

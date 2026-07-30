@@ -1,6 +1,5 @@
 package com.kraft.statistics;
 
-import com.kraft.winningnumber.WinningNumber;
 import com.kraft.winningnumber.WinningNumberRepository;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -56,11 +55,11 @@ class StatisticsApiControllerTest {
         companionPairSummaryRepository.deleteAll();
         winningNumberRepository.deleteAll();
 
-        winningNumberRepository.save(new WinningNumber(1, LocalDate.of(2026, 1, 4),
+        winningNumberRepository.save(com.kraft.winningnumber.WinningNumberTestFactory.create(1, LocalDate.of(2026, 1, 4),
                 1, 2, 3, 4, 5, 6, 7,
                 1_000_000_000L, 0L, 0, 0L, 0L,
                 OffsetDateTime.now(Clock.system(KST))));
-        winningNumberRepository.save(new WinningNumber(2, LocalDate.of(2026, 1, 11),
+        winningNumberRepository.save(com.kraft.winningnumber.WinningNumberTestFactory.create(2, LocalDate.of(2026, 1, 11),
                 10, 20, 30, 40, 41, 42, 43,
                 2_000_000_000L, 0L, 0, 0L, 0L,
                 OffsetDateTime.now(Clock.system(KST))));

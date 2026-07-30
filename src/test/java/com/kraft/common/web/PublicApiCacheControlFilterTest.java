@@ -1,7 +1,6 @@
 package com.kraft.common.web;
 
 import com.kraft.Application;
-import com.kraft.winningnumber.WinningNumber;
 import com.kraft.winningnumber.WinningNumberRepository;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -36,7 +35,7 @@ class PublicApiCacheControlFilterTest {
     @BeforeEach
     void seedRound1() {
         winningNumberRepository.deleteAll();
-        winningNumberRepository.save(new WinningNumber(
+        winningNumberRepository.save(com.kraft.winningnumber.WinningNumberTestFactory.create(
                 1,
                 LocalDate.of(2002, 12, 7),
                 10, 23, 29, 33, 37, 40,

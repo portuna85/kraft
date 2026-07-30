@@ -57,7 +57,7 @@ class StatisticsReconciliationSchedulerTest {
     }
 
     private WinningNumber winningNumber(int round) {
-        return new WinningNumber(round, LocalDate.of(2026, 1, 1),
+        return com.kraft.winningnumber.WinningNumberTestFactory.create(round, LocalDate.of(2026, 1, 1),
                 1, 2, 3, 4, 5, 6, 7,
                 1_000_000_000L, 0L, 0, 0L, 0L,
                 OffsetDateTime.now());

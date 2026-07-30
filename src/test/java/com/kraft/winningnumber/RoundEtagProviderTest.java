@@ -68,7 +68,7 @@ class RoundEtagProviderTest {
     }
 
     private static WinningNumber winningNumber(int round) {
-        return new WinningNumber(
+        return WinningNumberTestFactory.create(
                 round,
                 LocalDate.of(2002, 12, 7),
                 10, 23, 29, 33, 37, 40,
@@ -81,7 +81,7 @@ class RoundEtagProviderTest {
 
     private static RoundEtagProvider providerWithLatestRound(int round) {
         WinningNumberRepository repository = mock(WinningNumberRepository.class);
-        WinningNumber winningNumber = new WinningNumber(
+        WinningNumber winningNumber = WinningNumberTestFactory.create(
                 round,
                 LocalDate.of(2002, 12, 7),
                 10, 23, 29, 33, 37, 40,

@@ -1,6 +1,5 @@
 package com.kraft.winningnumber;
 
-import com.kraft.common.lotto.LottoBitmask;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -9,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "winning_numbers")
@@ -73,37 +73,10 @@ public class WinningNumber {
     protected WinningNumber() {
     }
 
-    public WinningNumber(Integer round,
-                         LocalDate drawDate,
-                         Integer n1,
-                         Integer n2,
-                         Integer n3,
-                         Integer n4,
-                         Integer n5,
-                         Integer n6,
-                         Integer bonusNumber,
-                         Long firstPrizeAmount,
-                         Long secondPrize,
-                         Integer secondWinners,
-                         Long totalSales,
-                         Long firstAccumAmount,
-                         OffsetDateTime createdAt) {
-        this.round = round;
-        this.drawDate = drawDate;
-        this.n1 = n1;
-        this.n2 = n2;
-        this.n3 = n3;
-        this.n4 = n4;
-        this.n5 = n5;
-        this.n6 = n6;
-        this.combinationMask = LottoBitmask.of(n1, n2, n3, n4, n5, n6);
-        this.bonusNumber = bonusNumber;
-        this.firstPrizeAmount = firstPrizeAmount;
-        this.secondPrize = secondPrize;
-        this.secondWinners = secondWinners;
-        this.totalSales = totalSales;
-        this.firstAccumAmount = firstAccumAmount;
-        this.createdAt = createdAt;
+    private WinningNumber(Builder builder) {
+        this.round = builder.round;
+        apply(builder);
+        this.createdAt = builder.createdAt;
     }
 
     public static Builder builder() {
@@ -111,21 +84,12 @@ public class WinningNumber {
     }
 
     /**
-     * 생성자·update()의 위치 인자가 많아(12~14개) 순서 실수 위험이 있어, 실제 값이
-     * 외부 API 응답에서 동적으로 채워지는 프로덕션 호출부(WinningNumberCommandService)는
-     * 이 빌더를 통해 이름으로 값을 지정한다. 테스트 픽스처처럼 리터럴을 직접 나열하는
-     * 곳은 기존 생성자를 계속 써도 무방하다.
+     * 영속 필드가 많으므로 위치 인자 대신 이름 있는 메서드와 추첨번호 값 객체로만 생성한다.
      */
     public static final class Builder {
         private Integer round;
         private LocalDate drawDate;
-        private Integer n1;
-        private Integer n2;
-        private Integer n3;
-        private Integer n4;
-        private Integer n5;
-        private Integer n6;
-        private Integer bonusNumber;
+        private WinningDrawNumbers drawNumbers;
         private Long firstPrizeAmount;
         private Long secondPrize;
         private Integer secondWinners;
@@ -146,18 +110,8 @@ public class WinningNumber {
             return this;
         }
 
-        public Builder numbers(Integer n1, Integer n2, Integer n3, Integer n4, Integer n5, Integer n6) {
-            this.n1 = n1;
-            this.n2 = n2;
-            this.n3 = n3;
-            this.n4 = n4;
-            this.n5 = n5;
-            this.n6 = n6;
-            return this;
-        }
-
-        public Builder bonusNumber(Integer bonusNumber) {
-            this.bonusNumber = bonusNumber;
+        public Builder drawNumbers(WinningDrawNumbers drawNumbers) {
+            this.drawNumbers = drawNumbers;
             return this;
         }
 
@@ -192,43 +146,30 @@ public class WinningNumber {
         }
 
         public WinningNumber build() {
-            return new WinningNumber(round, drawDate, n1, n2, n3, n4, n5, n6, bonusNumber,
-                    firstPrizeAmount, secondPrize, secondWinners, totalSales, firstAccumAmount, createdAt);
+            return new WinningNumber(this);
         }
 
         public void applyUpdateTo(WinningNumber target) {
-            target.update(drawDate, n1, n2, n3, n4, n5, n6, bonusNumber,
-                    firstPrizeAmount, secondPrize, secondWinners, totalSales, firstAccumAmount);
+            target.apply(this);
         }
     }
 
-    public void update(LocalDate drawDate,
-                       Integer n1,
-                       Integer n2,
-                       Integer n3,
-                       Integer n4,
-                       Integer n5,
-                       Integer n6,
-                       Integer bonusNumber,
-                       Long firstPrizeAmount,
-                       Long secondPrize,
-                       Integer secondWinners,
-                       Long totalSales,
-                       Long firstAccumAmount) {
-        this.drawDate = drawDate;
-        this.n1 = n1;
-        this.n2 = n2;
-        this.n3 = n3;
-        this.n4 = n4;
-        this.n5 = n5;
-        this.n6 = n6;
-        this.combinationMask = LottoBitmask.of(n1, n2, n3, n4, n5, n6);
-        this.bonusNumber = bonusNumber;
-        this.firstPrizeAmount = firstPrizeAmount;
-        this.secondPrize = secondPrize;
-        this.secondWinners = secondWinners;
-        this.totalSales = totalSales;
-        this.firstAccumAmount = firstAccumAmount;
+    private void apply(Builder builder) {
+        this.drawDate = builder.drawDate;
+        List<Integer> numbers = builder.drawNumbers.mainNumbers();
+        this.n1 = numbers.get(0);
+        this.n2 = numbers.get(1);
+        this.n3 = numbers.get(2);
+        this.n4 = numbers.get(3);
+        this.n5 = numbers.get(4);
+        this.n6 = numbers.get(5);
+        this.combinationMask = builder.drawNumbers.combinationMask();
+        this.bonusNumber = builder.drawNumbers.bonusNumber();
+        this.firstPrizeAmount = builder.firstPrizeAmount;
+        this.secondPrize = builder.secondPrize;
+        this.secondWinners = builder.secondWinners;
+        this.totalSales = builder.totalSales;
+        this.firstAccumAmount = builder.firstAccumAmount;
     }
 
     public Long getId() {

@@ -7,6 +7,7 @@ import jakarta.validation.Validator;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -83,7 +84,7 @@ public class WinningNumberCommandService {
 
     static WinningNumberUpsertResult applyUpdate(WinningNumberRepository repository, WinningNumber existing,
                                                   WinningNumberUpsertRequest request,
-                                                  java.util.List<Integer> normalized) {
+                                                  List<Integer> normalized) {
         boolean changed = hasChanges(existing, request, normalized);
         if (changed) {
             updateExisting(existing, request, normalized);
@@ -93,7 +94,7 @@ public class WinningNumberCommandService {
     }
 
     private static boolean hasChanges(WinningNumber existing, WinningNumberUpsertRequest request,
-                               java.util.List<Integer> normalized) {
+                               List<Integer> normalized) {
         return !existing.getDrawDate().equals(request.drawDate())
                 || !existing.getN1().equals(normalized.get(0))
                 || !existing.getN2().equals(normalized.get(1))
@@ -111,23 +112,21 @@ public class WinningNumberCommandService {
 
     private static void updateExisting(WinningNumber existing,
                                 WinningNumberUpsertRequest request,
-                                java.util.List<Integer> normalized) {
+                                List<Integer> normalized) {
         fieldsFrom(request, normalized).applyUpdateTo(existing);
     }
 
-    private WinningNumber createNew(WinningNumberUpsertRequest request, java.util.List<Integer> normalized) {
+    private WinningNumber createNew(WinningNumberUpsertRequest request, List<Integer> normalized) {
         return fieldsFrom(request, normalized)
                 .round(request.round())
                 .createdAt(OffsetDateTime.now(clock))
                 .build();
     }
 
-    private static WinningNumber.Builder fieldsFrom(WinningNumberUpsertRequest request, java.util.List<Integer> normalized) {
+    private static WinningNumber.Builder fieldsFrom(WinningNumberUpsertRequest request, List<Integer> normalized) {
         return WinningNumber.builder()
                 .drawDate(request.drawDate())
-                .numbers(normalized.get(0), normalized.get(1), normalized.get(2),
-                        normalized.get(3), normalized.get(4), normalized.get(5))
-                .bonusNumber(request.bonusNumber())
+                .drawNumbers(new WinningDrawNumbers(normalized, request.bonusNumber()))
                 .firstPrizeAmount(request.firstPrizeAmount())
                 .secondPrize(orZero(request.secondPrize()))
                 .secondWinners(orZeroInt(request.secondWinners()))

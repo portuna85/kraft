@@ -1,6 +1,5 @@
 package com.kraft.recommend;
 
-import com.kraft.winningnumber.WinningNumber;
 import com.kraft.winningnumber.WinningNumberRepository;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -32,7 +31,7 @@ class RecommendApiControllerTest {
     @BeforeEach
     void setUp() {
         winningNumberRepository.deleteAll();
-        winningNumberRepository.save(new WinningNumber(
+        winningNumberRepository.save(com.kraft.winningnumber.WinningNumberTestFactory.create(
                 100, LocalDate.of(2026, 7, 25),
                 1, 2, 3, 4, 5, 6, 7,
                 2_500_000_000L, 0L, 0, 0L, 0L, OffsetDateTime.now()));

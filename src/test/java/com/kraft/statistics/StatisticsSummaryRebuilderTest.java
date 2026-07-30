@@ -189,7 +189,7 @@ class StatisticsSummaryRebuilderTest {
     }
 
     private WinningNumber round(int r, int n1, int n2, int n3, int n4, int n5, int n6, int bonus) {
-        return new WinningNumber(r, LocalDate.of(2026, 1, r),
+        return com.kraft.winningnumber.WinningNumberTestFactory.create(r, LocalDate.of(2026, 1, r),
                 n1, n2, n3, n4, n5, n6, bonus,
                 1_000_000_000L, 0L, 0, 0L, 0L,
                 OffsetDateTime.now(Clock.system(KST)));

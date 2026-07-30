@@ -52,7 +52,7 @@ class WinningNumberCommandServiceTest {
     }
 
     private WinningNumber buildEntity() {
-        return new WinningNumber(1, DRAW_DATE, 1, 2, 3, 4, 5, 6, BONUS,
+        return WinningNumberTestFactory.create(1, DRAW_DATE, 1, 2, 3, 4, 5, 6, BONUS,
                 1_000_000_000L, 0L, 0, 0L, 0L,
                 java.time.OffsetDateTime.now(java.time.Clock.systemDefaultZone()));
     }
