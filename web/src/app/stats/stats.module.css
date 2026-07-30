@@ -62,7 +62,10 @@
 
 @media (min-width: 640px) {
   .item {
-    grid-template-columns: 88px minmax(0, 1fr) 52px 52px;
+    /* RW-P1-04: count/pct 칸을 고정 52px로 두면 400% 텍스트 확대 시 "280회" 같은
+       값이 칸 안에서 잘린다 — minmax로 필요할 때만 늘어나게 한다(평상시 크기는
+       그대로 52px 근처 유지). */
+    grid-template-columns: 88px minmax(0, 1fr) minmax(52px, auto) minmax(52px, auto);
     gap: 10px;
     padding: 7px 10px;
   }
@@ -78,6 +81,6 @@
 
 @media (min-width: 1024px) {
   .item {
-    grid-template-columns: 72px 1fr 44px 44px;
+    grid-template-columns: 72px 1fr minmax(44px, auto) minmax(44px, auto);
   }
 }

@@ -12,8 +12,8 @@ import { gotoAndWaitForRealContent } from "../lib/goto-real-content";
 // 무의미한 검사였다 — 진짜 위험은 white-space: nowrap이 걸린 요소(.prize-table-rank 등)가
 // 텍스트가 커지면서 자기 자신 안에서 잘리는 것이다. 요소 자신의 scrollWidth가 clientWidth를
 // 넘는지(내부 클리핑)로 바꿔서 실제로 의미 있는 검사가 되게 했다.
-async function setTextZoom200(page: Page) {
-  await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
+async function setTextZoom(page: Page, percent: number) {
+  await page.addStyleTag({ content: `html { font-size: ${percent}% !important; }` });
 }
 
 // .balls/.prize-table-wrap처럼 의도된 가로 스크롤 컨테이너는 data-allow-overflow로
@@ -33,7 +33,7 @@ async function expectNoInternalTextClipping(page: Page) {
 test("200% 텍스트 확대 — /stats 패턴 항목이 내부에서 잘리지 않는다", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await gotoAndWaitForRealContent(page, "/stats");
-  await setTextZoom200(page);
+  await setTextZoom(page, 200);
 
   await expect(page.getByTestId("pattern-list").first()).toBeVisible();
   await expectNoInternalTextClipping(page);
@@ -43,7 +43,7 @@ test("200% 텍스트 확대 — /stats 패턴 항목이 내부에서 잘리지 �
 test("200% 텍스트 확대 — /frequency 출현 통계도 잘리거나 넘치지 않는다", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await gotoAndWaitForRealContent(page, "/frequency");
-  await setTextZoom200(page);
+  await setTextZoom(page, 200);
 
   await expect(page.locator(".freq-summary")).toBeVisible();
   await expectNoInternalTextClipping(page);
@@ -53,7 +53,7 @@ test("200% 텍스트 확대 — /frequency 출현 통계도 잘리거나 넘치�
 test("200% 텍스트 확대 — 모바일(390px)에서도 홈이 잘리거나 넘치지 않는다", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await gotoAndWaitForRealContent(page, "/");
-  await setTextZoom200(page);
+  await setTextZoom(page, 200);
 
   await expect(page.locator(".result-panel .balls")).toBeVisible();
   await expectNoInternalTextClipping(page);
@@ -70,9 +70,32 @@ test("200% 텍스트 확대 — 모바일(390px)에서 커뮤니티 상세가 �
     })
   );
   await gotoAndWaitForRealContent(page, "/community/posts/1");
-  await setTextZoom200(page);
+  await setTextZoom(page, 200);
 
   await expect(page.getByRole("heading", { name: "테스트 게시글" })).toBeVisible();
+  await expectNoInternalTextClipping(page);
+  await expectNoOverflow(page);
+});
+
+// RW-P1-04 잔여: 200%까지만 확인하던 것을 조밀한 레이아웃(패턴 목록)과
+// 번호 선택 폼(/recommend, 지금까지 이 스펙의 검증 대상이 아니었음)에서 400%까지
+// 확장한다. 400%는 WCAG 1.4.4(텍스트 크기 조정)이 요구하는 최대 배율이다.
+test("400% 텍스트 확대 — /stats 패턴 항목이 내부에서 잘리지 않는다", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await gotoAndWaitForRealContent(page, "/stats");
+  await setTextZoom(page, 400);
+
+  await expect(page.getByTestId("pattern-list").first()).toBeVisible();
+  await expectNoInternalTextClipping(page);
+  await expectNoOverflow(page);
+});
+
+test("400% 텍스트 확대 — /recommend 초기 폼(번호판)이 잘리거나 넘치지 않는다", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/recommend");
+  await expect(page.locator(".recommend-form")).toBeVisible();
+  await setTextZoom(page, 400);
+
   await expectNoInternalTextClipping(page);
   await expectNoOverflow(page);
 });
