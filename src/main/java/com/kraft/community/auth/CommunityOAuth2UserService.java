@@ -12,7 +12,6 @@ import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Google/Naver 사용자 정보를 정규화(CommunityOAuthAttributes)한 뒤 (provider, providerId)
@@ -62,7 +61,13 @@ public class CommunityOAuth2UserService extends DefaultOAuth2UserService {
                 .register(meterRegistry);
     }
 
-    @Transactional
+    // KB-08: 예전에 여기 @Transactional이 있었으나, loadUser()가 같은 인스턴스의 upsert()를
+    // this.upsert(...)로 직접 호출해 프록시를 거치지 않으므로 실제로는 전혀 적용되지 않는
+    // 어노테이션이었다(AOP 트랜잭션은 프록시 경유 호출에서만 동작). 이 메서드의 각 분기
+    // (reactivateIfWithdrawn의 save 1회, createNewUser의 save 1회)는 그 자체로 이미 원자적인
+    // 단일 쓰기라 트랜잭션 경계가 없어도 지금은 관찰 가능한 차이가 없다 — 오해를 부르는
+    // 죽은 어노테이션을 지운다. 여러 쓰기를 묶어야 하는 로직이 추가되면 그때 별도 빈으로
+    // 분리해 프록시를 거치게 하거나(CommunityReactionWriter 패턴 참고) 자기 주입을 쓴다.
     CommunityUser upsert(CommunityOAuthAttributes attributes) {
         return communityUserRepository.findByProviderAndProviderId(attributes.provider(), attributes.providerId())
                 .map(existing -> reactivateIfWithdrawn(existing, attributes))

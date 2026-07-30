@@ -1,22 +1,18 @@
 package com.kraft.community.auth;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.kraft.common.config.CommunityProperties;
-import com.kraft.common.error.ApiErrorResponse;
+import com.kraft.common.web.ApiErrorResponseWriter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.time.Instant;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -39,15 +35,14 @@ public class CommunityWriteRateLimitFilter extends OncePerRequestFilter {
 
     private static final Set<String> WRITE_METHODS = Set.of("POST", "PUT", "DELETE");
 
-    // CommunityAuthEntryPoint/CommunitySecurityConfig와 동일한 이유로 앱 전역 ObjectMapper
-    // 빈에 의존하지 않고 로컬 인스턴스를 쓴다.
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());
-
     private final Cache<Long, AtomicInteger> counters;
     private final CommunityProperties communityProperties;
+    private final ApiErrorResponseWriter apiErrorResponseWriter;
 
-    public CommunityWriteRateLimitFilter(CommunityProperties communityProperties) {
+    public CommunityWriteRateLimitFilter(CommunityProperties communityProperties,
+                                          ApiErrorResponseWriter apiErrorResponseWriter) {
         this.communityProperties = communityProperties;
+        this.apiErrorResponseWriter = apiErrorResponseWriter;
         this.counters = Caffeine.newBuilder()
                 .expireAfterWrite(1, TimeUnit.MINUTES)
                 .maximumSize(10_000)
@@ -72,18 +67,9 @@ public class CommunityWriteRateLimitFilter extends OncePerRequestFilter {
         int limit = communityProperties.writeRateLimitPerMinute();
         int current = counters.get(userId, id -> new AtomicInteger(0)).incrementAndGet();
         if (current > limit) {
-            response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            response.setCharacterEncoding("UTF-8");
             response.setIntHeader("Retry-After", 60);
-            ApiErrorResponse body = new ApiErrorResponse(
-                    Instant.now(),
-                    HttpStatus.TOO_MANY_REQUESTS.value(),
-                    HttpStatus.TOO_MANY_REQUESTS.getReasonPhrase(),
-                    "COMMUNITY_WRITE_RATE_LIMIT_EXCEEDED",
-                    "작성 요청이 너무 많습니다. 잠시 후 다시 시도하세요.",
-                    request.getRequestURI());
-            OBJECT_MAPPER.writeValue(response.getWriter(), body);
+            apiErrorResponseWriter.write(request, response, HttpStatus.TOO_MANY_REQUESTS,
+                    "COMMUNITY_WRITE_RATE_LIMIT_EXCEEDED", "작성 요청이 너무 많습니다. 잠시 후 다시 시도하세요.");
             return;
         }
 

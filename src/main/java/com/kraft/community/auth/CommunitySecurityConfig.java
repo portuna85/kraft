@@ -1,10 +1,8 @@
 package com.kraft.community.auth;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.kraft.common.config.CommunityProperties;
 import com.kraft.common.config.PublicBaseUrlProperties;
-import com.kraft.common.error.ApiErrorResponse;
+import com.kraft.common.web.ApiErrorResponseWriter;
 import com.kraft.community.user.CommunityUserRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -13,13 +11,11 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.time.Instant;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -44,30 +40,28 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Configuration
 public class CommunitySecurityConfig {
 
-    // CommunityAuthEntryPoint와 동일한 이유로 앱 전역 ObjectMapper 빈에 의존하지 않는다
-    // (Boot 4.1 JacksonAutoConfiguration은 com.fasterxml.jackson.databind.ObjectMapper
-    // 타입 빈을 노출하지 않는다) — 소규모 고정 DTO 직렬화만 필요하므로 로컬 인스턴스로 충분하다.
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());
-
     private final CommunityOAuth2UserService communityOAuth2UserService;
     private final CommunityAuthEntryPoint communityAuthEntryPoint;
     private final CommunityProperties communityProperties;
     private final PublicBaseUrlProperties publicBaseUrlProperties;
     private final MeterRegistry meterRegistry;
     private final CommunityUserRepository communityUserRepository;
+    private final ApiErrorResponseWriter apiErrorResponseWriter;
 
     public CommunitySecurityConfig(CommunityOAuth2UserService communityOAuth2UserService,
                                     CommunityAuthEntryPoint communityAuthEntryPoint,
                                     CommunityProperties communityProperties,
                                     PublicBaseUrlProperties publicBaseUrlProperties,
                                     MeterRegistry meterRegistry,
-                                    CommunityUserRepository communityUserRepository) {
+                                    CommunityUserRepository communityUserRepository,
+                                    ApiErrorResponseWriter apiErrorResponseWriter) {
         this.communityOAuth2UserService = communityOAuth2UserService;
         this.communityAuthEntryPoint = communityAuthEntryPoint;
         this.communityProperties = communityProperties;
         this.publicBaseUrlProperties = publicBaseUrlProperties;
         this.meterRegistry = meterRegistry;
         this.communityUserRepository = communityUserRepository;
+        this.apiErrorResponseWriter = apiErrorResponseWriter;
     }
 
     @Bean
@@ -82,9 +76,10 @@ public class CommunitySecurityConfig {
                         // 게시글/댓글 조회는 로그인 없이 공개, 쓰기(POST/PUT/DELETE)만 인증 요구.
                         .requestMatchers(HttpMethod.GET, "/api/v1/community/posts/**").permitAll()
                         .anyRequest().authenticated())
-                .addFilterAfter(new CommunityWriteRateLimitFilter(communityProperties), AuthorizationFilter.class)
+                .addFilterAfter(new CommunityWriteRateLimitFilter(communityProperties, apiErrorResponseWriter),
+                        AuthorizationFilter.class)
                 .addFilterAfter(csrfCookieFilter(), CsrfFilter.class)
-                .addFilterBefore(new CommunityWithdrawnAccountFilter(communityUserRepository),
+                .addFilterBefore(new CommunityWithdrawnAccountFilter(communityUserRepository, apiErrorResponseWriter),
                         AuthorizationFilter.class)
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.userService(communityOAuth2UserService))
@@ -116,17 +111,9 @@ public class CommunitySecurityConfig {
             if (isCsrf) {
                 csrfRejectedCounter.increment();
             }
-            response.setStatus(HttpStatus.FORBIDDEN.value());
-            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            response.setCharacterEncoding("UTF-8");
-            ApiErrorResponse body = new ApiErrorResponse(
-                    Instant.now(),
-                    HttpStatus.FORBIDDEN.value(),
-                    HttpStatus.FORBIDDEN.getReasonPhrase(),
+            apiErrorResponseWriter.write(request, response, HttpStatus.FORBIDDEN,
                     isCsrf ? "COMMUNITY_CSRF_REJECTED" : "COMMUNITY_ACCESS_DENIED",
-                    isCsrf ? "요청을 검증할 수 없습니다. 새로고침 후 다시 시도하세요." : "접근이 거부되었습니다.",
-                    request.getRequestURI());
-            OBJECT_MAPPER.writeValue(response.getWriter(), body);
+                    isCsrf ? "요청을 검증할 수 없습니다. 새로고침 후 다시 시도하세요." : "접근이 거부되었습니다.");
         };
     }
 

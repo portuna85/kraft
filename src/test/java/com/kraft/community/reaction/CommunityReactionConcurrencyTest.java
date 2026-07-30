@@ -130,6 +130,32 @@ class CommunityReactionConcurrencyTest {
         assertThat(bookmarks).hasSize(1);
     }
 
+    @Test
+    @DisplayName("KB-06: 같은 사용자가 동시에 여러 번 unlike해도 like_count는 정확히 1만 줄어든다")
+    void concurrentUnlike_decrementsExactlyOnce() throws Exception {
+        // 다른 사용자 둘이 먼저 좋아요를 남겨 like_count를 3으로 만든다 — unlike 대상 행은
+        // targetUser 것 하나뿐이라, 실제 삭제는 어느 스레드든 딱 1번만 성공해야 한다.
+        // (버그가 있으면 매 스레드가 findBy...isPresent() 통과 후 무조건 감산해 3→0까지
+        // 깎일 수 있다 — 올바른 결과는 3→2.)
+        CommunityUser otherLiker1 = communityUserRepository.save(
+                new CommunityUser("google", "other1-" + System.nanoTime(), "다른사람1", null, OffsetDateTime.now()));
+        CommunityUser otherLiker2 = communityUserRepository.save(
+                new CommunityUser("google", "other2-" + System.nanoTime(), "다른사람2", null, OffsetDateTime.now()));
+        communityReactionService.like(postId, otherLiker1.getId());
+        communityReactionService.like(postId, otherLiker2.getId());
+        communityReactionService.like(postId, userId);
+        assertThat(communityPostMetricsRepository.findByPostId(postId).orElseThrow().getLikeCount()).isEqualTo(3);
+
+        int threadCount = 4;
+        runConcurrently(threadCount, () -> {
+            communityReactionService.unlike(postId, userId);
+            return null;
+        });
+
+        assertThat(communityPostLikeRepository.findByPostIdAndUserId(postId, userId)).isEmpty();
+        assertThat(communityPostMetricsRepository.findByPostId(postId).orElseThrow().getLikeCount()).isEqualTo(2);
+    }
+
     private void runConcurrently(int threadCount, java.util.concurrent.Callable<Void> task) throws Exception {
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
         try {

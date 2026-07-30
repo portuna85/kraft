@@ -1,8 +1,6 @@
 package com.kraft.community.auth;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.kraft.common.error.ApiErrorResponse;
+import com.kraft.common.web.ApiErrorResponseWriter;
 import com.kraft.community.user.CommunityUserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -10,9 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
-import java.time.Instant;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -25,13 +21,13 @@ import org.springframework.web.filter.OncePerRequestFilter;
  */
 public class CommunityWithdrawnAccountFilter extends OncePerRequestFilter {
 
-    // CommunityAuthEntryPoint와 동일한 이유로 앱 전역 ObjectMapper 빈에 의존하지 않는다.
-    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
-
     private final CommunityUserRepository communityUserRepository;
+    private final ApiErrorResponseWriter apiErrorResponseWriter;
 
-    public CommunityWithdrawnAccountFilter(CommunityUserRepository communityUserRepository) {
+    public CommunityWithdrawnAccountFilter(CommunityUserRepository communityUserRepository,
+                                            ApiErrorResponseWriter apiErrorResponseWriter) {
         this.communityUserRepository = communityUserRepository;
+        this.apiErrorResponseWriter = apiErrorResponseWriter;
     }
 
     @Override
@@ -45,17 +41,8 @@ public class CommunityWithdrawnAccountFilter extends OncePerRequestFilter {
                 session.invalidate();
             }
             SecurityContextHolder.clearContext();
-            response.setStatus(HttpStatus.UNAUTHORIZED.value());
-            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            response.setCharacterEncoding("UTF-8");
-            ApiErrorResponse body = new ApiErrorResponse(
-                    Instant.now(),
-                    HttpStatus.UNAUTHORIZED.value(),
-                    HttpStatus.UNAUTHORIZED.getReasonPhrase(),
-                    "COMMUNITY_ACCOUNT_WITHDRAWN",
-                    "탈퇴한 계정입니다.",
-                    request.getRequestURI());
-            objectMapper.writeValue(response.getWriter(), body);
+            apiErrorResponseWriter.write(request, response, HttpStatus.UNAUTHORIZED,
+                    "COMMUNITY_ACCOUNT_WITHDRAWN", "탈퇴한 계정입니다.");
             return;
         }
         chain.doFilter(request, response);

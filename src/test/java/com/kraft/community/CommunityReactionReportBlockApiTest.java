@@ -177,6 +177,20 @@ class CommunityReactionReportBlockApiTest {
     }
 
     @Test
+    @DisplayName("KB-10: postIds가 100개를 넘으면 400 VALIDATION_ERROR로 거부된다")
+    void meInteractions_tooManyPostIds_isRejected() throws Exception {
+        String[] postIds = java.util.stream.IntStream.rangeClosed(1, 101)
+                .mapToObj(String::valueOf)
+                .toArray(String[]::new);
+
+        mockMvc.perform(get("/api/v1/community/me/interactions")
+                        .param("postIds", postIds)
+                        .with(asUser(other)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
     @DisplayName("소프트 삭제된 게시글도 작성자 본인은 계속 조회할 수 있다")
     void softDeletedPost_stillVisibleToOwner() throws Exception {
         long postId = createPost(owner, "제목", "내용");

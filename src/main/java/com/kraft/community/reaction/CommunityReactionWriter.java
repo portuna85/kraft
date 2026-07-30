@@ -1,5 +1,6 @@
 package com.kraft.community.reaction;
 
+import com.kraft.community.post.CommunityPostMetricsRepository;
 import java.time.OffsetDateTime;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -25,11 +26,14 @@ class CommunityReactionWriter {
 
     private final CommunityPostLikeRepository communityPostLikeRepository;
     private final CommunityPostBookmarkRepository communityPostBookmarkRepository;
+    private final CommunityPostMetricsRepository communityPostMetricsRepository;
 
     CommunityReactionWriter(CommunityPostLikeRepository communityPostLikeRepository,
-                             CommunityPostBookmarkRepository communityPostBookmarkRepository) {
+                             CommunityPostBookmarkRepository communityPostBookmarkRepository,
+                             CommunityPostMetricsRepository communityPostMetricsRepository) {
         this.communityPostLikeRepository = communityPostLikeRepository;
         this.communityPostBookmarkRepository = communityPostBookmarkRepository;
+        this.communityPostMetricsRepository = communityPostMetricsRepository;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -40,5 +44,20 @@ class CommunityReactionWriter {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     void insertBookmark(Long postId, Long userId, OffsetDateTime now) {
         communityPostBookmarkRepository.save(new CommunityPostBookmark(postId, userId, now));
+    }
+
+    /**
+     * KB-06: delete+decrement를 REQUIRES_NEW 트랜잭션 하나로 묶는다 — CommunityReactionService의
+     * 클래스 레벨 @Transactional(ambient) 안에서 실행하면, 동시 unlike 여러 건이 같은 ambient
+     * 트랜잭션 격리 수준(REPEATABLE READ) 아래 같은 행(좋아요 행·집계 행)을 두고 경합해
+     * SnapshotIsolationException(Testcontainers 실 MariaDB로 확인)을 낼 수 있었다. 짧은 독립
+     * 트랜잭션으로 분리하면 각 시도가 원자적으로 끝나 커밋 순서만 남고 스냅숏 충돌이 없다.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    void deleteLike(Long postId, Long userId) {
+        long deleted = communityPostLikeRepository.deleteByPostIdAndUserId(postId, userId);
+        if (deleted > 0) {
+            communityPostMetricsRepository.decrementLikeCount(postId);
+        }
     }
 }

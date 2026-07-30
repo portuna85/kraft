@@ -1,9 +1,7 @@
 package com.kraft.ops;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.kraft.common.config.OpsProperties;
-import com.kraft.common.error.ApiErrorResponse;
+import com.kraft.common.web.ApiErrorResponseWriter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,10 +9,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.time.Instant;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -29,15 +25,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Order(5)
 public class OpsTokenFilter extends OncePerRequestFilter {
 
-    // 앱 전역 ObjectMapper 빈에 의존하지 않는다 — Boot 4.1 기본 JacksonAutoConfiguration은
-    // com.fasterxml.jackson.databind.ObjectMapper 타입 빈을 노출하지 않는다. 이 클래스는
-    // 소규모 고정 DTO 직렬화만 필요하므로 로컬 인스턴스로 충분하다(CommunityAuthEntryPoint와 동일 패턴).
-    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
-
     private final OpsProperties opsProperties;
+    private final ApiErrorResponseWriter apiErrorResponseWriter;
 
-    public OpsTokenFilter(OpsProperties opsProperties) {
+    public OpsTokenFilter(OpsProperties opsProperties, ApiErrorResponseWriter apiErrorResponseWriter) {
         this.opsProperties = opsProperties;
+        this.apiErrorResponseWriter = apiErrorResponseWriter;
     }
 
     @Override
@@ -68,16 +61,6 @@ public class OpsTokenFilter extends OncePerRequestFilter {
 
     private void writeError(HttpServletRequest request, HttpServletResponse response,
                             HttpStatus status, String code, String message) throws IOException {
-        response.setStatus(status.value());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.setCharacterEncoding("UTF-8");
-        ApiErrorResponse body = new ApiErrorResponse(
-                Instant.now(),
-                status.value(),
-                status.getReasonPhrase(),
-                code,
-                message,
-                request.getRequestURI());
-        objectMapper.writeValue(response.getWriter(), body);
+        apiErrorResponseWriter.write(request, response, status, code, message);
     }
 }

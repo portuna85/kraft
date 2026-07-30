@@ -48,16 +48,19 @@ public class IdentityMergeService {
         this.savedNumbersService = savedNumbersService;
         this.recommendationSetHistoryService = recommendationSetHistoryService;
         this.clock = clock;
+        // KB-09: 세 카운터의 description이 전부 동일한 복붙이었다 — outcome 태그로만
+        // sum by(outcome) 집계가 구분되고, 사람이 읽는 description은 outcome마다 실제로
+        // 다른 의미를 설명해야 한다.
         this.successCounter = Counter.builder("kraft_identity_merge_total")
-                .description("익명 기록 병합(기기 귀속) 성공 수")
+                .description("익명 기록을 신규로 계정에 병합 성공한 수")
                 .tag("outcome", "success")
                 .register(meterRegistry);
         this.duplicateCounter = Counter.builder("kraft_identity_merge_total")
-                .description("익명 기록 병합(기기 귀속) 성공 수")
+                .description("이미 이 계정에 귀속된 기기 토큰으로 멱등 재시도된 수")
                 .tag("outcome", "duplicate")
                 .register(meterRegistry);
         this.conflictCounter = Counter.builder("kraft_identity_merge_total")
-                .description("익명 기록 병합(기기 귀속) 성공 수")
+                .description("다른 계정에 이미 귀속된 기기 토큰이라 거부된 수")
                 .tag("outcome", "conflict")
                 .register(meterRegistry);
     }
@@ -77,8 +80,12 @@ public class IdentityMergeService {
             throw new ApiException(HttpStatus.CONFLICT, "DEVICE_ALREADY_CLAIMED",
                     "이 기기는 이미 다른 계정에 연결되어 있습니다.");
         }
+        // KB-09: 예전에는 duplicate 분기에서도 맨 아래 successCounter.increment()가 항상
+        // 실행돼, sum by(outcome)이 멱등 재시도 1건을 success+duplicate 두 건으로
+        // 이중 집계했다 — outcome별로 정확히 하나의 카운터만 늘어나야 한다.
         if (existing.isEmpty()) {
             deviceClaimRepository.save(new DeviceClaim(deviceTokenHash, userId, OffsetDateTime.now(clock)));
+            successCounter.increment();
         } else {
             duplicateCounter.increment();
         }
@@ -87,7 +94,6 @@ public class IdentityMergeService {
         int recommendationCount = recommendationSetHistoryService.claimAll(
                 deviceTokenHash, userId, OffsetDateTime.now(clock));
 
-        successCounter.increment();
         return new IdentityMergeResult(
                 savedResult.mergedCount(), savedResult.duplicateCount(), recommendationCount);
     }

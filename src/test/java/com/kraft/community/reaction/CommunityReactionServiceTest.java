@@ -125,26 +125,23 @@ class CommunityReactionServiceTest {
     }
 
     @Test
-    @DisplayName("좋아요 취소 시 존재하면 삭제하고 집계를 감소시킨다")
-    void unlike_whenPresent_deletesAndDecrements() {
-        given(communityPostLikeRepository.findByPostIdAndUserId(1L, 10L))
-                .willReturn(Optional.of(new CommunityPostLike(1L, 10L, Instant.now().atOffset(ZoneOffset.UTC))));
-
+    @DisplayName("KB-06: 좋아요 취소는 CommunityReactionWriter의 REQUIRES_NEW 트랜잭션으로 위임한다")
+    void unlike_delegatesToWriter() {
         service.unlike(1L, 10L);
 
-        verify(communityPostLikeRepository).deleteByPostIdAndUserId(1L, 10L);
-        verify(communityPostMetricsRepository).decrementLikeCount(1L);
+        verify(communityReactionWriter).deleteLike(1L, 10L);
     }
 
     @Test
-    @DisplayName("좋아요가 없는 상태에서 취소해도 멱등하게 204로 끝난다")
-    void unlike_whenAbsent_isIdempotentNoOp() {
-        given(communityPostLikeRepository.findByPostIdAndUserId(1L, 10L)).willReturn(Optional.empty());
+    @DisplayName("KB-06: writer에서 경합 예외가 나면 재시도하고, 마지막 시도까지 실패하면 그대로 던진다")
+    void unlike_retriesOnDataAccessExceptionThenGivesUp() {
+        willThrow(new org.springframework.dao.TransientDataAccessResourceException("경합"))
+                .given(communityReactionWriter).deleteLike(1L, 10L);
 
-        service.unlike(1L, 10L);
+        assertThatThrownBy(() -> service.unlike(1L, 10L))
+                .isInstanceOf(org.springframework.dao.TransientDataAccessResourceException.class);
 
-        verify(communityPostLikeRepository, never()).deleteByPostIdAndUserId(anyLong(), anyLong());
-        verify(communityPostMetricsRepository, never()).decrementLikeCount(anyLong());
+        verify(communityReactionWriter, org.mockito.Mockito.times(3)).deleteLike(1L, 10L);
     }
 
     @Test

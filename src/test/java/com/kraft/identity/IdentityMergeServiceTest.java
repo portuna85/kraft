@@ -47,15 +47,21 @@ class IdentityMergeServiceTest {
     private RecommendationSetHistoryService recommendationSetHistoryService;
 
     private IdentityMergeService service;
+    private SimpleMeterRegistry meterRegistry;
 
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-07-28T00:00:00Z"), ZoneOffset.UTC);
     private static final String TOKEN_HASH = "hash-1";
 
     @BeforeEach
     void setUp() {
+        meterRegistry = new SimpleMeterRegistry();
         service = new IdentityMergeService(deviceClaimRepository, savedNumberClientLockRepository,
                 savedNumberClientLockInitializer, savedNumbersService, recommendationSetHistoryService, CLOCK,
-                new SimpleMeterRegistry());
+                meterRegistry);
+    }
+
+    private double outcomeCount(String outcome) {
+        return meterRegistry.get("kraft_identity_merge_total").tag("outcome", outcome).counter().count();
     }
 
     @Test
@@ -73,6 +79,10 @@ class IdentityMergeServiceTest {
         verify(deviceClaimRepository).save(any());
         verify(savedNumberClientLockInitializer).ensureExists(TOKEN_HASH);
         verify(savedNumberClientLockRepository).lockByClientTokenHash(TOKEN_HASH);
+        // KB-09: 신규 병합은 success만 1 늘어야 한다 — duplicate까지 같이 늘면 sum by(outcome)이
+        // 실제 요청 수보다 커진다.
+        assertThat(outcomeCount("success")).isEqualTo(1.0);
+        assertThat(outcomeCount("duplicate")).isEqualTo(0.0);
     }
 
     @Test
@@ -87,6 +97,10 @@ class IdentityMergeServiceTest {
 
         assertThat(result.mergedSavedNumberCount()).isEqualTo(0);
         verify(deviceClaimRepository, never()).save(any());
+        // KB-09: 멱등 재시도는 duplicate만 1 늘어야 한다 — 예전에는 success도 함께 늘어
+        // 재시도 1건이 success+duplicate 두 건으로 이중 집계됐다.
+        assertThat(outcomeCount("duplicate")).isEqualTo(1.0);
+        assertThat(outcomeCount("success")).isEqualTo(0.0);
     }
 
     @Test

@@ -1,14 +1,10 @@
 package com.kraft.community.auth;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.kraft.common.error.ApiErrorResponse;
+import com.kraft.common.web.ApiErrorResponseWriter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.time.Instant;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
@@ -22,25 +18,16 @@ import org.springframework.stereotype.Component;
 @Component
 public class CommunityAuthEntryPoint implements AuthenticationEntryPoint {
 
-    // 앱 전역 ObjectMapper 빈에 의존하지 않는다 — Boot 4.1 기본 JacksonAutoConfiguration은
-    // com.fasterxml.jackson.databind.ObjectMapper 타입 빈을 노출하지 않는다(내부적으로 다른
-    // JsonMapper 계열을 우선 구성). 이 클래스는 소규모 고정 DTO 직렬화만 필요하므로 로컬
-    // 인스턴스로 충분하다.
-    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+    private final ApiErrorResponseWriter apiErrorResponseWriter;
+
+    public CommunityAuthEntryPoint(ApiErrorResponseWriter apiErrorResponseWriter) {
+        this.apiErrorResponseWriter = apiErrorResponseWriter;
+    }
 
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
                           AuthenticationException authException) throws IOException {
-        response.setStatus(HttpStatus.UNAUTHORIZED.value());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.setCharacterEncoding("UTF-8");
-        ApiErrorResponse body = new ApiErrorResponse(
-                Instant.now(),
-                HttpStatus.UNAUTHORIZED.value(),
-                HttpStatus.UNAUTHORIZED.getReasonPhrase(),
-                "COMMUNITY_LOGIN_REQUIRED",
-                "로그인이 필요합니다.",
-                request.getRequestURI());
-        objectMapper.writeValue(response.getWriter(), body);
+        apiErrorResponseWriter.write(request, response, HttpStatus.UNAUTHORIZED,
+                "COMMUNITY_LOGIN_REQUIRED", "로그인이 필요합니다.");
     }
 }
