@@ -1,6 +1,7 @@
 package com.kraft.recommend;
 
 import com.kraft.common.error.ApiException;
+import com.kraft.common.lotto.LottoBitmask;
 import com.kraft.common.lotto.LottoNumberCodec;
 import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
@@ -52,7 +53,8 @@ public class RecommendationSetHistoryService {
                     ? null
                     : item.explanationCodes().stream().map(Enum::name).reduce((a, b) -> a + "," + b).orElse(null);
             recommendationItemRepository.save(new RecommendationItem(
-                    set.getId(), item.position(), lottoNumberCodec.toStorageValueSubset(item.numbers()), bitmaskOf(item.numbers()),
+                    set.getId(), item.position(), lottoNumberCodec.toStorageValueSubset(item.numbers()),
+                    LottoBitmask.of(item.numbers()),
                     item.score(), explanationCodes));
         }
         return set.getId();
@@ -233,13 +235,5 @@ public class RecommendationSetHistoryService {
             return List.of();
         }
         return java.util.Arrays.stream(value.split(",")).map(ExplanationCode::valueOf).toList();
-    }
-
-    private static long bitmaskOf(List<Integer> numbers) {
-        long mask = 0L;
-        for (int number : numbers) {
-            mask |= 1L << (number - 1);
-        }
-        return mask;
     }
 }

@@ -1,6 +1,7 @@
 package com.kraft.recommend;
 
 import com.kraft.common.error.ApiException;
+import com.kraft.common.lotto.LottoBitmask;
 import com.kraft.common.lotto.LottoNumberCodec;
 import com.kraft.winningnumber.WinningBallsOnly;
 import com.kraft.winningnumber.WinningNumberRepository;
@@ -179,7 +180,7 @@ public class LottoRecommendationService {
         Set<Long> combos = new HashSet<>();
         List<Integer> rounds = new ArrayList<>(all.size());
         for (WinningBallsOnly wn : all) {
-            combos.add(bitmaskOf(wn.getN1(), wn.getN2(), wn.getN3(), wn.getN4(), wn.getN5(), wn.getN6()));
+            combos.add(LottoBitmask.of(wn.getN1(), wn.getN2(), wn.getN3(), wn.getN4(), wn.getN5(), wn.getN6()));
             rounds.add(wn.getRound());
         }
         rounds.sort(Integer::compareTo);
@@ -230,30 +231,9 @@ public class LottoRecommendationService {
 
     public boolean isHistoricalFirstPrizeCombination(List<Integer> numbers) {
         List<Integer> normalized = lottoNumberCodec.normalize(numbers);
-        return historySnapshot.masks().contains(bitmaskOf(normalized));
+        return historySnapshot.masks().contains(LottoBitmask.of(normalized));
     }
 
-    /** 정렬 여부와 무관하게 번호 6개(1~45)를 45비트 이내의 long으로 인코딩한다(ball n → bit n-1). */
-    private static long bitmaskOf(int n1, int n2, int n3, int n4, int n5, int n6) {
-        return (1L << (n1 - 1)) | (1L << (n2 - 1)) | (1L << (n3 - 1))
-                | (1L << (n4 - 1)) | (1L << (n5 - 1)) | (1L << (n6 - 1));
-    }
-
-    private static long bitmaskOf(List<Integer> numbers) {
-        long mask = 0L;
-        for (int n : numbers) {
-            mask |= 1L << (n - 1);
-        }
-        return mask;
-    }
-
-    private static long maskOf(Set<Integer> numbers) {
-        long mask = 0L;
-        for (int n : numbers) {
-            mask |= 1L << (n - 1);
-        }
-        return mask;
-    }
 
     /**
      * clientTokenHash가 있으면(X-Device-Token 헤더 제공) 결과를 recommendation_sets/items에
@@ -399,8 +379,8 @@ public class LottoRecommendationService {
         long available = 45L - ctx.excluded().size() - ctx.locked().size();
         int need = 6 - ctx.locked().size();
         long possible = combinations(available, need);
-        long excludedMask = maskOf(ctx.excluded());
-        long lockedMask = maskOf(new HashSet<>(ctx.locked()));
+        long excludedMask = LottoBitmask.of(ctx.excluded());
+        long lockedMask = LottoBitmask.of(ctx.locked());
         long compatibleHistoricalCount = snapshot.masks().stream()
                 .filter(mask -> (mask & excludedMask) == 0L && (mask & lockedMask) == lockedMask)
                 .count();
@@ -432,7 +412,7 @@ public class LottoRecommendationService {
             List<Integer> candidate = reduceSharedWinnerRisk
                     ? generateBest(candidates, historicalMasks, ctx.locked())
                     : generateOne(candidates, historicalMasks, ctx.locked());
-            if (candidate != null && seen.add(bitmaskOf(candidate))) {
+            if (candidate != null && seen.add(LottoBitmask.of(candidate))) {
                 recommendations.add(candidate);
             }
         }
@@ -466,7 +446,7 @@ public class LottoRecommendationService {
         int maxAttempts = poolTarget * MAX_ATTEMPTS;
         while (pool.size() < poolTarget && attempts++ < maxAttempts) {
             List<Integer> candidate = generateOne(candidates, historicalMasks, ctx.locked());
-            if (candidate != null && seen.add(bitmaskOf(candidate))) {
+            if (candidate != null && seen.add(LottoBitmask.of(candidate))) {
                 pool.add(candidate);
             }
         }
@@ -561,7 +541,7 @@ public class LottoRecommendationService {
             List<Integer> combined = new ArrayList<>(locked);
             combined.addAll(candidates.subList(0, need));
             List<Integer> result = lottoNumberCodec.normalize(combined);
-            if (!historicalMasks.contains(bitmaskOf(result))) {
+            if (!historicalMasks.contains(LottoBitmask.of(result))) {
                 return result;
             }
             meterRegistry.counter("kraft_lotto_recommend_historical_collisions_total").increment();

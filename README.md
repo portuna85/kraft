@@ -48,7 +48,7 @@ Google·Naver 로그인부터 세션 유지, 게시글·댓글·답글 작성, �
 | 영역 | 기술 |
 | --- | --- |
 | 백엔드 | Java 25, Spring Boot 4.1.0, Spring Security, OAuth2 Client, Spring Data JPA, Validation, Actuator, Thymeleaf |
-| 데이터 | MariaDB 11.7, Flyway V1~V30, H2, Caffeine |
+| 데이터 | MariaDB 11.7, Flyway V1~V31, H2, Caffeine |
 | 복원력 | Virtual Threads, ShedLock, Resilience4j, 트랜잭션 이벤트 |
 | 프론트엔드 | Next.js 16.2.11 App Router, React 19.2.8, TypeScript 6.0.3, ISR, CSP nonce |
 | 테스트 | JUnit 5, Testcontainers, JaCoCo, Checkstyle, SpotBugs, Vitest, Testing Library, Playwright |
@@ -108,7 +108,7 @@ src/main/java/com/kraft/
   winningnumber/  회차 조회, 외부 수집, 자동 수집
 
 src/main/resources/
-  db/migration/   Flyway V1~V17
+  db/migration/   Flyway V1~V31
   templates/      관리자 Thymeleaf 화면
 
 web/
@@ -119,7 +119,6 @@ web/
 caddy/            운영·로컬 동일 출처 라우팅
 infra/            모니터링과 경보 설정
 scripts/          개발, 검증, 배포, 롤백, 백업·복구
-docs/             통합 기술 문서와 개선 로드맵
 ```
 
 ## 로컬 실행

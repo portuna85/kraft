@@ -1,5 +1,6 @@
 package com.kraft.winningnumber;
 
+import com.kraft.common.lotto.LottoBitmask;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,10 +20,7 @@ public class FirstPrizeHistoryService {
      */
     @Transactional(readOnly = true)
     public List<FirstPrizeHistoryDto> findByNumbers(List<Integer> numbers) {
-        long combinationMask = 0L;
-        for (int number : numbers) {
-            combinationMask |= 1L << (number - 1);
-        }
+        long combinationMask = LottoBitmask.of(numbers);
         return winningNumberRepository.findAllByCombinationMaskOrderByRoundDesc(combinationMask).stream()
                 .map(FirstPrizeHistoryDto::from)
                 .toList();
