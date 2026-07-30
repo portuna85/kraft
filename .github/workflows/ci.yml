@@ -581,6 +581,16 @@ jobs:
           path: build/libs
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
         if: needs.changes.outputs.backend == 'true'
+      # backend-verified 태그: 이 커밋에서 실제로 빌드·푸시가 성공했다는 사실만 기록하는
+      # 태그다 — 이 잡 자체의 결과와 무관하게(예: 다른 컴포넌트의 E2E가 나중에 실패해도)
+      # 항상 "가장 최근에 실제로 빌드된 백엔드 소스"를 가리킨다. promote 잡은 오직 전체
+      # quality-gate 통과 시에만 :latest를 전진시키므로, 만약 재사용(reuse) 스텝이 예전처럼
+      # :latest를 그대로 복제했다면 — 백엔드가 실제로 바뀐 어떤 커밋이 이미지 빌드에는
+      # 성공했지만 그 실행의 quality-gate가 무관한 이유로 실패해 promote가 안 됐을 경우 —
+      # 그 이후 backend=false인 커밋들이 전부 그 멈춘 :latest만 영원히 복제해 SHA 태그가
+      # 실제 소스와 어긋난 채 굳어버린다(실제로 겪음: 운영 DB가 V31 마이그레이션 이전
+      # 이미지에 멈춰 배포 실패). backend-verified는 quality-gate 결과와 완전히 분리돼
+      # 있어 이 정체를 근본적으로 막는다.
       - name: Assemble and push verified backend artifact
         if: needs.changes.outputs.backend == 'true'
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
@@ -589,14 +599,16 @@ jobs:
           file: Dockerfile
           target: prebuilt
           push: true
-          tags: ${{ env.IMAGE }}:${{ github.sha }}
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:backend-verified
           provenance: true
           sbom: true
           cache-from: type=gha,scope=backend-runtime
           cache-to: type=gha,mode=max,scope=backend-runtime
       - name: Reuse previously verified backend image
         if: needs.changes.outputs.backend != 'true'
-        run: docker buildx imagetools create --tag "$IMAGE:$GITHUB_SHA" "$IMAGE:latest"
+        run: docker buildx imagetools create --tag "$IMAGE:$GITHUB_SHA" "$IMAGE:backend-verified"
 
   docker-publish-web:
     name: Docker Publish (web)
@@ -626,6 +638,8 @@ jobs:
         if: needs.changes.outputs.web == 'true'
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
         if: needs.changes.outputs.web == 'true'
+      # web-verified 태그: backend와 동일한 이유(quality-gate 결과와 무관하게 "실제로
+      # 최근에 빌드된 소스"를 계속 정확히 가리키기 위함)로 둔다.
       - name: Build and push web image
         if: needs.changes.outputs.web == 'true'
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
@@ -633,7 +647,9 @@ jobs:
           context: web
           file: web/Dockerfile
           push: true
-          tags: ${{ env.IMAGE }}:${{ github.sha }}
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:web-verified
           build-args: |
             KRAFT_PUBLIC_BASE_URL=${{ secrets.KRAFT_PUBLIC_BASE_URL }}
             NEXT_PUBLIC_NAVER_SITE_VERIFICATION=${{ secrets.NEXT_PUBLIC_NAVER_SITE_VERIFICATION }}
@@ -652,7 +668,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=web
       - name: Reuse previously verified web image
         if: needs.changes.outputs.web != 'true'
-        run: docker buildx imagetools create --tag "$IMAGE:$GITHUB_SHA" "$IMAGE:latest"
+        run: docker buildx imagetools create --tag "$IMAGE:$GITHUB_SHA" "$IMAGE:web-verified"
 
   security-scan:
     name: Security Scan (${{ matrix.component }})
