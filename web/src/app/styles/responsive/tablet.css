@@ -143,34 +143,4 @@
     max-width: 560px;
   }
 
-  /* drawer — tablet: full-width below header */
-  .nav-mobile-wrap {
-    padding: 0;
-  }
-
-  .nav-mobile {
-    border-radius: 0;
-    border-left: 0;
-    border-right: 0;
-    padding: 12px 16px 20px;
-    gap: 2px;
-  }
-
-  .nav-mobile a {
-    padding: 12px 8px;
-    border-radius: 10px;
-    border-bottom: 1px solid var(--line);
-    min-height: var(--target-min);
-    font-size: 1rem;
-  }
-
-  .nav-mobile a:last-child {
-    border-bottom: none;
-  }
-
-  .nav-mobile a[aria-current="page"] {
-    color: var(--text);
-    font-weight: 700;
-    background: var(--nav-active-bg);
-  }
 }

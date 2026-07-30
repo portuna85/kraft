@@ -19,7 +19,6 @@
   --surface-card-sm: rgba(255, 250, 244, 0.72);
   --header-bg:       rgba(255, 249, 241, 0.88);
   --nav-mobile-bg:   rgba(246, 241, 232, 0.97);
-  --nav-active-bg:   rgba(201, 79, 36, 0.12);
   --shimmer-highlight: rgba(255, 255, 255, 0.72);
   --ring: rgba(201, 79, 36, 0.18);
   /* Layout tokens — mobile-first defaults (<640px) */
@@ -37,6 +36,11 @@
   /* 모바일 하단 고정 내비 높이. 광고(--sticky-ad-h)는 이 위에 얹힌다
      (ads.css의 .ad-sticky-mobile bottom 참고). */
   --bottom-nav-h: calc(56px + env(safe-area-inset-bottom));
+  /* KF-12b: 화면 하단에 떠 있는 고정 UI(내비+광고)가 실제로 차지하는 높이의 단일
+     소스 — .page의 padding-bottom은 이 토큰 하나만 참조한다. 광고가 없으면 내비
+     높이만, 있으면(body.has-sticky-ad) 내비+광고 높이를 합친 값으로 ads.css가
+     재정의한다. */
+  --content-safe-bottom: 0px;
   /* 본문·라벨용 유동 타입 스케일. 각 토큰의 하한을 모바일(320px 부근) 렌더 크기로
      고정해 그 크기는 그대로 유지하면서, 넓은 화면에서는 완만하게 커지도록 한다 —
      clamp() 특성상 하한 아래로는 절대 내려가지 않는다. 제목류는 이미 자체 clamp()을
@@ -132,7 +136,6 @@
   --surface-card-sm: rgba(255, 255, 255, 0.028);
   --header-bg:       rgba(28, 24, 19, 0.88);
   --nav-mobile-bg:   rgba(28, 24, 19, 0.97);
-  --nav-active-bg:   rgba(255, 255, 255, 0.06);
   --shimmer-highlight: rgba(255, 255, 255, 0.04);
   --ring: rgba(224, 90, 40, 0.2);
 

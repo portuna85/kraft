@@ -121,3 +121,88 @@ test("닫기 버튼을 누르면 광고가 사라지고 body.has-sticky-ad도 �
   await expect(page.locator(".ad-sticky-mobile")).not.toBeVisible();
   await expect(page.locator("body")).not.toHaveClass(/has-sticky-ad/);
 });
+
+test("닫았던 광고는 다시 방문하면 재표시된다(KF-12b, 닫기는 탭 세션 한정)", async ({ page }) => {
+  await page.goto("/this-page-does-not-exist");
+  await page.getByRole("button", { name: "광고 닫기" }).click();
+  await expect(page.locator(".ad-sticky-mobile")).not.toBeVisible();
+
+  // 같은 탭에서 새로 마운트(새로고침)하면 닫힘 상태는 컴포넌트 로컬 state라 유지되지
+  // 않는다 — 세션/영구 저장을 전혀 쓰지 않는다는 의도된 설계를 실측으로 고정한다.
+  await page.reload();
+  await expect(page.locator(".ad-sticky-mobile")).toBeVisible();
+});
+
+test("844×390(가로 모드)처럼 짧은 화면에서는 고정 광고가 접히고 그만큼 여백도 줄어든다(KF-12b)", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.goto("/this-page-does-not-exist");
+
+  await expect(page.locator(".ad-sticky-mobile")).toBeHidden();
+
+  // body.has-sticky-ad 자체는 여전히 붙어있어도(컴포넌트는 unit이 있으면 클래스를
+  // 토글) --content-safe-bottom이 광고분을 빼고 내비 높이만 반영하는지 직접 확인한다.
+  const paddingBottom = await page.evaluate(() => {
+    const pageEl = document.querySelector(".page") as HTMLElement;
+    return parseFloat(getComputedStyle(pageEl).paddingBottom);
+  });
+  const bottomNavHeight = (await page.getByTestId("mobile-bottom-nav").boundingBox())!.height;
+  // 광고(50px대) 분량이 더해지지 않았다면 page-pad-bottom + nav 높이보다 크게 벗어나지 않아야 한다.
+  expect(paddingBottom).toBeLessThan(bottomNavHeight + 64 + 20);
+});
+
+test("320×568(세로)에서는 짧은 화면 기준에 해당하지 않아 광고가 그대로 보인다(KF-12b)", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto("/this-page-does-not-exist");
+
+  await expect(page.locator(".ad-sticky-mobile")).toBeVisible();
+});
+
+test("가상 키보드가 열린 것으로 감지되면 고정 광고가 내려가고 닫히면 다시 뜬다(KF-12b)", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.goto("/this-page-does-not-exist");
+  await expect(page.locator(".ad-sticky-mobile")).toBeVisible();
+
+  // 실제 OS 키보드를 띄울 수는 없으므로, 키보드가 열렸을 때 모바일 브라우저가 보고하는
+  // visualViewport 축소를 그대로 흉내낸다 — 폭은 그대로, 높이만 25% 넘게 줄이고
+  // visualViewport의 resize 이벤트를 직접 발화한다(useKeyboardOpen이 구독하는 신호).
+  await page.evaluate(() => {
+    const vv = window.visualViewport!;
+    Object.defineProperty(vv, "height", { value: vv.height * 0.5, configurable: true });
+    vv.dispatchEvent(new Event("resize"));
+  });
+  await expect(page.locator(".ad-sticky-mobile")).toBeHidden();
+  await expect(page.locator("body")).not.toHaveClass(/has-sticky-ad/);
+
+  // 키보드가 닫히면(높이 원복) 광고도 다시 뜬다.
+  await page.evaluate(() => {
+    const vv = window.visualViewport!;
+    Object.defineProperty(vv, "height", { value: window.innerHeight, configurable: true });
+    vv.dispatchEvent(new Event("resize"));
+  });
+  await expect(page.locator(".ad-sticky-mobile")).toBeVisible();
+});
+
+test("가상 키보드 표시 상태에서도 폼 제출은 정상 동작한다(KF-12b)", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.route("**/api/v1/numbers/recommend", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ recommendations: [[1, 2, 3, 4, 5, 6]] }),
+    }),
+  );
+  await page.goto("/recommend");
+  await expect(page.locator(".ad-sticky-mobile")).toBeVisible();
+
+  await page.evaluate(() => {
+    const vv = window.visualViewport!;
+    Object.defineProperty(vv, "height", { value: vv.height * 0.5, configurable: true });
+    vv.dispatchEvent(new Event("resize"));
+  });
+  await expect(page.locator(".ad-sticky-mobile")).toBeHidden();
+
+  await page.getByRole("button", { name: "추천 생성" }).click();
+  await expect(page.locator(".recommend-card").first()).toBeVisible();
+});

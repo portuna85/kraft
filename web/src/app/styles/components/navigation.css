@@ -19,128 +19,13 @@
   outline-offset: 2px;
 }
 
-/* Primary and statistics navigation */
-.nav {
-  display: flex;
-  gap: 10px;
-  color: var(--muted);
-  font-size: var(--fs-base);
-  align-items: center;
-}
-
-.nav a {
-  display: inline-flex;
-  align-items: center;
-  padding: 9px 12px;
-  min-height: 40px;
-  border-radius: 999px;
-  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
-}
-
-.nav a:hover {
-  color: var(--text);
-  background: var(--surface-card-md);
-}
-
-.nav a[aria-current="page"] {
-  color: var(--text);
-  font-weight: 700;
-  background: var(--nav-active-bg);
-}
-
-.nav a[href="/recommend"]:hover,
-.nav a[href="/recommend"][aria-current="page"] {
-  background: rgba(201, 79, 36, 0.14);
-  color: var(--accent-strong);
-}
-
-.nav-stats-group {
-  position: relative;
-}
-
-.nav-stats-toggle {
-  font: inherit;
-  color: inherit;
-  background: transparent;
-  border: none;
-  padding: 9px 12px;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: background 0.18s ease, color 0.18s ease;
-}
-
-.nav-stats-toggle:hover,
-.nav-stats-toggle[aria-expanded="true"] {
-  color: var(--text);
-  background: var(--surface-card-md);
-}
-
-.nav-stats-toggle.active {
-  color: var(--text);
-  font-weight: 700;
-  background: var(--nav-active-bg);
-}
-
-.nav-stats-menu {
-  display: none;
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  flex-direction: column;
-  min-width: 160px;
-  padding: 6px;
-  background: var(--surface-card);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
-  z-index: 20;
-}
-
-.nav-stats-menu.open {
-  display: flex;
-}
-
-.nav-stats-menu a {
-  padding: 9px 12px;
-  border-radius: 8px;
-}
-
-/* Responsive layers own the nav toggle display mode. */
-.nav-toggle {
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: transparent;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  cursor: pointer;
-  padding: 0;
-}
-
-.hamburger {
-  display: block;
-  position: relative;
-  width: 20px;
-  height: 2px;
-  background: var(--text);
-  border-radius: 2px;
-  transition: background 0.2s;
-}
-
-.hamburger::before,
-.hamburger::after {
-  content: "";
-  position: absolute;
-  width: 20px;
-  height: 2px;
-  background: var(--text);
-  border-radius: 2px;
-  transition: transform 0.2s, top 0.2s;
-}
-
-.hamburger::before { top: -6px; }
-.hamburger::after { top: 6px; }
-.hamburger.open { background: transparent; }
-.hamburger.open::before { transform: rotate(45deg); top: 0; }
-.hamburger.open::after { transform: rotate(-45deg); top: 0; }
+/* KF-12c: 이 파일이 예전에 갖고 있던 전역 내비 선택자(.nav/.nav a, .nav-stats-*,
+   .nav-toggle, .hamburger*)는 TSX 어디에도 쓰이지 않는 데드 코드였다(전수 grep으로
+   확인 — R-17/v2 데드 CSS 계열의 잔여). 현재 데스크톱 내비(DesktopNav)는 CSS Module
+   (desktop-nav.module.css), 모바일은 Drawer 프리미티브가 담당하며 이 전역 선택자와
+   이름만 겹칠 뿐 서로 무관하다. 이 파일이 base.css 바로 뒤(다른 반응형 파일들보다
+   먼저) 임포트되는 위치라, 죽은 .nav-toggle 기본 규칙이 mobile-unconditional.css·
+   desktop.css의 나중 임포트에 덮여써야만 "동작"하는 것처럼 보이는 import 순서 의존
+   패턴이었다(R-28과 동일한 함정) — 그 의존 자체를 없앤다. 함께 있던 다른 파일의
+   .nav-toggle 참조(ads.css·mobile-unconditional.css·desktop.css·layout.css)도 이번에
+   같이 정리했다. */

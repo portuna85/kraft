@@ -200,7 +200,7 @@
 }
 
 /* 모바일 기본: 축약 로그인 링크만 노출, 데스크톱 전용 요소는 숨긴다 —
-   NavLinks의 nav-desktop/nav-mobile 이중 렌더링과 동일한 토글 지점(BP.desktop)을 쓴다. */
+   Header의 desktopOnly/mobileOnly(header.module.css)와 동일한 토글 지점(BP.desktop)을 쓴다. */
 .account-login-full {
   display: none;
 }

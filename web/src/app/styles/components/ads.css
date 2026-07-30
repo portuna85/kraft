@@ -82,13 +82,31 @@
 @media (max-width: 1023px) {
   /* 모바일 하단 고정 내비(MobileBottomNav)는 상시 노출이므로 무조건 여백을 예약한다.
      하단 고정 광고(50px + close 버튼)는 광고가 실제로 떠 있을 때만(body.has-sticky-ad)
-     추가로 더한다 — 두 여백은 누적된다(광고가 내비 위에 얹히므로). */
+     --content-safe-bottom에 더해진다 — 두 여백은 누적된다(광고가 내비 위에 얹히므로).
+     KF-12b: padding-bottom은 이 토큰 하나만 참조해, 짧은 화면·가상 키보드 등 광고를
+     숨기는 조건이 늘어나도 여기(.page 규칙)를 다시 손댈 필요가 없다. */
   .page {
-    padding-bottom: calc(var(--page-pad-bottom) + var(--bottom-nav-h));
+    --content-safe-bottom: var(--bottom-nav-h);
+    padding-bottom: calc(var(--page-pad-bottom) + var(--content-safe-bottom));
   }
 
   body.has-sticky-ad .page {
-    padding-bottom: calc(var(--page-pad-bottom) + var(--bottom-nav-h) + var(--sticky-ad-h));
+    --content-safe-bottom: calc(var(--bottom-nav-h) + var(--sticky-ad-h));
+  }
+}
+
+/* KF-12b: 844×390(가로 모드) 같은 짧은 화면에서는 고정 광고(내비 위에 얹혀 50px+close
+   버튼만큼 더 차지)까지 겹치면 폼·CTA가 남는 공간 없이 빡빡해진다 — 부가 콘텐츠인
+   광고만 접고 내비는 항상 떠 있어야 하는 탐색 UI라 그대로 둔다. 320×568(세로, 이
+   프로젝트의 최소 참조 뷰포트)은 그대로 광고를 보여줘야 하므로 두 실측값(568/390)
+   사이인 480px을 경계로 잡았다. */
+@media (max-height: 480px) {
+  .ad-sticky-mobile {
+    display: none;
+  }
+
+  body.has-sticky-ad .page {
+    --content-safe-bottom: var(--bottom-nav-h);
   }
 }
 
@@ -98,13 +116,11 @@
   .saved-delete-btn,
   .recommend-save-btn,
   .freq-filter-tab,
-  .theme-toggle,
-  .nav-toggle {
+  .theme-toggle {
     min-height: var(--target-min);
   }
 
-  .theme-toggle,
-  .nav-toggle {
+  .theme-toggle {
     min-width: var(--target-min);
   }
 

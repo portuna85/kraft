@@ -1,59 +1,4 @@
 /* ── Base: mobile (<640px) ── */
-.nav-desktop { display: none; }
-.nav-toggle  { display: flex; }
-
-/* .site-header의 backdrop-filter가 자식 fixed 요소의 containing block이 되어(크로미움
-   확인됨) bottom:0/inset:0이 뷰포트가 아니라 헤더 자신의 높이 기준으로 계산된다 —
-   그 결과 top==bottom이 되어 드로어가 찌그러지는 버그가 있었다. bottom 대신 dvh 기반
-   height로 뷰포트 실높이를 직접 계산해 containing block과 무관하게 만든다. */
-.nav-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 100vh;
-  height: 100dvh;
-  background: rgba(12, 10, 8, 0.42);
-  z-index: 18;
-}
-
-.nav-mobile-wrap {
-  position: fixed;
-  top: var(--header-offset);
-  left: 0;
-  right: 0;
-  height: calc(100vh - var(--header-offset));
-  height: calc(100dvh - var(--header-offset));
-  z-index: 19;
-  padding: 0 16px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.nav-mobile {
-  display: grid;
-  gap: 4px;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: var(--nav-mobile-bg);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
-}
-
-.nav-mobile a {
-  min-height: 46px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  border-bottom: 0;
-  color: var(--muted);
-  background: transparent;
-}
-
-.nav-mobile a[aria-current="page"] {
-  color: var(--text);
-  font-weight: 700;
-  background: var(--nav-active-bg);
-}
 
 .page-title {
   margin: 8px 0 14px;
@@ -145,7 +90,6 @@ form button,
   width: auto;
 }
 
-.header-actions .nav-toggle,
 .header-actions .theme-toggle {
   flex: 0 0 auto;
 }

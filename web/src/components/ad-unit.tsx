@@ -5,6 +5,7 @@ import Script from "next/script";
 import { BP } from "@/lib/breakpoints";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { useElementWidth } from "@/lib/use-element-width";
+import { useKeyboardOpen } from "@/lib/use-keyboard-open";
 
 // globals.css의 데스크톱 브레이크포인트와 동일하게 맞춘다. StickyMobileAd·AdSenseSidebar처럼
 // 뷰포트 자체로 표시 여부가 갈리는(사이드바 유무와 무관한) 광고에만 쓴다. 콘텐츠 컬럼
@@ -212,15 +213,20 @@ export function StickyMobileAd({ unit }: { unit: string }) {
   // CSS로는 ≥1024px에서 display:none으로만 숨기므로, 게이트 없이는 데스크톱에서도
   // 광고 유닛이 mount되어 숨겨진 채로 SDK 요청이 발생한다.
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
+  // KF-12b: 가상 키보드가 열려 있는 동안은 고정 광고를 내려 입력 폼과의 겹침을 막는다.
+  const keyboardOpen = useKeyboardOpen();
 
   useEffect(() => {
-    document.body.classList.toggle("has-sticky-ad", !isDesktop && !closed && Boolean(unit));
+    document.body.classList.toggle(
+      "has-sticky-ad",
+      !isDesktop && !closed && !keyboardOpen && Boolean(unit),
+    );
     return () => {
       document.body.classList.remove("has-sticky-ad");
     };
-  }, [isDesktop, closed, unit]);
+  }, [isDesktop, closed, keyboardOpen, unit]);
 
-  if (isDesktop || !unit || closed) return null;
+  if (isDesktop || !unit || closed || keyboardOpen) return null;
 
   return (
     <div className="ad-sticky-mobile">

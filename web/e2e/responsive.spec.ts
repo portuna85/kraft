@@ -183,6 +183,17 @@ test.describe("실제 콘텐츠가 채워진 라우트의 오버플로", () => {
       await expectNoOverflow(page);
     });
 
+    if (width === 768) {
+      test("/recommend — 좁은 컨테이너에서는 4열로 전환되지 않는다(KF-12a)", async ({ page }) => {
+        await page.setViewportSize({ width: 375, height: 800 });
+        await page.goto("/recommend");
+        const columns = await page
+          .locator(".recommend-form")
+          .evaluate((el) => getComputedStyle(el).gridTemplateColumns.trim().split(/\s+/).length);
+        expect(columns).toBeLessThan(4);
+      });
+    }
+
     test(`/analysis — ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 800 });
       await page.route("**/api/v1/stats/analysis", (route) =>
@@ -220,6 +231,33 @@ test.describe("실제 콘텐츠가 채워진 라우트의 오버플로", () => {
       await expectNoOverflow(page);
     });
   }
+
+  test("/recommend — 컨테이너 폭이 충분하면 4열이 되고 각 칸이 최소폭 아래로 압축되지 않는다(KF-12a)", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/recommend");
+    const form = page.locator(".recommend-form");
+    const containerWidth = (await form.boundingBox())!.width;
+    // 이 뷰포트에서 실제로 컨테이너 임계값(920px)을 넘지 못하면 이후 단언이 무의미하므로
+    // 전제부터 확인한다 — 넘지 못하면 테스트 자체가 검증하려는 상황이 아니라는 뜻.
+    expect(containerWidth).toBeGreaterThanOrEqual(920);
+
+    const trackWidths = await form.evaluate((el) =>
+      getComputedStyle(el)
+        .gridTemplateColumns.trim()
+        .split(/\s+/)
+        .map((v) => parseFloat(v)),
+    );
+    expect(trackWidths).toHaveLength(4);
+    const [labelCol, boardCol, disclaimerCol, buttonCol] = trackWidths;
+    // minmax() 지정 최소값(148/240/320/148px) 아래로 압축되면 라벨·버튼이 잘린다 —
+    // 서브픽셀 반올림 오차만 허용한다.
+    expect(labelCol).toBeGreaterThanOrEqual(147);
+    expect(boardCol).toBeGreaterThanOrEqual(239);
+    expect(disclaimerCol).toBeGreaterThanOrEqual(319);
+    expect(buttonCol).toBeGreaterThanOrEqual(147);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
