@@ -810,6 +810,17 @@ export interface components {
             /** Format: date-time */
             checkedAt?: string;
         };
+        PageResponseRecommendationSetSummary: {
+            items?: components["schemas"]["RecommendationSetSummary"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
+        };
         RecommendationSetSummary: {
             /** Format: int64 */
             id?: number;
@@ -1552,7 +1563,10 @@ export interface operations {
     };
     list_3: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: number;
+                size?: number;
+            };
             header: {
                 "X-Device-Token": string;
             };
@@ -1567,7 +1581,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["RecommendationSetSummary"][];
+                    "*/*": components["schemas"]["PageResponseRecommendationSetSummary"];
                 };
             };
         };
@@ -1704,7 +1718,10 @@ export interface operations {
     };
     recommendationSets: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: number;
+                size?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1717,7 +1734,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["RecommendationSetSummary"][];
+                    "*/*": components["schemas"]["PageResponseRecommendationSetSummary"];
                 };
             };
         };
