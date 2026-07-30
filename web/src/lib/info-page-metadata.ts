@@ -61,6 +61,13 @@ export const INFO_PAGE_METADATA = {
     changeFrequency: "monthly",
     priority: 0.5,
   },
+  "community-guidelines": {
+    title: "커뮤니티 이용규칙",
+    description: "KRAFT Lotto 커뮤니티에서 지켜야 할 이용 규칙과 신고 처리 방식을 안내합니다.",
+    lastModified: "2026-07-30",
+    changeFrequency: "monthly",
+    priority: 0.4,
+  },
 } as const satisfies Record<string, InfoPageMetadata>;
 
 export type InfoPageSlug = keyof typeof INFO_PAGE_METADATA;

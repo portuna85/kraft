@@ -8,6 +8,7 @@ const infoLinks = [
   { href: "/info/privacy", label: "개인정보처리방침" },
   { href: "/info/terms", label: "이용약관" },
   { href: "/info/responsible-play", label: "건전한 이용" },
+  { href: "/info/community-guidelines", label: "커뮤니티 이용규칙" },
   { href: "/info/contact", label: "문의하기" },
 ];
 
