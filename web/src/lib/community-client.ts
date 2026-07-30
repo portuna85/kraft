@@ -250,10 +250,12 @@ function isMySavedNumberArray(body: unknown): body is MySavedNumber[] {
   );
 }
 
-function isRecommendationSetSummaryArray(body: unknown): body is RecommendationSetSummary[] {
+function isRecommendationSetSummaryPage(body: unknown): body is PageResponse<RecommendationSetSummary> {
+  if (typeof body !== "object" || body === null) return false;
+  const b = body as Record<string, unknown>;
   return (
-    Array.isArray(body) &&
-    body.every((item) => {
+    Array.isArray(b.items) &&
+    b.items.every((item) => {
       if (typeof item !== "object" || item === null) return false;
       const i = item as Record<string, unknown>;
       return typeof i.id === "number" && typeof i.strategy === "string" && Array.isArray(i.items);
@@ -282,10 +284,13 @@ export async function getMySavedNumbers(): Promise<MySavedNumber[]> {
   );
 }
 
-export async function getMyRecommendationSets(): Promise<RecommendationSetSummary[]> {
-  return browserFetch<RecommendationSetSummary[]>(
-    "/api/v1/community/me/recommendation-sets",
+// KB-05: 백엔드가 무제한 배열 대신 페이지네이션(PageResponse)을 반환하도록 바뀌었다 —
+// 이 화면들에는 아직 "더 보기" UI가 없으므로, 오늘의 실사용 흐름을 그대로 유지할 만큼
+// 넉넉한 size로 한 번에 받아 온다(무한 증식만 방어, 페이지 UI 도입은 필요해지면 별도로).
+export async function getMyRecommendationSets(): Promise<PageResponse<RecommendationSetSummary>> {
+  return browserFetch<PageResponse<RecommendationSetSummary>>(
+    "/api/v1/community/me/recommendation-sets?page=0&size=50",
     { cache: "no-store" },
-    isRecommendationSetSummaryArray
+    isRecommendationSetSummaryPage
   );
 }

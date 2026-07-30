@@ -8,6 +8,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +29,9 @@ public class RecommendationSetHistoryService {
     private final RecommendationItemRepository recommendationItemRepository;
     private final LottoNumberCodec lottoNumberCodec;
     private final RecommendationSetAttachmentChecker attachmentChecker;
+
+    // KB-05: 목록 API가 무제한 배열을 반환하던 문제를 막는 상한 — CommunityPostService와 동일한 값.
+    private static final int MAX_PAGE_SIZE = 50;
 
     public RecommendationSetHistoryService(RecommendationSetRepository recommendationSetRepository,
                                             RecommendationItemRepository recommendationItemRepository,
@@ -61,8 +67,10 @@ public class RecommendationSetHistoryService {
     }
 
     @Transactional(readOnly = true)
-    public List<RecommendationSetSummary> list(String clientTokenHash) {
-        return toSummaries(recommendationSetRepository.findByClientTokenHashOrderByCreatedAtDesc(clientTokenHash));
+    public Page<RecommendationSetSummary> list(String clientTokenHash, int page, int size) {
+        Page<RecommendationSet> sets = recommendationSetRepository.findByClientTokenHashOrderByCreatedAtDesc(
+                clientTokenHash, pageRequest(page, size));
+        return mapWithBatchedItems(sets);
     }
 
     @Transactional(readOnly = true)
@@ -72,8 +80,28 @@ public class RecommendationSetHistoryService {
     }
 
     @Transactional(readOnly = true)
-    public List<RecommendationSetSummary> listForOwner(Long ownerUserId) {
-        return toSummaries(recommendationSetRepository.findByOwnerUserIdOrderByCreatedAtDesc(ownerUserId));
+    public Page<RecommendationSetSummary> listForOwner(Long ownerUserId, int page, int size) {
+        Page<RecommendationSet> sets = recommendationSetRepository.findByOwnerUserIdOrderByCreatedAtDesc(
+                ownerUserId, pageRequest(page, size));
+        return mapWithBatchedItems(sets);
+    }
+
+    private static PageRequest pageRequest(int page, int size) {
+        int clampedPage = Math.max(0, page);
+        int clampedSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
+        return PageRequest.of(clampedPage, clampedSize, Sort.unsorted());
+    }
+
+    // KB-05: list()/listForOwner()도 페이지 안의 세트마다 아이템을 개별 조회하면 N+1이 되므로,
+    // 페이지 내용의 세트 ID를 모아 IN 배치 조회 1회로 그룹핑한 뒤 세트당 O(1) 맵 조회로 요약을 만든다.
+    private Page<RecommendationSetSummary> mapWithBatchedItems(Page<RecommendationSet> sets) {
+        List<RecommendationSet> content = sets.getContent();
+        if (content.isEmpty()) {
+            return sets.map(this::toSummary);
+        }
+        List<Long> setIds = content.stream().map(RecommendationSet::getId).toList();
+        Map<Long, List<RecommendationItemView>> itemsBySetId = itemViewsBySetId(setIds);
+        return sets.map(set -> toSummary(set, itemsBySetId.getOrDefault(set.getId(), List.of())));
     }
 
     /**
@@ -180,19 +208,6 @@ public class RecommendationSetHistoryService {
                     "이 추천 세트에 대한 권한이 없습니다.");
         }
         return set;
-    }
-
-    // KB-05: 세트 목록(list/listForOwner)도 세트마다 아이템을 개별 조회하던 N+1이었다 —
-    // 세트 ID를 모아 IN 배치 조회 1회로 그룹핑한 뒤 세트당 O(1) 맵 조회로 요약을 만든다.
-    private List<RecommendationSetSummary> toSummaries(List<RecommendationSet> sets) {
-        if (sets.isEmpty()) {
-            return List.of();
-        }
-        List<Long> setIds = sets.stream().map(RecommendationSet::getId).toList();
-        Map<Long, List<RecommendationItemView>> itemsBySetId = itemViewsBySetId(setIds);
-        return sets.stream()
-                .map(set -> toSummary(set, itemsBySetId.getOrDefault(set.getId(), List.of())))
-                .toList();
     }
 
     private Map<Long, List<RecommendationItemView>> itemViewsBySetId(List<Long> setIds) {

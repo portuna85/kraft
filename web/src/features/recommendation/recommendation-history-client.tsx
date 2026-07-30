@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { LottoBalls } from "@/ui/domain/lotto-balls";
 import { getDeviceToken } from "@/lib/device-token";
 import { browserFetch, BrowserApiError } from "@/lib/browser-api";
+import type { PageResponse } from "@/lib/community-api";
 import type { RecommendationSetSummary } from "@/features/recommendation/types";
 
 const STRATEGY_LABELS = {
@@ -20,11 +21,14 @@ export function RecommendationHistoryClient() {
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
-    browserFetch<RecommendationSetSummary[]>("/api/v1/recommendation-sets", {
-      headers: { "X-Device-Token": getDeviceToken() },
-    })
+    // KB-05: 백엔드가 무제한 배열 대신 페이지네이션을 반환한다 — 이 화면에는 아직 "더 보기"
+    // UI가 없으므로 오늘의 실사용 흐름을 유지할 만큼 넉넉한 size로 한 번에 받아 온다.
+    browserFetch<PageResponse<RecommendationSetSummary>>(
+      "/api/v1/recommendation-sets?page=0&size=50",
+      { headers: { "X-Device-Token": getDeviceToken() } }
+    )
       .then((result) => {
-        setItems(result);
+        setItems(result.items);
         setHasError(false);
       })
       .catch(() => setHasError(true))

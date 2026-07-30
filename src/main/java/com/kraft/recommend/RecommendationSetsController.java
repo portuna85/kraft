@@ -1,7 +1,8 @@
 package com.kraft.recommend;
 
 import com.kraft.common.web.DeviceTokenSupport;
-import java.util.List;
+import com.kraft.common.web.PageResponse;
+import org.springframework.data.domain.Page;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -25,10 +27,13 @@ public class RecommendationSetsController {
     }
 
     @GetMapping
-    public ResponseEntity<List<RecommendationSetSummary>> list(
-            @RequestHeader(name = "X-Device-Token", required = true) String deviceToken) {
+    public ResponseEntity<PageResponse<RecommendationSetSummary>> list(
+            @RequestHeader(name = "X-Device-Token", required = true) String deviceToken,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
         String hash = deviceTokenSupport.requireHashedToken(deviceToken);
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(recommendationSetHistoryService.list(hash));
+        Page<RecommendationSetSummary> result = recommendationSetHistoryService.list(hash, page, size);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(PageResponse.from(result));
     }
 
     @GetMapping("/{id}")

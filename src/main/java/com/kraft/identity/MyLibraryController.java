@@ -1,5 +1,6 @@
 package com.kraft.identity;
 
+import com.kraft.common.web.PageResponse;
 import com.kraft.community.auth.CommunityPrincipal;
 import com.kraft.recommend.RecommendationSetHistoryService;
 import com.kraft.recommend.RecommendationSetSummary;
@@ -10,6 +11,7 @@ import com.kraft.saved.SavedNumberResponse;
 import com.kraft.saved.SavedNumbersService;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.data.domain.Page;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -79,11 +81,15 @@ public class MyLibraryController {
     }
 
     @GetMapping("/recommendation-sets")
-    public ResponseEntity<List<RecommendationSetSummary>> recommendationSets(
-            @AuthenticationPrincipal CommunityPrincipal principal) {
+    public ResponseEntity<PageResponse<RecommendationSetSummary>> recommendationSets(
+            @AuthenticationPrincipal CommunityPrincipal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        Page<RecommendationSetSummary> result =
+                recommendationSetHistoryService.listForOwner(principal.getUserId(), page, size);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
-                .body(recommendationSetHistoryService.listForOwner(principal.getUserId()));
+                .body(PageResponse.from(result));
     }
 
     /**

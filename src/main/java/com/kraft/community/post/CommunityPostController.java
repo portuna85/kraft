@@ -2,8 +2,8 @@ package com.kraft.community.post;
 
 import com.kraft.common.error.ApiException;
 import com.kraft.common.web.DeviceTokenSupport;
+import com.kraft.common.web.PageResponse;
 import com.kraft.community.auth.CommunityPrincipal;
-import com.kraft.community.common.PageResponse;
 import jakarta.validation.Valid;
 import java.net.URI;
 import org.springframework.data.domain.Page;

@@ -11,6 +11,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -214,15 +217,16 @@ class RecommendationSetHistoryServiceTest {
     @Test
     @DisplayName("계정으로 귀속된 추천 세트 목록을 owner_user_id 기준으로 조회한다")
     void listForOwner_returnsOwnedSets() {
-        given(recommendationSetRepository.findByOwnerUserIdOrderByCreatedAtDesc(99L))
-                .willReturn(List.of(setEntity(1L, null)));
+        given(recommendationSetRepository.findByOwnerUserIdOrderByCreatedAtDesc(
+                org.mockito.ArgumentMatchers.eq(99L), org.mockito.ArgumentMatchers.any(PageRequest.class)))
+                .willReturn(new PageImpl<>(List.of(setEntity(1L, null))));
         given(recommendationItemRepository.findBySetIdInOrderBySetIdAscPositionAsc(List.of(1L)))
                 .willReturn(List.of());
 
-        List<RecommendationSetSummary> result = service.listForOwner(99L);
+        Page<RecommendationSetSummary> result = service.listForOwner(99L, 0, 50);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).id()).isEqualTo(1L);
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).id()).isEqualTo(1L);
     }
 
     @Test
@@ -230,14 +234,15 @@ class RecommendationSetHistoryServiceTest {
     void list_multipleSets_batchLoadsItemsInSingleQuery() {
         RecommendationSet set1 = setEntity(1L, TOKEN_HASH);
         RecommendationSet set2 = setEntity(2L, TOKEN_HASH);
-        given(recommendationSetRepository.findByClientTokenHashOrderByCreatedAtDesc(TOKEN_HASH))
-                .willReturn(List.of(set1, set2));
+        given(recommendationSetRepository.findByClientTokenHashOrderByCreatedAtDesc(
+                org.mockito.ArgumentMatchers.eq(TOKEN_HASH), org.mockito.ArgumentMatchers.any(PageRequest.class)))
+                .willReturn(new PageImpl<>(List.of(set1, set2)));
         given(recommendationItemRepository.findBySetIdInOrderBySetIdAscPositionAsc(List.of(1L, 2L)))
                 .willReturn(List.of());
 
-        List<RecommendationSetSummary> result = service.list(TOKEN_HASH);
+        Page<RecommendationSetSummary> result = service.list(TOKEN_HASH, 0, 50);
 
-        assertThat(result).extracting(RecommendationSetSummary::id).containsExactly(1L, 2L);
+        assertThat(result.getContent()).extracting(RecommendationSetSummary::id).containsExactly(1L, 2L);
         verify(recommendationItemRepository, org.mockito.Mockito.never()).findBySetIdOrderByPosition(org.mockito.ArgumentMatchers.any());
     }
 

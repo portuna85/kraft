@@ -43,8 +43,12 @@ async function mockEmptyComments(page: Page, postId: number) {
 }
 
 async function mockRecommendationSets(page: Page, sets: unknown[]) {
-  await page.route("**/api/v1/recommendation-sets", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(sets) })
+  await page.route("**/api/v1/recommendation-sets**", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ items: sets, page: 0, size: 50, totalElements: sets.length, totalPages: 1 }),
+    })
   );
 }
 

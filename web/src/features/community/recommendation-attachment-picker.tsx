@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { LottoBalls } from "@/ui/domain/lotto-balls";
 import { getDeviceToken } from "@/lib/device-token";
 import { browserFetch } from "@/lib/browser-api";
+import type { PageResponse } from "@/lib/community-api";
 import type { RecommendationSetSummary } from "@/features/recommendation/types";
 
 export function RecommendationAttachmentPicker({
@@ -17,10 +18,11 @@ export function RecommendationAttachmentPicker({
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    browserFetch<RecommendationSetSummary[]>("/api/v1/recommendation-sets", {
-      headers: { "X-Device-Token": getDeviceToken() },
-    })
-      .then((result) => setSets(Array.isArray(result) ? result : []))
+    browserFetch<PageResponse<RecommendationSetSummary>>(
+      "/api/v1/recommendation-sets?page=0&size=50",
+      { headers: { "X-Device-Token": getDeviceToken() } }
+    )
+      .then((result) => setSets(Array.isArray(result?.items) ? result.items : []))
       .catch(() => setSets([]))
       .finally(() => setLoaded(true));
   }, []);

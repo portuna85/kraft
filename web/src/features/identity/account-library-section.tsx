@@ -26,10 +26,10 @@ export function AccountLibrarySection() {
     if (!session?.loggedIn) return;
     let cancelled = false;
     Promise.all([getMySavedNumbers(), getMyRecommendationSets()])
-      .then(([saved, sets]) => {
+      .then(([saved, setsPage]) => {
         if (!cancelled) {
           setSavedNumbers(saved);
-          setRecommendationSets(sets);
+          setRecommendationSets(setsPage.items);
         }
       })
       .catch(() => {

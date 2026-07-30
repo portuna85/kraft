@@ -98,7 +98,7 @@ class IdentityMergeApiTest {
                 .andExpect(jsonPath("$.length()").value(1));
         mockMvc.perform(get("/api/v1/community/me/recommendation-sets").with(asUser(owner)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1));
+                .andExpect(jsonPath("$.items.length()").value(1));
     }
 
     @Test
