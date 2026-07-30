@@ -11,7 +11,11 @@ const HIGH_TAX_RATE = 0.33;
 const LOW_TAX_RATE = 0.22;
 
 export function calcAfterTax(amount: number): number {
-  if (amount > HIGH_PRIZE_THRESHOLD) return Math.floor(amount * (1 - HIGH_TAX_RATE));
+  if (amount > HIGH_PRIZE_THRESHOLD) {
+    return Math.floor(
+      HIGH_PRIZE_THRESHOLD * (1 - LOW_TAX_RATE) + (amount - HIGH_PRIZE_THRESHOLD) * (1 - HIGH_TAX_RATE)
+    );
+  }
   if (amount > LOW_PRIZE_THRESHOLD) return Math.floor(amount * (1 - LOW_TAX_RATE));
   return amount;
 }

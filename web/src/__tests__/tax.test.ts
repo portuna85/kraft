@@ -15,10 +15,15 @@ describe("세후 금액 계산", () => {
     expect(calcAfterTax(300_000_000)).toBe(Math.floor(300_000_000 * 0.78));
   });
 
-  it("300,000,000원 초과 당첨금에 33% 세율을 적용한다", () => {
-    // Use (1 - 0.33) to mirror the implementation — 0.67 literal ≠ 1 - 0.33 in floating point
-    expect(calcAfterTax(1_000_000_000)).toBe(Math.floor(1_000_000_000 * (1 - 0.33)));
-    expect(calcAfterTax(2_100_000_000)).toBe(Math.floor(2_100_000_000 * (1 - 0.33)));
+  it("300,000,000원 초과 당첨금은 3억까지 22%, 초과분에 33%를 각각 적용한다", () => {
+    expect(calcAfterTax(1_000_000_000)).toBe(
+      Math.floor(300_000_000 * (1 - 0.22) + 700_000_000 * (1 - 0.33))
+    );
+    expect(calcAfterTax(2_100_000_000)).toBe(
+      Math.floor(300_000_000 * (1 - 0.22) + 1_800_000_000 * (1 - 0.33))
+    );
+    // 문서 실측값(GPT 라이브 감사 2026-07-30 §2.1) 기준 회귀 방지
+    expect(calcAfterTax(1_595_129_563)).toBe(1_101_736_807);
   });
 
   it("원 미만 소수점을 버려 결과를 정수로 만든다", () => {
@@ -32,7 +37,7 @@ describe("세후 금액 계산", () => {
     expect(calcAfterTax(2_000_001)).toBe(Math.floor(2_000_001 * 0.78));
   });
 
-  it("경계값: 300,000,001원은 높은 세율 구간으로 들어간다", () => {
-    expect(calcAfterTax(300_000_001)).toBe(Math.floor(300_000_001 * (1 - 0.33)));
+  it("경계값: 300,000,001원은 3억까지 22%, 1원에만 33%를 적용한다", () => {
+    expect(calcAfterTax(300_000_001)).toBe(Math.floor(300_000_000 * (1 - 0.22) + 1 * (1 - 0.33)));
   });
 });
