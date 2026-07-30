@@ -1,7 +1,11 @@
-package com.kraft.operationlog;
+package com.kraft.maintenance;
 
 import com.kraft.admin.AdminAuditLog;
 import com.kraft.admin.AdminAuditLogRepository;
+import com.kraft.operationlog.WinningNumberOperationLog;
+import com.kraft.operationlog.WinningNumberOperationLogRepository;
+import com.kraft.operationlog.WinningNumberOperationStatus;
+import com.kraft.winningnumber.WinningNumberOperationType;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;

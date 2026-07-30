@@ -1,5 +1,6 @@
 package com.kraft.operationlog;
 
+import com.kraft.winningnumber.WinningNumberOperationType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

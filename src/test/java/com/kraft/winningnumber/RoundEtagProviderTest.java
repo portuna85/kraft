@@ -1,8 +1,5 @@
-package com.kraft.common.web;
+package com.kraft.winningnumber;
 
-import com.kraft.winningnumber.WinningNumber;
-import com.kraft.winningnumber.WinningNumberRepository;
-import com.kraft.winningnumber.WinningNumbersCollectedEvent;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -14,13 +11,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-@DisplayName("이태그 버전 제공자 테스트")
-class ETagVersionProviderTest {
+@DisplayName("회차 이태그 제공자 테스트")
+class RoundEtagProviderTest {
 
     @Test
     @DisplayName("최신성 경로는 회차가 알려진 상태에서도 항상 폴백 이태그를 사용한다")
     void freshnessPath_alwaysReturnsNullEvenWithKnownRound() {
-        ETagVersionProvider provider = providerWithLatestRound(1234);
+        RoundEtagProvider provider = providerWithLatestRound(1234);
 
         assertThat(provider.etagForPath("/api/v1/rounds/freshness")).isNull();
     }
@@ -28,7 +25,7 @@ class ETagVersionProviderTest {
     @Test
     @DisplayName("장애 이력 경로는 회차가 알려진 상태에서도 항상 폴백 이태그를 사용한다")
     void incidentsPath_alwaysReturnsNullEvenWithKnownRound() {
-        ETagVersionProvider provider = providerWithLatestRound(1234);
+        RoundEtagProvider provider = providerWithLatestRound(1234);
 
         assertThat(provider.etagForPath("/api/v1/status/incidents")).isNull();
     }
@@ -36,7 +33,7 @@ class ETagVersionProviderTest {
     @Test
     @DisplayName("회차를 아직 모르는 상태에서도 특수 경로는 폴백 이태그를 사용한다")
     void unknownRoundState_stillReturnsNullForSpecialPaths() {
-        ETagVersionProvider provider = providerWithNoRound();
+        RoundEtagProvider provider = providerWithNoRound();
 
         assertThat(provider.etagForPath("/api/v1/rounds/freshness")).isNull();
         assertThat(provider.etagForPath("/api/v1/status/incidents")).isNull();
@@ -45,7 +42,7 @@ class ETagVersionProviderTest {
     @Test
     @DisplayName("그 외 경로는 최신 회차 기반 이태그를 반환한다")
     void otherNonSpecialPath_stillReturnsMutableRoundEtag() {
-        ETagVersionProvider provider = providerWithLatestRound(1234);
+        RoundEtagProvider provider = providerWithLatestRound(1234);
 
         assertThat(provider.etagForPath("/api/v1/rounds/latest")).startsWith("\"round-1234-b");
     }
@@ -56,7 +53,7 @@ class ETagVersionProviderTest {
         WinningNumberRepository repository = mock(WinningNumberRepository.class);
         WinningNumber latest = winningNumber(1234);
         when(repository.findTopByOrderByRoundDesc()).thenReturn(Optional.of(latest));
-        ETagVersionProvider provider = new ETagVersionProvider(repository);
+        RoundEtagProvider provider = new RoundEtagProvider(repository);
         provider.init();
 
         String beforeRegression = provider.etagForPath("/api/v1/rounds/latest");
@@ -82,7 +79,7 @@ class ETagVersionProviderTest {
         );
     }
 
-    private static ETagVersionProvider providerWithLatestRound(int round) {
+    private static RoundEtagProvider providerWithLatestRound(int round) {
         WinningNumberRepository repository = mock(WinningNumberRepository.class);
         WinningNumber winningNumber = new WinningNumber(
                 round,
@@ -94,15 +91,15 @@ class ETagVersionProviderTest {
                 OffsetDateTime.now(ZoneId.of("Asia/Seoul"))
         );
         when(repository.findTopByOrderByRoundDesc()).thenReturn(Optional.of(winningNumber));
-        ETagVersionProvider provider = new ETagVersionProvider(repository);
+        RoundEtagProvider provider = new RoundEtagProvider(repository);
         provider.init();
         return provider;
     }
 
-    private static ETagVersionProvider providerWithNoRound() {
+    private static RoundEtagProvider providerWithNoRound() {
         WinningNumberRepository repository = mock(WinningNumberRepository.class);
         when(repository.findTopByOrderByRoundDesc()).thenReturn(Optional.empty());
-        ETagVersionProvider provider = new ETagVersionProvider(repository);
+        RoundEtagProvider provider = new RoundEtagProvider(repository);
         provider.init();
         return provider;
     }

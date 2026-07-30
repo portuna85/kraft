@@ -33,7 +33,7 @@ class InMemoryStateInventoryTest {
             "com.kraft.common.web.PublicRateLimitFilter",
             "com.kraft.community.auth.CommunityWriteRateLimitFilter",
             "com.kraft.admin.AdminLoginAttemptService",
-            "com.kraft.common.web.ETagVersionProvider",
+            "com.kraft.winningnumber.RoundEtagProvider",
             "com.kraft.recommend.LottoRecommendationService",
             "com.kraft.winningnumber.LottoFreshnessMetrics");
 

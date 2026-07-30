@@ -17,10 +17,10 @@ public class PublicApiCacheControlFilter extends OncePerRequestFilter {
 
     private static final String SHORT_PUBLIC_CACHE = "public, max-age=60, must-revalidate";
 
-    private final ETagVersionProvider eTagVersionProvider;
+    private final EtagVersionSource etagVersionSource;
 
-    public PublicApiCacheControlFilter(ETagVersionProvider eTagVersionProvider) {
-        this.eTagVersionProvider = eTagVersionProvider;
+    public PublicApiCacheControlFilter(EtagVersionSource etagVersionSource) {
+        this.etagVersionSource = etagVersionSource;
     }
 
     @Override
@@ -62,7 +62,7 @@ public class PublicApiCacheControlFilter extends OncePerRequestFilter {
     }
 
     private String resolveETag(String path, ContentCachingResponseWrapper responseWrapper) {
-        String semantic = eTagVersionProvider.etagForPath(path);
+        String semantic = etagVersionSource.etagForPath(path);
         if (semantic != null) {
             return semantic;
         }

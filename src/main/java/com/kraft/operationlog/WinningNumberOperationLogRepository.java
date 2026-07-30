@@ -21,7 +21,7 @@ public interface WinningNumberOperationLogRepository extends JpaRepository<Winni
     @Query("SELECT l FROM WinningNumberOperationLog l "
             + "WHERE l.createdAt >= :since "
             + "AND (l.executionStatus = com.kraft.operationlog.WinningNumberOperationStatus.FAILURE "
-            + "     OR l.operationType = com.kraft.operationlog.WinningNumberOperationType.MANUAL_UPSERT) "
+            + "     OR l.operationType = com.kraft.winningnumber.WinningNumberOperationType.MANUAL_UPSERT) "
             + "ORDER BY l.createdAt DESC")
     List<WinningNumberOperationLog> findNotableSince(@Param("since") OffsetDateTime since);
 

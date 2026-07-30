@@ -1,6 +1,7 @@
-package com.kraft.operationlog;
+package com.kraft.maintenance;
 
 import com.kraft.admin.AdminAuditLogRepository;
+import com.kraft.operationlog.WinningNumberOperationLogRepository;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +13,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 
+// KB-17: operationlog·admin 양쪽 로그 테이블을 한 스케줄에서 함께 정리하는 의도적 설계다
+// (교차 의존 자체는 없앨 수 없다). 예전에는 operationlog 패키지 안에 있어서 그 패키지가
+// admin에 의존하는 것처럼 보였는데(operationlog→admin, 순환의 한 변), 이 클래스가
+// 정리(maintenance) 역할이지 operationlog 도메인 로직이 아니라는 사실을 패키지로도
+// 드러내기 위해 별도 leaf 패키지로 옮겼다 — 아무도 maintenance에 의존하지 않는다.
 @Component
 public class LogRetentionScheduler {
 

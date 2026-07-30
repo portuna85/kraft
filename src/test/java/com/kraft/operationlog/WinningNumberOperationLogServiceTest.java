@@ -1,5 +1,7 @@
 package com.kraft.operationlog;
 
+import com.kraft.winningnumber.WinningNumberCollectionLoggedEvent;
+import com.kraft.winningnumber.WinningNumberOperationType;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -105,6 +107,24 @@ class WinningNumberOperationLogServiceTest {
         assertThat(saved.getExecutionStatus()).isEqualTo(WinningNumberOperationStatus.SUCCESS);
         assertThat(saved.getRound()).isEqualTo(1201);
         assertThat(saved.getSourceDetail()).isEqualTo("ops-api ip=1.2.3.4 requestId=abc");
+    }
+
+    @Test
+    @DisplayName("KB-17: 수집 로그 이벤트를 받으면 성공 여부에 따라 logSuccess/logFailure로 위임한다")
+    void onCollectionLogged_delegatesToLogSuccessOrLogFailureBySuccessFlag() {
+        service.onCollectionLogged(new WinningNumberCollectionLoggedEvent(
+                WinningNumberOperationType.EXTERNAL_COLLECT, true, 1201, "external-source", "성공"));
+        service.onCollectionLogged(new WinningNumberCollectionLoggedEvent(
+                WinningNumberOperationType.EXTERNAL_COLLECT, false, 1202, "external-source", "실패"));
+
+        org.mockito.ArgumentCaptor<WinningNumberOperationLog> captor =
+                org.mockito.ArgumentCaptor.forClass(WinningNumberOperationLog.class);
+        verify(repository, times(2)).save(captor.capture());
+        assertThat(captor.getAllValues())
+                .extracting(WinningNumberOperationLog::getRound, WinningNumberOperationLog::getExecutionStatus)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(1201, WinningNumberOperationStatus.SUCCESS),
+                        org.assertj.core.groups.Tuple.tuple(1202, WinningNumberOperationStatus.FAILURE));
     }
 
     private static WinningNumberOperationLog log(WinningNumberOperationType type,

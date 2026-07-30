@@ -1,8 +1,6 @@
 package com.kraft.winningnumber;
 
 import com.kraft.common.error.ApiException;
-import com.kraft.operationlog.WinningNumberOperationLogService;
-import com.kraft.operationlog.WinningNumberOperationType;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.ArrayList;
@@ -11,6 +9,7 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 /**
@@ -27,7 +26,7 @@ public class WinningNumberCollectionService {
     private final WinningNumberRepository winningNumberRepository;
     private final ExternalWinningNumberFetchClient externalWinningNumberFetchClient;
     private final WinningNumberCommandService winningNumberCommandService;
-    private final WinningNumberOperationLogService winningNumberOperationLogService;
+    private final ApplicationEventPublisher eventPublisher;
     private final WinningNumberCollectionEventPublisher collectionEventPublisher;
     private final Counter collectFailureCounter;
     private final long catchUpDelayMs;
@@ -35,19 +34,31 @@ public class WinningNumberCollectionService {
     public WinningNumberCollectionService(WinningNumberRepository winningNumberRepository,
                                           ExternalWinningNumberFetchClient externalWinningNumberFetchClient,
                                           WinningNumberCommandService winningNumberCommandService,
-                                          WinningNumberOperationLogService winningNumberOperationLogService,
+                                          ApplicationEventPublisher eventPublisher,
                                           WinningNumberCollectionEventPublisher collectionEventPublisher,
                                           MeterRegistry meterRegistry,
                                           @Value("${kraft.external-lotto.catch-up-delay-ms:200}") long catchUpDelayMs) {
         this.winningNumberRepository = winningNumberRepository;
         this.externalWinningNumberFetchClient = externalWinningNumberFetchClient;
         this.winningNumberCommandService = winningNumberCommandService;
-        this.winningNumberOperationLogService = winningNumberOperationLogService;
+        this.eventPublisher = eventPublisher;
         this.collectionEventPublisher = collectionEventPublisher;
         this.collectFailureCounter = Counter.builder("kraft_lotto_external_collect_failures_total")
                 .description("외부 회차 수집 실패 횟수(end-of-data 제외)")
                 .register(meterRegistry);
         this.catchUpDelayMs = catchUpDelayMs;
+    }
+
+    // KB-17: operationlog를 직접 호출하는 대신 이벤트를 발행한다(winningnumber→operationlog
+    // 순환의 한 변을 역전) — WinningNumberCollectionLoggedEvent 참고.
+    private void logSuccess(Integer round, String sourceDetail, String message) {
+        eventPublisher.publishEvent(new WinningNumberCollectionLoggedEvent(
+                WinningNumberOperationType.EXTERNAL_COLLECT, true, round, sourceDetail, message));
+    }
+
+    private void logFailure(Integer round, String sourceDetail, String message) {
+        eventPublisher.publishEvent(new WinningNumberCollectionLoggedEvent(
+                WinningNumberOperationType.EXTERNAL_COLLECT, false, round, sourceDetail, message));
     }
 
     /**
@@ -67,8 +78,7 @@ public class WinningNumberCollectionService {
         } catch (RuntimeException exception) {
             if (isEndOfData(exception) && latest.isPresent()) {
                 WinningNumber latestRound = latest.get();
-                winningNumberOperationLogService.logSuccess(
-                        WinningNumberOperationType.EXTERNAL_COLLECT,
+                logSuccess(
                         latestRound.getRound(),
                         "external-source",
                         "다음 회차가 아직 공개되지 않았습니다. 이미 최신 회차까지 수집되어 있습니다."
@@ -78,12 +88,7 @@ public class WinningNumberCollectionService {
                 return WinningNumberResponse.from(latestRound);
             }
             collectFailureCounter.increment();
-            winningNumberOperationLogService.logFailure(
-                    WinningNumberOperationType.EXTERNAL_COLLECT,
-                    nextRound,
-                    "external-source",
-                    exception.getMessage()
-            );
+            logFailure(nextRound, "external-source", exception.getMessage());
             throw exception;
         }
     }
@@ -110,12 +115,7 @@ public class WinningNumberCollectionService {
                     break;
                 }
                 collectFailureCounter.increment();
-                winningNumberOperationLogService.logFailure(
-                        WinningNumberOperationType.EXTERNAL_COLLECT,
-                        nextRound,
-                        "external-source",
-                        exception.getMessage()
-                );
+                logFailure(nextRound, "external-source", exception.getMessage());
                 throw exception;
             }
         }
@@ -132,12 +132,7 @@ public class WinningNumberCollectionService {
             return collectFetchedRound(round);
         } catch (RuntimeException exception) {
             collectFailureCounter.increment();
-            winningNumberOperationLogService.logFailure(
-                    WinningNumberOperationType.EXTERNAL_COLLECT,
-                    round,
-                    "external-source",
-                    exception.getMessage()
-            );
+            logFailure(round, "external-source", exception.getMessage());
             throw exception;
         }
     }
@@ -152,12 +147,7 @@ public class WinningNumberCollectionService {
         WinningNumberUpsertRequest request = externalWinningNumberFetchClient.fetchRound(round);
         WinningNumberUpsertResult result = winningNumberCommandService.upsertWithResult(request);
         WinningNumberResponse response = result.response();
-        winningNumberOperationLogService.logSuccess(
-                WinningNumberOperationType.EXTERNAL_COLLECT,
-                response.round(),
-                "external-source",
-                "외부 회차 수집 및 저장에 성공했습니다."
-        );
+        logSuccess(response.round(), "external-source", "외부 회차 수집 및 저장에 성공했습니다.");
         log.info("회차 수집 완료: round={} drawDate={} changed={}", response.round(), response.drawDate(), result.changed());
         return result;
     }

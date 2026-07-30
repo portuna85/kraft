@@ -1,6 +1,8 @@
 package com.kraft.operationlog;
 
 import com.kraft.common.web.RequestIdFilter;
+import com.kraft.winningnumber.WinningNumberCollectionLoggedEvent;
+import com.kraft.winningnumber.WinningNumberOperationType;
 import jakarta.persistence.criteria.Predicate;
 import java.time.Clock;
 import java.time.OffsetDateTime;
@@ -11,6 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.slf4j.MDC;
+import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -61,6 +64,24 @@ public class WinningNumberOperationLogService {
     public void onManualUpsertCommitted(WinningNumberManualUpsertEvent event) {
         logSuccess(WinningNumberOperationType.MANUAL_UPSERT, event.round(), event.caller(),
                 "운영 수동 회차 저장에 성공했습니다.");
+    }
+
+    /**
+     * KB-17: winningnumber→operationlog 직접 호출 대신 이벤트로 역전한 경로.
+     * {@link com.kraft.winningnumber.WinningNumberCollectionService}는 외부 HTTP fetch를
+     * 트랜잭션 밖에서 수행하도록 class-level {@code @Transactional}을 두지 않으므로, 이
+     * 리스너는 {@code @TransactionalEventListener}(AFTER_COMMIT)로 만들면 활성 트랜잭션이
+     * 없어 조용히 발화하지 않을 수 있다 — 평범한 {@code @EventListener}로 즉시(동기) 처리해
+     * 기존 직접 호출과 같은 타이밍을 유지한다. logSuccess/logFailure 자체가 이미
+     * REQUIRES_NEW라 독립 트랜잭션에서 커밋된다.
+     */
+    @EventListener
+    public void onCollectionLogged(WinningNumberCollectionLoggedEvent event) {
+        if (event.success()) {
+            logSuccess(event.operationType(), event.round(), event.sourceDetail(), event.message());
+        } else {
+            logFailure(event.operationType(), event.round(), event.sourceDetail(), event.message());
+        }
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)

@@ -1,7 +1,6 @@
-package com.kraft.common.web;
+package com.kraft.winningnumber;
 
-import com.kraft.winningnumber.WinningNumberRepository;
-import com.kraft.winningnumber.WinningNumbersCollectedEvent;
+import com.kraft.common.web.EtagVersionSource;
 import jakarta.annotation.PostConstruct;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
@@ -20,9 +19,12 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * 있다. 이는 캐시 조회에서 잘못된 데이터를 주는 문제가 아니라(값이 다르면 클라이언트가
  * 그냥 다시 받아갈 뿐), 로드밸런서가 요청을 인스턴스 사이로 분산할 때 If-None-Match가
  * 실제보다 자주 미스로 판정되는 정도의 캐시 효율 저하다.
+ * KB-17: common.web에 있던 시절 winningnumber를 직접 참조해 common→feature 순환의
+ * 한 변을 이뤘다 — 도메인을 아는 이 패키지로 옮기고, common.web은 EtagVersionSource
+ * 인터페이스로만 이 클래스를 바라본다.
  */
 @Component
-public class ETagVersionProvider {
+public class RoundEtagProvider implements EtagVersionSource {
 
     private static final String UNKNOWN = "\"round-unknown\"";
     // 회차 번호만으로는 보정을 표현할 수 없는 경로 — 항상 MD5 폴백(응답 바디 해시)을 쓰도록 강제한다.
@@ -36,7 +38,7 @@ public class ETagVersionProvider {
     private final AtomicLong bump = new AtomicLong();
     private final WinningNumberRepository winningNumberRepository;
 
-    public ETagVersionProvider(WinningNumberRepository winningNumberRepository) {
+    public RoundEtagProvider(WinningNumberRepository winningNumberRepository) {
         this.winningNumberRepository = winningNumberRepository;
     }
 
@@ -61,9 +63,7 @@ public class ETagVersionProvider {
         return "\"round-%d-b%d\"".formatted(latestRound, bump.incrementAndGet());
     }
 
-    /**
-     * 경로에 맞는 ETag를 반환한다. null 반환 시 호출자가 MD5 폴백(바디 해시)을 적용해야 한다.
-     */
+    @Override
     public String etagForPath(String requestPath) {
         if (MD5_FALLBACK_PATHS.contains(requestPath)) {
             return null;

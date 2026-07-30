@@ -1,5 +1,6 @@
 package com.kraft.operationlog;
 
+import com.kraft.winningnumber.WinningNumberOperationType;
 import java.time.OffsetDateTime;
 
 public record WinningNumberOperationLogFilter(
