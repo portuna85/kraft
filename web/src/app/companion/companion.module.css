@@ -108,6 +108,16 @@
   box-shadow: 0 0 0 2px var(--accent);
 }
 
+/* RW-P1-06: box-shadow는 forced-colors 모드에서 보통 사라지고 border-color도
+   시스템 팔레트로 치환돼 미선택 공과 구분이 어려울 수 있다 — 시스템 색상
+   outline으로 구조적 신호를 보장한다. */
+@media (forced-colors: active) {
+  .filterBalls :global(.ball.ball-selected) {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
 @media (min-width: 640px) {
   .item {
     grid-template-columns: auto minmax(0, 1fr) auto;

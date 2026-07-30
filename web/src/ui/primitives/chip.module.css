@@ -28,3 +28,13 @@
   border-color: var(--color-brand);
   color: var(--color-brand-strong);
 }
+
+/* RW-P1-06: 선택 상태가 배경·글자색 차이뿐이라, Windows 고대비 모드(forced-colors)에서
+   커스텀 색상이 시스템 팔레트로 치환되면 미선택 상태와 구분이 안 될 수 있다 — 시스템
+   색상 키워드로 outline을 추가해 색상 매핑과 무관하게 구조적으로 구분되게 한다. */
+@media (forced-colors: active) {
+  .selected {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}

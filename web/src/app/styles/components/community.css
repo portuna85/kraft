@@ -37,6 +37,10 @@
   margin-bottom: var(--panel-gap);
 }
 
+.community-post-content {
+  max-width: var(--prose-width);
+}
+
 .community-post-content p {
   margin: 0 0 1em;
   line-height: 1.7;

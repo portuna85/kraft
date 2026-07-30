@@ -50,6 +50,19 @@
   border-bottom-color: var(--color-brand);
 }
 
+/* RW-P1-05: 이 내비는 ≥1024px에서만 보이지만(header.module.css), 터치스크린
+   노트북·2-in-1처럼 coarse pointer인 데스크톱 기기도 있다 — 그런 기기에서도
+   44px 최소 타깃을 보장한다. min-height는 인라인 기본 표시에는 적용되지 않으므로
+   inline-flex로 바꿔 세로 중앙 정렬한다. */
+@media (pointer: coarse) {
+  .nav a,
+  .toggle {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target-min);
+  }
+}
+
 .menu {
   position: absolute;
   top: 100%;

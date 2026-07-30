@@ -42,3 +42,12 @@
   background: var(--color-surface-3);
   color: var(--color-brand-strong);
 }
+
+/* RW-P1-06: 배경·글자색만으로 선택 상태를 표시해 forced-colors 모드에서 미선택
+   옵션과 구분이 안 될 수 있다 — 시스템 색상으로 구조적 신호(outline)를 더한다. */
+@media (forced-colors: active) {
+  .selected {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}

@@ -112,6 +112,11 @@
   --duration-fast: 120ms;
   --duration-base: 180ms;
   --duration-slow: 240ms;
+
+  /* RW-P1-03: 장문 본문(FAQ·약관·커뮤니티 게시글)의 가독성 폭 상한 — 셸 전체
+     폭(--shell-max: 1180px)을 그대로 쓰면 한 줄이 너무 길어져 읽기 어렵다.
+     70ch는 일반적인 가독성 권장 범위(45~75자)의 중간값. */
+  --prose-width: 70ch;
 }
 
 [data-theme="dark"] {

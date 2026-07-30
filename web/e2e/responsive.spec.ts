@@ -294,6 +294,29 @@ test.describe("정적 라우트·에러 경계 오버플로", () => {
       await expectNoOverflow(page);
     });
   }
+
+  // RW-P1-03: 넓은 화면(셸 폭 1180px)에서 장문 본문이 --prose-width(70ch) 상한을
+  // 넘지 않는지 확인한다. 320/768px는 뷰포트 자체가 70ch보다 좁아 상한이 관측되지
+  // 않으므로 별도의 넓은 뷰포트가 필요하다.
+  test("/info/faq — 1280px, 본문 폭이 가독성 상한(--prose-width)을 넘지 않는다", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/info/faq");
+    await expect(page.getByRole("heading", { name: "자주 묻는 질문" })).toBeVisible();
+
+    const proseWidthPx = await page.evaluate(() => {
+      const probe = document.createElement("div");
+      probe.style.width = "70ch";
+      probe.style.position = "absolute";
+      probe.style.visibility = "hidden";
+      document.body.appendChild(probe);
+      const px = probe.getBoundingClientRect().width;
+      probe.remove();
+      return px;
+    });
+    const articleBox = await page.locator("article").first().boundingBox();
+    expect(articleBox).not.toBeNull();
+    expect(articleBox!.width).toBeLessThanOrEqual(proseWidthPx + 1);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -440,6 +463,40 @@ test.describe("데스크톱 내비게이션", () => {
     for (const label of ["출현 통계", "패턴 통계", "동반 출현", "번호 분석"]) {
       await expect(page.getByRole("link", { name: label })).toBeVisible();
     }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RW-P1-05: ≥1024px에서도 coarse pointer(터치스크린 노트북·2-in-1)인 기기가 있다 —
+// hasTouch:true는 Chromium에서 pointer:coarse 미디어 특성을 실제로 트리거한다
+// (일반 44px 타깃 테스트는 Mobile Chrome/Tablet 프로젝트에서만 의미가 있어 데스크톱
+// 내비가 안 보이는 좁은 뷰포트로 한정돼 있었다 — 이 조합은 그 사각지대를 메운다).
+// ─────────────────────────────────────────────────────────────────────────────
+test.describe("데스크톱 내비게이션 — coarse pointer 기기", () => {
+  test.use({ viewport: { width: 1280, height: 800 }, hasTouch: true });
+
+  test("coarse pointer에서도 데스크톱 내비 링크·토글이 44px 이상이다", async ({ page }) => {
+    await page.goto("/");
+
+    const isCoarse = await page.evaluate(() => window.matchMedia("(pointer: coarse)").matches);
+    test.skip(!isCoarse, "이 브라우저 엔진에서는 hasTouch가 pointer:coarse를 트리거하지 않음");
+
+    const nav = page.getByTestId("desktop-nav");
+    await expect(nav).toBeVisible();
+
+    const links = nav.getByRole("link");
+    const linkCount = await links.count();
+    expect(linkCount).toBeGreaterThan(0);
+    for (let i = 0; i < linkCount; i++) {
+      const box = await links.nth(i).boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+    }
+
+    const dataToggle = nav.getByRole("button", { name: "데이터" });
+    const toggleBox = await dataToggle.boundingBox();
+    expect(toggleBox).not.toBeNull();
+    expect(toggleBox!.height).toBeGreaterThanOrEqual(44);
   });
 });
 
