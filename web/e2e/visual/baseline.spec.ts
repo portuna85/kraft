@@ -130,6 +130,10 @@ const ROUTES: readonly Route[] = [
     afterGoto: async (page) => {
       await page.getByPlaceholder("X-Ops-Token 값을 입력하세요").fill("secret-token");
       await page.getByRole("button", { name: "운영 상태 확인" }).click();
+      // 조회 완료 후 메시지·요약 패널까지 모두 렌더링된 뒤에야 안정된다 —
+      // readySelector(.ops-summary-grid)만 기다리면 상태 메시지 단락이
+      // 뒤이어 붙으며 전체 페이지 높이가 한 번 더 바뀌어 스크린샷이 불안정해진다.
+      await expect(page.getByText("운영 상태를 불러왔습니다.")).toBeVisible();
     },
   },
 ];
