@@ -1,17 +1,15 @@
 package com.kraft.community.auth;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import com.kraft.common.config.CommunityProperties;
 import com.kraft.common.web.ApiErrorResponseWriter;
+import com.kraft.common.web.RateLimitCounter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.OptionalInt;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -27,26 +25,25 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * 전역 서블릿 필터로 한 번 더 실행되어(AdminSecurityConfig의 adminLoginCsrfRedirectFilter와
  * 동일한 이유) 카운트가 두 번 증가한다. CommunitySecurityConfig가 직접 new로 생성해 체인에만
  * 끼워 넣는다.
- * NOTE: Caffeine 기반 — 단일 인스턴스 전용. 인스턴스마다 독립된 카운터를 가지므로 수평
- * 확장 시 사용자당 실효 한도가 인스턴스 수만큼 배로 늘어난다(로드밸런서가 같은 사용자를
- * 매번 다른 인스턴스로 보낼 경우). 인스턴스 간 공유가 필요해지면 Redis 전환 필요.
+ * 카운터 저장소는 RateLimitCounter(kraft.security.rate-limit-backend로 선택, PublicRateLimitFilter와
+ * 동일한 빈 공유 — 접두어로 키 네임스페이스만 분리)에 위임한다.
  */
 public class CommunityWriteRateLimitFilter extends OncePerRequestFilter {
 
     private static final Set<String> WRITE_METHODS = Set.of("POST", "PUT", "DELETE");
+    private static final int WINDOW_SECONDS = 60;
+    private static final String KEY_PREFIX = "ratelimit:community-write:";
 
-    private final Cache<Long, AtomicInteger> counters;
     private final CommunityProperties communityProperties;
+    private final RateLimitCounter rateLimitCounter;
     private final ApiErrorResponseWriter apiErrorResponseWriter;
 
     public CommunityWriteRateLimitFilter(CommunityProperties communityProperties,
+                                          RateLimitCounter rateLimitCounter,
                                           ApiErrorResponseWriter apiErrorResponseWriter) {
         this.communityProperties = communityProperties;
+        this.rateLimitCounter = rateLimitCounter;
         this.apiErrorResponseWriter = apiErrorResponseWriter;
-        this.counters = Caffeine.newBuilder()
-                .expireAfterWrite(1, TimeUnit.MINUTES)
-                .maximumSize(10_000)
-                .build();
     }
 
     @Override
@@ -65,9 +62,16 @@ public class CommunityWriteRateLimitFilter extends OncePerRequestFilter {
         }
 
         int limit = communityProperties.writeRateLimitPerMinute();
-        int current = counters.get(userId, id -> new AtomicInteger(0)).incrementAndGet();
-        if (current > limit) {
-            response.setIntHeader("Retry-After", 60);
+        OptionalInt current = rateLimitCounter.incrementAndGet(KEY_PREFIX + userId, WINDOW_SECONDS);
+
+        if (current.isEmpty()) {
+            // 카운터 백엔드(Redis) 장애 — fail-open, 이번 요청은 한도 검사 없이 통과.
+            chain.doFilter(request, response);
+            return;
+        }
+
+        if (current.getAsInt() > limit) {
+            response.setIntHeader("Retry-After", WINDOW_SECONDS);
             apiErrorResponseWriter.write(request, response, HttpStatus.TOO_MANY_REQUESTS,
                     "COMMUNITY_WRITE_RATE_LIMIT_EXCEEDED", "작성 요청이 너무 많습니다. 잠시 후 다시 시도하세요.");
             return;

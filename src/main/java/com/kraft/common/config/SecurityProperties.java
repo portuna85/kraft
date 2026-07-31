@@ -6,5 +6,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record SecurityProperties(
         String trustedProxyCidr,
         int rateLimitPerMinute,
-        int rateLimitMaxKeys
+        int rateLimitMaxKeys,
+        String rateLimitBackend
 ) {}

@@ -30,8 +30,12 @@ import org.junit.jupiter.api.Test;
 class InMemoryStateInventoryTest {
 
     private static final Set<String> KNOWN_HOLDERS = Set.of(
-            "com.kraft.common.web.PublicRateLimitFilter",
-            "com.kraft.community.auth.CommunityWriteRateLimitFilter",
+            // 레이트리밋 카운터 상태는 PublicRateLimitFilter/CommunityWriteRateLimitFilter에서
+            // RateLimitCounter로 옮겨졌다(2026-07-31) — 두 필터는 더 이상 직접 상태를 들지 않고,
+            // kraft.security.rate-limit-backend=in-memory(기본값)일 때만 이 클래스가 인스턴스별
+            // Caffeine 캐시를 갖는다. redis 백엔드(RedisRateLimitCounter)는 인스턴스 간 공유되므로
+            // 이 목록에 없다.
+            "com.kraft.common.web.InMemoryRateLimitCounter",
             "com.kraft.admin.AdminLoginAttemptService",
             "com.kraft.winningnumber.RoundEtagProvider",
             "com.kraft.recommend.LottoRecommendationService",

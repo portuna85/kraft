@@ -30,6 +30,13 @@ spring:
     enabled: true
   profiles:
     default: local
+  # rate-limit-backend=in-memory(기본값)면 이 커넥션은 아예 쓰이지 않는다 — LettuceConnectionFactory는
+  # 빈 생성 시점에 실제로 연결을 열지 않으므로(validate-connection 기본값 false), Redis가 없어도
+  # 기동·테스트에 영향이 없다. rate-limit-backend=redis로 전환할 때만 아래 값이 실제로 쓰인다.
+  data:
+    redis:
+      host: ${KRAFT_REDIS_HOST:localhost}
+      port: ${KRAFT_REDIS_PORT:6379}
 
 # Google/Naver 등록을 조건부 문서로 분리한 이유(2026-07-24): 위 spring: 블록에 이 등록을
 # 무조건 넣어두면, client-id 환경변수가 비어 있어도 스프링 부트의
@@ -153,6 +160,11 @@ kraft:
     trusted-proxy-cidr: ${KRAFT_SECURITY_TRUSTED_PROXY_CIDR:172.28.0.0/16}
     rate-limit-per-minute: ${KRAFT_SECURITY_RATE_LIMIT_PER_MINUTE:120}
     rate-limit-max-keys: ${KRAFT_SECURITY_RATE_LIMIT_MAX_KEYS:10000}
+    # in-memory(Caffeine, 기본값): 단일 인스턴스 전용. redis: 다중 인스턴스에서도 카운터를
+    # 공유한다 — 스케일아웃 시에만 전환(RedisRateLimitCounter는 Redis 장애 시 fail-open,
+    # 즉 그 요청은 무제한 통과시킨다 — 레이트리밋 장애가 전체 장애로 번지지 않게 하는 게
+    # 가용성 관점에서 더 중요하다고 판단).
+    rate-limit-backend: ${KRAFT_RATE_LIMIT_BACKEND:in-memory}
   revalidate:
     secret: ${KRAFT_REVALIDATE_SECRET:}
     web-url: ${KRAFT_REVALIDATE_WEB_URL:http://web:3000}

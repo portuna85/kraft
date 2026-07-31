@@ -23,6 +23,9 @@ OPTIONAL_VARS=(
   KRAFT_SECURITY_TRUSTED_PROXY_CIDR
   KRAFT_SECURITY_RATE_LIMIT_PER_MINUTE
   KRAFT_SECURITY_RATE_LIMIT_MAX_KEYS
+  KRAFT_RATE_LIMIT_BACKEND
+  KRAFT_REDIS_HOST
+  KRAFT_REDIS_PORT
   KRAFT_SAVED_MAX_PER_CLIENT
   # 비어 있으면 해당 provider의 커뮤니티 로그인만 비활성화되고 나머지 앱은 정상 기동한다
   # (application.yml의 provider별 profile 등록 + CommunityOAuth2FallbackConfig, 2026-07-24).

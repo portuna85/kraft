@@ -57,6 +57,10 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
     implementation("com.github.ben-manes.caffeine:caffeine")
+    // 레이트리밋 Redis 백엔드(kraft.security.rate-limit-backend=redis, 다중 인스턴스
+    // 스케일아웃 시에만 사용) — 기본값은 여전히 in-memory(Caffeine)라 이 스타터가 있어도
+    // Redis 서버 없이 기동·테스트 전부 그대로 동작한다(RedisRateLimitCounter 참고).
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("net.javacrumbs.shedlock:shedlock-spring:7.7.0")
     implementation("net.javacrumbs.shedlock:shedlock-provider-jdbc-template:7.7.0")
     implementation("io.github.resilience4j:resilience4j-spring-boot4:2.4.0")

@@ -3,6 +3,7 @@ package com.kraft.community.auth;
 import com.kraft.common.config.CommunityProperties;
 import com.kraft.common.config.PublicBaseUrlProperties;
 import com.kraft.common.web.ApiErrorResponseWriter;
+import com.kraft.common.web.RateLimitCounter;
 import com.kraft.community.user.CommunityUserRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -47,6 +48,7 @@ public class CommunitySecurityConfig {
     private final MeterRegistry meterRegistry;
     private final CommunityUserRepository communityUserRepository;
     private final ApiErrorResponseWriter apiErrorResponseWriter;
+    private final RateLimitCounter rateLimitCounter;
 
     public CommunitySecurityConfig(CommunityOAuth2UserService communityOAuth2UserService,
                                     CommunityAuthEntryPoint communityAuthEntryPoint,
@@ -54,7 +56,8 @@ public class CommunitySecurityConfig {
                                     PublicBaseUrlProperties publicBaseUrlProperties,
                                     MeterRegistry meterRegistry,
                                     CommunityUserRepository communityUserRepository,
-                                    ApiErrorResponseWriter apiErrorResponseWriter) {
+                                    ApiErrorResponseWriter apiErrorResponseWriter,
+                                    RateLimitCounter rateLimitCounter) {
         this.communityOAuth2UserService = communityOAuth2UserService;
         this.communityAuthEntryPoint = communityAuthEntryPoint;
         this.communityProperties = communityProperties;
@@ -62,6 +65,7 @@ public class CommunitySecurityConfig {
         this.meterRegistry = meterRegistry;
         this.communityUserRepository = communityUserRepository;
         this.apiErrorResponseWriter = apiErrorResponseWriter;
+        this.rateLimitCounter = rateLimitCounter;
     }
 
     @Bean
@@ -76,7 +80,8 @@ public class CommunitySecurityConfig {
                         // 게시글/댓글 조회는 로그인 없이 공개, 쓰기(POST/PUT/DELETE)만 인증 요구.
                         .requestMatchers(HttpMethod.GET, "/api/v1/community/posts/**").permitAll()
                         .anyRequest().authenticated())
-                .addFilterAfter(new CommunityWriteRateLimitFilter(communityProperties, apiErrorResponseWriter),
+                .addFilterAfter(
+                        new CommunityWriteRateLimitFilter(communityProperties, rateLimitCounter, apiErrorResponseWriter),
                         AuthorizationFilter.class)
                 .addFilterAfter(csrfCookieFilter(), CsrfFilter.class)
                 .addFilterBefore(new CommunityWithdrawnAccountFilter(communityUserRepository, apiErrorResponseWriter),

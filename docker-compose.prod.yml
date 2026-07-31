@@ -16,6 +16,13 @@ x-backend-common-env: &backend-common-env
   KRAFT_EXTERNAL_LOTTO_REQUESTED_WITH: ${KRAFT_EXTERNAL_LOTTO_REQUESTED_WITH:-XMLHttpRequest}
   KRAFT_SECURITY_RATE_LIMIT_PER_MINUTE: ${KRAFT_SECURITY_RATE_LIMIT_PER_MINUTE:-120}
   KRAFT_SECURITY_RATE_LIMIT_MAX_KEYS: ${KRAFT_SECURITY_RATE_LIMIT_MAX_KEYS:-10000}
+  # 기본 in-memory(단일 인스턴스). backend를 여러 인스턴스로 스케일아웃할 때만 redis로
+  # 바꾸고 KRAFT_REDIS_HOST/PORT가 가리키는 Redis를 별도로 준비한다 — 이 compose는
+  # Redis 서비스를 제공하지 않는다(현재 단일 인스턴스 배포라 아직 불필요, RedisRateLimitCounter
+  # 참고). redis로 바꿨는데 연결이 안 되면 fail-open(레이트리밋 없이 통과)한다.
+  KRAFT_RATE_LIMIT_BACKEND: ${KRAFT_RATE_LIMIT_BACKEND:-in-memory}
+  KRAFT_REDIS_HOST: ${KRAFT_REDIS_HOST:-localhost}
+  KRAFT_REDIS_PORT: ${KRAFT_REDIS_PORT:-6379}
   # Spring Boot OAuth2ClientProperties가 기동 시 강제 검증(빈 값이면 컨테이너가 뜨지 않음) —
   # 필수값이지만 로컬 compose에서는 기본값 없이 비워두면 즉시 원인이 드러나므로 기본값을 두지 않는다.
   KRAFT_COMMUNITY_GOOGLE_CLIENT_ID: ${KRAFT_COMMUNITY_GOOGLE_CLIENT_ID:-}
