@@ -10,6 +10,7 @@ const infoLinks = [
   { href: "/info/responsible-play", label: "건전한 이용" },
   { href: "/info/community-guidelines", label: "커뮤니티 이용규칙" },
   { href: "/info/contact", label: "문의하기" },
+  { href: "/info/about", label: "운영자 소개" },
 ];
 
 export function Footer() {

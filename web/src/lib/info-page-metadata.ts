@@ -68,6 +68,13 @@ export const INFO_PAGE_METADATA = {
     changeFrequency: "monthly",
     priority: 0.4,
   },
+  about: {
+    title: "운영자 소개",
+    description: "KRAFT Lotto를 운영하는 주체와 서비스 목적, 문의 경로를 안내합니다.",
+    lastModified: "2026-07-31",
+    changeFrequency: "yearly",
+    priority: 0.4,
+  },
 } as const satisfies Record<string, InfoPageMetadata>;
 
 export type InfoPageSlug = keyof typeof INFO_PAGE_METADATA;

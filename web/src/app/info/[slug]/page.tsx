@@ -295,6 +295,35 @@ const infoPages: Record<InfoPageSlug, InfoPage> = {
     ),
   },
 
+  about: {
+    content: (
+      <article className={styles.article}>
+        <h2>운영 주체</h2>
+        <p>
+          KRAFT Lotto는 별도 법인이나 사업자 없이 개인 개발자가 취미·학습 목적으로
+          운영하는 비상업적 서비스입니다. 광고 수익이 발생하더라도 서버 운영비 충당
+          이상의 사업 목적은 두지 않습니다.
+        </p>
+
+        <h2>서비스 목적</h2>
+        <p>
+          동행복권 공식 데이터를 기준으로 과거 당첨 결과를 조회하고, 단순 통계와
+          참고용 번호 추천을 제공하는 것을 목표로 합니다. 당첨을 예측하거나
+          보장하는 서비스가 아니며, 자세한 계산 기준은{" "}
+          <a href="/info/methodology">분석 방법론</a> 페이지에서 확인할 수 있습니다.
+        </p>
+
+        <h2>문의·신뢰 관련 안내</h2>
+        <p>
+          서비스 오류 신고, 데이터 정정 요청, 개인정보 관련 문의는{" "}
+          <a href="/info/contact">문의하기</a> 페이지의 연락처로 접수해 주세요.
+          개인정보 처리 기준은 <a href="/info/privacy">개인정보처리방침</a>을,
+          이용 조건은 <a href="/info/terms">이용약관</a>을 참고하세요.
+        </p>
+      </article>
+    ),
+  },
+
   "community-guidelines": {
     content: (
       <article className={styles.article}>
