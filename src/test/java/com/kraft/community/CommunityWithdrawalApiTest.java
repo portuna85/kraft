@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -118,6 +119,22 @@ class CommunityWithdrawalApiTest {
                         .content(objectMapper.writeValueAsString(new CreatePostRequest("제목", "내용", "GENERAL", null))))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("COMMUNITY_ACCOUNT_WITHDRAWN"));
+    }
+
+    // CodeQL java/insecure-cookie(alert #4) 회귀 방지 — 탈퇴 시 클라이언트 쿠키를 직접
+    // 지우는 코드(CommunityAccountController.withdraw)가 실제 세션 쿠키 설정
+    // (server.servlet.session.cookie.*)과 어긋난 속성으로 나가지 않는지 검증한다.
+    // test 프로파일은 secure 오버라이드가 없어 기본값 false — prod(application-prod.yml)에서는
+    // true가 주입되므로 반영값 자체가 아니라 "명시적으로 설정되어 있는지"가 핵심이다.
+    @Test
+    @DisplayName("탈퇴 응답의 세션 클리어 쿠키는 httpOnly가 설정되고 maxAge가 0이다")
+    void withdraw_clearsSessionCookieWithSafeAttributes() throws Exception {
+        mockMvc.perform(post("/api/v1/community/me/withdrawal").with(asUser(owner)).with(csrf()))
+                .andExpect(status().isNoContent())
+                .andExpect(cookie().maxAge("JSESSIONID", 0))
+                .andExpect(cookie().httpOnly("JSESSIONID", true))
+                .andExpect(cookie().secure("JSESSIONID", false))
+                .andExpect(cookie().path("JSESSIONID", "/"));
     }
 
     @Test
