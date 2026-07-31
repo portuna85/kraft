@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { OpsDashboardClient } from "@/components/ops-dashboard-client";
+import { PageHeader } from "@/components/page-header";
 
 export const metadata: Metadata = {
   title: "운영 대시보드",
@@ -14,13 +15,11 @@ export default function OpsPage() {
   return (
     <section className="grid">
       <div className="panel">
-        <p className="eyebrow">내부 운영</p>
-        <h1 className="page-title">회차 운영 대시보드</h1>
-        <p className="page-subtitle">
+        <PageHeader eyebrow="내부 운영" title="회차 운영 대시보드" description={<>
           이 화면은 운영 전용입니다. 공개 도메인에서는 차단되며, 실제 운영 API 호출은
           <code> /ops-api/* </code>
           프록시 경로로만 전달됩니다.
-        </p>
+        </>} />
       </div>
       <OpsDashboardClient />
     </section>

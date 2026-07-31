@@ -496,6 +496,16 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible {
   margin-top: 8px;
 }
 
+.data-freshness-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+
 .recommend-save-btn {
   flex-shrink: 0;
   min-height: unset;

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { LottoBalls } from "@/ui/domain/lotto-balls";
 import { getDeviceToken } from "@/lib/device-token";
 import { browserFetch, BrowserApiError } from "@/lib/browser-api";
+import { EmptyState } from "@/ui/primitives/empty-state";
+import { ErrorState } from "@/ui/primitives/error-state";
 
 type SavedNumber = {
   id: number;
@@ -59,7 +61,7 @@ export function SavedNumbersClient({ latestRound }: Props) {
     };
   }, []);
 
-  useEffect(() => {
+  const loadSavedNumbers = useCallback(() => {
     browserFetch<SavedNumber[]>("/api/v1/saved", {
       headers: { "X-Device-Token": getDeviceToken() },
     })
@@ -74,6 +76,16 @@ export function SavedNumbersClient({ latestRound }: Props) {
         setIsLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    loadSavedNumbers();
+  }, [loadSavedNumbers]);
+
+  function retrySavedNumbers() {
+    setIsLoading(true);
+    setHasError(false);
+    loadSavedNumbers();
+  }
 
   const fetchMatches = useCallback(() => {
     if (items.length === 0) {
@@ -175,9 +187,16 @@ export function SavedNumbersClient({ latestRound }: Props) {
       {isLoading ? (
         <p className="saved-empty-state">저장된 번호를 불러오는 중입니다.</p>
       ) : hasError ? (
-        <p className="saved-empty-state">저장 번호를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
+        <div className="saved-empty-state">
+          <ErrorState
+            title="저장 번호를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+            retry={{ label: "다시 시도", onClick: retrySavedNumbers }}
+          />
+        </div>
       ) : items.length === 0 ? (
-        <p className="saved-empty-state">아직 저장한 번호가 없습니다. 추천 페이지에서 조합을 저장해 보세요.</p>
+        <div className="saved-empty-state">
+          <EmptyState title="아직 저장한 번호가 없습니다. 추천 페이지에서 조합을 저장해 보세요." />
+        </div>
       ) : (
         <>
           {latestRound > 0 ? (

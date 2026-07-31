@@ -5,9 +5,12 @@ import type { AnalysisResponse } from "@/lib/api";
 import { AnalysisResult } from "./analysis-result";
 import { browserFetch, BrowserApiError } from "@/lib/browser-api";
 import { validateLottoNumbers } from "@/lib/lotto-validation";
+import { Button } from "@/ui/primitives/button";
+import { TextField } from "@/ui/primitives/text-field";
 import styles from "./analysis.module.css";
 
 export function AnalysisClient() {
+  const errorMessageId = "analysis-number-error";
   const [input, setInput] = useState("");
   const [result, setResult] = useState<AnalysisResponse | null>(null);
   const [error, setError] = useState("");
@@ -18,7 +21,7 @@ export function AnalysisClient() {
     setError("");
     setResult(null);
 
-    const parts = input.split(",").map((value) => value.trim());
+    const parts = input.trim().split(/[\s,]+/).filter(Boolean);
     const validation = validateLottoNumbers(parts);
 
     if (!validation.ok) {
@@ -47,26 +50,32 @@ export function AnalysisClient() {
 
   return (
     <div className="analysis-layout">
-      <form onSubmit={handleSubmit} className={styles.form}>
-        <label>
-          번호 6개
-          <input
+      <form onSubmit={handleSubmit} className={styles.form} noValidate>
+        <div className={styles.fieldGroup}>
+          <TextField
+            id="analysis-numbers"
+            label="번호 6개"
             value={input}
-            onChange={(event) => setInput(event.target.value)}
+            onChange={setInput}
             placeholder="예: 3, 11, 19, 28, 34, 42"
             autoComplete="off"
+            inputMode="numeric"
             disabled={pending}
+            invalid={Boolean(error)}
+            errorMessageId={error ? errorMessageId : undefined}
+            required
           />
-        </label>
-        <button type="submit" disabled={pending}>
-          {pending ? "점검 중..." : "분석하기"}
-        </button>
+          <p className={styles.hint}>쉼표 또는 공백으로 번호를 구분해 입력하세요. 번호는 1부터 45까지, 중복 없이 6개여야 합니다.</p>
+        </div>
+        <Button type="submit" variant="primary" loading={pending} loadingLabel="번호 조합을 분석하고 있습니다">
+          분석하기
+        </Button>
       </form>
 
       {pending ? <p className="muted" aria-live="polite">역대 1등 당첨 이력을 점검하고 있습니다.</p> : null}
 
       {error ? (
-        <p className={`status-text ${styles.error}`} role="alert" aria-live="assertive">
+        <p id={errorMessageId} className={`status-text ${styles.error}`} role="alert" aria-live="assertive">
           {error}
         </p>
       ) : null}

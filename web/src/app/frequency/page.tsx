@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { FrequencyFilterClient } from "./frequency-filter-client";
 import { AdSenseSidebar, InArticleAd } from "@/components/ad-unit";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
+import { PageHeader } from "@/components/page-header";
 import { getFrequencyStats, getPublicBaseUrl } from "@/lib/api";
 import { logCoreDataFailure } from "@/lib/logger";
 
@@ -29,8 +30,7 @@ export default async function FrequencyPage() {
     <div className="page-with-sidebar">
       <section className="panel">
         <JsonLdBreadcrumb baseUrl={baseUrl} nonce={nonce} items={[{ name: "출현 통계", item: `${baseUrl}/frequency` }]} />
-        <p className="eyebrow">출현 통계</p>
-        <h1 className="page-title">번호 출현 통계</h1>
+        <PageHeader eyebrow="출현 통계" title="번호 출현 통계" />
         <FrequencyFilterClient initial={stats} />
         <InArticleAd slot="frequency" />
       </section>

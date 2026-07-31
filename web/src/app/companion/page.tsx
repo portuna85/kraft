@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { CompanionFilterClient } from "./companion-filter-client";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
+import { PageHeader } from "@/components/page-header";
 import { getCompanionStats, getPublicBaseUrl } from "@/lib/api";
 import { logCoreDataFailure } from "@/lib/logger";
 
@@ -31,9 +32,11 @@ export default async function CompanionPage() {
   return (
     <section className="panel">
       <JsonLdBreadcrumb baseUrl={baseUrl} nonce={nonce} items={[{ name: "동반 출현", item: `${baseUrl}/companion` }]} />
-      <p className="eyebrow">동반 출현</p>
-      <h1 className="page-title">동반 출현 번호</h1>
-      <p className="muted panel-lead">총 {stats.totalRounds}회 기준 전체 {stats.topPairs.length}개 조합 (기본 상위 50개 표시)</p>
+      <PageHeader
+        eyebrow="동반 출현"
+        title="동반 출현 번호"
+        description={`총 ${stats.totalRounds}회 기준 전체 ${stats.topPairs.length}개 조합 · 기본 상위 50개 표시`}
+      />
       <CompanionFilterClient pairs={initialPairs} totalRounds={stats.totalRounds} />
     </section>
   );

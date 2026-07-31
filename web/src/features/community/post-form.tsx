@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createPost, loginUrl, updatePost } from "@/lib/community-client";
 import { revalidateCommunityPost } from "@/lib/community-revalidate";
@@ -10,6 +11,10 @@ import { saveReturnTo } from "@/lib/return-to";
 import { CATEGORY_LABELS, CATEGORY_OPTIONS } from "@/features/community/types";
 import { RecommendationAttachmentPicker } from "@/features/community/recommendation-attachment-picker";
 import type { PostCategory } from "@/lib/community-api";
+import { Button } from "@/ui/primitives/button";
+import { InlineAlert } from "@/ui/primitives/inline-alert";
+import { TextArea } from "@/ui/primitives/text-area";
+import { TextField } from "@/ui/primitives/text-field";
 
 const PROVIDER_LABELS: Record<"google" | "naver", string> = {
   google: "Google 로그인",
@@ -74,7 +79,7 @@ export function PostForm(props: CreateMode | EditMode) {
     const providers = session?.activeProviders ?? [];
     return (
       <div className="community-post-form-login-required">
-        <p>이 기능을 사용하려면 로그인이 필요합니다.</p>
+        <InlineAlert tone="neutral" title="이 기능을 사용하려면 로그인이 필요합니다." description="로그인 후 현재 화면으로 돌아와 계속 작성할 수 있습니다." />
         {providers.map((provider) => (
           <a
             key={provider}
@@ -91,24 +96,16 @@ export function PostForm(props: CreateMode | EditMode) {
   if (props.mode === "edit" && session.userId !== props.ownerId) {
     return (
       <div className="community-post-form-forbidden">
-        <p role="alert">본인이 작성한 글만 수정할 수 있습니다.</p>
-        <a href={`/community/posts/${props.postId}`}>게시글로 돌아가기</a>
+        <InlineAlert tone="danger" title="본인이 작성한 글만 수정할 수 있습니다." />
+        <Link href={`/community/posts/${props.postId}`} className="button secondary">게시글로 돌아가기</Link>
       </div>
     );
   }
 
   return (
     <form onSubmit={handleSubmit} className="community-post-form">
-      {versionConflict && (
-        <p role="alert" id="post-form-error" className="community-version-conflict">
-          다른 곳에서 먼저 수정되었습니다. 새로고침 후 다시 시도하세요.
-        </p>
-      )}
-      {error && (
-        <p role="alert" id="post-form-error">
-          {error}
-        </p>
-      )}
+      {versionConflict ? <div id="post-form-error"><InlineAlert tone="danger" title="다른 곳에서 먼저 수정되었습니다." description="새로고침한 뒤 최신 내용으로 다시 작성해 주세요." /></div> : null}
+      {error ? <div id="post-form-error"><InlineAlert tone="danger" title="저장에 실패했습니다." description={error} /></div> : null}
 
       {props.mode === "create" ? (
         <>
@@ -128,31 +125,34 @@ export function PostForm(props: CreateMode | EditMode) {
         </>
       ) : null}
 
-      <label htmlFor="post-title">제목</label>
-      <input
+      <TextField
         id="post-title"
+        label="제목"
         value={title}
+        onChange={setTitle}
         maxLength={200}
-        onChange={(event) => setTitle(event.target.value)}
         required
-        aria-invalid={error || versionConflict ? "true" : undefined}
-        aria-describedby={error || versionConflict ? "post-form-error" : undefined}
+        invalid={Boolean(error || versionConflict)}
+        errorMessageId={error || versionConflict ? "post-form-error" : undefined}
       />
+      <p className="community-field-hint" aria-live="polite">{title.length}/200</p>
 
-      <label htmlFor="post-content">내용</label>
-      <textarea
+      <TextArea
         id="post-content"
+        label="내용"
         value={content}
+        onChange={setContent}
         maxLength={20000}
-        onChange={(event) => setContent(event.target.value)}
+        rows={10}
         required
-        aria-invalid={error || versionConflict ? "true" : undefined}
-        aria-describedby={error || versionConflict ? "post-form-error" : undefined}
+        invalid={Boolean(error || versionConflict)}
+        errorMessageId={error || versionConflict ? "post-form-error" : undefined}
       />
+      <p className="community-field-hint" aria-live="polite">{content.length}/20,000</p>
 
-      <button type="submit" disabled={submitting || !title.trim() || !content.trim()}>
-        {submitting ? "저장 중…" : "저장"}
-      </button>
+      <Button type="submit" variant="primary" loading={submitting} loadingLabel="저장 중…" disabled={!title.trim() || !content.trim()}>
+        저장
+      </Button>
     </form>
   );
 }

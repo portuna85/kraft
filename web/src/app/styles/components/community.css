@@ -136,6 +136,22 @@
   max-width: 640px;
 }
 
+.community-post-form-login-required,
+.community-post-form-forbidden {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-4);
+  max-width: 640px;
+}
+
+.community-field-hint {
+  margin: -2px 0 var(--space-2);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .community-post-form input:not([type="hidden"]),
 .community-post-form textarea,
 .community-comment-form textarea {

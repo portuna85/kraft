@@ -51,6 +51,10 @@ export interface TextFieldContract extends FieldValidationContract {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  maxLength?: number;
+  name?: string;
+  autoComplete?: string;
+  inputMode?: "text" | "numeric" | "decimal" | "tel" | "email" | "url" | "search";
   disabled?: boolean;
   required?: boolean;
 }
@@ -85,6 +89,7 @@ export interface TextAreaContract extends FieldValidationContract {
   maxLength?: number;
   rows?: number;
   disabled?: boolean;
+  required?: boolean;
 }
 
 // ── 선택 계열 ──────────────────────────────────────────────────────────────

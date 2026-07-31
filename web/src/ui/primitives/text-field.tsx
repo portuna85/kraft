@@ -7,6 +7,10 @@ export function TextField({
   value,
   onChange,
   placeholder,
+  maxLength,
+  name,
+  autoComplete,
+  inputMode,
   disabled,
   required,
   invalid,
@@ -24,6 +28,10 @@ export function TextField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        maxLength={maxLength}
+        name={name}
+        autoComplete={autoComplete}
+        inputMode={inputMode}
         disabled={disabled}
         required={required}
         aria-invalid={invalid || undefined}

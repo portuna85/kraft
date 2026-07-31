@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { getPublicIncidents, getRoundFreshness } from "@/lib/api";
+import { PageHeader } from "@/components/page-header";
+import { StatusBadge } from "@/ui/primitives/status-badge";
 import { formatDateTime, formatDrawDate } from "@/lib/format";
 import logger from "@/lib/logger";
 import styles from "./status.module.css";
@@ -25,15 +27,14 @@ export default async function StatusPage() {
 
   return (
     <section className="panel">
-      <p className="eyebrow">서비스 상태</p>
-      <h1 className="page-title">서비스 상태</h1>
+      <PageHeader eyebrow="서비스 상태" title="서비스 상태" />
 
       <h2 className="section-title">현재 데이터 상태</h2>
       {freshness ? (
-        <p className="muted">
-          {freshness.latestRound}회 ({formatDrawDate(freshness.latestDrawDate)}) 까지 반영됨 ·{" "}
-          {freshness.fresh ? "정상" : "최신 회차 반영 지연 중"}
-        </p>
+        <div className={styles.currentStatus}>
+          <StatusBadge status={freshness.fresh ? "fresh" : "stale"} label={freshness.fresh ? "정상" : "반영 지연"} />
+          <p className="muted">{freshness.latestRound}회 ({formatDrawDate(freshness.latestDrawDate)}) 까지 반영됨</p>
+        </div>
       ) : (
         <p className="muted">상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
       )}
@@ -52,9 +53,7 @@ export default async function StatusPage() {
                 {incident.type}
                 {incident.occurrences > 1 ? ` (시도 ${incident.occurrences}회)` : ""}
               </span>
-              <span className={`${styles.state}${incident.resolved ? ` ${styles.stateResolved}` : ""}`}>
-                {incident.resolved ? "해결됨" : "확인 중"}
-              </span>
+              <StatusBadge status={incident.resolved ? "fresh" : "stale"} label={incident.resolved ? "해결됨" : "확인 중"} />
               <span className={`${styles.time} muted`}>{formatDateTime(incident.occurredAt)}</span>
             </li>
           ))}

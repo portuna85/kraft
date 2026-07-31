@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PostForm } from "@/features/community/post-form";
+import { PageHeader } from "@/components/page-header";
 
 export const metadata: Metadata = {
   title: "글쓰기",
@@ -10,8 +11,7 @@ export const metadata: Metadata = {
 export default function CommunityWritePage() {
   return (
     <section className="panel">
-      <p className="eyebrow">커뮤니티</p>
-      <h1 className="page-title">글쓰기</h1>
+      <PageHeader eyebrow="커뮤니티" title="글쓰기" />
       <PostForm mode="create" />
     </section>
   );

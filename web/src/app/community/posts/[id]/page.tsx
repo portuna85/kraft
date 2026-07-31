@@ -6,6 +6,7 @@ import { BackendError, getPublicBaseUrl } from "@/lib/api";
 import { PostOwnerActions } from "@/components/community/post-owner-actions";
 import { CommentSection } from "@/components/community/comment-section";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
+import { PageHeader } from "@/components/page-header";
 import { formatDateTime } from "@/lib/format";
 import { ReactionBar } from "@/features/community/reaction-bar";
 import { ReportDialog } from "@/features/community/report-dialog";
@@ -52,14 +53,11 @@ export default async function CommunityPostDetailPage({ params }: Props) {
         nonce={nonce}
         items={[{ name: "커뮤니티", item: `${baseUrl}/community` }, { name: post.title }]}
       />
-      <p className="eyebrow">
-        {CATEGORY_LABELS[post.category]} · 커뮤니티
-      </p>
-      <h1 className="page-title">{post.title}</h1>
-      <p className="community-post-meta">
-        <span>{post.authorNickname}</span>
-        <time dateTime={post.createdAt}>{formatDateTime(post.createdAt)}</time>
-      </p>
+      <PageHeader
+        eyebrow={`${CATEGORY_LABELS[post.category]} · 커뮤니티`}
+        title={post.title}
+        meta={<p className="community-post-meta"><span>{post.authorNickname}</span><time dateTime={post.createdAt}>{formatDateTime(post.createdAt)}</time></p>}
+      />
       <div className="community-post-content">
         {post.content.split("\n").map((line, index) => (
           // 콘텐츠는 XSS 방어를 위해 plain text로 렌더링하며 dangerouslySetInnerHTML을 사용하지 않는다.

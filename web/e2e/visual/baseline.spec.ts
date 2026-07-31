@@ -13,6 +13,7 @@ type Route = {
   path: string;
   label: string;
   readySelector: string;
+  contentOnlyScreenshot?: boolean;
   beforeGoto?: (page: Page) => Promise<void>;
   afterGoto?: (page: Page) => Promise<void>;
 };
@@ -110,6 +111,10 @@ const ROUTES: readonly Route[] = [
     path: "/ops",
     label: "운영 대시보드",
     readySelector: ".ops-summary-grid",
+    // 이 비동기 장문 화면에서 fullPage 캡처를 사용하면 sticky 헤더와 fixed 모바일
+    // 내비게이션이 연속 캡처 사이에 이동해 Playwright 안정화 검사가 흔들린다.
+    // 공통 크롬은 다른 라우트가 계속 검증하므로 /ops는 실제 운영 콘텐츠만 고정한다.
+    contentOnlyScreenshot: true,
     beforeGoto: async (page) => {
       await page.route("**/ops-api/summary", (route) =>
         route.fulfill({
@@ -130,6 +135,10 @@ const ROUTES: readonly Route[] = [
     afterGoto: async (page) => {
       await page.getByPlaceholder("X-Ops-Token 값을 입력하세요").fill("secret-token");
       await page.getByRole("button", { name: "운영 상태 확인" }).click();
+      // 조회 완료 후 메시지·요약 패널까지 모두 렌더링된 뒤에야 안정된다 —
+      // readySelector(.ops-summary-grid)만 기다리면 상태 메시지 단락이
+      // 뒤이어 붙으며 전체 페이지 높이가 한 번 더 바뀌어 스크린샷이 불안정해진다.
+      await expect(page.getByText("운영 상태를 불러왔습니다.")).toBeVisible();
     },
   },
 ];
@@ -152,7 +161,17 @@ for (const theme of THEMES) {
         await gotoAndWaitForRealContent(page, route.path);
         await route.afterGoto?.(page);
         await expect(page.locator(route.readySelector).first()).toBeVisible();
-        await expect(page).toHaveScreenshot(`${route.label}-${theme}.png`, { fullPage: true });
+        if (route.contentOnlyScreenshot) {
+          // 긴 locator 캡처에도 sticky/fixed 전역 크롬이 합성될 수 있으므로 가린다.
+          // visibility를 사용해 레이아웃은 보존하고 실제 /ops 콘텐츠만 비교한다.
+          await page.addStyleTag({
+            content:
+              '.site-header, [data-testid="mobile-bottom-nav"] { visibility: hidden !important; }',
+          });
+          await expect(page.locator("main")).toHaveScreenshot(`${route.label}-${theme}.png`);
+        } else {
+          await expect(page).toHaveScreenshot(`${route.label}-${theme}.png`, { fullPage: true });
+        }
       });
     }
   });

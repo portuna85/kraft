@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getCommunityPostFresh } from "@/lib/community-api";
 import { BackendError } from "@/lib/api";
 import { PostForm } from "@/features/community/post-form";
+import { PageHeader } from "@/components/page-header";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -30,8 +31,7 @@ export default async function CommunityPostEditPage({ params }: Props) {
 
   return (
     <section className="panel">
-      <p className="eyebrow">커뮤니티</p>
-      <h1 className="page-title">게시글 수정</h1>
+      <PageHeader eyebrow="커뮤니티" title="게시글 수정" />
       <PostForm
         mode="edit"
         postId={post.id}
