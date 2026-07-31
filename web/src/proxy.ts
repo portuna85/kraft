@@ -34,12 +34,12 @@ const AD_FRAME_SRC = isAdSense
   ? "https://googleads.g.doubleclick.net https://tpc.googlesyndication.com"
   : "https://t1.kakaocdn.net https://*.kakao.com";
 
-export function buildCsp(nonce: string): string {
+function buildCspDirectives(nonce: string, styleSrc: string): string[] {
   const isDev = process.env.NODE_ENV !== "production";
   return [
     `default-src 'self'`,
     `script-src 'self' 'nonce-${nonce}' ${AD_SCRIPT_SRC}${isDev ? " 'unsafe-eval'" : ""}`,
-    `style-src 'self' 'unsafe-inline'`,
+    `style-src ${styleSrc}`,
     `img-src 'self' data: ${AD_IMG_SRC}`,
     `font-src 'self'`,
     `connect-src 'self' ${AD_CONNECT_SRC}`,
@@ -48,7 +48,19 @@ export function buildCsp(nonce: string): string {
     `base-uri 'self'`,
     `form-action 'self'`,
     `frame-ancestors 'none'`,
-  ].join("; ");
+  ];
+}
+
+export function buildCsp(nonce: string): string {
+  return buildCspDirectives(nonce, `'self' 'unsafe-inline'`).join("; ");
+}
+
+// KX 신규 이슈: Report-Only 채널. 정책을 실제로 좁히기 전에 위반만 관측하는 용도 —
+// style-src에서 'unsafe-inline'을 뺀 후보 정책을 시험한다(다수 컴포넌트가 style={{}}를
+// 쓰므로 실제로 걸릴 가능성이 높다). 위반이 관측되지 않는 기간이 충분히 쌓이면
+// buildCsp의 style-src도 동일하게 좁히고 이 함수는 제거한다.
+export function buildCspReportOnly(nonce: string): string {
+  return [...buildCspDirectives(nonce, `'self' 'nonce-${nonce}'`), `report-uri /api/csp-report`].join("; ");
 }
 
 export function proxy(req: NextRequest) {
@@ -77,6 +89,7 @@ export function proxy(req: NextRequest) {
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("Content-Security-Policy", csp);
+  response.headers.set("Content-Security-Policy-Report-Only", buildCspReportOnly(nonce));
 
   return response;
 }

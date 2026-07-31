@@ -73,6 +73,33 @@ describe("CSP nonce 미들웨어", () => {
     });
   });
 
+  describe("buildCspReportOnly", () => {
+    it("style-src에서 'unsafe-inline'을 빼고 report-uri를 포함한다", async () => {
+      process.env = { ...process.env, NODE_ENV: "production" };
+      vi.resetModules();
+      const { buildCspReportOnly } = await import("@/proxy");
+
+      const csp = buildCspReportOnly("abc123");
+
+      expect(csp).toContain("style-src 'self' 'nonce-abc123'");
+      expect(csp).not.toContain("unsafe-inline");
+      expect(csp).toContain("report-uri /api/csp-report");
+    });
+
+    it("enforcing 정책(buildCsp)과 달리 style-src만 좁아지고 나머지 지시문은 동일하다", async () => {
+      process.env = { ...process.env, NODE_ENV: "production" };
+      vi.resetModules();
+      const { buildCsp, buildCspReportOnly } = await import("@/proxy");
+
+      const enforcing = buildCsp("abc123");
+      const reportOnly = buildCspReportOnly("abc123");
+
+      expect(enforcing).toContain("frame-ancestors 'none'");
+      expect(reportOnly).toContain("frame-ancestors 'none'");
+      expect(enforcing).toContain("style-src 'self' 'unsafe-inline'");
+    });
+  });
+
   describe("proxy", () => {
     it("응답에 CSP 헤더를 설정하고 요청에 x-nonce 헤더를 주입한다", async () => {
       const { proxy } = await import("@/proxy");
@@ -83,6 +110,17 @@ describe("CSP nonce 미들웨어", () => {
       const csp = response.headers.get("Content-Security-Policy");
       expect(csp).toContain("nonce-");
       expect(response.headers.get("x-middleware-request-x-nonce")).toBeTruthy();
+    });
+
+    it("Report-Only CSP 헤더도 함께 설정한다", async () => {
+      const { proxy } = await import("@/proxy");
+      const req = new NextRequest("http://localhost/");
+
+      const response = proxy(req);
+
+      const reportOnlyCsp = response.headers.get("Content-Security-Policy-Report-Only");
+      expect(reportOnlyCsp).toContain("report-uri /api/csp-report");
+      expect(reportOnlyCsp).not.toContain("unsafe-inline");
     });
 
     it("KRAFT_OPS_ALLOWED_HOST와 다른 호스트로 /ops에 접근하면 404로 rewrite한다", async () => {
