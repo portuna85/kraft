@@ -12,8 +12,16 @@ import { gotoAndWaitForRealContent } from "../lib/goto-real-content";
 // 무의미한 검사였다 — 진짜 위험은 white-space: nowrap이 걸린 요소(.prize-table-rank 등)가
 // 텍스트가 커지면서 자기 자신 안에서 잘리는 것이다. 요소 자신의 scrollWidth가 clientWidth를
 // 넘는지(내부 클리핑)로 바꿔서 실제로 의미 있는 검사가 되게 했다.
+// page.addStyleTag()는 <style> 태그를 주입하는데, CSP Report-Only 정책(web/src/proxy.ts의
+// buildCspReportOnly, style-src에서 unsafe-inline을 뺀 후보 정책)이 WebKit에서 콘솔에
+// "[Report Only] Refused to..." 위반 메시지를 남기고, Playwright의 addStyleTag가 그 메시지를
+// 감지해 실제로는 아무것도 막히지 않았는데도(Report-Only라 렌더링은 정상) 프로미스를
+// reject하는 것으로 관측됐다(2026-07-31, CI WebKit에서만 재현). page.evaluate로 요소의
+// style 프로퍼티를 직접 바꾸면 이 addStyleTag 특유의 감지 로직을 거치지 않는다.
 async function setTextZoom(page: Page, percent: number) {
-  await page.addStyleTag({ content: `html { font-size: ${percent}% !important; }` });
+  await page.evaluate((value) => {
+    document.documentElement.style.setProperty("font-size", value, "important");
+  }, `${percent}%`);
 }
 
 // .balls/.prize-table-wrap처럼 의도된 가로 스크롤 컨테이너는 data-allow-overflow로
