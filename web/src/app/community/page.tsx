@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
+import { PageHeader } from "@/components/page-header";
 import { getPublicBaseUrl } from "@/lib/api";
 import { getCommunityPosts, type PostCategory, type PostSort } from "@/lib/community-api";
 import { CATEGORY_LABELS, CATEGORY_OPTIONS } from "@/features/community/types";
@@ -51,11 +52,12 @@ export default async function CommunityPage({ searchParams }: Props) {
   return (
     <section className="panel">
       <JsonLdBreadcrumb baseUrl={baseUrl} nonce={nonce} items={[{ name: "커뮤니티", item: `${baseUrl}/community` }]} />
-      <p className="eyebrow">커뮤니티</p>
-      <h1 className="page-title">커뮤니티</h1>
-      <Link href="/community/write" className="button">
-        글쓰기
-      </Link>
+      <PageHeader
+        eyebrow="커뮤니티"
+        title="커뮤니티"
+        description="번호와 당첨 정보, 분석 경험을 다른 이용자와 나눠 보세요."
+        actions={<Link href="/community/write" className="button">글쓰기</Link>}
+      />
 
       <form method="get" className="community-search-form">
         {category && <input type="hidden" name="category" value={category} />}

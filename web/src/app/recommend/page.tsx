@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { RecommendClient } from "@/features/recommendation/recommend-client";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
+import { PageHeader } from "@/components/page-header";
 import { getPublicBaseUrl } from "@/lib/api";
 
 export const metadata: Metadata = {
@@ -17,8 +18,7 @@ export default async function RecommendPage() {
   return (
     <section className="panel">
       <JsonLdBreadcrumb baseUrl={baseUrl} nonce={nonce} items={[{ name: "번호 추천", item: `${baseUrl}/recommend` }]} />
-      <p className="eyebrow">번호 추천</p>
-      <h1 className="page-title">번호 추천</h1>
+      <PageHeader eyebrow="번호 추천" title="번호 추천" />
       <RecommendClient />
     </section>
   );

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { FAQ_ITEMS, buildFaqPageJsonLd } from "@/lib/csp-inline-scripts";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
+import { PageHeader } from "@/components/page-header";
 import { getPublicBaseUrl } from "@/lib/api";
 import {
   INFO_PAGE_METADATA,
@@ -310,15 +312,15 @@ const infoPages: Record<InfoPageSlug, InfoPage> = {
           동행복권 공식 데이터를 기준으로 과거 당첨 결과를 조회하고, 단순 통계와
           참고용 번호 추천을 제공하는 것을 목표로 합니다. 당첨을 예측하거나
           보장하는 서비스가 아니며, 자세한 계산 기준은{" "}
-          <a href="/info/methodology">분석 방법론</a> 페이지에서 확인할 수 있습니다.
+          <Link href="/info/methodology">분석 방법론</Link> 페이지에서 확인할 수 있습니다.
         </p>
 
         <h2>문의·신뢰 관련 안내</h2>
         <p>
           서비스 오류 신고, 데이터 정정 요청, 개인정보 관련 문의는{" "}
-          <a href="/info/contact">문의하기</a> 페이지의 연락처로 접수해 주세요.
-          개인정보 처리 기준은 <a href="/info/privacy">개인정보처리방침</a>을,
-          이용 조건은 <a href="/info/terms">이용약관</a>을 참고하세요.
+          <Link href="/info/contact">문의하기</Link> 페이지의 연락처로 접수해 주세요.
+          개인정보 처리 기준은 <Link href="/info/privacy">개인정보처리방침</Link>을,
+          이용 조건은 <Link href="/info/terms">이용약관</Link>을 참고하세요.
         </p>
       </article>
     ),
@@ -385,9 +387,7 @@ export default async function InfoPage({ params }: Props) {
   return (
     <section className="panel">
       <JsonLdBreadcrumb baseUrl={baseUrl} nonce={nonce} items={[{ name: metadata.title, item: `${baseUrl}/info/${slug}` }]} />
-      <p className="eyebrow">서비스 안내</p>
-      <h1 className="page-title">{metadata.title}</h1>
-      <p className="page-subtitle">{metadata.description}</p>
+      <PageHeader eyebrow="서비스 안내" title={metadata.title} description={metadata.description} />
       {slug === "faq" ? (
         <script
           type="application/ld+json"

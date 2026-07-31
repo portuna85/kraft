@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { RecommendationHistoryClient } from "@/features/recommendation/recommendation-history-client";
+import { PageHeader } from "@/components/page-header";
 
 export const metadata: Metadata = {
   title: "추천 이력",
@@ -10,8 +11,7 @@ export const metadata: Metadata = {
 export default function RecommendationHistoryPage() {
   return (
     <section className="panel">
-      <p className="eyebrow">번호 추천</p>
-      <h1 className="page-title">추천 이력</h1>
+      <PageHeader eyebrow="번호 추천" title="추천 이력" />
       <RecommendationHistoryClient />
     </section>
   );

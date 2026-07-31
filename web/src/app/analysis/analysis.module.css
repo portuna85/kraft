@@ -4,11 +4,17 @@
   gap: 12px;
   align-items: end;
 }
-.form label {
+
+.fieldGroup {
   display: grid;
-  gap: 8px;
-  color: var(--muted);
-  font-size: var(--fs-base);
+  gap: var(--space-2);
+}
+
+.hint {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 1.55;
 }
 
 .error {

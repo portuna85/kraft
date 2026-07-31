@@ -9,6 +9,7 @@ export function TextArea({
   maxLength,
   rows = 4,
   disabled,
+  required,
   invalid,
   errorMessageId,
 }: TextAreaContract) {
@@ -25,6 +26,7 @@ export function TextArea({
         maxLength={maxLength}
         rows={rows}
         disabled={disabled}
+        required={required}
         aria-invalid={invalid || undefined}
         aria-describedby={invalid ? errorMessageId : undefined}
       />

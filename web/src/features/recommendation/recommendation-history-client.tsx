@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { LottoBalls } from "@/ui/domain/lotto-balls";
 import { getDeviceToken } from "@/lib/device-token";
 import { browserFetch, BrowserApiError } from "@/lib/browser-api";
 import type { PageResponse } from "@/lib/community-api";
 import type { RecommendationSetSummary } from "@/features/recommendation/types";
+import { EmptyState } from "@/ui/primitives/empty-state";
+import { ErrorState } from "@/ui/primitives/error-state";
 
 const STRATEGY_LABELS = {
   random: "무작위",
@@ -20,7 +22,7 @@ export function RecommendationHistoryClient() {
   const [message, setMessage] = useState("");
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
 
-  useEffect(() => {
+  const loadHistory = useCallback(() => {
     // KB-05: 백엔드가 무제한 배열 대신 페이지네이션을 반환한다 — 이 화면에는 아직 "더 보기"
     // UI가 없으므로 오늘의 실사용 흐름을 유지할 만큼 넉넉한 size로 한 번에 받아 온다.
     browserFetch<PageResponse<RecommendationSetSummary>>(
@@ -34,6 +36,16 @@ export function RecommendationHistoryClient() {
       .catch(() => setHasError(true))
       .finally(() => setIsLoading(false));
   }, []);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
+
+  function retryHistory() {
+    setIsLoading(true);
+    setHasError(false);
+    loadHistory();
+  }
 
   async function handleDelete(id: number) {
     setMessage("");
@@ -60,10 +72,10 @@ export function RecommendationHistoryClient() {
     return <p className="saved-empty-state">추천 이력을 불러오는 중입니다.</p>;
   }
   if (hasError) {
-    return <p className="saved-empty-state">추천 이력을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>;
+    return <ErrorState title="추천 이력을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요." retry={{ label: "다시 시도", onClick: retryHistory }} />;
   }
   if (items.length === 0) {
-    return <p className="saved-empty-state">아직 저장된 추천 이력이 없습니다. 추천 페이지에서 조합을 생성해 보세요.</p>;
+    return <EmptyState title="아직 저장된 추천 이력이 없습니다. 추천 페이지에서 조합을 생성해 보세요." />;
   }
 
   return (
