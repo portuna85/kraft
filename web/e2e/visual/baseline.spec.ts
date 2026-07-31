@@ -162,6 +162,12 @@ for (const theme of THEMES) {
         await route.afterGoto?.(page);
         await expect(page.locator(route.readySelector).first()).toBeVisible();
         if (route.contentOnlyScreenshot) {
+          // 긴 locator 캡처에도 sticky/fixed 전역 크롬이 합성될 수 있으므로 가린다.
+          // visibility를 사용해 레이아웃은 보존하고 실제 /ops 콘텐츠만 비교한다.
+          await page.addStyleTag({
+            content:
+              '.site-header, [data-testid="mobile-bottom-nav"] { visibility: hidden !important; }',
+          });
           await expect(page.locator("main")).toHaveScreenshot(`${route.label}-${theme}.png`);
         } else {
           await expect(page).toHaveScreenshot(`${route.label}-${theme}.png`, { fullPage: true });
