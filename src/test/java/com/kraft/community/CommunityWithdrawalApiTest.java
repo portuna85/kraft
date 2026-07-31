@@ -122,18 +122,18 @@ class CommunityWithdrawalApiTest {
     }
 
     // CodeQL java/insecure-cookie(alert #4) 회귀 방지 — 탈퇴 시 클라이언트 쿠키를 직접
-    // 지우는 코드(CommunityAccountController.withdraw)가 실제 세션 쿠키 설정
-    // (server.servlet.session.cookie.*)과 어긋난 속성으로 나가지 않는지 검증한다.
-    // test 프로파일은 secure 오버라이드가 없어 기본값 false — prod(application-prod.yml)에서는
-    // true가 주입되므로 반영값 자체가 아니라 "명시적으로 설정되어 있는지"가 핵심이다.
+    // 지우는 코드(CommunityAccountController.withdraw)가 secure/httpOnly 없이 나가지
+    // 않는지 검증한다. secure는 환경과 무관하게 항상 true(하드코딩)라야 CodeQL 정적 분석이
+    // "항상 secure"임을 증명할 수 있다 — 조건부 프로퍼티 값이면 로컬 프로파일에서 false가 될
+    // 수 있어 alert가 재발한다(실제로 겪음, 첫 수정 시도에서 재현).
     @Test
-    @DisplayName("탈퇴 응답의 세션 클리어 쿠키는 httpOnly가 설정되고 maxAge가 0이다")
+    @DisplayName("탈퇴 응답의 세션 클리어 쿠키는 secure·httpOnly가 설정되고 maxAge가 0이다")
     void withdraw_clearsSessionCookieWithSafeAttributes() throws Exception {
         mockMvc.perform(post("/api/v1/community/me/withdrawal").with(asUser(owner)).with(csrf()))
                 .andExpect(status().isNoContent())
                 .andExpect(cookie().maxAge("JSESSIONID", 0))
                 .andExpect(cookie().httpOnly("JSESSIONID", true))
-                .andExpect(cookie().secure("JSESSIONID", false))
+                .andExpect(cookie().secure("JSESSIONID", true))
                 .andExpect(cookie().path("JSESSIONID", "/"));
     }
 

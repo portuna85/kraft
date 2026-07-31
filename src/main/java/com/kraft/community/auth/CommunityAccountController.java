@@ -5,7 +5,6 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -23,13 +22,6 @@ public class CommunityAccountController {
 
     private final CommunityWithdrawalService communityWithdrawalService;
 
-    // CodeQL java/insecure-cookie: 아래에서 직접 만드는 클리어용 쿠키는 스프링이 관리하는
-    // 세션 쿠키(server.servlet.session.cookie.*)를 거치지 않으므로 그 secure 플래그를
-    // 자동으로 물려받지 못한다 — 실제 세션 쿠키와 같은 프로퍼티를 그대로 주입해 두 쿠키의
-    // 속성이 어긋나지 않게 한다(application-prod.yml: secure=true, local/test: 기본 false).
-    @Value("${server.servlet.session.cookie.secure:false}")
-    private boolean sessionCookieSecure;
-
     public CommunityAccountController(CommunityWithdrawalService communityWithdrawalService) {
         this.communityWithdrawalService = communityWithdrawalService;
     }
@@ -44,11 +36,15 @@ public class CommunityAccountController {
             session.invalidate();
         }
         SecurityContextHolder.clearContext();
+        // CodeQL java/insecure-cookie: 이 쿠키는 스프링이 관리하는 실제 세션 쿠키
+        // (server.servlet.session.cookie.*)를 거치지 않는 수동 생성 객체라 secure 플래그를
+        // 자동으로 물려받지 못한다. HTTPS 배포가 기본 전제이므로 secure는 조건 없이 true —
+        // Chrome/Firefox 모두 localhost는 신뢰 출처로 취급해 로컬 HTTP 개발에도 지장이 없다.
         Cookie sessionCookie = new Cookie("JSESSIONID", "");
         sessionCookie.setPath("/");
         sessionCookie.setMaxAge(0);
         sessionCookie.setHttpOnly(true);
-        sessionCookie.setSecure(sessionCookieSecure);
+        sessionCookie.setSecure(true);
         response.addCookie(sessionCookie);
 
         return ResponseEntity.noContent().build();
