@@ -5,9 +5,9 @@
   gap: var(--space-2);
   min-height: var(--target-min);
   padding: 0 var(--space-5);
-  border-radius: var(--radius-md);
+  border-radius: 14px;
   border: 1px solid transparent;
-  font-weight: 600;
+  font-weight: 700;
   font-size: var(--text-sm);
   cursor: pointer;
   transition: transform var(--duration-fast) ease, background-color var(--duration-base) ease, opacity var(--duration-base) ease;
@@ -42,15 +42,16 @@
 }
 
 .primary {
-  background: var(--color-brand);
+  background: var(--gradient-brand);
   color: var(--on-accent);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--future-cyan) 18%, transparent);
 }
 .primary:not(:disabled):hover {
-  background: var(--color-brand-strong);
+  filter: brightness(1.08);
 }
 
 .secondary {
-  background: var(--color-surface-2);
+  background: rgba(255, 255, 255, 0.045);
   color: var(--color-ink);
   border-color: var(--line);
 }

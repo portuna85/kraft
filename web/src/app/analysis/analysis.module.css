@@ -18,7 +18,7 @@
 }
 
 .error {
-  color: var(--accent);
+  color: var(--color-danger);
   font-weight: 700;
 }
 

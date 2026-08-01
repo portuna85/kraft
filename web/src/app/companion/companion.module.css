@@ -21,7 +21,7 @@
 @media (hover: hover) and (pointer: fine) {
   .item:hover {
     transform: translateX(2px);
-    border-color: rgba(201, 79, 36, 0.2);
+    border-color: rgba(0, 229, 255, 0.2);
     background: var(--surface-card);
     box-shadow: 0 4px 14px rgba(64, 39, 22, 0.08);
   }

@@ -6,7 +6,7 @@
 }
 
 .article h2 {
-  font-family: var(--font-display), "Noto Serif KR", serif;
+  font-family: var(--font-accent), var(--font-sans), sans-serif;
   font-size: var(--fs-md);
   font-weight: 700;
   margin: 0 0 8px;
@@ -15,7 +15,7 @@
 }
 
 .article h3 {
-  font-family: var(--font-display), "Noto Serif KR", serif;
+  font-family: var(--font-accent), var(--font-sans), sans-serif;
   font-size: 0.95rem;
   font-weight: 700;
   margin: 0 0 6px;
@@ -48,7 +48,7 @@
 
 .faqItem:hover {
   background: var(--surface-strong);
-  border-color: rgba(201, 79, 36, 0.15);
+  border-color: rgba(0, 229, 255, 0.15);
 }
 
 .contactBox {
@@ -61,7 +61,7 @@
 }
 
 .noticeBox {
-  background: rgba(201, 79, 36, 0.05);
+  background: rgba(0, 229, 255, 0.05);
   border: 1.5px solid var(--accent-strong);
   border-radius: 16px;
   padding: 18px 22px;

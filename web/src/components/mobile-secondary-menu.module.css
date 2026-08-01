@@ -18,7 +18,7 @@
 
 .list a:hover,
 .list a[aria-current="page"] {
-  background: var(--color-surface-2);
+  background: color-mix(in srgb, var(--future-cyan) 10%, var(--color-surface-2));
   color: var(--color-brand-strong);
 }
 

@@ -232,31 +232,33 @@ test.describe("실제 콘텐츠가 채워진 라우트의 오버플로", () => {
     });
   }
 
-  test("/recommend — 컨테이너 폭이 충분하면 4열이 되고 각 칸이 최소폭 아래로 압축되지 않는다(KF-12a)", async ({
+  test("/recommend — 넓은 화면에서 조건과 결과 패널이 나란히 배치되고 폼은 읽기 순서를 유지한다", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/recommend");
+    const studio = page.locator(".recommend-layout");
     const form = page.locator(".recommend-form");
-    const containerWidth = (await form.boundingBox())!.width;
-    // 이 뷰포트에서 실제로 컨테이너 임계값(920px)을 넘지 못하면 이후 단언이 무의미하므로
-    // 전제부터 확인한다 — 넘지 못하면 테스트 자체가 검증하려는 상황이 아니라는 뜻.
-    expect(containerWidth).toBeGreaterThanOrEqual(920);
-
-    const trackWidths = await form.evaluate((el) =>
+    const result = page.getByRole("region", { name: "추천 결과" });
+    const studioTracks = await studio.evaluate((el) =>
       getComputedStyle(el)
         .gridTemplateColumns.trim()
         .split(/\s+/)
         .map((v) => parseFloat(v)),
     );
-    expect(trackWidths).toHaveLength(4);
-    const [labelCol, boardCol, disclaimerCol, buttonCol] = trackWidths;
-    // minmax() 지정 최소값(148/240/320/148px) 아래로 압축되면 라벨·버튼이 잘린다 —
-    // 서브픽셀 반올림 오차만 허용한다.
-    expect(labelCol).toBeGreaterThanOrEqual(147);
-    expect(boardCol).toBeGreaterThanOrEqual(239);
-    expect(disclaimerCol).toBeGreaterThanOrEqual(319);
-    expect(buttonCol).toBeGreaterThanOrEqual(147);
+    expect(studioTracks).toHaveLength(2);
+    expect(studioTracks[0]).toBeGreaterThanOrEqual(450);
+    expect(studioTracks[1]).toBeGreaterThanOrEqual(450);
+
+    const formBox = (await form.boundingBox())!;
+    const resultBox = (await result.boundingBox())!;
+    expect(Math.abs(formBox.y - resultBox.y)).toBeLessThanOrEqual(1);
+    expect(formBox.x + formBox.width).toBeLessThan(resultBox.x);
+
+    const formTracks = await form.evaluate((el) => getComputedStyle(el).gridTemplateColumns.trim().split(/\s+/));
+    expect(formTracks).toHaveLength(1);
+    await expect(form.getByRole("group", { name: "1부터 45까지 번호 선택판" })).toBeVisible();
+    await expectNoOverflow(page);
   });
 });
 

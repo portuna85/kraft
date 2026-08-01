@@ -27,10 +27,10 @@ body {
   display: flex;
   flex-direction: column;
   background:
-    radial-gradient(circle at top left, rgba(201, 79, 36, 0.18), transparent 25%),
-    radial-gradient(circle at top right, rgba(58, 125, 68, 0.14), transparent 30%),
-    linear-gradient(180deg, var(--bg, #f6f1e8), var(--bg-strong, #efe5d2));
-  color: var(--text, #1d1a17);
+    radial-gradient(circle at 80% 8%, color-mix(in srgb, var(--future-violet) 19%, transparent), transparent 30rem),
+    radial-gradient(circle at 12% 22%, color-mix(in srgb, var(--future-cyan) 14%, transparent), transparent 28rem),
+    linear-gradient(180deg, var(--bg), var(--bg-strong) 55%, var(--bg));
+  color: var(--text);
   font-family: var(--font-sans), "Pretendard", system-ui, sans-serif;
   /* Noto Sans KR은 400/700만 임베드한다 — 500은 CSS 폰트 매칭 규칙상 항상 400으로
      대체 렌더링되므로 실제 렌더링 값과 선언을 일치시킨다. */
@@ -42,6 +42,20 @@ body {
      긴 토큰(URL 등)은 overflow-wrap으로 방어한다. */
   word-break: keep-all;
   overflow-wrap: anywhere;
+  isolation: isolate;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.42;
+  background-image:
+    linear-gradient(var(--future-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--future-grid) 1px, transparent 1px);
+  background-size: 64px 64px;
 }
 
 img,
@@ -72,7 +86,7 @@ a {
   backdrop-filter: blur(18px);
   background: var(--header-bg);
   border-bottom: 1px solid var(--line);
-  box-shadow: 0 10px 30px rgba(40, 24, 12, 0.08);
+  box-shadow: 0 14px 36px rgba(1, 5, 18, 0.16);
   padding-top: env(safe-area-inset-top);
 }
 

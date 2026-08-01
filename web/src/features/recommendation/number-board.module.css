@@ -20,15 +20,15 @@
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(2.5rem, 1fr));
-  gap: 0.4rem;
+  gap: var(--space-2);
 }
 
 .cell {
   min-height: 44px;
   min-width: 44px;
   border-radius: var(--radius-md, 8px);
-  border: 1px solid var(--color-surface-3, #ccc);
-  background: var(--color-surface-1, #fff);
+  border: 1px solid var(--line);
+  background: var(--color-surface-1);
   /* F-P0-1: 이전에는 전역 button 리셋(color: white)이 항상 이겨서 별도로 지정할
      필요가 없었다 — 리셋 특이도를 낮추면서 배경만 이 규칙이 되찾고 글자색은
      여전히 리셋의 흰색으로 남아 흰 배경 위 흰 글자로 안 보이게 됐다. */
@@ -57,12 +57,15 @@
 }
 
 .cellLocked {
-  border-color: var(--color-brand, #2563eb);
-  border-width: 2px;
+  border-color: var(--future-cyan);
+  background: color-mix(in srgb, var(--future-cyan) 16%, var(--color-surface-1));
+  box-shadow: 0 0 0 1px var(--future-cyan), 0 0 18px color-mix(in srgb, var(--future-cyan) 20%, transparent);
 }
 
 .cellExcluded {
   border-style: dashed;
+  border-color: var(--future-violet);
+  background: color-mix(in srgb, var(--future-violet) 10%, var(--color-surface-1));
   text-decoration: line-through;
   color: var(--color-muted, #666);
 }

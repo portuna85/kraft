@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { LottoBalls } from "@/ui/domain/lotto-balls";
-import { PrizeTable } from "@/components/prize-table";
-import { DataFreshnessNote } from "@/components/data-freshness-note";
 import { RecommendClient } from "@/features/recommendation/recommend-client";
+import {
+  DataFeatures,
+  HomeCommunity,
+  HomeCta,
+  HomeHero,
+  HomeMetrics,
+  LatestResultSection,
+} from "./home-sections";
 import {
   getLatestWinningNumber,
   getRoundFreshness,
@@ -12,9 +16,7 @@ import {
   type WinningNumber,
   type HomeSummary,
 } from "@/lib/api";
-import { formatDrawDate } from "@/lib/format";
 import { logCoreDataFailure } from "@/lib/logger";
-import { communitySectionsIdentical } from "@/lib/home-community-sections";
 
 // 루트 레이아웃의 title.template("%s | KRAFT Lotto")은 "/" 페이지에는 적용되지 않으므로
 // (검증됨: 다른 페이지는 템플릿이 적용되지만 홈은 적용 안 됨) 접미사를 직접 포함해야 한다.
@@ -68,89 +70,20 @@ export default async function HomePage() {
 
   const latestPosts = homeSummary?.latestPosts ?? [];
   const weeklyPopularPosts = homeSummary?.weeklyPopularPosts ?? [];
-  const mergeCommunitySections = !homeSummaryUnavailable && communitySectionsIdentical(latestPosts, weeklyPopularPosts);
-
   return (
-    <div className="section-stack">
-      <section className="panel result-panel hero-panel">
-        <p className="eyebrow">최신 결과</p>
-        <h1 className="result-title">
-          {latest.round}회 당첨 결과 <span className="result-date">({formatDrawDate(latest.drawDate)})</span>
-        </h1>
-        <LottoBalls numbers={latest.numbers} bonusNumber={latest.bonusNumber} />
-        <PrizeTable firstPrizeAmount={latest.firstPrizeAmount} secondPrize={latest.secondPrize} />
-        <DataFreshnessNote freshness={freshness} />
-      </section>
-
-      <section className="panel">
-        <p className="eyebrow">번호 추천</p>
-        <h2 className="page-title">오늘의 번호를 만들어 보세요</h2>
+    <div>
+      <HomeHero latest={latest} />
+      <HomeMetrics latest={latest} freshness={freshness} />
+      <LatestResultSection latest={latest} freshness={freshness} />
+      <section className="home-recommend-section" aria-labelledby="home-recommend-title">
+        <p className="eyebrow">Smart pick</p>
+        <h2 id="home-recommend-title" className="page-title">나만의 번호 조합</h2>
+        <p className="page-subtitle">고정 번호와 제외 번호를 설정하고 목적에 맞는 생성 전략을 선택하세요.</p>
         <RecommendClient />
       </section>
-
-      {mergeCommunitySections ? (
-        <section className="panel">
-          <p className="eyebrow">최신 커뮤니티</p>
-          <h3>커뮤니티</h3>
-          <ul className="home-community-list">
-            {latestPosts.map((post) => (
-              <li key={post.id}>
-                <Link href={`/community/posts/${post.id}`}>{post.title}</Link>
-              </li>
-            ))}
-            {latestPosts.length === 0 ? <li className="muted">아직 글이 없습니다.</li> : null}
-          </ul>
-        </section>
-      ) : (
-        <section className="grid grid-2 home-community-columns">
-          <div className="panel">
-            <p className="eyebrow">최신 커뮤니티</p>
-            <h3>최신 글</h3>
-            <ul className="home-community-list">
-              {homeSummaryUnavailable ? <li className="status-text">글 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</li> : null}
-              {!homeSummaryUnavailable && latestPosts.map((post) => (
-                <li key={post.id}>
-                  <Link href={`/community/posts/${post.id}`}>{post.title}</Link>
-                </li>
-              ))}
-              {!homeSummaryUnavailable && latestPosts.length === 0 ? <li className="muted">아직 글이 없습니다.</li> : null}
-            </ul>
-          </div>
-          <div className="panel">
-            <p className="eyebrow">이번 주 인기</p>
-            <h3>주간 인기 글</h3>
-            <ul className="home-community-list">
-              {homeSummaryUnavailable ? <li className="status-text">글 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</li> : null}
-              {!homeSummaryUnavailable && weeklyPopularPosts.map((post) => (
-                <li key={post.id}>
-                  <Link href={`/community/posts/${post.id}`}>{post.title}</Link>
-                </li>
-              ))}
-              {!homeSummaryUnavailable && weeklyPopularPosts.length === 0 ? <li className="muted">아직 글이 없습니다.</li> : null}
-            </ul>
-          </div>
-        </section>
-      )}
-
-      <section className="grid grid-3 home-shortcuts">
-        <Link href="/saved" className="stat-card stat-link">
-          <p className="eyebrow">저장 번호</p>
-          <h3>내 번호 보관함</h3>
-          <span className="stat-link-cta">저장 목록 보기</span>
-        </Link>
-
-        <Link href="/frequency" className="stat-card stat-link">
-          <p className="eyebrow">출현 통계</p>
-          <h3>번호 통계</h3>
-          <span className="stat-link-cta">통계 보기</span>
-        </Link>
-
-        <Link href="/community" className="stat-card stat-link">
-          <p className="eyebrow">커뮤니티</p>
-          <h3>글 모아보기</h3>
-          <span className="stat-link-cta">커뮤니티 가기</span>
-        </Link>
-      </section>
+      <DataFeatures />
+      <HomeCommunity latestPosts={latestPosts} popularPosts={weeklyPopularPosts} unavailable={homeSummaryUnavailable} />
+      <HomeCta />
     </div>
   );
 }

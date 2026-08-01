@@ -3,17 +3,28 @@
   flex: 1 0 auto;
 }
 
+.home-recommend-section {
+  padding-block: clamp(3.25rem, 7vw, 6rem);
+}
+
+.home-recommend-section > .page-subtitle {
+  max-width: 44rem;
+  margin: 0;
+  font-size: clamp(.98rem, 1.5vw, 1.12rem);
+}
+
 /* border-radius는 layout-mobile-base.css(--card-radius)가 소유한다 — 여기 선언은
    .panel/.stat-card에 항상 덮여써 죽은 코드였다(F-02). .ops-grid는 자신의 전용 규칙
    (아래)에서 배경·테두리·radius를 전부 무효화하므로 이 셋 중 이 값들이 실제로
    쓰이는 건 없다 — .ops-grid가 실제로 쓰는 position/overflow만 전용 규칙으로 옮긴다. */
 .panel,
 .stat-card {
-  background-color: var(--surface, rgba(255, 252, 247, 0.92));
+  background: var(--gradient-panel);
   border-width: 1px;
   border-style: solid;
   border-color: var(--line, rgba(29, 26, 23, 0.14));
-  box-shadow: var(--shadow, 0 22px 48px rgba(64, 39, 22, 0.1));
+  box-shadow: var(--shadow-2);
+  backdrop-filter: blur(16px);
   position: relative;
   overflow: hidden;
 }
@@ -28,17 +39,17 @@
 }
 
 .eyebrow {
-  color: var(--accent-strong, #8d2f10);
+  color: var(--future-cyan);
   font-size: var(--fs-xs);
   font-weight: 700;
   font-family: var(--font-accent), var(--font-sans), sans-serif;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
 }
 
 /* /stats, /status, /analysis(analysis-result.tsx)가 공유하는 섹션 제목 스타일 */
 .section-title {
-  font-family: var(--font-display), "Noto Serif KR", serif;
+  font-family: var(--font-accent), var(--font-sans), sans-serif;
   font-size: var(--fs-md);
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -111,17 +122,17 @@
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: 999px;
+  border-radius: 14px;
   min-height: 46px;
   padding: 12px 20px;
-  background-color: var(--accent, #c94f24);
+  background: var(--gradient-brand);
   color: var(--on-accent, white);
   font-family: var(--font-accent), var(--font-sans), sans-serif;
   font-weight: 700;
   letter-spacing: -0.01em;
   cursor: pointer;
   transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
-  box-shadow: 0 10px 24px rgba(141, 47, 16, 0.18);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--future-cyan) 18%, transparent);
 }
 
 /* R-12: 장식성 hover(들뜨는 transform·shadow)는 fine pointer에서만 — 터치 기기에서
@@ -130,7 +141,7 @@
   .button:hover,
   :where(button:not(.theme-toggle):not(.saved-delete-btn):not(.recommend-save-btn):not(.freq-filter-tab):not(.link-button):not(.ball)):hover {
     transform: translateY(-1px);
-    box-shadow: 0 14px 28px rgba(141, 47, 16, 0.22);
+    box-shadow: 0 16px 34px color-mix(in srgb, var(--future-cyan) 24%, transparent);
   }
 }
 
@@ -145,7 +156,7 @@ button:disabled {
   color: var(--text, #1d1a17);
   border-width: 1px;
   border-style: solid;
-  border-color: var(--line, rgba(29, 26, 23, 0.14));
+  border-color: var(--line);
   box-shadow: none;
 }
 
@@ -189,14 +200,14 @@ button:disabled {
   .recommend-card:hover,
   .saved-item:hover {
     transform: translateY(-2px);
-    border-color: rgba(201, 79, 36, 0.22);
+    border-color: rgba(0, 229, 255, 0.22);
     box-shadow: 0 22px 42px rgba(64, 39, 22, 0.14);
   }
 }
 
 .stat-card h3 {
   margin: 0;
-  font-family: var(--font-display), "Noto Serif KR", serif;
+  font-family: var(--font-accent), var(--font-sans), sans-serif;
   letter-spacing: -0.03em;
 }
 
@@ -266,41 +277,6 @@ button:disabled {
   display: none;
 }
 
-/* KF-12a: 쿼리 컨테이너(.recommend-layout)와 쿼리 대상(.recommend-form)을 분리한다 —
-   같은 요소에 container-type과 그 축의 레이아웃을 바꾸는 @container 규칙을 함께 걸면
-   (자기 자신을 쿼리) 실제로는 적용되지 않는 걸 확인했다(자기참조 제약).
-
-   RW-P1-02(R-20 일반화)를 위해 이 패턴을 다른 카드/그리드로 확대할 후보를 다시
-   훑었다 — companion/frequency/stats/analysis/status/header/mobile-bottom-nav의
-   뷰포트 @media들은 전부 페이지 최상위 레이아웃이거나 상시 노출 UI로, 뷰포트가 곧
-   컨테이너라 컨테이너 쿼리로 바꿔도 실질 이득이 없고 위 자기참조 함정을 다시 밟을
-   리스크만 늘린다. companion의 .filterBalls(번호 선택 그리드)도 검토했으나 애초에
-   뷰포트 브레이크포인트 없이 %기반(1fr) 열 폭으로 이미 컨테이너에 적응하고 있어
-   전환 대상이 아니다 — 현재 코드베이스에는 여러 컨테이너 폭에서 재사용되는
-   카드형 컴포넌트가 이 폼 외에 마땅치 않다는 결론. 재사용 카드 컴포넌트가
-   새로 생기면 그때 이 패턴을 다시 적용 검토. */
-.recommend-layout {
-  container-type: inline-size;
-}
-
-/* grid-template-columns는 mobile-unconditional.css(1fr)·tablet.css(2열)가 소유하고,
-   4열 전환은 desktop.css의 @container 규칙(KF-12a)이 .recommend-layout의 실제 렌더
-   폭을 기준으로 담당한다 — 뷰포트 1024px과 패널 실폭이 사이드바 광고·스크롤바 등으로
-   어긋나도(예: 뷰포트는 넘었는데 패널은 아직 좁은 경우) 실제로 4열이 들어갈 폭이
-   될 때만 전환된다. */
-.recommend-form {
-  display: grid;
-  gap: 18px;
-  align-items: stretch;
-}
-
-.recommend-form label {
-  display: grid;
-  gap: 8px;
-  color: var(--muted, #5e564c);
-  font-size: var(--fs-base);
-}
-
 .recommend-toggle-control {
   display: inline-flex;
   align-items: center;
@@ -320,7 +296,7 @@ button:disabled {
   border: 1px solid var(--line, rgba(29, 26, 23, 0.14));
   background: var(--surface-strong, #fffdf8);
   margin: 0;
-  accent-color: var(--accent, #c94f24);
+  accent-color: var(--accent, #00b8cc);
   cursor: pointer;
   flex: 0 0 auto;
 }
@@ -339,11 +315,6 @@ button:disabled {
   line-height: 1.4;
 }
 
-.recommend-form > button {
-  align-self: stretch;
-  min-width: 132px;
-}
-
 input:not([type="checkbox"]):not([type="radio"]) {
   width: 100%;
   min-height: 48px;
@@ -356,10 +327,10 @@ input:not([type="checkbox"]):not([type="radio"]) {
 }
 
 input:not([type="checkbox"]):not([type="radio"]):focus-visible {
-  outline: 2px solid var(--accent, #c94f24);
+  outline: 2px solid var(--accent, #00b8cc);
   outline-offset: 0;
-  border-color: var(--accent, #c94f24);
-  box-shadow: 0 0 0 4px var(--ring, rgba(201, 79, 36, 0.18));
+  border-color: var(--accent, #00b8cc);
+  box-shadow: 0 0 0 4px var(--ring, rgba(0, 229, 255, 0.18));
 }
 
 .saved-delete-btn:hover {
@@ -406,7 +377,7 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible {
 
 .ops-title {
   margin: 6px 0 10px;
-  font-family: var(--font-display), "Noto Serif KR", serif;
+  font-family: var(--font-accent), var(--font-sans), sans-serif;
   font-size: 1.25rem;
   letter-spacing: -0.04em;
 }

@@ -13,8 +13,19 @@
   justify-content: space-between;
   align-items: baseline;
   gap: 12px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--line);
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface-card-sm);
+  transition: border-color var(--duration-base), transform var(--duration-base), background var(--duration-base);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .community-post-list-item:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--future-cyan) 34%, var(--line));
+    background: var(--surface-card);
+  }
 }
 
 .community-post-author {
@@ -72,7 +83,8 @@
 .community-comment {
   padding: 10px 12px;
   border-radius: 12px;
-  background: var(--surface-card-sm);
+  border: 1px solid var(--line);
+  background: var(--gradient-panel);
 }
 
 /* F-10: 이전엔 379px라는 640/1024 기준과 무관한 매직 브레이크포인트로
@@ -248,12 +260,21 @@
 .community-sort-nav a {
   color: var(--muted);
   text-decoration: none;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-card-sm);
 }
 
 .community-category-nav a[aria-current="page"],
 .community-sort-nav a[aria-current="page"] {
-  color: var(--text);
+  color: var(--future-cyan);
   font-weight: 700;
+  border-color: color-mix(in srgb, var(--future-cyan) 42%, var(--line));
+  background: color-mix(in srgb, var(--future-cyan) 10%, var(--surface-card-sm));
 }
 
 .community-post-category {
@@ -274,7 +295,7 @@
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: 6px 10px;
-    padding: 14px 0;
+    padding: 14px;
   }
 
   .community-post-list-item > a {

@@ -4,25 +4,9 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>KRAFT 관리자 로그인</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, sans-serif; background: #0f172a; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 2.5rem 2rem; width: 100%; max-width: 380px; }
-    h1 { color: #f1f5f9; font-size: 1.4rem; margin-bottom: 0.25rem; }
-    p.sub { color: #94a3b8; font-size: 0.85rem; margin-bottom: 1.75rem; }
-    label { display: block; color: #cbd5e1; font-size: 0.8rem; margin-bottom: 0.35rem; }
-    input { width: 100%; min-height: 44px; background: #0f172a; border: 1px solid #475569; border-radius: 6px; color: #f1f5f9; font-size: 0.95rem; padding: 0.6rem 0.75rem; margin-bottom: 1rem; }
-    input:focus { outline: 2px solid #6366f1; border-color: transparent; }
-    button { width: 100%; min-height: 44px; background: #6366f1; color: #fff; border: none; border-radius: 6px; padding: 0.65rem; font-size: 0.95rem; cursor: pointer; margin-top: 0.25rem; }
-    @media (max-width: 480px) { body { padding: 1rem; } .card { padding: 1.5rem 1.25rem; } }
-    button:hover { background: #4f46e5; }
-    .alert { border-radius: 6px; font-size: 0.85rem; padding: 0.6rem 0.75rem; margin-bottom: 1rem; }
-    .alert-success { background: #052e16; border: 1px solid #22c55e; color: #86efac; }
-    .alert-error { background: #450a0a; border: 1px solid #ef4444; color: #fca5a5; }
-    .alert-warn { background: #431407; border: 1px solid #f97316; color: #fdba74; }
-  </style>
+  <link rel="stylesheet" th:href="@{/admin.css}" href="/admin.css"/>
 </head>
-<body>
+<body class="admin-login">
 <div class="card">
   <h1>KRAFT 관리자</h1>
   <p class="sub">내부 관리 콘솔</p>
