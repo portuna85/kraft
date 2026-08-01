@@ -169,6 +169,16 @@ async function snapshot(page: Page, width: number): Promise<Snapshot> {
 // ≥640px에서 gap이 부모 .list의 gap(6px)을 상속하지 않고 자신의 값(14px)을
 // 갖는지가 핵심 — 부모 gap을 잘못 상속하면 이 값이 6px로 나타난다.
 test.describe("globals.css 컴퓨티드 스타일 회귀 방지", () => {
+  test("보조 버튼은 기본 강조 그라데이션을 유지하지 않는다", async ({ page }) => {
+    await page.setContent(page1('<button class="button secondary">보조 작업</button>'));
+    await page.addStyleTag({ content: CSS });
+
+    const backgroundImage = await page.locator(".button.secondary").evaluate(
+      (element) => getComputedStyle(element).backgroundImage,
+    );
+    expect(backgroundImage).toBe("none");
+  });
+
   test("390px(모바일)", async ({ page }) => {
     const s = await snapshot(page, 390);
     expect(s.ballsGap).toBe("6px");

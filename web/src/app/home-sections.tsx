@@ -3,7 +3,11 @@ import { DataFreshnessNote } from "@/components/data-freshness-note";
 import { PrizeTable } from "@/components/prize-table";
 import type { HomeCommunityPostSummary, RoundFreshness, WinningNumber } from "@/lib/api";
 import { formatDateTime, formatDrawDate } from "@/lib/format";
-import { communitySectionsIdentical } from "@/lib/home-community-sections";
+import {
+  communityPopularPostsAlreadyVisible,
+  HOME_LATEST_POST_LIMIT,
+  HOME_POPULAR_POST_LIMIT,
+} from "@/lib/home-community-sections";
 import { LottoBalls } from "@/ui/domain/lotto-balls";
 import styles from "./home-sections.module.css";
 
@@ -109,7 +113,7 @@ function PostList({ posts, unavailable }: { posts: HomeCommunityPostSummary[]; u
   if (posts.length === 0) return <p className="muted">아직 공개된 글이 없습니다.</p>;
   return (
     <ul className={styles.postList}>
-      {posts.slice(0, 4).map((post, index) => (
+      {posts.slice(0, HOME_LATEST_POST_LIMIT).map((post, index) => (
         <li key={post.id} className={styles.post}>
           <Link href={`/community/posts/${post.id}`}>
             <span className={styles.postTitle}>{post.title}</span>
@@ -123,8 +127,7 @@ function PostList({ posts, unavailable }: { posts: HomeCommunityPostSummary[]; u
 }
 
 export function HomeCommunity({ latestPosts, popularPosts, unavailable }: { latestPosts: HomeCommunityPostSummary[]; popularPosts: HomeCommunityPostSummary[]; unavailable: boolean }) {
-  const popularDuplicatesLatest = latestPosts.length > 0
-    && communitySectionsIdentical(latestPosts, popularPosts);
+  const popularDuplicatesLatest = communityPopularPostsAlreadyVisible(latestPosts, popularPosts);
 
   return (
     <section className={styles.section} aria-labelledby="home-community-title">
@@ -143,7 +146,7 @@ export function HomeCommunity({ latestPosts, popularPosts, unavailable }: { late
             <p className="muted">최근 글과 이번 주 인기 글이 같아 한 번만 표시합니다.</p>
           ) : !unavailable && popularPosts.length > 0 ? (
             <ul className={styles.popularList}>
-              {popularPosts.slice(0, 3).map((post) => <li key={post.id}><Link href={`/community/posts/${post.id}`}>{post.title}</Link></li>)}
+              {popularPosts.slice(0, HOME_POPULAR_POST_LIMIT).map((post) => <li key={post.id}><Link href={`/community/posts/${post.id}`}>{post.title}</Link></li>)}
             </ul>
           ) : <p className="muted">{unavailable ? "인기 글을 불러오지 못했습니다." : "아직 집계된 인기 글이 없습니다."}</p>}
           <Link href="/community?sort=weekly_popular" className={styles.primaryAction}>커뮤니티 둘러보기</Link>
