@@ -114,18 +114,17 @@ for (const width of WIDTHS) {
         })
       );
 
-      // RW-P1-07(WebKit 확장)에서 드러남: goto 직후 곧바로 fill하면 하이드레이션
-      // 경합으로 controlled input이 React onChange 부착 전 값을 갖고, 뒤이은
-      // 리렌더가 그 값을 다시 지워 버튼이 계속 disabled로 남는 경우가 있었다
-      // (Chromium/Firefox에서는 타이밍상 드러나지 않았을 뿐 잠재적으로 항상 있던
-      // 경합 — heading visibility만으로는 하이드레이션 완료를 보장하지 못해
-      // networkidle까지 명시적으로 기다린다). fill 직후 실제로 값이 반영됐는지도
-      // 단언해 경합이 재발하면 여기서 명확히 실패하게 한다.
+      // RW-P1-07(WebKit 확장)에서 드러남: DOM 값을 한 번에 바꾸는 fill은 고부하
+      // 병렬 실행에서 하이드레이션과 경합해 React 상태가 빈 값으로 남을 수 있다.
+      // 실제 사용자가 입력할 때와 같은 키보드 input 이벤트를 발생시키고, controlled
+      // state가 반영돼 버튼이 활성화됐는지 확인한 뒤 클릭한다.
       await page.goto("/ops", { waitUntil: "networkidle" });
       const tokenInput = page.getByPlaceholder("X-Ops-Token 값을 입력하세요");
-      await tokenInput.fill("secret-token");
+      await tokenInput.pressSequentially("secret-token");
       await expect(tokenInput).toHaveValue("secret-token");
-      await page.getByRole("button", { name: "운영 상태 확인" }).click();
+      const summaryButton = page.getByRole("button", { name: "운영 상태 확인" });
+      await expect(summaryButton).toBeEnabled();
+      await summaryButton.click();
       await expect(page.getByText("1230회")).toBeVisible();
       await expectNoOverflow(page);
     });
