@@ -1,12 +1,12 @@
 .nav {
   display: flex;
   align-items: center;
-  gap: var(--space-5);
+  gap: clamp(var(--space-4), 2vw, var(--space-7));
 }
 
 .nav a {
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-muted);
   text-decoration: none;
   padding: var(--space-2) 0;
@@ -16,7 +16,7 @@
 
 .nav a:hover,
 .nav a[aria-current="page"] {
-  color: var(--color-brand-strong);
+  color: var(--future-cyan);
 }
 
 .nav a[aria-current="page"] {
@@ -34,7 +34,7 @@
   background: none;
   border: none;
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-muted);
   cursor: pointer;
   padding: var(--space-2) 0;
@@ -43,7 +43,7 @@
 
 .toggle.active,
 .toggle:hover {
-  color: var(--color-brand-strong);
+  color: var(--future-cyan);
 }
 
 .toggle.active {
@@ -73,7 +73,9 @@
   min-width: 160px;
   padding: var(--space-2);
   border-radius: var(--radius-md);
-  background: var(--color-surface-3);
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(18px);
   box-shadow: var(--shadow-1);
   z-index: 20;
 }

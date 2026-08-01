@@ -4,7 +4,9 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--space-4);
-  margin-bottom: var(--space-6);
+  margin-bottom: clamp(var(--space-6), 4vw, var(--space-10));
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--line);
 }
 
 .copy {

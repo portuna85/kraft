@@ -5,8 +5,10 @@
   bottom: 0;
   z-index: 30;
   display: flex;
-  background: var(--nav-mobile-bg);
+  background: color-mix(in srgb, var(--nav-mobile-bg) 88%, transparent);
   border-top: 1px solid var(--line);
+  box-shadow: 0 -12px 32px rgba(3, 7, 18, 0.2);
+  backdrop-filter: blur(18px);
   padding-bottom: env(safe-area-inset-bottom);
 }
 
@@ -37,6 +39,7 @@
 
 .active {
   color: var(--color-brand-strong);
+  text-shadow: 0 0 16px color-mix(in srgb, var(--future-cyan) 35%, transparent);
 }
 
 .active svg {

@@ -12,6 +12,8 @@ export function DesktopNav() {
   const groupRef = useRef<HTMLDivElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const dataActive = dataLinks.some((link) => isCurrent(link.href, pathname));
+  const leadingLinks = primaryLinks.slice(0, 2);
+  const trailingLinks = primaryLinks.slice(2);
 
   useEffect(() => {
     if (!dataOpen) return;
@@ -38,7 +40,7 @@ export function DesktopNav() {
 
   return (
     <nav className={styles.nav} aria-label="주요 메뉴" data-testid="desktop-nav">
-      {primaryLinks.map((link) => (
+      {leadingLinks.map((link) => (
         <Link key={link.href} href={link.href} aria-current={isCurrent(link.href, pathname) ? "page" : undefined}>
           {link.label}
         </Link>
@@ -77,6 +79,12 @@ export function DesktopNav() {
           ))}
         </div>
       </div>
+
+      {trailingLinks.map((link) => (
+        <Link key={link.href} href={link.href} aria-current={isCurrent(link.href, pathname) ? "page" : undefined}>
+          {link.label}
+        </Link>
+      ))}
     </nav>
   );
 }

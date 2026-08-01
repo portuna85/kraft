@@ -4,6 +4,10 @@
   gap: var(--space-5);
 }
 
+.brandAccent {
+  color: var(--future-cyan);
+}
+
 .mobileOnly {
   display: flex;
   align-items: center;

@@ -7,8 +7,9 @@
 }
 
 .not-found-title {
-  font-family: var(--font-display), "Noto Serif KR", serif;
+  font-family: var(--font-accent), var(--font-sans), sans-serif;
   font-size: clamp(3rem, 8vw, 6rem);
+  letter-spacing: -0.05em;
 }
 
 .not-found-actions {
@@ -25,9 +26,20 @@
    짧은 화면에서만 버튼 위 여백을 줄여 그만큼 되찾는다 — 넓은 화면엔 영향 없음.
    (같은 클래스를 다시 선언하는 규칙이라 소스 순서상 반드시 기본 규칙 뒤에 와야 한다.) */
 @media (max-width: 1023px) and (max-height: 700px) {
+  .not-found-title {
+    font-size: clamp(2.35rem, 13vw, 2.75rem);
+    line-height: 0.98;
+    margin-bottom: 8px;
+  }
+
   .not-found-actions {
     margin-top: 0;
     gap: 6px;
+  }
+
+  .not-found-actions .button {
+    min-height: var(--target-min);
+    padding-block: 9px;
   }
 }
 

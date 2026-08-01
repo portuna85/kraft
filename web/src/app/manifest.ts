@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "로또 당첨 결과 조회, 번호 추천, 저장 번호 관리",
     start_url: "/",
     display: "standalone",
-    background_color: "#f6f1e8",
-    theme_color: "#c94f24",
+    background_color: "#050816",
+    theme_color: "#00e5ff",
     icons: [
       {
         src: "/icon/32",

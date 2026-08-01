@@ -50,8 +50,8 @@ export const viewport: Viewport = {
   // R-23: 라이트/다크 OS 스킴에 근사 대응 — 사이트 테마는 토글식이라 완전 일치는
   // 불가능하지만(테마 초기화는 JS로 body에 반영), media 배열이 최선이다.
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#c94f24" },
-    { media: "(prefers-color-scheme: dark)", color: "#1c1813" },
+    { media: "(prefers-color-scheme: light)", color: "#f3f7ff" },
+    { media: "(prefers-color-scheme: dark)", color: "#050816" },
   ],
   width: "device-width",
   initialScale: 1,

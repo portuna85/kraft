@@ -22,13 +22,13 @@ export default function Icon({ params }: { params: { id: string } }) {
           width: sz,
           height: sz,
           borderRadius: "50%",
-          background: "#ffc857",
+          background: "linear-gradient(135deg, #00e5ff, #7c4dff)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           fontSize,
           fontWeight: 800,
-          color: "#1d1a17",
+          color: "#050816",
         }}
       >
         K

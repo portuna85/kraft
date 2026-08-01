@@ -9,7 +9,7 @@ export function Header() {
     <header className="site-header">
       <div className="shell header-inner">
         <Link href="/" className="brand" aria-label="KRAFT Lotto 홈">
-          KRAFT Lotto
+          <span>KRAFT</span><span className={styles.brandAccent}> LOTTO</span>
         </Link>
         <div className="header-actions">
           <div className={styles.desktopOnly}>

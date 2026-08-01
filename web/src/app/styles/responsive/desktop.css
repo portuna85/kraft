@@ -42,7 +42,7 @@
   }
 
   .footer-nav {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
   }
 
   .saved-empty-state {
@@ -69,26 +69,5 @@
     display: flex;
     position: sticky;
     top: calc(var(--header-offset) + 24px);
-  }
-}
-
-/* KF-12a(RW-P0-01): 4열 전환은 뷰포트가 아니라 .recommend-form 자신의 실제 렌더 폭
-   기준이다(layout.css에서 container-type: inline-size 선언). 최소폭 합
-   (148+240+320+148=856px)+칸 사이 gap 3개(18px×3=54px)=910px — 예전 1024px 뷰포트
-   기준 패널 내폭(약 920px)과 거의 같은 지점에서 전환되도록 920px로 잡았다(R-25 여유분
-   유지). tablet.css의 2열 규칙보다 이 파일이 나중에 임포트되므로 컨테이너 조건이
-   맞으면 그대로 이긴다. */
-@container (min-width: 920px) {
-  .recommend-form {
-    grid-template-columns: minmax(148px, 0.75fr) minmax(240px, 1.15fr) minmax(320px, 1.35fr) 148px;
-    align-items: end;
-  }
-
-  .recommend-form label {
-    align-content: start;
-  }
-
-  .recommend-form > button {
-    min-height: 96px;
   }
 }

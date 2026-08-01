@@ -3,6 +3,7 @@
   border: 1px solid var(--line);
   padding: var(--space-5);
   box-shadow: var(--shadow-2);
+  backdrop-filter: blur(16px);
 }
 
 .level1 {
@@ -14,6 +15,6 @@
 }
 
 .level3 {
-  background: var(--color-surface-3);
+  background: var(--gradient-panel);
   box-shadow: var(--shadow-1);
 }

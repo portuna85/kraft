@@ -162,13 +162,26 @@ for (const theme of THEMES) {
         await route.afterGoto?.(page);
         await expect(page.locator(route.readySelector).first()).toBeVisible();
         if (route.contentOnlyScreenshot) {
-          // 긴 locator 캡처에도 sticky/fixed 전역 크롬이 합성될 수 있으므로 가린다.
-          // visibility를 사용해 레이아웃은 보존하고 실제 /ops 콘텐츠만 비교한다.
+          // main은 flex로 뷰포트 높이를 채우고 긴 shell은 overflow된다. locator 캡처가
+          // overflow 높이를 재계산하면 연속 이미지가 2px씩 흔들릴 수 있으므로 shell의
+          // 실측 높이와 main padding으로 캡처 박스 자체를 먼저 고정한다.
           await page.addStyleTag({
             content:
               '.site-header, [data-testid="mobile-bottom-nav"] { visibility: hidden !important; }',
           });
-          await expect(page.locator("main")).toHaveScreenshot(`${route.label}-${theme}.png`);
+          const main = page.locator("main");
+          await main.evaluate((element) => {
+            const shell = element.firstElementChild;
+            if (!(shell instanceof HTMLElement)) {
+              throw new Error("main shell 요소를 찾지 못했습니다.");
+            }
+            const mainElement = element as HTMLElement;
+            const style = getComputedStyle(mainElement);
+            const padding = Number.parseFloat(style.paddingTop) + Number.parseFloat(style.paddingBottom);
+            mainElement.style.flex = "none";
+            mainElement.style.height = `${Math.ceil(shell.getBoundingClientRect().height + padding)}px`;
+          });
+          await expect(main).toHaveScreenshot(`${route.label}-${theme}.png`);
         } else {
           await expect(page).toHaveScreenshot(`${route.label}-${theme}.png`, { fullPage: true });
         }

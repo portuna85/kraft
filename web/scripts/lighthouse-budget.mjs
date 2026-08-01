@@ -67,7 +67,17 @@ try {
     );
   }
 } finally {
-  await chrome.kill();
+  try {
+    await chrome.kill();
+  } catch (error) {
+    // chrome-launcher can finish terminating Chrome on Windows and then fail while
+    // removing its temporary profile because a system process still holds a file.
+    // Keep the measured budget result, but surface the cleanup failure explicitly.
+    if (process.platform !== "win32" || error?.code !== "EPERM") {
+      throw error;
+    }
+    console.warn("Chrome 임시 프로필을 정리하지 못했습니다(Windows EPERM). 성능 예산 검증은 계속합니다.");
+  }
 }
 
 writeFileSync(resultsPath, JSON.stringify({ timestamp: new Date().toISOString(), baseUrl, results }, null, 2));

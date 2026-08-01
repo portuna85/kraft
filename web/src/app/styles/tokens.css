@@ -1,26 +1,32 @@
 :root {
   color-scheme: light;
-  --bg: #f6f1e8;
-  --bg-strong: #efe5d2;
-  --surface: rgba(255, 252, 247, 0.92);
-  --surface-strong: #fffdf8;
-  --text: #1d1a17;
-  --muted: #5e564c;
-  --line: rgba(29, 26, 23, 0.14);
-  --accent: #c94f24;
-  --accent-strong: #8d2f10;
-  --on-accent: #fff;
-  --ball: #ffc857;
-  --bonus: #3a7d44;
-  --shadow: 0 22px 48px rgba(64, 39, 22, 0.1);
+  --bg: #f3f7ff;
+  --bg-strong: #e7eefc;
+  --surface: rgba(255, 255, 255, 0.82);
+  --surface-strong: #ffffff;
+  --text: #0b1430;
+  --muted: #53617e;
+  --line: rgba(31, 57, 105, 0.16);
+  --accent: #087ca7;
+  --accent-strong: #075b88;
+  --on-accent: #ffffff;
+  --ball: #63d7e6;
+  --bonus: #168b68;
+  --shadow: 0 24px 56px rgba(24, 47, 88, 0.14);
   /* Overlay surfaces (cards, drawers) — separate from --surface for fine-grained dark overrides */
-  --surface-card:    rgba(255, 255, 255, 0.92);
-  --surface-card-md: rgba(255, 252, 247, 0.84);
-  --surface-card-sm: rgba(255, 250, 244, 0.72);
-  --header-bg:       rgba(255, 249, 241, 0.88);
-  --nav-mobile-bg:   rgba(246, 241, 232, 0.97);
+  --surface-card:    rgba(255, 255, 255, 0.9);
+  --surface-card-md: rgba(248, 251, 255, 0.82);
+  --surface-card-sm: rgba(239, 246, 255, 0.72);
+  --header-bg:       rgba(243, 247, 255, 0.86);
+  --nav-mobile-bg:   rgba(243, 247, 255, 0.96);
   --shimmer-highlight: rgba(255, 255, 255, 0.72);
-  --ring: rgba(201, 79, 36, 0.18);
+  --ring: rgba(0, 152, 187, 0.22);
+  --future-cyan: #00b8d4;
+  --future-violet: #6848e8;
+  --future-green: #168b68;
+  --future-grid: rgba(30, 70, 130, 0.07);
+  --gradient-brand: linear-gradient(90deg, var(--future-cyan), #477dff 52%, var(--future-violet));
+  --gradient-panel: linear-gradient(180deg, rgba(255,255,255,.94), rgba(242,247,255,.76));
   /* Layout tokens — mobile-first defaults (<640px) */
   --shell-max: 1180px;
   --shell-gutter: 16px;
@@ -28,8 +34,8 @@
   --page-pad-bottom: 64px;
   --panel-pad: 20px;
   --panel-gap: 18px;
-  --card-radius: 20px;
-  --header-h: 68px;
+  --card-radius: 24px;
+  --header-h: 76px;
   --header-offset: calc(var(--header-h) + env(safe-area-inset-top));
   --target-min: 44px;
   --sticky-ad-h: calc(50px + env(safe-area-inset-bottom));
@@ -65,7 +71,7 @@
   --color-surface-2: var(--surface-card-md);
   --color-surface-3: var(--surface-card);
 
-  /* 신규 색상 — --bg(#f6f1e8) 대비 직접 계산해 WCAG AA(4.5:1) 확인.
+  /* 상태 색상은 밝은 캔버스에서도 WCAG AA 대비를 확보한다.
      상대휘도 L_bg ≈ 0.884 (sRGB 선형화 후 0.2126R+0.7152G+0.0722B). */
   --color-success: #1b5e20; /* L≈0.083 → 대비 7.00:1 */
   --color-warning: #8a5a00; /* L≈0.127 → 대비 5.27:1 */
@@ -121,28 +127,32 @@
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --bg: #1c1813;
-  --bg-strong: #231f19;
-  --surface: rgba(38, 32, 25, 0.9);
-  --surface-strong: #2c2620;
-  --text: #f0ebe3;
-  --muted: #9e9086;
-  --line: rgba(240, 235, 227, 0.1);
-  --accent: #e05a28;
-  --accent-strong: #f07845;
-  /* white/#e05a28는 대비 3.71:1로 WCAG AA(4.5:1) 미달 — 어두운 텍스트(#1c1813)가
-     5.66:1로 통과한다 */
-  --on-accent: #1c1813;
-  --ball: #e8a820;
-  --bonus: #4a9654;
-  --shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
-  --surface-card:    rgba(255, 255, 255, 0.045);
-  --surface-card-md: rgba(255, 255, 255, 0.035);
-  --surface-card-sm: rgba(255, 255, 255, 0.028);
-  --header-bg:       rgba(28, 24, 19, 0.88);
-  --nav-mobile-bg:   rgba(28, 24, 19, 0.97);
-  --shimmer-highlight: rgba(255, 255, 255, 0.04);
-  --ring: rgba(224, 90, 40, 0.2);
+  --bg: #050816;
+  --bg-strong: #070b1d;
+  --surface: rgba(11, 16, 36, 0.88);
+  --surface-strong: #111936;
+  --text: #f7f9ff;
+  --muted: #9aa7c7;
+  --line: rgba(255, 255, 255, 0.1);
+  --accent: #00e5ff;
+  --accent-strong: #8ab4ff;
+  --on-accent: #04101b;
+  --ball: #7ee7ff;
+  --bonus: #40f0b5;
+  --shadow: 0 24px 70px rgba(0, 0, 0, 0.38);
+  --surface-card:    rgba(255, 255, 255, 0.065);
+  --surface-card-md: rgba(255, 255, 255, 0.05);
+  --surface-card-sm: rgba(255, 255, 255, 0.035);
+  --header-bg:       rgba(5, 8, 22, 0.82);
+  --nav-mobile-bg:   rgba(5, 8, 22, 0.96);
+  --shimmer-highlight: rgba(255, 255, 255, 0.08);
+  --ring: rgba(0, 229, 255, 0.22);
+  --future-cyan: #00e5ff;
+  --future-violet: #7c4dff;
+  --future-green: #40f0b5;
+  --future-grid: rgba(255, 255, 255, 0.045);
+  --gradient-brand: linear-gradient(90deg, var(--future-cyan), #8ab4ff 52%, var(--future-violet));
+  --gradient-panel: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.032));
 
   /* 색상 별칭 — 다크 값이 라이트와 다르므로 여기서 재선언 */
   --color-canvas: var(--bg);
@@ -154,10 +164,10 @@
   --color-surface-2: var(--surface-card-md);
   --color-surface-3: var(--surface-card);
 
-  /* 다크 --bg(#1c1813) 대비 직접 계산. 상대휘도 L_bg ≈ 0.0095. */
-  --color-success: #5fbe6b; /* L≈0.403 → 대비 7.61:1 */
-  --color-warning: #e0a030; /* L≈0.412 → 대비 7.77:1 */
-  --color-danger: #f0715f; /* L≈0.312 → 대비 6.08:1 */
+  /* 어두운 캔버스에서 상태 텍스트가 색상만으로 의미를 전달하지 않도록 한다. */
+  --color-success: #40f0b5;
+  --color-warning: #ffd166;
+  --color-danger: #ff8b9a;
 
   --shadow-1: var(--shadow);
   --shadow-2: 0 8px 20px rgba(0, 0, 0, 0.28);

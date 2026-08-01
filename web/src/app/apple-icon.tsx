@@ -11,7 +11,7 @@ export default function AppleIcon() {
           width: 180,
           height: 180,
           borderRadius: "38px",
-          background: "#f6f1e8",
+          background: "#050816",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -22,13 +22,13 @@ export default function AppleIcon() {
             width: 120,
             height: 120,
             borderRadius: "50%",
-            background: "#ffc857",
+            background: "linear-gradient(135deg, #00e5ff, #7c4dff)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             fontSize: 64,
             fontWeight: 800,
-            color: "#1d1a17",
+            color: "#050816",
           }}
         >
           K
