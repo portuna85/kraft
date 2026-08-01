@@ -3,6 +3,7 @@ import { DataFreshnessNote } from "@/components/data-freshness-note";
 import { PrizeTable } from "@/components/prize-table";
 import type { HomeCommunityPostSummary, RoundFreshness, WinningNumber } from "@/lib/api";
 import { formatDateTime, formatDrawDate } from "@/lib/format";
+import { communitySectionsIdentical } from "@/lib/home-community-sections";
 import { LottoBalls } from "@/ui/domain/lotto-balls";
 import styles from "./home-sections.module.css";
 
@@ -114,7 +115,7 @@ function PostList({ posts, unavailable }: { posts: HomeCommunityPostSummary[]; u
             <span className={styles.postTitle}>{post.title}</span>
             <span className={styles.postMeta}>{post.authorNameSnapshot} · <time dateTime={post.createdAt}>{formatDateTime(post.createdAt)}</time></span>
           </Link>
-          {index === 0 ? <span className={styles.postMarker}>● NEW</span> : null}
+          {index === 0 ? <span className={styles.postMarker}>● 최신</span> : null}
         </li>
       ))}
     </ul>
@@ -122,6 +123,9 @@ function PostList({ posts, unavailable }: { posts: HomeCommunityPostSummary[]; u
 }
 
 export function HomeCommunity({ latestPosts, popularPosts, unavailable }: { latestPosts: HomeCommunityPostSummary[]; popularPosts: HomeCommunityPostSummary[]; unavailable: boolean }) {
+  const popularDuplicatesLatest = latestPosts.length > 0
+    && communitySectionsIdentical(latestPosts, popularPosts);
+
   return (
     <section className={styles.section} aria-labelledby="home-community-title">
       <div className={styles.sectionHeader}>
@@ -135,7 +139,9 @@ export function HomeCommunity({ latestPosts, popularPosts, unavailable }: { late
           <span className={styles.featureIcon} aria-hidden="true">★</span>
           <h3 id="popular-title">이번 주 인기</h3>
           <p>최근 7일 공개 글을 반응과 최신성을 기준으로 정렬했습니다.</p>
-          {!unavailable && popularPosts.length > 0 ? (
+          {!unavailable && popularDuplicatesLatest ? (
+            <p className="muted">최근 글과 이번 주 인기 글이 같아 한 번만 표시합니다.</p>
+          ) : !unavailable && popularPosts.length > 0 ? (
             <ul className={styles.popularList}>
               {popularPosts.slice(0, 3).map((post) => <li key={post.id}><Link href={`/community/posts/${post.id}`}>{post.title}</Link></li>)}
             </ul>

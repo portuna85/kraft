@@ -125,7 +125,7 @@
   border-radius: 14px;
   min-height: 46px;
   padding: 12px 20px;
-  background: var(--gradient-brand);
+  background: var(--gradient-action);
   color: var(--on-accent, white);
   font-family: var(--font-accent), var(--font-sans), sans-serif;
   font-weight: 700;

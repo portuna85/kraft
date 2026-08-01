@@ -42,7 +42,7 @@
 }
 
 .primary {
-  background: var(--gradient-brand);
+  background: var(--gradient-action);
   color: var(--on-accent);
   box-shadow: 0 12px 30px color-mix(in srgb, var(--future-cyan) 18%, transparent);
 }
