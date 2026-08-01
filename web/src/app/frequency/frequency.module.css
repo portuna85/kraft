@@ -30,7 +30,7 @@
   }
 }
 :global(.freq-filter-tab.active) {
-  background: var(--gradient-brand);
+  background: var(--gradient-action);
   border-color: var(--future-cyan);
   color: var(--on-accent, #fff);
   box-shadow: 0 8px 22px color-mix(in srgb, var(--future-cyan) 20%, transparent);

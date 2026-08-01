@@ -15,7 +15,7 @@
 .lead { max-width: 38rem; margin: 0; color: var(--muted); font-size: clamp(1rem, 1.5vw, 1.22rem); line-height: 1.75; }
 .actions { display: flex; flex-wrap: wrap; gap: .8rem; margin-top: 2rem; }
 .primaryAction, .secondaryAction { display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: .8rem 1.4rem; border-radius: 16px; font-family: var(--font-accent), sans-serif; font-weight: 700; transition: transform var(--duration-base), filter var(--duration-base), background var(--duration-base); }
-.primaryAction { color: var(--on-accent); background: var(--gradient-brand); box-shadow: 0 14px 36px color-mix(in srgb, var(--future-cyan) 20%, transparent); }
+.primaryAction { color: var(--on-accent); background: var(--gradient-action); box-shadow: 0 14px 36px color-mix(in srgb, var(--future-cyan) 20%, transparent); }
 .secondaryAction { border: 1px solid var(--line); background: var(--surface-card-sm); color: var(--text); }
 
 .orbStage { position: relative; display: grid; place-items: center; min-height: clamp(19rem, 38vw, 30rem); }

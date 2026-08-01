@@ -26,6 +26,7 @@
   --future-green: #168b68;
   --future-grid: rgba(30, 70, 130, 0.07);
   --gradient-brand: linear-gradient(90deg, var(--future-cyan), #477dff 52%, var(--future-violet));
+  --gradient-action: linear-gradient(90deg, #075985, #1d4ed8 52%, #6d28d9);
   --gradient-panel: linear-gradient(180deg, rgba(255,255,255,.94), rgba(242,247,255,.76));
   /* Layout tokens — mobile-first defaults (<640px) */
   --shell-max: 1180px;
@@ -152,6 +153,7 @@
   --future-green: #40f0b5;
   --future-grid: rgba(255, 255, 255, 0.045);
   --gradient-brand: linear-gradient(90deg, var(--future-cyan), #8ab4ff 52%, var(--future-violet));
+  --gradient-action: var(--gradient-brand);
   --gradient-panel: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.032));
 
   /* 색상 별칭 — 다크 값이 라이트와 다르므로 여기서 재선언 */
