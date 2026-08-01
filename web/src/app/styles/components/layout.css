@@ -152,7 +152,7 @@ button:disabled {
 }
 
 .button.secondary {
-  background-color: transparent;
+  background: transparent;
   color: var(--text, #1d1a17);
   border-width: 1px;
   border-style: solid;

@@ -1,11 +1,20 @@
 type PostWithId = { id: number };
 
-// KX-09: 글이 적으면 "최신 글"과 "주간 인기"가 같은 글 목록을 그대로 반복해 두 섹션이
-// 같은 정보를 두 번 보여주는 것처럼 보인다. 두 목록의 글 id 집합이 완전히 같을 때만
-// (둘 다 비어 있는 경우 포함) true를 반환한다 — 글이 늘어 목록이 달라지면 자동으로
-// 다시 분리된다.
-export function communitySectionsIdentical(latestPosts: PostWithId[], weeklyPopularPosts: PostWithId[]): boolean {
-  if (latestPosts.length !== weeklyPopularPosts.length) return false;
-  const latestIds = new Set(latestPosts.map((post) => post.id));
-  return weeklyPopularPosts.every((post) => latestIds.has(post.id));
+export const HOME_LATEST_POST_LIMIT = 4;
+export const HOME_POPULAR_POST_LIMIT = 3;
+
+// KX-09: 실제 화면에 보이는 인기 글이 최신 글 목록에 모두 포함될 때만 중복 목록을
+// 생략한다. API 전체 집합이 같더라도 정렬 순서 때문에 최신 글의 표시 범위 밖에 있는
+// 인기 글은 숨기지 않는다.
+export function communityPopularPostsAlreadyVisible(
+  latestPosts: PostWithId[],
+  weeklyPopularPosts: PostWithId[],
+): boolean {
+  const visiblePopularPosts = weeklyPopularPosts.slice(0, HOME_POPULAR_POST_LIMIT);
+  if (visiblePopularPosts.length === 0) return false;
+
+  const visibleLatestIds = new Set(
+    latestPosts.slice(0, HOME_LATEST_POST_LIMIT).map((post) => post.id),
+  );
+  return visiblePopularPosts.every((post) => visibleLatestIds.has(post.id));
 }
