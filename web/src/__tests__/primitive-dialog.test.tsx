@@ -70,4 +70,35 @@ describe("Dialog 프리미티브", () => {
     screen.getByRole("dialog").parentElement?.click();
     expect(onClose).toHaveBeenCalledOnce();
   });
+
+  // FE-099: useFocusTrap의 이펙트 의존성에 onClose가 있으면, 호출부가 인라인 함수를
+  // 넘길 때 리렌더마다 cleanup→재설정이 돌아 포커스가 트리거로 되돌아가고 배경 inert가
+  // 잠시 풀린다. 열린 상태에서 입력 중 포커스가 튀는 원인이다.
+  it("열린 채로 부모가 리렌더돼도 포커스와 배경 격리가 유지된다", () => {
+    function Harness({ tick }: { tick: number }) {
+      // 매 렌더마다 새 함수 인스턴스를 넘긴다 — 실제 호출부(MobileSecondaryMenu)와 같은 형태.
+      return (
+        <>
+          <button>배경 버튼</button>
+          <Dialog open onClose={() => {}} titleId="t" title="제목">
+            <input aria-label="첫 입력" defaultValue={String(tick)} />
+            <input aria-label="둘째 입력" />
+          </Dialog>
+        </>
+      );
+    }
+
+    const { rerender } = render(<Harness tick={0} />);
+    // 트랩이 다시 설정되면 focusables[0](첫 입력)으로 포커스를 옮긴다. 두 번째 요소에
+    // 포커스를 두어야 그 이동을 감지할 수 있다 — 첫 요소에 두면 우연히 같은 결과가 나온다.
+    const second = screen.getByLabelText("둘째 입력");
+    second.focus();
+    expect(second).toHaveFocus();
+
+    rerender(<Harness tick={1} />);
+
+    expect(second).toHaveFocus();
+    expect(screen.getByText("배경 버튼")).toHaveAttribute("inert");
+    expect(document.body).toHaveStyle({ overflow: "hidden" });
+  });
 });

@@ -145,7 +145,15 @@
     align-items: flex-start;
   }
 
+  /* 모바일 카드 변환에서는 세후 라벨이 다른 항목 라벨과 같은 형태여야 한다
+     (FE-105: 예전에는 여기서 숨기고 같은 문구의 mobile-label을 따로 렌더했다). */
   .prize-table-after-tax-label {
-    display: none;
+    display: block;
+    margin-bottom: 2px;
+    color: var(--muted);
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: normal;
   }
 }

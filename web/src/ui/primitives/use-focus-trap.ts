@@ -52,6 +52,16 @@ export function useFocusTrap({
 }) {
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
+  // FE-099: 이 이펙트의 의존성에 onClose가 있으면, 호출부가 인라인 화살표 함수를 넘길 때
+  // (MobileSecondaryMenu가 그랬다) 부모가 리렌더될 때마다 cleanup→재설정이 돌아
+  // 배경 inert 복원, body overflow 복원, 포커스 강제 이동이 매번 다시 일어난다.
+  // 열린 다이얼로그 안에서 입력할 때 포커스가 튀는 원인이므로, 최신 콜백을 ref로만
+  // 읽고 의존성에서 뺀다. containerRef/restoreFocusRef도 ref 객체라 재구독이 불필요하다.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     if (!open) return;
     previouslyFocused.current = document.activeElement as HTMLElement | null;
@@ -71,7 +81,7 @@ export function useFocusTrap({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== "Tab" || !container) return;
@@ -95,5 +105,8 @@ export function useFocusTrap({
       restoreBackground(hiddenBackground);
       (restoreTarget ?? previouslyFocused.current)?.focus();
     };
-  }, [open, onClose, containerRef, restoreFocusRef]);
+    // onClose는 onCloseRef로 읽고, containerRef/restoreFocusRef는 안정적인 ref 객체다.
+    // 이 목록에 다시 넣으면 FE-099(리렌더마다 트랩 재설정)가 재발한다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 }
