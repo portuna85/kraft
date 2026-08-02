@@ -105,6 +105,15 @@ export async function createPost(
   });
 }
 
+/**
+ * FE-066: 수정 중 버전 충돌이 났을 때 최신 상태를 브라우저에서 다시 읽는다.
+ * 서버 쪽 getCommunityPost는 ISR 캐시를 타므로 방금 다른 사람이 올린 버전을 못 볼 수
+ * 있어, 여기서는 browserFetch(캐시 없음)로 직접 조회한다.
+ */
+export async function fetchCommunityPost(id: number): Promise<CommunityPost> {
+  return browserFetch<CommunityPost>(`/api/v1/community/posts/${id}`);
+}
+
 export async function updatePost(
   id: number,
   title: string,

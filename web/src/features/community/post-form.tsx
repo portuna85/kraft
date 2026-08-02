@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { createPost, loginUrl, updatePost } from "@/lib/community-client";
+import { createPost, fetchCommunityPost, loginUrl, updatePost } from "@/lib/community-client";
 import { revalidateCommunityPost } from "@/lib/community-revalidate";
 import { BrowserApiError } from "@/lib/browser-api";
 import { useCommunitySession } from "@/lib/community-session-provider";
@@ -30,7 +30,13 @@ export function PostForm(props: CreateMode | EditMode) {
   const [recommendationSetId, setRecommendationSetId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // FE-066: 충돌 안내가 "새로고침한 뒤 다시 작성해 주세요"였는데, 새로고침하면 작성 중이던
+  // 내용이 사라진다. 입력값은 그대로 두고 최신 version만 다시 받아 이어서 저장할 수 있게 한다.
   const [versionConflict, setVersionConflict] = useState(false);
+  const [resolvingConflict, setResolvingConflict] = useState(false);
+  const [latestRemoteTitle, setLatestRemoteTitle] = useState<string | null>(null);
+  // 저장에 실을 버전. 충돌 후 최신 값으로 갱신되므로 props를 그대로 쓰지 않는다.
+  const [version, setVersion] = useState(props.mode === "edit" ? props.initialVersion : 0);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -46,7 +52,7 @@ export function PostForm(props: CreateMode | EditMode) {
         router.push(`/community/posts/${post.id}`);
         router.refresh();
       } else {
-        const post = await updatePost(props.postId, title.trim(), content.trim(), props.initialVersion);
+        const post = await updatePost(props.postId, title.trim(), content.trim(), version);
         await revalidateCommunityPost(post.id);
         router.push(`/community/posts/${post.id}`);
         router.refresh();
@@ -59,6 +65,26 @@ export function PostForm(props: CreateMode | EditMode) {
       }
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  /**
+   * 충돌 복구: 입력값은 건드리지 않고 최신 version만 받아 온다. 상대가 무엇으로 바꿨는지
+   * 제목으로 알려 주어, 그대로 덮어쓸지 사용자가 판단할 수 있게 한다.
+   */
+  const resolveConflict = async () => {
+    if (props.mode !== "edit" || resolvingConflict) return;
+    setResolvingConflict(true);
+    setError(null);
+    try {
+      const latest = await fetchCommunityPost(props.postId);
+      setVersion(latest.version);
+      setLatestRemoteTitle(latest.title);
+      setVersionConflict(false);
+    } catch {
+      setError("최신 내용을 불러오지 못했습니다. 잠시 후 다시 시도하세요.");
+    } finally {
+      setResolvingConflict(false);
     }
   };
 
@@ -107,7 +133,30 @@ export function PostForm(props: CreateMode | EditMode) {
 
   return (
     <form onSubmit={handleSubmit} className="community-post-form">
-      {versionConflict ? <div id="post-form-error"><InlineAlert tone="danger" title="다른 곳에서 먼저 수정되었습니다." description="새로고침한 뒤 최신 내용으로 다시 작성해 주세요." /></div> : null}
+      {versionConflict ? (
+        <div id="post-form-error">
+          <InlineAlert
+            tone="danger"
+            title="다른 곳에서 먼저 수정되었습니다."
+            description="작성 중인 내용은 그대로 있습니다. 최신 상태를 불러온 뒤 다시 저장하면 이 내용으로 덮어씁니다."
+          />
+          <button
+            type="button"
+            className="button secondary"
+            onClick={resolveConflict}
+            disabled={resolvingConflict}
+          >
+            {resolvingConflict ? "불러오는 중…" : "최신 상태 불러오기"}
+          </button>
+        </div>
+      ) : null}
+      {latestRemoteTitle !== null ? (
+        <InlineAlert
+          tone="neutral"
+          title="최신 상태를 불러왔습니다."
+          description={`현재 저장된 제목은 “${latestRemoteTitle}”입니다. 저장하면 작성 중인 내용으로 덮어씁니다.`}
+        />
+      ) : null}
       {error ? <div id="post-form-error"><InlineAlert tone="danger" title="저장에 실패했습니다." description={error} /></div> : null}
 
       {props.mode === "create" ? (

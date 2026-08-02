@@ -153,6 +153,68 @@ describe("커뮤니티 게시글 작성·수정 폼", () => {
     expect(titleInput).toHaveValue("수정된 제목");
   });
 
+  // FE-066: 충돌 안내가 "새로고침한 뒤 다시 작성해 주세요"였는데, 새로고침하면 작성 중이던
+  // 내용이 사라진다. 입력값은 유지한 채 최신 version만 받아 이어서 저장할 수 있어야 한다.
+  it("버전 충돌 후 최신 상태를 불러오면 입력값을 유지한 채 다시 저장할 수 있다", async () => {
+    let conflicted = false;
+    const putBodies: string[] = [];
+    global.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("/session")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ loggedIn: true, userId: 1, nickname: "글쓴이", activeProviders: [] }),
+        });
+      }
+      if (init?.method === "PUT") {
+        putBodies.push(init.body as string);
+        if (!conflicted) {
+          conflicted = true;
+          return Promise.resolve({
+            ok: false,
+            status: 409,
+            json: () => Promise.resolve({ code: "COMMUNITY_POST_VERSION_CONFLICT", message: "충돌" }),
+          });
+        }
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ id: 1 }) });
+      }
+      // 충돌 후 최신 상태 재조회 — 다른 사람이 version 5로 올려 둔 상태.
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ id: 1, title: "남이 바꾼 제목", content: "남의 내용", version: 5 }),
+      });
+    });
+
+    renderPostForm({
+      mode: "edit",
+      postId: 1,
+      ownerId: 1,
+      initialTitle: "원래 제목",
+      initialContent: "원래 내용",
+      initialVersion: 0,
+    });
+
+    const titleInput = await screen.findByLabelText("제목");
+    fireEvent.change(titleInput, { target: { value: "내가 쓴 제목" } });
+    fireEvent.click(screen.getByRole("button", { name: "저장" }));
+
+    fireEvent.click(await screen.findByRole("button", { name: "최신 상태 불러오기" }));
+
+    // 상대가 무엇으로 바꿨는지 알려 주되, 내 입력은 그대로 남아 있어야 한다.
+    expect(await screen.findByText(/남이 바꾼 제목/)).toBeInTheDocument();
+    expect(titleInput).toHaveValue("내가 쓴 제목");
+    expect(screen.queryByText(/다른 곳에서 먼저 수정되었습니다/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "저장" }));
+
+    await waitFor(() => expect(putBodies).toHaveLength(2));
+    // 두 번째 저장은 재조회한 최신 버전으로 나가야 한다 — 아니면 또 충돌한다.
+    expect(JSON.parse(putBodies[0]).expectedVersion).toBe(0);
+    expect(JSON.parse(putBodies[1]).expectedVersion).toBe(5);
+    expect(JSON.parse(putBodies[1]).title).toBe("내가 쓴 제목");
+  });
+
   it("본인이 아닌 게시글을 수정하려 하면 권한 안내와 돌아가기 링크를 보여준다", async () => {
     global.fetch = mockFetch({ session: { loggedIn: true, userId: 2, nickname: "다른사람" } });
 
