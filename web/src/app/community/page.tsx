@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
 import { PageHeader } from "@/components/page-header";
 import { getPublicBaseUrl } from "@/lib/api";
+import { formatDateTime } from "@/lib/format";
 import { getCommunityPosts, type PostCategory, type PostSort } from "@/lib/community-api";
 import { CATEGORY_LABELS, CATEGORY_OPTIONS } from "@/features/community/types";
 
@@ -48,6 +49,8 @@ export default async function CommunityPage({ searchParams }: Props) {
   // 백엔드 오류를 "게시글 없음"으로 감추지 않는다(§P1-03) — 실패는 최상위 error.tsx
   // 경계로 넘겨 재시도 UI를 보여주고, 정상 응답이 실제로 비어 있을 때만 빈 상태 문구를 쓴다.
   const result = await getCommunityPosts(page, 20, { category, sort, query });
+  // 정렬은 기본값이 있어 "좁힌 조건"으로 치지 않는다 — 검색어와 카테고리만 해제 대상이다.
+  const hasActiveFilter = Boolean(query) || Boolean(category);
 
   return (
     <section className="panel">
@@ -95,28 +98,67 @@ export default async function CommunityPage({ searchParams }: Props) {
       </nav>
 
       {result.items.length === 0 ? (
-        <p>등록된 게시글이 없습니다.</p>
+        // FE-048: 이전에는 "검색 결과 0건"과 "게시판이 비어 있음"이 같은 문구였다.
+        // 필터를 좁혀서 안 나온 것인지 원래 글이 없는 것인지 구분하고, 해제 경로를 준다.
+        hasActiveFilter ? (
+          <div className="community-empty">
+            <p>
+              {query ? `“${query}” 검색 결과가 없습니다.` : "이 조건에 맞는 게시글이 없습니다."}
+            </p>
+            <Link href="/community" className="button secondary">필터 해제하고 전체 보기</Link>
+          </div>
+        ) : (
+          <p>아직 등록된 게시글이 없습니다. 첫 글을 작성해 보세요.</p>
+        )
       ) : (
         <>
+          {hasActiveFilter && (
+            <p className="muted" role="status">
+              {query ? `“${query}” 검색 결과 ` : "조건에 맞는 게시글 "}
+              {result.totalElements}건
+              {" · "}
+              <Link href="/community">필터 해제</Link>
+            </p>
+          )}
           <ul className="community-post-list">
             {result.items.map((post) => (
               <li key={post.id} className="community-post-list-item">
                 <span className="community-post-category">{CATEGORY_LABELS[post.category]}</span>
                 <Link href={`/community/posts/${post.id}`}>{post.title}</Link>
                 <span className="community-post-author">{post.authorNickname}</span>
+                {/* FE-047: 홈 커뮤니티 섹션은 날짜를 보여주는데 목록에는 없어
+                    최신성 판단이 불가능했다. */}
+                <time className="community-post-date" dateTime={post.createdAt}>
+                  {formatDateTime(post.createdAt)}
+                </time>
                 <span className="community-post-counts">
                   좋아요 {post.likeCount} · 댓글 {post.commentCount} · 조회 {post.viewCount}
                 </span>
               </li>
             ))}
           </ul>
+          {/* FE-052: totalPages를 알고 있으면서 이전/다음만 제공해, 뒤쪽 페이지에서
+              1페이지로 돌아가려면 뒤로가기밖에 없었다. */}
           <nav aria-label="게시글 목록 페이지" className="community-pagination">
-            {page > 0 && <Link href={buildHref({ page: page - 1, category, sort, query })}>이전</Link>}
-            <span>
+            {page > 0 && (
+              <>
+                <Link href={buildHref({ category, sort, query })} aria-label="첫 페이지">처음</Link>
+                <Link href={buildHref({ page: page - 1, category, sort, query })}>이전</Link>
+              </>
+            )}
+            <span aria-current="page">
               {page + 1} / {Math.max(1, result.totalPages)}
             </span>
             {page + 1 < result.totalPages && (
-              <Link href={buildHref({ page: page + 1, category, sort, query })}>다음</Link>
+              <>
+                <Link href={buildHref({ page: page + 1, category, sort, query })}>다음</Link>
+                <Link
+                  href={buildHref({ page: result.totalPages - 1, category, sort, query })}
+                  aria-label="마지막 페이지"
+                >
+                  마지막
+                </Link>
+              </>
             )}
           </nav>
         </>

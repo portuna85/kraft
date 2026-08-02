@@ -87,6 +87,9 @@ const COMMUNITY_POST = {
   updatedAt: "2026-07-01T00:00:00Z",
 };
 
+/** 이 검색어로 조회하면 픽스처가 0건을 응답한다(FE-048 빈 상태 검증용). */
+export const NO_RESULT_QUERY = "존재하지않는검색어";
+
 const COMMUNITY_POSTS_PAGE = {
   items: [COMMUNITY_POST],
   page: 0,
@@ -182,6 +185,17 @@ const server = createServer((req, res) => {
   if (requestPath.startsWith("/api/v1/_proxy-probe/") && handleProxyProbe(req, res, requestPath)) {
     return;
   }
+  // FE-048: "검색 결과 0건"과 "게시판이 비어 있음"을 구분하는 화면을 검증하려면
+  // 픽스처가 검색어를 인지해야 한다. 미리 정한 문자열만 0건으로 응답한다.
+  if (requestPath === "/api/v1/community/posts") {
+    const query = new URL(req.url ?? "", "http://127.0.0.1").searchParams.get("query");
+    if (query === NO_RESULT_QUERY) {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }));
+      return;
+    }
+  }
+
   const body = ROUTES[requestPath];
   if (!body) {
     res.writeHead(404, { "content-type": "application/json" });

@@ -289,6 +289,21 @@
   white-space: nowrap;
 }
 
+/* FE-047: 목록에서 최신성을 판단할 수 있도록 작성 일시를 노출한다. */
+.community-post-date {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+
+/* FE-048: 검색 결과 0건일 때 해제 경로를 함께 보여주는 빈 상태. */
+.community-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
 @media (max-width: 639px) {
   .community-post-list-item {
     display: grid;
@@ -315,6 +330,12 @@
 
   .community-post-counts {
     text-align: right;
+    font-size: 0.75rem;
+  }
+
+  /* 좁은 폭에서는 날짜를 작성자와 같은 행 왼쪽에 두고 카운트가 오른쪽을 차지하게 한다. */
+  .community-post-date {
+    grid-column: 1 / -1;
     font-size: 0.75rem;
   }
 }
