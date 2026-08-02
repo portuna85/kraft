@@ -215,6 +215,27 @@ export interface SkeletonContract {
   variant?: "text" | "card" | "ball";
 }
 
+/**
+ * FE-003: 되돌릴 수 없는 작업의 확인 절차. 이전에는 `window.confirm`(3곳)·5초 유예
+ * undo(1곳)·확인 없음(2곳)이 섞여 있어 사용자가 화면마다 다른 규칙을 학습해야 했다.
+ * 확인은 전부 이 다이얼로그로 통일한다.
+ */
+export interface ConfirmDialogContract {
+  open: boolean;
+  /** 다이얼로그 제목 — 무엇을 하려는지 질문 형태로 쓴다. */
+  title: string;
+  /** 되돌릴 수 있는지, 무엇이 사라지는지 등 판단에 필요한 사실. */
+  description?: string;
+  confirmLabel: string;
+  cancelLabel?: string;
+  /** 진행 중에는 양쪽 버튼을 잠가 중복 실행을 막는다. */
+  pending?: boolean;
+  /** 실패를 다이얼로그 안에서 알린다 — 닫아 버리면 사용자가 결과를 못 본다. */
+  errorMessage?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
 export interface EmptyStateContract {
   title: string;
   description?: string;

@@ -187,13 +187,8 @@ form button,
   align-self: stretch;
 }
 
-/* F-P0-2: .button.secondary와 함께 쓰여 기본 버튼 스타일은 이미 갖췄고, 삭제
-   행 안에서 폭을 줄이는 보정만 필요하다. */
-.saved-undo-btn {
-  flex-shrink: 0;
-  min-height: 0;
-  padding: 6px 14px;
-}
+/* FE-003: .saved-undo-btn은 5초 유예 삭제 전용이었다. 확인 다이얼로그로 바뀌면서
+   실행 취소 버튼 자체가 사라져 이 규칙도 함께 제거했다. */
 
 .footer-nav {
   display: grid;

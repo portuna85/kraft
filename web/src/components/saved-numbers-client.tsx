@@ -6,6 +6,7 @@ import { getDeviceToken } from "@/lib/device-token";
 import { browserFetch, BrowserApiError } from "@/lib/browser-api";
 import { EmptyState } from "@/ui/primitives/empty-state";
 import { ErrorState } from "@/ui/primitives/error-state";
+import { ConfirmDialog } from "@/ui/primitives/confirm-dialog";
 
 type SavedNumber = {
   id: number;
@@ -33,7 +34,6 @@ function isWin(prizeTier: string): boolean {
 }
 
 const RECENT_ROUND_OPTIONS = 20;
-const DELETE_UNDO_MS = 5000;
 
 type Props = {
   latestRound: number;
@@ -49,33 +49,10 @@ export function SavedNumbersClient({ latestRound }: Props) {
   const [matchMap, setMatchMap] = useState<Map<number, SavedNumberMatchResult>>(new Map());
   const [matchState, setMatchState] = useState<MatchState>("idle");
   const matchFetchSeqRef = useRef(0);
-  // R-44: 즉시 삭제 대신 5초 유예 후 실제 삭제 — 모바일에서 확인 dialog보다 흐름을
-  // 덜 끊으면서도 실수로 지운 항목을 되돌릴 수 있게 한다.
-  const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<number>>(new Set());
-  const deleteTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
-
-  useEffect(() => {
-    const timers = deleteTimers.current;
-    return () => {
-      // FE-045: 이전에는 타이머를 취소만 했다. 유예 삭제는 "취소를 누르지 않으면 지운다"는
-      // 약속이므로, 5초가 지나기 전에 화면을 떠나면 사용자가 지운 항목이 그대로 남아
-      // 다음 방문에 다시 나타났다. 떠날 때는 남은 삭제를 즉시 실행한다.
-      // browserFetch 대신 raw fetch를 쓰는 이유: 언마운트가 실제 페이지 이탈이면 5초
-      // AbortSignal이 요청을 끊을 수 있고, 응답 본문도 쓸 곳이 없다. keepalive로 이탈
-      // 이후에도 전송이 완료되게 한다.
-      timers.forEach((timer, id) => {
-        clearTimeout(timer);
-        void fetch(`/api/v1/saved/${id}`, {
-          method: "DELETE",
-          headers: { "X-Device-Token": getDeviceToken() },
-          keepalive: true,
-        }).catch(() => {
-          // 이탈 중이라 사용자에게 알릴 화면이 없다. 서버에 닿지 못하면 항목은 남는다.
-        });
-      });
-      timers.clear();
-    };
-  }, []);
+  // FE-003: 삭제 확인 대상. null이면 다이얼로그가 닫힌 상태다.
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const loadSavedNumbers = useCallback(() => {
     browserFetch<SavedNumber[]>("/api/v1/saved", {
@@ -135,45 +112,29 @@ export function SavedNumbersClient({ latestRound }: Props) {
     fetchMatches();
   }, [fetchMatches]);
 
-  function scheduleDelete(item: SavedNumber) {
-    setPendingDeleteIds((prev) => new Set(prev).add(item.id));
-    setMessage(`저장 번호를 삭제합니다. ${DELETE_UNDO_MS / 1000}초 안에 취소할 수 있습니다.`);
-    const timer = setTimeout(async () => {
-      deleteTimers.current.delete(item.id);
-      try {
-        await browserFetch(`/api/v1/saved/${item.id}`, {
-          method: "DELETE",
-          headers: { "X-Device-Token": getDeviceToken() },
-        });
-        setItems((prev) => prev.filter((x) => x.id !== item.id));
-        setMessage("저장 번호를 삭제했습니다.");
-      } catch (err) {
-        // 삭제 실패 — 대기 상태만 풀고 항목은 그대로 유지한다.
-        if (!(err instanceof BrowserApiError || err instanceof Error)) throw err;
-        setMessage("저장 번호를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
-      } finally {
-        setPendingDeleteIds((prev) => {
-          const next = new Set(prev);
-          next.delete(item.id);
-          return next;
-        });
-      }
-    }, DELETE_UNDO_MS);
-    deleteTimers.current.set(item.id, timer);
-  }
-
-  function cancelDelete(id: number) {
-    const timer = deleteTimers.current.get(id);
-    if (timer) {
-      clearTimeout(timer);
-      deleteTimers.current.delete(id);
+  // FE-003: 확인 방식을 다이얼로그로 통일하면서 5초 유예 삭제를 걷어냈다. 유예 방식은
+  // 타이머·대기 상태·이탈 시 flush(FE-045)까지 따라붙는데, 확인이 선행되면 그 복잡도가
+  // 통째로 사라진다. 삭제는 확인 직후 한 번만 일어난다.
+  async function confirmDelete() {
+    if (pendingDeleteId === null) return;
+    const id = pendingDeleteId;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await browserFetch(`/api/v1/saved/${id}`, {
+        method: "DELETE",
+        headers: { "X-Device-Token": getDeviceToken() },
+      });
+      setItems((prev) => prev.filter((x) => x.id !== id));
+      setPendingDeleteId(null);
+      setMessage("저장 번호를 삭제했습니다.");
+    } catch (err) {
+      // 삭제 실패 — 항목은 그대로 두고 다이얼로그 안에서 이유를 알린다.
+      if (!(err instanceof BrowserApiError || err instanceof Error)) throw err;
+      setDeleteError("저장 번호를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setDeleting(false);
     }
-    setMessage("삭제를 취소했습니다.");
-    setPendingDeleteIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
   }
 
   // 회차 변경 즉시(사용자 조작 시점에) 이전 회차의 대조 결과를 비우고 로딩 상태로
@@ -276,34 +237,20 @@ export function SavedNumbersClient({ latestRound }: Props) {
           <ul className="saved-list">
             {items.map((item) => {
               const match = matchMap.get(item.id);
-              const isPending = pendingDeleteIds.has(item.id);
               return (
-                <li
-                  key={item.id}
-                  className={`saved-item${isPending ? " is-pending-delete" : ""}`}
-                >
+                <li key={item.id} className="saved-item">
                   <div className="saved-item-row">
                     <LottoBalls numbers={item.numbers} />
-                    {isPending ? (
-                      <button
-                        type="button"
-                        className="button secondary saved-undo-btn"
-                        onClick={() => cancelDelete(item.id)}
-                      >
-                        실행 취소
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="saved-delete-btn"
-                        onClick={() => scheduleDelete(item)}
-                        aria-label={`${item.numbers.join(", ")} 조합 삭제`}
-                      >
-                        삭제
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      className="saved-delete-btn"
+                      onClick={() => setPendingDeleteId(item.id)}
+                      aria-label={`${item.numbers.join(", ")} 조합 삭제`}
+                    >
+                      삭제
+                    </button>
                   </div>
-                  {!isPending && match ? (
+                  {match ? (
                     <div className="saved-match-info">
                       <span className="saved-draw-ref">{match.round}회 ({match.drawDate})</span>
                       <span className={`saved-prize-badge${isWin(match.prizeTier) ? " prize-win" : ""}`}>
@@ -319,6 +266,20 @@ export function SavedNumbersClient({ latestRound }: Props) {
           </ul>
         </>
       )}
+
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        title="저장 번호를 삭제할까요?"
+        description="삭제한 저장 번호는 되돌릴 수 없습니다."
+        confirmLabel="삭제"
+        pending={deleting}
+        errorMessage={deleteError ?? undefined}
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          setPendingDeleteId(null);
+          setDeleteError(null);
+        }}
+      />
     </div>
   );
 }

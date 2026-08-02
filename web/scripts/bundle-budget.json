@@ -1,6 +1,6 @@
 {
   "/": {
-    "maxKB": 63
+    "maxKB": 67
   },
   "/_not-found": {
     "maxKB": 51
@@ -18,7 +18,7 @@
     "maxKB": 63
   },
   "/recommend/history": {
-    "maxKB": 55
+    "maxKB": 58
   },
   "/ops": {
     "maxKB": 62
@@ -36,15 +36,15 @@
     "maxKB": 51
   },
   "/community/write": {
-    "maxKB": 59
+    "maxKB": 63
   },
   "/community/posts/[id]": {
     "maxKB": 62
   },
   "/community/posts/[id]/edit": {
-    "maxKB": 59
+    "maxKB": 63
   },
   "/analysis": {
-    "maxKB": 58
+    "maxKB": 61
   }
 }

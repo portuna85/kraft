@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { RecommendationHistoryClient } from "@/features/recommendation/recommendation-history-client";
 
 function makeSet(id: number) {
@@ -108,11 +108,34 @@ describe("추천 이력 화면", () => {
 
     await screen.findByText(/전체 2건을 모두 표시했습니다/);
     fireEvent.click(screen.getAllByRole("button", { name: /추천 세트 삭제/ })[0]);
+    // FE-003: 삭제는 확인 다이얼로그를 거친다.
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "삭제" }));
 
     await waitFor(() => {
       expect(screen.getByText(/전체 1건을 모두 표시했습니다/)).toBeInTheDocument();
     });
     expect(screen.getAllByRole("button", { name: /추천 세트 삭제/ })).toHaveLength(1);
+  });
+
+  it("삭제를 누르면 확인 전에는 요청을 보내지 않는다", async () => {
+    const fetchSpy = vi.fn();
+    global.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      fetchSpy(url, init);
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(pageResponse(0, 1, 1, [1])),
+      });
+    });
+
+    render(<RecommendationHistoryClient />);
+    fireEvent.click(await screen.findByRole("button", { name: /추천 세트 삭제/ }));
+
+    expect(screen.getByRole("dialog")).toHaveTextContent("추천 세트를 삭제할까요?");
+    expect(fetchSpy).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ method: "DELETE" })
+    );
   });
 
   it("더 보기 실패는 기존 목록을 지우지 않고 오류만 알린다", async () => {

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { CommentSection } from "@/features/community/comment-section";
 import { CommunitySessionProvider } from "@/lib/community-session-provider";
 
@@ -245,7 +245,6 @@ describe("커뮤니티 댓글 섹션", () => {
   });
 
   it("본인 댓글의 삭제 버튼을 누르면 확인 후 삭제 요청을 보내고 목록을 새로고침한다", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     let commentsCallCount = 0;
     let deletedId: number | null = null;
     global.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
@@ -266,6 +265,7 @@ describe("커뮤니티 댓글 섹션", () => {
     renderCommentSection(1);
 
     fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "삭제" }));
 
     await waitFor(() => {
       expect(commentsCallCount).toBe(2);
@@ -274,22 +274,22 @@ describe("커뮤니티 댓글 섹션", () => {
   });
 
   it("삭제 확인 창에서 취소하면 삭제 요청을 보내지 않는다", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(false);
     const fetchSpy = mockFetch();
     global.fetch = fetchSpy;
 
     renderCommentSection(1);
 
     fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "취소" }));
 
     expect(fetchSpy).not.toHaveBeenCalledWith(
       expect.stringContaining("/community/comments/"),
       expect.anything()
     );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("댓글 삭제에 실패하면 오류 메시지를 보여준다", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     global.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       if (url.includes("/session")) {
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(SESSION) });
@@ -306,6 +306,7 @@ describe("커뮤니티 댓글 섹션", () => {
     renderCommentSection(1);
 
     fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "삭제" }));
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent("댓글 삭제에 실패했습니다.");

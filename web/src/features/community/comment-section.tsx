@@ -11,6 +11,7 @@ import type { CommunityComment } from "@/lib/community-api";
 import { useCommunitySession } from "@/lib/community-session-provider";
 import { ReportDialog } from "./report-dialog";
 import { EmptyState } from "@/ui/primitives/empty-state";
+import { ConfirmDialog } from "@/ui/primitives/confirm-dialog";
 
 export function CommentSection({ postId }: { postId: number }) {
   const [topLevel, setTopLevel] = useState<CommunityComment[]>([]);
@@ -23,6 +24,10 @@ export function CommentSection({ postId }: { postId: number }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // FE-003: 삭제 확인 대상. null이면 다이얼로그가 닫힌 상태다.
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   // 목록 재조회 race 방지 — 오래된 응답이 최신 상태를 덮어쓰지 않도록 요청 시퀀스를 비교한다.
   const fetchSeqRef = useRef(0);
 
@@ -77,13 +82,20 @@ export function CommentSection({ postId }: { postId: number }) {
     }
   };
 
-  const handleDelete = async (commentId: number) => {
-    if (!window.confirm("댓글을 삭제할까요?")) return;
+  // FE-003: window.confirm 대신 공통 확인 다이얼로그를 쓴다. 어떤 댓글을 지우는지
+  // id로 들고 있다가 확인 시점에 실행한다.
+  const confirmDelete = async () => {
+    if (pendingDeleteId === null) return;
+    setDeleting(true);
+    setDeleteError(null);
     try {
-      await deleteComment(commentId);
+      await deleteComment(pendingDeleteId);
+      setPendingDeleteId(null);
       loadComments(page);
     } catch {
-      setError("댓글 삭제에 실패했습니다.");
+      setDeleteError("댓글 삭제에 실패했습니다.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -97,7 +109,7 @@ export function CommentSection({ postId }: { postId: number }) {
             답글
           </button>
           {session.userId === comment.ownerId ? (
-            <button type="button" className="button secondary" onClick={() => handleDelete(comment.id)}>
+            <button type="button" className="button secondary" onClick={() => setPendingDeleteId(comment.id)}>
               삭제
             </button>
           ) : (
@@ -114,7 +126,7 @@ export function CommentSection({ postId }: { postId: number }) {
               {!reply.deleted && session?.loggedIn && (
                 <div className="community-comment-actions">
                   {session.userId === reply.ownerId ? (
-                    <button type="button" className="button secondary" onClick={() => handleDelete(reply.id)}>
+                    <button type="button" className="button secondary" onClick={() => setPendingDeleteId(reply.id)}>
                       삭제
                     </button>
                   ) : (
@@ -198,6 +210,20 @@ export function CommentSection({ postId }: { postId: number }) {
       ) : (
         <p>댓글을 작성하려면 로그인이 필요합니다.</p>
       )}
+
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        title="댓글을 삭제할까요?"
+        description="삭제한 댓글은 되돌릴 수 없습니다."
+        confirmLabel="삭제"
+        pending={deleting}
+        errorMessage={deleteError ?? undefined}
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          setPendingDeleteId(null);
+          setDeleteError(null);
+        }}
+      />
     </section>
   );
 }

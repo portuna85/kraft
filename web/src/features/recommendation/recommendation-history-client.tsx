@@ -9,6 +9,7 @@ import type { PageResponse } from "@/lib/community-api";
 import type { RecommendationSetSummary } from "@/features/recommendation/types";
 import { EmptyState } from "@/ui/primitives/empty-state";
 import { ErrorState } from "@/ui/primitives/error-state";
+import { ConfirmDialog } from "@/ui/primitives/confirm-dialog";
 import { asyncError, asyncLoading, asyncSuccess, type AsyncState } from "@/lib/async-state";
 
 const STRATEGY_LABELS = {
@@ -34,6 +35,9 @@ export function RecommendationHistoryClient() {
   const [state, setState] = useState<AsyncState<History>>(asyncLoading);
   const [message, setMessage] = useState("");
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
+  // FE-003: 삭제 확인 대상. null이면 다이얼로그가 닫힌 상태다.
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const fetchPage = useCallback((targetPage: number) => {
@@ -91,8 +95,10 @@ export function RecommendationHistoryClient() {
       .finally(() => setIsLoadingMore(false));
   }
 
+  // FE-003: 이전에는 클릭 즉시 DELETE가 나갔다. 되돌릴 수 없는 작업이므로 확인을 거친다.
   async function handleDelete(id: number) {
     setMessage("");
+    setDeleteError(null);
     setDeletingIds((prev) => new Set(prev).add(id));
     try {
       await browserFetch(`/api/v1/recommendation-sets/${id}`, {
@@ -108,9 +114,10 @@ export function RecommendationHistoryClient() {
             })
           : prev
       );
+      setPendingDeleteId(null);
     } catch (err) {
       if (!(err instanceof BrowserApiError || err instanceof Error)) throw err;
-      setMessage("추천 이력을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      setDeleteError("추천 이력을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setDeletingIds((prev) => {
         const next = new Set(prev);
@@ -161,7 +168,7 @@ export function RecommendationHistoryClient() {
           <button
             type="button"
             className="saved-delete-btn"
-            onClick={() => handleDelete(item.id)}
+            onClick={() => setPendingDeleteId(item.id)}
             disabled={deletingIds.has(item.id)}
             // FE-024: DB 식별자는 화면 어디에도 없어 "추천 세트 4821 삭제"로는 어떤 항목인지
             // 알 수 없었다. /saved처럼 사람이 식별할 수 있는 이름을 준다.
@@ -188,6 +195,22 @@ export function RecommendationHistoryClient() {
           </p>
         )
       )}
+
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        title="추천 세트를 삭제할까요?"
+        description="삭제한 추천 이력은 되돌릴 수 없습니다."
+        confirmLabel="삭제"
+        pending={pendingDeleteId !== null && deletingIds.has(pendingDeleteId)}
+        errorMessage={deleteError ?? undefined}
+        onConfirm={() => {
+          if (pendingDeleteId !== null) void handleDelete(pendingDeleteId);
+        }}
+        onCancel={() => {
+          setPendingDeleteId(null);
+          setDeleteError(null);
+        }}
+      />
     </>
   );
 }

@@ -3,12 +3,16 @@
 import { useState } from "react";
 import { loginUrl, logout, withdraw } from "@/lib/community-client";
 import { useCommunitySession } from "@/lib/community-session-provider";
+// next/dynamic으로 지연 로딩도 시도했으나 로더 오버헤드가 절감분보다 커
+// 전 라우트 번들이 오히려 늘었다(홈 64.1 → 65.5KB). 정적 import를 유지한다.
+import { ConfirmDialog } from "@/ui/primitives/confirm-dialog";
 
 export function AccountMenu() {
   const { session, loading } = useCommunitySession();
   const [logoutError, setLogoutError] = useState(false);
   const [withdrawError, setWithdrawError] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
 
   if (loading) {
     return null;
@@ -62,14 +66,9 @@ export function AccountMenu() {
     }
   };
 
-  const handleWithdraw = async () => {
-    if (!window.confirm(
-      "탈퇴하면 닉네임이 가명으로 바뀌고 기존 글·댓글은 그 가명으로 표시됩니다. "
-        + "계정과 저장 번호·추천 이력은 삭제되지 않으며, 같은 소셜 계정으로 다시 로그인하면 계정이 다시 활성화됩니다. "
-        + "완전한 삭제는 문의하기로 요청해 주세요. 계속할까요?",
-    )) {
-      return;
-    }
+  // FE-003: window.confirm은 긴 안내를 읽기 어렵게 붙여 놓을 수밖에 없었다.
+  // 다이얼로그에서는 제목과 설명을 나눠 보여주고 실패도 그 안에서 알린다.
+  const confirmWithdraw = async () => {
     setWithdrawError(false);
     setWithdrawing(true);
     const ok = await withdraw();
@@ -91,12 +90,28 @@ export function AccountMenu() {
         type="button"
         className="account-withdraw-button"
         disabled={withdrawing}
-        onClick={handleWithdraw}
+        onClick={() => setWithdrawOpen(true)}
       >
         {withdrawing ? "탈퇴 처리 중…" : "탈퇴"}
       </button>
       {logoutError && <p role="alert">로그아웃에 실패했습니다. 다시 시도해 주세요.</p>}
-      {withdrawError && <p role="alert">탈퇴에 실패했습니다. 다시 시도해 주세요.</p>}
+      <ConfirmDialog
+        open={withdrawOpen}
+        title="정말 탈퇴할까요?"
+        description={
+          "탈퇴하면 닉네임이 가명으로 바뀌고 기존 글·댓글은 그 가명으로 표시됩니다. "
+          + "계정과 저장 번호·추천 이력은 삭제되지 않으며, 같은 소셜 계정으로 다시 로그인하면 계정이 다시 활성화됩니다. "
+          + "완전한 삭제는 문의하기로 요청해 주세요."
+        }
+        confirmLabel="탈퇴"
+        pending={withdrawing}
+        errorMessage={withdrawError ? "탈퇴에 실패했습니다. 다시 시도해 주세요." : undefined}
+        onConfirm={confirmWithdraw}
+        onCancel={() => {
+          setWithdrawOpen(false);
+          setWithdrawError(false);
+        }}
+      />
     </div>
   );
 }

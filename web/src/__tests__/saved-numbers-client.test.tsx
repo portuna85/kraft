@@ -25,7 +25,6 @@ function mockFetch(handler: (url: string, init?: RequestInit) => { status: numbe
   });
 }
 
-const DELETE_UNDO_MS = 5000;
 
 describe("저장 번호 화면", () => {
   beforeEach(() => {
@@ -225,8 +224,29 @@ describe("저장 번호 화면", () => {
     expect(screen.queryByLabelText("대조할 회차")).not.toBeInTheDocument();
   });
 
-  it("삭제를 누르면 실행 취소 상태가 되고, 유예 시간이 지나면 실제로 삭제된다", async () => {
-    vi.useFakeTimers();
+
+  // FE-003: 5초 유예 undo를 확인 다이얼로그로 대체했다. 유예 방식은 타이머·대기 상태·
+  // 이탈 시 flush(FE-045)까지 따라붙었는데, 확인이 선행되면 그 복잡도가 통째로 사라진다.
+  it("삭제를 누르면 바로 지우지 않고 확인을 먼저 묻는다", async () => {
+    const fetchSpy = vi.fn();
+    global.fetch = mockFetch((url, init) => {
+      fetchSpy(url, init);
+      if (init?.method === "DELETE") return { status: 204, body: null };
+      if (url.includes("/matches")) return { status: 200, body: [] };
+      return { status: 200, body: [SAVED_ITEM] };
+    });
+
+    render(<SavedNumbersClient latestRound={1230} />);
+    fireEvent.click(await screen.findByRole("button", { name: "1, 2, 3, 4, 5, 6 조합 삭제" }));
+
+    expect(screen.getByRole("dialog")).toHaveTextContent("저장 번호를 삭제할까요?");
+    expect(fetchSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining("/api/v1/saved/1"),
+      expect.objectContaining({ method: "DELETE" })
+    );
+  });
+
+  it("확인하면 삭제하고 목록에서 지운다", async () => {
     let deleteUrl: string | null = null;
     global.fetch = mockFetch((url, init) => {
       if (init?.method === "DELETE") {
@@ -238,27 +258,20 @@ describe("저장 번호 화면", () => {
     });
 
     render(<SavedNumbersClient latestRound={1230} />);
-    await vi.waitFor(() => {
-      expect(screen.getByRole("button", { name: "1, 2, 3, 4, 5, 6 조합 삭제" })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "1, 2, 3, 4, 5, 6 조합 삭제" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "삭제" }));
+
+    await waitFor(() => {
+      expect(deleteUrl).toBe("/api/v1/saved/1");
     });
-
-    fireEvent.click(screen.getByRole("button", { name: "1, 2, 3, 4, 5, 6 조합 삭제" }));
-    expect(screen.getByRole("button", { name: "실행 취소" })).toBeInTheDocument();
-    expect(deleteUrl).toBeNull();
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(DELETE_UNDO_MS);
+    await waitFor(() => {
+      expect(
+        screen.getByText("아직 저장한 번호가 없습니다. 추천 페이지에서 조합을 저장해 보세요.")
+      ).toBeInTheDocument();
     });
-
-    expect(deleteUrl).toBe("/api/v1/saved/1");
-    expect(screen.queryByRole("button", { name: "실행 취소" })).not.toBeInTheDocument();
-    expect(screen.getByText("아직 저장한 번호가 없습니다. 추천 페이지에서 조합을 저장해 보세요.")).toBeInTheDocument();
-
-    vi.useRealTimers();
   });
 
-  it("유예 시간 내에 실행 취소를 누르면 삭제하지 않고 항목을 유지한다", async () => {
-    vi.useFakeTimers();
+  it("취소하면 삭제 요청을 보내지 않고 항목을 유지한다", async () => {
     const fetchSpy = vi.fn();
     global.fetch = mockFetch((url, init) => {
       fetchSpy(url, init);
@@ -268,59 +281,18 @@ describe("저장 번호 화면", () => {
     });
 
     render(<SavedNumbersClient latestRound={1230} />);
-    await vi.waitFor(() => {
-      expect(screen.getByRole("button", { name: "1, 2, 3, 4, 5, 6 조합 삭제" })).toBeInTheDocument();
-    });
+    fireEvent.click(await screen.findByRole("button", { name: "1, 2, 3, 4, 5, 6 조합 삭제" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "취소" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "1, 2, 3, 4, 5, 6 조합 삭제" }));
-    fireEvent.click(screen.getByRole("button", { name: "실행 취소" }));
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(DELETE_UNDO_MS);
-    });
-
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(fetchSpy).not.toHaveBeenCalledWith(
       expect.stringContaining("/api/v1/saved/1"),
       expect.objectContaining({ method: "DELETE" })
     );
     expect(screen.getByRole("button", { name: "1, 2, 3, 4, 5, 6 조합 삭제" })).toBeInTheDocument();
-
-    vi.useRealTimers();
   });
 
-  // FE-045: 언마운트 정리가 타이머를 취소만 해서, 삭제를 누르고 5초 안에 화면을 떠나면
-  // 삭제가 아예 실행되지 않았다. 사용자는 지운 항목이 다음 방문에 그대로 있는 것을 보게 된다.
-  it("유예 시간이 지나기 전에 화면을 떠나면 남은 삭제를 즉시 실행한다", async () => {
-    vi.useFakeTimers();
-    const fetchSpy = vi.fn();
-    global.fetch = mockFetch((url, init) => {
-      fetchSpy(url, init);
-      if (init?.method === "DELETE") return { status: 204, body: null };
-      if (url.includes("/matches")) return { status: 200, body: [] };
-      return { status: 200, body: [SAVED_ITEM] };
-    });
-
-    const { unmount } = render(<SavedNumbersClient latestRound={1230} />);
-    await vi.waitFor(() => {
-      expect(screen.getByRole("button", { name: "1, 2, 3, 4, 5, 6 조합 삭제" })).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "1, 2, 3, 4, 5, 6 조합 삭제" }));
-    expect(screen.getByRole("button", { name: "실행 취소" })).toBeInTheDocument();
-
-    // 유예 시간이 지나기 전에 이탈한다.
-    unmount();
-
-    expect(fetchSpy).toHaveBeenCalledWith(
-      expect.stringContaining("/api/v1/saved/1"),
-      expect.objectContaining({ method: "DELETE", keepalive: true })
-    );
-
-    vi.useRealTimers();
-  });
-
-  it("삭제 요청이 실패하면 항목을 그대로 유지하고 대기 상태만 해제한다", async () => {
-    vi.useFakeTimers();
+  it("삭제에 실패하면 다이얼로그 안에서 알리고 항목을 유지한다", async () => {
     global.fetch = mockFetch((url, init) => {
       if (init?.method === "DELETE") return { status: 500, body: {} };
       if (url.includes("/matches")) return { status: 200, body: [] };
@@ -328,19 +300,17 @@ describe("저장 번호 화면", () => {
     });
 
     render(<SavedNumbersClient latestRound={1230} />);
-    await vi.waitFor(() => {
-      expect(screen.getByRole("button", { name: "1, 2, 3, 4, 5, 6 조합 삭제" })).toBeInTheDocument();
-    });
+    fireEvent.click(await screen.findByRole("button", { name: "1, 2, 3, 4, 5, 6 조합 삭제" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "삭제" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "1, 2, 3, 4, 5, 6 조합 삭제" }));
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(DELETE_UNDO_MS);
+    // 닫아 버리면 사용자가 결과를 못 보므로 다이얼로그를 열어 둔 채 이유를 알린다.
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("저장 번호를 삭제하지 못했습니다");
     });
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
 
-    // 대기 상태는 풀리지만(실행 취소 버튼이 사라지고 다시 삭제 버튼으로 돌아옴) 항목은 남는다.
+    // 다이얼로그가 열려 있는 동안 배경은 inert라 role 조회에서 빠진다 — 닫고 확인한다.
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "취소" }));
     expect(screen.getByRole("button", { name: "1, 2, 3, 4, 5, 6 조합 삭제" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "실행 취소" })).not.toBeInTheDocument();
-
-    vi.useRealTimers();
   });
 });

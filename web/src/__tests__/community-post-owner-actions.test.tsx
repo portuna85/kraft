@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { PostOwnerActions } from "@/components/community/post-owner-actions";
 import { CommunitySessionProvider } from "@/lib/community-session-provider";
 
@@ -50,7 +50,6 @@ describe("커뮤니티 게시글 소유자 액션", () => {
       mergedRecommendationSetCount: 0,
     });
     window.sessionStorage.clear();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
   it("로그인하지 않은 사용자에게는 아무 것도 보이지 않는다", async () => {
@@ -83,14 +82,17 @@ describe("커뮤니티 게시글 소유자 액션", () => {
     expect(screen.getByRole("button", { name: "삭제" })).toBeInTheDocument();
   });
 
+  // FE-003: window.confirm 대신 공통 확인 다이얼로그를 쓴다. 트리거와 확인 버튼이
+  // 같은 이름("삭제")이라 다이얼로그 안에서 찾아야 한다.
   it("삭제 확인을 취소하면 삭제 요청을 보내지 않는다", async () => {
     getCommunitySession.mockResolvedValue({ loggedIn: true, userId: 10, nickname: "글쓴이" });
-    vi.spyOn(window, "confirm").mockReturnValue(false);
 
     renderOwnerActions({ postId: 1, ownerId: 10, version: 0 });
     fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "취소" }));
 
     expect(deletePost).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("삭제를 확인하면 게시글을 삭제하고 캐시를 무효화한 뒤 목록으로 이동한다", async () => {
@@ -99,6 +101,7 @@ describe("커뮤니티 게시글 소유자 액션", () => {
 
     renderOwnerActions({ postId: 1, ownerId: 10, version: 2 });
     fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "삭제" }));
 
     await waitFor(() => expect(deletePost).toHaveBeenCalledWith(1, 2));
     await waitFor(() => expect(push).toHaveBeenCalledWith("/community"));
@@ -111,13 +114,15 @@ describe("커뮤니티 게시글 소유자 액션", () => {
     deletePost.mockRejectedValue(new Error("version conflict"));
 
     renderOwnerActions({ postId: 1, ownerId: 10, version: 0 });
-    const deleteButton = await screen.findByRole("button", { name: "삭제" });
-    fireEvent.click(deleteButton);
+    fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "삭제" }));
 
+    // 실패는 다이얼로그 안에서 알리고 다시 시도할 수 있어야 한다.
     await waitFor(() => {
       expect(screen.getByText(/다른 곳에서 먼저 수정·삭제되었습니다/)).toBeInTheDocument();
     });
-    expect(screen.getByRole("button", { name: "삭제" })).not.toBeDisabled();
+    expect(within(screen.getByRole("dialog")).getByRole("button", { name: "삭제" })).not.toBeDisabled();
   });
 
   it("삭제 진행 중에는 버튼이 비활성화되어 중복 클릭을 막는다", async () => {
@@ -132,8 +137,11 @@ describe("커뮤니티 게시글 소유자 액션", () => {
 
     renderOwnerActions({ postId: 1, ownerId: 10, version: 0 });
     fireEvent.click(await screen.findByRole("button", { name: "삭제" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "삭제" }));
 
-    await waitFor(() => expect(screen.getByRole("button", { name: "삭제 중…" })).toBeDisabled());
+    // 진행 중에는 확인·취소가 모두 잠겨 중복 실행을 막는다.
+    await waitFor(() => expect(screen.getByRole("button", { name: "처리 중…" })).toBeDisabled());
+    expect(within(screen.getByRole("dialog")).getByRole("button", { name: "취소" })).toBeDisabled();
 
     resolveDelete?.();
     await waitFor(() => expect(push).toHaveBeenCalled());
