@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useCommunitySession } from "@/lib/community-session-provider";
+import { LoginLinks } from "./login-links";
 import {
   bookmarkPost,
   getMyInteractions,
@@ -16,6 +17,9 @@ export function ReactionBar({ postId, initialLikeCount }: { postId: number; init
   const [liked, setLiked] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [message, setMessage] = useState("");
+  // FE-060: 예전에는 "로그인 후 이용할 수 있습니다."만 띄우고 로그인 경로를 주지 않아
+  // 비로그인 사용자의 흐름이 여기서 끊겼다. PostForm과 같은 방식으로 이어준다.
+  const [loginRequired, setLoginRequired] = useState(false);
 
   useEffect(() => {
     if (!session?.loggedIn) return;
@@ -36,7 +40,7 @@ export function ReactionBar({ postId, initialLikeCount }: { postId: number; init
 
   async function toggleLike() {
     if (!session?.loggedIn) {
-      setMessage("로그인 후 이용할 수 있습니다.");
+      setLoginRequired(true);
       return;
     }
     const wasLiked = liked;
@@ -53,7 +57,7 @@ export function ReactionBar({ postId, initialLikeCount }: { postId: number; init
 
   async function toggleBookmark() {
     if (!session?.loggedIn) {
-      setMessage("로그인 후 이용할 수 있습니다.");
+      setLoginRequired(true);
       return;
     }
     const wasBookmarked = bookmarked;
@@ -74,6 +78,12 @@ export function ReactionBar({ postId, initialLikeCount }: { postId: number; init
       <button type="button" onClick={toggleBookmark} aria-pressed={bookmarked}>
         {bookmarked ? "북마크 해제" : "북마크"}
       </button>
+      {loginRequired ? (
+        <span className="community-reaction-login" role="status" aria-live="polite">
+          로그인 후 이용할 수 있습니다.{" "}
+          <LoginLinks providers={session?.activeProviders ?? []} />
+        </span>
+      ) : null}
       {message ? (
         <span role="status" aria-live="polite">
           {message}

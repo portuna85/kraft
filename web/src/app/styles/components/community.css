@@ -346,6 +346,16 @@
   gap: 12px;
 }
 
+/* FE-060: 비로그인 사용자에게 안내와 함께 실제 로그인 경로를 준다. */
+.community-reaction-login {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
 .community-reaction-bar {
   display: flex;
   gap: 12px;

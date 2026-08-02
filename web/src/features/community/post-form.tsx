@@ -13,13 +13,9 @@ import { RecommendationAttachmentPicker } from "@/features/community/recommendat
 import type { PostCategory } from "@/lib/community-api";
 import { Button } from "@/ui/primitives/button";
 import { InlineAlert } from "@/ui/primitives/inline-alert";
+import { LoginLinks } from "./login-links";
 import { TextArea } from "@/ui/primitives/text-area";
 import { TextField } from "@/ui/primitives/text-field";
-
-const PROVIDER_LABELS: Record<"google" | "naver", string> = {
-  google: "Google 로그인",
-  naver: "Naver 로그인",
-};
 
 type CreateMode = { mode: "create" };
 type EditMode = { mode: "edit"; postId: number; ownerId: number; initialTitle: string; initialContent: string; initialVersion: number };
@@ -96,16 +92,7 @@ export function PostForm(props: CreateMode | EditMode) {
     return (
       <div className="community-post-form-login-required">
         <InlineAlert tone="neutral" title="이 기능을 사용하려면 로그인이 필요합니다." description="로그인 후 현재 화면으로 돌아와 계속 작성할 수 있습니다." />
-        {providers.map((provider) => (
-          <a
-            key={provider}
-            href={loginUrl(provider)}
-            className="account-login-link"
-            onClick={() => saveReturnTo(pathname)}
-          >
-            {PROVIDER_LABELS[provider]}
-          </a>
-        ))}
+        <LoginLinks providers={providers} />
       </div>
     );
   }
