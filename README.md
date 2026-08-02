@@ -246,7 +246,7 @@ http://localhost/login/oauth2/code/naver
 | `DELETE` | `/api/v1/community/comments/{id}` | OAuth2 세션 + CSRF |
 | `POST` | `/api/v1/community/me/withdrawal` | OAuth2 세션 + CSRF |
 
-탈퇴(`me/withdrawal`)는 닉네임을 익명화하고 기존 게시글·댓글의 작성자 표기까지 일괄로 재작성합니다(`adr/0001-community-withdrawal.md`). 같은 OAuth 계정으로 재로그인하면 자동으로 재활성화됩니다.
+탈퇴(`me/withdrawal`)는 영구 삭제입니다. `CommunityWithdrawalService`가 좋아요·북마크·신고·차단을 지우고, 게시글·댓글 본문을 `eraseForAccountDeletion()`으로 비운 뒤(다른 사용자의 대화 구조만 남습니다), 등록된 `AccountDataDeletionHandler`(추천 이력·기기 클레임)를 모두 호출하고 마지막으로 `community_users` 행을 삭제합니다. 재활성화는 없으며, 같은 OAuth 계정으로 다시 로그인하면 완전히 새 계정이 만들어집니다. 남아 있는 다른 기기의 세션은 `CommunityWithdrawnAccountFilter`가 다음 요청에서 계정 부재를 확인하고 `COMMUNITY_ACCOUNT_DELETED` 401로 끊습니다.
 
 `/ops/**`는 `X-Ops-Token`이 필요합니다. `/admin/**`은 별도 관리자 도메인의 세션 인증과 IP allowlist를 사용합니다.
 
@@ -338,4 +338,4 @@ bash scripts/deploy/smoke-test.sh
 
 프로젝트 문서는 `README.md` 하나만 유지합니다. 서비스 소개, 실행, API, 검증, 배포 관련 설명은 이 파일에서 공동 관리합니다.
 
-`docs/**/*.md`는 생성하거나 Git에서 추적하지 않습니다. 별도 장기 문서가 필요하면 README에 통합합니다.
+README 외의 독립 문서(가이드·계획서·명세서·리포트·ADR 등)는 만들지 않습니다. 설명이 필요하면 이 README에 통합하거나 코드 주석으로 남깁니다.
