@@ -33,7 +33,12 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
 
-@SpringBootTest(classes = Application.class, properties = {"kraft.community.write-rate-limit-per-minute=2000", "kraft.security.rate-limit-per-minute=2000"})
+@SpringBootTest(
+        classes = Application.class,
+        properties = {
+            "kraft.community.write-rate-limit-per-minute=2000",
+            "kraft.security.rate-limit-per-minute=2000"
+        })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
@@ -47,7 +52,8 @@ class CommunityWithdrawalApiTest {
 
     @BeforeEach
     void setUp() {
-        owner = communityUserRepository.save(new CommunityUser("google", "owner-" + System.nanoTime(), "owner", null, OffsetDateTime.now()));
+        owner = communityUserRepository.save(new CommunityUser(
+                "google", "owner-" + System.nanoTime(), "owner", null, OffsetDateTime.now()));
     }
 
     @Test
@@ -107,7 +113,8 @@ class CommunityWithdrawalApiTest {
     }
 
     private long createComment(CommunityUser author, long postId, String content) throws Exception {
-        String body = mockMvc.perform(post("/api/v1/community/posts/" + postId + "/comments").with(asUser(author)).with(csrf()).contentType("application/json")
+        String body = mockMvc.perform(post("/api/v1/community/posts/" + postId + "/comments")
+                        .with(asUser(author)).with(csrf()).contentType("application/json")
                         .content(objectMapper.writeValueAsString(new CreateCommentRequest(content, null))))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(body).get("id").asLong();
