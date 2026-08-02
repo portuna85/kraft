@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { LottoBalls } from "@/ui/domain/lotto-balls";
 import { formatCurrency, formatDateTime, formatDrawDate } from "@/lib/format";
+import { validateLottoNumbers } from "@/lib/lotto-validation";
 
 type OpsSummary = {
   service: string;
@@ -53,11 +54,59 @@ async function callOps<T>(url: string, init?: RequestInit): Promise<OpsResult<T>
   }
 }
 
-function parseNumbersInput(value: string): number[] {
-  return value
-    .split(",")
-    .map((item) => Number(item.trim()))
-    .filter((item) => !Number.isNaN(item));
+const MANUAL_ERROR_ID = "ops-manual-error";
+
+type ManualEntryField = "round" | "drawDate" | "numbers" | "bonusNumber" | "firstPrizeAmount";
+
+type ManualEntryValidation =
+  | { ok: true; body: WinningNumberUpsertBody }
+  | { ok: false; field: ManualEntryField; message: string };
+
+type WinningNumberUpsertBody = {
+  round: number;
+  drawDate: string;
+  numbers: number[];
+  bonusNumber: number;
+  firstPrizeAmount: number;
+};
+
+// FE-074: 이전에는 검증이 전혀 없어 빈 회차가 Number("")===0으로 전송되고, 번호를 3개만 적어도
+// 요청이 나갔다. 운영 데이터를 직접 쓰는 화면이라 잘못된 값이 서버에 닿기 전에 막는다.
+// 최종 판정은 여전히 서버가 한다 — 여기서는 명백히 틀린 입력만 걸러 사용자에게 이유를 알린다.
+function validateManualEntry(form: ManualEntryForm): ManualEntryValidation {
+  const round = Number(form.round);
+  if (!form.round.trim() || !Number.isInteger(round) || round < 1) {
+    return { ok: false, field: "round", message: "회차는 1 이상의 정수여야 합니다." };
+  }
+  if (!form.drawDate.trim()) {
+    return { ok: false, field: "drawDate", message: "추첨일을 입력하세요." };
+  }
+
+  // 쉼표·공백 어느 쪽으로 구분해도 받되, 빈 토큰을 걸러낸 뒤 개수를 그대로 검증에 넘긴다.
+  // (NaN을 필터링해 버리면 "3, 어, 19"가 2개로 줄어 개수 오류가 엉뚱하게 보고된다.)
+  const rawNumbers = form.numbers.split(/[,\s]+/).map((item) => item.trim()).filter((item) => item.length > 0);
+  const numbersResult = validateLottoNumbers(rawNumbers);
+  if (!numbersResult.ok) {
+    return { ok: false, field: "numbers", message: numbersResult.message };
+  }
+
+  const bonusNumber = Number(form.bonusNumber);
+  if (!form.bonusNumber.trim() || !Number.isInteger(bonusNumber) || bonusNumber < 1 || bonusNumber > 45) {
+    return { ok: false, field: "bonusNumber", message: "보너스 번호는 1에서 45 사이의 정수여야 합니다." };
+  }
+  if (numbersResult.numbers.includes(bonusNumber)) {
+    return { ok: false, field: "bonusNumber", message: "보너스 번호는 당첨 번호 6개와 달라야 합니다." };
+  }
+
+  const firstPrizeAmount = Number(form.firstPrizeAmount);
+  if (!form.firstPrizeAmount.trim() || !Number.isFinite(firstPrizeAmount) || firstPrizeAmount < 0) {
+    return { ok: false, field: "firstPrizeAmount", message: "1등 당첨금은 0 이상의 숫자여야 합니다." };
+  }
+
+  return {
+    ok: true,
+    body: { round, drawDate: form.drawDate, numbers: numbersResult.numbers, bonusNumber, firstPrizeAmount },
+  };
 }
 
 function SummaryPanel({ summary }: { summary: OpsSummary }) {
@@ -115,6 +164,8 @@ export function OpsDashboardClient() {
   const [lastCollected, setLastCollected] = useState<WinningNumber | null>(null);
   const [message, setMessage] = useState("");
   const [loadingAction, setLoadingAction] = useState<"summary" | "latest" | "round" | "manual" | null>(null);
+  const [manualError, setManualError] = useState<{ field: ManualEntryField; message: string } | null>(null);
+  const manualFieldRefs = useRef<Partial<Record<ManualEntryField, HTMLInputElement | null>>>({});
 
   const opsHeaders = { "X-Ops-Token": token };
 
@@ -162,13 +213,17 @@ export function OpsDashboardClient() {
 
   async function submitManualEntry(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const body = {
-      round: Number(manualEntry.round),
-      drawDate: manualEntry.drawDate,
-      numbers: parseNumbersInput(manualEntry.numbers),
-      bonusNumber: Number(manualEntry.bonusNumber),
-      firstPrizeAmount: Number(manualEntry.firstPrizeAmount)
-    };
+
+    const validation = validateManualEntry(manualEntry);
+    if (!validation.ok) {
+      setManualError(validation);
+      setMessage(validation.message);
+      manualFieldRefs.current[validation.field]?.focus();
+      return;
+    }
+    setManualError(null);
+    const body = validation.body;
+
     setLoadingAction("manual");
     setMessage("");
     const result = await callOps<WinningNumber>("/ops-api/rounds", {
@@ -244,6 +299,10 @@ export function OpsDashboardClient() {
               type="number"
               inputMode="numeric"
               min="1"
+              required
+              ref={(el) => { manualFieldRefs.current.round = el; }}
+              aria-invalid={manualError?.field === "round" || undefined}
+              aria-describedby={manualError?.field === "round" ? MANUAL_ERROR_ID : undefined}
               value={manualEntry.round}
               onChange={(event) => setManualEntry((current) => ({ ...current, round: event.target.value }))}
               placeholder="예: 1201"
@@ -253,6 +312,10 @@ export function OpsDashboardClient() {
             <span>추첨일</span>
             <input
               type="date"
+              required
+              ref={(el) => { manualFieldRefs.current.drawDate = el; }}
+              aria-invalid={manualError?.field === "drawDate" || undefined}
+              aria-describedby={manualError?.field === "drawDate" ? MANUAL_ERROR_ID : undefined}
               value={manualEntry.drawDate}
               onChange={(event) => setManualEntry((current) => ({ ...current, drawDate: event.target.value }))}
             />
@@ -260,6 +323,10 @@ export function OpsDashboardClient() {
           <label className="ops-field">
             <span>당첨 번호 6개</span>
             <input
+              required
+              ref={(el) => { manualFieldRefs.current.numbers = el; }}
+              aria-invalid={manualError?.field === "numbers" || undefined}
+              aria-describedby={manualError?.field === "numbers" ? MANUAL_ERROR_ID : undefined}
               value={manualEntry.numbers}
               onChange={(event) => setManualEntry((current) => ({ ...current, numbers: event.target.value }))}
               placeholder="예: 3, 11, 19, 28, 34, 42"
@@ -272,6 +339,10 @@ export function OpsDashboardClient() {
               inputMode="numeric"
               min="1"
               max="45"
+              required
+              ref={(el) => { manualFieldRefs.current.bonusNumber = el; }}
+              aria-invalid={manualError?.field === "bonusNumber" || undefined}
+              aria-describedby={manualError?.field === "bonusNumber" ? MANUAL_ERROR_ID : undefined}
               value={manualEntry.bonusNumber}
               onChange={(event) => setManualEntry((current) => ({ ...current, bonusNumber: event.target.value }))}
               placeholder="예: 7"
@@ -283,11 +354,20 @@ export function OpsDashboardClient() {
               type="number"
               inputMode="numeric"
               min="0"
+              required
+              ref={(el) => { manualFieldRefs.current.firstPrizeAmount = el; }}
+              aria-invalid={manualError?.field === "firstPrizeAmount" || undefined}
+              aria-describedby={manualError?.field === "firstPrizeAmount" ? MANUAL_ERROR_ID : undefined}
               value={manualEntry.firstPrizeAmount}
               onChange={(event) => setManualEntry((current) => ({ ...current, firstPrizeAmount: event.target.value }))}
               placeholder="예: 2100000000"
             />
           </label>
+          {manualError ? (
+            <p id={MANUAL_ERROR_ID} className="status-text ops-status" role="alert">
+              {manualError.message}
+            </p>
+          ) : null}
           <button type="submit" disabled={!token || loadingAction !== null}>
             {loadingAction === "manual" ? "저장 중..." : "수동 등록"}
           </button>

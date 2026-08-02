@@ -70,25 +70,42 @@ public class AdminController {
         return "admin/rounds";
     }
 
-    @PostMapping("/rounds/collect")
-    public String collect(@RequestParam(required = false) Integer round,
-                          @AuthenticationPrincipal UserDetails user,
-                          HttpServletRequest req,
-                          RedirectAttributes redirect) {
+    // FE-094: 이전에는 /rounds/collect 하나가 optional round로 "최신 수집"과 "특정 회차 수집"을
+    // 겸했다. 두 버튼이 같은 엔드포인트를 쓰고 입력에 required가 없어, 회차를 비운 채 "특정 회차
+    // 수집"을 누르면 round=null이 되어 조용히 최신 수집이 실행됐다. 버튼 라벨과 실제 동작이
+    // 달라지는 운영 사고 경로라, 명령별로 엔드포인트를 나누고 회차를 필수로 만든다.
+    @PostMapping("/rounds/collect-latest")
+    public String collectLatest(@AuthenticationPrincipal UserDetails user,
+                                HttpServletRequest req,
+                                RedirectAttributes redirect) {
         try {
-            if (round != null) {
-                collectionService.collectRound(round);
-                auditLogService.record(user.getUsername(), "COLLECT_ROUND",
-                        "round=" + round, null, ipResolver.resolve(req));
-                redirect.addFlashAttribute("success", round + "회차 수집 완료");
-            } else {
-                var resp = collectionService.collectLatest();
-                auditLogService.record(user.getUsername(), "COLLECT_LATEST",
-                        "round=" + resp.round(), null, ipResolver.resolve(req));
-                redirect.addFlashAttribute("success", resp.round() + "회차 기준 최신 상태 확인 완료");
-            }
+            var resp = collectionService.collectLatest();
+            auditLogService.record(user.getUsername(), "COLLECT_LATEST",
+                    "round=" + resp.round(), null, ipResolver.resolve(req));
+            redirect.addFlashAttribute("success", resp.round() + "회차 기준 최신 상태 확인 완료");
         } catch (Exception e) {
-            log.warn("관리자 수집 실패: round={}", round, e);
+            log.warn("관리자 최신 수집 실패", e);
+            redirect.addFlashAttribute("error", "수집 실패: " + e.getMessage());
+        }
+        return "redirect:/admin/rounds";
+    }
+
+    @PostMapping("/rounds/collect-round")
+    public String collectRound(@RequestParam Integer round,
+                               @AuthenticationPrincipal UserDetails user,
+                               HttpServletRequest req,
+                               RedirectAttributes redirect) {
+        if (round == null || round < 1) {
+            redirect.addFlashAttribute("error", "수집할 회차 번호를 1 이상으로 입력하세요.");
+            return "redirect:/admin/rounds";
+        }
+        try {
+            collectionService.collectRound(round);
+            auditLogService.record(user.getUsername(), "COLLECT_ROUND",
+                    "round=" + round, null, ipResolver.resolve(req));
+            redirect.addFlashAttribute("success", round + "회차 수집 완료");
+        } catch (Exception e) {
+            log.warn("관리자 회차 수집 실패: round={}", round, e);
             redirect.addFlashAttribute("error", "수집 실패: " + e.getMessage());
         }
         return "redirect:/admin/rounds";

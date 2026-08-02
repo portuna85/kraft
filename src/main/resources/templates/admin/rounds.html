@@ -10,14 +10,14 @@
 
   <section class="admin-section" aria-label="회차 수집 작업">
   <div class="admin-action-row">
-    <form th:action="@{/admin/rounds/collect}" method="post">
+    <form th:action="@{/admin/rounds/collect-latest}" method="post">
       <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
       <button type="submit" class="btn btn-primary">최신 회차 수집</button>
     </form>
-    <form th:action="@{/admin/rounds/collect}" method="post" class="admin-inline-form">
+    <form th:action="@{/admin/rounds/collect-round}" method="post" class="admin-inline-form">
       <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
       <label class="sr-only" for="round-number">회차 번호</label>
-      <input id="round-number" type="number" name="round" min="1" placeholder="회차 번호" class="admin-input"/>
+      <input id="round-number" type="number" name="round" min="1" required placeholder="회차 번호" class="admin-input"/>
       <button type="submit" class="btn btn-primary btn-sm">수집</button>
     </form>
     <form th:action="@{/admin/rounds/collect-all}" method="post"

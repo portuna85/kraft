@@ -31,6 +31,17 @@ function mockFetch(handler: (url: string, init?: RequestInit) => { status: numbe
   });
 }
 
+/** 수동 적재 폼을 서버까지 도달하는 유효한 값으로 채운다. */
+function fillValidManualEntry() {
+  fireEvent.change(screen.getByLabelText("회차"), { target: { value: "1230" } });
+  fireEvent.change(screen.getByLabelText("추첨일"), { target: { value: "2026-01-03" } });
+  fireEvent.change(screen.getByPlaceholderText("예: 3, 11, 19, 28, 34, 42"), {
+    target: { value: "1, 2, 3, 4, 5, 6" },
+  });
+  fireEvent.change(screen.getByPlaceholderText("예: 7"), { target: { value: "7" } });
+  fireEvent.change(screen.getByPlaceholderText("예: 2100000000"), { target: { value: "2100000000" } });
+}
+
 function deferred<T>() {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((r) => { resolve = r; });
@@ -209,6 +220,7 @@ describe("운영 대시보드 화면", () => {
       target: { value: "secret-token" },
     });
     fireEvent.change(screen.getByLabelText("회차"), { target: { value: "1230" } });
+    fireEvent.change(screen.getByLabelText("추첨일"), { target: { value: "2026-01-03" } });
     fireEvent.change(screen.getByPlaceholderText("예: 3, 11, 19, 28, 34, 42"), {
       target: { value: "1, 2, 3, 4, 5, 6" },
     });
@@ -221,7 +233,7 @@ describe("운영 대시보드 화면", () => {
     });
     expect(sentBody).toEqual({
       round: 1230,
-      drawDate: "",
+      drawDate: "2026-01-03",
       numbers: [1, 2, 3, 4, 5, 6],
       bonusNumber: 7,
       firstPrizeAmount: 2100000000,
@@ -240,12 +252,103 @@ describe("운영 대시보드 화면", () => {
     fireEvent.change(screen.getByPlaceholderText("X-Ops-Token 값을 입력하세요"), {
       target: { value: "secret-token" },
     });
-    fireEvent.change(screen.getByLabelText("회차"), { target: { value: "1230" } });
+    fillValidManualEntry();
     fireEvent.click(screen.getByRole("button", { name: "수동 등록" }));
 
     await waitFor(() => {
       expect(screen.getByText("이미 존재하는 회차입니다.")).toBeInTheDocument();
     });
     expect(screen.getByLabelText("회차")).toHaveValue(1230);
+  });
+
+  // FE-074: 이전에는 검증이 전혀 없어 빈 회차가 Number("")===0으로, 번호 3개가 그대로 서버에 갔다.
+  // 아래 테스트들의 핵심 단언은 "요청이 아예 나가지 않는다"이다.
+  describe("수동 적재 입력 검증", () => {
+    // 빈 값은 브라우저 기본 검증(required)이 먼저 막는다 — 예전에는 required조차 없어
+    // Number("")===0이 서버로 갔다. 여기서 확인할 것은 "요청이 나가지 않는다"이다.
+    it("빈 폼을 제출하면 요청을 보내지 않는다", () => {
+      const fetchMock = mockFetch(() => ({ status: 200, body: {} }));
+      global.fetch = fetchMock;
+
+      render(<OpsDashboardClient />);
+      fireEvent.change(screen.getByPlaceholderText("X-Ops-Token 값을 입력하세요"), {
+        target: { value: "secret-token" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "수동 등록" }));
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(screen.getByLabelText("회차")).toBeRequired();
+      expect(screen.getByLabelText("추첨일")).toBeRequired();
+    });
+
+    // 개수·중복·범위는 required로 표현할 수 없어 JS 검증이 담당한다.
+    it("회차가 0이면 요청을 보내지 않고 오류를 알린다", () => {
+      const fetchMock = mockFetch(() => ({ status: 200, body: {} }));
+      global.fetch = fetchMock;
+
+      render(<OpsDashboardClient />);
+      fireEvent.change(screen.getByPlaceholderText("X-Ops-Token 값을 입력하세요"), {
+        target: { value: "secret-token" },
+      });
+      fillValidManualEntry();
+      fireEvent.change(screen.getByLabelText("회차"), { target: { value: "0" } });
+      fireEvent.submit(screen.getByRole("button", { name: "수동 등록" }).closest("form")!);
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(screen.getByRole("alert")).toHaveTextContent("회차는 1 이상의 정수여야 합니다.");
+      expect(screen.getByLabelText("회차")).toHaveAttribute("aria-invalid", "true");
+    });
+
+    it("번호를 6개 미만으로 적으면 요청을 보내지 않는다", () => {
+      const fetchMock = mockFetch(() => ({ status: 200, body: {} }));
+      global.fetch = fetchMock;
+
+      render(<OpsDashboardClient />);
+      fireEvent.change(screen.getByPlaceholderText("X-Ops-Token 값을 입력하세요"), {
+        target: { value: "secret-token" },
+      });
+      fillValidManualEntry();
+      fireEvent.change(screen.getByPlaceholderText("예: 3, 11, 19, 28, 34, 42"), {
+        target: { value: "1, 2, 3" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "수동 등록" }));
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(screen.getByRole("alert")).toHaveTextContent("번호는 6개여야 합니다");
+    });
+
+    it("보너스 번호가 당첨 번호와 겹치면 요청을 보내지 않는다", () => {
+      const fetchMock = mockFetch(() => ({ status: 200, body: {} }));
+      global.fetch = fetchMock;
+
+      render(<OpsDashboardClient />);
+      fireEvent.change(screen.getByPlaceholderText("X-Ops-Token 값을 입력하세요"), {
+        target: { value: "secret-token" },
+      });
+      fillValidManualEntry();
+      fireEvent.change(screen.getByPlaceholderText("예: 7"), { target: { value: "6" } });
+      fireEvent.click(screen.getByRole("button", { name: "수동 등록" }));
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(screen.getByRole("alert")).toHaveTextContent("당첨 번호 6개와 달라야 합니다");
+    });
+
+    it("번호에 중복이 있으면 요청을 보내지 않는다", () => {
+      const fetchMock = mockFetch(() => ({ status: 200, body: {} }));
+      global.fetch = fetchMock;
+
+      render(<OpsDashboardClient />);
+      fireEvent.change(screen.getByPlaceholderText("X-Ops-Token 값을 입력하세요"), {
+        target: { value: "secret-token" },
+      });
+      fillValidManualEntry();
+      fireEvent.change(screen.getByPlaceholderText("예: 3, 11, 19, 28, 34, 42"), {
+        target: { value: "1, 1, 3, 4, 5, 6" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "수동 등록" }));
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(screen.getByRole("alert")).toHaveTextContent("중복");
+    });
   });
 });

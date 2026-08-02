@@ -15,9 +15,11 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -73,5 +75,41 @@ class AdminControllerSmokeTest {
                         .param("password", "unused"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/login?expired"));
+    }
+
+    // FE-094: 회차를 비운 채 "특정 회차 수집"을 눌러도 최신 수집이 실행되던 문제.
+    // 두 작업이 엔드포인트로 분리되었고 회차는 필수다.
+    @Test
+    @DisplayName("특정 회차 수집은 회차 없이 요청하면 실패 응답을 반환한다")
+    void collectRound_withoutRound_returnsBadRequest() throws Exception {
+        mockMvc.perform(post("/admin/rounds/collect-round")
+                        .with(user("admin").roles("ADMIN"))
+                        .with(csrf()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("특정 회차 수집은 0 이하 회차를 거부하고 오류와 함께 되돌아간다")
+    void collectRound_withNonPositiveRound_redirectsWithError() throws Exception {
+        mockMvc.perform(post("/admin/rounds/collect-round")
+                        .param("round", "0")
+                        .with(user("admin").roles("ADMIN"))
+                        .with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/rounds"))
+                .andExpect(flash().attributeExists("error"));
+    }
+
+    @Test
+    @DisplayName("회차 수집 화면의 회차 입력에는 required 속성이 있고 두 작업이 다른 경로로 제출된다")
+    void roundsPage_separatesCollectCommands() throws Exception {
+        String html = mockMvc.perform(get("/admin/rounds").with(user("admin").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        org.assertj.core.api.Assertions.assertThat(html).contains("/admin/rounds/collect-latest");
+        org.assertj.core.api.Assertions.assertThat(html).contains("/admin/rounds/collect-round");
+        org.assertj.core.api.Assertions.assertThat(html).doesNotContain("action=\"/admin/rounds/collect\"");
+        org.assertj.core.api.Assertions.assertThat(html).contains("required");
     }
 }
