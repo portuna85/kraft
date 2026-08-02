@@ -5,13 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { IconButton } from "@/ui/primitives/icon-button";
 import { Drawer } from "@/ui/primitives/drawer";
-import { dataLinks, isCurrent } from "@/lib/nav-items";
+// FE-007: STATUS_LINK가 이 파일에만 하드코딩돼 라우트 정의처가 하나 더 늘어나 있었다.
+import { dataLinks, isCurrent, statusLink as STATUS_LINK } from "@/lib/nav-items";
 import { AccountMenu } from "@/components/community/account-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BP } from "@/lib/breakpoints";
 import styles from "./mobile-secondary-menu.module.css";
-
-const STATUS_LINK = { href: "/status", label: "서비스 상태" };
 
 function HamburgerIcon() {
   return (

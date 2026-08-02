@@ -1,17 +1,6 @@
 import Link from "next/link";
 
-const infoLinks = [
-  { href: "/info/data-source", label: "데이터 출처" },
-  { href: "/info/methodology", label: "분석 기준" },
-  { href: "/info/faq", label: "FAQ" },
-  { href: "/status", label: "서비스 상태" },
-  { href: "/info/privacy", label: "개인정보처리방침" },
-  { href: "/info/terms", label: "이용약관" },
-  { href: "/info/responsible-play", label: "건전한 이용" },
-  { href: "/info/community-guidelines", label: "커뮤니티 이용규칙" },
-  { href: "/info/contact", label: "문의하기" },
-  { href: "/info/about", label: "운영자 소개" },
-];
+import { footerLinks as infoLinks } from "@/lib/nav-items";
 
 export function Footer() {
   return (
