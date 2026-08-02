@@ -36,6 +36,24 @@ describe("저장 번호 화면", () => {
     vi.useRealTimers();
   });
 
+  // FE-042: 최신 회차 조회(SSR)가 실패하면 latestRound가 0이 되어 회차 컨트롤이 통째로
+  // 사라졌다. 저장 목록은 보이는데 대조 기능만 이유 없이 없어져 고장인지 알 수 없었다.
+  it("최신 회차를 알 수 없으면 대조를 할 수 없는 이유를 알린다", async () => {
+    global.fetch = mockFetch((url) => {
+      if (url.includes("/matches")) return { status: 200, body: [] };
+      return { status: 200, body: [SAVED_ITEM] };
+    });
+
+    render(<SavedNumbersClient latestRound={0} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("회차 정보를 불러오지 못해");
+    });
+    // 저장 목록 자체는 그대로 보여야 한다.
+    expect(screen.getByRole("button", { name: "1, 2, 3, 4, 5, 6 조합 삭제" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("대조할 회차")).not.toBeInTheDocument();
+  });
+
   it("회차 선택 옵션은 최신 회차 포함 최근 20개로 제한된다", async () => {
     global.fetch = mockFetch((url) => {
       if (url.includes("/matches")) return { status: 200, body: [] };

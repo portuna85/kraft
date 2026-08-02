@@ -36,13 +36,13 @@
     "maxKB": 51
   },
   "/community/write": {
-    "maxKB": 57
+    "maxKB": 59
   },
   "/community/posts/[id]": {
     "maxKB": 62
   },
   "/community/posts/[id]/edit": {
-    "maxKB": 57
+    "maxKB": 59
   },
   "/analysis": {
     "maxKB": 58

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { LottoBalls } from "@/ui/domain/lotto-balls";
 import { formatDateTime } from "@/lib/format";
+import { ErrorState } from "@/ui/primitives/error-state";
 import { useCommunitySession } from "@/lib/community-session-provider";
 import {
   getMyRecommendationSets,
@@ -62,10 +63,19 @@ export function AccountLibrarySection() {
 
   if (loadError) {
     return (
-      <section className="saved-account-library" aria-live="polite">
+      <section className="saved-account-library">
         <h2>계정에 연결된 기록</h2>
-        <p className="status-text">계정 보관함을 불러오지 못했습니다.</p>
-        <button type="button" onClick={() => { setLoadError(false); setRetryKey((value) => value + 1); }}>다시 시도</button>
+        <ErrorState
+          variant="inline"
+          title="계정 보관함을 불러오지 못했습니다."
+          retry={{
+            label: "다시 시도",
+            onClick: () => {
+              setLoadError(false);
+              setRetryKey((value) => value + 1);
+            },
+          }}
+        />
       </section>
     );
   }

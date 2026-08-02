@@ -254,15 +254,24 @@ export function SavedNumbersClient({ latestRound }: Props) {
                   대조 결과를 불러오는 중입니다.
                 </p>
               ) : matchState === "error" ? (
-                <p className="saved-match-error" aria-live="polite">
-                  대조 결과를 불러오지 못했습니다.{" "}
-                  <button type="button" className="button secondary" onClick={fetchMatches}>
-                    다시 시도
-                  </button>
-                </p>
+                <ErrorState
+                  variant="inline"
+                  title="대조 결과를 불러오지 못했습니다."
+                  retry={{ label: "다시 시도", onClick: fetchMatches }}
+                />
               ) : null}
             </div>
-          ) : null}
+          ) : (
+            // FE-042: 최신 회차 조회(SSR)가 실패하면 latestRound가 0이 되어 회차 컨트롤이
+            // 통째로 사라졌다. 저장 목록은 보이는데 대조 기능만 이유 없이 없어져,
+            // 원래 없는 기능인지 고장인지 알 수 없었다.
+            <ErrorState
+              variant="inline"
+              title="회차 정보를 불러오지 못해 당첨 대조를 할 수 없습니다."
+              description="저장한 번호는 그대로 확인할 수 있습니다."
+              retry={{ label: "새로고침", onClick: () => window.location.reload() }}
+            />
+          )}
 
           <ul className="saved-list">
             {items.map((item) => {

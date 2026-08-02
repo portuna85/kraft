@@ -6,6 +6,7 @@ import { FirstPrizeHistoryList } from "@/components/first-prize-history";
 import type { BallFrequency, FrequencyStatsResponse, RankedCombination } from "@/lib/api";
 import { ballColorClass } from "@/lib/ball-color";
 import { browserFetch } from "@/lib/browser-api";
+import { ErrorState } from "@/ui/primitives/error-state";
 import styles from "./frequency.module.css";
 
 const FILTERS = [
@@ -99,20 +100,21 @@ export function FrequencyFilterClient({ initial }: Props) {
         ))}
       </div>
 
+      {/* FE-008: 설명문·진행 상태·오류·재시도가 한 문단에 섞여 오류의 위계가 낮았다.
+          설명은 설명대로 두고 오류는 공통 ErrorState(inline)로 분리한다. */}
       <p className={styles.desc} aria-live="polite">
         {activeLimit === null ? `총 ${stats.totalRounds}회 전체 기준` : `최근 ${stats.totalRounds}회 기준`}으로 각 번호가
         당첨 번호에 포함된 누적 횟수를 보여줍니다.
         {filterState === "loading" && <span className="muted"> 불러오는 중...</span>}
-        {filterState === "error" && (
-          <span className="muted">
-            {" "}
-            불러오지 못했습니다.{" "}
-            <button type="button" className="link-button" onClick={retry}>
-              다시 시도
-            </button>
-          </span>
-        )}
       </p>
+      {filterState === "error" && (
+        <ErrorState
+          variant="inline"
+          title="기간별 통계를 불러오지 못했습니다."
+          description="이전 결과를 그대로 보여주고 있습니다."
+          retry={{ label: "다시 시도", onClick: retry }}
+        />
+      )}
 
       <div className="freq-summary">
         <CombinationGroup label="가장 자주 나온 번호 TOP 6" combination={stats.topSix} />

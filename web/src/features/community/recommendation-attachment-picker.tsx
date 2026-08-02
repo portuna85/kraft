@@ -6,6 +6,7 @@ import { getDeviceToken } from "@/lib/device-token";
 import { browserFetch } from "@/lib/browser-api";
 import type { PageResponse } from "@/lib/community-api";
 import type { RecommendationSetSummary } from "@/features/recommendation/types";
+import { ErrorState } from "@/ui/primitives/error-state";
 
 export function RecommendationAttachmentPicker({
   value,
@@ -57,18 +58,18 @@ export function RecommendationAttachmentPicker({
     return (
       <fieldset className="community-recommendation-picker">
         <legend>추천 세트 첨부(선택)</legend>
-        <p className="status-text" role="status">추천 이력을 불러오지 못했습니다.</p>
-        <button
-          type="button"
-          className="button secondary"
-          onClick={() => {
-            setLoaded(false);
-            setLoadError(false);
-            setRetryKey((value) => value + 1);
+        <ErrorState
+          variant="inline"
+          title="추천 이력을 불러오지 못했습니다."
+          retry={{
+            label: "다시 시도",
+            onClick: () => {
+              setLoaded(false);
+              setLoadError(false);
+              setRetryKey((value) => value + 1);
+            },
           }}
-        >
-          다시 시도
-        </button>
+        />
       </fieldset>
     );
   }

@@ -4,10 +4,15 @@ import { DataFreshnessNote } from "@/components/data-freshness-note";
 import type { RoundFreshness } from "@/lib/api";
 
 describe("데이터 최신성 안내", () => {
-  it("freshness가 null이면 아무것도 렌더링하지 않는다", () => {
-    const { container } = render(<DataFreshnessNote freshness={null} />);
+  // FE-013: 예전에는 null이면 아무것도 렌더하지 않아, "원래 최신성 표시가 없는 화면"과
+  // "조회에 실패한 화면"이 구분되지 않았다. 당첨 번호 자체는 정상이므로 오류로 키우지
+  // 않되, 확인하지 못했다는 사실은 남긴다.
+  it("freshness 조회에 실패하면 확인 불가 사실을 알린다", () => {
+    render(<DataFreshnessNote freshness={null} />);
 
-    expect(container).toBeEmptyDOMElement();
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("최신성 확인 불가");
+    expect(status).toHaveTextContent("표시된 회차 정보는 정상입니다");
   });
 
   it("최신 회차까지 반영됐으면 반영 완료 문구를 보여준다", () => {

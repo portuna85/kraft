@@ -5,6 +5,7 @@ import { useRovingGrid } from "@/ui/primitives/use-roving-grid";
 import { ballColorClass } from "@/lib/ball-color";
 import type { CompanionPair, CompanionStatsResponse } from "@/lib/api";
 import { browserFetch } from "@/lib/browser-api";
+import { ErrorState } from "@/ui/primitives/error-state";
 import styles from "./companion.module.css";
 
 type Props = {
@@ -91,12 +92,11 @@ export function CompanionFilterClient({ pairs, totalRounds }: Props) {
           <p className="muted" aria-live="polite">해당 번호의 동반 출현 데이터를 불러오는 중...</p>
         )}
         {filterState.status === "error" && (
-          <p className="muted" aria-live="polite">
-            데이터를 불러오지 못했습니다.{" "}
-            <button type="button" className="button secondary" onClick={retry}>
-              다시 시도
-            </button>
-          </p>
+          <ErrorState
+            variant="inline"
+            title="동반 출현 데이터를 불러오지 못했습니다."
+            retry={{ label: "다시 시도", onClick: retry }}
+          />
         )}
         {selected !== null && (
           <button

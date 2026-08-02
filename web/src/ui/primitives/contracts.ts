@@ -226,4 +226,10 @@ export interface ErrorStateContract {
   description?: string;
   /** 재시도 등 복구 행동을 제시한다. */
   retry?: { label: string; onClick: () => void };
+  /**
+   * FE-008: 화면 전체를 대신하는 블록(기본)과, 다른 콘텐츠 옆에 끼어드는 인라인 표현.
+   * 예전에는 인라인 자리마다 `<p>` + 버튼을 손으로 조립해 문구·마크업·복구 수단이
+   * 제각각이었다. 표현만 다르고 계약(제목·설명·재시도)은 같다.
+   */
+  variant?: "block" | "inline";
 }

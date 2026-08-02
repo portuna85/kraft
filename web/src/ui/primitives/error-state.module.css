@@ -19,3 +19,20 @@
   font-size: var(--text-sm);
   margin: 0;
 }
+
+/* FE-008: 다른 콘텐츠 옆에 끼어드는 인라인 표현. 블록과 달리 흐름을 끊지 않는다. */
+.inline {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+
+.inlineTitle {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+.inlineDescription {
+  color: var(--color-muted);
+}

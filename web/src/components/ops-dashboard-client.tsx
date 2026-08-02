@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { LottoBalls } from "@/ui/domain/lotto-balls";
 import { formatCurrency, formatDateTime, formatDrawDate } from "@/lib/format";
 import { validateLottoNumbers } from "@/lib/lotto-validation";
+import { ErrorState } from "@/ui/primitives/error-state";
 
 type OpsSummary = {
   service: string;
@@ -165,13 +166,22 @@ export function OpsDashboardClient() {
   const [message, setMessage] = useState("");
   const [loadingAction, setLoadingAction] = useState<"summary" | "latest" | "round" | "manual" | null>(null);
   const [manualError, setManualError] = useState<{ field: ManualEntryField; message: string } | null>(null);
+  const [summaryStale, setSummaryStale] = useState(false);
   const manualFieldRefs = useRef<Partial<Record<ManualEntryField, HTMLInputElement | null>>>({});
 
   const opsHeaders = { "X-Ops-Token": token };
 
+  // FE-077: 작업 성공 후 자동 갱신인데 실패해도 else가 없어 아무 표시가 없었다.
+  // 그러면 화면에 남은 요약이 옛 값인데도 사용자는 최신 상태를 보고 있다고 오인한다.
+  // 작업 자체는 성공했으므로 그 메시지를 덮지 않고 뒤에 덧붙인다.
   async function refreshSummary() {
     const result = await callOps<OpsSummary>("/ops-api/summary", { headers: opsHeaders });
-    if (result.ok) setSummary(result.data);
+    if (result.ok) {
+      setSummary(result.data);
+      setSummaryStale(false);
+      return;
+    }
+    setSummaryStale(true);
   }
 
   async function loadSummary() {
@@ -181,6 +191,7 @@ export function OpsDashboardClient() {
     setLoadingAction(null);
     if (!result.ok) { setMessage(result.message); return; }
     setSummary(result.data);
+    setSummaryStale(false);
     setMessage("운영 상태를 불러왔습니다.");
   }
 
@@ -375,6 +386,15 @@ export function OpsDashboardClient() {
       </article>
 
       {message ? <p className="status-text ops-status" role="status" aria-live="polite">{message}</p> : null}
+
+      {summaryStale ? (
+        <ErrorState
+          variant="inline"
+          title="아래 운영 상태를 갱신하지 못했습니다."
+          description="작업은 처리됐지만 표시된 값은 이전 조회 결과입니다."
+          retry={{ label: "다시 불러오기", onClick: loadSummary }}
+        />
+      ) : null}
 
       {summary ? <SummaryPanel summary={summary} /> : null}
 

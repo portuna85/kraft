@@ -261,6 +261,38 @@ describe("운영 대시보드 화면", () => {
     expect(screen.getByLabelText("회차")).toHaveValue(1230);
   });
 
+  // FE-077: 작업 성공 후 자동 갱신이 실패해도 else가 없어 아무 표시가 없었다.
+  // 사용자는 화면의 옛 요약을 최신 상태로 오인한다.
+  it("작업 후 상태 갱신에 실패하면 표시된 값이 옛 것임을 알린다", async () => {
+    let summaryCalls = 0;
+    global.fetch = mockFetch((url) => {
+      if (url === "/ops-api/summary") {
+        summaryCalls += 1;
+        // 첫 조회는 성공, 작업 후 자동 갱신은 실패시킨다.
+        return summaryCalls === 1
+          ? { status: 200, body: SUMMARY }
+          : { status: 500, body: { message: "일시적 오류" } };
+      }
+      if (url === "/ops-api/collect/latest") return { status: 200, body: COLLECTED };
+      throw new Error(`예상치 못한 요청: ${url}`);
+    });
+
+    render(<OpsDashboardClient />);
+    fireEvent.change(screen.getByPlaceholderText("X-Ops-Token 값을 입력하세요"), {
+      target: { value: "secret-token" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "운영 상태 확인" }));
+    await waitFor(() => expect(screen.getByText("운영 상태를 불러왔습니다.")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "최신 회차 반영" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("운영 상태를 갱신하지 못했습니다");
+    });
+    // 작업 자체는 성공했다는 사실을 덮지 않는다.
+    expect(screen.getByText("최신 회차 데이터를 반영했습니다.")).toBeInTheDocument();
+  });
+
   // FE-074: 이전에는 검증이 전혀 없어 빈 회차가 Number("")===0으로, 번호 3개가 그대로 서버에 갔다.
   // 아래 테스트들의 핵심 단언은 "요청이 아예 나가지 않는다"이다.
   describe("수동 적재 입력 검증", () => {
