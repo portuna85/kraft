@@ -28,18 +28,6 @@ export const dataLinks: readonly NavLink[] = [
 
 export const statusLink: NavLink = { href: "/status", label: "서비스 상태" };
 
-// 홈의 "서비스 바로가기" 격자. 라우트를 다시 하드코딩하면 nav-items.ts가 단일 진실
-// 공급원이라는 전제가 또 깨지므로(FE-007) 위 배열들을 조합해서만 만든다 —
-// dataLinks에 페이지를 추가하면 홈에도 자동으로 나타난다.
-// 제외 대상: 홈 자신(`/`), 내부 운영 화면 `/ops`(robots noindex),
-// 서비스가 아니라 정책·안내 문서이고 푸터가 이미 전부 링크하는 `/info/*`.
-export const serviceLinks: readonly NavLink[] = [
-  ...primaryLinks.filter((link) => link.href !== "/"),
-  { href: "/recommend/history", label: "추천 이력" },
-  ...dataLinks,
-  statusLink,
-];
-
 // FE-007: 푸터가 안내 페이지 목록을 따로 하드코딩하고 있어, 새 안내 페이지를 추가해도
 // 푸터에서 조용히 빠질 수 있었다. Record<InfoPageSlug, string>으로 두면 슬러그를
 // 추가하는 순간 여기가 타입 오류로 막힌다.

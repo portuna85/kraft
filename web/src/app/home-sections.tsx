@@ -3,7 +3,7 @@ import { DataFreshnessNote } from "@/components/data-freshness-note";
 import { PrizeTable } from "@/components/prize-table";
 import type { RoundFreshness, WinningNumber } from "@/lib/api";
 import { formatDrawDate } from "@/lib/format";
-import { serviceLinks } from "@/lib/nav-items";
+import { serviceLinks } from "@/lib/home-service-links";
 import { LottoBalls } from "@/ui/domain/lotto-balls";
 import styles from "./home-sections.module.css";
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { dataLinks, footerLinks, primaryLinks, serviceLinks, statusLink } from "@/lib/nav-items";
+import { dataLinks, footerLinks, primaryLinks, statusLink } from "@/lib/nav-items";
+import { serviceLinks } from "@/lib/home-service-links";
 import { INFO_PAGE_SLUGS } from "@/lib/info-page-metadata";
 
 // FE-007: nav-items.ts가 스스로 "단일 진실 공급원"이라 선언했지만 실제로는 하단 탭,
