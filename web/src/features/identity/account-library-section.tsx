@@ -4,6 +4,14 @@ import { useEffect, useState } from "react";
 import { LottoBalls } from "@/ui/domain/lotto-balls";
 import { formatDateTime } from "@/lib/format";
 import { ErrorState } from "@/ui/primitives/error-state";
+import { EmptyState } from "@/ui/primitives/empty-state";
+import { asyncError, asyncLoading, asyncSuccess, type AsyncState } from "@/lib/async-state";
+
+/** 계정 보관함의 두 목록은 한 번에 조회하고 함께 성공/실패하므로 한 상태로 묶는다. */
+type AccountLibrary = {
+  savedNumbers: MySavedNumber[];
+  recommendationSets: RecommendationSetSummary[];
+};
 import { useCommunitySession } from "@/lib/community-session-provider";
 import {
   getMyRecommendationSets,
@@ -19,9 +27,11 @@ import type { RecommendationSetSummary } from "@/features/recommendation/types";
  */
 export function AccountLibrarySection() {
   const { session, loading } = useCommunitySession();
-  const [savedNumbers, setSavedNumbers] = useState<MySavedNumber[] | null>(null);
-  const [recommendationSets, setRecommendationSets] = useState<RecommendationSetSummary[] | null>(null);
-  const [loadError, setLoadError] = useState(false);
+  // FE-036: 두 목록을 각각 `T[] | null`로 두고 loadError를 따로 들면
+  // "실패했는데 데이터도 있다" 같은 조합이 타입상 가능하고, 로딩 판정도
+  // `savedNumbers === null && recommendationSets === null && !loadError`처럼
+  // 세 값을 조합해 추론해야 했다. 두 조회는 함께 성공/실패하므로 한 상태로 묶는다.
+  const [state, setState] = useState<AsyncState<AccountLibrary>>(asyncLoading);
   const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
@@ -29,15 +39,10 @@ export function AccountLibrarySection() {
     let cancelled = false;
     Promise.all([getMySavedNumbers(), getMyRecommendationSets()])
       .then(([saved, setsPage]) => {
-        if (!cancelled) {
-          setSavedNumbers(saved);
-          setRecommendationSets(setsPage.items);
-        }
+        if (!cancelled) setState(asyncSuccess({ savedNumbers: saved, recommendationSets: setsPage.items }));
       })
       .catch(() => {
-        if (!cancelled) {
-          setLoadError(true);
-        }
+        if (!cancelled) setState(asyncError);
       });
     return () => {
       cancelled = true;
@@ -51,7 +56,7 @@ export function AccountLibrarySection() {
 
   // FE-040: 이전에는 로딩 중과 "계정 기록 없음"이 모두 null이라, 로그인 사용자에게
   // 섹션이 나타났다 사라지거나 아예 존재를 모르는 상태가 됐다.
-  if (loading || (savedNumbers === null && recommendationSets === null && !loadError)) {
+  if (loading || state.status === "loading" || state.status === "idle") {
     return (
       <section className="saved-account-library" aria-busy="true">
         <h2>계정에 연결된 기록</h2>
@@ -61,7 +66,7 @@ export function AccountLibrarySection() {
     );
   }
 
-  if (loadError) {
+  if (state.status === "error") {
     return (
       <section className="saved-account-library">
         <h2>계정에 연결된 기록</h2>
@@ -71,8 +76,8 @@ export function AccountLibrarySection() {
           retry={{
             label: "다시 시도",
             onClick: () => {
-              setLoadError(false);
-              setRetryKey((value) => value + 1);
+              setState(asyncLoading);
+              setRetryKey((current) => current + 1);
             },
           }}
         />
@@ -80,17 +85,19 @@ export function AccountLibrarySection() {
     );
   }
 
-  const hasAccountData =
-    (savedNumbers && savedNumbers.length > 0) || (recommendationSets && recommendationSets.length > 0);
+  const { savedNumbers, recommendationSets } = state.data;
+  const hasAccountData = savedNumbers.length > 0 || recommendationSets.length > 0;
 
   // 빈 상태도 숨기지 않는다 — 로그인했는데 섹션이 사라지면 기능이 없는 것으로 오해한다.
   if (!hasAccountData) {
     return (
       <section className="saved-account-library">
         <h2>계정에 연결된 기록</h2>
-        <p className="muted">
-          아직 계정에 연결된 기록이 없습니다. 이 기기에서 저장한 번호는 로그인 시 계정으로 옮겨집니다.
-        </p>
+        {/* FE-009: 다른 화면과 같은 빈 상태 표현을 쓴다. */}
+        <EmptyState
+          title="아직 계정에 연결된 기록이 없습니다."
+          description="이 기기에서 저장한 번호는 로그인 시 계정으로 옮겨집니다."
+        />
       </section>
     );
   }

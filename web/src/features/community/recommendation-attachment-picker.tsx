@@ -7,6 +7,7 @@ import { browserFetch } from "@/lib/browser-api";
 import type { PageResponse } from "@/lib/community-api";
 import type { RecommendationSetSummary } from "@/features/recommendation/types";
 import { ErrorState } from "@/ui/primitives/error-state";
+import { asyncError, asyncLoading, asyncSuccess, type AsyncState } from "@/lib/async-state";
 
 export function RecommendationAttachmentPicker({
   value,
@@ -15,9 +16,9 @@ export function RecommendationAttachmentPicker({
   value: number | null;
   onChange: (setId: number | null) => void;
 }) {
-  const [sets, setSets] = useState<RecommendationSetSummary[]>([]);
-  const [loaded, setLoaded] = useState(false);
-  const [loadError, setLoadError] = useState(false);
+  // FE-036: 예전에는 sets·loaded·loadError 세 플래그가 나란히 있어
+  // "로딩 끝났는데 실패했고 데이터도 있다" 같은 조합이 타입상 가능했다.
+  const [state, setState] = useState<AsyncState<RecommendationSetSummary[]>>(asyncLoading);
   const [retryKey, setRetryKey] = useState(0);
 
   // FE-053: 이전에는 로딩 중·조회 실패·세트 0개가 모두 null 렌더로 같아 보였다.
@@ -29,23 +30,17 @@ export function RecommendationAttachmentPicker({
       { headers: { "X-Device-Token": getDeviceToken() } }
     )
       .then((result) => {
-        if (!cancelled) setSets(Array.isArray(result?.items) ? result.items : []);
+        if (!cancelled) setState(asyncSuccess(Array.isArray(result?.items) ? result.items : []));
       })
       .catch(() => {
-        if (!cancelled) {
-          setSets([]);
-          setLoadError(true);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoaded(true);
+        if (!cancelled) setState(asyncError);
       });
     return () => {
       cancelled = true;
     };
   }, [retryKey]);
 
-  if (!loaded) {
+  if (state.status === "loading" || state.status === "idle") {
     return (
       <fieldset className="community-recommendation-picker" aria-busy="true">
         <legend>추천 세트 첨부(선택)</legend>
@@ -54,7 +49,7 @@ export function RecommendationAttachmentPicker({
     );
   }
 
-  if (loadError) {
+  if (state.status === "error") {
     return (
       <fieldset className="community-recommendation-picker">
         <legend>추천 세트 첨부(선택)</legend>
@@ -64,15 +59,16 @@ export function RecommendationAttachmentPicker({
           retry={{
             label: "다시 시도",
             onClick: () => {
-              setLoaded(false);
-              setLoadError(false);
-              setRetryKey((value) => value + 1);
+              setState(asyncLoading);
+              setRetryKey((current) => current + 1);
             },
           }}
         />
       </fieldset>
     );
   }
+
+  const sets = state.data;
 
   if (sets.length === 0) {
     return (

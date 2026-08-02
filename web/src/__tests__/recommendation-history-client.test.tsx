@@ -90,6 +90,31 @@ describe("추천 이력 화면", () => {
     expect(screen.queryByRole("button", { name: "더 보기" })).not.toBeInTheDocument();
   });
 
+  // FE-036: items와 totalElements를 따로 들면 삭제 후 목록과 건수가 어긋난다.
+  // 한 상태로 묶었으므로 함께 갱신되는지 확인한다.
+  it("삭제하면 목록과 전체 건수가 함께 줄어든다", async () => {
+    global.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (init?.method === "DELETE") {
+        return Promise.resolve({ ok: true, status: 204, json: () => Promise.resolve(null) });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(pageResponse(0, 2, 1, [1, 2])),
+      });
+    });
+
+    render(<RecommendationHistoryClient />);
+
+    await screen.findByText(/전체 2건을 모두 표시했습니다/);
+    fireEvent.click(screen.getAllByRole("button", { name: /추천 세트 삭제/ })[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText(/전체 1건을 모두 표시했습니다/)).toBeInTheDocument();
+    });
+    expect(screen.getAllByRole("button", { name: /추천 세트 삭제/ })).toHaveLength(1);
+  });
+
   it("더 보기 실패는 기존 목록을 지우지 않고 오류만 알린다", async () => {
     global.fetch = vi.fn().mockImplementation((url: string) => {
       if (url.includes("page=1")) return Promise.reject(new Error("network down"));
