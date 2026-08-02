@@ -19,7 +19,7 @@ public class CommunityPost {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "owner_id", nullable = false)
+    @Column(name = "owner_id")
     private Long ownerId;
 
     @Column(name = "author_name_snapshot", nullable = false, length = 100)
@@ -122,6 +122,16 @@ public class CommunityPost {
     /** 일반 사용자의 삭제 — 본문은 보존하고 공개 노출만 끈다. */
     void hideByAuthor(OffsetDateTime updatedAt) {
         this.status = PostStatus.HIDDEN_BY_AUTHOR;
+        this.updatedAt = updatedAt;
+    }
+
+    public void eraseForAccountDeletion(OffsetDateTime updatedAt) {
+        this.ownerId = null;
+        this.authorNameSnapshot = "삭제된 사용자";
+        this.title = "삭제된 게시글입니다.";
+        this.content = "삭제된 게시글입니다.";
+        this.status = PostStatus.DELETED;
+        this.recommendationSetId = null;
         this.updatedAt = updatedAt;
     }
 }

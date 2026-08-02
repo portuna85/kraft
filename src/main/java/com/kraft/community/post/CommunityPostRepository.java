@@ -1,6 +1,7 @@
 package com.kraft.community.post;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,6 +12,8 @@ import org.springframework.data.repository.query.Param;
 public interface CommunityPostRepository extends JpaRepository<CommunityPost, Long> {
 
     boolean existsByRecommendationSetId(Long recommendationSetId);
+
+    List<CommunityPost> findByOwnerId(Long ownerId);
 
     // KB-04: 탈퇴 처리 시 기존 게시글의 작성자 표기를 일괄로 익명화한다.
     // 대량 JPQL update라 개별 행의 @Version은 증가하지 않는다 — 표기 정정일 뿐

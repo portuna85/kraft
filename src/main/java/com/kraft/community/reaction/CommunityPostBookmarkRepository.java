@@ -10,5 +10,7 @@ public interface CommunityPostBookmarkRepository extends JpaRepository<Community
 
     List<CommunityPostBookmark> findByUserIdAndPostIdIn(Long userId, List<Long> postIds);
 
+    void deleteByUserId(Long userId);
+
     void deleteByPostIdAndUserId(Long postId, Long userId);
 }

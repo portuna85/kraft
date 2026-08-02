@@ -23,7 +23,7 @@ public class CommunityComment {
     @Column(name = "parent_id")
     private Long parentId;
 
-    @Column(name = "owner_id", nullable = false)
+    @Column(name = "owner_id")
     private Long ownerId;
 
     @Column(name = "author_name_snapshot", nullable = false, length = 100)
@@ -92,6 +92,13 @@ public class CommunityComment {
     }
 
     void markDeleted() {
+        this.deleted = true;
+    }
+
+    public void eraseForAccountDeletion() {
+        this.ownerId = null;
+        this.authorNameSnapshot = "삭제된 사용자";
+        this.content = "삭제된 댓글입니다.";
         this.deleted = true;
     }
 }

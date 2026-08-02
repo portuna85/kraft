@@ -141,7 +141,7 @@ public class CommunityCommentService {
         CommunityComment comment = communityCommentRepository.findByIdForUpdate(commentId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_COMMENT_NOT_FOUND",
                         "댓글을 찾을 수 없습니다."));
-        if (!comment.getOwnerId().equals(ownerId)) {
+        if (!java.util.Objects.equals(comment.getOwnerId(), ownerId)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "COMMUNITY_COMMENT_NOT_OWNER", "본인 댓글만 삭제할 수 있습니다.");
         }
         // B-P0-6: 이미 tombstone된 댓글을 재삭제 요청하면 멱등하게 아무 것도 하지 않는다 —

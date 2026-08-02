@@ -198,13 +198,13 @@ public class CommunityPostService {
 
     /** 공개 상태가 아닌 게시글은 소유자 본인에게만 보이며 그 외에는 COMMUNITY_POST_NOT_VISIBLE이다. */
     private void requireVisible(CommunityPost post, Long requesterId) {
-        if (post.getStatus() != PostStatus.PUBLISHED && !post.getOwnerId().equals(requesterId)) {
+        if (post.getStatus() != PostStatus.PUBLISHED && !java.util.Objects.equals(post.getOwnerId(), requesterId)) {
             throw new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_POST_NOT_VISIBLE", "게시글을 찾을 수 없습니다.");
         }
     }
 
     private void requireOwner(CommunityPost post, Long ownerId) {
-        if (!post.getOwnerId().equals(ownerId)) {
+        if (!java.util.Objects.equals(post.getOwnerId(), ownerId)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "COMMUNITY_POST_NOT_OWNER", "본인 게시글만 수정·삭제할 수 있습니다.");
         }
     }

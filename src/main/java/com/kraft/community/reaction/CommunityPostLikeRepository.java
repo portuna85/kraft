@@ -13,6 +13,8 @@ public interface CommunityPostLikeRepository extends JpaRepository<CommunityPost
 
     List<CommunityPostLike> findByUserIdAndPostIdIn(Long userId, List<Long> postIds);
 
+    List<CommunityPostLike> findByUserId(Long userId);
+
     // KB-06: 삭제된 행 수를 반환해야 unlike()가 "내가 실제로 지웠을 때만" like_count를
     // 감산할 수 있다 — 파생 delete(이름만으로 자동 생성되는 deleteBy...)는 건수를
     // 반환하더라도 내부적으로 entityManager.remove()를 예약만 하고 flush 시점까지

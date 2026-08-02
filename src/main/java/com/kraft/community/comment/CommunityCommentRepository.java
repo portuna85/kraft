@@ -20,6 +20,8 @@ public interface CommunityCommentRepository extends JpaRepository<CommunityComme
 
     Page<CommunityComment> findByPostId(Long postId, Pageable pageable);
 
+    List<CommunityComment> findByOwnerId(Long ownerId);
+
     // 상위 댓글(parentId is null)만 페이징 대상으로 삼는다 — 답글은 목록 페이지네이션
     // 카운트에서 제외하고 상위 댓글에 중첩해 내려준다(§P1-02). tombstone(deleted=true)된
     // 댓글도 "삭제된 댓글입니다" 마스킹 placeholder로 목록에 그대로 남는다 — 스레드 구조·

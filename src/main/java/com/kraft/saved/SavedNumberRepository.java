@@ -20,5 +20,7 @@ public interface SavedNumberRepository extends JpaRepository<SavedNumber, Long> 
 
     long countByOwnerUserId(Long ownerUserId);
 
+    void deleteByOwnerUserId(Long ownerUserId);
+
     Optional<SavedNumber> findByIdAndOwnerUserId(Long id, Long ownerUserId);
 }
