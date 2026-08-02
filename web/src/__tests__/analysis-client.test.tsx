@@ -32,6 +32,33 @@ describe("번호 분석 입력 검증 (F4: 공통 validator 재사용)", () => {
     });
   });
 
+  // FE-037: 번호판과 텍스트 입력이 같은 상태를 공유해, 눌러서 고른 조합을 그대로 분석한다.
+  it("번호판으로 6개를 골라 분석할 수 있다", async () => {
+    render(<AnalysisClient />);
+
+    for (const n of [3, 11, 19, 28, 34, 42]) {
+      fireEvent.click(screen.getByRole("button", { name: `번호 ${n}` }));
+    }
+    expect(screen.getByRole("textbox")).toHaveValue("3, 11, 19, 28, 34, 42");
+
+    fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/v1/stats/analysis",
+        expect.objectContaining({ body: JSON.stringify({ numbers: [3, 11, 19, 28, 34, 42] }) })
+      );
+    });
+  });
+
+  it("텍스트로 입력해도 번호판에 선택 상태가 반영된다", () => {
+    render(<AnalysisClient />);
+
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "3, 11" } });
+
+    expect(screen.getByRole("button", { name: "번호 3, 선택" })).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("정수가 아닌 값(예: 3x)이 섞이면 오류를 보여준다", () => {
     render(<AnalysisClient />);
 

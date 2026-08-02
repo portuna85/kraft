@@ -1,10 +1,10 @@
 "use client";
 
-import { useRovingGrid } from "@/ui/primitives/use-roving-grid";
+import { NumberGrid } from "@/ui/domain/number-grid";
 import { MAX_LOCKED_NUMBERS, type NumberPickState } from "./types";
 import styles from "./number-board.module.css";
 
-const ALL_NUMBERS = Array.from({ length: 45 }, (_, i) => i + 1);
+const NUMBER_COUNT = 45;
 
 const STATE_TEXT: Record<NumberPickState, string> = {
   none: "",
@@ -35,10 +35,6 @@ export function NumberBoard({
   excluded: readonly number[];
   onChange: (locked: number[], excluded: number[]) => void;
 }) {
-  // FE-017: 이전에는 45칸을 Tab으로만 지나갈 수 있어 키보드 사용자가 생성 버튼에
-  // 도달하려면 45번을 눌러야 했다. /companion이 쓰던 방식을 공용 훅으로 공유한다.
-  const roving = useRovingGrid(ALL_NUMBERS.length);
-
   function handleClick(n: number) {
     const current = stateOf(n, locked, excluded);
     const next = nextState(current, locked.length);
@@ -62,33 +58,19 @@ export function NumberBoard({
           제외 번호 — 추천 후보에서 빠집니다
         </span>
       </p>
-      <div
-        className={styles.grid}
-        role="group"
-        aria-label="1부터 45까지 번호 선택판"
-        onKeyDown={roving.handleKeyDown}
-      >
-        {ALL_NUMBERS.map((n, index) => {
+      <NumberGrid
+        count={NUMBER_COUNT}
+        ariaLabel="1부터 45까지 번호 선택판"
+        onSelect={handleClick}
+        getState={(n) => {
           const state = stateOf(n, locked, excluded);
-          const stateText = STATE_TEXT[state];
-          return (
-            <button
-              key={n}
-              type="button"
-              {...roving.getItemProps(index)}
-              className={`${styles.cell} ${state === "locked" ? styles.cellLocked : ""} ${
-                state === "excluded" ? styles.cellExcluded : ""
-              }`}
-              onClick={() => handleClick(n)}
-              aria-label={stateText ? `번호 ${n}, ${stateText}` : `번호 ${n}`}
-              aria-pressed={state !== "none"}
-            >
-              <span>{n}</span>
-              {stateText ? <span className={styles.stateLabel}>{stateText}</span> : null}
-            </button>
-          );
-        })}
-      </div>
+          return {
+            pressed: state !== "none",
+            stateText: STATE_TEXT[state] || undefined,
+            className: state === "locked" ? styles.cellLocked : state === "excluded" ? styles.cellExcluded : undefined,
+          };
+        }}
+      />
     </div>
   );
 }
