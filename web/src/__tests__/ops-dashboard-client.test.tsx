@@ -20,13 +20,21 @@ const COLLECTED = {
   firstPrizeAmount: 2_100_000_000,
 };
 
-function mockFetch(handler: (url: string, init?: RequestInit) => { status: number; body: unknown }) {
+/**
+ * FE-079: callOps가 content-type을 보고 파싱 여부를 정하므로, 실제 Response처럼
+ * headers를 갖춘 double을 쓴다. contentType을 넘기면 JSON이 아닌 응답도 흉내 낼 수 있다.
+ */
+function mockFetch(
+  handler: (url: string, init?: RequestInit) => { status: number; body: unknown; contentType?: string }
+) {
   return vi.fn().mockImplementation((url: string, init?: RequestInit) => {
-    const { status, body } = handler(url, init);
+    const { status, body, contentType = "application/json" } = handler(url, init);
     return Promise.resolve({
       ok: status >= 200 && status < 300,
       status,
+      headers: new Headers(contentType ? { "content-type": contentType } : {}),
       json: () => Promise.resolve(body),
+      text: () => Promise.resolve(typeof body === "string" ? body : JSON.stringify(body)),
     });
   });
 }
@@ -102,6 +110,7 @@ describe("운영 대시보드 화면", () => {
       pending.promise.then(({ status, body }) => ({
         ok: status >= 200 && status < 300,
         status,
+        headers: new Headers({ "content-type": "application/json" }),
         json: () => Promise.resolve(body),
       }))
     );

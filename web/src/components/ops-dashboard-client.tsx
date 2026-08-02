@@ -5,6 +5,7 @@ import { LottoBalls } from "@/ui/domain/lotto-balls";
 import { formatCurrency, formatDateTime, formatDrawDate } from "@/lib/format";
 import { validateLottoNumbers } from "@/lib/lotto-validation";
 import { ErrorState } from "@/ui/primitives/error-state";
+import { callOps } from "@/lib/ops-client";
 
 type OpsSummary = {
   service: string;
@@ -39,21 +40,6 @@ const initialManualEntryForm: ManualEntryForm = {
   bonusNumber: "",
   firstPrizeAmount: ""
 };
-
-type OpsResult<T> = { ok: true; data: T } | { ok: false; message: string };
-
-async function callOps<T>(url: string, init?: RequestInit): Promise<OpsResult<T>> {
-  try {
-    const response = await fetch(url, { cache: "no-store", ...init });
-    const json = await response.json() as T | { message?: string };
-    if (!response.ok) {
-      return { ok: false, message: (json as { message?: string }).message ?? "요청에 실패했습니다." };
-    }
-    return { ok: true, data: json as T };
-  } catch {
-    return { ok: false, message: "네트워크 오류가 발생했습니다." };
-  }
-}
 
 const MANUAL_ERROR_ID = "ops-manual-error";
 
