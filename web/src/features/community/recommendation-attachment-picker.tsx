@@ -16,19 +16,70 @@ export function RecommendationAttachmentPicker({
 }) {
   const [sets, setSets] = useState<RecommendationSetSummary[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
+  // FE-053: 이전에는 로딩 중·조회 실패·세트 0개가 모두 null 렌더로 같아 보였다.
+  // 특히 실패를 .catch(() => setSets([]))로 흡수해 "첨부 기능이 없는 화면"처럼 보였다.
   useEffect(() => {
+    let cancelled = false;
     browserFetch<PageResponse<RecommendationSetSummary>>(
       "/api/v1/recommendation-sets?page=0&size=50",
       { headers: { "X-Device-Token": getDeviceToken() } }
     )
-      .then((result) => setSets(Array.isArray(result?.items) ? result.items : []))
-      .catch(() => setSets([]))
-      .finally(() => setLoaded(true));
-  }, []);
+      .then((result) => {
+        if (!cancelled) setSets(Array.isArray(result?.items) ? result.items : []);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSets([]);
+          setLoadError(true);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [retryKey]);
 
-  if (!loaded || sets.length === 0) {
-    return null;
+  if (!loaded) {
+    return (
+      <fieldset className="community-recommendation-picker" aria-busy="true">
+        <legend>추천 세트 첨부(선택)</legend>
+        <span className="skeleton-line skeleton-body" />
+      </fieldset>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <fieldset className="community-recommendation-picker">
+        <legend>추천 세트 첨부(선택)</legend>
+        <p className="status-text" role="status">추천 이력을 불러오지 못했습니다.</p>
+        <button
+          type="button"
+          className="button secondary"
+          onClick={() => {
+            setLoaded(false);
+            setLoadError(false);
+            setRetryKey((value) => value + 1);
+          }}
+        >
+          다시 시도
+        </button>
+      </fieldset>
+    );
+  }
+
+  if (sets.length === 0) {
+    return (
+      <fieldset className="community-recommendation-picker">
+        <legend>추천 세트 첨부(선택)</legend>
+        <p className="muted">첨부할 추천 세트가 없습니다. 번호 추천에서 조합을 만들면 여기에서 첨부할 수 있습니다.</p>
+      </fieldset>
+    );
   }
 
   return (

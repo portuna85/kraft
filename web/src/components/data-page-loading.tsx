@@ -1,6 +1,9 @@
 import styles from "./data-page-loading.module.css";
 
-type Variant = "home" | "bars" | "list";
+// FE-006: 루트 loading.tsx가 "home" 고정이라 전용 loading.tsx가 없는 모든 라우트
+// (/community, /info/*, /saved, /analysis, /status, /ops …)에 로또 공 스켈레톤이 떴다.
+// "generic"은 도메인 형태를 암시하지 않는 중립 폴백이다.
+type Variant = "home" | "bars" | "list" | "generic";
 
 export function DataPageLoading({ variant = "bars" }: { variant?: Variant }) {
   return (
@@ -18,6 +21,13 @@ export function DataPageLoading({ variant = "bars" }: { variant?: Variant }) {
             </div>
             <div className={`skeleton-line ${styles.largeBlock}`} />
           </>
+        ) : variant === "generic" ? (
+          // 어떤 콘텐츠가 올지 모르는 폴백이라 본문 블록 몇 줄만 그린다.
+          <div className={styles.rows}>
+            {Array.from({ length: 6 }, (_, index) => (
+              <div key={index} className="skeleton-line skeleton-body" />
+            ))}
+          </div>
         ) : (
           <div className={styles.rows}>
             {Array.from({ length: variant === "list" ? 12 : 15 }, (_, index) => (
