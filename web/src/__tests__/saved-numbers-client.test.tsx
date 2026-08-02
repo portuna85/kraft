@@ -270,6 +270,37 @@ describe("저장 번호 화면", () => {
     vi.useRealTimers();
   });
 
+  // FE-045: 언마운트 정리가 타이머를 취소만 해서, 삭제를 누르고 5초 안에 화면을 떠나면
+  // 삭제가 아예 실행되지 않았다. 사용자는 지운 항목이 다음 방문에 그대로 있는 것을 보게 된다.
+  it("유예 시간이 지나기 전에 화면을 떠나면 남은 삭제를 즉시 실행한다", async () => {
+    vi.useFakeTimers();
+    const fetchSpy = vi.fn();
+    global.fetch = mockFetch((url, init) => {
+      fetchSpy(url, init);
+      if (init?.method === "DELETE") return { status: 204, body: null };
+      if (url.includes("/matches")) return { status: 200, body: [] };
+      return { status: 200, body: [SAVED_ITEM] };
+    });
+
+    const { unmount } = render(<SavedNumbersClient latestRound={1230} />);
+    await vi.waitFor(() => {
+      expect(screen.getByRole("button", { name: "1, 2, 3, 4, 5, 6 조합 삭제" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "1, 2, 3, 4, 5, 6 조합 삭제" }));
+    expect(screen.getByRole("button", { name: "실행 취소" })).toBeInTheDocument();
+
+    // 유예 시간이 지나기 전에 이탈한다.
+    unmount();
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.stringContaining("/api/v1/saved/1"),
+      expect.objectContaining({ method: "DELETE", keepalive: true })
+    );
+
+    vi.useRealTimers();
+  });
+
   it("삭제 요청이 실패하면 항목을 그대로 유지하고 대기 상태만 해제한다", async () => {
     vi.useFakeTimers();
     global.fetch = mockFetch((url, init) => {

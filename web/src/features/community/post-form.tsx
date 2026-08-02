@@ -27,7 +27,7 @@ type EditMode = { mode: "edit"; postId: number; ownerId: number; initialTitle: s
 export function PostForm(props: CreateMode | EditMode) {
   const router = useRouter();
   const pathname = usePathname();
-  const { session, loading } = useCommunitySession();
+  const { session, loading, error: sessionError, retry } = useCommunitySession();
   const [title, setTitle] = useState(props.mode === "edit" ? props.initialTitle : "");
   const [content, setContent] = useState(props.mode === "edit" ? props.initialContent : "");
   const [category, setCategory] = useState<PostCategory>("GENERAL");
@@ -72,6 +72,22 @@ export function PostForm(props: CreateMode | EditMode) {
         <span className="skeleton-line skeleton-eyebrow" />
         <span className="skeleton-line skeleton-body" />
         <span className="skeleton-line skeleton-body" />
+      </div>
+    );
+  }
+  // FE-005: 세션 조회 실패를 비로그인으로 표시하면 provider 목록이 비어 로그인 링크조차
+  // 사라진다 — 사용자가 아무것도 할 수 없게 되므로 실패는 실패로 알리고 재시도를 준다.
+  if (sessionError) {
+    return (
+      <div className="community-post-form-login-required">
+        <InlineAlert
+          tone="danger"
+          title="로그인 상태를 확인하지 못했습니다."
+          description="네트워크 상태를 확인한 뒤 다시 시도해 주세요."
+        />
+        <button type="button" className="button secondary" onClick={retry}>
+          다시 시도
+        </button>
       </div>
     );
   }

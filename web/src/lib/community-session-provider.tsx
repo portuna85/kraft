@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { claimDevice, getCommunitySession, type CommunitySession } from "@/lib/community-client";
 import { rotateDeviceToken } from "@/lib/device-token";
@@ -8,11 +8,23 @@ import { rotateDeviceToken } from "@/lib/device-token";
 type CommunitySessionState = {
   session: CommunitySession | null;
   loading: boolean;
+  /**
+   * FE-005: 세션 조회가 실패했다는 사실. 이전에는 실패를
+   * `{ loggedIn: false, activeProviders: [] }`로 축약해 "비로그인"과 구분되지 않았고,
+   * activeProviders가 비어 로그인 링크마저 사라져 복구 경로가 없었다. 실패는 실패로
+   * 남기고(session은 null = 알 수 없음) 소비자가 재시도를 제공할 수 있게 한다.
+   */
+  error: boolean;
+  retry: () => void;
 };
+
+const NOOP_RETRY = () => {};
 
 const CommunitySessionContext = createContext<CommunitySessionState>({
   session: null,
   loading: true,
+  error: false,
+  retry: NOOP_RETRY,
 });
 
 // 로그인 세션이 확인될 때마다 매번 귀속을 재시도하지 않도록 탭 세션 동안만 유지되는 플래그.
@@ -34,14 +46,27 @@ export function isSessionScopedPath(pathname: string): boolean {
 // 익명 공개 페이지에서도 매번 나가던 문제를 스코핑으로 없앤다 — 스코프 밖에서는
 // session을 null로 유지해 "아직 안 불렀음"과 "불렀는데 비로그인"을 구분한다
 // (AccountMenu가 이 둘을 다르게 렌더링한다).
-const UNSCOPED_STATE: CommunitySessionState = { session: null, loading: false };
+const UNSCOPED_STATE: CommunitySessionState = {
+  session: null,
+  loading: false,
+  error: false,
+  retry: NOOP_RETRY,
+};
+
+type FetchState = Pick<CommunitySessionState, "session" | "loading" | "error">;
 
 export function CommunitySessionProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const scoped = isSessionScopedPath(pathname);
-  const [state, setState] = useState<CommunitySessionState>(
-    scoped ? { session: null, loading: true } : UNSCOPED_STATE
+  const [state, setState] = useState<FetchState>(
+    scoped ? { session: null, loading: true, error: false } : { session: null, loading: false, error: false }
   );
+  const [retryKey, setRetryKey] = useState(0);
+
+  const retry = useCallback(() => {
+    setState({ session: null, loading: true, error: false });
+    setRetryKey((value) => value + 1);
+  }, []);
 
   useEffect(() => {
     // 스코프 밖에서는 아무 것도 조회하지 않는다 — 렌더 값은 아래 value가 UNSCOPED_STATE로
@@ -52,7 +77,7 @@ export function CommunitySessionProvider({ children }: { children: ReactNode }) 
     let cancelled = false;
     getCommunitySession()
       .then((session) => {
-        if (!cancelled) setState({ session, loading: false });
+        if (!cancelled) setState({ session, loading: false, error: false });
         if (session.loggedIn && !window.sessionStorage.getItem(CLAIM_ATTEMPTED_KEY)) {
           // F-P0-10: 이전에는 성공/실패와 무관하게 토큰을 회전시켰다 — claim이 실패하면
           // (네트워크 오류 등, 409 "이미 귀속됨"과는 다른 경우) 회전된 새 토큰은 서버에
@@ -71,19 +96,21 @@ export function CommunitySessionProvider({ children }: { children: ReactNode }) 
         }
       })
       .catch(() => {
+        // 실패를 비로그인으로 위장하지 않는다 — session은 null(알 수 없음)로 두고
+        // error로 표시해 소비자가 재시도를 제시할 수 있게 한다.
         if (!cancelled) {
-          setState({
-            session: { loggedIn: false, userId: null, nickname: null, activeProviders: [] },
-            loading: false,
-          });
+          setState({ session: null, loading: false, error: true });
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [scoped]);
+  }, [scoped, retryKey]);
 
-  const value = scoped ? state : UNSCOPED_STATE;
+  const value = useMemo<CommunitySessionState>(
+    () => (scoped ? { ...state, retry } : UNSCOPED_STATE),
+    [scoped, state, retry]
+  );
 
   return (
     <CommunitySessionContext.Provider value={value}>{children}</CommunitySessionContext.Provider>

@@ -84,6 +84,13 @@ export async function getCommunityPosts(
   );
 }
 
+// FE-064 (미해결, 백엔드 설계 필요): 이 GET은 백엔드에서 조회수를 증가시키는 부수효과를
+// 갖는다(CommunityPostService — "세션/중복 방지는 이번 범위에서 과설계라 생략, 단순 조회수").
+// 그런데 여기서 ISR로 캐시하므로 캐시가 적중하는 동안에는 백엔드에 요청이 닿지 않아
+// 조회수가 집계되지 않고, 화면에 보이는 조회수·좋아요 수도 최대 revalidate 주기만큼 오래됐다.
+// 프런트 단독으로 no-store로 바꾸면 조회수는 정확해지지만 상세 페이지의 캐시 이점을 전부 잃는다.
+// 올바른 해법은 조회수 write를 캐시하지 않는 별도 엔드포인트/이벤트로 분리하는 것이며,
+// 그 전까지 이 트레이드오프를 의도된 현재 상태로 남긴다.
 export async function getCommunityPost(id: number): Promise<CommunityPost> {
   return fetchCommunityJson<CommunityPost>(`/api/v1/community/posts/${id}`, {
     next: { revalidate: REVALIDATE_COMMUNITY_LIST, tags: ["community:posts", `community:post:${id}`] },

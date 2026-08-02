@@ -57,7 +57,23 @@ export function SavedNumbersClient({ latestRound }: Props) {
   useEffect(() => {
     const timers = deleteTimers.current;
     return () => {
-      timers.forEach((timer) => clearTimeout(timer));
+      // FE-045: 이전에는 타이머를 취소만 했다. 유예 삭제는 "취소를 누르지 않으면 지운다"는
+      // 약속이므로, 5초가 지나기 전에 화면을 떠나면 사용자가 지운 항목이 그대로 남아
+      // 다음 방문에 다시 나타났다. 떠날 때는 남은 삭제를 즉시 실행한다.
+      // browserFetch 대신 raw fetch를 쓰는 이유: 언마운트가 실제 페이지 이탈이면 5초
+      // AbortSignal이 요청을 끊을 수 있고, 응답 본문도 쓸 곳이 없다. keepalive로 이탈
+      // 이후에도 전송이 완료되게 한다.
+      timers.forEach((timer, id) => {
+        clearTimeout(timer);
+        void fetch(`/api/v1/saved/${id}`, {
+          method: "DELETE",
+          headers: { "X-Device-Token": getDeviceToken() },
+          keepalive: true,
+        }).catch(() => {
+          // 이탈 중이라 사용자에게 알릴 화면이 없다. 서버에 닿지 못하면 항목은 남는다.
+        });
+      });
+      timers.clear();
     };
   }, []);
 
@@ -121,6 +137,7 @@ export function SavedNumbersClient({ latestRound }: Props) {
 
   function scheduleDelete(item: SavedNumber) {
     setPendingDeleteIds((prev) => new Set(prev).add(item.id));
+    setMessage(`저장 번호를 삭제합니다. ${DELETE_UNDO_MS / 1000}초 안에 취소할 수 있습니다.`);
     const timer = setTimeout(async () => {
       deleteTimers.current.delete(item.id);
       try {
@@ -129,6 +146,7 @@ export function SavedNumbersClient({ latestRound }: Props) {
           headers: { "X-Device-Token": getDeviceToken() },
         });
         setItems((prev) => prev.filter((x) => x.id !== item.id));
+        setMessage("저장 번호를 삭제했습니다.");
       } catch (err) {
         // 삭제 실패 — 대기 상태만 풀고 항목은 그대로 유지한다.
         if (!(err instanceof BrowserApiError || err instanceof Error)) throw err;
@@ -150,6 +168,7 @@ export function SavedNumbersClient({ latestRound }: Props) {
       clearTimeout(timer);
       deleteTimers.current.delete(id);
     }
+    setMessage("삭제를 취소했습니다.");
     setPendingDeleteIds((prev) => {
       const next = new Set(prev);
       next.delete(id);

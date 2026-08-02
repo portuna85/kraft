@@ -73,6 +73,46 @@ describe("커뮤니티 게시글 작성·수정 폼", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
+  // FE-005: 세션 조회 실패를 비로그인으로 축약하면 activeProviders가 비어 로그인 링크까지
+  // 사라진다 — 사용자가 복구할 방법이 없어진다. 실패는 실패로 알리고 재시도를 제공한다.
+  it("세션 조회에 실패하면 비로그인이 아니라 오류와 재시도를 보여준다", async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/session")) return Promise.reject(new Error("network down"));
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) });
+    });
+
+    renderPostForm({ mode: "create" });
+
+    expect(await screen.findByText("로그인 상태를 확인하지 못했습니다.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
+    // 비로그인 안내로 잘못 표시하지 않아야 한다.
+    expect(screen.queryByText("이 기능을 사용하려면 로그인이 필요합니다.")).not.toBeInTheDocument();
+  });
+
+  it("세션 조회 실패 후 다시 시도하면 정상 상태로 복구된다", async () => {
+    let shouldFail = true;
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/session")) {
+        if (shouldFail) return Promise.reject(new Error("network down"));
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ loggedIn: false, userId: null, nickname: null, activeProviders: ["google"] }),
+        });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) });
+    });
+
+    renderPostForm({ mode: "create" });
+
+    const retryButton = await screen.findByRole("button", { name: "다시 시도" });
+    // 재시도 클릭이 곧바로 effect를 다시 돌리므로 성공 응답으로 먼저 바꿔 둔다.
+    shouldFail = false;
+    fireEvent.click(retryButton);
+
+    expect(await screen.findByRole("link", { name: "Google 로그인" })).toBeInTheDocument();
+  });
+
   it("로그인 링크를 클릭하면 복귀 경로를 저장한다", async () => {
     global.fetch = mockFetch({
       session: { loggedIn: false, userId: null, nickname: null, activeProviders: ["google"] },
