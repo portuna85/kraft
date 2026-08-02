@@ -185,9 +185,10 @@ export function PostForm(props: CreateMode | EditMode) {
         maxLength={200}
         required
         invalid={Boolean(error || versionConflict)}
+        descriptionId="post-title-count"
         errorMessageId={error || versionConflict ? "post-form-error" : undefined}
       />
-      <p className="community-field-hint" aria-live="polite">{title.length}/200</p>
+      <p id="post-title-count" className="community-field-hint">{title.length}/200</p>
 
       <TextArea
         id="post-content"
@@ -198,9 +199,10 @@ export function PostForm(props: CreateMode | EditMode) {
         rows={10}
         required
         invalid={Boolean(error || versionConflict)}
+        descriptionId="post-content-count"
         errorMessageId={error || versionConflict ? "post-form-error" : undefined}
       />
-      <p className="community-field-hint" aria-live="polite">{content.length}/20,000</p>
+      <p id="post-content-count" className="community-field-hint">{content.length}/20,000</p>
 
       <Button type="submit" variant="primary" loading={submitting} loadingLabel="저장 중…" disabled={!title.trim() || !content.trim()}>
         저장

@@ -11,8 +11,11 @@ export function TextArea({
   disabled,
   required,
   invalid,
+  descriptionId,
   errorMessageId,
 }: TextAreaContract) {
+  const describedBy = [descriptionId, invalid ? errorMessageId : undefined].filter(Boolean).join(" ") || undefined;
+
   return (
     <div className={styles.field}>
       <label htmlFor={id} className={styles.label}>
@@ -28,7 +31,7 @@ export function TextArea({
         disabled={disabled}
         required={required}
         aria-invalid={invalid || undefined}
-        aria-describedby={invalid ? errorMessageId : undefined}
+        aria-describedby={describedBy}
       />
     </div>
   );

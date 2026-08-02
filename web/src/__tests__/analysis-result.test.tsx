@@ -45,6 +45,7 @@ describe("번호 분석 결과", () => {
   it("구간 분포를 5개 항목으로 렌더링한다", () => {
     render(<AnalysisResult analysis={analysis} title="분석 결과" />);
 
+    expect(screen.getByRole("heading", { name: "구간 분포", level: 3 })).toBeInTheDocument();
     expect(screen.getAllByText(/^\d+-\d+$/)).toHaveLength(5);
   });
 

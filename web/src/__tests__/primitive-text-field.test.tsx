@@ -30,4 +30,22 @@ describe("TextField 프리미티브", () => {
     expect(input).toHaveAttribute("aria-invalid", "true");
     expect(input).toHaveAttribute("aria-describedby", "nickname-error");
   });
+
+  it("평상시 안내와 오류 메시지를 함께 설명으로 연결한다", () => {
+    render(
+      <TextField
+        id="nickname"
+        label="닉네임"
+        value=""
+        onChange={() => {}}
+        descriptionId="nickname-hint"
+        invalid
+        errorMessageId="nickname-error"
+      />
+    );
+    expect(screen.getByLabelText("닉네임")).toHaveAttribute(
+      "aria-describedby",
+      "nickname-hint nickname-error"
+    );
+  });
 });

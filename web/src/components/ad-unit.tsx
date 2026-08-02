@@ -37,7 +37,7 @@ export function AdUnit({ unit, width, height, label = "광고", className }: AdU
   return (
     <div
       className={`ad-unit${className ? ` ${className}` : ""}`}
-      role="complementary"
+      role="group"
       aria-label={label}
       style={{ maxWidth: "100%", minHeight: height }}
     >
@@ -129,7 +129,7 @@ export function AdSenseUnit({ slot, width, height, label = "광고", className }
   return (
     <div
       className={`ad-unit${className ? ` ${className}` : ""}`}
-      role="complementary"
+      role="group"
       aria-label={label}
       style={{ maxWidth: "100%", minHeight: height }}
     >

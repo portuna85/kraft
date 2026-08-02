@@ -239,6 +239,7 @@ describe("커뮤니티 댓글 섹션", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "답글" }));
     expect(screen.getByText("답글 작성 중")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("글쓴이님에게 답글을 작성합니다.");
 
     fireEvent.click(screen.getByRole("button", { name: "취소" }));
     expect(screen.queryByText("답글 작성 중")).not.toBeInTheDocument();

@@ -24,7 +24,7 @@ describe("Dialog 프리미티브", () => {
     expect(dialog).toHaveAttribute("aria-labelledby", "dialog-title");
     expect(dialog).toHaveAttribute("aria-modal", "true");
     expect(dialog).toHaveAttribute("tabindex", "-1");
-    expect(dialog).toHaveFocus();
+    expect(screen.getByRole("button", { name: "닫기" })).toHaveFocus();
     expect(document.body).toHaveStyle({ overflow: "hidden" });
   });
 
@@ -43,6 +43,14 @@ describe("Dialog 프리미티브", () => {
       </Dialog>
     );
     fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("명시적 닫기 버튼을 제공하고 클릭하면 onClose를 호출한다", () => {
+    const onClose = vi.fn();
+    render(<Dialog open onClose={onClose} titleId="t" title="제목">내용</Dialog>);
+
+    fireEvent.click(screen.getByRole("button", { name: "닫기" }));
     expect(onClose).toHaveBeenCalledOnce();
   });
 

@@ -24,11 +24,11 @@ function BallWithStats({ item, sampleSize }: { item: BallFrequency; sampleSize: 
   const pct = sampleSize > 0 ? ((item.frequency / sampleSize) * 100).toFixed(1) : "0.0";
 
   return (
-    <div className={`${styles.ballItem} ${styles.item}`} data-testid="frequency-item">
+    <li className={`${styles.ballItem} ${styles.item}`} data-testid="frequency-item">
       <span className={`ball ball-sm ${ballColorClass(item.ballNumber)}`}>{item.ballNumber}</span>
       <span className={styles.count}>{item.frequency}회</span>
       <span className={styles.pct}>{pct}%</span>
-    </div>
+    </li>
   );
 }
 
@@ -121,11 +121,11 @@ export function FrequencyFilterClient({ initial }: Props) {
         <CombinationGroup label="가장 적게 나온 번호 BOTTOM 6" combination={stats.bottomSix} />
       </div>
 
-      <div className={styles.grid} data-testid="frequency-grid">
+      <ul className={styles.grid} data-testid="frequency-grid" aria-label="번호별 출현 통계">
         {byNumber.map((item) => (
           <BallWithStats key={item.ballNumber} item={item} sampleSize={sampleSize} />
         ))}
-      </div>
+      </ul>
     </>
   );
 }

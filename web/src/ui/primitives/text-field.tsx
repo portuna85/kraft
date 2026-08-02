@@ -14,8 +14,11 @@ export function TextField({
   disabled,
   required,
   invalid,
+  descriptionId,
   errorMessageId,
 }: TextFieldContract) {
+  const describedBy = [descriptionId, invalid ? errorMessageId : undefined].filter(Boolean).join(" ") || undefined;
+
   return (
     <div className={styles.field}>
       <label htmlFor={id} className={styles.label}>
@@ -35,7 +38,7 @@ export function TextField({
         disabled={disabled}
         required={required}
         aria-invalid={invalid || undefined}
-        aria-describedby={invalid ? errorMessageId : undefined}
+        aria-describedby={describedBy}
       />
     </div>
   );

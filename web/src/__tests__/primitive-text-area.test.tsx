@@ -30,4 +30,22 @@ describe("TextArea 프리미티브", () => {
     expect(textarea).toHaveAttribute("aria-invalid", "true");
     expect(textarea).toHaveAttribute("aria-describedby", "comment-error");
   });
+
+  it("평상시 안내와 오류 메시지를 함께 설명으로 연결한다", () => {
+    render(
+      <TextArea
+        id="comment"
+        label="댓글"
+        value=""
+        onChange={() => {}}
+        descriptionId="comment-hint"
+        invalid
+        errorMessageId="comment-error"
+      />
+    );
+    expect(screen.getByLabelText("댓글")).toHaveAttribute(
+      "aria-describedby",
+      "comment-hint comment-error"
+    );
+  });
 });

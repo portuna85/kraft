@@ -8,7 +8,7 @@ import { useCommunitySession } from "@/lib/community-session-provider";
 import { ConfirmDialog } from "@/ui/primitives/confirm-dialog";
 
 export function AccountMenu() {
-  const { session, loading } = useCommunitySession();
+  const { session, loading, error: sessionError, retry } = useCommunitySession();
   const [logoutError, setLogoutError] = useState(false);
   const [withdrawError, setWithdrawError] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
@@ -21,6 +21,17 @@ export function AccountMenu() {
   // KF-05: 공개 페이지에서는 세션을 아예 조회하지 않으므로 session이 null이다 — 실제
   // 로그인 여부를 모르는 채 "확인됨(비로그인)"과 혼동하지 않도록 별도로 일반 진입
   // 링크만 보여준다. 실제 로그인 상태는 /community·/saved 진입 시 확인된다.
+  if (sessionError) {
+    return (
+      <div className="account-menu" role="alert">
+        <span>세션을 확인하지 못했습니다.</span>
+        <button type="button" className="account-login-link" onClick={retry}>
+          다시 시도
+        </button>
+      </div>
+    );
+  }
+
   if (session === null) {
     return (
       <div className="account-menu">

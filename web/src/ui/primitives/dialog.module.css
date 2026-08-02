@@ -26,3 +26,10 @@
   color: var(--color-ink);
   margin: 0 0 var(--space-4);
 }
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}

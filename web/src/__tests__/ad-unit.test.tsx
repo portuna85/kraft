@@ -76,7 +76,8 @@ describe("광고 유닛", () => {
   it("label을 지정하면 aria-label에 반영된다", () => {
     render(<AdUnit unit="DAN-abc123" width={320} height={100} label="빈도 통계 광고" />);
 
-    expect(screen.getByLabelText("빈도 통계 광고")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "빈도 통계 광고" })).toBeInTheDocument();
+    expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
   });
 
   it("모바일·데스크톱 유닛이 모두 없으면 아무것도 렌더링하지 않는다", () => {

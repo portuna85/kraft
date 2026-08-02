@@ -125,6 +125,19 @@ describe("커뮤니티 게시글 작성·수정 폼", () => {
     expect(window.sessionStorage.getItem("kraft-community-return-to")).toBe("/community/write");
   });
 
+  it("글자 수 안내를 라이브 공지 없이 각 입력의 설명으로 연결한다", async () => {
+    global.fetch = mockFetch({ session: { loggedIn: true, userId: 1, nickname: "글쓴이" } });
+
+    renderPostForm({ mode: "create" });
+
+    const title = await screen.findByLabelText("제목");
+    const content = screen.getByLabelText("내용");
+    expect(title).toHaveAttribute("aria-describedby", "post-title-count");
+    expect(content).toHaveAttribute("aria-describedby", "post-content-count");
+    expect(document.getElementById("post-title-count")).not.toHaveAttribute("aria-live");
+    expect(document.getElementById("post-content-count")).not.toHaveAttribute("aria-live");
+  });
+
   it("게시글 수정 중 버전 충돌(409)이 나면 안내 메시지를 보여주고 입력값을 유지한다", async () => {
     global.fetch = mockFetch({
       session: { loggedIn: true, userId: 1, nickname: "글쓴이" },

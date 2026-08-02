@@ -45,6 +45,8 @@ describe("frequency 필터", () => {
     expect(screen.getByText("역대 1등 당첨 이력 1건")).toBeInTheDocument();
     expect(screen.getByText("역대 1등 당첨 이력 없음")).toBeInTheDocument();
     expect(screen.getByText("2002년 12월 7일 토")).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "번호별 출현 통계" })).toBeInTheDocument();
+    expect(screen.getAllByTestId("frequency-item")).toHaveLength(INITIAL.frequencies.length);
     expect(global.fetch).not.toHaveBeenCalled();
   });
 

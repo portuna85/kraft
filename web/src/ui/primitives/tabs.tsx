@@ -15,6 +15,12 @@ export function Tabs<T extends string = string>({ items, value, onChange, panelI
     tabRefs.current[nextIndex]?.focus();
   };
 
+  const selectIndex = (index: number) => {
+    if (index < 0) return;
+    onChange(items[index].value);
+    tabRefs.current[index]?.focus();
+  };
+
   const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
     if (e.key === "ArrowRight" || e.key === "ArrowDown") {
       e.preventDefault();
@@ -22,6 +28,12 @@ export function Tabs<T extends string = string>({ items, value, onChange, panelI
     } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
       e.preventDefault();
       moveSelection(index, -1);
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      selectIndex(selectableIndexes[0] ?? -1);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      selectIndex(selectableIndexes.at(-1) ?? -1);
     }
   };
 

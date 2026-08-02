@@ -20,7 +20,7 @@ export function CommentSection({ postId }: { postId: number }) {
   const [totalPages, setTotalPages] = useState(0);
   const { session } = useCommunitySession();
   const [content, setContent] = useState("");
-  const [replyTo, setReplyTo] = useState<number | null>(null);
+  const [replyTo, setReplyTo] = useState<{ id: number; authorNickname: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,7 +71,7 @@ export function CommentSection({ postId }: { postId: number }) {
     setSubmitting(true);
     setError(null);
     try {
-      const created = await createComment(postId, content.trim(), replyTo);
+      const created = await createComment(postId, content.trim(), replyTo?.id ?? null);
       setContent("");
       setReplyTo(null);
       loadComments(created.targetPage ?? 0);
@@ -105,7 +105,11 @@ export function CommentSection({ postId }: { postId: number }) {
       <p>{comment.content}</p>
       {!comment.deleted && session?.loggedIn && (
         <div className="community-comment-actions">
-          <button type="button" className="button secondary" onClick={() => setReplyTo(comment.id)}>
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() => setReplyTo({ id: comment.id, authorNickname: comment.authorNickname })}
+          >
             답글
           </button>
           {session.userId === comment.ownerId ? (
@@ -186,8 +190,8 @@ export function CommentSection({ postId }: { postId: number }) {
       {session?.loggedIn ? (
         <form onSubmit={handleSubmit} className="community-comment-form">
           {replyTo !== null && (
-            <p className="community-comment-reply-target">
-              답글 작성 중
+            <p className="community-comment-reply-target" role="status" aria-live="polite">
+              <span>답글 작성 중</span>: {replyTo.authorNickname}님에게 답글을 작성합니다.
               <button type="button" className="button secondary" onClick={() => setReplyTo(null)}>
                 취소
               </button>

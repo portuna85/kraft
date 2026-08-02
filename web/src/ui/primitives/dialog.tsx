@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import type { DialogContract } from "./contracts";
+import { IconButton } from "./icon-button";
 import { useFocusTrap } from "./use-focus-trap";
 import styles from "./dialog.module.css";
 
@@ -22,9 +23,12 @@ export function Dialog({ open, onClose, restoreFocusRef, titleId, title, childre
         className={styles.panel}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id={titleId} className={styles.title}>
-          {title}
-        </h2>
+        <div className={styles.header}>
+          <h2 id={titleId} className={styles.title}>
+            {title}
+          </h2>
+          <IconButton aria-label="닫기" variant="quiet" size="sm" icon="×" onClick={onClose} />
+        </div>
         {children}
       </div>
     </div>

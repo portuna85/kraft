@@ -23,6 +23,7 @@ describe("동반 출현 필터", () => {
   it("초기에는 전달받은 상위 목록을 표시한다", () => {
     renderClient();
 
+    expect(screen.getByRole("group", { name: "번호로 필터" })).toBeInTheDocument();
     expect(screen.getByText("10회 동반 출현")).toBeInTheDocument();
     expect(screen.getByText("5회 동반 출현")).toBeInTheDocument();
   });

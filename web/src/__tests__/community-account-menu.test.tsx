@@ -119,13 +119,20 @@ describe("커뮤니티 계정 메뉴", () => {
   });
 
   it("세션 조회가 실패하면 아무 것도 렌더링하지 않는다", async () => {
-    global.fetch = vi.fn().mockRejectedValue(new Error("network error"));
+    global.fetch = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("network error"))
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ loggedIn: false, userId: null, nickname: null, activeProviders: ["google"] }),
+      });
 
-    const { container } = renderAccountMenu();
+    renderAccountMenu();
 
-    await waitFor(() => {
-      expect(container).toBeEmptyDOMElement();
-    });
+    expect(await screen.findByRole("alert")).toHaveTextContent("세션을 확인하지 못했습니다.");
+    fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
+    expect(await screen.findByText("Google 로그인")).toBeInTheDocument();
   });
 
   // FE-003: window.confirm 대신 공통 확인 다이얼로그를 쓴다. 트리거와 확인 버튼이

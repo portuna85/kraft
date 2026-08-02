@@ -74,8 +74,13 @@ export function CompanionFilterClient({ pairs, totalRounds }: Props) {
   return (
     <>
       <div className={styles.filter}>
-        <p className={styles.filterLabel}>번호로 필터</p>
-        <div className={styles.filterBalls} onKeyDown={roving.handleKeyDown}>
+        <p id="companion-filter-label" className={styles.filterLabel}>번호로 필터</p>
+        <div
+          className={styles.filterBalls}
+          role="group"
+          aria-labelledby="companion-filter-label"
+          onKeyDown={roving.handleKeyDown}
+        >
           {Array.from({ length: BALL_COUNT }, (_, index) => index + 1).map((number, index) => (
             <button
               key={number}

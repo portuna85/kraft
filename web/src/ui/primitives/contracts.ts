@@ -39,6 +39,8 @@ export interface IconButtonContract {
 // ── 입력 계열 ──────────────────────────────────────────────────────────────
 
 export interface FieldValidationContract {
+  /** 입력값의 형식·글자 수처럼 평상시에 함께 읽어야 하는 안내 요소의 id. */
+  descriptionId?: string;
   /** 필드 오류 여부. true면 aria-invalid, 연결된 오류 메시지 id가 필수. */
   invalid?: boolean;
   /** invalid=true일 때 aria-describedby로 연결될 오류 메시지 요소의 id. */

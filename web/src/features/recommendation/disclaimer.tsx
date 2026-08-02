@@ -10,9 +10,9 @@ export const HISTORICAL_EXCLUSION_TEXT = "역대 1등 당첨 번호 조합은 �
 export function ProbabilityDisclaimer() {
   return (
     <>
-      <p className="recommend-disclaimer muted" role="note">{PROBABILITY_DISCLAIMER_TEXT}</p>
-      <p className="recommend-disclaimer muted" role="note">{HISTORY_DISCLAIMER_TEXT}</p>
-      <p className="recommend-disclaimer muted" role="note">{HISTORICAL_EXCLUSION_TEXT}</p>
+      <p className="recommend-disclaimer muted">{PROBABILITY_DISCLAIMER_TEXT}</p>
+      <p className="recommend-disclaimer muted">{HISTORY_DISCLAIMER_TEXT}</p>
+      <p className="recommend-disclaimer muted">{HISTORICAL_EXCLUSION_TEXT}</p>
     </>
   );
 }

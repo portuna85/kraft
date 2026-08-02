@@ -35,7 +35,7 @@ export function AnalysisResult({ analysis, title }: AnalysisResultProps) {
       </div>
 
       <div>
-        <p className={`section-title ${styles.sectionTitle}`}>구간 분포</p>
+        <h3 className={`section-title ${styles.sectionTitle}`}>구간 분포</h3>
         <ul className={styles.rangeDistList}>
           {analysis.rangeDistribution.map((range) => (
             <li key={range.range} className={styles.rangeDistItem}>

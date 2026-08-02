@@ -21,6 +21,19 @@ type InfoPage = {
   content: React.ReactNode;
 };
 
+export function FaqContent() {
+  return (
+    <article className={styles.article}>
+      {FAQ_ITEMS.map((item) => (
+        <div className={styles.faqItem} key={item.question}>
+          <h2>{item.question}</h2>
+          <p>{item.answer}</p>
+        </div>
+      ))}
+    </article>
+  );
+}
+
 const infoPages: Record<InfoPageSlug, InfoPage> = {
   "data-source": {
     content: (
@@ -107,16 +120,7 @@ const infoPages: Record<InfoPageSlug, InfoPage> = {
   },
 
   faq: {
-    content: (
-      <article className={styles.article}>
-        {FAQ_ITEMS.map((item) => (
-          <div className={styles.faqItem} key={item.question}>
-            <h3>{item.question}</h3>
-            <p>{item.answer}</p>
-          </div>
-        ))}
-      </article>
-    ),
+    content: <FaqContent />,
   },
 
   privacy: {
