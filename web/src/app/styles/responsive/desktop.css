@@ -14,10 +14,6 @@
   .account-login-compact { display: none; }
   .account-login-full { display: inline-flex; align-items: center; gap: 10px; }
 
-  .home-shortcuts {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
   .grid-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }

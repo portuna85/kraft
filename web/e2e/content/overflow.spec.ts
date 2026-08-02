@@ -14,11 +14,23 @@ for (const width of WIDTHS) {
   test.describe(`${width}px`, () => {
     test.use({ viewport: { width, height: 900 } });
 
-    test("/ — 홈 히어로 실렌더 후 오버플로 없음", async ({ page }) => {
+    test("/ — 홈 당첨결과 실렌더 후 오버플로 없음", async ({ page }) => {
       await gotoAndWaitForRealContent(page, "/");
       await expect(page.locator(".result-panel .balls")).toBeVisible();
-      await expect(page.getByRole("heading", { name: "1189회" })).toBeVisible();
+      await expect(page.getByTestId("latest-round")).toContainText("1189회");
       await expectNoOverflow(page);
+    });
+
+    test("/ — 두 핵심 기능과 서비스 바로가기가 홈에 모두 노출된다", async ({ page }) => {
+      await gotoAndWaitForRealContent(page, "/");
+      await expect(page.getByRole("heading", { name: "이번 주 당첨결과", level: 1 })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "나만의 번호 조합", level: 2 })).toBeVisible();
+      // 서비스 격자는 nav-items.ts의 serviceLinks에서 생성된다 — 링크가 조용히
+      // 빠지면 홈이 유일한 진입점인 서비스에 도달할 수 없게 된다.
+      const services = page.getByRole("navigation", { name: "서비스 바로가기" });
+      for (const label of ["번호 추천", "커뮤니티", "보관함", "추천 이력", "출현 통계", "패턴 통계", "동반 출현", "번호 분석", "서비스 상태"]) {
+        await expect(services.getByRole("link", { name: label })).toBeVisible();
+      }
     });
 
     if (width === 320) {

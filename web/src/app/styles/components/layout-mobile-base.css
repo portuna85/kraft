@@ -14,11 +14,6 @@
   gap: var(--panel-gap);
 }
 
-.home-shortcuts,
-.home-community-columns {
-  align-items: stretch;
-}
-
 .panel-lead {
   margin-top: 0;
   margin-bottom: 0;

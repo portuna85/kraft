@@ -3,16 +3,6 @@
   flex: 1 0 auto;
 }
 
-.home-recommend-section {
-  padding-block: clamp(3.25rem, 7vw, 6rem);
-}
-
-.home-recommend-section > .page-subtitle {
-  max-width: 44rem;
-  margin: 0;
-  font-size: clamp(.98rem, 1.5vw, 1.12rem);
-}
-
 /* border-radius는 layout-mobile-base.css(--card-radius)가 소유한다 — 여기 선언은
    .panel/.stat-card에 항상 덮여써 죽은 코드였다(F-02). .ops-grid는 자신의 전용 규칙
    (아래)에서 배경·테두리·radius를 전부 무효화하므로 이 셋 중 이 값들이 실제로

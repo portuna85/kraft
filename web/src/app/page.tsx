@@ -1,20 +1,15 @@
 import type { Metadata } from "next";
-import { RecommendClient } from "@/features/recommendation/recommend-client";
 import {
-  DataFeatures,
-  HomeCommunity,
-  HomeCta,
-  HomeHero,
-  HomeMetrics,
+  HomePrimary,
   LatestResultSection,
+  RecommendEntryCard,
+  ServiceLinks,
 } from "./home-sections";
 import {
   getLatestWinningNumber,
   getRoundFreshness,
-  getHomeSummary,
   type RoundFreshness,
   type WinningNumber,
-  type HomeSummary,
 } from "@/lib/api";
 import { logCoreDataFailure } from "@/lib/logger";
 
@@ -58,32 +53,13 @@ export default async function HomePage() {
     throw error;
   }
 
-  // 홈 API(커뮤니티 최신·이번 주 인기)는 부가 콘텐츠다. 다만 실패를 빈 목록으로 바꾸면
-  // 실제 빈 상태와 구분할 수 없으므로, 화면에서 명시적인 부분 장애 상태를 보여준다.
-  let homeSummary: HomeSummary | null = null;
-  let homeSummaryUnavailable = false;
-  try {
-    homeSummary = await getHomeSummary();
-  } catch {
-    homeSummaryUnavailable = true;
-  }
-
-  const latestPosts = homeSummary?.latestPosts ?? [];
-  const weeklyPopularPosts = homeSummary?.weeklyPopularPosts ?? [];
   return (
     <div>
-      <HomeHero latest={latest} />
-      <HomeMetrics latest={latest} freshness={freshness} />
-      <LatestResultSection latest={latest} freshness={freshness} />
-      <section className="home-recommend-section" aria-labelledby="home-recommend-title">
-        <p className="eyebrow">Smart pick</p>
-        <h2 id="home-recommend-title" className="page-title">나만의 번호 조합</h2>
-        <p className="page-subtitle">고정 번호와 제외 번호를 설정하고 목적에 맞는 생성 전략을 선택하세요.</p>
-        <RecommendClient />
-      </section>
-      <DataFeatures />
-      <HomeCommunity latestPosts={latestPosts} popularPosts={weeklyPopularPosts} unavailable={homeSummaryUnavailable} />
-      <HomeCta />
+      <HomePrimary>
+        <LatestResultSection latest={latest} freshness={freshness} />
+        <RecommendEntryCard />
+      </HomePrimary>
+      <ServiceLinks />
     </div>
   );
 }
