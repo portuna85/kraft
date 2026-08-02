@@ -80,6 +80,12 @@ const ROUTES: readonly Route[] = [
   { path: "/info/privacy", label: "개인정보처리방침", readySelector: "main" },
   { path: "/info/terms", label: "이용약관", readySelector: "main" },
   { path: "/info/contact", label: "문의하기", readySelector: "main" },
+  // FE-080: 안내 9종 중 이 3개만 시각 회귀 대상이 아니었다.
+  // 새 베이스라인 18장(3라우트 × 2테마 × 3뷰포트)은 CI(Linux) actual.png를 채택해 생성한다 —
+  // 로컬에서 만들면 폰트 렌더링 차이로 CI에서 전부 어긋난다.
+  { path: "/info/responsible-play", label: "건전한 이용", readySelector: "main" },
+  { path: "/info/community-guidelines", label: "커뮤니티 이용규칙", readySelector: "main" },
+  { path: "/info/about", label: "운영자 소개", readySelector: "main" },
   {
     path: "/community/posts/1",
     label: "커뮤니티 상세",

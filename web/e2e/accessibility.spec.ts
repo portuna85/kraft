@@ -12,6 +12,11 @@ const PAGES: Array<{ name: string; path: string }> = [
   { name: "커뮤니티 목록(백엔드 없음 폴백)", path: "/community" },
   { name: "서비스 상태(폴백)", path: "/status" },
   { name: "404", path: "/no-such-route-xyz" },
+  // FE-080: 안내 9종 중 이 3개만 어떤 e2e 트랙에도 없었다. 전부 정적 페이지라
+  // 백엔드가 필요 없고, /info/responsible-play는 홈 기능 카드에서 직접 링크된다.
+  { name: "건전한 이용", path: "/info/responsible-play" },
+  { name: "커뮤니티 이용규칙", path: "/info/community-guidelines" },
+  { name: "운영자 소개", path: "/info/about" },
 ];
 
 for (const { name, path } of PAGES) {

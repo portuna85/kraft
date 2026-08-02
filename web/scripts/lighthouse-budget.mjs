@@ -22,7 +22,24 @@ const saveBaseline = process.argv.includes("--save-baseline");
 // 실제 등급은 /api/vitals로 모은 필드 p75로만 매길 수 있다.
 const CWV_GOOD = { lcpMs: 2500, clsScore: 0.1 };
 
-const ROUTES = ["/", "/recommend", "/frequency"];
+// FE-132: 이전에는 /, /recommend, /frequency 3개만 재서 13개 라우트가 성능 회귀
+// 사각지대였다. client island가 가장 많은 커뮤니티 상세와 보관함을 우선 추가한다.
+// /community/posts/[id]는 실제 게시글이 필요해 픽스처 백엔드 없이는 의미 있는 값을
+// 얻을 수 없으므로, 백엔드가 붙어 있을 때만(PERF_POST_ID) 포함한다.
+//
+// 새 라우트는 아직 lighthouse-budget.json에 항목이 없어 "측정은 하되 강제하지 않는"
+// 상태다(아래 비교 루프는 예산에 있는 라우트만 검사한다). 예산 값은 기존 3개와 같은
+// 환경에서 --save-baseline으로 수집해야 의미가 있다 — 다른 머신에서 뜬 값을 넣으면
+// 기존 예산까지 함께 느슨해져 회귀 검출이 사실상 꺼진다.
+const POST_ID = process.env.PERF_POST_ID;
+const ROUTES = [
+  "/",
+  "/recommend",
+  "/frequency",
+  "/community",
+  "/saved",
+  ...(POST_ID ? [`/community/posts/${POST_ID}`] : []),
+];
 
 async function runLighthouseFor(route, chrome) {
   const result = await lighthouse(`${baseUrl}${route}`, {
