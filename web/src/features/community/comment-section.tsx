@@ -10,6 +10,7 @@ import { BrowserApiError } from "@/lib/browser-api";
 import type { CommunityComment } from "@/lib/community-api";
 import { useCommunitySession } from "@/lib/community-session-provider";
 import { ReportDialog } from "./report-dialog";
+import { EmptyState } from "@/ui/primitives/empty-state";
 
 export function CommentSection({ postId }: { postId: number }) {
   const [topLevel, setTopLevel] = useState<CommunityComment[]>([]);
@@ -140,7 +141,8 @@ export function CommentSection({ postId }: { postId: number }) {
       {loading ? (
         <p className="muted">불러오는 중…</p>
       ) : topLevel.length === 0 ? (
-        <p className="muted">아직 댓글이 없습니다.</p>
+        // FE-009: 평문 문단 대신 다른 화면과 같은 빈 상태 표현을 쓴다.
+        <EmptyState title="아직 댓글이 없습니다." description="첫 번째 댓글을 남겨 보세요." />
       ) : (
         <ul className="community-comment-list">{topLevel.map(renderComment)}</ul>
       )}

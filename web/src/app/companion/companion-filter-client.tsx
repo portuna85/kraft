@@ -5,6 +5,7 @@ import { useRovingGrid } from "@/ui/primitives/use-roving-grid";
 import { ballColorClass } from "@/lib/ball-color";
 import type { CompanionPair, CompanionStatsResponse } from "@/lib/api";
 import { browserFetch } from "@/lib/browser-api";
+import { EmptyState } from "@/ui/primitives/empty-state";
 import { ErrorState } from "@/ui/primitives/error-state";
 import styles from "./companion.module.css";
 
@@ -112,7 +113,16 @@ export function CompanionFilterClient({ pairs, totalRounds }: Props) {
         )}
       </div>
 
-      {filtered !== null && (
+      {/* FE-034: 빈 결과를 <li>로 넣어 "목록 항목이 아닌 내용"이 목록 항목으로 노출됐다.
+          FE-009: 표현도 다른 화면과 같은 빈 상태로 맞춘다. */}
+      {filtered !== null && filtered.length === 0 && (
+        <EmptyState
+          title="해당 번호를 포함한 동반 출현 기록이 없습니다."
+          description="다른 번호를 선택하거나 필터를 해제해 보세요."
+        />
+      )}
+
+      {filtered !== null && filtered.length > 0 && (
         <ol className={styles.list} data-testid="companion-list">
           {filtered.map((pair, index) => {
             const pct = totalRounds > 0
@@ -139,11 +149,6 @@ export function CompanionFilterClient({ pairs, totalRounds }: Props) {
             );
           })}
 
-          {filtered.length === 0 && (
-            <li className={`${styles.item} ${styles.empty}`}>
-              <p className="muted">해당 번호를 포함한 동반 출현 기록이 없습니다.</p>
-            </li>
-          )}
         </ol>
       )}
     </>

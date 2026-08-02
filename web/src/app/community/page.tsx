@@ -5,6 +5,7 @@ import { JsonLdBreadcrumb } from "@/components/json-ld";
 import { PageHeader } from "@/components/page-header";
 import { getPublicBaseUrl } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
+import { EmptyState } from "@/ui/primitives/empty-state";
 import { getCommunityPosts, type PostCategory, type PostSort } from "@/lib/community-api";
 import { CATEGORY_LABELS, CATEGORY_OPTIONS } from "@/features/community/types";
 
@@ -102,13 +103,16 @@ export default async function CommunityPage({ searchParams }: Props) {
         // 필터를 좁혀서 안 나온 것인지 원래 글이 없는 것인지 구분하고, 해제 경로를 준다.
         hasActiveFilter ? (
           <div className="community-empty">
-            <p>
-              {query ? `“${query}” 검색 결과가 없습니다.` : "이 조건에 맞는 게시글이 없습니다."}
-            </p>
+            {/* FE-009: 표현은 다른 화면과 같은 EmptyState로 맞추되, 원인 구분(FE-048)은 유지한다.
+                해제 경로는 서버 컴포넌트라 onClick 대신 Link로 둔다. */}
+            <EmptyState
+              title={query ? `“${query}” 검색 결과가 없습니다.` : "이 조건에 맞는 게시글이 없습니다."}
+              description="검색어나 카테고리를 바꾸거나 필터를 해제해 보세요."
+            />
             <Link href="/community" className="button secondary">필터 해제하고 전체 보기</Link>
           </div>
         ) : (
-          <p>아직 등록된 게시글이 없습니다. 첫 글을 작성해 보세요.</p>
+          <EmptyState title="아직 등록된 게시글이 없습니다." description="첫 글을 작성해 보세요." />
         )
       ) : (
         <>

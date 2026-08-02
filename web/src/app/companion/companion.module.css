@@ -27,9 +27,8 @@
   }
 }
 
-.empty {
-  justify-content: center;
-}
+/* FE-034/FE-009: 빈 결과를 목록 항목(<li>)이 아니라 목록 밖 EmptyState로 옮기면서
+   .empty는 소비자가 없어졌다 — 죽은 선택자는 남기지 않는다. */
 
 .rank {
   font-family: var(--font-accent), var(--font-sans), sans-serif;

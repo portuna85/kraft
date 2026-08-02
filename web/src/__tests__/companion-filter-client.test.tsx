@@ -85,6 +85,23 @@ describe("동반 출현 필터", () => {
     });
   });
 
+  // FE-034: 빈 결과를 <li>로 넣어 "목록 항목이 아닌 내용"이 목록 항목으로 노출됐다.
+  it("빈 결과는 목록 항목이 아니라 목록 밖에 표시한다", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ totalRounds: 100, topPairs: [] }),
+    });
+
+    renderClient();
+    selectBall(7);
+
+    const empty = await screen.findByText("해당 번호를 포함한 동반 출현 기록이 없습니다.");
+    expect(empty.closest("li")).toBeNull();
+    // 항목이 하나도 없으면 순위 목록 자체를 렌더하지 않는다.
+    expect(screen.queryByTestId("companion-list")).not.toBeInTheDocument();
+  });
+
   it("필터 해제 시 초기 목록으로 돌아간다", async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,

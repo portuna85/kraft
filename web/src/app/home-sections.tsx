@@ -9,6 +9,8 @@ import {
   HOME_POPULAR_POST_LIMIT,
 } from "@/lib/home-community-sections";
 import { LottoBalls } from "@/ui/domain/lotto-balls";
+import { EmptyState } from "@/ui/primitives/empty-state";
+import { ErrorState } from "@/ui/primitives/error-state";
 import styles from "./home-sections.module.css";
 
 export function HomeHero({ latest }: { latest: WinningNumber }) {
@@ -109,8 +111,21 @@ export function DataFeatures() {
 }
 
 function PostList({ posts, unavailable }: { posts: HomeCommunityPostSummary[]; unavailable: boolean }) {
-  if (unavailable) return <p role="status">게시글을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>;
-  if (posts.length === 0) return <p className="muted">아직 공개된 글이 없습니다.</p>;
+  // FE-008: 부분 장애는 빈 목록으로 위장하지 않는다. 서버 컴포넌트라 재시도 버튼 대신
+  // 새로고침으로 복구되는 상황임을 문구로 알린다.
+  if (unavailable) {
+    return (
+      <ErrorState
+        variant="inline"
+        title="게시글을 불러오지 못했습니다."
+        description="잠시 후 새로고침하면 다시 표시됩니다."
+      />
+    );
+  }
+  // FE-009: 평문 문단 대신 다른 화면과 같은 빈 상태 표현을 쓴다.
+  if (posts.length === 0) {
+    return <EmptyState title="아직 공개된 글이 없습니다." description="첫 글의 주인공이 되어 보세요." />;
+  }
   return (
     <ul className={styles.postList}>
       {posts.slice(0, HOME_LATEST_POST_LIMIT).map((post, index) => (
@@ -148,7 +163,12 @@ export function HomeCommunity({ latestPosts, popularPosts, unavailable }: { late
             <ul className={styles.popularList}>
               {popularPosts.slice(0, HOME_POPULAR_POST_LIMIT).map((post) => <li key={post.id}><Link href={`/community/posts/${post.id}`}>{post.title}</Link></li>)}
             </ul>
-          ) : <p className="muted">{unavailable ? "인기 글을 불러오지 못했습니다." : "아직 집계된 인기 글이 없습니다."}</p>}
+          ) : unavailable ? (
+            // FE-009: 조회 실패와 "아직 집계된 글이 없음"이 같은 문단에 섞여 있었다.
+            <ErrorState variant="inline" title="인기 글을 불러오지 못했습니다." />
+          ) : (
+            <EmptyState title="아직 집계된 인기 글이 없습니다." />
+          )}
           <Link href="/community?sort=weekly_popular" className={styles.primaryAction}>커뮤니티 둘러보기</Link>
         </aside>
       </div>
