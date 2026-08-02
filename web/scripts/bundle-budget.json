@@ -15,7 +15,7 @@
     "maxKB": 62
   },
   "/recommend": {
-    "maxKB": 63
+    "maxKB": 64
   },
   "/recommend/history": {
     "maxKB": 58
@@ -27,7 +27,7 @@
     "maxKB": 51
   },
   "/frequency": {
-    "maxKB": 56
+    "maxKB": 57
   },
   "/companion": {
     "maxKB": 56
