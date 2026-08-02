@@ -9,6 +9,7 @@ import {
 import { BrowserApiError } from "@/lib/browser-api";
 import type { CommunityComment } from "@/lib/community-api";
 import { useCommunitySession } from "@/lib/community-session-provider";
+import { ReportDialog } from "./report-dialog";
 
 export function CommentSection({ postId }: { postId: number }) {
   const [topLevel, setTopLevel] = useState<CommunityComment[]>([]);
@@ -94,10 +95,12 @@ export function CommentSection({ postId }: { postId: number }) {
           <button type="button" className="button secondary" onClick={() => setReplyTo(comment.id)}>
             답글
           </button>
-          {session.userId === comment.ownerId && (
+          {session.userId === comment.ownerId ? (
             <button type="button" className="button secondary" onClick={() => handleDelete(comment.id)}>
               삭제
             </button>
+          ) : (
+            <ReportDialog targetType="COMMENT" targetId={comment.id} />
           )}
         </div>
       )}
@@ -107,11 +110,15 @@ export function CommentSection({ postId }: { postId: number }) {
             <li key={reply.id} className="community-comment is-reply">
               <span className="community-comment-author">{reply.authorNickname}</span>
               <p>{reply.content}</p>
-              {!reply.deleted && session?.loggedIn && session.userId === reply.ownerId && (
+              {!reply.deleted && session?.loggedIn && (
                 <div className="community-comment-actions">
-                  <button type="button" className="button secondary" onClick={() => handleDelete(reply.id)}>
-                    삭제
-                  </button>
+                  {session.userId === reply.ownerId ? (
+                    <button type="button" className="button secondary" onClick={() => handleDelete(reply.id)}>
+                      삭제
+                    </button>
+                  ) : (
+                    <ReportDialog targetType="COMMENT" targetId={reply.id} />
+                  )}
                 </div>
               )}
             </li>

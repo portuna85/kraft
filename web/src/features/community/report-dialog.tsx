@@ -22,6 +22,9 @@ export function ReportDialog({
 
   const [submitted, setSubmitted] = useState(false);
 
+  // 한 화면에 신고 다이얼로그가 여러 개(게시글 1 + 댓글 N) 놓이므로 title id를 대상별로 고유하게 만든다.
+  const titleId = `report-dialog-title-${targetType.toLowerCase()}-${targetId}`;
+
   async function submit() {
     setSubmitting(true);
     setMessage("");
@@ -54,7 +57,7 @@ export function ReportDialog({
         open={open}
         onClose={close}
         restoreFocusRef={triggerRef}
-        titleId="report-dialog-title"
+        titleId={titleId}
         title="신고하기"
       >
         {submitted ? (

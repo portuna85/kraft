@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { CommentSection } from "@/components/community/comment-section";
+import { CommentSection } from "@/features/community/comment-section";
 import { CommunitySessionProvider } from "@/lib/community-session-provider";
 
 // KF-05: CommunitySessionProvider가 usePathname으로 세션 스코프를 판단한다 — 이 컴포넌트는
@@ -413,5 +413,55 @@ describe("커뮤니티 댓글 섹션", () => {
 
     // 리렌더링 직후에도 재조회가 없어야 한다 — 있다면 억제가 감추고 있던 루프 회귀다.
     expect(commentsCallCount).toBe(1);
+  });
+
+  // FE-063: /info/community-guidelines가 "게시글·댓글 옆의 신고 버튼"을 안내하는데 실제로는
+  // 게시글만 신고할 수 있었다. 댓글·답글에도 신고 진입을 제공한다.
+  it("남의 댓글과 답글에는 신고 버튼을 보여준다", async () => {
+    global.fetch = mockFetch();
+
+    renderCommentSection(1);
+
+    await waitFor(() => {
+      expect(screen.getByText("다른사람")).toBeInTheDocument();
+    });
+
+    // 답글(id 11, ownerId 2)은 세션 사용자(userId 1)의 것이 아니므로 신고할 수 있다.
+    const replyItem = screen.getByText("다른사람").closest("li");
+    expect(replyItem).not.toBeNull();
+    const replyActionLabels = Array.from(replyItem!.querySelectorAll("button")).map((b) => b.textContent);
+    expect(replyActionLabels).toContain("신고");
+  });
+
+  it("본인 댓글에는 삭제만 있고 신고 버튼이 없다", async () => {
+    global.fetch = mockFetch();
+
+    renderCommentSection(1);
+
+    await waitFor(() => {
+      expect(screen.getByText("최상위 댓글")).toBeInTheDocument();
+    });
+
+    // 최상위 댓글(id 10)은 ownerId 1 = 세션 사용자 본인이다.
+    const ownItem = screen.getByText("최상위 댓글").closest("li");
+    expect(ownItem).not.toBeNull();
+    const ownActions = ownItem!.querySelector(".community-comment-actions");
+    expect(ownActions).not.toBeNull();
+    const ownActionLabels = Array.from(ownActions!.querySelectorAll("button")).map((b) => b.textContent);
+    expect(ownActionLabels).toContain("삭제");
+    expect(ownActionLabels).not.toContain("신고");
+  });
+
+  it("삭제된 댓글에는 신고 버튼을 보여주지 않는다", async () => {
+    global.fetch = mockFetch();
+
+    renderCommentSection(1);
+
+    await waitFor(() => {
+      expect(screen.getByText("삭제된 댓글입니다.")).toBeInTheDocument();
+    });
+
+    const deletedItem = screen.getByText("삭제된 댓글입니다.").closest("li");
+    expect(deletedItem!.querySelector("button")).toBeNull();
   });
 });

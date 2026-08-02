@@ -63,7 +63,11 @@ export function AccountMenu() {
   };
 
   const handleWithdraw = async () => {
-    if (!window.confirm("탈퇴하면 로그인한 계정 정보가 사라지고, 기존에 작성한 글·댓글은 익명으로 표시됩니다. 계속할까요?")) {
+    if (!window.confirm(
+      "탈퇴하면 닉네임이 가명으로 바뀌고 기존 글·댓글은 그 가명으로 표시됩니다. "
+        + "계정과 저장 번호·추천 이력은 삭제되지 않으며, 같은 소셜 계정으로 다시 로그인하면 계정이 다시 활성화됩니다. "
+        + "완전한 삭제는 문의하기로 요청해 주세요. 계속할까요?",
+    )) {
       return;
     }
     setWithdrawError(false);

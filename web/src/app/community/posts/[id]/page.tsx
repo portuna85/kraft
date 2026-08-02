@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { getCommunityPost } from "@/lib/community-api";
 import { BackendError, getPublicBaseUrl } from "@/lib/api";
 import { PostOwnerActions } from "@/components/community/post-owner-actions";
-import { CommentSection } from "@/components/community/comment-section";
+import { CommentSection } from "@/features/community/comment-section";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
 import { PageHeader } from "@/components/page-header";
 import { formatDateTime } from "@/lib/format";
