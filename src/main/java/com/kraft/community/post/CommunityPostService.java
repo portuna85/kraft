@@ -15,6 +15,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.orm.jpa.JpaSystemException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -134,13 +136,14 @@ public class CommunityPostService {
         post.update(request.title(), request.content(), OffsetDateTime.now(clock));
         try {
             return communityPostRepository.saveAndFlush(post);
-        } catch (DataAccessException raceLostAfterCheck) {
+        } catch (ObjectOptimisticLockingFailureException | JpaSystemException raceLostAfterCheck) {
             // 버전 사전 검증 이후에도 동시 수정이 끼어든 경우 — 광역 예외 대신
             // 이 리소스에 특정된 409로 변환한다. Hibernate의 자체 행 수 검증은
             // ObjectOptimisticLockingFailureException으로 오지만, 실 MariaDB에서는 드라이버가
             // "Record has changed since last read"(1020)를 먼저 던져 JpaSystemException으로도
-            // 온다는 사실을 Testcontainers 동시성 테스트로 확인했다 — 두 경로 모두 이 시점에서는
-            // 버전 경합 외의 원인이 있을 수 없으므로 DataAccessException을 폭넓게 잡는다.
+            // 온다는 사실을 Testcontainers 동시성 테스트로 확인했다. H-6: 이 둘로 좁혀서, 이
+            // 사이(버전 확인~flush)에 발생할 수 있는 무관한 DB 장애(커넥션 유실 등)까지
+            // "버전 충돌"로 위장되지 않게 한다.
             throw versionConflict(raceLostAfterCheck);
         }
     }
@@ -159,7 +162,8 @@ public class CommunityPostService {
         try {
             post.hideByAuthor(OffsetDateTime.now(clock));
             communityPostRepository.saveAndFlush(post);
-        } catch (DataAccessException raceLostAfterCheck) {
+        } catch (ObjectOptimisticLockingFailureException | JpaSystemException raceLostAfterCheck) {
+            // H-6: update()와 동일한 이유로 두 타입으로 좁힌다.
             throw versionConflict(raceLostAfterCheck);
         }
     }

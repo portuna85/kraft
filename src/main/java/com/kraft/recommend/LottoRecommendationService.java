@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.IntUnaryOperator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -29,6 +31,8 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 @Service
 public class LottoRecommendationService {
+
+    private static final Logger log = LoggerFactory.getLogger(LottoRecommendationService.class);
 
     private static final int MAX_ATTEMPTS = 100;
     private static final int PRIZE_CANDIDATE_POOL = 50;
@@ -210,7 +214,11 @@ public class LottoRecommendationService {
         long databaseVersion;
         try {
             databaseVersion = currentHistoryVersion();
-        } catch (RuntimeException ignored) {
+        } catch (RuntimeException e) {
+            // H-6: DB 장애와 정상적인 스냅샷 미준비가 로그상 구분되지 않았다 — 동작은
+            // fail-closed(추천 중단, databaseVersion=-1)로 안전하게 유지하되, 조사 가능하게
+            // 원인을 남긴다.
+            log.warn("추천 이력 버전 조회 실패 — fail-closed로 추천을 중단한다", e);
             return new HistoryStatus(false, snapshot.version(), -1L, snapshot.roundCount(),
                     snapshot.historyThroughRound(), snapshot.firstMissingRound());
         }

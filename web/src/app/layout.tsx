@@ -18,6 +18,11 @@ import "./globals.css";
 // 단일 실패 지점이었다. google/fonts 공식 저장소(OFL 라이선스)에서 받은 폰트를
 // scripts/fetch-fonts.mjs로 미리 weight별 static instance woff2로 만들어 커밋해두고
 // next/font/local로 자체 호스팅한다. 갱신 방법은 scripts/fetch-fonts.mjs 상단 주석 참고.
+//
+// H-3: 두 폰트 모두 preload를 끈다 — 커밋된 lighthouse-results.json이 이미 LCP 예산
+// 초과(`/` 3,087ms > 2,500ms 등)를 보여줬고, 전역 프리로드 1.29 MiB가 초기 네트워크
+// 경쟁을 지배하는 것이 원인으로 지목됐다. swap이라 지연돼도 텍스트는 폴백 폰트로 즉시
+// 보이고 폰트 로드 후 교체된다 — FOUT를 감수하고 크리티컬 경로 전송량을 줄인다.
 const notoSansKR = localFont({
   src: [
     { path: "../../public/fonts/noto-sans-kr-400.woff2", weight: "400" },
@@ -25,14 +30,6 @@ const notoSansKR = localFont({
   ],
   display: "swap",
   variable: "--font-sans",
-});
-
-// noto-serif-kr-700은 히어로 제목(.page-title/.result-title)에만 쓰이는 non-critical
-// 자산이라 preload에서 제외한다 — 크리티컬 렌더 패스를 본문 폰트(notoSansKR)에 집중시킨다.
-const notoSerifKR = localFont({
-  src: [{ path: "../../public/fonts/noto-serif-kr-700.woff2", weight: "700" }],
-  display: "swap",
-  variable: "--font-display",
   preload: false,
 });
 
@@ -43,6 +40,7 @@ const spaceGrotesk = localFont({
   ],
   display: "swap",
   variable: "--font-accent",
+  preload: false,
 });
 
 const baseUrl = getPublicBaseUrl();
@@ -98,7 +96,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     // 서버는 localStorage를 읽을 수 없어 이 속성 차이가 의도적으로 발생한다.
     <html
       lang="ko"
-      className={`${notoSansKR.variable} ${notoSerifKR.variable} ${spaceGrotesk.variable}`}
+      className={`${notoSansKR.variable} ${spaceGrotesk.variable}`}
       suppressHydrationWarning
     >
       <body>

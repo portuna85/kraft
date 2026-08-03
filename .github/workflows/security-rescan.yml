@@ -1,0 +1,83 @@
+name: Security Rescan
+
+# H-4: ci.yml의 security-scan은 컴포넌트가 변경되지 않으면 이전 스캔 결과(불변 SHA
+# 다이제스트)를 재사용하고 건너뛴다 — 다이제스트 자체는 안 바뀌지만, 그 이미지가 스캔된
+# "시점"은 고정된다. 그 이후 공개된 CVE는 코드가 다시 바뀔 때까지 무기한 재평가되지
+# 않는다. 이 워크플로는 코드 변경이 아니라 취약점 DB 변경에 반응하는 경로다 — 매주
+# 레지스트리의 :latest 이미지를 다시 스캔한다(빌드하지 않는다).
+on:
+  schedule:
+    # 매주 월요일 06:00 UTC(한국시간 15:00).
+    - cron: "0 6 * * 1"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  rescan:
+    name: Rescan (${{ matrix.component }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [backend, web]
+    steps:
+      - name: Set image name
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}/${{ matrix.component }}:latest" >> "$GITHUB_ENV"
+      - uses: docker/login-action@371161bbe7024a29a25c5e19bfcbc0804fe9ad2c # v4.5.2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # ci.yml의 security-scan 잡과 동일한 스캔·리포트 로직 — 정책이 갈리지 않도록
+      # 의도적으로 그대로 맞춘다.
+      - name: Scan once for all reportable severities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE }}
+          format: json
+          output: trivy-results.json
+          exit-code: "0"
+          severity: MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+      - name: Report MEDIUM and block fixable HIGH/CRITICAL
+        run: |
+          echo "Vulnerability counts:"
+          jq -r '
+            [.Results[]?.Vulnerabilities[]?]
+            | group_by(.Severity)
+            | map({severity: .[0].Severity, count: length})
+            | .[]
+            | "  \(.severity): \(.count)"
+          ' trivy-results.json
+
+          echo "MEDIUM findings:"
+          jq -r '
+            .Results[]?.Vulnerabilities[]?
+            | select(.Severity == "MEDIUM")
+            | "  \(.VulnerabilityID) \(.PkgName) \(.InstalledVersion) fixed=\(.FixedVersion // "")"
+          ' trivy-results.json
+
+          blocking="$(jq '
+            [
+              .Results[]?.Vulnerabilities[]?
+              | select(
+                  (.Severity == "HIGH" or .Severity == "CRITICAL")
+                  and ((.FixedVersion // "") | length > 0)
+                )
+            ] | length
+          ' trivy-results.json)"
+          if (( blocking > 0 )); then
+            jq -r '
+              .Results[]?.Vulnerabilities[]?
+              | select(
+                  (.Severity == "HIGH" or .Severity == "CRITICAL")
+                  and ((.FixedVersion // "") | length > 0)
+                )
+              | "::error::\(.Severity) \(.VulnerabilityID) \(.PkgName) \(.InstalledVersion) -> \(.FixedVersion)"
+            ' trivy-results.json
+            exit 1
+          fi

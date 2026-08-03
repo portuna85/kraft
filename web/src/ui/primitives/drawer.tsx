@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef } from "react";
+import { createPortal } from "react-dom";
 import type { DrawerContract } from "./contracts";
 import { IconButton } from "./icon-button";
-import { useFocusTrap } from "./use-focus-trap";
+import { useFocusTrap, getOverlayHost } from "./use-focus-trap";
 import styles from "./drawer.module.css";
 
 const SIDE_CLASS = {
@@ -27,7 +28,8 @@ export function Drawer({
 
   if (!open) return null;
 
-  return (
+  // H-1: Dialog와 동일하게 body 레벨 호스트로 포털한다.
+  return createPortal(
     <div className={styles.backdrop} data-drawer-backdrop onClick={onClose}>
       <div
         ref={panelRef}
@@ -52,6 +54,7 @@ export function Drawer({
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    getOverlayHost()
   );
 }

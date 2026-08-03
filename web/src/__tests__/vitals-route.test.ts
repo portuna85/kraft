@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { resetRateLimitForTests } from "@/lib/rate-limit";
 
 const infoSpy = vi.fn();
 
@@ -6,10 +7,15 @@ vi.mock("@/lib/logger", () => ({
   default: { info: (...args: unknown[]) => infoSpy(...args) },
 }));
 
-function request(body: unknown) {
+// H-2: 샘플링이 로깅을 확률적으로 건너뛴다 — 로깅 자체를 검증하는 테스트가 흔들리지
+// 않도록 항상 샘플에 포함되게 고정한다(수용/거부 판정 자체는 샘플링과 무관하다).
+vi.spyOn(Math, "random").mockReturnValue(0);
+
+function request(body: unknown, headers?: Record<string, string>) {
   return new Request("http://localhost/api/vitals", {
     method: "POST",
     body: typeof body === "string" ? body : JSON.stringify(body),
+    headers,
   }) as unknown as import("next/server").NextRequest;
 }
 
@@ -25,6 +31,7 @@ const VALID_PAYLOAD = {
 describe("POST /api/vitals", () => {
   beforeEach(() => {
     infoSpy.mockClear();
+    resetRateLimitForTests();
   });
 
   it("정상 페이로드는 204를 반환하고 화이트리스트된 필드만 로그로 남긴다", async () => {
@@ -99,6 +106,53 @@ describe("POST /api/vitals", () => {
     const res = await POST(request("not json"));
 
     expect(res.status).toBe(400);
+    expect(infoSpy).not.toHaveBeenCalled();
+  });
+
+  // H-2: 이 라우트는 백엔드 PublicRateLimitFilter가 도달할 수 없어 자체 방어가 필요하다.
+  it("Content-Length가 상한을 넘으면 본문을 읽지 않고 413을 반환한다", async () => {
+    const { POST } = await import("@/app/api/vitals/route");
+    const res = await POST(request(VALID_PAYLOAD, { "content-length": "999999" }));
+
+    expect(res.status).toBe(413);
+    expect(infoSpy).not.toHaveBeenCalled();
+  });
+
+  it("허용되지 않은 Content-Type은 415를 반환한다", async () => {
+    const { POST } = await import("@/app/api/vitals/route");
+    const res = await POST(request(VALID_PAYLOAD, { "content-type": "multipart/form-data" }));
+
+    expect(res.status).toBe(415);
+    expect(infoSpy).not.toHaveBeenCalled();
+  });
+
+  it("한 IP가 분당 한도를 넘으면 429를 반환한다", async () => {
+    const { POST } = await import("@/app/api/vitals/route");
+    const headers = { "x-forwarded-for": "203.0.113.9" };
+    let lastStatus = 0;
+    for (let i = 0; i < 61; i++) {
+      lastStatus = (await POST(request(VALID_PAYLOAD, headers))).status;
+    }
+
+    expect(lastStatus).toBe(429);
+  });
+
+  it("서로 다른 IP는 서로의 속도 제한에 영향을 주지 않는다", async () => {
+    const { POST } = await import("@/app/api/vitals/route");
+    for (let i = 0; i < 60; i++) {
+      await POST(request(VALID_PAYLOAD, { "x-forwarded-for": "203.0.113.10" }));
+    }
+    const res = await POST(request(VALID_PAYLOAD, { "x-forwarded-for": "203.0.113.11" }));
+
+    expect(res.status).toBe(204);
+  });
+
+  it("샘플링 확률 밖이면 유효한 요청도 로그를 남기지 않는다", async () => {
+    vi.spyOn(Math, "random").mockReturnValueOnce(0.99);
+    const { POST } = await import("@/app/api/vitals/route");
+    const res = await POST(request(VALID_PAYLOAD));
+
+    expect(res.status).toBe(204);
     expect(infoSpy).not.toHaveBeenCalled();
   });
 });

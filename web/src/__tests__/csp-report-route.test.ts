@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { resetRateLimitForTests } from "@/lib/rate-limit";
 
 const warnSpy = vi.fn();
 
@@ -6,10 +7,11 @@ vi.mock("@/lib/logger", () => ({
   default: { warn: (...args: unknown[]) => warnSpy(...args) },
 }));
 
-function request(body: unknown) {
+function request(body: unknown, headers?: Record<string, string>) {
   return new Request("http://localhost/api/csp-report", {
     method: "POST",
     body: typeof body === "string" ? body : JSON.stringify(body),
+    headers,
   }) as unknown as import("next/server").NextRequest;
 }
 
@@ -32,6 +34,7 @@ const VALID_BODY = {
 describe("POST /api/csp-report", () => {
   beforeEach(() => {
     warnSpy.mockClear();
+    resetRateLimitForTests();
   });
 
   it("정상 리포트는 204를 반환하고 화이트리스트된 필드만 로그로 남긴다", async () => {
@@ -92,5 +95,33 @@ describe("POST /api/csp-report", () => {
 
     const loggedArgs = warnSpy.mock.calls[0][0];
     expect(loggedArgs.documentUri.length).toBe(300);
+  });
+
+  // H-2: 이 라우트도 백엔드 PublicRateLimitFilter가 도달할 수 없어 자체 방어가 필요하다.
+  it("Content-Length가 상한을 넘으면 본문을 읽지 않고 413을 반환한다", async () => {
+    const { POST } = await import("@/app/api/csp-report/route");
+    const res = await POST(request(VALID_BODY, { "content-length": "999999" }));
+
+    expect(res.status).toBe(413);
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("허용되지 않은 Content-Type은 415를 반환한다", async () => {
+    const { POST } = await import("@/app/api/csp-report/route");
+    const res = await POST(request(VALID_BODY, { "content-type": "multipart/form-data" }));
+
+    expect(res.status).toBe(415);
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("한 IP가 분당 한도를 넘으면 429를 반환한다", async () => {
+    const { POST } = await import("@/app/api/csp-report/route");
+    const headers = { "x-forwarded-for": "203.0.113.20" };
+    let lastStatus = 0;
+    for (let i = 0; i < 31; i++) {
+      lastStatus = (await POST(request(VALID_BODY, headers))).status;
+    }
+
+    expect(lastStatus).toBe(429);
   });
 });

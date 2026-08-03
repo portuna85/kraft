@@ -8,24 +8,37 @@ import { useEffect, useRef, type RefObject } from "react";
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+const OVERLAY_HOST_ID = "kraft-overlay-root";
+
+/**
+ * H-1: Dialog/Drawer가 포털할 단일 body 레벨 호스트. 모든 오버레이가 이 하나의 노드에
+ * 렌더되므로, 배경 격리는 "이 호스트를 제외한 body의 모든 직계 자식"만 처리하면 된다 —
+ * 예전처럼 패널의 실제 React 트리 위치를 따라 조상마다 형제를 훑을 필요가 없다(그 방식은
+ * body 레벨(Header/main/Footer/MobileBottomNav/StickyMobileAd)에 도달하기 전에 멈췄다).
+ */
+export function getOverlayHost(): HTMLElement {
+  let host = document.getElementById(OVERLAY_HOST_ID);
+  if (!host) {
+    host = document.createElement("div");
+    host.id = OVERLAY_HOST_ID;
+    document.body.appendChild(host);
+  }
+  return host;
+}
+
 type InertedElement = { element: HTMLElement; ariaHidden: string | null; inert: string | null };
 
-function hideBackground(container: HTMLElement): InertedElement[] {
+function hideBodyChildrenExceptHost(host: HTMLElement): InertedElement[] {
   const hidden: InertedElement[] = [];
-  let current: HTMLElement | null = container;
-  while (current?.parentElement && current.parentElement !== document.body) {
-    const parent: HTMLElement = current.parentElement;
-    for (const sibling of Array.from(parent.children)) {
-      if (sibling === current || !(sibling instanceof HTMLElement)) continue;
-      hidden.push({
-        element: sibling,
-        ariaHidden: sibling.getAttribute("aria-hidden"),
-        inert: sibling.getAttribute("inert"),
-      });
-      sibling.setAttribute("aria-hidden", "true");
-      sibling.setAttribute("inert", "");
-    }
-    current = parent;
+  for (const child of Array.from(document.body.children)) {
+    if (child === host || !(child instanceof HTMLElement)) continue;
+    hidden.push({
+      element: child,
+      ariaHidden: child.getAttribute("aria-hidden"),
+      inert: child.getAttribute("inert"),
+    });
+    child.setAttribute("aria-hidden", "true");
+    child.setAttribute("inert", "");
   }
   return hidden;
 }
@@ -36,6 +49,27 @@ function restoreBackground(hidden: InertedElement[]) {
     else element.setAttribute("aria-hidden", ariaHidden);
     if (inert === null) element.removeAttribute("inert");
     else element.setAttribute("inert", inert);
+  }
+}
+
+// H-1: 오버레이가 중첩 열릴 수 있다(예: 확인 다이얼로그가 다른 다이얼로그/드로어 위에
+// 뜨는 경우). 문서(탭)당 오버레이 시스템은 하나뿐이므로 모듈 전역 참조 카운트로 관리한다
+// — 안쪽 오버레이가 먼저 닫혀도 바깥쪽이 열려 있는 동안은 배경을 복원하지 않는다.
+let openOverlayCount = 0;
+let savedBackgroundState: InertedElement[] | null = null;
+
+function acquireBackgroundHide(host: HTMLElement) {
+  openOverlayCount += 1;
+  if (openOverlayCount === 1) {
+    savedBackgroundState = hideBodyChildrenExceptHost(host);
+  }
+}
+
+function releaseBackgroundHide() {
+  openOverlayCount = Math.max(0, openOverlayCount - 1);
+  if (openOverlayCount === 0 && savedBackgroundState) {
+    restoreBackground(savedBackgroundState);
+    savedBackgroundState = null;
   }
 }
 
@@ -69,7 +103,10 @@ export function useFocusTrap({
     const container = containerRef.current;
     const focusables = container ? Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)) : [];
     (focusables[0] ?? container)?.focus();
-    const hiddenBackground = container ? hideBackground(container) : [];
+
+    const host = getOverlayHost();
+    acquireBackgroundHide(host);
+
     // 모바일에서는 backdrop 뒤의 문서가 함께 스크롤되면 포커스 위치와 시각 위치가 어긋난다.
     // 기존 inline 값을 복원해 다른 레이아웃 정책을 덮어쓰지 않는다.
     const previousBodyOverflow = document.body.style.overflow;
@@ -102,7 +139,7 @@ export function useFocusTrap({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = previousBodyOverflow;
-      restoreBackground(hiddenBackground);
+      releaseBackgroundHide();
       (restoreTarget ?? previouslyFocused.current)?.focus();
     };
     // onClose는 onCloseRef로 읽고, containerRef/restoreFocusRef는 안정적인 ref 객체다.

@@ -81,6 +81,22 @@ www.{$KRAFT_DOMAIN} {
 			}
 		}
 
+		# H-2: 이 두 경로는 인증되지 않은 브라우저가 직접 POST하는 텔레메트리 수신처라
+		# /api/v1/*(백엔드 프록시, PublicRateLimitFilter 적용 대상)와 달리 어떤 속도 제한도
+		# 거치지 않았다. 본문 상한은 여기서 먼저 걸고(오버사이즈 요청이 web 컨테이너까지
+		# 가지 않게), 속도 제한·샘플링은 애플리케이션 라우트(vitals/csp-report route.ts)에서
+		# 처리한다 — 이 베이스 이미지에는 rate-limit 모듈이 없다.
+		@telemetry path /api/vitals /api/csp-report
+		handle @telemetry {
+			header Cache-Control "no-store"
+			request_body {
+				max_size 20KB
+			}
+			reverse_proxy web:3000 {
+				header_up X-Real-IP {remote_host}
+			}
+		}
+
 		handle {
 			# 모든 페이지 경로: 브라우저 SWR 60s+300s.
 			# nonce 기반 CSP 때문에 HTML+CSP 헤더가 함께 캐시돼야 안전하므로

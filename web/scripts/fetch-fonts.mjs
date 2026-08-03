@@ -51,13 +51,9 @@ const FONTS = [
     // woff2를 지원하지 않는다 — 이 weight만 추가로 woff도 함께 만든다.
     extraFormats: { 700: ["woff"] },
   },
-  {
-    family: "notoserifkr",
-    ttfName: "NotoSerifKR[wght].ttf",
-    outPrefix: "noto-serif-kr",
-    weights: [700],
-    charset: KOREAN_CHARSET,
-  },
+  // H-3: noto-serif-kr는 2026-08 기준 어떤 CSS도 참조하지 않아(--font-display 미사용)
+  // 삭제했다. 디스플레이 폰트가 다시 필요해지면 이 FONTS 항목을 되살리고
+  // web/src/app/layout.tsx에 localFont() 등록을 다시 추가한다.
   {
     family: "spacegrotesk",
     ttfName: "SpaceGrotesk[wght].ttf",
