@@ -299,4 +299,9 @@ pitest {
     outputFormats = listOf("HTML")
     timestampedReports = false
     threads = 4
+    // M-13: 설정만 있고 어떤 워크플로도 pitest를 실행하지 않아 게이트 자체가 없었다.
+    // 주간 cron(.github/workflows/pitest.yml)에서 돌리고 이 threshold로 실패시킨다.
+    // 2026-08-03 로컬 측정 실제 점수 93%(63/68 killed) — 약간의 여유를 두되 유의미한
+    // 하락은 잡도록 설정한다.
+    mutationThreshold = 85
 }

@@ -75,7 +75,8 @@ class RecommendationSetHistoryServiceTest {
                 "historical-first-prize-v1", List.of(), List.of(), List.of(item), OffsetDateTime.now());
 
         assertThat(id).isEqualTo(1L);
-        verify(recommendationItemRepository).save(org.mockito.ArgumentMatchers.any());
+        // M-8: 항목마다 save()를 개별 호출하던 것을 saveAll()로 한 번에 묶었다.
+        verify(recommendationItemRepository).saveAll(org.mockito.ArgumentMatchers.any());
     }
 
     @Test

@@ -1,10 +1,19 @@
 import { useRef, useState } from "react";
-import { getDeviceToken } from "@/lib/device-token";
 import { browserFetch, BrowserApiError } from "@/lib/browser-api";
 import { saveMySavedNumber } from "@/lib/community-client";
 import { useCommunitySession } from "@/lib/community-session-provider";
 import type { RecommendationItem, RecommendationResponse, Strategy } from "./types";
 import { MIN_COUNT, MAX_COUNT } from "./types";
+
+function isRecommendationResponse(body: unknown): body is RecommendationResponse {
+  if (typeof body !== "object" || body === null) return false;
+  const b = body as Record<string, unknown>;
+  return (
+    typeof b.strategy === "string" &&
+    typeof b.algorithmVersion === "string" &&
+    typeof b.historyThroughRound === "number"
+  );
+}
 
 const TEXT = {
   generateFailed: "추천 생성에 실패했습니다.",
@@ -90,14 +99,16 @@ export function useRecommendationStudio(options: UseRecommendationStudioOptions 
     setSavingPositions(new Set());
 
     try {
-      const payload = await browserFetch<RecommendationResponse>("/api/v1/numbers/recommend", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Device-Token": getDeviceToken(),
+      const payload = await browserFetch<RecommendationResponse>(
+        "/api/v1/numbers/recommend",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          includeDeviceToken: true,
+          body: requestBody(),
         },
-        body: requestBody(),
-      });
+        isRecommendationResponse,
+      );
       applyResponse(seq, payload);
     } catch (err) {
       if (seq !== fetchSeqRef.current) return;
@@ -117,10 +128,8 @@ export function useRecommendationStudio(options: UseRecommendationStudioOptions 
         : (
             await browserFetch<{ created?: boolean }>("/api/v1/saved", {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "X-Device-Token": getDeviceToken(),
-              },
+              headers: { "Content-Type": "application/json" },
+              includeDeviceToken: true,
               body: JSON.stringify({ numbers, label, source: "RECOMMEND" }),
             })
           ).created;

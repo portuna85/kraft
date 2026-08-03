@@ -80,6 +80,7 @@ infra/alertmanager/alertmanager.yml
 
 ### Logs ###
 logs/
+web/debug.log
 
 ### Migration credentials (never commit) ###
 scripts/archive/migrate-2026-06/env-migration.sh

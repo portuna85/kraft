@@ -1,5 +1,6 @@
 import { BackendError } from "@/lib/api";
 import { backendBaseUrl } from "@/lib/backend-url";
+import { composeAbortSignal } from "@/lib/transport-signal";
 import type { components } from "@/lib/generated/api-types";
 // KF-07: RecommendationItemView는 추천 생성 응답과 커뮤니티 첨부 뷰가 공유하는 스키마다 —
 // 이 파일이 따로 파생시키던 버전은 explanationCodes를 좁히지 않아 features 쪽보다
@@ -52,7 +53,7 @@ export type CommunityCommentPage = {
 export const DEFAULT_COMMENT_PAGE_SIZE = 50;
 
 async function fetchCommunityJson<T>(path: string, init: RequestInit): Promise<T> {
-  const signal = AbortSignal.timeout(5000);
+  const signal = composeAbortSignal(5000, init.signal);
   const response = await fetch(`${backendBaseUrl}${path}`, { ...init, signal });
   if (!response.ok) {
     let code = "BACKEND_ERROR";
@@ -84,22 +85,15 @@ export async function getCommunityPosts(
   );
 }
 
-// FE-064 (미해결, 백엔드 설계 필요): 이 GET은 백엔드에서 조회수를 증가시키는 부수효과를
-// 갖는다(CommunityPostService — "세션/중복 방지는 이번 범위에서 과설계라 생략, 단순 조회수").
-// 그런데 여기서 ISR로 캐시하므로 캐시가 적중하는 동안에는 백엔드에 요청이 닿지 않아
-// 조회수가 집계되지 않고, 화면에 보이는 조회수·좋아요 수도 최대 revalidate 주기만큼 오래됐다.
-// 프런트 단독으로 no-store로 바꾸면 조회수는 정확해지지만 상세 페이지의 캐시 이점을 전부 잃는다.
-// 올바른 해법은 조회수 write를 캐시하지 않는 별도 엔드포인트/이벤트로 분리하는 것이며,
-// 그 전까지 이 트레이드오프를 의도된 현재 상태로 남긴다.
+// M-4/FE-064: 이 GET은 백엔드에서 조회수를 증가시키는 부수효과를 갖는다
+// (CommunityPostService — "세션/중복 방지는 이번 범위에서 과설계라 생략, 단순 조회수").
+// 예전에는 여기서 ISR로 캐시해 캐시 적중 동안 조회수가 집계되지 않고 좋아요 수 등도
+// revalidate 주기만큼 오래됐다 — "실제 조회가 아니라 캐시 미스가 지표를 결정"했다.
+// 조회수 write를 분리하는 별도 엔드포인트는 과거 지표와의 비교 가능성에 영향을 주는
+// 더 큰 변경이라, 이번에는 no-store로 통일해 캐시 이점을 포기하는 대신 조회수·좋아요
+// 수를 항상 정확하게 만든다(edit 폼 초기화가 쓰던 getCommunityPostFresh와 동일해져
+// 별도 함수로 남길 이유가 없어졌다).
 export async function getCommunityPost(id: number): Promise<CommunityPost> {
-  return fetchCommunityJson<CommunityPost>(`/api/v1/community/posts/${id}`, {
-    next: { revalidate: REVALIDATE_COMMUNITY_LIST, tags: ["community:posts", `community:post:${id}`] },
-  });
-}
-
-// edit 폼 초기화 전용 — ISR 캐시를 완전히 우회해 자기-409 루프(캐시된 옛 version으로
-// 폼을 채운 뒤 본인이 연속 수정하면 "다른 곳에서 먼저 수정" 오탐)를 근본적으로 막는다.
-export async function getCommunityPostFresh(id: number): Promise<CommunityPost> {
   return fetchCommunityJson<CommunityPost>(`/api/v1/community/posts/${id}`, {
     cache: "no-store",
   });

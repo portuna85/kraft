@@ -1,5 +1,6 @@
 package com.kraft.community.comment;
 
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import com.kraft.community.block.CommunityBlockService;
 import com.kraft.community.post.CommunityPost;
@@ -17,7 +18,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -63,10 +63,10 @@ public class CommunityCommentService {
     @Transactional(readOnly = true)
     public CommunityCommentListResult list(Long postId, int page, int size) {
         CommunityPost post = communityPostRepository.findById(postId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_POST_NOT_FOUND",
+                .orElseThrow(() -> new ApiException(ApiErrorCode.COMMUNITY_POST_NOT_FOUND,
                         "게시글을 찾을 수 없습니다."));
         if (post.getStatus() != PostStatus.PUBLISHED) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_POST_NOT_FOUND", "게시글을 찾을 수 없습니다.");
+            throw new ApiException(ApiErrorCode.COMMUNITY_POST_NOT_FOUND, "게시글을 찾을 수 없습니다.");
         }
 
         int clampedPage = Math.max(0, page);
@@ -91,34 +91,34 @@ public class CommunityCommentService {
     public CommunityCommentCreationResult create(Long ownerId, String authorNickname, Long postId,
                                                    CreateCommentRequest request) {
         CommunityPost post = communityPostRepository.findById(postId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_POST_NOT_FOUND",
+                .orElseThrow(() -> new ApiException(ApiErrorCode.COMMUNITY_POST_NOT_FOUND,
                         "게시글을 찾을 수 없습니다."));
         if (post.getStatus() != PostStatus.PUBLISHED) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_POST_NOT_FOUND", "게시글을 찾을 수 없습니다.");
+            throw new ApiException(ApiErrorCode.COMMUNITY_POST_NOT_FOUND, "게시글을 찾을 수 없습니다.");
         }
         // C-1: 차단은 저장·조회만 될 뿐 쓰기 경로를 막지 않았다 — 서로 차단한 사이라면
         // 어느 쪽이 차단했든 댓글을 달 수 없게 한다(표시 필터링과 별개로 서버가 강제).
         if (communityBlockService.isBlockedEitherWay(ownerId, post.getOwnerId())) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "COMMUNITY_BLOCKED_INTERACTION",
+            throw new ApiException(ApiErrorCode.COMMUNITY_BLOCKED_INTERACTION,
                     "차단 관계인 사용자의 게시글에는 댓글을 달 수 없습니다.");
         }
 
         CommunityComment parent = null;
         if (request.parentId() != null) {
             parent = communityCommentRepository.findByIdForUpdate(request.parentId())
-                    .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_COMMENT_PARENT_NOT_FOUND",
+                    .orElseThrow(() -> new ApiException(ApiErrorCode.COMMUNITY_COMMENT_PARENT_NOT_FOUND,
                             "답글을 달 댓글을 찾을 수 없습니다."));
             if (!parent.getPostId().equals(post.getId())) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "COMMUNITY_COMMENT_PARENT_MISMATCH",
+                throw new ApiException(ApiErrorCode.COMMUNITY_COMMENT_PARENT_MISMATCH,
                         "다른 게시글의 댓글에는 답글을 달 수 없습니다.");
             }
             // 1단계 대댓글만 허용 — 답글의 답글은 거부한다.
             if (parent.getParentId() != null) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "COMMUNITY_COMMENT_REPLY_DEPTH_EXCEEDED",
+                throw new ApiException(ApiErrorCode.COMMUNITY_COMMENT_REPLY_DEPTH_EXCEEDED,
                         "답글에는 답글을 달 수 없습니다.");
             }
             if (parent.isDeleted()) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "COMMUNITY_COMMENT_PARENT_DELETED",
+                throw new ApiException(ApiErrorCode.COMMUNITY_COMMENT_PARENT_DELETED,
                         "삭제된 댓글에는 답글을 달 수 없습니다.");
             }
         }
@@ -130,7 +130,7 @@ public class CommunityCommentService {
                     OffsetDateTime.now(clock)));
         } catch (DataIntegrityViolationException concurrentlyDeletedPost) {
             // 저장 직전 게시글/부모가 동시 삭제된 경합(FK race) → 사용자에게는 404로 보인다.
-            throw new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_POST_NOT_FOUND",
+            throw new ApiException(ApiErrorCode.COMMUNITY_POST_NOT_FOUND,
                     "게시글을 찾을 수 없습니다.", concurrentlyDeletedPost);
         }
         // 댓글·좋아요 집계는 원자적으로 증감하며 읽고 고쳐 쓰지 않는다.
@@ -149,10 +149,10 @@ public class CommunityCommentService {
     @Transactional
     public void delete(Long ownerId, Long commentId) {
         CommunityComment comment = communityCommentRepository.findByIdForUpdate(commentId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_COMMENT_NOT_FOUND",
+                .orElseThrow(() -> new ApiException(ApiErrorCode.COMMUNITY_COMMENT_NOT_FOUND,
                         "댓글을 찾을 수 없습니다."));
         if (!java.util.Objects.equals(comment.getOwnerId(), ownerId)) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "COMMUNITY_COMMENT_NOT_OWNER", "본인 댓글만 삭제할 수 있습니다.");
+            throw new ApiException(ApiErrorCode.COMMUNITY_COMMENT_NOT_OWNER, "본인 댓글만 삭제할 수 있습니다.");
         }
         // B-P0-6: 이미 tombstone된 댓글을 재삭제 요청하면 멱등하게 아무 것도 하지 않는다 —
         // 가드가 없으면 재삭제할 때마다 decrementCommentCount가 다시 불려 카운터가 실제

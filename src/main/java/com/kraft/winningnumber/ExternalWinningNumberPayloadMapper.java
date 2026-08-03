@@ -1,12 +1,12 @@
 package com.kraft.winningnumber;
 
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -17,7 +17,7 @@ public class ExternalWinningNumberPayloadMapper {
     public WinningNumberUpsertRequest toRequest(Map<?, ?> payload) {
         String returnValue = asString(payload.get("returnValue"));
         if (returnValue != null && !returnValue.isBlank() && !"success".equalsIgnoreCase(returnValue)) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "LOTTO_SOURCE_ROUND_NOT_FOUND", "외부 응답이 성공 상태가 아닙니다(회차 미공개로 간주).");
+            throw new ApiException(ApiErrorCode.LOTTO_SOURCE_ROUND_NOT_FOUND, "외부 응답이 성공 상태가 아닙니다(회차 미공개로 간주).");
         }
 
         Integer round = asInteger(firstOf(payload, "ltEpsd", "round", "drwNo"));
@@ -28,7 +28,7 @@ public class ExternalWinningNumberPayloadMapper {
         List<Integer> numbers = extractNumbers(payload);
 
         if (round == null || drawDate == null || bonusNumber == null || firstPrizeAmount == null) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "LOTTO_SOURCE_PARSE_ERROR", "외부 응답 필드가 누락되었습니다.");
+            throw new ApiException(ApiErrorCode.LOTTO_SOURCE_PARSE_ERROR, "외부 응답 필드가 누락되었습니다.");
         }
 
         Long secondPrize = asLong(firstOf(payload, "rnk2WnAmt", "secondPrize", "secondWinamnt"));
@@ -82,7 +82,7 @@ public class ExternalWinningNumberPayloadMapper {
         List<Integer> result = new ArrayList<>();
         for (int i = 0; i < nums.length; i++) {
             if (nums[i] == null) {
-                throw new ApiException(HttpStatus.BAD_GATEWAY, "LOTTO_SOURCE_PARSE_ERROR",
+                throw new ApiException(ApiErrorCode.LOTTO_SOURCE_PARSE_ERROR,
                         "당첨 번호 " + (i + 1) + "번 필드가 누락되었습니다.");
             }
             result.add(nums[i]);
@@ -96,12 +96,12 @@ public class ExternalWinningNumberPayloadMapper {
     // Bean Validation)에서야 잡히던 것을 여기서 먼저 명시적으로 끊는다.
     private void validateNumbers(List<Integer> numbers) {
         if (numbers.size() != 6) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "LOTTO_SOURCE_PARSE_ERROR",
+            throw new ApiException(ApiErrorCode.LOTTO_SOURCE_PARSE_ERROR,
                     "당첨 번호는 정확히 6개여야 합니다 (실제 " + numbers.size() + "개).");
         }
         for (int i = 0; i < numbers.size(); i++) {
             if (numbers.get(i) == null) {
-                throw new ApiException(HttpStatus.BAD_GATEWAY, "LOTTO_SOURCE_PARSE_ERROR",
+                throw new ApiException(ApiErrorCode.LOTTO_SOURCE_PARSE_ERROR,
                         "당첨 번호 목록에 null 값이 포함되어 있습니다 (index " + i + ").");
             }
         }
@@ -137,8 +137,7 @@ public class ExternalWinningNumberPayloadMapper {
         try {
             return Integer.parseInt(value.toString().trim());
         } catch (NumberFormatException e) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY,
-                    "LOTTO_SOURCE_PARSE_ERROR", "숫자 변환 실패: " + value);
+            throw new ApiException(ApiErrorCode.LOTTO_SOURCE_PARSE_ERROR, "숫자 변환 실패: " + value);
         }
     }
 
@@ -152,8 +151,7 @@ public class ExternalWinningNumberPayloadMapper {
         try {
             return Long.parseLong(value.toString().trim());
         } catch (NumberFormatException e) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY,
-                    "LOTTO_SOURCE_PARSE_ERROR", "숫자 변환 실패: " + value);
+            throw new ApiException(ApiErrorCode.LOTTO_SOURCE_PARSE_ERROR, "숫자 변환 실패: " + value);
         }
     }
 

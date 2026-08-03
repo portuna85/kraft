@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { LottoBalls } from "@/ui/domain/lotto-balls";
-import { getDeviceToken } from "@/lib/device-token";
 import { browserFetch } from "@/lib/browser-api";
 import { getMyRecommendationSets } from "@/lib/community-client";
 import { useCommunitySession } from "@/lib/community-session-provider";
@@ -10,6 +9,21 @@ import type { PageResponse } from "@/lib/community-api";
 import type { RecommendationSetSummary } from "@/features/recommendation/types";
 import { ErrorState } from "@/ui/primitives/error-state";
 import { asyncError, asyncLoading, asyncSuccess, type AsyncState } from "@/lib/async-state";
+
+function isRecommendationSetSummaryPage(
+  body: unknown
+): body is PageResponse<RecommendationSetSummary> {
+  if (typeof body !== "object" || body === null) return false;
+  const b = body as Record<string, unknown>;
+  return (
+    Array.isArray(b.items) &&
+    b.items.every((item) => {
+      if (typeof item !== "object" || item === null) return false;
+      const i = item as Record<string, unknown>;
+      return typeof i.id === "number" && typeof i.strategy === "string" && Array.isArray(i.items);
+    })
+  );
+}
 
 export function RecommendationAttachmentPicker({
   value,
@@ -37,7 +51,8 @@ export function RecommendationAttachmentPicker({
       ? getMyRecommendationSets(0, 50)
       : browserFetch<PageResponse<RecommendationSetSummary>>(
           "/api/v1/recommendation-sets?page=0&size=50",
-          { headers: { "X-Device-Token": getDeviceToken() } }
+          { includeDeviceToken: true },
+          isRecommendationSetSummaryPage
         );
     request
       .then((result) => {

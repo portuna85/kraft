@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { render, waitFor } from "@testing-library/react";
 import { WebVitalsReporter } from "@/components/web-vitals-reporter";
 
 const callbacks: Record<string, (metric: unknown) => void> = {};
@@ -28,16 +28,19 @@ describe("WebVitalsReporter", () => {
     Object.defineProperty(window, "innerWidth", { value: originalWidth, configurable: true });
   });
 
-  it("마운트 시 LCP/INP/CLS 콜백을 각각 한 번씩 등록한다", () => {
+  it("마운트 시 LCP/INP/CLS 콜백을 각각 한 번씩 등록한다", async () => {
     render(<WebVitalsReporter />);
 
-    expect(callbacks.LCP).toBeInstanceOf(Function);
-    expect(callbacks.INP).toBeInstanceOf(Function);
-    expect(callbacks.CLS).toBeInstanceOf(Function);
+    await waitFor(() => {
+      expect(callbacks.LCP).toBeInstanceOf(Function);
+      expect(callbacks.INP).toBeInstanceOf(Function);
+      expect(callbacks.CLS).toBeInstanceOf(Function);
+    });
   });
 
-  it("지표가 보고되면 개인정보 없이 route·deviceClass·release만 담아 sendBeacon으로 전송한다", () => {
+  it("지표가 보고되면 개인정보 없이 route·deviceClass·release만 담아 sendBeacon으로 전송한다", async () => {
     render(<WebVitalsReporter />);
+    await waitFor(() => expect(callbacks.LCP).toBeInstanceOf(Function));
 
     callbacks.LCP({ name: "LCP", value: 1800.2, rating: "needs-improvement" });
 
@@ -63,8 +66,9 @@ describe("WebVitalsReporter", () => {
     ]);
   });
 
-  it("뷰포트 너비에 따라 mobile/tablet/desktop 중 하나로 deviceClass를 분류한다", () => {
+  it("뷰포트 너비에 따라 mobile/tablet/desktop 중 하나로 deviceClass를 분류한다", async () => {
     render(<WebVitalsReporter />);
+    await waitFor(() => expect(callbacks.CLS).toBeInstanceOf(Function));
 
     Object.defineProperty(window, "innerWidth", { value: 375, configurable: true });
     callbacks.CLS({ name: "CLS", value: 0.05, rating: "good" });
@@ -79,12 +83,13 @@ describe("WebVitalsReporter", () => {
     expect(JSON.parse(sendBeaconSpy.mock.calls[2][1] as string).deviceClass).toBe("desktop");
   });
 
-  it("sendBeacon이 없으면 keepalive fetch로 대체 전송한다", () => {
+  it("sendBeacon이 없으면 keepalive fetch로 대체 전송한다", async () => {
     Object.defineProperty(navigator, "sendBeacon", { value: undefined, configurable: true });
     const fetchSpy = vi.fn().mockResolvedValue({ ok: true });
     global.fetch = fetchSpy;
 
     render(<WebVitalsReporter />);
+    await waitFor(() => expect(callbacks.INP).toBeInstanceOf(Function));
     callbacks.INP({ name: "INP", value: 150, rating: "good" });
 
     expect(fetchSpy).toHaveBeenCalledWith(

@@ -36,8 +36,12 @@ WORKDIR /app
 # 지표로 G1 대비 A/B를 먼저 확인할 것.
 ENV JAVA_TOOL_OPTIONS="-XX:+UseZGC -XX:MaxRAMPercentage=55.0 -XX:+ExitOnOutOfMemoryError"
 
+# M-15: apt-get upgrade -y를 뺐다 — digest로 고정한 베이스 이미지 위에서 패키지
+# 버전을 임의 시점 기준으로 덮어써 같은 커밋의 두 번 빌드가 서로 다른 패키지 구성·CVE
+# 프로파일을 가질 수 있었다(digest 고정의 재현성을 무효화). 베이스 이미지 자체의 보안
+# 패치는 이제 dependabot(.github/dependabot.yml, docker ecosystem)이 정기적으로
+# digest 갱신 PR을 올리는 경로로 받는다.
 RUN apt-get update \
-    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends curl ca-certificates \
     && rm -f /usr/bin/pebble \
     && rm -rf /var/lib/apt/lists/* \

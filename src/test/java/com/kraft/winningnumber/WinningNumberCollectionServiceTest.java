@@ -1,5 +1,6 @@
 package com.kraft.winningnumber;
 
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -9,7 +10,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.http.HttpStatus;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -96,8 +96,7 @@ class WinningNumberCollectionServiceTest {
         );
         when(repository.findTopByOrderByRoundDesc()).thenReturn(Optional.of(latest));
         when(fetchClient.fetchRound(1201)).thenThrow(new ApiException(
-                HttpStatus.BAD_GATEWAY,
-                "LOTTO_SOURCE_ROUND_NOT_FOUND",
+                ApiErrorCode.LOTTO_SOURCE_ROUND_NOT_FOUND,
                 "round not found"
         ));
 

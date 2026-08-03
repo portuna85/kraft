@@ -35,7 +35,8 @@ export function NumberGrid({
   getState: (n: number) => NumberCellState;
   onSelect: (n: number) => void;
 }) {
-  const roving = useRovingGrid(count);
+  // M-9: roving grid가 활성 셀만 순회하도록 각 인덱스의 비활성 여부를 알려준다.
+  const roving = useRovingGrid(count, (index) => getState(index + 1).disabled ?? false);
 
   return (
     <div className={styles.grid} role="group" aria-label={ariaLabel} onKeyDown={roving.handleKeyDown}>

@@ -24,4 +24,11 @@ public interface CommunityPostLikeRepository extends JpaRepository<CommunityPost
     @Modifying
     @Query("delete from CommunityPostLike l where l.postId = :postId and l.userId = :userId")
     long deleteByPostIdAndUserId(@Param("postId") Long postId, @Param("userId") Long userId);
+
+    // M-8: 탈퇴 처리(CommunityWithdrawalService)가 findByUserId로 이미 전체 목록을 읽은
+    // 뒤 좋아요마다 deleteByPostIdAndUserId를 반복 호출하던 N+1을 없앤다 — 사용자 단위로
+    // 한 번에 지운다(경합 걱정 없음: withdraw()가 대상 사용자 행을 이미 잠갔다).
+    @Modifying
+    @Query("delete from CommunityPostLike l where l.userId = :userId")
+    long deleteByUserId(@Param("userId") Long userId);
 }

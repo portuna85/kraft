@@ -1,6 +1,7 @@
 package com.kraft.winningnumber;
 
 import com.kraft.common.config.ExternalLottoProperties;
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -11,7 +12,6 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -46,7 +46,7 @@ public class HttpExternalWinningNumberFetchClient implements ExternalWinningNumb
     @CircuitBreaker(name = "externalLotto", fallbackMethod = "fetchRoundFallback")
     public WinningNumberUpsertRequest fetchRound(int round) {
         if (!externalLottoProperties.enabled()) {
-            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "LOTTO_SOURCE_DISABLED", "외부 수집 URL이 설정되지 않았습니다.");
+            throw new ApiException(ApiErrorCode.LOTTO_SOURCE_DISABLED, "외부 수집 URL이 설정되지 않았습니다.");
         }
 
         String url = externalLottoProperties.urlTemplate().replace("{round}", Integer.toString(round));
@@ -63,7 +63,7 @@ public class HttpExternalWinningNumberFetchClient implements ExternalWinningNumb
                 .body(new ParameterizedTypeReference<Map<String, Object>>() {});
 
         if (body == null || body.isEmpty()) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "LOTTO_SOURCE_EMPTY", "외부 수집 응답이 비어 있습니다.");
+            throw new ApiException(ApiErrorCode.LOTTO_SOURCE_EMPTY, "외부 수집 응답이 비어 있습니다.");
         }
 
         Map<?, ?> payload = extractPayloadForRound(body, round);
@@ -77,7 +77,7 @@ public class HttpExternalWinningNumberFetchClient implements ExternalWinningNumb
     @SuppressWarnings("unused")
     private WinningNumberUpsertRequest fetchRoundFallback(int round, CallNotPermittedException ex) {
         log.warn("외부 수집 서킷브레이커 OPEN: round={}", round);
-        throw new ApiException(HttpStatus.BAD_GATEWAY, "LOTTO_SOURCE_CIRCUIT_OPEN",
+        throw new ApiException(ApiErrorCode.LOTTO_SOURCE_CIRCUIT_OPEN,
                 "외부 수집 서킷브레이커가 열려 있습니다. 잠시 후 다시 시도하세요.");
     }
 
@@ -102,7 +102,7 @@ public class HttpExternalWinningNumberFetchClient implements ExternalWinningNumb
                     try {
                         itemRound = Integer.parseInt(ltEpsd.toString().trim());
                     } catch (NumberFormatException e) {
-                        throw new ApiException(HttpStatus.BAD_GATEWAY, "LOTTO_SOURCE_PARSE_ERROR",
+                        throw new ApiException(ApiErrorCode.LOTTO_SOURCE_PARSE_ERROR,
                                 "회차 번호 파싱 실패: " + ltEpsd);
                     }
                     if (itemRound == round) {
@@ -111,7 +111,7 @@ public class HttpExternalWinningNumberFetchClient implements ExternalWinningNumb
                 }
             }
         }
-        throw new ApiException(HttpStatus.BAD_GATEWAY, "LOTTO_SOURCE_ROUND_NOT_FOUND",
+        throw new ApiException(ApiErrorCode.LOTTO_SOURCE_ROUND_NOT_FOUND,
                 "응답 목록에서 회차 %d를 찾을 수 없습니다.".formatted(round));
     }
 
@@ -119,7 +119,7 @@ public class HttpExternalWinningNumberFetchClient implements ExternalWinningNumb
     // body를 그대로 반환하므로 이 체크가 회차 불일치를 잡는 유일한 방어선이다.
     static void requireRoundMatch(int requestedRound, WinningNumberUpsertRequest request) {
         if (request.round() != requestedRound) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "LOTTO_SOURCE_ROUND_MISMATCH",
+            throw new ApiException(ApiErrorCode.LOTTO_SOURCE_ROUND_MISMATCH,
                     "요청 회차(%d)와 응답 회차(%d)가 다릅니다.".formatted(requestedRound, request.round()));
         }
     }

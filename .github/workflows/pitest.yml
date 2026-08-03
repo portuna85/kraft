@@ -1,0 +1,36 @@
+name: Mutation Testing (Pitest)
+
+# M-13: build.gradle.kts가 로또 검증·등수·추천 제약(돈에 직접 영향을 주는 소형 순수
+# 로직)에 변이 테스트를 정의해뒀지만 어떤 워크플로도 pitest 태스크를 실행하지 않아
+# mutationThreshold가 실제 게이트가 되지 못했다. PR마다 돌리기엔 느려(수십 초~수 분)
+# 주간 cron으로 돌린다.
+on:
+  schedule:
+    # 매주 월요일 07:00 UTC(한국시간 16:00).
+    - cron: "0 7 * * 1"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  pitest:
+    name: Run mutation tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        with:
+          distribution: temurin
+          java-version: "25"
+      - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+      - name: Run pitest (mutationThreshold gate)
+        run: ./gradlew pitest --build-cache
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: pitest-report
+          path: build/reports/pitest
+          retention-days: 30

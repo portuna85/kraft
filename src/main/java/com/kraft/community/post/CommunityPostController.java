@@ -1,5 +1,6 @@
 package com.kraft.community.post;
 
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import com.kraft.common.web.DeviceTokenSupport;
 import com.kraft.common.web.PageResponse;
@@ -8,7 +9,6 @@ import jakarta.validation.Valid;
 import java.net.URI;
 import org.springframework.data.domain.Page;
 import org.springframework.http.CacheControl;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -111,7 +111,7 @@ public class CommunityPostController {
         try {
             return PostCategory.valueOf(category.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "COMMUNITY_CATEGORY_INVALID",
+            throw new ApiException(ApiErrorCode.COMMUNITY_CATEGORY_INVALID,
                     "지원하지 않는 카테고리입니다: " + category);
         }
     }

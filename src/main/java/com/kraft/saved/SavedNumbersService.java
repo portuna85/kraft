@@ -1,6 +1,7 @@
 package com.kraft.saved;
 
 import com.kraft.common.config.SavedProperties;
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import com.kraft.common.lotto.LottoNumberCodec;
 import com.kraft.common.lotto.LottoRank;
@@ -13,8 +14,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -71,10 +72,18 @@ public class SavedNumbersService {
      */
     public SavedNumberClaimResult claimAll(String clientTokenHash, Long ownerUserId) {
         List<SavedNumber> anonymous = savedNumberRepository.findByClientTokenHashOrderByCreatedAtDesc(clientTokenHash);
+        // M-8: 익명 행마다 findByOwnerUserIdAndNumbers를 호출하던 N+1을 배치 조회 1회로 없앤다.
+        List<String> candidateNumbers = anonymous.stream().map(SavedNumber::getNumbers).toList();
+        Set<String> alreadyOwned = candidateNumbers.isEmpty()
+                ? Set.of()
+                : savedNumberRepository.findByOwnerUserIdAndNumbersIn(ownerUserId, candidateNumbers).stream()
+                        .map(SavedNumber::getNumbers)
+                        .collect(Collectors.toSet());
+
         int merged = 0;
         int duplicates = 0;
         for (SavedNumber saved : anonymous) {
-            if (savedNumberRepository.findByOwnerUserIdAndNumbers(ownerUserId, saved.getNumbers()).isPresent()) {
+            if (alreadyOwned.contains(saved.getNumbers())) {
                 savedNumberRepository.delete(saved);
                 duplicates++;
             } else {
@@ -109,7 +118,7 @@ public class SavedNumbersService {
     private WinningNumberResponse resolveDraw(String roundParam) {
         return "latest".equalsIgnoreCase(roundParam)
                 ? winningNumberQueryService.findLatest()
-                        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "ROUND_NOT_FOUND", "집계된 회차가 없습니다."))
+                        .orElseThrow(() -> new ApiException(ApiErrorCode.ROUND_NOT_FOUND, "집계된 회차가 없습니다."))
                 : winningNumberQueryService.getByRound(parseRound(roundParam));
     }
 
@@ -134,7 +143,7 @@ public class SavedNumbersService {
         }
 
         if (existing.size() >= savedProperties.maxPerClient()) {
-            throw new ApiException(HttpStatus.CONFLICT, "SAVED_LIMIT_REACHED", "이 기기에서 저장 가능한 번호 개수를 초과했습니다.");
+            throw new ApiException(ApiErrorCode.SAVED_LIMIT_REACHED, "이 기기에서 저장 가능한 번호 개수를 초과했습니다.");
         }
 
         String source = request.source() == null || request.source().isBlank() ? "MANUAL" : request.source().trim();
@@ -161,7 +170,7 @@ public class SavedNumbersService {
         String normalizedNumbers = lottoNumberCodec.toStorageValue(request.numbers());
 
         communityUserRepository.lockById(ownerUserId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_USER_NOT_FOUND", "계정을 찾을 수 없습니다."));
+                .orElseThrow(() -> new ApiException(ApiErrorCode.COMMUNITY_USER_NOT_FOUND, "계정을 찾을 수 없습니다."));
 
         Optional<SavedNumber> duplicate = savedNumberRepository.findByOwnerUserIdAndNumbers(ownerUserId, normalizedNumbers);
         if (duplicate.isPresent()) {
@@ -169,7 +178,7 @@ public class SavedNumbersService {
         }
 
         if (savedNumberRepository.countByOwnerUserId(ownerUserId) >= savedProperties.maxPerClient()) {
-            throw new ApiException(HttpStatus.CONFLICT, "SAVED_LIMIT_REACHED", "저장 가능한 번호 개수를 초과했습니다.");
+            throw new ApiException(ApiErrorCode.SAVED_LIMIT_REACHED, "저장 가능한 번호 개수를 초과했습니다.");
         }
 
         String source = request.source() == null || request.source().isBlank() ? "MANUAL" : request.source().trim();
@@ -191,14 +200,14 @@ public class SavedNumbersService {
     // SavedNumberClientLockCleanupScheduler(P1-06)가 보관기간을 두고 담당한다.
     public void delete(String clientTokenHash, long id) {
         SavedNumber savedNumber = savedNumberRepository.findByIdAndClientTokenHash(id, clientTokenHash)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "SAVED_NUMBER_NOT_FOUND", "저장된 번호를 찾을 수 없습니다."));
+                .orElseThrow(() -> new ApiException(ApiErrorCode.SAVED_NUMBER_NOT_FOUND, "저장된 번호를 찾을 수 없습니다."));
         savedNumberRepository.delete(savedNumber);
     }
 
     /** B-P0-3: claim된 저장 번호는 client_token_hash가 없으므로 owner_user_id 기준 삭제 경로가 필요하다. */
     public void deleteForOwner(Long ownerUserId, long id) {
         SavedNumber savedNumber = savedNumberRepository.findByIdAndOwnerUserId(id, ownerUserId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "SAVED_NUMBER_NOT_FOUND", "저장된 번호를 찾을 수 없습니다."));
+                .orElseThrow(() -> new ApiException(ApiErrorCode.SAVED_NUMBER_NOT_FOUND, "저장된 번호를 찾을 수 없습니다."));
         savedNumberRepository.delete(savedNumber);
     }
 
@@ -206,11 +215,11 @@ public class SavedNumbersService {
         try {
             int round = Integer.parseInt(roundParam);
             if (round < 1) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_ROUND", "round 파라미터가 올바르지 않습니다.");
+                throw new ApiException(ApiErrorCode.INVALID_ROUND, "round 파라미터가 올바르지 않습니다.");
             }
             return round;
         } catch (NumberFormatException e) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_ROUND", "round 파라미터가 올바르지 않습니다.");
+            throw new ApiException(ApiErrorCode.INVALID_ROUND, "round 파라미터가 올바르지 않습니다.");
         }
     }
 

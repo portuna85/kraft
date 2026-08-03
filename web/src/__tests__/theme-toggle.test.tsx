@@ -42,4 +42,29 @@ describe("테마 토글", () => {
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(localStorage.getItem("kraft-theme")).toBe("dark");
   });
+
+  // M-10: 데스크톱/모바일 두 인스턴스가 각자 로컬 state를 들어 storage 이벤트(다른
+  // 탭에서만 발화)에만 의존했다 — 같은 문서 안의 다른 인스턴스를 누르면 이쪽은
+  // 낡은 aria-pressed/aria-label을 계속 보여줬다(다크 모드인데 "전환하라"고 안내).
+  it("같은 문서의 다른 인스턴스에서 토글하면 즉시 동기화된다", async () => {
+    render(
+      <>
+        <ThemeToggle />
+        <ThemeToggle />
+      </>
+    );
+    const [first, second] = screen.getAllByRole("button");
+
+    await waitFor(() => {
+      expect(first).toHaveAttribute("aria-pressed", "false");
+      expect(second).toHaveAttribute("aria-pressed", "false");
+    });
+
+    first.click();
+
+    await waitFor(() => {
+      expect(second).toHaveAttribute("aria-pressed", "true");
+    });
+    expect(second).toHaveAttribute("aria-label", "라이트 모드로 전환");
+  });
 });

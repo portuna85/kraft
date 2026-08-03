@@ -8,7 +8,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -34,12 +33,12 @@ class GlobalExceptionHandlerTest {
     static class TestController {
         @GetMapping("/test/not-found")
         void throwNotFound() {
-            throw new ApiException(HttpStatus.NOT_FOUND, "ROUND_NOT_FOUND", "찾을 수 없습니다.");
+            throw new ApiException(ApiErrorCode.ROUND_NOT_FOUND, "찾을 수 없습니다.");
         }
 
         @GetMapping("/test/server-error")
         void throwServerError() {
-            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "서버 오류");
+            throw new ApiException(ApiErrorCode.INTERNAL_ERROR, "서버 오류");
         }
 
         @GetMapping("/test/unexpected")

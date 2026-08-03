@@ -5,7 +5,7 @@
 // 실제 문구와 데이터를 소유한다" — 그래서 아래 타입에는 문구(label 등)를 제외한
 // 구조적 props만 정의한다. 실제 문구는 도메인 컴포넌트(RecommendationModeCard 등)가 넘긴다.
 
-import type { ReactNode } from "react";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
 /** 44x44px 최소 터치 영역을 강제하는 공통 크기 스케일. */
 export type PrimitiveSize = "sm" | "md" | "lg";
@@ -14,7 +14,10 @@ export type PrimitiveSize = "sm" | "md" | "lg";
 
 export type ButtonVariant = "primary" | "secondary" | "quiet" | "danger";
 
-export interface ButtonContract {
+// M-5: 나머지 네이티브 button 속성(aria-*, data-*, id, form, className 등)은 그대로
+// 통과시킨다 — 구조적 계약(variant/size/loading 등)만 이 타입이 좁힌다.
+export interface ButtonContract
+  extends Omit<ComponentPropsWithoutRef<"button">, "children" | "type" | "disabled" | "onClick"> {
   variant: ButtonVariant;
   size?: PrimitiveSize;
   disabled?: boolean;
@@ -61,28 +64,6 @@ export interface TextFieldContract extends FieldValidationContract {
   required?: boolean;
 }
 
-export interface NumberFieldContract extends FieldValidationContract {
-  id: string;
-  label: string;
-  value: number | null;
-  onChange: (value: number | null) => void;
-  min?: number;
-  max?: number;
-  step?: number;
-  disabled?: boolean;
-}
-
-export interface SearchFieldContract {
-  id: string;
-  /** 검색어는 2~50자 — 프런트 검증은 서버 규칙의 빠른 피드백용 복제. */
-  minLength: 2;
-  maxLength: 50;
-  value: string;
-  onChange: (value: string) => void;
-  onSubmit: (value: string) => void;
-  placeholder?: string;
-}
-
 export interface TextAreaContract extends FieldValidationContract {
   id: string;
   label: string;
@@ -110,27 +91,6 @@ export interface SegmentedControlContract<T extends string = string> {
   "aria-label": string;
 }
 
-export interface TabItem<T extends string = string> {
-  value: T;
-  label: string;
-  disabled?: boolean;
-}
-
-export interface TabsContract<T extends string = string> {
-  items: readonly TabItem<T>[];
-  value: T;
-  onChange: (value: T) => void;
-  /** 각 탭 패널과 tabpanel 요소를 연결하기 위한 id 접두어. */
-  panelIdPrefix: string;
-}
-
-export interface ChipContract {
-  selected?: boolean;
-  disabled?: boolean;
-  onToggle?: () => void;
-  children: ReactNode;
-}
-
 // ── 표시 계열 ──────────────────────────────────────────────────────────────
 
 export type BadgeTone = "neutral" | "brand" | "success" | "warning" | "danger";
@@ -153,13 +113,6 @@ export interface StatusBadgeContract {
 export interface SurfaceContract {
   /** 디자인 토큰의 표면 단계. */
   level: 1 | 2 | 3;
-  children: ReactNode;
-}
-
-export interface SectionContract {
-  /** 접근성 트리에서 영역을 구분하기 위한 heading 레벨. */
-  headingLevel: 2 | 3 | 4;
-  title: string;
   children: ReactNode;
 }
 
@@ -194,15 +147,6 @@ export interface DrawerContract extends OverlayFocusContract {
 
 export type ToastTone = "neutral" | "success" | "danger";
 
-export interface ToastContract {
-  tone: ToastTone;
-  message: string;
-  /** aria-live 정중도 — 오류는 assertive, 그 외는 polite로 과도한 반복을 피한다. */
-  politeness: "polite" | "assertive";
-  durationMs?: number;
-  onDismiss: () => void;
-}
-
 export interface InlineAlertContract {
   tone: ToastTone;
   title: string;
@@ -210,12 +154,6 @@ export interface InlineAlertContract {
 }
 
 // ── 상태 계열 ──────────────────────────────────────────────────────────────
-
-export interface SkeletonContract {
-  /** 실제 콘텐츠와 동일한 shape을 흉내내기 위한 줄 수. */
-  lines?: number;
-  variant?: "text" | "card" | "ball";
-}
 
 /**
  * FE-003: 되돌릴 수 없는 작업의 확인 절차. 이전에는 `window.confirm`(3곳)·5초 유예

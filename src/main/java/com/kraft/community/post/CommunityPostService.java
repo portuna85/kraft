@@ -1,5 +1,6 @@
 package com.kraft.community.post;
 
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import com.kraft.recommend.RecommendationSetHistoryService;
 import com.kraft.recommend.RecommendationSetSummary;
@@ -207,20 +208,20 @@ public class CommunityPostService {
 
     private CommunityPost findById(Long postId) {
         return communityPostRepository.findById(postId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_POST_NOT_FOUND",
+                .orElseThrow(() -> new ApiException(ApiErrorCode.COMMUNITY_POST_NOT_FOUND,
                         "게시글을 찾을 수 없습니다."));
     }
 
     /** 공개 상태가 아닌 게시글은 소유자 본인에게만 보이며 그 외에는 COMMUNITY_POST_NOT_VISIBLE이다. */
     private void requireVisible(CommunityPost post, Long requesterId) {
         if (post.getStatus() != PostStatus.PUBLISHED && !java.util.Objects.equals(post.getOwnerId(), requesterId)) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_POST_NOT_VISIBLE", "게시글을 찾을 수 없습니다.");
+            throw new ApiException(ApiErrorCode.COMMUNITY_POST_NOT_VISIBLE, "게시글을 찾을 수 없습니다.");
         }
     }
 
     private void requireOwner(CommunityPost post, Long ownerId) {
         if (!java.util.Objects.equals(post.getOwnerId(), ownerId)) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "COMMUNITY_POST_NOT_OWNER", "본인 게시글만 수정·삭제할 수 있습니다.");
+            throw new ApiException(ApiErrorCode.COMMUNITY_POST_NOT_OWNER, "본인 게시글만 수정·삭제할 수 있습니다.");
         }
     }
 
@@ -228,7 +229,7 @@ public class CommunityPostService {
         try {
             return PostCategory.valueOf(category.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "COMMUNITY_CATEGORY_INVALID",
+            throw new ApiException(ApiErrorCode.COMMUNITY_CATEGORY_INVALID,
                     "지원하지 않는 카테고리입니다: " + category);
         }
     }
@@ -239,7 +240,7 @@ public class CommunityPostService {
         }
         String trimmed = query.trim();
         if (trimmed.length() < MIN_QUERY_LENGTH || trimmed.length() > MAX_QUERY_LENGTH) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "COMMUNITY_SEARCH_QUERY_INVALID",
+            throw new ApiException(ApiErrorCode.COMMUNITY_SEARCH_QUERY_INVALID,
                     "검색어는 " + MIN_QUERY_LENGTH + "~" + MAX_QUERY_LENGTH + "자여야 합니다.");
         }
         // 사용자 입력의 LIKE 메타문자를 리터럴로 취급한다. ESCAPE 문자는 저장 데이터에
@@ -257,9 +258,9 @@ public class CommunityPostService {
     private ApiException versionConflict(DataAccessException cause) {
         versionConflictCounter.increment();
         return cause == null
-                ? new ApiException(HttpStatus.CONFLICT, "COMMUNITY_POST_VERSION_CONFLICT",
+                ? new ApiException(ApiErrorCode.COMMUNITY_POST_VERSION_CONFLICT,
                         "다른 곳에서 먼저 수정되었습니다. 새로고침 후 다시 시도하세요.")
-                : new ApiException(HttpStatus.CONFLICT, "COMMUNITY_POST_VERSION_CONFLICT",
+                : new ApiException(ApiErrorCode.COMMUNITY_POST_VERSION_CONFLICT,
                         "다른 곳에서 먼저 수정되었습니다. 새로고침 후 다시 시도하세요.", cause);
     }
 }

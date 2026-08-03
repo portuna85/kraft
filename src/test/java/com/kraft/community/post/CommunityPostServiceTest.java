@@ -1,5 +1,6 @@
 package com.kraft.community.post;
 
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import com.kraft.recommend.RecommendationSetHistoryService;
 import com.kraft.recommend.RecommendationSetSummary;
@@ -120,7 +121,7 @@ class CommunityPostServiceTest {
     @DisplayName("기기 토큰 소유권 검증이 FORBIDDEN이면 계정 소유권으로 재시도한다(귀속된 세트)")
     void create_attachmentDeviceOwnershipForbidden_fallsBackToOwnerOwnership() {
         given(recommendationSetHistoryService.get("hash-1", 5L))
-                .willThrow(new ApiException(HttpStatus.FORBIDDEN, "RECOMMENDATION_SET_NOT_OWNED", "이 추천 세트에 대한 권한이 없습니다."));
+                .willThrow(new ApiException(ApiErrorCode.RECOMMENDATION_SET_NOT_OWNED, "이 추천 세트에 대한 권한이 없습니다."));
         given(recommendationSetHistoryService.getForOwner(1L, 5L))
                 .willReturn(new RecommendationSetSummary(5L, "random", "uniform-random-v1", 1189, "historical-first-prize-v1",
                         List.of(), List.of(), OffsetDateTime.now(CLOCK), List.of()));
@@ -136,9 +137,9 @@ class CommunityPostServiceTest {
     @DisplayName("기기·계정 소유권이 둘 다 아니면 FORBIDDEN을 그대로 전파한다")
     void create_attachmentOwnershipFailsBothWays_throwsApiException() {
         given(recommendationSetHistoryService.get("hash-1", 5L))
-                .willThrow(new ApiException(HttpStatus.FORBIDDEN, "RECOMMENDATION_SET_NOT_OWNED", "이 추천 세트에 대한 권한이 없습니다."));
+                .willThrow(new ApiException(ApiErrorCode.RECOMMENDATION_SET_NOT_OWNED, "이 추천 세트에 대한 권한이 없습니다."));
         given(recommendationSetHistoryService.getForOwner(1L, 5L))
-                .willThrow(new ApiException(HttpStatus.FORBIDDEN, "RECOMMENDATION_SET_NOT_OWNED", "이 추천 세트에 대한 권한이 없습니다."));
+                .willThrow(new ApiException(ApiErrorCode.RECOMMENDATION_SET_NOT_OWNED, "이 추천 세트에 대한 권한이 없습니다."));
 
         assertThatThrownBy(() -> service.create(1L, "글쓴이", "hash-1",
                 new CreatePostRequest("제목", "내용", "RECOMMENDATION_SHARE", 5L)))

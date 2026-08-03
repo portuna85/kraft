@@ -1,5 +1,6 @@
 package com.kraft.community.reaction;
 
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import com.kraft.community.block.CommunityBlockService;
 import com.kraft.community.post.CommunityPost;
@@ -17,7 +18,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -69,10 +69,10 @@ public class CommunityReactionService {
      */
     private CommunityPost requireVisiblePost(Long postId) {
         CommunityPost post = communityPostRepository.findById(postId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_POST_NOT_FOUND",
+                .orElseThrow(() -> new ApiException(ApiErrorCode.COMMUNITY_POST_NOT_FOUND,
                         "게시글을 찾을 수 없습니다."));
         if (post.getStatus() != PostStatus.PUBLISHED) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_POST_NOT_FOUND", "게시글을 찾을 수 없습니다.");
+            throw new ApiException(ApiErrorCode.COMMUNITY_POST_NOT_FOUND, "게시글을 찾을 수 없습니다.");
         }
         return post;
     }
@@ -83,7 +83,7 @@ public class CommunityReactionService {
      */
     private void requireNotBlocked(Long userId, Long postOwnerId) {
         if (communityBlockService.isBlockedEitherWay(userId, postOwnerId)) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "COMMUNITY_BLOCKED_INTERACTION",
+            throw new ApiException(ApiErrorCode.COMMUNITY_BLOCKED_INTERACTION,
                     "차단 관계인 사용자의 게시글에는 반응을 남길 수 없습니다.");
         }
     }

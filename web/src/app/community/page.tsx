@@ -21,8 +21,35 @@ type Props = {
 
 const SORT_LABELS: Record<PostSort, string> = { latest: "최신", weekly_popular: "이번 주 인기" };
 
+// M-11: 백엔드가 실제로 허용하는 범위와 맞춘다(CommunityPostService.java의
+// MIN_QUERY_LENGTH/MAX_QUERY_LENGTH) — 범위 밖 검색어는 400으로 거부돼 페이지 전체가
+// 최상위 error.tsx로 떨어졌다(§P1-03 정책상 조용히 감추지 않기 때문에 더 눈에 띄었다).
+const MIN_QUERY_LENGTH = 2;
+const MAX_QUERY_LENGTH = 50;
+const MAX_PAGE = 100_000;
+
 function isPostCategory(value: string | undefined): value is PostCategory {
   return (CATEGORY_OPTIONS as readonly string[]).includes(value ?? "");
+}
+
+/**
+ * M-11: `Number(pageParam) || 0`은 Number.isInteger/상한 검사가 없어 `?page=Infinity`,
+ * `?page=1.5`, `?page=1e21` 같은 값이 그대로 Spring의 int/Pageable 파라미터로 나가
+ * 400/500이 됐고, 페이지네이션 UI 산술에도 쓰여 `Infinity / N`이 렌더됐다. 유한한
+ * 안전 정수만 통과시키고 비정상 값은 조용히 0페이지로 되돌린다.
+ */
+export function parsePage(raw: string | undefined): number {
+  if (!raw) return 0;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 0) return 0;
+  return Math.min(n, MAX_PAGE);
+}
+
+/** 직접 URL 접근은 검색창의 minLength/maxLength HTML 제약을 우회할 수 있다. */
+export function normalizeQuery(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  const trimmed = raw.trim().slice(0, MAX_QUERY_LENGTH);
+  return trimmed.length >= MIN_QUERY_LENGTH ? trimmed : undefined;
 }
 
 function buildHref(params: {
@@ -41,8 +68,9 @@ function buildHref(params: {
 }
 
 export default async function CommunityPage({ searchParams }: Props) {
-  const { page: pageParam, category: categoryParam, sort: sortParam, query } = await searchParams;
-  const page = Math.max(0, Number(pageParam ?? 0) || 0);
+  const { page: pageParam, category: categoryParam, sort: sortParam, query: queryParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const query = normalizeQuery(queryParam);
   const category = isPostCategory(categoryParam) ? categoryParam : undefined;
   const sort: PostSort = sortParam === "weekly_popular" ? "weekly_popular" : "latest";
   const nonce = (await headers()).get("x-nonce") ?? undefined;

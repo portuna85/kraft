@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getCommunityPostFresh } from "@/lib/community-api";
+import { getCommunityPost } from "@/lib/community-api";
 import { BackendError } from "@/lib/api";
 import { PostForm } from "@/features/community/post-form";
 import { PageHeader } from "@/components/page-header";
@@ -21,7 +21,7 @@ export default async function CommunityPostEditPage({ params }: Props) {
 
   let post;
   try {
-    post = await getCommunityPostFresh(postId);
+    post = await getCommunityPost(postId);
   } catch (error) {
     if (error instanceof BackendError && error.status === 404) {
       notFound();

@@ -1,8 +1,8 @@
 package com.kraft.community.auth;
 
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import java.util.Map;
-import org.springframework.http.HttpStatus;
 
 /**
  * provider별 OAuth2 사용자 정보 응답을 정규화한 불변 표현. Google과 Naver는 응답 구조가
@@ -30,7 +30,7 @@ public final class CommunityOAuthAttributes {
         return switch (registrationId) {
             case "google" -> ofGoogle(attributes);
             case "naver" -> ofNaver(attributes);
-            default -> throw new ApiException(HttpStatus.BAD_REQUEST, "OAUTH_PROVIDER_UNSUPPORTED",
+            default -> throw new ApiException(ApiErrorCode.OAUTH_PROVIDER_UNSUPPORTED,
                     "지원하지 않는 로그인 제공자입니다: " + registrationId);
         };
     }
@@ -42,7 +42,7 @@ public final class CommunityOAuthAttributes {
         if (providerId == null || providerId.length() > MAX_PROVIDER_ID_LENGTH
                 || nickname == null || nickname.length() > MAX_NICKNAME_LENGTH
                 || exceedsLength(profileImageUrl, MAX_PROFILE_IMAGE_URL_LENGTH)) {
-            throw new ApiException(HttpStatus.UNAUTHORIZED, "OAUTH_ATTRIBUTE_MISSING",
+            throw new ApiException(ApiErrorCode.OAUTH_ATTRIBUTE_MISSING,
                     "Google 인증 응답의 사용자 정보가 올바르지 않습니다.");
         }
         return new CommunityOAuthAttributes("google", providerId, nickname, profileImageUrl);
@@ -52,7 +52,7 @@ public final class CommunityOAuthAttributes {
     private static CommunityOAuthAttributes ofNaver(Map<String, Object> attributes) {
         Object responseAttribute = attributes.get("response");
         if (!(responseAttribute instanceof Map)) {
-            throw new ApiException(HttpStatus.UNAUTHORIZED, "OAUTH_ATTRIBUTE_MISSING",
+            throw new ApiException(ApiErrorCode.OAUTH_ATTRIBUTE_MISSING,
                     "Naver 인증 응답 형식이 올바르지 않습니다.");
         }
         Map<String, Object> response = (Map<String, Object>) responseAttribute;
@@ -60,15 +60,15 @@ public final class CommunityOAuthAttributes {
         String nickname = stripToNull(asString(response.get("nickname")));
         String profileImageUrl = stripToNull(asString(response.get("profile_image")));
         if (providerId == null || providerId.length() > MAX_PROVIDER_ID_LENGTH) {
-            throw new ApiException(HttpStatus.UNAUTHORIZED, "OAUTH_ATTRIBUTE_MISSING",
+            throw new ApiException(ApiErrorCode.OAUTH_ATTRIBUTE_MISSING,
                     "Naver 인증 응답에서 사용자 식별자를 확인할 수 없습니다.");
         }
         if (nickname == null || nickname.length() > MAX_NICKNAME_LENGTH) {
-            throw new ApiException(HttpStatus.UNAUTHORIZED, "OAUTH_ATTRIBUTE_MISSING",
+            throw new ApiException(ApiErrorCode.OAUTH_ATTRIBUTE_MISSING,
                     "Naver 인증 응답의 닉네임이 올바르지 않습니다.");
         }
         if (exceedsLength(profileImageUrl, MAX_PROFILE_IMAGE_URL_LENGTH)) {
-            throw new ApiException(HttpStatus.UNAUTHORIZED, "OAUTH_ATTRIBUTE_MISSING",
+            throw new ApiException(ApiErrorCode.OAUTH_ATTRIBUTE_MISSING,
                     "Naver 인증 응답의 프로필 이미지 URL이 올바르지 않습니다.");
         }
         return new CommunityOAuthAttributes("naver", providerId, nickname, profileImageUrl);

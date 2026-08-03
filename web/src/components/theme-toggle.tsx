@@ -1,41 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-const STORAGE_KEY = "kraft-theme";
-
-function readTheme(): boolean {
-  if (typeof document === "undefined") return false;
-  return document.documentElement.dataset.theme === "dark";
-}
+import { useSyncExternalStore } from "react";
+import { getServerSnapshot, readTheme, setTheme, subscribeToTheme } from "@/lib/theme-store";
 
 export function ThemeToggle() {
-  // 서버는 항상 false로 렌더링하므로(document 없음), 초기 클라이언트 렌더도 동일하게
-  // false로 시작해 hydration mismatch를 피한다. mount 후 실제 테마로 한 번 갱신한다.
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    function syncTheme() {
-      setIsDark(readTheme());
-    }
-
-    syncTheme();
-    window.addEventListener("storage", syncTheme);
-    return () => window.removeEventListener("storage", syncTheme);
-  }, []);
+  // M-10: useSyncExternalStore가 SSR/hydration 시점에는 getServerSnapshot(항상 false —
+  // 인라인 초기화 스크립트가 반영되기 전 서버 렌더와 동일)을, 그 이후에는 실제 DOM
+  // 테마를 반환한다. 같은 문서의 다른 ThemeToggle 인스턴스가 테마를 바꾸면 이 구독을
+  // 통해 즉시 갱신된다 — 예전에는 window "storage"만 들어 다른 탭에서만 반응했다.
+  const isDark = useSyncExternalStore(subscribeToTheme, readTheme, getServerSnapshot);
 
   function toggle() {
-    const next = !isDark;
-    setIsDark(next);
-
-    if (next) {
-      document.documentElement.setAttribute("data-theme", "dark");
-      localStorage.setItem(STORAGE_KEY, "dark");
-      return;
-    }
-
-    document.documentElement.removeAttribute("data-theme");
-    localStorage.setItem(STORAGE_KEY, "light");
+    setTheme(!isDark);
   }
 
   return (

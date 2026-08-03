@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LottoBalls } from "@/ui/domain/lotto-balls";
-import { getDeviceToken } from "@/lib/device-token";
 import { browserFetch, BrowserApiError } from "@/lib/browser-api";
 import { EmptyState } from "@/ui/primitives/empty-state";
 import { ErrorState } from "@/ui/primitives/error-state";
@@ -33,6 +32,32 @@ type MatchState = "idle" | "loading" | "success" | "error";
 
 function isWin(prizeTier: string): boolean {
   return prizeTier !== "낙첨";
+}
+
+function isSavedNumber(body: unknown): body is SavedNumber {
+  if (typeof body !== "object" || body === null) return false;
+  const b = body as Record<string, unknown>;
+  return typeof b.id === "number" && Array.isArray(b.numbers);
+}
+
+function isSavedNumberArray(body: unknown): body is SavedNumber[] {
+  return Array.isArray(body) && body.every(isSavedNumber);
+}
+
+function isSavedNumberMatchResultArray(body: unknown): body is SavedNumberMatchResult[] {
+  return (
+    Array.isArray(body) &&
+    body.every((item) => {
+      if (typeof item !== "object" || item === null) return false;
+      const i = item as Record<string, unknown>;
+      return (
+        isSavedNumber(i.savedNumber) &&
+        typeof i.round === "number" &&
+        typeof i.matchedCount === "number" &&
+        typeof i.prizeTier === "string"
+      );
+    })
+  );
 }
 
 const RECENT_ROUND_OPTIONS = 20;
@@ -71,7 +96,7 @@ export function SavedNumbersClient({ latestRound }: Props) {
     }
     const request = useOwnerScope
       ? getMySavedNumbers()
-      : browserFetch<SavedNumber[]>("/api/v1/saved", { headers: { "X-Device-Token": getDeviceToken() } });
+      : browserFetch<SavedNumber[]>("/api/v1/saved", { includeDeviceToken: true }, isSavedNumberArray);
     request
       .then((savedItems) => {
         setItems(savedItems);
@@ -106,7 +131,8 @@ export function SavedNumbersClient({ latestRound }: Props) {
       ? getMySavedNumberMatches(selectedRound)
       : browserFetch<SavedNumberMatchResult[]>(
           `/api/v1/saved/matches?round=${encodeURIComponent(selectedRound)}`,
-          { headers: { "X-Device-Token": getDeviceToken() } },
+          { includeDeviceToken: true },
+          isSavedNumberMatchResultArray,
         );
     request
       .then((results) => {
@@ -144,7 +170,7 @@ export function SavedNumbersClient({ latestRound }: Props) {
       } else {
         await browserFetch(`/api/v1/saved/${id}`, {
           method: "DELETE",
-          headers: { "X-Device-Token": getDeviceToken() },
+          includeDeviceToken: true,
         });
       }
       setItems((prev) => prev.filter((x) => x.id !== id));

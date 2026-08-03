@@ -6,6 +6,7 @@ import {
 } from "@/lib/revalidate";
 import type { components } from "@/lib/generated/api-types";
 import { backendBaseUrl } from "@/lib/backend-url";
+import { composeAbortSignal } from "@/lib/transport-signal";
 
 const publicBaseUrl = resolvePublicBaseUrl();
 
@@ -55,9 +56,9 @@ export class BackendError extends Error {
 }
 
 async function fetchJson<T>(path: string, init?: RequestInitWithNext): Promise<T> {
-  // W-1: SSR 렌더 무한 대기 방지
-  const signal = AbortSignal.timeout(5000);
-  const response = await fetch(`${backendBaseUrl}${path}`, { signal, ...init });
+  // W-1: SSR 렌더 무한 대기 방지. 호출자 signal이 있으면 둘 다 반영한다(M-1).
+  const signal = composeAbortSignal(5000, init?.signal);
+  const response = await fetch(`${backendBaseUrl}${path}`, { ...init, signal });
   if (!response.ok) {
     let code = "BACKEND_ERROR";
     let message = `Backend request failed: ${path} (${response.status})`;

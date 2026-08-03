@@ -1,11 +1,11 @@
 package com.kraft.statistics;
 
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import jakarta.validation.Valid;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.springframework.http.CacheControl;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,7 +36,7 @@ public class StatisticsApiController {
             body = statisticsService.getFrequencyStats();
         } else {
             if (!ALLOWED_LIMITS.contains(limit)) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_LIMIT",
+                throw new ApiException(ApiErrorCode.INVALID_LIMIT,
                         "limit 허용값: 100, 200, 500");
             }
             body = statisticsService.getFrequencyStatsByLimit(limit);
@@ -60,7 +60,7 @@ public class StatisticsApiController {
             body = statisticsService.getCompanionStats();
         } else {
             if (ball < 1 || ball > 45) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_BALL",
+                throw new ApiException(ApiErrorCode.INVALID_BALL,
                         "ball 허용 범위: 1~45");
             }
             body = statisticsService.getCompanionStatsByBall(ball);

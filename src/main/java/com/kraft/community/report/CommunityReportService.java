@@ -1,5 +1,6 @@
 package com.kraft.community.report;
 
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import com.kraft.community.comment.CommunityCommentRepository;
 import com.kraft.community.post.CommunityPostRepository;
@@ -9,7 +10,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,7 +52,7 @@ public class CommunityReportService {
 
         if (communityReportRepository.existsByReporterUserIdAndTargetTypeAndTargetId(
                 reporterUserId, request.targetType(), request.targetId())) {
-            throw new ApiException(HttpStatus.CONFLICT, "REPORT_ALREADY_EXISTS", "이미 신고한 대상입니다.");
+            throw new ApiException(ApiErrorCode.REPORT_ALREADY_EXISTS, "이미 신고한 대상입니다.");
         }
         try {
             communityReportRepository.save(new CommunityReport(
@@ -61,7 +61,7 @@ public class CommunityReportService {
         } catch (DataIntegrityViolationException concurrentReport) {
             // B-P0-4: exists 확인과 save 사이에 동시 신고가 먼저 uk_community_reports_reporter_target을
             // 채운 경쟁 — 500 대신 신규 신고와 같은 409로 통일한다.
-            throw new ApiException(HttpStatus.CONFLICT, "REPORT_ALREADY_EXISTS", "이미 신고한 대상입니다.", concurrentReport);
+            throw new ApiException(ApiErrorCode.REPORT_ALREADY_EXISTS, "이미 신고한 대상입니다.", concurrentReport);
         }
         createdCounter.increment();
     }
@@ -73,7 +73,7 @@ public class CommunityReportService {
             case USER -> communityUserRepository.existsById(targetId);
         };
         if (!exists) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "REPORT_TARGET_NOT_FOUND", "신고 대상을 찾을 수 없습니다.");
+            throw new ApiException(ApiErrorCode.REPORT_TARGET_NOT_FOUND, "신고 대상을 찾을 수 없습니다.");
         }
     }
 }

@@ -8,6 +8,8 @@
  * 타임아웃도 없어 백엔드가 응답하지 않으면 버튼이 계속 잠긴 채로 남았다.
  */
 
+import { composeAbortSignal } from "@/lib/transport-signal";
+
 /** 다른 브라우저 호출과 같은 기준(lib/browser-api.ts)을 쓴다. */
 const OPS_TIMEOUT_MS = 5000;
 
@@ -23,8 +25,8 @@ export async function callOps<T>(url: string, init?: RequestInit): Promise<OpsRe
   try {
     response = await fetch(url, {
       cache: "no-store",
-      signal: AbortSignal.timeout(OPS_TIMEOUT_MS),
       ...init,
+      signal: composeAbortSignal(OPS_TIMEOUT_MS, init?.signal),
     });
   } catch (error) {
     // AbortSignal.timeout()은 TimeoutError로 중단한다 — 응답이 없는 것과 구분해 알린다.

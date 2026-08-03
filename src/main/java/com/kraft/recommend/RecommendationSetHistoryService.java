@@ -1,5 +1,6 @@
 package com.kraft.recommend;
 
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import com.kraft.common.lotto.LottoBitmask;
 import com.kraft.common.lotto.LottoNumberCodec;
@@ -11,7 +12,6 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,15 +54,18 @@ public class RecommendationSetHistoryService {
                 clientTokenHash, strategy, algorithmVersion, historyThroughRound, exclusionPolicyVersion,
                 lockedStorage, excludedStorage, createdAt));
 
-        for (RecommendationItemView item : items) {
-            String explanationCodes = item.explanationCodes().isEmpty()
-                    ? null
-                    : item.explanationCodes().stream().map(Enum::name).reduce((a, b) -> a + "," + b).orElse(null);
-            recommendationItemRepository.save(new RecommendationItem(
-                    set.getId(), item.position(), lottoNumberCodec.toStorageValueSubset(item.numbers()),
-                    LottoBitmask.of(item.numbers()),
-                    item.score(), explanationCodes));
-        }
+        // M-8: 항목마다 save()를 개별 호출하면 N+1이 되고, application-prod.yml의
+        // hibernate.jdbc.batch_size도 개별 save()에는 적용되지 않는다 — saveAll()로 한 번에
+        // 묶어야 배치 insert가 실제로 일어난다.
+        List<RecommendationItem> entities = items.stream()
+                .map(item -> new RecommendationItem(
+                        set.getId(), item.position(), lottoNumberCodec.toStorageValueSubset(item.numbers()),
+                        LottoBitmask.of(item.numbers()), item.score(),
+                        item.explanationCodes().isEmpty()
+                                ? null
+                                : item.explanationCodes().stream().map(Enum::name).collect(Collectors.joining(","))))
+                .toList();
+        recommendationItemRepository.saveAll(entities);
         return set.getId();
     }
 
@@ -134,7 +137,7 @@ public class RecommendationSetHistoryService {
     @Transactional(readOnly = true)
     public RecommendationSetSummary getForAttachment(long id) {
         RecommendationSet set = recommendationSetRepository.findById(id)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "RECOMMENDATION_SET_NOT_FOUND",
+                .orElseThrow(() -> new ApiException(ApiErrorCode.RECOMMENDATION_SET_NOT_FOUND,
                         "추천 세트를 찾을 수 없습니다."));
         return toSummary(set);
     }
@@ -155,7 +158,7 @@ public class RecommendationSetHistoryService {
                 .collect(Collectors.toMap(RecommendationSet::getId, set -> set));
         for (Long id : distinctIds) {
             if (!setsById.containsKey(id)) {
-                throw new ApiException(HttpStatus.NOT_FOUND, "RECOMMENDATION_SET_NOT_FOUND", "추천 세트를 찾을 수 없습니다.");
+                throw new ApiException(ApiErrorCode.RECOMMENDATION_SET_NOT_FOUND, "추천 세트를 찾을 수 없습니다.");
             }
         }
         Map<Long, List<RecommendationItemView>> itemsBySetId = itemViewsBySetId(distinctIds);
@@ -179,7 +182,7 @@ public class RecommendationSetHistoryService {
 
     private void deleteOwnedSet(RecommendationSet set) {
         if (attachmentChecker.isAttachedToPost(set.getId())) {
-            throw new ApiException(HttpStatus.CONFLICT, "RECOMMENDATION_SET_ATTACHED_TO_POST",
+            throw new ApiException(ApiErrorCode.RECOMMENDATION_SET_ATTACHED_TO_POST,
                     "커뮤니티 게시글에 첨부된 추천 세트는 삭제할 수 없습니다.");
         }
         recommendationItemRepository.deleteBySetId(set.getId());
@@ -188,14 +191,14 @@ public class RecommendationSetHistoryService {
 
     private RecommendationSet findById(long id) {
         return recommendationSetRepository.findById(id)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "RECOMMENDATION_SET_NOT_FOUND",
+                .orElseThrow(() -> new ApiException(ApiErrorCode.RECOMMENDATION_SET_NOT_FOUND,
                         "추천 세트를 찾을 수 없습니다."));
     }
 
     private RecommendationSet findOwnedByDevice(String clientTokenHash, long id) {
         RecommendationSet set = findById(id);
         if (!clientTokenHash.equals(set.getClientTokenHash())) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "RECOMMENDATION_SET_NOT_OWNED",
+            throw new ApiException(ApiErrorCode.RECOMMENDATION_SET_NOT_OWNED,
                     "이 추천 세트에 대한 권한이 없습니다.");
         }
         return set;
@@ -204,7 +207,7 @@ public class RecommendationSetHistoryService {
     private RecommendationSet findOwnedByOwner(Long ownerUserId, long id) {
         RecommendationSet set = findById(id);
         if (!ownerUserId.equals(set.getOwnerUserId())) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "RECOMMENDATION_SET_NOT_OWNED",
+            throw new ApiException(ApiErrorCode.RECOMMENDATION_SET_NOT_OWNED,
                     "이 추천 세트에 대한 권한이 없습니다.");
         }
         return set;

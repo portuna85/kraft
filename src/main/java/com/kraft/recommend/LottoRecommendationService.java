@@ -1,5 +1,6 @@
 package com.kraft.recommend;
 
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import com.kraft.common.lotto.LottoBitmask;
 import com.kraft.common.lotto.LottoNumberCodec;
@@ -23,7 +24,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.IntUnaryOperator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionPhase;
@@ -273,7 +273,7 @@ public class LottoRecommendationService {
             if (status.databaseVersion() >= 0 && snapshot.version() != status.databaseVersion()) {
                 refreshHistoricalCombinations();
             }
-            throw fail(HttpStatus.SERVICE_UNAVAILABLE, "RECOMMENDATION_HISTORY_NOT_READY",
+            throw fail(ApiErrorCode.RECOMMENDATION_HISTORY_NOT_READY,
                     "역대 1등 배제 이력이 아직 준비되지 않았습니다(스냅샷 버전 %d, DB 버전 %d, 회차 수 %d, 최초 누락 회차 %s)."
                             .formatted(status.snapshotVersion(), status.databaseVersion(), status.roundCount(),
                                     status.firstMissingRound()));
@@ -302,7 +302,7 @@ public class LottoRecommendationService {
                     && historySnapshot.version() != statusAfterSampling.databaseVersion()) {
                 refreshHistoricalCombinations();
             }
-            throw fail(HttpStatus.SERVICE_UNAVAILABLE, "RECOMMENDATION_HISTORY_NOT_READY",
+            throw fail(ApiErrorCode.RECOMMENDATION_HISTORY_NOT_READY,
                     "추천 중 당첨 이력 버전이 변경되어 다시 확인해야 합니다.");
         }
         meterRegistry.counter("kraft_lotto_recommend_success_total", "strategy", ctx.strategy()).increment();
@@ -341,7 +341,7 @@ public class LottoRecommendationService {
                 ? List.of()
                 : lottoNumberCodec.normalizeSubset(request.lockedNumbers());
         if (locked.size() > MAX_LOCKED_NUMBERS) {
-            throw fail(HttpStatus.BAD_REQUEST, "TOO_MANY_LOCKED_NUMBERS",
+            throw fail(ApiErrorCode.TOO_MANY_LOCKED_NUMBERS,
                     "고정 번호는 최대 " + MAX_LOCKED_NUMBERS + "개까지 지정할 수 있습니다.");
         }
 
@@ -350,7 +350,7 @@ public class LottoRecommendationService {
                 : new HashSet<>(lottoNumberCodec.normalizeSubset(request.excludedNumbers()));
 
         if (!Collections.disjoint(locked, excluded)) {
-            throw fail(HttpStatus.BAD_REQUEST, "LOCKED_EXCLUDED_CONFLICT",
+            throw fail(ApiErrorCode.LOCKED_EXCLUDED_CONFLICT,
                     "고정 번호와 제외 번호가 겹칠 수 없습니다.");
         }
 
@@ -369,7 +369,7 @@ public class LottoRecommendationService {
             String normalized = strategyParam.trim().toLowerCase();
             return switch (normalized) {
                 case STRATEGY_RANDOM, STRATEGY_BALANCED, STRATEGY_REDUCE_SHARED_WINNER_RISK -> normalized;
-                default -> throw fail(HttpStatus.BAD_REQUEST, "INVALID_RECOMMENDATION_STRATEGY",
+                default -> throw fail(ApiErrorCode.INVALID_RECOMMENDATION_STRATEGY,
                         "지원하지 않는 추천 전략입니다: " + strategyParam);
             };
         }
@@ -380,7 +380,7 @@ public class LottoRecommendationService {
 
     private void validateFeasibility(RequestContext ctx, HistorySnapshot snapshot) {
         if (45 - ctx.excluded().size() < 6) {
-            throw fail(HttpStatus.BAD_REQUEST, "TOO_MANY_EXCLUSIONS",
+            throw fail(ApiErrorCode.TOO_MANY_EXCLUSIONS,
                     "제외 번호를 적용한 뒤에도 최소 6개 번호가 남아야 합니다.");
         }
 
@@ -395,7 +395,7 @@ public class LottoRecommendationService {
         long allowedPossible = possible - compatibleHistoricalCount;
         if (ctx.count() > allowedPossible && !STRATEGY_BALANCED.equals(ctx.strategy())) {
             // BALANCED는 부족분을 오류로 취급하지 않고 있는 만큼만 반환한다.
-            throw fail(HttpStatus.BAD_REQUEST, "INSUFFICIENT_UNIQUE_COMBINATIONS",
+            throw fail(ApiErrorCode.INSUFFICIENT_UNIQUE_COMBINATIONS,
                     "요청한 조합 수(" + ctx.count() + ")가 역대 1등 조합을 제외하고 가능한 고유 조합 수("
                             + allowedPossible + ")를 초과합니다.");
         }
@@ -427,7 +427,7 @@ public class LottoRecommendationService {
         // 이론상 가능한 조합 수(allowedPossible) 안에서도, 역대 당첨 조합 회피와 중복 회피가
         // 겹쳐 maxAttempts 안에 count만큼 못 채울 수 있다 — 부족분을 조용히 반환하지 않고 명시한다.
         if (recommendations.size() < ctx.count()) {
-            throw fail(HttpStatus.BAD_REQUEST, "INSUFFICIENT_UNIQUE_COMBINATIONS",
+            throw fail(ApiErrorCode.INSUFFICIENT_UNIQUE_COMBINATIONS,
                     "생성 가능한 고유 조합이 부족합니다(생성 %d / 요청 %d)."
                             .formatted(recommendations.size(), ctx.count()));
         }
@@ -472,15 +472,15 @@ public class LottoRecommendationService {
             result.add(new RecommendationItemView(position++, item.numbers(), item.score(), item.explanationCodes()));
         }
         if (result.isEmpty() && ctx.count() > 0) {
-            throw fail(HttpStatus.BAD_REQUEST, "INSUFFICIENT_UNIQUE_COMBINATIONS",
+            throw fail(ApiErrorCode.INSUFFICIENT_UNIQUE_COMBINATIONS,
                     "생성 가능한 고유 조합이 없습니다.");
         }
         return result;
     }
 
-    private ApiException fail(HttpStatus status, String code, String message) {
-        meterRegistry.counter("kraft_lotto_recommend_failures_total", "code", code).increment();
-        return new ApiException(status, code, message);
+    private ApiException fail(ApiErrorCode errorCode, String message) {
+        meterRegistry.counter("kraft_lotto_recommend_failures_total", "code", errorCode.name()).increment();
+        return new ApiException(errorCode, message);
     }
 
     /**

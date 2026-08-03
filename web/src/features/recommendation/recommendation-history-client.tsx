@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { LottoBalls } from "@/ui/domain/lotto-balls";
-import { getDeviceToken } from "@/lib/device-token";
 import { formatDateTime } from "@/lib/format";
 import { browserFetch, BrowserApiError } from "@/lib/browser-api";
 import { deleteMyRecommendationSet, getMyRecommendationSets } from "@/lib/community-client";
@@ -21,6 +20,21 @@ const STRATEGY_LABELS = {
 } as const;
 
 const PAGE_SIZE = 20;
+
+function isRecommendationSetSummaryPage(
+  body: unknown
+): body is PageResponse<RecommendationSetSummary> {
+  if (typeof body !== "object" || body === null) return false;
+  const b = body as Record<string, unknown>;
+  return (
+    Array.isArray(b.items) &&
+    b.items.every((item) => {
+      if (typeof item !== "object" || item === null) return false;
+      const i = item as Record<string, unknown>;
+      return typeof i.id === "number" && typeof i.strategy === "string" && Array.isArray(i.items);
+    })
+  );
+}
 
 /** 조회 결과 한 덩어리. items만 따로 들면 페이지 정보와 어긋날 수 있다. */
 type History = {
@@ -54,7 +68,8 @@ export function RecommendationHistoryClient() {
         ? getMyRecommendationSets(targetPage, PAGE_SIZE)
         : browserFetch<PageResponse<RecommendationSetSummary>>(
             `/api/v1/recommendation-sets?page=${targetPage}&size=${PAGE_SIZE}`,
-            { headers: { "X-Device-Token": getDeviceToken() } }
+            { includeDeviceToken: true },
+            isRecommendationSetSummaryPage
           );
     },
     [useOwnerScope]
@@ -120,7 +135,7 @@ export function RecommendationHistoryClient() {
       } else {
         await browserFetch(`/api/v1/recommendation-sets/${id}`, {
           method: "DELETE",
-          headers: { "X-Device-Token": getDeviceToken() },
+          includeDeviceToken: true,
         });
       }
       setState((prev) =>

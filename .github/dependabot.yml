@@ -1,0 +1,43 @@
+# M-14: scripts/ci/detect-changes.sh:46은 이 파일이 있다고 가정하고 변경 감지 대상으로
+# 취급했지만 실제로는 존재하지 않았다 — Gradle·npm·GitHub Actions·Docker 베이스 이미지
+# 갱신이 전부 수동이었다. gradle.lockfile/package-lock.json이 이미 있어 diff가 명확하다.
+version: 2
+updates:
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "npm"
+    directory: "/web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+
+  # 워크플로 전체가 액션을 SHA로 고정(버전 주석 병기)해두므로, dependabot이 그 SHA와
+  # 주석을 함께 갱신한다.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+
+  # 백엔드 이미지(Dockerfile) — digest 고정 베이스 이미지 갱신.
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+
+  # 웹 이미지(web/Dockerfile) — 별도 디렉터리라 따로 등록해야 스캔된다.
+  - package-ecosystem: "docker"
+    directory: "/web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3

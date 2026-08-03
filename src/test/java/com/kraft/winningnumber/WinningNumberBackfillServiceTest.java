@@ -1,5 +1,6 @@
 package com.kraft.winningnumber;
 
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import java.time.LocalDate;
 import java.util.List;
@@ -16,7 +17,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
@@ -62,7 +62,7 @@ class WinningNumberBackfillServiceTest {
         given(fetchClient.fetchRound(1)).willReturn(request(1));
         given(fetchClient.fetchRound(2)).willReturn(request(2));
         given(fetchClient.fetchRound(3)).willReturn(request(3));
-        given(fetchClient.fetchRound(4)).willThrow(sourceException("LOTTO_SOURCE_ROUND_NOT_FOUND"));
+        given(fetchClient.fetchRound(4)).willThrow(sourceException(ApiErrorCode.LOTTO_SOURCE_ROUND_NOT_FOUND));
         given(commandService.upsertWithResult(request(1))).willReturn(changedResult());
         given(commandService.upsertWithResult(request(2))).willReturn(changedResult());
         given(commandService.upsertWithResult(request(3))).willReturn(changedResult());
@@ -82,7 +82,7 @@ class WinningNumberBackfillServiceTest {
         given(repository.findAllRoundsOrderByRoundAsc()).willReturn(
                 java.util.stream.IntStream.rangeClosed(1, 500).boxed().toList()
         );
-        given(fetchClient.fetchRound(501)).willThrow(sourceException("LOTTO_SOURCE_ROUND_NOT_FOUND"));
+        given(fetchClient.fetchRound(501)).willThrow(sourceException(ApiErrorCode.LOTTO_SOURCE_ROUND_NOT_FOUND));
 
         BackfillResult result = service.backfillAll();
 
@@ -98,7 +98,7 @@ class WinningNumberBackfillServiceTest {
     void backfillAll_sparseDbStartsFromFirstMissingRound() {
         given(repository.findAllRoundsOrderByRoundAsc()).willReturn(List.of(1, 2, 4, 1228));
         given(fetchClient.fetchRound(3)).willReturn(request(3));
-        given(fetchClient.fetchRound(4)).willThrow(sourceException("LOTTO_SOURCE_ROUND_NOT_FOUND"));
+        given(fetchClient.fetchRound(4)).willThrow(sourceException(ApiErrorCode.LOTTO_SOURCE_ROUND_NOT_FOUND));
         given(commandService.upsertWithResult(request(3))).willReturn(changedResult());
 
         BackfillResult result = service.backfillAll();
@@ -115,9 +115,9 @@ class WinningNumberBackfillServiceTest {
     void backfillAll_transientErrorRetriesSameRoundAndCollects() {
         given(repository.findAllRoundsOrderByRoundAsc()).willReturn(List.of());
         given(fetchClient.fetchRound(1))
-                .willThrow(sourceException("LOTTO_SOURCE_CIRCUIT_OPEN"))
+                .willThrow(sourceException(ApiErrorCode.LOTTO_SOURCE_CIRCUIT_OPEN))
                 .willReturn(request(1));
-        given(fetchClient.fetchRound(2)).willThrow(sourceException("LOTTO_SOURCE_ROUND_NOT_FOUND"));
+        given(fetchClient.fetchRound(2)).willThrow(sourceException(ApiErrorCode.LOTTO_SOURCE_ROUND_NOT_FOUND));
         given(commandService.upsertWithResult(request(1))).willReturn(changedResult());
 
         BackfillResult result = service.backfillAll();
@@ -134,8 +134,7 @@ class WinningNumberBackfillServiceTest {
     @DisplayName("일시적 소스 오류가 최대 재시도 횟수를 초과하면 중단한다")
     void backfillAll_transientErrorsStopAfterMaxRetriesExceeded() {
         RuntimeException temporary = new ApiException(
-                HttpStatus.SERVICE_UNAVAILABLE,
-                "LOTTO_SOURCE_CIRCUIT_OPEN",
+                ApiErrorCode.LOTTO_SOURCE_CIRCUIT_OPEN,
                 "temporary source failure"
         );
         given(repository.findAllRoundsOrderByRoundAsc()).willReturn(List.of());
@@ -157,8 +156,7 @@ class WinningNumberBackfillServiceTest {
     void backfillAll_disabledSourceStopsImmediately() {
         given(repository.findAllRoundsOrderByRoundAsc()).willReturn(List.of());
         given(fetchClient.fetchRound(1)).willThrow(new ApiException(
-                HttpStatus.SERVICE_UNAVAILABLE,
-                "LOTTO_SOURCE_DISABLED",
+                ApiErrorCode.LOTTO_SOURCE_DISABLED,
                 "source disabled"
         ));
 
@@ -176,7 +174,7 @@ class WinningNumberBackfillServiceTest {
     @DisplayName("LOTTO_SOURCE_VALIDATION_ERROR는 재시도 없이 즉시 중단된다")
     void backfillAll_validationError_stopsImmediately() {
         given(repository.findAllRoundsOrderByRoundAsc()).willReturn(List.of());
-        given(fetchClient.fetchRound(1)).willThrow(sourceException("LOTTO_SOURCE_VALIDATION_ERROR"));
+        given(fetchClient.fetchRound(1)).willThrow(sourceException(ApiErrorCode.LOTTO_SOURCE_VALIDATION_ERROR));
 
         BackfillResult result = service.backfillAll();
 
@@ -189,7 +187,7 @@ class WinningNumberBackfillServiceTest {
     @DisplayName("필드 파싱 실패는 데이터의 끝이 아닌 일시 오류로 간주해 재시도 후 중단한다")
     void backfillAll_parseErrorIsTransientNotEndOfData() {
         given(repository.findAllRoundsOrderByRoundAsc()).willReturn(List.of());
-        given(fetchClient.fetchRound(1)).willThrow(sourceException("LOTTO_SOURCE_PARSE_ERROR"));
+        given(fetchClient.fetchRound(1)).willThrow(sourceException(ApiErrorCode.LOTTO_SOURCE_PARSE_ERROR));
 
         BackfillResult result = service.backfillAll();
 
@@ -270,7 +268,7 @@ class WinningNumberBackfillServiceTest {
         return new WinningNumberUpsertResult(null, true);
     }
 
-    private RuntimeException sourceException(String code) {
-        return new ApiException(HttpStatus.BAD_GATEWAY, code, code);
+    private RuntimeException sourceException(ApiErrorCode errorCode) {
+        return new ApiException(errorCode, errorCode.name());
     }
 }

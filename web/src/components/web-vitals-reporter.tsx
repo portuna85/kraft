@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { onCLS, onINP, onLCP, type Metric } from "web-vitals";
+import type { Metric } from "web-vitals";
 import { BP } from "@/lib/breakpoints";
 
 // F-06: 실사용자 측정(RUM)을 /api/vitals로 보낸다. 개인정보(IP, User-Agent, 쿠키,
@@ -47,9 +47,18 @@ function send(metric: Metric) {
 
 export function WebVitalsReporter() {
   useEffect(() => {
-    onLCP(send);
-    onINP(send);
-    onCLS(send);
+    // M-7: web-vitals를 정적 import하면 모든 라우트의 셸 번들에 실린다. 측정은
+    // 마운트 이후에만 필요하므로 effect 안에서 동적 import해 초기 번들에서 뺀다.
+    let cancelled = false;
+    import("web-vitals").then(({ onLCP, onINP, onCLS }) => {
+      if (cancelled) return;
+      onLCP(send);
+      onINP(send);
+      onCLS(send);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return null;

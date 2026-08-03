@@ -1,5 +1,4 @@
 import { browserFetch } from "@/lib/browser-api";
-import { getDeviceToken } from "@/lib/device-token";
 // KF-07: RecommendationSetSummary는 lib/domain(중립 위치)에 있다 — 이전에는
 // features/recommendation/types를 직접 참조해 lib→features 역방향 의존이었다.
 import type { RecommendationSetSummary } from "@/lib/domain/recommendation";
@@ -100,7 +99,8 @@ export async function createPost(
 ): Promise<CommunityPost> {
   return browserFetch<CommunityPost>("/api/v1/community/posts", {
     method: "POST",
-    headers: writeHeaders(recommendationSetId ? { "X-Device-Token": getDeviceToken() } : undefined),
+    headers: writeHeaders(),
+    includeDeviceToken: recommendationSetId !== null,
     body: JSON.stringify({ title, content, category, recommendationSetId }),
   });
 }
@@ -192,9 +192,11 @@ export async function unbookmarkPost(postId: number): Promise<void> {
 export async function getMyInteractions(postIds: number[]): Promise<CommunityInteractions> {
   const params = new URLSearchParams();
   postIds.forEach((id) => params.append("postIds", String(id)));
-  return browserFetch<CommunityInteractions>(`/api/v1/community/me/interactions?${params.toString()}`, {
-    cache: "no-store",
-  });
+  return browserFetch<CommunityInteractions>(
+    `/api/v1/community/me/interactions?${params.toString()}`,
+    { cache: "no-store" },
+    isCommunityInteractions
+  );
 }
 
 export async function reportContent(
@@ -212,7 +214,11 @@ export async function reportContent(
 // C-1: /me/interactions는 postIds가 필수라 페이지 로드 시 한 번만 차단 목록을 가져오는
 // 용도로 재사용할 수 없다(빈 배열을 보내면 파라미터 자체가 사라져 400이 난다).
 export async function getMyBlockedUserIds(): Promise<number[]> {
-  return browserFetch<number[]>("/api/v1/community/me/blocked-users", { cache: "no-store" });
+  return browserFetch<number[]>(
+    "/api/v1/community/me/blocked-users",
+    { cache: "no-store" },
+    isNumberArray
+  );
 }
 
 export async function blockUser(userId: number): Promise<void> {
@@ -251,15 +257,56 @@ function isMySavedNumberArray(body: unknown): body is MySavedNumber[] {
   );
 }
 
+function isRecommendationSetSummary(body: unknown): body is RecommendationSetSummary {
+  if (typeof body !== "object" || body === null) return false;
+  const b = body as Record<string, unknown>;
+  return typeof b.id === "number" && typeof b.strategy === "string" && Array.isArray(b.items);
+}
+
 function isRecommendationSetSummaryPage(body: unknown): body is PageResponse<RecommendationSetSummary> {
   if (typeof body !== "object" || body === null) return false;
   const b = body as Record<string, unknown>;
+  return Array.isArray(b.items) && b.items.every(isRecommendationSetSummary);
+}
+
+function isCommunityInteractions(body: unknown): body is CommunityInteractions {
+  if (typeof body !== "object" || body === null) return false;
+  const b = body as Record<string, unknown>;
   return (
-    Array.isArray(b.items) &&
-    b.items.every((item) => {
+    Array.isArray(b.likedPostIds) &&
+    Array.isArray(b.bookmarkedPostIds) &&
+    Array.isArray(b.blockedUserIds)
+  );
+}
+
+function isNumberArray(body: unknown): body is number[] {
+  return Array.isArray(body) && body.every((item) => typeof item === "number");
+}
+
+function isMySavedNumber(body: unknown): body is MySavedNumber {
+  if (typeof body !== "object" || body === null) return false;
+  const b = body as Record<string, unknown>;
+  return typeof b.id === "number" && Array.isArray(b.numbers);
+}
+
+function isSaveMySavedNumberResult(body: unknown): body is SaveMySavedNumberResult {
+  if (typeof body !== "object" || body === null) return false;
+  const b = body as Record<string, unknown>;
+  return typeof b.created === "boolean" && isMySavedNumber(b.savedNumber);
+}
+
+function isMySavedNumberMatchResultArray(body: unknown): body is MySavedNumberMatchResult[] {
+  return (
+    Array.isArray(body) &&
+    body.every((item) => {
       if (typeof item !== "object" || item === null) return false;
       const i = item as Record<string, unknown>;
-      return typeof i.id === "number" && typeof i.strategy === "string" && Array.isArray(i.items);
+      return (
+        isMySavedNumber(i.savedNumber) &&
+        typeof i.round === "number" &&
+        typeof i.matchedCount === "number" &&
+        typeof i.prizeTier === "string"
+      );
     })
   );
 }
@@ -271,7 +318,8 @@ export async function claimDevice(): Promise<IdentityMergeResult> {
     "/api/v1/community/session/claim-device",
     {
       method: "POST",
-      headers: writeHeaders({ "X-Device-Token": getDeviceToken() }),
+      headers: writeHeaders(),
+      includeDeviceToken: true,
     },
     isIdentityMergeResult
   );
@@ -323,11 +371,15 @@ export async function saveMySavedNumber(
   label?: string,
   source?: string
 ): Promise<SaveMySavedNumberResult> {
-  return browserFetch<SaveMySavedNumberResult>("/api/v1/community/me/saved-numbers", {
-    method: "POST",
-    headers: writeHeaders(),
-    body: JSON.stringify({ numbers, label, source }),
-  });
+  return browserFetch<SaveMySavedNumberResult>(
+    "/api/v1/community/me/saved-numbers",
+    {
+      method: "POST",
+      headers: writeHeaders(),
+      body: JSON.stringify({ numbers, label, source }),
+    },
+    isSaveMySavedNumberResult
+  );
 }
 
 export async function deleteMySavedNumber(id: number): Promise<void> {
@@ -340,14 +392,17 @@ export async function deleteMySavedNumber(id: number): Promise<void> {
 export async function getMySavedNumberMatches(round: string): Promise<MySavedNumberMatchResult[]> {
   return browserFetch<MySavedNumberMatchResult[]>(
     `/api/v1/community/me/saved-numbers/matches?round=${encodeURIComponent(round)}`,
-    { cache: "no-store" }
+    { cache: "no-store" },
+    isMySavedNumberMatchResultArray
   );
 }
 
 export async function getMyRecommendationSet(id: number): Promise<RecommendationSetSummary> {
-  return browserFetch<RecommendationSetSummary>(`/api/v1/community/me/recommendation-sets/${id}`, {
-    cache: "no-store",
-  });
+  return browserFetch<RecommendationSetSummary>(
+    `/api/v1/community/me/recommendation-sets/${id}`,
+    { cache: "no-store" },
+    isRecommendationSetSummary
+  );
 }
 
 export async function deleteMyRecommendationSet(id: number): Promise<void> {

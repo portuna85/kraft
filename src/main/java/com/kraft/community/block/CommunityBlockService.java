@@ -1,11 +1,11 @@
 package com.kraft.community.block;
 
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import com.kraft.community.user.CommunityUserRepository;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.List;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,11 +28,11 @@ public class CommunityBlockService {
     /** 멱등 — 이미 차단돼 있어도 USER_ALREADY_BLOCKED 오류 대신 성공으로 흡수한다. */
     public void block(Long blockerUserId, Long blockedUserId) {
         if (blockerUserId.equals(blockedUserId)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "COMMUNITY_SELF_BLOCK_NOT_ALLOWED",
+            throw new ApiException(ApiErrorCode.COMMUNITY_SELF_BLOCK_NOT_ALLOWED,
                     "자기 자신은 차단할 수 없습니다.");
         }
         if (!communityUserRepository.existsById(blockedUserId)) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_USER_NOT_FOUND", "사용자를 찾을 수 없습니다.");
+            throw new ApiException(ApiErrorCode.COMMUNITY_USER_NOT_FOUND, "사용자를 찾을 수 없습니다.");
         }
         if (communityUserBlockRepository.findByBlockerUserIdAndBlockedUserId(blockerUserId, blockedUserId).isEmpty()) {
             communityUserBlockRepository.save(

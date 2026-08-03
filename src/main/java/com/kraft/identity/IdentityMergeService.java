@@ -1,5 +1,6 @@
 package com.kraft.identity;
 
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import com.kraft.recommend.RecommendationSetHistoryService;
 import com.kraft.saved.SavedNumberClaimResult;
@@ -11,7 +12,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.Optional;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -77,7 +77,7 @@ public class IdentityMergeService {
         Optional<DeviceClaim> existing = deviceClaimRepository.findByDeviceTokenHash(deviceTokenHash);
         if (existing.isPresent() && !existing.get().getClaimedByUserId().equals(userId)) {
             conflictCounter.increment();
-            throw new ApiException(HttpStatus.CONFLICT, "DEVICE_ALREADY_CLAIMED",
+            throw new ApiException(ApiErrorCode.DEVICE_ALREADY_CLAIMED,
                     "이 기기는 이미 다른 계정에 연결되어 있습니다.");
         }
         // KB-09: 예전에는 duplicate 분기에서도 맨 아래 successCounter.increment()가 항상

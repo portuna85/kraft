@@ -1,6 +1,7 @@
 package com.kraft.saved;
 
 import com.kraft.common.config.SavedProperties;
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import com.kraft.common.lotto.LottoNumberCodec;
 import com.kraft.community.user.CommunityUser;
@@ -257,7 +258,7 @@ class SavedNumbersServiceTest {
     @DisplayName("존재하지 않는 회차를 지정하면 404 예외가 그대로 전파된다")
     void compareWithRound_nonexistentRound_propagatesNotFound() {
         given(winningNumberQueryService.getByRound(anyInt()))
-                .willThrow(new ApiException(HttpStatus.NOT_FOUND, "ROUND_NOT_FOUND", "999999회차 정보를 찾을 수 없습니다."));
+                .willThrow(new ApiException(ApiErrorCode.ROUND_NOT_FOUND, "999999회차 정보를 찾을 수 없습니다."));
 
         assertThatThrownBy(() -> service.compareWithRound(TOKEN_HASH, "999999"))
                 .isInstanceOf(ApiException.class)
@@ -305,7 +306,7 @@ class SavedNumbersServiceTest {
         SavedNumber anonymous = savedEntity(encoded, null, "MANUAL");
         given(savedNumberRepository.findByClientTokenHashOrderByCreatedAtDesc(TOKEN_HASH))
                 .willReturn(List.of(anonymous));
-        given(savedNumberRepository.findByOwnerUserIdAndNumbers(99L, encoded)).willReturn(Optional.empty());
+        given(savedNumberRepository.findByOwnerUserIdAndNumbersIn(99L, List.of(encoded))).willReturn(List.of());
 
         SavedNumberClaimResult result = service.claimAll(TOKEN_HASH, 99L);
 
@@ -323,8 +324,8 @@ class SavedNumbersServiceTest {
         SavedNumber anonymous = savedEntity(encoded, null, "MANUAL");
         given(savedNumberRepository.findByClientTokenHashOrderByCreatedAtDesc(TOKEN_HASH))
                 .willReturn(List.of(anonymous));
-        given(savedNumberRepository.findByOwnerUserIdAndNumbers(99L, encoded))
-                .willReturn(Optional.of(savedEntity(encoded, null, "MANUAL")));
+        given(savedNumberRepository.findByOwnerUserIdAndNumbersIn(99L, List.of(encoded)))
+                .willReturn(List.of(savedEntity(encoded, null, "MANUAL")));
 
         SavedNumberClaimResult result = service.claimAll(TOKEN_HASH, 99L);
 

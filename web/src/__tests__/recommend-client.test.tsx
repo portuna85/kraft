@@ -45,7 +45,6 @@ describe("번호 추천 화면", () => {
       "/api/v1/numbers/recommend",
       expect.objectContaining({
         method: "POST",
-        headers: expect.objectContaining({ "X-Device-Token": "a".repeat(64) }),
         body: JSON.stringify({
           count: 5,
           excludedNumbers: [],
@@ -54,6 +53,8 @@ describe("번호 추천 화면", () => {
         }),
       }),
     );
+    const [, init] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect((init.headers as Headers).get("X-Device-Token")).toBe("a".repeat(64));
   });
 
   it("생성 버튼을 누르면 반환된 추천을 렌더링한다", async () => {

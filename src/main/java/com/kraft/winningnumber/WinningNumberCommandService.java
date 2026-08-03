@@ -1,5 +1,6 @@
 package com.kraft.winningnumber;
 
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import com.kraft.common.lotto.LottoNumberCodec;
 import jakarta.validation.ConstraintViolation;
@@ -11,7 +12,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,16 +49,16 @@ public class WinningNumberCommandService {
     public WinningNumberUpsertResult upsertWithResult(WinningNumberUpsertRequest request) {
         Set<ConstraintViolation<WinningNumberUpsertRequest>> violations = validator.validate(request);
         if (!violations.isEmpty()) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "LOTTO_SOURCE_VALIDATION_ERROR", summarize(violations));
+            throw new ApiException(ApiErrorCode.LOTTO_SOURCE_VALIDATION_ERROR, summarize(violations));
         }
         if (request.drawDate().isAfter(LocalDate.now(clock).plusDays(1))) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "LOTTO_SOURCE_INVALID_DATE",
+            throw new ApiException(ApiErrorCode.LOTTO_SOURCE_INVALID_DATE,
                     "추첨일이 미래입니다: " + request.drawDate());
         }
 
         var normalized = lottoNumberCodec.normalize(request.numbers());
         if (normalized.contains(request.bonusNumber())) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_BONUS_NUMBER",
+            throw new ApiException(ApiErrorCode.INVALID_BONUS_NUMBER,
                     "보너스 번호는 당첨 번호 6개와 중복될 수 없습니다.");
         }
 
