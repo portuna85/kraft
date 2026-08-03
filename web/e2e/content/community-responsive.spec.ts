@@ -131,12 +131,16 @@ test.describe("로그인 상태", () => {
       await page.setViewportSize({ width, height: 900 });
       await gotoAndWaitForRealContent(page, "/community/posts/1");
 
+      // H-1: 오버레이가 열려 있는 동안 배경은 inert(+aria-hidden)로 격리된다 —
+      // 소유자 액션(삭제)은 드로어 밖의 배경 콘텐츠이므로 드로어가 열리기 전에 확인한다.
+      await expect(page.getByRole("button", { name: "삭제" }).first()).toBeVisible();
+      await expectNoOverflow(page);
+
       // 이 폭(<1024px)에서는 로그아웃 버튼(AccountMenu)이 보조 메뉴
       // 드로어 안으로 이동했다 — 열어야 보인다.
       await page.getByRole("button", { name: "메뉴 열기" }).click();
       const dialog = page.getByRole("dialog");
       await expect(dialog.getByRole("button", { name: "로그아웃" })).toBeVisible();
-      await expect(page.getByRole("button", { name: "삭제" }).first()).toBeVisible();
       await expectNoOverflow(page);
     });
   }
