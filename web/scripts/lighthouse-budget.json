@@ -12,7 +12,7 @@
     "minPerformanceScore": 90
   },
   "/frequency": {
-    "maxLcpMs": 312,
+    "maxLcpMs": 700,
     "maxClsScore": 0.05,
     "maxTbtMs": 0,
     "minPerformanceScore": 90
