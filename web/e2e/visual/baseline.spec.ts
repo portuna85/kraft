@@ -43,13 +43,32 @@ async function mockEmptyComments(page: Page, postId: number) {
   );
 }
 
-async function mockRecommendationSets(page: Page, sets: unknown[]) {
-  await page.route("**/api/v1/recommendation-sets**", (route) =>
+// M-1x: /recommend·/recommend/history가 SESSION_SCOPED_PREFIXES에 들어간 뒤로는 이
+// 라우트들도 클라이언트에서 세션을 조회한다 — 픽스처 백엔드(e2e/fixtures/backend.mjs)는
+// /api/v1/community/session을 모르므로, 목이 없으면 AccountMenu가 "세션을 확인하지
+// 못했습니다" 오류 배너로 넘어간다(실제 익명 사용자가 보는 로그인 링크가 아니다).
+// 백엔드가 익명 사용자에게 실제로 주는 형태(loggedIn:false + 사용 가능한 provider
+// 목록)를 그대로 흉내낸다.
+async function mockAnonymousCommunitySession(page: Page) {
+  await page.route("**/api/v1/community/session", (route) =>
     route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ items: sets, page: 0, size: 50, totalElements: sets.length, totalPages: 1 }),
+      body: JSON.stringify({ loggedIn: false, userId: null, nickname: null, activeProviders: ["google"] }),
     })
+  );
+}
+
+async function mockRecommendationSets(page: Page, sets: unknown[]) {
+  const body = JSON.stringify({ items: sets, page: 0, size: 50, totalElements: sets.length, totalPages: 1 });
+  // 로그인 세션(mockCommunitySession)과 함께 쓰이면 계정 소유자 스코프 엔드포인트로
+  // 요청이 나가므로(community-client.ts getMyRecommendationSets), 익명 경로와 함께
+  // 두 경로 모두 같은 응답을 주도록 한다.
+  await page.route("**/api/v1/recommendation-sets**", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body })
+  );
+  await page.route("**/api/v1/community/me/recommendation-sets**", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body })
   );
 }
 
@@ -68,7 +87,12 @@ const ROUTES: readonly Route[] = [
   { path: "/", label: "홈", readySelector: ".result-panel .balls" },
   { path: "/frequency", label: "출현 통계", readySelector: ".freq-summary" },
   { path: "/community", label: "커뮤니티", readySelector: "main" },
-  { path: "/recommend", label: "번호 추천", readySelector: "main" },
+  {
+    path: "/recommend",
+    label: "번호 추천",
+    readySelector: "main",
+    beforeGoto: mockAnonymousCommunitySession,
+  },
   { path: "/saved", label: "저장 번호", readySelector: "main" },
   { path: "/stats", label: "패턴 통계", readySelector: "main" },
   { path: "/companion", label: "동반 출현", readySelector: "main" },
@@ -111,7 +135,10 @@ const ROUTES: readonly Route[] = [
     path: "/recommend/history",
     label: "추천 이력",
     readySelector: "main",
-    beforeGoto: (page) => mockRecommendationSets(page, [SAMPLE_RECOMMENDATION_SET]),
+    beforeGoto: async (page) => {
+      await mockAnonymousCommunitySession(page);
+      await mockRecommendationSets(page, [SAMPLE_RECOMMENDATION_SET]);
+    },
   },
   {
     path: "/ops",
