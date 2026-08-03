@@ -1,6 +1,7 @@
 .nav {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: clamp(var(--space-4), 2vw, var(--space-7));
 }
 

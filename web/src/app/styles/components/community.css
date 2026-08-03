@@ -192,6 +192,7 @@
 .account-menu {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   font-size: var(--fs-sm);
   flex-shrink: 0;

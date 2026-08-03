@@ -1,6 +1,7 @@
 .desktopOnly {
   display: none;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-5);
 }
 
