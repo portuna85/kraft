@@ -483,6 +483,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/community/me/blocked-users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["blockedUsers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/saved/{id}": {
         parameters: {
             query?: never;
@@ -1799,6 +1815,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CommunityInteractionsResponse"];
+                };
+            };
+        };
+    };
+    blockedUsers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": number[];
                 };
             };
         };
