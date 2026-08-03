@@ -96,6 +96,33 @@ class CommunityReactionServiceTest {
         verify(communityPostMetricsRepository, never()).incrementLikeCount(anyLong());
     }
 
+    // C-1: 차단은 저장·조회만 될 뿐 쓰기 경로를 막지 않았다 — 서버가 실제로 강제하는지 검증한다.
+    @Test
+    @DisplayName("차단 관계인 사용자의 게시글에는 좋아요를 남길 수 없다")
+    void like_blockedRelationship_throwsForbidden() {
+        given(communityPostRepository.findById(1L)).willReturn(Optional.of(publishedPost()));
+        given(communityBlockService.isBlockedEitherWay(10L, 1L)).willReturn(true);
+
+        assertThatThrownBy(() -> service.like(1L, 10L))
+                .isInstanceOf(ApiException.class)
+                .hasFieldOrPropertyWithValue("code", "COMMUNITY_BLOCKED_INTERACTION")
+                .hasFieldOrPropertyWithValue("status", org.springframework.http.HttpStatus.FORBIDDEN);
+        verify(communityReactionWriter, never()).insertLike(anyLong(), anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("차단 관계인 사용자의 게시글에는 북마크를 남길 수 없다")
+    void bookmark_blockedRelationship_throwsForbidden() {
+        given(communityPostRepository.findById(1L)).willReturn(Optional.of(publishedPost()));
+        given(communityBlockService.isBlockedEitherWay(10L, 1L)).willReturn(true);
+
+        assertThatThrownBy(() -> service.bookmark(1L, 10L))
+                .isInstanceOf(ApiException.class)
+                .hasFieldOrPropertyWithValue("code", "COMMUNITY_BLOCKED_INTERACTION")
+                .hasFieldOrPropertyWithValue("status", org.springframework.http.HttpStatus.FORBIDDEN);
+        verify(communityReactionWriter, never()).insertBookmark(anyLong(), anyLong(), any());
+    }
+
     @Test
     @DisplayName("B-P0-5: 존재하지 않는 게시글에는 좋아요를 남길 수 없다(FK 500 대신 404)")
     void like_postNotFound_throwsNotFound() {

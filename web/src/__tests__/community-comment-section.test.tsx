@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { CommentSection } from "@/features/community/comment-section";
 import { CommunitySessionProvider } from "@/lib/community-session-provider";
+import { BlockedUsersProvider } from "@/features/community/blocked-users-context";
 
 // KF-05: CommunitySessionProvider가 usePathname으로 세션 스코프를 판단한다 — 이 컴포넌트는
 // 항상 게시글 상세(/community/posts/:id) 하위에서만 쓰이므로 스코프 안 경로로 고정한다.
@@ -465,5 +466,56 @@ describe("커뮤니티 댓글 섹션", () => {
 
     const deletedItem = screen.getByText("삭제된 댓글입니다.").closest("li");
     expect(deletedItem!.querySelector("button")).toBeNull();
+  });
+});
+
+// C-1: 차단은 저장·조회만 될 뿐 렌더링에 적용되지 않았다 — 실제로 걸러지는지 검증한다.
+describe("커뮤니티 댓글 섹션의 차단 필터링(C-1)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function renderWithBlockedUsers(postId: number, blockedUserIds: number[]) {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/session")) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(SESSION) });
+      }
+      if (url.includes("/blocked-users")) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(blockedUserIds) });
+      }
+      if (url.includes("/comments")) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(COMMENTS) });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) });
+    });
+    return render(
+      <CommunitySessionProvider>
+        <BlockedUsersProvider>
+          <CommentSection postId={postId} />
+        </BlockedUsersProvider>
+      </CommunitySessionProvider>
+    );
+  }
+
+  it("차단한 사용자의 답글은 걸러지고 최상위 댓글은 그대로 보인다", async () => {
+    renderWithBlockedUsers(1, [2]);
+
+    // 댓글 목록 조회와 차단 목록 조회는 서로 독립된 fetch라 완료 순서가 보장되지 않는다 —
+    // 최종적으로 걸러지는 조건 자체를 폴링해야 한다("최상위 댓글"이 이미 보인다"는 사실은
+    // 차단 목록 반영 여부와 무관하게 먼저 참일 수 있다).
+    await waitFor(() => {
+      expect(screen.queryByText("다른사람")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("최상위 댓글")).toBeInTheDocument();
+  });
+
+  it("최상위 댓글 작성자를 차단하면 그 댓글 자체가 걸러진다", async () => {
+    renderWithBlockedUsers(1, [1]);
+
+    await waitFor(() => {
+      expect(screen.queryByText("최상위 댓글")).not.toBeInTheDocument();
+    });
+    // ownerId가 null인 삭제된 댓글은 차단 대상이 될 수 없으므로 그대로 남는다.
+    expect(screen.getByText("삭제된 댓글입니다.")).toBeInTheDocument();
   });
 });

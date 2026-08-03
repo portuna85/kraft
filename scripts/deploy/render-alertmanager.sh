@@ -37,5 +37,14 @@ fi
 # shell to begin with.
 export ALERTMANAGER_DISCORD_WEBHOOK_URL
 
+# 외부 heartbeat(healthchecks.io 등)는 선택 기능이다 — Discord와 달리 옵트아웃
+# 요구 없이 미설정을 허용하고, 더미 URL로 채워 Alertmanager 기동은 항상 성공시킨다
+# (Watchdog 경보 전송이 조용히 실패할 뿐 배포가 막히지는 않는다).
+if [[ -z "${KRAFT_HEARTBEAT_URL:-}" ]]; then
+  echo "WARN: KRAFT_HEARTBEAT_URL not set — Watchdog heartbeat alerts will target a dummy URL and silently fail to send. Prometheus/Alertmanager 자체 장애를 감지할 외부 heartbeat가 없다는 뜻이다."
+  KRAFT_HEARTBEAT_URL="http://localhost"
+fi
+export KRAFT_HEARTBEAT_URL
+
 envsubst < "$TMPL" > "$OUT"
 echo "OK: rendered $OUT"

@@ -34,6 +34,12 @@ function Probe() {
   return null;
 }
 
+function ClaimStatusProbe({ onStatus }: { onStatus: (status: string) => void }) {
+  const { claimStatus } = useCommunitySession();
+  onStatus(claimStatus);
+  return null;
+}
+
 function mockSessionFetch(loggedIn: boolean) {
   return vi.fn().mockResolvedValue({
     ok: true,
@@ -136,6 +142,89 @@ describe("커뮤니티 세션 프로바이더의 기기 귀속 트리거", () =>
   });
 });
 
+describe("C-2: claimStatus 전이", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    claimDevice.mockReset().mockResolvedValue({
+      mergedSavedNumberCount: 0,
+      duplicateSavedNumberCount: 0,
+      mergedRecommendationSetCount: 0,
+    });
+    rotateDeviceToken.mockReset();
+    mockUsePathname.mockReset().mockReturnValue("/community");
+    window.sessionStorage.clear();
+  });
+
+  it("귀속이 필요 없으면(비로그인) claimStatus가 곧바로 settled가 된다", async () => {
+    global.fetch = mockSessionFetch(false);
+    const statuses: string[] = [];
+
+    render(
+      <CommunitySessionProvider>
+        <ClaimStatusProbe onStatus={(s) => statuses.push(s)} />
+      </CommunitySessionProvider>
+    );
+
+    await waitFor(() => expect(statuses).toContain("settled"));
+    expect(statuses).not.toContain("claiming");
+  });
+
+  it("귀속이 필요하면 claimDevice 호출 후 settled로 전이한다", async () => {
+    // claimDevice 목이 즉시 resolve하므로 "claiming" 중간 렌더는 React 배칭으로
+    // 관측되지 않을 수 있다(실제로는 setState(claiming)이 claimDevice() 호출보다
+    // 먼저 실행됨 — 소스 순서로 보장됨). 여기서는 최종 수렴만 검증한다.
+    global.fetch = mockSessionFetch(true);
+    const statuses: string[] = [];
+
+    render(
+      <CommunitySessionProvider>
+        <ClaimStatusProbe onStatus={(s) => statuses.push(s)} />
+      </CommunitySessionProvider>
+    );
+
+    await waitFor(() => expect(claimDevice).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(statuses.at(-1)).toBe("settled"));
+    expect(statuses).not.toContain("error");
+  });
+
+  it("귀속이 실패하면 claimStatus가 error가 되고 claiming에 멈춰있지 않는다", async () => {
+    global.fetch = mockSessionFetch(true);
+    claimDevice.mockRejectedValue(new Error("DEVICE_ALREADY_CLAIMED"));
+    const statuses: string[] = [];
+
+    render(
+      <CommunitySessionProvider>
+        <ClaimStatusProbe onStatus={(s) => statuses.push(s)} />
+      </CommunitySessionProvider>
+    );
+
+    await waitFor(() => expect(statuses.at(-1)).toBe("error"));
+  });
+
+  it("이번 세션에 이미 귀속을 시도했으면 재마운트 시 claiming 없이 바로 settled다", async () => {
+    global.fetch = mockSessionFetch(true);
+
+    const { unmount } = render(
+      <CommunitySessionProvider>
+        <Probe />
+      </CommunitySessionProvider>
+    );
+    await waitFor(() => expect(claimDevice).toHaveBeenCalledTimes(1));
+    unmount();
+
+    const statuses: string[] = [];
+    render(
+      <CommunitySessionProvider>
+        <ClaimStatusProbe onStatus={(s) => statuses.push(s)} />
+      </CommunitySessionProvider>
+    );
+
+    await waitFor(() => expect(statuses).toContain("settled"));
+    expect(statuses).not.toContain("claiming");
+    expect(claimDevice).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("KF-05: 세션 조회 라우트 스코핑", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -152,7 +241,7 @@ describe("KF-05: 세션 조회 라우트 스코핑", () => {
     }
   );
 
-  it.each(["/community", "/community/posts/1", "/saved", "/saved/history"])(
+  it.each(["/community", "/community/posts/1", "/saved", "/saved/history", "/recommend", "/recommend/history"])(
     "%s는 세션 스코프 안이다",
     (path) => {
       expect(isSessionScopedPath(path)).toBe(true);

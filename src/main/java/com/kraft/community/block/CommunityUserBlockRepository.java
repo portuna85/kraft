@@ -8,6 +8,8 @@ public interface CommunityUserBlockRepository extends JpaRepository<CommunityUse
 
     Optional<CommunityUserBlock> findByBlockerUserIdAndBlockedUserId(Long blockerUserId, Long blockedUserId);
 
+    boolean existsByBlockerUserIdAndBlockedUserId(Long blockerUserId, Long blockedUserId);
+
     List<CommunityUserBlock> findByBlockerUserId(Long blockerUserId);
 
     void deleteByBlockerUserIdOrBlockedUserId(Long blockerUserId, Long blockedUserId);

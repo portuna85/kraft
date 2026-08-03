@@ -67,12 +67,24 @@ public class CommunityReactionService {
      * B-P0-5: 대상 게시글이 존재하고 공개(PUBLISHED) 상태인지 먼저 확인한다 — 이전에는 존재
      * 검증 없이 바로 insert해 FK 위반으로 500이 나거나, 숨김·삭제된 글에도 반응을 남길 수 있었다.
      */
-    private void requireVisiblePost(Long postId) {
+    private CommunityPost requireVisiblePost(Long postId) {
         CommunityPost post = communityPostRepository.findById(postId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_POST_NOT_FOUND",
                         "게시글을 찾을 수 없습니다."));
         if (post.getStatus() != PostStatus.PUBLISHED) {
             throw new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_POST_NOT_FOUND", "게시글을 찾을 수 없습니다.");
+        }
+        return post;
+    }
+
+    /**
+     * C-1: 차단은 저장·조회만 될 뿐(interactions() 응답에만 실림) 쓰기 경로를 막지
+     * 않았다 — 서로 차단한 사이라면 어느 쪽이 차단했든 좋아요·북마크를 남길 수 없게 한다.
+     */
+    private void requireNotBlocked(Long userId, Long postOwnerId) {
+        if (communityBlockService.isBlockedEitherWay(userId, postOwnerId)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "COMMUNITY_BLOCKED_INTERACTION",
+                    "차단 관계인 사용자의 게시글에는 반응을 남길 수 없습니다.");
         }
     }
 
@@ -88,7 +100,8 @@ public class CommunityReactionService {
      * (외부) 트랜잭션을 물들이지 않고 안전하게 catch해 멱등 흡수할 수 있다.
      */
     public void like(Long postId, Long userId) {
-        requireVisiblePost(postId);
+        CommunityPost post = requireVisiblePost(postId);
+        requireNotBlocked(userId, post.getOwnerId());
         if (communityPostLikeRepository.findByPostIdAndUserId(postId, userId).isEmpty()) {
             try {
                 communityReactionWriter.insertLike(postId, userId, OffsetDateTime.now(clock));
@@ -133,7 +146,8 @@ public class CommunityReactionService {
 
     /** KB-02: like()와 같은 이유로 insert 시도를 CommunityReactionWriter의 REQUIRES_NEW에 위임한다. */
     public void bookmark(Long postId, Long userId) {
-        requireVisiblePost(postId);
+        CommunityPost post = requireVisiblePost(postId);
+        requireNotBlocked(userId, post.getOwnerId());
         if (communityPostBookmarkRepository.findByPostIdAndUserId(postId, userId).isEmpty()) {
             try {
                 communityReactionWriter.insertBookmark(postId, userId, OffsetDateTime.now(clock));

@@ -7,6 +7,8 @@ import { browserFetch, BrowserApiError } from "@/lib/browser-api";
 import { EmptyState } from "@/ui/primitives/empty-state";
 import { ErrorState } from "@/ui/primitives/error-state";
 import { ConfirmDialog } from "@/ui/primitives/confirm-dialog";
+import { useCommunitySession } from "@/lib/community-session-provider";
+import { deleteMySavedNumber, getMySavedNumberMatches, getMySavedNumbers } from "@/lib/community-client";
 
 type SavedNumber = {
   id: number;
@@ -40,6 +42,13 @@ type Props = {
 };
 
 export function SavedNumbersClient({ latestRound }: Props) {
+  const { session, claimStatus } = useCommunitySession();
+  // C-2: 로그인 상태면 계정(소유자) 스코프로 읽고 쓴다 — claim이 진행 중일 때는 아직
+  // 기다린다(귀속이 옮기는 도중의 데이터를 읽지 않기 위해). claimStatus가 settled/error로
+  // 넘어가면(비로그인도 이 훅에서는 항상 settled·idle) 아래 effect가 다시 읽어온다.
+  const isClaimSettling = claimStatus === "claiming";
+  const useOwnerScope = Boolean(session?.loggedIn) && !isClaimSettling;
+
   const [items, setItems] = useState<SavedNumber[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -55,9 +64,15 @@ export function SavedNumbersClient({ latestRound }: Props) {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const loadSavedNumbers = useCallback(() => {
-    browserFetch<SavedNumber[]>("/api/v1/saved", {
-      headers: { "X-Device-Token": getDeviceToken() },
-    })
+    if (isClaimSettling) {
+      // 귀속이 진행 중이면 어느 쪽 목록을 보여줘도 곧 stale해진다 — claimStatus가
+      // settled로 바뀌는 순간 이 effect가 다시 실행되어 최종 상태를 가져온다.
+      return;
+    }
+    const request = useOwnerScope
+      ? getMySavedNumbers()
+      : browserFetch<SavedNumber[]>("/api/v1/saved", { headers: { "X-Device-Token": getDeviceToken() } });
+    request
       .then((savedItems) => {
         setItems(savedItems);
         setHasError(false);
@@ -68,7 +83,7 @@ export function SavedNumbersClient({ latestRound }: Props) {
       .finally(() => {
         setIsLoading(false);
       });
-  }, []);
+  }, [isClaimSettling, useOwnerScope]);
 
   useEffect(() => {
     loadSavedNumbers();
@@ -81,16 +96,19 @@ export function SavedNumbersClient({ latestRound }: Props) {
   }
 
   const fetchMatches = useCallback(() => {
-    if (items.length === 0) {
+    if (items.length === 0 || isClaimSettling) {
       return;
     }
 
     const seq = ++matchFetchSeqRef.current;
 
-    browserFetch<SavedNumberMatchResult[]>(
-      `/api/v1/saved/matches?round=${encodeURIComponent(selectedRound)}`,
-      { headers: { "X-Device-Token": getDeviceToken() } },
-    )
+    const request = useOwnerScope
+      ? getMySavedNumberMatches(selectedRound)
+      : browserFetch<SavedNumberMatchResult[]>(
+          `/api/v1/saved/matches?round=${encodeURIComponent(selectedRound)}`,
+          { headers: { "X-Device-Token": getDeviceToken() } },
+        );
+    request
       .then((results) => {
         if (seq !== matchFetchSeqRef.current) return;
         const map = new Map<number, SavedNumberMatchResult>();
@@ -106,7 +124,7 @@ export function SavedNumbersClient({ latestRound }: Props) {
         // "대조 결과 없음"처럼 보이지 않게 한다.
         setMatchState("error");
       });
-  }, [items, selectedRound]);
+  }, [items, selectedRound, isClaimSettling, useOwnerScope]);
 
   useEffect(() => {
     fetchMatches();
@@ -121,10 +139,14 @@ export function SavedNumbersClient({ latestRound }: Props) {
     setDeleting(true);
     setDeleteError(null);
     try {
-      await browserFetch(`/api/v1/saved/${id}`, {
-        method: "DELETE",
-        headers: { "X-Device-Token": getDeviceToken() },
-      });
+      if (useOwnerScope) {
+        await deleteMySavedNumber(id);
+      } else {
+        await browserFetch(`/api/v1/saved/${id}`, {
+          method: "DELETE",
+          headers: { "X-Device-Token": getDeviceToken() },
+        });
+      }
       setItems((prev) => prev.filter((x) => x.id !== id));
       setPendingDeleteId(null);
       setMessage("저장 번호를 삭제했습니다.");

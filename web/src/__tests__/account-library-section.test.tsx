@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { AccountLibrarySection } from "@/features/identity/account-library-section";
 import { CommunitySessionProvider } from "@/lib/community-session-provider";
 
@@ -46,10 +46,10 @@ function mockFetch(options: { saved?: unknown; sets?: unknown; fail?: boolean })
   });
 }
 
-function renderSection() {
+function renderSection(latestRound = 0) {
   return render(
     <CommunitySessionProvider>
-      <AccountLibrarySection />
+      <AccountLibrarySection latestRound={latestRound} />
     </CommunitySessionProvider>
   );
 }
@@ -88,5 +88,96 @@ describe("계정 보관함 섹션", () => {
 
     expect(await screen.findByText("계정 보관함을 불러오지 못했습니다.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
+  });
+});
+
+// C-2: 계정 스코프로도 SavedNumbersClient/RecommendationHistoryClient와 동등한
+// 삭제·페이지네이션 기능을 제공한다 — 예전에는 목록 표시만 가능했다.
+describe("계정 보관함 섹션의 관리 기능(C-2)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function mockFetchWithHandlers(handler: (url: string, init?: RequestInit) => { status: number; body: unknown }) {
+    return vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      const { status, body } = handler(url, init);
+      return Promise.resolve({ ok: status >= 200 && status < 300, status, json: () => Promise.resolve(body) });
+    });
+  }
+
+  it("저장 번호를 삭제하면 계정 스코프 엔드포인트로 요청하고 목록에서 지운다", async () => {
+    let deleteUrl: string | null = null;
+    global.fetch = mockFetchWithHandlers((url, init) => {
+      if (url.includes("/session")) return { status: 200, body: SESSION };
+      if (init?.method === "DELETE") {
+        deleteUrl = url;
+        return { status: 204, body: null };
+      }
+      if (url.includes("/matches")) return { status: 200, body: [] };
+      if (url.includes("saved-numbers")) return { status: 200, body: SAVED };
+      return { status: 200, body: { ...SETS, items: [] } };
+    });
+
+    renderSection();
+    fireEvent.click(await screen.findByRole("button", { name: "1, 2, 3, 4, 5, 6 조합 삭제" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "삭제" }));
+
+    await waitFor(() => {
+      expect(deleteUrl).toBe("/api/v1/community/me/saved-numbers/1");
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: "1, 2, 3, 4, 5, 6 조합 삭제" })).not.toBeInTheDocument();
+    });
+  });
+
+  it("추천 이력을 삭제하면 계정 스코프 엔드포인트로 요청하고 목록에서 지운다", async () => {
+    let deleteUrl: string | null = null;
+    global.fetch = mockFetchWithHandlers((url, init) => {
+      if (url.includes("/session")) return { status: 200, body: SESSION };
+      if (init?.method === "DELETE") {
+        deleteUrl = url;
+        return { status: 204, body: null };
+      }
+      if (url.includes("saved-numbers")) return { status: 200, body: [] };
+      return { status: 200, body: SETS };
+    });
+
+    renderSection();
+    await waitFor(() => expect(screen.getByRole("heading", { name: "추천 이력" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /추천 세트 삭제/ }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "삭제" }));
+
+    await waitFor(() => {
+      expect(deleteUrl).toBe("/api/v1/community/me/recommendation-sets/5");
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: /추천 세트 삭제/ })).not.toBeInTheDocument();
+    });
+  });
+
+  it("추천 이력이 더 있으면 더 보기로 다음 페이지를 가져온다", async () => {
+    const firstPage = { ...SETS, page: 0, totalPages: 2, totalElements: 2 };
+    const secondItem = {
+      ...SETS.items[0],
+      id: 6,
+      createdAt: "2026-01-05T09:00:00Z",
+    };
+    global.fetch = mockFetchWithHandlers((url) => {
+      if (url.includes("/session")) return { status: 200, body: SESSION };
+      if (url.includes("saved-numbers")) return { status: 200, body: [] };
+      if (url.includes("page=1")) {
+        return { status: 200, body: { items: [secondItem], page: 1, size: 20, totalElements: 2, totalPages: 2 } };
+      }
+      return { status: 200, body: firstPage };
+    });
+
+    renderSection();
+    await waitFor(() => expect(screen.getByText(/전체 2건 중 1건 표시/)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "더 보기" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/전체 2건을 모두 표시했습니다/)).toBeInTheDocument();
+    });
+    expect(screen.getAllByRole("button", { name: /추천 세트 삭제/ })).toHaveLength(2);
   });
 });

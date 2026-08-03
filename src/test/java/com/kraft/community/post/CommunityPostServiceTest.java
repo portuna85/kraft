@@ -84,19 +84,6 @@ class CommunityPostServiceTest {
     }
 
     @Test
-    @DisplayName("추천 세트를 첨부하려는데 기기 토큰이 없으면 400 DEVICE_TOKEN_REQUIRED로 거부된다")
-    void create_attachmentWithoutDeviceToken_throwsApiException() {
-        assertThatThrownBy(() -> service.create(1L, "글쓴이", null,
-                new CreatePostRequest("제목", "내용", "GENERAL", 5L)))
-                .isInstanceOf(ApiException.class)
-                .satisfies(ex -> {
-                    ApiException apiEx = (ApiException) ex;
-                    assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
-                    assertThat(apiEx.getCode()).isEqualTo("DEVICE_TOKEN_REQUIRED");
-                });
-    }
-
-    @Test
     @DisplayName("추천 세트 첨부 시 기기 토큰 소유권을 교차검증한다")
     void create_withAttachment_verifiesOwnershipThenPersists() {
         given(recommendationSetHistoryService.get("hash-1", 5L))
@@ -109,6 +96,59 @@ class CommunityPostServiceTest {
 
         assertThat(post.getRecommendationSetId()).isEqualTo(5L);
         assertThat(post.getCategory()).isEqualTo(PostCategory.RECOMMENDATION_SHARE);
+        verify(recommendationSetHistoryService, never()).getForOwner(anyLong(), eq(5L));
+    }
+
+    // C-2-5: claim(계정 귀속) 이후 세트는 clientTokenHash가 null로 지워져 기기 토큰
+    // 조회가 항상 FORBIDDEN을 던진다 — ownerId 기준 폴백이 없으면 귀속된 세트를
+    // 영원히 첨부할 수 없었다.
+    @Test
+    @DisplayName("기기 토큰 헤더가 없으면 곧바로 계정 소유권으로 검증한다")
+    void create_attachmentWithoutDeviceToken_fallsBackToOwnerOwnership() {
+        given(recommendationSetHistoryService.getForOwner(1L, 5L))
+                .willReturn(new RecommendationSetSummary(5L, "random", "uniform-random-v1", 1189, "historical-first-prize-v1",
+                        List.of(), List.of(), OffsetDateTime.now(CLOCK), List.of()));
+        given(communityPostRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+        CommunityPost post = service.create(1L, "글쓴이", null,
+                new CreatePostRequest("제목", "내용", "RECOMMENDATION_SHARE", 5L));
+
+        assertThat(post.getRecommendationSetId()).isEqualTo(5L);
+    }
+
+    @Test
+    @DisplayName("기기 토큰 소유권 검증이 FORBIDDEN이면 계정 소유권으로 재시도한다(귀속된 세트)")
+    void create_attachmentDeviceOwnershipForbidden_fallsBackToOwnerOwnership() {
+        given(recommendationSetHistoryService.get("hash-1", 5L))
+                .willThrow(new ApiException(HttpStatus.FORBIDDEN, "RECOMMENDATION_SET_NOT_OWNED", "이 추천 세트에 대한 권한이 없습니다."));
+        given(recommendationSetHistoryService.getForOwner(1L, 5L))
+                .willReturn(new RecommendationSetSummary(5L, "random", "uniform-random-v1", 1189, "historical-first-prize-v1",
+                        List.of(), List.of(), OffsetDateTime.now(CLOCK), List.of()));
+        given(communityPostRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+        CommunityPost post = service.create(1L, "글쓴이", "hash-1",
+                new CreatePostRequest("제목", "내용", "RECOMMENDATION_SHARE", 5L));
+
+        assertThat(post.getRecommendationSetId()).isEqualTo(5L);
+    }
+
+    @Test
+    @DisplayName("기기·계정 소유권이 둘 다 아니면 FORBIDDEN을 그대로 전파한다")
+    void create_attachmentOwnershipFailsBothWays_throwsApiException() {
+        given(recommendationSetHistoryService.get("hash-1", 5L))
+                .willThrow(new ApiException(HttpStatus.FORBIDDEN, "RECOMMENDATION_SET_NOT_OWNED", "이 추천 세트에 대한 권한이 없습니다."));
+        given(recommendationSetHistoryService.getForOwner(1L, 5L))
+                .willThrow(new ApiException(HttpStatus.FORBIDDEN, "RECOMMENDATION_SET_NOT_OWNED", "이 추천 세트에 대한 권한이 없습니다."));
+
+        assertThatThrownBy(() -> service.create(1L, "글쓴이", "hash-1",
+                new CreatePostRequest("제목", "내용", "RECOMMENDATION_SHARE", 5L)))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> {
+                    ApiException apiEx = (ApiException) ex;
+                    assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.FORBIDDEN);
+                    assertThat(apiEx.getCode()).isEqualTo("RECOMMENDATION_SET_NOT_OWNED");
+                });
+        verify(communityPostRepository, never()).save(any());
     }
 
     @Test

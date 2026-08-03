@@ -109,4 +109,21 @@ class CommunityBlockServiceTest {
 
         assertThat(result).containsExactlyInAnyOrder(2L, 3L);
     }
+
+    // C-1: 쓰기 경로(댓글·좋아요·북마크) 차단 강제는 방향과 무관해야 한다 — "내가 차단한
+    // 사람"뿐 아니라 "나를 차단한 사람"의 글에도 상호작용할 수 없어야 차단이 실제로 보호가 된다.
+    @Test
+    @DisplayName("A가 B를 차단했으면 방향과 무관하게 상호 차단으로 판정한다")
+    void isBlockedEitherWay_blockerToBlocked_true() {
+        given(communityUserBlockRepository.existsByBlockerUserIdAndBlockedUserId(1L, 2L)).willReturn(true);
+
+        assertThat(service.isBlockedEitherWay(1L, 2L)).isTrue();
+        assertThat(service.isBlockedEitherWay(2L, 1L)).isTrue();
+    }
+
+    @Test
+    @DisplayName("어느 쪽도 차단하지 않았으면 false다")
+    void isBlockedEitherWay_noRelationship_false() {
+        assertThat(service.isBlockedEitherWay(1L, 2L)).isFalse();
+    }
 }

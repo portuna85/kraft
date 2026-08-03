@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { LottoBalls } from "@/ui/domain/lotto-balls";
 import { getDeviceToken } from "@/lib/device-token";
 import { browserFetch } from "@/lib/browser-api";
+import { getMyRecommendationSets } from "@/lib/community-client";
+import { useCommunitySession } from "@/lib/community-session-provider";
 import type { PageResponse } from "@/lib/community-api";
 import type { RecommendationSetSummary } from "@/features/recommendation/types";
 import { ErrorState } from "@/ui/primitives/error-state";
@@ -20,15 +22,24 @@ export function RecommendationAttachmentPicker({
   // "로딩 끝났는데 실패했고 데이터도 있다" 같은 조합이 타입상 가능했다.
   const [state, setState] = useState<AsyncState<RecommendationSetSummary[]>>(asyncLoading);
   const [retryKey, setRetryKey] = useState(0);
+  // C-2: 로그인 상태면 계정 스코프 목록을 보여준다 — 안 그러면 claim된(더 이상
+  // clientTokenHash가 없는) 추천 세트가 첨부 후보에 아예 뜨지 않는다.
+  const { session, claimStatus } = useCommunitySession();
+  const isClaimSettling = claimStatus === "claiming";
+  const useOwnerScope = Boolean(session?.loggedIn) && !isClaimSettling;
 
   // FE-053: 이전에는 로딩 중·조회 실패·세트 0개가 모두 null 렌더로 같아 보였다.
   // 특히 실패를 .catch(() => setSets([]))로 흡수해 "첨부 기능이 없는 화면"처럼 보였다.
   useEffect(() => {
+    if (isClaimSettling) return;
     let cancelled = false;
-    browserFetch<PageResponse<RecommendationSetSummary>>(
-      "/api/v1/recommendation-sets?page=0&size=50",
-      { headers: { "X-Device-Token": getDeviceToken() } }
-    )
+    const request = useOwnerScope
+      ? getMyRecommendationSets(0, 50)
+      : browserFetch<PageResponse<RecommendationSetSummary>>(
+          "/api/v1/recommendation-sets?page=0&size=50",
+          { headers: { "X-Device-Token": getDeviceToken() } }
+        );
+    request
       .then((result) => {
         if (!cancelled) setState(asyncSuccess(Array.isArray(result?.items) ? result.items : []));
       })
@@ -38,7 +49,7 @@ export function RecommendationAttachmentPicker({
     return () => {
       cancelled = true;
     };
-  }, [retryKey]);
+  }, [retryKey, useOwnerScope, isClaimSettling]);
 
   if (state.status === "loading" || state.status === "idle") {
     return (

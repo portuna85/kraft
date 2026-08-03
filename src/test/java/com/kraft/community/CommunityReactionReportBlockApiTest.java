@@ -159,6 +159,22 @@ class CommunityReactionReportBlockApiTest {
                 .andExpect(status().isNoContent());
     }
 
+    // C-1: /me/interactions는 postIds가 필수라 페이지 로드 시 한 번만 차단 목록을 조회하는
+    // 용도로 못 쓴다(빈 배열을 보내면 파라미터 자체가 없어져 400) — 전용 엔드포인트를 검증한다.
+    @Test
+    @DisplayName("차단 목록 전용 엔드포인트는 postIds 없이도 차단한 사용자 ID를 반환한다")
+    void blockedUsers_returnsBlockedUserIds() throws Exception {
+        mockMvc.perform(put("/api/v1/community/users/" + other.getId() + "/block")
+                        .with(asUser(owner))
+                        .with(csrf()))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/community/me/blocked-users")
+                        .with(asUser(owner)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0]").value(other.getId()));
+    }
+
     @Test
     @DisplayName("개인 반응 상태 API가 좋아요·북마크·차단 목록을 반환한다")
     void meInteractions_returnsLikedBookmarkedAndBlocked() throws Exception {

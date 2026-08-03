@@ -4,10 +4,10 @@ import { headers } from "next/headers";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
 import { PageHeader } from "@/components/page-header";
 import { getPublicBaseUrl } from "@/lib/api";
-import { formatDateTime } from "@/lib/format";
 import { EmptyState } from "@/ui/primitives/empty-state";
 import { getCommunityPosts, type PostCategory, type PostSort } from "@/lib/community-api";
 import { CATEGORY_LABELS, CATEGORY_OPTIONS } from "@/features/community/types";
+import { CommunityPostList } from "@/features/community/community-post-list";
 
 export const metadata: Metadata = {
   title: "커뮤니티",
@@ -124,23 +124,7 @@ export default async function CommunityPage({ searchParams }: Props) {
               <Link href="/community">필터 해제</Link>
             </p>
           )}
-          <ul className="community-post-list">
-            {result.items.map((post) => (
-              <li key={post.id} className="community-post-list-item">
-                <span className="community-post-category">{CATEGORY_LABELS[post.category]}</span>
-                <Link href={`/community/posts/${post.id}`}>{post.title}</Link>
-                <span className="community-post-author">{post.authorNickname}</span>
-                {/* FE-047: 홈 커뮤니티 섹션은 날짜를 보여주는데 목록에는 없어
-                    최신성 판단이 불가능했다. */}
-                <time className="community-post-date" dateTime={post.createdAt}>
-                  {formatDateTime(post.createdAt)}
-                </time>
-                <span className="community-post-counts">
-                  좋아요 {post.likeCount} · 댓글 {post.commentCount} · 조회 {post.viewCount}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <CommunityPostList items={result.items} />
           {/* FE-052: totalPages를 알고 있으면서 이전/다음만 제공해, 뒤쪽 페이지에서
               1페이지로 돌아가려면 뒤로가기밖에 없었다. */}
           <nav aria-label="게시글 목록 페이지" className="community-pagination">

@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 import { getDeviceToken } from "@/lib/device-token";
 import { browserFetch, BrowserApiError } from "@/lib/browser-api";
+import { saveMySavedNumber } from "@/lib/community-client";
+import { useCommunitySession } from "@/lib/community-session-provider";
 import type { RecommendationItem, RecommendationResponse, Strategy } from "./types";
 import { MIN_COUNT, MAX_COUNT } from "./types";
 
@@ -24,6 +26,10 @@ export type UseRecommendationStudioOptions = {
  * (백엔드는 헤더가 없으면 stateless로 응답 — 기존 호환 클라이언트와 동일하게 동작).
  */
 export function useRecommendationStudio(options: UseRecommendationStudioOptions = {}) {
+  // C-2: 로그인 상태면 새로 저장하는 조합은 곧바로 계정 소유로 만든다 — claim 완료를
+  // 기다리지 않는다. 그래야 "회전된 새 디바이스 토큰 아래 고립되는 기록"이 애초에
+  // 생기지 않는다(생성 시점부터 소유자 스코프로 쓰면 나중에 귀속시킬 것 자체가 없다).
+  const { session } = useCommunitySession();
   const [strategy, setStrategy] = useState<Strategy>(options.initialStrategy ?? "random");
   const [count, setCount] = useState(options.initialCount ?? 5);
   const [locked, setLocked] = useState<number[]>([]);
@@ -105,20 +111,21 @@ export function useRecommendationStudio(options: UseRecommendationStudioOptions 
     setSavingPositions((prev) => new Set(prev).add(position));
     setMessage("");
     try {
-      const payload = await browserFetch<{ created?: boolean }>("/api/v1/saved", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Device-Token": getDeviceToken(),
-        },
-        body: JSON.stringify({
-          numbers,
-          label: `${TEXT.saveLabelPrefix} ${position}`,
-          source: "RECOMMEND",
-        }),
-      });
+      const label = `${TEXT.saveLabelPrefix} ${position}`;
+      const created = session?.loggedIn
+        ? (await saveMySavedNumber(numbers, label, "RECOMMEND")).created
+        : (
+            await browserFetch<{ created?: boolean }>("/api/v1/saved", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Device-Token": getDeviceToken(),
+              },
+              body: JSON.stringify({ numbers, label, source: "RECOMMEND" }),
+            })
+          ).created;
       setSavedPositions((prev) => new Set(prev).add(position));
-      setMessage(payload.created ? TEXT.savedCreated : TEXT.savedExists);
+      setMessage(created ? TEXT.savedCreated : TEXT.savedExists);
     } catch (err) {
       setMessage(err instanceof BrowserApiError && err.message ? err.message : TEXT.saveFailed);
     } finally {

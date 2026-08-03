@@ -174,6 +174,35 @@ groups:
           description: "kraft_backup_last_success_timestamp_seconds 기준 마지막 성공 백업이 25시간을 초과함."
           runbook: "crontab -l로 백업 스케줄 등록 확인; bash scripts/db-backup.sh를 서버에서 직접 실행해 실패 원인(디스크 공간 등) 확인"
 
+      - alert: KraftBackupRemoteStale
+        expr: time() - kraft_backup_last_remote_success_timestamp_seconds > 90000
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "오프사이트 DB 백업 사본이 25시간 이상 갱신되지 않음"
+          description: "kraft_backup_last_remote_success_timestamp_seconds 기준 마지막 성공 원격 복사가 25시간을 초과함. 로컬 백업(KraftBackupStale)은 정상일 수 있음 — 이 경보는 오프사이트 사본만 본다."
+          runbook: "BACKUP_REMOTE_DEST가 /etc/kraft/backup.env에 설정돼 있는지, rclone이 설치돼 있는지 서버에서 확인; bash scripts/db-backup.sh를 직접 실행해 [FAIL]/[WARN] 로그로 원인 파악"
+
+      - alert: NodeExporterDown
+        expr: up{job="node-exporter"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "node-exporter가 응답하지 않음"
+          description: "node-exporter가 2분 이상 scrape 실패. 이 익스포터가 죽으면 KraftBackupStale/KraftBackupRemoteStale/NodeFilesystemLowSpace가 데이터 없이 조용히 무경보 상태가 될 수 있다."
+          runbook: "docker compose -f docker-compose.prod.yml logs --tail=200 node-exporter; docker compose -f docker-compose.prod.yml ps node-exporter로 컨테이너 상태 확인"
+
+      - alert: Watchdog
+        expr: vector(1)
+        labels:
+          severity: none
+        annotations:
+          summary: "Alertmanager/Prometheus 경보 파이프라인 생존 확인용 상시 발화 경보"
+          description: "이 경보는 항상 발화 상태다. heartbeat 수신자로만 라우팅되며, 외부 heartbeat 서비스가 일정 시간 이 경보를 못 받으면 그쪽에서 별도로 알린다. Prometheus/Alertmanager가 동시에 죽으면 다른 어떤 경보도 전달되지 않으므로 이 경로가 마지막 안전망이다."
+          runbook: "이 경보가 Discord 채널 대신 heartbeat 채널에만 뜨는지 확인(alertmanager.yml.tmpl의 라우팅); 외부 heartbeat 서비스 대시보드에서 최근 핑 수신 시각 확인"
+
       - alert: NodeFilesystemLowSpace
         expr: |
           node_filesystem_avail_bytes{job="node-exporter",mountpoint="/"}

@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.kraft.common.error.ApiException;
+import com.kraft.community.block.CommunityBlockService;
 import com.kraft.community.post.CommunityPost;
 import com.kraft.community.post.CommunityPostMetricsRepository;
 import com.kraft.community.post.CommunityPostRepository;
@@ -48,13 +49,16 @@ class CommunityCommentServiceTest {
     @Mock
     private CommunityPostMetricsRepository communityPostMetricsRepository;
 
+    @Mock
+    private CommunityBlockService communityBlockService;
+
     private CommunityCommentService service;
 
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(Instant.parse("2026-07-24T00:00:00Z"), ZoneOffset.UTC);
         service = new CommunityCommentService(communityCommentRepository, communityPostRepository,
-                communityPostMetricsRepository, clock, new SimpleMeterRegistry());
+                communityPostMetricsRepository, communityBlockService, clock, new SimpleMeterRegistry());
     }
 
     @Test
@@ -71,6 +75,21 @@ class CommunityCommentServiceTest {
                 .isInstanceOf(ApiException.class)
                 .hasFieldOrPropertyWithValue("code", "COMMUNITY_POST_NOT_FOUND")
                 .hasFieldOrPropertyWithValue("status", org.springframework.http.HttpStatus.NOT_FOUND);
+    }
+
+    // C-1: 차단은 저장·조회만 될 뿐 쓰기 경로를 막지 않았다 — 서버가 실제로 강제하는지 검증한다.
+    @Test
+    @DisplayName("차단 관계인 사용자의 게시글에는 댓글을 달 수 없다")
+    void create_blockedRelationship_throwsForbidden() {
+        CommunityPost post = publishedPost();
+        when(communityPostRepository.findById(10L)).thenReturn(Optional.of(post));
+        given(communityBlockService.isBlockedEitherWay(2L, 1L)).willReturn(true);
+
+        assertThatThrownBy(() -> service.create(2L, "다른 사용자", 10L, new CreateCommentRequest("댓글", null)))
+                .isInstanceOf(ApiException.class)
+                .hasFieldOrPropertyWithValue("code", "COMMUNITY_BLOCKED_INTERACTION")
+                .hasFieldOrPropertyWithValue("status", HttpStatus.FORBIDDEN);
+        verify(communityCommentRepository, never()).save(any());
     }
 
     private static CommunityPost publishedPost() {

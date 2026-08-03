@@ -59,14 +59,25 @@ public class CommunityPostService {
 
         Long recommendationSetId = request.recommendationSetId();
         if (recommendationSetId != null) {
-            // 소유권 교차검증: 로그인 사용자가 첨부하려는 세트가 "지금 이 브라우저"의 익명
-            // 기기 토큰으로 만든 세트인지 확인한다. 계정 귀속 이전에도 같은 브라우저
-            // 세션이면 검증할 수 있다.
-            if (clientTokenHash == null) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "DEVICE_TOKEN_REQUIRED",
-                        "추천 세트를 첨부하려면 X-Device-Token 헤더가 필요합니다.");
+            // 소유권 교차검증: 우선 "지금 이 브라우저"의 익명 기기 토큰으로 만든 세트인지
+            // 확인한다(계정 귀속 이전에도 같은 브라우저 세션이면 검증할 수 있다). 기기 토큰
+            // 헤더가 없거나 그 토큰으로 못 찾으면(FORBIDDEN) 로그인 계정 소유로 재시도한다 —
+            // claim(계정 귀속) 이후에는 세트의 clientTokenHash가 null로 지워져 기기 토큰
+            // 조회가 항상 실패하므로, 이 폴백이 없으면 귀속된 세트를 영원히 첨부할 수 없다.
+            boolean ownedByDevice = false;
+            if (clientTokenHash != null) {
+                try {
+                    recommendationSetHistoryService.get(clientTokenHash, recommendationSetId);
+                    ownedByDevice = true;
+                } catch (ApiException e) {
+                    if (e.getStatus() != HttpStatus.FORBIDDEN) {
+                        throw e;
+                    }
+                }
             }
-            recommendationSetHistoryService.get(clientTokenHash, recommendationSetId);
+            if (!ownedByDevice) {
+                recommendationSetHistoryService.getForOwner(ownerId, recommendationSetId);
+            }
         }
 
         OffsetDateTime now = OffsetDateTime.now(clock);

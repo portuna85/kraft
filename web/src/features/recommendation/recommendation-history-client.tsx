@@ -5,6 +5,8 @@ import { LottoBalls } from "@/ui/domain/lotto-balls";
 import { getDeviceToken } from "@/lib/device-token";
 import { formatDateTime } from "@/lib/format";
 import { browserFetch, BrowserApiError } from "@/lib/browser-api";
+import { deleteMyRecommendationSet, getMyRecommendationSets } from "@/lib/community-client";
+import { useCommunitySession } from "@/lib/community-session-provider";
 import type { PageResponse } from "@/lib/community-api";
 import type { RecommendationSetSummary } from "@/features/recommendation/types";
 import { EmptyState } from "@/ui/primitives/empty-state";
@@ -29,6 +31,12 @@ type History = {
 };
 
 export function RecommendationHistoryClient() {
+  // C-2: 로그인 상태면 계정 스코프로 읽고 쓴다. claim 진행 중에는 잠깐 미루고, settled로
+  // 전이하면 loadHistory가 다시 실행돼(useEffect 의존성) 최신 소유 목록을 가져온다.
+  const { session, claimStatus } = useCommunitySession();
+  const isClaimSettling = claimStatus === "claiming";
+  const useOwnerScope = Boolean(session?.loggedIn) && !isClaimSettling;
+
   // FE-036: items·isLoading·hasError·page·totalPages를 각각 들면 "로딩 중인데 실패했고
   // 데이터도 있다" 같은 조합이 타입상 가능했다. 조회 상태는 하나의 판별 유니온으로 두고,
   // 삭제·더 보기 같은 mutation 상태는 별개로 유지한다(둘은 성격이 다르다).
@@ -40,14 +48,20 @@ export function RecommendationHistoryClient() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  const fetchPage = useCallback((targetPage: number) => {
-    return browserFetch<PageResponse<RecommendationSetSummary>>(
-      `/api/v1/recommendation-sets?page=${targetPage}&size=${PAGE_SIZE}`,
-      { headers: { "X-Device-Token": getDeviceToken() } }
-    );
-  }, []);
+  const fetchPage = useCallback(
+    (targetPage: number) => {
+      return useOwnerScope
+        ? getMyRecommendationSets(targetPage, PAGE_SIZE)
+        : browserFetch<PageResponse<RecommendationSetSummary>>(
+            `/api/v1/recommendation-sets?page=${targetPage}&size=${PAGE_SIZE}`,
+            { headers: { "X-Device-Token": getDeviceToken() } }
+          );
+    },
+    [useOwnerScope]
+  );
 
   const loadHistory = useCallback(() => {
+    if (isClaimSettling) return;
     fetchPage(0)
       .then((result) => {
         setState(asyncSuccess({
@@ -58,7 +72,7 @@ export function RecommendationHistoryClient() {
         }));
       })
       .catch(() => setState(asyncError));
-  }, [fetchPage]);
+  }, [fetchPage, isClaimSettling]);
 
   useEffect(() => {
     loadHistory();
@@ -101,10 +115,14 @@ export function RecommendationHistoryClient() {
     setDeleteError(null);
     setDeletingIds((prev) => new Set(prev).add(id));
     try {
-      await browserFetch(`/api/v1/recommendation-sets/${id}`, {
-        method: "DELETE",
-        headers: { "X-Device-Token": getDeviceToken() },
-      });
+      if (useOwnerScope) {
+        await deleteMyRecommendationSet(id);
+      } else {
+        await browserFetch(`/api/v1/recommendation-sets/${id}`, {
+          method: "DELETE",
+          headers: { "X-Device-Token": getDeviceToken() },
+        });
+      }
       setState((prev) =>
         prev.status === "success"
           ? asyncSuccess({

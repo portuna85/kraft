@@ -1,6 +1,7 @@
 package com.kraft.community.comment;
 
 import com.kraft.common.error.ApiException;
+import com.kraft.community.block.CommunityBlockService;
 import com.kraft.community.post.CommunityPost;
 import com.kraft.community.post.CommunityPostMetricsRepository;
 import com.kraft.community.post.CommunityPostRepository;
@@ -31,6 +32,7 @@ public class CommunityCommentService {
     private final CommunityCommentRepository communityCommentRepository;
     private final CommunityPostRepository communityPostRepository;
     private final CommunityPostMetricsRepository communityPostMetricsRepository;
+    private final CommunityBlockService communityBlockService;
     private final Clock clock;
     private final Counter tombstoneCounter;
     private final Counter createdCounter;
@@ -38,11 +40,13 @@ public class CommunityCommentService {
     public CommunityCommentService(CommunityCommentRepository communityCommentRepository,
                                     CommunityPostRepository communityPostRepository,
                                     CommunityPostMetricsRepository communityPostMetricsRepository,
+                                    CommunityBlockService communityBlockService,
                                     Clock clock,
                                     MeterRegistry meterRegistry) {
         this.communityCommentRepository = communityCommentRepository;
         this.communityPostRepository = communityPostRepository;
         this.communityPostMetricsRepository = communityPostMetricsRepository;
+        this.communityBlockService = communityBlockService;
         this.clock = clock;
         this.tombstoneCounter = Counter.builder("kraft_community_comment_tombstoned_total")
                 .description("tombstone 처리(삭제)된 댓글 누적 수")
@@ -91,6 +95,12 @@ public class CommunityCommentService {
                         "게시글을 찾을 수 없습니다."));
         if (post.getStatus() != PostStatus.PUBLISHED) {
             throw new ApiException(HttpStatus.NOT_FOUND, "COMMUNITY_POST_NOT_FOUND", "게시글을 찾을 수 없습니다.");
+        }
+        // C-1: 차단은 저장·조회만 될 뿐 쓰기 경로를 막지 않았다 — 서로 차단한 사이라면
+        // 어느 쪽이 차단했든 댓글을 달 수 없게 한다(표시 필터링과 별개로 서버가 강제).
+        if (communityBlockService.isBlockedEitherWay(ownerId, post.getOwnerId())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "COMMUNITY_BLOCKED_INTERACTION",
+                    "차단 관계인 사용자의 게시글에는 댓글을 달 수 없습니다.");
         }
 
         CommunityComment parent = null;

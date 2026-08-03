@@ -4,10 +4,14 @@ import { useRef, useState } from "react";
 import { Dialog } from "@/ui/primitives/dialog";
 import { blockUser, unblockUser } from "@/lib/community-client";
 import { useCommunitySession } from "@/lib/community-session-provider";
+import { useBlockedUserIds } from "@/features/community/blocked-users-context";
 
 export function BlockButton({ userId }: { userId: number }) {
   const { session } = useCommunitySession();
-  const [blocked, setBlocked] = useState(false);
+  // C-1: 예전에는 항상 useState(false)로 시작해 새로고침하면 이미 차단한 상대에게도
+  // 다시 "차단" 버튼이 보였다. 페이지 트리에서 한 번 조회한 공유 목록에서 초기값을 읽는다.
+  const { isBlocked, markBlocked, markUnblocked } = useBlockedUserIds();
+  const blocked = isBlocked(userId);
   const [message, setMessage] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -20,7 +24,7 @@ export function BlockButton({ userId }: { userId: number }) {
     setMessage("");
     try {
       await blockUser(userId);
-      setBlocked(true);
+      markBlocked(userId);
       setConfirmOpen(false);
     } catch {
       setMessage("처리하지 못했습니다. 잠시 후 다시 시도하세요.");
@@ -34,7 +38,7 @@ export function BlockButton({ userId }: { userId: number }) {
     setMessage("");
     try {
       await unblockUser(userId);
-      setBlocked(false);
+      markUnblocked(userId);
     } catch {
       setMessage("처리하지 못했습니다. 잠시 후 다시 시도하세요.");
     } finally {

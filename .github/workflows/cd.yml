@@ -87,6 +87,7 @@ jobs:
           # 모니터링
           GRAFANA_ADMIN_PASSWORD:         ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
           ALERTMANAGER_DISCORD_WEBHOOK_URL: ${{ secrets.ALERTMANAGER_DISCORD_WEBHOOK_URL }}
+          KRAFT_HEARTBEAT_URL: ${{ secrets.KRAFT_HEARTBEAT_URL }}
           # GHCR 인증 (private 이미지 pull)
           GHCR_TOKEN: ${{ github.token }}
           GHCR_USER:  ${{ github.repository_owner }}
@@ -109,7 +110,7 @@ jobs:
             KRAFT_EXTERNAL_LOTTO_URL_TEMPLATE,
             KRAFT_COMMUNITY_GOOGLE_CLIENT_ID,KRAFT_COMMUNITY_GOOGLE_CLIENT_SECRET,
             KRAFT_COMMUNITY_NAVER_CLIENT_ID,KRAFT_COMMUNITY_NAVER_CLIENT_SECRET,
-            GRAFANA_ADMIN_PASSWORD,ALERTMANAGER_DISCORD_WEBHOOK_URL,
+            GRAFANA_ADMIN_PASSWORD,ALERTMANAGER_DISCORD_WEBHOOK_URL,KRAFT_HEARTBEAT_URL,
             GHCR_TOKEN,GHCR_USER
           script_stop: true
           script: |

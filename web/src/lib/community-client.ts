@@ -209,6 +209,12 @@ export async function reportContent(
   });
 }
 
+// C-1: /me/interactions는 postIds가 필수라 페이지 로드 시 한 번만 차단 목록을 가져오는
+// 용도로 재사용할 수 없다(빈 배열을 보내면 파라미터 자체가 사라져 400이 난다).
+export async function getMyBlockedUserIds(): Promise<number[]> {
+  return browserFetch<number[]>("/api/v1/community/me/blocked-users", { cache: "no-store" });
+}
+
 export async function blockUser(userId: number): Promise<void> {
   await browserFetch<void>(`/api/v1/community/users/${userId}/block`, { method: "PUT", headers: writeHeaders() });
 }
@@ -279,13 +285,74 @@ export async function getMySavedNumbers(): Promise<MySavedNumber[]> {
   );
 }
 
-// KB-05: 백엔드가 무제한 배열 대신 페이지네이션(PageResponse)을 반환하도록 바뀌었다 —
-// 이 화면들에는 아직 "더 보기" UI가 없으므로, 오늘의 실사용 흐름을 그대로 유지할 만큼
-// 넉넉한 size로 한 번에 받아 온다(무한 증식만 방어, 페이지 UI 도입은 필요해지면 별도로).
-export async function getMyRecommendationSets(): Promise<PageResponse<RecommendationSetSummary>> {
+// C-2: page/size에 기본값을 둬 페이지 인자를 받을 수 있게 확장한다 — 계정 라이브러리에
+// "더 보기"를 추가하려면(C-2-4) 고정 size=50으로는 부족하다. 인자 없이 호출하는 기존
+// 코드는 이전과 동일하게 첫 페이지(size=50)를 받는다.
+export async function getMyRecommendationSets(
+  page = 0,
+  size = 50
+): Promise<PageResponse<RecommendationSetSummary>> {
   return browserFetch<PageResponse<RecommendationSetSummary>>(
-    "/api/v1/community/me/recommendation-sets?page=0&size=50",
+    `/api/v1/community/me/recommendation-sets?page=${page}&size=${size}`,
     { cache: "no-store" },
     isRecommendationSetSummaryPage
   );
+}
+
+export type MySavedNumberMatchResult = {
+  savedNumber: MySavedNumber;
+  round: number;
+  drawDate: string;
+  drawNumbers: number[];
+  bonusNumber: number;
+  matchedCount: number;
+  bonusMatch: boolean;
+  prizeTier: string;
+};
+
+export type SaveMySavedNumberResult = {
+  savedNumber: MySavedNumber;
+  created: boolean;
+};
+
+// C-2: 로그인 세션으로 저장·회차 대조·삭제 — 아래 5개는 MyLibraryController가 이미
+// 제공하지만 지금까지 프론트에서 한 번도 호출되지 않았다(GET 목록 2개만 쓰였다).
+// /api/v1/community/** 체인이라 쓰기 요청엔 writeHeaders()의 CSRF 토큰이 필요하다.
+export async function saveMySavedNumber(
+  numbers: number[],
+  label?: string,
+  source?: string
+): Promise<SaveMySavedNumberResult> {
+  return browserFetch<SaveMySavedNumberResult>("/api/v1/community/me/saved-numbers", {
+    method: "POST",
+    headers: writeHeaders(),
+    body: JSON.stringify({ numbers, label, source }),
+  });
+}
+
+export async function deleteMySavedNumber(id: number): Promise<void> {
+  await browserFetch<void>(`/api/v1/community/me/saved-numbers/${id}`, {
+    method: "DELETE",
+    headers: writeHeaders(),
+  });
+}
+
+export async function getMySavedNumberMatches(round: string): Promise<MySavedNumberMatchResult[]> {
+  return browserFetch<MySavedNumberMatchResult[]>(
+    `/api/v1/community/me/saved-numbers/matches?round=${encodeURIComponent(round)}`,
+    { cache: "no-store" }
+  );
+}
+
+export async function getMyRecommendationSet(id: number): Promise<RecommendationSetSummary> {
+  return browserFetch<RecommendationSetSummary>(`/api/v1/community/me/recommendation-sets/${id}`, {
+    cache: "no-store",
+  });
+}
+
+export async function deleteMyRecommendationSet(id: number): Promise<void> {
+  await browserFetch<void>(`/api/v1/community/me/recommendation-sets/${id}`, {
+    method: "DELETE",
+    headers: writeHeaders(),
+  });
 }

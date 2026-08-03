@@ -1,5 +1,5 @@
 # Template file — rendered by scripts/deploy/render-alertmanager.sh
-# Variables: ALERTMANAGER_DISCORD_WEBHOOK_URL
+# Variables: ALERTMANAGER_DISCORD_WEBHOOK_URL, KRAFT_HEARTBEAT_URL
 global:
   resolve_timeout: 5m
 
@@ -9,6 +9,15 @@ route:
   group_interval: 5m
   repeat_interval: 4h
   receiver: discord-default
+  routes:
+    # Watchdog은 상시 발화하는 생존 확인용 경보라 Discord가 아니라 외부 heartbeat
+    # 서비스로만 보낸다 — Alertmanager/Prometheus 자체가 죽어 Discord로도 아무것도
+    # 전달되지 않는 상황(AlertmanagerDown/PrometheusDown 참고)에서 마지막으로 남는 신호다.
+    - matchers:
+        - alertname = "Watchdog"
+      receiver: heartbeat
+      group_wait: 0s
+      repeat_interval: 5m
 
 receivers:
   - name: discord-default
@@ -23,6 +32,13 @@ receivers:
           **{{ .Annotations.summary }}**
           {{ .Annotations.description }}
           {{ end }}
+  - name: heartbeat
+    webhook_configs:
+      # 특정 제품에 종속시키지 않는다 — 주기적 GET/POST를 받아들이는 heartbeat
+      # 서비스(healthchecks.io 등)라면 무엇이든 동작한다. 미설정 시
+      # render-alertmanager.sh가 더미 URL로 채우므로 여기는 항상 유효한 URL을 받는다.
+      - url: "${KRAFT_HEARTBEAT_URL}"
+        send_resolved: false
 
 inhibit_rules:
   - source_matchers:

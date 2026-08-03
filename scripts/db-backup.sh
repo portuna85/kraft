@@ -66,6 +66,17 @@ if [[ -n "${BACKUP_REMOTE_DEST:-}" ]]; then
   if command -v rclone >/dev/null 2>&1; then
     if rclone copy "$FILENAME" "$BACKUP_REMOTE_DEST" --quiet; then
       echo "==> 원격 사본 업로드 완료: $BACKUP_REMOTE_DEST"
+      # 로컬 성공 메트릭과 별도로 기록한다 — 로컬 백업은 됐지만 오프사이트 복사가
+      # 실패/미설정인 상태를 KraftBackupStale 하나로는 구분할 수 없기 때문이다.
+      if [[ -d "$TEXTFILE_DIR" ]]; then
+        TMP_REMOTE_METRICS="$(mktemp "$TEXTFILE_DIR/.kraft_backup_remote.XXXXXX")"
+        {
+          echo "# HELP kraft_backup_last_remote_success_timestamp_seconds Unix time of the last successful offsite DB backup copy"
+          echo "# TYPE kraft_backup_last_remote_success_timestamp_seconds gauge"
+          echo "kraft_backup_last_remote_success_timestamp_seconds $(date +%s)"
+        } > "$TMP_REMOTE_METRICS"
+        mv "$TMP_REMOTE_METRICS" "$TEXTFILE_DIR/kraft_backup_remote.prom"
+      fi
     else
       echo "==> [FAIL] 원격 사본 업로드 실패: $BACKUP_REMOTE_DEST" >&2
     fi
