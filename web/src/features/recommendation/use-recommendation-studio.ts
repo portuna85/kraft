@@ -5,14 +5,14 @@ import { useCommunitySession } from "@/lib/community-session-provider";
 import type { RecommendationItem, RecommendationResponse, Strategy } from "./types";
 import { MIN_COUNT, MAX_COUNT } from "./types";
 
+// applyResponse는 items가 없으면 recommendations로 대체하고 strategy/algorithmVersion/
+// historyThroughRound는 화면에 그대로 표시할 뿐 없어도 렌더가 깨지지 않는다 — 구 버전
+// 프록시/캐시 응답 호환을 위해서다(RecommendationResponse 타입 주석 참고). 가드는 실제로
+// 렌더가 의존하는 필드(items 또는 recommendations 중 하나)만 확인한다.
 function isRecommendationResponse(body: unknown): body is RecommendationResponse {
   if (typeof body !== "object" || body === null) return false;
   const b = body as Record<string, unknown>;
-  return (
-    typeof b.strategy === "string" &&
-    typeof b.algorithmVersion === "string" &&
-    typeof b.historyThroughRound === "number"
-  );
+  return Array.isArray(b.items) || Array.isArray(b.recommendations);
 }
 
 const TEXT = {
