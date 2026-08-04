@@ -79,7 +79,7 @@ class CommunityPostRepositoryNativeQueryTest {
     @Test
     @DisplayName("좋아요·댓글·조회수가 높을수록 상위로 정렬된다")
     void ordersByComputedPopularityScore() {
-        CommunityPost lowEngagement = createPost("낮은 인기", OffsetDateTime.now().minusHours(1));
+        createPost("낮은 인기", OffsetDateTime.now().minusHours(1));
         CommunityPost highEngagement = createPost("높은 인기", OffsetDateTime.now().minusHours(1));
 
         bumpLikes(highEngagement.getId(), 10);
