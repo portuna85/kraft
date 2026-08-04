@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM eclipse-temurin:25-jdk@sha256:edb3aa0f621796d8f5f9d602c7611ffdf015cd89e6ddda1894d85a3a99d170a8 AS source-build
+FROM eclipse-temurin:25-jdk@sha256:201fbb8886b2d273218aa3a192f0afbf7b5ff65ee8cc6ef47f5dce2171f013ea AS source-build
 WORKDIR /workspace
 
 # 의존성 레이어 분리 — build.gradle.kts 변경 시에만 재다운로드
@@ -19,14 +19,14 @@ RUN --mount=type=cache,target=/root/.gradle \
 
 # 레이어 추출 — 의존성(dependencies)은 build.gradle.kts가 안 바뀌는 한 그대로라 별도
 # 레이어로 캐시되고, 코드만 바뀐 빌드는 application 레이어만 재푸시하면 된다.
-FROM eclipse-temurin:25-jre@sha256:5cf92df78f6dba978777d5cffa3c856e583f86814fde82a6c3534ccdfd794f2f AS prebuilt-extract
+FROM eclipse-temurin:25-jre@sha256:681c543d6f36c50f45e9b5226930a46203dcfa351d3670e9d0bdf0dabae53539 AS prebuilt-extract
 WORKDIR /workspace
 COPY build/libs/kraft-backend.jar app.jar
 RUN java -Djarmode=tools -jar app.jar extract \
       --layers --launcher --destination /workspace/extracted \
     && rm app.jar
 
-FROM eclipse-temurin:25-jre@sha256:5cf92df78f6dba978777d5cffa3c856e583f86814fde82a6c3534ccdfd794f2f AS runtime-base
+FROM eclipse-temurin:25-jre@sha256:681c543d6f36c50f45e9b5226930a46203dcfa351d3670e9d0bdf0dabae53539 AS runtime-base
 WORKDIR /app
 
 # 컨테이너 친화적 JVM 옵션
