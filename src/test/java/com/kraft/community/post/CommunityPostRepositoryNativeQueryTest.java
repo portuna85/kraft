@@ -15,6 +15,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.MariaDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -26,10 +27,16 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * 간접적으로(정렬 결과의 순위 계산 자체는 검증하지 않은 채) 실행되고 있었다. 여기서는 점수
  * 공식(좋아요*3 + 댓글*2 + min(조회,1000)/20, 최신도로 나눔)과 7일 컷오프를 실제 MariaDB로
  * 직접 검증한다.
+ *
+ * <p>{@code @Transactional}은 테스트 메서드마다 롤백해 컨테이너(클래스 레벨로 공유)는
+ * 재사용하면서도 이전 테스트가 심은 게시글이 findWeeklyPopular의 무필터 결과에 섞여 들지
+ * 않게 한다 — 처음에는 이게 빠져 있어 실제 CI(Docker 사용 가능)에서 recencyBreaksTieViaTimeDecay가
+ * 심은 "최근 글"이 ordersByComputedPopularityScore의 결과에 leak되어 실패했다.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("test")
 @Testcontainers
+@Transactional
 @DisplayName("주간 인기글 네이티브 쿼리 테스트 (실 MariaDB)")
 class CommunityPostRepositoryNativeQueryTest {
 
