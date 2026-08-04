@@ -91,6 +91,12 @@ val requestedTestWorkers = providers.gradleProperty("testWorkers").orNull?.toInt
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    // maxHeapSize가 없으면 Gradle 테스트 워커 JVM이 기본 힙(플랫폼 의존, 대체로 512MB
+    // 안팎)으로 뜬다 — Testcontainers·다수 Spring context 로딩이 섞인 이 스위트는 전체를
+    // 한 번에 돌리면(특히 리소스가 제한된 환경) 힙 부족으로 테스트 실행 도중 크래시한다
+    // (2026-08-04 확인: improvement.md §16 "남은 리스크"). 병렬 포크 수와 무관하게 항상
+    // 적용한다.
+    maxHeapSize = "2g"
     if (requestedTestWorkers != null) {
         maxParallelForks = requestedTestWorkers
             .coerceAtLeast(1)
