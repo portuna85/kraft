@@ -14,6 +14,70 @@ import { ReportDialog } from "./report-dialog";
 import { EmptyState } from "@/ui/primitives/empty-state";
 import { ConfirmDialog } from "@/ui/primitives/confirm-dialog";
 
+type CommentItemProps = {
+  comment: CommunityComment;
+  isReply: boolean;
+  loggedIn: boolean;
+  currentUserId: number | null;
+  isBlocked: (ownerId: number) => boolean;
+  onReply: (target: { id: number; authorNickname: string }) => void;
+  onRequestDelete: (id: number) => void;
+};
+
+// M-6: 부모 댓글과 답글 렌더는 거의 동일한 구조(작성자/본문/작업 버튼)라 isReply로만
+// 갈린다 — 답글에는 "답글" 버튼이 없고 자기 자신의 답글 목록도 재귀 렌더하지 않는다는
+// 두 가지 차이만 조건부로 처리한다.
+function CommentItem({ comment, isReply, loggedIn, currentUserId, isBlocked, onReply, onRequestDelete }: CommentItemProps) {
+  // C-1: 차단은 저장·조회만 될 뿐 렌더링에 적용되지 않았다 — 답글도 걸러낸다(답글은
+  // 페이징 집계 대상이 아니므로 필터링이 페이지 카운트와 어긋나지 않는다).
+  const visibleReplies = isReply
+    ? []
+    : comment.replies.filter((reply) => reply.ownerId === null || !isBlocked(reply.ownerId));
+
+  return (
+    <li key={comment.id} className={isReply ? "community-comment is-reply" : "community-comment"}>
+      <span className="community-comment-author">{comment.authorNickname}</span>
+      <p>{comment.content}</p>
+      {!comment.deleted && loggedIn && (
+        <div className="community-comment-actions">
+          {!isReply && (
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => onReply({ id: comment.id, authorNickname: comment.authorNickname })}
+            >
+              답글
+            </button>
+          )}
+          {currentUserId === comment.ownerId ? (
+            <button type="button" className="button secondary" onClick={() => onRequestDelete(comment.id)}>
+              삭제
+            </button>
+          ) : (
+            <ReportDialog targetType="COMMENT" targetId={comment.id} />
+          )}
+        </div>
+      )}
+      {!isReply && visibleReplies.length > 0 && (
+        <ul className="community-comment-replies">
+          {visibleReplies.map((reply) => (
+            <CommentItem
+              key={reply.id}
+              comment={reply}
+              isReply
+              loggedIn={loggedIn}
+              currentUserId={currentUserId}
+              isBlocked={isBlocked}
+              onReply={onReply}
+              onRequestDelete={onRequestDelete}
+            />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
 export function CommentSection({ postId }: { postId: number }) {
   const [topLevel, setTopLevel] = useState<CommunityComment[]>([]);
   const [totalTopLevelComments, setTotalTopLevelComments] = useState(0);
@@ -102,57 +166,6 @@ export function CommentSection({ postId }: { postId: number }) {
     }
   };
 
-  const renderComment = (comment: CommunityComment) => {
-    // C-1: 차단은 저장·조회만 될 뿐 렌더링에 적용되지 않았다 — 답글도 걸러낸다(답글은
-    // 페이징 집계 대상이 아니므로 필터링이 페이지 카운트와 어긋나지 않는다).
-    const visibleReplies = comment.replies.filter((reply) => reply.ownerId === null || !isBlocked(reply.ownerId));
-    return (
-      <li key={comment.id} className="community-comment">
-        <span className="community-comment-author">{comment.authorNickname}</span>
-        <p>{comment.content}</p>
-        {!comment.deleted && session?.loggedIn && (
-          <div className="community-comment-actions">
-            <button
-              type="button"
-              className="button secondary"
-              onClick={() => setReplyTo({ id: comment.id, authorNickname: comment.authorNickname })}
-            >
-              답글
-            </button>
-            {session.userId === comment.ownerId ? (
-              <button type="button" className="button secondary" onClick={() => setPendingDeleteId(comment.id)}>
-                삭제
-              </button>
-            ) : (
-              <ReportDialog targetType="COMMENT" targetId={comment.id} />
-            )}
-          </div>
-        )}
-        {visibleReplies.length > 0 && (
-          <ul className="community-comment-replies">
-            {visibleReplies.map((reply) => (
-              <li key={reply.id} className="community-comment is-reply">
-                <span className="community-comment-author">{reply.authorNickname}</span>
-                <p>{reply.content}</p>
-                {!reply.deleted && session?.loggedIn && (
-                  <div className="community-comment-actions">
-                    {session.userId === reply.ownerId ? (
-                      <button type="button" className="button secondary" onClick={() => setPendingDeleteId(reply.id)}>
-                        삭제
-                      </button>
-                    ) : (
-                      <ReportDialog targetType="COMMENT" targetId={reply.id} />
-                    )}
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </li>
-    );
-  };
-
   // C-1: 차단된 작성자의 댓글은 걸러낸다. totalTopLevelComments(서버 집계)는 그대로 두고
   // 제목에 쓴다 — 화면에 보이는 개수와 어긋날 수 있는 것은 목록/피드와 같은 트레이드오프다.
   const visibleTopLevel = topLevel.filter((comment) => comment.ownerId === null || !isBlocked(comment.ownerId));
@@ -172,7 +185,20 @@ export function CommentSection({ postId }: { postId: number }) {
         // FE-009: 평문 문단 대신 다른 화면과 같은 빈 상태 표현을 쓴다.
         <EmptyState title="아직 댓글이 없습니다." description="첫 번째 댓글을 남겨 보세요." />
       ) : (
-        <ul className="community-comment-list">{visibleTopLevel.map(renderComment)}</ul>
+        <ul className="community-comment-list">
+          {visibleTopLevel.map((comment) => (
+            <CommentItem
+              key={comment.id}
+              comment={comment}
+              isReply={false}
+              loggedIn={Boolean(session?.loggedIn)}
+              currentUserId={session?.loggedIn ? session.userId : null}
+              isBlocked={isBlocked}
+              onReply={setReplyTo}
+              onRequestDelete={setPendingDeleteId}
+            />
+          ))}
+        </ul>
       )}
 
       {totalPages > 1 && (
