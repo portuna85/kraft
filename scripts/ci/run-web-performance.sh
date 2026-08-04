@@ -12,7 +12,7 @@ cd "$WEB_ROOT"
 # <revision>은 Playwright 버전이 오를 때마다 바뀐다(예: 1228 -> 다른 숫자) — 하드코딩된
 # 리비전 번호는 다음 @playwright/test 범프마다 깨진다. 실제로 설치된 경로를 글롭으로 찾는다.
 if [[ -z "${CHROME_PATH:-}" ]]; then
-  chrome_candidate=$(find /ms-playwright -maxdepth 2 -type f -path '*/chromium-*/chrome-linux64/chrome' 2>/dev/null | head -n 1)
+  chrome_candidate=$(find /ms-playwright -maxdepth 3 -type f -path '*/chromium-*/chrome-linux64/chrome' 2>/dev/null | head -n 1)
   if [[ -n "$chrome_candidate" && -x "$chrome_candidate" ]]; then
     export CHROME_PATH="$chrome_candidate"
   fi
