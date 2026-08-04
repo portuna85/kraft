@@ -224,9 +224,9 @@ describe("커뮤니티 게시글 작성·수정 폼", () => {
 
     await waitFor(() => expect(putBodies).toHaveLength(2));
     // 두 번째 저장은 재조회한 최신 버전으로 나가야 한다 — 아니면 또 충돌한다.
-    expect(JSON.parse(putBodies[0]).expectedVersion).toBe(0);
-    expect(JSON.parse(putBodies[1]).expectedVersion).toBe(5);
-    expect(JSON.parse(putBodies[1]).title).toBe("내가 쓴 제목");
+    expect(JSON.parse(putBodies[0]!).expectedVersion).toBe(0);
+    expect(JSON.parse(putBodies[1]!).expectedVersion).toBe(5);
+    expect(JSON.parse(putBodies[1]!).title).toBe("내가 쓴 제목");
   });
 
   it("본인이 아닌 게시글을 수정하려 하면 권한 안내와 돌아가기 링크를 보여준다", async () => {

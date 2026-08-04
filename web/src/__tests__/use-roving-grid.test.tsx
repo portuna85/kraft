@@ -5,7 +5,8 @@ import { useRovingGrid } from "@/ui/primitives/use-roving-grid";
 // fireEvent.focus는 focus 이벤트만 발화할 뿐 jsdom의 document.activeElement를 실제로
 // 옮기지 않는다 — 훅의 onFocus 핸들러(상태 갱신)는 반응하지만 실제 포커스 이동이
 // 필요한 단언(toHaveFocus)에는 쓸 수 없다. act로 감싼 진짜 .focus() 호출을 쓴다.
-function focusButton(button: HTMLElement) {
+function focusButton(button: HTMLElement | undefined) {
+  if (!button) throw new Error("expected a button element");
   act(() => {
     button.focus();
   });
@@ -83,7 +84,7 @@ describe("useRovingGrid의 비활성 셀 스킵(M-9)", () => {
     // 그룹이 아니라 실제 포커스된 버튼에서 이벤트를 발화한다(실제 브라우저와 동일하게 —
     // 키 이벤트는 포커스된 요소에서 나서 그룹까지 버블링된다). 그룹에 직접 dispatch하면
     // jsdom에서 활성 요소가 아닌 노드로 이벤트를 보내는 셈이라 포커스 상태가 흔들린다.
-    fireEvent.keyDown(buttons[2], { key: "ArrowRight" });
+    fireEvent.keyDown(buttons[2]!, { key: "ArrowRight" });
 
     expect(buttons[2]).toHaveFocus();
   });

@@ -120,4 +120,16 @@ export function logCoreDataFailure(error: unknown, message: string): void {
   }
 }
 
+// L-1: 홈/frequency/stats/companion 4개 라우트가 "try { fetch } catch(e) {
+// logCoreDataFailure(e, msg); throw e; }"를 그대로 반복하고 있었다 — 흐름 제어(호출자가
+// 그대로 rethrow)는 그대로 두면서 반복되는 3줄만 하나로 묶는다.
+export async function withCoreDataLogging<T>(message: string, run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    logCoreDataFailure(error, message);
+    throw error;
+  }
+}
+
 export default logger;

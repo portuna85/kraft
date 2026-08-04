@@ -15,7 +15,7 @@ describe("browserFetch", () => {
 
     await browserFetch("/api/v1/rounds/latest");
 
-    const [, init] = fetchSpy.mock.calls[0];
+    const [, init] = fetchSpy.mock.calls[0]!;
     expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 

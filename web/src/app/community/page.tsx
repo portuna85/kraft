@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { headers } from "next/headers";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
 import { PageHeader } from "@/components/page-header";
-import { getPublicBaseUrl } from "@/lib/api";
+import { getPageSeoContext } from "@/lib/seo-context";
 import { EmptyState } from "@/ui/primitives/empty-state";
 import { getCommunityPosts, type PostCategory, type PostSort } from "@/lib/community-api";
 import { CATEGORY_LABELS, CATEGORY_OPTIONS } from "@/features/community/types";
@@ -73,8 +72,7 @@ export default async function CommunityPage({ searchParams }: Props) {
   const query = normalizeQuery(queryParam);
   const category = isPostCategory(categoryParam) ? categoryParam : undefined;
   const sort: PostSort = sortParam === "weekly_popular" ? "weekly_popular" : "latest";
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
-  const baseUrl = getPublicBaseUrl();
+  const { nonce, baseUrl } = await getPageSeoContext();
   // 백엔드 오류를 "게시글 없음"으로 감추지 않는다(§P1-03) — 실패는 최상위 error.tsx
   // 경계로 넘겨 재시도 UI를 보여주고, 정상 응답이 실제로 비어 있을 때만 빈 상태 문구를 쓴다.
   const result = await getCommunityPosts(page, 20, { category, sort, query });

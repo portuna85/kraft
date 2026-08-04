@@ -42,10 +42,10 @@ describe("WebVitalsReporter", () => {
     render(<WebVitalsReporter />);
     await waitFor(() => expect(callbacks.LCP).toBeInstanceOf(Function));
 
-    callbacks.LCP({ name: "LCP", value: 1800.2, rating: "needs-improvement" });
+    callbacks.LCP!({ name: "LCP", value: 1800.2, rating: "needs-improvement" });
 
     expect(sendBeaconSpy).toHaveBeenCalledTimes(1);
-    const [url, body] = sendBeaconSpy.mock.calls[0];
+    const [url, body] = sendBeaconSpy.mock.calls[0]!;
     expect(url).toBe("/api/vitals");
     const parsed = JSON.parse(body as string);
     expect(parsed).toEqual({
@@ -71,16 +71,16 @@ describe("WebVitalsReporter", () => {
     await waitFor(() => expect(callbacks.CLS).toBeInstanceOf(Function));
 
     Object.defineProperty(window, "innerWidth", { value: 375, configurable: true });
-    callbacks.CLS({ name: "CLS", value: 0.05, rating: "good" });
-    expect(JSON.parse(sendBeaconSpy.mock.calls[0][1] as string).deviceClass).toBe("mobile");
+    callbacks.CLS!({ name: "CLS", value: 0.05, rating: "good" });
+    expect(JSON.parse(sendBeaconSpy.mock.calls[0]![1] as string).deviceClass).toBe("mobile");
 
     Object.defineProperty(window, "innerWidth", { value: 800, configurable: true });
-    callbacks.CLS({ name: "CLS", value: 0.05, rating: "good" });
-    expect(JSON.parse(sendBeaconSpy.mock.calls[1][1] as string).deviceClass).toBe("tablet");
+    callbacks.CLS!({ name: "CLS", value: 0.05, rating: "good" });
+    expect(JSON.parse(sendBeaconSpy.mock.calls[1]![1] as string).deviceClass).toBe("tablet");
 
     Object.defineProperty(window, "innerWidth", { value: 1440, configurable: true });
-    callbacks.CLS({ name: "CLS", value: 0.05, rating: "good" });
-    expect(JSON.parse(sendBeaconSpy.mock.calls[2][1] as string).deviceClass).toBe("desktop");
+    callbacks.CLS!({ name: "CLS", value: 0.05, rating: "good" });
+    expect(JSON.parse(sendBeaconSpy.mock.calls[2]![1] as string).deviceClass).toBe("desktop");
   });
 
   it("sendBeacon이 없으면 keepalive fetch로 대체 전송한다", async () => {
@@ -90,7 +90,7 @@ describe("WebVitalsReporter", () => {
 
     render(<WebVitalsReporter />);
     await waitFor(() => expect(callbacks.INP).toBeInstanceOf(Function));
-    callbacks.INP({ name: "INP", value: 150, rating: "good" });
+    callbacks.INP!({ name: "INP", value: 150, rating: "good" });
 
     expect(fetchSpy).toHaveBeenCalledWith(
       "/api/vitals",

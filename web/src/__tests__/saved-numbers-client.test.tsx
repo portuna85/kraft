@@ -178,11 +178,11 @@ describe("저장 번호 화면", () => {
 
     render(<SavedNumbersClient latestRound={1230} />);
 
-    expect(screen.getByText("저장된 번호를 불러오는 중입니다.")).toBeInTheDocument();
+    expect(screen.getByLabelText("저장된 번호를 불러오는 중")).toBeInTheDocument();
 
     resolveSaved?.();
     await waitFor(() => {
-      expect(screen.queryByText("저장된 번호를 불러오는 중입니다.")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("저장된 번호를 불러오는 중")).not.toBeInTheDocument();
     });
   });
 

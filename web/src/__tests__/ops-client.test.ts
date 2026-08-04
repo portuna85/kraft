@@ -94,7 +94,7 @@ describe("운영 API 호출", () => {
 
     await callOps("/ops-api/summary", { headers: { "X-Ops-Token": "t" } });
 
-    const init = fetchMock.mock.calls[0][1];
+    const init = fetchMock.mock.calls[0]![1];
     expect(init.cache).toBe("no-store");
     expect(init.signal).toBeInstanceOf(AbortSignal);
     expect(init.headers).toEqual({ "X-Ops-Token": "t" });

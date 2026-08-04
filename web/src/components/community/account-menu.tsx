@@ -44,7 +44,8 @@ export function AccountMenu() {
 
   if (!session.loggedIn) {
     const providers = session.activeProviders;
-    if (providers.length === 0) {
+    const [firstProvider] = providers;
+    if (!firstProvider) {
       return null;
     }
     const providerLabel = (provider: "google" | "naver") =>
@@ -53,7 +54,7 @@ export function AccountMenu() {
       <div className="account-menu">
         {/* 좁은 화면에서는 여러 provider 링크를 나란히 둘 자리가 없어 첫 번째 활성
             provider로 압축한다(Header의 desktopOnly/mobileOnly와 같은 CSS 토글 방식). */}
-        <a href={loginUrl(providers[0])} className="account-login-link account-login-compact">
+        <a href={loginUrl(firstProvider)} className="account-login-link account-login-compact">
           로그인
         </a>
         <span className="account-login-full">

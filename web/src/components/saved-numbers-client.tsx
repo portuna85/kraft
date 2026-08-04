@@ -48,7 +48,12 @@ export function SavedNumbersClient({ latestRound }: Props) {
     <div className="saved-layout">
       {message ? <p className="status-text" role="status" aria-live="polite">{message}</p> : null}
       {isLoading ? (
-        <p className="saved-empty-state">저장된 번호를 불러오는 중입니다.</p>
+        // L-8: 평문 문단 대신 다른 화면(recommendation-history-client 등)과 같은
+        // 스켈레톤 언어를 쓴다.
+        <div className="saved-empty-state" aria-busy="true" aria-label="저장된 번호를 불러오는 중">
+          <span className="skeleton-line skeleton-body" />
+          <span className="skeleton-line skeleton-body" />
+        </div>
       ) : hasError ? (
         <div className="saved-empty-state">
           <ErrorState

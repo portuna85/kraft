@@ -2,11 +2,12 @@ import { forwardRef } from "react";
 import type { ButtonVariant, IconButtonContract, PrimitiveSize } from "./contracts";
 import styles from "./icon-button.module.css";
 
+// CSS Modules 클래스명은 icon-button.module.css에 실제로 존재함이 빌드 타임에 보장된다.
 const VARIANT_CLASS: Record<ButtonVariant, string> = {
-  primary: styles.primary,
-  secondary: styles.secondary,
-  quiet: styles.quiet,
-  danger: styles.danger,
+  primary: styles.primary!,
+  secondary: styles.secondary!,
+  quiet: styles.quiet!,
+  danger: styles.danger!,
 };
 
 const SIZE_CLASS: Partial<Record<PrimitiveSize, string>> = {

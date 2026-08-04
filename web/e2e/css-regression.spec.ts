@@ -21,7 +21,7 @@ function loadGlobalsCss(): string {
   let combined = "";
   let m: RegExpExecArray | null;
   while ((m = importRe.exec(manifest))) {
-    combined += readFileSync(path.join(appDir, m[1]), "utf8") + "\n";
+    combined += readFileSync(path.join(appDir, m[1]!), "utf8") + "\n";
   }
   return combined;
 }

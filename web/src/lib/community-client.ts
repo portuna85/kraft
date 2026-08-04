@@ -23,7 +23,7 @@ export type CommunitySession = Omit<
 // 상태 변경 요청에 X-XSRF-TOKEN 헤더로 그대로 되돌려 보낸다.
 function readXsrfToken(): string | null {
   const match = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : null;
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
 
 function writeHeaders(extra?: Record<string, string>): HeadersInit {

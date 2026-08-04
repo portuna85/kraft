@@ -57,7 +57,7 @@ describe("POST /api/csp-report", () => {
     const { POST } = await import("@/app/api/csp-report/route");
     await POST(request(VALID_BODY));
 
-    const loggedArgs = warnSpy.mock.calls[0][0];
+    const loggedArgs = warnSpy.mock.calls[0]![0];
     expect(Object.keys(loggedArgs).sort()).toEqual([
       "blockedUri",
       "documentUri",
@@ -93,7 +93,7 @@ describe("POST /api/csp-report", () => {
       })
     );
 
-    const loggedArgs = warnSpy.mock.calls[0][0];
+    const loggedArgs = warnSpy.mock.calls[0]![0];
     expect(loggedArgs.documentUri.length).toBe(300);
   });
 

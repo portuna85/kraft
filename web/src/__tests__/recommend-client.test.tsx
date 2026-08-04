@@ -53,7 +53,7 @@ describe("번호 추천 화면", () => {
         }),
       }),
     );
-    const [, init] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    const [, init] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0]!;
     expect((init.headers as Headers).get("X-Device-Token")).toBe("a".repeat(64));
   });
 

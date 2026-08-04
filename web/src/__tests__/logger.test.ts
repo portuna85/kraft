@@ -50,7 +50,7 @@ describe("logCoreDataFailure", () => {
 
     expect(warnSpy).toHaveBeenCalledTimes(1);
     expect(errorSpy).not.toHaveBeenCalled();
-    expect(warnSpy.mock.calls[0][1]).toContain("[빌드 타임 폴백]");
+    expect(warnSpy.mock.calls[0]![1]).toContain("[빌드 타임 폴백]");
   });
 
   it("빌드 단계가 아니면(런타임) 그대로 error로 남긴다", () => {
@@ -62,6 +62,6 @@ describe("logCoreDataFailure", () => {
 
     expect(errorSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy).not.toHaveBeenCalled();
-    expect(errorSpy.mock.calls[0][1]).toBe("핵심 데이터 조회 실패");
+    expect(errorSpy.mock.calls[0]![1]).toBe("핵심 데이터 조회 실패");
   });
 });

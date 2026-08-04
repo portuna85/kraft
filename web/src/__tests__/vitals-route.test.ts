@@ -56,7 +56,7 @@ describe("POST /api/vitals", () => {
     const { POST } = await import("@/app/api/vitals/route");
     await POST(request(VALID_PAYLOAD));
 
-    const loggedArgs = infoSpy.mock.calls[0][0];
+    const loggedArgs = infoSpy.mock.calls[0]![0];
     const keys = Object.keys(loggedArgs);
     expect(keys.sort()).toEqual(["deviceClass", "name", "rating", "release", "route", "value"]);
     expect(loggedArgs).not.toHaveProperty("ip");

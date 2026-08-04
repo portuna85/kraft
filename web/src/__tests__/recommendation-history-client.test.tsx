@@ -107,7 +107,7 @@ describe("추천 이력 화면", () => {
     render(<RecommendationHistoryClient />);
 
     await screen.findByText(/전체 2건을 모두 표시했습니다/);
-    fireEvent.click(screen.getAllByRole("button", { name: /추천 세트 삭제/ })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /추천 세트 삭제/ })[0]!);
     // FE-003: 삭제는 확인 다이얼로그를 거친다.
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "삭제" }));
 

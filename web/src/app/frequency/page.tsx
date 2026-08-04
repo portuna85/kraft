@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { FrequencyFilterClient } from "./frequency-filter-client";
 import { AdSenseSidebar, InArticleAd } from "@/components/ad-unit";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
 import { PageHeader } from "@/components/page-header";
-import { getFrequencyStats, getPublicBaseUrl } from "@/lib/api";
-import { logCoreDataFailure } from "@/lib/logger";
+import { getFrequencyStats } from "@/lib/api";
+import { getPageSeoContext } from "@/lib/seo-context";
+import { withCoreDataLogging } from "@/lib/logger";
 
 export const metadata: Metadata = {
   title: "출현 통계",
@@ -14,17 +14,13 @@ export const metadata: Metadata = {
 };
 
 export default async function FrequencyPage() {
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
-  const baseUrl = getPublicBaseUrl();
+  const { nonce, baseUrl } = await getPageSeoContext();
 
   // 이 페이지의 유일한 핵심 데이터 — 실패를 200 폴백으로 숨기지 않고 error.tsx(5xx)로 넘긴다.
-  let stats;
-  try {
-    stats = await getFrequencyStats();
-  } catch (error) {
-    logCoreDataFailure(error, "출현 통계 조회 실패 — 핵심 데이터 실패로 페이지 오류 처리");
-    throw error;
-  }
+  const stats = await withCoreDataLogging(
+    "출현 통계 조회 실패 — 핵심 데이터 실패로 페이지 오류 처리",
+    () => getFrequencyStats()
+  );
 
   return (
     <div className="page-with-sidebar">

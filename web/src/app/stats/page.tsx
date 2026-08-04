@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
 import { PageHeader } from "@/components/page-header";
-import { getPatternStats, getPublicBaseUrl, type PatternBucket } from "@/lib/api";
-import { logCoreDataFailure } from "@/lib/logger";
+import { getPatternStats, type PatternBucket } from "@/lib/api";
+import { getPageSeoContext } from "@/lib/seo-context";
+import { withCoreDataLogging } from "@/lib/logger";
 import styles from "./stats.module.css";
 
 export const metadata: Metadata = {
@@ -55,18 +55,14 @@ function PatternSection({
 }
 
 export default async function StatsPage() {
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
-  const baseUrl = getPublicBaseUrl();
+  const { nonce, baseUrl } = await getPageSeoContext();
 
   // 이 페이지의 유일한 핵심 데이터 — 실패를 200 "준비 중" 폴백으로 숨기지 않고
   // error.tsx(5xx)로 넘긴다(F4: /frequency, /companion과 동일한 정책).
-  let stats;
-  try {
-    stats = await getPatternStats();
-  } catch (error) {
-    logCoreDataFailure(error, "패턴 통계 조회 실패 — 핵심 데이터 실패로 페이지 오류 처리");
-    throw error;
-  }
+  const stats = await withCoreDataLogging(
+    "패턴 통계 조회 실패 — 핵심 데이터 실패로 페이지 오류 처리",
+    () => getPatternStats()
+  );
 
   return (
     <section className="panel">

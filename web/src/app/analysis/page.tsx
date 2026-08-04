@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { AnalysisClient } from "./analysis-client";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
 import { PageHeader } from "@/components/page-header";
-import { getPublicBaseUrl } from "@/lib/api";
+import { getPageSeoContext } from "@/lib/seo-context";
 
 export const metadata: Metadata = {
   title: "번호 조합 분석",
@@ -12,8 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AnalysisPage() {
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
-  const baseUrl = getPublicBaseUrl();
+  const { nonce, baseUrl } = await getPageSeoContext();
 
   return (
     <section className="panel">

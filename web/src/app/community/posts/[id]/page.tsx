@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { headers } from "next/headers";
 import { getCommunityPost } from "@/lib/community-api";
-import { BackendError, getPublicBaseUrl } from "@/lib/api";
+import { BackendError } from "@/lib/api";
+import { getPageSeoContext } from "@/lib/seo-context";
 import { PostOwnerActions } from "@/components/community/post-owner-actions";
 import { CommentSection } from "@/features/community/comment-section";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
@@ -44,8 +44,7 @@ export default async function CommunityPostDetailPage({ params }: Props) {
     throw error;
   }
 
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
-  const baseUrl = getPublicBaseUrl();
+  const { nonce, baseUrl } = await getPageSeoContext();
 
   return (
     <article className="panel community-post-detail">

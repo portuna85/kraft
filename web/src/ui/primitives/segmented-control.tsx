@@ -16,13 +16,18 @@ export function SegmentedControl<T extends string = string>({
     const pos = selectableIndexes.indexOf(currentIndex);
     const nextPos = (pos + direction + selectableIndexes.length) % selectableIndexes.length;
     const nextIndex = selectableIndexes[nextPos];
-    onChange(options[nextIndex].value);
+    if (nextIndex === undefined) return;
+    const option = options[nextIndex];
+    if (!option) return;
+    onChange(option.value);
     optionRefs.current[nextIndex]?.focus();
   };
 
   const selectIndex = (index: number) => {
     if (index < 0) return;
-    onChange(options[index].value);
+    const option = options[index];
+    if (!option) return;
+    onChange(option.value);
     optionRefs.current[index]?.focus();
   };
 

@@ -54,6 +54,7 @@ describe("테마 토글", () => {
       </>
     );
     const [first, second] = screen.getAllByRole("button");
+    if (!first || !second) throw new Error("expected two toggle buttons");
 
     await waitFor(() => {
       expect(first).toHaveAttribute("aria-pressed", "false");

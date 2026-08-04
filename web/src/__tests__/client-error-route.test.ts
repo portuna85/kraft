@@ -69,7 +69,7 @@ describe("POST /api/client-error", () => {
     const longMessage = "a".repeat(1000);
     await POST(request({ message: longMessage, route: "/community" }));
 
-    const loggedArgs = errorSpy.mock.calls[0][0];
+    const loggedArgs = errorSpy.mock.calls[0]![0];
     expect(loggedArgs.message.length).toBe(500);
   });
 

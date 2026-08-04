@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { FAQ_ITEMS, buildFaqPageJsonLd } from "@/lib/csp-inline-scripts";
 import { JsonLdBreadcrumb } from "@/components/json-ld";
 import { PageHeader } from "@/components/page-header";
-import { getPublicBaseUrl } from "@/lib/api";
+import { getPageSeoContext } from "@/lib/seo-context";
 import {
   INFO_PAGE_METADATA,
   INFO_PAGE_SLUGS,
@@ -396,8 +395,7 @@ export default async function InfoPage({ params }: Props) {
   if (!isInfoPageSlug(slug)) notFound();
   const info = infoPages[slug];
   const metadata = INFO_PAGE_METADATA[slug];
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
-  const baseUrl = getPublicBaseUrl();
+  const { nonce, baseUrl } = await getPageSeoContext();
 
   return (
     <section className="panel">

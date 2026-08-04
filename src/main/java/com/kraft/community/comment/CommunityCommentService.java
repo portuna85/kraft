@@ -24,6 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class CommunityCommentService {
 
+    // L-1: 100/50/50 불일치가 사고처럼 보였으나, CommunityPostCommentApiTest
+    // ("댓글 목록 size는 최대 100으로 클램프된다")가 100을 명시적 API 계약으로 못박고
+    // 있다 — 의도된 차이였다. 50으로 통일을 시도했다가 이 테스트로 되돌렸다(2026-08-04).
     private static final int MAX_PAGE_SIZE = 100;
     // 댓글 목록 컨트롤러의 기본 페이지 크기와 targetPage 계산이 항상 같은 값을 쓰도록
     // 단일 소스로 공유한다(컨트롤러의 @RequestParam 기본값도 이 상수를 참조).
