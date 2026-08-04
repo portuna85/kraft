@@ -4,7 +4,7 @@ KRAFT Lotto는 로또 6/45 당첨 데이터 조회와 통계, 번호 추천, 저
 
 [![Java](https://img.shields.io/badge/Java-25-orange?logo=openjdk&logoColor=white)](#기술-구성)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.0-6DB33F?logo=springboot&logoColor=white)](#기술-구성)
-[![Next.js](https://img.shields.io/badge/Next.js-16.2.11-black?logo=nextdotjs&logoColor=white)](#기술-구성)
+[![Next.js](https://img.shields.io/badge/Next.js-16.2.12-black?logo=nextdotjs&logoColor=white)](#기술-구성)
 [![React](https://img.shields.io/badge/React-19.2.8-149ECA?logo=react&logoColor=white)](#기술-구성)
 [![MariaDB](https://img.shields.io/badge/MariaDB-11.7-003545?logo=mariadb&logoColor=white)](#기술-구성)
 
@@ -50,7 +50,7 @@ Google·Naver 로그인부터 세션 유지, 게시글·댓글·답글 작성, �
 | 백엔드 | Java 25, Spring Boot 4.1.0, Spring Security, OAuth2 Client, Spring Data JPA, Validation, Actuator, Thymeleaf |
 | 데이터 | MariaDB 11.7, Flyway V1~V31, H2, Caffeine |
 | 복원력 | Virtual Threads, ShedLock, Resilience4j, 트랜잭션 이벤트 |
-| 프론트엔드 | Next.js 16.2.11 App Router, React 19.2.8, TypeScript 6.0.3, ISR, CSP nonce |
+| 프론트엔드 | Next.js 16.2.12 App Router, React 19.2.8, TypeScript 6.0.3, ISR, CSP nonce |
 | 테스트 | JUnit 5, Testcontainers, JaCoCo, Checkstyle, SpotBugs, Vitest, Testing Library, Playwright |
 | 인프라 | Docker Compose, Caddy, Prometheus, Grafana, Alertmanager, GHCR |
 | 자동화 | GitHub Actions, CodeQL, Dependabot, Trivy, SBOM·provenance |
@@ -326,6 +326,7 @@ bash scripts/deploy/validate-env.sh
 
 # 백업과 복구 연습
 bash scripts/db-backup.sh
+bash scripts/caddy-data-backup.sh
 bash scripts/db-restore-drill.sh
 
 # 배포 후 스모크 테스트

@@ -107,7 +107,7 @@ public class WinningNumberCollectionService {
                 collected.add(collectFetchedRoundResult(nextRound).response());
                 nextRound++;
                 if (i < maxRounds - 1) {
-                    sleepQuietly(catchUpDelayMs);
+                    SleepUtils.sleepQuietly(catchUpDelayMs);
                 }
             } catch (RuntimeException exception) {
                 if (isEndOfData(exception) && hadPreviousData) {
@@ -157,14 +157,4 @@ public class WinningNumberCollectionService {
                 && "LOTTO_SOURCE_ROUND_NOT_FOUND".equals(apiException.getCode());
     }
 
-    private void sleepQuietly(long millis) {
-        if (millis <= 0) {
-            return;
-        }
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-    }
 }

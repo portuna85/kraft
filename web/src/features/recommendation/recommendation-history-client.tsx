@@ -8,16 +8,11 @@ import { deleteMyRecommendationSet, getMyRecommendationSets } from "@/lib/commun
 import { useCommunitySession } from "@/lib/community-session-provider";
 import type { PageResponse } from "@/lib/community-api";
 import type { RecommendationSetSummary } from "@/features/recommendation/types";
+import { STRATEGY_LABELS } from "@/lib/domain/recommendation";
 import { EmptyState } from "@/ui/primitives/empty-state";
 import { ErrorState } from "@/ui/primitives/error-state";
 import { ConfirmDialog } from "@/ui/primitives/confirm-dialog";
 import { asyncError, asyncLoading, asyncSuccess, type AsyncState } from "@/lib/async-state";
-
-const STRATEGY_LABELS = {
-  random: "무작위",
-  balanced: "균형 조합",
-  reduce_shared_winner_risk: "공동 당첨 위험 완화",
-} as const;
 
 const PAGE_SIZE = 20;
 

@@ -62,12 +62,7 @@ public class CommunityCommentService {
      */
     @Transactional(readOnly = true)
     public CommunityCommentListResult list(Long postId, int page, int size) {
-        CommunityPost post = communityPostRepository.findById(postId)
-                .orElseThrow(() -> new ApiException(ApiErrorCode.COMMUNITY_POST_NOT_FOUND,
-                        "게시글을 찾을 수 없습니다."));
-        if (post.getStatus() != PostStatus.PUBLISHED) {
-            throw new ApiException(ApiErrorCode.COMMUNITY_POST_NOT_FOUND, "게시글을 찾을 수 없습니다.");
-        }
+        requireVisiblePost(postId);
 
         int clampedPage = Math.max(0, page);
         int clampedSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
@@ -90,12 +85,7 @@ public class CommunityCommentService {
     @Transactional
     public CommunityCommentCreationResult create(Long ownerId, String authorNickname, Long postId,
                                                    CreateCommentRequest request) {
-        CommunityPost post = communityPostRepository.findById(postId)
-                .orElseThrow(() -> new ApiException(ApiErrorCode.COMMUNITY_POST_NOT_FOUND,
-                        "게시글을 찾을 수 없습니다."));
-        if (post.getStatus() != PostStatus.PUBLISHED) {
-            throw new ApiException(ApiErrorCode.COMMUNITY_POST_NOT_FOUND, "게시글을 찾을 수 없습니다.");
-        }
+        CommunityPost post = requireVisiblePost(postId);
         // C-1: 차단은 저장·조회만 될 뿐 쓰기 경로를 막지 않았다 — 서로 차단한 사이라면
         // 어느 쪽이 차단했든 댓글을 달 수 없게 한다(표시 필터링과 별개로 서버가 강제).
         if (communityBlockService.isBlockedEitherWay(ownerId, post.getOwnerId())) {
@@ -167,5 +157,17 @@ public class CommunityCommentService {
         communityCommentRepository.saveAndFlush(comment);
         communityPostMetricsRepository.decrementCommentCount(comment.getPostId());
         tombstoneCounter.increment();
+    }
+
+    // L-1: list()·create() 둘 다 같은 존재+공개 상태 확인을 각자 인라인으로 갖고 있었다
+    // (B-P0-7/KB-01) — CommunityReactionService.requireVisiblePost()와 동일한 404 계약.
+    private CommunityPost requireVisiblePost(Long postId) {
+        CommunityPost post = communityPostRepository.findById(postId)
+                .orElseThrow(() -> new ApiException(ApiErrorCode.COMMUNITY_POST_NOT_FOUND,
+                        "게시글을 찾을 수 없습니다."));
+        if (post.getStatus() != PostStatus.PUBLISHED) {
+            throw new ApiException(ApiErrorCode.COMMUNITY_POST_NOT_FOUND, "게시글을 찾을 수 없습니다.");
+        }
+        return post;
     }
 }

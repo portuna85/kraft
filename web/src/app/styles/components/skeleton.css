@@ -18,8 +18,6 @@
 }
 
 .skeleton-eyebrow { height: 14px; width: 60px; }
-.skeleton-h1      { height: 52px; width: 55%; }
-.skeleton-h2      { height: 32px; width: 50%; }
 .skeleton-body    { height: 18px; width: 100%; }
 .skeleton-caption { height: 14px; width: 80%; }
 
@@ -49,7 +47,3 @@
   animation: skeleton-shimmer 1.4s ease-in-out infinite;
 }
 
-.skeleton-ball-sm {
-  width: 34px;
-  height: 34px;
-}

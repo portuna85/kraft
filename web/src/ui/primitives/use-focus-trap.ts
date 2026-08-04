@@ -78,11 +78,13 @@ export function useFocusTrap({
   onClose,
   containerRef,
   restoreFocusRef,
+  initialFocusRef,
 }: {
   open: boolean;
   onClose: () => void;
   containerRef: RefObject<HTMLElement | null>;
   restoreFocusRef?: { current: HTMLElement | null };
+  initialFocusRef?: { current: HTMLElement | null };
 }) {
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
@@ -102,7 +104,7 @@ export function useFocusTrap({
 
     const container = containerRef.current;
     const focusables = container ? Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)) : [];
-    (focusables[0] ?? container)?.focus();
+    (initialFocusRef?.current ?? focusables[0] ?? container)?.focus();
 
     const host = getOverlayHost();
     acquireBackgroundHide(host);
@@ -142,8 +144,8 @@ export function useFocusTrap({
       releaseBackgroundHide();
       (restoreTarget ?? previouslyFocused.current)?.focus();
     };
-    // onClose는 onCloseRef로 읽고, containerRef/restoreFocusRef는 안정적인 ref 객체다.
-    // 이 목록에 다시 넣으면 FE-099(리렌더마다 트랩 재설정)가 재발한다.
+    // onClose는 onCloseRef로 읽고, containerRef/restoreFocusRef/initialFocusRef는
+    // 안정적인 ref 객체다. 이 목록에 다시 넣으면 FE-099(리렌더마다 트랩 재설정)가 재발한다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 }

@@ -7,9 +7,17 @@ import { IconButton } from "./icon-button";
 import { useFocusTrap, getOverlayHost } from "./use-focus-trap";
 import styles from "./dialog.module.css";
 
-export function Dialog({ open, onClose, restoreFocusRef, titleId, title, children }: DialogContract) {
+export function Dialog({
+  open,
+  onClose,
+  restoreFocusRef,
+  initialFocusRef,
+  titleId,
+  title,
+  children,
+}: DialogContract) {
   const panelRef = useRef<HTMLDivElement>(null);
-  useFocusTrap({ open, onClose, containerRef: panelRef, restoreFocusRef });
+  useFocusTrap({ open, onClose, containerRef: panelRef, restoreFocusRef, initialFocusRef });
 
   if (!open) return null;
 

@@ -89,9 +89,14 @@ chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "$REPO_DIR"
 
 # ── 5. UFW 방화벽 ─────────────────────────────────────────────────────────────
 log "5/9 UFW 방화벽 설정"
-ufw --force reset
-ufw default deny incoming
-ufw default allow outgoing
+# L-7: 다른 단계는 전부 가드가 있어 재실행이 안전한데(멱등) 이 reset만 무조건 실행돼
+# 이후 수동으로 추가한 룰을 전부 지웠다 — 최초 설정(inactive)일 때만 reset+기본 정책을
+# 적용하고, 이미 활성화돼 있으면 기준 포트만 다시 보장한다(중복 allow는 무해).
+if ! ufw status | grep -q "Status: active"; then
+    ufw --force reset
+    ufw default deny incoming
+    ufw default allow outgoing
+fi
 ufw allow 22/tcp    comment "SSH"
 ufw allow 80/tcp    comment "HTTP"
 ufw allow 443/tcp   comment "HTTPS"
@@ -149,10 +154,11 @@ if ! crontab -u "$DEPLOY_USER" -l 2>/dev/null | grep -qF "$CRON_MARKER"; then
     (crontab -u "$DEPLOY_USER" -l 2>/dev/null || true; cat <<EOF
 $CRON_MARKER
 0 3 * * * cd ${REPO_DIR} && bash scripts/db-backup.sh >> ${REPO_DIR}/logs/backup.log 2>&1
+15 3 * * * cd ${REPO_DIR} && bash scripts/caddy-data-backup.sh >> ${REPO_DIR}/logs/caddy-data-backup.log 2>&1
 30 3 * * 0 cd ${REPO_DIR} && bash scripts/db-restore-drill.sh >> ${REPO_DIR}/logs/restore-drill.log 2>&1
 EOF
     ) | crontab -u "$DEPLOY_USER" -
-    log "  cron 등록 완료: 매일 03:00 백업, 매주 일요일 03:30 복구 드릴"
+    log "  cron 등록 완료: 매일 03:00 DB 백업, 03:15 caddy-data 백업, 매주 일요일 03:30 복구 드릴"
 else
     log "  cron 이미 등록됨, 건너뜀"
 fi

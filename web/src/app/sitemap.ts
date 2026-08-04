@@ -25,7 +25,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/stats`,     lastModified: lastMod, changeFrequency: "weekly",  priority: 0.7 },
     { url: `${baseUrl}/analysis`,  lastModified: lastMod, changeFrequency: "weekly",  priority: 0.7 },
     { url: `${baseUrl}/companion`, lastModified: lastMod, changeFrequency: "weekly",  priority: 0.7 },
-    { url: `${baseUrl}/community`, lastModified: lastMod, changeFrequency: "daily",   priority: 0.6 },
+    // L-10: 로또 최신 회차 발표일을 lastModified로 재사용했었다 — 커뮤니티 콘텐츠
+    // 변경과 무관한 값이라 검색엔진에 잘못된 신선도 신호를 준다. 실제 타임스탬프를
+    // 낼 수 있게 되기 전까지는 생략한다(설정하지 않는 것보다 틀린 값이 더 나쁘다).
+    { url: `${baseUrl}/community`, changeFrequency: "daily",   priority: 0.6 },
 
     ...INFO_PAGE_SLUGS.map((slug) => {
       const info = INFO_PAGE_METADATA[slug];

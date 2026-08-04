@@ -5,6 +5,7 @@ import { CommunitySessionProvider } from "@/lib/community-session-provider";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/community/posts/1",
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 function mockFetch(session: unknown) {

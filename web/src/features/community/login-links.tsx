@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { loginUrl } from "@/lib/community-client";
 import { saveReturnTo } from "@/lib/return-to";
 
@@ -26,6 +26,11 @@ export function LoginLinks({
   className?: string;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  // L-10: pathname만 저장하면 필터·검색 파라미터(예: /community?category=notice)가
+  // 로그인 왕복 후 사라진다 — 되돌아왔을 때 사용자가 보던 화면과 달라진다.
+  const query = searchParams.toString();
+  const returnPath = query ? `${pathname}?${query}` : pathname;
 
   if (providers.length === 0) {
     return (
@@ -42,7 +47,7 @@ export function LoginLinks({
           key={provider}
           href={loginUrl(provider)}
           className={className ?? "account-login-link"}
-          onClick={() => saveReturnTo(pathname)}
+          onClick={() => saveReturnTo(returnPath)}
         >
           {PROVIDER_LABELS[provider]}
         </a>

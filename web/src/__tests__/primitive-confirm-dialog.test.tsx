@@ -67,6 +67,14 @@ describe("ConfirmDialog 프리미티브", () => {
     expect(onCancel).toHaveBeenCalled();
   });
 
+  // L-9: initialFocusRef가 없으면 트랩이 패널의 첫 포커스 가능 요소(Dialog 헤더의
+  // 닫기 버튼)로 가버려, 파괴적 확인의 기본 포커스가 "취소"가 아니게 된다.
+  it("열리면 취소 버튼으로 초기 포커스가 간다(닫기 버튼이 아니라)", () => {
+    render(<ConfirmDialog {...BASE} open />);
+
+    expect(screen.getByRole("button", { name: "취소" })).toHaveFocus();
+  });
+
   it("실패 사유를 다이얼로그 안에서 알린다", () => {
     render(<ConfirmDialog {...BASE} open errorMessage="삭제하지 못했습니다." />);
 

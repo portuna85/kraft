@@ -133,7 +133,7 @@ npm run test:e2e:content
 
 section "Web E2E — ad-overlay 트랙(web-e2e-ad-overlay, 별도 빌드 디렉터리)"
 NEXT_DIST_DIR=.next-ad-overlay NEXT_PUBLIC_KAKAO_ADFIT_UNIT_STICKY=DAN-ci-ad-overlay-test \
-  KRAFT_BACKEND_INTERNAL_URL=http://127.0.0.1:59999 KRAFT_PUBLIC_BASE_URL=http://127.0.0.1:3103 npm run build
+  KRAFT_BACKEND_INTERNAL_URL=http://127.0.0.1:59999 KRAFT_PUBLIC_BASE_URL=http://127.0.0.1:3105 npm run build
 npm run test:e2e:ad-overlay
 
 section "Web Performance Budget (web-performance-budget)"

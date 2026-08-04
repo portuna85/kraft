@@ -206,7 +206,7 @@ jobs:
             dist_dir: .next-ad-overlay
             archive: web-build-ad-overlay.tar.gz
             backend_url: http://127.0.0.1:59999
-            public_url: http://127.0.0.1:3103
+            public_url: http://127.0.0.1:3105
             sticky_unit: DAN-ci-ad-overlay-test
           - variant: proxy
             dist_dir: .next-proxy

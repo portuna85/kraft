@@ -31,13 +31,16 @@
   "include": [
     "next-env.d.ts",
     "**/*.ts",
+    "**/*.mts",
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     ".next-content/types/**/*.ts",
     ".next-content/dev/types/**/*.ts",
     ".next-visual/types/**/*.ts",
-    ".next-visual/dev/types/**/*.ts"
+    ".next-visual/dev/types/**/*.ts",
+    ".next-ad-overlay/types/**/*.ts",
+    ".next-ad-overlay/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

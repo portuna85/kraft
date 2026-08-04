@@ -78,4 +78,17 @@ if [[ "${KRAFT_ADMIN_ALLOWED_CIDR:-}" == *"0.0.0.0/0"* && "${KRAFT_ALLOW_WORLD_O
   error=1
 fi
 
+# L-5: .env.local.example은 로컬 전용 의도로 admin/admin, local-dev-ops-token 같은
+# 약한 값을 그대로 적어 두는데, 이 파일을 복붙해 prod에 쓰는 실수를 막을 검증이
+# 없었다(KRAFT_ADMIN_ALLOWED_CIDR의 0.0.0.0/0 거부와 같은 패턴을 자격증명에도 적용).
+if [[ "${KRAFT_ADMIN_BOOTSTRAP_USERNAME:-}" == "admin" && "${KRAFT_ADMIN_BOOTSTRAP_PASSWORD:-}" == "admin" ]]; then
+  echo "ERROR: KRAFT_ADMIN_BOOTSTRAP_USERNAME/PASSWORD가 .env.local.example의 예시값(admin/admin)입니다. 실제 값으로 교체하세요." >&2
+  error=1
+fi
+
+if [[ "${KRAFT_OPS_TOKEN:-}" == "local-dev-ops-token" ]]; then
+  echo "ERROR: KRAFT_OPS_TOKEN이 .env.local.example의 예시값(local-dev-ops-token)입니다. 무작위 값으로 교체하세요." >&2
+  error=1
+fi
+
 [[ $error -eq 0 ]] && echo "OK: all required variables are set" || exit 1

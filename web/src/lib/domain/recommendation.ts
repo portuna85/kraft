@@ -21,6 +21,15 @@ export type RecommendationItem = Omit<
 
 export type Strategy = "random" | "balanced" | "reduce_shared_winner_risk";
 
+// L-1: 생성·이력·커뮤니티 첨부·전략 선택 화면 4곳이 이 라벨을 각자 손으로 베껴 쓰고
+// 있었다 — 전략 이름이 바뀌면 화면마다 다르게 렌더될 수 있었다. satisfies로
+// Strategy 유니온에 대한 exhaustiveness도 컴파일 타임에 보장한다.
+export const STRATEGY_LABELS = {
+  random: "무작위",
+  balanced: "균형 조합",
+  reduce_shared_winner_risk: "공동 당첨 위험 완화",
+} as const satisfies Record<Strategy, string>;
+
 type RecommendationSetSummaryContract = components["schemas"]["RecommendationSetSummary"];
 
 export type RecommendationSetSummary = Omit<

@@ -169,12 +169,6 @@ button:disabled {
   min-width: 0;
 }
 
-/* .grid-3의 grid-template-columns는 mobile-unconditional.css(1fr)·tablet.css·
-   desktop.css(각 breakpoint)가 소유한다 — 여기 선언은 항상 덮여써 죽은 코드였다(F-02). */
-
-/* padding은 layout-mobile-base.css(--panel-pad)가 소유한다 — 여기 선언은 항상
-   덮여써 죽은 코드였다(F-02). */
-
 .stat-card {
   gap: 8px;
   transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
@@ -267,42 +261,11 @@ button:disabled {
   display: none;
 }
 
-.recommend-toggle-control {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.recommend-toggle-label {
-  color: var(--text, #1d1a17);
-}
-
-.recommend-toggle input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  min-height: 20px;
-  padding: 0;
-  border-radius: 4px;
-  border: 1px solid var(--line, rgba(29, 26, 23, 0.14));
-  background: var(--surface-strong, #fffdf8);
-  margin: 0;
-  accent-color: var(--accent, #00b8cc);
-  cursor: pointer;
-  flex: 0 0 auto;
-}
-
 .recommend-disclaimer {
   grid-column: 1 / -1;
   margin: 4px 0 0;
   font-size: 0.82rem;
   line-height: 1.5;
-}
-
-.recommend-toggle-hint {
-  font-size: var(--fs-xs);
-  color: var(--muted, #5e564c);
-  opacity: 0.84;
-  line-height: 1.4;
 }
 
 input:not([type="checkbox"]):not([type="radio"]) {
@@ -601,12 +564,6 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible {
   font-size: 1rem;
 }
 
-.saved-match-error {
-  flex-basis: 100%;
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-
 .saved-match-loading {
   flex-basis: 100%;
   font-size: 0.85rem;
@@ -631,5 +588,3 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible {
   text-decoration: underline;
   cursor: pointer;
 }
-
-/* max-width는 mobile-unconditional.css(none)·tablet.css(560px)가 소유한다. */

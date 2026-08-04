@@ -1,17 +1,16 @@
 import { LottoBalls } from "@/ui/domain/lotto-balls";
 import type { RecommendationAttachment } from "@/lib/community-api";
+import { STRATEGY_LABELS, type Strategy } from "@/lib/domain/recommendation";
 
-const STRATEGY_LABELS: Record<string, string> = {
-  random: "무작위",
-  balanced: "균형 조합",
-  reduce_shared_winner_risk: "공동 당첨 위험 완화",
-};
+function strategyLabel(strategy: string): string {
+  return strategy in STRATEGY_LABELS ? STRATEGY_LABELS[strategy as Strategy] : strategy;
+}
 
 export function RecommendationAttachmentView({ attachment }: { attachment: RecommendationAttachment }) {
   return (
     <section className="community-recommendation-attachment">
       <p className="muted">
-        {STRATEGY_LABELS[attachment.strategy] ?? attachment.strategy} · {attachment.algorithmVersion} · 반영 회차{" "}
+        {strategyLabel(attachment.strategy)} · {attachment.algorithmVersion} · 반영 회차{" "}
         {attachment.historyThroughRound}회 · 정책: {attachment.exclusionPolicyVersion}
       </p>
       {attachment.items.map((item) => (

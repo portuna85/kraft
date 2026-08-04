@@ -30,10 +30,6 @@ export type WinningNumber = components["schemas"]["WinningNumberResponse"];
 
 export type RoundFreshness = components["schemas"]["RoundFreshnessResponse"];
 
-export type HomeCommunityPostSummary = components["schemas"]["HomeCommunityPostSummary"];
-
-export type HomeSummary = components["schemas"]["HomeResponse"];
-
 export type PublicIncident = components["schemas"]["PublicIncidentResponse"];
 
 type RequestInitWithNext = RequestInit & {
@@ -87,12 +83,6 @@ export async function getLatestWinningNumber(): Promise<WinningNumber> {
 export async function getRoundFreshness(): Promise<RoundFreshness> {
   return fetchJson<RoundFreshness>("/api/v1/rounds/freshness", {
     next: { revalidate: REVALIDATE_LATEST, tags: [TAG_ROUNDS_LATEST] }
-  });
-}
-
-export async function getHomeSummary(): Promise<HomeSummary> {
-  return fetchJson<HomeSummary>("/api/v1/home", {
-    next: { revalidate: REVALIDATE_LATEST, tags: ["community:posts"] }
   });
 }
 

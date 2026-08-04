@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "node scripts/start-standalone.mjs",
-    "lint": "eslint src e2e scripts *.config.ts *.config.mjs",
+    "lint": "eslint src e2e scripts *.config.ts *.config.mts *.config.mjs",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run && node --test scripts/*.node-test.mjs",
     "test:coverage": "vitest run --coverage",

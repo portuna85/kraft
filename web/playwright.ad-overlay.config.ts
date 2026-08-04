@@ -16,7 +16,7 @@ export default defineConfig({
   // KF-10: 실측 데이터 수집(§계측 후 샤드 재조정) — playwright.config.ts와 동일 이유.
   reporter: process.env.CI ? [["github"], ["json", { outputFile: "playwright-timing.json" }]] : "list",
   use: {
-    baseURL: "http://127.0.0.1:3103",
+    baseURL: "http://127.0.0.1:3105",
     trace: "retain-on-failure",
   },
   projects: [
@@ -24,14 +24,17 @@ export default defineConfig({
   ],
   webServer: {
     command: "npm run e2e:serve",
-    url: "http://127.0.0.1:3103",
+    url: "http://127.0.0.1:3105",
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
     env: {
       NEXT_DIST_DIR: ".next-ad-overlay",
       KRAFT_BACKEND_INTERNAL_URL: "http://127.0.0.1:59999",
-      KRAFT_PUBLIC_BASE_URL: "http://127.0.0.1:3103",
-      PORT: "3103",
+      KRAFT_PUBLIC_BASE_URL: "http://127.0.0.1:3105",
+      PORT: "3105",
+      // F-P0-12: /ops가 기본 fail-closed로 바뀌어, 이 값이 없으면 /ops 관련 테스트가
+      // 전부 404를 받는다 — baseURL 호스트(127.0.0.1)와 일치시켜 허용한다.
+      KRAFT_OPS_ALLOWED_HOST: "127.0.0.1",
     },
   },
 });

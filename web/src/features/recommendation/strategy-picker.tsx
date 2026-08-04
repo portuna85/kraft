@@ -1,11 +1,12 @@
 import { SegmentedControl } from "@/ui/primitives/segmented-control";
+import { STRATEGY_LABELS } from "@/lib/domain/recommendation";
 import type { Strategy } from "./types";
 
-const OPTIONS: readonly { value: Strategy; label: string }[] = [
-  { value: "random", label: "무작위" },
-  { value: "balanced", label: "균형 조합" },
-  { value: "reduce_shared_winner_risk", label: "공동 당첨 위험 완화" },
-];
+// L-1: 라벨 문구를 여기서 다시 손으로 베끼지 않고 공유 맵에서 파생시킨다 — 키 순서가
+// 그대로 화면 표시 순서가 된다(STRATEGY_LABELS 선언 순서와 동일).
+const OPTIONS: readonly { value: Strategy; label: string }[] = (
+  Object.entries(STRATEGY_LABELS) as [Strategy, string][]
+).map(([value, label]) => ({ value, label }));
 
 export function StrategyPicker({
   value,

@@ -16,18 +16,24 @@ export type ButtonVariant = "primary" | "secondary" | "quiet" | "danger";
 
 // M-5: 나머지 네이티브 button 속성(aria-*, data-*, id, form, className 등)은 그대로
 // 통과시킨다 — 구조적 계약(variant/size/loading 등)만 이 타입이 좁힌다.
-export interface ButtonContract
-  extends Omit<ComponentPropsWithoutRef<"button">, "children" | "type" | "disabled" | "onClick"> {
+type ButtonBaseProps = Omit<
+  ComponentPropsWithoutRef<"button">,
+  "children" | "type" | "disabled" | "onClick"
+> & {
   variant: ButtonVariant;
   size?: PrimitiveSize;
   disabled?: boolean;
-  loading?: boolean;
-  /** loading=true일 때 스크린리더에 상태를 알리기 위한 필수 텍스트. */
-  loadingLabel?: string;
   type?: "button" | "submit" | "reset";
   onClick?: () => void;
   children: ReactNode;
-}
+};
+
+// L-9: loading=true는 children을 보조기술로부터 숨기므로(button.tsx의 aria-hidden),
+// 그 상태를 대신 알릴 loadingLabel이 그때만큼은 선택이 아니라 필수다 — 판별 유니온으로
+// 타입 차원에서 강제한다(이전에는 optional이라 호출부 누락을 컴파일이 못 잡았다).
+export type ButtonContract =
+  | (ButtonBaseProps & { loading?: false; loadingLabel?: string })
+  | (ButtonBaseProps & { loading: true; loadingLabel: string });
 
 export interface IconButtonContract {
   /** 시각적 라벨이 없으므로 스크린리더용 이름은 필수. */
@@ -128,6 +134,12 @@ export interface OverlayFocusContract {
   onClose: () => void;
   /** 닫힌 뒤 포커스를 되돌릴 트리거 요소 참조. */
   restoreFocusRef?: { current: HTMLElement | null };
+  /**
+   * L-9: 열릴 때 포커스를 받을 요소. 없으면 컨테이너 안의 첫 포커스 가능 요소로
+   * 폴백한다(예: Dialog 헤더의 닫기 버튼) — 파괴적 확인처럼 첫 요소가 의도한 컨트롤이
+   * 아닐 때 지정한다.
+   */
+  initialFocusRef?: { current: HTMLElement | null };
 }
 
 export interface DialogContract extends OverlayFocusContract {

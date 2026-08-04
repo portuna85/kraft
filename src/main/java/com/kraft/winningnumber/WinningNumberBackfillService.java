@@ -131,7 +131,7 @@ public class WinningNumberBackfillService {
                 lastCollected = round;
                 failStreak = 0;
                 round++;
-                sleepQuietly(delayMs);
+                SleepUtils.sleepQuietly(delayMs);
             } catch (RuntimeException ex) {
                 Outcome outcome = classify(ex);
                 if (outcome == Outcome.END_OF_DATA) {
@@ -148,7 +148,7 @@ public class WinningNumberBackfillService {
                 }
                 log.warn("{}회차 수집 일시 실패 ({}/{}) — 재시도: {}",
                         round, failStreak, maxRetriesPerRound, ex.getMessage());
-                sleepQuietly(retryBaseMs * failStreak);
+                SleepUtils.sleepQuietly(retryBaseMs * failStreak);
             }
         }
 
@@ -178,16 +178,6 @@ public class WinningNumberBackfillService {
         return Outcome.TRANSIENT;
     }
 
-    private void sleepQuietly(long millis) {
-        if (millis <= 0) {
-            return;
-        }
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-    }
 
     private int firstMissingRound() {
         List<Integer> storedRounds = winningNumberRepository.findAllRoundsOrderByRoundAsc();

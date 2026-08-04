@@ -33,6 +33,9 @@ export function ConfirmDialog({
       // 진행 중에는 Escape·배경 클릭으로도 닫히지 않게 한다 — 요청이 나간 뒤 닫으면
       // 결과를 어디에도 보여줄 수 없다.
       onClose={pending ? () => {} : onCancel}
+      // L-9: 지정하지 않으면 포커스 트랩이 Dialog 헤더의 닫기 버튼(패널의 첫 포커스
+      // 가능 요소)으로 가버려, 파괴적 확인의 기본 포커스가 "취소"가 아니게 된다.
+      initialFocusRef={cancelRef}
       titleId={titleId}
       title={title}
     >

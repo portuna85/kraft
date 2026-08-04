@@ -13,6 +13,7 @@ vi.mock("next/navigation", () => ({
   // KF-05: CommunitySessionProvider가 usePathname으로 세션 스코프를 판단한다 — 이 컴포넌트는
   // 항상 /community 하위에서만 쓰이므로 스코프 안 경로로 고정해 기존 동작을 유지한다.
   usePathname: () => "/community/write",
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("@/lib/community-revalidate", () => ({

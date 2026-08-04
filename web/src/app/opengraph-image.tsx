@@ -79,9 +79,11 @@ export default async function OgImage() {
         </div>
 
         <div style={{ display: "flex", gap: 18, marginBottom: 44 }}>
-          {BALLS.map((ball) => (
+          {BALLS.map((ball, index) => (
             <div
-              key={ball.n}
+              // L-10: n이 전부 "?"라 ball.n을 key로 쓰면 React key가 중복된다 — BALLS는
+              // 고정된 정적 배열(순서가 안 바뀜)이라 인덱스가 안전한 안정적 식별자다.
+              key={index}
               style={{
                 width: 92,
                 height: 92,

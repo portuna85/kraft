@@ -7,15 +7,10 @@ import { RecommendationSetCard } from "@/features/recommendation/recommendation-
 import { ProbabilityDisclaimer } from "@/features/recommendation/disclaimer";
 import { useRecommendationStudio } from "@/features/recommendation/use-recommendation-studio";
 import { MAX_COUNT, MIN_COUNT } from "@/features/recommendation/types";
+import { STRATEGY_LABELS } from "@/lib/domain/recommendation";
 import { Button } from "@/ui/primitives/button";
 import { EmptyState } from "@/ui/primitives/empty-state";
 import styles from "./recommendation-studio.module.css";
-
-const STRATEGY_LABELS = {
-  random: "무작위",
-  balanced: "균형 조합",
-  reduce_shared_winner_risk: "공동 당첨 위험 완화",
-} as const;
 
 export function RecommendClient() {
   const studio = useRecommendationStudio();

@@ -99,13 +99,3 @@ export async function getCommunityPost(id: number): Promise<CommunityPost> {
   });
 }
 
-export async function getCommunityComments(
-  postId: number,
-  page = 0,
-  size = DEFAULT_COMMENT_PAGE_SIZE
-): Promise<CommunityCommentPage> {
-  return fetchCommunityJson<CommunityCommentPage>(
-    `/api/v1/community/posts/${postId}/comments?page=${page}&size=${size}`,
-    { next: { revalidate: REVALIDATE_COMMUNITY_LIST, tags: [`community:post:${postId}`] } }
-  );
-}

@@ -184,11 +184,6 @@
   min-height: 80px;
 }
 
-.community-version-conflict {
-  color: var(--accent-strong);
-  font-weight: 700;
-}
-
 .account-menu {
   display: flex;
   align-items: center;
