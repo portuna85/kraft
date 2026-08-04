@@ -8,8 +8,14 @@ FIXTURE_BACKEND_URL="${FIXTURE_BACKEND_URL:-http://127.0.0.1:4101}"
 
 cd "$WEB_ROOT"
 
-if [[ -z "${CHROME_PATH:-}" && -x /ms-playwright/chromium-1228/chrome-linux64/chrome ]]; then
-  export CHROME_PATH=/ms-playwright/chromium-1228/chrome-linux64/chrome
+## Playwright Docker 이미지는 /ms-playwright/chromium-<revision>/에 풀 Chrome을 심는데,
+# <revision>은 Playwright 버전이 오를 때마다 바뀐다(예: 1228 -> 다른 숫자) — 하드코딩된
+# 리비전 번호는 다음 @playwright/test 범프마다 깨진다. 실제로 설치된 경로를 글롭으로 찾는다.
+if [[ -z "${CHROME_PATH:-}" ]]; then
+  chrome_candidate=$(find /ms-playwright -maxdepth 2 -type f -path '*/chromium-*/chrome-linux64/chrome' 2>/dev/null | head -n 1)
+  if [[ -n "$chrome_candidate" && -x "$chrome_candidate" ]]; then
+    export CHROME_PATH="$chrome_candidate"
+  fi
 fi
 
 npm run budget:bundle
