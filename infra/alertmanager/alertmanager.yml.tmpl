@@ -24,13 +24,41 @@ receivers:
     discord_configs:
       # Discord webhook is bound to a specific channel, so no channel field is
       # needed (unlike Slack). Native support since Alertmanager v0.25.
+      #
+      # 알림 룰(kraft_alerts.yml)의 annotations.title/summary/description/runbook은
+      # 이미 한국어로 작성돼 있다 — 여기서는 그 값을 한국 운영자가 바로 판단할 수 있는
+      # 구조화된 형태로 배치하고, FIRING/RESOLVED 상태와 시각만 이 템플릿에서 한국어로
+      # 렌더링한다. 라벨(심각도 등)과 GeneratorURL(Prometheus 쿼리 링크)은 그대로 보존한다.
       - webhook_url: "${ALERTMANAGER_DISCORD_WEBHOOK_URL}"
         send_resolved: true
-        title: "[{{ .Status | toUpper }}] {{ .GroupLabels.alertname }}"
+        title: |
+          {{ if eq .Status "firing" }}🚨 장애 발생{{ else }}✅ 장애 복구{{ end }} · {{ .CommonAnnotations.title }}
         message: |
           {{ range .Alerts }}
-          **{{ .Annotations.summary }}**
+          {{ if eq .Status "firing" }}🚨 **장애 발생**{{ else }}✅ **장애 복구**{{ end }}
+
+          **서비스**
+          KRAFT Lotto
+
+          **알림**
+          {{ .Annotations.title }} (`{{ .Labels.alertname }}`)
+
+          **내용**
+          {{ .Annotations.summary }}
           {{ .Annotations.description }}
+          {{ if eq .Status "firing" }}
+          **확인 사항**
+          {{ .Annotations.runbook }}
+          {{ end }}
+          **라벨**
+          {{ range .Labels.SortedPairs }}`{{ .Name }}={{ .Value }}` {{ end }}
+
+          **{{ if eq .Status "firing" }}발생 시간{{ else }}복구 시간{{ end }}**
+          {{ if eq .Status "firing" }}{{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}{{ else }}{{ .EndsAt.Format "2006-01-02 15:04:05 MST" }}{{ end }}
+
+          **Prometheus 쿼리**
+          {{ .GeneratorURL }}
+          --------------------------------
           {{ end }}
   - name: heartbeat
     webhook_configs:

@@ -46,5 +46,10 @@ if [[ -z "${KRAFT_HEARTBEAT_URL:-}" ]]; then
 fi
 export KRAFT_HEARTBEAT_URL
 
-envsubst < "$TMPL" > "$OUT"
+# 두 변수만 치환 대상으로 좁힌다 — 그냥 envsubst를 쓰면 템플릿 안의 Go 템플릿
+# range 변수(예: $k, $v, $value, $labels 등)까지 "미설정 셸 변수"로 오인해
+# 빈 문자열로 지워버린다. Discord 알림 메시지가 조용히 깨지는 사고를 막는다.
+# shellcheck disable=SC2016 # 작은따옴표가 의도적 — ${VAR} 리터럴을 그대로 envsubst의
+# 치환 대상 목록으로 넘겨야 한다. 지금 이 셸에서 전개되면 안 된다.
+envsubst '${ALERTMANAGER_DISCORD_WEBHOOK_URL} ${KRAFT_HEARTBEAT_URL}' < "$TMPL" > "$OUT"
 echo "OK: rendered $OUT"

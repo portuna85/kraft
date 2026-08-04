@@ -7,8 +7,9 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "KRAFT backend is down"
-          description: "Backend has been unreachable for more than 1 minute."
+          title: "백엔드 다운"
+          summary: "KRAFT 백엔드가 응답하지 않습니다"
+          description: "백엔드가 1분 이상 응답하지 않고 있습니다."
           runbook: "docker compose -f docker-compose.prod.yml logs --tail=200 backend; docker compose -f docker-compose.prod.yml ps backend"
 
       - alert: HighErrorRate
@@ -19,8 +20,9 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "High 5xx error rate ({{ $value | humanizePercentage }})"
-          description: "Backend 5xx rate exceeded 5% for 2 minutes."
+          title: "5xx 에러율 급증"
+          summary: "5xx 에러율이 높습니다 ({{ $value | humanizePercentage }})"
+          description: "백엔드 5xx 에러율이 5%를 초과한 상태가 2분 이상 지속되고 있습니다."
           runbook: "docker compose -f docker-compose.prod.yml logs --tail=200 backend | grep -i error; Grafana에서 status=~\"5..\" 대시보드로 어느 경로가 원인인지 확인"
 
       - alert: SlowResponseTime
@@ -32,8 +34,9 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "P95 response time > 2s"
-          description: "95th percentile response time has exceeded 2 seconds for 5 minutes."
+          title: "응답 지연"
+          summary: "P95 응답 시간이 2초를 초과했습니다"
+          description: "95번째 백분위 응답 시간이 5분 이상 2초를 초과하고 있습니다."
           runbook: "Grafana에서 어느 경로/DB 쿼리가 느려졌는지 확인; HikariCP 커넥션 풀 포화(kraft_ops 대시보드) 여부 확인"
 
       - alert: HighHeapUsage
@@ -44,8 +47,9 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "JVM heap usage > 85%"
-          description: "JVM heap memory utilisation has been above 85% for 5 minutes."
+          title: "JVM 힙 사용량 과다"
+          summary: "JVM 힙 사용량이 85%를 초과했습니다"
+          description: "JVM 힙 메모리 사용률이 5분 이상 85%를 초과하고 있습니다."
           runbook: "GC 로그·heap dump 확인 필요 시 docker compose exec backend jcmd 1 GC.heap_info; 지속되면 backend 재기동 고려"
 
       - alert: KraftLottoDataStale
@@ -54,6 +58,7 @@ groups:
         labels:
           severity: critical
         annotations:
+          title: "로또 회차 데이터 지연"
           summary: "KRAFT Lotto 데이터가 최신 회차보다 지연됨"
           description: "kraft_lotto_data_stale_days가 1일 이상 지속됨. 최신 회차={{ $labels.instance }}, 자동 수집 또는 외부 소스 점검 필요."
           runbook: "kraft_lotto_external_collect_failures_total 추이 확인; scripts/server의 수집 스케줄러 로그 확인 후 필요 시 /ops에서 수동 수집 트리거"
@@ -64,6 +69,7 @@ groups:
         labels:
           severity: critical
         annotations:
+          title: "당첨번호 데이터 누락"
           summary: "로또 당첨번호 DB가 완전히 비어 있음"
           description: "kraft_lotto_winning_data_present가 15분 이상 0을 유지함. staleDays가 0으로 나와 겉으로는 최신처럼 보이므로 이 지표로만 감지된다 — 초기 시딩 실패 또는 DB 손상 가능성."
           runbook: "SELECT COUNT(*) FROM winning_numbers로 실제 DB 상태 확인; 비어있다면 scripts/db-restore-drill.sh로 최근 백업 복원 가능성부터 확인"
@@ -74,6 +80,7 @@ groups:
         labels:
           severity: warning
         annotations:
+          title: "통계 요약 지연"
           summary: "통계 summary가 최신 회차보다 뒤처짐"
           description: "kraft_lotto_latest_round와 kraft_lotto_statistics_projected_round의 차이가 6시간 이상 1 이상 유지됨. 수동 보정 이벤트 발행 실패나 재조정 스케줄러 점검 필요."
           runbook: "statistics_summary_rebuild_total{outcome=\"failure\"} 확인; /ops에서 summary 재구축 수동 트리거"
@@ -84,6 +91,7 @@ groups:
         labels:
           severity: warning
         annotations:
+          title: "외부 회차 수집 실패"
           summary: "외부 회차 수집이 반복 실패 중"
           description: "최근 1시간 동안 외부 회차 수집 실패가 3회 이상 발생함."
           runbook: "docker compose -f docker-compose.prod.yml logs backend | grep -i 'external.*collect'; 외부 소스 URL·응답 스키마 변경 여부 확인"
@@ -96,6 +104,7 @@ groups:
         labels:
           severity: critical
         annotations:
+          title: "추천 이력 미준비"
           summary: "추천 이력 데이터가 준비되지 않음"
           description: "kraft_lotto_history_ready가 10분 이상 0을 유지함. 추천 API가 503으로 거절 중일 수 있음. kraft_lotto_history_data_present가 0이면 이력이 완전히 비어 있는 것이고, 1이면 1회부터 최신까지 중간에 누락된 회차가 있는 것이다."
           runbook: "kraft_lotto_history_data_present와 kraft_lotto_history_first_missing_round 확인해 완전 결손인지 부분 누락인지 판별 후 백필 필요 여부 결정"
@@ -106,9 +115,10 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Recommendation history snapshot has not refreshed"
-          description: "The in-memory history snapshot is older than 15 minutes. Check collection events and database connectivity."
-          runbook: "Compare kraft_lotto_history_db_version and kraft_lotto_history_snapshot_version; inspect backend logs for history refresh failures before restarting an instance."
+          title: "추천 이력 스냅샷 상태"
+          summary: "추천 이력 스냅샷이 갱신되지 않았습니다"
+          description: "메모리에 저장된 추천 이력 스냅샷이 15분 이상 갱신되지 않았습니다. 수집 이벤트와 데이터베이스 연결 상태를 확인하십시오."
+          runbook: "kraft_lotto_history_db_version과 kraft_lotto_history_snapshot_version을 비교하고, 인스턴스를 재기동하기 전에 백엔드 로그에서 이력 갱신 실패 원인을 확인하십시오."
 
       - alert: KraftLottoRecommendHighErrorRate
         expr: |
@@ -118,6 +128,7 @@ groups:
         labels:
           severity: warning
         annotations:
+          title: "추천 API 실패율 급증"
           summary: "추천 API 실패율 5% 초과"
           description: "최근 10분 추천 요청 대비 실패 비율이 5%를 넘는 상태가 5분 이상 지속됨."
           runbook: "kraft_lotto_history_ready와 함께 확인 — 이력 미준비로 인한 fail-closed 거부인지, 다른 원인인지 구분"
@@ -128,6 +139,7 @@ groups:
         labels:
           severity: warning
         annotations:
+          title: "추천 1등 충돌 급증"
           summary: "추천 생성 시 과거 1등 충돌이 급증"
           description: "과거 1등 조합과의 충돌율이 높음. 제외 번호 조건이 지나치게 좁을 가능성이 있음."
           runbook: "요청 패턴(제외 번호 개수 분포) 확인 — 클라이언트가 비정상적으로 많은 번호를 제외 요청하는지 점검"
@@ -138,6 +150,7 @@ groups:
         labels:
           severity: warning
         annotations:
+          title: "ISR 재검증 실패"
           summary: "ISR revalidation 요청이 반복 실패 중"
           description: "최근 1시간 동안 revalidation 요청 실패가 5회 이상 발생함. web 컨테이너 또는 revalidate secret 점검 필요."
           runbook: "docker compose -f docker-compose.prod.yml logs web | grep -i revalidate; KRAFT_REVALIDATE_SECRET 양쪽(backend/web) 일치 여부 확인"
@@ -150,6 +163,7 @@ groups:
         labels:
           severity: warning
         annotations:
+          title: "통계 재구축 실패"
           summary: "통계 summary 재구축이 실패함"
           description: "최근 1시간 동안 summary rebuild가 실패로 기록됨."
           runbook: "docker compose -f docker-compose.prod.yml logs backend | grep -i 'summary.*rebuild'로 예외 스택 확인"
@@ -160,6 +174,7 @@ groups:
         labels:
           severity: warning
         annotations:
+          title: "관리자 로그인 잠금 급증"
           summary: "관리자 로그인 lockout이 급증"
           description: "최근 15분 동안 lockout으로 거부된 로그인 시도가 3회 이상 발생함. brute-force 시도 가능성."
           runbook: "admin_audit_log에서 실패 시도 IP·계정 확인; 필요 시 KRAFT_ADMIN_ALLOWED_CIDR로 접근 자체를 더 좁힘"
@@ -170,6 +185,7 @@ groups:
         labels:
           severity: critical
         annotations:
+          title: "DB 백업 지연"
           summary: "DB 백업이 25시간 이상 성공하지 못함"
           description: "kraft_backup_last_success_timestamp_seconds 기준 마지막 성공 백업이 25시간을 초과함."
           runbook: "crontab -l로 백업 스케줄 등록 확인; bash scripts/db-backup.sh를 서버에서 직접 실행해 실패 원인(디스크 공간 등) 확인"
@@ -180,6 +196,7 @@ groups:
         labels:
           severity: critical
         annotations:
+          title: "오프사이트 백업 지연"
           summary: "오프사이트 DB 백업 사본이 25시간 이상 갱신되지 않음"
           description: "kraft_backup_last_remote_success_timestamp_seconds 기준 마지막 성공 원격 복사가 25시간을 초과함. 로컬 백업(KraftBackupStale)은 정상일 수 있음 — 이 경보는 오프사이트 사본만 본다."
           runbook: "BACKUP_REMOTE_DEST가 /etc/kraft/backup.env에 설정돼 있는지, rclone이 설치돼 있는지 서버에서 확인; bash scripts/db-backup.sh를 직접 실행해 [FAIL]/[WARN] 로그로 원인 파악"
@@ -190,6 +207,7 @@ groups:
         labels:
           severity: critical
         annotations:
+          title: "node-exporter 다운"
           summary: "node-exporter가 응답하지 않음"
           description: "node-exporter가 2분 이상 scrape 실패. 이 익스포터가 죽으면 KraftBackupStale/KraftBackupRemoteStale/NodeFilesystemLowSpace가 데이터 없이 조용히 무경보 상태가 될 수 있다."
           runbook: "docker compose -f docker-compose.prod.yml logs --tail=200 node-exporter; docker compose -f docker-compose.prod.yml ps node-exporter로 컨테이너 상태 확인"
@@ -199,6 +217,7 @@ groups:
         labels:
           severity: none
         annotations:
+          title: "감시 파이프라인 생존 신호(Watchdog)"
           summary: "Alertmanager/Prometheus 경보 파이프라인 생존 확인용 상시 발화 경보"
           description: "이 경보는 항상 발화 상태다. heartbeat 수신자로만 라우팅되며, 외부 heartbeat 서비스가 일정 시간 이 경보를 못 받으면 그쪽에서 별도로 알린다. Prometheus/Alertmanager가 동시에 죽으면 다른 어떤 경보도 전달되지 않으므로 이 경로가 마지막 안전망이다."
           runbook: "이 경보가 Discord 채널 대신 heartbeat 채널에만 뜨는지 확인(alertmanager.yml.tmpl의 라우팅); 외부 heartbeat 서비스 대시보드에서 최근 핑 수신 시각 확인"
@@ -211,6 +230,7 @@ groups:
         labels:
           severity: warning
         annotations:
+          title: "디스크 여유 공간 부족"
           summary: "서버 디스크 여유 공간이 10% 미만"
           description: "루트 파일시스템 여유 공간이 10% 미만인 상태가 15분 이상 지속됨."
           runbook: "docker system df && du -sh /var/backups/kraft — 오래된 이미지/백업 정리(백업 보존 정책은 db-backup.sh의 RETENTION_DAYS)"
@@ -221,6 +241,7 @@ groups:
         labels:
           severity: critical
         annotations:
+          title: "Caddy 다운"
           summary: "Caddy가 응답하지 않음"
           description: "Caddy admin metrics endpoint가 2분 이상 scrape 실패."
           runbook: "docker compose -f docker-compose.prod.yml logs --tail=200 caddy; Caddyfile 문법 오류 여부 확인(가장 흔한 원인)"
@@ -231,6 +252,7 @@ groups:
         labels:
           severity: critical
         annotations:
+          title: "Prometheus 다운"
           summary: "Prometheus self-scrape 실패"
           description: "Prometheus 자체 /metrics가 2분 이상 응답하지 않음."
           runbook: "docker compose -f docker-compose.prod.yml logs prometheus; 이 경보가 안 오면 Grafana에서 직접 up{job=\"prometheus\"} 확인"
@@ -241,6 +263,7 @@ groups:
         labels:
           severity: critical
         annotations:
+          title: "Alertmanager 다운"
           summary: "Alertmanager가 응답하지 않음"
           description: "Alertmanager가 2분 이상 scrape 실패. 이 경보 자체가 전달되지 않을 수 있으니 별도 채널로 상태를 확인해야 함."
           runbook: "docker compose -f docker-compose.prod.yml logs alertmanager; Discord webhook URL 만료 여부 별도 확인(이 경보로는 전달 안 될 수 있음)"
@@ -253,6 +276,7 @@ groups:
         labels:
           severity: warning
         annotations:
+          title: "커뮤니티 OAuth 로그인 실패 급증"
           summary: "커뮤니티 OAuth 로그인 실패가 급증"
           description: "최근 15분 동안 OAuth 로그인 실패가 10회 이상 발생함. provider({{ $labels.provider }}) 장애나 misconfiguration 가능성."
           runbook: "provider 상태 페이지 확인(Google/Naver); KRAFT_COMMUNITY_*_CLIENT_ID/SECRET 만료·변경 여부 확인"
@@ -265,6 +289,7 @@ groups:
         labels:
           severity: warning
         annotations:
+          title: "커뮤니티 쓰기 어뷰징 의심"
           summary: "커뮤니티 쓰기 API에서 비정상 트래픽 의심"
           description: "CSRF 거부 또는 낙관적 잠금 409가 짧은 시간에 급증함. 어뷰징 시도이거나 클라이언트 버그일 수 있음."
           runbook: "출처 IP 분포 확인(Grafana); 심하면 CommunityWriteRateLimitFilter의 writeRateLimitPerMinute 임시 하향 조정"
