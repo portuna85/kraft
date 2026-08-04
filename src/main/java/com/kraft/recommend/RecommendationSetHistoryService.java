@@ -230,7 +230,7 @@ public class RecommendationSetHistoryService {
     private RecommendationSetSummary toSummary(RecommendationSet set, List<RecommendationItemView> items) {
         return new RecommendationSetSummary(
                 set.getId(),
-                set.getStrategy(),
+                RecommendationStrategy.fromWire(set.getStrategy()),
                 set.getAlgorithmVersion(),
                 set.getHistoryThroughRound(),
                 set.getExclusionPolicyVersion(),

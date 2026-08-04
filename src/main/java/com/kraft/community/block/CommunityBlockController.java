@@ -1,6 +1,7 @@
 package com.kraft.community.block;
 
 import com.kraft.community.auth.CommunityPrincipal;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.util.List;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +24,7 @@ public class CommunityBlockController {
     }
 
     @PutMapping("/users/{id}/block")
+    @ApiResponse(responseCode = "204")
     public ResponseEntity<Void> block(
             @AuthenticationPrincipal CommunityPrincipal principal,
             @PathVariable Long id) {
@@ -31,6 +33,7 @@ public class CommunityBlockController {
     }
 
     @DeleteMapping("/users/{id}/block")
+    @ApiResponse(responseCode = "204")
     public ResponseEntity<Void> unblock(
             @AuthenticationPrincipal CommunityPrincipal principal,
             @PathVariable Long id) {

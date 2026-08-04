@@ -4,6 +4,7 @@ import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import com.kraft.recommend.RecommendationSetHistoryService;
 import com.kraft.recommend.RecommendationSetSummary;
+import com.kraft.recommend.RecommendationStrategy;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Clock;
 import java.time.Instant;
@@ -88,8 +89,8 @@ class CommunityPostServiceTest {
     @DisplayName("추천 세트 첨부 시 기기 토큰 소유권을 교차검증한다")
     void create_withAttachment_verifiesOwnershipThenPersists() {
         given(recommendationSetHistoryService.get("hash-1", 5L))
-                .willReturn(new RecommendationSetSummary(5L, "random", "uniform-random-v1", 1189, "historical-first-prize-v1",
-                        List.of(), List.of(), OffsetDateTime.now(CLOCK), List.of()));
+                .willReturn(new RecommendationSetSummary(5L, RecommendationStrategy.RANDOM, "uniform-random-v1", 1189,
+                        "historical-first-prize-v1", List.of(), List.of(), OffsetDateTime.now(CLOCK), List.of()));
         given(communityPostRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         CommunityPost post = service.create(1L, "글쓴이", "hash-1",
@@ -107,8 +108,8 @@ class CommunityPostServiceTest {
     @DisplayName("기기 토큰 헤더가 없으면 곧바로 계정 소유권으로 검증한다")
     void create_attachmentWithoutDeviceToken_fallsBackToOwnerOwnership() {
         given(recommendationSetHistoryService.getForOwner(1L, 5L))
-                .willReturn(new RecommendationSetSummary(5L, "random", "uniform-random-v1", 1189, "historical-first-prize-v1",
-                        List.of(), List.of(), OffsetDateTime.now(CLOCK), List.of()));
+                .willReturn(new RecommendationSetSummary(5L, RecommendationStrategy.RANDOM, "uniform-random-v1", 1189,
+                        "historical-first-prize-v1", List.of(), List.of(), OffsetDateTime.now(CLOCK), List.of()));
         given(communityPostRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         CommunityPost post = service.create(1L, "글쓴이", null,
@@ -123,8 +124,8 @@ class CommunityPostServiceTest {
         given(recommendationSetHistoryService.get("hash-1", 5L))
                 .willThrow(new ApiException(ApiErrorCode.RECOMMENDATION_SET_NOT_OWNED, "이 추천 세트에 대한 권한이 없습니다."));
         given(recommendationSetHistoryService.getForOwner(1L, 5L))
-                .willReturn(new RecommendationSetSummary(5L, "random", "uniform-random-v1", 1189, "historical-first-prize-v1",
-                        List.of(), List.of(), OffsetDateTime.now(CLOCK), List.of()));
+                .willReturn(new RecommendationSetSummary(5L, RecommendationStrategy.RANDOM, "uniform-random-v1", 1189,
+                        "historical-first-prize-v1", List.of(), List.of(), OffsetDateTime.now(CLOCK), List.of()));
         given(communityPostRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         CommunityPost post = service.create(1L, "글쓴이", "hash-1",
@@ -291,8 +292,8 @@ class CommunityPostServiceTest {
         CommunityPostMetrics metrics = new CommunityPostMetrics(1L, OffsetDateTime.now(CLOCK));
         given(communityPostMetricsRepository.findByPostId(1L)).willReturn(Optional.of(metrics));
         given(recommendationSetHistoryService.getForAttachment(5L)).willReturn(
-                new RecommendationSetSummary(5L, "balanced", "balanced-v1", 1189, "historical-first-prize-v1", List.of(), List.of(),
-                        OffsetDateTime.now(CLOCK), List.of()));
+                new RecommendationSetSummary(5L, RecommendationStrategy.BALANCED, "balanced-v1", 1189,
+                        "historical-first-prize-v1", List.of(), List.of(), OffsetDateTime.now(CLOCK), List.of()));
 
         CommunityPostResponse response = service.toResponse(post);
 
@@ -340,9 +341,9 @@ class CommunityPostServiceTest {
         Page<CommunityPost> page = new PageImpl<>(List.of(post1, post2));
         given(communityPostMetricsRepository.findAllById(List.of(1L, 2L))).willReturn(List.of());
         given(recommendationSetHistoryService.getForAttachments(List.of(5L, 6L))).willReturn(Map.of(
-                5L, new RecommendationSetSummary(5L, "balanced", "balanced-v1", 1189, "historical-first-prize-v1",
+                5L, new RecommendationSetSummary(5L, RecommendationStrategy.BALANCED, "balanced-v1", 1189, "historical-first-prize-v1",
                         List.of(), List.of(), OffsetDateTime.now(CLOCK), List.of()),
-                6L, new RecommendationSetSummary(6L, "balanced", "balanced-v1", 1189, "historical-first-prize-v1",
+                6L, new RecommendationSetSummary(6L, RecommendationStrategy.BALANCED, "balanced-v1", 1189, "historical-first-prize-v1",
                         List.of(), List.of(), OffsetDateTime.now(CLOCK), List.of())));
 
         Page<CommunityPostResponse> result = service.toResponsePage(page);

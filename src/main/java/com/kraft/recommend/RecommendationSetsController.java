@@ -2,6 +2,7 @@ package com.kraft.recommend;
 
 import com.kraft.common.web.DeviceTokenSupport;
 import com.kraft.common.web.PageResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
@@ -45,6 +46,7 @@ public class RecommendationSetsController {
     }
 
     @DeleteMapping("/{id}")
+    @ApiResponse(responseCode = "204")
     public ResponseEntity<Void> delete(
             @RequestHeader(name = "X-Device-Token", required = true) String deviceToken,
             @PathVariable long id) {

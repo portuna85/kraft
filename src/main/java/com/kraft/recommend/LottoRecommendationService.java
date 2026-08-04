@@ -321,7 +321,8 @@ public class LottoRecommendationService {
         }
 
         return new RecommendNumbersResponse(
-                recommendations, ctx.strategy(), algorithmVersion, snapshot.historyThroughRound(),
+                recommendations, RecommendationStrategy.fromWire(ctx.strategy()), algorithmVersion,
+                snapshot.historyThroughRound(),
                 true, EXCLUSION_POLICY_VERSION,
                 setId, items, createdAt);
     }

@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { Dialog } from "@/ui/primitives/dialog";
 import { reportContent } from "@/lib/community-client";
-import { REPORT_REASON_LABELS } from "./types";
+import { REPORT_REASON_LABELS, type ReportReason } from "./types";
 
 export function ReportDialog({
   targetType,
@@ -15,7 +15,7 @@ export function ReportDialog({
   triggerLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState("SPAM");
+  const [reason, setReason] = useState<ReportReason>("SPAM");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -72,7 +72,11 @@ export function ReportDialog({
         ) : (
           <>
             <label htmlFor="report-reason">신고 사유</label>
-            <select id="report-reason" value={reason} onChange={(event) => setReason(event.target.value)}>
+            <select
+              id="report-reason"
+              value={reason}
+              onChange={(event) => setReason(event.target.value as ReportReason)}
+            >
               {Object.entries(REPORT_REASON_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}

@@ -664,7 +664,7 @@ class LottoRecommendationServiceTest {
 
             RecommendNumbersResponse response = service.recommend(request, null);
 
-            assertThat(response.strategy()).isEqualTo("balanced");
+            assertThat(response.strategy()).isEqualTo(RecommendationStrategy.BALANCED);
             assertThat(response.algorithmVersion()).isEqualTo(BalancedScorer.VERSION);
             assertThat(response.items()).hasSize(3);
             response.items().forEach(item -> assertThat(item.explanationCodes()).isNotEmpty());
@@ -692,7 +692,7 @@ class LottoRecommendationServiceTest {
 
             RecommendNumbersResponse response = service.recommend(request, null);
 
-            assertThat(response.strategy()).isEqualTo("random");
+            assertThat(response.strategy()).isEqualTo(RecommendationStrategy.RANDOM);
             verify(combinationScorer, never()).score(anyList());
         }
     }

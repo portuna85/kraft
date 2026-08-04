@@ -202,7 +202,7 @@ export async function getMyInteractions(postIds: number[]): Promise<CommunityInt
 export async function reportContent(
   targetType: "POST" | "COMMENT" | "USER",
   targetId: number,
-  reason: string
+  reason: components["schemas"]["CreateReportRequest"]["reason"]
 ): Promise<void> {
   await browserFetch<void>("/api/v1/community/reports", {
     method: "POST",

@@ -88,7 +88,7 @@ class RecommendationSetHistoryServiceTest {
         RecommendationSetSummary summary = service.get(TOKEN_HASH, 1L);
 
         assertThat(summary.id()).isEqualTo(1L);
-        assertThat(summary.strategy()).isEqualTo("random");
+        assertThat(summary.strategy()).isEqualTo(RecommendationStrategy.RANDOM);
     }
 
     @Test

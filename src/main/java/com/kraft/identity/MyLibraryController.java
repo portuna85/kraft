@@ -9,6 +9,8 @@ import com.kraft.saved.SaveNumberResult;
 import com.kraft.saved.SavedNumberMatchResult;
 import com.kraft.saved.SavedNumberResponse;
 import com.kraft.saved.SavedNumbersService;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.data.domain.Page;
@@ -66,6 +68,8 @@ public class MyLibraryController {
     }
 
     @PostMapping("/saved-numbers")
+    // 이미 저장된 조합이면 200, 새로 저장됐으면 201 — result.created()에 따라 갈린다(중복 저장 안내 vs 신규 생성).
+    @ApiResponses({@ApiResponse(responseCode = "200"), @ApiResponse(responseCode = "201")})
     public ResponseEntity<SaveNumberResult> saveSavedNumber(
             @AuthenticationPrincipal CommunityPrincipal principal,
             @Valid @RequestBody CreateSavedNumberRequest request) {
@@ -74,6 +78,7 @@ public class MyLibraryController {
     }
 
     @DeleteMapping("/saved-numbers/{id}")
+    @ApiResponse(responseCode = "204")
     public ResponseEntity<Void> deleteSavedNumber(
             @AuthenticationPrincipal CommunityPrincipal principal, @PathVariable long id) {
         savedNumbersService.deleteForOwner(principal.getUserId(), id);
@@ -106,6 +111,7 @@ public class MyLibraryController {
     }
 
     @DeleteMapping("/recommendation-sets/{id}")
+    @ApiResponse(responseCode = "204")
     public ResponseEntity<Void> deleteRecommendationSet(
             @AuthenticationPrincipal CommunityPrincipal principal, @PathVariable long id) {
         recommendationSetHistoryService.deleteForOwner(principal.getUserId(), id);

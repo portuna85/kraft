@@ -1,6 +1,7 @@
 package com.kraft.community.post;
 
 import com.kraft.recommend.RecommendationItemView;
+import com.kraft.recommend.RecommendationStrategy;
 import java.util.List;
 
 /**
@@ -10,7 +11,7 @@ import java.util.List;
  */
 public record RecommendationAttachmentView(
         Long setId,
-        String strategy,
+        RecommendationStrategy strategy,
         String algorithmVersion,
         int historyThroughRound,
         String exclusionPolicyVersion,

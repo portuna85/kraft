@@ -19,7 +19,9 @@ export type RecommendationItem = Omit<
   explanationCodes: ExplanationCode[];
 };
 
-export type Strategy = "random" | "balanced" | "reduce_shared_winner_risk";
+// M-17: 예전에는 이 유니온을 손으로 따로 선언해 백엔드 계약과 별개로 관리했다 —
+// 백엔드가 strategy를 enum으로 승격한 뒤로는 생성 타입에서 그대로 파생한다.
+export type Strategy = components["schemas"]["RecommendNumbersResponse"]["strategy"];
 
 // L-1: 생성·이력·커뮤니티 첨부·전략 선택 화면 4곳이 이 라벨을 각자 손으로 베껴 쓰고
 // 있었다 — 전략 이름이 바뀌면 화면마다 다르게 렌더될 수 있었다. satisfies로

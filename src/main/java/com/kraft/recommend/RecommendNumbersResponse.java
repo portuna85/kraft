@@ -14,7 +14,7 @@ import java.util.List;
  */
 public record RecommendNumbersResponse(
         List<List<Integer>> recommendations,
-        String strategy,
+        RecommendationStrategy strategy,
         String algorithmVersion,
         int historyThroughRound,
         boolean historicalExclusionApplied,

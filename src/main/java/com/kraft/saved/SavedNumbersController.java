@@ -1,6 +1,8 @@
 package com.kraft.saved;
 
 import com.kraft.common.web.DeviceTokenSupport;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.CacheControl;
@@ -45,6 +47,8 @@ public class SavedNumbersController {
     }
 
     @PostMapping
+    // 이미 저장된 조합이면 200, 새로 저장됐으면 201 — result.created()에 따라 갈린다(중복 저장 안내 vs 신규 생성).
+    @ApiResponses({@ApiResponse(responseCode = "200"), @ApiResponse(responseCode = "201")})
     public ResponseEntity<SaveNumberResult> save(@RequestHeader(name = "X-Device-Token", required = true) String deviceToken,
                                                  @Valid @RequestBody CreateSavedNumberRequest request) {
         SaveNumberResult result = savedNumbersService.save(deviceTokenSupport.requireHashedToken(deviceToken), request);
@@ -52,6 +56,7 @@ public class SavedNumbersController {
     }
 
     @DeleteMapping("/{id}")
+    @ApiResponse(responseCode = "204")
     public ResponseEntity<Void> delete(@RequestHeader(name = "X-Device-Token", required = true) String deviceToken,
                                        @PathVariable long id) {
         savedNumbersService.delete(deviceTokenSupport.requireHashedToken(deviceToken), id);

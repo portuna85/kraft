@@ -1,6 +1,7 @@
 package com.kraft.community.reaction;
 
 import com.kraft.community.auth.CommunityPrincipal;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 import org.springframework.http.CacheControl;
@@ -27,18 +28,21 @@ public class CommunityReactionController {
     }
 
     @PutMapping("/posts/{id}/like")
+    @ApiResponse(responseCode = "204")
     public ResponseEntity<Void> like(@AuthenticationPrincipal CommunityPrincipal principal, @PathVariable Long id) {
         communityReactionService.like(id, principal.getUserId());
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/posts/{id}/like")
+    @ApiResponse(responseCode = "204")
     public ResponseEntity<Void> unlike(@AuthenticationPrincipal CommunityPrincipal principal, @PathVariable Long id) {
         communityReactionService.unlike(id, principal.getUserId());
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/posts/{id}/bookmark")
+    @ApiResponse(responseCode = "204")
     public ResponseEntity<Void> bookmark(@AuthenticationPrincipal CommunityPrincipal principal,
                                           @PathVariable Long id) {
         communityReactionService.bookmark(id, principal.getUserId());
@@ -46,6 +50,7 @@ public class CommunityReactionController {
     }
 
     @DeleteMapping("/posts/{id}/bookmark")
+    @ApiResponse(responseCode = "204")
     public ResponseEntity<Void> unbookmark(@AuthenticationPrincipal CommunityPrincipal principal,
                                             @PathVariable Long id) {
         communityReactionService.unbookmark(id, principal.getUserId());

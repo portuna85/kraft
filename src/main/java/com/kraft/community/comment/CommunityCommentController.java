@@ -1,6 +1,7 @@
 package com.kraft.community.comment;
 
 import com.kraft.community.auth.CommunityPrincipal;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.CacheControl;
@@ -46,6 +47,7 @@ public class CommunityCommentController {
     }
 
     @PostMapping("/api/v1/community/posts/{postId}/comments")
+    @ApiResponse(responseCode = "201")
     public ResponseEntity<CommunityCommentResponse> create(
             @AuthenticationPrincipal CommunityPrincipal principal,
             @PathVariable Long postId,
@@ -57,6 +59,7 @@ public class CommunityCommentController {
     }
 
     @DeleteMapping("/api/v1/community/comments/{id}")
+    @ApiResponse(responseCode = "204")
     public ResponseEntity<Void> delete(
             @AuthenticationPrincipal CommunityPrincipal principal,
             @PathVariable Long id) {

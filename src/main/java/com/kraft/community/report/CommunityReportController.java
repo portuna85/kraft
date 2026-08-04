@@ -1,6 +1,7 @@
 package com.kraft.community.report;
 
 import com.kraft.community.auth.CommunityPrincipal;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,6 +21,7 @@ public class CommunityReportController {
     }
 
     @PostMapping
+    @ApiResponse(responseCode = "201")
     public ResponseEntity<Void> report(
             @AuthenticationPrincipal CommunityPrincipal principal,
             @Valid @RequestBody CreateReportRequest request) {

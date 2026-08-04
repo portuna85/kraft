@@ -5,6 +5,7 @@ import com.kraft.common.error.ApiException;
 import com.kraft.common.web.DeviceTokenSupport;
 import com.kraft.common.web.PageResponse;
 import com.kraft.community.auth.CommunityPrincipal;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import java.net.URI;
 import org.springframework.data.domain.Page;
@@ -68,6 +69,7 @@ public class CommunityPostController {
     }
 
     @PostMapping
+    @ApiResponse(responseCode = "201")
     public ResponseEntity<CommunityPostResponse> create(
             @AuthenticationPrincipal CommunityPrincipal principal,
             @RequestHeader(name = "X-Device-Token", required = false) String deviceToken,
@@ -99,6 +101,7 @@ public class CommunityPostController {
     }
 
     @DeleteMapping("/{id}")
+    @ApiResponse(responseCode = "204")
     public ResponseEntity<Void> delete(
             @AuthenticationPrincipal CommunityPrincipal principal,
             @PathVariable Long id,

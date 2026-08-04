@@ -1,6 +1,7 @@
 package com.kraft.community.auth;
 
 import com.kraft.community.user.CommunityWithdrawalService;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -27,6 +28,7 @@ public class CommunityAccountController {
     }
 
     @PostMapping("/withdrawal")
+    @ApiResponse(responseCode = "204")
     public ResponseEntity<Void> withdraw(@AuthenticationPrincipal CommunityPrincipal principal,
                                           HttpServletRequest request, HttpServletResponse response) {
         communityWithdrawalService.withdraw(principal.getUserId());
