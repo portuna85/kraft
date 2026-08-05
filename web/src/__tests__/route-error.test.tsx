@@ -21,7 +21,9 @@ describe("RouteError", () => {
     render(<RouteError error={error} reset={vi.fn()} />);
 
     expect(sendBeacon).toHaveBeenCalledTimes(1);
-    const [url, payload] = sendBeacon.mock.calls[0];
+    // 바로 위에서 1회 호출을 확인했으므로 calls[0]은 항상 존재한다
+    // (noUncheckedIndexedAccess가 인덱싱 결과를 `| undefined`로 좁히는 것뿐).
+    const [url, payload] = sendBeacon.mock.calls[0]!;
     expect(url).toBe("/api/client-error");
     const body = JSON.parse(payload as string);
     expect(body.message).toBe("데이터를 가져오지 못했습니다");
