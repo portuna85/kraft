@@ -161,6 +161,10 @@ describe("번호 추천 화면", () => {
       expect(screen.getByText(/balanced-v1/)).toBeInTheDocument();
       expect(screen.getByText(/1189회/)).toBeInTheDocument();
       expect(screen.getByText("번호 합계가 일반적인 범위 안에 있어요")).toBeInTheDocument();
+      // 근거 문구는 세트별 실측 상태값 요약으로도 나타나야 한다([1,2,3,4,5,6] 기준).
+      expect(
+        screen.getByText("홀짝 3:3 · 고저 6:0 · 합계 21 · 연속번호 5쌍 · 구간 1개 분포"),
+      ).toBeInTheDocument();
     });
   });
 
@@ -182,11 +186,11 @@ describe("번호 추천 화면", () => {
     render(<RecommendClient />);
     fireEvent.click(await screen.findByRole("button", { name: "추천 생성" }));
 
-    const saveButton = await screen.findByRole("button", { name: "저장" });
+    const saveButton = await screen.findByRole("button", { name: "추천 1 조합 저장" });
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "저장됨" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "추천 1 조합 저장됨" })).toBeInTheDocument();
     });
   });
 });

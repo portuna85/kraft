@@ -389,7 +389,9 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible {
   margin: 0;
 }
 
-.recommend-card-row {
+/* 추천 결과 카드: 헤더(라벨+저장) → 번호(가장 큰 시각 요소) → 실측 상태값 요약
+   → 접기 상세 순서로 항상 단일 열 배치한다(.recommend-card는 display:grid). */
+.recommend-card-header {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -397,23 +399,26 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible {
   gap: 8px 10px;
 }
 
-.recommend-card-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.recommend-card-info .eyebrow {
+.recommend-card-header .eyebrow {
   flex-shrink: 0;
   white-space: nowrap;
 }
 
-.recommend-card .ball {
-  width: 38px;
-  height: 38px;
-  font-size: 0.86rem;
+/* 번호 공은 자체 행을 단독으로 차지하므로(더 이상 라벨·배지와 폭을 나누지 않는다)
+   기본 .balls/.ball 반응형 크기(clamp 기반, container query)를 그대로 쓴다 —
+   좁은 화면에서만 축소하던 .recommend-card-info 전용 축소값은 이제 불필요하다. */
+
+.recommend-card-summary {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.recommend-card-details summary {
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
 }
 
 /* F-P0-2: 추천 근거 배지 묶음 — 여러 Badge가 줄바꿈되며 흐르도록 한다. */
@@ -421,6 +426,17 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  margin-top: 8px;
+}
+
+/* 근거 문구는 긴 한국어 문장이라 배지 자체가 줄바꿈되어야 좁은 화면에서 가로
+   넘침이 생기지 않는다(Badge는 CSS Module이라 클래스명을 셀렉터로 못 쓰므로,
+   자식이 항상 span 하나뿐이라는 마크업 계약에 기대어 타입 셀렉터로 덮어쓴다 —
+   .recommend-card-explanations > span은 (0,1,1)로 module 클래스(0,1,0)보다 우선한다). */
+.recommend-card-explanations > span {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
 }
 
 /* F-P0-2: .muted와 함께 쓰여 텍스트 색은 이미 갖췄고, 위쪽 간격만 필요하다. */

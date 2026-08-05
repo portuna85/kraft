@@ -32,7 +32,9 @@ export function CommentSection({ postId }: { postId: number }) {
 
   return (
     <section className="community-comment-section" aria-label="댓글">
-      <h2>댓글 {totalTopLevelComments}개</h2>
+      {/* 로딩 중에는 개수를 0으로 확정 표시하지 않는다 — 실제 값이 오기 전까지는
+          숫자 없이 "댓글"만 보여준다 */}
+      <h2 aria-busy={loading || undefined}>{loading ? "댓글" : `댓글 ${totalTopLevelComments}개`}</h2>
       {error && (
         <p role="alert" id="comment-section-error">
           {error}

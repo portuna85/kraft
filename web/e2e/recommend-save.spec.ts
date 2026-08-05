@@ -37,6 +37,6 @@ test("추천 생성 후 저장하면 저장됨으로 표시된다", async ({ pag
   const firstCard = page.locator(".recommend-card").first();
   await expect(firstCard).toBeVisible();
 
-  await firstCard.getByRole("button", { name: "저장" }).click();
-  await expect(firstCard.getByRole("button", { name: "저장됨" })).toBeVisible();
+  await firstCard.getByRole("button", { name: "추천 1 조합 저장" }).click();
+  await expect(firstCard.getByRole("button", { name: "추천 1 조합 저장됨" })).toBeVisible();
 });

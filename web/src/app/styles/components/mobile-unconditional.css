@@ -127,18 +127,6 @@ form button,
   font-size: clamp(0.56rem, 2.5vw, 0.9rem);
 }
 
-.recommend-card-info .balls {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.recommend-card-info .ball {
-  width: clamp(20px, 11.2cqw, 34px);
-  height: auto;
-  aspect-ratio: 1;
-  font-size: clamp(0.5rem, 2.1vw, 0.78rem);
-}
-
 .prize-table td,
 .prize-table th {
   padding: 12px 10px;

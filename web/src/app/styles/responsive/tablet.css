@@ -85,12 +85,6 @@
     font-size: inherit;
   }
 
-  .recommend-card-info .ball {
-    width: 46px;
-    height: 46px;
-    font-size: inherit;
-  }
-
   .saved-item-row,
   .saved-match-info {
     align-items: center;
