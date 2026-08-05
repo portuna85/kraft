@@ -26,8 +26,6 @@ export const dataLinks: readonly NavLink[] = [
   { href: "/analysis", label: "번호 분석" },
 ];
 
-export const statusLink: NavLink = { href: "/status", label: "서비스 상태" };
-
 // FE-007: 푸터가 안내 페이지 목록을 따로 하드코딩하고 있어, 새 안내 페이지를 추가해도
 // 푸터에서 조용히 빠질 수 있었다. Record<InfoPageSlug, string>으로 두면 슬러그를
 // 추가하는 순간 여기가 타입 오류로 막힌다.
@@ -49,12 +47,11 @@ function infoLink(slug: InfoPageSlug): NavLink {
   return { href: `/info/${slug}`, label: INFO_NAV_LABELS[slug] };
 }
 
-/** 푸터의 정보/정책 링크. 서비스 상태를 안내 페이지 사이에 끼워 넣는 기존 순서를 유지한다. */
+/** 푸터의 정보/정책 링크. */
 export const footerLinks: readonly NavLink[] = [
   infoLink("data-source"),
   infoLink("methodology"),
   infoLink("faq"),
-  statusLink,
   infoLink("privacy"),
   infoLink("terms"),
   infoLink("responsible-play"),

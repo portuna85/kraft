@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { DataFreshnessNote } from "@/components/data-freshness-note";
 import { PrizeTable } from "@/components/prize-table";
-import type { RoundFreshness, WinningNumber } from "@/lib/api";
+import type { WinningNumber } from "@/lib/api";
 import { formatDrawDate } from "@/lib/format";
 import { serviceLinks } from "@/lib/home-service-links";
 import { LottoBalls } from "@/ui/domain/lotto-balls";
@@ -12,10 +11,10 @@ export function HomePrimary({ children }: { children: React.ReactNode }) {
   return <div className={styles.primary}>{children}</div>;
 }
 
-export function LatestResultSection({ latest, freshness }: { latest: WinningNumber; freshness: RoundFreshness | null }) {
+export function LatestResultSection({ latest }: { latest: WinningNumber }) {
   return (
     <section id="latest-result" className={styles.section} aria-labelledby="latest-result-title">
-      <h1 id="latest-result-title" className={styles.sectionTitle}>이번 주 당첨결과</h1>
+      <h1 id="latest-result-title" className={styles.sectionTitle}>최신회차 당첨결과</h1>
       <div className={`${styles.resultCard} result-panel hero-panel`}>
         <div className={styles.resultMain} aria-live="polite">
           {/* 회차는 /frequency·/stats·/companion과의 정합성 스모크가 읽는 값이라
@@ -25,7 +24,6 @@ export function LatestResultSection({ latest, freshness }: { latest: WinningNumb
             <span className={styles.drawDate}>{formatDrawDate(latest.drawDate)}</span>
           </p>
           <LottoBalls numbers={latest.numbers} bonusNumber={latest.bonusNumber} />
-          <DataFreshnessNote freshness={freshness} />
         </div>
         <div className={styles.prizePanel}>
           <PrizeTable firstPrizeAmount={latest.firstPrizeAmount} secondPrize={latest.secondPrize} />

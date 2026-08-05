@@ -14,7 +14,7 @@ function extractRoundNumber(text: string): number {
 
 test("홈·출현 통계·패턴 통계·동반 출현 페이지의 회차 수가 서로 일치한다(R-001 회귀 스모크)", async ({ page }) => {
   await gotoAndWaitForRealContent(page, "/");
-  // 홈 제목은 "이번 주 당첨결과"라 회차가 없다. 회차는 카드 안의 전용 훅에서 읽는다.
+  // 홈 제목은 "최신회차 당첨결과"라 회차가 없다. 회차는 카드 안의 전용 훅에서 읽는다.
   const homeRoundText = await page.getByTestId("latest-round").innerText();
   const homeRound = extractRoundNumber(homeRoundText);
 

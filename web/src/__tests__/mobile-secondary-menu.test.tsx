@@ -64,12 +64,12 @@ describe("MobileSecondaryMenu", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("햄버거 버튼 클릭 시 데이터 링크·서비스 상태·계정·테마를 담은 드로어가 열린다", () => {
+  it("햄버거 버튼 클릭 시 데이터 링크·계정·테마를 담은 드로어가 열린다", () => {
     render(<MobileSecondaryMenu />);
     fireEvent.click(screen.getByRole("button", { name: "메뉴 열기" }));
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    for (const label of ["출현 통계", "패턴 통계", "동반 출현", "번호 분석", "서비스 상태"]) {
+    for (const label of ["출현 통계", "패턴 통계", "동반 출현", "번호 분석"]) {
       expect(screen.getByRole("link", { name: label })).toBeInTheDocument();
     }
     expect(screen.getByTestId("account-menu-stub")).toBeInTheDocument();

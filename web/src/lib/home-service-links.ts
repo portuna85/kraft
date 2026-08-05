@@ -1,4 +1,4 @@
-import { dataLinks, primaryLinks, statusLink, type NavLink } from "./nav-items";
+import { dataLinks, primaryLinks, type NavLink } from "./nav-items";
 
 // 홈의 "서비스 바로가기" 격자.
 //
@@ -15,5 +15,4 @@ export const serviceLinks: readonly NavLink[] = [
   ...primaryLinks.filter((link) => link.href !== "/"),
   { href: "/recommend/history", label: "추천 이력" },
   ...dataLinks,
-  statusLink,
 ];

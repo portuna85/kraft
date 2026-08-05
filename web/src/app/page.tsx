@@ -5,12 +5,7 @@ import {
   RecommendEntryCard,
   ServiceLinks,
 } from "./home-sections";
-import {
-  getLatestWinningNumber,
-  getRoundFreshness,
-  type RoundFreshness,
-  type WinningNumber,
-} from "@/lib/api";
+import { getLatestWinningNumber, type WinningNumber } from "@/lib/api";
 import { withCoreDataLogging } from "@/lib/logger";
 
 // 루트 레이아웃의 title.template("%s | KRAFT Lotto")은 "/" 페이지에는 적용되지 않으므로
@@ -41,15 +36,15 @@ export default async function HomePage() {
   // 홈의 유일한 핵심 데이터 — 실패를 "준비 중입니다" 200으로 숨기면 업타임 체커·크롤러가
   // 장애를 인지하지 못하고 Caddy가 그 상태를 60초간 캐시한다. 여기서는 로그만 남기고
   // 에러를 그대로 던져 error.tsx(5xx)가 처리하게 한다.
-  const [latest, freshness]: [WinningNumber, RoundFreshness | null] = await withCoreDataLogging(
+  const latest: WinningNumber = await withCoreDataLogging(
     "최신 당첨번호 조회 실패 — 핵심 데이터 실패로 페이지 오류 처리",
-    () => Promise.all([getLatestWinningNumber(), getRoundFreshness().catch(() => null)])
+    () => getLatestWinningNumber()
   );
 
   return (
     <div>
       <HomePrimary>
-        <LatestResultSection latest={latest} freshness={freshness} />
+        <LatestResultSection latest={latest} />
         <RecommendEntryCard />
       </HomePrimary>
       <ServiceLinks />

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dataLinks, footerLinks, primaryLinks, statusLink } from "@/lib/nav-items";
+import { dataLinks, footerLinks, primaryLinks } from "@/lib/nav-items";
 import { serviceLinks } from "@/lib/home-service-links";
 import { INFO_PAGE_SLUGS } from "@/lib/info-page-metadata";
 
@@ -15,10 +15,6 @@ describe("내비게이션 레지스트리", () => {
       .sort();
 
     expect(linkedInfoSlugs).toEqual([...INFO_PAGE_SLUGS].sort());
-  });
-
-  it("푸터에는 서비스 상태 링크가 레지스트리 값 그대로 들어간다", () => {
-    expect(footerLinks).toContainEqual(statusLink);
   });
 
   it("푸터 링크에 중복 경로가 없다", () => {
@@ -37,7 +33,7 @@ describe("내비게이션 레지스트리", () => {
 
   // 데이터 페이지를 dataLinks에 추가했는데 홈 격자에서 조용히 빠지는 상황을 막는다.
   it("홈 서비스 격자는 홈을 제외한 모든 내비게이션 경로를 빠짐없이 노출한다", () => {
-    const expected = [...primaryLinks, ...dataLinks, statusLink]
+    const expected = [...primaryLinks, ...dataLinks]
       .map((link) => link.href)
       .filter((href) => href !== "/");
     const actual = serviceLinks.map((link) => link.href);

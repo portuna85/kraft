@@ -408,11 +408,6 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible {
    기본 .balls/.ball 반응형 크기(clamp 기반, container query)를 그대로 쓴다 —
    좁은 화면에서만 축소하던 .recommend-card-info 전용 축소값은 이제 불필요하다. */
 
-.recommend-card-summary {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
 .recommend-card-details summary {
   cursor: pointer;
   font-weight: 600;
@@ -437,22 +432,6 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible {
   white-space: normal;
   overflow-wrap: anywhere;
   text-align: left;
-}
-
-/* F-P0-2: .muted와 함께 쓰여 텍스트 색은 이미 갖췄고, 위쪽 간격만 필요하다. */
-.recommend-set-meta,
-.data-freshness-note {
-  margin-top: 8px;
-}
-
-.data-freshness-note {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-  line-height: 1.55;
 }
 
 .recommend-save-btn {

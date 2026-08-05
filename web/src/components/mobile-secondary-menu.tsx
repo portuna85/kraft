@@ -5,8 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { IconButton } from "@/ui/primitives/icon-button";
 import { Drawer } from "@/ui/primitives/drawer";
-// FE-007: STATUS_LINK가 이 파일에만 하드코딩돼 라우트 정의처가 하나 더 늘어나 있었다.
-import { dataLinks, isCurrent, statusLink as STATUS_LINK } from "@/lib/nav-items";
+import { dataLinks, isCurrent } from "@/lib/nav-items";
 import { AccountMenu } from "@/components/community/account-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BP } from "@/lib/breakpoints";
@@ -67,15 +66,6 @@ export function MobileSecondaryMenu() {
               {link.label}
             </Link>
           ))}
-
-          <p className={styles.heading}>안내</p>
-          <Link
-            href={STATUS_LINK.href}
-            onClick={() => setOpen(false)}
-            aria-current={isCurrent(STATUS_LINK.href, pathname) ? "page" : undefined}
-          >
-            {STATUS_LINK.label}
-          </Link>
         </nav>
         <div className={styles.footer}>
           <AccountMenu />

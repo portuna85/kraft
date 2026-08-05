@@ -1,7 +1,6 @@
 import { LottoBalls } from "@/ui/domain/lotto-balls";
 import { Badge } from "@/ui/primitives/badge";
 import { explanationLabel } from "./explanation-codes";
-import { computeSetStats, formatSetStatsSummary } from "./set-stats";
 import type { RecommendationItem } from "./types";
 
 export function RecommendationSetCard({
@@ -15,7 +14,6 @@ export function RecommendationSetCard({
   isSaved: boolean;
   onSave: () => void;
 }) {
-  const summary = formatSetStatsSummary(computeSetStats(item.numbers));
   const saveLabel = isSaved ? "저장됨" : isSaving ? "저장 중..." : "저장";
 
   return (
@@ -33,7 +31,6 @@ export function RecommendationSetCard({
         </button>
       </div>
       <LottoBalls numbers={item.numbers} />
-      <p className="recommend-card-summary muted">{summary}</p>
       {item.explanationCodes.length > 0 ? (
         <details className="recommend-card-details">
           <summary>분석 근거 보기</summary>

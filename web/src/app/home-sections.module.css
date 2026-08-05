@@ -20,7 +20,7 @@
   text-wrap: balance;
 }
 
-/* 이번 주 당첨결과 */
+/* 최신회차 당첨결과 */
 .resultCard {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -49,7 +49,6 @@
 .drawDate { color: var(--muted); font-family: var(--font-sans), sans-serif; font-size: var(--text-sm); font-weight: 400; }
 
 .resultMain :global(.balls) { width: 100%; justify-content: flex-start; margin-block: .9rem .8rem; }
-.resultMain :global(.data-freshness-note) { justify-content: flex-start; }
 
 .prizePanel {
   align-self: stretch;

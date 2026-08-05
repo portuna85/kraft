@@ -165,7 +165,7 @@ describe("번호 추천 화면", () => {
     expect(screen.getByText("역대 1등 당첨 번호 조합은 모든 추천 전략에서 항상 제외됩니다.")).toBeInTheDocument();
   });
 
-  it("응답에 세트 정보가 있으면 전략·알고리즘 버전·반영 회차를 표시한다", async () => {
+  it("응답에 세트 정보가 있으면 근거 배지를 표시한다", async () => {
     global.fetch = vi.fn().mockResolvedValue(
       jsonResponse({
         recommendations: [[1, 2, 3, 4, 5, 6]],
@@ -182,13 +182,7 @@ describe("번호 추천 화면", () => {
     fireEvent.click(await screen.findByRole("button", { name: "추천 생성" }));
 
     await waitFor(() => {
-      expect(screen.getByText(/balanced-v1/)).toBeInTheDocument();
-      expect(screen.getByText(/1189회/)).toBeInTheDocument();
       expect(screen.getByText("번호 합계가 일반적인 범위 안에 있어요")).toBeInTheDocument();
-      // 근거 문구는 세트별 실측 상태값 요약으로도 나타나야 한다([1,2,3,4,5,6] 기준).
-      expect(
-        screen.getByText("홀짝 3:3 · 고저 6:0 · 합계 21 · 연속번호 5쌍 · 구간 1개 분포"),
-      ).toBeInTheDocument();
     });
   });
 
