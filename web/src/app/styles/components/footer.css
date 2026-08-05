@@ -19,7 +19,8 @@
 }
 
 .footer-brand { display: inline-flex; font-family: var(--font-accent), sans-serif; font-size: 1.25rem; font-weight: 700; letter-spacing: .04em; }
-.footer-brand span { color: var(--future-cyan); }
+/* future-cyan은 대비 미달(라이트 모드 ~2.4:1) — color-brand-strong으로 대체 */
+.footer-brand span { color: var(--color-brand-strong); }
 .footer-brand-block > p { margin: .75rem 0 0; }
 .footer-heading { margin: 0 0 .8rem; color: var(--text); font-family: var(--font-accent), sans-serif; font-size: var(--text-sm); font-weight: 700; }
 .footer-nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: .65rem 1.25rem; }

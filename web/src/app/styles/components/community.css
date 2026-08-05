@@ -267,7 +267,8 @@
 
 .community-category-nav a[aria-current="page"],
 .community-sort-nav a[aria-current="page"] {
-  color: var(--future-cyan);
+  /* future-cyan은 이 배경에서 대비 미달 — 텍스트만 color-brand-strong으로 대체 */
+  color: var(--color-brand-strong);
   font-weight: 700;
   border-color: color-mix(in srgb, var(--future-cyan) 42%, var(--line));
   background: color-mix(in srgb, var(--future-cyan) 10%, var(--surface-card-sm));

@@ -29,7 +29,8 @@
 }
 
 .eyebrow {
-  color: var(--future-cyan);
+  /* future-cyan은 라이트 모드 흰/옅은 배경에서 대비 ~2.4:1로 WCAG AA(4.5:1) 미달 */
+  color: var(--color-brand-strong);
   font-size: var(--fs-xs);
   font-weight: 700;
   font-family: var(--font-accent), var(--font-sans), sans-serif;

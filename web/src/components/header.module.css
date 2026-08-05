@@ -6,7 +6,9 @@
 }
 
 .brandAccent {
-  color: var(--future-cyan);
+  /* future-cyan(#00b8d4)은 라이트 모드 흰 배경에서 대비 ~2.4:1로 WCAG AA(4.5:1) 미달 —
+     같은 브랜드 색이면서 양쪽 테마 모두 충분한 대비를 내는 color-brand-strong을 쓴다. */
+  color: var(--color-brand-strong);
 }
 
 .mobileOnly {

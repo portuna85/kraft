@@ -17,7 +17,8 @@
 
 .nav a:hover,
 .nav a[aria-current="page"] {
-  color: var(--future-cyan);
+  /* future-cyan은 라이트 모드에서 대비 미달 — color-brand-strong으로 대체 */
+  color: var(--color-brand-strong);
 }
 
 .nav a[aria-current="page"] {
@@ -44,7 +45,7 @@
 
 .toggle.active,
 .toggle:hover {
-  color: var(--future-cyan);
+  color: var(--color-brand-strong);
 }
 
 .toggle.active {
