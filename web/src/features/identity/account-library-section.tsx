@@ -272,7 +272,7 @@ export function AccountLibrarySection({ latestRound }: { latestRound: number }) 
 
       {savedNumbers.length > 0 ? (
         <>
-          <h3>저장 번호</h3>
+          <h3>보관함</h3>
           {latestRound > 0 ? (
             <div className="saved-round-controls">
               <label className="saved-round-selector">

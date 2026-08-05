@@ -16,9 +16,16 @@ const ICONS: Record<string, ReactNode> = {
       <path d="M6 10v9h5v-5h2v5h5v-9" />
     </svg>
   ),
+  // 별 아이콘은 "보관함"의 북마크 아이콘과 마찬가지로 관례상 저장·즐겨찾기를
+  // 의미해 두 탭이 시각적으로 충돌했다 — 조합을 만든다는 의미가 분명한 주사위로 교체.
   "/recommend": (
     <svg viewBox="0 0 24 24" width="22" height="22" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3.5 14.4 9l6 .8-4.4 4 1.2 5.7L12 16.6 6.8 19.5 8 13.8l-4.4-4 6-.8Z" />
+      <rect x="4" y="4" width="16" height="16" rx="3" />
+      <circle cx="8.5" cy="8.5" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="15.5" cy="8.5" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="8.5" cy="15.5" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="15.5" cy="15.5" r="1.3" fill="currentColor" stroke="none" />
     </svg>
   ),
   "/community": (

@@ -68,13 +68,13 @@ describe("계정 보관함 섹션", () => {
     expect(await screen.findByText(/아직 계정에 연결된 기록이 없습니다/)).toBeInTheDocument();
   });
 
-  it("저장 번호에 라벨과 저장 시각을 함께 보여준다", async () => {
+  it("보관함에 라벨과 저장 시각을 함께 보여준다", async () => {
     global.fetch = mockFetch({ saved: SAVED, sets: { ...SETS, items: [] } });
 
     renderSection();
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "저장 번호" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "보관함" })).toBeInTheDocument();
     });
     expect(screen.getByText(/행운 번호/)).toBeInTheDocument();
     // 번호만 나열하던 이전 동작에서는 시각 정보가 전혀 없었다.
