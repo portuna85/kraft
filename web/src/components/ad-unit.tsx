@@ -236,7 +236,7 @@ export function StickyMobileAd({ unit }: { unit: string }) {
         aria-label="광고 닫기"
         className="ad-sticky-mobile-close"
       >
-        ✕
+        <span aria-hidden="true">✕</span>
       </button>
       <AdUnit unit={unit} width={320} height={50} label="하단 고정 광고" />
     </div>

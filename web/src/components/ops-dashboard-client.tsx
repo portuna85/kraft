@@ -92,7 +92,7 @@ export function OpsDashboardClient() {
   }
 
   return (
-    <section className="ops-grid">
+    <section className="ops-grid" id="ops-dashboard-content">
       <article className="panel">
         <p className="eyebrow">운영 인증</p>
         <h2 className="ops-title">Ops 토큰 입력</h2>

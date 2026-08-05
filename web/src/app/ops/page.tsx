@@ -14,6 +14,7 @@ export const metadata: Metadata = {
 export default function OpsPage() {
   return (
     <section className="grid">
+      <a href="#ops-dashboard-content" className="skip-nav">운영 대시보드 본문으로 건너뛰기</a>
       <div className="panel">
         <PageHeader eyebrow="내부 운영" title="회차 운영 대시보드" description={<>
           이 화면은 운영 전용입니다. 공개 도메인에서는 차단되며, 실제 운영 API 호출은
