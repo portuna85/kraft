@@ -110,7 +110,7 @@ check_header_contains "홈이 CSP 헤더를 반환" "$BASE/" "Content-Security-P
 # 카드 안의 data-testid="latest-round"가 소유하므로 그 훅을 앵커로 삼는다 — 문구나
 # 클래스가 또 바뀌어도 흔들리지 않고, 실패 시 error.tsx가 아니라 정상 SSR임을 보장한다.
 # Next.js 하이드레이션이 숫자와 "회" 사이에 <!-- --> 주석을 삽입할 수 있어 옵셔널로 허용.
-check_body_matches "홈 최신 회차 렌더링" "$BASE/" 'data-testid="latest-round"[^>]*><strong>[0-9]{3,4}(<!-- -->)?회' 20
+check_body_matches "홈 최신 회차 렌더링" "$BASE/" 'data-testid="latest-round"[^>]*><strong[^>]*>[0-9]{3,4}(<!-- -->)?회' 20
 
 # Removed paths (blueprint 17) must be 404.
 check_status "GET /api/v1/push/token -> 404" "$API/push/token" "404"
