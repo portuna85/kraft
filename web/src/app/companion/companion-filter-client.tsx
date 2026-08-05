@@ -147,8 +147,8 @@ export function CompanionFilterClient({ pairs, totalRounds }: Props) {
                   </span>
                 </div>
                 <div className={styles.pairInfo}>
-                  <span className={styles.pairCount}>{pair.coCount}회 동반 출현</span>
-                  <span className={styles.pairPct}>{pct}%</span>
+                  <span className={`${styles.pairCount} tabular-nums`}>{pair.coCount}회 동반 출현</span>
+                  <span className={`${styles.pairPct} tabular-nums`}>{pct}%</span>
                 </div>
               </li>
             );

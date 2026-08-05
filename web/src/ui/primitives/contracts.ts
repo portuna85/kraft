@@ -157,10 +157,10 @@ export interface DrawerContract extends OverlayFocusContract {
   children: ReactNode;
 }
 
-export type ToastTone = "neutral" | "success" | "danger";
+export type InlineAlertTone = "neutral" | "success" | "danger";
 
 export interface InlineAlertContract {
-  tone: ToastTone;
+  tone: InlineAlertTone;
   title: string;
   description?: string;
 }

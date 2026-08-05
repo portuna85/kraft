@@ -46,7 +46,7 @@ export function AnalysisResult({ analysis, title }: AnalysisResultProps) {
                   style={{ width: `${Math.round((range.count / 6) * 100)}%` }}
                 />
               </div>
-              <span className={styles.rangeCount}>{range.count}</span>
+              <span className={`${styles.rangeCount} tabular-nums`}>{range.count}</span>
             </li>
           ))}
         </ul>

@@ -107,3 +107,8 @@ a {
   white-space: nowrap;
   border: 0;
 }
+
+/* 통계·당첨금 등 자릿수가 바뀌는 숫자 표시에 사용 — 자릿수 변경 시 폭이 흔들리지 않도록 고정폭 숫자 적용 */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}

@@ -14,7 +14,7 @@ function PrizeRow({ rank, prizeAmount }: { rank: string; prizeAmount: number }) 
   return (
     <tr>
       <th scope="row" className="prize-table-rank">{rank} 당첨금</th>
-      <td className="prize-table-amount">
+      <td className="prize-table-amount tabular-nums">
         <span className="prize-table-mobile-label">세전 당첨금</span>
         {formatCurrency(prizeAmount)}
       </td>
@@ -23,7 +23,7 @@ function PrizeRow({ rank, prizeAmount }: { rank: string; prizeAmount: number }) 
             숨기고 있었다. 실제 노출은 항상 하나였지만(display:none은 AT에서도 제외된다)
             문구를 고칠 때 두 곳을 맞춰야 하는 구조라 하나로 합치고 CSS가 형태만 바꾼다. */}
         <span className="prize-table-after-tax-label">세후 예상 금액</span>
-        <span className="prize-table-after-tax-value">{formatCurrency(calcAfterTax(prizeAmount))}</span>
+        <span className="prize-table-after-tax-value tabular-nums">{formatCurrency(calcAfterTax(prizeAmount))}</span>
       </td>
     </tr>
   );

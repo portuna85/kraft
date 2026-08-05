@@ -26,8 +26,8 @@ function BallWithStats({ item, sampleSize }: { item: BallFrequency; sampleSize: 
   return (
     <li className={`${styles.ballItem} ${styles.item}`} data-testid="frequency-item">
       <span className={`ball ball-sm ${ballColorClass(item.ballNumber)}`}>{item.ballNumber}</span>
-      <span className={styles.count}>{item.frequency}회</span>
-      <span className={styles.pct}>{pct}%</span>
+      <span className={`${styles.count} tabular-nums`}>{item.frequency}회</span>
+      <span className={`${styles.pct} tabular-nums`}>{pct}%</span>
     </li>
   );
 }
@@ -83,6 +83,13 @@ export function FrequencyFilterClient({ initial }: Props) {
 
   return (
     <>
+      {/* 핵심 지표 요약을 필터·상세보다 먼저 배치 — /stats·/analysis와 동일한
+          "요약 → 필터 → 상세" 순서(docs/improvement.md §13 Priority 1). */}
+      <div className="freq-summary">
+        <CombinationGroup label="가장 자주 나온 번호 TOP 6" combination={stats.topSix} />
+        <CombinationGroup label="가장 적게 나온 번호 BOTTOM 6" combination={stats.bottomSix} />
+      </div>
+
       {/* 탭 전환 시 별도 tabpanel이 아니라 같은 영역의 내용만 갱신되므로
           tablist/tab 대신 단순 토글 버튼 그룹(aria-pressed)으로 표현한다. */}
       <div className="freq-filter-tabs" role="group" aria-label="조회 기간">
@@ -115,11 +122,6 @@ export function FrequencyFilterClient({ initial }: Props) {
           retry={{ label: "다시 시도", onClick: retry }}
         />
       )}
-
-      <div className="freq-summary">
-        <CombinationGroup label="가장 자주 나온 번호 TOP 6" combination={stats.topSix} />
-        <CombinationGroup label="가장 적게 나온 번호 BOTTOM 6" combination={stats.bottomSix} />
-      </div>
 
       <ul className={styles.grid} data-testid="frequency-grid" aria-label="번호별 출현 통계">
         {byNumber.map((item) => (

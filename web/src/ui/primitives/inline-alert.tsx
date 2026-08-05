@@ -1,8 +1,8 @@
-import type { InlineAlertContract, ToastTone } from "./contracts";
+import type { InlineAlertContract, InlineAlertTone } from "./contracts";
 import styles from "./inline-alert.module.css";
 
 // CSS Modules 클래스명은 inline-alert.module.css에 실제로 존재함이 빌드 타임에 보장된다.
-const TONE_CLASS: Record<ToastTone, string> = {
+const TONE_CLASS: Record<InlineAlertTone, string> = {
   neutral: styles.neutral!,
   success: styles.success!,
   danger: styles.danger!,

@@ -44,8 +44,8 @@ function PatternSection({
               <div className="bar-track">
                 <div className="bar-fill" style={{ width: `${barWidth}%` }} />
               </div>
-              <span className={styles.count}>{bucket.count}회</span>
-              <span className={styles.pct}>{pct}%</span>
+              <span className={`${styles.count} tabular-nums`}>{bucket.count}회</span>
+              <span className={`${styles.pct} tabular-nums`}>{pct}%</span>
             </li>
           );
         })}

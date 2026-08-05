@@ -17,11 +17,11 @@ export function LatestResultSection({ latest, freshness }: { latest: WinningNumb
     <section id="latest-result" className={styles.section} aria-labelledby="latest-result-title">
       <h1 id="latest-result-title" className={styles.sectionTitle}>이번 주 당첨결과</h1>
       <div className={`${styles.resultCard} result-panel hero-panel`}>
-        <div className={styles.resultMain}>
+        <div className={styles.resultMain} aria-live="polite">
           {/* 회차는 /frequency·/stats·/companion과의 정합성 스모크가 읽는 값이라
               제목 문구를 바꾸더라도 깨지지 않도록 data-testid로 고정한다. */}
           <p className={styles.round} data-testid="latest-round">
-            <strong>{latest.round}회</strong>
+            <strong className="tabular-nums">{latest.round}회</strong>
             <span className={styles.drawDate}>{formatDrawDate(latest.drawDate)}</span>
           </p>
           <LottoBalls numbers={latest.numbers} bonusNumber={latest.bonusNumber} />
