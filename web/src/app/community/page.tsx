@@ -97,7 +97,7 @@ export default async function CommunityPage({ searchParams }: Props) {
         <button type="submit">검색</button>
       </form>
 
-      <nav aria-label="카테고리" className="community-category-nav">
+      <nav aria-label="카테고리" className="community-category-nav" data-allow-overflow>
         <Link href={buildHref({ sort, query })} aria-current={!category ? "page" : undefined}>
           전체
         </Link>
@@ -112,7 +112,7 @@ export default async function CommunityPage({ searchParams }: Props) {
         ))}
       </nav>
 
-      <nav aria-label="정렬" className="community-sort-nav">
+      <nav aria-label="정렬" className="community-sort-nav" data-allow-overflow>
         {(Object.keys(SORT_LABELS) as PostSort[]).map((option) => (
           <Link
             key={option}
