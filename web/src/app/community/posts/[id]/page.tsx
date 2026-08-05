@@ -5,7 +5,7 @@ import { BackendError, getPublicBaseUrl } from "@/lib/api";
 import { getPageSeoContext } from "@/lib/seo-context";
 import { PostOwnerActions } from "@/components/community/post-owner-actions";
 import { CommentSection } from "@/features/community/comment-section";
-import { JsonLdBreadcrumb } from "@/components/json-ld";
+import { JsonLdBreadcrumb, JsonLdDiscussionForumPosting } from "@/components/json-ld";
 import { PageHeader } from "@/components/page-header";
 import { formatDateTime } from "@/lib/format";
 import { ReactionBar } from "@/features/community/reaction-bar";
@@ -65,6 +65,17 @@ export default async function CommunityPostDetailPage({ params }: Props) {
         baseUrl={baseUrl}
         nonce={nonce}
         items={[{ name: "커뮤니티", item: `${baseUrl}/community` }, { name: post.title }]}
+      />
+      <JsonLdDiscussionForumPosting
+        baseUrl={baseUrl}
+        nonce={nonce}
+        url={`${baseUrl}/community/posts/${post.id}`}
+        headline={post.title}
+        text={post.content}
+        authorName={post.authorNickname}
+        datePublished={post.createdAt}
+        dateModified={post.updatedAt}
+        commentCount={post.commentCount}
       />
       {/* C-1: 서버가 내려준 게시글은 공유 ISR 캐시라 사용자별 차단 여부를 모른다 — 클라이언트
           렌더링 시점에 게이트가 확인해 본문 대신 대체 상태를 보여준다. */}

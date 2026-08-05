@@ -5,6 +5,10 @@ import { PageHeader } from "@/components/page-header";
 export const metadata: Metadata = {
   title: "추천 이력",
   description: "기기에 저장된 추천 세트 이력을 확인하고 삭제할 수 있습니다.",
+  robots: {
+    index: false,
+    follow: false,
+  },
   alternates: { canonical: "/recommend/history" },
 };
 

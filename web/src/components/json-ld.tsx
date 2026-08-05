@@ -33,6 +33,52 @@ export function JsonLdBreadcrumb({ baseUrl, nonce, items }: JsonLdBreadcrumbProp
   );
 }
 
+type JsonLdDiscussionForumPostingProps = {
+  baseUrl: string;
+  nonce?: string;
+  url: string;
+  headline: string;
+  text: string;
+  authorName: string;
+  datePublished: string;
+  dateModified: string;
+  commentCount: number;
+};
+
+export function JsonLdDiscussionForumPosting({
+  baseUrl,
+  nonce,
+  url,
+  headline,
+  text,
+  authorName,
+  datePublished,
+  dateModified,
+  commentCount,
+}: JsonLdDiscussionForumPostingProps) {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "DiscussionForumPosting",
+    headline,
+    text,
+    url,
+    mainEntityOfPage: url,
+    datePublished,
+    dateModified,
+    commentCount,
+    author: { "@type": "Person", name: authorName },
+    isPartOf: { "@type": "WebSite", name: "KRAFT Lotto", url: baseUrl },
+  };
+  return (
+    <script
+      type="application/ld+json"
+      nonce={nonce}
+      suppressHydrationWarning
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
+    />
+  );
+}
+
 type JsonLdWebSiteProps = {
   baseUrl: string;
   nonce?: string;

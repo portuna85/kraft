@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
-import { JsonLdBreadcrumb, JsonLdWebSite } from "@/components/json-ld";
+import { JsonLdBreadcrumb, JsonLdDiscussionForumPosting, JsonLdWebSite } from "@/components/json-ld";
 
 function getScriptJson(container: HTMLElement) {
   const script = container.querySelector('script[type="application/ld+json"]');
@@ -65,5 +65,31 @@ describe("JSON-LD 컴포넌트", () => {
     const parsed = getScriptJson(container);
     expect(parsed.itemListElement[1].name).toBe("</script><script>alert(1)</script>");
     expect(script!.innerHTML).not.toContain("<script>alert(1)</script>");
+  });
+
+  it("JsonLdDiscussionForumPosting은 게시글별 필드를 DiscussionForumPosting 스키마로 렌더링한다", () => {
+    const { container } = render(
+      <JsonLdDiscussionForumPosting
+        baseUrl="https://kraft.example"
+        nonce="abc123"
+        url="https://kraft.example/community/posts/8"
+        headline="자주 나온 번호와 오래 안 나온 번호, 어느 쪽이 더 유리할까요?"
+        text="본문 내용입니다."
+        authorName="닉네임"
+        datePublished="2026-07-24T09:29:00Z"
+        dateModified="2026-07-24T09:30:00Z"
+        commentCount={2}
+      />
+    );
+
+    const script = container.querySelector('script[type="application/ld+json"]');
+    expect(script).toHaveAttribute("nonce", "abc123");
+
+    const parsed = getScriptJson(container);
+    expect(parsed["@type"]).toBe("DiscussionForumPosting");
+    expect(parsed.headline).toBe("자주 나온 번호와 오래 안 나온 번호, 어느 쪽이 더 유리할까요?");
+    expect(parsed.url).toBe("https://kraft.example/community/posts/8");
+    expect(parsed.commentCount).toBe(2);
+    expect(parsed.author).toEqual({ "@type": "Person", name: "닉네임" });
   });
 });
