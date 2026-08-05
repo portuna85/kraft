@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getCommunityPost } from "@/lib/community-api";
-import { BackendError } from "@/lib/api";
+import { BackendError, getPublicBaseUrl } from "@/lib/api";
 import { getPageSeoContext } from "@/lib/seo-context";
 import { PostOwnerActions } from "@/components/community/post-owner-actions";
 import { CommentSection } from "@/features/community/comment-section";
@@ -17,11 +17,24 @@ import { CATEGORY_LABELS } from "@/features/community/types";
 
 type Props = { params: Promise<{ id: string }> };
 
+function summarizePostContent(content: string): string {
+  const flattened = content.replace(/\s+/g, " ").trim();
+  return flattened.length > 120 ? `${flattened.slice(0, 120)}…` : flattened;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   try {
     const post = await getCommunityPost(Number(id));
-    return { title: post.title, alternates: { canonical: `/community/posts/${id}` } };
+    const description = summarizePostContent(post.content);
+    const url = `${getPublicBaseUrl()}/community/posts/${id}`;
+    return {
+      title: post.title,
+      description,
+      alternates: { canonical: `/community/posts/${id}` },
+      openGraph: { title: post.title, description, url, type: "article" },
+      twitter: { title: post.title, description },
+    };
   } catch {
     return { title: "게시글" };
   }

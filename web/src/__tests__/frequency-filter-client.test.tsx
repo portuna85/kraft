@@ -24,6 +24,9 @@ const INITIAL: FrequencyStatsResponse = {
   },
 };
 
+const NO_HISTORY_TEXT =
+  "자주 나온 번호를 모은 목록이며, 실제 당첨 조합이 아닙니다. 이 6개가 한 회차에 함께 나온 기록은 없습니다.";
+
 function mockFetch(body: unknown, status = 200) {
   return vi.fn().mockResolvedValue({
     ok: status >= 200 && status < 300,
@@ -43,7 +46,7 @@ describe("frequency 필터", () => {
     render(<FrequencyFilterClient initial={INITIAL} />);
 
     expect(screen.getByText("역대 1등 당첨 이력 1건")).toBeInTheDocument();
-    expect(screen.getByText("역대 1등 당첨 이력 없음")).toBeInTheDocument();
+    expect(screen.getByText(NO_HISTORY_TEXT)).toBeInTheDocument();
     expect(screen.getByText("2002년 12월 7일 토")).toBeInTheDocument();
     expect(screen.getByRole("list", { name: "번호별 출현 통계" })).toBeInTheDocument();
     expect(screen.getAllByTestId("frequency-item")).toHaveLength(INITIAL.frequencies.length);
@@ -106,12 +109,12 @@ describe("frequency 필터", () => {
     fireEvent.click(screen.getByRole("button", { name: "최근 100회" }));
 
     await waitFor(() => {
-      expect(screen.getAllByText("역대 1등 당첨 이력 없음")).toHaveLength(2);
+      expect(screen.getAllByText(NO_HISTORY_TEXT)).toHaveLength(2);
     });
 
     fireEvent.click(screen.getByRole("button", { name: "전체" }));
 
     expect(screen.getByText("역대 1등 당첨 이력 1건")).toBeInTheDocument();
-    expect(screen.getAllByText("역대 1등 당첨 이력 없음")).toHaveLength(1);
+    expect(screen.getAllByText(NO_HISTORY_TEXT)).toHaveLength(1);
   });
 });

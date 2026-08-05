@@ -5,11 +5,16 @@ import styles from "@/components/first-prize-history.module.css";
 type FirstPrizeHistoryProps = {
   history: FirstPrizeHistory[];
   compact?: boolean;
+  emptyMessage?: string;
 };
 
-export function FirstPrizeHistoryList({ history, compact = false }: FirstPrizeHistoryProps) {
+export function FirstPrizeHistoryList({
+  history,
+  compact = false,
+  emptyMessage = "역대 1등 당첨 이력 없음",
+}: FirstPrizeHistoryProps) {
   if (history.length === 0) {
-    return <p className={`${styles.summary} ${styles.noHistory}`}>역대 1등 당첨 이력 없음</p>;
+    return <p className={`${styles.summary} ${styles.noHistory}`}>{emptyMessage}</p>;
   }
 
   return (

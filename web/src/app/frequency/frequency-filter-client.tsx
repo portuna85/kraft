@@ -37,7 +37,11 @@ function CombinationGroup({ label, combination }: { label: string; combination: 
     <div className={styles.rankGroup}>
       <p className={styles.rankLabel}>{label}</p>
       <LottoBalls numbers={combination.balls.map((item) => item.ballNumber)} />
-      <FirstPrizeHistoryList history={combination.firstPrizeHistory} compact />
+      <FirstPrizeHistoryList
+        history={combination.firstPrizeHistory}
+        compact
+        emptyMessage="자주 나온 번호를 모은 목록이며, 실제 당첨 조합이 아닙니다. 이 6개가 한 회차에 함께 나온 기록은 없습니다."
+      />
     </div>
   );
 }
