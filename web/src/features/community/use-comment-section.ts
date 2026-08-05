@@ -4,6 +4,7 @@ import { BrowserApiError } from "@/lib/browser-api";
 import type { CommunityComment } from "@/lib/community-api";
 import { useCommunitySession } from "@/lib/community-session-provider";
 import { useBlockedUserIds } from "@/features/community/blocked-users-context";
+import { revalidateCommunityPost } from "@/lib/community-revalidate";
 
 /**
  * 댓글 목록 조회/페이징/작성/삭제 상태를 들고 있는 훅. 컴포넌트는 렌더만 담당한다.
@@ -70,6 +71,10 @@ export function useCommentSection(postId: number) {
       setContent("");
       setReplyTo(null);
       loadComments(created.targetPage ?? 0);
+      // 목록 페이지의 commentCount는 30초 ISR 캐시라 댓글 작성 직후에도 그 창 동안
+      // 낡은 값을 보여줄 수 있다 — 게시글 수정·삭제와 같은 패턴으로 즉시 무효화한다.
+      // 실패해도 댓글 작성 자체는 이미 성공했으므로 사용자에게 오류로 보이지 않게 한다.
+      void revalidateCommunityPost(postId).catch(() => {});
     } catch {
       setError("댓글 작성에 실패했습니다.");
     } finally {
@@ -87,6 +92,7 @@ export function useCommentSection(postId: number) {
       await deleteComment(pendingDeleteId);
       setPendingDeleteId(null);
       loadComments(page);
+      void revalidateCommunityPost(postId).catch(() => {});
     } catch {
       setDeleteError("댓글 삭제에 실패했습니다.");
     } finally {

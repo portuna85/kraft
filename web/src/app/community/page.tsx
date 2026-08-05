@@ -142,14 +142,19 @@ export default async function CommunityPage({ searchParams }: Props) {
         )
       ) : (
         <>
-          {hasActiveFilter && (
-            <p className="muted" role="status">
-              {query ? `“${query}” 검색 결과 ` : "조건에 맞는 게시글 "}
-              {result.totalElements}건
-              {" · "}
-              <Link href="/community">필터 해제</Link>
-            </p>
-          )}
+          <p className="muted community-filter-summary" role="status">
+            {query ? `“${query}” 검색 결과` : category ? CATEGORY_LABELS[category] : "전체"}
+            {" · "}
+            {SORT_LABELS[sort]}
+            {" · "}
+            {result.totalElements}건
+            {hasActiveFilter && (
+              <>
+                {" · "}
+                <Link href="/community">필터 해제</Link>
+              </>
+            )}
+          </p>
           <CommunityPostList items={result.items} />
           {/* FE-052: totalPages를 알고 있으면서 이전/다음만 제공해, 뒤쪽 페이지에서
               1페이지로 돌아가려면 뒤로가기밖에 없었다. */}

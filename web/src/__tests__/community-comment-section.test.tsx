@@ -10,6 +10,11 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/community/posts/1",
 }));
 
+const revalidateCommunityPost = vi.fn().mockResolvedValue(undefined);
+vi.mock("@/lib/community-revalidate", () => ({
+  revalidateCommunityPost: (postId: number) => revalidateCommunityPost(postId),
+}));
+
 function renderCommentSection(postId: number) {
   return render(
     <CommunitySessionProvider>
@@ -206,6 +211,11 @@ describe("커뮤니티 댓글 섹션", () => {
     expect(createBody).toEqual({ content: "새 댓글 내용", parentId: null });
     // 초기 로드 1회 + 작성 후 재조회 1회
     expect(commentsCallCount).toBe(2);
+    // 목록 페이지의 commentCount 캐시(30초 ISR)를 즉시 무효화해 다음 방문 시
+    // 낡은 댓글 수를 보여주지 않는다.
+    await waitFor(() => {
+      expect(revalidateCommunityPost).toHaveBeenCalledWith(1);
+    });
   });
 
   it("댓글 작성에 실패하면 오류 메시지를 보여주고 입력값을 지우지 않는다", async () => {
