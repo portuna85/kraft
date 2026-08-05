@@ -46,6 +46,8 @@ export function NumberBoard({
     onChange(nextLocked, nextExcluded);
   }
 
+  const hasSelection = locked.length > 0 || excluded.length > 0;
+
   return (
     <div>
       <p className={styles.legend}>
@@ -57,6 +59,16 @@ export function NumberBoard({
           <span className={`${styles.legendSwatch} ${styles.cellExcluded}`} aria-hidden="true" />
           제외 번호 — 추천 후보에서 빠집니다
         </span>
+      </p>
+      <p className={styles.summary} aria-live="polite">
+        <span>
+          고정 {locked.length}/{MAX_LOCKED_NUMBERS} · 제외 {excluded.length}개
+        </span>
+        {hasSelection ? (
+          <button type="button" className="link-button" onClick={() => onChange([], [])}>
+            모두 해제
+          </button>
+        ) : null}
       </p>
       <NumberGrid
         count={NUMBER_COUNT}

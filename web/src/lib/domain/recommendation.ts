@@ -32,6 +32,14 @@ export const STRATEGY_LABELS = {
   reduce_shared_winner_risk: "공동 당첨 위험 완화",
 } as const satisfies Record<Strategy, string>;
 
+// /info/methodology의 "균형 조합" 설명과 같은 용어를 쓴다 — 두 곳의 표현이
+// 어긋나면 안 된다는 요구에 맞춰 문구를 여기서만 관리한다.
+export const STRATEGY_DESCRIPTIONS = {
+  random: "조건 없이 1~45에서 임의로 6개를 뽑습니다.",
+  balanced: "홀짝·고저·합계·구간 분포를 고르게 맞춥니다.",
+  reduce_shared_winner_risk: "많은 사람이 고르는 패턴을 피해 조합을 고릅니다.",
+} as const satisfies Record<Strategy, string>;
+
 type RecommendationSetSummaryContract = components["schemas"]["RecommendationSetSummary"];
 
 export type RecommendationSetSummary = Omit<

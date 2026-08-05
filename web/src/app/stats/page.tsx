@@ -16,11 +16,13 @@ const SUM_ORDER = ["21-65", "66-110", "111-155", "156-200", "201-255"];
 
 function PatternSection({
   title,
+  description,
   buckets,
   totalRounds,
   sortOrder,
 }: {
   title: string;
+  description?: string;
   buckets: PatternBucket[];
   totalRounds: number;
   sortOrder?: string[];
@@ -33,6 +35,7 @@ function PatternSection({
   return (
     <div className={styles.section}>
       <h2 className="section-title">{title}</h2>
+      {description ? <p className="muted">{description}</p> : null}
       <ul className={styles.list} data-testid="pattern-list">
         {sorted.map((bucket) => {
           const pct = totalRounds > 0 ? ((bucket.count / totalRounds) * 100).toFixed(1) : "0.0";
@@ -69,9 +72,15 @@ export default async function StatsPage() {
       <JsonLdBreadcrumb baseUrl={baseUrl} nonce={nonce} items={[{ name: "패턴 통계", item: `${baseUrl}/stats` }]} />
       <PageHeader eyebrow="패턴 통계" title="패턴 통계" description={`총 ${stats.totalRounds}회 기준`} />
       <PatternSection title="홀수 개수 분포" buckets={stats.oddCounts} totalRounds={stats.totalRounds} />
-      <PatternSection title="고번호 개수 분포" buckets={stats.highCounts} totalRounds={stats.totalRounds} />
+      <PatternSection
+        title="고번호 개수 분포"
+        description="저번호 1~22, 고번호 23~45 기준"
+        buckets={stats.highCounts}
+        totalRounds={stats.totalRounds}
+      />
       <PatternSection
         title="합계 구간 분포"
+        description="당첨 번호 6개를 더한 값입니다. 이론상 최소 21, 최대 255입니다."
         buckets={stats.sumBuckets}
         totalRounds={stats.totalRounds}
         sortOrder={SUM_ORDER}

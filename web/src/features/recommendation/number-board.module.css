@@ -7,6 +7,15 @@
   color: var(--color-muted, #666);
 }
 
+.summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  margin: var(--space-2, 0.5rem) 0;
+  font-weight: 600;
+}
+
 .legendSwatch {
   display: inline-block;
   width: 0.75rem;

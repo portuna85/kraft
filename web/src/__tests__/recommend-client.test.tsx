@@ -129,6 +129,30 @@ describe("번호 추천 화면", () => {
     expect(screen.getByRole("button", { name: "번호 3" })).toBeInTheDocument();
   });
 
+  it("고정·제외 선택 상태를 실시간으로 요약하고 모두 해제로 초기화한다", async () => {
+    render(<RecommendClient />);
+    await screen.findByRole("button", { name: "추천 생성" });
+
+    expect(screen.getByText("고정 0/5 · 제외 0개")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "모두 해제" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "번호 3" }));
+    expect(screen.getByText("고정 1/5 · 제외 0개")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "모두 해제" }));
+    expect(screen.getByText("고정 0/5 · 제외 0개")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "번호 3" })).toBeInTheDocument();
+  });
+
+  it("전략 3종 각각에 1줄 설명을 병기한다", async () => {
+    render(<RecommendClient />);
+    await screen.findByRole("button", { name: "추천 생성" });
+
+    expect(screen.getByText("조건 없이 1~45에서 임의로 6개를 뽑습니다.")).toBeInTheDocument();
+    expect(screen.getByText("홀짝·고저·합계·구간 분포를 고르게 맞춥니다.")).toBeInTheDocument();
+    expect(screen.getByText("많은 사람이 고르는 패턴을 피해 조합을 고릅니다.")).toBeInTheDocument();
+  });
+
   it("확률 고지 문구를 표시한다", async () => {
     render(<RecommendClient />);
     await screen.findByRole("button", { name: "추천 생성" });

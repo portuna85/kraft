@@ -17,3 +17,26 @@
 .empty { align-self: center; }
 @media (max-width: 860px) { .studio { grid-template-columns: 1fr; } .resultPanel { min-height: 18rem; } }
 @media (max-width: 520px) { .controlPanel, .resultPanel { padding: 1rem; border-radius: 20px; } .countField input { max-width: none; } }
+
+/* 45개 번호판 아래에 있던 생성 버튼이 모바일에서 스크롤 왕복을 유발해 하단 고정
+   CTA로 전환한다. --content-safe-bottom은 ads.css가 하단 탭바(항상)·고정 광고
+   (떠 있을 때만) 높이를 합산해 body에 반영해 두는 토큰이라, 그 위에 얹기만 하면
+   탭바·광고와 자동으로 겹치지 않는다(같은 1023px 경계에서 모바일 탭바가 보인다). */
+@media (max-width: 1023px) {
+  .submitRow {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--content-safe-bottom, 0px);
+    z-index: 35;
+    margin: 0;
+    padding: 12px var(--shell-gutter, 16px);
+    background: var(--surface, #fff);
+    border-top: 1px solid var(--line);
+  }
+
+  .controlPanel {
+    /* 고정 CTA가 폼 하단 콘텐츠(고지 문구·링크)를 가리지 않도록 여백을 예약한다. */
+    padding-bottom: calc(64px + env(safe-area-inset-bottom) + 16px);
+  }
+}
