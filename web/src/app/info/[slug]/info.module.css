@@ -43,12 +43,35 @@
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 20px 22px;
+  scroll-margin-top: calc(var(--header-offset) + 1rem);
   transition: background 0.18s ease, border-color 0.18s ease;
 }
 
 .faqItem:hover {
   background: var(--surface-strong);
   border-color: rgba(0, 229, 255, 0.15);
+}
+
+.faqItem summary {
+  cursor: pointer;
+  min-height: var(--target-min);
+  display: flex;
+  align-items: center;
+  list-style: none;
+}
+
+.faqItem summary::-webkit-details-marker {
+  display: none;
+}
+
+.faqItem summary h2 {
+  margin: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.faqItem[open] summary {
+  margin-bottom: 8px;
 }
 
 .contactBox {

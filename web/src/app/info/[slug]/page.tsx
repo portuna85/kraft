@@ -23,11 +23,13 @@ type InfoPage = {
 export function FaqContent() {
   return (
     <article className={styles.article}>
-      {FAQ_ITEMS.map((item) => (
-        <div className={styles.faqItem} key={item.question}>
-          <h2>{item.question}</h2>
+      {FAQ_ITEMS.map((item, index) => (
+        <details className={styles.faqItem} id={`faq-${index + 1}`} key={item.question} open={index === 0}>
+          <summary>
+            <h2>{item.question}</h2>
+          </summary>
           <p>{item.answer}</p>
-        </div>
+        </details>
       ))}
     </article>
   );
