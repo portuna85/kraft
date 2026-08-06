@@ -34,10 +34,16 @@ for (const width of WIDTHS) {
     });
 
     if (width === 320) {
-      test("/ — 모바일 당첨금의 세전·세후 금액을 스크롤 없이 읽을 수 있다", async ({ page }) => {
+      test("/ — 모바일에서 1등 세후 금액을 스크롤·펼치기 없이 읽을 수 있다", async ({ page }) => {
         await gotoAndWaitForRealContent(page, "/");
-        // FE-105: 640px 미만에서는 표가 카드로 재구성되어 스크롤할 것이 없으므로
-        // region/tabIndex를 부여하지 않는다 — 여기서는 래퍼 클래스로 잡는다.
+        // 세전·2등 금액은 추천 CTA를 밀어내지 않도록 기본 접힘 상태다(prize-table.tsx).
+        // 과거 계산 결함 이력이 있는 세후 금액만은 접힌 상태에서도 보여야 한다.
+        await expect(page.locator(".prize-table-highlight-value").first()).toBeVisible();
+      });
+
+      test("/ — 당첨금 상세를 펼치면 세전 금액·2등 당첨금이 보인다", async ({ page }) => {
+        await gotoAndWaitForRealContent(page, "/");
+        await page.locator(".prize-table-details summary").click();
         const table = page.locator(".prize-table-wrap");
         await expect(table.getByText("세전 당첨금").first()).toBeVisible();
         await expect(table.getByText("세후 예상 금액").first()).toBeVisible();
@@ -57,6 +63,7 @@ for (const width of WIDTHS) {
     if (width === 1024) {
       test("/ — 데스크톱 당첨금 표는 키보드 스크롤 영역을 유지한다", async ({ page }) => {
         await gotoAndWaitForRealContent(page, "/");
+        await page.locator(".prize-table-details summary").click();
         // 모바일에서 지우는 것과 별개로, 가로 스크롤이 실제로 필요한 폭에서는
         // region/tabIndex가 남아 있어야 한다(FE-105가 과잉 제거되지 않았는지 확인).
         await expect(page.getByRole("region", { name: "당첨금 표" })).toHaveAttribute("tabindex", "0");

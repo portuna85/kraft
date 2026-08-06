@@ -46,20 +46,32 @@ export function PrizeTable({ firstPrizeAmount, secondPrize }: Props) {
   }, []);
 
   return (
-    <div
-      className="prize-table-wrap"
-      tabIndex={scrollable ? 0 : undefined}
-      role={scrollable ? "region" : undefined}
-      aria-label={scrollable ? "당첨금 표" : undefined}
-      data-allow-overflow
-    >
-      <table className="prize-table">
-        <caption className="sr-only">1등·2등 당첨금과 세후 예상 금액</caption>
-        <tbody>
-          <PrizeRow rank="1등" prizeAmount={firstPrizeAmount} />
-          <PrizeRow rank="2등" prizeAmount={secondPrize} />
-        </tbody>
-      </table>
+    <div className="prize-table-panel">
+      {/* 접힌 상태에서도 1등 세후 금액은 반드시 보여야 한다 — 홈 당첨금 표가 세로 공간을
+          차지해 추천 CTA를 밀어내는 문제를 완화하려고 나머지(1등 세전 · 2등)를 접되,
+          이 값은 과거 계산 결함 이력이 있는 지점이라 숨기면 오류 발견이 늦어진다. */}
+      <p className="prize-table-highlight">
+        <span className="prize-table-highlight-label">1등 세후 예상 금액</span>
+        <span className="prize-table-highlight-value tabular-nums">{formatCurrency(calcAfterTax(firstPrizeAmount))}</span>
+      </p>
+      <details className="prize-table-details">
+        <summary>세전 금액·2등 당첨금 보기</summary>
+        <div
+          className="prize-table-wrap"
+          tabIndex={scrollable ? 0 : undefined}
+          role={scrollable ? "region" : undefined}
+          aria-label={scrollable ? "당첨금 표" : undefined}
+          data-allow-overflow
+        >
+          <table className="prize-table">
+            <caption className="sr-only">1등·2등 당첨금과 세후 예상 금액</caption>
+            <tbody>
+              <PrizeRow rank="1등" prizeAmount={firstPrizeAmount} />
+              <PrizeRow rank="2등" prizeAmount={secondPrize} />
+            </tbody>
+          </table>
+        </div>
+      </details>
     </div>
   );
 }

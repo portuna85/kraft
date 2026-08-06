@@ -35,6 +35,9 @@ function parseWon(text: string): number {
 test("/ — 1·2등 세후 표시금액이 세법 구간 분리 공식과 일치한다(KX-01 회귀 스모크)", async ({ page }) => {
   await gotoAndWaitForRealContent(page, "/");
 
+  // 1등 세전·2등 금액은 기본 접힘 상태(prize-table.tsx)라 표를 열어야 읽을 수 있다.
+  await page.locator(".prize-table-details summary").click();
+
   // FE-105: 640px 미만에서는 표가 카드로 재구성되어 스크롤할 것이 없으므로 region/tabIndex를
   // 부여하지 않는다. 이 검사는 세후 금액 계산이 목적이라 뷰포트와 무관해야 하므로
   // 래퍼 클래스로 잡는다(모바일 프로젝트에서도 동일하게 동작).
