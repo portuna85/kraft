@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDateTime } from "@/lib/format";
 import { LottoBalls } from "@/ui/domain/lotto-balls";
 import { EmptyState } from "@/ui/primitives/empty-state";
 import { ErrorState } from "@/ui/primitives/error-state";
@@ -128,7 +129,7 @@ export function SavedNumbersClient({ latestRound }: Props) {
               return (
                 <li key={item.id} className="saved-item">
                   <div className="saved-item-row">
-                    <LottoBalls numbers={item.numbers} />
+                    <p className="eyebrow">{formatDateTime(item.createdAt)}</p>
                     <button
                       type="button"
                       className="saved-delete-btn"
@@ -138,6 +139,7 @@ export function SavedNumbersClient({ latestRound }: Props) {
                       삭제
                     </button>
                   </div>
+                  <LottoBalls numbers={item.numbers} />
                   {match ? (
                     <div className="saved-match-info">
                       <span className="saved-draw-ref">{match.round}회 ({match.drawDate})</span>
