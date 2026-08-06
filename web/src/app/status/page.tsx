@@ -9,7 +9,6 @@ import styles from "./status.module.css";
 export const metadata: Metadata = {
   title: "서비스 상태",
   description: "데이터 최신성과 최근 수집·보정 이력을 안내합니다.",
-  robots: { index: false, follow: false },
   alternates: { canonical: "/status" },
 };
 
