@@ -76,7 +76,12 @@ export function AnalysisClient() {
         </Button>
       </form>
 
-      {pending ? <p className="muted" aria-live="polite">역대 1등 당첨 이력을 점검하고 있습니다.</p> : null}
+      {pending ? (
+        <div className={styles.pending} aria-busy="true" aria-label="번호 조합을 분석하는 중">
+          <span className="skeleton-line skeleton-body" />
+          <span className="skeleton-line skeleton-body" />
+        </div>
+      ) : null}
 
       {error ? (
         <p id={errorMessageId} className={`status-text ${styles.error}`} role="alert" aria-live="assertive">
@@ -84,7 +89,11 @@ export function AnalysisClient() {
         </p>
       ) : null}
 
-      {result ? <AnalysisResult analysis={result} title="분석 결과" /> : null}
+      {result ? (
+        <AnalysisResult analysis={result} title="분석 결과" />
+      ) : !pending && !error ? (
+        <p className={`muted ${styles.hint}`}>번호 6개를 고르고 분석하기를 누르면 홀짝·고저·합계·연속·구간과 역대 1등 조합 일치 여부를 확인할 수 있습니다.</p>
+      ) : null}
     </div>
   );
 }

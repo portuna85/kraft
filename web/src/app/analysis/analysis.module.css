@@ -40,6 +40,11 @@
   font-weight: 700;
 }
 
+.pending {
+  display: grid;
+  gap: 10px;
+}
+
 .result {
   padding: 24px;
   background: var(--surface-card);
