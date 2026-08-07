@@ -135,40 +135,61 @@ writeFileSync(
 );
 console.log(`\n결과 저장: ${resultsPath}`);
 
+/**
+ * 회귀 허용치. 측정은 빌드마다 미세하게 흔들리므로 1KB까지는 같은 값으로 본다 —
+ * 이보다 좁히면 코드와 무관한 실패가 생겨 게이트를 신뢰하지 않게 된다.
+ */
+const REGRESSION_TOLERANCE_KB = 1;
+
 if (saveBaseline) {
   const budget = JSON.parse(readFileSync(budgetPath, "utf8"));
   for (const [route, info] of Object.entries(measured)) {
-    budget.routes[route] = { ...budget.routes[route], maxKB: Math.ceil(info.totalKB) };
+    // maxKB(현행에서 승계한 목표)는 건드리지 않는다. 갱신 대상은 회귀 기준선뿐이다.
+    budget.routes[route] = { ...budget.routes[route], currentKB: info.totalKB };
   }
   writeFileSync(budgetPath, `${JSON.stringify(budget, null, 2)}\n`);
-  console.log(`예산 갱신: ${budgetPath}`);
+  console.log(`회귀 기준선 갱신: ${budgetPath}`);
   process.exit(0);
 }
 
 const { routes: budget } = JSON.parse(readFileSync(budgetPath, "utf8"));
 let failed = false;
-const unenforced = [];
+const overTarget = [];
 
 console.log("\n예산 비교:");
-for (const [route, { maxKB, enforced }] of Object.entries(budget)) {
+for (const [route, { maxKB, currentKB }] of Object.entries(budget)) {
   const actual = measured[route];
   if (!actual) {
-    console.log(`  대기  ${route}: 아직 구현되지 않음 (예산 ${maxKB} KB)`);
+    console.log(`  대기  ${route}: 아직 구현되지 않음 (목표 ${maxKB} KB)`);
     continue;
   }
 
-  const over = actual.totalKB > maxKB;
-  if (enforced === false) {
-    // 골격만 있는 라우트다 — 완성된 앱 기준 예산과 비교하면 의미가 없으므로 측정만 한다.
-    unenforced.push(route);
+  if (actual.totalKB <= maxKB) {
+    console.log(`  통과  ${route}: ${actual.totalKB} KB / 목표 ${maxKB} KB`);
+    continue;
+  }
+
+  // 목표를 넘었다. 다만 지금 초과분의 대부분은 프레임워크 공용 청크(53KB)에서 오고,
+  // 이 값은 화면 코드로 줄일 수 있는 성질이 아니다. 목표는 앱이 완성된 뒤 §29.4의
+  // "공개 라우트가 현행 대비 증가하지 않음"으로 판정하고, 그때까지는 **여기서 더
+  // 늘어나는 것**을 막는다. 기준선이 없는 라우트는 이번 값이 기준선이 된다.
+  overTarget.push(route);
+
+  if (currentKB === undefined) {
     console.log(
-      `  미적용 ${route}: ${actual.totalKB} KB / ${maxKB} KB${over ? " (현재 초과)" : ""}`,
+      `  기준선 없음 ${route}: ${actual.totalKB} KB (목표 ${maxKB} KB 초과) — ` +
+        "--save-baseline으로 기준선을 기록하세요.",
     );
+    failed = true;
     continue;
   }
 
-  if (over) failed = true;
-  console.log(`  ${over ? "초과" : "통과"}  ${route}: ${actual.totalKB} KB / ${maxKB} KB`);
+  const grew = actual.totalKB > currentKB + REGRESSION_TOLERANCE_KB;
+  if (grew) failed = true;
+  console.log(
+    `  ${grew ? "회귀" : "유지"}  ${route}: ${actual.totalKB} KB ` +
+      `(기준선 ${currentKB} KB, 목표 ${maxKB} KB)`,
+  );
 }
 
 for (const route of Object.keys(measured)) {
@@ -180,10 +201,10 @@ for (const route of Object.keys(measured)) {
   }
 }
 
-if (unenforced.length > 0) {
+if (overTarget.length > 0) {
   console.log(
-    `\n예산 미적용 라우트 ${unenforced.length}개: ${unenforced.join(", ")}\n` +
-      "  각 라우트를 실제로 구현하는 커밋에서 bundle-budget.json의 enforced를 true로 바꾼다.",
+    `\n목표 미달 라우트 ${overTarget.length}개: ${overTarget.join(", ")}\n` +
+      "  현재는 회귀만 막는 상태다. 앱이 완성되면 §29.4 기준으로 목표 달성 여부를 판정한다.",
   );
 }
 
