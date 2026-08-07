@@ -1,0 +1,42 @@
+@layer components {
+  .periods {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .period {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target-min);
+    padding-inline: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-pill);
+    color: var(--color-ink-muted);
+    text-decoration: none;
+  }
+
+  .period[aria-current="page"] {
+    background: var(--color-brand);
+    border-color: var(--color-brand);
+    color: var(--color-ink-on-brand);
+    font-weight: 700;
+  }
+
+  .extremes {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+
+  .note {
+    color: var(--color-ink-muted);
+    font-size: var(--text-sm);
+  }
+
+  @media (min-width: 640px) {
+    .extremes {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+}
