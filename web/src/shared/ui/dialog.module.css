@@ -1,0 +1,60 @@
+@layer components {
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-overlay);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4);
+    background: rgba(4, 10, 26, 0.55);
+  }
+
+  .panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    width: 100%;
+    max-height: 85dvh;
+    overflow-y: auto;
+    padding: var(--space-6);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-solid);
+    box-shadow: var(--shadow-2);
+  }
+
+  .sm {
+    max-width: 380px;
+  }
+
+  .md {
+    max-width: 520px;
+  }
+
+  .lg {
+    max-width: 760px;
+  }
+
+  .header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+  }
+
+  .title {
+    font-size: var(--text-lg);
+    font-weight: 700;
+  }
+
+  .description {
+    color: var(--color-ink-muted);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-2);
+  }
+}

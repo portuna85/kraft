@@ -1,0 +1,134 @@
+@layer components {
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-pill);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .badgeSm {
+    font-size: var(--text-xs);
+    padding: 2px var(--space-2);
+  }
+
+  .neutral {
+    background: var(--color-surface-2);
+    color: var(--color-ink-muted);
+  }
+
+  .brand {
+    background: var(--color-surface-2);
+    color: var(--color-brand-strong);
+  }
+
+  .success {
+    background: var(--color-surface-2);
+    color: var(--color-success);
+  }
+
+  .warning {
+    background: var(--color-surface-2);
+    color: var(--color-warning);
+  }
+
+  .danger {
+    background: var(--color-surface-2);
+    color: var(--color-danger);
+  }
+
+  /* 상태 점은 장식이다 — 의미는 항상 옆의 텍스트 라벨이 전달한다. */
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: var(--radius-pill);
+    background: currentColor;
+  }
+
+  .alert {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-left-width: 4px;
+    border-radius: var(--radius-md);
+    background: var(--color-surface-2);
+  }
+
+  .alertNeutral {
+    border-left-color: var(--color-ink-muted);
+  }
+
+  .alertSuccess {
+    border-left-color: var(--color-success);
+  }
+
+  .alertWarning {
+    border-left-color: var(--color-warning);
+  }
+
+  .alertDanger {
+    border-left-color: var(--color-danger);
+  }
+
+  .state {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-8) var(--space-4);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-1);
+  }
+
+  .stateInline {
+    padding: var(--space-4);
+    border-style: solid;
+  }
+
+  .stateTitle {
+    font-size: var(--text-md);
+    font-weight: 700;
+  }
+
+  .stateDescription {
+    color: var(--color-ink-muted);
+  }
+
+  .divider {
+    border: 0;
+    border-top: 1px solid var(--color-border);
+    margin-block: var(--space-4);
+  }
+
+  .skeleton {
+    background: var(--color-surface-2);
+    border-radius: var(--radius-sm);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+
+  .skeletonText {
+    height: 1em;
+  }
+
+  .skeletonBlock {
+    height: 120px;
+    border-radius: var(--radius-md);
+  }
+
+  .skeletonCircle {
+    border-radius: var(--radius-pill);
+  }
+
+  @keyframes pulse {
+    50% {
+      opacity: 0.45;
+    }
+  }
+}
