@@ -7,7 +7,9 @@ import { DEVICE_TOKEN_STORAGE_KEY } from "@/shared/api/device-token";
 import { resetResourceCacheForTests } from "@/shared/hooks/use-resource";
 
 import { clearClaimFlagForTests } from "./claim-flag";
-import { canQueryOwnerScope, SessionProvider, useSession } from "./session-provider";
+import { canQueryOwnerScope, useSession } from "@/entities/user-session/session-context";
+
+import { SessionProvider } from "./session-provider";
 
 const fetchSession = vi.fn();
 const claimDevice = vi.fn();

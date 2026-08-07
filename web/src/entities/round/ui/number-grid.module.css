@@ -1,0 +1,35 @@
+@layer components {
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(var(--target-min), 1fr));
+    gap: var(--space-2);
+  }
+
+  .cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--target-min);
+    min-height: var(--target-min);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-solid);
+    color: var(--color-ink);
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+  }
+
+  /* 상태는 색만으로 전달하지 않는다 — 각 셀의 aria-label이 "고정"·"제외"를 말한다. */
+  .locked {
+    background: var(--color-brand);
+    border-color: var(--color-brand);
+    color: var(--color-ink-on-brand);
+    font-weight: 700;
+  }
+
+  .excluded {
+    background: var(--color-surface-2);
+    color: var(--color-ink-muted);
+    text-decoration: line-through;
+  }
+}

@@ -1,10 +1,15 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 import { claimDevice, fetchSession, SESSION_RESOURCE_KEY } from "@/entities/user-session/api";
 import type { CommunitySession } from "@/entities/user-session/schema";
+import {
+  SessionContext,
+  type ClaimStatus,
+  type SessionState,
+} from "@/entities/user-session/session-context";
 import { readDeviceToken, rotateDeviceTokenAfterSuccessfulClaim } from "@/shared/api/device-token";
 import { invalidateResource, useResource } from "@/shared/hooks/use-resource";
 
@@ -24,20 +29,6 @@ import { hasClaimSettled, markClaimSettled } from "./claim-flag";
  * - I-4: 세션 스코프 밖 경로에서는 세션 API를 호출하지 않는다.
  *        (이 프로바이더가 (session) 셸에만 마운트되는 구조로 이미 강제돼 있다.)
  */
-
-export type ClaimStatus = "idle" | "claiming" | "settled" | "error";
-
-export type SessionState = {
-  /** null은 "모름"이다 — 비로그인(loggedIn: false)과 다르다(I-3). */
-  session: CommunitySession | null;
-  loading: boolean;
-  /** 조회 실패. 비로그인과 반드시 구분한다. */
-  error: boolean;
-  claimStatus: ClaimStatus;
-  retry: () => void;
-};
-
-const SessionContext = createContext<SessionState | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const state = useResource<CommunitySession>(SESSION_RESOURCE_KEY, fetchSession);
@@ -112,26 +103,4 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
-}
-
-/**
- * 세션 셸 밖에서 부르면 스코프를 벗어난 것이다(I-4). 그 경우 조용히 기본값을 주는 대신
- * 던진다 — 조용한 기본값은 "공개 라우트에서 세션을 읽는" 실수를 숨긴다.
- */
-export function useSession(): SessionState {
-  const context = useContext(SessionContext);
-  if (context === null) {
-    throw new Error(
-      "useSession은 (session) 셸 안에서만 쓸 수 있습니다 — 공개 라우트는 세션을 조회하지 않습니다.",
-    );
-  }
-  return context;
-}
-
-/**
- * 소유자 스코프 조회를 진행해도 되는지. **claimStatus는 보지 않는다**(I-1) —
- * claim 실패는 익명 기록 이전에 실패한 것일 뿐, 계정 데이터 조회와는 무관하다.
- */
-export function canQueryOwnerScope(state: SessionState): boolean {
-  return state.session?.loggedIn === true;
 }
