@@ -31,6 +31,10 @@ test.describe("CSP nonce", () => {
   }
 
   test("홈에서 CSP 차단 없이 하이드레이션이 끝난다", async ({ page }) => {
+    // 하이드레이션 증거로 쓰는 탭바는 1024px 이상에서 CSS로 숨겨진다 — 데스크톱
+    // 뷰포트로 두면 요소가 없어서 "하이드레이션 실패"와 구분되지 않는다.
+    await page.setViewportSize({ width: 390, height: 844 });
+
     const violations: string[] = [];
     page.on("console", (message) => {
       const text = message.text();

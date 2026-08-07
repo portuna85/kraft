@@ -42,12 +42,38 @@ function manifestFiles() {
     .map((file) => path.join(appServerDir, file));
 }
 
-function routeOf(file) {
-  const rel = path
+/** manifest 파일 경로 → Next 내부 entry 키에 쓰이는 상대 경로("(public)/page" 등). */
+function entryPathOf(file) {
+  return path
     .relative(appServerDir, file)
     .replaceAll("\\", "/")
-    .replace(/(^|\/)page_client-reference-manifest\.js$/, "");
-  return `/${rel}`;
+    .replace(/_client-reference-manifest\.js$/, "");
+}
+
+/**
+ * 라우트 이름. 라우트 그룹 세그먼트는 URL에 나타나지 않으므로 제거한다 —
+ * `(public)/page`는 `/`, `(ops)/ops/page`는 `/ops`다. 예산 키는 URL 기준이라
+ * 이걸 안 벗기면 실제 라우트와 매칭되지 않는다.
+ */
+function routeOf(file) {
+  const segments = entryPathOf(file)
+    .split("/")
+    .filter((segment) => segment !== "" && segment !== "page" && !/^\(.+\)$/.test(segment));
+  return `/${segments.join("/")}`;
+}
+
+/**
+ * 이 manifest가 나타내는 페이지 자신의 entry 키를 고른다. 경로를 문자열로 조립해
+ * 맞히려 들면 Next가 키를 정규화하는 방식(라우트 그룹·병렬 라우트)에 따라 조용히
+ * 빗나가고, 그러면 모든 라우트가 레이아웃 바닥값으로 측정돼 예산이 무의미해진다.
+ */
+function ownEntryKey(file, entries) {
+  const rel = entryPathOf(file);
+  const exact = Object.keys(entries).find((key) => key === `[project]/src/app/${rel}`);
+  if (exact) return exact;
+
+  const pageKeys = Object.keys(entries).filter((key) => key.endsWith("/page"));
+  return pageKeys.length === 1 ? pageKeys[0] : null;
 }
 
 function chunkBytes(chunks) {
@@ -59,26 +85,37 @@ function chunkBytes(chunks) {
 
 const files = manifestFiles();
 
-const layoutBytes = (() => {
-  for (const file of files) {
-    const chunks = readManifest(file).entryJSFiles?.["[project]/src/app/layout"];
-    if (chunks) return chunkBytes(chunks);
-  }
-  return 0;
-})();
+/**
+ * 이 라우트가 클라이언트 컴포넌트를 하나도 안 가져도 받는 JS — 자기 레이아웃 체인이다.
+ * 전역에서 하나만 구해 공유하면 셸이 갈라진 구조(공개/세션/운영)에서 틀린 값이 된다.
+ */
+function layoutBytesOf(entries) {
+  const layoutKeys = Object.keys(entries).filter((key) => key.endsWith("/layout"));
+  return chunkBytes(layoutKeys.flatMap((key) => entries[key] ?? []));
+}
 
 const measured = {};
 for (const file of files) {
   const entries = readManifest(file).entryJSFiles ?? {};
-  const ownKey = `[project]/src/app${routeOf(file) === "/" ? "" : routeOf(file)}/page`;
-  const chunks = entries[ownKey] ?? [];
+  const ownKey = ownEntryKey(file, entries);
+  const chunks = ownKey ? (entries[ownKey] ?? []) : [];
+
+  if (!ownKey && Object.keys(entries).length > 0) {
+    // 키를 못 찾았다는 것은 측정이 바닥값으로 퇴화했다는 뜻이다 — 조용히 넘기면
+    // "예산 통과"가 거짓말이 된다. 실제 키를 찍어 다음 수정에 쓴다.
+    console.warn(
+      `  경고 ${routeOf(file)}: 자기 entry 키를 찾지 못해 바닥값으로 측정합니다. ` +
+        `manifest 키: ${Object.keys(entries).join(", ")}`,
+    );
+  }
+
+  const layoutBytes = layoutBytesOf(entries);
   measured[routeOf(file)] =
     chunks.length > 0
       ? { totalKB: toKB(chunkBytes(chunks)), chunkCount: new Set(chunks).size }
       : { totalKB: toKB(layoutBytes), chunkCount: layoutBytes > 0 ? 1 : 0 };
 }
 
-console.log(`공용 레이아웃(모든 라우트 바닥값): ${toKB(layoutBytes)} KB\n`);
 console.log("라우트별 초기 클라이언트 JS (내림차순):");
 for (const [route, info] of Object.entries(measured).sort((a, b) => b[1].totalKB - a[1].totalKB)) {
   console.log(`  ${String(info.totalKB).padStart(7)} KB  (청크 ${info.chunkCount}개)  ${route}`);
