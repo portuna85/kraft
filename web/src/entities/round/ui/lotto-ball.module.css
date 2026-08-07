@@ -1,0 +1,70 @@
+@layer components {
+  .ball {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-pill);
+    font-family: var(--font-accent);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    /* 볼 색 위 텍스트는 흰색만으로는 대비가 안 나오는 구간이 있다(노랑·연두).
+       구간별로 잉크 색을 따로 준다 — 색 대비는 장식이 아니라 판독의 문제다. */
+    color: #14203c;
+  }
+
+  .sm {
+    width: 28px;
+    height: 28px;
+    font-size: var(--text-xs);
+  }
+
+  .md {
+    width: 36px;
+    height: 36px;
+    font-size: var(--text-sm);
+  }
+
+  .lg {
+    width: 48px;
+    height: 48px;
+    font-size: var(--text-md);
+  }
+
+  .r1 {
+    background: var(--color-ball-1-10);
+  }
+
+  .r2 {
+    background: var(--color-ball-11-20);
+  }
+
+  .r3 {
+    background: var(--color-ball-21-30);
+  }
+
+  .r4 {
+    background: var(--color-ball-31-40);
+  }
+
+  .r5 {
+    background: var(--color-ball-41-45);
+  }
+
+  .bonus {
+    background: var(--color-ball-bonus);
+    color: #ffffff;
+  }
+
+  .set {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  /* 보너스 구분자는 장식이 아니다 — 보조 기술에는 텍스트로도 전달한다. */
+  .plus {
+    color: var(--color-ink-muted);
+    font-weight: 700;
+  }
+}
