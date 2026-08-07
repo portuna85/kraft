@@ -39,6 +39,7 @@
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
     "@vitest/coverage-v8": "^4.1.10",
+    "axe-core": "^4.13.0",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.12",
     "jsdom": "^30.0.1",
@@ -46,6 +47,7 @@
     "openapi-typescript": "^7.13.0",
     "prettier": "^3.9.6",
     "typescript": "6.0.3",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "vitest-axe": "^0.1.0"
   }
 }

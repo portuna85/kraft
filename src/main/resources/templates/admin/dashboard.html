@@ -1,54 +1,107 @@
-<!DOCTYPE html>
-<html lang="ko" xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
-      th:replace="~{admin/layout :: layout('대시보드', ~{::content})}">
-<th:block th:fragment="content">
-  <header class="admin-page-header">
-    <p class="admin-eyebrow">운영 현황</p>
-    <h1>대시보드</h1>
-    <p class="admin-page-lead">최신 당첨 데이터와 수집 작업을 확인하고 관리합니다.</p>
-  </header>
+<!doctype html>
+<html
+  lang="ko"
+  xmlns:th="http://www.thymeleaf.org"
+  xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+  th:replace="~{admin/layout :: layout('대시보드', ~{::content})}"
+>
+  <th:block th:fragment="content">
+    <header class="admin-page-header">
+      <p class="admin-eyebrow">운영 현황</p>
+      <h1>대시보드</h1>
+      <p class="admin-page-lead">
+        최신 당첨 데이터와 수집 작업을 확인하고 관리합니다.
+      </p>
+    </header>
 
-  <div th:if="${latest != null}" class="admin-card-grid">
-    <section class="admin-card" aria-label="최신 회차">
-      <p class="admin-card-label">최신 회차</p>
-      <p class="admin-card-value" th:text="${latest.round} + '회'">-</p>
-      <p class="admin-card-meta" th:text="${latest.drawDate}">-</p>
-    </section>
-    <section class="admin-card" aria-label="당첨 번호">
-      <p class="admin-card-label">당첨 번호</p>
-      <p class="admin-card-copy"
-         th:text="${latest.num1}+', '+${latest.num2}+', '+${latest.num3}+', '+${latest.num4}+', '+${latest.num5}+', '+${latest.num6}+' + '+${latest.bonusNumber}">-</p>
-    </section>
-  </div>
-  <div th:if="${latest == null}" class="admin-empty-state" role="status">
-    <p>아직 수집된 당첨 번호 데이터가 없습니다. 아래 수동 수집으로 데이터를 가져오세요.</p>
-  </div>
-
-  <section class="admin-section" aria-labelledby="collect-title">
-    <h2 id="collect-title" class="admin-section-title">수동 수집</h2>
-    <p class="admin-section-description">API에서 최신 회차까지 누락된 데이터를 수집합니다.</p>
-    <div class="admin-action-row">
-      <form th:action="@{/admin/rounds/collect-latest}" method="post">
-        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-        <button type="submit" class="btn btn-primary">최신 회차 수집</button>
-      </form>
-      <form th:action="@{/admin/rounds/collect-round}" method="post" class="admin-inline-form">
-        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-        <label class="sr-only" for="dashboard-round">회차 번호</label>
-        <input id="dashboard-round" type="number" name="round" min="1" required placeholder="회차 번호" class="admin-input"/>
-        <button type="submit" class="btn btn-primary">특정 회차 수집</button>
-      </form>
+    <div th:if="${latest != null}" class="admin-card-grid">
+      <section class="admin-card" aria-label="최신 회차">
+        <p class="admin-card-label">최신 회차</p>
+        <p class="admin-card-value" th:text="${latest.round} + '회'">-</p>
+        <p class="admin-card-meta" th:text="${latest.drawDate}">-</p>
+      </section>
+      <section class="admin-card" aria-label="당첨 번호">
+        <p class="admin-card-label">당첨 번호</p>
+        <p
+          class="admin-card-copy"
+          th:text="${latest.num1}+', '+${latest.num2}+', '+${latest.num3}+', '+${latest.num4}+', '+${latest.num5}+', '+${latest.num6}+' + '+${latest.bonusNumber}"
+        >
+          -
+        </p>
+      </section>
     </div>
-  </section>
+    <div th:if="${latest == null}" class="admin-empty-state" role="status">
+      <p>
+        아직 수집된 당첨 번호 데이터가 없습니다. 아래 수동 수집으로 데이터를
+        가져오세요.
+      </p>
+    </div>
 
-  <section class="admin-section" aria-labelledby="backfill-title">
-    <h2 id="backfill-title" class="admin-section-title">전체 회차 수집 (백필)</h2>
-    <p class="admin-section-description">마지막 저장 회차 다음부터 더 이상 데이터가 없을 때까지 수집합니다. 수 분이 걸릴 수 있으며 백그라운드에서 실행됩니다.</p>
-    <form th:action="@{/admin/rounds/collect-all}" method="post" onsubmit="return confirm('1회차(또는 마지막 저장 회차 다음)부터 최신 회차까지 전체 수집을 시작합니다. 수 분이 소요될 수 있습니다. 계속하시겠습니까?');">
-      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-      <button type="submit" class="btn btn-primary">전체 회차 수집 시작</button>
-    </form>
-  </section>
-</th:block>
+    <section class="admin-section" aria-labelledby="collect-title">
+      <h2 id="collect-title" class="admin-section-title">수동 수집</h2>
+      <p class="admin-section-description">
+        API에서 최신 회차까지 누락된 데이터를 수집합니다.
+      </p>
+      <div class="admin-action-row">
+        <form th:action="@{/admin/rounds/collect-latest}" method="post">
+          <input
+            type="hidden"
+            th:name="${_csrf.parameterName}"
+            th:value="${_csrf.token}"
+          />
+          <button type="submit" class="btn btn-primary">최신 회차 수집</button>
+        </form>
+        <form
+          th:action="@{/admin/rounds/collect-round}"
+          method="post"
+          class="admin-inline-form"
+        >
+          <input
+            type="hidden"
+            th:name="${_csrf.parameterName}"
+            th:value="${_csrf.token}"
+          />
+          <label class="sr-only" for="dashboard-round">회차 번호</label>
+          <input
+            id="dashboard-round"
+            type="number"
+            name="round"
+            min="1"
+            required
+            placeholder="회차 번호"
+            class="admin-input"
+          />
+          <button type="submit" class="btn btn-primary">특정 회차 수집</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="admin-section" aria-labelledby="backfill-title">
+      <h2 id="backfill-title" class="admin-section-title">
+        전체 회차 수집 (백필)
+      </h2>
+      <p class="admin-section-description">
+        마지막 저장 회차 다음부터 더 이상 데이터가 없을 때까지 수집합니다. 수
+        분이 걸릴 수 있으며 백그라운드에서 실행됩니다.
+      </p>
+      <form
+        th:action="@{/admin/rounds/collect-all}"
+        method="post"
+        onsubmit="
+          return confirm(
+            '1회차(또는 마지막 저장 회차 다음)부터 최신 회차까지 전체 수집을 시작합니다. 수 분이 소요될 수 있습니다. 계속하시겠습니까?',
+          );
+        "
+      >
+        <input
+          type="hidden"
+          th:name="${_csrf.parameterName}"
+          th:value="${_csrf.token}"
+        />
+        <button type="submit" class="btn btn-primary">
+          전체 회차 수집 시작
+        </button>
+      </form>
+    </section>
+  </th:block>
 </html>

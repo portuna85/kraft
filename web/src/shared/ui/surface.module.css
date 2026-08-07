@@ -1,0 +1,108 @@
+@layer components {
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+  }
+
+  .level1 {
+    background: var(--color-surface-1);
+  }
+
+  .level2 {
+    background: var(--color-surface-2);
+    box-shadow: var(--shadow-1);
+  }
+
+  .level3 {
+    background: var(--color-surface-3);
+    box-shadow: var(--shadow-2);
+  }
+
+  .tabList {
+    display: flex;
+    gap: var(--space-1);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .tab {
+    min-height: var(--target-min);
+    padding-inline: var(--space-4);
+    color: var(--color-ink-muted);
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+  }
+
+  .tab[aria-selected="true"] {
+    color: var(--color-ink);
+    font-weight: 700;
+    border-bottom-color: var(--color-brand);
+  }
+
+  .tableWrap {
+    /* 넓은 표는 페이지가 아니라 자기 컨테이너 안에서 가로 스크롤한다. */
+    overflow-x: auto;
+  }
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .table th,
+  .table td {
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+    text-align: left;
+  }
+
+  .table th {
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+
+  .caption {
+    caption-side: top;
+    text-align: left;
+    padding-bottom: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+
+  .pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+  }
+
+  .pageLink {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--target-min);
+    min-height: var(--target-min);
+    padding-inline: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-ink-muted);
+    text-decoration: none;
+  }
+
+  .pageLink[aria-current="page"] {
+    background: var(--color-brand);
+    border-color: var(--color-brand);
+    color: var(--color-ink-on-brand);
+    font-weight: 700;
+  }
+
+  .pageDisabled {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+}

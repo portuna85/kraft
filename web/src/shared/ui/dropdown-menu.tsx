@@ -1,0 +1,103 @@
+"use client";
+
+import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
+
+import { useDisclosure } from "@/shared/hooks/use-disclosure";
+
+import styles from "./overlay.module.css";
+
+export type MenuItem = { label: string; onSelect: () => void };
+
+/**
+ * DropdownMenu — improvement_fe.md §9.3
+ *
+ * `role="menu"` + 화살표/Home/End/Esc. 링크 목록으로 만들면 스크린리더 사용자에게
+ * "메뉴가 열렸다"는 사실과 항목 수가 전달되지 않는다.
+ *
+ * 바깥 클릭으로 닫는 리스너는 열려 있을 때만 붙인다 — 항상 붙여두면 페이지의 모든
+ * 클릭이 닫힌 메뉴 수만큼 핸들러를 거친다.
+ */
+export function DropdownMenu({
+  trigger,
+  items,
+  "aria-label": label,
+}: {
+  trigger: (props: { onClick: () => void; "aria-expanded": boolean }) => ReactNode;
+  items: readonly MenuItem[];
+  "aria-label": string;
+}) {
+  const { isOpen, close, toggle } = useDisclosure();
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+
+    function onPointerDown(event: PointerEvent) {
+      if (!wrapRef.current?.contains(event.target as Node)) close();
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  function onMenuKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      close();
+      return;
+    }
+
+    const focusables = Array.from(
+      menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [],
+    );
+    if (focusables.length === 0) return;
+
+    const current = focusables.indexOf(document.activeElement as HTMLElement);
+    const moves: Record<string, number> = { ArrowDown: 1, ArrowUp: -1 };
+    const step = moves[event.key];
+
+    if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      (event.key === "Home" ? focusables[0] : focusables[focusables.length - 1])?.focus();
+      return;
+    }
+
+    if (step === undefined) return;
+    event.preventDefault();
+    focusables[(current + step + focusables.length) % focusables.length]?.focus();
+  }
+
+  return (
+    <div className={styles.menuWrap} ref={wrapRef}>
+      {trigger({ onClick: toggle, "aria-expanded": isOpen })}
+
+      {isOpen && (
+        <div
+          ref={menuRef}
+          className={styles.menu}
+          role="menu"
+          aria-label={label}
+          onKeyDown={onMenuKeyDown}
+        >
+          {items.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              role="menuitem"
+              className={styles.menuItem}
+              onClick={() => {
+                close();
+                item.onSelect();
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

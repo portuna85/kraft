@@ -1,42 +1,71 @@
-<!DOCTYPE html>
-<html lang="ko" xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{admin/layout :: layout('감사 로그', ~{::content})}">
-<th:block th:fragment="content">
-  <header class="admin-page-header">
-    <p class="admin-eyebrow">운영 기록</p>
-    <h1>감사 로그</h1>
-    <p class="admin-page-lead">관리자 작업과 결과를 시간순으로 확인합니다.</p>
-  </header>
+<!doctype html>
+<html
+  lang="ko"
+  xmlns:th="http://www.thymeleaf.org"
+  th:replace="~{admin/layout :: layout('감사 로그', ~{::content})}"
+>
+  <th:block th:fragment="content">
+    <header class="admin-page-header">
+      <p class="admin-eyebrow">운영 기록</p>
+      <h1>감사 로그</h1>
+      <p class="admin-page-lead">관리자 작업과 결과를 시간순으로 확인합니다.</p>
+    </header>
 
-  <div class="table-scroll" tabindex="0" role="region" aria-label="감사 로그 표">
-  <table class="admin-table">
-    <caption class="sr-only">관리자 감사 로그</caption>
-    <thead>
-    <tr>
-      <th>시각</th><th>사용자</th><th>작업</th><th>대상</th><th>IP</th><th>상세</th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr th:each="log : ${logs.content}"
-        th:classappend="${log.action != null and log.action.contains('FAIL')} ? ' audit-failure'">
-      <td th:text="${#temporals.format(log.createdAt, 'MM-dd HH:mm:ss')}"></td>
-      <td th:text="${log.adminUser}"></td>
-      <td><code th:text="${log.action}"></code></td>
-      <td th:text="${log.target}"></td>
-      <td th:text="${log.ipAddress}"></td>
-      <td><small th:text="${log.detail}"></small></td>
-    </tr>
-    <tr th:if="${logs.content.isEmpty()}">
-      <td colspan="6" class="empty-cell">조회된 감사 로그가 없습니다.</td>
-    </tr>
-    </tbody>
-  </table>
-  </div>
+    <div
+      class="table-scroll"
+      tabindex="0"
+      role="region"
+      aria-label="감사 로그 표"
+    >
+      <table class="admin-table">
+        <caption class="sr-only">
+          관리자 감사 로그
+        </caption>
+        <thead>
+          <tr>
+            <th>시각</th>
+            <th>사용자</th>
+            <th>작업</th>
+            <th>대상</th>
+            <th>IP</th>
+            <th>상세</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            th:each="log : ${logs.content}"
+            th:classappend="${log.action != null and log.action.contains('FAIL')} ? ' audit-failure'"
+          >
+            <td
+              th:text="${#temporals.format(log.createdAt, 'MM-dd HH:mm:ss')}"
+            ></td>
+            <td th:text="${log.adminUser}"></td>
+            <td><code th:text="${log.action}"></code></td>
+            <td th:text="${log.target}"></td>
+            <td th:text="${log.ipAddress}"></td>
+            <td><small th:text="${log.detail}"></small></td>
+          </tr>
+          <tr th:if="${logs.content.isEmpty()}">
+            <td colspan="6" class="empty-cell">조회된 감사 로그가 없습니다.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-  <div class="pagination">
-    <span th:text="'전체 ' + ${logs.totalElements} + '건 (페이지 ' + (${logs.number} + 1) + ' / ' + ${logs.totalPages} + ')'"></span>
-    <a th:if="${logs.number > 0}" th:href="@{/admin/audit(page=${logs.number - 1})}">이전</a>
-    <a th:if="${logs.number + 1 < logs.totalPages}" th:href="@{/admin/audit(page=${logs.number + 1})}">다음</a>
-  </div>
-</th:block>
+    <div class="pagination">
+      <span
+        th:text="'전체 ' + ${logs.totalElements} + '건 (페이지 ' + (${logs.number} + 1) + ' / ' + ${logs.totalPages} + ')'"
+      ></span>
+      <a
+        th:if="${logs.number > 0}"
+        th:href="@{/admin/audit(page=${logs.number - 1})}"
+        >이전</a
+      >
+      <a
+        th:if="${logs.number + 1 < logs.totalPages}"
+        th:href="@{/admin/audit(page=${logs.number + 1})}"
+        >다음</a
+      >
+    </div>
+  </th:block>
 </html>
