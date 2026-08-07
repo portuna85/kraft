@@ -216,6 +216,46 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # CSP nonce와 /ops 게이트는 셸과 함께 검증해야 한다 — 나중에 붙이면 전 페이지
+  # 하이드레이션이 깨진 상태를 늦게 발견한다(improvement_fe.md R-3, Phase 2).
+  web-next-e2e-proxy:
+    name: Web Next E2E (CSP·/ops 게이트)
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.web_next == 'true'
+    timeout-minutes: 15
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
+      options: --ipc=host
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --prefer-offline --no-audit --no-fund
+      - name: Build proxy-track application
+        run: npm run build
+        env:
+          NEXT_DIST_DIR: .next-proxy
+          KRAFT_BACKEND_INTERNAL_URL: http://127.0.0.1:59999
+          KRAFT_PUBLIC_BASE_URL: http://127.0.0.1:3110
+      - run: npm run test:e2e:proxy
+      - name: Upload failure traces
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: web-next-playwright-proxy
+          path: |
+            web/test-results/
+            web/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
   web-build-artifacts:
     name: Web Build (${{ matrix.variant }})
     runs-on: ubuntu-latest
@@ -816,6 +856,7 @@ jobs:
       - static-analysis
       - web-build-test
       - web-next-build-test
+      - web-next-e2e-proxy
       - web-build-artifacts
       - web-e2e
       - web-e2e-proxy
@@ -839,6 +880,7 @@ jobs:
           API_RESULT: ${{ needs.api-types-drift-guard.result }}
           WEB_TEST_RESULT: ${{ needs.web-build-test.result }}
           WEB_NEXT_RESULT: ${{ needs.web-next-build-test.result }}
+          WEB_NEXT_PROXY_RESULT: ${{ needs.web-next-e2e-proxy.result }}
           WEB_BUILD_RESULT: ${{ needs.web-build-artifacts.result }}
           WEB_E2E_RESULT: ${{ needs.web-e2e.result }}
           WEB_E2E_PROXY_RESULT: ${{ needs.web-e2e-proxy.result }}
@@ -871,6 +913,7 @@ jobs:
           fi
           if [[ "$WEB_NEXT_CHANGED" == "true" ]]; then
             require_success "Web Next (재작성 중인 프론트엔드)" "$WEB_NEXT_RESULT"
+            require_success "Web Next E2E (CSP·/ops 게이트)" "$WEB_NEXT_PROXY_RESULT"
           fi
           if [[ "$EVENT_NAME" == "push" ]]; then
             require_success "Backend image" "$BACKEND_IMAGE_RESULT"

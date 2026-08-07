@@ -1,0 +1,141 @@
+/*
+ * 셸 레이아웃 — improvement_fe.md §10
+ * CSS Module은 @layer components에 들어간다. 이렇게 감싸야 유틸리티가 항상 컴포넌트를
+ * 이긴다는 규칙이 파일 로드 순서와 무관하게 성립한다(§9.2).
+ */
+@layer components {
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-header);
+    min-height: var(--layout-header-h);
+    display: flex;
+    align-items: center;
+    background: var(--color-surface-3);
+    border-bottom: 1px solid var(--color-border);
+    backdrop-filter: blur(12px);
+  }
+
+  .headerInner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    width: 100%;
+  }
+
+  .brand {
+    font-family: var(--font-accent);
+    font-size: var(--text-md);
+    font-weight: 700;
+    color: var(--color-ink);
+    text-decoration: none;
+  }
+
+  .primaryNav {
+    display: none;
+  }
+
+  .navLink {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target-min);
+    padding-inline: var(--space-3);
+    border-radius: var(--radius-sm);
+    color: var(--color-ink-muted);
+    text-decoration: none;
+  }
+
+  .navLink:hover {
+    color: var(--color-ink);
+    background: var(--color-surface-1);
+  }
+
+  .main {
+    display: block;
+    padding-block: var(--space-6) var(--space-12);
+    /* 하단 고정 UI(탭바·광고)가 본문 끝을 가리지 않도록 컴포넌트가 게시한 값을 쓴다.
+       전역 토큰을 광고 CSS가 재정의하던 암묵 결합을 없앤 자리다(§9.5). */
+    padding-bottom: calc(var(--space-12) + var(--fixed-bottom-inset, 0px));
+  }
+
+  .footer {
+    border-top: 1px solid var(--color-border);
+    background: var(--color-canvas-sunken);
+    padding-block: var(--space-8);
+  }
+
+  .footerGroups {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+  }
+
+  .footerTitle {
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--color-ink);
+    margin-bottom: var(--space-2);
+  }
+
+  .footerLink {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target-min);
+    color: var(--color-ink-muted);
+    font-size: var(--text-sm);
+  }
+
+  .disclaimer {
+    margin-top: var(--space-6);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border);
+    color: var(--color-ink-muted);
+    font-size: var(--text-xs);
+  }
+
+  .tabBar {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: var(--z-tabbar);
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    background: var(--color-surface-solid);
+    border-top: 1px solid var(--color-border);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .tabLink {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--layout-tabbar-h);
+    color: var(--color-ink-muted);
+    font-size: var(--text-xs);
+    text-decoration: none;
+  }
+
+  .tabLink[aria-current="page"] {
+    color: var(--color-brand-strong);
+    font-weight: 700;
+  }
+
+  /* 데스크톱: 상단 내비가 드러나고 하단 탭바는 사라진다. 미디어 판정을 JS로 하지
+     않는다 — 브레이크포인트가 TS와 CSS에 이중 정의되던 문제를 없앤다(§6.3 M-7). */
+  @media (min-width: 1024px) {
+    .primaryNav {
+      display: flex;
+      gap: var(--space-1);
+    }
+
+    .tabBar {
+      display: none;
+    }
+
+    .footerGroups {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+}
