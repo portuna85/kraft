@@ -6,23 +6,43 @@
     "local": "next dev",
     "dev": "next dev",
     "build": "next build",
-    "lint": "eslint src *.config.ts *.config.mjs",
-    "typecheck": "next typegen && tsc --noEmit"
+    "lint": "eslint src tests scripts *.config.ts *.config.mts *.config.mjs",
+    "typecheck": "next typegen && tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "generate:api-types": "node scripts/generate-api-types.mjs",
+    "verify:api-types": "node scripts/generate-api-types.mjs --verify",
+    "budget:bundle": "node scripts/bundle-budget.mjs"
   },
   "dependencies": {
     "next": "16.2.12",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "valibot": "^1.4.2"
   },
   "engines": {
     "node": ">=24"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
+    "@playwright/test": "^1.62.1",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^26.1.2",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.12",
-    "typescript": "6.0.3"
+    "jsdom": "^30.0.1",
+    "msw": "^2.15.0",
+    "openapi-typescript": "^7.13.0",
+    "prettier": "^3.9.6",
+    "typescript": "6.0.3",
+    "vitest": "^4.1.10"
   }
 }

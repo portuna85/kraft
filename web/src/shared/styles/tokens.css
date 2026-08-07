@@ -1,0 +1,138 @@
+/*
+ * 디자인 토큰 — improvement_fe.md §9.1
+ *
+ * 규칙: 모든 토큰은 원시 값이거나 다른 토큰의 "의미적 합성"이어야 한다.
+ * `--a: var(--b)` 형태의 순수 별칭은 금지한다(§1.4 G-3). 현행 프론트엔드가 별칭
+ * 레이어를 얹은 뒤 "기존 토큰은 하나도 지우지 않는다"는 제약에 스스로 갇혀 정리
+ * 경로를 봉쇄한 것이 재작성의 가장 직접적인 기술적 정당화다(§6.3 M-1).
+ *
+ * 값은 현행에서 가져오되 이름은 전부 새로 지었다. 별칭이 아니라 대체다.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* ── 색: 표면 ─────────────────────────────────────────────── */
+  --color-canvas: #f3f7ff;
+  --color-canvas-sunken: #e7eefc;
+  --color-surface-1: rgba(239, 246, 255, 0.72);
+  --color-surface-2: rgba(248, 251, 255, 0.82);
+  --color-surface-3: rgba(255, 255, 255, 0.9);
+  --color-surface-solid: #ffffff;
+
+  /* ── 색: 잉크 ─────────────────────────────────────────────── */
+  --color-ink: #0b1430;
+  --color-ink-muted: #53617e;
+  --color-ink-on-brand: #ffffff;
+
+  /* ── 색: 브랜드·상태 ──────────────────────────────────────── */
+  --color-brand: #087ca7;
+  --color-brand-strong: #075b88;
+  --color-success: #1b5e20; /* 대비 7.00:1 */
+  --color-warning: #8a5a00; /* 대비 5.27:1 */
+  --color-danger: #a6231d; /* 대비 6.48:1 */
+
+  /* ── 색: 경계·초점 ────────────────────────────────────────── */
+  --color-border: rgba(31, 57, 105, 0.16);
+  /* 현행(알파 0.22)은 비초점 요소 위에서 초점 링이 식별되지 않았다 — 대비를 올린다. */
+  --color-focus-ring: rgba(0, 152, 187, 0.55);
+
+  /* ── 도메인 색: 로또 볼 ───────────────────────────────────── */
+  /* 현행은 ball-colors.css에 하드코딩돼 있어 테마·대비 검증에서 빠져 있었다. */
+  --color-ball-1-10: #fbc400;
+  --color-ball-11-20: #69c8f2;
+  --color-ball-21-30: #ff7272;
+  --color-ball-31-40: #aaaaaa;
+  --color-ball-41-45: #b0d840;
+  --color-ball-bonus: #168b68;
+
+  /* ── 타이포 ───────────────────────────────────────────────── */
+  --font-sans: var(--font-noto-sans-kr), system-ui, sans-serif;
+  --font-accent: var(--font-space-grotesk), system-ui, sans-serif;
+  --text-xs: clamp(0.76rem, 0.72rem + 0.25vw, 0.82rem);
+  --text-sm: clamp(0.88rem, 0.83rem + 0.3vw, 0.94rem);
+  --text-base: clamp(0.92rem, 0.87rem + 0.3vw, 0.98rem);
+  --text-md: clamp(1.05rem, 0.99rem + 0.35vw, 1.12rem);
+  --text-lg: clamp(1.2rem, 1.1rem + 0.5vw, 1.35rem);
+  --text-xl: clamp(1.45rem, 1.3rem + 0.75vw, 1.7rem);
+  --text-2xl: clamp(1.75rem, 1.5rem + 1.25vw, 2.2rem);
+  --text-display: clamp(2.1rem, 1.7rem + 2vw, 2.75rem);
+  --leading-tight: 1.25;
+  --leading-normal: 1.6;
+  --leading-loose: 1.8;
+
+  /* ── 간격 (4px 기반) ──────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ── 형태 ─────────────────────────────────────────────────── */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+  --shadow-1: 0 8px 20px rgba(24, 47, 88, 0.06);
+  --shadow-2: 0 24px 56px rgba(24, 47, 88, 0.14);
+
+  /* ── 레이아웃 ─────────────────────────────────────────────── */
+  --layout-shell-max: 1180px;
+  --layout-gutter: 16px;
+  --layout-prose-max: 70ch;
+  --layout-header-h: 64px;
+  --layout-tabbar-h: 56px;
+  --target-min: 44px;
+
+  /* ── 모션 ─────────────────────────────────────────────────── */
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 240ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ── z 계층 ───────────────────────────────────────────────── */
+  /* 현행은 z-index가 토큰화돼 있지 않아 값이 화면마다 제각각이었다. */
+  --z-sticky: 100;
+  --z-header: 200;
+  --z-tabbar: 300;
+  --z-overlay: 400;
+  --z-toast: 500;
+}
+
+/*
+ * 다크 테마는 값만 재선언한다. 별칭 레이어가 없으므로 재선언 지점이 한 곳뿐이다 —
+ * 현행에서 원본 토큰과 별칭 토큰을 양쪽 다 재선언해야 했던 비용이 여기서 사라진다.
+ */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-canvas: #050816;
+  --color-canvas-sunken: #070b1d;
+  --color-surface-1: rgba(255, 255, 255, 0.035);
+  --color-surface-2: rgba(255, 255, 255, 0.05);
+  --color-surface-3: rgba(255, 255, 255, 0.065);
+  --color-surface-solid: #111936;
+
+  --color-ink: #f7f9ff;
+  --color-ink-muted: #9aa7c7;
+  --color-ink-on-brand: #04101b;
+
+  --color-brand: #00e5ff;
+  --color-brand-strong: #8ab4ff;
+  --color-success: #40f0b5;
+  --color-warning: #ffd166;
+  --color-danger: #ff8b9a;
+
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-focus-ring: rgba(0, 229, 255, 0.6);
+
+  --shadow-1: 0 8px 20px rgba(0, 0, 0, 0.28);
+  --shadow-2: 0 24px 70px rgba(0, 0, 0, 0.38);
+}

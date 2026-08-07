@@ -7,11 +7,15 @@ OUTPUT_FILE="${GITHUB_OUTPUT:-}"
 
 backend=false
 web=false
+web_next=false
 infra=false
 
+# web      = 배포 중인 프론트엔드(web-legacy/) — 이미지 빌드·배포까지 이어진다
+# web_next = 재작성 중인 새 프론트엔드(web/) — 아직 배포 대상이 아니라 자체 게이트만 돈다
 mark_all() {
   backend=true
   web=true
+  web_next=true
   infra=true
 }
 
@@ -37,10 +41,12 @@ else
       src/*|config/*|gradle/*|build.gradle.kts|settings.gradle.kts|gradle.properties|gradle.lockfile|gradlew|gradlew.bat|Dockerfile|.dockerignore)
         backend=true
         ;;
-      web/*|web-legacy/*)
-        # 프론트엔드 재작성 기간: 배포되는 앱은 web-legacy/, 새 구현은 web/에 있다.
-        # 둘 다 같은 web 스코프로 묶어야 unknown path 폴백(full validation)에 걸리지 않는다.
+      web-legacy/*)
         web=true
+        ;;
+      web/*)
+        # 새 구현은 아직 배포되지 않는다 — 레거시 이미지 빌드·배포를 깨우지 않는다.
+        web_next=true
         ;;
       caddy/*|infra/*|scripts/deploy/*|scripts/server/*|docker-compose*.yml|.env*.example)
         infra=true
@@ -59,17 +65,18 @@ else
 fi
 
 any=false
-if [[ "$backend" == true || "$web" == true || "$infra" == true ]]; then
+if [[ "$backend" == true || "$web" == true || "$web_next" == true || "$infra" == true ]]; then
   any=true
 fi
 
 echo "Changed files:"
 printf '%s\n' "$changed_files"
-echo "Scope: backend=$backend web=$web infra=$infra any=$any"
+echo "Scope: backend=$backend web=$web web_next=$web_next infra=$infra any=$any"
 
 outputs=(
   "backend=$backend"
   "web=$web"
+  "web_next=$web_next"
   "infra=$infra"
   "any=$any"
 )

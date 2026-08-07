@@ -1,0 +1,26 @@
+{
+  "_comment": [
+    "라우트별 First Load JS 상한(KB) — improvement_fe.md §19.1.",
+    "이 수치는 현행에서 값 그대로 승계한 계약이며 재작성으로 완화하지 않는다.",
+    "예산은 Lighthouse LCP 실패에서 역산돼 나온 값이라, 올리면 그 실패로 되돌아간다.",
+    "라우트가 아직 없는 동안에는 검사 대상에서 빠지고, 라우트가 생기는 즉시 게이트가 된다."
+  ],
+  "routes": {
+    "/": { "maxKB": 52 },
+    "/_not-found": { "maxKB": 51 },
+    "/analysis": { "maxKB": 61 },
+    "/community": { "maxKB": 51 },
+    "/community/posts/[id]": { "maxKB": 62 },
+    "/community/posts/[id]/edit": { "maxKB": 63 },
+    "/community/write": { "maxKB": 63 },
+    "/companion": { "maxKB": 56 },
+    "/frequency": { "maxKB": 57 },
+    "/info/[slug]": { "maxKB": 51 },
+    "/ops": { "maxKB": 62 },
+    "/recommend": { "maxKB": 64 },
+    "/recommend/history": { "maxKB": 58 },
+    "/saved": { "maxKB": 65 },
+    "/stats": { "maxKB": 51 },
+    "/status": { "maxKB": 51 }
+  }
+}

@@ -1,0 +1,61 @@
+/*
+ * 기본 요소 스타일 — improvement_fe.md §9.2
+ * html/body 타이포, 링크, :focus-visible, skip-nav, prefers-reduced-motion만 둔다.
+ */
+
+html {
+  background: var(--color-canvas);
+}
+
+body {
+  min-height: 100dvh;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--color-brand-strong);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+/*
+ * 초점 표시는 :focus가 아니라 :focus-visible에만 준다 — 마우스 클릭에도 링이 남으면
+ * 사용자가 링을 "고장"으로 학습해 결국 outline:none 요청으로 이어진다.
+ */
+:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.skip-nav {
+  position: absolute;
+  left: var(--space-2);
+  top: var(--space-2);
+  z-index: var(--z-toast);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-solid);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-2);
+  transform: translateY(-200%);
+}
+
+.skip-nav:focus-visible {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

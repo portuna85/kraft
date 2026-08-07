@@ -1,0 +1,72 @@
+/*
+ * 리셋 — improvement_fe.md §9.2
+ * 전역 CSS에 허용되는 것은 reset·tokens·base·utilities 네 파일뿐이다.
+ * 컴포넌트 스타일은 예외 없이 CSS Module로 간다(§6.2 H-2 재발 방지).
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+figure,
+blockquote,
+dl,
+dd,
+ol,
+ul {
+  margin: 0;
+}
+
+ol,
+ul {
+  padding: 0;
+  list-style: none;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+/* 한글은 음절 단위로 아무 데서나 꺾이면 어색하다 — 어절 단위로 줄바꿈한다(레거시 R-22). */
+:where(p, li, dd, dt, h1, h2, h3, h4, h5, h6) {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
