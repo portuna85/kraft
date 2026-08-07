@@ -8,7 +8,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const photosDir = path.join(repoRoot, "web", "public", "photos");
+// 프론트엔드 재작성 기간에는 web/(새 구현)과 web-legacy/(배포 중인 구현)가 공존한다 —
+// 존재하는 쪽만 검사한다.
+const photoRoots = ["web", "web-legacy"]
+  .map((app) => path.join(repoRoot, app, "public", "photos"))
+  .filter((dir) => existsSync(dir));
 
 const REQUIRED_FIELDS = [
   "slug",
@@ -24,7 +28,7 @@ const REQUIRED_FIELDS = [
   "exifStripped",
 ];
 
-function checkAsset(dirName) {
+function checkAsset(photosDir, dirName) {
   const errors = [];
   const assetDir = path.join(photosDir, dirName);
   const metaPath = path.join(assetDir, "meta.json");
@@ -57,19 +61,23 @@ function checkAsset(dirName) {
   return errors;
 }
 
-if (!existsSync(photosDir)) {
-  console.log(`OK: ${photosDir} 없음 — 아직 사진 자산이 없습니다.`);
+if (photoRoots.length === 0) {
+  console.log("OK: public/photos 디렉터리 없음 — 아직 사진 자산이 없습니다.");
   process.exit(0);
 }
 
-const entries = readdirSync(photosDir).filter((name) => statSync(path.join(photosDir, name)).isDirectory());
+const assets = photoRoots.flatMap((photosDir) =>
+  readdirSync(photosDir)
+    .filter((name) => statSync(path.join(photosDir, name)).isDirectory())
+    .map((name) => [photosDir, name]),
+);
 
-if (entries.length === 0) {
+if (assets.length === 0) {
   console.log("OK: 등록된 사진 자산이 없습니다.");
   process.exit(0);
 }
 
-const allErrors = entries.flatMap(checkAsset);
+const allErrors = assets.flatMap(([photosDir, name]) => checkAsset(photosDir, name));
 
 if (allErrors.length > 0) {
   console.error("사진 자산 메타데이터 검사 실패:");
@@ -77,4 +85,4 @@ if (allErrors.length > 0) {
   process.exit(1);
 }
 
-console.log(`OK: 사진 자산 ${entries.length}개 모두 메타데이터 요건을 충족합니다.`);
+console.log(`OK: 사진 자산 ${assets.length}개 모두 메타데이터 요건을 충족합니다.`);

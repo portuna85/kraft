@@ -141,7 +141,10 @@ services:
   web:
     profiles: ["full"]
     build:
-      context: ./web
+      # 프론트엔드 재작성 기간: 실제로 서빙되는 앱은 web-legacy/다. 새 구현(web/)이
+      # 패리티 검증을 통과하기 전까지 이 서비스는 레거시를 빌드한다 — 서비스 이름 `web`은
+      # Caddy(reverse_proxy web:3000)와 compose.prod가 그대로 참조하므로 바꾸지 않는다.
+      context: ./web-legacy
       dockerfile: Dockerfile
       args:
         KRAFT_PUBLIC_BASE_URL: ${KRAFT_PUBLIC_BASE_URL:-http://localhost}

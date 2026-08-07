@@ -37,7 +37,9 @@ else
       src/*|config/*|gradle/*|build.gradle.kts|settings.gradle.kts|gradle.properties|gradle.lockfile|gradlew|gradlew.bat|Dockerfile|.dockerignore)
         backend=true
         ;;
-      web/*)
+      web/*|web-legacy/*)
+        # 프론트엔드 재작성 기간: 배포되는 앱은 web-legacy/, 새 구현은 web/에 있다.
+        # 둘 다 같은 web 스코프로 묶어야 unknown path 폴백(full validation)에 걸리지 않는다.
         web=true
         ;;
       caddy/*|infra/*|scripts/deploy/*|scripts/server/*|docker-compose*.yml|.env*.example)

@@ -8,7 +8,7 @@
 # 사용법:
 #   bash scripts/verify-all.sh            # 전체 게이트(느림, CI와 동일 범위)
 #   bash scripts/verify-all.sh --fast      # e2e 3트랙 제외(백엔드/프론트 정적 게이트만, 빠른 루프용)
-#   bash scripts/verify-all.sh --skip-npm-ci  # web/node_modules가 이미 최신이면 npm ci 생략
+#   bash scripts/verify-all.sh --skip-npm-ci  # web-legacy/node_modules가 이미 최신이면 npm ci 생략
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -62,7 +62,7 @@ section "API Types Drift Guard (api-types-drift-guard)"
     cat /tmp/kraft-backend-verify-api-types.log >&2
     exit 1
   fi
-  cd web
+  cd web-legacy
   KRAFT_BACKEND_INTERNAL_URL=http://localhost:8080 npm run verify:api-types
 )
 
@@ -92,7 +92,7 @@ else
   echo "SKIP: docker 미설치 — Caddyfile 검증 불가"
 fi
 
-cd web
+cd web-legacy
 if [[ "$SKIP_NPM_CI" -eq 0 ]]; then
   section "Web Build & Test — npm ci"
   npm ci

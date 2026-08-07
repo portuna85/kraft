@@ -10,7 +10,9 @@ find . -path ./.git -prune -o \( -name 'pubspec.yaml' -o -name '*.dart' \) -prin
   && { echo "ERROR: Flutter files remain"; FAIL=1; }
 
 # 2) 푸시/FCM 부재 — 소스 한정, 자기 자신과 음성 계약 테스트(smoke-test.sh) 제외
-SRC_DIRS=(src/main src/test web/src infra scripts/deploy)
+# 프론트엔드 재작성 기간에는 web/src(새 구현)와 web-legacy/src(배포 중인 구현)가 공존한다.
+SRC_DIRS=(src/main src/test infra scripts/deploy)
+for d in web/src web-legacy/src; do [ -d "$d" ] && SRC_DIRS+=("$d"); done
 GREP_EXCLUDES=(--exclude="$(basename "$0")" --exclude="smoke-test.sh")
 if grep -RIn "${GREP_EXCLUDES[@]}" -E 'feature/push|infra/fcm|firebase-admin|device_tokens|/api/v1/push' \
      "${SRC_DIRS[@]}" 2>/dev/null; then
@@ -28,7 +30,9 @@ fi
 # 남아 있어야 한다. list()/byRound()가 쓰던 매핑(경로 없는 @GetMapping, "/{round}")이
 # 재등장하는지만 좁혀서 검사한다(클래스 레벨 매핑 자체는 정상이므로 오탐 대상에서 제외).
 ROUNDS_CONTROLLER="src/main/java/com/kraft/winningnumber/RoundsApiController.java"
-[ -d web/src/app/rounds ] && { echo "ERROR: web/src/app/rounds must not exist (공개 회차 화면은 제거됨)"; FAIL=1; }
+for d in web/src/app/rounds web-legacy/src/app/rounds; do
+  [ -d "$d" ] && { echo "ERROR: $d must not exist (공개 회차 화면은 제거됨)"; FAIL=1; }
+done
 if [ -f "$ROUNDS_CONTROLLER" ] && grep -nE '@GetMapping\s*(\(\s*\))?\s*$|@GetMapping\("/\{round\}"\)' "$ROUNDS_CONTROLLER"; then
   echo "ERROR: 공개 rounds list/detail 매핑이 재등장했습니다"; FAIL=1
 fi

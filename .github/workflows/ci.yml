@@ -153,14 +153,14 @@ jobs:
     timeout-minutes: 10
     defaults:
       run:
-        working-directory: web
+        working-directory: web-legacy
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: web-legacy/package-lock.json
       - run: npm ci --prefer-offline --no-audit --no-fund
       - run: npm run lint
       - run: npm run typecheck
@@ -170,7 +170,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: web-test-diagnostics
-          path: web/coverage/
+          path: web-legacy/coverage/
           if-no-files-found: ignore
           retention-days: 7
 
@@ -216,14 +216,14 @@ jobs:
             sticky_unit: ""
     defaults:
       run:
-        working-directory: web
+        working-directory: web-legacy
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: web-legacy/package-lock.json
       - run: npm ci --prefer-offline --no-audit --no-fund
       - name: Build standalone application once
         run: npm run build
@@ -357,20 +357,20 @@ jobs:
             archive: web-build-content.tar.gz
     defaults:
       run:
-        working-directory: web
+        working-directory: web-legacy
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
       - name: Restore npm package cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.npm
-          key: npm-playwright-${{ runner.os }}-${{ runner.arch }}-node24-${{ hashFiles('web/package-lock.json') }}
+          key: npm-playwright-${{ runner.os }}-${{ runner.arch }}-node24-${{ hashFiles('web-legacy/package-lock.json') }}
       - run: npm ci --prefer-offline --no-audit --no-fund
       - name: Download prebuilt application
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ matrix.artifact }}
-          path: web/.ci-artifacts
+          path: web-legacy/.ci-artifacts
       - name: Restore prebuilt application
         run: tar -xzf ".ci-artifacts/${{ matrix.archive }}"
       - name: Run balanced Playwright shard
@@ -389,8 +389,8 @@ jobs:
         with:
           name: playwright-${{ matrix.suite }}-${{ matrix.shard_id }}
           path: |
-            web/test-results/
-            web/playwright-report/
+            web-legacy/test-results/
+            web-legacy/playwright-report/
           if-no-files-found: ignore
           retention-days: 7
       # KF-10: 실측 없이 정해온 샤드 수를 재조정할 근거를 쌓는다 — 성공/실패 무관하게
@@ -400,13 +400,13 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: timing-${{ matrix.suite }}-${{ matrix.shard_id }}
-          path: web/playwright-timing.json
+          path: web-legacy/playwright-timing.json
           if-no-files-found: ignore
           retention-days: 14
 
   web-e2e-proxy:
     name: Web E2E (Caddy proxy gateway)
-    # KF-06: web/src/lib/backend-proxy.ts와 23개 Next 라우트 핸들러 삭제 이후,
+    # KF-06: web-legacy/src/lib/backend-proxy.ts와 23개 Next 라우트 핸들러 삭제 이후,
     # caddy/Caddyfile.local이 그 역할(쿠키·CSRF·기기토큰·응답헤더 전달, 타임아웃,
     # /api/revalidate 차단)을 대신 지키는지 실제 Caddy 컨테이너로 검증한다. 이 잡은
     # web-e2e와 달리 Playwright 컨테이너 안에서 돌지 않는다 — docker-in-docker 없이
@@ -417,14 +417,14 @@ jobs:
     timeout-minutes: 10
     defaults:
       run:
-        working-directory: web
+        working-directory: web-legacy
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: web-legacy/package-lock.json
       - run: npm ci --prefer-offline --no-audit --no-fund
       - name: Install Playwright chromium
         run: npx playwright install --with-deps chromium
@@ -432,7 +432,7 @@ jobs:
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: web-build-proxy
-          path: web/.ci-artifacts
+          path: web-legacy/.ci-artifacts
       - name: Restore prebuilt application
         run: tar -xzf ".ci-artifacts/web-build-proxy.tar.gz"
       - name: Run Caddy proxy gateway E2E
@@ -443,8 +443,8 @@ jobs:
         with:
           name: playwright-proxy
           path: |
-            web/test-results/
-            web/playwright-report/
+            web-legacy/test-results/
+            web-legacy/playwright-report/
           if-no-files-found: ignore
           retention-days: 7
       - name: Upload timing report
@@ -452,7 +452,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: timing-proxy
-          path: web/playwright-timing.json
+          path: web-legacy/playwright-timing.json
           if-no-files-found: ignore
           retention-days: 14
 
@@ -467,25 +467,25 @@ jobs:
     timeout-minutes: 10
     defaults:
       run:
-        working-directory: web
+        working-directory: web-legacy
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
       - name: Restore npm package cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.npm
-          key: npm-playwright-${{ runner.os }}-${{ runner.arch }}-node24-${{ hashFiles('web/package-lock.json') }}
+          key: npm-playwright-${{ runner.os }}-${{ runner.arch }}-node24-${{ hashFiles('web-legacy/package-lock.json') }}
       - run: npm ci --prefer-offline --no-audit --no-fund
       - name: Download default build
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: web-build-default
-          path: web/.ci-artifacts/default
+          path: web-legacy/.ci-artifacts/default
       - name: Download fixture-backed build
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: web-build-content
-          path: web/.ci-artifacts/content
+          path: web-legacy/.ci-artifacts/content
       - name: Restore build outputs
         run: |
           tar -xzf .ci-artifacts/default/web-build-default.tar.gz
@@ -500,8 +500,8 @@ jobs:
         with:
           name: performance-budget-diagnostics
           path: |
-            web/scripts/bundle-results.json
-            web/scripts/lighthouse-results.json
+            web-legacy/scripts/bundle-results.json
+            web-legacy/scripts/lighthouse-results.json
           if-no-files-found: ignore
           retention-days: 7
 
@@ -522,9 +522,9 @@ jobs:
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: web-legacy/package-lock.json
       - name: Install web dependencies reproducibly
-        working-directory: web
+        working-directory: web-legacy
         run: npm ci --prefer-offline --no-audit --no-fund
       - name: Start local-profile backend
         run: |
@@ -538,7 +538,7 @@ jobs:
           cat backend.log
           exit 1
       - name: Verify generated API types
-        working-directory: web
+        working-directory: web-legacy
         run: npm run verify:api-types
         env:
           KRAFT_BACKEND_INTERNAL_URL: http://localhost:8080
@@ -662,8 +662,8 @@ jobs:
         if: needs.changes.outputs.web == 'true'
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
-          context: web
-          file: web/Dockerfile
+          context: web-legacy
+          file: web-legacy/Dockerfile
           push: true
           tags: |
             ${{ env.IMAGE }}:${{ github.sha }}
