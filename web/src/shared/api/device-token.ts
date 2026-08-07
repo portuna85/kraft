@@ -45,3 +45,22 @@ export function readDeviceToken(): string | null {
     return null;
   }
 }
+
+/**
+ * 토큰을 새 값으로 교체한다.
+ *
+ * **계정 귀속(claim)이 성공한 직후에만 부른다**(불변식 I-2). 회전의 목적은 계정으로
+ * 옮겨간 기록에 옛 토큰으로 다시 접근하지 못하게 하는 것이라, 옮기기에 실패한 상태에서
+ * 회전하면 옮기지도 못한 기록에 접근 경로만 잃는다 — 익명 저장 기록이 영구 고립된다.
+ * 실제로 일어났던 사고이고(레거시 F-P0-10), 그래서 이 함수는 이름부터 조건을 말한다.
+ */
+export function rotateDeviceTokenAfterSuccessfulClaim(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const rotated = createToken();
+    window.localStorage.setItem(DEVICE_TOKEN_STORAGE_KEY, rotated);
+    return rotated;
+  } catch {
+    return null;
+  }
+}
