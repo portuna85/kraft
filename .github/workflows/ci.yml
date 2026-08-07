@@ -242,7 +242,7 @@ jobs:
         run: npm run build
         env:
           NEXT_DIST_DIR: .next-proxy
-          KRAFT_BACKEND_INTERNAL_URL: http://127.0.0.1:59999
+          KRAFT_BACKEND_INTERNAL_URL: http://127.0.0.1:4110
           KRAFT_PUBLIC_BASE_URL: http://127.0.0.1:3110
       - run: npm run test:e2e:proxy
       - name: Upload failure traces
