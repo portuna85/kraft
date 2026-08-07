@@ -1,0 +1,99 @@
+@layer components {
+  .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    /* 터치 타깃 44px은 계약이다(§12.7) — 시각적 크기와 별개로 최소 높이를 보장한다. */
+    min-height: var(--target-min);
+    min-width: var(--target-min);
+    padding-inline: var(--space-4);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    font-weight: 700;
+    line-height: var(--leading-tight);
+    cursor: pointer;
+    transition:
+      background-color var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out);
+  }
+
+  .button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .sm {
+    min-height: var(--target-min);
+    padding-inline: var(--space-3);
+    font-size: var(--text-sm);
+  }
+
+  .md {
+    font-size: var(--text-base);
+  }
+
+  .lg {
+    min-height: 52px;
+    padding-inline: var(--space-6);
+    font-size: var(--text-md);
+  }
+
+  .primary {
+    background: var(--color-brand);
+    border-color: var(--color-brand);
+    color: var(--color-ink-on-brand);
+  }
+
+  .primary:hover:not(:disabled) {
+    background: var(--color-brand-strong);
+    border-color: var(--color-brand-strong);
+  }
+
+  .secondary {
+    background: var(--color-surface-3);
+    border-color: var(--color-border);
+    color: var(--color-ink);
+  }
+
+  .secondary:hover:not(:disabled) {
+    background: var(--color-surface-2);
+  }
+
+  .quiet {
+    background: transparent;
+    color: var(--color-ink-muted);
+  }
+
+  .quiet:hover:not(:disabled) {
+    background: var(--color-surface-1);
+    color: var(--color-ink);
+  }
+
+  .danger {
+    background: var(--color-danger);
+    border-color: var(--color-danger);
+    color: #ffffff;
+  }
+
+  .iconButton {
+    padding-inline: 0;
+  }
+
+  /* 진행 표시는 회전 애니메이션에만 의존하지 않는다 — reduced-motion에서도
+     loadingLabel이 읽히므로 상태 전달은 유지된다. */
+  .spinner {
+    width: 1em;
+    height: 1em;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: var(--radius-pill);
+    animation: spin 700ms linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+}

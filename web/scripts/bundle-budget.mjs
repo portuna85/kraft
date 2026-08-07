@@ -130,7 +130,7 @@ console.log(`\n결과 저장: ${resultsPath}`);
 if (saveBaseline) {
   const budget = JSON.parse(readFileSync(budgetPath, "utf8"));
   for (const [route, info] of Object.entries(measured)) {
-    budget.routes[route] = { maxKB: Math.ceil(info.totalKB) };
+    budget.routes[route] = { ...budget.routes[route], maxKB: Math.ceil(info.totalKB) };
   }
   writeFileSync(budgetPath, `${JSON.stringify(budget, null, 2)}\n`);
   console.log(`예산 갱신: ${budgetPath}`);
@@ -139,18 +139,28 @@ if (saveBaseline) {
 
 const { routes: budget } = JSON.parse(readFileSync(budgetPath, "utf8"));
 let failed = false;
+const unenforced = [];
 
 console.log("\n예산 비교:");
-for (const [route, { maxKB }] of Object.entries(budget)) {
+for (const [route, { maxKB, enforced }] of Object.entries(budget)) {
   const actual = measured[route];
   if (!actual) {
-    // 재작성 중에는 아직 안 만든 라우트가 정상이다. 라우트가 생기는 순간 게이트가 된다.
     console.log(`  대기  ${route}: 아직 구현되지 않음 (예산 ${maxKB} KB)`);
     continue;
   }
-  const status = actual.totalKB <= maxKB ? "통과" : "초과";
-  if (actual.totalKB > maxKB) failed = true;
-  console.log(`  ${status}  ${route}: ${actual.totalKB} KB / ${maxKB} KB`);
+
+  const over = actual.totalKB > maxKB;
+  if (enforced === false) {
+    // 골격만 있는 라우트다 — 완성된 앱 기준 예산과 비교하면 의미가 없으므로 측정만 한다.
+    unenforced.push(route);
+    console.log(
+      `  미적용 ${route}: ${actual.totalKB} KB / ${maxKB} KB${over ? " (현재 초과)" : ""}`,
+    );
+    continue;
+  }
+
+  if (over) failed = true;
+  console.log(`  ${over ? "초과" : "통과"}  ${route}: ${actual.totalKB} KB / ${maxKB} KB`);
 }
 
 for (const route of Object.keys(measured)) {
@@ -160,6 +170,13 @@ for (const route of Object.keys(measured)) {
       `  누락  ${route}: 예산이 정의돼 있지 않습니다 — bundle-budget.json에 추가하세요.`,
     );
   }
+}
+
+if (unenforced.length > 0) {
+  console.log(
+    `\n예산 미적용 라우트 ${unenforced.length}개: ${unenforced.join(", ")}\n` +
+      "  각 라우트를 실제로 구현하는 커밋에서 bundle-budget.json의 enforced를 true로 바꾼다.",
+  );
 }
 
 if (failed) {

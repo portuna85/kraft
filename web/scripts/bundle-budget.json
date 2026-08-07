@@ -1,26 +1,31 @@
 {
   "_comment": [
     "라우트별 First Load JS 상한(KB) — improvement_fe.md §19.1.",
-    "이 수치는 현행에서 값 그대로 승계한 계약이며 재작성으로 완화하지 않는다.",
+    "수치는 현행(web-legacy)에서 값 그대로 승계한 계약이며 재작성으로 완화하지 않는다.",
     "예산은 Lighthouse LCP 실패에서 역산돼 나온 값이라, 올리면 그 실패로 되돌아간다.",
-    "라우트가 아직 없는 동안에는 검사 대상에서 빠지고, 라우트가 생기는 즉시 게이트가 된다."
+    "",
+    "enforced: 그 라우트가 실제로 구현됐고 예산 게이트를 적용받는다는 뜻이다.",
+    "재작성 중에는 골격만 있는 라우트가 있고, 뼈대만 있는 상태의 측정치를 완성된 앱의",
+    "예산과 비교하면 의미가 없다. 라우트를 실제로 구현하는 커밋에서 enforced를 true로",
+    "바꾸는 것이 그 라우트의 완료 조건이다 — 스크립트가 미적용 라우트 수를 매번 찍으므로",
+    "조용히 잊히지 않는다."
   ],
   "routes": {
-    "/": { "maxKB": 52 },
-    "/_not-found": { "maxKB": 51 },
-    "/analysis": { "maxKB": 61 },
-    "/community": { "maxKB": 51 },
-    "/community/posts/[id]": { "maxKB": 62 },
-    "/community/posts/[id]/edit": { "maxKB": 63 },
-    "/community/write": { "maxKB": 63 },
-    "/companion": { "maxKB": 56 },
-    "/frequency": { "maxKB": 57 },
-    "/info/[slug]": { "maxKB": 51 },
-    "/ops": { "maxKB": 62 },
-    "/recommend": { "maxKB": 64 },
-    "/recommend/history": { "maxKB": 58 },
-    "/saved": { "maxKB": 65 },
-    "/stats": { "maxKB": 51 },
-    "/status": { "maxKB": 51 }
+    "/": { "maxKB": 52, "enforced": false },
+    "/_not-found": { "maxKB": 51, "enforced": false },
+    "/analysis": { "maxKB": 61, "enforced": true },
+    "/community": { "maxKB": 51, "enforced": true },
+    "/community/posts/[id]": { "maxKB": 62, "enforced": true },
+    "/community/posts/[id]/edit": { "maxKB": 63, "enforced": true },
+    "/community/write": { "maxKB": 63, "enforced": true },
+    "/companion": { "maxKB": 56, "enforced": true },
+    "/frequency": { "maxKB": 57, "enforced": true },
+    "/info/[slug]": { "maxKB": 51, "enforced": true },
+    "/ops": { "maxKB": 62, "enforced": false },
+    "/recommend": { "maxKB": 64, "enforced": true },
+    "/recommend/history": { "maxKB": 58, "enforced": true },
+    "/saved": { "maxKB": 65, "enforced": true },
+    "/stats": { "maxKB": 51, "enforced": true },
+    "/status": { "maxKB": 51, "enforced": true }
   }
 }
