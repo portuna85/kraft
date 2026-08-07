@@ -89,9 +89,9 @@ const files = manifestFiles();
  * 이 라우트가 클라이언트 컴포넌트를 하나도 안 가져도 받는 JS — 자기 레이아웃 체인이다.
  * 전역에서 하나만 구해 공유하면 셸이 갈라진 구조(공개/세션/운영)에서 틀린 값이 된다.
  */
-function layoutBytesOf(entries) {
+function layoutChunksOf(entries) {
   const layoutKeys = Object.keys(entries).filter((key) => key.endsWith("/layout"));
-  return chunkBytes(layoutKeys.flatMap((key) => entries[key] ?? []));
+  return layoutKeys.flatMap((key) => entries[key] ?? []);
 }
 
 const measured = {};
@@ -109,16 +109,24 @@ for (const file of files) {
     );
   }
 
-  const layoutBytes = layoutBytesOf(entries);
-  measured[routeOf(file)] =
-    chunks.length > 0
-      ? { totalKB: toKB(chunkBytes(chunks)), chunkCount: new Set(chunks).size }
-      : { totalKB: toKB(layoutBytes), chunkCount: layoutBytes > 0 ? 1 : 0 };
+  const layoutChunks = layoutChunksOf(entries);
+  const effective = chunks.length > 0 ? chunks : layoutChunks;
+  const unique = [...new Set(effective)];
+
+  measured[routeOf(file)] = {
+    totalKB: toKB(chunkBytes(unique)),
+    chunkCount: unique.length,
+    chunks: unique,
+  };
 }
 
 console.log("라우트별 초기 클라이언트 JS (내림차순):");
 for (const [route, info] of Object.entries(measured).sort((a, b) => b[1].totalKB - a[1].totalKB)) {
   console.log(`  ${String(info.totalKB).padStart(7)} KB  (청크 ${info.chunkCount}개)  ${route}`);
+  // 어떤 청크가 무게를 차지하는지 없이는 "예산 초과"를 고칠 방법을 알 수 없다.
+  for (const chunk of info.chunks) {
+    console.log(`           ${String(toKB(chunkBytes([chunk]))).padStart(6)} KB  ${chunk}`);
+  }
 }
 
 writeFileSync(

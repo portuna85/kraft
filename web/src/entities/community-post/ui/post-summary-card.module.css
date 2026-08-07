@@ -1,0 +1,36 @@
+@layer components {
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-ink-muted);
+    font-size: var(--text-sm);
+  }
+
+  .title {
+    font-size: var(--text-md);
+  }
+
+  .title a {
+    color: var(--color-ink);
+    text-decoration: none;
+  }
+
+  .title a:hover {
+    text-decoration: underline;
+  }
+
+  .counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    color: var(--color-ink-muted);
+    font-size: var(--text-sm);
+  }
+
+  .tombstone {
+    color: var(--color-ink-muted);
+    font-style: italic;
+  }
+}
