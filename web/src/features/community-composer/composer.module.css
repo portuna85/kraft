@@ -1,0 +1,22 @@
+@layer components {
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  .note {
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+
+  /* 충돌 시 최신 내용을 입력 아래에 나란히 둔다 — 무엇을 남길지는 사용자가 정한다. */
+  .conflict {
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    border: 1px solid var(--color-warning);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-2);
+  }
+}
