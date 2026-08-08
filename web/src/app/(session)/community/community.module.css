@@ -76,4 +76,12 @@
     color: var(--color-ink-muted);
     font-size: var(--text-sm);
   }
+
+  /* 신고·차단·소유자 액션을 한 줄에 모은다 — 좁은 화면에서는 줄바꿈된다. */
+  .postActions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
 }

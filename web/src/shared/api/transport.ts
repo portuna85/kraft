@@ -22,6 +22,15 @@ import { composeAbortSignal } from "./timeout";
 
 type Schema<T> = v.BaseSchema<unknown, T, v.BaseIssue<unknown>>;
 
+/**
+ * 204 No Content 응답용 스키마.
+ *
+ * 본문이 없는 응답도 스키마를 거치게 한다 — 예외를 두면 "이 호출은 스키마가 필요 없다"는
+ * 판단이 호출부마다 생기고, 그 틈으로 검증 없는 경로가 다시 늘어난다. parseJson이 빈
+ * 본문을 null로 돌려주므로 null을 기대하는 것이 곧 "본문이 없어야 한다"는 단언이 된다.
+ */
+export const noContentSchema = v.null();
+
 type CacheStrategy =
   /** 태그 무효화 대상. `/api/revalidate` 웹훅이 이 태그를 지운다(§13.6) */
   | { mode: "revalidate"; seconds: number; tags: readonly string[] }

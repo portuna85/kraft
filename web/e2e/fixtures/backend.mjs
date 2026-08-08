@@ -65,6 +65,70 @@ COMPANION_PAIRS.sort((x, y) => y.coCount - x.coCount || x.ballA - y.ballA || x.b
 
 const EMPTY_POST_PAGE = { items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 };
 
+const POST_DETAIL = {
+  id: 1,
+  ownerId: 10,
+  authorNickname: "테스터",
+  title: "첫 글입니다",
+  content: "본문 첫 줄\n본문 둘째 줄",
+  category: "GENERAL",
+  status: "PUBLISHED",
+  version: 0,
+  createdAt: "2026-08-01T12:00:00Z",
+  updatedAt: "2026-08-01T12:00:00Z",
+  likeCount: 3,
+  commentCount: 2,
+  viewCount: 41,
+  recommendationAttachment: null,
+};
+
+// 답글이 상위 댓글 안에 들어 있고, tombstone 댓글이 자리를 지키는지 확인하기 위한 형태다.
+const COMMENT_PAGE = {
+  topLevel: [
+    {
+      id: 11,
+      postId: 1,
+      parentId: null,
+      ownerId: 10,
+      authorNickname: "댓글쓴이",
+      content: "첫 댓글",
+      deleted: false,
+      createdAt: "2026-08-01T13:00:00Z",
+      targetPage: null,
+      replies: [
+        {
+          id: 12,
+          postId: 1,
+          parentId: 11,
+          ownerId: 20,
+          authorNickname: "답글쓴이",
+          content: "답글입니다",
+          deleted: false,
+          createdAt: "2026-08-01T13:30:00Z",
+          targetPage: null,
+          replies: [],
+        },
+      ],
+    },
+    {
+      id: 13,
+      postId: 1,
+      parentId: null,
+      ownerId: null,
+      authorNickname: "(삭제됨)",
+      content: "삭제된 댓글입니다.",
+      deleted: true,
+      createdAt: "2026-08-01T14:00:00Z",
+      targetPage: null,
+      replies: [],
+    },
+  ],
+  totalTopLevelComments: 2,
+  page: 0,
+  size: 50,
+  totalPages: 1,
+};
+
 const ROUTES = new Map([
   ["/api/v1/rounds/latest", LATEST_ROUND],
   [
@@ -135,6 +199,8 @@ const ROUTES = new Map([
     },
   ],
   ["/api/v1/community/posts", EMPTY_POST_PAGE],
+  ["/api/v1/community/posts/1", POST_DETAIL],
+  ["/api/v1/community/posts/1/comments", COMMENT_PAGE],
   [
     "/api/v1/community/session",
     { loggedIn: false, userId: null, nickname: null, activeProviders: ["google", "naver"] },

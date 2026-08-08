@@ -1,0 +1,42 @@
+@layer components {
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .note {
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+
+  .error {
+    font-size: var(--text-sm);
+    color: var(--color-danger);
+  }
+
+  .reasons {
+    display: grid;
+    gap: var(--space-1);
+    margin-block: var(--space-3);
+  }
+
+  .dialogActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+  }
+
+  .editLink {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target-min);
+    padding-inline: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-pill);
+    color: var(--color-ink);
+    text-decoration: none;
+  }
+}

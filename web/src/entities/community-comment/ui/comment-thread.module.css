@@ -1,0 +1,61 @@
+@layer components {
+  .thread,
+  .replies {
+    display: grid;
+    gap: var(--space-3);
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .replies {
+    margin-top: var(--space-3);
+    /* 들여쓰기는 관계의 시각적 보조일 뿐이다 — 관계 자체는 중첩 <ol>이 전달한다. */
+    padding-inline-start: var(--space-5);
+    border-inline-start: 2px solid var(--color-border);
+  }
+
+  .item {
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-1);
+  }
+
+  .deleted {
+    color: var(--color-ink-muted);
+    font-style: italic;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+
+  .author {
+    font-weight: 700;
+    color: var(--color-ink);
+  }
+
+  .deleted .author {
+    color: inherit;
+    font-weight: 400;
+  }
+
+  .body {
+    display: grid;
+    gap: var(--space-2);
+    overflow-wrap: anywhere;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+}
