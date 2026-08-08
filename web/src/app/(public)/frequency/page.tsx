@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { getFrequencyStats } from "@/entities/statistics/api";
+import { FREQUENCY_LIMITS, getFrequencyStats, type FrequencyLimit } from "@/entities/statistics/api";
 import { expectedFrequency, frequencyRatio } from "@/entities/statistics/schema";
 import { FrequencyBar, FrequencyLegend } from "@/entities/statistics/ui/frequency-bar";
 import { LottoBallSet } from "@/entities/round/ui/lotto-ball";
@@ -22,17 +22,18 @@ export const metadata: Metadata = {
  *
  * 기간은 URL에 실리고 서버가 그 기간만 조회한다. 4개 기간을 한 문서에 담으면 페이로드가
  * 4배가 되고, 클라이언트 필터는 공유·뒤로가기도 못 한다.
+ *
+ * limit 값은 **백엔드가 허용하는 집합**이어야 한다 — StatisticsApiController의
+ * ALLOWED_LIMITS는 {100, 200, 500}이고, 그 밖의 값은 400 INVALID_LIMIT이다. 여기에
+ * 임의의 값(50·20 등)을 두면 그 선택지를 고르는 순간 페이지가 5xx로 떨어진다.
  */
-const PERIODS = [
+const PERIODS: readonly { label: string; limit: FrequencyLimit | undefined }[] = [
   { label: "전체", limit: undefined },
-  { label: "최근 100회", limit: 100 },
-  { label: "최근 50회", limit: 50 },
-  { label: "최근 20회", limit: 20 },
-] as const;
+  ...FREQUENCY_LIMITS.map((limit) => ({ label: `최근 ${limit}회`, limit })),
+];
 
-function parseLimit(raw: string | undefined): number | undefined {
-  const matched = PERIODS.find((period) => String(period.limit) === raw);
-  return matched?.limit;
+function parseLimit(raw: string | undefined): FrequencyLimit | undefined {
+  return FREQUENCY_LIMITS.find((limit) => String(limit) === raw);
 }
 
 export default async function FrequencyPage({
