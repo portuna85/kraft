@@ -6,3 +6,7 @@ test-results
 playwright-report
 package-lock.json
 src/generated
+
+# 번들 예산 측정 산출물 — gitignore 대상인데 포맷 검사에는 걸려서, 로컬에서 빌드만
+# 하면 format:check가 실패했다.
+scripts/bundle-results.json

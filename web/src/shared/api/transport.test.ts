@@ -67,6 +67,37 @@ describe("serverFetch", () => {
     expect(init.next).toBeUndefined();
   });
 
+  it("기본은 GET이고 본문을 붙이지 않는다", async () => {
+    const spy = mockFetch(jsonResponse({ id: 1, name: "회차" }));
+
+    await serverFetch("/api/v1/x", schema, { cache: { mode: "no-store" } });
+
+    const init = spy.mock.calls[0]?.[1] as { method?: string; body?: unknown };
+    expect(init.method).toBe("GET");
+    expect(init.body).toBeUndefined();
+  });
+
+  it("POST 조회는 본문과 content-type을 함께 보낸다", async () => {
+    // 부수효과가 없는데 백엔드가 POST로 받는 경우가 있다(조합 분석). 본문만 실리고
+    // content-type이 빠지면 백엔드가 415를 낸다.
+    const spy = mockFetch(jsonResponse({ id: 1, name: "회차" }));
+
+    await serverFetch("/api/v1/x", schema, {
+      method: "POST",
+      body: { numbers: [1, 2, 3, 4, 5, 6] },
+      cache: { mode: "no-store" },
+    });
+
+    const init = spy.mock.calls[0]?.[1] as {
+      method?: string;
+      body?: string;
+      headers?: Record<string, string>;
+    };
+    expect(init.method).toBe("POST");
+    expect(init.body).toBe(JSON.stringify({ numbers: [1, 2, 3, 4, 5, 6] }));
+    expect(init.headers?.["content-type"]).toBe("application/json");
+  });
+
   it("스키마와 어긋난 응답을 통과시키지 않는다", async () => {
     // 현행의 얕은 타입가드는 numbers 요소 타입까지 보지 않아 이런 응답을 통과시켰다.
     mockFetch(jsonResponse({ id: "1", name: "회차" }));

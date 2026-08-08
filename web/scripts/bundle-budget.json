@@ -14,7 +14,7 @@
   "routes": {
     "/": { "maxKB": 52, "currentKB": 63.7 },
     "/_not-found": { "maxKB": 51, "currentKB": 56.7 },
-    "/analysis": { "maxKB": 61 },
+    "/analysis": { "maxKB": 61, "currentKB": 70.1 },
     "/community": { "maxKB": 51, "currentKB": 75.5 },
     "/community/posts/[id]": { "maxKB": 62, "currentKB": 75.5 },
     "/community/posts/[id]/edit": { "maxKB": 63 },

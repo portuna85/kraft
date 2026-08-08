@@ -143,3 +143,26 @@ export function coOccurrenceRatio(coCount: number, totalRounds: number): number 
   const expected = expectedCoOccurrence(totalRounds);
   return expected === 0 ? null : coCount / expected;
 }
+
+/* ── 조합 분석 ─────────────────────────────────────────────────────────── */
+
+export const rangeDistributionSchema = v.object({
+  range: v.string(),
+  count: v.pipe(v.number(), v.integer(), v.minValue(0)),
+});
+
+export const analysisSchema = v.object({
+  numbers: v.array(lottoNumberSchema),
+  oddCount: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  evenCount: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  lowCount: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  highCount: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  sumOfNumbers: v.pipe(v.number(), v.integer()),
+  sumBucket: v.string(),
+  consecutivePairCount: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  rangeDistribution: v.array(rangeDistributionSchema),
+  wonFirstPrize: v.boolean(),
+  firstPrizeHistory: v.array(firstPrizeHistorySchema),
+});
+
+export type CombinationAnalysis = v.InferOutput<typeof analysisSchema>;

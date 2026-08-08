@@ -1,0 +1,36 @@
+@layer components {
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+    align-items: start;
+  }
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: var(--space-3);
+  }
+
+  .fact dt {
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+
+  .fact dd {
+    font-size: var(--text-md);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .note {
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+
+  /* 데스크톱은 좌측 입력·우측 결과(§23.6). 번호판이 7열이라 좁은 폭에서는 세로로 쌓는다. */
+  @media (min-width: 1024px) {
+    .layout {
+      grid-template-columns: minmax(320px, 420px) 1fr;
+    }
+  }
+}

@@ -1,0 +1,12 @@
+@layer components {
+  .count {
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+}

@@ -70,14 +70,35 @@ function validate<T>(schema: Schema<T>, body: unknown, url: string): T {
 export async function serverFetch<T>(
   url: string,
   schema: Schema<T>,
-  options: { cache: CacheStrategy; headers?: HeadersInit; signal?: AbortSignal },
+  options: {
+    cache: CacheStrategy;
+    headers?: HeadersInit;
+    signal?: AbortSignal;
+    /**
+     * 부수효과 없는 조회인데 백엔드가 POST로 받는 경우에만 쓴다(예: 번호 6개를 실어야
+     * 하는 조합 분석). Next의 fetch 캐시는 GET에만 걸리므로 이때 cache는 no-store여야
+     * 하고, 그 조합이 아니면 캐시가 조용히 무시돼 "캐시된 줄 알았는데 아니었다"가 된다.
+     *
+     * 상태를 바꾸는 요청에는 쓰지 않는다 — 그런 요청은 CSRF 처리가 필요하고, 그것은
+     * 브라우저 쪽 browserMutate의 일이다.
+     */
+    method?: "POST";
+    body?: unknown;
+  },
 ): Promise<T> {
   const { cache } = options;
+  const hasBody = options.body !== undefined;
 
   let response: Response;
   try {
     response = await fetch(url, {
-      headers: { accept: "application/json", ...options.headers },
+      method: options.method ?? "GET",
+      headers: {
+        accept: "application/json",
+        ...(hasBody ? { "content-type": "application/json" } : {}),
+        ...options.headers,
+      },
+      ...(hasBody ? { body: JSON.stringify(options.body) } : {}),
       signal: composeAbortSignal(options.signal),
       ...(cache.mode === "no-store"
         ? { cache: "no-store" as const }
