@@ -1,0 +1,23 @@
+@layer components {
+  .groups {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+    align-items: start;
+  }
+
+  .note {
+    color: var(--color-ink-muted);
+    font-size: var(--text-sm);
+  }
+
+  /*
+   * 3그룹 가로 배치(§23.4). 모바일에서는 세로 스택이고, 표가 셋이라 태블릿 폭에서
+   * 3열로 바로 가면 각 열이 너무 좁아진다 — 데스크톱 폭에서만 3열로 편다.
+   */
+  @media (min-width: 1024px) {
+    .groups {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+}

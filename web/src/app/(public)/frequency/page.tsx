@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { FREQUENCY_LIMITS, getFrequencyStats, type FrequencyLimit } from "@/entities/statistics/api";
+import {
+  FREQUENCY_LIMITS,
+  getFrequencyStats,
+  type FrequencyLimit,
+} from "@/entities/statistics/api";
 import { expectedFrequency, frequencyRatio } from "@/entities/statistics/schema";
 import { FrequencyBar, FrequencyLegend } from "@/entities/statistics/ui/frequency-bar";
 import { LottoBallSet } from "@/entities/round/ui/lotto-ball";

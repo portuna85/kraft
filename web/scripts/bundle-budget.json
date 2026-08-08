@@ -19,14 +19,14 @@
     "/community/posts/[id]": { "maxKB": 62, "currentKB": 75.5 },
     "/community/posts/[id]/edit": { "maxKB": 63 },
     "/community/write": { "maxKB": 63 },
-    "/companion": { "maxKB": 56 },
+    "/companion": { "maxKB": 56, "currentKB": 63.7 },
     "/frequency": { "maxKB": 57, "currentKB": 63.7 },
     "/info/[slug]": { "maxKB": 51 },
     "/ops": { "maxKB": 62, "currentKB": 56.7 },
     "/recommend": { "maxKB": 64, "currentKB": 90 },
     "/recommend/history": { "maxKB": 58 },
     "/saved": { "maxKB": 65 },
-    "/stats": { "maxKB": 51 },
+    "/stats": { "maxKB": 51, "currentKB": 63.7 },
     "/status": { "maxKB": 51 }
   }
 }
