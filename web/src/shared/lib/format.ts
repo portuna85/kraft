@@ -28,6 +28,30 @@ export function formatPrize(amount: number): string {
   return `${formatNumber(amount)}원`;
 }
 
+/**
+ * ISO 시각 → "2026년 8월 1일 21:00". 타임존을 고정한다.
+ *
+ * 백엔드는 OffsetDateTime을 보내고 서버 컨테이너는 UTC로 돈다. 타임존을 지정하지 않으면
+ * 서버는 UTC로, 브라우저는 사용자 로컬로 렌더해 하이드레이션이 어긋난다. 이 서비스의
+ * 회차·추첨 시각은 전부 한국 기준이므로 Asia/Seoul로 고정하는 것이 의미상으로도 맞다.
+ */
+const SEOUL_DATE_TIME = new Intl.DateTimeFormat("ko-KR", {
+  timeZone: "Asia/Seoul",
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+export function formatDateTime(isoInstant: string): string {
+  const parsed = new Date(isoInstant);
+  // 파싱에 실패한 값을 "Invalid Date"로 내보내면 화면에 그 문자열이 그대로 보인다.
+  if (Number.isNaN(parsed.getTime())) return isoInstant;
+  return SEOUL_DATE_TIME.format(parsed);
+}
+
 /** YYYY-MM-DD → "2026년 8월 1일". 입력이 예상 형태가 아니면 그대로 돌려준다. */
 export function formatDrawDate(isoDate: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);

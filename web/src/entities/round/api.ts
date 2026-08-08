@@ -1,3 +1,4 @@
+import { CACHE_TAGS } from "@/shared/config/cache-tags";
 import { serverEnv } from "@/shared/config/env";
 import { serverFetch } from "@/shared/api/transport";
 
@@ -18,7 +19,7 @@ import {
  * (§24.2 3번). 어긋나면 커밋 후에도 화면이 옛 회차를 계속 보여준다 — 조용히 실패하는
  * 종류라 T-30 통합 테스트로 대조한다(R-6).
  */
-export const ROUNDS_LATEST_TAG = "rounds:latest";
+export const ROUNDS_LATEST_TAG = CACHE_TAGS.roundsLatest;
 export const REVALIDATE_LATEST_SECONDS = 60;
 
 function backendUrl(path: string): string {

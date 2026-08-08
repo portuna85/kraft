@@ -1,0 +1,56 @@
+@layer components {
+  .crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+
+  /* 구분자는 CSS로 그린다 — 텍스트로 넣으면 스크린리더가 슬래시까지 읽는다. */
+  .crumb + .crumb::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-inline-end: var(--space-2);
+    border-top: 1px solid currentColor;
+    border-right: 1px solid currentColor;
+    transform: rotate(45deg);
+    vertical-align: middle;
+  }
+
+  .crumb [aria-current="page"] {
+    color: var(--color-ink);
+    font-weight: 700;
+  }
+
+  .accordion {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .item {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-1);
+  }
+
+  .summary {
+    display: flex;
+    align-items: center;
+    min-height: var(--target-min);
+    padding: var(--space-3) var(--space-4);
+    cursor: pointer;
+    font-weight: 700;
+  }
+
+  .panel {
+    padding: 0 var(--space-4) var(--space-4);
+    color: var(--color-ink-muted);
+  }
+}

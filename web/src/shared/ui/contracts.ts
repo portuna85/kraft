@@ -99,3 +99,29 @@ export type ErrorStateContract = {
   description: ReactNode;
   action: ReactNode;
 };
+
+/* ── 탐색 ────────────────────────────────────────────────────────────── */
+
+/**
+ * 브레드크럼의 마지막 항목은 **현재 위치**라 링크가 아니다.
+ *
+ * 그래서 items에는 조상만 담고 현재 페이지 이름은 `current`로 따로 받는다. 전부를
+ * 한 배열에 담고 "마지막은 링크로 만들지 말자"를 호출부가 기억하게 두면 언젠가
+ * 자기 자신으로 가는 링크가 생긴다.
+ */
+export type BreadcrumbContract = {
+  items: readonly { label: string; href: string }[];
+  current: string;
+};
+
+/**
+ * 아코디언 항목은 열림 상태를 스스로 관리한다.
+ *
+ * `<button aria-expanded>`와 패널이 짝을 이뤄야 하므로 id 연결을 컴포넌트가 책임진다 —
+ * 호출부에 맡기면 id가 겹치거나 어긋나 스크린리더에서 패널이 열린 것을 알 수 없다.
+ */
+export type AccordionContract = {
+  /** 목록 전체의 이름. 아코디언이 여러 개인 페이지에서 서로 구분된다. */
+  label: string;
+  items: readonly { id: string; question: string; answer: ReactNode }[];
+};

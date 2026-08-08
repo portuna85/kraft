@@ -1,4 +1,5 @@
 import { serverFetch } from "@/shared/api/transport";
+import { CACHE_TAGS } from "@/shared/config/cache-tags";
 import { serverEnv } from "@/shared/config/env";
 
 import {
@@ -16,7 +17,7 @@ import {
  * 통계 API 바인딩 — improvement_fe.md §7.5, §13.5
  * 태그 이름은 백엔드와 일치해야 한다(§24.2 3번).
  */
-export const STATS_TAG = "stats:all";
+export const STATS_TAG = CACHE_TAGS.statsAll;
 export const REVALIDATE_STATS_SECONDS = 1800;
 
 /**

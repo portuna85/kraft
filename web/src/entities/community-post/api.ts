@@ -1,4 +1,5 @@
 import { serverFetch } from "@/shared/api/transport";
+import { CACHE_TAGS } from "@/shared/config/cache-tags";
 import { serverEnv } from "@/shared/config/env";
 
 import type { ListParams } from "./query";
@@ -12,7 +13,7 @@ import {
 /**
  * 커뮤니티 API 바인딩 — improvement_fe.md §13.5, §24.2(3)
  */
-export const COMMUNITY_POSTS_TAG = "community:posts";
+export const COMMUNITY_POSTS_TAG = CACHE_TAGS.communityPosts;
 export const REVALIDATE_COMMUNITY_LIST_SECONDS = 30;
 export const DEFAULT_PAGE_SIZE = 20;
 

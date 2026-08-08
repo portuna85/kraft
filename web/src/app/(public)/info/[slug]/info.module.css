@@ -1,0 +1,23 @@
+@layer components {
+  .updated {
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+
+  /* 본문은 읽기 폭을 넘지 않는다 — 한 줄이 길면 다음 줄 첫 글자를 찾기 어려워진다. */
+  .article {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .article h2 {
+    margin-top: var(--space-4);
+  }
+
+  .article ul {
+    display: grid;
+    gap: var(--space-2);
+    padding-inline-start: var(--space-5);
+    list-style: disc;
+  }
+}
