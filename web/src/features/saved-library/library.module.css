@@ -1,0 +1,61 @@
+@layer components {
+  .compare {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: var(--space-3);
+  }
+
+  .roundLabel {
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+
+  .roundInput {
+    min-height: var(--target-min);
+    padding-inline: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-solid);
+    color: var(--color-ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .item {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .itemHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .savedAt {
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+
+  .note {
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+
+  /* 데스크톱은 2열(§23.7). 카드 안이 번호 6개라 좁으면 줄바꿈이 지저분해진다. */
+  @media (min-width: 640px) {
+    .list {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+}

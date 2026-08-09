@@ -2,11 +2,8 @@
 
 import { useCallback, useRef, useState } from "react";
 
-import {
-  recommendNumbers,
-  saveNumbersToAccount,
-  saveNumbersToDevice,
-} from "@/entities/recommendation/api";
+import { recommendNumbers } from "@/entities/recommendation/api";
+import { saveNumbersToAccount, saveNumbersToDevice } from "@/entities/saved-number/api";
 import {
   MAX_COUNT,
   MAX_LOCKED_NUMBERS,
@@ -110,19 +107,23 @@ export function useRecommendStudio({ loggedIn }: { loggedIn: boolean }) {
     async (index: number, numbers: readonly number[]) => {
       try {
         // 로그인 상태면 claim 결과와 무관하게 계정으로 보낸다(C-2).
-        const saved = loggedIn
+        const result = loggedIn
           ? await saveNumbersToAccount(numbers)
           : await saveNumbersToDevice(numbers);
 
+        /**
+         * 중복은 **오류가 아니라 응답 필드**다. 백엔드는 이미 저장된 조합이면 200 +
+         * created:false를, 새로 저장했으면 201 + created:true를 준다(SavedNumbersController).
+         * 409를 기다리면 중복이 영영 "저장했습니다"로 표시된다.
+         */
         setSaveOutcomes((current) =>
-          new Map(current).set(index, saved === null ? { kind: "duplicate" } : { kind: "saved" }),
+          new Map(current).set(index, result.created ? { kind: "saved" } : { kind: "duplicate" }),
         );
       } catch (cause) {
         const error = toApiError(cause, "저장하지 못했습니다.");
-        // 백엔드는 같은 조합을 중복 저장하려 하면 409로 답한다 — 오류가 아니라 상태다.
-        const outcome: SaveOutcome =
-          error.status === 409 ? { kind: "duplicate" } : { kind: "failed", message: error.message };
-        setSaveOutcomes((current) => new Map(current).set(index, outcome));
+        setSaveOutcomes((current) =>
+          new Map(current).set(index, { kind: "failed", message: error.message }),
+        );
       }
     },
     [loggedIn],

@@ -60,16 +60,6 @@ export const recommendNumbersSchema = v.object({
 
 export type RecommendNumbers = v.InferOutput<typeof recommendNumbersSchema>;
 
-export const savedNumberSchema = v.object({
-  id: v.number(),
-  numbers: v.pipe(v.array(lottoNumberSchema), v.length(6)),
-  label: v.nullable(v.string()),
-  source: v.string(),
-  createdAt: v.string(),
-});
-
-export type SavedNumber = v.InferOutput<typeof savedNumberSchema>;
-
 /** 고정 번호 상한과 조합 개수 범위는 백엔드 제약과 일치해야 한다(§3.2). */
 export const MAX_LOCKED_NUMBERS = 5;
 export const MIN_COUNT = 1;

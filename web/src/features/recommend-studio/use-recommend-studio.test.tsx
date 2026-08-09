@@ -1,8 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ApiError } from "@/shared/api/error";
-
 import { useRecommendStudio } from "./use-recommend-studio";
 
 const recommendNumbers = vi.fn();
@@ -11,6 +9,9 @@ const saveNumbersToDevice = vi.fn();
 
 vi.mock("@/entities/recommendation/api", () => ({
   recommendNumbers: (...args: unknown[]) => recommendNumbers(...args),
+}));
+
+vi.mock("@/entities/saved-number/api", () => ({
   saveNumbersToAccount: (...args: unknown[]) => saveNumbersToAccount(...args),
   saveNumbersToDevice: (...args: unknown[]) => saveNumbersToDevice(...args),
 }));
@@ -90,7 +91,7 @@ describe("추천 스튜디오", () => {
   });
 
   it("로그인 상태면 계정으로 저장한다 (C-2)", async () => {
-    saveNumbersToAccount.mockResolvedValue({ id: 1 });
+    saveNumbersToAccount.mockResolvedValue({ savedNumber: { id: 1 }, created: true });
     const { result } = renderHook(() => useRecommendStudio({ loggedIn: true }));
 
     await act(async () => {
@@ -103,7 +104,7 @@ describe("추천 스튜디오", () => {
   });
 
   it("익명이면 기기 스코프로 저장한다", async () => {
-    saveNumbersToDevice.mockResolvedValue({ id: 1 });
+    saveNumbersToDevice.mockResolvedValue({ savedNumber: { id: 1 }, created: true });
     const { result } = renderHook(() => useRecommendStudio({ loggedIn: false }));
 
     await act(async () => {
@@ -114,8 +115,10 @@ describe("추천 스튜디오", () => {
     expect(saveNumbersToAccount).not.toHaveBeenCalled();
   });
 
-  it("중복 저장을 오류가 아니라 상태로 다룬다", async () => {
-    saveNumbersToDevice.mockRejectedValue(new ApiError("client", "중복", { status: 409 }));
+  it("중복 저장을 오류가 아니라 응답 필드로 다룬다", async () => {
+    // 백엔드는 중복 저장 시 오류가 아니라 200 + created:false를 돌려준다
+    // (SavedNumbersController) — 409를 기다리면 이 상태를 영영 놓친다.
+    saveNumbersToDevice.mockResolvedValue({ savedNumber: { id: 1 }, created: false });
     const { result } = renderHook(() => useRecommendStudio({ loggedIn: false }));
 
     await act(async () => {
@@ -123,6 +126,19 @@ describe("추천 스튜디오", () => {
     });
 
     await waitFor(() => expect(result.current.saveOutcomes.get(0)).toEqual({ kind: "duplicate" }));
+  });
+
+  it("실제 요청 실패는 실패 상태로 남는다", async () => {
+    saveNumbersToDevice.mockRejectedValue(new Error("network down"));
+    const { result } = renderHook(() => useRecommendStudio({ loggedIn: false }));
+
+    await act(async () => {
+      await result.current.save(0, [1, 2, 3, 4, 5, 6]);
+    });
+
+    await waitFor(() =>
+      expect(result.current.saveOutcomes.get(0)).toMatchObject({ kind: "failed" }),
+    );
   });
 });
 
