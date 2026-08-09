@@ -64,3 +64,34 @@ export type RecommendNumbers = v.InferOutput<typeof recommendNumbersSchema>;
 export const MAX_LOCKED_NUMBERS = 5;
 export const MIN_COUNT = 1;
 export const MAX_COUNT = 10;
+
+/**
+ * 추천 이력 1건 — improvement_fe.md §23.8
+ *
+ * 저장 시점에 만들어진 조합 묶음(전략·고정/제외 조건·조합 목록)을 그대로 보존한다.
+ * `recommendationItemSchema`를 그대로 재사용한다 — 백엔드 `RecommendationItemView`와
+ * `RecommendationSetSummary.items()`가 같은 모양을 쓴다.
+ */
+export const recommendationSetSchema = v.object({
+  id: v.number(),
+  strategy: v.picklist(STRATEGIES),
+  algorithmVersion: v.string(),
+  historyThroughRound: v.pipe(v.number(), v.integer()),
+  exclusionPolicyVersion: v.string(),
+  lockedNumbers: v.array(lottoNumberSchema),
+  excludedNumbers: v.array(lottoNumberSchema),
+  createdAt: v.string(),
+  items: v.array(recommendationItemSchema),
+});
+
+export type RecommendationSet = v.InferOutput<typeof recommendationSetSchema>;
+
+export const recommendationSetPageSchema = v.object({
+  items: v.array(recommendationSetSchema),
+  page: v.pipe(v.number(), v.integer()),
+  size: v.pipe(v.number(), v.integer()),
+  totalElements: v.pipe(v.number(), v.integer()),
+  totalPages: v.pipe(v.number(), v.integer()),
+});
+
+export type RecommendationSetPage = v.InferOutput<typeof recommendationSetPageSchema>;

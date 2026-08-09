@@ -1,6 +1,12 @@
-import { browserMutate } from "@/shared/api/transport";
+import { browserMutate, browserQuery, noContentSchema } from "@/shared/api/transport";
 
-import { recommendNumbersSchema, type RecommendNumbers, type Strategy } from "./schema";
+import {
+  recommendationSetPageSchema,
+  recommendNumbersSchema,
+  type RecommendationSetPage,
+  type RecommendNumbers,
+  type Strategy,
+} from "./schema";
 
 /**
  * 추천 API 바인딩 — improvement_fe.md §5.2
@@ -33,5 +39,43 @@ export function recommendNumbers(
       excludedNumbers: [...input.excludedNumbers],
     },
     ...(signal === undefined ? {} : { signal }),
+  });
+}
+
+/**
+ * 추천 이력 — improvement_fe.md §23.8, §3.2
+ *
+ * 저장 번호와 마찬가지로 **엔드포인트가 두 벌**이다. 익명은 `/api/v1/recommendation-sets`
+ * (기기 토큰 스코프), 로그인은 `/api/v1/community/me/recommendation-sets`(세션 스코프).
+ * claim 이후 기기 스코프로는 옛 세트를 더 이상 찾지 못한다(백엔드 B-P0-2) — 로그인
+ * 상태에서 기기 경로를 쓰면 안 된다.
+ */
+const HISTORY_PAGE_SIZE = 20;
+
+export function listDeviceRecommendationSets(page = 0): Promise<RecommendationSetPage> {
+  return browserQuery(
+    `/api/v1/recommendation-sets?page=${page}&size=${HISTORY_PAGE_SIZE}`,
+    recommendationSetPageSchema,
+    { deviceScoped: true },
+  );
+}
+
+export function listAccountRecommendationSets(page = 0): Promise<RecommendationSetPage> {
+  return browserQuery(
+    `/api/v1/community/me/recommendation-sets?page=${page}&size=${HISTORY_PAGE_SIZE}`,
+    recommendationSetPageSchema,
+  );
+}
+
+export function deleteDeviceRecommendationSet(id: number): Promise<null> {
+  return browserMutate(`/api/v1/recommendation-sets/${id}`, noContentSchema, {
+    method: "DELETE",
+    deviceScoped: true,
+  });
+}
+
+export function deleteAccountRecommendationSet(id: number): Promise<null> {
+  return browserMutate(`/api/v1/community/me/recommendation-sets/${id}`, noContentSchema, {
+    method: "DELETE",
   });
 }

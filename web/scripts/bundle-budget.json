@@ -23,8 +23,8 @@
     "/frequency": { "maxKB": 57, "currentKB": 63.7 },
     "/info/[slug]": { "maxKB": 51, "currentKB": 64.4 },
     "/ops": { "maxKB": 62, "currentKB": 56.7 },
-    "/recommend": { "maxKB": 64, "currentKB": 94.3 },
-    "/recommend/history": { "maxKB": 58 },
+    "/recommend": { "maxKB": 64, "currentKB": 95.8 },
+    "/recommend/history": { "maxKB": 58, "currentKB": 92.7 },
     "/saved": { "maxKB": 65, "currentKB": 91.7 },
     "/stats": { "maxKB": 51, "currentKB": 63.7 },
     "/status": { "maxKB": 51, "currentKB": 64.4 }

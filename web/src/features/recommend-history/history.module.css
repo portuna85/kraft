@@ -1,0 +1,25 @@
+@layer components {
+  .list {
+    display: grid;
+    gap: var(--space-4);
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .list > li {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .more {
+    display: grid;
+    gap: var(--space-2);
+    justify-items: start;
+  }
+
+  .note {
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+}
