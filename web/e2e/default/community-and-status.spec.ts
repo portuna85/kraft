@@ -31,6 +31,15 @@ test.describe("커뮤니티·상태·안내 읽기", () => {
     await expect(page.getByText("로그인하면 댓글을 남길 수 있습니다.")).toBeVisible();
   });
 
+  test("글이 1페이지뿐이면 페이지네이션 대신 총 건수만 보인다 (improvement_fe_codex.md §12.8)", async ({
+    page,
+  }) => {
+    await page.goto("/community");
+    await expect(page.getByRole("heading", { name: "첫 글입니다" })).toBeVisible();
+    await expect(page.getByText("총 1건")).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "페이지 이동" })).not.toBeVisible();
+  });
+
   test("/status가 데이터 신선도와 수집·보정 이력을 렌더한다", async ({ page }) => {
     await page.goto("/status");
     await expect(page.getByText("정상 반영")).toBeVisible();

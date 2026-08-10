@@ -95,7 +95,7 @@ describe("보관함", () => {
     listDeviceSavedNumbers.mockResolvedValue([]);
     renderLibrary(ANONYMOUS);
 
-    expect(await screen.findByText("저장한 번호가 없습니다")).toBeInTheDocument();
+    expect(await screen.findByText("아직 저장한 번호가 없습니다.")).toBeInTheDocument();
   });
 
   it("조회 실패 시 다시 시도 버튼을 보여준다", async () => {

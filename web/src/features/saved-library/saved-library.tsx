@@ -16,7 +16,7 @@ import { MatchResultBadge } from "@/entities/saved-number/ui/match-result-badge"
 import { canQueryOwnerScope, useSession } from "@/entities/user-session/session-context";
 import { ROUTES } from "@/shared/config/routes";
 import { formatDrawDate } from "@/shared/lib/format";
-import { Button } from "@/shared/ui/button";
+import { Button, LinkButton } from "@/shared/ui/button";
 import { ConfirmDialog } from "@/shared/ui/dialog";
 import { EmptyState, ErrorState } from "@/shared/ui/states";
 import { Card } from "@/shared/ui/surface";
@@ -125,13 +125,13 @@ export function SavedLibrary({ latestRound }: { latestRound: number }) {
     return (
       <EmptyState
         reason="no-data"
-        title="저장한 번호가 없습니다"
+        title="아직 저장한 번호가 없습니다."
         description={
           loggedIn
             ? "번호를 저장하면 이 계정에 연결되어 어느 기기에서나 보입니다."
             : "저장한 번호는 이 브라우저에만 연결됩니다. 로그인하면 계정으로 옮겨집니다."
         }
-        action={<a href={ROUTES.recommend}>번호 추천받기</a>}
+        action={<LinkButton href={ROUTES.recommend}>번호 추천 받기</LinkButton>}
       />
     );
   }

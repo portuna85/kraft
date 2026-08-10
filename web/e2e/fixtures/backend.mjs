@@ -63,8 +63,6 @@ for (let a = 1; a <= 45; a += 1) {
 }
 COMPANION_PAIRS.sort((x, y) => y.coCount - x.coCount || x.ballA - y.ballA || x.ballB - y.ballB);
 
-const EMPTY_POST_PAGE = { items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 };
-
 const POST_DETAIL = {
   id: 1,
   ownerId: 10,
@@ -299,7 +297,12 @@ const ROUTES = new Map([
       };
     },
   ],
-  ["/api/v1/community/posts", EMPTY_POST_PAGE],
+  [
+    "/api/v1/community/posts",
+    // 목록이 1페이지뿐인 상태를 흉내낸다 — "총 N건" 표시(§12.8)를 e2e로 확인하려면
+    // 빈 목록이 아니라 실제로 1페이지짜리 결과가 있어야 한다.
+    { items: [POST_DETAIL], page: 0, size: 20, totalElements: 1, totalPages: 1 },
+  ],
   ["/api/v1/community/posts/1", POST_DETAIL],
   [
     "/api/v1/community/posts/1/comments",

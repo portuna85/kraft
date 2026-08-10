@@ -1,7 +1,8 @@
-import type { ButtonHTMLAttributes } from "react";
+import Link from "next/link";
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes } from "react";
 
 import styles from "./button.module.css";
-import type { ButtonContract, IconButtonContract } from "./contracts";
+import type { ButtonContract, IconButtonContract, LinkButtonContract } from "./contracts";
 
 type NativeProps = Omit<
   ButtonHTMLAttributes<HTMLButtonElement>,
@@ -76,5 +77,31 @@ export function IconButton({
         <span aria-hidden="true">{icon}</span>
       )}
     </button>
+  );
+}
+
+type LinkNativeProps = Omit<
+  AnchorHTMLAttributes<HTMLAnchorElement>,
+  "className" | "children" | "href"
+>;
+
+/**
+ * LinkButton — Button과 같은 시각을 내는 링크 — improvement_fe_codex.md §12.10/§12.11.
+ *
+ * 빈 상태 CTA("번호 추천 받기" 등)는 페이지 이동이지 폼 제출이 아니다. `Button`은
+ * `<button>`이라 `onClick` 핸들러가 있어야 의미가 있는데, 여기서는 그냥 다른
+ * 라우트로 가는 것뿐이다 — 그래서 `next/link`를 감싸고 버튼과 같은 클래스만 준다.
+ */
+export function LinkButton({
+  variant = "primary",
+  size = "md",
+  href,
+  children,
+  ...rest
+}: LinkButtonContract & LinkNativeProps) {
+  return (
+    <Link href={href} {...rest} className={`${styles.button} ${styles[variant]} ${styles[size]}`}>
+      {children}
+    </Link>
   );
 }

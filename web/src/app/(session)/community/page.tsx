@@ -11,6 +11,7 @@ import {
 } from "@/entities/community-post/schema";
 import { PostSummaryCard } from "@/entities/community-post/ui/post-summary-card";
 import { ROUTES } from "@/shared/config/routes";
+import { LinkButton } from "@/shared/ui/button";
 import { EmptyState } from "@/shared/ui/states";
 import { Pagination } from "@/shared/ui/surface";
 
@@ -105,14 +106,18 @@ export default async function CommunityPage({
             reason="filtered"
             title="조건에 맞는 글이 없습니다"
             description="검색어나 분류를 바꿔 보세요."
-            action={<Link href={ROUTES.community}>조건 모두 지우기</Link>}
+            action={
+              <LinkButton variant="secondary" href={ROUTES.community}>
+                조건 모두 지우기
+              </LinkButton>
+            }
           />
         ) : (
           <EmptyState
             reason="no-data"
             title="아직 글이 없습니다"
             description="첫 글을 남겨 보세요."
-            action={<Link href={ROUTES.communityWrite}>글쓰기</Link>}
+            action={<LinkButton href={ROUTES.communityWrite}>글쓰기</LinkButton>}
           />
         )
       ) : (
@@ -123,11 +128,20 @@ export default async function CommunityPage({
         </ol>
       )}
 
-      <Pagination
-        page={page.page}
-        totalPages={page.totalPages}
-        buildHref={(next) => buildListHref(params, { page: next })}
-      />
+      {/*
+       * Pagination은 totalPages<=1이면 스스로 아무 것도 안 그린다(shared/ui/surface.tsx).
+       * codex §12.8: "1페이지뿐이면 controls를 비활성 또는 숨기고 총 N건만 남긴다" —
+       * 지금까지는 숨기기만 하고 총 건수를 안 남겼다.
+       */}
+      {page.totalPages <= 1 && page.totalElements > 0 ? (
+        <p className={styles.note}>총 {page.totalElements}건</p>
+      ) : (
+        <Pagination
+          page={page.page}
+          totalPages={page.totalPages}
+          buildHref={(next) => buildListHref(params, { page: next })}
+        />
+      )}
     </div>
   );
 }

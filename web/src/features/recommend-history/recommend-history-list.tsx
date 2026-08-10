@@ -12,7 +12,7 @@ import type { RecommendationSet } from "@/entities/recommendation/schema";
 import { RecommendationCard } from "@/entities/recommendation/ui/recommendation-card";
 import { canQueryOwnerScope, useSession } from "@/entities/user-session/session-context";
 import { ROUTES } from "@/shared/config/routes";
-import { Button } from "@/shared/ui/button";
+import { Button, LinkButton } from "@/shared/ui/button";
 import { ConfirmDialog } from "@/shared/ui/dialog";
 import { EmptyState, ErrorState } from "@/shared/ui/states";
 
@@ -125,7 +125,7 @@ export function RecommendHistoryList() {
         reason="no-data"
         title="아직 생성한 추천이 없습니다"
         description="번호 추천에서 조합을 만들면 여기에 쌓입니다."
-        action={<a href={ROUTES.recommend}>번호 추천받기</a>}
+        action={<LinkButton href={ROUTES.recommend}>번호 추천 받기</LinkButton>}
       />
     );
   }

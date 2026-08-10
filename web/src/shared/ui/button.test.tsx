@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { Button, IconButton } from "./button";
+import { Button, IconButton, LinkButton } from "./button";
 
 describe("Button", () => {
   it("라벨을 그대로 렌더한다", () => {
@@ -59,6 +59,15 @@ describe("Button", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "신고" }));
     expect(onClick).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("LinkButton", () => {
+  it("버튼처럼 보이는 링크를 렌더한다", () => {
+    render(<LinkButton href="/recommend">번호 추천 받기</LinkButton>);
+
+    const link = screen.getByRole("link", { name: "번호 추천 받기" });
+    expect(link).toHaveAttribute("href", "/recommend");
   });
 });
 

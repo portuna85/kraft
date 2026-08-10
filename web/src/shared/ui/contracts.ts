@@ -38,6 +38,18 @@ export type IconButtonContract = Omit<ButtonBase, "children"> & {
   icon: ReactNode;
 } & ({ loading?: false; loadingLabel?: never } | { loading: true; loadingLabel: string });
 
+/**
+ * 버튼처럼 보이는 링크 — 빈 상태 CTA 등 "누르면 이동"인 자리에 쓴다
+ * (improvement_fe_codex.md §12.10/§12.11). `disabled`·`loading`이 없다 — 링크는
+ * 눌러도 네비게이션만 할 뿐 진행 상태를 가질 수 없다(Button과 의미가 다르다).
+ */
+export type LinkButtonContract = {
+  variant?: ButtonVariant;
+  size?: Size;
+  href: string;
+  children: ReactNode;
+};
+
 /* ── 상태 표시 ───────────────────────────────────────────────────────── */
 
 export type Tone = "neutral" | "brand" | "success" | "warning" | "danger";
