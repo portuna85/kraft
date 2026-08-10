@@ -98,7 +98,7 @@ jobs:
           java-version: "25"
           distribution: temurin
       - name: Restore Gradle dependency and build caches
-        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
       - name: Build, test, and verify coverage
         run: >-
           ./gradlew test jacocoTestCoverageVerification bootJar
@@ -138,7 +138,7 @@ jobs:
         with:
           java-version: "25"
           distribution: temurin
-      - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
       - name: Run backend static analysis
         run: >-
           ./gradlew checkstyleMain checkstyleTest spotbugsMain spotbugsTest
@@ -820,7 +820,7 @@ jobs:
         with:
           java-version: "25"
           distribution: temurin
-      - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "24"
