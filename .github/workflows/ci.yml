@@ -256,6 +256,47 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # 픽스처 백엔드를 상시 가동한 주요 사용자 흐름 — Phase 7(테스트 피라미드 완성),
+  # improvement_fe.md §21. 레거시의 default/content 2트랙 분리를 따르지 않는다
+  # (playwright.default.config.ts 상단 주석 참고).
+  web-next-e2e-default:
+    name: Web Next E2E (주요 흐름)
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.web_next == 'true'
+    timeout-minutes: 15
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
+      options: --ipc=host
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --prefer-offline --no-audit --no-fund
+      - name: Build default-track application
+        run: npm run build
+        env:
+          NEXT_DIST_DIR: .next-default
+          KRAFT_BACKEND_INTERNAL_URL: http://127.0.0.1:4111
+          KRAFT_PUBLIC_BASE_URL: http://127.0.0.1:3111
+      - run: npm run test:e2e:default
+      - name: Upload failure traces
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: web-next-playwright-default
+          path: |
+            web/test-results/
+            web/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
   web-build-artifacts:
     name: Web Build (${{ matrix.variant }})
     runs-on: ubuntu-latest
@@ -857,6 +898,7 @@ jobs:
       - web-build-test
       - web-next-build-test
       - web-next-e2e-proxy
+      - web-next-e2e-default
       - web-build-artifacts
       - web-e2e
       - web-e2e-proxy
@@ -881,6 +923,7 @@ jobs:
           WEB_TEST_RESULT: ${{ needs.web-build-test.result }}
           WEB_NEXT_RESULT: ${{ needs.web-next-build-test.result }}
           WEB_NEXT_PROXY_RESULT: ${{ needs.web-next-e2e-proxy.result }}
+          WEB_NEXT_DEFAULT_RESULT: ${{ needs.web-next-e2e-default.result }}
           WEB_BUILD_RESULT: ${{ needs.web-build-artifacts.result }}
           WEB_E2E_RESULT: ${{ needs.web-e2e.result }}
           WEB_E2E_PROXY_RESULT: ${{ needs.web-e2e-proxy.result }}
@@ -914,6 +957,7 @@ jobs:
           if [[ "$WEB_NEXT_CHANGED" == "true" ]]; then
             require_success "Web Next (재작성 중인 프론트엔드)" "$WEB_NEXT_RESULT"
             require_success "Web Next E2E (CSP·/ops 게이트)" "$WEB_NEXT_PROXY_RESULT"
+            require_success "Web Next E2E (주요 흐름)" "$WEB_NEXT_DEFAULT_RESULT"
           fi
           if [[ "$EVENT_NAME" == "push" ]]; then
             require_success "Backend image" "$BACKEND_IMAGE_RESULT"

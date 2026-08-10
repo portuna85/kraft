@@ -129,6 +129,25 @@ const COMMENT_PAGE = {
   totalPages: 1,
 };
 
+// 저장 번호는 기기 토큰 스코프에서 실제로 상태를 갖는다 — 저장·조회·삭제가 서로
+// 이어져야 e2e에서 "저장했더니 목록에 보인다"를 확인할 수 있다.
+let nextSavedId = 100;
+const savedNumbers = [];
+
+// 추천 이력도 마찬가지로 상태를 갖는다 — 생성 후 이력 화면에서 보여야 한다.
+let nextRecommendationSetId = 200;
+const recommendationSets = [];
+
+const STATUS_INCIDENTS = [
+  {
+    round: 1150,
+    type: "EXTERNAL_COLLECT",
+    resolved: true,
+    occurredAt: "2026-08-01T09:00:00Z",
+    occurrences: 1,
+  },
+];
+
 const ROUTES = new Map([
   ["/api/v1/rounds/latest", LATEST_ROUND],
   [
@@ -142,6 +161,7 @@ const ROUTES = new Map([
   ],
   ["/api/v1/stats/frequency", FREQUENCY],
   ["/api/v1/stats/patterns", PATTERNS],
+  ["/api/v1/status/incidents", STATUS_INCIDENTS],
   [
     "/api/v1/stats/companion",
     // 실제 백엔드처럼 ball 파라미터가 있으면 그 번호가 낀 쌍만 돌려준다. 화면이 필터를
@@ -154,6 +174,82 @@ const ROUTES = new Map([
         totalRounds: 1150,
         topPairs: COMPANION_PAIRS.filter((pair) => pair.ballA === ball || pair.ballB === ball),
       };
+    },
+  ],
+  [
+    "/api/v1/community/session",
+    { loggedIn: false, userId: null, nickname: null, activeProviders: ["google", "naver"] },
+  ],
+  [
+    "/api/v1/numbers/recommend",
+    (_params, requestBody) => {
+      const strategy = requestBody?.strategy ?? "random";
+      const items = [
+        { position: 0, numbers: [1, 8, 17, 24, 33, 41], score: null, explanationCodes: [] },
+        { position: 1, numbers: [3, 12, 19, 26, 35, 44], score: null, explanationCodes: [] },
+      ];
+      // 실제 백엔드는 추천 생성마다 이력에 한 세트를 함께 남긴다 — 픽스처도 같게
+      // 동작해야 "생성했더니 이력에 보인다"를 e2e로 확인할 수 있다.
+      recommendationSets.unshift({
+        id: nextRecommendationSetId++,
+        strategy,
+        algorithmVersion: "e2e-fixture",
+        historyThroughRound: 1150,
+        exclusionPolicyVersion: "e2e-fixture",
+        lockedNumbers: requestBody?.lockedNumbers ?? [],
+        excludedNumbers: requestBody?.excludedNumbers ?? [],
+        createdAt: "2026-08-01T15:00:00Z",
+        items,
+      });
+      return {
+        recommendations: items.map((item) => item.numbers),
+        strategy,
+        algorithmVersion: "e2e-fixture",
+        historyThroughRound: 1150,
+        historicalExclusionApplied: false,
+        exclusionPolicyVersion: "e2e-fixture",
+        setId: nextRecommendationSetId - 1,
+        items,
+        createdAt: "2026-08-01T15:00:00Z",
+      };
+    },
+  ],
+  [
+    "/api/v1/saved",
+    (_params, requestBody, method) => {
+      if (method === "GET") return savedNumbers;
+      // POST — 새 저장 번호를 만든다(§25.5).
+      const id = nextSavedId++;
+      const created = {
+        id,
+        numbers: [...(requestBody?.numbers ?? [])],
+        label: null,
+        source: "recommend",
+        createdAt: "2026-08-01T15:00:00Z",
+      };
+      savedNumbers.push(created);
+      return { savedNumber: created, created: true };
+    },
+  ],
+  [
+    "/api/v1/saved/matches",
+    () =>
+      savedNumbers.map((saved) => ({
+        savedNumber: saved,
+        round: 1150,
+        drawDate: "2026-08-01",
+        drawNumbers: LATEST_ROUND.numbers,
+        bonusNumber: LATEST_ROUND.bonusNumber,
+        matchedCount: saved.numbers.filter((n) => LATEST_ROUND.numbers.includes(n)).length,
+        bonusMatch: saved.numbers.includes(LATEST_ROUND.bonusNumber),
+        prizeTier: "낙첨",
+      })),
+  ],
+  [
+    "/api/v1/recommendation-sets",
+    (_params, _requestBody, method) => {
+      if (method !== "GET") return { items: [], page: 0, totalPages: 0, totalElements: 0 };
+      return { items: recommendationSets, page: 0, totalPages: 1, totalElements: recommendationSets.length };
     },
   ],
   [
@@ -200,18 +296,107 @@ const ROUTES = new Map([
   ],
   ["/api/v1/community/posts", EMPTY_POST_PAGE],
   ["/api/v1/community/posts/1", POST_DETAIL],
-  ["/api/v1/community/posts/1/comments", COMMENT_PAGE],
   [
-    "/api/v1/community/session",
-    { loggedIn: false, userId: null, nickname: null, activeProviders: ["google", "naver"] },
+    "/api/v1/community/posts/1/comments",
+    (_params, requestBody, method) => {
+      if (method !== "POST") return COMMENT_PAGE;
+      return {
+        id: 14,
+        postId: 1,
+        parentId: requestBody?.parentId ?? null,
+        ownerId: 10,
+        authorNickname: "테스터",
+        content: requestBody?.content ?? "",
+        deleted: false,
+        createdAt: "2026-08-01T15:30:00Z",
+        targetPage: null,
+        replies: [],
+      };
+    },
   ],
 ]);
 
+/**
+ * 경로 파라미터가 있는 라우트 — ROUTES Map은 정확히 일치하는 경로만 찾으므로
+ * `/api/v1/saved/:id` 같은 삭제 경로는 따로 정규식으로 처리한다.
+ */
+const DYNAMIC_ROUTES = [
+  {
+    pattern: /^\/api\/v1\/saved\/(\d+)$/,
+    method: "DELETE",
+    handle: (id) => {
+      const index = savedNumbers.findIndex((item) => item.id === Number(id));
+      if (index !== -1) savedNumbers.splice(index, 1);
+      return { status: 204, body: null };
+    },
+  },
+  {
+    pattern: /^\/api\/v1\/recommendation-sets\/(\d+)$/,
+    method: "DELETE",
+    handle: (id) => {
+      const index = recommendationSets.findIndex((item) => item.id === Number(id));
+      if (index !== -1) recommendationSets.splice(index, 1);
+      return { status: 204, body: null };
+    },
+  },
+  {
+    pattern: /^\/api\/v1\/community\/comments\/(\d+)$/,
+    method: "DELETE",
+    handle: () => ({ status: 204, body: null }),
+  },
+];
+
+/** T-20(핵심 데이터 실패 → 5xx) 검증용 — 테스트가 이 경로로 특정 경로를 고장낼 수 있다. */
+let forcedFailurePath = null;
+
 const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? "/", `http://127.0.0.1:${PORT}`);
-  const entry = ROUTES.get(url.pathname);
+  const method = request.method ?? "GET";
 
+  // XSRF-TOKEN 쿠키 — 실제 백엔드(Spring Security)가 GET 응답마다 내려주는 것과 같은
+  // 역할이다. 이게 없으면 browserMutate가 요청을 보내기 전에 스스로 막는다(§13.4).
+  response.setHeader("set-cookie", "XSRF-TOKEN=e2e-fixture-token; Path=/");
   response.setHeader("content-type", "application/json");
+
+  if (url.pathname === "/__test__/fail" && method === "PUT") {
+    forcedFailurePath = url.searchParams.get("path");
+    response.statusCode = 204;
+    response.end();
+    return;
+  }
+  if (url.pathname === "/__test__/reset" && method === "POST") {
+    forcedFailurePath = null;
+    response.statusCode = 204;
+    response.end();
+    return;
+  }
+
+  if (forcedFailurePath !== null && url.pathname === forcedFailurePath) {
+    response.statusCode = 503;
+    response.end(JSON.stringify({ code: "FORCED_FAILURE", message: "픽스처가 강제한 실패." }));
+    return;
+  }
+
+  let requestBody = null;
+  if (method === "POST" || method === "PUT") {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    const raw = Buffer.concat(chunks).toString("utf8");
+    if (raw.length > 0) requestBody = JSON.parse(raw);
+  }
+
+  const dynamic = DYNAMIC_ROUTES.find(
+    (route) => route.method === method && route.pattern.test(url.pathname),
+  );
+  if (dynamic !== undefined) {
+    const [, id] = url.pathname.match(dynamic.pattern);
+    const { status, body } = dynamic.handle(id);
+    response.statusCode = status;
+    response.end(body === null ? undefined : JSON.stringify(body));
+    return;
+  }
+
+  const entry = ROUTES.get(url.pathname);
   if (entry === undefined) {
     response.statusCode = 404;
     response.end(
@@ -220,16 +405,8 @@ const server = createServer(async (request, response) => {
     return;
   }
 
-  let requestBody = null;
-  if (request.method === "POST") {
-    const chunks = [];
-    for await (const chunk of request) chunks.push(chunk);
-    const raw = Buffer.concat(chunks).toString("utf8");
-    if (raw.length > 0) requestBody = JSON.parse(raw);
-  }
-
-  // 쿼리나 본문에 따라 응답이 달라지는 경로는 함수로 둔다.
-  const body = typeof entry === "function" ? entry(url.searchParams, requestBody) : entry;
+  // 쿼리나 본문, 메서드에 따라 응답이 달라지는 경로는 함수로 둔다.
+  const body = typeof entry === "function" ? entry(url.searchParams, requestBody, method) : entry;
 
   response.statusCode = 200;
   response.end(JSON.stringify(body));
