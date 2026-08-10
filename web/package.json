@@ -15,6 +15,7 @@
     "test:e2e:proxy": "playwright test --config=playwright.proxy.config.ts",
     "test:e2e:default": "playwright test --config=playwright.default.config.ts",
     "test:e2e:a11y": "playwright test --config=playwright.a11y.config.ts",
+    "test:e2e:visual": "playwright test --config=playwright.visual.config.ts",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "generate:api-types": "node scripts/generate-api-types.mjs",
