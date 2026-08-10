@@ -422,6 +422,54 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # 번들·Lighthouse 예산 게이트 — improvement_fe.md §19.5, §19.2 P-5·P-11 검증.
+  # web-legacy의 web-performance-budget과 달리 별도 빌드 아티팩트 공유 잡이 없다 —
+  # 다른 web-next-e2e-* 잡처럼 이 잡 안에서 직접 빌드한다(NEXT_DIST_DIR 기본값 .next).
+  web-next-performance-budget:
+    name: Web Next Performance Budget
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.web_next == 'true'
+    timeout-minutes: 15
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
+      options: --ipc=host
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --prefer-offline --no-audit --no-fund
+      - run: npm run build
+        env:
+          KRAFT_BACKEND_INTERNAL_URL: http://127.0.0.1:4101
+          KRAFT_PUBLIC_BASE_URL: http://127.0.0.1:3101
+      - name: Run bundle and Lighthouse budgets
+        run: bash ../scripts/ci/run-web-performance.sh .
+        env:
+          APP_DIST_DIR: .next
+          PERF_BASE_URL: http://127.0.0.1:3101
+          FIXTURE_BACKEND_URL: http://127.0.0.1:4101
+          # 픽스처 백엔드가 항상 id=1 글을 심어 둔다(e2e/fixtures/backend.mjs,
+          # e2e/default/community-and-status.spec.ts와 동일 데이터) — 로컬
+          # --save-baseline도 이 id로 저장했다.
+          PERF_POST_ID: "1"
+      - name: Upload budget diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: web-next-performance-budget-diagnostics
+          path: |
+            web/scripts/bundle-results.json
+            web/scripts/lighthouse-results.json
+          if-no-files-found: ignore
+          retention-days: 7
+
   web-build-artifacts:
     name: Web Build (${{ matrix.variant }})
     runs-on: ubuntu-latest
@@ -1027,6 +1075,7 @@ jobs:
       - web-next-e2e-a11y
       - web-next-e2e-cross-browser
       - web-next-e2e-visual
+      - web-next-performance-budget
       - web-build-artifacts
       - web-e2e
       - web-e2e-proxy
@@ -1055,6 +1104,7 @@ jobs:
           WEB_NEXT_A11Y_RESULT: ${{ needs.web-next-e2e-a11y.result }}
           WEB_NEXT_CROSS_BROWSER_RESULT: ${{ needs.web-next-e2e-cross-browser.result }}
           WEB_NEXT_VISUAL_RESULT: ${{ needs.web-next-e2e-visual.result }}
+          WEB_NEXT_PERF_RESULT: ${{ needs.web-next-performance-budget.result }}
           WEB_BUILD_RESULT: ${{ needs.web-build-artifacts.result }}
           WEB_E2E_RESULT: ${{ needs.web-e2e.result }}
           WEB_E2E_PROXY_RESULT: ${{ needs.web-e2e-proxy.result }}
@@ -1092,6 +1142,7 @@ jobs:
             require_success "Web Next E2E (접근성)" "$WEB_NEXT_A11Y_RESULT"
             require_success "Web Next E2E (크로스브라우저)" "$WEB_NEXT_CROSS_BROWSER_RESULT"
             require_success "Web Next E2E (시각 회귀)" "$WEB_NEXT_VISUAL_RESULT"
+            require_success "Web Next Performance Budget" "$WEB_NEXT_PERF_RESULT"
           fi
           if [[ "$EVENT_NAME" == "push" ]]; then
             require_success "Backend image" "$BACKEND_IMAGE_RESULT"

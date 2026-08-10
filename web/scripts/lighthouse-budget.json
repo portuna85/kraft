@@ -1,0 +1,38 @@
+{
+  "/": {
+    "maxLcpMs": 237,
+    "maxClsScore": 0.05,
+    "maxTbtMs": 0,
+    "minPerformanceScore": 90
+  },
+  "/recommend": {
+    "maxLcpMs": 353,
+    "maxClsScore": 0.051,
+    "maxTbtMs": 0,
+    "minPerformanceScore": 90
+  },
+  "/frequency": {
+    "maxLcpMs": 158,
+    "maxClsScore": 0.05,
+    "maxTbtMs": 0,
+    "minPerformanceScore": 90
+  },
+  "/community": {
+    "maxLcpMs": 144,
+    "maxClsScore": 0.051,
+    "maxTbtMs": 0,
+    "minPerformanceScore": 90
+  },
+  "/saved": {
+    "maxLcpMs": 114,
+    "maxClsScore": 0.173,
+    "maxTbtMs": 0,
+    "minPerformanceScore": 86
+  },
+  "/community/posts/1": {
+    "maxLcpMs": 108,
+    "maxClsScore": 0.051,
+    "maxTbtMs": 0,
+    "minPerformanceScore": 90
+  }
+}
