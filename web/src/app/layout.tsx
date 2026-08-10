@@ -13,10 +13,12 @@ import "./globals.css";
  * 폰트는 자체 호스팅한다. next/font/google은 빌드마다 fonts.gstatic.com 네트워크를 타서
  * 프로덕션 빌드의 단일 실패 지점이 된다.
  *
- * preload를 끈 이유는 성능 취향이 아니라 실측이다 — 전역 프리로드 1.29 MiB가 초기 네트워크
- * 경쟁을 지배해 `/`의 LCP가 3,087ms로 예산(2,500ms)을 넘겼다(레거시 H-3). display: swap이라
- * 텍스트는 폴백 폰트로 즉시 보이고 로드 후 교체된다. FOUT를 감수하고 크리티컬 경로를 비운다.
- * 서브셋을 줄여 본문 폰트만 preload하는 개선은 Phase 8 과제다(§19.2 P-5).
+ * 전에는 두 폰트 모두 preload를 껐다 — 완성형 한글 11,172자를 전부 담은 전역 프리로드
+ * 1.29 MiB가 초기 네트워크 경쟁을 지배해 `/`의 LCP가 3,087ms로 예산(2,500ms)을
+ * 넘겼다(레거시 H-3). 지금은 scripts/fetch-fonts.mjs가 한글 서브셋을 KS X 1001
+ * 현대한글 2,350자로 좁혀 본문 폰트(noto-sans-kr) 합계가 536 KB로 줄었다(§19.2 P-5) —
+ * 그래서 본문 폰트만 preload를 켠다. Space Grotesk는 이미 30 KB대로 작아 preload 여부가
+ * LCP에 미치는 영향이 없어 그대로 끈 채로 둔다.
  */
 const notoSansKr = localFont({
   src: [
@@ -25,7 +27,7 @@ const notoSansKr = localFont({
   ],
   display: "swap",
   variable: "--font-noto-sans-kr",
-  preload: false,
+  preload: true,
 });
 
 const spaceGrotesk = localFont({
