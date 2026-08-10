@@ -455,6 +455,13 @@ jobs:
           APP_DIST_DIR: .next
           PERF_BASE_URL: http://127.0.0.1:3101
           FIXTURE_BACKEND_URL: http://127.0.0.1:4101
+          # run-web-performance.sh는 "npm run e2e:fixture"를 PORT 오버라이드 없이
+          # 그냥 실행한다(레거시의 픽스처는 E2E_FIXTURE_BACKEND_PORT를 쓰고 기본값이
+          # 이미 4101이라 이 문제가 없었다) — web/의 e2e/fixtures/backend.mjs는 PORT를
+          # 읽고 기본값이 4110이라, 여기서 PORT를 명시하지 않으면 FIXTURE_BACKEND_URL과
+          # 어긋난 포트에서 뜬다. 이 값은 스크립트가 나중에 3101로 다시 export하므로
+          # e2e:serve(앱)에는 영향이 없다 — e2e:fixture에만 쓰인다.
+          PORT: "4101"
           # 픽스처 백엔드가 항상 id=1 글을 심어 둔다(e2e/fixtures/backend.mjs,
           # e2e/default/community-and-status.spec.ts와 동일 데이터) — 로컬
           # --save-baseline도 이 id로 저장했다.
