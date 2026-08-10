@@ -21,24 +21,26 @@ import "./globals.css";
 //
 // H-3: 두 폰트 모두 preload를 끈다 — 커밋된 lighthouse-results.json이 이미 LCP 예산
 // 초과(`/` 3,087ms > 2,500ms 등)를 보여줬고, 전역 프리로드 1.29 MiB가 초기 네트워크
-// 경쟁을 지배하는 것이 원인으로 지목됐다. FOUT를 감수하고 크리티컬 경로 전송량을 줄인다.
+// 경쟁을 지배하는 것이 원인으로 지목됐다. swap이라 지연돼도 텍스트는 폴백 폰트로 즉시
+// 보이고 폰트 로드 후 교체된다 — FOUT를 감수하고 크리티컬 경로 전송량을 줄인다.
 //
-// P-CLS-1: Noto Sans KR만 swap 대신 optional을 쓴다 — Lighthouse layout-shifts
-// 진단으로 실측한 결과, 홈의 RecommendEntryCard가 노토 산스 KR 700(671KB)이
-// 폴백 폰트를 교체하는 순간 줄바꿈이 바뀌며 CLS 0.086~0.175(예산 0.051 초과)를
-// 유발했다 — CJK 폰트는 폴백과 글리프 폭 차이가 커서 swap 자체가 셔프트를
-// 만든다. preload로 671KB를 다시 얹으면 H-3가 고친 LCP 회귀가 재현되므로
-// (실측 확인: preload 시 위와 동일한 규모), optional로 바꿔 "이번 방문에서 폰트가
-// 늦게 오면 폴백을 계속 쓰고 교체하지 않는다"를 택했다 — 첫 방문자는 폴백 폰트를
-// 볼 수 있지만(브랜드 일관성 트레이드오프), 캐시된 재방문에서는 그대로 노토
-// 산스 KR로 렌더된다. Space Grotesk(브랜드 accent, 14KB대)는 shift 기여가
-// 0.00014로 무시할 수준이라 그대로 swap을 유지한다.
+// P-CLS-1 시도 기록(되돌림): Noto Sans KR 700이 폴백을 교체하며 홈 RecommendEntryCard에
+// CLS 0.086~0.175(예산 0.051 초과)를 유발하는 것을 Lighthouse layout-shifts로 확인했다.
+// display를 swap→optional로 바꿔 실측(로컬)에서는 CLS가 거의 0으로 줄었지만, CI의
+// 콜드 로드에서는 0.093으로 절반만 줄고 여전히 예산을 넘었다 — optional도 폰트가
+// block 구간(~100ms) 안에 도착하면 그 순간 한 번은 교체되기 때문이다. 게다가
+// Noto Sans KR은 사이트 전역에서 쓰여서, display 전략을 바꾸자 홈이 아닌 다른
+// 페이지들(companion·frequency·info/* 등)의 렌더 타이밍까지 흔들려 시각 회귀
+// 베이스라인 54개가 동시에 깨졌다 — 의도한 범위보다 훨씬 넓은 부작용이었다.
+// 문제 자체(CJK 폰트 swap이 폴백과 글리프 폭 차이로 셔프트를 만든다)는 유효하지만,
+// 폰트 로딩 타이밍에 기대는 방식으로는 안정적으로 못 없앤다 — 다음 시도는 폰트
+// 메트릭 매칭(size-adjust/ascent-override) 등 타이밍과 무관한 방법이어야 한다.
 const notoSansKR = localFont({
   src: [
     { path: "../../public/fonts/noto-sans-kr-400.woff2", weight: "400" },
     { path: "../../public/fonts/noto-sans-kr-700.woff2", weight: "700" },
   ],
-  display: "optional",
+  display: "swap",
   variable: "--font-sans",
   preload: false,
 });
