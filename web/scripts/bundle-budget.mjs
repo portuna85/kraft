@@ -94,6 +94,18 @@ function layoutChunksOf(entries) {
   return layoutKeys.flatMap((key) => entries[key] ?? []);
 }
 
+/**
+ * icon.tsx/apple-icon.tsx/manifest.ts(메타데이터 라우트)를 추가하면서 Turbopack이
+ * `[project]/src/app/icon--metadata`라는 전역 공유 entry를 새로 만든다 — 이 청크
+ * (~56.7KB, 사실상 프레임워크 공용 런타임)는 모든 페이지의 `<link rel="icon">`이
+ * 참조하므로 실제로는 전 라우트가 받는다. 그런데 각 페이지 자신의 entryJSFiles
+ * 목록에는 더 이상 포함되지 않아(예전에는 페이지 청크에 이미 섞여 있었다), 레이아웃
+ * 청크처럼 별도로 더해 주지 않으면 모든 라우트가 실제보다 훨씬 작게 측정된다.
+ */
+function iconMetadataChunksOf(entries) {
+  return entries["[project]/src/app/icon--metadata"] ?? [];
+}
+
 const measured = {};
 for (const file of files) {
   const entries = readManifest(file).entryJSFiles ?? {};
@@ -110,7 +122,8 @@ for (const file of files) {
   }
 
   const layoutChunks = layoutChunksOf(entries);
-  const effective = chunks.length > 0 ? chunks : layoutChunks;
+  const iconMetadataChunks = iconMetadataChunksOf(entries);
+  const effective = [...(chunks.length > 0 ? chunks : layoutChunks), ...iconMetadataChunks];
   const unique = [...new Set(effective)];
 
   measured[routeOf(file)] = {
