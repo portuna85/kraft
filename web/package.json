@@ -21,7 +21,8 @@
     "test:coverage": "vitest run --coverage",
     "generate:api-types": "node scripts/generate-api-types.mjs",
     "verify:api-types": "node scripts/generate-api-types.mjs --verify",
-    "budget:bundle": "node scripts/bundle-budget.mjs"
+    "budget:bundle": "node scripts/bundle-budget.mjs",
+    "fetch:fonts": "node scripts/fetch-fonts.mjs"
   },
   "dependencies": {
     "next": "16.2.12",
@@ -50,6 +51,7 @@
     "msw": "^2.15.0",
     "openapi-typescript": "^7.13.0",
     "prettier": "^3.9.6",
+    "subset-font": "^2.5.0",
     "typescript": "6.0.3",
     "vitest": "^4.1.10",
     "vitest-axe": "^0.1.0"
