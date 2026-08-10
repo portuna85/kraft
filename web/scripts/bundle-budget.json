@@ -35,15 +35,15 @@
     },
     "/community/posts/[id]/edit": {
       "maxKB": 63,
-      "currentKB": 95.9
+      "currentKB": 95.8
     },
     "/community/write": {
       "maxKB": 63,
-      "currentKB": 95.9
+      "currentKB": 95.8
     },
     "/companion": {
       "maxKB": 56,
-      "currentKB": 71.3
+      "currentKB": 84
     },
     "/frequency": {
       "maxKB": 57,
@@ -59,15 +59,15 @@
     },
     "/recommend": {
       "maxKB": 64,
-      "currentKB": 103
+      "currentKB": 104.4
     },
     "/recommend/history": {
       "maxKB": 58,
-      "currentKB": 99.9
+      "currentKB": 100
     },
     "/saved": {
       "maxKB": 65,
-      "currentKB": 98.9
+      "currentKB": 99.1
     },
     "/stats": {
       "maxKB": 51,

@@ -33,6 +33,23 @@ test.describe("홈·통계 렌더", () => {
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   });
 
+  test("/companion은 처음에 12쌍만 그리고, 더 보기를 눌러도 50쌍을 넘지 않는다 (improvement_fe_codex.md §12.6, improvement_fe.md §23.5)", async ({
+    page,
+  }) => {
+    await page.goto("/companion");
+
+    const rows = page.getByRole("table").getByRole("row");
+    // 헤더 행 1개 + 본문 12개.
+    await expect(rows).toHaveCount(13);
+
+    await page.getByRole("button", { name: "상위 50개 모두 보기" }).click();
+
+    // §23.5 불변식(990쌍 전량 전송 금지, 초기 페이로드 상위 50쌍)이 살아있는 한
+    // "더 보기"로 펼쳐도 50을 넘을 수 없다 — 이 값 자체가 서버가 보낸 상한이다.
+    await expect(rows).toHaveCount(51);
+    await expect(page.getByRole("button", { name: /모두 보기/ })).not.toBeVisible();
+  });
+
   test("/analysis가 조합 진단 결과를 렌더한다", async ({ page }) => {
     await page.goto("/analysis?numbers=1,8,17,24,33,41");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();

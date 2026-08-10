@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getCompanionStats } from "@/entities/statistics/api";
 import { expectedCoOccurrence, TOTAL_PAIR_COUNT } from "@/entities/statistics/schema";
 import { CompanionPairRow } from "@/entities/statistics/ui/companion-pair-row";
+import { CompanionPairsSection } from "@/entities/statistics/ui/companion-pairs-section";
 import { ROUTES } from "@/shared/config/routes";
 import { EmptyState } from "@/shared/ui/states";
 import { Table } from "@/shared/ui/surface";
@@ -89,12 +90,8 @@ export default async function CompanionPage({
 
       <section aria-labelledby="pairs" className="stack">
         <h2 id="pairs">
-          {ball === undefined ? `자주 함께 나온 상위 ${TOP_PAIR_LIMIT}쌍` : `${ball}번이 포함된 쌍`}
+          {ball === undefined ? "자주 함께 나온 번호 쌍" : `${ball}번이 포함된 쌍`}
         </h2>
-        <p className={styles.note} role="status">
-          {pairs.length}개 쌍을 표시하고 있습니다. 배율은 쌍당 평균 {expected.toFixed(1)}회 대비
-          값입니다.
-        </p>
 
         {pairs.length === 0 ? (
           ball === undefined ? (
@@ -111,25 +108,41 @@ export default async function CompanionPage({
               action={<Link href={ROUTES.companion}>전체 쌍 보기</Link>}
             />
           )
+        ) : ball === undefined ? (
+          // 선택 전: Top 12만 먼저 그리고, "더 보기"로 이미 받아 둔 나머지(최대
+          // 50)를 추가 요청 없이 펼친다(codex §12.6, §23.5 불변식은 유지).
+          <CompanionPairsSection
+            pairs={pairs}
+            totalRounds={stats.totalRounds}
+            expectedLabel={expected.toFixed(1)}
+          />
         ) : (
-          <Table caption="번호 쌍별 동반 출현 횟수와 평균 대비 배율" captionVisible={false}>
-            <thead>
-              <tr>
-                <th scope="col">번호 쌍</th>
-                <th scope="col">함께 나온 횟수</th>
-                <th scope="col">평균 대비</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pairs.map((pair) => (
-                <CompanionPairRow
-                  key={`${pair.ballA}-${pair.ballB}`}
-                  pair={pair}
-                  totalRounds={stats.totalRounds}
-                />
-              ))}
-            </tbody>
-          </Table>
+          // 번호 필터: 서버가 그 번호가 낀 쌍 전량(최대 44개)을 돌려주고, 이 경우는
+          // 12개로 줄이지 않는다(codex도 필터 후 즉시 전체 표시를 요구한다).
+          <>
+            <p className={styles.note} role="status">
+              {pairs.length}개 쌍을 표시하고 있습니다. 배율은 쌍당 평균 {expected.toFixed(1)}회 대비
+              값입니다.
+            </p>
+            <Table caption="번호 쌍별 동반 출현 횟수와 평균 대비 배율" captionVisible={false}>
+              <thead>
+                <tr>
+                  <th scope="col">번호 쌍</th>
+                  <th scope="col">함께 나온 횟수</th>
+                  <th scope="col">평균 대비</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pairs.map((pair) => (
+                  <CompanionPairRow
+                    key={`${pair.ballA}-${pair.ballB}`}
+                    pair={pair}
+                    totalRounds={stats.totalRounds}
+                  />
+                ))}
+              </tbody>
+            </Table>
+          </>
         )}
       </section>
     </div>
