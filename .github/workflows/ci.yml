@@ -344,11 +344,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: changes
     if: needs.changes.outputs.web_next == 'true'
-    # 베이스라인이 아직 없다 — 이 실행이 실패해서 만든 actual.png를 채택한 뒤에야
-    # 의미 있는 회귀 게이트가 된다. 그 전까지는 Quality Gate의 필수 항목에 넣지
-    # 않는다(넣으면 이 커밋 다음 푸시부터 CI가 항상 실패한다). 베이스라인 채택 후
-    # Quality Gate의 needs·require_success 목록에 추가할 것.
-    continue-on-error: true
     timeout-minutes: 15
     container:
       image: mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
@@ -1031,6 +1026,7 @@ jobs:
       - web-next-e2e-default
       - web-next-e2e-a11y
       - web-next-e2e-cross-browser
+      - web-next-e2e-visual
       - web-build-artifacts
       - web-e2e
       - web-e2e-proxy
@@ -1058,6 +1054,7 @@ jobs:
           WEB_NEXT_DEFAULT_RESULT: ${{ needs.web-next-e2e-default.result }}
           WEB_NEXT_A11Y_RESULT: ${{ needs.web-next-e2e-a11y.result }}
           WEB_NEXT_CROSS_BROWSER_RESULT: ${{ needs.web-next-e2e-cross-browser.result }}
+          WEB_NEXT_VISUAL_RESULT: ${{ needs.web-next-e2e-visual.result }}
           WEB_BUILD_RESULT: ${{ needs.web-build-artifacts.result }}
           WEB_E2E_RESULT: ${{ needs.web-e2e.result }}
           WEB_E2E_PROXY_RESULT: ${{ needs.web-e2e-proxy.result }}
@@ -1094,6 +1091,7 @@ jobs:
             require_success "Web Next E2E (주요 흐름)" "$WEB_NEXT_DEFAULT_RESULT"
             require_success "Web Next E2E (접근성)" "$WEB_NEXT_A11Y_RESULT"
             require_success "Web Next E2E (크로스브라우저)" "$WEB_NEXT_CROSS_BROWSER_RESULT"
+            require_success "Web Next E2E (시각 회귀)" "$WEB_NEXT_VISUAL_RESULT"
           fi
           if [[ "$EVENT_NAME" == "push" ]]; then
             require_success "Backend image" "$BACKEND_IMAGE_RESULT"

@@ -6,8 +6,9 @@ import { defineConfig, devices } from "@playwright/test";
  * 베이스라인은 로컬에서 만들지 않는다. 로컬(Windows)과 CI(Linux, mcr.microsoft.com/
  * playwright 이미지)는 폰트 렌더링·안티에일리어싱이 달라, 로컬에서 만든 베이스라인은
  * CI에서 항상 깨진다 — 실제로 web-legacy에서 한 번 겪은 문제다
- * ([[project_visual_baseline_ci_adopt]]). 첫 실행은 실패할 것이고, 그 CI 실행이 만든
- * actual.png를 베이스라인으로 커밋한다.
+ * ([[project_visual_baseline_ci_adopt]]). `e2e/visual/baseline.spec.ts-snapshots/`의
+ * 베이스라인은 2026-08-10 CI 실행(run 31362445957)이 만든 actual.png를 그대로 채택한
+ * 것이다 — 갱신할 때도 로컬 결과를 커밋하지 말고 이 절차를 반복한다.
  *
  * maxDiffPixelRatio 0.002는 web-legacy의 playwright.visual.config.ts에서 실측으로 정한
  * 값을 그대로 가져왔다 — 0.02는 강조색 전체 변경도 못 잡았고, 0(기본값)은 같은 CI
