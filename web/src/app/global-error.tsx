@@ -1,11 +1,25 @@
 "use client";
 
+import { useEffect } from "react";
+
+import { reportClientError } from "@/shared/lib/report-client-error";
+
 /**
  * 루트 레이아웃 자체가 실패한 경우 — improvement_fe.md §7.6
  * 이 경계는 자체 <html>/<body>를 렌더해야 한다(루트 레이아웃이 죽은 상태이므로).
  * 토큰 CSS도 못 붙은 상황을 가정해 인라인 스타일 없이 최소한만 그린다.
  */
-export default function GlobalError({ reset }: { error: Error; reset: () => void }) {
+export default function GlobalError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  useEffect(() => {
+    reportClientError(error, "global");
+  }, [error]);
+
   return (
     <html lang="ko">
       <body>

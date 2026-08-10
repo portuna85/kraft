@@ -1,13 +1,21 @@
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
 
+import type { components } from "@/generated/api-types";
+
 import {
   isWinning,
   NO_PRIZE_TIER,
   saveNumberResultSchema,
   savedNumberMatchSchema,
   savedNumberSchema,
+  type SavedNumber,
 } from "./schema";
+
+/** 생성 타입과의 정합성 — improvement_fe.md §8.4 */
+type GeneratedSavedNumber = components["schemas"]["SavedNumberResponse"];
+const _typesMatch: SavedNumber extends GeneratedSavedNumber ? true : never = true;
+void _typesMatch;
 
 describe("저장 번호 스키마", () => {
   const VALID = {

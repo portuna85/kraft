@@ -1,5 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
+
+import { reportClientError } from "@/shared/lib/report-client-error";
+
 /**
  * 세션 셸 오류 경계 — improvement_fe.md §7.6
  *
@@ -7,7 +11,17 @@
  * activeProviders가 비어 로그인 링크마저 사라지고 복구 경로가 없어진다 —
  * 실제로 한 번 일어난 사고다(레거시 FE-005).
  */
-export default function SessionError({ reset }: { error: Error; reset: () => void }) {
+export default function SessionError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  useEffect(() => {
+    reportClientError(error, "session");
+  }, [error]);
+
   return (
     <div className="prose stack">
       <h1>화면을 불러오지 못했습니다</h1>
