@@ -12,6 +12,7 @@ import { expectNoA11yViolations } from "../lib/expect-no-a11y-violations";
  */
 const PAGES: Array<{ name: string; path: string }> = [
   { name: "홈", path: "/" },
+  { name: "데이터 허브", path: "/data" },
   { name: "번호 추천", path: "/recommend" },
   { name: "추천 이력", path: "/recommend/history" },
   { name: "번호 분석", path: "/analysis?numbers=1,8,17,24,33,41" },

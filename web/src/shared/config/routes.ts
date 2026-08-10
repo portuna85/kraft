@@ -10,6 +10,7 @@ export const ROUTES = {
   home: "/",
   recommend: "/recommend",
   recommendHistory: "/recommend/history",
+  data: "/data",
   frequency: "/frequency",
   stats: "/stats",
   companion: "/companion",

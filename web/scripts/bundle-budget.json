@@ -63,7 +63,7 @@
     },
     "/recommend/history": {
       "maxKB": 58,
-      "currentKB": 99.8
+      "currentKB": 99.9
     },
     "/saved": {
       "maxKB": 65,
@@ -75,6 +75,9 @@
     },
     "/status": {
       "maxKB": 51,
+      "currentKB": 71.3
+    },
+    "/data": {
       "currentKB": 71.3
     }
   }

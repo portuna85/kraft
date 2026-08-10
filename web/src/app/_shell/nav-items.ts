@@ -22,6 +22,7 @@ export const PRIMARY_NAV: NavGroup[] = [
   {
     title: "통계 보기",
     items: [
+      { href: ROUTES.data, label: "데이터" },
       { href: ROUTES.frequency, label: "번호별 출현" },
       { href: ROUTES.stats, label: "당첨 패턴" },
       { href: ROUTES.companion, label: "함께 나온 번호" },
@@ -37,7 +38,7 @@ export const PRIMARY_NAV: NavGroup[] = [
 export const TAB_BAR_ITEMS: NavItem[] = [
   { href: ROUTES.home, label: "홈" },
   { href: ROUTES.recommend, label: "추천" },
-  { href: ROUTES.frequency, label: "통계" },
+  { href: ROUTES.data, label: "데이터" },
   { href: ROUTES.community, label: "커뮤니티" },
   { href: ROUTES.saved, label: "보관함" },
 ];

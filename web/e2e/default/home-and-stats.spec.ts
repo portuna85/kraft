@@ -37,4 +37,38 @@ test.describe("홈·통계 렌더", () => {
     await page.goto("/analysis?numbers=1,8,17,24,33,41");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   });
+
+  test("/data 허브가 4개 기능 카드를 렌더하고 각 카드가 해당 라우트로 이동한다", async ({
+    page,
+  }) => {
+    await page.goto("/data");
+    await expect(page.getByRole("heading", { name: "데이터와 분석" })).toBeVisible();
+
+    const cards: Array<[string, RegExp]> = [
+      ["출현 통계", /\/frequency$/],
+      ["패턴 통계", /\/stats$/],
+      ["동반 출현", /\/companion$/],
+      ["번호 분석", /\/analysis$/],
+    ];
+    for (const [title] of cards) {
+      await expect(page.getByRole("heading", { name: title })).toBeVisible();
+    }
+
+    await page
+      .getByRole("listitem")
+      .filter({ hasText: "패턴 통계" })
+      .getByRole("link", { name: "보기" })
+      .click();
+    await expect(page).toHaveURL(/\/stats$/);
+  });
+
+  test("모바일 하단 탭 '데이터'가 /data로 이동한다", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    await page
+      .getByRole("navigation", { name: "바로가기" })
+      .getByRole("link", { name: "데이터" })
+      .click();
+    await expect(page).toHaveURL(/\/data$/);
+  });
 });
