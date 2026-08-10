@@ -2,13 +2,8 @@ import type { ReactNode } from "react";
 
 import { formatDateTime } from "@/shared/lib/format";
 
-import { LottoBallSet } from "../../round/ui/lotto-ball";
-import {
-  EXPLANATION_LABELS,
-  STRATEGY_LABELS,
-  type RecommendationItem,
-  type Strategy,
-} from "../schema";
+import { STRATEGY_LABELS, type RecommendationItem, type Strategy } from "../schema";
+import { RecommendationResultRow } from "./recommendation-result-row";
 
 import styles from "./recommendation-card.module.css";
 
@@ -41,21 +36,14 @@ export function RecommendationCard({
       </p>
 
       <ol className={styles.items}>
-        {items.map((item) => (
-          <li key={item.position} className={styles.item}>
-            <LottoBallSet numbers={item.numbers} />
-
-            {item.explanationCodes.length > 0 && (
-              <ul className={styles.explanations}>
-                {item.explanationCodes.map((code) => (
-                  <li key={code}>{EXPLANATION_LABELS[code]}</li>
-                ))}
-              </ul>
-            )}
-
-            {renderSaveSlot !== undefined && (
-              <div className={styles.saveSlot}>{renderSaveSlot(item)}</div>
-            )}
+        {items.map((item, index) => (
+          <li key={item.position}>
+            <RecommendationResultRow
+              index={index + 1}
+              numbers={item.numbers}
+              explanationCodes={item.explanationCodes}
+              action={renderSaveSlot?.(item)}
+            />
           </li>
         ))}
       </ol>

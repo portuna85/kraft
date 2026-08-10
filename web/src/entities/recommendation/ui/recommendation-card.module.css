@@ -13,44 +13,17 @@
     color: var(--color-ink-muted);
   }
 
+  /* 조합 한 줄 자체의 레이아웃은 RecommendationResultRow가 소유한다 — 여기는
+   * 목록 wrapper의 기본 스타일만 남긴다. 구분선은 RecommendationResultRow의
+   * `.row + .row`가 아니라 여기서 <li> 단위로 그린다 — <li>로 한 번 감싸면
+   * .row끼리는 더 이상 형제가 아니라 그 규칙이 안 먹는다. */
   .items {
-    display: grid;
-    gap: var(--space-3);
     list-style: none;
     padding: 0;
     margin: 0;
   }
 
-  .item {
-    display: grid;
-    gap: var(--space-2);
-    padding-block: var(--space-2);
-  }
-
-  .item + .item {
+  .items > li + li {
     border-top: 1px solid var(--color-border);
-  }
-
-  .explanations {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    padding: 0;
-    margin: 0;
-    list-style: none;
-    font-size: var(--text-sm);
-    color: var(--color-ink-muted);
-  }
-
-  .explanations li::before {
-    content: "· ";
-  }
-
-  .explanations li:first-child::before {
-    content: "";
-  }
-
-  .saveSlot {
-    display: flex;
   }
 }

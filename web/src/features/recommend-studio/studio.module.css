@@ -43,26 +43,28 @@
     font-size: var(--text-sm);
   }
 
+  /* 조합 한 줄 자체의 레이아웃은 RecommendationResultRow가 소유한다 — 여기는
+   * 목록 wrapper와, <li>로 감쌌기 때문에 못 먹는 행 간 구분선만 맡는다
+   * (improvement_fe_codex.md §12.2 — 5개 이상이면 12px 간격). */
   .results {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--space-3);
+    list-style: none;
+    padding: 0;
+    margin: 0;
   }
 
-  .resultHeader {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
+  .results > li {
+    padding-block: var(--space-3);
   }
 
-  .explanations {
+  .results > li + li {
+    border-top: 1px solid var(--color-border);
+  }
+
+  .resultAction {
     display: flex;
     flex-direction: column;
+    align-items: flex-end;
     gap: var(--space-1);
-    color: var(--color-ink-muted);
-    font-size: var(--text-sm);
   }
 
   .saveStatus {

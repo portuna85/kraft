@@ -59,11 +59,11 @@
     },
     "/recommend": {
       "maxKB": 64,
-      "currentKB": 104.4
+      "currentKB": 105.5
     },
     "/recommend/history": {
       "maxKB": 58,
-      "currentKB": 100
+      "currentKB": 100.6
     },
     "/saved": {
       "maxKB": 65,

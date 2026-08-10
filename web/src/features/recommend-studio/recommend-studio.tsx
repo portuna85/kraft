@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+
 import {
-  EXPLANATION_LABELS,
   MAX_COUNT,
   MAX_LOCKED_NUMBERS,
   MIN_COUNT,
@@ -9,7 +10,7 @@ import {
   STRATEGY_DESCRIPTIONS,
   STRATEGY_LABELS,
 } from "@/entities/recommendation/schema";
-import { LottoBallSet } from "@/entities/round/ui/lotto-ball";
+import { RecommendationResultRow } from "@/entities/recommendation/ui/recommendation-result-row";
 import { NumberGrid } from "@/entities/round/ui/number-grid";
 import { useSession } from "@/entities/user-session/session-context";
 import { Button } from "@/shared/ui/button";
@@ -33,6 +34,21 @@ export function RecommendStudio() {
   const loggedIn = session.session?.loggedIn === true;
 
   const studio = useRecommendStudio({ loggedIn });
+
+  const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
+
+  /**
+   * 생성 성공 시 결과로 포커스를 옮긴다 — improvement_fe_codex.md §12.2.
+   *
+   * 특히 모바일에서 "조합 만들기"를 누른 뒤 스크린리더·키보드 사용자가 결과를
+   * 직접 찾아 내려가야 하는 부담을 없앤다. `tabIndex={-1}`이라 클릭으로는
+   * 못 가지만 스크립트로는 갈 수 있다.
+   */
+  useEffect(() => {
+    if (studio.state.status === "ready") {
+      resultsHeadingRef.current?.focus();
+    }
+  }, [studio.state.status]);
 
   return (
     <div className="stack">
@@ -139,41 +155,49 @@ export function RecommendStudio() {
 
       {studio.state.status === "ready" && (
         <section aria-labelledby="results" className="stack">
-          <h2 id="results">추천 조합</h2>
-          <div className={styles.results}>
-            {studio.state.result.recommendations.map((numbers, index) => {
-              const item =
-                studio.state.status === "ready" ? studio.state.result.items?.[index] : undefined;
-              const outcome = studio.saveOutcomes.get(index);
+          <h2 id="results" ref={resultsHeadingRef} tabIndex={-1}>
+            추천 조합
+          </h2>
+          <p className="sr-only" role="status">
+            {studio.state.result.recommendations.length}개 조합이 생성되었습니다.
+          </p>
 
-              return (
-                <Card key={numbers.join("-")} level={1}>
-                  <div className={styles.resultHeader}>
-                    <LottoBallSet numbers={numbers} />
-                    <Button variant="secondary" onClick={() => void studio.save(index, numbers)}>
-                      보관함에 저장
-                    </Button>
-                  </div>
+          <Card level={1}>
+            <ol className={styles.results}>
+              {studio.state.result.recommendations.map((numbers, index) => {
+                const item =
+                  studio.state.status === "ready" ? studio.state.result.items?.[index] : undefined;
+                const outcome = studio.saveOutcomes.get(index);
 
-                  {item !== undefined && item.explanationCodes.length > 0 && (
-                    <ul className={styles.explanations}>
-                      {item.explanationCodes.map((code) => (
-                        <li key={code}>{EXPLANATION_LABELS[code]}</li>
-                      ))}
-                    </ul>
-                  )}
-
-                  {outcome !== undefined && (
-                    <p className={styles.saveStatus} role="status">
-                      {outcome.kind === "saved" && "저장했습니다."}
-                      {outcome.kind === "duplicate" && "이미 저장한 조합입니다."}
-                      {outcome.kind === "failed" && outcome.message}
-                    </p>
-                  )}
-                </Card>
-              );
-            })}
-          </div>
+                return (
+                  <li key={numbers.join("-")}>
+                    <RecommendationResultRow
+                      index={index + 1}
+                      numbers={numbers}
+                      explanationCodes={item?.explanationCodes}
+                      action={
+                        <div className={styles.resultAction}>
+                          <Button
+                            variant="secondary"
+                            onClick={() => void studio.save(index, numbers)}
+                          >
+                            보관함에 저장
+                          </Button>
+                          {outcome !== undefined && (
+                            <p className={styles.saveStatus} role="status">
+                              {outcome.kind === "saved" && "저장했습니다."}
+                              {outcome.kind === "duplicate" && "이미 저장한 조합입니다."}
+                              {outcome.kind === "failed" && outcome.message}
+                            </p>
+                          )}
+                        </div>
+                      }
+                    />
+                  </li>
+                );
+              })}
+            </ol>
+          </Card>
         </section>
       )}
     </div>
