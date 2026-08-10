@@ -13,21 +13,69 @@
     "(의도적으로 늘린 경우에만, 이유를 커밋 메시지에 남기고 갱신한다)"
   ],
   "routes": {
-    "/": { "maxKB": 52, "currentKB": 67.5 },
-    "/_not-found": { "maxKB": 51, "currentKB": 56.7 },
-    "/analysis": { "maxKB": 61, "currentKB": 74.7 },
-    "/community": { "maxKB": 51, "currentKB": 80.2 },
-    "/community/posts/[id]": { "maxKB": 62, "currentKB": 102.2 },
-    "/community/posts/[id]/edit": { "maxKB": 63, "currentKB": 91.9 },
-    "/community/write": { "maxKB": 63, "currentKB": 91.9 },
-    "/companion": { "maxKB": 56, "currentKB": 67.5 },
-    "/frequency": { "maxKB": 57, "currentKB": 67.5 },
-    "/info/[slug]": { "maxKB": 51, "currentKB": 67.5 },
-    "/ops": { "maxKB": 62, "currentKB": 56.7 },
-    "/recommend": { "maxKB": 64, "currentKB": 99 },
-    "/recommend/history": { "maxKB": 58, "currentKB": 95.8 },
-    "/saved": { "maxKB": 65, "currentKB": 94.9 },
-    "/stats": { "maxKB": 51, "currentKB": 67.5 },
-    "/status": { "maxKB": 51, "currentKB": 67.5 }
+    "/": {
+      "maxKB": 52,
+      "currentKB": 71.3
+    },
+    "/_not-found": {
+      "maxKB": 51,
+      "currentKB": 56.7
+    },
+    "/analysis": {
+      "maxKB": 61,
+      "currentKB": 77.1
+    },
+    "/community": {
+      "maxKB": 51,
+      "currentKB": 87.7
+    },
+    "/community/posts/[id]": {
+      "maxKB": 62,
+      "currentKB": 106.2
+    },
+    "/community/posts/[id]/edit": {
+      "maxKB": 63,
+      "currentKB": 95.9
+    },
+    "/community/write": {
+      "maxKB": 63,
+      "currentKB": 95.9
+    },
+    "/companion": {
+      "maxKB": 56,
+      "currentKB": 71.3
+    },
+    "/frequency": {
+      "maxKB": 57,
+      "currentKB": 71.3
+    },
+    "/info/[slug]": {
+      "maxKB": 51,
+      "currentKB": 71.3
+    },
+    "/ops": {
+      "maxKB": 62,
+      "currentKB": 56.7
+    },
+    "/recommend": {
+      "maxKB": 64,
+      "currentKB": 103
+    },
+    "/recommend/history": {
+      "maxKB": 58,
+      "currentKB": 99.8
+    },
+    "/saved": {
+      "maxKB": 65,
+      "currentKB": 98.9
+    },
+    "/stats": {
+      "maxKB": 51,
+      "currentKB": 71.3
+    },
+    "/status": {
+      "maxKB": 51,
+      "currentKB": 71.3
+    }
   }
 }

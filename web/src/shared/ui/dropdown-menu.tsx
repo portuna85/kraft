@@ -6,7 +6,7 @@ import { useDisclosure } from "@/shared/hooks/use-disclosure";
 
 import styles from "./overlay.module.css";
 
-export type MenuItem = { label: string; onSelect: () => void };
+export type MenuItem = { label: string } & ({ onSelect: () => void } | { href: string });
 
 /**
  * DropdownMenu — improvement_fe.md §9.3
@@ -82,20 +82,27 @@ export function DropdownMenu({
           aria-label={label}
           onKeyDown={onMenuKeyDown}
         >
-          {items.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              role="menuitem"
-              className={styles.menuItem}
-              onClick={() => {
-                close();
-                item.onSelect();
-              }}
-            >
-              {item.label}
-            </button>
-          ))}
+          {items.map((item) =>
+            "href" in item ? (
+              // OAuth 등 전체 페이지 이동이 필요한 항목 — onClick으로 fetch하면 안 된다.
+              <a key={item.label} role="menuitem" className={styles.menuItem} href={item.href}>
+                {item.label}
+              </a>
+            ) : (
+              <button
+                key={item.label}
+                type="button"
+                role="menuitem"
+                className={styles.menuItem}
+                onClick={() => {
+                  close();
+                  item.onSelect();
+                }}
+              >
+                {item.label}
+              </button>
+            ),
+          )}
         </div>
       )}
     </div>

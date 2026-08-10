@@ -1,3 +1,4 @@
+import { CSRF_HEADER_NAME, readCsrfToken } from "@/shared/api/csrf";
 import { browserMutate, browserQuery } from "@/shared/api/transport";
 
 import { claimDeviceSchema, communitySessionSchema, type CommunitySession } from "./schema";
@@ -31,4 +32,29 @@ export function claimDevice(signal?: AbortSignal): Promise<unknown> {
     deviceScoped: true,
     ...(signal === undefined ? {} : { signal }),
   });
+}
+
+/**
+ * 로그아웃 — Spring Security 기본 `/logout`이라 JSON을 돌려주지 않는다.
+ *
+ * `logoutSuccessUrl`로 302 리다이렉트한다(`CommunitySecurityConfig`) — `browserMutate`는
+ * 모든 쓰기 요청에 스키마 검증을 강제하므로(§13.1 원칙 1) JSON이 아닌 이 응답에는 쓸 수
+ * 없다. web-legacy `community-client.ts`의 `logout()`과 같은 이유로 raw fetch를 쓴다.
+ * 실패해도 던지지 않고 boolean으로 알린다 — 호출부가 재시도 문구만 보여주면 된다.
+ */
+export async function logout(): Promise<boolean> {
+  const csrf = readCsrfToken();
+  if (csrf === null) return false;
+
+  try {
+    const response = await fetch("/logout", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { [CSRF_HEADER_NAME]: csrf },
+      signal: AbortSignal.timeout(5000),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
