@@ -64,7 +64,10 @@ export function ReportDialog({
 
   return (
     <>
-      <Button variant="quiet" onClick={() => setOpen(true)}>
+      {/* danger ghost/text — improvement_fe_codex.md §12.9. 신고는 부차 행동이라
+          full-width gradient primary처럼 강한 톤을 쓰면 안 되지만, quiet(중립
+          색)로는 "위험/신고" 신호가 아예 없어져 danger 색의 ghost로 둔다. */}
+      <Button variant="dangerQuiet" onClick={() => setOpen(true)}>
         {label}
       </Button>
 

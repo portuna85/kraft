@@ -170,7 +170,8 @@ export function SavedLibrary({ latestRound }: { latestRound: number }) {
                   <span className={styles.savedAt}>
                     {formatDrawDate(item.createdAt.slice(0, 10))}
                   </span>
-                  <Button variant="quiet" onClick={() => setDeleteTarget(item)}>
+                  {/* danger ghost — improvement_fe_codex.md §12.10 "delete는 danger ghost". */}
+                  <Button variant="dangerQuiet" onClick={() => setDeleteTarget(item)}>
                     삭제
                   </Button>
                 </div>

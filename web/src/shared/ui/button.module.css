@@ -76,6 +76,21 @@
     color: #ffffff;
   }
 
+  /*
+   * "danger ghost/text button" — improvement_fe_codex.md §12.9, §12.10.
+   * .quiet(중립 색)로는 위험 행동이라는 신호가 없고, .danger(꽉 찬 배경)는
+   * 신고·삭제처럼 부차적인 행동에 쓰기엔 시각 무게가 과하다 — 신고/삭제
+   * 버튼은 눈에 띄되 주요 액션과 경쟁하면 안 된다.
+   */
+  .dangerQuiet {
+    background: transparent;
+    color: var(--color-danger);
+  }
+
+  .dangerQuiet:hover:not(:disabled) {
+    background: var(--color-surface-1);
+  }
+
   .iconButton {
     padding-inline: 0;
   }

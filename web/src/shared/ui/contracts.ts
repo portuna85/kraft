@@ -16,7 +16,7 @@ export type Size = "sm" | "md" | "lg";
 
 /* ── Button ──────────────────────────────────────────────────────────── */
 
-export type ButtonVariant = "primary" | "secondary" | "quiet" | "danger";
+export type ButtonVariant = "primary" | "secondary" | "quiet" | "danger" | "dangerQuiet";
 
 type ButtonBase = {
   variant?: ButtonVariant;

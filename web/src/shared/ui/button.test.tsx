@@ -47,6 +47,19 @@ describe("Button", () => {
     await userEvent.click(screen.getByRole("button", { name: "저장" }));
     expect(onClick).not.toHaveBeenCalled();
   });
+
+  it("dangerQuiet 변형도 일반 버튼처럼 클릭 가능하다 (improvement_fe_codex.md §12.9)", async () => {
+    const onClick = vi.fn();
+    const { default: userEvent } = await import("@testing-library/user-event");
+    render(
+      <Button variant="dangerQuiet" onClick={onClick}>
+        신고
+      </Button>,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "신고" }));
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("IconButton", () => {
