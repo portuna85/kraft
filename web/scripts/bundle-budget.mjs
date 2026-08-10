@@ -8,11 +8,18 @@
 // 하나도 없는 순수 RSC 라우트는 자기 키가 아예 없으므로, 그 경우 레이아웃 단독 크기를
 // 바닥값으로 쓴다 — 안 그러면 그 라우트가 측정에서 통째로 빠진다.
 //
+// 측정 단위는 gzip이다(improvement_fe_codex.md §17.4 — "Initial route JS <=180KB
+// gzip"). 브라우저가 실제로 받는 바이트는 원본이 아니라 서버가 압축해 보내는 바이트라,
+// raw byte로 재면 목표치와 비교 자체가 안 맞는다. `maxKB`(목표)는 이번에 같이
+// 재산정하지 않는다 — codex도 "구현 후 측정해 확정한다"고 해 뒀으니, 실측치를 몇 번
+// 더 쌓은 뒤 별도로 판단한다.
+//
 //   npm run build && npm run budget:bundle          측정 + 예산 비교
 //   node scripts/bundle-budget.mjs --save-baseline  이번 측정치를 예산으로 저장
-import { existsSync, globSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, globSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { gzipSync } from "node:zlib";
 
 const webDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const distDir = path.join(webDir, process.env.NEXT_DIST_DIR ?? ".next");
@@ -76,10 +83,14 @@ function ownEntryKey(file, entries) {
   return pageKeys.length === 1 ? pageKeys[0] : null;
 }
 
+/** gzip 압축 후 바이트 수 — 브라우저가 실제로 내려받는 크기(codex §17.4). */
+function gzipSize(file) {
+  return existsSync(file) ? gzipSync(readFileSync(file)).length : 0;
+}
+
 function chunkBytes(chunks) {
   return [...new Set(chunks)].reduce((sum, chunk) => {
-    const file = path.join(distDir, chunk);
-    return sum + (existsSync(file) ? statSync(file).size : 0);
+    return sum + gzipSize(path.join(distDir, chunk));
   }, 0);
 }
 
@@ -133,7 +144,7 @@ for (const file of files) {
   };
 }
 
-console.log("라우트별 초기 클라이언트 JS (내림차순):");
+console.log("라우트별 초기 클라이언트 JS, gzip 기준 (내림차순):");
 for (const [route, info] of Object.entries(measured).sort((a, b) => b[1].totalKB - a[1].totalKB)) {
   console.log(`  ${String(info.totalKB).padStart(7)} KB  (청크 ${info.chunkCount}개)  ${route}`);
   // 어떤 청크가 무게를 차지하는지 없이는 "예산 초과"를 고칠 방법을 알 수 없다.
