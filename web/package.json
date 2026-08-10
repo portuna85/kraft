@@ -11,6 +11,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "start": "node scripts/start-standalone.mjs",
+    "e2e:fixture": "node e2e/fixtures/backend.mjs",
+    "e2e:serve": "node scripts/start-standalone.mjs",
     "test": "vitest run",
     "test:e2e:proxy": "playwright test --config=playwright.proxy.config.ts",
     "test:e2e:default": "playwright test --config=playwright.default.config.ts",
@@ -21,10 +23,12 @@
     "test:coverage": "vitest run --coverage",
     "generate:api-types": "node scripts/generate-api-types.mjs",
     "verify:api-types": "node scripts/generate-api-types.mjs --verify",
-    "budget:bundle": "node scripts/bundle-budget.mjs"
+    "budget:bundle": "node scripts/bundle-budget.mjs",
+    "budget:lighthouse": "node scripts/lighthouse-budget.mjs",
+    "fetch:fonts": "node scripts/fetch-fonts.mjs"
   },
   "dependencies": {
-    "next": "16.2.12",
+    "next": "16.3.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "valibot": "^1.4.2"
@@ -44,14 +48,20 @@
     "@types/react-dom": "19.2.4",
     "@vitest/coverage-v8": "^4.1.10",
     "axe-core": "^4.13.0",
+    "chrome-launcher": "^1.2.1",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.12",
     "jsdom": "^30.0.1",
+    "lighthouse": "^13.4.1",
     "msw": "^2.15.0",
     "openapi-typescript": "^7.13.0",
     "prettier": "^3.9.6",
+    "subset-font": "^2.5.0",
     "typescript": "6.0.3",
     "vitest": "^4.1.10",
     "vitest-axe": "^0.1.0"
+  },
+  "overrides": {
+    "js-yaml": "^4.3.1"
   }
 }

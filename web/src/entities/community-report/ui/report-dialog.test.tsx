@@ -30,7 +30,7 @@ describe("신고 다이얼로그", () => {
 
     render(<ReportDialog targetType="COMMENT" targetId={5} label="신고" />);
     await user.click(screen.getByRole("button", { name: "신고" }));
-    await user.click(screen.getByLabelText("욕설/괴롭힘"));
+    await user.click(await screen.findByLabelText("욕설/괴롭힘"));
     await user.click(screen.getByRole("button", { name: "신고하기" }));
 
     await waitFor(() => {
@@ -47,7 +47,7 @@ describe("신고 다이얼로그", () => {
 
     render(<ReportDialog targetType="POST" targetId={1} label="신고" />);
     await user.click(screen.getByRole("button", { name: "신고" }));
-    await user.click(screen.getByRole("button", { name: "신고하기" }));
+    await user.click(await screen.findByRole("button", { name: "신고하기" }));
 
     expect(
       await screen.findByText("신고를 접수하지 못했습니다. 잠시 후 다시 시도해 주세요."),
