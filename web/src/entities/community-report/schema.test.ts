@@ -1,0 +1,19 @@
+import { describe, expect, it } from "vitest";
+
+import { REPORT_REASON_LABELS, REPORT_REASONS, REPORT_TARGET_TYPES } from "./schema";
+
+describe("신고 사유 계약", () => {
+  it("모든 사유에 라벨이 있다", () => {
+    for (const reason of REPORT_REASONS) {
+      expect(REPORT_REASON_LABELS[reason]).toBeTruthy();
+    }
+  });
+
+  it("라벨에 없는 사유는 없다", () => {
+    expect(Object.keys(REPORT_REASON_LABELS).sort()).toEqual([...REPORT_REASONS].sort());
+  });
+
+  it("신고 대상 유형은 게시글·댓글·사용자 3종이다", () => {
+    expect(REPORT_TARGET_TYPES).toEqual(["POST", "COMMENT", "USER"]);
+  });
+});
