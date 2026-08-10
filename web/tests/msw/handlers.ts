@@ -103,7 +103,13 @@ const COMMUNITY_COMMENT = {
 };
 
 const STATUS_INCIDENTS = [
-  { round: 1150, type: "EXTERNAL_COLLECT", resolved: true, occurredAt: "2026-08-01T12:00:00Z", occurrences: 1 },
+  {
+    round: 1150,
+    type: "EXTERNAL_COLLECT",
+    resolved: true,
+    occurredAt: "2026-08-01T12:00:00Z",
+    occurrences: 1,
+  },
 ];
 
 const RECOMMENDATION_SET_PAGE = {
@@ -146,7 +152,10 @@ export const handlers: RequestHandler[] = [
     });
   }),
   http.delete("/api/v1/saved/:id", () => new HttpResponse(null, { status: 204 })),
-  http.delete("/api/v1/community/me/saved-numbers/:id", () => new HttpResponse(null, { status: 204 })),
+  http.delete(
+    "/api/v1/community/me/saved-numbers/:id",
+    () => new HttpResponse(null, { status: 204 }),
+  ),
 
   // 댓글 — 상위·답글 2단 구조를 실제 스키마로 왕복시킨다(§25.6).
   http.get(`${BACKEND}/api/v1/community/posts/:postId/comments`, () =>
@@ -202,5 +211,8 @@ export const handlers: RequestHandler[] = [
     HttpResponse.json(RECOMMENDATION_SET_PAGE),
   ),
   http.delete("/api/v1/recommendation-sets/:id", () => new HttpResponse(null, { status: 204 })),
-  http.delete("/api/v1/community/me/recommendation-sets/:id", () => new HttpResponse(null, { status: 204 })),
+  http.delete(
+    "/api/v1/community/me/recommendation-sets/:id",
+    () => new HttpResponse(null, { status: 204 }),
+  ),
 ];

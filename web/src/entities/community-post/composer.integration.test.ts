@@ -25,10 +25,7 @@ describe("게시글 작성·수정 API — MSW 통합", () => {
   });
 
   it("작성 응답이 게시글 스키마를 통과한다", async () => {
-    const post = await createPost(
-      { title: "제목", content: "내용", category: "GENERAL" },
-      null,
-    );
+    const post = await createPost({ title: "제목", content: "내용", category: "GENERAL" }, null);
     expect(post.title).toBe("제목");
     expect(post.status).toBe("PUBLISHED");
   });
@@ -40,7 +37,11 @@ describe("게시글 작성·수정 API — MSW 통합", () => {
       ),
     );
 
-    const error = await updatePost(1, { title: "제목", content: "내용", category: "GENERAL" }, 3).then(
+    const error = await updatePost(
+      1,
+      { title: "제목", content: "내용", category: "GENERAL" },
+      3,
+    ).then(
       () => null,
       (cause: unknown) => cause as ApiError,
     );

@@ -36,7 +36,9 @@ describe("신고 다이얼로그", () => {
     await waitFor(() => {
       expect(reportContent).toHaveBeenCalledWith("COMMENT", 5, "HARASSMENT");
     });
-    expect(await screen.findByText("신고가 접수됐습니다. 운영진이 확인합니다.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("신고가 접수됐습니다. 운영진이 확인합니다."),
+    ).toBeInTheDocument();
   });
 
   it("접수 실패 시 오류 문구를 보여주고 다이얼로그를 유지한다", async () => {

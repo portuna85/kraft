@@ -54,7 +54,9 @@ describe("좋아요·북마크", () => {
 
   it("비로그인은 버튼 대신 안내 문구만 본다", () => {
     render_(ANONYMOUS);
-    expect(screen.getByText("좋아요 3개 · 로그인하면 좋아요와 북마크를 남길 수 있습니다.")).toBeInTheDocument();
+    expect(
+      screen.getByText("좋아요 3개 · 로그인하면 좋아요와 북마크를 남길 수 있습니다."),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
@@ -66,7 +68,10 @@ describe("좋아요·북마크", () => {
     const button = screen.getByRole("button", { name: "좋아요 3" });
     await user.click(button);
 
-    expect(screen.getByRole("button", { name: "좋아요 4" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "좋아요 4" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     await waitFor(() => expect(likePost).toHaveBeenCalledWith(1, true));
   });
 
