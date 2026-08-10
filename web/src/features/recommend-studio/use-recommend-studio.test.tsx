@@ -142,20 +142,33 @@ describe("추천 스튜디오", () => {
   });
 });
 
-describe("번호 3단 토글", () => {
-  it("none → locked → excluded → none 순으로 바뀐다", () => {
+describe("번호 선택 모드 (improvement_fe_codex.md §11.3)", () => {
+  it("기본 모드는 고정이다", () => {
+    const { result } = renderHook(() => useRecommendStudio({ loggedIn: false }));
+    expect(result.current.selectionMode).toBe("locked");
+  });
+
+  it("현재 모드에서 누르면 선택되고, 같은 모드에서 다시 누르면 해제된다", () => {
     const { result } = renderHook(() => useRecommendStudio({ loggedIn: false }));
 
     act(() => result.current.toggleNumber(7));
     expect(result.current.lockedNumbers).toEqual([7]);
 
     act(() => result.current.toggleNumber(7));
-    expect(result.current.excludedNumbers).toEqual([7]);
     expect(result.current.lockedNumbers).toEqual([]);
+  });
 
-    act(() => result.current.toggleNumber(7));
+  it("반대 모드에 있던 번호를 누르면 반대 모드에서 빠지고 현재 모드로 옮겨간다", () => {
+    const { result } = renderHook(() => useRecommendStudio({ loggedIn: false }));
+
+    act(() => result.current.toggleNumber(7)); // locked 모드에서 고정
+    expect(result.current.lockedNumbers).toEqual([7]);
+
+    act(() => result.current.setSelectionMode("excluded"));
+    act(() => result.current.toggleNumber(7)); // excluded 모드에서 같은 번호
+
     expect(result.current.lockedNumbers).toEqual([]);
-    expect(result.current.excludedNumbers).toEqual([]);
+    expect(result.current.excludedNumbers).toEqual([7]);
   });
 
   it("고정은 5개를 넘지 않는다", () => {
@@ -166,6 +179,17 @@ describe("번호 3단 토글", () => {
     }
 
     expect(result.current.lockedNumbers).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("제외 모드에는 고정 상한이 적용되지 않는다", () => {
+    const { result } = renderHook(() => useRecommendStudio({ loggedIn: false }));
+    act(() => result.current.setSelectionMode("excluded"));
+
+    for (const value of [1, 2, 3, 4, 5, 6]) {
+      act(() => result.current.toggleNumber(value));
+    }
+
+    expect(result.current.excludedNumbers).toEqual([1, 2, 3, 4, 5, 6]);
   });
 });
 

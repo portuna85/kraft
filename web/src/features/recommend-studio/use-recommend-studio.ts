@@ -37,9 +37,12 @@ export type StudioState =
 export type SaveOutcome =
   { kind: "saved" } | { kind: "duplicate" } | { kind: "failed"; message: string };
 
+export type SelectionMode = "locked" | "excluded";
+
 export function useRecommendStudio({ loggedIn }: { loggedIn: boolean }) {
   const [strategy, setStrategy] = useState<Strategy>("balanced");
   const [count, setCount] = useState(5);
+  const [selectionMode, setSelectionMode] = useState<SelectionMode>("locked");
   const [marks, setMarks] = useState<Map<number, NumberMark>>(new Map());
   const [state, setState] = useState<StudioState>({ status: "idle" });
   const [saveOutcomes, setSaveOutcomes] = useState<Map<number, SaveOutcome>>(new Map());
@@ -57,27 +60,34 @@ export function useRecommendStudio({ loggedIn }: { loggedIn: boolean }) {
     .map(([value]) => value)
     .sort((a, b) => a - b);
 
-  /** 3단 토글: none → locked → excluded → none (§3.2) */
+  /**
+   * 모드 기반 선택 — improvement_fe_codex.md §11.3
+   *
+   * 3단 순환 클릭(none→locked→excluded→none) 대신, 상단 세그먼트 컨트롤로 먼저
+   * 모드를 고르고 번호는 그 모드로만 선택/해제한다. 반대 모드에 이미 있는
+   * 번호를 누르면 반대 모드에서 빠지고 현재 모드로 옮겨간다 — `marks`가 번호당
+   * 값 하나만 갖는 Map이라 `.set()` 한 번으로 "제거 후 이동"이 함께 일어난다.
+   */
   const toggleNumber = useCallback(
     (value: number) => {
       setMarks((current) => {
         const next = new Map(current);
         const mark = next.get(value) ?? "none";
 
-        if (mark === "none") {
+        if (mark === selectionMode) {
+          next.delete(value); // 같은 모드에서 다시 누르면 해제
+          return next;
+        }
+        if (selectionMode === "locked" && lockedNumbers.length >= MAX_LOCKED_NUMBERS) {
           // 고정 상한을 넘기면 조용히 무시하지 않고 아무 일도 하지 않는다 —
           // 화면이 상한을 함께 표시하므로 사용자가 이유를 알 수 있다.
-          if (lockedNumbers.length >= MAX_LOCKED_NUMBERS) return current;
-          next.set(value, "locked");
-        } else if (mark === "locked") {
-          next.set(value, "excluded");
-        } else {
-          next.delete(value);
+          return current;
         }
+        next.set(value, selectionMode);
         return next;
       });
     },
-    [lockedNumbers.length],
+    [selectionMode, lockedNumbers.length],
   );
 
   const clearMarks = useCallback(() => setMarks(new Map()), []);
@@ -134,6 +144,8 @@ export function useRecommendStudio({ loggedIn }: { loggedIn: boolean }) {
     setStrategy,
     count,
     setCount: setCountSafely,
+    selectionMode,
+    setSelectionMode,
     marks,
     lockedNumbers,
     excludedNumbers,

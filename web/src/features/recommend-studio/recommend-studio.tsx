@@ -13,6 +13,7 @@ import { LottoBallSet } from "@/entities/round/ui/lotto-ball";
 import { NumberGrid } from "@/entities/round/ui/number-grid";
 import { useSession } from "@/entities/user-session/session-context";
 import { Button } from "@/shared/ui/button";
+import { SegmentedControl } from "@/shared/ui/segmented-control";
 import { ErrorState } from "@/shared/ui/states";
 import { Card } from "@/shared/ui/surface";
 
@@ -84,9 +85,19 @@ export function RecommendStudio() {
       <Card as="section" level={2}>
         <h2>고정하거나 뺄 번호</h2>
         <p className={styles.strategyDescription}>
-          번호를 누를 때마다 고정 → 제외 → 해제로 바뀝니다. 고정은 최대 {MAX_LOCKED_NUMBERS}
-          개까지입니다.
+          모드를 고른 뒤 번호를 누르면 그 모드로 선택되거나 해제됩니다. 고정은 최대{" "}
+          {MAX_LOCKED_NUMBERS}개까지입니다.
         </p>
+
+        <SegmentedControl
+          aria-label="번호 선택 모드"
+          options={[
+            { value: "locked", label: "고정 번호" },
+            { value: "excluded", label: "제외 번호" },
+          ]}
+          value={studio.selectionMode}
+          onChange={studio.setSelectionMode}
+        />
 
         <NumberGrid
           marks={studio.marks}
@@ -95,14 +106,8 @@ export function RecommendStudio() {
         />
 
         <p className={styles.markSummary} aria-live="polite">
-          <span>
-            고정 {studio.lockedNumbers.length}개
-            {studio.lockedNumbers.length > 0 ? `: ${studio.lockedNumbers.join(", ")}` : ""}
-          </span>
-          <span>
-            제외 {studio.excludedNumbers.length}개
-            {studio.excludedNumbers.length > 0 ? `: ${studio.excludedNumbers.join(", ")}` : ""}
-          </span>
+          고정 {studio.lockedNumbers.length}/{MAX_LOCKED_NUMBERS} · 제외{" "}
+          {studio.excludedNumbers.length}
         </p>
 
         <Button variant="quiet" onClick={studio.clearMarks}>

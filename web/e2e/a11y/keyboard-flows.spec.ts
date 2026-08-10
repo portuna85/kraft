@@ -33,14 +33,29 @@ test.describe("키보드만으로 조작", () => {
     await expect(dialog).not.toBeVisible();
   });
 
-  test("고정·제외 번호 선택을 Tab·Enter만으로 조작한다", async ({ page }) => {
+  test("세그먼트 모드를 화살표로 바꾸고 번호를 Enter로 고정·제외한다", async ({ page }) => {
     await page.goto("/recommend");
 
-    const firstBall = page.getByRole("button", { name: "1번", exact: true });
+    const lockedMode = page.getByRole("radio", { name: "고정 번호" });
+    // 접근 이름("1번" → "1번 고정됨")이 상태에 따라 바뀌므로, role/name이 아니라
+    // 안정적인 data-number 속성으로 같은 번호 버튼을 계속 가리킨다.
+    const firstBall = page.locator('[data-number="1"]');
+
+    // 기본 모드(고정)에서 1번을 고정한다.
     await firstBall.focus();
     await page.keyboard.press("Enter");
+    await expect(page.getByText("고정 1/5 · 제외 0")).toBeVisible();
 
-    // 번호를 누를 때마다 고정 → 제외 → 해제로 순환한다(recommend-studio.tsx 주석).
-    await expect(page.getByText("고정 1개: 1")).toBeVisible();
+    // 화살표로 제외 모드로 바꾸고 같은 번호를 누르면 고정에서 빠져 제외로 옮겨간다.
+    await lockedMode.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByRole("radio", { name: "제외 번호" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+
+    await firstBall.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByText("고정 0/5 · 제외 1")).toBeVisible();
   });
 });

@@ -1,0 +1,33 @@
+@layer components {
+  .group {
+    display: inline-flex;
+    gap: var(--space-1);
+    padding: var(--space-1);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-2);
+  }
+
+  .option {
+    min-height: var(--target-min);
+    padding-inline: var(--space-4);
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-ink-muted);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  /* 상태를 색만으로 전달하지 않는다 — 선택된 항목은 표면·글자색·굵기가 함께 바뀐다. */
+  .option[data-selected="true"] {
+    background: var(--color-surface-solid);
+    color: var(--color-ink);
+    box-shadow: var(--shadow-1);
+  }
+
+  .option:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+}
