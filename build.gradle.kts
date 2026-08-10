@@ -83,7 +83,7 @@ dependencies {
     testImplementation(platform("org.testcontainers:testcontainers-bom:2.0.5"))
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")
     testImplementation("org.testcontainers:testcontainers-mariadb")
-    testImplementation("com.tngtech.archunit:archunit-junit5:1.4.2")
+    testImplementation("com.tngtech.archunit:archunit-junit5:1.5.0")
     testImplementation("org.pitest:pitest-junit5-plugin:1.2.3")
 }
 
