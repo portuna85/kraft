@@ -64,7 +64,7 @@ dependencies {
     implementation("net.javacrumbs.shedlock:shedlock-spring:7.7.0")
     implementation("net.javacrumbs.shedlock:shedlock-provider-jdbc-template:7.7.0")
     implementation("io.github.resilience4j:resilience4j-spring-boot4:2.4.0")
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0")
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor:4.1.0")
     runtimeOnly("org.mariadb.jdbc:mariadb-java-client")
 
