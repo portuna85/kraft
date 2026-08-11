@@ -21,15 +21,23 @@ const LATEST_ROUND = {
   firstAccumAmount: 2_100_000_000,
 };
 
+function ball(ballNumber) {
+  return { ballNumber, frequency: 150 + (ballNumber % 7), lastRound: 1150 - (ballNumber % 30) };
+}
+
 const FREQUENCY = {
   totalRounds: 1150,
-  frequencies: Array.from({ length: 45 }, (_, index) => ({
-    ballNumber: index + 1,
-    frequency: 150 + (index % 7),
-    lastRound: 1150 - (index % 30),
-  })),
-  topSix: { balls: [], wonFirstPrize: false, firstPrizeHistory: [] },
-  bottomSix: { balls: [], wonFirstPrize: false, firstPrizeHistory: [] },
+  frequencies: Array.from({ length: 45 }, (_, index) => ball(index + 1)),
+  topSix: {
+    balls: [1, 2, 3, 4, 5, 6].map(ball),
+    wonFirstPrize: false,
+    firstPrizeHistory: [],
+  },
+  bottomSix: {
+    balls: [40, 41, 42, 43, 44, 45].map(ball),
+    wonFirstPrize: false,
+    firstPrizeHistory: [],
+  },
 };
 
 // 합계 구간은 백엔드가 bucketKey 문자열 오름차순으로 보낸다 — "111-155"가 "21-65"보다

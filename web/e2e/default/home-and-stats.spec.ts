@@ -64,6 +64,40 @@ test.describe("홈·통계 렌더", () => {
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   });
 
+  test("/analysis가 역대 1등 이력을 렌더한다 (improvement_fe.md §25.3)", async ({ page }) => {
+    // 픽스처는 1번이 포함된 조합을 1등 이력이 있는 것으로 응답한다(e2e/fixtures/backend.mjs).
+    await page.goto("/analysis?numbers=1,8,17,24,33,41");
+    await expect(page.getByText("이 조합은 과거에 1등으로 당첨된 적이 있습니다.")).toBeVisible();
+    await expect(page.getByText("812회")).toBeVisible();
+
+    await page.goto("/analysis?numbers=2,8,17,24,33,41");
+    await expect(page.getByText("이 조합은 아직 1등으로 나온 적이 없습니다.")).toBeVisible();
+  });
+
+  test("/frequency가 최다·최소 출현 6개를 렌더하고 기간 필터가 동작한다 (improvement_fe.md §25.3)", async ({
+    page,
+  }) => {
+    await page.goto("/frequency");
+
+    const topSection = page.getByRole("heading", { name: "가장 많이 나온 6개" }).locator("..");
+    await expect(topSection.getByRole("listitem")).toHaveCount(6);
+
+    const bottomSection = page.getByRole("heading", { name: "가장 적게 나온 6개" }).locator("..");
+    await expect(bottomSection.getByRole("listitem")).toHaveCount(6);
+
+    await expect(page.getByRole("link", { name: "전체", exact: true })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+
+    await page.getByRole("link", { name: "최근 100회" }).click();
+    await expect(page).toHaveURL(/\/frequency\?limit=100$/);
+    await expect(page.getByRole("link", { name: "최근 100회" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+
   test("/data 허브가 4개 기능 카드를 렌더하고 각 카드가 해당 라우트로 이동한다", async ({
     page,
   }) => {
