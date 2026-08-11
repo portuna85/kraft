@@ -43,7 +43,8 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           BACKEND_CHANGED: ${{ steps.scope.outputs.backend }}
-          WEB_CHANGED: ${{ steps.scope.outputs.web }}
+          # Phase 10 컷오버: 실제로 배포되는 프론트엔드는 이제 web/(web_next)다.
+          WEB_CHANGED: ${{ steps.scope.outputs.web_next }}
           INFRA_CHANGED: ${{ steps.scope.outputs.infra }}
         run: |
           {
@@ -934,13 +935,17 @@ jobs:
   docker-publish-web:
     name: Docker Publish (web)
     runs-on: ubuntu-latest
-    needs: [changes, web-build-test, repository-guards]
+    # Phase 10 컷오버: web-legacy 대신 web/(재작성 결과물)을 배포 이미지로 빌드한다.
+    # 게이트는 backend와 같은 수준(빌드+단위 테스트)으로 좁게 둔다 — e2e까지 기다리지
+    # 않는다(docker-publish-backend의 needs와 동일한 패턴). 통합 문제는 CD의
+    # smoke-test.sh + 롤백 스크립트가 배포 시점에 잡는다.
+    needs: [changes, web-next-build-test, repository-guards]
     if: >-
       always() &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       needs.repository-guards.result == 'success' &&
-      (needs.web-build-test.result == 'success' || needs.web-build-test.result == 'skipped')
+      (needs.web-next-build-test.result == 'success' || needs.web-next-build-test.result == 'skipped')
     timeout-minutes: 12
     permissions:
       contents: read
@@ -956,17 +961,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
-        if: needs.changes.outputs.web == 'true'
+        if: needs.changes.outputs.web_next == 'true'
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
-        if: needs.changes.outputs.web == 'true'
+        if: needs.changes.outputs.web_next == 'true'
       # web-verified 태그: backend와 동일한 이유(quality-gate 결과와 무관하게 "실제로
       # 최근에 빌드된 소스"를 계속 정확히 가리키기 위함)로 둔다.
       - name: Build and push web image
-        if: needs.changes.outputs.web == 'true'
+        if: needs.changes.outputs.web_next == 'true'
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
-          context: web-legacy
-          file: web-legacy/Dockerfile
+          context: web
+          file: web/Dockerfile
           push: true
           tags: |
             ${{ env.IMAGE }}:${{ github.sha }}
@@ -988,7 +993,7 @@ jobs:
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
       - name: Reuse previously verified web image
-        if: needs.changes.outputs.web != 'true'
+        if: needs.changes.outputs.web_next != 'true'
         run: docker buildx imagetools create --tag "$IMAGE:$GITHUB_SHA" "$IMAGE:web-verified"
 
   security-scan:
