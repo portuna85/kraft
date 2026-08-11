@@ -119,4 +119,28 @@ describe("보관함", () => {
     await waitFor(() => expect(deleteAccountSavedNumber).toHaveBeenCalledWith(1));
     expect(deleteDeviceSavedNumber).not.toHaveBeenCalled();
   });
+
+  it("익명으로 보던 중 로그인(claim)이 끝나면 계정 스코프로 다시 조회한다 (§25.2 이관 확인)", async () => {
+    listDeviceSavedNumbers.mockResolvedValue([item({ id: 1 })]);
+    listAccountSavedNumbers.mockResolvedValue([item({ id: 2 })]);
+
+    const { rerender } = render(
+      <SessionContext.Provider value={ANONYMOUS}>
+        <SavedLibrary latestRound={1150} />
+      </SessionContext.Provider>,
+    );
+    await waitFor(() => expect(listDeviceSavedNumbers).toHaveBeenCalledTimes(1));
+    expect(listAccountSavedNumbers).not.toHaveBeenCalled();
+
+    // claim 성공 → identity-session이 session을 loggedIn으로 갱신 → 여기서는 그 결과로
+    // 부모가 다시 렌더하는 상황을 흉내낸다. 기기 스코프로 또 조회하면 안 된다.
+    rerender(
+      <SessionContext.Provider value={LOGGED_IN}>
+        <SavedLibrary latestRound={1150} />
+      </SessionContext.Provider>,
+    );
+
+    await waitFor(() => expect(listAccountSavedNumbers).toHaveBeenCalledTimes(1));
+    expect(listDeviceSavedNumbers).toHaveBeenCalledTimes(1);
+  });
 });
