@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { LoginPopover } from "../_shell/login-popover";
+import { ReturnToRedirect } from "../_shell/return-to-redirect";
 import styles from "../_shell/shell.module.css";
 import { SiteFooter } from "../_shell/site-footer";
 import { SiteHeader } from "../_shell/site-header";
@@ -17,6 +18,7 @@ import { TabBar } from "../_shell/tab-bar";
 export default function PublicLayout({ children }: { children: ReactNode }) {
   return (
     <>
+      <ReturnToRedirect />
       <SiteHeader accountSlot={<LoginPopover />} />
       <main id="main" className={`shell ${styles.main}`}>
         {children}

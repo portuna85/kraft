@@ -1,10 +1,13 @@
 "use client";
 
+import { usePathname, useSearchParams } from "next/navigation";
+
+import { saveReturnTo } from "@/shared/lib/return-to";
 import { Button } from "@/shared/ui/button";
 import { DropdownMenu } from "@/shared/ui/dropdown-menu";
 
 /**
- * 로그인 진입점 — improvement_fe_codex.md §4.4
+ * 로그인 진입점 — improvement_fe_codex.md §4.4, improvement_fe.md §25.1
  *
  * provider 버튼 2개를 헤더에 나란히 두지 않는다. "로그인" 단일 버튼 뒤에
  * popover로 provider를 감춘다 — 헤더 폭과 기대 행동을 라우트마다 다르게 만들지
@@ -14,8 +17,18 @@ import { DropdownMenu } from "@/shared/ui/dropdown-menu";
  * 발생하고(불변식 I-4), 세션 프로바이더가 번들에 딸려 들어온다. 로그인 후보
  * 항목은 fetch가 아니라 `<a href>`(`DropdownMenu`의 `href` 변형)여야 한다 —
  * OAuth는 브라우저 전체 이동이 필요하다.
+ *
+ * OAuth 콜백은 항상 공개 기본 URL로 돌아온다(서버 리다이렉트 대상은 여기서
+ * 못 바꾼다) — 로그인 누르기 직전 경로(쿼리 포함)를 저장해 두면
+ * `ReturnToRedirect`가 돌아온 뒤 그 경로로 한 번 이동시킨다(web-legacy
+ * LoginLinks L-10과 같은 계약: 필터·검색 쿼리도 함께 보존).
  */
 export function LoginPopover() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const query = searchParams.toString();
+  const returnPath = query ? `${pathname}?${query}` : pathname;
+
   return (
     <DropdownMenu
       aria-label="로그인 방법 선택"
@@ -25,8 +38,16 @@ export function LoginPopover() {
         </Button>
       )}
       items={[
-        { label: "Google로 계속", href: "/oauth2/authorization/google" },
-        { label: "Naver로 계속", href: "/oauth2/authorization/naver" },
+        {
+          label: "Google로 계속",
+          href: "/oauth2/authorization/google",
+          onClick: () => saveReturnTo(returnPath),
+        },
+        {
+          label: "Naver로 계속",
+          href: "/oauth2/authorization/naver",
+          onClick: () => saveReturnTo(returnPath),
+        },
       ]}
     />
   );

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { SessionProvider } from "@/features/identity-session/session-provider";
 
 import { AccountControl } from "../_shell/account-control";
+import { ReturnToRedirect } from "../_shell/return-to-redirect";
 import styles from "../_shell/shell.module.css";
 import { SiteFooter } from "../_shell/site-footer";
 import { SiteHeader } from "../_shell/site-header";
@@ -20,6 +21,7 @@ import { TabBar } from "../_shell/tab-bar";
 export default function SessionLayout({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>
+      <ReturnToRedirect />
       <SiteHeader accountSlot={<AccountControl />} />
       <main id="main" className={`shell ${styles.main}`}>
         {children}
