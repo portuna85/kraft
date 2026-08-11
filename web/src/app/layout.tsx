@@ -1,3 +1,12 @@
+// globals.css는 반드시 다른 모든 import보다 먼저 와야 한다. `@layer reset, tokens,
+// base, components, utilities;` 마스터 선언이 여기 있는데, CSS Cascade Layers는
+// "레이어가 처음 등장한 순서"로 우선순위를 고정한다 — 이 선언문의 소스 위치가 아니라.
+// 아래에서 import하는 컴포넌트(StickyMobileAd 등)가 자기 CSS 모듈(@layer components)을
+// 먼저 실어 오면, "components"가 마스터 선언보다 먼저 등록돼 base보다도 낮은 우선순위로
+// 고정되고, .cta 같은 컴포넌트 스타일이 전역 `a { color }` 규칙에 조용히 진다
+// (Phase 10 컷오버 CI에서 실제로 겪은 접근성 회귀 — axe color-contrast).
+import "./globals.css";
+
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { headers } from "next/headers";
@@ -8,8 +17,6 @@ import { publicEnv, siteVerificationMetadata } from "@/shared/config/env";
 import { THEME_INIT_SCRIPT } from "@/shared/lib/theme";
 import { StickyMobileAd } from "@/shared/ui/ad-unit";
 import { WebVitalsReporter } from "@/shared/ui/web-vitals-reporter";
-
-import "./globals.css";
 
 /*
  * 폰트는 자체 호스팅한다. next/font/google은 빌드마다 fonts.gstatic.com 네트워크를 타서
