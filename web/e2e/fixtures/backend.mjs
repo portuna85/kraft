@@ -299,9 +299,29 @@ const ROUTES = new Map([
   ],
   [
     "/api/v1/community/posts",
-    // 목록이 1페이지뿐인 상태를 흉내낸다 — "총 N건" 표시(§12.8)를 e2e로 확인하려면
-    // 빈 목록이 아니라 실제로 1페이지짜리 결과가 있어야 한다.
-    { items: [POST_DETAIL], page: 0, size: 20, totalElements: 1, totalPages: 1 },
+    // 기본은 목록이 1페이지뿐인 상태를 흉내낸다 — "총 N건" 표시(§12.8)를 e2e로
+    // 확인하려면 빈 목록이 아니라 실제로 1페이지짜리 결과가 있어야 한다.
+    //
+    // category=WIN_STORY로 요청하면 대신 3페이지짜리 목록을 흉내낸다 — 페이지네이션
+    // 컨트롤(처음·이전·다음·마지막, FE-052)을 e2e로 확인하려면 totalPages가 1보다
+    // 커야 하는데, 그러면서도 기본 요청(파라미터 없음)에 기대는 기존 "총 N건" 테스트는
+    // 그대로 둬야 해서 별도 카테고리로 분기했다.
+    (searchParams) => {
+      if (searchParams.get("category") !== "WIN_STORY") {
+        return { items: [POST_DETAIL], page: 0, size: 20, totalElements: 1, totalPages: 1 };
+      }
+      const page = Number(searchParams.get("page") ?? "0");
+      return {
+        items: [
+          { ...POST_DETAIL, id: page * 2 + 1, title: `당첨 후기 ${page * 2 + 1}` },
+          { ...POST_DETAIL, id: page * 2 + 2, title: `당첨 후기 ${page * 2 + 2}` },
+        ],
+        page,
+        size: 2,
+        totalElements: 6,
+        totalPages: 3,
+      };
+    },
   ],
   ["/api/v1/community/posts/1", POST_DETAIL],
   [

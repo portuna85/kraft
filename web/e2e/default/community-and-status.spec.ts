@@ -40,6 +40,36 @@ test.describe("커뮤니티·상태·안내 읽기", () => {
     await expect(page.getByRole("navigation", { name: "페이지 이동" })).not.toBeVisible();
   });
 
+  test("여러 페이지가 있으면 처음·이전·다음·마지막으로 이동한다 (레거시 FE-052)", async ({
+    page,
+  }) => {
+    await page.goto("/community?category=WIN_STORY");
+    const pagination = page.getByRole("navigation", { name: "페이지 이동" });
+    await expect(pagination).toBeVisible();
+    await expect(page.getByText("1 / 3")).toBeVisible();
+    await expect(pagination.getByRole("link", { name: "처음" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+
+    await pagination.getByRole("link", { name: "다음" }).click();
+    await expect(page).toHaveURL(/page=1/);
+    await expect(page.getByText("2 / 3")).toBeVisible();
+
+    await pagination.getByRole("link", { name: "마지막" }).click();
+    await expect(page).toHaveURL(/page=2/);
+    await expect(page.getByText("3 / 3")).toBeVisible();
+    await expect(pagination.getByRole("link", { name: "다음" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+
+    // buildListHref는 page=0을 URL에 남기지 않는다(기본값 생략) — 그래서 "처음"은
+    // 콘텐츠로만 확인한다.
+    await pagination.getByRole("link", { name: "처음" }).click();
+    await expect(page.getByText("1 / 3")).toBeVisible();
+  });
+
   test("/status가 데이터 신선도와 수집·보정 이력을 렌더한다", async ({ page }) => {
     await page.goto("/status");
     await expect(page.getByText("정상 반영")).toBeVisible();
