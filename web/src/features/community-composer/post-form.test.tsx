@@ -82,6 +82,13 @@ describe("글 작성·수정 폼", () => {
     expect(screen.getByText("로그인이 필요합니다")).toBeInTheDocument();
   });
 
+  it("본인 글이 아니면 폼 대신 권한 없음 안내를 본다 (§25.1)", () => {
+    renderForm(post({ ownerId: 999 }));
+
+    expect(screen.queryByLabelText("제목")).not.toBeInTheDocument();
+    expect(screen.getByText("수정할 수 없습니다")).toBeInTheDocument();
+  });
+
   it("수정 화면에는 분류를 두지 않는다", () => {
     renderForm(post());
     expect(screen.queryByLabelText("분류")).not.toBeInTheDocument();
@@ -143,6 +150,45 @@ describe("글 작성·수정 폼", () => {
     await waitFor(() => {
       expect(updatePost).toHaveBeenLastCalledWith(1, expect.anything(), 9);
     });
+  });
+
+  it("401(로그인 만료)이면 쓴 내용을 지우지 않고 로그인 안내를 보여준다 (§25.1)", async () => {
+    const user = userEvent.setup();
+    updatePost.mockRejectedValue(new ApiError("client", "미인증", { status: 401 }));
+
+    renderForm(post());
+    const title = screen.getByLabelText("제목");
+    await user.clear(title);
+    await user.type(title, "내가 쓴 제목");
+    await user.click(screen.getByRole("button", { name: "저장" }));
+
+    expect(await screen.findByText(/로그인이 만료됐습니다/)).toBeInTheDocument();
+    expect(screen.getByLabelText("제목")).toHaveValue("내가 쓴 제목");
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("403(CSRF 만료)이면 새로고침 안내를 보여준다 (§25.1)", async () => {
+    const user = userEvent.setup();
+    updatePost.mockRejectedValue(new ApiError("client", "CSRF", { status: 403 }));
+
+    renderForm(post());
+    await user.click(screen.getByRole("button", { name: "저장" }));
+
+    expect(await screen.findByText(/페이지를 새로 고친 뒤/)).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("작성(신규) 중 401이 나도 로그인 안내로 분기한다", async () => {
+    const user = userEvent.setup();
+    createPost.mockRejectedValue(new ApiError("client", "미인증", { status: 401 }));
+
+    renderForm();
+    await user.type(screen.getByLabelText("제목"), "새 글 제목");
+    await user.type(screen.getByLabelText("내용"), "새 글 내용");
+    await user.click(screen.getByRole("button", { name: "저장" }));
+
+    expect(await screen.findByText(/로그인이 만료됐습니다/)).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
   });
 
   it("저장에 성공하면 상세로 이동한다", async () => {

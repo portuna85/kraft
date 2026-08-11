@@ -51,19 +51,21 @@ export function PostForm({ existing }: { existing?: CommunityPost }) {
     },
     schema: postFormSchema,
     onSubmit: async (values) => {
-      if (existing === undefined) {
-        const created = await createPost(values, null);
-        router.push(ROUTES.communityPost(created.id));
-        router.refresh();
-        return;
-      }
-
       try {
+        if (existing === undefined) {
+          const created = await createPost(values, null);
+          router.push(ROUTES.communityPost(created.id));
+          router.refresh();
+          return;
+        }
+
         await updatePost(existing.id, values, version);
         router.push(ROUTES.communityPost(existing.id));
         router.refresh();
       } catch (cause) {
-        if (cause instanceof ApiError && cause.isConflict) {
+        if (!(cause instanceof ApiError)) throw cause;
+
+        if (cause.isConflict && existing !== undefined) {
           /**
            * 409 — 입력을 **보존한 채** 최신을 가져와 나란히 보여준다(레거시 FE-066).
            *
@@ -77,6 +79,23 @@ export function PostForm({ existing }: { existing?: CommunityPost }) {
             "client",
             "다른 곳에서 이 글이 수정됐습니다. 아래 최신 내용을 확인한 뒤 다시 저장해 주세요.",
             { status: 409 },
+          );
+        }
+
+        // 401/403 — improvement_fe.md §15.5. 둘 다 폼 내용은 그대로 둔다(여기서 아무것도
+        // 지우지 않으므로 자연히 보존된다) — 문구만 원인에 맞게 구분한다.
+        if (cause.isUnauthenticated) {
+          throw new ApiError(
+            "client",
+            "로그인이 만료됐습니다. 로그인 후 다시 저장해 주세요. 지금까지 쓴 내용은 남아 있습니다.",
+            { status: 401 },
+          );
+        }
+        if (cause.isForbidden) {
+          throw new ApiError(
+            "client",
+            "저장에 실패했습니다. 페이지를 새로 고친 뒤 다시 시도해 주세요.",
+            { status: 403 },
           );
         }
         throw cause;
@@ -99,6 +118,18 @@ export function PostForm({ existing }: { existing?: CommunityPost }) {
     return (
       <InlineAlert tone="neutral" title="로그인이 필요합니다">
         글을 쓰려면 먼저 로그인해 주세요. 로그인하면 이 화면으로 돌아옵니다.
+      </InlineAlert>
+    );
+  }
+
+  // 편집 진입 자체는(getPost) 소유자만 조회 가능한 게 아니라 URL을 직접 알면 누구나
+  // 볼 수 있다 — 저장(PUT)에서만 403으로 막힌다. 그래서 폼을 띄우기 전에 여기서
+  // 미리 걸러 "저장을 눌러야 비로소 권한이 없다는 걸 안다"를 막는다(improvement_fe.md
+  // §25.1: 비소유자에게 편집 UI 숨김).
+  if (existing !== undefined && existing.ownerId !== session.session?.userId) {
+    return (
+      <InlineAlert tone="neutral" title="수정할 수 없습니다">
+        본인이 쓴 글만 수정할 수 있습니다.
       </InlineAlert>
     );
   }
