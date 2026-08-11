@@ -12,6 +12,7 @@ import { InlineAlert } from "@/shared/ui/states";
 import { Card } from "@/shared/ui/surface";
 
 import { CollectionPanel } from "./collection-panel";
+import { LogsTable } from "./logs-table";
 import { ManualEntryForm } from "./manual-entry-form";
 import type { LoadingAction } from "./ops-console-types";
 import styles from "./ops-console.module.css";
@@ -135,6 +136,13 @@ export function OpsConsole() {
               setLoadingAction(null);
             }}
           />
+        </div>
+      </Card>
+
+      <Card>
+        <div className="stack">
+          <h2>운영 이력</h2>
+          <LogsTable token={token} />
         </div>
       </Card>
     </div>
