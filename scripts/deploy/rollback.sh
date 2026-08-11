@@ -68,6 +68,19 @@ docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" \
 echo "==> Waiting for readiness after rollback..."
 bash scripts/deploy/wait-readiness.sh
 
+# CD 파이프라인(cd.yml)은 SSH 세션 자체에 KRAFT_PUBLIC_BASE_URL 등을 이미 주입해 두고
+# pull-and-up.sh를 실행하지만, rollback.sh는 실제 장애 대응 중 운영자가 SSH로 직접
+# 실행하는 경로라 그 env가 없다 — 그러면 smoke-test.sh가 기본값 http://localhost로
+# 떨어져 Caddy의 자동 HTTPS 리다이렉트(308)에 전부 걸려 "롤백은 성공했는데 스모크
+# 테스트만 실패"로 보이는 거짓 경보가 뜬다(실제로 이 스크립트로 겪음). .env.prod를
+# 직접 소싱해 자급자족하게 만든다.
+if [[ -f "$ENV_FILE" ]]; then
+  set -a
+  # shellcheck source=/dev/null
+  source "$ENV_FILE"
+  set +a
+fi
+
 echo "==> Running smoke test..."
 bash scripts/deploy/smoke-test.sh
 
