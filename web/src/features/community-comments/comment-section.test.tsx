@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -112,6 +112,38 @@ describe("댓글 섹션", () => {
   it("빈 내용으로는 등록 버튼이 비활성화된다", () => {
     renderSection(LOGGED_IN);
     expect(screen.getByRole("button", { name: "등록" })).toBeDisabled();
+  });
+
+  it("삭제를 확인하면 deleteComment를 부르고 목록을 새로고침한다 (§25.6)", async () => {
+    const user = userEvent.setup();
+    deleteComment.mockResolvedValue(null);
+    fetchCommentPage.mockResolvedValue(initialPage({ topLevel: [], totalTopLevelComments: 0 }));
+
+    renderSection(LOGGED_IN, initialPage({ topLevel: [comment({ id: 7, ownerId: 10 })] }));
+    await user.click(screen.getByText("삭제"));
+
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "삭제" }));
+
+    await waitFor(() => expect(deleteComment).toHaveBeenCalledWith(7));
+    await waitFor(() => expect(fetchCommentPage).toHaveBeenCalledWith(100, 0));
+    expect(await screen.findByText("댓글 0개")).toBeInTheDocument();
+  });
+
+  it("삭제 실패 시 오류 문구를 보여주고 댓글을 유지한다", async () => {
+    const user = userEvent.setup();
+    deleteComment.mockRejectedValue(new Error("network"));
+
+    renderSection(LOGGED_IN, initialPage({ topLevel: [comment({ id: 7, ownerId: 10 })] }));
+    await user.click(screen.getByText("삭제"));
+
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "삭제" }));
+
+    expect(
+      await screen.findByText("댓글을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("댓글 1개")).toBeInTheDocument();
   });
 
   it("본인 댓글에는 삭제 버튼을, 남의 댓글에는 신고 버튼을 보여준다", () => {
