@@ -65,7 +65,10 @@ const manualEntryFormSchema = v.object({
       "1~45 사이의 서로 다른 정수 6개를 쉼표나 공백으로 구분해 입력해 주세요.",
     ),
   ),
-  bonusNumber: v.pipe(v.string(), v.check(isLottoNumberString, "1~45 사이의 정수를 입력해 주세요.")),
+  bonusNumber: v.pipe(
+    v.string(),
+    v.check(isLottoNumberString, "1~45 사이의 정수를 입력해 주세요."),
+  ),
   firstPrizeAmount: v.pipe(
     v.string(),
     v.check(isNonNegativeIntegerString, "0 이상의 정수를 입력해 주세요."),
@@ -94,7 +97,10 @@ function toOptionalNumber(text: string): number | undefined {
   return text === "" ? undefined : Number(text);
 }
 
-function buildPayload(values: ManualEntryFormValues, numbers: number[]): WinningNumberUpsertRequest {
+function buildPayload(
+  values: ManualEntryFormValues,
+  numbers: number[],
+): WinningNumberUpsertRequest {
   return {
     round: Number(values.round),
     drawDate: values.drawDate,

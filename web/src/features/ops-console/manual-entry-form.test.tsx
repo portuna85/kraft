@@ -66,7 +66,9 @@ describe("ManualEntryForm", () => {
     await user.click(screen.getByRole("button", { name: "적재" }));
 
     expect(
-      await screen.findByText("1~45 사이의 서로 다른 정수 6개를 쉼표나 공백으로 구분해 입력해 주세요."),
+      await screen.findByText(
+        "1~45 사이의 서로 다른 정수 6개를 쉼표나 공백으로 구분해 입력해 주세요.",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -78,7 +80,9 @@ describe("ManualEntryForm", () => {
     await user.click(screen.getByRole("button", { name: "적재" }));
 
     expect(
-      await screen.findByText("1~45 사이의 서로 다른 정수 6개를 쉼표나 공백으로 구분해 입력해 주세요."),
+      await screen.findByText(
+        "1~45 사이의 서로 다른 정수 6개를 쉼표나 공백으로 구분해 입력해 주세요.",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -90,7 +94,9 @@ describe("ManualEntryForm", () => {
     await user.click(screen.getByRole("button", { name: "적재" }));
 
     expect(
-      await screen.findByText("1~45 사이의 서로 다른 정수 6개를 쉼표나 공백으로 구분해 입력해 주세요."),
+      await screen.findByText(
+        "1~45 사이의 서로 다른 정수 6개를 쉼표나 공백으로 구분해 입력해 주세요.",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -164,7 +170,9 @@ describe("ManualEntryForm", () => {
 
   it("서버 실패 시 값을 보존하고 폼 오류를 보여준다", async () => {
     const user = userEvent.setup();
-    upsertRound.mockRejectedValue(new ApiError("client", "이미 존재하는 회차입니다.", { status: 409 }));
+    upsertRound.mockRejectedValue(
+      new ApiError("client", "이미 존재하는 회차입니다.", { status: 409 }),
+    );
     const { onError } = renderForm();
 
     await fillValidForm(user);

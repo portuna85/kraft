@@ -73,7 +73,9 @@ describe("OpsConsole", () => {
 
   it("상태 확인이 실패하면 오류 메시지를 보여준다", async () => {
     const user = userEvent.setup();
-    getOpsSummary.mockRejectedValue(new ApiError("client", "토큰이 올바르지 않습니다.", { status: 401 }));
+    getOpsSummary.mockRejectedValue(
+      new ApiError("client", "토큰이 올바르지 않습니다.", { status: 401 }),
+    );
     render(<OpsConsole />);
 
     await enterToken(user);
@@ -111,7 +113,9 @@ describe("OpsConsole", () => {
 
   it("최신 회차 반영 실패 시 오류 메시지를 보여준다", async () => {
     const user = userEvent.setup();
-    collectLatest.mockRejectedValue(new ApiError("server", "운영 기능이 꺼져 있습니다.", { status: 503 }));
+    collectLatest.mockRejectedValue(
+      new ApiError("server", "운영 기능이 꺼져 있습니다.", { status: 503 }),
+    );
     render(<OpsConsole />);
 
     await enterToken(user);
@@ -131,7 +135,9 @@ describe("OpsConsole", () => {
 
     expect(await screen.findByText(/1151회 반영 완료/)).toBeInTheDocument();
     expect(
-      await screen.findByText("방금 반영됐지만 요약을 다시 불러오지 못했습니다. 상태 확인을 다시 눌러 주세요."),
+      await screen.findByText(
+        "방금 반영됐지만 요약을 다시 불러오지 못했습니다. 상태 확인을 다시 눌러 주세요.",
+      ),
     ).toBeInTheDocument();
   });
 });

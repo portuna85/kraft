@@ -26,11 +26,7 @@ export function SummaryPanel({ summary }: { summary: OpsSummary | null }) {
       <div className={styles.grid}>
         <Stat label="서비스" value={summary.service} />
         <Stat label="시간대" value={summary.timezone} />
-        <Stat
-          label="상태"
-          value={summary.status}
-          tone={summary.fresh ? "success" : "danger"}
-        />
+        <Stat label="상태" value={summary.status} tone={summary.fresh ? "success" : "danger"} />
         <Stat
           label="최신 회차"
           value={summary.latestRound === null ? "—" : `${summary.latestRound}회`}

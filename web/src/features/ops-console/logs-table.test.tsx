@@ -54,7 +54,9 @@ describe("LogsTable", () => {
   it("실패한 이력은 실패 배지로 보여준다", async () => {
     const user = userEvent.setup();
     getOpsLogs.mockResolvedValue({
-      items: [log({ operationType: "MANUAL_UPSERT", executionStatus: "FAILURE", message: "검증 실패" })],
+      items: [
+        log({ operationType: "MANUAL_UPSERT", executionStatus: "FAILURE", message: "검증 실패" }),
+      ],
       page: 0,
       size: 20,
       totalElements: 1,
@@ -81,7 +83,9 @@ describe("LogsTable", () => {
 
   it("조회 실패 시 오류 메시지를 보여준다", async () => {
     const user = userEvent.setup();
-    getOpsLogs.mockRejectedValue(new ApiError("client", "토큰이 올바르지 않습니다.", { status: 401 }));
+    getOpsLogs.mockRejectedValue(
+      new ApiError("client", "토큰이 올바르지 않습니다.", { status: 401 }),
+    );
     render(<LogsTable token="secret-token" />);
 
     await user.click(screen.getByRole("button", { name: "이력 조회" }));

@@ -60,7 +60,9 @@ describe("getOpsSummary", () => {
   });
 
   it("토큰이 틀리면 401을 그대로 노출한다", async () => {
-    mockFetch(jsonResponse({ code: "OPS_UNAUTHORIZED", message: "토큰이 올바르지 않습니다." }, 401));
+    mockFetch(
+      jsonResponse({ code: "OPS_UNAUTHORIZED", message: "토큰이 올바르지 않습니다." }, 401),
+    );
 
     const error = await getOpsSummary("wrong-token").catch((e: unknown) => e as ApiError);
 

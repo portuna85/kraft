@@ -65,7 +65,9 @@ export function OpsConsole() {
       setRefreshError(null);
     } catch {
       // 성공 메시지는 지우지 않는다(legacy FE-077) — 갱신 실패만 별도로 알린다.
-      setRefreshError("방금 반영됐지만 요약을 다시 불러오지 못했습니다. 상태 확인을 다시 눌러 주세요.");
+      setRefreshError(
+        "방금 반영됐지만 요약을 다시 불러오지 못했습니다. 상태 확인을 다시 눌러 주세요.",
+      );
     }
   }
 
