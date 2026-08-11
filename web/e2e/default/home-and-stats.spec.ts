@@ -15,6 +15,15 @@ test.describe("홈·통계 렌더", () => {
     await expect(page.getByText("1등 당첨금")).toBeVisible();
   });
 
+  test("홈이 WebSite 구조화 데이터를 담고 있다 (improvement_fe.md §25.8)", async ({ page }) => {
+    await page.goto("/");
+    const jsonLd = await page.locator('script[type="application/ld+json"]').textContent();
+    expect(jsonLd).not.toBeNull();
+    const data = JSON.parse(jsonLd ?? "{}") as { "@type"?: string; name?: string };
+    expect(data["@type"]).toBe("WebSite");
+    expect(data.name).toBe("KRAFT Lotto");
+  });
+
   test("번호별 출현 통계 카드로 이동한다", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("link", { name: "번호별 출현 통계" }).click();

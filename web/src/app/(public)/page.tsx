@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 
 import { getLatestRound } from "@/entities/round/api";
 import { LottoBallSet } from "@/entities/round/ui/lotto-ball";
-import { Card } from "@/shared/ui/surface";
+import { NONCE_HEADER } from "@/shared/config/csp";
+import { publicEnv } from "@/shared/config/env";
 import { ROUTES } from "@/shared/config/routes";
 import { formatDrawDate, formatPrize } from "@/shared/lib/format";
+import { JsonLd } from "@/shared/ui/json-ld";
+import { Card } from "@/shared/ui/surface";
 
 import styles from "./home.module.css";
 
@@ -28,9 +32,20 @@ export const metadata: Metadata = {
  */
 export default async function HomePage() {
   const latest = await getLatestRound();
+  const nonce = (await headers()).get(NONCE_HEADER) ?? undefined;
 
   return (
     <div className="stack">
+      <JsonLd
+        nonce={nonce}
+        data={{
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "KRAFT Lotto",
+          url: publicEnv.baseUrl,
+        }}
+      />
+
       <section className={`${styles.hero} prose`} aria-labelledby="latest-round">
         <h1 id="latest-round">
           <span className={styles.roundLabel}>
