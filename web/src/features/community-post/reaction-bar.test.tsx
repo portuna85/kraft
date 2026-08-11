@@ -102,4 +102,47 @@ describe("좋아요·북마크", () => {
       );
     });
   });
+
+  it("북마크를 누르면 낙관적으로 반영한다 (§25.6)", async () => {
+    const user = userEvent.setup();
+    bookmarkPost.mockResolvedValue(undefined);
+    render_(LOGGED_IN);
+
+    const button = await screen.findByRole("button", { name: "북마크" });
+    await user.click(button);
+
+    expect(screen.getByRole("button", { name: "북마크됨" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await waitFor(() => expect(bookmarkPost).toHaveBeenCalledWith(1, true));
+  });
+
+  it("북마크 반영 실패 시 낙관적 변경을 되돌린다", async () => {
+    const user = userEvent.setup();
+    bookmarkPost.mockRejectedValue(new Error("network"));
+    render_(LOGGED_IN);
+
+    await user.click(await screen.findByRole("button", { name: "북마크" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "북마크" })).toHaveAttribute(
+        "aria-pressed",
+        "false",
+      );
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent("북마크를 반영하지 못했습니다");
+  });
+
+  it("서버가 이미 북마크한 상태를 알려주면 눌린 채로 시작한다", async () => {
+    getMyInteractions.mockResolvedValue({ likedPostIds: [], bookmarkedPostIds: [1] });
+    render_(LOGGED_IN);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "북마크됨" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+    });
+  });
 });
