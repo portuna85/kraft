@@ -1,0 +1,77 @@
+@layer components {
+  .adUnit {
+    display: flex;
+    justify-content: center;
+    min-height: 100px;
+    margin-top: var(--space-6);
+    overflow: hidden;
+  }
+
+  /* PageAd/InArticleAd 컨테이너 폭 측정용 래퍼 — 포맷이 정해지기 전에도 자리를
+     예약해 mount 시 CLS가 생기지 않게 한다. 내부 .adUnit의 margin-top과 중복되지
+     않도록 여기서 상단 여백을 갖고 내부는 0으로 둔다. */
+  .adSlotArticle {
+    display: flex;
+    justify-content: center;
+    overflow: hidden;
+    margin-top: var(--space-6);
+  }
+
+  .adSlotArticle .adUnit {
+    margin-top: 0;
+  }
+
+  .adSidebar {
+    margin-top: 0;
+  }
+
+  .adStickyMobile {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: var(--z-ad);
+    display: flex;
+    justify-content: center;
+    background: var(--color-surface-solid);
+    border-top: 1px solid var(--color-border);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .adStickyMobile .adUnit {
+    margin-top: 0;
+    min-height: 50px;
+  }
+
+  .adStickyMobileClose {
+    position: absolute;
+    top: 4px;
+    right: var(--space-2);
+    z-index: 1;
+    font-size: var(--text-xs);
+    line-height: 1;
+    color: var(--color-ink-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: var(--space-1);
+  }
+
+  /* 시각적 크기(작은 ✕)는 유지하되 히트 영역만 44px 근접까지 넓힌다 — 광고 오탭 방지 */
+  .adStickyMobileClose::before {
+    content: "";
+    position: absolute;
+    inset: -12px;
+  }
+
+  @media (min-width: 1024px) {
+    .adStickyMobile {
+      display: none;
+    }
+  }
+
+  @media (max-height: 480px) {
+    .adStickyMobile {
+      display: none;
+    }
+  }
+}

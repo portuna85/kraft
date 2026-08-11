@@ -102,6 +102,7 @@
   --z-sticky: 100;
   --z-header: 200;
   --z-tabbar: 300;
+  --z-ad: 350;
   --z-overlay: 400;
   --z-toast: 500;
 }

@@ -4,8 +4,9 @@ import { headers } from "next/headers";
 import type { ReactNode } from "react";
 
 import { NONCE_HEADER } from "@/shared/config/csp";
-import { publicEnv } from "@/shared/config/env";
+import { publicEnv, siteVerificationMetadata } from "@/shared/config/env";
 import { THEME_INIT_SCRIPT } from "@/shared/lib/theme";
+import { StickyMobileAd } from "@/shared/ui/ad-unit";
 import { WebVitalsReporter } from "@/shared/ui/web-vitals-reporter";
 
 import "./globals.css";
@@ -44,6 +45,7 @@ const spaceGrotesk = localFont({
 export const metadata: Metadata = {
   metadataBase: new URL(publicEnv.baseUrl),
   title: { default: "KRAFT Lotto", template: "%s | KRAFT Lotto" },
+  verification: siteVerificationMetadata,
 };
 
 export const viewport: Viewport = {
@@ -75,6 +77,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         </a>
         <WebVitalsReporter />
         {children}
+        <StickyMobileAd unit={process.env.NEXT_PUBLIC_KAKAO_ADFIT_UNIT_STICKY ?? ""} />
       </body>
     </html>
   );

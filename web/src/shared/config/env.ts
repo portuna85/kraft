@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+
 /**
  * 환경 변수 접근 지점 — improvement_fe.md §20.6
  *
@@ -19,6 +21,21 @@ export const serverEnv = {
 export const publicEnv = {
   baseUrl: process.env.KRAFT_PUBLIC_BASE_URL ?? "http://localhost:3000",
   adNetwork: process.env.NEXT_PUBLIC_AD_NETWORK === "adsense" ? "adsense" : "adfit",
+  googleSiteVerification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+  naverSiteVerification: process.env.NEXT_PUBLIC_NAVER_SITE_VERIFICATION,
 } as const;
 
 export type AdNetwork = (typeof publicEnv)["adNetwork"];
+
+/**
+ * 검색엔진 사이트 소유권 확인 메타태그 — web-legacy 승계.
+ *
+ * `publicEnv`에서 파생되는 순수 값이라 여기 둔다 — `RootLayout`(next/font·
+ * next/headers를 모듈 스코프에서 실행)과 분리해 두면 이 값만 단위 테스트할 수 있다.
+ */
+export const siteVerificationMetadata: Metadata["verification"] = {
+  google: publicEnv.googleSiteVerification,
+  other: publicEnv.naverSiteVerification
+    ? { "naver-site-verification": publicEnv.naverSiteVerification }
+    : undefined,
+};

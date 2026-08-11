@@ -10,6 +10,7 @@ import { expectedFrequency, frequencyRatio } from "@/entities/statistics/schema"
 import { FrequencyBar, FrequencyLegend } from "@/entities/statistics/ui/frequency-bar";
 import { LottoBallSet } from "@/entities/round/ui/lotto-ball";
 import { ROUTES } from "@/shared/config/routes";
+import { AdSenseSidebar, InArticleAd } from "@/shared/ui/ad-unit";
 import { Card } from "@/shared/ui/surface";
 
 import styles from "./frequency.module.css";
@@ -125,6 +126,12 @@ export default async function FrequencyPage({
           <RatioNote balls={stats.bottomSix.balls} totalRounds={stats.totalRounds} />
         </Card>
       </div>
+
+      {/* web-legacy는 2단 사이드바 레이아웃 안에 이 슬롯을 두지만, web/의 페이지는
+          단일 컬럼이라 본문 끝에 이어 둔다 — AdSenseSidebar 자체는 여전히 데스크톱
+          뷰포트에서만 mount된다(뷰포트 게이트는 그대로 유지). */}
+      <InArticleAd slot="frequency" />
+      <AdSenseSidebar slot={process.env.NEXT_PUBLIC_ADSENSE_UNIT_SIDEBAR ?? ""} />
     </div>
   );
 }
