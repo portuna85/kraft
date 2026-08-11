@@ -6,6 +6,20 @@ import { SessionContext, type SessionState } from "@/entities/user-session/sessi
 
 import { SavedLibrary } from "./saved-library";
 
+function match(overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    savedNumber: item(),
+    round: 1150,
+    drawDate: "2026-08-01",
+    drawNumbers: [1, 8, 17, 24, 33, 41],
+    bonusNumber: 5,
+    matchedCount: 6,
+    bonusMatch: false,
+    prizeTier: "1등",
+    ...overrides,
+  };
+}
+
 const {
   listDeviceSavedNumbers,
   listAccountSavedNumbers,
@@ -118,6 +132,34 @@ describe("보관함", () => {
 
     await waitFor(() => expect(deleteAccountSavedNumber).toHaveBeenCalledWith(1));
     expect(deleteDeviceSavedNumber).not.toHaveBeenCalled();
+  });
+
+  it("익명은 대조하기를 누르면 기기 스코프로 조회해 등수를 보여준다 (§25.5)", async () => {
+    const user = userEvent.setup();
+    listDeviceSavedNumbers.mockResolvedValue([item()]);
+    matchDeviceSavedNumbers.mockResolvedValue([match()]);
+
+    renderLibrary(ANONYMOUS);
+    await screen.findByText("삭제");
+    await user.click(screen.getByRole("button", { name: "대조하기" }));
+
+    expect(await screen.findByText("1등")).toBeInTheDocument();
+    expect(matchDeviceSavedNumbers).toHaveBeenCalledWith("1150");
+    expect(matchAccountSavedNumbers).not.toHaveBeenCalled();
+  });
+
+  it("로그인 사용자는 대조하기를 누르면 계정 스코프로 조회해 등수를 보여준다 (§25.5)", async () => {
+    const user = userEvent.setup();
+    listAccountSavedNumbers.mockResolvedValue([item()]);
+    matchAccountSavedNumbers.mockResolvedValue([match({ prizeTier: "낙첨", matchedCount: 2 })]);
+
+    renderLibrary(LOGGED_IN);
+    await screen.findByText("삭제");
+    await user.click(screen.getByRole("button", { name: "대조하기" }));
+
+    expect(await screen.findByText("2개 일치")).toBeInTheDocument();
+    expect(matchAccountSavedNumbers).toHaveBeenCalledWith("1150");
+    expect(matchDeviceSavedNumbers).not.toHaveBeenCalled();
   });
 
   it("익명으로 보던 중 로그인(claim)이 끝나면 계정 스코프로 다시 조회한다 (§25.2 이관 확인)", async () => {
