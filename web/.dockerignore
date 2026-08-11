@@ -1,0 +1,13 @@
+node_modules
+.next
+.next-*
+npm-debug.log
+.env.local
+.env*.local
+e2e
+coverage
+test-results
+playwright-report
+blob-report
+logs
+*.log

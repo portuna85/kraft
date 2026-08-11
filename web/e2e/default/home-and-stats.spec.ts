@@ -15,6 +15,19 @@ test.describe("홈·통계 렌더", () => {
     await expect(page.getByText("1등 당첨금")).toBeVisible();
   });
 
+  test("홈이 scripts/deploy/smoke-test.sh가 기대하는 data-testid 구조를 유지한다", async ({
+    page,
+  }) => {
+    // smoke-test.sh의 배포 게이트 정규식: data-testid="latest-round" 바로 다음
+    // 자식이 <strong>회차 숫자다 — 문구·클래스가 바뀌어도 이 구조가 깨지면 배포가
+    // 막힌다. 여기서 먼저 잡는다.
+    await page.goto("/");
+    const testid = page.locator('[data-testid="latest-round"]');
+    await expect(testid).toBeVisible();
+    const strong = testid.locator("> strong").first();
+    await expect(strong).toHaveText(/^\d{3,4}회$/);
+  });
+
   test("홈이 WebSite 구조화 데이터를 담고 있다 (improvement_fe.md §25.8)", async ({ page }) => {
     await page.goto("/");
     const jsonLd = await page.locator('script[type="application/ld+json"]').textContent();

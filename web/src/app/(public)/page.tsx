@@ -48,8 +48,11 @@ export default async function HomePage() {
 
       <section className={`${styles.hero} prose`} aria-labelledby="latest-round">
         <h1 id="latest-round">
-          <span className={styles.roundLabel}>
-            <span className={styles.roundNumber}>{latest.round}회</span>
+          {/* scripts/deploy/smoke-test.sh가 data-testid="latest-round" 바로 다음의
+              <strong>회차 숫자를 배포 게이트로 읽는다 — 문구·클래스가 바뀌어도
+              이 훅과 구조(다음 형제가 아니라 첫 자식으로 <strong>)는 유지한다. */}
+          <span className={styles.roundLabel} data-testid="latest-round">
+            <strong className={styles.roundNumber}>{latest.round}회</strong>
             <span className={styles.drawDate}>{formatDrawDate(latest.drawDate)} 추첨</span>
           </span>
         </h1>
