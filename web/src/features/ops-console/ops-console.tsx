@@ -12,13 +12,14 @@ import { InlineAlert } from "@/shared/ui/states";
 import { Card } from "@/shared/ui/surface";
 
 import { CollectionPanel } from "./collection-panel";
+import { ManualEntryForm } from "./manual-entry-form";
 import type { LoadingAction } from "./ops-console-types";
 import styles from "./ops-console.module.css";
 import { SummaryPanel } from "./summary-panel";
 
 type Message = { tone: "success" | "danger"; text: string };
 
-function collectResultText(result: WinningNumberResult): string {
+function resultText(result: WinningNumberResult): string {
   return `${result.round}회 반영 완료 (1등 ${formatPrize(result.firstPrizeAmount)}).`;
 }
 
@@ -113,7 +114,22 @@ export function OpsConsole() {
             tokenReady={tokenReady}
             loadingAction={loadingAction}
             onStart={setLoadingAction}
-            onSuccess={(_action, result) => void refreshAfterSuccess(collectResultText(result))}
+            onSuccess={(_action, result) => void refreshAfterSuccess(resultText(result))}
+            onError={(text) => {
+              setMessage({ tone: "danger", text });
+              setLoadingAction(null);
+            }}
+          />
+        </div>
+      </Card>
+
+      <Card>
+        <div className="stack">
+          <h2>수동 적재</h2>
+          <ManualEntryForm
+            token={token}
+            onStart={() => setLoadingAction("upsert")}
+            onSuccess={(result) => void refreshAfterSuccess(resultText(result))}
             onError={(text) => {
               setMessage({ tone: "danger", text });
               setLoadingAction(null);
