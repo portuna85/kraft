@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { NONCE_HEADER } from "@/shared/config/csp";
 import { publicEnv } from "@/shared/config/env";
 import { THEME_INIT_SCRIPT } from "@/shared/lib/theme";
+import { WebVitalsReporter } from "@/shared/ui/web-vitals-reporter";
 
 import "./globals.css";
 
@@ -72,6 +73,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <a className="skip-nav" href="#main">
           본문으로 건너뛰기
         </a>
+        <WebVitalsReporter />
         {children}
       </body>
     </html>

@@ -15,70 +15,70 @@
   "routes": {
     "/": {
       "maxKB": 52,
-      "currentKB": 19.4
+      "currentKB": 23
     },
     "/_not-found": {
       "maxKB": 51,
-      "currentKB": 14
+      "currentKB": 17.3
     },
     "/analysis": {
       "maxKB": 61,
-      "currentKB": 21.8
+      "currentKB": 25.4
     },
     "/community": {
       "maxKB": 51,
-      "currentKB": 24.8
+      "currentKB": 28.4
     },
     "/community/posts/[id]": {
       "maxKB": 62,
-      "currentKB": 30.7
+      "currentKB": 34.9
     },
     "/community/posts/[id]/edit": {
       "maxKB": 63,
-      "currentKB": 28.2
+      "currentKB": 32
     },
     "/community/write": {
       "maxKB": 63,
-      "currentKB": 28.2
+      "currentKB": 32
     },
     "/companion": {
       "maxKB": 56,
-      "currentKB": 23.4
+      "currentKB": 26.9
     },
     "/frequency": {
       "maxKB": 57,
-      "currentKB": 19.4
+      "currentKB": 23
     },
     "/info/[slug]": {
       "maxKB": 51,
-      "currentKB": 19.4
+      "currentKB": 23
     },
     "/ops": {
       "maxKB": 62,
-      "currentKB": 26.7
+      "currentKB": 30
     },
     "/recommend": {
       "maxKB": 64,
-      "currentKB": 30.8
+      "currentKB": 34.4
     },
     "/recommend/history": {
       "maxKB": 58,
-      "currentKB": 29.5
+      "currentKB": 33.1
     },
     "/saved": {
       "maxKB": 65,
-      "currentKB": 28.9
+      "currentKB": 32.6
     },
     "/stats": {
       "maxKB": 51,
-      "currentKB": 19.4
+      "currentKB": 23
     },
     "/status": {
       "maxKB": 51,
-      "currentKB": 19.4
+      "currentKB": 23
     },
     "/data": {
-      "currentKB": 19.4
+      "currentKB": 23
     }
   }
 }
