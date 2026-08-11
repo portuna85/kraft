@@ -65,6 +65,20 @@ export type FreshnessStatus = "fresh" | "stale" | "error";
 /** 데이터 신선도 배지도 같은 이유로 텍스트 라벨이 필수다(§3.1). */
 export type StatusBadgeContract = { status: FreshnessStatus; label: string };
 
+/**
+ * PageHeader — improvement_fe.md §23.14. `title`은 그 페이지의 `<h1>`이다 —
+ * 호출부가 별도로 `<h1>`을 또 두면 페이지에 제목이 두 개가 된다.
+ */
+export type PageHeaderContract = {
+  eyebrow?: string;
+  title: string;
+  description?: ReactNode;
+  actions?: ReactNode;
+};
+
+/** Stat — 요약 그리드의 키/값 타일 하나. `tone`은 값 자체의 의미(위험·정상 등)에만 쓴다. */
+export type StatContract = { label: string; value: ReactNode; tone?: Tone };
+
 /* ── 오버레이 ────────────────────────────────────────────────────────── */
 
 export type DialogContract = {
