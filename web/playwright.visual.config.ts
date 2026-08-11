@@ -28,7 +28,14 @@ export default defineConfig({
     toHaveScreenshot: { maxDiffPixelRatio: 0.002 },
   },
   use: { baseURL: BASE_URL, trace: "retain-on-failure" },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  // 3개 뷰포트 — improvement_fe.md §25.8, web-legacy(playwright.visual.config.ts)와
+  // 같은 3개 프로젝트다. Desktop 하나만으로는 반응형 레이아웃(모바일 하단 탭바, 태블릿
+  // 사이드바 유무 전환 등)의 시각 회귀를 못 잡는다.
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    { name: "Mobile Chrome", use: { ...devices["Pixel 5"] } },
+    { name: "Tablet", use: { browserName: "chromium", ...devices["iPad (gen 7)"] } },
+  ],
   webServer: [
     {
       command: "node e2e/fixtures/backend.mjs",
