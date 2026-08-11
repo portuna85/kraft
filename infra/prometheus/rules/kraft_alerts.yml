@@ -293,3 +293,36 @@ groups:
           summary: "커뮤니티 쓰기 API에서 비정상 트래픽 의심"
           description: "CSRF 거부 또는 낙관적 잠금 409가 짧은 시간에 급증함. 어뷰징 시도이거나 클라이언트 버그일 수 있음."
           runbook: "출처 IP 분포 확인(Grafana); 심하면 CommunityWriteRateLimitFilter의 writeRateLimitPerMinute 임시 하향 조정"
+
+  # Phase 10 컷오버 관찰용(§24.4 롤백 트리거) — web:3000·backend:8080이 Caddy 안에서
+  # 같은 서버 블록을 공유해 앱별로 못 나눈다. 사이트 전체 값이라 backend 쪽 문제로도
+  # 울릴 수 있지만, 컷오버 직후 그 시점엔 backend 이미지가 그대로이므로 이 알림이
+  # 뜨면 web/ 배포를 먼저 의심한다.
+  - name: kraft_edge
+    rules:
+      - alert: EdgeHighErrorRate
+        expr: |
+          sum(rate(caddy_http_requests_total{job="caddy",code=~"5.."}[5m]))
+          / sum(rate(caddy_http_requests_total{job="caddy"}[5m])) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          title: "엣지 5xx 에러율 급증"
+          summary: "Caddy가 보는 사이트 전체 5xx 에러율이 높습니다 ({{ $value | humanizePercentage }})"
+          description: "사이트 전체(web+backend) 5xx 에러율이 5%를 초과한 상태가 2분 이상 지속되고 있습니다."
+          runbook: "Grafana 엣지 패널로 backend HighErrorRate와 동시에 뜨는지 확인 — 아니라면 web/ 배포가 원인일 가능성이 높다. 필요시 scripts/deploy/rollback.sh web <이전 이미지>."
+
+      - alert: EdgeSlowResponseTime
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(caddy_http_request_duration_seconds_bucket{job="caddy"}[5m])) by (le)
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          title: "엣지 응답 지연"
+          summary: "Caddy가 보는 사이트 전체 P95 응답 시간이 2초를 초과했습니다"
+          description: "95번째 백분위 응답 시간이 5분 이상 2초를 초과하고 있습니다."
+          runbook: "Grafana 엣지 패널로 backend SlowResponseTime과 동시에 뜨는지 확인 — 아니라면 web/ 배포가 원인일 가능성이 높다."

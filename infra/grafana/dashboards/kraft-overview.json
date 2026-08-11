@@ -147,6 +147,38 @@
         }
       ],
       "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "id": 10,
+      "title": "엣지 5xx 오류율 (Caddy, 사이트 전체)",
+      "type": "timeseries",
+      "description": "Phase 10 컷오버 관찰용. web:3000·backend:8080이 Caddy 안에서 같은 서버 블록을 공유해 앱별로 못 나눈다 — 사이트 전체 5xx율이다. 컷오버 직후 이 값이 튀면 web/ 배포를 의심한다(그 시점엔 backend 이미지가 그대로이므로).",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 9, "x": 0, "y": 28 },
+      "targets": [
+        {
+          "expr": "sum(rate(caddy_http_requests_total{job=\"caddy\",code=~\"5..\"}[5m])) / sum(rate(caddy_http_requests_total{job=\"caddy\"}[5m]))",
+          "refId": "A",
+          "legendFormat": "5xx rate"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percentunit" } }
+    },
+    {
+      "id": 11,
+      "title": "엣지 P95 응답 시간 (Caddy, 사이트 전체)",
+      "type": "timeseries",
+      "description": "Phase 10 컷오버 관찰용. 5xx 오류율 패널과 같은 이유로 앱별로 못 나눈 사이트 전체 값이다.",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 9, "x": 9, "y": 28 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(caddy_http_request_duration_seconds_bucket{job=\"caddy\"}[5m])) by (le))",
+          "refId": "A",
+          "legendFormat": "p95"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
     }
   ]
 }
