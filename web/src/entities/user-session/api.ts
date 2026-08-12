@@ -58,3 +58,27 @@ export async function logout(): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * H-02: 회원 탈퇴 — `CommunityAccountController.withdraw`가 `204 No Content`를
+ * 반환하고 그 요청 안에서 세션을 무효화한다. `logout()`과 같은 이유로 raw fetch를
+ * 쓴다 — 응답에 검증할 JSON 바디가 없어 `browserMutate`(모든 쓰기 응답에 스키마를
+ * 요구, §13.1 원칙 1)를 쓸 수 없다. 되돌릴 수 없는 동작이라 호출부가 반드시
+ * 확인 절차를 거친 뒤에만 불러야 한다.
+ */
+export async function withdraw(): Promise<boolean> {
+  const csrf = readCsrfToken();
+  if (csrf === null) return false;
+
+  try {
+    const response = await fetch("/api/v1/community/me/withdrawal", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { [CSRF_HEADER_NAME]: csrf },
+      signal: AbortSignal.timeout(5000),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
