@@ -6,12 +6,18 @@ import com.kraft.community.user.CommunityUserRepository;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
 public class CommunityBlockService {
+
+    private static final Logger log = LoggerFactory.getLogger(CommunityBlockService.class);
+    private static final int BLOCK_MAX_ATTEMPTS = 3;
 
     private final CommunityUserBlockRepository communityUserBlockRepository;
     private final CommunityUserRepository communityUserRepository;
@@ -25,7 +31,17 @@ public class CommunityBlockService {
         this.clock = clock;
     }
 
-    /** 멱등 — 이미 차단돼 있어도 USER_ALREADY_BLOCKED 오류 대신 성공으로 흡수한다. */
+    /**
+     * 멱등 — 이미 차단돼 있어도 USER_ALREADY_BLOCKED 오류 대신 성공으로 흡수한다.
+     *
+     * M-03: find-then-save는 "존재하지 않음을 확인 → 삽입" 사이에 경합 창이 있어, 두 동시
+     * 요청이 똑같이 없음을 보고 둘 다 삽입을 시도하면 하나는 유니크 위반(500)으로 실패했다
+     * — PUT의 멱등 계약과 어긋난다. upsertBlock(REQUIRES_NEW)으로 대체해 경합 창 자체를
+     * 없앤다. 재시도 루프는 CommunityReactionService.unlike()와 같은 이유다 — 같은 유니크
+     * 키를 두고 여러 요청이 경합하면 MariaDB가 드물게 SnapshotIsolationException을 던질 수
+     * 있는데, 매 재시도가 REQUIRES_NEW 덕에 완전히 새 트랜잭션이라 안전하게 다시 시도할 수
+     * 있다(upsert 자체가 멱등이라 재시도해도 중복 행이 생기지 않는다).
+     */
     public void block(Long blockerUserId, Long blockedUserId) {
         if (blockerUserId.equals(blockedUserId)) {
             throw new ApiException(ApiErrorCode.COMMUNITY_SELF_BLOCK_NOT_ALLOWED,
@@ -34,9 +50,29 @@ public class CommunityBlockService {
         if (!communityUserRepository.existsById(blockedUserId)) {
             throw new ApiException(ApiErrorCode.COMMUNITY_USER_NOT_FOUND, "사용자를 찾을 수 없습니다.");
         }
-        if (communityUserBlockRepository.findByBlockerUserIdAndBlockedUserId(blockerUserId, blockedUserId).isEmpty()) {
-            communityUserBlockRepository.save(
-                    new CommunityUserBlock(blockerUserId, blockedUserId, OffsetDateTime.now(clock)));
+
+        for (int attempt = 1; attempt <= BLOCK_MAX_ATTEMPTS; attempt++) {
+            try {
+                communityUserBlockRepository.upsertBlock(blockerUserId, blockedUserId, OffsetDateTime.now(clock));
+                return;
+            } catch (DataAccessException raceLost) {
+                if (attempt == BLOCK_MAX_ATTEMPTS) {
+                    throw raceLost;
+                }
+                log.debug("block 경합으로 재시도: blockerUserId={} blockedUserId={} attempt={}",
+                        blockerUserId, blockedUserId, attempt);
+                sleepBriefly(attempt);
+            }
+        }
+    }
+
+    // 동시 재시도가 곧바로 다시 충돌하지 않도록 시도 횟수에 비례한 짧은 무작위 지연을 둔다
+    // (CommunityReactionService.sleepBriefly와 동일한 이유).
+    private void sleepBriefly(int attempt) {
+        try {
+            Thread.sleep((long) (Math.random() * 10 * attempt));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 

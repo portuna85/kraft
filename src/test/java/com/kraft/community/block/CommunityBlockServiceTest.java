@@ -4,9 +4,9 @@ import com.kraft.common.error.ApiException;
 import com.kraft.community.user.CommunityUserRepository;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -50,7 +51,7 @@ class CommunityBlockServiceTest {
                     assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
                     assertThat(apiEx.getCode()).isEqualTo("COMMUNITY_SELF_BLOCK_NOT_ALLOWED");
                 });
-        verify(communityUserBlockRepository, never()).save(any());
+        verify(communityUserBlockRepository, never()).upsertBlock(any(), any(), any());
     }
 
     @Test
@@ -67,27 +68,20 @@ class CommunityBlockServiceTest {
                 });
     }
 
+    /**
+     * M-03: block()은 이제 존재 확인 없이 항상 upsertBlock을 호출한다 — 멱등성(이미
+     * 차단됐어도 오류 없이 성공)은 이 DB-레벨 upsert(ON DUPLICATE KEY UPDATE)가 보장하므로
+     * Mockito만으로는 검증할 수 없다. 동시 중복 PUT이 실제로 예외 없이 흡수되는지는
+     * CommunityBlockConcurrencyTest(실 MariaDB)가 검증한다.
+     */
     @Test
-    @DisplayName("차단이 없으면 새로 만든다")
-    void block_whenAbsent_creates() {
+    @DisplayName("차단 시도는 항상 upsertBlock을 호출한다")
+    void block_alwaysCallsUpsert() {
         given(communityUserRepository.existsById(2L)).willReturn(true);
-        given(communityUserBlockRepository.findByBlockerUserIdAndBlockedUserId(1L, 2L)).willReturn(Optional.empty());
 
         service.block(1L, 2L);
 
-        verify(communityUserBlockRepository).save(any());
-    }
-
-    @Test
-    @DisplayName("이미 차단했으면 멱등하게 아무 것도 하지 않는다(USER_ALREADY_BLOCKED 흡수)")
-    void block_whenAlreadyBlocked_isIdempotent() {
-        given(communityUserRepository.existsById(2L)).willReturn(true);
-        given(communityUserBlockRepository.findByBlockerUserIdAndBlockedUserId(1L, 2L))
-                .willReturn(Optional.of(new CommunityUserBlock(1L, 2L, Instant.now().atOffset(ZoneOffset.UTC))));
-
-        service.block(1L, 2L);
-
-        verify(communityUserBlockRepository, never()).save(any());
+        verify(communityUserBlockRepository).upsertBlock(eq(1L), eq(2L), any(OffsetDateTime.class));
     }
 
     @Test
