@@ -58,28 +58,19 @@ node_modules/
 # next dev/build/typegen이 실행 환경에 따라 다른 경로(.next/dev/types vs .next/types)를
 # 참조하도록 재작성하므로 커밋하지 않는다(F2) — Next.js 공식 템플릿 기본값과 동일.
 web/next-env.d.ts
-web-legacy/next-env.d.ts
 
 ### Playwright ###
-# 프론트엔드 재작성 기간에는 web/(새 구현)과 web-legacy/(배포 중인 구현)가 공존한다.
 web/test-results/
 web/playwright-report/
 web/blob-report/
 web/playwright/.cache/
-web-legacy/test-results/
-web-legacy/playwright-report/
-web-legacy/blob-report/
-web-legacy/playwright/.cache/
 
 ### 번들·Lighthouse 베이스라인(F-06) ###
 web/scripts/bundle-results.json
 web/scripts/lighthouse-results.json
-web-legacy/scripts/bundle-results.json
-web-legacy/scripts/lighthouse-results.json
 
 ### Test coverage output ###
 web/coverage/
-web-legacy/coverage/
 
 ### Generated infra configs (rendered from .tmpl at deploy time) ###
 infra/alertmanager/alertmanager.yml
@@ -90,7 +81,6 @@ infra/alertmanager/alertmanager.yml
 ### Logs ###
 logs/
 web/debug.log
-web-legacy/debug.log
 
 ### Migration credentials (never commit) ###
 scripts/archive/migrate-2026-06/env-migration.sh

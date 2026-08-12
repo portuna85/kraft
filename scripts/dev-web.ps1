@@ -4,25 +4,16 @@
     Next.js 프론트엔드를 개발 모드로 실행합니다.
 .DESCRIPTION
     백엔드가 localhost:8080 에서 실행 중이어야 합니다.
-    <app>/.env.local 이 없으면 <app>/.env.example 에서 복사 후 로컬 기본값을 설정합니다.
-
-    프론트엔드 재작성 기간에는 두 앱이 공존합니다 — 기본값은 새 구현(web/)이고,
-    배포 중인 구현을 띄우려면 -Legacy 를 붙입니다.
+    web/.env.local 이 없으면 web/.env.example 에서 복사 후 로컬 기본값을 설정합니다.
 .EXAMPLE
     .\scripts\dev-web.ps1
-.EXAMPLE
-    .\scripts\dev-web.ps1 -Legacy
 #>
-
-param(
-    [switch]$Legacy
-)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path $PSScriptRoot -Parent
-$appName = if ($Legacy) { 'web-legacy' } else { 'web' }
+$appName = 'web'
 $webDir = Join-Path $root $appName
 
 # web/.env.local 없으면 예시 파일에서 복사 후 로컬 URL로 패치

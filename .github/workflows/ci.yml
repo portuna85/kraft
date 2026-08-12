@@ -27,7 +27,6 @@ jobs:
     outputs:
       backend: ${{ steps.scope.outputs.backend }}
       web: ${{ steps.scope.outputs.web }}
-      web_next: ${{ steps.scope.outputs.web_next }}
       infra: ${{ steps.scope.outputs.infra }}
       any: ${{ steps.scope.outputs.any }}
     steps:
@@ -43,8 +42,7 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           BACKEND_CHANGED: ${{ steps.scope.outputs.backend }}
-          # Phase 10 컷오버: 실제로 배포되는 프론트엔드는 이제 web/(web_next)다.
-          WEB_CHANGED: ${{ steps.scope.outputs.web_next }}
+          WEB_CHANGED: ${{ steps.scope.outputs.web }}
           INFRA_CHANGED: ${{ steps.scope.outputs.infra }}
         run: |
           {
@@ -147,42 +145,11 @@ jobs:
           --build-cache
           --no-daemon
 
-  web-build-test:
-    name: Web Build & Test
-    runs-on: ubuntu-latest
-    needs: changes
-    if: needs.changes.outputs.web == 'true'
-    timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: web-legacy
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: web-legacy/package-lock.json
-      - run: npm ci --prefer-offline --no-audit --no-fund
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run test:coverage
-      - name: Upload web diagnostics
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: web-test-diagnostics
-          path: web-legacy/coverage/
-          if-no-files-found: ignore
-          retention-days: 7
-
-  # 재작성 중인 새 프론트엔드(web/)의 자체 게이트. 아직 배포 대상이 아니라 이미지 빌드·
-  # 배포로 이어지지 않는다 — improvement_fe.md Phase 1.
   web-next-build-test:
     name: Web Next Build & Test
     runs-on: ubuntu-latest
     needs: changes
-    if: needs.changes.outputs.web_next == 'true'
+    if: needs.changes.outputs.web == 'true'
     timeout-minutes: 10
     defaults:
       run:
@@ -223,7 +190,7 @@ jobs:
     name: Web Next E2E (CSP·/ops 게이트)
     runs-on: ubuntu-latest
     needs: changes
-    if: needs.changes.outputs.web_next == 'true'
+    if: needs.changes.outputs.web == 'true'
     timeout-minutes: 15
     container:
       image: mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
@@ -264,7 +231,7 @@ jobs:
     name: Web Next E2E (주요 흐름)
     runs-on: ubuntu-latest
     needs: changes
-    if: needs.changes.outputs.web_next == 'true'
+    if: needs.changes.outputs.web == 'true'
     timeout-minutes: 15
     container:
       image: mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
@@ -303,7 +270,7 @@ jobs:
     name: Web Next E2E (접근성)
     runs-on: ubuntu-latest
     needs: changes
-    if: needs.changes.outputs.web_next == 'true'
+    if: needs.changes.outputs.web == 'true'
     timeout-minutes: 15
     container:
       image: mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
@@ -344,7 +311,7 @@ jobs:
     name: Web Next E2E (시각 회귀)
     runs-on: ubuntu-latest
     needs: changes
-    if: needs.changes.outputs.web_next == 'true'
+    if: needs.changes.outputs.web == 'true'
     timeout-minutes: 15
     container:
       image: mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
@@ -384,7 +351,7 @@ jobs:
     name: Web Next E2E (크로스브라우저)
     runs-on: ubuntu-latest
     needs: changes
-    if: needs.changes.outputs.web_next == 'true'
+    if: needs.changes.outputs.web == 'true'
     timeout-minutes: 15
     container:
       image: mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
@@ -430,7 +397,7 @@ jobs:
     name: Web Next Performance Budget
     runs-on: ubuntu-latest
     needs: changes
-    if: needs.changes.outputs.web_next == 'true'
+    if: needs.changes.outputs.web == 'true'
     timeout-minutes: 15
     container:
       image: mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
@@ -478,337 +445,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  web-build-artifacts:
-    name: Web Build (${{ matrix.variant }})
-    runs-on: ubuntu-latest
-    needs: changes
-    if: needs.changes.outputs.web == 'true'
-    timeout-minutes: 10
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - variant: default
-            dist_dir: .next
-            archive: web-build-default.tar.gz
-            backend_url: http://127.0.0.1:59999
-            public_url: http://127.0.0.1:3100
-            sticky_unit: ""
-          - variant: content
-            dist_dir: .next-content
-            archive: web-build-content.tar.gz
-            backend_url: http://127.0.0.1:4101
-            public_url: http://127.0.0.1:3101
-            sticky_unit: ""
-          - variant: visual
-            dist_dir: .next-visual
-            archive: web-build-visual.tar.gz
-            backend_url: http://127.0.0.1:4102
-            public_url: http://127.0.0.1:3102
-            sticky_unit: ""
-          - variant: ad-overlay
-            dist_dir: .next-ad-overlay
-            archive: web-build-ad-overlay.tar.gz
-            backend_url: http://127.0.0.1:59999
-            public_url: http://127.0.0.1:3105
-            sticky_unit: DAN-ci-ad-overlay-test
-          - variant: proxy
-            dist_dir: .next-proxy
-            archive: web-build-proxy.tar.gz
-            backend_url: http://127.0.0.1:4103
-            public_url: http://127.0.0.1:8180
-            sticky_unit: ""
-    defaults:
-      run:
-        working-directory: web-legacy
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: web-legacy/package-lock.json
-      - run: npm ci --prefer-offline --no-audit --no-fund
-      - name: Build standalone application once
-        run: npm run build
-        env:
-          NEXT_DIST_DIR: ${{ matrix.dist_dir }}
-          NEXT_PUBLIC_KAKAO_ADFIT_UNIT_STICKY: ${{ matrix.sticky_unit }}
-          KRAFT_BACKEND_INTERNAL_URL: ${{ matrix.backend_url }}
-          KRAFT_PUBLIC_BASE_URL: ${{ matrix.public_url }}
-          NEXT_PUBLIC_UNDO_WINDOW_MS: "200"
-      - name: Package reusable build output
-        run: >-
-          tar
-          --exclude="${{ matrix.dist_dir }}/cache"
-          --exclude="${{ matrix.dist_dir }}/dev"
-          -czf "../${{ matrix.archive }}"
-          "${{ matrix.dist_dir }}"
-      - name: Upload reusable build output
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: web-build-${{ matrix.variant }}
-          path: ${{ matrix.archive }}
-          compression-level: 0
-          if-no-files-found: error
-          retention-days: 1
-
-  web-e2e:
-    name: Web E2E (${{ matrix.suite }}, ${{ matrix.shard_id }})
-    runs-on: ubuntu-latest
-    container:
-      image: mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
-      options: --ipc=host
-    needs: [changes, web-build-artifacts]
-    if: needs.changes.outputs.web == 'true'
-    timeout-minutes: 12
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - suite: default
-            shard: 1/3
-            shard_id: 1-of-3
-            command: test:e2e
-            artifact: web-build-default
-            archive: web-build-default.tar.gz
-          - suite: default
-            shard: 2/3
-            shard_id: 2-of-3
-            command: test:e2e
-            artifact: web-build-default
-            archive: web-build-default.tar.gz
-          - suite: default
-            shard: 3/3
-            shard_id: 3-of-3
-            command: test:e2e
-            artifact: web-build-default
-            archive: web-build-default.tar.gz
-          - suite: content
-            shard: 1/3
-            shard_id: 1-of-3
-            command: test:e2e:content
-            artifact: web-build-content
-            archive: web-build-content.tar.gz
-          - suite: content
-            shard: 2/3
-            shard_id: 2-of-3
-            command: test:e2e:content
-            artifact: web-build-content
-            archive: web-build-content.tar.gz
-          - suite: content
-            shard: 3/3
-            shard_id: 3-of-3
-            command: test:e2e:content
-            artifact: web-build-content
-            archive: web-build-content.tar.gz
-          - suite: cross-browser
-            shard: 1/2
-            shard_id: firefox-1-of-2
-            project: firefox
-            command: test:e2e:cross-browser
-            artifact: web-build-default
-            archive: web-build-default.tar.gz
-          - suite: cross-browser
-            shard: 2/2
-            shard_id: firefox-2-of-2
-            project: firefox
-            command: test:e2e:cross-browser
-            artifact: web-build-default
-            archive: web-build-default.tar.gz
-          - suite: cross-browser
-            shard: 1/2
-            shard_id: webkit-1-of-2
-            project: webkit
-            command: test:e2e:cross-browser
-            artifact: web-build-default
-            archive: web-build-default.tar.gz
-          - suite: cross-browser
-            shard: 2/2
-            shard_id: webkit-2-of-2
-            project: webkit
-            command: test:e2e:cross-browser
-            artifact: web-build-default
-            archive: web-build-default.tar.gz
-          - suite: visual
-            shard: 1/2
-            shard_id: 1-of-2
-            command: test:e2e:visual
-            artifact: web-build-visual
-            archive: web-build-visual.tar.gz
-          - suite: visual
-            shard: 2/2
-            shard_id: 2-of-2
-            command: test:e2e:visual
-            artifact: web-build-visual
-            archive: web-build-visual.tar.gz
-          - suite: ad-overlay
-            shard: 1/1
-            shard_id: 1-of-1
-            command: test:e2e:ad-overlay
-            artifact: web-build-ad-overlay
-            archive: web-build-ad-overlay.tar.gz
-          # RW-P1-07: content 트랙(실콘텐츠·픽스처 백엔드 전제)이 지금까지 Firefox/WebKit에서
-          # 한 번도 실행되지 않았다 — playwright.content.cross-browser.config.ts는 만들어져
-          # 있었지만 어디에도 연결돼 있지 않았다. KF-10이 지적한 CI 팽창을 반복하지 않도록
-          # 반응형/오버플로/시각 계약에 실제로 민감한 스펙 몇 개만 골라(설정 파일의
-          # testMatch 참고) 샤딩 없이 한 잡에서 Firefox+WebKit을 순차 실행한다.
-          - suite: content-cross-browser
-            shard: 1/1
-            shard_id: 1-of-1
-            command: test:e2e:content:cross-browser
-            artifact: web-build-content
-            archive: web-build-content.tar.gz
-    defaults:
-      run:
-        working-directory: web-legacy
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
-      - name: Restore npm package cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.npm
-          key: npm-playwright-${{ runner.os }}-${{ runner.arch }}-node24-${{ hashFiles('web-legacy/package-lock.json') }}
-      - run: npm ci --prefer-offline --no-audit --no-fund
-      - name: Download prebuilt application
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: ${{ matrix.artifact }}
-          path: web-legacy/.ci-artifacts
-      - name: Restore prebuilt application
-        run: tar -xzf ".ci-artifacts/${{ matrix.archive }}"
-      - name: Run balanced Playwright shard
-        if: matrix.suite != 'cross-browser'
-        run: npm run ${{ matrix.command }} -- --shard=${{ matrix.shard }}
-        env:
-          HOME: /root
-      - name: Run balanced cross-browser shard
-        if: matrix.suite == 'cross-browser'
-        run: npm run ${{ matrix.command }} -- --project=${{ matrix.project }} --shard=${{ matrix.shard }}
-        env:
-          HOME: /root
-      - name: Upload failure traces
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: playwright-${{ matrix.suite }}-${{ matrix.shard_id }}
-          path: |
-            web-legacy/test-results/
-            web-legacy/playwright-report/
-          if-no-files-found: ignore
-          retention-days: 7
-      # KF-10: 실측 없이 정해온 샤드 수를 재조정할 근거를 쌓는다 — 성공/실패 무관하게
-      # 항상 업로드(pass 케이스의 소요시간도 재조정 판단에 필요).
-      - name: Upload timing report
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: timing-${{ matrix.suite }}-${{ matrix.shard_id }}
-          path: web-legacy/playwright-timing.json
-          if-no-files-found: ignore
-          retention-days: 14
-
-  web-e2e-proxy:
-    name: Web E2E (Caddy proxy gateway)
-    # KF-06: web-legacy/src/lib/backend-proxy.ts와 23개 Next 라우트 핸들러 삭제 이후,
-    # caddy/Caddyfile.local이 그 역할(쿠키·CSRF·기기토큰·응답헤더 전달, 타임아웃,
-    # /api/revalidate 차단)을 대신 지키는지 실제 Caddy 컨테이너로 검증한다. 이 잡은
-    # web-e2e와 달리 Playwright 컨테이너 안에서 돌지 않는다 — docker-in-docker 없이
-    # 실 Caddy 컨테이너를 띄우려면 러너에 직접 도커가 있어야 한다.
-    runs-on: ubuntu-latest
-    needs: [changes, web-build-artifacts]
-    if: needs.changes.outputs.web == 'true'
-    timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: web-legacy
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: web-legacy/package-lock.json
-      - run: npm ci --prefer-offline --no-audit --no-fund
-      - name: Install Playwright chromium
-        run: npx playwright install --with-deps chromium
-      - name: Download prebuilt application
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: web-build-proxy
-          path: web-legacy/.ci-artifacts
-      - name: Restore prebuilt application
-        run: tar -xzf ".ci-artifacts/web-build-proxy.tar.gz"
-      - name: Run Caddy proxy gateway E2E
-        run: npm run test:e2e:proxy
-      - name: Upload failure traces
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: playwright-proxy
-          path: |
-            web-legacy/test-results/
-            web-legacy/playwright-report/
-          if-no-files-found: ignore
-          retention-days: 7
-      - name: Upload timing report
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: timing-proxy
-          path: web-legacy/playwright-timing.json
-          if-no-files-found: ignore
-          retention-days: 14
-
-  web-performance-budget:
-    name: Web Performance Budget
-    runs-on: ubuntu-latest
-    container:
-      image: mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
-      options: --ipc=host
-    needs: [changes, web-build-artifacts]
-    if: needs.changes.outputs.web == 'true'
-    timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: web-legacy
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
-      - name: Restore npm package cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.npm
-          key: npm-playwright-${{ runner.os }}-${{ runner.arch }}-node24-${{ hashFiles('web-legacy/package-lock.json') }}
-      - run: npm ci --prefer-offline --no-audit --no-fund
-      - name: Download default build
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: web-build-default
-          path: web-legacy/.ci-artifacts/default
-      - name: Download fixture-backed build
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: web-build-content
-          path: web-legacy/.ci-artifacts/content
-      - name: Restore build outputs
-        run: |
-          tar -xzf .ci-artifacts/default/web-build-default.tar.gz
-          tar -xzf .ci-artifacts/content/web-build-content.tar.gz
-      - name: Run bundle and Lighthouse budgets
-        run: bash ../scripts/ci/run-web-performance.sh .
-        env:
-          PERF_BASE_URL: http://127.0.0.1:3101
-      - name: Upload budget diagnostics
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: performance-budget-diagnostics
-          path: |
-            web-legacy/scripts/bundle-results.json
-            web-legacy/scripts/lighthouse-results.json
-          if-no-files-found: ignore
-          retention-days: 7
-
   api-types-drift-guard:
     name: API Types Drift Guard
     runs-on: ubuntu-latest
@@ -826,9 +462,9 @@ jobs:
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: web-legacy/package-lock.json
+          cache-dependency-path: web/package-lock.json
       - name: Install web dependencies reproducibly
-        working-directory: web-legacy
+        working-directory: web
         run: npm ci --prefer-offline --no-audit --no-fund
       - name: Start local-profile backend
         run: |
@@ -842,7 +478,7 @@ jobs:
           cat backend.log
           exit 1
       - name: Verify generated API types
-        working-directory: web-legacy
+        working-directory: web
         run: npm run verify:api-types
         env:
           KRAFT_BACKEND_INTERNAL_URL: http://localhost:8080
@@ -961,13 +597,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
-        if: needs.changes.outputs.web_next == 'true'
+        if: needs.changes.outputs.web == 'true'
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
-        if: needs.changes.outputs.web_next == 'true'
+        if: needs.changes.outputs.web == 'true'
       # web-verified 태그: backend와 동일한 이유(quality-gate 결과와 무관하게 "실제로
       # 최근에 빌드된 소스"를 계속 정확히 가리키기 위함)로 둔다.
       - name: Build and push web image
-        if: needs.changes.outputs.web_next == 'true'
+        if: needs.changes.outputs.web == 'true'
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
           context: web
@@ -993,7 +629,7 @@ jobs:
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
       - name: Reuse previously verified web image
-        if: needs.changes.outputs.web_next != 'true'
+        if: needs.changes.outputs.web != 'true'
         run: docker buildx imagetools create --tag "$IMAGE:$GITHUB_SHA" "$IMAGE:web-verified"
 
   security-scan:
@@ -1080,7 +716,6 @@ jobs:
       - repository-guards
       - backend-build-test
       - static-analysis
-      - web-build-test
       - web-next-build-test
       - web-next-e2e-proxy
       - web-next-e2e-default
@@ -1088,10 +723,6 @@ jobs:
       - web-next-e2e-cross-browser
       - web-next-e2e-visual
       - web-next-performance-budget
-      - web-build-artifacts
-      - web-e2e
-      - web-e2e-proxy
-      - web-performance-budget
       - api-types-drift-guard
       - docker-publish-backend
       - docker-publish-web
@@ -1104,12 +735,10 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
           WEB_CHANGED: ${{ needs.changes.outputs.web }}
-          WEB_NEXT_CHANGED: ${{ needs.changes.outputs.web_next }}
           GUARDS_RESULT: ${{ needs.repository-guards.result }}
           BACKEND_RESULT: ${{ needs.backend-build-test.result }}
           STATIC_RESULT: ${{ needs.static-analysis.result }}
           API_RESULT: ${{ needs.api-types-drift-guard.result }}
-          WEB_TEST_RESULT: ${{ needs.web-build-test.result }}
           WEB_NEXT_RESULT: ${{ needs.web-next-build-test.result }}
           WEB_NEXT_PROXY_RESULT: ${{ needs.web-next-e2e-proxy.result }}
           WEB_NEXT_DEFAULT_RESULT: ${{ needs.web-next-e2e-default.result }}
@@ -1117,10 +746,6 @@ jobs:
           WEB_NEXT_CROSS_BROWSER_RESULT: ${{ needs.web-next-e2e-cross-browser.result }}
           WEB_NEXT_VISUAL_RESULT: ${{ needs.web-next-e2e-visual.result }}
           WEB_NEXT_PERF_RESULT: ${{ needs.web-next-performance-budget.result }}
-          WEB_BUILD_RESULT: ${{ needs.web-build-artifacts.result }}
-          WEB_E2E_RESULT: ${{ needs.web-e2e.result }}
-          WEB_E2E_PROXY_RESULT: ${{ needs.web-e2e-proxy.result }}
-          WEB_PERF_RESULT: ${{ needs.web-performance-budget.result }}
           BACKEND_IMAGE_RESULT: ${{ needs.docker-publish-backend.result }}
           WEB_IMAGE_RESULT: ${{ needs.docker-publish-web.result }}
           SECURITY_RESULT: ${{ needs.security-scan.result }}
@@ -1141,20 +766,13 @@ jobs:
             require_success "API type drift" "$API_RESULT"
           fi
           if [[ "$WEB_CHANGED" == "true" ]]; then
-            require_success "Web tests" "$WEB_TEST_RESULT"
-            require_success "Web builds" "$WEB_BUILD_RESULT"
-            require_success "Web E2E" "$WEB_E2E_RESULT"
-            require_success "Web E2E (Caddy proxy gateway)" "$WEB_E2E_PROXY_RESULT"
-            require_success "Web performance" "$WEB_PERF_RESULT"
-          fi
-          if [[ "$WEB_NEXT_CHANGED" == "true" ]]; then
-            require_success "Web Next (재작성 중인 프론트엔드)" "$WEB_NEXT_RESULT"
-            require_success "Web Next E2E (CSP·/ops 게이트)" "$WEB_NEXT_PROXY_RESULT"
-            require_success "Web Next E2E (주요 흐름)" "$WEB_NEXT_DEFAULT_RESULT"
-            require_success "Web Next E2E (접근성)" "$WEB_NEXT_A11Y_RESULT"
-            require_success "Web Next E2E (크로스브라우저)" "$WEB_NEXT_CROSS_BROWSER_RESULT"
-            require_success "Web Next E2E (시각 회귀)" "$WEB_NEXT_VISUAL_RESULT"
-            require_success "Web Next Performance Budget" "$WEB_NEXT_PERF_RESULT"
+            require_success "Web (재작성 프론트엔드)" "$WEB_NEXT_RESULT"
+            require_success "Web E2E (CSP·/ops 게이트)" "$WEB_NEXT_PROXY_RESULT"
+            require_success "Web E2E (주요 흐름)" "$WEB_NEXT_DEFAULT_RESULT"
+            require_success "Web E2E (접근성)" "$WEB_NEXT_A11Y_RESULT"
+            require_success "Web E2E (크로스브라우저)" "$WEB_NEXT_CROSS_BROWSER_RESULT"
+            require_success "Web E2E (시각 회귀)" "$WEB_NEXT_VISUAL_RESULT"
+            require_success "Web Performance Budget" "$WEB_NEXT_PERF_RESULT"
           fi
           if [[ "$EVENT_NAME" == "push" ]]; then
             require_success "Backend image" "$BACKEND_IMAGE_RESULT"

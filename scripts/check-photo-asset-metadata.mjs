@@ -8,9 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-// 프론트엔드 재작성 기간에는 web/(새 구현)과 web-legacy/(배포 중인 구현)가 공존한다 —
-// 존재하는 쪽만 검사한다.
-const photoRoots = ["web", "web-legacy"]
+const photoRoots = ["web"]
   .map((app) => path.join(repoRoot, app, "public", "photos"))
   .filter((dir) => existsSync(dir));
 

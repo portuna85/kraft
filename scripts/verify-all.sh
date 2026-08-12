@@ -5,13 +5,9 @@
 # .github/workflows/ci.yml의 각 job과 1:1로 대응시켜 둔다(잡 이름은 스크립트 섹션
 # 제목에 그대로 남겨 대조하기 쉽게 했다).
 #
-# M-06: 예전에는 이 스크립트 전체가 web-legacy/를 검증했다 — web-legacy는 Phase 10
-# 컷오버 이후 더 이상 배포되지 않는데, "verify-all이 초록"이라는 결과가 실제로는
-# 배포되지 않는 프론트엔드를 검증한 것이었다. 이제 실제 배포 대상인 web/을 CI
-# (web-next-* 잡들)와 동일하게 검증한다. web-legacy는 M-14(레거시 삭제)까지만
-# 과도기적으로 남아 있고, CI 자체는 이미 별도 잡(api-types-drift-guard,
-# web-build-artifacts 등)으로 계속 검증한다 — 이 로컬 스크립트에서는 더 이상
-# 다루지 않는다.
+# M-06/M-14: 예전에는 이 스크립트 전체가 web-legacy/를 검증했다 — web-legacy는
+# Phase 10 컷오버 이후 더 이상 배포되지 않았고, M-14에서 디렉터리 자체가 삭제됐다.
+# 이제 실제 배포 대상인 web/을 CI(web-next-* 잡들)와 동일하게 검증한다.
 #
 # 사용법:
 #   bash scripts/verify-all.sh            # 전체 게이트(느림, CI와 동일 범위)

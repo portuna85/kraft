@@ -142,9 +142,8 @@ services:
     profiles: ["full"]
     build:
       # Phase 10 컷오버: 재작성 결과물(web/)이 §25 패리티 검증을 통과해 이제 이 서비스가
-      # 실제로 서빙되는 앱이다. web-legacy/는 Phase 11(관찰 1주 후)에 삭제된다 — 그 전까지
-      # 롤백 대상으로 별도 보관한다. 서비스 이름 `web`은 Caddy(reverse_proxy web:3000)와
-      # compose.prod가 그대로 참조하므로 바꾸지 않는다.
+      # 실제로 서빙되는 앱이다. web-legacy/는 M-14에서 삭제됐다. 서비스 이름 `web`은
+      # Caddy(reverse_proxy web:3000)와 compose.prod가 그대로 참조하므로 바꾸지 않는다.
       context: ./web
       dockerfile: Dockerfile
       args:
