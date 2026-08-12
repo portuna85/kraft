@@ -148,6 +148,77 @@ class FlywayMigrationTest {
                 .hasMessageContaining("historical first-prize combination cannot be persisted");
     }
 
+    // --- M-04: 소유권 XOR·FK 제약 ---
+
+    @Test
+    @DisplayName("M-04: saved_numbers는 client_token_hash·owner_user_id가 둘 다 NULL이면 거부한다")
+    void savedNumbers_bothOwnershipColumnsNull_isRejected() {
+        assertThatThrownBy(() -> jdbcTemplate.update("""
+                INSERT INTO saved_numbers (client_token_hash, owner_user_id, numbers, source, created_at)
+                VALUES (NULL, NULL, '1,2,3,4,5,6', 'MANUAL', NOW(6))
+                """))
+                .isInstanceOf(DataAccessException.class);
+    }
+
+    @Test
+    @DisplayName("M-04: saved_numbers는 client_token_hash·owner_user_id가 둘 다 값이 있으면 거부한다")
+    void savedNumbers_bothOwnershipColumnsSet_isRejected() {
+        Long ownerId = insertCommunityUser("saved-xor-both-" + System.nanoTime());
+
+        assertThatThrownBy(() -> jdbcTemplate.update("""
+                INSERT INTO saved_numbers (client_token_hash, owner_user_id, numbers, source, created_at)
+                VALUES (?, ?, '1,2,3,4,5,6', 'MANUAL', NOW(6))
+                """, "some-token-hash-0000000000000000000000000000000000000000000000", ownerId))
+                .isInstanceOf(DataAccessException.class);
+    }
+
+    @Test
+    @DisplayName("M-04: recommendation_sets는 client_token_hash·owner_user_id가 둘 다 NULL이면 거부한다")
+    void recommendationSets_bothOwnershipColumnsNull_isRejected() {
+        assertThatThrownBy(() -> jdbcTemplate.update("""
+                INSERT INTO recommendation_sets (
+                    client_token_hash, owner_user_id, strategy, algorithm_version, history_through_round,
+                    locked_numbers, excluded_numbers, created_at
+                ) VALUES (NULL, NULL, 'random', 'uniform-random-v1', 1, NULL, NULL, NOW(6))
+                """))
+                .isInstanceOf(DataAccessException.class);
+    }
+
+    @Test
+    @DisplayName("M-04: recommendation_sets는 client_token_hash·owner_user_id가 둘 다 값이 있으면 거부한다")
+    void recommendationSets_bothOwnershipColumnsSet_isRejected() {
+        Long ownerId = insertCommunityUser("rec-xor-both-" + System.nanoTime());
+
+        assertThatThrownBy(() -> jdbcTemplate.update("""
+                INSERT INTO recommendation_sets (
+                    client_token_hash, owner_user_id, strategy, algorithm_version, history_through_round,
+                    locked_numbers, excluded_numbers, created_at
+                ) VALUES (?, ?, 'random', 'uniform-random-v1', 1, NULL, NULL, NOW(6))
+                """, "some-token-hash-0000000000000000000000000000000000000000000000", ownerId))
+                .isInstanceOf(DataAccessException.class);
+    }
+
+    @Test
+    @DisplayName("M-04: recommendation_sets는 존재하지 않는 계정을 가리키는 owner_user_id를 거부한다")
+    void recommendationSets_orphanOwner_isRejectedByForeignKey() {
+        assertThatThrownBy(() -> jdbcTemplate.update("""
+                INSERT INTO recommendation_sets (
+                    client_token_hash, owner_user_id, strategy, algorithm_version, history_through_round,
+                    locked_numbers, excluded_numbers, created_at
+                ) VALUES (NULL, 999999999, 'random', 'uniform-random-v1', 1, NULL, NULL, NOW(6))
+                """))
+                .isInstanceOf(DataAccessException.class);
+    }
+
+    private Long insertCommunityUser(String providerId) {
+        jdbcTemplate.update("""
+                INSERT INTO community_users (provider, provider_id, nickname, profile_image_url, created_at)
+                VALUES ('google', ?, '테스터', NULL, NOW(6))
+                """, providerId);
+        return jdbcTemplate.queryForObject(
+                "SELECT id FROM community_users WHERE provider_id = ?", Long.class, providerId);
+    }
+
     private static long maskOf(int... numbers) {
         long mask = 0L;
         for (int number : numbers) {
