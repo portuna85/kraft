@@ -68,6 +68,33 @@ class AdminControllerSmokeTest {
     }
 
     @Test
+    @DisplayName("M-11: 음수 page로 회차 목록을 요청해도 500 대신 200으로 클램프되어 응답한다")
+    void rounds_negativePage_clampsInsteadOf500() throws Exception {
+        mockMvc.perform(get("/admin/rounds")
+                        .param("page", "-5")
+                        .with(user("admin").roles("ADMIN")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("M-11: 0 이하 size로 회차 목록을 요청해도 500 대신 200으로 클램프되어 응답한다")
+    void rounds_nonPositiveSize_clampsInsteadOf500() throws Exception {
+        mockMvc.perform(get("/admin/rounds")
+                        .param("size", "0")
+                        .with(user("admin").roles("ADMIN")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("M-11: 음수 page로 감사 로그를 요청해도 500 대신 200으로 클램프되어 응답한다")
+    void audit_negativePage_clampsInsteadOf500() throws Exception {
+        mockMvc.perform(get("/admin/audit")
+                        .param("page", "-1")
+                        .with(user("admin").roles("ADMIN")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     @DisplayName("위조 요청 방지 토큰 없이 로그인 시도 시 만료 페이지로 리다이렉트된다")
     void loginPost_withoutCsrf_redirectsToExpiredLoginPage() throws Exception {
         mockMvc.perform(post("/admin/login")

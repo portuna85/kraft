@@ -3,6 +3,12 @@ package com.kraft.common.error;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.executable.ExecutableValidator;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -58,6 +64,42 @@ class GlobalExceptionHandlerTest {
 
         @GetMapping("/test/typed")
         void acceptTypedValue(@RequestParam Integer number) {}
+
+        @GetMapping("/test/constraint-violation")
+        void throwConstraintViolation() {
+            throw constraintViolationForNegativePage();
+        }
+
+        @GetMapping("/test/constraint-violation-empty")
+        void throwEmptyConstraintViolation() {
+            throw new ConstraintViolationException("빈 위반 집합", Set.of());
+        }
+
+        @GetMapping("/test/illegal-argument")
+        void throwIllegalArgument() {
+            // PageRequest.of(page, size)가 음수 page에 실제로 던지는 것과 같은 종류의 예외.
+            throw new IllegalArgumentException("Page index must not be less than zero");
+        }
+    }
+
+    // AdminController.rounds(int page, ...)처럼 메서드 파라미터 검증이 실패했을 때 실제
+    // Bean Validation이 만드는 것과 같은 모양(propertyPath가 "메서드명.arg0")의
+    // ConstraintViolationException을 재현한다 — 원문 메시지가 그대로 노출되면 이 구조(메서드
+    // 시그니처)까지 API 응답에 드러난다는 것을 보여주기 위함이다.
+    private static class Clampable {
+        void page(@Min(0) int page) {}
+    }
+
+    private static ConstraintViolationException constraintViolationForNegativePage() {
+        Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+        ExecutableValidator executableValidator = validator.forExecutables();
+        try {
+            var method = Clampable.class.getDeclaredMethod("page", int.class);
+            var violations = executableValidator.validateParameters(new Clampable(), method, new Object[] {-1});
+            return new ConstraintViolationException(violations);
+        } catch (NoSuchMethodException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     @BeforeEach
@@ -153,5 +195,32 @@ class GlobalExceptionHandlerTest {
                 .extracting(ILoggingEvent::getFormattedMessage)
                 .anyMatch(message -> message.contains("param=number"))
                 .noneMatch(message -> message.contains("sensitive-value"));
+    }
+
+    @Test
+    @DisplayName("M-11: 제약 위반 응답은 필드명 기반의 안전한 메시지를 반환한다")
+    void handleConstraintViolation_returnsFieldBasedMessage() throws Exception {
+        mockMvc.perform(get("/test/constraint-violation").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("page: 0 이상이어야 합니다"));
+    }
+
+    @Test
+    @DisplayName("제약 위반 집합이 비어 있으면 일반 검증 실패 메시지를 반환한다")
+    void handleConstraintViolation_emptyViolations_returnsGenericMessage() throws Exception {
+        mockMvc.perform(get("/test/constraint-violation-empty").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("입력값 검증에 실패했습니다."));
+    }
+
+    @Test
+    @DisplayName("M-11: IllegalArgumentException(예: 음수 페이지)은 500이 아니라 400으로 응답한다")
+    void handleIllegalArgument_returns400InsteadOf500() throws Exception {
+        mockMvc.perform(get("/test/illegal-argument").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("요청 값이 올바르지 않습니다."));
     }
 }

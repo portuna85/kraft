@@ -25,6 +25,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class AdminController {
 
     private static final Logger log = LoggerFactory.getLogger(AdminController.class);
+    private static final int ROUNDS_MAX_PAGE_SIZE = 100;
+    private static final int AUDIT_MAX_PAGE_SIZE = 200;
 
     private final WinningNumberQueryService queryService;
     private final WinningNumberCollectionService collectionService;
@@ -64,7 +66,12 @@ public class AdminController {
     public String rounds(@RequestParam(defaultValue = "0") int page,
                          @RequestParam(defaultValue = "20") int size,
                          Model model) {
-        WinningNumberListResponse list = queryService.list(page, Math.min(size, 100));
+        // M-11: page/size는 사용자가 URL 쿼리 파라미터로 직접 조작할 수 있다 — 음수 page나
+        // 0/음수 size를 클램프 없이 PageRequest.of에 넘기면 IllegalArgumentException(500)이
+        // 된다. HTML 관리자 화면이라 400 거부 대신 안전한 값으로 조용히 클램프한다.
+        int clampedPage = Math.max(0, page);
+        int clampedSize = Math.min(Math.max(1, size), ROUNDS_MAX_PAGE_SIZE);
+        WinningNumberListResponse list = queryService.list(clampedPage, clampedSize);
         var items = list.items().stream().map(AdminRoundView::from).toList();
         model.addAttribute("rounds", new AdminRoundPageView(items, list.page(), list.totalElements(), list.totalPages()));
         return "admin/rounds";
@@ -141,7 +148,9 @@ public class AdminController {
     public String audit(@RequestParam(defaultValue = "0") int page,
                         @RequestParam(defaultValue = "50") int size,
                         Model model) {
-        model.addAttribute("logs", auditLogService.findAll(PageRequest.of(page, Math.min(size, 200))));
+        int clampedPage = Math.max(0, page);
+        int clampedSize = Math.min(Math.max(1, size), AUDIT_MAX_PAGE_SIZE);
+        model.addAttribute("logs", auditLogService.findAll(PageRequest.of(clampedPage, clampedSize)));
         return "admin/audit";
     }
 }

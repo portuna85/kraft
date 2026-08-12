@@ -75,9 +75,38 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ConstraintViolationException.class)
     ResponseEntity<ApiErrorResponse> handleConstraintViolation(ConstraintViolationException exception,
                                                                HttpServletRequest request) {
+        // M-11: exception.getMessage()에는 Java 프로퍼티 경로(예:
+        // "list.arg1: must be greater than or equal to 0")가 그대로 들어 있어 내부 메서드
+        // 시그니처 구조가 공개 API 응답으로 샌다. 원문은 로그에만 남기고, 응답에는 필드
+        // 경로만(있으면) 안전하게 뽑아 노출한다 — handleHandlerMethodValidation과 같은 원칙.
         log.warn("제약 조건 위반: path={} message={}", request.getRequestURI(), exception.getMessage());
+        String message = exception.getConstraintViolations().isEmpty()
+                ? "입력값 검증에 실패했습니다."
+                : exception.getConstraintViolations().stream()
+                        .map(violation -> lastPathSegment(violation.getPropertyPath().toString())
+                                + ": " + violation.getMessage())
+                        .collect(Collectors.joining(", "));
         return ResponseEntity.badRequest()
-                .body(errorBody(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", exception.getMessage(), request));
+                .body(errorBody(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", message, request));
+    }
+
+    // "list.arg1" 같은 메서드 파라미터 경로에서 마지막 세그먼트("arg1")만 남긴다 — 전체
+    // 경로는 어떤 서비스 메서드의 몇 번째 인자인지까지 드러내므로 그대로 노출하지 않는다.
+    private static String lastPathSegment(String propertyPath) {
+        int lastDot = propertyPath.lastIndexOf('.');
+        return lastDot < 0 ? propertyPath : propertyPath.substring(lastDot + 1);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    ResponseEntity<ApiErrorResponse> handleIllegalArgument(IllegalArgumentException exception,
+                                                            HttpServletRequest request) {
+        // M-11: PageRequest.of(page, size)가 음수 page/size에 던지는 것을 포함해, 잘못된
+        // 클라이언트 입력이 원인인 IllegalArgumentException을 500 대신 400으로 내린다.
+        // 클램프를 먼저 적용하는 호출부(CommunityPostService 등)에서는 이 경로 자체가
+        // 거의 발생하지 않는다 — 클램프를 놓친 곳에 대한 방어적 안전망이다.
+        log.warn("잘못된 요청 인자: path={} message={}", request.getRequestURI(), exception.getMessage());
+        return ResponseEntity.badRequest()
+                .body(errorBody(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "요청 값이 올바르지 않습니다.", request));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
