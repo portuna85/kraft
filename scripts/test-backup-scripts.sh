@@ -138,6 +138,13 @@ assert_file_exists "local-only + rclone 성공: remote 타임스탬프 메트릭
 assert_file_absent "local-only: remote 상태 메트릭은 시계열 자체가 없어야 함" "$TEXTFILE_DIR/kraft_backup_remote_status.prom"
 remove_fake_rclone
 
+echo "==> M-13: textfile collector 디렉터리가 없으면(GitHub Actions 실행 환경) 조용히 건너뛴다"
+(
+  backup_write_metrics "$WORKDIR/no-such-dir" "kraft_backup_restore_drill_status" "kraft_backup_restore_drill_last_status 1"
+)
+assert_exit_code "textfile_dir 없음 → exit 0(조용히 건너뜀)" 0 "$?"
+assert_file_absent "textfile_dir 없음: 파일이 만들어지지 않음" "$WORKDIR/no-such-dir/kraft_backup_restore_drill_status.prom"
+
 if [[ $FAIL -ne 0 ]]; then
   echo "==> backup-common.sh 회귀 테스트 실패" >&2
   exit 1

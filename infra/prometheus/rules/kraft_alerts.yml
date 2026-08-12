@@ -261,6 +261,23 @@ groups:
           description: "BACKUP_MODE=local-only면 정상. offsite-required인데도 뜨면 caddy-data 원격 업로드가 한 번도 성공한 적 없다는 뜻."
           runbook: "/etc/kraft/backup.env 확인; bash scripts/caddy-data-backup.sh 직접 실행"
 
+      # M-13: 복원 드릴(scripts/db-restore-drill.sh)은 배포 호스트에서 수동/주기 실행될
+      # 때만 메트릭을 남긴다(GitHub Actions 실행 환경은 textfile collector 디렉터리가 없어
+      # 자연히 건너뜀). 이 드릴은 아직 cron으로 강제 스케줄링하지 않은 선택 기능이라
+      # H-06의 백업 메트릭과 달리 absent() "한 번도 안 찍힘" 알림은 두지 않는다 — 정기
+      # 실행을 설정하지 않은 서버에서까지 계속 울리는 알림이 되어 버린다. 대신 실제로
+      # 드릴을 돌렸는데 실패한 경우만 알린다.
+      - alert: KraftRestoreDrillFailed
+        expr: kraft_backup_restore_drill_last_status == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          title: "복원 드릴 실패"
+          summary: "가장 최근 DB 복원 드릴이 실패함"
+          description: "kraft_backup_restore_drill_last_status가 0 — 백업이 실제로 복원 가능한지 확인이 실패했다."
+          runbook: "bash scripts/db-restore-drill.sh를 서버에서 직접 실행해 실패 원인(스키마 손상, Flyway 버전 불일치 등) 확인"
+
       - alert: NodeExporterDown
         expr: up{job="node-exporter"} == 0
         for: 2m
