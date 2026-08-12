@@ -201,6 +201,66 @@ groups:
           description: "kraft_backup_last_remote_success_timestamp_seconds 기준 마지막 성공 원격 복사가 25시간을 초과함. 로컬 백업(KraftBackupStale)은 정상일 수 있음 — 이 경보는 오프사이트 사본만 본다."
           runbook: "BACKUP_REMOTE_DEST가 /etc/kraft/backup.env에 설정돼 있는지, rclone이 설치돼 있는지 서버에서 확인; bash scripts/db-backup.sh를 직접 실행해 [FAIL]/[WARN] 로그로 원인 파악"
 
+      # H-06: KraftBackupStale/KraftBackupRemoteStale은 plain `>` 비교라, 메트릭이 한 번도
+      # 안 찍히면(예: node-exporter textfile collector 미설정, 첫 배포 직후 백업이 한 번도
+      # 성공한 적 없음) 시계열 자체가 없어 조용히 무경보였다. absent()는 "오래됨"과 "한
+      # 번도 없음"을 구분해야 운영자가 원인(지연 vs 미설정)을 헷갈리지 않으므로 별도
+      # sibling 규칙으로 둔다(기존 Stale 규칙의 의미는 그대로 보존).
+      - alert: KraftBackupMetricMissing
+        expr: absent(kraft_backup_last_success_timestamp_seconds)
+        for: 30m
+        labels:
+          severity: critical
+        annotations:
+          title: "DB 백업 메트릭 없음"
+          summary: "kraft_backup_last_success_timestamp_seconds 메트릭이 전혀 수집되지 않음"
+          description: "node-exporter textfile collector 미설정이거나 db-backup.sh가 한 번도 실행/완료되지 않았을 수 있음."
+          runbook: "서버에서 NODE_EXPORTER_TEXTFILE_DIR 설정 확인; crontab -l로 db-backup.sh 스케줄 등록 확인; bash scripts/db-backup.sh 직접 실행"
+
+      - alert: KraftBackupRemoteMetricMissing
+        expr: absent(kraft_backup_last_remote_success_timestamp_seconds)
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          title: "오프사이트 DB 백업 메트릭 없음"
+          summary: "kraft_backup_last_remote_success_timestamp_seconds 메트릭이 전혀 수집되지 않음"
+          description: "BACKUP_MODE=local-only(오프사이트 미사용)이면 정상적으로 이 시계열이 없다. offsite-required로 설정했는데도 이 경보가 뜨면 원격 업로드가 한 번도 성공한 적 없다는 뜻."
+          runbook: "/etc/kraft/backup.env의 BACKUP_MODE·BACKUP_REMOTE_DEST 확인; bash scripts/db-backup.sh 직접 실행해 [FAIL]/[WARN] 로그 확인"
+
+      - alert: KraftBackupFailed
+        expr: kraft_backup_last_status == 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          title: "DB 백업 실패"
+          summary: "가장 최근 DB 백업 시도가 실패함"
+          description: "kraft_backup_last_status가 0 — 25시간 stale 임계값을 기다리지 않고 마지막 시도 실패를 즉시 알린다."
+          runbook: "bash scripts/db-backup.sh를 서버에서 직접 실행해 실패 원인(디스크 공간, mariadb-dump 오류 등) 확인"
+
+      - alert: KraftCaddyDataBackupRemoteStale
+        expr: time() - kraft_caddy_data_backup_last_remote_success_timestamp_seconds > 90000
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          title: "오프사이트 Caddy 데이터 백업 지연"
+          summary: "오프사이트 caddy-data(ACME 인증서) 백업 사본이 25시간 이상 갱신되지 않음"
+          description: "kraft_caddy_data_backup_last_remote_success_timestamp_seconds 기준 마지막 성공 원격 복사가 25시간을 초과함."
+          runbook: "BACKUP_REMOTE_DEST/BACKUP_MODE 확인 후 bash scripts/caddy-data-backup.sh 직접 실행해 [FAIL]/[WARN] 로그 확인"
+
+      - alert: KraftCaddyDataBackupRemoteMetricMissing
+        expr: absent(kraft_caddy_data_backup_last_remote_success_timestamp_seconds)
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          title: "오프사이트 Caddy 데이터 백업 메트릭 없음"
+          summary: "kraft_caddy_data_backup_last_remote_success_timestamp_seconds 메트릭이 전혀 수집되지 않음"
+          description: "BACKUP_MODE=local-only면 정상. offsite-required인데도 뜨면 caddy-data 원격 업로드가 한 번도 성공한 적 없다는 뜻."
+          runbook: "/etc/kraft/backup.env 확인; bash scripts/caddy-data-backup.sh 직접 실행"
+
       - alert: NodeExporterDown
         expr: up{job="node-exporter"} == 0
         for: 2m
