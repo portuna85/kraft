@@ -33,8 +33,10 @@ public interface CommunityCommentRepository extends JpaRepository<CommunityComme
     // 멱등성(아래) — 카운터가 삭제 요청 재시도마다 추가로 깎이던 부분이다.
     Page<CommunityComment> findByPostIdAndParentIdIsNull(Long postId, Pageable pageable);
 
-    // 한 페이지의 상위 댓글 id들에 달린 답글을 한 번에 일괄 조회(N+1 방지).
-    List<CommunityComment> findByPostIdAndParentIdIn(Long postId, List<Long> parentIds);
+    // 한 페이지의 상위 댓글 id들에 달린 답글을 한 번에 일괄 조회(N+1 방지). M-05: 정렬절이
+    // 없으면 DB/쿼리 플랜에 따라 답글 순서가 실행마다 달라질 수 있다 — 상위 댓글과 동일하게
+    // createdAt,id 오름차순으로 고정한다(작성 순서 그대로 표시).
+    List<CommunityComment> findByPostIdAndParentIdInOrderByCreatedAtAscIdAsc(Long postId, List<Long> parentIds);
 
     // 부모 댓글에 답글을 붙이거나 삭제(tombstone)할 때 동시 경합을 막기 위한 행 잠금 조회
     // 부모 row lock으로 삭제 경합을 차단한다.

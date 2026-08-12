@@ -74,7 +74,7 @@ public class CommunityCommentService {
         List<Long> parentIds = topLevel.getContent().stream().map(CommunityComment::getId).toList();
         List<CommunityComment> replies = parentIds.isEmpty()
                 ? List.of()
-                : communityCommentRepository.findByPostIdAndParentIdIn(postId, parentIds);
+                : communityCommentRepository.findByPostIdAndParentIdInOrderByCreatedAtAscIdAsc(postId, parentIds);
         Map<Long, List<CommunityComment>> repliesByParentId = replies.stream()
                 .collect(Collectors.groupingBy(CommunityComment::getParentId));
         return new CommunityCommentListResult(topLevel, repliesByParentId);
