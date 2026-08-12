@@ -17,3 +17,7 @@ describe("신고 사유 계약", () => {
     expect(REPORT_TARGET_TYPES).toEqual(["POST", "COMMENT", "USER"]);
   });
 });
+
+// 생성 타입 정합성 체크 없음 — M-07(improvement_codex.md): 이 파일은 요청 측 열거값
+// (REPORT_REASONS/REPORT_TARGET_TYPES)만 정의하고, 응답을 파싱하는 Valibot 객체
+// 스키마가 없다. 대응할 생성 타입 자체가 없어 `extends` 패리티 체크를 붙일 대상이 없다.

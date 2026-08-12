@@ -18,6 +18,17 @@ export default defineConfig({
       reportsDirectory: "./coverage",
       include: ["src/**/*.{ts,tsx}"],
       exclude: ["src/**/*.test.{ts,tsx}", "src/app/**/layout.tsx", "src/app/**/page.tsx"],
+      // M-07: 커버리지가 측정만 되고 아무것도 강제하지 않았다 — 큰 기능을 테스트 없이
+      // 추가해도 CI가 조용히 통과했다. 2026-08-12 실측(statements 74.08%, branches
+      // 71.48%, functions 71.23%, lines 75.69%)에서 각각 몇 포인트 낮춘 보수적 하한을
+      // 둔다 — 레거시처럼 실측치에 딱 맞추면 사소한 리팩터링에도 깨진다. 실제 커버리지가
+      // 여유 있게 올라가면 하한도 의도적으로 올린다(ratchet).
+      thresholds: {
+        statements: 70,
+        branches: 65,
+        functions: 65,
+        lines: 70,
+      },
     },
   },
 });

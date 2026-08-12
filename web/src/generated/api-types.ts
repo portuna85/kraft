@@ -685,6 +685,8 @@ export interface components {
             /** Format: int32 */
             duplicateSavedNumberCount: number;
             /** Format: int32 */
+            skippedSavedNumberForLimitCount: number;
+            /** Format: int32 */
             mergedRecommendationSetCount: number;
         };
         CreateReportRequest: {

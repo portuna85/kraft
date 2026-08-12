@@ -1,7 +1,14 @@
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
 
-import { incidentTypeLabel, statusIncidentListSchema, statusIncidentSchema } from "./schema";
+import type { components } from "@/generated/api-types";
+
+import {
+  incidentTypeLabel,
+  statusIncidentListSchema,
+  statusIncidentSchema,
+  type StatusIncident,
+} from "./schema";
 
 describe("장애 이력 스키마", () => {
   const VALID = {
@@ -39,3 +46,8 @@ describe("운영 유형 라벨", () => {
     expect(incidentTypeLabel("SOME_NEW_TYPE")).toBe("SOME_NEW_TYPE");
   });
 });
+
+/** 생성 타입과의 정합성 — M-07(improvement_codex.md), improvement_fe.md §8.4 */
+type GeneratedIncident = components["schemas"]["PublicIncidentResponse"];
+const _typesMatch: StatusIncident extends GeneratedIncident ? true : never = true;
+void _typesMatch;

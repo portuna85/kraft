@@ -1,7 +1,15 @@
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
 
-import { commentPageSchema, communityCommentSchema, isCommentSubmittable } from "./schema";
+import type { components } from "@/generated/api-types";
+
+import {
+  commentPageSchema,
+  communityCommentSchema,
+  isCommentSubmittable,
+  type CommentPage,
+  type CommunityComment,
+} from "./schema";
 
 function comment(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -65,3 +73,12 @@ describe("댓글 제출 가능 여부", () => {
     expect(isCommentSubmittable("a".repeat(1000))).toBe(true);
   });
 });
+
+/** 생성 타입과의 정합성 — M-07(improvement_codex.md), improvement_fe.md §8.4 */
+type GeneratedComment = components["schemas"]["CommunityCommentResponse"];
+const _commentTypesMatch: CommunityComment extends GeneratedComment ? true : never = true;
+void _commentTypesMatch;
+
+type GeneratedCommentPage = components["schemas"]["CommunityCommentPageResponse"];
+const _pageTypesMatch: CommentPage extends GeneratedCommentPage ? true : never = true;
+void _pageTypesMatch;

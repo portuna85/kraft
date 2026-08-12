@@ -1,7 +1,14 @@
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
 
-import { recommendationSetPageSchema, recommendationSetSchema } from "./schema";
+import type { components } from "@/generated/api-types";
+
+import {
+  recommendationSetPageSchema,
+  recommendationSetSchema,
+  type RecommendationSet,
+  type RecommendationSetPage,
+} from "./schema";
 
 const VALID_SET = {
   id: 1,
@@ -51,3 +58,12 @@ describe("추천 세트 페이지 스키마", () => {
     expect(v.safeParse(recommendationSetPageSchema, page).success).toBe(true);
   });
 });
+
+/** 생성 타입과의 정합성 — M-07(improvement_codex.md), improvement_fe.md §8.4 */
+type GeneratedSet = components["schemas"]["RecommendationSetSummary"];
+const _setTypesMatch: RecommendationSet extends GeneratedSet ? true : never = true;
+void _setTypesMatch;
+
+type GeneratedSetPage = components["schemas"]["PageResponseRecommendationSetSummary"];
+const _pageTypesMatch: RecommendationSetPage extends GeneratedSetPage ? true : never = true;
+void _pageTypesMatch;
