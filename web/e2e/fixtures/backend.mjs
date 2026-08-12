@@ -100,9 +100,7 @@ const POST_WITH_ATTACHMENT = {
     algorithmVersion: "e2e-fixture",
     historyThroughRound: 1150,
     exclusionPolicyVersion: "e2e-fixture",
-    items: [
-      { position: 0, numbers: [1, 8, 17, 24, 33, 41], score: null, explanationCodes: [] },
-    ],
+    items: [{ position: 0, numbers: [1, 8, 17, 24, 33, 41], score: null, explanationCodes: [] }],
   },
 };
 

@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { listAccountRecommendationSets, listDeviceRecommendationSets } from "@/entities/recommendation/api";
+import {
+  listAccountRecommendationSets,
+  listDeviceRecommendationSets,
+} from "@/entities/recommendation/api";
 import type { RecommendationSet } from "@/entities/recommendation/schema";
 import { RecommendationCard } from "@/entities/recommendation/ui/recommendation-card";
 import { canQueryOwnerScope, useSession } from "@/entities/user-session/session-context";

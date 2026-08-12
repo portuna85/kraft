@@ -237,9 +237,7 @@ describe("글 작성·수정 폼", () => {
     await user.type(screen.getByLabelText("내용"), "새 글 내용");
     await user.click(screen.getByRole("button", { name: "저장" }));
 
-    await waitFor(() =>
-      expect(createPost).toHaveBeenCalledWith(expect.anything(), null),
-    );
+    await waitFor(() => expect(createPost).toHaveBeenCalledWith(expect.anything(), null));
   });
 
   it("H-03: 추천 세트를 선택하면 그 id로 createPost를 호출한다", async () => {
