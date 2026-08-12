@@ -25,6 +25,8 @@ import { Button } from "@/shared/ui/button";
 import { Select, TextArea, TextField } from "@/shared/ui/field";
 import { InlineAlert } from "@/shared/ui/states";
 
+import { RecommendationAttachmentPicker } from "./recommendation-attachment-picker";
+
 import styles from "./composer.module.css";
 
 /**
@@ -42,6 +44,8 @@ export function PostForm({ existing }: { existing?: CommunityPost }) {
   /** 수정 중 다른 곳에서 글이 바뀌면 이 버전이 최신으로 갱신된다. */
   const [version, setVersion] = useState(existing?.version ?? 0);
   const [conflict, setConflict] = useState<CommunityPost | null>(null);
+  /** H-03: 새 글에만 첨부할 수 있다 — 백엔드 수정 계약은 제목/내용만 받는다. */
+  const [recommendationSetId, setRecommendationSetId] = useState<number | null>(null);
 
   const form = useForm<PostFormValues>({
     initialValues: {
@@ -53,7 +57,7 @@ export function PostForm({ existing }: { existing?: CommunityPost }) {
     onSubmit: async (values) => {
       try {
         if (existing === undefined) {
-          const created = await createPost(values, null);
+          const created = await createPost(values, recommendationSetId);
           router.push(ROUTES.communityPost(created.id));
           router.refresh();
           return;
@@ -177,6 +181,13 @@ export function PostForm({ existing }: { existing?: CommunityPost }) {
         error={contentField.error}
         hint={`${form.state.values.content.length} / ${CONTENT_MAX_LENGTH}자`}
       />
+
+      {existing === undefined && (
+        <RecommendationAttachmentPicker
+          value={recommendationSetId}
+          onChange={setRecommendationSetId}
+        />
+      )}
 
       {form.state.formError !== null && (
         <InlineAlert tone="danger">{form.state.formError}</InlineAlert>

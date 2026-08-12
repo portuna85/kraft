@@ -88,6 +88,24 @@ const POST_DETAIL = {
   recommendationAttachment: null,
 };
 
+// H-03: 추천 세트가 첨부된 게시글 — 상세 페이지의 RecommendationAttachmentView
+// 렌더를 e2e로 확인하려면 실제로 attachment가 채워진 게시글이 필요하다.
+const POST_WITH_ATTACHMENT = {
+  ...POST_DETAIL,
+  id: 2,
+  title: "추천 세트를 첨부한 글",
+  recommendationAttachment: {
+    setId: 200,
+    strategy: "balanced",
+    algorithmVersion: "e2e-fixture",
+    historyThroughRound: 1150,
+    exclusionPolicyVersion: "e2e-fixture",
+    items: [
+      { position: 0, numbers: [1, 8, 17, 24, 33, 41], score: null, explanationCodes: [] },
+    ],
+  },
+};
+
 // 답글이 상위 댓글 안에 들어 있고, tombstone 댓글이 자리를 지키는지 확인하기 위한 형태다.
 const COMMENT_PAGE = {
   topLevel: [
@@ -332,6 +350,11 @@ const ROUTES = new Map([
     },
   ],
   ["/api/v1/community/posts/1", POST_DETAIL],
+  ["/api/v1/community/posts/2", POST_WITH_ATTACHMENT],
+  [
+    "/api/v1/community/posts/2/comments",
+    () => ({ topLevel: [], totalTopLevelComments: 0, page: 0, size: 50, totalPages: 1 }),
+  ],
   [
     "/api/v1/community/posts/1/comments",
     (_params, requestBody, method) => {

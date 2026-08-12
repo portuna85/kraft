@@ -10,6 +10,7 @@ import { CommentSection } from "@/features/community-comments/comment-section";
 import { BlockButton, BlockedPostGate } from "@/features/community-post/blocked-post-gate";
 import { PostOwnerActions } from "@/features/community-post/post-owner-actions";
 import { ReactionBar } from "@/features/community-post/reaction-bar";
+import { RecommendationAttachmentView } from "@/features/community-post/recommendation-attachment-view";
 import { ApiError } from "@/shared/api/error";
 import { NONCE_HEADER } from "@/shared/config/csp";
 import { publicEnv } from "@/shared/config/env";
@@ -122,6 +123,10 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
           ))}
         </article>
       </BlockedPostGate>
+
+      {post.recommendationAttachment !== null && (
+        <RecommendationAttachmentView attachment={post.recommendationAttachment} />
+      )}
 
       <ReactionBar postId={post.id} initialLikeCount={post.likeCount} />
 

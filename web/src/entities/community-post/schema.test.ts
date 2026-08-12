@@ -3,7 +3,12 @@ import { describe, expect, it } from "vitest";
 
 import type { components } from "@/generated/api-types";
 
-import { communityPostSchema, isTombstone, type CommunityPost } from "./schema";
+import {
+  communityPostSchema,
+  isTombstone,
+  recommendationAttachmentSchema,
+  type CommunityPost,
+} from "./schema";
 
 const VALID = {
   id: 1,
@@ -41,17 +46,69 @@ describe("tombstone 판정", () => {
   });
 });
 
-/**
- * 생성 타입과의 정합성 — improvement_fe.md §8.4
- *
- * recommendationAttachment는 아직 첨부 렌더링이 구현되지 않아 의도적으로
- * `v.unknown()`으로 남겨 뒀다 — unknown은 어떤 구체 타입의 부분집합도 아니라서
- * 그 필드까지 비교하면 항상 실패한다. 나머지 필드만 대조한다.
- */
-type GeneratedPost = Omit<
-  components["schemas"]["CommunityPostResponse"],
-  "recommendationAttachment"
->;
-type CheckedPost = Omit<CommunityPost, "recommendationAttachment">;
-const _typesMatch: CheckedPost extends GeneratedPost ? true : never = true;
+const VALID_ATTACHMENT = {
+  setId: 1,
+  strategy: "balanced",
+  algorithmVersion: "v1",
+  historyThroughRound: 1150,
+  exclusionPolicyVersion: "v1",
+  items: [
+    {
+      position: 1,
+      numbers: [1, 2, 3, 4, 5, 6],
+      score: null,
+      explanationCodes: ["ODD_EVEN_BALANCED"],
+    },
+  ],
+};
+
+describe("추천 첨부 스키마", () => {
+  it("정상 첨부를 통과시킨다", () => {
+    expect(v.safeParse(recommendationAttachmentSchema, VALID_ATTACHMENT).success).toBe(true);
+  });
+
+  it("게시글 스키마에서 첨부가 null이면 통과한다", () => {
+    expect(
+      v.safeParse(communityPostSchema, { ...VALID, recommendationAttachment: null }).success,
+    ).toBe(true);
+  });
+
+  it("게시글 스키마에서 정상 첨부도 통과한다", () => {
+    expect(
+      v.safeParse(communityPostSchema, {
+        ...VALID,
+        recommendationAttachment: VALID_ATTACHMENT,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("알 수 없는 전략 값을 막는다", () => {
+    expect(
+      v.safeParse(recommendationAttachmentSchema, { ...VALID_ATTACHMENT, strategy: "NOPE" })
+        .success,
+    ).toBe(false);
+  });
+
+  it("historyThroughRound가 정수가 아니면 막는다", () => {
+    expect(
+      v.safeParse(recommendationAttachmentSchema, {
+        ...VALID_ATTACHMENT,
+        historyThroughRound: 1.5,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("번호가 6개가 아닌 항목을 막는다", () => {
+    expect(
+      v.safeParse(recommendationAttachmentSchema, {
+        ...VALID_ATTACHMENT,
+        items: [{ ...VALID_ATTACHMENT.items[0], numbers: [1, 2, 3, 4, 5] }],
+      }).success,
+    ).toBe(false);
+  });
+});
+
+/** 생성 타입과의 정합성 — improvement_fe.md §8.4 */
+type GeneratedPost = components["schemas"]["CommunityPostResponse"];
+const _typesMatch: CommunityPost extends GeneratedPost ? true : never = true;
 void _typesMatch;

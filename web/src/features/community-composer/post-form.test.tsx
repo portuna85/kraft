@@ -8,12 +8,22 @@ import { ApiError } from "@/shared/api/error";
 
 import { PostForm } from "./post-form";
 
-const { updatePost, createPost, fetchLatestPost, push, refresh } = vi.hoisted(() => ({
+const {
+  updatePost,
+  createPost,
+  fetchLatestPost,
+  push,
+  refresh,
+  listAccountRecommendationSets,
+  listDeviceRecommendationSets,
+} = vi.hoisted(() => ({
   updatePost: vi.fn(),
   createPost: vi.fn(),
   fetchLatestPost: vi.fn(),
   push: vi.fn(),
   refresh: vi.fn(),
+  listAccountRecommendationSets: vi.fn(),
+  listDeviceRecommendationSets: vi.fn(),
 }));
 
 vi.mock("@/entities/community-post/composer", async (importOriginal) => ({
@@ -21,6 +31,11 @@ vi.mock("@/entities/community-post/composer", async (importOriginal) => ({
   updatePost,
   createPost,
   fetchLatestPost,
+}));
+
+vi.mock("@/entities/recommendation/api", () => ({
+  listAccountRecommendationSets,
+  listDeviceRecommendationSets,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -66,6 +81,18 @@ function renderForm(existing?: CommunityPost, session: SessionState = LOGGED_IN)
 describe("글 작성·수정 폼", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    listAccountRecommendationSets.mockResolvedValue({
+      items: [],
+      page: 0,
+      totalPages: 1,
+      totalElements: 0,
+    });
+    listDeviceRecommendationSets.mockResolvedValue({
+      items: [],
+      page: 0,
+      totalPages: 1,
+      totalElements: 0,
+    });
   });
 
   afterEach(() => {
@@ -199,5 +226,50 @@ describe("글 작성·수정 폼", () => {
     await user.click(screen.getByRole("button", { name: "저장" }));
 
     await waitFor(() => expect(push).toHaveBeenCalledWith("/community/posts/1"));
+  });
+
+  it("H-03: 첨부를 선택하지 않으면 createPost를 recommendationSetId=null로 호출한다", async () => {
+    const user = userEvent.setup();
+    createPost.mockResolvedValue(post());
+
+    renderForm();
+    await user.type(screen.getByLabelText("제목"), "새 글 제목");
+    await user.type(screen.getByLabelText("내용"), "새 글 내용");
+    await user.click(screen.getByRole("button", { name: "저장" }));
+
+    await waitFor(() =>
+      expect(createPost).toHaveBeenCalledWith(expect.anything(), null),
+    );
+  });
+
+  it("H-03: 추천 세트를 선택하면 그 id로 createPost를 호출한다", async () => {
+    listAccountRecommendationSets.mockResolvedValue({
+      items: [
+        {
+          id: 42,
+          strategy: "random",
+          createdAt: "2026-08-01T12:00:00Z",
+          historyThroughRound: 1149,
+          items: [{ position: 0, numbers: [1, 2, 3, 4, 5, 6], score: null, explanationCodes: [] }],
+        },
+      ],
+      page: 0,
+      totalPages: 1,
+      totalElements: 1,
+    });
+    createPost.mockResolvedValue(post());
+    const user = userEvent.setup();
+
+    renderForm();
+    await user.type(screen.getByLabelText("제목"), "새 글 제목");
+    await user.type(screen.getByLabelText("내용"), "새 글 내용");
+
+    const radios = await screen.findAllByRole("radio");
+    // 첫 옵션은 "첨부 안 함" — 두 번째가 유일한 세트 옵션이다(fixture가 보장).
+    await user.click(radios[1] as HTMLElement);
+
+    await user.click(screen.getByRole("button", { name: "저장" }));
+
+    await waitFor(() => expect(createPost).toHaveBeenCalledWith(expect.anything(), 42));
   });
 });

@@ -1,5 +1,7 @@
 import * as v from "valibot";
 
+import { recommendationItemSchema, STRATEGIES } from "../recommendation/schema";
+
 /**
  * 게시글 계약 — improvement_fe.md §3.6, §24.2(1)
  * 열거값은 백엔드 계약이라 변경 금지다.
@@ -37,6 +39,22 @@ export const POST_STATUSES = [
   "DELETED",
 ] as const;
 
+/**
+ * 게시글에 첨부된 추천 세트의 불변 스냅숏 — 백엔드 `RecommendationAttachmentView`.
+ * `recommendation/schema.ts`의 `recommendationItemSchema`/`STRATEGIES`를 그대로
+ * 재사용한다(전략 picklist·아이템 모양을 여기서 다시 정의하지 않는다).
+ */
+export const recommendationAttachmentSchema = v.object({
+  setId: v.number(),
+  strategy: v.picklist(STRATEGIES),
+  algorithmVersion: v.string(),
+  historyThroughRound: v.pipe(v.number(), v.integer()),
+  exclusionPolicyVersion: v.string(),
+  items: v.array(recommendationItemSchema),
+});
+
+export type RecommendationAttachment = v.InferOutput<typeof recommendationAttachmentSchema>;
+
 export const communityPostSchema = v.object({
   id: v.number(),
   ownerId: v.number(),
@@ -51,7 +69,7 @@ export const communityPostSchema = v.object({
   likeCount: v.number(),
   commentCount: v.number(),
   viewCount: v.number(),
-  recommendationAttachment: v.nullable(v.unknown()),
+  recommendationAttachment: v.nullable(recommendationAttachmentSchema),
 });
 
 export type CommunityPost = v.InferOutput<typeof communityPostSchema>;
