@@ -36,6 +36,10 @@ class InMemoryStateInventoryTest {
             // Caffeine 캐시를 갖는다. redis 백엔드(RedisRateLimitCounter)는 인스턴스 간 공유되므로
             // 이 목록에 없다.
             "com.kraft.common.web.InMemoryRateLimitCounter",
+            // H-04(2026-08-12): Redis 장애 경고 로그를 스로틀하기 위한 AtomicLong 타임스탬프뿐이다.
+            // 레이트리밋 카운트 자체는 여전히 전부 Redis에 있어 인스턴스 간 공유되므로, 이 필드가
+            // 인스턴스별로 남아도(각 인스턴스가 자기 로그만 독립적으로 스로틀해도) 정확성에 영향이 없다.
+            "com.kraft.common.web.RedisRateLimitCounter",
             "com.kraft.admin.AdminLoginAttemptService",
             "com.kraft.winningnumber.RoundEtagProvider",
             "com.kraft.recommend.LottoRecommendationService",
