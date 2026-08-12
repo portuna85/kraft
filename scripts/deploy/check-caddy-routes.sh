@@ -50,6 +50,66 @@ check_status_not_404() {
   fi
 }
 
+# H-05: /api/client-error 본문 크기 제한(caddy/Caddyfile의 @client_error, 4KB)이 실제로
+# 걸려있는지 확인한다. 오버사이즈 요청이 413로 edge에서 끊기는지(Content-Length 있는 요청과
+# chunked 요청 둘 다), 그리고 정상 크기 요청이 matcher 때문에 깨지지 않는지 함께 검증한다.
+check_body_over_limit_rejected() {
+  local desc="$1" host="$2" path="$3" size_bytes="$4" chunked="$5"
+  local body actual attempt curl_args
+  body=$(head -c "$size_bytes" /dev/zero | tr '\0' 'a')
+  curl_args=(-sk -o /dev/null -w "%{http_code}" --max-time 5 --resolve "${host}:443:127.0.0.1"
+    -X POST -H "Content-Type: application/json")
+  [[ "$chunked" == "chunked" ]] && curl_args+=(-H "Transfer-Encoding: chunked")
+  for attempt in 1 2 3; do
+    actual=$(printf '%s' "$body" | curl "${curl_args[@]}" --data-binary @- "https://${host}${path}" 2>/dev/null || echo "000")
+    [[ "$actual" == "413" ]] && break
+    [[ "$attempt" -lt 3 ]] && sleep 1
+  done
+  if [[ "$actual" == "413" ]]; then
+    echo "  OK  [$actual] $desc"
+  else
+    echo "  FAIL[$actual != 413] $desc (https://${host}${path})" >&2
+    FAIL=1
+  fi
+}
+
+check_body_within_limit_not_rejected() {
+  local desc="$1" host="$2" path="$3" size_bytes="$4"
+  local body actual attempt
+  body=$(head -c "$size_bytes" /dev/zero | tr '\0' 'a')
+  for attempt in 1 2 3; do
+    actual=$(printf '%s' "$body" | curl -sk -o /dev/null -w "%{http_code}" --max-time 5 \
+      --resolve "${host}:443:127.0.0.1" -X POST -H "Content-Type: application/json" \
+      --data-binary @- "https://${host}${path}" 2>/dev/null || echo "000")
+    [[ "$actual" != "413" ]] && break
+    [[ "$attempt" -lt 3 ]] && sleep 1
+  done
+  if [[ "$actual" != "413" ]]; then
+    echo "  OK  [$actual] $desc"
+  else
+    echo "  FAIL[413] $desc (https://${host}${path}) — 정상 크기 요청까지 차단됨" >&2
+    FAIL=1
+  fi
+}
+
+check_header_present() {
+  local desc="$1" host="$2" path="$3" header_line="$4"
+  local headers actual attempt found
+  for attempt in 1 2 3; do
+    headers=$(curl -sk -D - -o /dev/null --max-time 5 --resolve "${host}:443:127.0.0.1" \
+      "https://${host}${path}" 2>/dev/null || echo "")
+    found=$(printf '%s' "$headers" | grep -Fi "$header_line" || true)
+    [[ -n "$found" ]] && break
+    [[ "$attempt" -lt 3 ]] && sleep 1
+  done
+  if [[ -n "$found" ]]; then
+    echo "  OK  [header present] $desc"
+  else
+    echo "  FAIL[header missing: $header_line] $desc (https://${host}${path})" >&2
+    FAIL=1
+  fi
+}
+
 echo "==> Caddy local routing check"
 check_status "public domain /admin blocked"        "$KRAFT_DOMAIN"       "/admin"          "403"
 check_status "public domain /actuator blocked"      "$KRAFT_DOMAIN"       "/actuator/health" "403"
@@ -59,6 +119,10 @@ check_status "admin domain /admin/login reachable"  "$KRAFT_ADMIN_DOMAIN" "/admi
 check_status "admin domain /ops-api routes to backend /ops" "$KRAFT_ADMIN_DOMAIN" "/ops-api/summary" "401"
 check_status "public domain /api/v1/community/session routes to backend" "$KRAFT_DOMAIN" "/api/v1/community/session" "200"
 check_status_not_404 "public domain /oauth2/authorization/google routes to backend (not Next.js 404)" "$KRAFT_DOMAIN" "/oauth2/authorization/google"
+check_body_over_limit_rejected "client-error 8KB body (Content-Length) rejected"        "$KRAFT_DOMAIN" "/api/client-error" 8192 ""
+check_body_over_limit_rejected "client-error 8KB body (chunked) rejected"               "$KRAFT_DOMAIN" "/api/client-error" 8192 "chunked"
+check_body_within_limit_not_rejected "client-error 100B body not rejected by proxy"     "$KRAFT_DOMAIN" "/api/client-error" 100
+check_header_present "client-error response has Cache-Control: no-store"               "$KRAFT_DOMAIN" "/api/client-error" "Cache-Control: no-store"
 
 if [[ $FAIL -ne 0 ]]; then
   echo "==> Caddy local routing check FAILED — Caddyfile is misconfigured" >&2

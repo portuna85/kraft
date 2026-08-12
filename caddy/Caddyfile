@@ -106,6 +106,21 @@ www.{$KRAFT_DOMAIN} {
 			}
 		}
 
+		# H-05: /api/client-error도 @telemetry와 같은 인증되지 않은 텔레메트리 수신처지만
+		# web/src/app/api/client-error/route.ts의 MAX_BODY_BYTES=4096과 정확히 맞춘 별도
+		# matcher를 둔다 — 20KB로 묶으면 chunked/미지정 Content-Length 요청이 앱 프로세스
+		# 메모리까지 버퍼링된 뒤에야 잘리는 5배 차이 구간이 생긴다.
+		@client_error path /api/client-error
+		handle @client_error {
+			header Cache-Control "no-store"
+			request_body {
+				max_size 4KB
+			}
+			reverse_proxy web:3000 {
+				header_up X-Real-IP {remote_host}
+			}
+		}
+
 		handle {
 			# 모든 페이지 경로: 브라우저 SWR 60s+300s.
 			# nonce 기반 CSP 때문에 HTML+CSP 헤더가 함께 캐시돼야 안전하므로
