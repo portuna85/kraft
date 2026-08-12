@@ -69,6 +69,12 @@ public class SavedNumbersService {
      * 번호 조합 기준으로 중복 제거하며 계정 소유권으로 옮긴다. 사용자가 이미 같은 조합을
      * 갖고 있으면(다른 기기에서 먼저 귀속한 경우 등) 익명 쪽 중복 행은 지운다 — 계정에는
      * 정규화된 조합당 한 행만 남아야 한다(uk_saved_owner_numbers).
+     *
+     * <p>M-02: claim은 계정의 저장 개수 한도(maxPerClient)를 무시하고 전부 병합할 수
+     * 있었다 — saveForOwner는 한도를 강제하는데 claimAll만 우회 경로가 되는 셈이었다.
+     * 이제 남은 여유분(한도 - 현재 개수)만큼만 병합하고, 그 이상은 삭제하지 않고 익명
+     * 상태 그대로 남긴다(사용자가 계정에서 정리한 뒤 다시 저장 가능). 중복 행은 한도와
+     * 무관하게(계정 개수를 늘리지 않으므로) 항상 정리한다.
      */
     public SavedNumberClaimResult claimAll(String clientTokenHash, Long ownerUserId) {
         List<SavedNumber> anonymous = savedNumberRepository.findByClientTokenHashOrderByCreatedAtDesc(clientTokenHash);
@@ -80,18 +86,24 @@ public class SavedNumbersService {
                         .map(SavedNumber::getNumbers)
                         .collect(Collectors.toSet());
 
+        long currentOwnerCount = savedNumberRepository.countByOwnerUserId(ownerUserId);
+        int remainingCapacity = (int) Math.max(0, savedProperties.maxPerClient() - currentOwnerCount);
+
         int merged = 0;
         int duplicates = 0;
+        int skippedForLimit = 0;
         for (SavedNumber saved : anonymous) {
             if (alreadyOwned.contains(saved.getNumbers())) {
                 savedNumberRepository.delete(saved);
                 duplicates++;
-            } else {
+            } else if (merged < remainingCapacity) {
                 saved.claimTo(ownerUserId);
                 merged++;
+            } else {
+                skippedForLimit++;
             }
         }
-        return new SavedNumberClaimResult(merged, duplicates);
+        return new SavedNumberClaimResult(merged, duplicates, skippedForLimit);
     }
 
     @Transactional(readOnly = true)

@@ -1,6 +1,8 @@
 package com.kraft.identity;
 
 import com.kraft.common.error.ApiException;
+import com.kraft.community.user.CommunityUser;
+import com.kraft.community.user.CommunityUserRepository;
 import com.kraft.recommend.RecommendationSetHistoryService;
 import com.kraft.saved.SavedNumberClaimResult;
 import com.kraft.saved.SavedNumberClientLockInitializer;
@@ -41,6 +43,9 @@ class IdentityMergeServiceTest {
     private SavedNumberClientLockInitializer savedNumberClientLockInitializer;
 
     @Mock
+    private CommunityUserRepository communityUserRepository;
+
+    @Mock
     private SavedNumbersService savedNumbersService;
 
     @Mock
@@ -56,8 +61,10 @@ class IdentityMergeServiceTest {
     void setUp() {
         meterRegistry = new SimpleMeterRegistry();
         service = new IdentityMergeService(deviceClaimRepository, savedNumberClientLockRepository,
-                savedNumberClientLockInitializer, savedNumbersService, recommendationSetHistoryService, CLOCK,
-                meterRegistry);
+                savedNumberClientLockInitializer, communityUserRepository, savedNumbersService,
+                recommendationSetHistoryService, CLOCK, meterRegistry);
+        given(communityUserRepository.lockById(1L)).willReturn(
+                Optional.of(new CommunityUser("google", "owner-1", "글쓴이", null, OffsetDateTime.now(CLOCK))));
     }
 
     private double outcomeCount(String outcome) {
@@ -68,7 +75,7 @@ class IdentityMergeServiceTest {
     @DisplayName("처음 귀속하면 클레임 행을 만들고 저장 번호·추천 세트를 옮긴다")
     void claim_firstTime_recordsClaimAndMergesData() {
         given(deviceClaimRepository.findByDeviceTokenHash(TOKEN_HASH)).willReturn(Optional.empty());
-        given(savedNumbersService.claimAll(TOKEN_HASH, 1L)).willReturn(new SavedNumberClaimResult(3, 1));
+        given(savedNumbersService.claimAll(TOKEN_HASH, 1L)).willReturn(new SavedNumberClaimResult(3, 1, 0));
         given(recommendationSetHistoryService.claimAll(any(), any(), any())).willReturn(2);
 
         IdentityMergeResult result = service.claim(TOKEN_HASH, 1L);
@@ -90,7 +97,7 @@ class IdentityMergeServiceTest {
     void claim_sameUserRetry_isIdempotent() {
         given(deviceClaimRepository.findByDeviceTokenHash(TOKEN_HASH))
                 .willReturn(Optional.of(new DeviceClaim(TOKEN_HASH, 1L, OffsetDateTime.now(CLOCK))));
-        given(savedNumbersService.claimAll(TOKEN_HASH, 1L)).willReturn(new SavedNumberClaimResult(0, 0));
+        given(savedNumbersService.claimAll(TOKEN_HASH, 1L)).willReturn(new SavedNumberClaimResult(0, 0, 0));
         given(recommendationSetHistoryService.claimAll(any(), any(), any())).willReturn(0);
 
         IdentityMergeResult result = service.claim(TOKEN_HASH, 1L);

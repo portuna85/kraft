@@ -312,8 +312,35 @@ class SavedNumbersServiceTest {
 
         assertThat(result.mergedCount()).isEqualTo(1);
         assertThat(result.duplicateCount()).isEqualTo(0);
+        assertThat(result.skippedForLimitCount()).isEqualTo(0);
         assertThat(anonymous.getOwnerUserId()).isEqualTo(99L);
         assertThat(anonymous.getClientTokenHash()).isNull();
+        verify(savedNumberRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("M-02: 귀속이 계정 저장 한도를 넘으면 남은 여유분만 병합하고 나머지는 익명으로 남긴다")
+    void claimAll_exceedsLimit_mergesOnlyRemainingCapacityAndLeavesRestAnonymous() {
+        String encodedA = lottoNumberCodec.toStorageValue(VALID_NUMBERS);
+        String encodedB = lottoNumberCodec.toStorageValue(List.of(1, 2, 3, 4, 5, 6));
+        SavedNumber anonymousA = savedEntity(encodedA, null, "MANUAL");
+        SavedNumber anonymousB = savedEntity(encodedB, null, "MANUAL");
+        given(savedNumberRepository.findByClientTokenHashOrderByCreatedAtDesc(TOKEN_HASH))
+                .willReturn(List.of(anonymousA, anonymousB));
+        given(savedNumberRepository.findByOwnerUserIdAndNumbersIn(99L, List.of(encodedA, encodedB)))
+                .willReturn(List.of());
+        // 한도 100에서 이미 99개를 보유 — 여유분은 1개뿐이다.
+        given(savedNumberRepository.countByOwnerUserId(99L)).willReturn(99L);
+
+        SavedNumberClaimResult result = service.claimAll(TOKEN_HASH, 99L);
+
+        assertThat(result.mergedCount()).isEqualTo(1);
+        assertThat(result.duplicateCount()).isEqualTo(0);
+        assertThat(result.skippedForLimitCount()).isEqualTo(1);
+        // 먼저 나온(anonymousA) 것만 병합되고, 두 번째(anonymousB)는 익명 상태 그대로 남는다.
+        assertThat(anonymousA.getOwnerUserId()).isEqualTo(99L);
+        assertThat(anonymousB.getOwnerUserId()).isNull();
+        assertThat(anonymousB.getClientTokenHash()).isEqualTo(TOKEN_HASH);
         verify(savedNumberRepository, never()).delete(any());
     }
 
@@ -331,6 +358,7 @@ class SavedNumbersServiceTest {
 
         assertThat(result.mergedCount()).isEqualTo(0);
         assertThat(result.duplicateCount()).isEqualTo(1);
+        assertThat(result.skippedForLimitCount()).isEqualTo(0);
         verify(savedNumberRepository).delete(anonymous);
     }
 

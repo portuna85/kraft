@@ -2,6 +2,7 @@ package com.kraft.identity;
 
 import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
+import com.kraft.community.user.CommunityUserRepository;
 import com.kraft.recommend.RecommendationSetHistoryService;
 import com.kraft.saved.SavedNumberClaimResult;
 import com.kraft.saved.SavedNumberClientLockInitializer;
@@ -20,6 +21,14 @@ import org.springframework.transaction.annotation.Transactional;
  * 클라이언트별 잠금 행({@link SavedNumberClientLockRepository}, B2 사건으로 채택된 레코드
  * 락 패턴)을 그대로 재사용한다. 기기 토큰 잠금 행 획득이 정확히 이
  * 목적이다.
+ *
+ * <p>M-02: 기기 토큰 잠금에 더해 계정(owner) 행도 {@code communityUserRepository.lockById}로
+ * 잠근다 — {@code SavedNumbersService.saveForOwner}가 같은 계정 행을 잠그는 동안 이
+ * 메서드가 락 없이 claimAll을 실행하면, "로그인 직후 저장"과 "다른 기기에서의 claim"이
+ * 동시에 같은 계정에 병합·저장을 시도해 한도 검사를 서로 우회할 수 있었다. 락 순서는
+ * 항상 기기 토큰 → 계정 순으로 고정한다(이 순서를 다른 경로가 뒤집으면 교착 가능성이
+ * 생긴다 — 현재 saveForOwner는 계정 행만 잠그므로 아직 실제 교착 경로는 없지만, 향후
+ * 기기 토큰 잠금을 추가로 거는 다른 경로가 생기면 반드시 이 순서를 따라야 한다).
  */
 @Service
 @Transactional
@@ -28,6 +37,7 @@ public class IdentityMergeService {
     private final DeviceClaimRepository deviceClaimRepository;
     private final SavedNumberClientLockRepository savedNumberClientLockRepository;
     private final SavedNumberClientLockInitializer savedNumberClientLockInitializer;
+    private final CommunityUserRepository communityUserRepository;
     private final SavedNumbersService savedNumbersService;
     private final RecommendationSetHistoryService recommendationSetHistoryService;
     private final Clock clock;
@@ -38,6 +48,7 @@ public class IdentityMergeService {
     public IdentityMergeService(DeviceClaimRepository deviceClaimRepository,
                                  SavedNumberClientLockRepository savedNumberClientLockRepository,
                                  SavedNumberClientLockInitializer savedNumberClientLockInitializer,
+                                 CommunityUserRepository communityUserRepository,
                                  SavedNumbersService savedNumbersService,
                                  RecommendationSetHistoryService recommendationSetHistoryService,
                                  Clock clock,
@@ -45,6 +56,7 @@ public class IdentityMergeService {
         this.deviceClaimRepository = deviceClaimRepository;
         this.savedNumberClientLockRepository = savedNumberClientLockRepository;
         this.savedNumberClientLockInitializer = savedNumberClientLockInitializer;
+        this.communityUserRepository = communityUserRepository;
         this.savedNumbersService = savedNumbersService;
         this.recommendationSetHistoryService = recommendationSetHistoryService;
         this.clock = clock;
@@ -73,6 +85,11 @@ public class IdentityMergeService {
     public IdentityMergeResult claim(String deviceTokenHash, Long userId) {
         savedNumberClientLockInitializer.ensureExists(deviceTokenHash);
         savedNumberClientLockRepository.lockByClientTokenHash(deviceTokenHash);
+        // M-02: 기기 토큰 다음으로 계정 행을 잠근다(순서 고정, 클래스 Javadoc 참고) —
+        // saveForOwner와 같은 락을 공유해 "로그인 직후 저장"과 "claim"이 동시에 같은
+        // 계정의 한도 검사를 우회하지 못하게 한다.
+        communityUserRepository.lockById(userId)
+                .orElseThrow(() -> new ApiException(ApiErrorCode.COMMUNITY_USER_NOT_FOUND, "계정을 찾을 수 없습니다."));
 
         Optional<DeviceClaim> existing = deviceClaimRepository.findByDeviceTokenHash(deviceTokenHash);
         if (existing.isPresent() && !existing.get().getClaimedByUserId().equals(userId)) {
@@ -95,6 +112,7 @@ public class IdentityMergeService {
                 deviceTokenHash, userId, OffsetDateTime.now(clock));
 
         return new IdentityMergeResult(
-                savedResult.mergedCount(), savedResult.duplicateCount(), recommendationCount);
+                savedResult.mergedCount(), savedResult.duplicateCount(), savedResult.skippedForLimitCount(),
+                recommendationCount);
     }
 }
