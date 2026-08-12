@@ -7,6 +7,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 import net.javacrumbs.shedlock.core.LockConfiguration;
 import net.javacrumbs.shedlock.core.LockProvider;
@@ -70,8 +71,8 @@ class StatisticsSummaryRebuilderTest {
     }
 
     @Test
-    @DisplayName("이전 회차에만 존재하던 패턴·동반 조합은 재생성 후 스테일 행으로 삭제된다")
-    void rebuildAllSummaries_removesStaleRowsNoLongerPresentInData() {
+    @DisplayName("H-01: 더 이상 어떤 회차에도 없는 패턴·동반 조합은 삭제되지 않고 count=0 행으로 남는다")
+    void rebuildAllSummaries_keepsUnobservedKeysAsZeroInsteadOfDeleting() {
         // 회차 1: 1,3,5,7,9,11 (홀수 6개 패턴, 1-3 동반쌍 포함)
         winningNumberRepository.save(round(1, 1, 3, 5, 7, 9, 11, 2));
         summaryRebuilder.rebuildAllSummaries();
@@ -82,36 +83,88 @@ class StatisticsSummaryRebuilderTest {
         assertThat(companionPairSummaryRepository.findByBallAAndBallB(1, 3)).isPresent();
 
         // 회차 1을 지우고 홀수 3개/동반쌍이 다른 회차 2만 남긴다 — "홀수 6개" 버킷과 1-3 동반쌍은
-        // 더 이상 어떤 회차에도 존재하지 않으므로 재생성 시 삭제되어야 한다.
+        // 더 이상 어떤 회차에도 존재하지 않지만, 완전 도메인 계약상 삭제되지 않고 count=0으로
+        // 남아야 한다(예전에는 여기서 행 자체가 삭제됐고, 그것이 읽기 측 완전성 검사와
+        // 모순돼 재계산 루프를 유발했다).
         winningNumberRepository.deleteAll();
         winningNumberRepository.save(round(2, 1, 10, 20, 30, 40, 44, 8));
         summaryRebuilder.rebuildAllSummaries();
 
         assertThat(patternStatsSummaryRepository
                 .findByStatTypeAndBucketKey(WinningStatisticsCacheService.TYPE_ODD_COUNT, "6"))
-                .isEmpty();
-        assertThat(companionPairSummaryRepository.findByBallAAndBallB(1, 3)).isEmpty();
-        assertThat(companionPairSummaryRepository.findByBallAAndBallB(1, 10)).isPresent();
+                .hasValueSatisfying(row -> assertThat(row.getCountVal()).isZero());
+        assertThat(companionPairSummaryRepository.findByBallAAndBallB(1, 3))
+                .hasValueSatisfying(row -> assertThat(row.getCoCount()).isZero());
+        assertThat(companionPairSummaryRepository.findByBallAAndBallB(1, 10))
+                .hasValueSatisfying(row -> assertThat(row.getCoCount()).isEqualTo(1));
     }
 
     @Test
-    @DisplayName("원본 회차 데이터가 없으면 기존 summary를 그대로 두지 않고 비운다(T2)")
-    void rebuildAllSummaries_emptySource_clearsStaleExistingSummaries() {
-        // 회차가 있는 상태에서 한 번 만들어 둔 뒤
+    @DisplayName("H-01: 원본 회차 데이터가 없어도 완전 도메인을 0으로 채운 프로젝션을 남긴다")
+    void rebuildAllSummaries_producesCompleteDomainForEmptySource() {
+        summaryRebuilder.rebuildAllSummaries();
+
+        List<FrequencySummary> frequencies = frequencySummaryRepository.findAll();
+        assertThat(frequencies).hasSize(45);
+        assertThat(frequencies).allSatisfy(row -> assertThat(row.getFrequency()).isZero());
+
+        List<PatternStatsSummary> patterns = patternStatsSummaryRepository.findAll();
+        assertThat(patterns).hasSize(19); // 7(odd) + 7(high) + 5(sum bucket)
+        assertThat(patterns).allSatisfy(row -> assertThat(row.getCountVal()).isZero());
+
+        List<CompanionPairSummary> pairs = companionPairSummaryRepository.findAll();
+        assertThat(pairs).hasSize(990);
+        assertThat(pairs).allSatisfy(row -> assertThat(row.getCoCount()).isZero());
+
+        StatisticsProjectionState state = statisticsProjectionStateRepository
+                .findById(StatisticsProjectionState.SINGLETON_ID).orElseThrow();
+        assertThat(state.getLastProcessedRound()).isZero();
+        assertThat(state.getSourceRowCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("H-01: 원본이 비워지면 이전에 채워져 있던 summary도 완전 도메인·전부 0으로 덮어써진다")
+    void rebuildAllSummaries_emptySource_overwritesExistingSummariesWithCompleteZeroDomain() {
         winningNumberRepository.save(round(1, 1, 2, 3, 4, 5, 6, 7));
         summaryRebuilder.rebuildAllSummaries();
         assertThat(frequencySummaryRepository.findAll()).hasSize(45);
-        assertThat(patternStatsSummaryRepository.findAll()).isNotEmpty();
-        assertThat(companionPairSummaryRepository.findAll()).isNotEmpty();
+        assertThat(patternStatsSummaryRepository.findAll()).hasSize(19);
+        assertThat(companionPairSummaryRepository.findAll()).hasSize(990);
 
-        // 원본이 전부 삭제된 뒤(예: 복원/초기화) 다시 재계산하면, 이전 summary가 조용히
-        // 남아 있으면 안 되고 함께 비워져야 한다.
+        // 원본이 전부 삭제된 뒤(예: 복원/초기화) 다시 재계산하면, 행이 사라지는 게 아니라
+        // 완전 도메인이 그대로 유지되되 전부 count=0으로 덮어써져야 한다.
         winningNumberRepository.deleteAll();
         summaryRebuilder.rebuildAllSummaries();
 
-        assertThat(frequencySummaryRepository.findAll()).isEmpty();
-        assertThat(patternStatsSummaryRepository.findAll()).isEmpty();
-        assertThat(companionPairSummaryRepository.findAll()).isEmpty();
+        assertThat(frequencySummaryRepository.findAll())
+                .hasSize(45)
+                .allSatisfy(row -> assertThat(row.getFrequency()).isZero());
+        assertThat(patternStatsSummaryRepository.findAll())
+                .hasSize(19)
+                .allSatisfy(row -> assertThat(row.getCountVal()).isZero());
+        assertThat(companionPairSummaryRepository.findAll())
+                .hasSize(990)
+                .allSatisfy(row -> assertThat(row.getCoCount()).isZero());
+    }
+
+    @Test
+    @DisplayName("H-01: 1라운드만 있어도 완전 도메인이 만들어지고 관측된 조합만 count>0이다")
+    void rebuildAllSummaries_producesCompleteDomainForSingleRound() {
+        winningNumberRepository.save(round(1, 1, 3, 5, 7, 9, 11, 2));
+
+        summaryRebuilder.rebuildAllSummaries();
+
+        List<FrequencySummary> frequencies = frequencySummaryRepository.findAll();
+        assertThat(frequencies).hasSize(45);
+        assertThat(frequencies.stream().filter(row -> row.getFrequency() > 0)).hasSize(6);
+
+        List<PatternStatsSummary> patterns = patternStatsSummaryRepository.findAll();
+        assertThat(patterns).hasSize(19);
+        assertThat(patterns.stream().filter(row -> row.getCountVal() > 0)).hasSize(3); // odd 1개, high 1개, sum 1개
+
+        List<CompanionPairSummary> pairs = companionPairSummaryRepository.findAll();
+        assertThat(pairs).hasSize(990);
+        assertThat(pairs.stream().filter(row -> row.getCoCount() > 0)).hasSize(15); // 6C2
     }
 
     @Test

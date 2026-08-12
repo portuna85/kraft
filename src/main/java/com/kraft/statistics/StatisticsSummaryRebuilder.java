@@ -14,10 +14,8 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 import net.javacrumbs.shedlock.core.DefaultLockingTaskExecutor;
 import net.javacrumbs.shedlock.core.LockConfiguration;
@@ -31,6 +29,14 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
+/**
+ * 이 리빌더는 항상 완전 도메인(빈도 45행, 패턴 7+7+5=19행, 동반번호 990행)을 0으로
+ * 채워 기록한다. 관측되지 않은 키·쌍도 삭제하지 않고 count=0인 행으로 남긴다 —
+ * {@link WinningStatisticsCacheService}의 완전성 검사가 이 고정 도메인 계약에
+ * 의존하며, 관측된 키만 기록하고 나머지를 지우는 부분 도메인 방식을 쓰면 실제
+ * 라운드 수가 적을수록(신규 설치·희소 이력·재해복구 직후) 완전성 검사를 영원히
+ * 통과하지 못해 읽기마다 재계산이 재발동하는 루프가 생긴다.
+ */
 @Service
 public class StatisticsSummaryRebuilder {
 
@@ -100,27 +106,20 @@ public class StatisticsSummaryRebuilder {
         try {
             List<WinningBallsOnly> all = winningNumberRepository.findAllBalls();
             OffsetDateTime now = OffsetDateTime.now(clock);
-            if (all.isEmpty()) {
-                // 원본이 비었는데 기존 summary를 그대로 두면(T2), 예를 들어 DB 초기화나 복원
-                // 직후 조회 API가 실제로는 존재하지 않는 이전 이력을 계속 정상 응답처럼 보여준다.
-                // 원본이 없다는 사실 자체를 반영해 summary도 원자적으로 비운다.
-                log.info("No winning numbers found; clearing statistics summaries");
-                frequencySummaryRepository.deleteAllInBatch();
-                patternStatsSummaryRepository.deleteAllInBatch();
-                companionPairSummaryRepository.deleteAllInBatch();
-                recordProjectionState(0, 0, now);
-                recordRebuildOutcome("empty");
-                return true;
-            }
 
             log.info("Starting statistics summary rebuild: totalRounds={}", all.size());
 
+            // 원본이 비어도(예: DB 초기화·복원 직후) 별도 분기 없이 아래 세 rebuild가 그대로
+            // 실행된다 — 각 메서드가 항상 완전 도메인을 0으로 채우므로, 관측된 라운드가
+            // 0개면 자연히 "완전한 0 프로젝션"이 만들어진다. 예전에는 이 경우 summary
+            // 테이블을 통째로 지웠는데, 그러면 읽기 측 완전성 검사(45/7/7/5/990)가 항상
+            // 실패해 매 읽기마다 재계산이 재발동했다.
             rebuildFrequency(all, now);
             rebuildPatterns(all, now);
             rebuildCompanions(all, now);
             int lastProcessedRound = all.stream().mapToInt(WinningBallsOnly::getRound).max().orElse(0);
             recordProjectionState(lastProcessedRound, all.size(), now);
-            recordRebuildOutcome("success");
+            recordRebuildOutcome(all.isEmpty() ? "empty" : "success");
             log.info("Completed statistics summary rebuild");
             return true;
         } catch (RuntimeException exception) {
@@ -183,9 +182,14 @@ public class StatisticsSummaryRebuilder {
     }
 
     private void rebuildPatterns(List<WinningBallsOnly> rounds, OffsetDateTime now) {
-        Map<String, Integer> oddCountMap = new HashMap<>();
-        Map<String, Integer> highCountMap = new HashMap<>();
-        Map<String, Integer> sumBucketMap = new HashMap<>();
+        // 완전 도메인을 0으로 미리 채운 뒤 관측된 라운드로 오버레이한다 — 한 번도 관측되지
+        // 않은 키도 이 맵에서 사라지지 않고 count=0으로 남아야 읽기 측 완전성 계약을 만족한다.
+        Map<String, Integer> oddCountMap = new HashMap<>(
+                StatisticsSummaryDomain.zeroFilled(StatisticsSummaryDomain.ODD_COUNT_KEYS));
+        Map<String, Integer> highCountMap = new HashMap<>(
+                StatisticsSummaryDomain.zeroFilled(StatisticsSummaryDomain.HIGH_COUNT_KEYS));
+        Map<String, Integer> sumBucketMap = new HashMap<>(
+                StatisticsSummaryDomain.zeroFilled(SumBuckets.ALL_KEYS));
 
         for (WinningBallsOnly w : rounds) {
             List<Integer> balls = List.of(w.getN1(), w.getN2(), w.getN3(), w.getN4(), w.getN5(), w.getN6());
@@ -205,27 +209,16 @@ public class StatisticsSummaryRebuilder {
                 .collect(Collectors.toMap(s -> patternKey(s.getStatType(), s.getBucketKey()), s -> s));
 
         List<PatternStatsSummary> toSave = new ArrayList<>();
-        Set<String> activeKeys = new HashSet<>();
-        upsertPatternRows(WinningStatisticsCacheService.TYPE_ODD_COUNT, oddCountMap, now, existing, toSave, activeKeys);
-        upsertPatternRows(WinningStatisticsCacheService.TYPE_HIGH_COUNT, highCountMap, now, existing, toSave, activeKeys);
-        upsertPatternRows(WinningStatisticsCacheService.TYPE_SUM_BUCKET, sumBucketMap, now, existing, toSave, activeKeys);
+        upsertPatternRows(WinningStatisticsCacheService.TYPE_ODD_COUNT, oddCountMap, now, existing, toSave);
+        upsertPatternRows(WinningStatisticsCacheService.TYPE_HIGH_COUNT, highCountMap, now, existing, toSave);
+        upsertPatternRows(WinningStatisticsCacheService.TYPE_SUM_BUCKET, sumBucketMap, now, existing, toSave);
         patternStatsSummaryRepository.saveAll(toSave);
-
-        List<PatternStatsSummary> stale = existing.entrySet().stream()
-                .filter(entry -> !activeKeys.contains(entry.getKey()))
-                .map(Map.Entry::getValue)
-                .toList();
-        if (!stale.isEmpty()) {
-            patternStatsSummaryRepository.deleteAllInBatch(stale);
-        }
     }
 
     private void upsertPatternRows(String statType, Map<String, Integer> data, OffsetDateTime now,
-                                   Map<String, PatternStatsSummary> existing, List<PatternStatsSummary> toSave,
-                                   Set<String> activeKeys) {
+                                   Map<String, PatternStatsSummary> existing, List<PatternStatsSummary> toSave) {
         for (Map.Entry<String, Integer> entry : data.entrySet()) {
             String key = patternKey(statType, entry.getKey());
-            activeKeys.add(key);
             PatternStatsSummary row = existing.get(key);
             if (row != null) {
                 row.update(entry.getValue(), now);
@@ -240,7 +233,14 @@ public class StatisticsSummaryRebuilder {
     }
 
     private void rebuildCompanions(List<WinningBallsOnly> rounds, OffsetDateTime now) {
+        // 45C2=990쌍 전체를 0으로 미리 채운다 — 실제 라운드 수가 적을수록 관측되지 않는
+        // 쌍이 많아지므로(예: 1라운드면 990쌍 중 15쌍만 관측됨), 관측된 쌍만 기록하고
+        // 나머지를 지우면 읽기 측 완전성 검사(count==990)를 영원히 통과할 수 없다.
+        List<int[]> allPairs = StatisticsSummaryDomain.allCompanionPairs();
         Map<String, int[]> pairMap = new HashMap<>();
+        for (int[] pair : allPairs) {
+            pairMap.put(pair[0] + "_" + pair[1], new int[] {pair[0], pair[1], 0});
+        }
 
         for (WinningBallsOnly w : rounds) {
             List<Integer> balls = new ArrayList<>(
@@ -248,10 +248,7 @@ public class StatisticsSummaryRebuilder {
             Collections.sort(balls);
             for (int i = 0; i < balls.size() - 1; i++) {
                 for (int j = i + 1; j < balls.size(); j++) {
-                    int a = balls.get(i);
-                    int b = balls.get(j);
-                    String key = a + "_" + b;
-                    pairMap.computeIfAbsent(key, k -> new int[]{a, b, 0})[2]++;
+                    pairMap.get(balls.get(i) + "_" + balls.get(j))[2]++;
                 }
             }
         }
@@ -260,24 +257,17 @@ public class StatisticsSummaryRebuilder {
                 .collect(Collectors.toMap(s -> s.getBallA() + "_" + s.getBallB(), s -> s));
 
         List<CompanionPairSummary> toSave = new ArrayList<>();
-        for (Map.Entry<String, int[]> entry : pairMap.entrySet()) {
-            int[] pair = entry.getValue();
-            CompanionPairSummary row = existing.get(entry.getKey());
+        for (int[] pair : allPairs) {
+            String key = pair[0] + "_" + pair[1];
+            int coCount = pairMap.get(key)[2];
+            CompanionPairSummary row = existing.get(key);
             if (row != null) {
-                row.update(pair[2], now);
+                row.update(coCount, now);
             } else {
-                toSave.add(new CompanionPairSummary(pair[0], pair[1], pair[2], now));
+                toSave.add(new CompanionPairSummary(pair[0], pair[1], coCount, now));
             }
         }
         companionPairSummaryRepository.saveAll(toSave);
-
-        List<CompanionPairSummary> stale = existing.entrySet().stream()
-                .filter(entry -> !pairMap.containsKey(entry.getKey()))
-                .map(Map.Entry::getValue)
-                .toList();
-        if (!stale.isEmpty()) {
-            companionPairSummaryRepository.deleteAllInBatch(stale);
-        }
     }
 
 }

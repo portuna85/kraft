@@ -196,16 +196,21 @@ class WinningStatisticsCacheServiceTest {
     }
 
     @Test
-    @DisplayName("회차 데이터가 전혀 없으면 topSix/bottomSix가 빈 그룹으로 채워지고 예외를 던지지 않는다")
-    void getFrequencyStats_noWinningNumbers_returnsEmptyRankedGroups() {
+    @DisplayName("H-01: 회차 데이터가 전혀 없어도 45개 전체 빈도가 0으로 채워진 완전 도메인을 반환하고 예외를 던지지 않는다")
+    void getFrequencyStats_noWinningNumbers_returnsCompleteZeroFilledDomain() {
         winningNumberRepository.deleteAll();
         frequencySummaryRepository.deleteAll();
 
         FrequencyStatsResponse response = service.getFrequencyStats();
 
-        assertThat(response.frequencies()).isEmpty();
-        assertThat(response.topSix().balls()).isEmpty();
-        assertThat(response.bottomSix().balls()).isEmpty();
+        // 예전에는 원본이 비면 summary도 통째로 비워서 frequencies가 0개였다 — 그러면
+        // topSix/bottomSix를 구성할 6개가 없어 빈 그룹으로 대체됐다. H-01 이후에는
+        // rebuilder가 항상 완전 도메인(45행)을 0으로 채우므로, 빈도가 전부 0이더라도
+        // 6개씩 채워진 랭킹 그룹이 나와야 한다.
+        assertThat(response.frequencies()).hasSize(45);
+        assertThat(response.frequencies()).allSatisfy(f -> assertThat(f.frequency()).isZero());
+        assertThat(response.topSix().balls()).hasSize(6);
+        assertThat(response.bottomSix().balls()).hasSize(6);
     }
 
     @Test

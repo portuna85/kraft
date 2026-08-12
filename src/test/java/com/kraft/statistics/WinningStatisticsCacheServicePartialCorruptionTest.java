@@ -21,11 +21,13 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
  * P1-07: 패턴(odd/high/sum)·동반 출현 summary가 "완전히 비지는 않았지만 일부만 누락된"
- * 상태를 감지해 재계산을 트리거하는지 검증한다. 이 시나리오를 실제 회차 데이터로 재현하려면
- * 990쌍·7+7+5버킷이 통계적으로 모두 등장할 만큼 큰 fixture가 필요해 비현실적이므로,
- * StatisticsSummaryRebuilder를 목으로 대체해 "재계산 호출 시 완전한 정상 상태로 복구된다"는
- * 전제만 고정하고, 이 클래스(WinningStatisticsCacheService)의 완전성 판정·트리거 로직만
- * 독립적으로 검증한다. 재계산 로직 자체의 정확성은 StatisticsSummaryRebuilderTest가 담당한다.
+ * 상태를 감지해 재계산을 트리거하는지 검증한다. H-01 이후 StatisticsSummaryRebuilder는
+ * 실제로 항상 완전 도메인(7+7+5/990)을 만들므로 이 전제(재계산 호출 시 완전한 정상
+ * 상태로 복구된다)는 더 이상 가정이 아니라 실제 계약이지만, 여기서는 여전히
+ * StatisticsSummaryRebuilder를 목으로 대체해 이 클래스(WinningStatisticsCacheService)의
+ * 완전성 판정·트리거 로직만 독립적으로 검증한다 — 재계산 로직 자체의 정확성(빈/희소/부분
+ * 손상 시나리오에서 실제로 완전 도메인을 만드는지)은 StatisticsSummaryRebuilderTest와
+ * StatisticsRebuildReadContractTest가 실제 rebuilder로 담당한다.
  */
 @SpringBootTest
 @ActiveProfiles("test")

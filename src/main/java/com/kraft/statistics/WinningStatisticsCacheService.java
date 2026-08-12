@@ -26,16 +26,13 @@ public class WinningStatisticsCacheService {
     private static final Logger log = LoggerFactory.getLogger(WinningStatisticsCacheService.class);
     // 45개 번호 전체 쌍 조합 수(45C2=990). 클라이언트 번호별 필터가 전체 쌍을 대상으로
     // 동작하려면 전체를 전달해야 한다 — 상위 N개만 보내면 N 밖의 번호는 "기록 없음"으로 오표시된다.
-    private static final int COMPANION_TOP_LIMIT = 990;
+    // 완전 도메인 정의는 StatisticsSummaryDomain이 단일 소스다(생산자·소비자 도메인 불일치 방지).
+    private static final int COMPANION_TOP_LIMIT = StatisticsSummaryDomain.COMPANION_PAIR_COUNT;
 
     // pattern stat_type 상수 (StatisticsSummaryRebuilder에서도 참조)
     static final String TYPE_ODD_COUNT = "ODD_COUNT";
     static final String TYPE_HIGH_COUNT = "HIGH_COUNT";
     static final String TYPE_SUM_BUCKET = "SUM_BUCKET";
-
-    // 홀수 개수·고번호 개수 버킷은 0~6개(6개 번호 중 몇 개가 조건을 만족하는지) 총 7가지다.
-    private static final Set<String> ODD_COUNT_KEYS = Set.of("0", "1", "2", "3", "4", "5", "6");
-    private static final Set<String> HIGH_COUNT_KEYS = Set.of("0", "1", "2", "3", "4", "5", "6");
 
     private final WinningNumberRepository winningNumberRepository;
     private final FrequencySummaryRepository frequencySummaryRepository;
@@ -153,8 +150,8 @@ public class WinningStatisticsCacheService {
         // 예전에는 oddRows가 비었을 때만 재계산했다 — HIGH_COUNT·SUM_BUCKET 버킷이 일부만
         // 누락된 부분 손상은 놓쳤다(T3). 세 버킷 타입 모두 개수와 키 집합이 기대값과
         // 정확히 일치하는지 확인한다.
-        if (!hasAllKeys(oddRows, ODD_COUNT_KEYS)
-                || !hasAllKeys(highRows, HIGH_COUNT_KEYS)
+        if (!hasAllKeys(oddRows, StatisticsSummaryDomain.ODD_COUNT_KEYS)
+                || !hasAllKeys(highRows, StatisticsSummaryDomain.HIGH_COUNT_KEYS)
                 || !hasAllKeys(sumRows, SumBuckets.ALL_KEYS)) {
             log.info("패턴 summary 불완전(odd={}, high={}, sum={}) — 재계산 시작",
                     oddRows.size(), highRows.size(), sumRows.size());
