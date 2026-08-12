@@ -21,6 +21,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntUnaryOperator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +35,10 @@ public class LottoRecommendationService {
 
     private static final Logger log = LoggerFactory.getLogger(LottoRecommendationService.class);
 
+    // L-02(improvement_codex.md): historyStatus()의 DB 버전 조회가 실패하면 이전에는
+    // 매 스크레이프(15초)마다 스택트레이스 전체를 로그로 남겼다 — DB 장애 중 로그
+    // 폭주로 장애를 증폭시킨다. RedisRateLimitCounter와 같은 스로틀 상수·간격을 쓴다.
+    private static final long HISTORY_STATUS_FAILURE_LOG_THROTTLE_MILLIS = 30_000L;
     private static final int MAX_ATTEMPTS = 100;
     private static final int PRIZE_CANDIDATE_POOL = 50;
     private static final int BALANCED_CANDIDATE_POOL = 50;
@@ -65,6 +70,8 @@ public class LottoRecommendationService {
     // 실패지 오답이 아니다). 헬스체크가 이 gauge(kraft_lotto_history_ready)를 트래픽
     // 유입 조건으로 삼지 않으면 롤링 배포 중 일시적 503이 노출될 수 있다.
     private volatile HistorySnapshot historySnapshot = HistorySnapshot.empty();
+
+    private final AtomicLong lastHistoryStatusFailureLogMillis = new AtomicLong(0);
 
     record HistorySnapshot(Set<Long> masks, int roundCount, int historyThroughRound,
                             Integer firstMissingRound, long version, Instant loadedAt) {
@@ -217,8 +224,9 @@ public class LottoRecommendationService {
         } catch (RuntimeException e) {
             // H-6: DB 장애와 정상적인 스냅샷 미준비가 로그상 구분되지 않았다 — 동작은
             // fail-closed(추천 중단, databaseVersion=-1)로 안전하게 유지하되, 조사 가능하게
-            // 원인을 남긴다.
-            log.warn("추천 이력 버전 조회 실패 — fail-closed로 추천을 중단한다", e);
+            // 원인을 남긴다. 이 메서드는 스크레이프마다 호출되므로(gauge) 장애 지속 중에는
+            // L-02에 따라 로그를 스로틀한다 — fail-closed 동작 자체는 매번 그대로 적용된다.
+            logHistoryStatusFailureThrottled(e);
             return new HistoryStatus(false, snapshot.version(), -1L, snapshot.roundCount(),
                     snapshot.historyThroughRound(), snapshot.firstMissingRound());
         }
@@ -229,6 +237,16 @@ public class LottoRecommendationService {
 
     Instant historyLoadedAt() {
         return historySnapshot.loadedAt();
+    }
+
+    private void logHistoryStatusFailureThrottled(RuntimeException cause) {
+        long now = System.currentTimeMillis();
+        long last = lastHistoryStatusFailureLogMillis.get();
+        if (now - last >= HISTORY_STATUS_FAILURE_LOG_THROTTLE_MILLIS
+                && lastHistoryStatusFailureLogMillis.compareAndSet(last, now)) {
+            log.warn("추천 이력 버전 조회 실패 — fail-closed로 추천을 중단한다. 이 경고는 {}ms 간격으로 스로틀된다.",
+                    HISTORY_STATUS_FAILURE_LOG_THROTTLE_MILLIS, cause);
+        }
     }
 
     private long currentHistoryVersion() {

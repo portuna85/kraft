@@ -428,6 +428,30 @@ class LottoRecommendationServiceTest {
 
             assertThat(service.isHistoricalFirstPrizeCombination(List.of(1, 2, 3, 4, 5, 6))).isFalse();
         }
+
+        @Test
+        @DisplayName("L-02: DB 버전 조회가 반복 실패해도 스크레이프마다 경고 로그를 남기지 않고 스로틀된다")
+        void historyStatus_repeatedDbFailure_throttlesWarnLog() {
+            ch.qos.logback.classic.Logger logger =
+                    (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(LottoRecommendationService.class);
+            ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender =
+                    new ch.qos.logback.core.read.ListAppender<>();
+            appender.start();
+            logger.addAppender(appender);
+            try {
+                given(historyStateRepository.findById(1)).willThrow(new RuntimeException("DB 연결 실패"));
+
+                LottoRecommendationService.HistoryStatus first = service.historyStatus();
+                LottoRecommendationService.HistoryStatus second = service.historyStatus();
+
+                assertThat(first.ready()).isFalse();
+                assertThat(first.databaseVersion()).isEqualTo(-1L);
+                assertThat(second.ready()).isFalse();
+                assertThat(appender.list).hasSize(1);
+            } finally {
+                logger.detachAppender(appender);
+            }
+        }
     }
 
     // ── R1: 과거 1등 배제를 시도 기반이 아닌 불변 조건으로 만든다 ──────────────────
