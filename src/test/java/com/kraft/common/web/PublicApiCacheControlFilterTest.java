@@ -76,4 +76,46 @@ class PublicApiCacheControlFilterTest {
 
         assertThat(etag).doesNotContain("round-");
     }
+
+    @Test
+    @DisplayName("L-03: 약한 이태그(W/)도 304를 받는다")
+    void weakEtag_returnsNotModified() throws Exception {
+        MvcResult first = mockMvc.perform(get("/api/v1/stats/frequency"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String etag = first.getResponse().getHeader("ETag");
+
+        mockMvc.perform(get("/api/v1/stats/frequency").header("If-None-Match", "W/" + etag))
+                .andExpect(status().isNotModified());
+    }
+
+    @Test
+    @DisplayName("L-03: 쉼표로 나열된 여러 검증자 중 하나만 일치해도 304를 받는다")
+    void multipleCandidates_matchesAnyOne_returnsNotModified() throws Exception {
+        MvcResult first = mockMvc.perform(get("/api/v1/stats/frequency"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String etag = first.getResponse().getHeader("ETag");
+
+        mockMvc.perform(get("/api/v1/stats/frequency")
+                        .header("If-None-Match", "\"불일치\", " + etag + ", \"다른불일치\""))
+                .andExpect(status().isNotModified());
+    }
+
+    @Test
+    @DisplayName("L-03: 와일드카드(*)는 항상 304를 받는다")
+    void wildcard_alwaysReturnsNotModified() throws Exception {
+        mockMvc.perform(get("/api/v1/stats/frequency"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/stats/frequency").header("If-None-Match", "*"))
+                .andExpect(status().isNotModified());
+    }
+
+    @Test
+    @DisplayName("L-03: 불일치하는 이태그는 200을 그대로 받는다")
+    void nonMatchingEtag_returnsOk() throws Exception {
+        mockMvc.perform(get("/api/v1/stats/frequency").header("If-None-Match", "\"불일치\""))
+                .andExpect(status().isOk());
+    }
 }
