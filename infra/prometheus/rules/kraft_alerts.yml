@@ -109,16 +109,27 @@ groups:
           description: "kraft_lotto_history_ready가 10분 이상 0을 유지함. 추천 API가 503으로 거절 중일 수 있음. kraft_lotto_history_data_present가 0이면 이력이 완전히 비어 있는 것이고, 1이면 1회부터 최신까지 중간에 누락된 회차가 있는 것이다."
           runbook: "kraft_lotto_history_data_present와 kraft_lotto_history_first_missing_round 확인해 완전 결손인지 부분 누락인지 판별 후 백필 필요 여부 결정"
 
+      # kraft_lotto_history_snapshot_age_seconds는 재기동 또는 당첨번호 수집 이벤트에서만
+      # 갱신된다 — 회차 추첨은 주 1회라 정상 운영 중에도 이 값은 며칠씩 쌓인다. 예전 규칙은
+      # 이 값에 15분 임계값을 걸어, 배포·재기동 직후 15분만 지나면 항상 발화하는 상시
+      # 오탐이었다(2026-08-12 배포 직후 실측 확인). 이 규칙이 실제로 잡으려던 것(runbook의
+      # "db_version과 snapshot_version을 비교"가 원래 의도)은 나이가 아니라 "DB에는 새
+      # 버전이 있는데 메모리 스냅샷이 못 따라간 상태"(비동기 리스너가 조용히 실패)다 —
+      # 두 버전을 직접 비교한다. db_version < 0(DB 조회 자체 실패)은 별도 인프라 경보가
+      # 이미 다루므로 여기서는 제외해 중복 발화를 피한다.
       - alert: KraftLottoHistorySnapshotStale
-        expr: kraft_lotto_history_snapshot_age_seconds{job="kraft-backend"} > 900
-        for: 10m
+        expr: |
+          kraft_lotto_history_db_version{job="kraft-backend"} >= 0
+          and
+          kraft_lotto_history_db_version{job="kraft-backend"} != kraft_lotto_history_snapshot_version{job="kraft-backend"}
+        for: 30m
         labels:
           severity: warning
         annotations:
-          title: "추천 이력 스냅샷 상태"
-          summary: "추천 이력 스냅샷이 갱신되지 않았습니다"
-          description: "메모리에 저장된 추천 이력 스냅샷이 15분 이상 갱신되지 않았습니다. 수집 이벤트와 데이터베이스 연결 상태를 확인하십시오."
-          runbook: "kraft_lotto_history_db_version과 kraft_lotto_history_snapshot_version을 비교하고, 인스턴스를 재기동하기 전에 백엔드 로그에서 이력 갱신 실패 원인을 확인하십시오."
+          title: "추천 이력 스냅샷 버전 불일치"
+          summary: "추천 이력 스냅샷이 DB 최신 버전을 따라가지 못함"
+          description: "kraft_lotto_history_db_version과 kraft_lotto_history_snapshot_version이 30분 이상 다름. DB에는 새 당첨 이력이 반영됐는데 메모리 스냅샷이 갱신되지 않은 상태 — 수집 이벤트 리스너(WinningNumbersCollectedEvent)가 조용히 실패했을 수 있음."
+          runbook: "백엔드 로그에서 이력 갱신 실패 원인 확인; POST /ops/collect 또는 인스턴스 재기동으로 즉시 복구 가능(재기동 시 @PostConstruct가 스냅샷을 다시 로드함)."
 
       - alert: KraftLottoRecommendHighErrorRate
         expr: |
