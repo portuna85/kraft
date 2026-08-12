@@ -10,11 +10,16 @@ web=false
 web_next=false
 infra=false
 
-# web      = web-legacy/ (곧 삭제될 레거시, Phase 11) — 자체 게이트(lint·test)만 돈다.
-# web_next = web/ (Phase 10부터 실제 배포되는 프론트엔드) — 변수 이름은 재작성 기간의
-#            흔적이라 뒤바뀐 것처럼 보이지만, docker-publish-web은 이제 web_next로
-#            게이트한다(ci.yml 참고). web-legacy 삭제 시(Phase 11) web_next을 web으로
-#            정리하고 이 코멘트도 지운다.
+# M-06: web/web_next 변수 이름이 실제 역할과 뒤바뀐 것처럼 보인다 — 재작성 기간의
+# 흔적이다. 지금 뒤바꾸면 ci.yml 전역(needs.changes.outputs.web_next를 참조하는 8개
+# 잡, job outputs 선언, 요약 잡의 WEB_CHANGED/WEB_NEXT_CHANGED env)을 한 번에 고쳐야
+# 하는데, 로컬에서 GitHub Actions를 실행해 검증할 방법이 없어 이름만 바꾸다 조용히
+# 깨뜨릴 위험이 크다. web-legacy 삭제(M-14) 시점에는 이 변수 자체가 하나만 남으므로
+# 그때 자연스럽게 정리한다 — 지금은 실제 의미만 정확히 남긴다:
+#
+# web      = web-legacy/ (Phase 11에 삭제 예정인 레거시) — 자체 게이트(lint·test)만 돈다.
+#            더 이상 배포 이미지로 빌드되지 않는다(docker-publish-web은 web_next 기준).
+# web_next = web/ (Phase 10부터 실제 kraft.io.kr을 서빙하는 배포 대상 프론트엔드).
 mark_all() {
   backend=true
   web=true
@@ -48,7 +53,9 @@ else
         web=true
         ;;
       web/*)
-        # 새 구현은 아직 배포되지 않는다 — 레거시 이미지 빌드·배포를 깨우지 않는다.
+        # M-06: 이 코멘트는 예전에 "새 구현은 아직 배포되지 않는다"고 적혀 있었다 —
+        # Phase 10 컷오버 이후로는 틀린 말이다. web/이 실제 배포 대상이고
+        # docker-publish-web이 이 플래그로 이미지를 빌드·배포한다.
         web_next=true
         ;;
       caddy/*|infra/*|scripts/deploy/*|scripts/server/*|docker-compose*.yml|.env*.example)

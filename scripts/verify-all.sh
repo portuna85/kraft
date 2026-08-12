@@ -1,14 +1,22 @@
 #!/usr/bin/env bash
-# C-01: CI가 요구하는 전체 게이트(strict 정적분석·strict 커버리지·e2e 3트랙·컨테이너
+# C-01: CI가 요구하는 전체 게이트(strict 정적분석·strict 커버리지·e2e 5트랙·컨테이너
 # 하드닝·env 드리프트·shellcheck 등)를 로컬에서 한 명령으로 실행한다. 목적은 "깜빡하고
-# strict 플래그나 content e2e·광고 오버레이 빌드 없이 커밋"하는 사고를 막는 것 —
+# strict 플래그나 e2e 트랙·성능 예산 없이 커밋"하는 사고를 막는 것 —
 # .github/workflows/ci.yml의 각 job과 1:1로 대응시켜 둔다(잡 이름은 스크립트 섹션
 # 제목에 그대로 남겨 대조하기 쉽게 했다).
 #
+# M-06: 예전에는 이 스크립트 전체가 web-legacy/를 검증했다 — web-legacy는 Phase 10
+# 컷오버 이후 더 이상 배포되지 않는데, "verify-all이 초록"이라는 결과가 실제로는
+# 배포되지 않는 프론트엔드를 검증한 것이었다. 이제 실제 배포 대상인 web/을 CI
+# (web-next-* 잡들)와 동일하게 검증한다. web-legacy는 M-14(레거시 삭제)까지만
+# 과도기적으로 남아 있고, CI 자체는 이미 별도 잡(api-types-drift-guard,
+# web-build-artifacts 등)으로 계속 검증한다 — 이 로컬 스크립트에서는 더 이상
+# 다루지 않는다.
+#
 # 사용법:
 #   bash scripts/verify-all.sh            # 전체 게이트(느림, CI와 동일 범위)
-#   bash scripts/verify-all.sh --fast      # e2e 3트랙 제외(백엔드/프론트 정적 게이트만, 빠른 루프용)
-#   bash scripts/verify-all.sh --skip-npm-ci  # web-legacy/node_modules가 이미 최신이면 npm ci 생략
+#   bash scripts/verify-all.sh --fast      # e2e 5트랙 제외(백엔드/프론트 정적 게이트만, 빠른 루프용)
+#   bash scripts/verify-all.sh --skip-npm-ci  # web/node_modules가 이미 최신이면 npm ci 생략
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -62,7 +70,7 @@ section "API Types Drift Guard (api-types-drift-guard)"
     cat /tmp/kraft-backend-verify-api-types.log >&2
     exit 1
   fi
-  cd web-legacy
+  cd web
   KRAFT_BACKEND_INTERNAL_URL=http://localhost:8080 npm run verify:api-types
 )
 
@@ -92,73 +100,72 @@ else
   echo "SKIP: docker 미설치 — Caddyfile 검증 불가"
 fi
 
-cd web-legacy
+cd web
 if [[ "$SKIP_NPM_CI" -eq 0 ]]; then
-  section "Web Build & Test — npm ci"
+  section "Web Next Build & Test — npm ci"
   npm ci
 fi
 
-section "Web Build & Test — lint"
+section "Web Next Build & Test — format:check"
+npm run format:check
+
+section "Web Next Build & Test — lint"
 npm run lint
 
-section "Web Build & Test — test:coverage"
+section "Web Next Build & Test — typecheck (next typegen 이후 실행 — .next/types 필요)"
+npm run typecheck
+
+section "Web Next Build & Test — test:coverage"
 npm run test:coverage
 
-section "Web Build & Test — build (offline, 백엔드 없음 전제)"
-KRAFT_BACKEND_INTERNAL_URL=http://localhost:8080 KRAFT_PUBLIC_BASE_URL=http://localhost npm run build
+section "Web Next Build & Test — build (기본 트랙, 백엔드 없음 전제)"
+KRAFT_BACKEND_INTERNAL_URL=http://127.0.0.1:59999 KRAFT_PUBLIC_BASE_URL=http://127.0.0.1:3100 npm run build
 
-section "Web Build & Test — typecheck (next typegen 이후 실행 — .next/types 필요)"
-npm run typecheck
+section "Web Next Build & Test — budget:bundle"
+npm run budget:bundle
 
 if [[ "$FAST" -eq 1 ]]; then
   cd "$ROOT"
   echo ""
-  echo "==> --fast 지정됨: e2e 3트랙(web-e2e / web-e2e-content / web-e2e-ad-overlay) 생략"
+  echo "==> --fast 지정됨: e2e 5트랙(proxy/default/a11y/visual/cross-browser) + 성능 예산 생략"
   echo "==> 전체 게이트 통과(e2e 제외)"
   exit 0
 fi
 
-section "Playwright 브라우저 설치(chromium, 이미 있으면 빠르게 스킵됨)"
-npx playwright install --with-deps chromium
+section "Playwright 브라우저 설치(이미 있으면 빠르게 스킵됨)"
+npx playwright install --with-deps
 
-section "Web E2E — base 트랙(web-e2e, 백엔드 없음 전제)"
-KRAFT_BACKEND_INTERNAL_URL=http://127.0.0.1:59999 KRAFT_PUBLIC_BASE_URL=http://127.0.0.1:3100 \
-  NEXT_PUBLIC_UNDO_WINDOW_MS=200 npm run build
-npm run test:e2e
+section "Web Next E2E — proxy 트랙(CSP·/ops 게이트)"
+NEXT_DIST_DIR=.next-proxy KRAFT_BACKEND_INTERNAL_URL=http://127.0.0.1:4110 KRAFT_PUBLIC_BASE_URL=http://127.0.0.1:3110 npm run build
+npm run test:e2e:proxy
 
-section "Web E2E — content 트랙(web-e2e-content, 픽스처 백엔드)"
-KRAFT_BACKEND_INTERNAL_URL=http://127.0.0.1:4101 KRAFT_PUBLIC_BASE_URL=http://127.0.0.1:3101 \
-  NEXT_PUBLIC_UNDO_WINDOW_MS=200 npm run build
-npm run test:e2e:content
+section "Web Next E2E — default 트랙(주요 흐름, 픽스처 백엔드)"
+NEXT_DIST_DIR=.next-default KRAFT_BACKEND_INTERNAL_URL=http://127.0.0.1:4111 KRAFT_PUBLIC_BASE_URL=http://127.0.0.1:3111 npm run build
+npm run test:e2e:default
 
-section "Web E2E — ad-overlay 트랙(web-e2e-ad-overlay, 별도 빌드 디렉터리)"
-NEXT_DIST_DIR=.next-ad-overlay NEXT_PUBLIC_KAKAO_ADFIT_UNIT_STICKY=DAN-ci-ad-overlay-test \
-  KRAFT_BACKEND_INTERNAL_URL=http://127.0.0.1:59999 KRAFT_PUBLIC_BASE_URL=http://127.0.0.1:3105 npm run build
-npm run test:e2e:ad-overlay
+section "Web Next E2E — a11y 트랙(접근성)"
+NEXT_DIST_DIR=.next-a11y KRAFT_BACKEND_INTERNAL_URL=http://127.0.0.1:4112 KRAFT_PUBLIC_BASE_URL=http://127.0.0.1:3112 npm run build
+npm run test:e2e:a11y
 
-section "Web Performance Budget (web-performance-budget)"
-KRAFT_BACKEND_INTERNAL_URL=http://127.0.0.1:4101 KRAFT_PUBLIC_BASE_URL=http://127.0.0.1:3101 npm run build
-npm run budget:bundle
-node e2e/fixtures/backend.mjs &
-FIXTURE_PID=$!
-PORT=3101 npm run e2e:serve &
-APP_PID=$!
-trap 'kill "$FIXTURE_PID" "$APP_PID" >/dev/null 2>&1 || true' EXIT
-for _ in $(seq 1 30); do
-  curl -sf http://127.0.0.1:3101 >/dev/null 2>&1 && break
-  sleep 1
-done
-PERF_BASE_URL=http://127.0.0.1:3101 npm run budget:lighthouse
-kill "$FIXTURE_PID" "$APP_PID" >/dev/null 2>&1 || true
-trap - EXIT
-
-section "Web E2E — visual 베이스라인 트랙(web-e2e-visual)"
+section "Web Next E2E — visual 베이스라인 트랙"
 echo "주의: 베이스라인 PNG는 CI(ubuntu-latest, Linux Chromium)에서 생성된 것과 맞춰야 한다 —"
 echo "로컬(특히 Windows/macOS)에서 이 트랙을 실행하면 폰트 렌더링 차이로 오탐이 날 수 있다."
 echo "베이스라인 갱신은 CI와 동일한 mcr.microsoft.com/playwright Docker 이미지 안에서 하는 것을 권장한다."
-NEXT_DIST_DIR=.next-visual KRAFT_BACKEND_INTERNAL_URL=http://127.0.0.1:4102 KRAFT_PUBLIC_BASE_URL=http://127.0.0.1:3102 npm run build
+NEXT_DIST_DIR=.next-visual KRAFT_BACKEND_INTERNAL_URL=http://127.0.0.1:4113 KRAFT_PUBLIC_BASE_URL=http://127.0.0.1:3113 npm run build
 npm run test:e2e:visual
+
+section "Web Next E2E — cross-browser 트랙(Firefox·WebKit)"
+NEXT_DIST_DIR=.next-cross-browser KRAFT_BACKEND_INTERNAL_URL=http://127.0.0.1:4114 KRAFT_PUBLIC_BASE_URL=http://127.0.0.1:3114 npm run build
+npm run test:e2e:cross-browser
+
+section "Web Next Performance Budget (번들 + Lighthouse)"
+# run-web-performance.sh는 budget:bundle과 fixture+서버 기동만 한다 — 앱 빌드 자체는
+# CI(web-next-performance-budget 잡)처럼 여기서 미리 해 둬야 한다.
+KRAFT_BACKEND_INTERNAL_URL=http://127.0.0.1:4101 KRAFT_PUBLIC_BASE_URL=http://127.0.0.1:3101 npm run build
+cd "$ROOT"
+PORT=4101 APP_DIST_DIR=.next PERF_BASE_URL=http://127.0.0.1:3101 FIXTURE_BACKEND_URL=http://127.0.0.1:4101 PERF_POST_ID=1 \
+  bash scripts/ci/run-web-performance.sh web
 
 cd "$ROOT"
 echo ""
-echo "==> 전체 게이트 통과(CI와 동일 범위: strict 정적분석 + strict 커버리지 + e2e 3트랙 + 컨테이너 하드닝 + env 드리프트 + shellcheck)"
+echo "==> 전체 게이트 통과(CI와 동일 범위: strict 정적분석 + strict 커버리지 + e2e 5트랙 + 성능 예산 + 컨테이너 하드닝 + env 드리프트 + shellcheck)"
