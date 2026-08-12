@@ -19,7 +19,11 @@ const PORT = Number(process.env.PORT ?? 4110);
 
 const ROUTES = new Map([...stats.routes, ...community.routes, ...numbers.routes]);
 
-const DYNAMIC_ROUTES = [...stats.dynamicRoutes, ...community.dynamicRoutes, ...numbers.dynamicRoutes];
+const DYNAMIC_ROUTES = [
+  ...stats.dynamicRoutes,
+  ...community.dynamicRoutes,
+  ...numbers.dynamicRoutes,
+];
 
 /** T-20(핵심 데이터 실패 → 5xx) 검증용 — 테스트가 이 경로로 특정 경로를 고장낼 수 있다. */
 let forcedFailurePath = null;

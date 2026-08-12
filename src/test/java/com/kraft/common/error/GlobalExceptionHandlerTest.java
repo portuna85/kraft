@@ -90,8 +90,28 @@ class GlobalExceptionHandlerTest {
         void page(@Min(0) int page) {}
     }
 
+    // 실제 애플리케이션은 하드코딩된 한국어 메시지만 쓰지만, Hibernate Validator의 내장
+    // 제약조건 메시지(@Min 등)만은 예외로 인터폴레이션 시점의 로케일을 따른다. JVM 기본
+    // 로케일은 실행 환경(로컬 Windows vs CI Ubuntu 등)마다 달라 이 기본값에 기대면 테스트가
+    // 환경에 따라 다른 메시지를 얻는다 — 여기서는 메시지 인터폴레이터를 한국어로 고정해
+    // 결과가 결정적이게 만든다.
     private static ConstraintViolationException constraintViolationForNegativePage() {
-        Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+        var configuration = Validation.byDefaultProvider().configure();
+        var defaultInterpolator = configuration.getDefaultMessageInterpolator();
+        Validator validator = configuration
+                .messageInterpolator(new jakarta.validation.MessageInterpolator() {
+                    @Override
+                    public String interpolate(String messageTemplate, Context context) {
+                        return defaultInterpolator.interpolate(messageTemplate, context, java.util.Locale.KOREAN);
+                    }
+
+                    @Override
+                    public String interpolate(String messageTemplate, Context context, java.util.Locale locale) {
+                        return defaultInterpolator.interpolate(messageTemplate, context, locale);
+                    }
+                })
+                .buildValidatorFactory()
+                .getValidator();
         ExecutableValidator executableValidator = validator.forExecutables();
         try {
             var method = Clampable.class.getDeclaredMethod("page", int.class);
