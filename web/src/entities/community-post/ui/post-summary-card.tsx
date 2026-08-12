@@ -4,7 +4,7 @@ import { ROUTES } from "@/shared/config/routes";
 import { Badge } from "@/shared/ui/badge";
 import { Card } from "@/shared/ui/surface";
 
-import { CATEGORY_LABELS, isTombstone, type CommunityPost } from "../schema";
+import { CATEGORY_LABELS, type CommunityPost } from "../schema";
 
 import styles from "./post-summary-card.module.css";
 
@@ -18,16 +18,6 @@ import styles from "./post-summary-card.module.css";
  * (레거시 FE-047).
  */
 export function PostSummaryCard({ post }: { post: CommunityPost }) {
-  if (isTombstone(post)) {
-    // 삭제·차단된 글도 자리를 지운 채 사라지지 않는다 — 목록의 앞뒤 문맥이 끊기고
-    // 페이지 번호가 어긋난다(§25.6 tombstone).
-    return (
-      <Card as="li" level={1}>
-        <p className={styles.tombstone}>삭제되었거나 표시할 수 없는 글입니다.</p>
-      </Card>
-    );
-  }
-
   return (
     <Card as="li" level={1}>
       <div className={styles.meta}>

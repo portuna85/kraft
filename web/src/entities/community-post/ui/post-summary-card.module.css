@@ -28,9 +28,4 @@
     color: var(--color-ink-muted);
     font-size: var(--text-sm);
   }
-
-  .tombstone {
-    color: var(--color-ink-muted);
-    font-style: italic;
-  }
 }
