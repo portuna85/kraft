@@ -82,7 +82,12 @@ www.{$KRAFT_DOMAIN} {
 
 		# 개인화·상태변경 페이지는 catch-all의 60s 공개 캐시에서 제외한다(§4.4) —
 		# 글쓰기·수정 화면은 로그인 사용자 전용이며 폼 상태가 캐시되면 안 된다.
-		@community_no_cache path /community/write /community/posts/*/edit
+		# M-08: 게시글 상세(/community/posts/*, 수정 화면 포함)도 여기 포함한다 — 백엔드
+		# GET이 조회수를 올리는 부수효과가 있어 web/의 page.tsx가 force-dynamic으로
+		# no-store를 전제하는데, 목록(/community)만 제외하고 상세는 빠져 있어 catch-all의
+		# public, max-age=60이 그대로 걸리고 있었다. 목록 자체(/community, 세그먼트 없음)는
+		# 이 패턴에 안 걸리므로 계속 60s 캐시를 받는다.
+		@community_no_cache path /community/write /community/posts/*
 		handle @community_no_cache {
 			header Cache-Control "no-store"
 			reverse_proxy web:3000 {
