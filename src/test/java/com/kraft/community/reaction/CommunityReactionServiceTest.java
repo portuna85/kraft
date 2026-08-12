@@ -3,7 +3,6 @@ package com.kraft.community.reaction;
 import com.kraft.common.error.ApiException;
 import com.kraft.community.block.CommunityBlockService;
 import com.kraft.community.post.CommunityPost;
-import com.kraft.community.post.CommunityPostMetricsRepository;
 import com.kraft.community.post.CommunityPostRepository;
 import com.kraft.community.post.PostCategory;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -46,9 +45,6 @@ class CommunityReactionServiceTest {
     private CommunityPostBookmarkRepository communityPostBookmarkRepository;
 
     @Mock
-    private CommunityPostMetricsRepository communityPostMetricsRepository;
-
-    @Mock
     private CommunityBlockService communityBlockService;
 
     @Mock
@@ -67,20 +63,22 @@ class CommunityReactionServiceTest {
         Clock clock = Clock.fixed(Instant.parse("2026-07-28T00:00:00Z"), ZoneOffset.UTC);
         meterRegistry = new SimpleMeterRegistry();
         service = new CommunityReactionService(communityPostRepository, communityPostLikeRepository,
-                communityPostBookmarkRepository, communityPostMetricsRepository, communityBlockService,
+                communityPostBookmarkRepository, communityBlockService,
                 communityReactionWriter, clock, meterRegistry);
     }
 
     @Test
-    @DisplayName("좋아요가 없으면 새로 만들고 집계를 원자적으로 증가시킨다")
+    @DisplayName("좋아요가 없으면 insert와 집계 증가를 하나의 원자적 호출로 위임한다")
     void like_whenAbsent_createsAndIncrements() {
         given(communityPostRepository.findById(1L)).willReturn(Optional.of(publishedPost()));
         given(communityPostLikeRepository.findByPostIdAndUserId(1L, 10L)).willReturn(Optional.empty());
 
         service.like(1L, 10L);
 
-        verify(communityReactionWriter).insertLike(eq(1L), eq(10L), any());
-        verify(communityPostMetricsRepository).incrementLikeCount(1L);
+        // M-01: insert와 집계 증가가 CommunityReactionWriter.insertLikeAndIncrement 단일
+        // 메서드(단일 REQUIRES_NEW 트랜잭션) 호출로 합쳐졌다 — 별도로 incrementLikeCount를
+        // 호출하지 않는다.
+        verify(communityReactionWriter).insertLikeAndIncrement(eq(1L), eq(10L), any());
     }
 
     @Test
@@ -92,8 +90,7 @@ class CommunityReactionServiceTest {
 
         service.like(1L, 10L);
 
-        verify(communityReactionWriter, never()).insertLike(anyLong(), anyLong(), any());
-        verify(communityPostMetricsRepository, never()).incrementLikeCount(anyLong());
+        verify(communityReactionWriter, never()).insertLikeAndIncrement(anyLong(), anyLong(), any());
     }
 
     // C-1: 차단은 저장·조회만 될 뿐 쓰기 경로를 막지 않았다 — 서버가 실제로 강제하는지 검증한다.
@@ -107,7 +104,7 @@ class CommunityReactionServiceTest {
                 .isInstanceOf(ApiException.class)
                 .hasFieldOrPropertyWithValue("code", "COMMUNITY_BLOCKED_INTERACTION")
                 .hasFieldOrPropertyWithValue("status", org.springframework.http.HttpStatus.FORBIDDEN);
-        verify(communityReactionWriter, never()).insertLike(anyLong(), anyLong(), any());
+        verify(communityReactionWriter, never()).insertLikeAndIncrement(anyLong(), anyLong(), any());
     }
 
     @Test
@@ -144,11 +141,9 @@ class CommunityReactionServiceTest {
         given(communityPostRepository.findById(1L)).willReturn(Optional.of(publishedPost()));
         given(communityPostLikeRepository.findByPostIdAndUserId(1L, 10L)).willReturn(Optional.empty());
         willThrow(new DataIntegrityViolationException("uk_community_post_likes_post_user"))
-                .given(communityReactionWriter).insertLike(eq(1L), eq(10L), any());
+                .given(communityReactionWriter).insertLikeAndIncrement(eq(1L), eq(10L), any());
 
         service.like(1L, 10L);
-
-        verify(communityPostMetricsRepository, never()).incrementLikeCount(anyLong());
     }
 
     @Test

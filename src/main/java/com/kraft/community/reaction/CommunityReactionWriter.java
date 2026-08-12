@@ -36,9 +36,18 @@ class CommunityReactionWriter {
         this.communityPostMetricsRepository = communityPostMetricsRepository;
     }
 
+    /**
+     * M-01: insert와 집계 증가를 deleteLike와 대칭으로 하나의 REQUIRES_NEW 트랜잭션에
+     * 묶는다. 예전에는 insert만 여기 있고 incrementLikeCount는 호출자(ambient 트랜잭션)
+     * 쪽에서 별도로 실행했다 — insert는 성공했는데 그 뒤 ambient 트랜잭션 커밋이
+     * 실패하면(또는 증가 자체가 실패하면) 좋아요 행은 남고 집계만 어긋나는 드리프트가
+     * 생겼다. 유니크 위반은 여전히 이 트랜잭션 하나만 롤백시키고 그대로 호출자에
+     * 전파되므로(클래스 Javadoc 참고), 멱등 흡수 방식은 바뀌지 않는다.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    void insertLike(Long postId, Long userId, OffsetDateTime now) {
+    void insertLikeAndIncrement(Long postId, Long userId, OffsetDateTime now) {
         communityPostLikeRepository.save(new CommunityPostLike(postId, userId, now));
+        communityPostMetricsRepository.incrementLikeCount(postId);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)

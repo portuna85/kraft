@@ -4,7 +4,6 @@ import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import com.kraft.community.block.CommunityBlockService;
 import com.kraft.community.post.CommunityPost;
-import com.kraft.community.post.CommunityPostMetricsRepository;
 import com.kraft.community.post.CommunityPostRepository;
 import com.kraft.community.post.PostStatus;
 import io.micrometer.core.instrument.Counter;
@@ -31,7 +30,6 @@ public class CommunityReactionService {
     private final CommunityPostRepository communityPostRepository;
     private final CommunityPostLikeRepository communityPostLikeRepository;
     private final CommunityPostBookmarkRepository communityPostBookmarkRepository;
-    private final CommunityPostMetricsRepository communityPostMetricsRepository;
     private final CommunityBlockService communityBlockService;
     private final CommunityReactionWriter communityReactionWriter;
     private final Clock clock;
@@ -41,7 +39,6 @@ public class CommunityReactionService {
     public CommunityReactionService(CommunityPostRepository communityPostRepository,
                                      CommunityPostLikeRepository communityPostLikeRepository,
                                      CommunityPostBookmarkRepository communityPostBookmarkRepository,
-                                     CommunityPostMetricsRepository communityPostMetricsRepository,
                                      CommunityBlockService communityBlockService,
                                      CommunityReactionWriter communityReactionWriter,
                                      Clock clock,
@@ -49,7 +46,6 @@ public class CommunityReactionService {
         this.communityPostRepository = communityPostRepository;
         this.communityPostLikeRepository = communityPostLikeRepository;
         this.communityPostBookmarkRepository = communityPostBookmarkRepository;
-        this.communityPostMetricsRepository = communityPostMetricsRepository;
         this.communityBlockService = communityBlockService;
         this.communityReactionWriter = communityReactionWriter;
         this.clock = clock;
@@ -98,14 +94,18 @@ public class CommunityReactionService {
      * 별도 트랜잭션으로 격리하면 그 실패는 그 트랜잭션만 롤백시키고 원래의
      * DataIntegrityViolationException이 그대로 여기까지 전파되므로, 이 메서드가 속한
      * (외부) 트랜잭션을 물들이지 않고 안전하게 catch해 멱등 흡수할 수 있다.
+     *
+     * <p>M-01: 집계 증가(incrementLikeCount)도 insert와 같은 REQUIRES_NEW 트랜잭션 안에서
+     * 실행한다({@link CommunityReactionWriter#insertLikeAndIncrement}) — unlike(deleteLike)와
+     * 대칭인 구조다. 예전에는 증가가 이 메서드의 ambient 트랜잭션에서 별도로 실행돼, insert는
+     * 성공했는데 그 뒤 커밋이 실패하면 좋아요 행은 있고 집계는 반영 안 되는 드리프트가 가능했다.
      */
     public void like(Long postId, Long userId) {
         CommunityPost post = requireVisiblePost(postId);
         requireNotBlocked(userId, post.getOwnerId());
         if (communityPostLikeRepository.findByPostIdAndUserId(postId, userId).isEmpty()) {
             try {
-                communityReactionWriter.insertLike(postId, userId, OffsetDateTime.now(clock));
-                communityPostMetricsRepository.incrementLikeCount(postId);
+                communityReactionWriter.insertLikeAndIncrement(postId, userId, OffsetDateTime.now(clock));
                 likeCreatedCounter.increment();
             } catch (DataIntegrityViolationException concurrentLike) {
                 // B-P0-4/KB-02: exists 확인과 insert 사이에 동시 요청이 먼저 좋아요를 남긴 경쟁 —

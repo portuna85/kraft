@@ -114,6 +114,11 @@ class CommunityReactionConcurrencyTest {
 
         assertThat(communityPostLikeRepository.findByPostIdAndUserId(postId, userId)).isPresent();
         assertThat(communityPostMetricsRepository.findByPostId(postId).orElseThrow().getLikeCount()).isEqualTo(1);
+        // M-01: insert와 집계 증가가 별도 트랜잭션에 걸쳐 있으면 "행은 있는데 집계가 밀린"
+        // 드리프트가 가능했다 — 실제 좋아요 행 수와 집계값이 항상 일치하는지 직접 비교한다.
+        long actualLikeRows = communityPostLikeRepository.findByUserIdAndPostIdIn(userId, List.of(postId)).size();
+        assertThat(communityPostMetricsRepository.findByPostId(postId).orElseThrow().getLikeCount())
+                .isEqualTo(actualLikeRows);
     }
 
     @Test

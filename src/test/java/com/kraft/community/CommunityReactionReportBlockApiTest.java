@@ -28,6 +28,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.transaction.TestTransaction;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
@@ -80,6 +81,21 @@ class CommunityReactionReportBlockApiTest {
     @DisplayName("좋아요를 두 번 눌러도 두 번째는 멱등하게 204로 끝난다")
     void like_twice_isIdempotent() throws Exception {
         long postId = createPost(owner, "제목", "내용");
+
+        // M-01: 좋아요 집계 증가(incrementLikeCount)는 REQUIRES_NEW(별도 물리 트랜잭션/
+        // 커넥션)에서 실행된다. 이 테스트 클래스는 @Transactional이라 createPost()가 만든
+        // 게시글·집계 행이 아직 커밋되지 않은 채로 남아 있는데, 다른 트랜잭션(격리 수준과
+        // 무관하게, 커밋 안 된 데이터는 어떤 격리 수준에서도 보이지 않는다)인 REQUIRES_NEW
+        // 쪽에서 보면 그 집계 행 자체가 아직 존재하지 않는 것과 같다 — WHERE postId=:id
+        // UPDATE가 0행에 매치해 조용히 아무 일도 안 하고 끝난다(예외 없음). CommunityPostLike
+        // insert는 FK 체크가 커밋 여부와 무관하게 실제 행을 보므로 성공해, "좋아요는 있는데
+        // 집계는 그대로"라는 겉보기엔 M-01이 고치려던 것과 같은 모양의 실패가 테스트에서만
+        // 재현된다. 실제 운영에서는 게시글 생성과 좋아요가 서로 다른 HTTP 요청(각자 커밋된
+        // 트랜잭션)이라 이 문제가 없다 — 여기서는 게시글 생성을 실제로 커밋한 뒤 좋아요
+        // 요청을 보내, 운영의 "요청마다 독립된 트랜잭션"과 같은 조건을 재현한다.
+        TestTransaction.flagForCommit();
+        TestTransaction.end();
+        TestTransaction.start();
 
         mockMvc.perform(put("/api/v1/community/posts/" + postId + "/like")
                         .with(asUser(other))
