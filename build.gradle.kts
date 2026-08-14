@@ -148,138 +148,16 @@ tasks.check {
     dependsOn(isolatedLoggingTest)
 }
 
-// ── JaCoCo ─────────────────────────────────────────────────────────────────
+// JaCoCo/Checkstyle는 Gradle 코어 API(gradleApi())에 포함된 타입이라 apply(from=)로
+// 분리해도 타입-세이프 접근이 그대로 된다 — 파일만 옮겼고 태스크 이름·게이트 동작은
+// 그대로다(TD-023).
+apply(from = "gradle/jacoco.gradle.kts")
+apply(from = "gradle/checkstyle.gradle.kts")
 
-jacoco {
-    toolVersion = "0.8.13"
-}
-
-// Patterns excluded from coverage measurement (shared by report + verification).
-// Excludes: Spring config/properties, DTO/record boilerplate, JPA entities
-// (no logic beyond getters), enums, event records, and admin Thymeleaf layer
-// (controller/handlers/filter — covered by smoke tests, not unit tests).
-val jacocoExcludes = listOf(
-    "**/Application.class",
-    "**/config/**",
-    "**/*Properties.class",
-    "**/*Response.class",
-    "**/*Request.class",
-    "**/*Dto.class",
-    "**/db/migration/**",
-    // JPA entities — getters/constructors only, no business logic
-    "**/winningnumber/WinningNumber.class",
-    "**/saved/SavedNumber.class",
-    "**/admin/AdminUser.class",
-    "**/admin/AdminAuditLog.class",
-    "**/statistics/FrequencySummary.class",
-    "**/statistics/PatternStatsSummary.class",
-    "**/statistics/CompanionPairSummary.class",
-    "**/operationlog/WinningNumberOperationLog.class",
-    // Enums
-    "**/WinningNumberOperationType.class",
-    "**/WinningNumberOperationStatus.class",
-    // Event records
-    "**/*Event.class",
-    // Admin Thymeleaf layer — tested by smoke tests, not unit tests
-    "**/admin/AdminController.class",
-    "**/admin/AdminLoginHandler.class",
-    "**/admin/AdminLockoutFilter.class"
-)
-
-fun jacocoClassDirs() = fileTree(layout.buildDirectory.dir("classes/java/main")) {
-    exclude(jacocoExcludes)
-}
-
-tasks.jacocoTestReport {
-    dependsOn(tasks.test, isolatedLoggingTest)
-    executionData(fileTree(layout.buildDirectory.dir("jacoco")) { include("*.exec") })
-    reports {
-        xml.required = true
-        html.required = true
-    }
-    classDirectories.setFrom(jacocoClassDirs())
-}
-
-val strictCoverage = project.findProperty("strictCoverage") as String?
-if (strictCoverage == "true") {
-    tasks.jacocoTestCoverageVerification {
-        dependsOn(tasks.jacocoTestReport)
-        executionData(fileTree(layout.buildDirectory.dir("jacoco")) { include("*.exec") })
-        classDirectories.setFrom(jacocoClassDirs())
-        violationRules {
-            // 전체 프로젝트 임계값
-            rule {
-                limit {
-                    counter = "LINE"
-                    value = "COVEREDRATIO"
-                    minimum = "0.82".toBigDecimal()
-                }
-                limit {
-                    counter = "BRANCH"
-                    value = "COVEREDRATIO"
-                    minimum = "0.65".toBigDecimal()
-                }
-                limit {
-                    counter = "METHOD"
-                    value = "COVEREDRATIO"
-                    minimum = "0.88".toBigDecimal()
-                }
-                limit {
-                    counter = "CLASS"
-                    value = "COVEREDRATIO"
-                    minimum = "0.97".toBigDecimal()
-                }
-            }
-            // 핵심 도메인 패키지별 라인 커버리지 임계값
-            rule {
-                element = "PACKAGE"
-                includes = listOf("com/kraft/saved")
-                limit { counter = "LINE"; value = "COVEREDRATIO"; minimum = "0.85".toBigDecimal() }
-            }
-            rule {
-                element = "PACKAGE"
-                includes = listOf("com/kraft/recommend")
-                limit { counter = "LINE"; value = "COVEREDRATIO"; minimum = "0.85".toBigDecimal() }
-            }
-            rule {
-                element = "PACKAGE"
-                includes = listOf("com/kraft/winningnumber")
-                limit { counter = "LINE"; value = "COVEREDRATIO"; minimum = "0.80".toBigDecimal() }
-            }
-            rule {
-                element = "PACKAGE"
-                includes = listOf("com/kraft/statistics")
-                limit { counter = "LINE"; value = "COVEREDRATIO"; minimum = "0.80".toBigDecimal() }
-            }
-            rule {
-                element = "PACKAGE"
-                includes = listOf("com/kraft/ops")
-                limit { counter = "LINE"; value = "COVEREDRATIO"; minimum = "0.80".toBigDecimal() }
-            }
-            rule {
-                element = "PACKAGE"
-                includes = listOf("com/kraft/common/web")
-                limit { counter = "LINE"; value = "COVEREDRATIO"; minimum = "0.75".toBigDecimal() }
-            }
-        }
-    }
-    tasks.check { dependsOn(tasks.jacocoTestCoverageVerification) }
-}
-
-// ── Checkstyle ──────────────────────────────────────────────────────────────
-
-checkstyle {
-    toolVersion = "10.23.0"
-    configFile = file("config/checkstyle/checkstyle.xml")
-    isIgnoreFailures = (project.findProperty("strictStatic") != "true")
-}
-
-tasks.withType<Checkstyle> {
-    reports {
-        xml.required = false
-        html.required = true
-    }
-}
+// SpotBugs/Pitest는 plugins{} 블록으로 끌어온 서드파티 플러그인 클래스라 apply(from=)
+// 스크립트에는 그 클래스가 컴파일 클래스패스에 없다(buildscript classpath를 별도
+// 선언해 중복 클래스로더로 끌어오면 런타임 ClassCastException 위험) — 그래서 이 둘은
+// plugins{}가 선언된 이 루트 파일에 그대로 둔다.
 
 // ── SpotBugs ────────────────────────────────────────────────────────────────
 
