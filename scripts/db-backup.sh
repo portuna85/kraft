@@ -48,12 +48,26 @@ if [[ "$BACKUP_MODE" == "offsite-required" ]]; then
   backup_write_metrics "$TEXTFILE_DIR" "kraft_backup_remote_status" "$(backup_remote_status_metric_body "kraft_backup" 0)"
 fi
 
+# 덤프가 중간에 실패하면(옵션 오류, 디스크 부족, 커넥션 끊김) 리다이렉션이 이미 만들어 둔
+# 잘린 .sql.gz가 남는다 — 보존 기간 안에서는 그게 정상 백업처럼 보여 "복구 지점이 있다"는
+# 착각을 만든다. 성공 지점에서 trap을 해제하므로, 실패 경로에서만 파일을 지운다.
+trap 'rm -f "$FILENAME"' ERR
+
 echo "==> Backing up $DB_NAME to $FILENAME"
+# --set-gtid-purged는 MySQL 전용 옵션이라 mariadb-dump가
+# `unknown variable 'set-gtid-purged=OFF'`로 즉시 죽는다(운영 MariaDB 11.7.2에서 확인).
+# 이 옵션이 붙어 있는 한 이 스크립트는 단 한 번도 성공할 수 없었다 — cron이 등록돼
+# 있었더라도 백업 파일은 생기지 않았다는 뜻이다.
+# MariaDB는 기본적으로 GTID 관련 구문을 덤프에 넣지 않고(넣으려면 명시적으로 --gtid를
+# 줘야 한다) 그 기본 동작이 곧 MySQL의 set-gtid-purged=OFF와 같으므로, 옵션을 제거하는
+# 것만으로 원래 의도(다른 서버로 복원 가능한 덤프)가 그대로 유지된다.
 # shellcheck disable=SC2016 # 작은따옴표가 의도적 — 컨테이너 안 sh -c에서 그 환경(mariadb)의
 # $MARIADB_PASSWORD 등으로 전개돼야 하며, 이 스크립트의 셸에서 전개되면 안 된다.
 "${COMPOSE[@]}" exec -T mariadb sh -c \
-  'MYSQL_PWD="$MARIADB_PASSWORD" mariadb-dump --single-transaction --routines --triggers --set-gtid-purged=OFF -u"$MARIADB_USER" "$MARIADB_DATABASE"' \
+  'MYSQL_PWD="$MARIADB_PASSWORD" mariadb-dump --single-transaction --routines --triggers -u"$MARIADB_USER" "$MARIADB_DATABASE"' \
   | gzip -9 > "$FILENAME"
+
+trap - ERR
 
 echo "==> Backup complete: $FILENAME ($(du -sh "$FILENAME" | cut -f1))"
 
