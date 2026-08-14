@@ -47,6 +47,7 @@ class CommunityPostServiceTest {
     private RecommendationSetHistoryService recommendationSetHistoryService;
 
     private CommunityPostService service;
+    private SimpleMeterRegistry meterRegistry;
 
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-07-28T00:00:00Z"), ZoneOffset.UTC);
 
@@ -68,8 +69,9 @@ class CommunityPostServiceTest {
 
     @BeforeEach
     void setUp() {
+        meterRegistry = new SimpleMeterRegistry();
         service = new CommunityPostService(communityPostRepository, communityPostMetricsRepository,
-                recommendationSetHistoryService, CLOCK, new SimpleMeterRegistry());
+                recommendationSetHistoryService, CLOCK, meterRegistry);
     }
 
     @Test
@@ -282,6 +284,20 @@ class CommunityPostServiceTest {
         Page<CommunityPost> result = service.list(PostCategory.GENERAL, "latest", null, 0, 20);
 
         assertThat(result).isSameAs(page);
+    }
+
+    @Test
+    @DisplayName("TD-022: 검색어 유무에 따라 같은 이름·다른 search 태그의 타이머가 조회된다")
+    void list_durationTimers_registeredWithStableNameAndSearchTag() {
+        given(communityPostRepository.findLatest(any(), any(), any())).willReturn(new PageImpl<>(List.of()));
+
+        service.list(null, "latest", null, 0, 20);
+        service.list(null, "latest", "검색어", 0, 20);
+
+        assertThat(meterRegistry.get("kraft_community_post_list_duration_seconds")
+                .tag("search", "false").timer().count()).isEqualTo(1);
+        assertThat(meterRegistry.get("kraft_community_post_list_duration_seconds")
+                .tag("search", "true").timer().count()).isEqualTo(1);
     }
 
     @Test

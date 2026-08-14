@@ -15,9 +15,12 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntUnaryOperator;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -45,6 +48,9 @@ public class LottoRecommendationService {
     private final Clock clock;
     private final MeterRegistry meterRegistry;
     private final Timer recommendTimer;
+    // TD-022: 요청마다(doRecommend) Timer.builder(...)를 새로 만들어 레지스트리를 조회하는
+    // 대신, 전략 문자열이 3가지로 고정돼 있으므로 생성자에서 한 번씩만 등록해 둔다.
+    private final Map<String, Timer> strategyDurationTimers;
 
     // TD-008 1~3단계: 이력 스냅샷 수명주기, 요청 파싱/실현가능성 검증, 전략 디스패치·후보
     // 생성을 각각 RecommendationHistorySnapshotManager/RecommendationRequestValidator/
@@ -91,6 +97,12 @@ public class LottoRecommendationService {
         this.recommendTimer = Timer.builder("kraft_lotto_recommend_duration_seconds")
                 .description("추천 생성 1회 처리 시간(검증·재추첨 포함)")
                 .register(meterRegistry);
+        this.strategyDurationTimers = Stream.of(STRATEGY_RANDOM, STRATEGY_BALANCED, STRATEGY_REDUCE_SHARED_WINNER_RISK)
+                .collect(Collectors.toMap(strategy -> strategy, strategy -> Timer.builder(
+                                "kraft_lotto_recommend_strategy_duration_seconds")
+                        .description("추천 모드별 샘플링 처리 시간")
+                        .tag("strategy", strategy)
+                        .register(meterRegistry)));
 
         Gauge.builder("kraft_lotto_history_ready", this,
                         s -> s.historySnapshotManager.currentSnapshot().ready() ? 1d : 0d)
@@ -231,10 +243,7 @@ public class LottoRecommendationService {
         try {
             items = candidateGenerator.sampleRecommendations(ctx, snapshot, randomSource);
         } finally {
-            strategySample.stop(Timer.builder("kraft_lotto_recommend_strategy_duration_seconds")
-                    .description("추천 모드별 샘플링 처리 시간")
-                    .tag("strategy", ctx.strategy())
-                    .register(meterRegistry));
+            strategySample.stop(strategyDurationTimers.get(ctx.strategy()));
         }
         // 샘플링 중 새 당첨 회차가 커밋됐으면 생성 시점의 이력이 더 최신이므로, 이 응답을
         // 성공시키지 않는다. 이 검사는 추천의 선형화 지점을 응답 조립 직전으로 만든다.

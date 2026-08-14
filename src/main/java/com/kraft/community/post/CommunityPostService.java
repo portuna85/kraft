@@ -36,6 +36,10 @@ public class CommunityPostService {
     private final Counter versionConflictCounter;
     private final Counter createdCounter;
     private final MeterRegistry meterRegistry;
+    // TD-022: list()가 요청마다 Timer.builder(...)를 새로 만들어 레지스트리를 조회하는
+    // 대신, search 태그가 "true"/"false" 두 값뿐이므로 생성자에서 한 번씩만 등록해 둔다.
+    private final Timer listTimer;
+    private final Timer searchTimer;
 
     public CommunityPostService(CommunityPostRepository communityPostRepository,
                                  CommunityPostMetricsRepository communityPostMetricsRepository,
@@ -52,6 +56,14 @@ public class CommunityPostService {
                 .register(meterRegistry);
         this.createdCounter = Counter.builder("kraft_community_post_created_total")
                 .description("생성된 게시글 수")
+                .register(meterRegistry);
+        this.listTimer = Timer.builder("kraft_community_post_list_duration_seconds")
+                .description("커뮤니티 목록/검색 조회 지연")
+                .tag("search", "false")
+                .register(meterRegistry);
+        this.searchTimer = Timer.builder("kraft_community_post_list_duration_seconds")
+                .description("커뮤니티 목록/검색 조회 지연")
+                .tag("search", "true")
                 .register(meterRegistry);
     }
 
@@ -120,10 +132,7 @@ public class CommunityPostService {
             }
             return communityPostRepository.findLatest(category, normalizedQuery, pageRequest);
         } finally {
-            sample.stop(Timer.builder("kraft_community_post_list_duration_seconds")
-                    .description("커뮤니티 목록/검색 조회 지연")
-                    .tag("search", normalizedQuery == null ? "false" : "true")
-                    .register(meterRegistry));
+            sample.stop(normalizedQuery == null ? listTimer : searchTimer);
         }
     }
 

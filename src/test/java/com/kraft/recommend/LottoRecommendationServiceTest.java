@@ -743,6 +743,18 @@ class LottoRecommendationServiceTest {
         }
 
         @Test
+        @DisplayName("TD-022: 전략별 소요시간 타이머가 요청 후에도 같은 이름·태그로 조회된다")
+        void recommend_strategyDurationTimer_registeredWithStableNameAndTag() {
+            service.recommend(new RecommendNumbersRequest(1, null, null, "balanced", null, null), null);
+
+            assertThat(meterRegistry.get("kraft_lotto_recommend_strategy_duration_seconds")
+                    .tag("strategy", "balanced")
+                    .timer()
+                    .count())
+                    .isEqualTo(1);
+        }
+
+        @Test
         @DisplayName("알 수 없는 strategy 값은 400 INVALID_RECOMMENDATION_STRATEGY로 거절된다")
         void recommend_unknownStrategy_throwsApiException() {
             RecommendNumbersRequest request = new RecommendNumbersRequest(1, null, null, "not_a_strategy", null, null);
