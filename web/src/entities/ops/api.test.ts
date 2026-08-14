@@ -94,13 +94,13 @@ describe("collectLatest", () => {
     expect(result).toEqual(winningNumberBody);
   });
 
-  it("TD-001: 기본 5초가 아닌 20초 확장 타임아웃으로 abort signal을 구성한다", async () => {
+  it("TD-001: edge 20초보다 긴 22초 타임아웃으로 abort signal을 구성한다", async () => {
     mockFetch(jsonResponse(winningNumberBody));
     const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
 
     await collectLatest("secret-token");
 
-    expect(timeoutSpy).toHaveBeenCalledWith(20_000);
+    expect(timeoutSpy).toHaveBeenCalledWith(22_000);
   });
 });
 
@@ -113,13 +113,13 @@ describe("collectRound", () => {
     expect(spy.mock.calls[0]?.[0]).toBe("/ops-api/collect/1150");
   });
 
-  it("TD-001: 기본 5초가 아닌 20초 확장 타임아웃으로 abort signal을 구성한다", async () => {
+  it("TD-001: edge 20초보다 긴 22초 타임아웃으로 abort signal을 구성한다", async () => {
     mockFetch(jsonResponse(winningNumberBody));
     const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
 
     await collectRound("secret-token", 1150);
 
-    expect(timeoutSpy).toHaveBeenCalledWith(20_000);
+    expect(timeoutSpy).toHaveBeenCalledWith(22_000);
   });
 });
 

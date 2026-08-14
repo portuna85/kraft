@@ -19,10 +19,10 @@ import {
  */
 
 // TD-001: 수동 수집은 백엔드에서 최대 2회 재시도(3초 connect + 5초 read, 500ms 대기)를
-// 거쳐 최악 약 16.5초가 걸릴 수 있다. Caddy의 /ops-api/collect/* 전용 타임아웃(20초,
-// caddy/Caddyfile)과 짝을 맞춘 값 — 다른 ops 호출(summary/logs/rounds)의 기본 5초는
-// 그대로 둔다.
-const COLLECT_TIMEOUT_MS = 20_000;
+// 거쳐 최악 약 16.5초가 걸릴 수 있다. Caddy의 /ops-api/collect/* 전용 타임아웃은 20초,
+// 브라우저는 edge가 먼저 명확한 응답을 돌려줄 수 있도록 2초 더 긴 22초를 쓴다. 다른 ops
+// 호출(summary/logs/rounds)의 기본 5초는 그대로 둔다.
+const COLLECT_TIMEOUT_MS = 22_000;
 
 export function getOpsSummary(token: string): Promise<OpsSummary> {
   return opsQuery("/ops-api/summary", opsSummarySchema, token);

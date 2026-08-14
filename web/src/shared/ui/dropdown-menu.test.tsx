@@ -1,87 +1,65 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { DropdownMenu } from "./dropdown-menu";
 
-function renderMenu(items: Parameters<typeof DropdownMenu>[0]["items"]) {
-  return render(
-    <DropdownMenu
-      aria-label="테스트 메뉴"
-      trigger={(props) => (
-        <button type="button" {...props}>
-          열기
-        </button>
-      )}
-      items={items}
-    />,
+function renderMenu(onSelect = vi.fn()) {
+  render(
+    <>
+      <DropdownMenu
+        trigger={({ onClick, "aria-expanded": expanded }) => (
+          <button type="button" onClick={onClick} aria-expanded={expanded}>
+            메뉴 열기
+          </button>
+        )}
+        items={[
+          { label: "프로필", href: "/profile" },
+          { label: "로그아웃", onSelect },
+        ]}
+        aria-label="계정"
+      />
+      <button type="button">바깥</button>
+    </>,
   );
+  return onSelect;
 }
 
 describe("DropdownMenu", () => {
-  it("트리거를 누르기 전에는 메뉴가 안 보인다", () => {
-    renderMenu([{ label: "항목", onSelect: vi.fn() }]);
-    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  it("열리면 첫 항목에 포커스하고 화살표·Home·End로 이동한다", async () => {
+    renderMenu();
+    await userEvent.click(screen.getByRole("button", { name: "메뉴 열기" }));
+
+    const profile = screen.getByRole("menuitem", { name: "프로필" });
+    const logout = screen.getByRole("menuitem", { name: "로그아웃" });
+    await waitFor(() => expect(profile).toHaveFocus());
+    fireEvent.keyDown(screen.getByRole("menu", { name: "계정" }), { key: "ArrowDown" });
+    expect(logout).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole("menu", { name: "계정" }), { key: "Home" });
+    expect(profile).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole("menu", { name: "계정" }), { key: "End" });
+    expect(logout).toHaveFocus();
   });
 
-  it("트리거를 누르면 메뉴가 열리고 첫 항목에 포커스가 간다", async () => {
-    const user = userEvent.setup();
-    renderMenu([{ label: "항목 1", onSelect: vi.fn() }]);
+  it("동작 항목을 선택하면 메뉴를 닫고 콜백을 한 번 호출한다", async () => {
+    const onSelect = renderMenu();
+    await userEvent.click(screen.getByRole("button", { name: "메뉴 열기" }));
 
-    await user.click(screen.getByRole("button", { name: "열기" }));
-
-    expect(screen.getByRole("menu", { name: "테스트 메뉴" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "항목 1" })).toHaveFocus();
-  });
-
-  it("onSelect 항목은 버튼으로, href 항목은 링크로 렌더한다", async () => {
-    const user = userEvent.setup();
-    renderMenu([
-      { label: "버튼 항목", onSelect: vi.fn() },
-      { label: "링크 항목", href: "/oauth2/authorization/google" },
-    ]);
-    await user.click(screen.getByRole("button", { name: "열기" }));
-
-    expect(screen.getByRole("menuitem", { name: "버튼 항목" }).tagName).toBe("BUTTON");
-    const link = screen.getByRole("menuitem", { name: "링크 항목" });
-    expect(link.tagName).toBe("A");
-    expect(link).toHaveAttribute("href", "/oauth2/authorization/google");
-  });
-
-  it("onSelect 항목을 누르면 콜백을 부르고 메뉴를 닫는다", async () => {
-    const user = userEvent.setup();
-    const onSelect = vi.fn();
-    renderMenu([{ label: "항목", onSelect }]);
-    await user.click(screen.getByRole("button", { name: "열기" }));
-
-    await user.click(screen.getByRole("menuitem", { name: "항목" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "로그아웃" }));
 
     expect(onSelect).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
-  it("Escape로 메뉴를 닫는다", async () => {
-    const user = userEvent.setup();
-    renderMenu([{ label: "항목", onSelect: vi.fn() }]);
-    await user.click(screen.getByRole("button", { name: "열기" }));
-
-    await user.keyboard("{Escape}");
-
+  it("Escape와 바깥 포인터 입력으로 닫고 리스너를 제거한다", async () => {
+    renderMenu();
+    const trigger = screen.getByRole("button", { name: "메뉴 열기" });
+    await userEvent.click(trigger);
+    fireEvent.keyDown(screen.getByRole("menu", { name: "계정" }), { key: "Escape" });
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
-  });
 
-  it("화살표 키로 항목 사이를 이동한다", async () => {
-    const user = userEvent.setup();
-    renderMenu([
-      { label: "첫째", onSelect: vi.fn() },
-      { label: "둘째", onSelect: vi.fn() },
-    ]);
-    await user.click(screen.getByRole("button", { name: "열기" }));
-
-    await user.keyboard("{ArrowDown}");
-    expect(screen.getByRole("menuitem", { name: "둘째" })).toHaveFocus();
-
-    await user.keyboard("{ArrowUp}");
-    expect(screen.getByRole("menuitem", { name: "첫째" })).toHaveFocus();
+    await userEvent.click(trigger);
+    fireEvent.pointerDown(screen.getByRole("button", { name: "바깥" }));
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 });

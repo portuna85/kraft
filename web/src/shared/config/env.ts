@@ -39,7 +39,7 @@ export const publicEnv = {
 export type AdNetwork = (typeof publicEnv)["adNetwork"];
 
 /**
- * 검색엔진 사이트 소유권 확인 메타태그 — web-legacy 승계.
+ * 검색엔진 사이트 소유권 확인 메타태그 계약을 한 곳에서 유지한다.
  *
  * `publicEnv`에서 파생되는 순수 값이라 여기 둔다 — `RootLayout`(next/font·
  * next/headers를 모듈 스코프에서 실행)과 분리해 두면 이 값만 단위 테스트할 수 있다.
