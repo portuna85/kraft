@@ -412,8 +412,7 @@ public class LottoRecommendationService {
                 .filter(mask -> (mask & excludedMask) == 0L && (mask & lockedMask) == lockedMask)
                 .count();
         long allowedPossible = possible - compatibleHistoricalCount;
-        if (ctx.count() > allowedPossible && !STRATEGY_BALANCED.equals(ctx.strategy())) {
-            // BALANCED는 부족분을 오류로 취급하지 않고 있는 만큼만 반환한다.
+        if (ctx.count() > allowedPossible) {
             throw fail(ApiErrorCode.INSUFFICIENT_UNIQUE_COMBINATIONS,
                     "요청한 조합 수(" + ctx.count() + ")가 역대 1등 조합을 제외하고 가능한 고유 조합 수("
                             + allowedPossible + ")를 초과합니다.");
@@ -460,8 +459,8 @@ public class LottoRecommendationService {
 
     /**
      * 무작위로 유일한 후보를 최대한 모아 형태 균형 점수로 정렬한 뒤 상위 count개를 반환한다.
-     * 후보 풀이 count보다 작으면(제외·고정 조건이 매우 빡빡한 경우) 오류를 내지 않고 있는
-     * 만큼만 반환한다(BALANCED 정책).
+     * 다른 전략과 동일하게, count만큼 채우지 못하면 부분 결과를 성공으로 위장하지 않고
+     * INSUFFICIENT_UNIQUE_COMBINATIONS로 실패한다.
      */
     private List<RecommendationItemView> sampleBalanced(RequestContext ctx, HistorySnapshot snapshot) {
         List<Integer> candidates = buildCandidates(ctx.excluded(), ctx.locked());
@@ -490,9 +489,10 @@ public class LottoRecommendationService {
         for (RecommendationItemView item : scored.stream().limit(ctx.count()).toList()) {
             result.add(new RecommendationItemView(position++, item.numbers(), item.score(), item.explanationCodes()));
         }
-        if (result.isEmpty() && ctx.count() > 0) {
+        if (result.size() < ctx.count()) {
             throw fail(ApiErrorCode.INSUFFICIENT_UNIQUE_COMBINATIONS,
-                    "생성 가능한 고유 조합이 없습니다.");
+                    "생성 가능한 고유 조합이 부족합니다(생성 %d / 요청 %d)."
+                            .formatted(result.size(), ctx.count()));
         }
         return result;
     }

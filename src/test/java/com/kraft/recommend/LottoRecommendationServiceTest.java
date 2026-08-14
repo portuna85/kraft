@@ -542,6 +542,54 @@ class LottoRecommendationServiceTest {
                         .as("조합 간 중복 없음").isTrue();
             }
         }
+
+        @Test
+        @DisplayName("TD-002: balanced 전략도 요청 개수를 못 채우면 조용히 성공하지 않고 조합 부족 오류를 던진다")
+        void recommend_balancedStrategy_deterministicRandomSource_throwsInsteadOfPartialResult() {
+            // 38개 제외 → 후보 7개(1~7). 이력은 후보 범위 밖 조합(40~45)만 등록해 "이력 준비 완료"
+            // 상태(R2 fail-closed 회피)는 유지하면서 allowedPossible=C(7,6)=7 >= count=2가 되게 한다.
+            // validateFeasibility 사전 검사는 통과한다. 하지만 randomSource를 항상 0으로 고정하면
+            // 부분 Fisher-Yates가 스왑 없이 매번 candidates 앞 6개(1~6)만 만들어내므로, 후보 풀은
+            // 유일한 조합 1개에서 더 늘지 않는다 — count=2를 채우지 못한 채 과거에는 조용히
+            // 1개짜리 결과를 성공으로 반환했지만, 이제는 명시적으로 실패해야 한다.
+            List<Integer> excluded = IntStream.rangeClosed(8, 45).boxed().collect(Collectors.toList());
+            given(winningNumberRepository.findAllBalls())
+                    .willReturn(List.of(ballsOnly(1, 40, 41, 42, 43, 44, 45)));
+            service.loadHistoricalCombinations();
+            service.setRandomSource(bound -> 0);
+
+            RecommendNumbersRequest request = new RecommendNumbersRequest(2, excluded, false, "balanced", null, null);
+
+            assertThatThrownBy(() -> service.recommend(request, null))
+                    .isInstanceOf(ApiException.class)
+                    .satisfies(ex -> {
+                        ApiException apiEx = (ApiException) ex;
+                        assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+                        assertThat(apiEx.getCode()).isEqualTo("INSUFFICIENT_UNIQUE_COMBINATIONS");
+                    });
+        }
+
+        @Test
+        @DisplayName("TD-002: balanced 전략도 count가 가능한 고유 조합 수를 초과하면 사전에 즉시 거절된다")
+        void recommend_balancedStrategy_countExceedsAllowedPossible_rejectsImmediately() {
+            // 39개 제외 → 후보 6개(1~6) → C(6,6)=1가지뿐이며 그 조합이 과거 1등.
+            // allowedPossible=0이므로 balanced도 이제 random과 동일하게 사전 검사에서 즉시 실패해야 한다
+            // (예전에는 balanced만 이 사전 검사를 건너뛰고 sampleBalanced까지 내려가 빈 결과로만 실패했음).
+            List<Integer> excluded = IntStream.rangeClosed(7, 45).boxed().collect(Collectors.toList());
+            given(winningNumberRepository.findAllBalls())
+                    .willReturn(List.of(ballsOnly(1, 1, 2, 3, 4, 5, 6)));
+            service.loadHistoricalCombinations();
+
+            RecommendNumbersRequest request = new RecommendNumbersRequest(1, excluded, false, "balanced", null, null);
+
+            assertThatThrownBy(() -> service.recommend(request, null))
+                    .isInstanceOf(ApiException.class)
+                    .satisfies(ex -> {
+                        ApiException apiEx = (ApiException) ex;
+                        assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+                        assertThat(apiEx.getCode()).isEqualTo("INSUFFICIENT_UNIQUE_COMBINATIONS");
+                    });
+        }
     }
 
     // ── 속성 테스트: 모든 추천 결과가 지켜야 할 불변 조건 ─────────────────────────
