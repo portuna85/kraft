@@ -3,6 +3,7 @@ package com.kraft.winningnumber;
 import com.kraft.common.error.ApiException;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -29,6 +30,9 @@ public class WinningNumberCollectionService {
     private final ApplicationEventPublisher eventPublisher;
     private final WinningNumberCollectionEventPublisher collectionEventPublisher;
     private final Counter collectFailureCounter;
+    private final Timer collectLatestTimer;
+    private final Timer collectCatchUpTimer;
+    private final Timer collectRoundTimer;
     private final long catchUpDelayMs;
 
     public WinningNumberCollectionService(WinningNumberRepository winningNumberRepository,
@@ -46,7 +50,17 @@ public class WinningNumberCollectionService {
         this.collectFailureCounter = Counter.builder("kraft_lotto_external_collect_failures_total")
                 .description("외부 회차 수집 실패 횟수(end-of-data 제외)")
                 .register(meterRegistry);
+        this.collectLatestTimer = collectionTimer(meterRegistry, "latest");
+        this.collectCatchUpTimer = collectionTimer(meterRegistry, "catch-up");
+        this.collectRoundTimer = collectionTimer(meterRegistry, "round");
         this.catchUpDelayMs = catchUpDelayMs;
+    }
+
+    private static Timer collectionTimer(MeterRegistry meterRegistry, String operation) {
+        return Timer.builder("kraft_lotto_external_collect_duration_seconds")
+                .description("End-to-end external collection duration, including retry time")
+                .tag("operation", operation)
+                .register(meterRegistry);
     }
 
     // KB-17: operationlog를 직접 호출하는 대신 이벤트를 발행한다(winningnumber→operationlog
@@ -70,6 +84,10 @@ public class WinningNumberCollectionService {
     }
 
     public WinningNumberResponse collectLatest() {
+        return collectLatestTimer.record(this::collectLatestInternal);
+    }
+
+    private WinningNumberResponse collectLatestInternal() {
         Optional<WinningNumber> latest = winningNumberRepository.findTopByOrderByRoundDesc();
         int nextRound = latest.map(winningNumber -> winningNumber.getRound() + 1).orElse(1);
         log.info("최신 회차 수집 시작: nextRound={}", nextRound);
@@ -98,6 +116,10 @@ public class WinningNumberCollectionService {
      * 회복하던 기존 동작은 일시적 장애로 1주 이상 누락이 쌓이면 회복이 지연됐다(P0).
      */
     public List<WinningNumberResponse> collectUpToLatest(int maxRounds) {
+        return collectCatchUpTimer.record(() -> collectUpToLatestInternal(maxRounds));
+    }
+
+    private List<WinningNumberResponse> collectUpToLatestInternal(int maxRounds) {
         List<WinningNumberResponse> collected = new ArrayList<>();
         Optional<WinningNumber> latestBefore = winningNumberRepository.findTopByOrderByRoundDesc();
         int nextRound = latestBefore.map(winningNumber -> winningNumber.getRound() + 1).orElse(1);
@@ -127,6 +149,10 @@ public class WinningNumberCollectionService {
     }
 
     public WinningNumberResponse collectRound(int round) {
+        return collectRoundTimer.record(() -> collectRoundInternal(round));
+    }
+
+    private WinningNumberResponse collectRoundInternal(int round) {
         log.info("회차 수집 시작: round={}", round);
         try {
             return collectFetchedRound(round);

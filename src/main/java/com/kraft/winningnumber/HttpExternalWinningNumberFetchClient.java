@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -25,17 +26,28 @@ public class HttpExternalWinningNumberFetchClient implements ExternalWinningNumb
     private final ExternalLottoProperties externalLottoProperties;
     private final ExternalWinningNumberPayloadMapper payloadMapper;
 
+    @Autowired
     public HttpExternalWinningNumberFetchClient(ExternalLottoProperties externalLottoProperties,
                                                 ExternalWinningNumberPayloadMapper payloadMapper) {
+        this(externalLottoProperties, payloadMapper, defaultRestClient());
+    }
+
+    HttpExternalWinningNumberFetchClient(ExternalLottoProperties externalLottoProperties,
+                                         ExternalWinningNumberPayloadMapper payloadMapper,
+                                         RestClient restClient) {
         this.externalLottoProperties = externalLottoProperties;
         this.payloadMapper = payloadMapper;
+        this.restClient = restClient;
+    }
+
+    private static RestClient defaultRestClient() {
         var factory = new JdkClientHttpRequestFactory(
                 java.net.http.HttpClient.newBuilder()
                         .connectTimeout(Duration.ofSeconds(3))
                         .build()
         );
         factory.setReadTimeout(Duration.ofSeconds(5));
-        this.restClient = RestClient.builder().requestFactory(factory).build();
+        return RestClient.builder().requestFactory(factory).build();
     }
 
     // Retry는 CircuitBreaker보다 바깥에서 동작해(Resilience4j 기본 애스펙트 순서) 시도마다
@@ -75,7 +87,7 @@ public class HttpExternalWinningNumberFetchClient implements ExternalWinningNumb
 
     // B-5: circuit breaker open → propagate as BAD_GATEWAY so callers handle uniformly
     @SuppressWarnings("unused")
-    private WinningNumberUpsertRequest fetchRoundFallback(int round, CallNotPermittedException ex) {
+    WinningNumberUpsertRequest fetchRoundFallback(int round, CallNotPermittedException ex) {
         log.warn("외부 수집 서킷브레이커 OPEN: round={}", round);
         throw new ApiException(ApiErrorCode.LOTTO_SOURCE_CIRCUIT_OPEN,
                 "외부 수집 서킷브레이커가 열려 있습니다. 잠시 후 다시 시도하세요.");

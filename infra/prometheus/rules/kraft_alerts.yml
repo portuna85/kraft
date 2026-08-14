@@ -138,7 +138,7 @@ groups:
           title: "추천 이력 스냅샷 버전 불일치"
           summary: "추천 이력 스냅샷이 DB 최신 버전을 따라가지 못함"
           description: "kraft_lotto_history_db_version과 kraft_lotto_history_snapshot_version이 30분 이상 다름. DB에는 새 당첨 이력이 반영됐는데 메모리 스냅샷이 갱신되지 않은 상태 — 수집 이벤트 리스너(WinningNumbersCollectedEvent)가 조용히 실패했을 수 있음."
-          runbook: "백엔드 로그에서 이력 갱신 실패 원인 확인; POST /ops/collect 또는 인스턴스 재기동으로 즉시 복구 가능(재기동 시 @PostConstruct가 스냅샷을 다시 로드함)."
+          runbook: "docker compose -f docker-compose.prod.yml logs --tail=200 backend에서 이력 갱신 실패 원인을 확인; 수집 재호출은 변경 없는 회차의 스냅샷을 갱신하지 않으므로 즉시 복구가 필요하면 docker compose -f docker-compose.prod.yml restart backend 후 readiness와 두 버전 지표가 일치하는지 확인"
 
       - alert: KraftLottoRecommendHighErrorRate
         expr: |

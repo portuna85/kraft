@@ -20,6 +20,9 @@ public interface RecommendationSetRepository extends JpaRepository<Recommendatio
 
     List<RecommendationSet> findByOwnerUserIdOrderByCreatedAtDesc(Long ownerUserId);
 
+    @Query("select s.id from RecommendationSet s where s.ownerUserId = :ownerUserId")
+    List<Long> findIdsByOwnerUserId(@Param("ownerUserId") Long ownerUserId);
+
     Page<RecommendationSet> findByOwnerUserIdOrderByCreatedAtDesc(Long ownerUserId, Pageable pageable);
 
     // TD-014: 계정 탈퇴 시 세트 수만큼 개별 delete(entity)를 반복하던 것을 벌크 DELETE

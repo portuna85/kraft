@@ -77,6 +77,14 @@ class FlywayMigrationTest {
     }
 
     @Test
+    @DisplayName("쿼리 계획으로 채택한 신고 대상·운영 로그 복합 인덱스가 생성된다")
+    void queryPlanIndexes_arePresent() {
+        assertThat(indexExists("community_reports", "idx_community_reports_target")).isTrue();
+        assertThat(indexExists("winning_number_operation_logs", "idx_operation_logs_type_status_created")).isTrue();
+        assertThat(indexExists("winning_number_operation_logs", "idx_operation_logs_type_status")).isFalse();
+    }
+
+    @Test
     @DisplayName("recommendation item trigger rejects historical combinations but permits a later winning combination")
     void historicalRecommendationTrigger_respectsHistoryThroughRound() {
         winningNumberRepository.deleteAll();
@@ -217,6 +225,17 @@ class FlywayMigrationTest {
                 """, providerId);
         return jdbcTemplate.queryForObject(
                 "SELECT id FROM community_users WHERE provider_id = ?", Long.class, providerId);
+    }
+
+    private boolean indexExists(String tableName, String indexName) {
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM information_schema.statistics
+                WHERE table_schema = DATABASE()
+                  AND table_name = ?
+                  AND index_name = ?
+                """, Integer.class, tableName, indexName);
+        return count != null && count > 0;
     }
 
     private static long maskOf(int... numbers) {

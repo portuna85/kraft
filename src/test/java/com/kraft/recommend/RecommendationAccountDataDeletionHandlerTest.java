@@ -2,6 +2,8 @@ package com.kraft.recommend;
 
 import com.kraft.community.user.CommunityUser;
 import com.kraft.community.user.CommunityUserRepository;
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.persistence.EntityManagerFactory;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
@@ -9,6 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -66,6 +69,12 @@ class RecommendationAccountDataDeletionHandlerTest {
 
     @Autowired
     private CommunityUserRepository communityUserRepository;
+
+    @Autowired
+    private EntityManagerFactory entityManagerFactory;
+
+    @Autowired
+    private MeterRegistry meterRegistry;
 
     private static final OffsetDateTime NOW = OffsetDateTime.now(ZoneId.of("Asia/Seoul"));
     private final AtomicInteger providerIdSeq = new AtomicInteger();
@@ -171,5 +180,30 @@ class RecommendationAccountDataDeletionHandlerTest {
         // 호출자가 이후 실패해 트랜잭션 전체가 롤백되면 삭제도 원복돼야 한다.
         assertThat(recommendationSetRepository.findById(set.getId())).isPresent();
         assertThat(recommendationItemRepository.findBySetIdOrderByPosition(set.getId())).hasSize(2);
+    }
+
+    @Test
+    @DisplayName("세트 수가 많아도 조회 1회와 벌크 삭제 2회로 끝나고 실행 시간을 기록한다")
+    void deleteForAccount_manySets_usesConstantStatementCountAndRecordsDuration() {
+        Long owner = createUser();
+        for (int i = 0; i < 25; i++) {
+            seedOwnedSet(owner);
+        }
+        SessionFactory sessionFactory = entityManagerFactory.unwrap(SessionFactory.class);
+        var statistics = sessionFactory.getStatistics();
+        statistics.setStatisticsEnabled(true);
+        statistics.clear();
+        long timerCountBefore = meterRegistry.get("kraft_recommendation_account_deletion_duration_seconds")
+                .timer().count();
+
+        try {
+            deleteForAccountInTransaction(owner);
+
+            assertThat(statistics.getPrepareStatementCount()).isEqualTo(3L);
+            assertThat(meterRegistry.get("kraft_recommendation_account_deletion_duration_seconds")
+                    .timer().count()).isEqualTo(timerCountBefore + 1);
+        } finally {
+            statistics.setStatisticsEnabled(false);
+        }
     }
 }

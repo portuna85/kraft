@@ -1,6 +1,8 @@
 package com.kraft.recommend;
 
 import com.kraft.common.account.AccountDataDeletionHandler;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
@@ -9,11 +11,16 @@ public class RecommendationAccountDataDeletionHandler implements AccountDataDele
 
     private final RecommendationSetRepository recommendationSetRepository;
     private final RecommendationItemRepository recommendationItemRepository;
+    private final Timer deletionTimer;
 
     public RecommendationAccountDataDeletionHandler(RecommendationSetRepository recommendationSetRepository,
-                                                     RecommendationItemRepository recommendationItemRepository) {
+                                                     RecommendationItemRepository recommendationItemRepository,
+                                                     MeterRegistry meterRegistry) {
         this.recommendationSetRepository = recommendationSetRepository;
         this.recommendationItemRepository = recommendationItemRepository;
+        this.deletionTimer = Timer.builder("kraft_recommendation_account_deletion_duration_seconds")
+                .description("Time spent deleting recommendation data during account withdrawal")
+                .register(meterRegistry);
     }
 
     // TD-014: 세트 수(N)만큼 반복하던 개별 삭제(최대 1+2N 왕복)를, 세트 ID만 가벼운
@@ -24,10 +31,11 @@ public class RecommendationAccountDataDeletionHandler implements AccountDataDele
     // 없으므로 아이템을 세트보다 반드시 먼저 지워야 한다.
     @Override
     public void deleteForAccount(Long userId) {
-        List<Long> setIds = recommendationSetRepository.findByOwnerUserIdOrderByCreatedAtDesc(userId)
-                .stream()
-                .map(RecommendationSet::getId)
-                .toList();
+        deletionTimer.record(() -> deleteForAccountInternal(userId));
+    }
+
+    private void deleteForAccountInternal(Long userId) {
+        List<Long> setIds = recommendationSetRepository.findIdsByOwnerUserId(userId);
         if (setIds.isEmpty()) {
             return;
         }

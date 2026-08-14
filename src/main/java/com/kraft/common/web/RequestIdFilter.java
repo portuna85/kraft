@@ -70,8 +70,10 @@ public class RequestIdFilter extends OncePerRequestFilter {
             log.warn("HTTP {} {} -> status={} durationMs={} remote={}",
                     method, path, status, elapsedMs, remote);
         } else {
-            log.info("HTTP {} {} -> status={} durationMs={} remote={}",
-                    method, path, status, elapsedMs, remote);
+            // 정상 트래픽은 운영 기본 레벨(INFO)에서 저장하지 않는다. 요청 ID·메서드·경로·
+            // 상태·시간은 필요할 때 DEBUG로 볼 수 있고, 클라이언트 IP는 오류/거부 조사에만
+            // 필요하므로 정상 요청 메시지에는 넣지 않는다.
+            log.debug("HTTP {} {} -> status={} durationMs={}", method, path, status, elapsedMs);
         }
     }
 

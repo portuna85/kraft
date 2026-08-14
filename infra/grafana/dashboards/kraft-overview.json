@@ -16,13 +16,17 @@
       "type": "stat",
       "datasource": "Prometheus",
       "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
-      "targets": [
-        { "expr": "up{job=\"kraft-backend\"}", "refId": "A" }
-      ],
+      "targets": [{ "expr": "up{job=\"kraft-backend\"}", "refId": "A" }],
       "fieldConfig": {
         "defaults": {
           "mappings": [
-            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }
+            {
+              "type": "value",
+              "options": {
+                "0": { "text": "DOWN", "color": "red" },
+                "1": { "text": "UP", "color": "green" }
+              }
+            }
           ]
         }
       }
@@ -109,7 +113,10 @@
       "datasource": "Prometheus",
       "gridPos": { "h": 4, "w": 8, "x": 0, "y": 16 },
       "targets": [
-        { "expr": "time() - kraft_backup_last_success_timestamp_seconds", "refId": "A" }
+        {
+          "expr": "time() - kraft_backup_last_success_timestamp_seconds",
+          "refId": "A"
+        }
       ],
       "fieldConfig": { "defaults": { "unit": "s" } }
     },
@@ -176,6 +183,105 @@
           "expr": "histogram_quantile(0.95, sum(rate(caddy_http_request_duration_seconds_bucket{job=\"caddy\"}[5m])) by (le))",
           "refId": "A",
           "legendFormat": "p95"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 12,
+      "title": "외부 회차 수집 시간 vs 20초 예산",
+      "type": "timeseries",
+      "description": "재시도를 포함한 수집 작업 전체 시간. ops 클라이언트·Caddy 예산(20초)에 가까워지면 외부 소스 지연과 재시도 횟수를 함께 확인한다.",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
+      "targets": [
+        {
+          "expr": "sum(rate(kraft_lotto_external_collect_duration_seconds_sum{job=\"kraft-backend\"}[5m])) by (operation) / sum(rate(kraft_lotto_external_collect_duration_seconds_count{job=\"kraft-backend\"}[5m])) by (operation)",
+          "refId": "A",
+          "legendFormat": "{{operation}} 평균"
+        },
+        {
+          "expr": "max_over_time(kraft_lotto_external_collect_duration_seconds_max{job=\"kraft-backend\"}[5m])",
+          "refId": "B",
+          "legendFormat": "5분 최대"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 15 },
+              { "color": "red", "value": 20 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 13,
+      "title": "비동기 실행기와 리스너 실패",
+      "type": "timeseries",
+      "description": "eventTaskExecutor 포화와 호출자에게 반환되지 않는 @Async void 리스너 실패를 함께 본다.",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 },
+      "targets": [
+        {
+          "expr": "executor_active_threads{name=\"eventTaskExecutor\",job=\"kraft-backend\"}",
+          "refId": "A",
+          "legendFormat": "active"
+        },
+        {
+          "expr": "executor_queued_tasks{name=\"eventTaskExecutor\",job=\"kraft-backend\"}",
+          "refId": "B",
+          "legendFormat": "queued"
+        },
+        {
+          "expr": "sum(increase(kraft_async_listener_failures_total{job=\"kraft-backend\"}[15m])) by (listener)",
+          "refId": "C",
+          "legendFormat": "failure {{listener}}"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "애플리케이션 캐시 적중·축출",
+      "type": "timeseries",
+      "description": "크기 조정 전 캐시별 적중률과 최근 한 시간 축출 수를 확인한다.",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 44 },
+      "targets": [
+        {
+          "expr": "sum(rate(cache_gets_total{job=\"kraft-backend\",result=\"hit\"}[10m])) by (cache) / sum(rate(cache_gets_total{job=\"kraft-backend\"}[10m])) by (cache)",
+          "refId": "A",
+          "legendFormat": "hit ratio {{cache}}"
+        },
+        {
+          "expr": "sum(increase(cache_evictions_total{job=\"kraft-backend\"}[1h])) by (cache)",
+          "refId": "B",
+          "legendFormat": "evictions {{cache}}"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "정리·통계 재구축 작업 시간",
+      "type": "timeseries",
+      "description": "회원 탈퇴 추천 데이터 벌크 삭제와 통계 요약 재구축의 평균 실행 시간이다.",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 44 },
+      "targets": [
+        {
+          "expr": "sum(rate(kraft_recommendation_account_deletion_duration_seconds_sum{job=\"kraft-backend\"}[10m])) / sum(rate(kraft_recommendation_account_deletion_duration_seconds_count{job=\"kraft-backend\"}[10m]))",
+          "refId": "A",
+          "legendFormat": "account deletion"
+        },
+        {
+          "expr": "sum(rate(statistics_summary_rebuild_duration_seconds_sum{job=\"kraft-backend\"}[10m])) / sum(rate(statistics_summary_rebuild_duration_seconds_count{job=\"kraft-backend\"}[10m]))",
+          "refId": "B",
+          "legendFormat": "statistics rebuild"
         }
       ],
       "fieldConfig": { "defaults": { "unit": "s" } }

@@ -108,6 +108,10 @@ class LogbackConfigurationTest {
                 "logging.level.root", "INFO"
         )));
 
+        // The full suite may leave Logback initialized by a Spring context before this
+        // class runs. Start every profile assertion from the same clean state as an
+        // isolated execution so initialize() cannot reuse stale appenders.
+        loggingSystem.cleanUp();
         loggingSystem.beforeInitialize();
         loggingSystem.initialize(
                 new LoggingInitializationContext(environment),

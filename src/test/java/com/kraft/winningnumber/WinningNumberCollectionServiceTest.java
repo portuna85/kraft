@@ -58,13 +58,15 @@ class WinningNumberCollectionServiceTest {
         when(commandService.upsertWithResult(fetched)).thenReturn(new WinningNumberUpsertResult(fetchedResponse, true));
 
         WinningNumberCollectionEventPublisher collectionEventPublisher = mock(WinningNumberCollectionEventPublisher.class);
+        io.micrometer.core.instrument.simple.SimpleMeterRegistry meterRegistry =
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
         WinningNumberCollectionService service = new WinningNumberCollectionService(
                 repository,
                 fetchClient,
                 commandService,
                 eventPublisher,
                 collectionEventPublisher,
-                new io.micrometer.core.instrument.simple.SimpleMeterRegistry(),
+                meterRegistry,
                 0
         );
         WinningNumberResponse response = service.collectLatest();
@@ -74,6 +76,8 @@ class WinningNumberCollectionServiceTest {
 
         assertThat(roundCaptor.getValue()).isEqualTo(1201);
         assertThat(response.round()).isEqualTo(1201);
+        assertThat(meterRegistry.get("kraft_lotto_external_collect_duration_seconds")
+                .tag("operation", "latest").timer().count()).isEqualTo(1L);
     }
 
     @Test
