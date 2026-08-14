@@ -15,7 +15,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -41,7 +40,6 @@ public class LottoRecommendationService {
     private static final int MAX_ATTEMPTS = 100;
     private static final int PRIZE_CANDIDATE_POOL = 50;
     private static final int BALANCED_CANDIDATE_POOL = 50;
-    private static final int MAX_LOCKED_NUMBERS = 5;
     static final String STRATEGY_REDUCE_SHARED_WINNER_RISK = "reduce_shared_winner_risk";
     static final String STRATEGY_RANDOM = "random";
     static final String STRATEGY_BALANCED = "balanced";
@@ -56,11 +54,13 @@ public class LottoRecommendationService {
     private final MeterRegistry meterRegistry;
     private final Timer recommendTimer;
 
-    // TD-008 1단계: 이력 스냅샷 수명주기(로드·버전 관리·완전성 판정)는
-    // RecommendationHistorySnapshotManager로 옮겼다 — Spring 빈이 아니라 이 생성자
-    // 안에서 직접 만드는 plain 협력자다(별도 빈으로 등록하면 생성자 시그니처가 바뀌어
-    // 테스트가 직접 두 번째 인스턴스를 만드는 지점이 깨진다).
+    // TD-008 1~2단계: 이력 스냅샷 수명주기와 요청 파싱/실현가능성 검증을 각각
+    // RecommendationHistorySnapshotManager/RecommendationRequestValidator로 옮겼다 —
+    // 둘 다 Spring 빈이 아니라 이 생성자 안에서 직접 만드는 plain 협력자다(별도 빈으로
+    // 등록하면 생성자 시그니처가 바뀌어 테스트가 직접 두 번째 인스턴스를 만드는 지점이
+    // 깨진다).
     private final RecommendationHistorySnapshotManager historySnapshotManager;
+    private final RecommendationRequestValidator requestValidator;
 
     private final AtomicLong lastHistoryStatusFailureLogMillis = new AtomicLong(0);
 
@@ -94,6 +94,7 @@ public class LottoRecommendationService {
         this.meterRegistry = meterRegistry;
         this.historySnapshotManager = new RecommendationHistorySnapshotManager(
                 winningNumberRepository, historyStateRepository, clock, meterRegistry);
+        this.requestValidator = new RecommendationRequestValidator(lottoNumberCodec, meterRegistry);
         this.recommendTimer = Timer.builder("kraft_lotto_recommend_duration_seconds")
                 .description("추천 생성 1회 처리 시간(검증·재추첨 포함)")
                 .register(meterRegistry);
@@ -212,11 +213,6 @@ public class LottoRecommendationService {
         }
     }
 
-    // B-08: 검증·메트릭·조합·샘플링이 한 메서드에 섞여 있던 것을, 로직은 그대로 두고
-    // "요청 해석 → 실행 가능성 검증 → 샘플링 → 응답 조립" 네 단계로만 나눈다(동작 동일
-    // 보장은 기존 LottoRecommendationServiceTest의 속성 기반 테스트가 검증).
-    private record RequestContext(int count, String strategy, List<Integer> locked, Set<Integer> excluded) {}
-
     private RecommendNumbersResponse doRecommend(RecommendNumbersRequest request, String clientTokenHash) {
         RecommendationHistorySnapshotManager.HistorySnapshot snapshot = historySnapshotManager.currentSnapshot();
         HistoryStatus status = historyStatus();
@@ -233,9 +229,9 @@ public class LottoRecommendationService {
                                     status.firstMissingRound()));
         }
 
-        RequestContext ctx = parseRequest(request);
+        RecommendationRequestValidator.RequestContext ctx = requestValidator.parseRequest(request);
         meterRegistry.counter("kraft_lotto_recommend_requests_total", "strategy", ctx.strategy()).increment();
-        validateFeasibility(ctx, snapshot);
+        requestValidator.validateFeasibility(ctx, snapshot);
 
         List<RecommendationItemView> items;
         Timer.Sample strategySample = Timer.start(meterRegistry);
@@ -289,73 +285,7 @@ public class LottoRecommendationService {
         };
     }
 
-    private RequestContext parseRequest(RecommendNumbersRequest request) {
-        int count = request == null || request.count() == null ? 1 : request.count();
-
-        List<Integer> locked = request == null || request.lockedNumbers() == null
-                ? List.of()
-                : lottoNumberCodec.normalizeSubset(request.lockedNumbers());
-        if (locked.size() > MAX_LOCKED_NUMBERS) {
-            throw fail(ApiErrorCode.TOO_MANY_LOCKED_NUMBERS,
-                    "고정 번호는 최대 " + MAX_LOCKED_NUMBERS + "개까지 지정할 수 있습니다.");
-        }
-
-        Set<Integer> excluded = request == null || request.excludedNumbers() == null
-                ? Set.of()
-                : new HashSet<>(lottoNumberCodec.normalizeSubset(request.excludedNumbers()));
-
-        if (!Collections.disjoint(locked, excluded)) {
-            throw fail(ApiErrorCode.LOCKED_EXCLUDED_CONFLICT,
-                    "고정 번호와 제외 번호가 겹칠 수 없습니다.");
-        }
-
-        String strategy = resolveStrategy(request);
-        return new RequestContext(count, strategy, locked, excluded);
-    }
-
-    private String resolveStrategy(RecommendNumbersRequest request) {
-        if (request != null && request.maximizePrize() != null) {
-            // 구 필드명(maximizePrize) 사용량 추적 — 이 값이 계속 0에 머물면
-            // 별도 변경에서 필드 자체를 제거해도 안전하다고 판단할 근거가 된다.
-            meterRegistry.counter("kraft_recommend_legacy_field_used_total").increment();
-        }
-        String strategyParam = request == null ? null : request.strategy();
-        if (strategyParam != null && !strategyParam.isBlank()) {
-            String normalized = strategyParam.trim().toLowerCase();
-            return switch (normalized) {
-                case STRATEGY_RANDOM, STRATEGY_BALANCED, STRATEGY_REDUCE_SHARED_WINNER_RISK -> normalized;
-                default -> throw fail(ApiErrorCode.INVALID_RECOMMENDATION_STRATEGY,
-                        "지원하지 않는 추천 전략입니다: " + strategyParam);
-            };
-        }
-        boolean reduceSharedWinnerRisk = request != null
-                && Boolean.TRUE.equals(request.effectiveReduceSharedWinnerRisk());
-        return reduceSharedWinnerRisk ? STRATEGY_REDUCE_SHARED_WINNER_RISK : STRATEGY_RANDOM;
-    }
-
-    private void validateFeasibility(RequestContext ctx, RecommendationHistorySnapshotManager.HistorySnapshot snapshot) {
-        if (45 - ctx.excluded().size() < 6) {
-            throw fail(ApiErrorCode.TOO_MANY_EXCLUSIONS,
-                    "제외 번호를 적용한 뒤에도 최소 6개 번호가 남아야 합니다.");
-        }
-
-        long available = 45L - ctx.excluded().size() - ctx.locked().size();
-        int need = 6 - ctx.locked().size();
-        long possible = combinations(available, need);
-        long excludedMask = LottoBitmask.of(ctx.excluded());
-        long lockedMask = LottoBitmask.of(ctx.locked());
-        long compatibleHistoricalCount = snapshot.masks().stream()
-                .filter(mask -> (mask & excludedMask) == 0L && (mask & lockedMask) == lockedMask)
-                .count();
-        long allowedPossible = possible - compatibleHistoricalCount;
-        if (ctx.count() > allowedPossible) {
-            throw fail(ApiErrorCode.INSUFFICIENT_UNIQUE_COMBINATIONS,
-                    "요청한 조합 수(" + ctx.count() + ")가 역대 1등 조합을 제외하고 가능한 고유 조합 수("
-                            + allowedPossible + ")를 초과합니다.");
-        }
-    }
-
-    private List<RecommendationItemView> sampleRecommendations(RequestContext ctx,
+    private List<RecommendationItemView> sampleRecommendations(RecommendationRequestValidator.RequestContext ctx,
             RecommendationHistorySnapshotManager.HistorySnapshot snapshot) {
         return switch (ctx.strategy()) {
             case STRATEGY_BALANCED -> sampleBalanced(ctx, snapshot);
@@ -364,7 +294,7 @@ public class LottoRecommendationService {
         };
     }
 
-    private List<RecommendationItemView> sampleSimple(RequestContext ctx,
+    private List<RecommendationItemView> sampleSimple(RecommendationRequestValidator.RequestContext ctx,
             RecommendationHistorySnapshotManager.HistorySnapshot snapshot, boolean reduceSharedWinnerRisk) {
         List<Integer> candidates = buildCandidates(ctx.excluded(), ctx.locked());
         List<List<Integer>> recommendations = new ArrayList<>();
@@ -400,7 +330,8 @@ public class LottoRecommendationService {
      * 다른 전략과 동일하게, count만큼 채우지 못하면 부분 결과를 성공으로 위장하지 않고
      * INSUFFICIENT_UNIQUE_COMBINATIONS로 실패한다.
      */
-    private List<RecommendationItemView> sampleBalanced(RequestContext ctx, RecommendationHistorySnapshotManager.HistorySnapshot snapshot) {
+    private List<RecommendationItemView> sampleBalanced(RecommendationRequestValidator.RequestContext ctx,
+            RecommendationHistorySnapshotManager.HistorySnapshot snapshot) {
         List<Integer> candidates = buildCandidates(ctx.excluded(), ctx.locked());
         Set<Long> historicalMasks = snapshot.masks();
         Set<Long> seen = new HashSet<>();
@@ -462,17 +393,6 @@ public class LottoRecommendationService {
             }
         }
         return best;
-    }
-
-    private static long combinations(long n, int k) {
-        if (n < k) {
-            return 0;
-        }
-        long result = 1;
-        for (int i = 0; i < k; i++) {
-            result = result * (n - i) / (i + 1);
-        }
-        return result;
     }
 
     private static List<Integer> buildCandidates(Set<Integer> excluded, List<Integer> locked) {
