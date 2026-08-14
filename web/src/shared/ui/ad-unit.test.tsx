@@ -169,15 +169,22 @@ describe("PageAd 컨테이너 폭 기반 포맷 선택", () => {
 });
 
 describe("애드센스 유닛", () => {
-  const originalClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
+  // TD-010: clientId는 이제 publicEnv.adsenseClientId(env.ts, 모듈 스코프 상수)에서 온다 —
+  // 모듈 로드 시점에 한 번 계산되므로, 값을 바꿔서 검증하려면 매번 모듈을 새로 import해야
+  // 한다(PageAd 테스트와 같은 패턴).
+  const originalEnv = { ...process.env };
 
   afterEach(() => {
-    process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID = originalClientId;
+    process.env = { ...originalEnv };
+    vi.resetModules();
   });
 
-  it("client ID와 slot이 모두 있으면 ins.adsbygoogle 태그를 올바른 속성으로 렌더링한다", () => {
-    process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID = "ca-pub-1234567890123456";
-    render(<AdSenseUnit slot="1111111111" width={728} height={90} />);
+  it("client ID와 slot이 모두 있으면 ins.adsbygoogle 태그를 올바른 속성으로 렌더링한다", async () => {
+    process.env = { ...originalEnv, NEXT_PUBLIC_ADSENSE_CLIENT_ID: "ca-pub-1234567890123456" };
+    vi.resetModules();
+    const { AdSenseUnit: FreshAdSenseUnit } = await import("./ad-unit");
+
+    render(<FreshAdSenseUnit slot="1111111111" width={728} height={90} />);
 
     const ins = document.querySelector("ins.adsbygoogle");
     expect(ins).toBeInTheDocument();
@@ -185,19 +192,25 @@ describe("애드센스 유닛", () => {
     expect(ins).toHaveAttribute("data-ad-slot", "1111111111");
   });
 
-  it("slot이 비어있으면 아무것도 렌더링하지 않는다(기본값은 빈 자리를 예약하지 않음)", () => {
-    process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID = "ca-pub-1234567890123456";
+  it("slot이 비어있으면 아무것도 렌더링하지 않는다(기본값은 빈 자리를 예약하지 않음)", async () => {
+    process.env = { ...originalEnv, NEXT_PUBLIC_ADSENSE_CLIENT_ID: "ca-pub-1234567890123456" };
+    vi.resetModules();
+    const { AdSenseUnit: FreshAdSenseUnit } = await import("./ad-unit");
+
     const { container } = render(
-      <AdSenseUnit slot="" width={300} height={600} label="사이드바 광고" />,
+      <FreshAdSenseUnit slot="" width={300} height={600} label="사이드바 광고" />,
     );
 
     expect(document.querySelector("ins.adsbygoogle")).not.toBeInTheDocument();
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("client ID가 없으면 아무것도 렌더링하지 않는다", () => {
-    process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID = "";
-    const { container } = render(<AdSenseUnit slot="1111111111" width={728} height={90} />);
+  it("client ID가 없으면 아무것도 렌더링하지 않는다", async () => {
+    process.env = { ...originalEnv, NEXT_PUBLIC_ADSENSE_CLIENT_ID: "" };
+    vi.resetModules();
+    const { AdSenseUnit: FreshAdSenseUnit } = await import("./ad-unit");
+
+    const { container } = render(<FreshAdSenseUnit slot="1111111111" width={728} height={90} />);
 
     expect(document.querySelector("ins.adsbygoogle")).not.toBeInTheDocument();
     expect(container).toBeEmptyDOMElement();
@@ -283,10 +296,12 @@ describe("본문 광고(슬롯당 한 네트워크만, 컨테이너 폭 기반)"
 });
 
 describe("사이드바 광고(뷰포트 게이트)", () => {
-  const originalClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
+  // TD-010: 위 "애드센스 유닛"과 같은 이유로 모듈을 새로 import해야 한다.
+  const originalEnv = { ...process.env };
 
   afterEach(() => {
-    process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID = originalClientId;
+    process.env = { ...originalEnv };
+    vi.resetModules();
   });
 
   it("데스크톱 미만 뷰포트에서는 mount하지 않는다(adsbygoogle.push 낭비 요청 방지)", () => {
@@ -296,11 +311,13 @@ describe("사이드바 광고(뷰포트 게이트)", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("데스크톱 뷰포트에서는 mount한다", () => {
+  it("데스크톱 뷰포트에서는 mount한다", async () => {
     mockMatchMedia(true);
-    process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID = "ca-pub-1234567890123456";
+    process.env = { ...originalEnv, NEXT_PUBLIC_ADSENSE_CLIENT_ID: "ca-pub-1234567890123456" };
+    vi.resetModules();
+    const { AdSenseSidebar: FreshAdSenseSidebar } = await import("./ad-unit");
 
-    render(<AdSenseSidebar slot="1234567890" />);
+    render(<FreshAdSenseSidebar slot="1234567890" />);
 
     expect(screen.getByLabelText("사이드바 광고")).toBeInTheDocument();
   });

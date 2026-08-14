@@ -15,6 +15,9 @@ export const serverEnv = {
    * 이던 시절 /ops가 공개 도메인에서 그대로 열려 있었다(레거시 F-P0-12).
    */
   opsAllowedHost: process.env.KRAFT_OPS_ALLOWED_HOST ?? null,
+  /** /api/revalidate 웹훅 인증 시크릿. Route Handler에서만 쓰이며 클라이언트 번들에
+   * 들어가지 않는다. */
+  revalidateSecret: process.env.KRAFT_REVALIDATE_SECRET,
 } as const;
 
 /** 빌드 시점에 인라인되는 공개 값. 비밀을 넣지 않는다. */
@@ -23,6 +26,14 @@ export const publicEnv = {
   adNetwork: process.env.NEXT_PUBLIC_AD_NETWORK === "adsense" ? "adsense" : "adfit",
   googleSiteVerification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
   naverSiteVerification: process.env.NEXT_PUBLIC_NAVER_SITE_VERIFICATION,
+  kakaoAdfitUnitFrequency: process.env.NEXT_PUBLIC_KAKAO_ADFIT_UNIT_FREQUENCY ?? "",
+  kakaoAdfitUnitFrequencyDesktop: process.env.NEXT_PUBLIC_KAKAO_ADFIT_UNIT_FREQUENCY_DESKTOP ?? "",
+  kakaoAdfitUnitSticky: process.env.NEXT_PUBLIC_KAKAO_ADFIT_UNIT_STICKY ?? "",
+  adsenseReservePlaceholder: process.env.NEXT_PUBLIC_ADSENSE_RESERVE_PLACEHOLDER === "true",
+  adsenseClientId: process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID ?? "",
+  adsenseUnitFrequency: process.env.NEXT_PUBLIC_ADSENSE_UNIT_FREQUENCY,
+  adsenseUnitFrequencyMobile: process.env.NEXT_PUBLIC_ADSENSE_UNIT_FREQUENCY_MOBILE,
+  adsenseUnitSidebar: process.env.NEXT_PUBLIC_ADSENSE_UNIT_SIDEBAR ?? "",
 } as const;
 
 export type AdNetwork = (typeof publicEnv)["adNetwork"];

@@ -84,7 +84,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         </a>
         <WebVitalsReporter />
         {children}
-        <StickyMobileAd unit={process.env.NEXT_PUBLIC_KAKAO_ADFIT_UNIT_STICKY ?? ""} />
+        <StickyMobileAd unit={publicEnv.kakaoAdfitUnitSticky} />
       </body>
     </html>
   );

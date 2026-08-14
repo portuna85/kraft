@@ -4,6 +4,7 @@ import Script from "next/script";
 import { useEffect, useState } from "react";
 
 import { BP } from "@/shared/config/breakpoints";
+import { publicEnv } from "@/shared/config/env";
 import { useElementWidth } from "@/shared/hooks/use-element-width";
 import { useKeyboardOpen } from "@/shared/hooks/use-keyboard-open";
 import { useMediaQuery } from "@/shared/hooks/use-media-query";
@@ -74,11 +75,11 @@ type PageAdProps = {
 };
 
 const AD_MOBILE: Record<PageAdProps["slot"], string> = {
-  frequency: process.env.NEXT_PUBLIC_KAKAO_ADFIT_UNIT_FREQUENCY ?? "",
+  frequency: publicEnv.kakaoAdfitUnitFrequency,
 };
 
 const AD_DESKTOP: Record<PageAdProps["slot"], string> = {
-  frequency: process.env.NEXT_PUBLIC_KAKAO_ADFIT_UNIT_FREQUENCY_DESKTOP ?? "",
+  frequency: publicEnv.kakaoAdfitUnitFrequencyDesktop,
 };
 
 /**
@@ -121,10 +122,10 @@ type AdSenseUnitProps = {
  * 없이 사이드바/레이아웃을 미리 검증하고 싶을 때만
  * NEXT_PUBLIC_ADSENSE_RESERVE_PLACEHOLDER=true로 켠다(운영 기본값은 off).
  */
-const RESERVE_PLACEHOLDER = process.env.NEXT_PUBLIC_ADSENSE_RESERVE_PLACEHOLDER === "true";
+const RESERVE_PLACEHOLDER = publicEnv.adsenseReservePlaceholder;
 
 export function AdSenseUnit({ slot, width, height, label = "광고", className }: AdSenseUnitProps) {
-  const clientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID ?? "";
+  const clientId = publicEnv.adsenseClientId;
   const enabled = Boolean(clientId && slot);
 
   useEffect(() => {
@@ -168,11 +169,11 @@ export function AdSenseUnit({ slot, width, height, label = "광고", className }
 }
 
 const IN_ARTICLE_ADSENSE_MOBILE_ENV: Record<PageAdProps["slot"], string | undefined> = {
-  frequency: process.env.NEXT_PUBLIC_ADSENSE_UNIT_FREQUENCY_MOBILE,
+  frequency: publicEnv.adsenseUnitFrequencyMobile,
 };
 
 const IN_ARTICLE_ADSENSE_DESKTOP_ENV: Record<PageAdProps["slot"], string | undefined> = {
-  frequency: process.env.NEXT_PUBLIC_ADSENSE_UNIT_FREQUENCY,
+  frequency: publicEnv.adsenseUnitFrequency,
 };
 
 /** 애드센스 모바일 포맷(300×250)도 372px 미만 컨테이너에서는 잘리므로 동일하게
@@ -202,7 +203,7 @@ function InArticleAdSense({ slot }: PageAdProps) {
  * (기본값 "adfit" — 애드센스 승인 전까지의 운영 상태를 유지).
  */
 export function InArticleAd({ slot }: PageAdProps) {
-  const network = process.env.NEXT_PUBLIC_AD_NETWORK === "adsense" ? "adsense" : "adfit";
+  const network = publicEnv.adNetwork;
 
   if (network === "adsense") {
     return <InArticleAdSense slot={slot} />;

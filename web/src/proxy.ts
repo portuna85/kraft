@@ -27,6 +27,9 @@ export function proxy(request: NextRequest): NextResponse {
   const cspInput = {
     nonce: generateNonce(),
     adNetwork: publicEnv.adNetwork,
+    // TD-010: NODE_ENV는 env.ts가 다루는 앱 설정이 아니라 Next.js/webpack 자체가 주입하는
+    // 프레임워크 내장값이라 여기서 직접 읽는 것을 의도적으로 허용한다(proxy.ts는 Edge
+    // 런타임 미들웨어라 불필요한 모듈 초기화도 피하는 편이 낫다).
     allowEval: process.env.NODE_ENV !== "production",
   };
 

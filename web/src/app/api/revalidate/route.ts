@@ -1,6 +1,8 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { NextRequest } from "next/server";
 
+import { serverEnv } from "@/shared/config/env";
+
 import { filterAllowedPaths, filterAllowedTags, matchesSecret } from "./guard";
 
 /**
@@ -12,7 +14,7 @@ import { filterAllowedPaths, filterAllowedTags, matchesSecret } from "./guard";
  */
 export async function POST(request: NextRequest) {
   const secret = request.headers.get("X-Revalidate-Secret");
-  if (!matchesSecret(secret, process.env.KRAFT_REVALIDATE_SECRET)) {
+  if (!matchesSecret(secret, serverEnv.revalidateSecret)) {
     return new Response("Unauthorized", { status: 401 });
   }
 

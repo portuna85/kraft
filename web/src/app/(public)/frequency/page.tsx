@@ -9,6 +9,7 @@ import {
 import { expectedFrequency, frequencyRatio } from "@/entities/statistics/schema";
 import { FrequencyBar, FrequencyLegend } from "@/entities/statistics/ui/frequency-bar";
 import { LottoBallSet } from "@/entities/round/ui/lotto-ball";
+import { publicEnv } from "@/shared/config/env";
 import { ROUTES } from "@/shared/config/routes";
 import { AdSenseSidebar, InArticleAd } from "@/shared/ui/ad-unit";
 import { Card } from "@/shared/ui/surface";
@@ -131,7 +132,7 @@ export default async function FrequencyPage({
           단일 컬럼이라 본문 끝에 이어 둔다 — AdSenseSidebar 자체는 여전히 데스크톱
           뷰포트에서만 mount된다(뷰포트 게이트는 그대로 유지). */}
       <InArticleAd slot="frequency" />
-      <AdSenseSidebar slot={process.env.NEXT_PUBLIC_ADSENSE_UNIT_SIDEBAR ?? ""} />
+      <AdSenseSidebar slot={publicEnv.adsenseUnitSidebar} />
     </div>
   );
 }
