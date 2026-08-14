@@ -635,6 +635,7 @@ jobs:
             NEXT_PUBLIC_ADSENSE_UNIT_SIDEBAR=${{ secrets.NEXT_PUBLIC_ADSENSE_UNIT_SIDEBAR }}
             NEXT_PUBLIC_ADSENSE_UNIT_FREQUENCY=${{ secrets.NEXT_PUBLIC_ADSENSE_UNIT_FREQUENCY }}
             NEXT_PUBLIC_ADSENSE_UNIT_FREQUENCY_MOBILE=${{ secrets.NEXT_PUBLIC_ADSENSE_UNIT_FREQUENCY_MOBILE }}
+            NEXT_PUBLIC_ADSENSE_RESERVE_PLACEHOLDER=${{ vars.NEXT_PUBLIC_ADSENSE_RESERVE_PLACEHOLDER || '' }}
           provenance: true
           sbom: true
           cache-from: type=gha,scope=web

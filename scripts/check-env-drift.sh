@@ -12,7 +12,9 @@ VAR_PATTERN='[A-Z][A-Z0-9_]*'
 PREFIX_FILTER='^(KRAFT_|MARIADB_|SPRING_PROFILES_ACTIVE$|NEXT_PUBLIC_|GRAFANA_|ALERTMANAGER_|ALERTING_DISABLED$)'
 
 # 실제로 소비되는 변수: Compose 파일의 ${VAR}, application*.yml의 ${VAR:default},
-# 배포 스크립트(scripts/deploy/*.sh)가 참조하는 변수.
+# 배포 스크립트(scripts/deploy/*.sh)가 참조하는 변수, web/src의 process.env.NEXT_PUBLIC_*
+# 리터럴(TD-011 — 예전엔 이 스크립트가 web/src를 전혀 안 봐서, env.ts를 우회해 새
+# NEXT_PUBLIC_* 변수를 직접 읽는 코드가 추가돼도 드리프트 체크에 안 걸렸다).
 used_vars() {
   {
     grep -ohE "\\\$\\{${VAR_PATTERN}(:[^}]*)?\\}" docker-compose.yml docker-compose.local.yml docker-compose.prod.yml 2>/dev/null \
@@ -21,18 +23,21 @@ used_vars() {
       | sed -E "s/\\\$\\{(${VAR_PATTERN}).*/\\1/"
     grep -ohE "\\\$\\{?${VAR_PATTERN}\\}?" scripts/deploy/*.sh 2>/dev/null \
       | sed -E 's/[${}]//g'
+    grep -rohE "process\.env\.NEXT_PUBLIC_${VAR_PATTERN}" web/src 2>/dev/null \
+      | sed -E 's/process\.env\.//'
   } | grep -E "$PREFIX_FILTER" | sort -u
 }
 
-# 문서화된 변수: 3종 .env*.example의 키, CI 워크플로의 secrets.VAR/vars.VAR 참조
-# (NEXT_PUBLIC_* 광고 변수처럼 런타임 .env가 아니라 CI 빌드 시점 시크릿으로만 공급되는
-# 계약도 있다 — build-args=... 형태 자체가 "이 변수가 존재한다"는 문서다).
+# 문서화된 변수: 4종 .env*.example(루트 3종 + web/.env.example)의 키, CI 워크플로의
+# secrets.VAR/vars.VAR 참조(NEXT_PUBLIC_* 광고 변수처럼 런타임 .env가 아니라 CI 빌드
+# 시점 시크릿으로만 공급되는 계약도 있다 — build-args=... 형태 자체가 "이 변수가
+# 존재한다"는 문서다).
 documented_vars() {
   {
     # 주석 처리된 채로 존재하는 항목(예: 위험한 opt-in 플래그, 선택적 provider 쌍)도
     # "이 변수 이름이 존재한다는 사실"은 이미 문서화된 것이므로 활성/비활성 여부와
     # 무관하게 키만 뽑는다 — 앞에 붙은 "# "는 제거하고 매칭한다.
-    sed -E 's/^#[[:space:]]*//' .env.example .env.local.example .env.prod.example 2>/dev/null \
+    sed -E 's/^#[[:space:]]*//' .env.example .env.local.example .env.prod.example web/.env.example 2>/dev/null \
       | grep -ohE "^${VAR_PATTERN}=" \
       | sed 's/=$//'
     grep -ohE "(secrets|vars)\.${VAR_PATTERN}" .github/workflows/*.yml 2>/dev/null \
