@@ -54,6 +54,12 @@ dependencies {
     implementation("io.micrometer:micrometer-registry-prometheus")
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-mysql")
+    // TD-019: Boot 4.1은 기본적으로 Jackson 3(tools.jackson)을 쓰지만, 이 앱은 Jackson 2를
+    // 직접 참조하는 지점이 3곳 있다(ApiErrorResponseWriter의 ObjectMapper/JavaTimeModule,
+    // RecommendationStrategy의 @JsonValue) — 그래서 둘 다 락파일에 명시적으로 고정돼 있다.
+    // 이 앱 코드에서 tools.jackson을 직접 import하는 곳은 없다. 제거를 시도하기 전에
+    // 저 3곳을 전부 마이그레이션하고 springdoc/swagger의 Jackson 2 의존 여부까지
+    // 확인해야 한다 — 무관한 리팩터링 중에 슬쩍 정리하지 않는다(§13).
     implementation("com.fasterxml.jackson.core:jackson-databind")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
     implementation("com.github.ben-manes.caffeine:caffeine")
