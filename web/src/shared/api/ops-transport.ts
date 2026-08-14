@@ -11,52 +11,21 @@
  * 호출부(컴포넌트 상태)가 매 요청에 실어 보낸다.
  */
 
-import * as v from "valibot";
-
-import { ApiError, readBackendError } from "./error";
+import { toApiError } from "./error";
 import { composeAbortSignal } from "./timeout";
-
-type Schema<T> = v.BaseSchema<unknown, T, v.BaseIssue<unknown>>;
+import { parseJson, failureFrom, validate, type Schema } from "./transport-internal";
 
 const OPS_TOKEN_HEADER_NAME = "X-Ops-Token";
-
-async function parseJson(response: Response): Promise<unknown> {
-  const text = await response.text();
-  if (text.length === 0) return null;
-  try {
-    return JSON.parse(text) as unknown;
-  } catch (cause) {
-    throw new ApiError("server", "서버 응답을 해석할 수 없습니다.", {
-      status: response.status,
-      cause,
-    });
-  }
-}
-
-function failureFrom(response: Response, body: unknown): ApiError {
-  const { code, message } = readBackendError(body);
-  const kind = response.status >= 500 ? "server" : "client";
-  return new ApiError(kind, message ?? `요청이 실패했습니다 (${response.status}).`, {
-    code,
-    status: response.status,
-  });
-}
-
-function validate<T>(schema: Schema<T>, body: unknown, url: string): T {
-  const result = v.safeParse(schema, body);
-  if (result.success) return result.output;
-  throw new ApiError("server", `응답이 계약과 다릅니다: ${url}`, {
-    code: "SCHEMA_MISMATCH",
-    cause: result.issues,
-  });
-}
 
 async function opsRequest<T>(url: string, schema: Schema<T>, init: RequestInit): Promise<T> {
   let response: Response;
   try {
     response = await fetch(url, init);
   } catch (cause) {
-    throw new ApiError("network", "운영 서버에 연결할 수 없습니다.", { cause });
+    // TD-009: 예전엔 abort/timeout까지 항상 kind:"network"로 잘못 분류됐다. toApiError는
+    // DOMException AbortError를 kind:"timeout"으로 올바르게 구분한다(transport.ts와 동일 패턴) —
+    // TD-001에서 늘린 20초 수집 타임아웃이 실제로 걸렸을 때도 정확히 분류되게 한다.
+    throw toApiError(cause, "운영 서버에 연결할 수 없습니다.");
   }
 
   const body = await parseJson(response);
