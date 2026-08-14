@@ -43,6 +43,11 @@ class InMemoryStateInventoryTest {
             "com.kraft.admin.AdminLoginAttemptService",
             "com.kraft.winningnumber.RoundEtagProvider",
             "com.kraft.recommend.LottoRecommendationService",
+            // TD-008 1단계(2026-08-14): LottoRecommendationService가 들고 있던 volatile
+            // historySnapshot을 RecommendationHistorySnapshotManager로 옮겼다 — 새로 추가된
+            // 상태가 아니라 기존에 이미 검토됐던 인스턴스별 스냅샷이 그대로 이동한 것이다(DB가
+            // 단일 진실 공급원이라 인스턴스마다 독립적으로 리빌드해도 안전, 클래스 상단 NOTE 참고).
+            "com.kraft.recommend.RecommendationHistorySnapshotManager",
             "com.kraft.winningnumber.LottoFreshnessMetrics");
 
     private static JavaClasses classes;
