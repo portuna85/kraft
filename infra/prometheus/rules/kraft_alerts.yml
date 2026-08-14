@@ -61,7 +61,10 @@ groups:
           title: "로또 회차 데이터 지연"
           summary: "KRAFT Lotto 데이터가 최신 회차보다 지연됨"
           description: "kraft_lotto_data_stale_days가 1일 이상 지속됨. 최신 회차={{ $labels.instance }}, 자동 수집 또는 외부 소스 점검 필요."
-          runbook: "kraft_lotto_external_collect_failures_total 추이 확인; scripts/server의 수집 스케줄러 로그 확인 후 필요 시 /ops에서 수동 수집 트리거"
+          # TD-007: scripts/server에는 수집 스케줄러가 없다. 자동 수집은 backend 컨테이너 내부
+          # Spring @Scheduled 빈(WinningNumberAutoCollectScheduler)이라 로그도 backend 애플리케이션
+          # 로그에 남는다.
+          runbook: "kraft_lotto_external_collect_failures_total 추이 확인; docker compose -f docker-compose.prod.yml logs backend | grep WinningNumberAutoCollectScheduler로 자동 수집 로그 확인 후 필요 시 /ops에서 수동 수집(POST /ops/collect/latest) 트리거"
 
       - alert: KraftLottoWinningDataMissing
         expr: kraft_lotto_winning_data_present{job="kraft-backend"} == 0
@@ -83,7 +86,11 @@ groups:
           title: "통계 요약 지연"
           summary: "통계 summary가 최신 회차보다 뒤처짐"
           description: "kraft_lotto_latest_round와 kraft_lotto_statistics_projected_round의 차이가 6시간 이상 1 이상 유지됨. 수동 보정 이벤트 발행 실패나 재조정 스케줄러 점검 필요."
-          runbook: "statistics_summary_rebuild_total{outcome=\"failure\"} 확인; /ops에서 summary 재구축 수동 트리거"
+          # TD-007: /ops에는 summary 재구축 엔드포인트가 없다(의도적으로 두지 않음). 재조정은
+          # StatisticsReconciliationScheduler가 매주 일요일 07:35(Asia/Seoul) 자동 수집 직후
+          # 자동으로 수행한다 — self-service 수동 트리거는 없으므로 즉시 조치가 필요하면
+          # 엔지니어링 에스컬레이션이 필요하다.
+          runbook: "statistics_summary_rebuild_total{outcome=\"failure\"} 확인; 재조정은 매주 일요일 07:35(Asia/Seoul)에 자동 실행됨(StatisticsReconciliationScheduler) — self-service 수동 트리거는 없으므로 즉시 조치가 필요하면 엔지니어링에 에스컬레이션"
 
       - alert: KraftLottoExternalCollectFailing
         expr: increase(kraft_lotto_external_collect_failures_total{job="kraft-backend"}[1h]) >= 3
@@ -107,7 +114,9 @@ groups:
           title: "추천 이력 미준비"
           summary: "추천 이력 데이터가 준비되지 않음"
           description: "kraft_lotto_history_ready가 10분 이상 0을 유지함. 추천 API가 503으로 거절 중일 수 있음. kraft_lotto_history_data_present가 0이면 이력이 완전히 비어 있는 것이고, 1이면 1회부터 최신까지 중간에 누락된 회차가 있는 것이다."
-          runbook: "kraft_lotto_history_data_present와 kraft_lotto_history_first_missing_round 확인해 완전 결손인지 부분 누락인지 판별 후 백필 필요 여부 결정"
+          # TD-007: 등록된 메트릭명은 kraft_lotto_first_missing_round다(history_ 접두어 없음,
+          # LottoRecommendationService에서 등록).
+          runbook: "kraft_lotto_history_data_present와 kraft_lotto_first_missing_round 확인해 완전 결손인지 부분 누락인지 판별 후 백필 필요 여부 결정"
 
       # kraft_lotto_history_snapshot_age_seconds는 재기동 또는 당첨번호 수집 이벤트에서만
       # 갱신된다 — 회차 추첨은 주 1회라 정상 운영 중에도 이 값은 며칠씩 쌓인다. 예전 규칙은

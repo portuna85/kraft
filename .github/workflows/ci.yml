@@ -73,6 +73,15 @@ jobs:
             -e KRAFT_ADMIN_DOMAIN=admin.kraft.io.kr \
             caddy:2-alpine@sha256:77c07d5ebfa5be9fd6c820d2094ae662c9e7eeb9bf98346b7f639900263ee2a2 \
             caddy validate --config /etc/caddy/Caddyfile
+      - name: Validate Prometheus alert rules
+        # TD-007: docker-compose.prod.yml/docker-compose.yml에 이미 고정된 Prometheus 버전과
+        # 다이제스트를 재사용해, 실제 배포되는 버전과 다른 promtool로 검증하는 드리프트를 막는다.
+        run: |
+          docker run --rm \
+            -v "$PWD/infra/prometheus/rules:/rules" \
+            --entrypoint promtool \
+            prom/prometheus:v3.4.0@sha256:78ed1f9050eb9eaf766af6e580230b1c4965728650e332cd1ee918c0c4699775 \
+            check rules /rules/kraft_alerts.yml
       - name: Validate active shell scripts
         run: |
           mapfile -t ACTIVE_SCRIPTS < <(find scripts -name '*.sh' -not -path 'scripts/archive/*')
