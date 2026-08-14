@@ -2,7 +2,7 @@ import styles from "./feedback.module.css";
 import type { EmptyStateContract, ErrorStateContract, Tone } from "./contracts";
 
 /**
- * EmptyState — improvement_fe.md §18, 레거시 FE-048
+ * EmptyState, 레거시 FE-048
  *
  * `reason`이 필수라 "검색 결과 없음"과 "원래 비어 있음"을 같은 화면으로 낼 수 없다.
  * 이 구분이 없으면 사용자는 필터를 지워야 한다는 것을 알 수 없고, 서비스가 고장 난

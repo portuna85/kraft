@@ -19,7 +19,7 @@ test.describe("추천·저장 여정", () => {
 
     await page.getByRole("button", { name: "조합 만들기" }).click();
     await expect(page.getByRole("heading", { name: "추천 조합" })).toBeVisible();
-    // 확률 고지는 결과와 같은 화면에 있어야 한다 — 법적 요구(improvement_fe.md §25.4).
+    // 확률 고지는 결과와 같은 화면에 있어야 한다 — 법적 요구.
     await expect(page.getByText("추천 번호에 대해 알아두세요")).toBeVisible();
 
     const firstSave = page.getByRole("button", { name: "보관함에 저장" }).first();

@@ -1,4 +1,4 @@
-// 라우트별 First Load JS를 측정해 예산과 비교한다 — improvement_fe.md §19.1, §19.5.
+// 라우트별 First Load JS를 측정해 예산과 비교한다.
 //
 // 측정 근거(레거시에서 얻은 환경 지식): Turbopack 빌드는 webpack 시절의
 // "Route (app) … First Load JS" 표를 콘솔에 찍지 않는다. 대신

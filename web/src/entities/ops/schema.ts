@@ -1,7 +1,7 @@
 import * as v from "valibot";
 
 /**
- * 운영 콘솔 계약 — improvement_fe.md §23.14, §25.7
+ * 운영 콘솔 계약
  *
  * `/ops` 계약은 OpenAPI 코드젠 대상에서 제외돼 있다(`springdoc.pathsToMatch:
  * /api/**`) — `generate-api-types.mjs`가 못 잡으므로 여기서 직접 손으로 쓴다.

@@ -12,7 +12,7 @@ import { useMediaQuery } from "@/shared/hooks/use-media-query";
 import styles from "./ad-unit.module.css";
 
 /**
- * 광고 유닛 — improvement_fe.md §19.2, web-legacy 승계
+ * 광고 유닛, web-legacy 승계
  *
  * 카카오 애드핏(`AdUnit`/`PageAd`)과 구글 애드센스(`AdSenseUnit`/`InArticleAd`
  * 안의 desktop/mobile 경로)를 함께 다룬다. 슬롯이 `frequency` 하나뿐이라도, 다른

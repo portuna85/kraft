@@ -142,7 +142,7 @@ describe("추천 스튜디오", () => {
   });
 });
 
-describe("번호 선택 모드 (improvement_fe_codex.md §11.3)", () => {
+describe("번호 선택 모드", () => {
   it("기본 모드는 고정이다", () => {
     const { result } = renderHook(() => useRecommendStudio({ loggedIn: false }));
     expect(result.current.selectionMode).toBe("locked");

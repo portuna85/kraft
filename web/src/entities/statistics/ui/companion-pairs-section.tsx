@@ -10,7 +10,7 @@ import { CompanionPairRow } from "./companion-pair-row";
 import styles from "./companion-pairs-section.module.css";
 
 /**
- * 필터 없는 상태의 동반 출현 결과 — improvement_fe_codex.md §12.6
+ * 필터 없는 상태의 동반 출현 결과
  *
  * 서버는 지금처럼 상위 50쌍을 그대로 내려준다(`improvement_fe.md` §23.5 불변식 —
  * 990쌍 전량 전송 금지, 페이로드는 50개로 유지). 이 컴포넌트는 그 50개를 **다

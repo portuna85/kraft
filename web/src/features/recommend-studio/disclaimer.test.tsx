@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { RecommendationDisclaimer } from "./disclaimer";
 
 describe("RecommendationDisclaimer", () => {
-  it("확률 고지 제목·확률 문구·구매 책임 문구를 렌더한다 (improvement_fe.md §25.4, 법적 요구)", () => {
+  it("확률 고지 제목·확률 문구·구매 책임 문구를 렌더한다 (법적 요구)", () => {
     render(<RecommendationDisclaimer />);
 
     expect(screen.getByText("추천 번호에 대해 알아두세요")).toBeInTheDocument();

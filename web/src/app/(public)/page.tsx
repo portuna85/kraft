@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * 홈 — improvement_fe.md §23.1
+ * 홈
  *
  * 이 화면의 LCP 요소는 당첨번호다. 그래서 클라이언트 컴포넌트를 두지 않고 RSC로만
  * 그린다 — 번호가 HTML에 이미 들어 있어야 검색 유입과 LCP가 함께 산다(§8.1).

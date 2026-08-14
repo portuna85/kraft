@@ -1,7 +1,7 @@
 import { ROUTES } from "@/shared/config/routes";
 
 /**
- * 내비게이션 구성 — improvement_fe.md §10.2
+ * 내비게이션 구성
  *
  * **URL은 전부 유지하고 라벨과 묶음만 바꾼다**(R-13). 전환 후 이탈률을 관찰하려면
  * 바뀐 것이 IA뿐이어야 한다 — URL까지 같이 바뀌면 원인을 분리할 수 없다.

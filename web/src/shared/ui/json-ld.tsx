@@ -1,5 +1,5 @@
 /**
- * JSON-LD 삽입 — improvement_fe.md §20.1, §29.3
+ * JSON-LD 삽입
  *
  * 이 프로젝트에서 `dangerouslySetInnerHTML`이 허용되는 두 곳 중 하나다(다른 하나는
  * 테마 부트스트랩 스크립트). 구조화 데이터는 `<script type="application/ld+json">`

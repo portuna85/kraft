@@ -1,5 +1,5 @@
 /**
- * 탭 세션당 claim 1회 — improvement_fe.md §5.1, §25.2
+ * 탭 세션당 claim 1회
  *
  * sessionStorage를 쓰는 이유가 있다. localStorage면 브라우저를 다시 열어도 플래그가
  * 남아 재시도 기회가 영영 사라지고, 메모리면 라우트 이동마다 다시 시도한다.

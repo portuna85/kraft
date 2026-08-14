@@ -9,7 +9,7 @@ import { CATEGORY_LABELS, type CommunityPost } from "../schema";
 import styles from "./post-summary-card.module.css";
 
 /**
- * 목록 항목 — improvement_fe.md §9.4
+ * 목록 항목
  *
  * 카드 전체가 링크가 아니라 제목만 링크다. 카드를 통째로 감싸면 안에 있는 배지·작성자
  * 같은 텍스트가 전부 링크 이름에 섞여 낭독이 길어진다.

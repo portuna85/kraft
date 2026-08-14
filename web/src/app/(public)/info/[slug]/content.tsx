@@ -8,7 +8,7 @@ import { Accordion } from "@/shared/ui/navigation";
 import { FAQ_ITEMS } from "./faq";
 
 /**
- * 안내·정책 본문 — improvement_fe.md §23.13
+ * 안내·정책 본문
  *
  * 문구는 레거시에서 **의미를 그대로 가져왔다.** 개인정보처리방침과 이용약관은 이 서비스가
  * 실제로 무엇을 수집하고 어떤 책임을 지는지에 대한 법적 진술이라, 재작성한다는 이유로

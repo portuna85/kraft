@@ -6,7 +6,7 @@ import * as v from "valibot";
 import type { ApiError } from "@/shared/api/error";
 
 /**
- * 폼 단일 계약 — improvement_fe.md §16
+ * 폼 단일 계약
  *
  * 현행은 폼 3개가 각자 useState로 값·오류·제출중·dirty를 재발명해, 중복 제출 방지와
  * 서버 검증 오류 표시가 화면마다 다르게 구현되거나 아예 빠져 있었다(§6.3 M-2). 폼이

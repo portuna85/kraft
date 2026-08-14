@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /**
- * 프리미티브 접근성 계약 — improvement_fe.md §8.6, §9.3, §12.1
+ * 프리미티브 접근성 계약
  *
  * 이 파일의 목적은 타입 문서가 아니라 **강제**다. 접근성 규칙을 리뷰 체크리스트로 두면
  * 언젠가 빠지지만, 판별 유니온으로 두면 빠뜨린 순간 컴파일이 깨진다. 레거시의 계약이
@@ -40,7 +40,7 @@ export type IconButtonContract = Omit<ButtonBase, "children"> & {
 
 /**
  * 버튼처럼 보이는 링크 — 빈 상태 CTA 등 "누르면 이동"인 자리에 쓴다
- * (improvement_fe_codex.md §12.10/§12.11). `disabled`·`loading`이 없다 — 링크는
+ * (/§12.11). `disabled`·`loading`이 없다 — 링크는
  * 눌러도 네비게이션만 할 뿐 진행 상태를 가질 수 없다(Button과 의미가 다르다).
  */
 export type LinkButtonContract = {
@@ -66,7 +66,7 @@ export type FreshnessStatus = "fresh" | "stale" | "error";
 export type StatusBadgeContract = { status: FreshnessStatus; label: string };
 
 /**
- * PageHeader — improvement_fe.md §23.14. `title`은 그 페이지의 `<h1>`이다 —
+ * PageHeader. `title`은 그 페이지의 `<h1>`이다 —
  * 호출부가 별도로 `<h1>`을 또 두면 페이지에 제목이 두 개가 된다.
  */
 export type PageHeaderContract = {

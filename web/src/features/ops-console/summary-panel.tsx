@@ -6,7 +6,7 @@ import { Stat } from "@/shared/ui/stat";
 import styles from "./ops-console.module.css";
 
 /**
- * 상태 요약 패널 — improvement_fe.md §23.14 ②.
+ * 상태 요약 패널 ②.
  *
  * `summary`가 `null`이면 "아직 조회 안 함"이다 — 별도 에러 상태를 두지 않는다.
  * 조회 실패는 `OpsConsole`이 `InlineAlert`로 이미 보여주므로 여기서 중복하지 않는다.

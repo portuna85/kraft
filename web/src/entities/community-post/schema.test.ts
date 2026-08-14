@@ -108,7 +108,7 @@ describe("추천 첨부 스키마", () => {
   });
 });
 
-/** 생성 타입과의 정합성 — improvement_fe.md §8.4 */
+/** 생성 타입과의 정합성 */
 type GeneratedPost = components["schemas"]["CommunityPostResponse"];
 const _typesMatch: CommunityPost extends GeneratedPost ? true : never = true;
 void _typesMatch;

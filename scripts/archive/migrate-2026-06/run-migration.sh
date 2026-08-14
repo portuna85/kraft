@@ -3,7 +3,7 @@
 #
 # ARCHIVED — 2026-06 옛 시스템 → KRAFT 데이터 이전은 이미 완료됨.
 # 이 디렉터리는 참고용으로만 남겨두며, 그대로 재실행하지 말 것. 실제 실행 시
-# 다음과 같은 알려진 버그가 있다(L-06, improvement_codex.md):
+# 다음과 같은 알려진 버그가 있다(L-06):
 #
 #   - 03-transform-saved-numbers.sh: OLD_SAVED_TOKEN_COL/OLD_SAVED_DATE_COL을
 #     선언만 하고 실제 SQL rewrite에 쓰지 않는다. staging 테이블은 신 스키마

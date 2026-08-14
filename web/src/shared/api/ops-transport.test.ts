@@ -50,13 +50,16 @@ describe("opsQuery", () => {
   it("스키마와 어긋난 응답을 통과시키지 않는다", async () => {
     mockFetch(jsonResponse({ id: "1", name: "요약" }));
 
-    await expect(
-      opsQuery("/ops-api/summary", schema, "secret-token"),
-    ).rejects.toMatchObject({ kind: "server", code: "SCHEMA_MISMATCH" });
+    await expect(opsQuery("/ops-api/summary", schema, "secret-token")).rejects.toMatchObject({
+      kind: "server",
+      code: "SCHEMA_MISMATCH",
+    });
   });
 
   it("백엔드 오류 코드와 상태를 보존한다", async () => {
-    mockFetch(jsonResponse({ code: "OPS_UNAUTHORIZED", message: "토큰이 올바르지 않습니다." }, 401));
+    mockFetch(
+      jsonResponse({ code: "OPS_UNAUTHORIZED", message: "토큰이 올바르지 않습니다." }, 401),
+    );
 
     const error = await opsQuery("/ops-api/summary", schema, "wrong-token").catch(
       (e: unknown) => e as ApiError,

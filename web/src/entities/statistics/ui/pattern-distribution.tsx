@@ -8,7 +8,7 @@ import styles from "./pattern-distribution.module.css";
 const VIEWBOX_WIDTH = 100;
 
 /**
- * 구간 분포 — improvement_fe.md §9.4
+ * 구간 분포
  *
  * 표로 그리는 이유는 이 데이터가 실제로 표이기 때문이다 — 구간·횟수·비율의 2차원 격자다.
  * 막대는 같은 값을 눈으로 비교하기 쉽게 만드는 장식이라 `aria-hidden`이고, 값은 항상

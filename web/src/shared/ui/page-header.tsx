@@ -2,7 +2,7 @@ import type { PageHeaderContract } from "./contracts";
 import styles from "./page-header.module.css";
 
 /**
- * PageHeader — improvement_fe.md §23.14
+ * PageHeader
  *
  * `title`이 그 페이지의 `<h1>`이다. 호출부가 따로 `<h1>`을 두지 않는다 — 두면
  * 페이지에 제목이 둘 생긴다.

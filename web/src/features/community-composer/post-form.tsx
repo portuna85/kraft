@@ -30,7 +30,7 @@ import { RecommendationAttachmentPicker } from "./recommendation-attachment-pick
 import styles from "./composer.module.css";
 
 /**
- * 글 작성·수정 폼 — improvement_fe.md §16, §23.11
+ * 글 작성·수정 폼
  *
  * 작성과 수정이 같은 컴포넌트인 이유는 필드가 같기 때문이다. 다른 것은 셋뿐이다:
  * 분류는 작성할 때만 고를 수 있고, 수정은 expectedVersion을 싣고, 409 충돌 처리가
@@ -86,7 +86,7 @@ export function PostForm({ existing }: { existing?: CommunityPost }) {
           );
         }
 
-        // 401/403 — improvement_fe.md §15.5. 둘 다 폼 내용은 그대로 둔다(여기서 아무것도
+        // 401/403. 둘 다 폼 내용은 그대로 둔다(여기서 아무것도
         // 지우지 않으므로 자연히 보존된다) — 문구만 원인에 맞게 구분한다.
         if (cause.isUnauthenticated) {
           throw new ApiError(

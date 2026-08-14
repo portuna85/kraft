@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { clientIpFromHeaders, isRateLimited } from "./rate-limit";
 
 /**
- * 소형 공개 수집 엔드포인트 공통 가드 — improvement_fe.md §20.9
+ * 소형 공개 수집 엔드포인트 공통 가드
  *
  * `/api/vitals`·`/api/csp-report`·`/api/client-error`는 셋 다 같은 방어선을 쓴다:
  * IP별 분당 상한, 본문 크기 상한(선언된 Content-Length와 실측 길이 둘 다), 허용

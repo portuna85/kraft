@@ -1,5 +1,5 @@
 /**
- * 로그인 왕복 후 원위치 복귀 — improvement_fe.md §25.1
+ * 로그인 왕복 후 원위치 복귀
  *
  * web-legacy(src/lib/return-to.ts)와 같은 계약을 그대로 재현한다. 백엔드
  * OAuth 콜백은 항상 공개 기본 URL로 돌아오므로(서버 리다이렉트 대상은 안

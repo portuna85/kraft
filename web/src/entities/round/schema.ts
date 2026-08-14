@@ -1,7 +1,7 @@
 import * as v from "valibot";
 
 /**
- * 회차 계약 — improvement_fe.md §24.2(1)
+ * 회차 계약
  *
  * 손으로 쓴 타입가드였다면 `Array.isArray(numbers)`에서 멈췄을 것이다. 그러면 요소가
  * 문자열이거나 5개뿐인 응답이 화면 깊숙이 들어가 렌더 시점에 터진다(§6.2 H-3).

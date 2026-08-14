@@ -11,7 +11,7 @@ import { TextField } from "@/shared/ui/field";
 import { InlineAlert } from "@/shared/ui/states";
 
 /**
- * 수동 적재 폼 — improvement_fe.md §23.14 ④.
+ * 수동 적재 폼 ④.
  *
  * 백엔드가 받는 `numbers`는 배열이지만 사용자는 텍스트 하나로 6개를 입력한다 —
  * `useForm`의 필드는 원시값 하나씩만 다루므로, 폼 값 자체는 문자열 9개로 두고

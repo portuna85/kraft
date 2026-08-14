@@ -1,5 +1,5 @@
 /**
- * 인메모리 요청 제한 — improvement_fe.md §20.9 상당(공개 수집 엔드포인트 보호)
+ * 인메모리 요청 제한 상당(공개 수집 엔드포인트 보호)
  *
  * `/api/vitals`·`/api/csp-report`·`/api/client-error`는 Caddy의 `/api/v1/*` 프록시
  * 대상이 아니라 백엔드 레이트리밋 필터가 도달하지 못한다. 이 Next.js 컨테이너는 단일

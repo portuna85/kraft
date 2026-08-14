@@ -18,7 +18,7 @@ function focusableWithin(container: HTMLElement): HTMLElement[] {
 }
 
 /**
- * 오버레이 포커스 트랩 — improvement_fe.md §12.3
+ * 오버레이 포커스 트랩
  *
  * 세 가지를 함께 처리한다. 하나라도 빠지면 키보드 사용자가 갇히거나 길을 잃는다:
  *   1. 열릴 때 오버레이 안으로 포커스를 옮긴다

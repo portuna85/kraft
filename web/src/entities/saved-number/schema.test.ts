@@ -12,7 +12,7 @@ import {
   type SavedNumber,
 } from "./schema";
 
-/** 생성 타입과의 정합성 — improvement_fe.md §8.4 */
+/** 생성 타입과의 정합성 */
 type GeneratedSavedNumber = components["schemas"]["SavedNumberResponse"];
 const _typesMatch: SavedNumber extends GeneratedSavedNumber ? true : never = true;
 void _typesMatch;

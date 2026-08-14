@@ -9,7 +9,7 @@ import {
 } from "./schema";
 
 /**
- * 추천 API 바인딩 — improvement_fe.md §5.2
+ * 추천 API 바인딩
  *
  * 전부 브라우저 요청이다. 추천 생성은 **명시적 버튼 클릭으로만** 일어나야 하므로
  * 서버 컴포넌트에서 부를 수 있는 함수를 아예 두지 않는다 — 두면 언젠가 페이지가
@@ -43,7 +43,7 @@ export function recommendNumbers(
 }
 
 /**
- * 추천 이력 — improvement_fe.md §23.8, §3.2
+ * 추천 이력
  *
  * 저장 번호와 마찬가지로 **엔드포인트가 두 벌**이다. 익명은 `/api/v1/recommendation-sets`
  * (기기 토큰 스코프), 로그인은 `/api/v1/community/me/recommendation-sets`(세션 스코프).

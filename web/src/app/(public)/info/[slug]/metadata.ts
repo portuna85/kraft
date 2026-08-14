@@ -1,7 +1,7 @@
 import { INFO_PAGE_SLUGS, type InfoPageSlug } from "@/shared/config/routes";
 
 /**
- * 안내 페이지 레지스트리 — improvement_fe.md §23.13 불변식
+ * 안내 페이지 레지스트리 불변식
  *
  * 페이지 제목·설명·최종 수정일의 단일 소스다. 사이트맵과 푸터도 여기를 읽는다.
  *

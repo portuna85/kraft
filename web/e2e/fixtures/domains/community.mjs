@@ -1,4 +1,4 @@
-// 커뮤니티(게시글·댓글·세션) 도메인 픽스처 — L-01(improvement_codex.md)로 backend.mjs에서 분리.
+// 커뮤니티(게시글·댓글·세션) 도메인 픽스처 — L-01로 backend.mjs에서 분리.
 
 const POST_DETAIL = {
   id: 1,

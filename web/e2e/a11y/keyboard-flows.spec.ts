@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * 키보드만으로 핵심 흐름 완주 — T-24, improvement_fe.md §21.4
+ * 키보드만으로 핵심 흐름 완주 — T-24
  *
  * axe는 정적 위반만 잡는다 — 실제로 마우스 없이 버튼까지 도달해 누를 수 있는지는
  * 별도로 확인해야 한다. 마우스 클릭을 전혀 쓰지 않고 Tab·Enter·Space만으로 조작한다.

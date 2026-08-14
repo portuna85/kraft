@@ -1,4 +1,4 @@
-// 회차·통계·운영 상태 도메인 픽스처 — L-01(improvement_codex.md)로 backend.mjs에서 분리.
+// 회차·통계·운영 상태 도메인 픽스처 — L-01로 backend.mjs에서 분리.
 
 export const LATEST_ROUND = {
   round: 1150,

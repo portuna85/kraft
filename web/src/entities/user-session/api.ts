@@ -4,7 +4,7 @@ import { browserMutate, browserQuery } from "@/shared/api/transport";
 import { claimDeviceSchema, communitySessionSchema, type CommunitySession } from "./schema";
 
 /**
- * 세션 API 바인딩 — improvement_fe.md §7.5(entity가 자기 엔드포인트를 소유한다)
+ * 세션 API 바인딩(entity가 자기 엔드포인트를 소유한다)
  *
  * 세션은 사용자별 응답이라 절대 공유 캐시에 담기지 않는다. browserQuery가 항상
  * no-store로 보내므로 여기서 따로 신경 쓸 것은 없다.

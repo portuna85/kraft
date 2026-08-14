@@ -23,7 +23,7 @@ import { Breadcrumb } from "@/shared/ui/navigation";
 import styles from "../../community.module.css";
 
 /**
- * 게시글 상세 — improvement_fe.md §23.10
+ * 게시글 상세
  *
  * **이 라우트는 캐시되지 않는다.** GET이 조회수를 올리는 부수효과를 갖기 때문이며,
  * 그 설정은 entities/community-post/api.ts가 소유한다(M-4). 성능을 이유로 캐시를

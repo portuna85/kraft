@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import styles from "./surface.module.css";
 
 /**
- * Card — improvement_fe.md §9.3
+ * Card
  *
  * 상호작용하는 카드는 만들지 않는다. 카드 전체를 클릭 가능하게 하려면 안에 링크나
  * 버튼을 두고 그것이 접근 이름을 갖게 한다 — div에 onClick을 붙이면 키보드로 도달할 수

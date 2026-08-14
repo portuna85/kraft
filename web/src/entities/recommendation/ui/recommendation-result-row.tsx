@@ -6,7 +6,7 @@ import { EXPLANATION_LABELS, type ExplanationCode } from "../schema";
 import styles from "./recommendation-result-row.module.css";
 
 /**
- * 추천 결과 한 줄 — improvement_fe_codex.md §12.2, §12.11
+ * 추천 결과 한 줄
  *
  * 세로로 긴 카드 대신 "한 조합 = 한 행"이다. 왼쪽 라벨(`추천 1`), 가운데 6개 볼을
  * 좌→우 한 행, 오른쪽에 호출부가 주는 액션(저장 버튼 등)을 둔다. `/recommend`(방금

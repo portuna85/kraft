@@ -2,7 +2,7 @@ import styles from "./feedback.module.css";
 import type { BadgeContract, StatusBadgeContract } from "./contracts";
 
 /**
- * Badge — improvement_fe.md §9.3
+ * Badge
  * `label`이 필수라 색상만으로 의미를 전달하는 배지를 만들 수 없다.
  */
 export function Badge({ tone = "neutral", size = "md", label }: BadgeContract) {

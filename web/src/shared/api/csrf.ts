@@ -1,5 +1,5 @@
 /**
- * CSRF double-submit — improvement_fe.md §13.4, §20.4
+ * CSRF double-submit
  *
  * 백엔드가 내려준 XSRF-TOKEN 쿠키를 읽어 X-XSRF-TOKEN 헤더로 되돌려 보낸다.
  * 이 헤더가 빠지면 쓰기 요청이 전부 403이 된다(R-5) — transport가 쓰기 메서드에서

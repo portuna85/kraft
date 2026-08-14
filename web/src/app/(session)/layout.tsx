@@ -10,7 +10,7 @@ import { SiteHeader } from "../_shell/site-header";
 import { TabBar } from "../_shell/tab-bar";
 
 /**
- * 세션 셸 — improvement_fe.md §10.1, §14.3
+ * 세션 셸
  *
  * 세션이 필요한 라우트(`/community`·`/saved`·`/recommend`)만 이 셸 아래 둔다. 세션
  * 스코프를 라우트 그룹으로 표현하면 불변식 I-4("스코프 밖에서는 세션 API를 호출하지

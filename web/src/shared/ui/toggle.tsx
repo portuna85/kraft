@@ -3,7 +3,7 @@
 import styles from "./field.module.css";
 
 /**
- * Switch — improvement_fe.md §9.3
+ * Switch
  *
  * `role="switch"` + `aria-checked`를 쓴다. 체크박스로 대신하면 스크린리더가 "선택됨"
  * 이라고만 읽어, 즉시 적용되는 설정 토글인지 제출해야 반영되는 선택인지 구분되지 않는다.

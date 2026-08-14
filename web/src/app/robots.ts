@@ -3,7 +3,7 @@ import type { MetadataRoute } from "next";
 import { publicEnv } from "@/shared/config/env";
 
 /**
- * robots.txt — improvement_fe.md §29.8
+ * robots.txt
  *
  * `/saved`·`/recommend/history`·`/ops`·`/status` 네 라우트에 **동일한 정책**을 적용한다
  * (레거시는 `/status`만 disallow하고 `/recommend/history`는 크롤 허용이라 일관성이

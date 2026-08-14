@@ -5,7 +5,7 @@ import { server } from "../../../tests/msw/server";
 import { getLatestRound, getRoundFreshness } from "./api";
 
 /**
- * MSW를 실제로 거치는 통합 테스트 — improvement_fe.md §21.7
+ * MSW를 실제로 거치는 통합 테스트
  *
  * 다른 entity 테스트는 API 모듈을 `vi.mock`으로 직접 대체하지만, 이 테스트는
  * `serverFetch` → 진짜 fetch → MSW 인터셉트 → Valibot 검증까지 전체 경로를 태운다.

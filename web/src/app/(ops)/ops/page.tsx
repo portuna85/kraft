@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * 운영 콘솔 라우트 — improvement_fe.md §23.14.
+ * 운영 콘솔 라우트.
  *
  * 서버 컴포넌트는 조립만 한다 — 실제 데이터는 전부 운영 토큰 인증이 필요한
  * 클라이언트 상호작용이라 서버에서 미리 fetch할 게 없다(legacy도 같은 구조:

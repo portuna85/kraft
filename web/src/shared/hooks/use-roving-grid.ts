@@ -3,7 +3,7 @@
 import { useCallback, useState, type KeyboardEvent } from "react";
 
 /**
- * 로빙 tabindex 그리드 — improvement_fe.md §12.3, §9.4(NumberGrid)
+ * 로빙 tabindex 그리드(NumberGrid)
  *
  * 1~45 번호판처럼 셀이 많은 그리드에서 모든 셀을 탭 순서에 넣으면 키보드 사용자가
  * 그리드 하나를 빠져나가는 데 45번 Tab을 눌러야 한다. 그리드 전체를 탭 정지점 하나로

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, toApiError } from "@/shared/api/error";
 
 /**
- * 사용자별 서버 상태를 위한 최소 캐시 — improvement_fe.md §8.3, §14.4
+ * 사용자별 서버 상태를 위한 최소 캐시
  *
  * TanStack Query를 도입하지 않는 이유는 예산이다(§8.2: ~13KB로 라우트 여유의 대부분을
  * 소진). 그런데 이 앱에서 클라이언트 전용 조회는 5개뿐이다 — 세션, 내 상호작용, 차단

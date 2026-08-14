@@ -6,7 +6,7 @@ import type { components } from "@/generated/api-types";
 import { winningNumberSchema, type WinningNumber } from "./schema";
 
 /**
- * 생성 타입과의 정합성 — improvement_fe.md §8.4
+ * 생성 타입과의 정합성
  *
  * OpenAPI 생성 타입은 컴파일 타임 계약, Valibot 스키마는 런타임 경계다. 둘이
  * 어긋나면 여기서 컴파일이 실패한다 — 백엔드가 필드를 spelled 다르게 바꾸거나

@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 import { guardCollectRequest } from "@/shared/lib/collect-request";
 
 /**
- * CSP Report-Only 수신처 — improvement_fe.md §20.2, §20.3
+ * CSP Report-Only 수신처
  *
  * `shared/config/csp.ts`의 report-only 정책이 위반을 여기로 보낸다. 브라우저가
  * report-uri로 POST하는 형식(Content-Type: application/csp-report, 본문은

@@ -6,7 +6,7 @@
 //
 //   PORT=4110 node e2e/fixtures/backend.mjs
 //
-// L-01(improvement_codex.md): 도메인별 픽스처 데이터·라우트는 ./domains/*.mjs로
+// L-01: 도메인별 픽스처 데이터·라우트는 ./domains/*.mjs로
 // 나눠져 있다. 이 파일은 그것들을 하나로 합쳐 단일 HTTP 서버로 서빙하는 진입점
 // 역할만 한다 — 여러 시작점을 만들지 않는다.
 import { createServer } from "node:http";

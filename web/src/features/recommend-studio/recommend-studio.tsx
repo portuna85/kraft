@@ -23,7 +23,7 @@ import styles from "./studio.module.css";
 import { useRecommendStudio } from "./use-recommend-studio";
 
 /**
- * 추천 스튜디오 — improvement_fe.md §23.2
+ * 추천 스튜디오
  *
  * 확률 고지가 결과보다 **위에** 있다. 결과 아래로 밀면 스크롤해야 보이고, 그건 노출이
  * 아니다(§3.2 법적 요구).
@@ -38,7 +38,7 @@ export function RecommendStudio() {
   const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
 
   /**
-   * 생성 성공 시 결과로 포커스를 옮긴다 — improvement_fe_codex.md §12.2.
+   * 생성 성공 시 결과로 포커스를 옮긴다.
    *
    * 특히 모바일에서 "조합 만들기"를 누른 뒤 스크린리더·키보드 사용자가 결과를
    * 직접 찾아 내려가야 하는 부담을 없앤다. `tabIndex={-1}`이라 클릭으로는

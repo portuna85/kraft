@@ -1,5 +1,5 @@
 // web-legacy/scripts/lighthouse-budget.mjs를 이 앱 전용으로 들여왔다(레거시는 동결이라
-// 그대로 두고 손대지 않는다) — improvement_fe.md §19.5, §19.2 P-5·P-11 검증용.
+// 그대로 두고 손대지 않는다) P-5·P-11 검증용.
 //
 // "Lighthouse는 실험실 진단 용도로만" — 실사용자 데이터(RUM, /api/vitals)를 대신하지
 // 않는다. 이 스크립트는 배포 전 로컬/CI에서 회귀를 조기에 잡는 랩 진단이고, 운영

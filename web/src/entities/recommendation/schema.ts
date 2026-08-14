@@ -3,7 +3,7 @@ import * as v from "valibot";
 import { lottoNumberSchema } from "../round/schema";
 
 /**
- * 추천 계약 — improvement_fe.md §3.2, §24.2(1)
+ * 추천 계약
  * 열거값은 백엔드 계약이라 임의로 늘리거나 줄이지 않는다(§3.6).
  */
 export const STRATEGIES = ["random", "balanced", "reduce_shared_winner_risk"] as const;
@@ -66,7 +66,7 @@ export const MIN_COUNT = 1;
 export const MAX_COUNT = 10;
 
 /**
- * 추천 이력 1건 — improvement_fe.md §23.8
+ * 추천 이력 1건
  *
  * 저장 시점에 만들어진 조합 묶음(전략·고정/제외 조건·조합 목록)을 그대로 보존한다.
  * `recommendationItemSchema`를 그대로 재사용한다 — 백엔드 `RecommendationItemView`와

@@ -13,7 +13,7 @@ import { SegmentedControl, Switch } from "./toggle";
 import { Tooltip } from "./tooltip";
 
 /**
- * 프리미티브 axe 검사 — improvement_fe.md Phase 3 검증 조건("프리미티브 axe 위반 0").
+ * 프리미티브 axe 검사 Phase 3 검증 조건("프리미티브 axe 위반 0").
  *
  * 화면 단위 axe는 E2E가 담당하지만, 프리미티브 단계에서 잡아야 하는 위반이 따로 있다:
  * 라벨 없는 컨트롤, 이름 없는 다이얼로그, role 없이 흉내낸 위젯. 화면이 다 만들어진 뒤

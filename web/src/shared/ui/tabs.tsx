@@ -7,7 +7,7 @@ import styles from "./surface.module.css";
 export type TabItem<T extends string> = { value: T; label: string; panel: ReactNode };
 
 /**
- * Tabs — improvement_fe.md §9.3
+ * Tabs
  *
  * 화살표로 이동하고 탭 목록 전체가 탭 정지점 하나다. 각 탭과 패널을
  * aria-controls/aria-labelledby로 연결한다 — 연결이 없으면 스크린리더 사용자는

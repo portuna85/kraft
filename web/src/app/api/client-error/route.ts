@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 import { guardCollectRequest } from "@/shared/lib/collect-request";
 
 /**
- * 클라이언트 렌더 오류 수집 — improvement_fe.md §7.6
+ * 클라이언트 렌더 오류 수집
  *
  * 세그먼트 `error.tsx`는 클라이언트 컴포넌트라 서버 로그(운영 관측)에 자동으로 남지
  * 않는다 — `console.error`만 하면 사용자 브라우저 콘솔에만 남고 아무도 못 본다.

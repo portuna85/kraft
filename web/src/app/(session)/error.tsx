@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { reportClientError } from "@/shared/lib/report-client-error";
 
 /**
- * 세션 셸 오류 경계 — improvement_fe.md §7.6
+ * 세션 셸 오류 경계
  *
  * 세션 관련 실패를 "로그인 안 됨"으로 축약하지 않는다(불변식 I-3). 축약하면
  * activeProviders가 비어 로그인 링크마저 사라지고 복구 경로가 없어진다 —

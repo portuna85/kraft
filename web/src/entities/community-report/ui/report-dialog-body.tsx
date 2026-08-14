@@ -18,7 +18,7 @@ import styles from "./report-dialog.module.css";
 
 /**
  * 신고 사유 선택 다이얼로그 본체 — `report-dialog.tsx`가 열릴 때만
- * `next/dynamic`으로 이 모듈을 불러온다(improvement_fe.md P-3). 트리거 버튼은
+ * `next/dynamic`으로 이 모듈을 불러온다(P-3). 트리거 버튼은
  * 항상 렌더돼야 하므로 여기 들어오지 않는다.
  */
 export function ReportDialogBody({

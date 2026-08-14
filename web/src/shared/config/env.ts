@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 /**
- * 환경 변수 접근 지점 — improvement_fe.md §20.6
+ * 환경 변수 접근 지점
  *
  * process.env를 코드 곳곳에서 직접 읽으면 어떤 변수가 필요한지 알 수 없고, 서버 전용
  * 값이 클라이언트 번들에 섞여 들어가도 눈에 띄지 않는다. 여기서만 읽는다.

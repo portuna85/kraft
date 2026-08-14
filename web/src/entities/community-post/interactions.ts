@@ -3,7 +3,7 @@ import * as v from "valibot";
 import { browserMutate, browserQuery, noContentSchema } from "@/shared/api/transport";
 
 /**
- * 로그인 사용자의 개인 상호작용 — improvement_fe.md §13, §25.6
+ * 로그인 사용자의 개인 상호작용
  *
  * 공개 ISR HTML에는 사용자 상태가 들어가지 않는다(§5.4 보안 모델). 그래서 좋아요·북마크·
  * 차단 여부는 브라우저가 따로 물어본다. 전부 no-store다 — 공유 캐시에 담기면 다른

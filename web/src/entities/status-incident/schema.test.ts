@@ -47,7 +47,7 @@ describe("운영 유형 라벨", () => {
   });
 });
 
-/** 생성 타입과의 정합성 — M-07(improvement_codex.md), improvement_fe.md §8.4 */
+/** 생성 타입과의 정합성 — M-07*/
 type GeneratedIncident = components["schemas"]["PublicIncidentResponse"];
 const _typesMatch: StatusIncident extends GeneratedIncident ? true : never = true;
 void _typesMatch;

@@ -120,7 +120,7 @@ describe("publicEnv / serverEnv — TD-010 신규 필드", () => {
     expect(serverEnv.revalidateSecret).toBe("shh");
   });
 
-  it("RESERVE_PLACEHOLDER는 문자열 \"true\"가 아니면 false로 취급한다", async () => {
+  it('RESERVE_PLACEHOLDER는 문자열 "true"가 아니면 false로 취급한다', async () => {
     process.env.NEXT_PUBLIC_ADSENSE_RESERVE_PLACEHOLDER = "1";
     const { publicEnv } = await loadEnv();
 

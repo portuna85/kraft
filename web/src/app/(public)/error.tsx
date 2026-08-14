@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { reportClientError } from "@/shared/lib/report-client-error";
 
 /**
- * 공개 셸 오류 경계 — improvement_fe.md §7.6
+ * 공개 셸 오류 경계
  *
  * 여기까지 올라온 오류는 **핵심 데이터 실패**다. 200 폴백으로 감추지 않는다 —
  * 감추면 업타임 체커와 크롤러가 장애를 보지 못하고, Caddy가 그 상태를 60초 캐시한다.

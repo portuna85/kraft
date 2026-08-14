@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * 커뮤니티 목록 — improvement_fe.md §23.9, §5.6
+ * 커뮤니티 목록
  *
  * **URL이 상태의 단일 진실 공급원이다.** 검색은 method="get" 폼, 필터·정렬·페이지는
  * 링크다. 공유되고, 뒤로가기가 동작하고, JS 없이도 넘어가며, RSC가 그대로 읽는다.

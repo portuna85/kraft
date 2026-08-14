@@ -6,7 +6,7 @@ import { publicEnv } from "@/shared/config/env";
 import { INFO_PAGE_SLUGS, ROUTES } from "@/shared/config/routes";
 
 /**
- * 사이트맵 — improvement_fe.md §24.2(6), §29.8
+ * 사이트맵
  *
  * 라우트 핸들러라 페이지의 revalidate와 달리 Full Route Cache에 실제로 적용된다.
  * 리터럴이어야 정적 분석이 되므로 entities/round/api.ts의 재검증 주기와 값을 수동으로

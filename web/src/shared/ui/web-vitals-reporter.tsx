@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useReportWebVitals } from "next/web-vitals";
 
 /**
- * Web Vitals 클라이언트 수집 — improvement_fe.md §19.5
+ * Web Vitals 클라이언트 수집
  *
  * `/api/vitals`는 이미 있었지만(페이로드 스키마 검증까지) 그걸 실제로 부르는
  * 클라이언트 코드가 하나도 없어 수집 파이프라인이 죽어 있었다. 서버가 받는 3개

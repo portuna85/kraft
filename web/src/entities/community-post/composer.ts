@@ -5,7 +5,7 @@ import { browserMutate, browserQuery } from "@/shared/api/transport";
 import { communityPostSchema, POST_CATEGORIES, type CommunityPost } from "./schema";
 
 /**
- * 작성·수정 계약 — improvement_fe.md §23.11, §25.6
+ * 작성·수정 계약
  *
  * 길이 제한은 백엔드 @Size와 같아야 한다. 화면이 먼저 막아야 사용자가 400 대신
  * "200자까지 쓸 수 있습니다"를 본다.
@@ -65,7 +65,7 @@ export function updatePost(
 }
 
 /**
- * 최신 게시글을 **ISR을 우회해** 읽는다 — improvement_fe.md §5.3, 레거시 FE-066.
+ * 최신 게시글을 **ISR을 우회해** 읽는다, 레거시 FE-066.
  *
  * 409 충돌 뒤에 쓰는 함수다. 서버 컴포넌트를 다시 태우면 캐시된 값을 받을 수 있어
  * "최신"이라며 보여준 내용이 또 옛 것일 수 있다. 브라우저에서 직접 물어본다.

@@ -13,7 +13,7 @@ function pairs(count: number): CompanionPair[] {
   }));
 }
 
-describe("동반 출현 쌍 목록 (improvement_fe_codex.md §12.6)", () => {
+describe("동반 출현 쌍 목록", () => {
   it("처음엔 12개만 보여준다", () => {
     render(<CompanionPairsSection pairs={pairs(50)} totalRounds={1150} expectedLabel="17.4" />);
 

@@ -1,7 +1,7 @@
 import * as v from "valibot";
 
 /**
- * 댓글 계약 — improvement_fe.md §24.2(1)
+ * 댓글 계약
  *
  * 2단 구조다. 상위 댓글만 페이징되고 **답글은 페이징 집계에서 빠진다**(§25.6) —
  * totalTopLevelComments가 상위 댓글 수인 이유다. 답글까지 세면 "3개"라고 적어 놓고

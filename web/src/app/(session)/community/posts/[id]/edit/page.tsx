@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * 수정 진입 시 **최신을 다시 읽는다** — improvement_fe.md §5.3, §23.11 불변식
+ * 수정 진입 시 **최신을 다시 읽는다** 불변식
  *
  * 캐시된 글로 폼을 채우면 그때 담긴 version도 옛 것이라, 저장할 때마다 409가 나거나
  * 더 나쁘게는 다른 사람이 고친 내용을 모르고 덮어쓴다. getPost 자체가 no-store다.

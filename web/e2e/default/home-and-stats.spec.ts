@@ -28,7 +28,7 @@ test.describe("홈·통계 렌더", () => {
     await expect(strong).toHaveText(/^\d{3,4}회$/);
   });
 
-  test("홈이 WebSite 구조화 데이터를 담고 있다 (improvement_fe.md §25.8)", async ({ page }) => {
+  test("홈이 WebSite 구조화 데이터를 담고 있다", async ({ page }) => {
     await page.goto("/");
     const jsonLd = await page.locator('script[type="application/ld+json"]').textContent();
     expect(jsonLd).not.toBeNull();
@@ -55,7 +55,7 @@ test.describe("홈·통계 렌더", () => {
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   });
 
-  test("/companion은 처음에 12쌍만 그리고, 더 보기를 눌러도 50쌍을 넘지 않는다 (improvement_fe_codex.md §12.6, improvement_fe.md §23.5)", async ({
+  test("/companion은 처음에 12쌍만 그리고, 더 보기를 눌러도 50쌍을 넘지 않는다", async ({
     page,
   }) => {
     await page.goto("/companion");
@@ -77,7 +77,7 @@ test.describe("홈·통계 렌더", () => {
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   });
 
-  test("/analysis가 역대 1등 이력을 렌더한다 (improvement_fe.md §25.3)", async ({ page }) => {
+  test("/analysis가 역대 1등 이력을 렌더한다", async ({ page }) => {
     // 픽스처는 1번이 포함된 조합을 1등 이력이 있는 것으로 응답한다(e2e/fixtures/backend.mjs).
     await page.goto("/analysis?numbers=1,8,17,24,33,41");
     await expect(page.getByText("이 조합은 과거에 1등으로 당첨된 적이 있습니다.")).toBeVisible();
@@ -87,9 +87,7 @@ test.describe("홈·통계 렌더", () => {
     await expect(page.getByText("이 조합은 아직 1등으로 나온 적이 없습니다.")).toBeVisible();
   });
 
-  test("/frequency가 최다·최소 출현 6개를 렌더하고 기간 필터가 동작한다 (improvement_fe.md §25.3)", async ({
-    page,
-  }) => {
+  test("/frequency가 최다·최소 출현 6개를 렌더하고 기간 필터가 동작한다", async ({ page }) => {
     await page.goto("/frequency");
 
     const topSection = page.getByRole("heading", { name: "가장 많이 나온 6개" }).locator("..");

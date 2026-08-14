@@ -6,7 +6,7 @@ import { server } from "../../../tests/msw/server";
 import { deleteDeviceSavedNumber, listDeviceSavedNumbers, saveNumbersToDevice } from "./api";
 
 /**
- * MSW를 실제로 거치는 통합 테스트 — improvement_fe.md §21.7
+ * MSW를 실제로 거치는 통합 테스트
  *
  * 저장 응답 계약(`{savedNumber, created}`)은 예전에 스키마 자체가 어긋나 있던 자리다
  * (Phase 5에서 발견·수정). 여기서 실제 fetch → MSW → Valibot 경로로 created:false

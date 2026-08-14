@@ -4,7 +4,7 @@ import { coOccurrenceRatio, type CompanionPair } from "../schema";
 import styles from "./companion-pair-row.module.css";
 
 /**
- * 동반 출현 쌍 한 줄 — improvement_fe.md §9.4, §23.5
+ * 동반 출현 쌍 한 줄
  *
  * 배율이 이 줄의 핵심이다. "1번과 12번이 38회 함께 나왔다"만으로는 많은지 알 수 없고,
  * "평균의 1.4배"가 붙어야 읽힌다.

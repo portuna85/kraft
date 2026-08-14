@@ -12,7 +12,7 @@ export type MenuItem = { label: string } & (
 );
 
 /**
- * DropdownMenu — improvement_fe.md §9.3
+ * DropdownMenu
  *
  * `role="menu"` + 화살표/Home/End/Esc. 링크 목록으로 만들면 스크린리더 사용자에게
  * "메뉴가 열렸다"는 사실과 항목 수가 전달되지 않는다.

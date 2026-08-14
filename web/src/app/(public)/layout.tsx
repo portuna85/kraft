@@ -8,7 +8,7 @@ import { SiteHeader } from "../_shell/site-header";
 import { TabBar } from "../_shell/tab-bar";
 
 /**
- * 공개 셸 — improvement_fe.md §10.1
+ * 공개 셸
  *
  * **세션 프로바이더가 없다.** 현행은 계정 메뉴가 전 페이지에 있어 프로바이더를 루트로
  * 올릴 수밖에 없었고, 그 결과 `/`·`/stats`·`/info/*` 같은 완전 공개 라우트도 커뮤니티

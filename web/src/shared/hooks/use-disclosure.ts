@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 
 /**
- * 열림/닫힘 상태 — improvement_fe.md §22.4
+ * 열림/닫힘 상태
  *
  * 별것 아닌 훅이지만 있는 편이 낫다. 각 컴포넌트가 useState로 재발명하면 토글 함수가
  * 매 렌더 새로 생기고, 그 함수를 이펙트 의존성에 넣은 곳에서 무한 재구독이 난다

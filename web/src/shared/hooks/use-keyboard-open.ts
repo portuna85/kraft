@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 /**
- * 가상 키보드 열림 감지 — improvement_fe.md §19.2
+ * 가상 키보드 열림 감지
  *
  * 가상 키보드가 열리면 모바일 브라우저의 visualViewport.height가 레이아웃
  * 뷰포트보다 크게 줄어든다(키보드가 차지한 만큼) — 마운트 시점의 높이를 기준값으로 잡고,

@@ -2,7 +2,7 @@ import { Skeleton } from "./states";
 import styles from "./page-skeleton.module.css";
 
 /**
- * PageSkeleton — 라우트별 `loading.tsx`가 공유하는 스트리밍 폴백(improvement_fe.md P-11).
+ * PageSkeleton — 라우트별 `loading.tsx`가 공유하는 스트리밍 폴백(P-11).
  *
  * variant는 실제 콘텐츠 형태를 흉내 낸 정도로만 나뉜다 — 모든 라우트에 맞춤 스켈레톤을
  * 만드는 대신 4가지 골격을 재사용한다(레거시 `DataPageLoading`과 같은 접근).

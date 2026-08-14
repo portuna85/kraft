@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * /recommend — improvement_fe.md §23.2
+ * /recommend
  *
  * RSC 셸 + 클라이언트 스튜디오. 셸이 서버에서 그려지므로 제목·설명이 SSR 본문에 남고,
  * 상호작용이 필요한 부분만 클라이언트로 내려간다(§19.2 P-8).

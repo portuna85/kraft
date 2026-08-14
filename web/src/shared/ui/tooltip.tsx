@@ -7,7 +7,7 @@ import { useDisclosure } from "@/shared/hooks/use-disclosure";
 import styles from "./overlay.module.css";
 
 /**
- * Tooltip — improvement_fe.md §9.3
+ * Tooltip
  *
  * **호버 전용은 금지다.** 포커스로도 열려야 키보드·터치 사용자가 내용을 볼 수 있다.
  * 그리고 툴팁에만 있는 정보는 두지 않는다 — 툴팁은 보조 설명이고, 없어도 화면이

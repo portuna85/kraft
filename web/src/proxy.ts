@@ -4,7 +4,7 @@ import { buildCsp, buildCspReportOnly, generateNonce, NONCE_HEADER } from "@/sha
 import { publicEnv, serverEnv } from "@/shared/config/env";
 
 /**
- * /ops 호스트 게이트 — improvement_fe.md §20.9
+ * /ops 호스트 게이트
  *
  * **미설정이면 차단한다.** 과거 fail-open이라 게이트가 사실상 없는 것과 같았고,
  * /ops가 공개 도메인에서 그대로 열려 있었다(레거시 F-P0-12). 로컬에서 /ops를 쓰려면

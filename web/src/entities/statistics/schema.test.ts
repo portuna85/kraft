@@ -203,7 +203,7 @@ describe("조합 분석 스키마", () => {
   });
 });
 
-/** 생성 타입과의 정합성 — M-07(improvement_codex.md), improvement_fe.md §8.4 */
+/** 생성 타입과의 정합성 — M-07*/
 type GeneratedAnalysis = components["schemas"]["AnalysisResponse"];
 const _analysisTypesMatch: CombinationAnalysis extends GeneratedAnalysis ? true : never = true;
 void _analysisTypesMatch;

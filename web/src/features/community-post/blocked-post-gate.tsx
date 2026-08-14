@@ -10,7 +10,7 @@ import { EmptyState } from "@/shared/ui/states";
 import styles from "./post-actions.module.css";
 
 /**
- * 차단 게이팅 — improvement_fe.md §5.4, §25.6
+ * 차단 게이팅
  *
  * **서버는 항상 본문을 렌더하고, 가리는 일은 클라이언트가 한다.** 성능 때문이 아니라
  * 보안 모델의 귀결이다 — 공개 ISR HTML에는 사용자 상태를 넣지 않는다. 서버에서 거르려면

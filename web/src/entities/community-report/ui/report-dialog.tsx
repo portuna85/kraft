@@ -13,7 +13,7 @@ const ReportDialogBody = dynamic(() =>
 );
 
 /**
- * 신고 — improvement_fe.md §23.10, §3.6, §19.2(P-3)
+ * 신고(P-3)
  *
  * 사유 7종은 백엔드 열거값이라 늘리거나 줄이지 않는다. 라디오로 두는 이유는 하나만
  * 고를 수 있다는 것을 형태로 알리기 위해서다.
@@ -47,7 +47,7 @@ export function ReportDialog({
 
   return (
     <>
-      {/* danger ghost/text — improvement_fe_codex.md §12.9. 신고는 부차 행동이라
+      {/* danger ghost/text. 신고는 부차 행동이라
           full-width gradient primary처럼 강한 톤을 쓰면 안 되지만, quiet(중립
           색)로는 "위험/신고" 신호가 아예 없어져 danger 색의 ghost로 둔다. */}
       <Button variant="dangerQuiet" onClick={() => setOpen(true)}>

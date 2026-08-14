@@ -10,7 +10,7 @@ type NativeProps = Omit<
 >;
 
 /**
- * Button — improvement_fe.md §9.3
+ * Button
  *
  * `loading`일 때 `loadingLabel`이 타입 차원에서 필수라, 진행 상태를 시각적으로만
  * 알리는 버튼을 만들 수 없다. 로딩 중에는 disabled도 함께 걸어 중복 제출을 막는다
@@ -86,7 +86,7 @@ type LinkNativeProps = Omit<
 >;
 
 /**
- * LinkButton — Button과 같은 시각을 내는 링크 — improvement_fe_codex.md §12.10/§12.11.
+ * LinkButton — Button과 같은 시각을 내는 링크/§12.11.
  *
  * 빈 상태 CTA("번호 추천 받기" 등)는 페이지 이동이지 폼 제출이 아니다. `Button`은
  * `<button>`이라 `onClick` 핸들러가 있어야 의미가 있는데, 여기서는 그냥 다른

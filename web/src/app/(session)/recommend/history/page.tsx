@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * 추천 이력 — improvement_fe.md §23.8
+ * 추천 이력
  *
  * 레거시는 본문이 제목 한 줄뿐이었다(§23.8 신규 요구). 이력의 의미와 보관 범위(기기 vs
  * 계정)를 설명해 그 문제를 해소한다.

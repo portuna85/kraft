@@ -1,5 +1,5 @@
 /**
- * 운영 콘솔 전송 계층 — improvement_fe.md §23.14, §25.7
+ * 운영 콘솔 전송 계층
  *
  * `transport.ts`의 `browserQuery`/`browserMutate`를 그대로 못 쓰는 이유는 인증
  * 방식이 다르기 때문이다 — 커뮤니티 등 일반 쓰기는 쿠키 기반 CSRF 헤더를 쓰지만,

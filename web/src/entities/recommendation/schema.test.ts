@@ -59,7 +59,7 @@ describe("추천 세트 페이지 스키마", () => {
   });
 });
 
-/** 생성 타입과의 정합성 — M-07(improvement_codex.md), improvement_fe.md §8.4 */
+/** 생성 타입과의 정합성 — M-07*/
 type GeneratedSet = components["schemas"]["RecommendationSetSummary"];
 const _setTypesMatch: RecommendationSet extends GeneratedSet ? true : never = true;
 void _setTypesMatch;

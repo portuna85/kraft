@@ -1,7 +1,7 @@
 import * as v from "valibot";
 
 /**
- * 저장 번호 계약 — improvement_fe.md §24.2(1)
+ * 저장 번호 계약
  *
  * **자체 entity인 이유**: 추천 스튜디오(생성 직후 저장)와 보관함(조회·대조·삭제)이 둘 다
  * 이 모델을 쓴다. 처음에는 entities/recommendation 안에 있었는데, 그러면 saved-library

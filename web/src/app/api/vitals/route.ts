@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 import { guardCollectRequest } from "@/shared/lib/collect-request";
 
 /**
- * Core Web Vitals 필드 데이터 수집 — improvement_fe.md §19.5
+ * Core Web Vitals 필드 데이터 수집
  *
  * 절대 개인정보(IP, User-Agent, 쿠키, 세션/사용자 식별자)를 로그에 남기지 않는다 —
  * 화이트리스트된 필드만 통과시킨다.

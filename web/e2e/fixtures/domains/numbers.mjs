@@ -1,4 +1,4 @@
-// 추천·저장 번호 도메인 픽스처 — L-01(improvement_codex.md)로 backend.mjs에서 분리.
+// 추천·저장 번호 도메인 픽스처 — L-01로 backend.mjs에서 분리.
 
 import { LATEST_ROUND } from "./stats.mjs";
 

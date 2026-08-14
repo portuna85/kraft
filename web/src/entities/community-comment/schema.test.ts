@@ -74,7 +74,7 @@ describe("댓글 제출 가능 여부", () => {
   });
 });
 
-/** 생성 타입과의 정합성 — M-07(improvement_codex.md), improvement_fe.md §8.4 */
+/** 생성 타입과의 정합성 — M-07*/
 type GeneratedComment = components["schemas"]["CommunityCommentResponse"];
 const _commentTypesMatch: CommunityComment extends GeneratedComment ? true : never = true;
 void _commentTypesMatch;

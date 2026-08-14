@@ -17,7 +17,7 @@ import { TextField } from "@/shared/ui/field";
 import styles from "./picker.module.css";
 
 /**
- * 조합 입력 — improvement_fe.md §23.6
+ * 조합 입력
  *
  * 분석 결과는 URL이 소유한다(`?numbers=1,2,...`). 그래서 이 컴포넌트는 결과를 가져오지
  * 않고 **입력만** 모아 GET 폼으로 넘긴다. 얻는 것 세 가지:

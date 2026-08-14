@@ -9,7 +9,7 @@ import {
 import styles from "./field.module.css";
 
 /**
- * 폼 필드 프리미티브 — improvement_fe.md §9.3, §12.6
+ * 폼 필드 프리미티브
  *
  * 모든 필드가 라벨 연결·오류 연결을 **컴포넌트 내부에서** 처리한다. 호출부가
  * htmlFor/id/aria-describedby를 손으로 맞추게 두면 언젠가 어긋나고, 그때 오류 메시지는

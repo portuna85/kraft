@@ -20,7 +20,7 @@ import styles from "./ops-console.module.css";
 const PAGE_SIZE = 20;
 
 /**
- * 운영 로그 테이블 — improvement_fe.md §23.14 ⑤.
+ * 운영 로그 테이블 ⑤.
  *
  * 페이지 이동에 `shared/ui/surface.tsx`의 기존 `Pagination`(URL Link 기반)을
  * 그대로 쓰지 않는다 — 이 화면은 토큰을 URL이 아니라 컴포넌트 state로만 들고

@@ -9,7 +9,7 @@ import { IconButton } from "./button";
 import styles from "./overlay.module.css";
 
 /**
- * Drawer — improvement_fe.md §9.3
+ * Drawer
  *
  * Dialog와 같은 포커스 규칙을 따르되 **가시적 닫기 버튼이 필수**다. 모바일에서 드로어를
  * 배경 탭으로만 닫게 하면 배경이 안 보이는 전체 화면 드로어에서 빠져나갈 방법이 사라진다.

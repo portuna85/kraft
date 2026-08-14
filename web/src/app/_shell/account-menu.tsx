@@ -10,7 +10,7 @@ import { ConfirmDialog } from "@/shared/ui/dialog";
 import { InlineAlert } from "@/shared/ui/states";
 
 /**
- * 로그인 상태 계정 메뉴 — improvement_fe_codex.md §4.4 ("Signed in: avatar/initial + menu")
+ * 로그인 상태 계정 메뉴 ("Signed in: avatar/initial + menu")
  *
  * `(session)` 셸에서만 렌더된다 — 세션을 아는 곳이 여기뿐이다(불변식 I-4).
  *

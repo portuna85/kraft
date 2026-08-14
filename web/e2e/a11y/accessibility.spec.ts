@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { expectNoA11yViolations } from "../lib/expect-no-a11y-violations";
 
 /**
- * axe 자동 검사 — T-23, improvement_fe.md §21.4
+ * axe 자동 검사 — T-23
  *
  * default 트랙과 달리 여기서는 픽스처가 채워 준 실제 콘텐츠 상태(회차·통계·게시글·
  * 댓글)를 라이트·다크 두 테마로 스캔한다. 목록/폼처럼 상태가 비어 있는 화면은

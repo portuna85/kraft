@@ -72,7 +72,7 @@ public class PublicApiCacheControlFilter extends OncePerRequestFilter {
     }
 
     /**
-     * L-03(improvement_codex.md): RFC 7232 §2.3.2의 약한 비교로 If-None-Match를 판정한다.
+     * L-03: RFC 7232 §2.3.2의 약한 비교로 If-None-Match를 판정한다.
      * 정확한 문자열 일치만 보면 {@code W/"..."} 약한 태그, 쉼표로 나열된 다중 검증자,
      * {@code *} 와일드카드를 쓰는 표준 준수 클라이언트가 304 기회를 놓친다. GET 조건부
      * 요청에는 약한 비교로 충분하다(본문 바이트 단위 동일성까지 요구하지 않는다).

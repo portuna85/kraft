@@ -11,7 +11,7 @@ import {
 } from "./schema";
 
 /**
- * 커뮤니티 API 바인딩 — improvement_fe.md §13.5, §24.2(3)
+ * 커뮤니티 API 바인딩
  */
 export const COMMUNITY_POSTS_TAG = CACHE_TAGS.communityPosts;
 export const REVALIDATE_COMMUNITY_LIST_SECONDS = 30;

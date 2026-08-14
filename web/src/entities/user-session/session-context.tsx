@@ -5,7 +5,7 @@ import { createContext, useContext } from "react";
 import type { CommunitySession } from "./schema";
 
 /**
- * 세션 접근 지점 — improvement_fe.md §7.3
+ * 세션 접근 지점
  *
  * Context 자체가 features가 아니라 entity에 있는 이유는 계층 규칙이 알려줬다.
  * recommend-studio가 identity-session을 직접 참조하려다 ESLint에 막혔고, 그것이

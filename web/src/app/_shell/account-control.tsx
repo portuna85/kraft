@@ -6,7 +6,7 @@ import { AccountMenu } from "./account-menu";
 import { LoginPopover } from "./login-popover";
 
 /**
- * `(session)` 셸의 계정 영역 — improvement_fe_codex.md §4.4
+ * `(session)` 셸의 계정 영역
  *
  * `(public)` 셸은 세션을 조회하지 않으므로(불변식 I-4) 이 컴포넌트를 쓰지 않고
  * `LoginPopover`를 직접 꽂는다. 여기서만 로그인 여부에 따라 실제 계정 메뉴 또는

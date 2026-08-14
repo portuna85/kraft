@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * a11y 트랙 — axe 자동 검사 + 키보드만으로 핵심 흐름 완주 (T-23·24, improvement_fe.md §21.4)
+ * a11y 트랙 — axe 자동 검사 + 키보드만으로 핵심 흐름 완주 (T-23·24)
  *
  * 레거시는 접근성 스캔을 default/content 트랙 안에 끼워 뒀지만, 여기서는 §21.4가
  * 명시적으로 a11y를 독립 트랙으로 요구해 분리한다. default 트랙과 같은 픽스처

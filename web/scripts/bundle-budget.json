@@ -1,7 +1,7 @@
 {
   "_comment": [
     "maxKB — 라우트별 First Load JS 목표(KB). 현행(web-legacy)에서 값 그대로 승계한",
-    "계약이며 재작성으로 완화하지 않는다(improvement_fe.md §19.1). 이 값은 Lighthouse",
+    "계약이며 재작성으로 완화하지 않는다. 이 값은 Lighthouse",
     "LCP 실패에서 역산돼 나온 것이라 올리면 그 실패로 되돌아간다.",
     "",
     "currentKB — 재작성 중 회귀 기준선. 지금 목표를 넘는 라우트가 있는데, 초과분의",

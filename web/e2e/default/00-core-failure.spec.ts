@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * 핵심 데이터 실패 → 5xx — T-20, improvement_fe.md §6.5
+ * 핵심 데이터 실패 → 5xx — T-20
  *
  * 홈은 최신 회차 조회 실패를 페이지 안에서 흡수하지 않는다 — 그대로 던져 (public)
  * 셸의 error 경계가 5xx로 받게 둔다. 200 폴백으로 조용히 덮으면 업타임 체커와

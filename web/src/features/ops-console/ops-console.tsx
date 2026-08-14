@@ -25,7 +25,7 @@ function resultText(result: WinningNumberResult): string {
 }
 
 /**
- * 운영 콘솔 — improvement_fe.md §23.14.
+ * 운영 콘솔.
  *
  * 토큰은 서버에 저장하지 않는다. 이 컴포넌트의 state가 유일한 보관 장소이고,
  * 새로고침하면 사라진다 — 세션마다 운영자가 다시 입력하는 legacy 방식을 그대로 따른다.

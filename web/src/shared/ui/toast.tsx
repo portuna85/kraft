@@ -8,7 +8,7 @@ import { useEventCallback } from "@/shared/hooks/use-event-callback";
 import styles from "./overlay.module.css";
 
 /**
- * Toast — improvement_fe.md §9.3
+ * Toast
  *
  * 자동으로 닫히는 알림의 최소 노출 시간은 6초다. 그보다 짧으면 화면을 순차적으로 읽는
  * 사용자가 메시지를 놓친다. 영역은 `aria-live="polite"`라 진행 중인 낭독을 끊지 않는다.

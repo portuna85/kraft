@@ -1,7 +1,7 @@
 import type { AdNetwork } from "./env";
 
 /**
- * CSP 정책 — improvement_fe.md §20.2·§20.3, §24.2(8: Caddy와 협의된 정책은 계약)
+ * CSP 정책·§20.3, §24.2(8: Caddy와 협의된 정책은 계약)
  *
  * **nonce는 전 경로에 매 요청 발급한다.** Next App Router는 CSP에 nonce가 있을 때만
  * 자신이 스트리밍하는 RSC 하이드레이션 inline script에도 그 nonce를 붙인다. 이 스크립트는

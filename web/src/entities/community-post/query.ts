@@ -1,7 +1,7 @@
 import { POST_CATEGORIES, POST_SORTS, type PostCategory, type PostSort } from "./schema";
 
 /**
- * 목록 입력 방어 — improvement_fe.md §5.6, 레거시 M-11
+ * 목록 입력 방어, 레거시 M-11
  *
  * URL은 사용자가 직접 편집할 수 있는 입력이다. 여기서 거르지 않으면 백엔드가 400을
  * 돌려주고, 그 400은 화면에서 "검색 결과 없음"과 구분되지 않는 실패로 보인다.

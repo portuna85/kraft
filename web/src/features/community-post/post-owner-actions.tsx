@@ -14,7 +14,7 @@ import { ConfirmDialog } from "@/shared/ui/dialog";
 import styles from "./post-actions.module.css";
 
 /**
- * 수정·삭제 — improvement_fe.md §23.10, §25.6
+ * 수정·삭제
  *
  * 노출 여부만 프런트가 판단한다. 실제 인가는 백엔드가 하며, 여기서 버튼을 감추는 것은
  * 보안이 아니라 UX다 — 누를 수 없는 버튼을 보여줄 이유가 없을 뿐이다.

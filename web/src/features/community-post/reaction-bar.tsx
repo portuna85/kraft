@@ -9,7 +9,7 @@ import { Button } from "@/shared/ui/button";
 import styles from "./post-actions.module.css";
 
 /**
- * 좋아요·북마크 — improvement_fe.md §23.10, §14
+ * 좋아요·북마크
  *
  * 초기 좋아요 수는 SSR된 게시글에서 오지만 **내가 눌렀는지는 거기 없다.** 공개 ISR
  * HTML에 사용자 상태를 넣지 않기 때문이다(§5.4). 그래서 마운트 후 한 번 물어본다.

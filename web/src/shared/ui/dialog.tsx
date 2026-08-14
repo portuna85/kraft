@@ -11,7 +11,7 @@ import styles from "./dialog.module.css";
 import { InlineAlert } from "./states";
 
 /**
- * Dialog — improvement_fe.md §9.3, §12.3
+ * Dialog
  *
  * `open`이 false면 아무것도 렌더하지 않는다. 숨김 처리로 DOM에 남겨두면 포커스 트랩과
  * 실제 표시 상태가 어긋나 닫힌 다이얼로그 안으로 Tab이 들어간다(레거시 F-P0-8).

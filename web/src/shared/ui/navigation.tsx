@@ -4,7 +4,7 @@ import type { AccordionContract, BreadcrumbContract } from "./contracts";
 import styles from "./navigation.module.css";
 
 /**
- * Breadcrumb — improvement_fe.md §23.10, §23.13
+ * Breadcrumb
  *
  * `<nav>` 안의 순서 있는 목록으로 둔다. 구분자는 CSS가 그린다 — 텍스트로 넣으면
  * 스크린리더가 "홈 슬래시 안내 슬래시"처럼 읽는다.
@@ -29,7 +29,7 @@ export function Breadcrumb({ items, current }: BreadcrumbContract) {
 }
 
 /**
- * Accordion — improvement_fe.md §23.13 (FAQ 전용)
+ * Accordion (FAQ 전용)
  *
  * 명세는 `<button aria-expanded>` + 패널 연결을 적었지만 `<details>/<summary>`로 만든다.
  * 요구의 본질은 "열림 상태가 전달되고 패널이 제목과 묶일 것"이고 네이티브 요소가 그것을

@@ -3,7 +3,7 @@ import * as v from "valibot";
 import { recommendationItemSchema, STRATEGIES } from "../recommendation/schema";
 
 /**
- * 게시글 계약 — improvement_fe.md §3.6, §24.2(1)
+ * 게시글 계약
  * 열거값은 백엔드 계약이라 변경 금지다.
  */
 export const POST_CATEGORIES = [

@@ -7,7 +7,7 @@ import styles from "./frequency-bar.module.css";
 const VIEWBOX_WIDTH = 100;
 
 /**
- * 번호별 출현 막대 — improvement_fe.md §9.4, §6.3 M-6
+ * 번호별 출현 막대 M-6
  *
  * **기대값 마커가 이 컴포넌트의 존재 이유다.** 막대 길이만 보여주면 "17번이 152번
  * 나왔다"는 사실은 전달되지만 그게 많은 건지 적은 건지는 알 수 없다. 무작위 기대값

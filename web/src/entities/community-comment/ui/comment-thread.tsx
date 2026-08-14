@@ -7,7 +7,7 @@ import type { CommunityComment } from "../schema";
 import styles from "./comment-thread.module.css";
 
 /**
- * 2단 댓글 스레드 — improvement_fe.md §9.4, §23.10
+ * 2단 댓글 스레드
  *
  * 중첩 `<ol>`로 그린다. 답글이 시각적 들여쓰기로만 구분되면 화면을 못 보는 사용자는
  * 어떤 댓글에 달린 답글인지 알 수 없다 — 목록 중첩이 그 관계를 구조로 전달한다.

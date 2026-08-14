@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 /**
  * cross-browser 트랙 — Firefox·WebKit에서 핵심 흐름 + 접근성 재검증
- * (improvement_fe.md §21, Phase 7 계획)
+ * (Phase 7 계획)
  *
  * Chromium 전용 트랙(default·a11y)이 빠른 회귀 게이트를 맡고, 여기서는 실제
  * 브라우저 호환성만 본다 — 그래서 스펙을 새로 쓰지 않고 기존 a11y 트랙의 스펙

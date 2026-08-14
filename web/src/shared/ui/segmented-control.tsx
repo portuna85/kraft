@@ -5,7 +5,7 @@ import { useRef, type KeyboardEvent } from "react";
 import styles from "./segmented-control.module.css";
 
 /**
- * SegmentedControl — improvement_fe_codex.md §10.2, §15.2
+ * SegmentedControl
  *
  * 2~4개 중 정확히 하나를 고르는 용도다(예: `/recommend`의 고정/제외 모드
  * 선택기). native radio 의미를 그대로 흉내낸다 — 화살표 키가 포커스만 옮기지

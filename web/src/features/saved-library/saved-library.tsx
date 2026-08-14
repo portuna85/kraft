@@ -24,7 +24,7 @@ import { Card } from "@/shared/ui/surface";
 import styles from "./library.module.css";
 
 /**
- * 보관함 — improvement_fe.md §23.7, §25.5
+ * 보관함
  *
  * **로그인 여부가 엔드포인트를 통째로 가른다.** 익명은 기기 토큰 스코프, 로그인은 세션
  * 스코프다. 섞을 수 없는 이유는 백엔드 B-P0-3에 있다 — claim이 끝나면 저장 번호의
@@ -170,7 +170,7 @@ export function SavedLibrary({ latestRound }: { latestRound: number }) {
                   <span className={styles.savedAt}>
                     {formatDrawDate(item.createdAt.slice(0, 10))}
                   </span>
-                  {/* danger ghost — improvement_fe_codex.md §12.10 "delete는 danger ghost". */}
+                  {/* danger ghost "delete는 danger ghost". */}
                   <Button variant="dangerQuiet" onClick={() => setDeleteTarget(item)}>
                     삭제
                   </Button>

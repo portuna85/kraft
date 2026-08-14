@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * `/ops` 호스트 게이트 단위 테스트 — improvement_fe.md §25.7
+ * `/ops` 호스트 게이트 단위 테스트
  *
  * `e2e/proxy/ops-gate.spec.ts`는 "env 미설정 → 404"만 검증한다. 그런데 체크리스트가
  * 요구하는 "공개 도메인에서 접근 불가"의 실제 시나리오는 **env가 설정된 상태에서

@@ -8,7 +8,7 @@ import { server } from "../../../tests/msw/server";
 import { createPost, fetchLatestPost, updatePost } from "./composer";
 
 /**
- * MSW를 실제로 거치는 통합 테스트 — improvement_fe.md §21.7
+ * MSW를 실제로 거치는 통합 테스트
  *
  * `features/community-composer/post-form.test.tsx`는 composer 함수를 목으로 대체해
  * 409 이후 폼 동작만 검증한다. 여기서는 실제 fetch → MSW → Valibot 경로에서 409가

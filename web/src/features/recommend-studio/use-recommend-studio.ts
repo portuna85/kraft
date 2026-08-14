@@ -14,7 +14,7 @@ import {
 import { ApiError, toApiError } from "@/shared/api/error";
 
 /**
- * 추천 스튜디오 상태 — improvement_fe.md §5.2
+ * 추천 스튜디오 상태
  *
  * 규칙 세 가지가 이 훅의 존재 이유다.
  *
@@ -61,7 +61,7 @@ export function useRecommendStudio({ loggedIn }: { loggedIn: boolean }) {
     .sort((a, b) => a - b);
 
   /**
-   * 모드 기반 선택 — improvement_fe_codex.md §11.3
+   * 모드 기반 선택
    *
    * 3단 순환 클릭(none→locked→excluded→none) 대신, 상단 세그먼트 컨트롤로 먼저
    * 모드를 고르고 번호는 그 모드로만 선택/해제한다. 반대 모드에 이미 있는

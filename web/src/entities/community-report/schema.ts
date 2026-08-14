@@ -1,5 +1,5 @@
 /**
- * 신고 계약 — improvement_fe.md §3.6 (열거값은 백엔드 계약이라 변경 금지)
+ * 신고 계약 (열거값은 백엔드 계약이라 변경 금지)
  *
  * **자체 entity인 이유**: 게시글도 댓글도 신고 대상이다. 처음에는 신고 다이얼로그를
  * community-post feature에 뒀는데, community-comments feature가 그것을 쓰려다 계층

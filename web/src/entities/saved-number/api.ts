@@ -10,7 +10,7 @@ import {
 } from "./schema";
 
 /**
- * 보관함 API — improvement_fe.md §3.3, §25.5
+ * 보관함 API
  *
  * **엔드포인트가 두 벌이다.** 익명은 `/api/v1/saved`(X-Device-Token 스코프), 로그인은
  * `/api/v1/community/me/saved-numbers`(세션 스코프)다. 하나로 합칠 수 없는 이유는

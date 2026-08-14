@@ -5,7 +5,7 @@ import { server } from "../../../tests/msw/server";
 import { createComment, deleteComment, fetchCommentPage, getCommentPage } from "./api";
 
 /**
- * MSW를 실제로 거치는 통합 테스트 — improvement_fe.md §21.7
+ * MSW를 실제로 거치는 통합 테스트
  *
  * 댓글은 2단 중첩 스키마(§25.6 — 답글은 페이징 집계에서 빠진다)라, 손으로 만든 목이
  * 아니라 실제 fetch → MSW → Valibot 경로에서 중첩 구조가 계속 파싱되는지 확인한다.

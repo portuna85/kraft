@@ -19,7 +19,7 @@ import { EmptyState, ErrorState } from "@/shared/ui/states";
 import styles from "./history.module.css";
 
 /**
- * 추천 이력 — improvement_fe.md §23.8, §25.5
+ * 추천 이력
  *
  * 저장 번호·추천 이력 모두 같은 두 갈래 규칙을 따른다 — 익명은 기기 토큰 스코프,
  * 로그인은 세션 스코프이며 절대 섞이지 않는다(§3.3, 백엔드 B-P0-2). 최신 순으로 20개씩

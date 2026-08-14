@@ -7,7 +7,7 @@ import { Button } from "@/shared/ui/button";
 import { DropdownMenu } from "@/shared/ui/dropdown-menu";
 
 /**
- * 로그인 진입점 — improvement_fe_codex.md §4.4, improvement_fe.md §25.1
+ * 로그인 진입점
  *
  * provider 버튼 2개를 헤더에 나란히 두지 않는다. "로그인" 단일 버튼 뒤에
  * popover로 provider를 감춘다 — 헤더 폭과 기대 행동을 라우트마다 다르게 만들지

@@ -20,7 +20,7 @@ import { EmptyState, InlineAlert } from "@/shared/ui/states";
 import styles from "./comments.module.css";
 
 /**
- * 댓글 — improvement_fe.md §23.10
+ * 댓글
  *
  * **첫 페이지는 서버가 이미 렌더해서 넘겨준다**(initialPage). 이 컴포넌트는 그것을 받아
  * 시작하므로, 초기 화면에 "댓글 0개"가 찍혔다가 채워지는 일이 없다. 더 보기·작성·삭제만

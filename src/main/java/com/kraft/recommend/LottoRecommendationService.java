@@ -30,7 +30,7 @@ public class LottoRecommendationService {
 
     private static final Logger log = LoggerFactory.getLogger(LottoRecommendationService.class);
 
-    // L-02(improvement_codex.md): historyStatus()의 DB 버전 조회가 실패하면 이전에는
+    // L-02: historyStatus()의 DB 버전 조회가 실패하면 이전에는
     // 매 스크레이프(15초)마다 스택트레이스 전체를 로그로 남겼다 — DB 장애 중 로그
     // 폭주로 장애를 증폭시킨다. RedisRateLimitCounter와 같은 스로틀 상수·간격을 쓴다.
     private static final long HISTORY_STATUS_FAILURE_LOG_THROTTLE_MILLIS = 30_000L;

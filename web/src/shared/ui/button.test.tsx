@@ -48,7 +48,7 @@ describe("Button", () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
-  it("dangerQuiet 변형도 일반 버튼처럼 클릭 가능하다 (improvement_fe_codex.md §12.9)", async () => {
+  it("dangerQuiet 변형도 일반 버튼처럼 클릭 가능하다", async () => {
     const onClick = vi.fn();
     const { default: userEvent } = await import("@testing-library/user-event");
     render(

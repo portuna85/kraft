@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * `/data` 허브 — improvement_fe_codex.md §12.3
+ * `/data` 허브
  *
  * 모바일에서 데이터 기능의 1차 진입점이다. 모바일 하단 탭이 5개 고정이라
  * (`app/_shell/nav-items.ts` `TAB_BAR_ITEMS`), "통계"(`/frequency` 단독 링크) 대신

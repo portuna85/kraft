@@ -11,7 +11,7 @@ import {
 } from "./schema";
 
 /**
- * 운영 콘솔 API — improvement_fe.md §23.14, §25.7
+ * 운영 콘솔 API
  *
  * `next.config.ts`의 `/ops-api/:path*` → 백엔드 `/ops/:path*` 리라이트를 그대로
  * 탄다. 백엔드가 `X-Ops-Token`으로 별도 인증하므로 매 호출에 토큰을 넘긴다 —

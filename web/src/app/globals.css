@@ -1,5 +1,5 @@
 /*
- * app/layout.tsx가 import하는 유일한 전역 CSS — improvement_fe.md §9.2
+ * app/layout.tsx가 import하는 유일한 전역 CSS
  *
  * 현행은 globals.css가 15개 파일을 @import하고 캐스케이드가 그 순서에 의존했다.
  * @layer로 순서를 선언해 두면 파일 로드 순서와 무관하게 우선순위가 확정된다.

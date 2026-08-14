@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 
 /**
- * 컨테이너 실측 폭 추적 — improvement_fe.md §19.2
+ * 컨테이너 실측 폭 추적
  *
  * 뷰포트가 아니라 실제 부모 컨테이너 폭을 추적한다. 사이드바 유무에 따라 콘텐츠
  * 컬럼 실폭이 달라지는 광고 슬롯처럼, 미디어쿼리만으로는 판정할 수 없는 지점에 쓴다.

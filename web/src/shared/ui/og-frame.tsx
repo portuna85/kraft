@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /**
- * OG 이미지 공통 프레임 — improvement_fe.md §4.2
+ * OG 이미지 공통 프레임
  *
  * 레거시는 이 배경·배지·문구 마크업을 라우트마다 복제했다(L-1). satori(next/og
  * 렌더러)는 CSS 클래스를 못 쓰고 인라인 style 트리만 받아, 공통 요소를 컴포넌트로

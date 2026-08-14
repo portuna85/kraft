@@ -1,6 +1,6 @@
 import nextConfig from "eslint-config-next";
 
-// improvement_fe.md §7.3 — 4계층 단방향 의존을 도구로 강제한다.
+//  — 4계층 단방향 의존을 도구로 강제한다.
 //
 //   app      → features, entities, shared   ✅
 //   features → entities, shared             ✅

@@ -14,7 +14,7 @@ import {
 } from "./schema";
 
 /**
- * 통계 API 바인딩 — improvement_fe.md §7.5, §13.5
+ * 통계 API 바인딩
  * 태그 이름은 백엔드와 일치해야 한다(§24.2 3번).
  */
 export const STATS_TAG = CACHE_TAGS.statsAll;

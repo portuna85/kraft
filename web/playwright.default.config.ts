@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * default 트랙 — 픽스처 백엔드를 상시 가동한 주요 사용자 흐름 (improvement_fe.md §21)
+ * default 트랙 — 픽스처 백엔드를 상시 가동한 주요 사용자 흐름
  *
  * 레거시의 default(백엔드 없음)/content(픽스처 있음) 2트랙 분리를 따르지 않는다.
  * `web/`은 핵심 데이터 실패 시 200 폴백이 아니라 5xx로 전파하는 설계라(§6.5)

@@ -6,7 +6,7 @@ import { serverEnv } from "@/shared/config/env";
 import { filterAllowedPaths, filterAllowedTags, matchesSecret } from "./guard";
 
 /**
- * ISR 웹훅 — improvement_fe.md §13.6, §24.2(4)
+ * ISR 웹훅
  *
  * 백엔드 RevalidateWebhookListener가 회차 수집을 커밋한 뒤 이 엔드포인트를 부른다.
  * 검증 로직(화이트리스트·시크릿 비교)은 ./guard.ts에 분리돼 있다 — 여기서는 그 결과로
