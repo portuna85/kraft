@@ -262,11 +262,29 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("M-11: IllegalArgumentException(예: 음수 페이지)은 500이 아니라 400으로 응답한다")
-    void handleIllegalArgument_returns400InsteadOf500() throws Exception {
-        mockMvc.perform(get("/test/illegal-argument").accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
-                .andExpect(jsonPath("$.message").value("요청 값이 올바르지 않습니다."));
+    @DisplayName("TD-003: 전역 IllegalArgumentException 핸들러를 제거해 500 + 스택트레이스 로그로 흐른다")
+    void handleIllegalArgument_noLongerCaught_fallsThroughTo500WithLoggedCause() throws Exception {
+        ch.qos.logback.classic.Logger handlerLogger =
+                (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(GlobalExceptionHandler.class);
+        Level previousLevel = handlerLogger.getLevel();
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        handlerLogger.setLevel(Level.ERROR);
+        handlerLogger.addAppender(appender);
+
+        try {
+            mockMvc.perform(get("/test/illegal-argument").accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isInternalServerError())
+                    .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
+                    .andExpect(jsonPath("$.message").value("예상하지 못한 서버 오류가 발생했습니다."));
+        } finally {
+            handlerLogger.detachAppender(appender);
+            handlerLogger.setLevel(previousLevel);
+            appender.stop();
+        }
+
+        assertThat(appender.list)
+                .anyMatch(event -> event.getThrowableProxy() != null
+                        && "Page index must not be less than zero".equals(event.getThrowableProxy().getMessage()));
     }
 }

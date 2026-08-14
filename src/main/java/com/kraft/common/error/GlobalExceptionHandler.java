@@ -103,17 +103,13 @@ public class GlobalExceptionHandler {
         return lastDot < 0 ? propertyPath : propertyPath.substring(lastDot + 1);
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    ResponseEntity<ApiErrorResponse> handleIllegalArgument(IllegalArgumentException exception,
-                                                            HttpServletRequest request) {
-        // M-11: PageRequest.of(page, size)가 음수 page/size에 던지는 것을 포함해, 잘못된
-        // 클라이언트 입력이 원인인 IllegalArgumentException을 500 대신 400으로 내린다.
-        // 클램프를 먼저 적용하는 호출부(CommunityPostService 등)에서는 이 경로 자체가
-        // 거의 발생하지 않는다 — 클램프를 놓친 곳에 대한 방어적 안전망이다.
-        log.warn("잘못된 요청 인자: path={} message={}", request.getRequestURI(), exception.getMessage());
-        return ResponseEntity.badRequest()
-                .body(errorBody(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "요청 값이 올바르지 않습니다.", request));
-    }
+    // TD-003: 예전에는 여기서 모든 IllegalArgumentException을 400으로 내렸다(M-11).
+    // 실제로 요청 파생 page/size는 이미 호출부(AdminController, CommunityPostService,
+    // CommunityCommentService, RecommendationSetHistoryService, WinningNumberQueryService)에서
+    // 클램프하고, enum 파싱도 이미 명시적으로 ApiException으로 감싸고 있어(CommunityPostController,
+    // CommunityPostService, OpsService) 이 폴백에 기대는 정당한 호출부가 없다. 이 폴백을 남겨두면
+    // 정말 예기치 못한 프로그래밍 결함(IAE)까지 400으로 위장해 5xx 지표와 스택트레이스를
+    // 숨긴다 — 제거해 handleUnexpected(500 + 스택트레이스 로그)로 흐르게 한다.
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ResponseEntity<ApiErrorResponse> handleNotReadable(HttpMessageNotReadableException exception,
