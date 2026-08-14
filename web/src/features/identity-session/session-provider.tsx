@@ -16,10 +16,10 @@ import { invalidateResource, useResource } from "@/shared/hooks/use-resource";
 import { hasClaimSettled, markClaimSettled } from "./claim-flag";
 
 /**
- * 세션 상태머신 — improvement_fe.md §14.5 (완전 명세, 재현 필수)
+ * 세션 상태머신 — 아래가 이 상태머신의 완전한 명세다(다른 문서를 참조하지 않는다).
  *
  * 이 파일은 재작성 전체에서 가장 위험한 코드다. 여기의 규칙 하나를 놓치면 사용자의
- * 저장 기록이 사라지거나(§25.2) 로그인 자체가 불가능해진다. 규칙마다 "왜"를 남긴다.
+ * 저장 기록이 사라지거나 로그인 자체가 불가능해진다. 규칙마다 "왜"를 남긴다.
  *
  * 불변식
  * - I-1: claimStatus가 error여도 loggedIn이면 소유자 스코프 조회는 계속 진행한다.

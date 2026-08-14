@@ -128,8 +128,8 @@ export function PostForm({ existing }: { existing?: CommunityPost }) {
 
   // 편집 진입 자체는(getPost) 소유자만 조회 가능한 게 아니라 URL을 직접 알면 누구나
   // 볼 수 있다 — 저장(PUT)에서만 403으로 막힌다. 그래서 폼을 띄우기 전에 여기서
-  // 미리 걸러 "저장을 눌러야 비로소 권한이 없다는 걸 안다"를 막는다(improvement_fe.md
-  // §25.1: 비소유자에게 편집 UI 숨김).
+  // 미리 걸러 "저장을 눌러야 비로소 권한이 없다는 걸 안다"를 막는다
+  // (비소유자에게 편집 UI 숨김).
   if (existing !== undefined && existing.ownerId !== session.session?.userId) {
     return (
       <InlineAlert tone="neutral" title="수정할 수 없습니다">

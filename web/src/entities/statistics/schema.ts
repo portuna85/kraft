@@ -3,7 +3,7 @@ import * as v from "valibot";
 import { lottoNumberSchema } from "../round/schema";
 
 /**
- * 통계 계약 — improvement_fe.md §24.2(1)
+ * 통계 계약
  *
  * 같은 entity 안이므로 round 스키마를 상대 경로로 가져온다. 다른 entity를 @/ 별칭으로
  * 참조하면 계층 규칙에 걸린다 — 두 entity가 같은 값을 공유해야 한다면 그건 shared로
@@ -42,7 +42,7 @@ export const frequencyStatsSchema = v.object({
 export type FrequencyStats = v.InferOutput<typeof frequencyStatsSchema>;
 
 /**
- * 무작위 기대값 — improvement_fe.md §6.3 M-6
+ * 무작위 기대값
  *
  * 통계 화면에 숫자만 나열하면 "봤는데 무엇을 알게 됐는지 모르는" 화면이 된다. 회차마다
  * 45개 중 6개가 뽑히므로 번호 하나의 기대 출현 횟수는 totalRounds × 6 / 45다. 이 값이
@@ -77,7 +77,7 @@ export const patternStatsSchema = v.object({
 export type PatternStats = v.InferOutput<typeof patternStatsSchema>;
 
 /**
- * 합계 구간 표시 순서 — improvement_fe.md §23.4 불변식
+ * 합계 구간 표시 순서 — 불변식
  *
  * 백엔드는 bucketKey **문자열 오름차순**으로 정렬해 보낸다(`findByStatTypeOrderByBucketKeyAsc`).
  * 문자열 정렬에서는 "111-155"가 "21-65"보다 앞선다 — 즉 응답 순서를 그대로 그리면
@@ -128,7 +128,7 @@ export type CompanionStats = v.InferOutput<typeof companionStatsSchema>;
 export const TOTAL_PAIR_COUNT = 990;
 
 /**
- * 쌍당 평균 동반 출현 — improvement_fe.md §23.5 불변식
+ * 쌍당 평균 동반 출현 — 불변식
  *
  * 회차마다 6개가 뽑히므로 한 회차가 만드는 쌍은 6C2 = 15개다. 이것을 990쌍이 나눠
  * 가지므로 쌍 하나의 평균 동반 출현은 totalRounds × 15 / 990이다. 이 기준선이 없으면
