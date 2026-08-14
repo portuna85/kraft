@@ -142,12 +142,38 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("애플리케이션 예외 발생 시 서버 오류 계열 상태 코드를 반환하는지 확인")
+    @DisplayName("TD-004: 5xx ApiException은 원문 메시지 대신 일반 문구를 반환하고 code/status는 유지한다")
     void handleApiException_returns5xxStatus_forServerError() throws Exception {
         mockMvc.perform(get("/test/server-error").accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500))
                 .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
-                .andExpect(jsonPath("$.message").value("서버 오류"));
+                .andExpect(jsonPath("$.message").value("일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."));
+    }
+
+    @Test
+    @DisplayName("TD-004: 5xx ApiException은 로그에 원본 throwable(스택트레이스)을 남긴다")
+    void handleApiException_5xx_logsThrowable() throws Exception {
+        ch.qos.logback.classic.Logger handlerLogger =
+                (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(GlobalExceptionHandler.class);
+        Level previousLevel = handlerLogger.getLevel();
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        handlerLogger.setLevel(Level.ERROR);
+        handlerLogger.addAppender(appender);
+
+        try {
+            mockMvc.perform(get("/test/server-error").accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isInternalServerError());
+        } finally {
+            handlerLogger.detachAppender(appender);
+            handlerLogger.setLevel(previousLevel);
+            appender.stop();
+        }
+
+        assertThat(appender.list)
+                .anyMatch(event -> event.getThrowableProxy() != null
+                        && "서버 오류".equals(event.getThrowableProxy().getMessage()));
     }
 
     @Test

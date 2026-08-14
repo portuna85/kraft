@@ -27,21 +27,27 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    // TD-004: 5xx는 내부/업스트림 원인을 담고 있을 수 있어 원문을 그대로 클라이언트에 보이면
+    // 안 된다(정보 유출). code/status는 그대로 유지하고 메시지만 일반 문구로 교체한다.
+    private static final String GENERIC_SERVER_ERROR_MESSAGE = "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
+
     @ExceptionHandler(ApiException.class)
     ResponseEntity<ApiErrorResponse> handleApiException(ApiException exception, HttpServletRequest request) {
         if (exception.getStatus().is5xxServerError()) {
-            log.error("API 예외: status={} code={} path={} message={}",
+            // handleUnexpected와 동일하게 throwable을 마지막 인자로 넘겨 스택트레이스가 로그에 남게 한다.
+            log.error("API 예외: status={} code={} path={}",
                     exception.getStatus().value(),
                     exception.getCode(),
                     request.getRequestURI(),
-                    exception.getMessage());
-        } else {
-            log.warn("API 예외: status={} code={} path={} message={}",
-                    exception.getStatus().value(),
-                    exception.getCode(),
-                    request.getRequestURI(),
-                    exception.getMessage());
+                    exception);
+            return ResponseEntity.status(exception.getStatus())
+                    .body(errorBody(exception.getStatus(), exception.getCode(), GENERIC_SERVER_ERROR_MESSAGE, request));
         }
+        log.warn("API 예외: status={} code={} path={} message={}",
+                exception.getStatus().value(),
+                exception.getCode(),
+                request.getRequestURI(),
+                exception.getMessage());
         return ResponseEntity.status(exception.getStatus())
                 .body(errorBody(exception.getStatus(), exception.getCode(), exception.getMessage(), request));
     }
