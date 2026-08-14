@@ -22,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.http.HttpStatus;
+import org.springframework.orm.jpa.JpaSystemException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -30,6 +31,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -42,6 +44,9 @@ class CommunityPostServiceTest {
 
     @Mock
     private CommunityPostMetricsRepository communityPostMetricsRepository;
+
+    @Mock
+    private CommunityPostViewCounter communityPostViewCounter;
 
     @Mock
     private RecommendationSetHistoryService recommendationSetHistoryService;
@@ -71,7 +76,7 @@ class CommunityPostServiceTest {
     void setUp() {
         meterRegistry = new SimpleMeterRegistry();
         service = new CommunityPostService(communityPostRepository, communityPostMetricsRepository,
-                recommendationSetHistoryService, CLOCK, meterRegistry);
+                communityPostViewCounter, recommendationSetHistoryService, CLOCK, meterRegistry);
     }
 
     @Test
@@ -213,7 +218,7 @@ class CommunityPostServiceTest {
 
         service.get(1L, null);
 
-        verify(communityPostMetricsRepository).incrementViewCount(1L);
+        verify(communityPostViewCounter).increment(1L);
     }
 
     @Test
@@ -224,7 +229,25 @@ class CommunityPostServiceTest {
 
         assertThatThrownBy(() -> service.get(1L, 2L)).isInstanceOf(ApiException.class);
 
-        verify(communityPostMetricsRepository, never()).incrementViewCount(any());
+        verify(communityPostViewCounter, never()).increment(any());
+    }
+
+    @Test
+    @DisplayName("조회수 증가가 DB 충돌로 실패해도 상세 조회는 성공하고 드롭 카운터만 오른다")
+    void get_viewCountIncrementFails_stillReturnsPost() {
+        CommunityPost post = postEntity(1L, 1L, PostStatus.PUBLISHED);
+        given(communityPostRepository.findById(1L)).willReturn(Optional.of(post));
+        // 운영에서 실제로 관측된 예외 형태 — MariaDB의 ER_CHECKREAD("Record has changed
+        // since last read")가 JpaSystemException으로 올라온다.
+        willThrow(new JpaSystemException(new RuntimeException(
+                "Record has changed since last read in table 'community_post_metrics'")))
+                .given(communityPostViewCounter).increment(1L);
+
+        CommunityPost result = service.get(1L, null);
+
+        assertThat(result.getId()).isEqualTo(1L);
+        assertThat(meterRegistry.counter("kraft_community_post_view_count_dropped_total").count())
+                .isEqualTo(1.0);
     }
 
     @Test

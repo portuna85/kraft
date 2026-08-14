@@ -11,6 +11,8 @@ import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -29,12 +31,16 @@ public class CommunityPostService {
     private static final int MAX_QUERY_LENGTH = 50;
     private static final int WEEKLY_WINDOW_DAYS = 7;
 
+    private static final Logger log = LoggerFactory.getLogger(CommunityPostService.class);
+
     private final CommunityPostRepository communityPostRepository;
     private final CommunityPostMetricsRepository communityPostMetricsRepository;
+    private final CommunityPostViewCounter communityPostViewCounter;
     private final RecommendationSetHistoryService recommendationSetHistoryService;
     private final Clock clock;
     private final Counter versionConflictCounter;
     private final Counter createdCounter;
+    private final Counter viewCountDroppedCounter;
     private final MeterRegistry meterRegistry;
     // TD-022: list()가 요청마다 Timer.builder(...)를 새로 만들어 레지스트리를 조회하는
     // 대신, search 태그가 "true"/"false" 두 값뿐이므로 생성자에서 한 번씩만 등록해 둔다.
@@ -43,16 +49,21 @@ public class CommunityPostService {
 
     public CommunityPostService(CommunityPostRepository communityPostRepository,
                                  CommunityPostMetricsRepository communityPostMetricsRepository,
+                                 CommunityPostViewCounter communityPostViewCounter,
                                  RecommendationSetHistoryService recommendationSetHistoryService,
                                  Clock clock,
                                  MeterRegistry meterRegistry) {
         this.communityPostRepository = communityPostRepository;
         this.communityPostMetricsRepository = communityPostMetricsRepository;
+        this.communityPostViewCounter = communityPostViewCounter;
         this.recommendationSetHistoryService = recommendationSetHistoryService;
         this.clock = clock;
         this.meterRegistry = meterRegistry;
         this.versionConflictCounter = Counter.builder("kraft_community_post_version_conflict_total")
                 .description("게시글 낙관적 잠금 버전 충돌(409)로 거부된 수정 요청 수")
+                .register(meterRegistry);
+        this.viewCountDroppedCounter = Counter.builder("kraft_community_post_view_count_dropped_total")
+                .description("DB 충돌 등으로 반영하지 못하고 버린 조회수 증가 수 — 조회 자체는 성공")
                 .register(meterRegistry);
         this.createdCounter = Counter.builder("kraft_community_post_created_total")
                 .description("생성된 게시글 수")
@@ -107,12 +118,34 @@ public class CommunityPostService {
     // B-P0-8: view_count가 항상 0으로 남던 문제 — incrementViewCount는 이미 존재했으나
     // 어디서도 호출되지 않았다. 상세 조회가 가시성 검증을 통과할 때마다 1회 증가시킨다
     // (세션/중복 방지는 이번 범위에서 과설계라 생략 — 단순 조회수).
-    @Transactional
+    //
+    // 조회수 증가는 CommunityPostViewCounter의 독립 트랜잭션으로 뺐다. 예전에는 둘이 한
+    // 트랜잭션이라, 같은 글을 동시에 읽는 두 요청이 metrics UPDATE에서 충돌해 조회 자체가
+    // 500이 됐다(운영에서 매일 발생, 상세 배경은 CommunityPostViewCounter 클래스 주석 참고).
+    // 조회수는 부수 기능이므로 실패해도 본문 조회를 깨뜨리면 안 된다.
+    //
+    // 이 메서드에 @Transactional을 (readOnly라도) 다시 붙이지 말 것. 붙이면 counter의
+    // REQUIRES_NEW가 바깥 트랜잭션 안에 중첩되어 요청 한 건이 커넥션을 2개씩 잡는다 —
+    // 커넥션 풀(prod 15)이 동시 조회 8건에 고갈돼 이 핫 경로가 통째로 멈춘다. 실제로
+    // CommunityPostRepositoryConcurrencyTest가 이 구성을 타임아웃으로 잡아냈다.
+    // CommunityPost에는 지연 로딩 연관이 하나도 없어(기본 컬럼뿐) 준영속 반환이 안전하다.
     public CommunityPost get(Long postId, Long requesterId) {
         CommunityPost post = findById(postId);
         requireVisible(post, requesterId);
-        communityPostMetricsRepository.incrementViewCount(postId);
+        incrementViewCountQuietly(postId);
         return post;
+    }
+
+    private void incrementViewCountQuietly(Long postId) {
+        try {
+            communityPostViewCounter.increment(postId);
+        } catch (DataAccessException viewCountFailure) {
+            // 조회수 1 손실 < 조회 500. 어떤 DB 예외든 여기서 끝내고 본문은 정상 반환한다.
+            // 조용히 삼키면 회귀를 놓치므로 카운터로 남겨 대시보드에서 추적 가능하게 한다.
+            viewCountDroppedCounter.increment();
+            log.debug("조회수 증가 실패(무시): postId={} cause={}",
+                    postId, viewCountFailure.getMostSpecificCause().toString());
+        }
     }
 
     @Transactional(readOnly = true)

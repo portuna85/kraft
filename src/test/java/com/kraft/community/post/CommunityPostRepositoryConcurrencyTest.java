@@ -110,6 +110,27 @@ class CommunityPostRepositoryConcurrencyTest {
     }
 
     @Test
+    @DisplayName("같은 글을 동시에 상세 조회해도 조회수 증가 충돌로 500이 나지 않는다")
+    void concurrentGet_neverFailsOnViewCountConflict() throws Exception {
+        // 회귀 방지: 예전에는 조회수 증가가 조회와 같은 트랜잭션이라, MariaDB 11.6+의
+        // innodb_snapshot_isolation이 ER_CHECKREAD("Record has changed since last read")를
+        // 던지면서 상세 조회 자체가 500이 됐다. 운영에서 매일 발생했고 동시 10요청 중
+        // 2건이 실패하는 것을 실측했다. 단일 요청 테스트로는 절대 잡히지 않는다.
+        int threadCount = 8;
+
+        List<Object> outcomes = runConcurrentlyAllowingFailure(threadCount,
+                i -> communityPostService.get(postId, null).getId());
+
+        List<Object> failures = outcomes.stream()
+                .filter(o -> o instanceof Throwable)
+                .toList();
+        assertThat(failures)
+                .as("동시 상세 조회는 전부 성공해야 한다 (조회수는 부수 기능)")
+                .isEmpty();
+        assertThat(outcomes).hasSize(threadCount).allSatisfy(o -> assertThat(o).isEqualTo(postId));
+    }
+
+    @Test
     @DisplayName("LIKE 메타문자는 최신순·주간 인기 검색 모두에서 실제 MariaDB 리터럴로 취급된다")
     void searchLikeMetacharacters_areLiteralForEverySort() {
         communityPostService.create(ownerId, "글쓴이", null,
