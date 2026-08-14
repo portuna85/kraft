@@ -73,9 +73,17 @@ validate_oauth_pair "Google" \
 validate_oauth_pair "Naver" \
   KRAFT_COMMUNITY_NAVER_CLIENT_ID KRAFT_COMMUNITY_NAVER_CLIENT_SECRET
 
-if [[ "${KRAFT_ADMIN_ALLOWED_CIDR:-}" == *"0.0.0.0/0"* && "${KRAFT_ALLOW_WORLD_OPEN_ADMIN:-}" != "true" ]]; then
-  echo "ERROR: KRAFT_ADMIN_ALLOWED_CIDR가 전체 개방(0.0.0.0/0)입니다. 의도라면 KRAFT_ALLOW_WORLD_OPEN_ADMIN=true를 명시하세요." >&2
-  error=1
+if [[ "${KRAFT_ALLOW_WORLD_OPEN_ADMIN:-}" != "true" ]]; then
+  if [[ "${KRAFT_ADMIN_ALLOWED_CIDR:-}" == *"0.0.0.0/0"* ]]; then
+    echo "ERROR: KRAFT_ADMIN_ALLOWED_CIDR가 IPv4 전체 개방(0.0.0.0/0)입니다. 의도라면 KRAFT_ALLOW_WORLD_OPEN_ADMIN=true를 명시하세요." >&2
+    error=1
+  fi
+  # TD-006: 0.0.0.0/0만 막고 IPv6 동치(::/0)는 놓치고 있었다 — Caddy의 remote_ip 매처는
+  # 두 표기 모두 이해하므로, 배포 검증도 동일하게 두 표기 모두 거부해야 한다.
+  if [[ "${KRAFT_ADMIN_ALLOWED_CIDR:-}" == *"::/0"* ]]; then
+    echo "ERROR: KRAFT_ADMIN_ALLOWED_CIDR가 IPv6 전체 개방(::/0)입니다. 의도라면 KRAFT_ALLOW_WORLD_OPEN_ADMIN=true를 명시하세요." >&2
+    error=1
+  fi
 fi
 
 # L-5: .env.local.example은 로컬 전용 의도로 admin/admin, local-dev-ops-token 같은
@@ -90,5 +98,19 @@ if [[ "${KRAFT_OPS_TOKEN:-}" == "local-dev-ops-token" ]]; then
   echo "ERROR: KRAFT_OPS_TOKEN이 .env.local.example의 예시값(local-dev-ops-token)입니다. 무작위 값으로 교체하세요." >&2
   error=1
 fi
+
+# TD-005: 예시값 blocklist만으로는 "admin"처럼 짧지만 예시값이 아닌 약한 값을 못 거른다.
+# 값 자체는 로그에 남기지 않고 길이만 검사한다.
+MIN_SECRET_LENGTH=32
+check_min_length() {
+  local var_name="$1"
+  local value="${!var_name:-}"
+  if [[ -n "$value" && ${#value} -lt $MIN_SECRET_LENGTH ]]; then
+    echo "ERROR: $var_name의 길이가 ${MIN_SECRET_LENGTH}자 미만입니다. 무작위로 생성한 긴 값으로 교체하세요." >&2
+    error=1
+  fi
+}
+check_min_length KRAFT_OPS_TOKEN
+check_min_length KRAFT_REVALIDATE_SECRET
 
 [[ $error -eq 0 ]] && echo "OK: all required variables are set" || exit 1

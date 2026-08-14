@@ -70,6 +70,55 @@ class ProdEnvironmentValidatorTest {
                 .hasMessageContaining("KRAFT_PUBLIC_BASE_URL");
     }
 
+    @Test
+    @DisplayName("32자 미만의 시크릿만 약한 값 목록에 포함해야 한다")
+    void weakSecretVariables_returnsOnlyShortSecrets() throws Exception {
+        String strong = "a".repeat(32);
+        ProdEnvironmentValidator validator = validator(
+                "https://kraft.example.com",
+                "https://example.com/lotto?round=%d",
+                "short-secret",
+                strong
+        );
+
+        assertThat(validator.weakSecretVariables()).containsExactly("KRAFT_REVALIDATE_SECRET");
+    }
+
+    @Test
+    @DisplayName("32자 이상의 시크릿이면 약한 값 목록이 비어야 한다")
+    void weakSecretVariables_returnsEmptyWhenStrong() throws Exception {
+        String strong = "a".repeat(32);
+        ProdEnvironmentValidator validator = validator(
+                "https://kraft.example.com",
+                "https://example.com/lotto?round=%d",
+                strong,
+                strong
+        );
+
+        assertThat(validator.weakSecretVariables()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("운영 환경에서 시크릿이 32자 미만이면 시작 시 예외가 발생해야 한다")
+    void validate_prod_throwsOnWeakSecrets() throws Exception {
+        String strong = "a".repeat(32);
+        ProdEnvironmentValidator validator = validator(
+                "https://kraft.example.com",
+                "https://example.com/lotto?round=%d",
+                "short-secret",
+                strong
+        );
+        MockEnvironment prodEnv = new MockEnvironment();
+        prodEnv.addActiveProfile("prod");
+        Field envField = ProdEnvironmentValidator.class.getDeclaredField("environment");
+        envField.setAccessible(true);
+        envField.set(validator, prodEnv);
+
+        assertThatThrownBy(validator::validate)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("KRAFT_REVALIDATE_SECRET");
+    }
+
     private static ProdEnvironmentValidator validator(String publicBaseUrl,
                                                       String externalUrlTemplate,
                                                       String revalidateSecret,

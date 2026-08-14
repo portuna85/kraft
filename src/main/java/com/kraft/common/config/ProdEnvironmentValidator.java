@@ -29,6 +29,11 @@ public class ProdEnvironmentValidator {
         this.opsProperties = opsProperties;
     }
 
+    // TD-005: 배포 스크립트(validate-env.sh)와 동일한 최소 길이 기준. 두 값 모두 저장 없는
+    // 단일 값 비교로 쓰이는 공유 비밀이라(OpsProperties/RevalidateProperties 참고), 짧은
+    // 값은 무작위 대입에 취약하다.
+    private static final int MIN_SECRET_LENGTH = 32;
+
     @PostConstruct
     void validate() {
         if (!Arrays.asList(environment.getActiveProfiles()).contains("prod")) {
@@ -39,6 +44,13 @@ public class ProdEnvironmentValidator {
         if (!missing.isEmpty()) {
             throw new IllegalStateException(
                     "prod profile requires the following environment variables to be set: " + missing);
+        }
+
+        List<String> weak = weakSecretVariables();
+        if (!weak.isEmpty()) {
+            throw new IllegalStateException(
+                    "prod profile requires the following environment variables to be at least "
+                            + MIN_SECRET_LENGTH + " characters long: " + weak);
         }
     }
 
@@ -57,5 +69,16 @@ public class ProdEnvironmentValidator {
             missing.add("KRAFT_OPS_TOKEN");
         }
         return missing;
+    }
+
+    List<String> weakSecretVariables() {
+        List<String> weak = new ArrayList<>();
+        if (revalidateProperties.secret() != null && revalidateProperties.secret().length() < MIN_SECRET_LENGTH) {
+            weak.add("KRAFT_REVALIDATE_SECRET");
+        }
+        if (opsProperties.token() != null && opsProperties.token().length() < MIN_SECRET_LENGTH) {
+            weak.add("KRAFT_OPS_TOKEN");
+        }
+        return weak;
     }
 }
