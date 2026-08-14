@@ -126,7 +126,12 @@ val isolatedLoggingTest = tasks.register<Test>("isolatedLoggingTest") {
     filter {
         includeTestsMatching("com.kraft.common.config.LogbackConfigurationTest")
     }
-    onlyIf { (requestedTestWorkers ?: 1) > 1 }
+    // TD-025: onlyIf가 최상위 requestedTestWorkers를 직접 참조하면 Kotlin이 빌드 스크립트
+    // 인스턴스 전체를 암묵적으로 캡처해 configuration cache 직렬화가 깨진다(확인:
+    // "cannot serialize Gradle script object references"). 값을 로컬 변수로 한 번
+    // 복사해 그 원시값만 캡처되게 한다.
+    val runIsolated = (requestedTestWorkers ?: 1) > 1
+    onlyIf { runIsolated }
     shouldRunAfter(tasks.test)
 }
 
