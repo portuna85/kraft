@@ -5,6 +5,20 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ConfirmDialog, Dialog } from "./dialog";
 
+function ChangingOnCloseHarness({ onCloseWithId }: { onCloseWithId: (id: number) => void }) {
+  const [id, setId] = useState(1);
+  return (
+    <>
+      <button type="button" onClick={() => setId((current) => current + 1)}>
+        id 변경
+      </button>
+      <Dialog open onClose={() => onCloseWithId(id)} title="제목">
+        내용
+      </Dialog>
+    </>
+  );
+}
+
 describe("Dialog", () => {
   it("닫힌 상태에서는 DOM에 아무것도 남기지 않는다", () => {
     render(
@@ -80,6 +94,19 @@ describe("Dialog", () => {
     await userEvent.click(screen.getByRole("button", { name: "확인" }));
 
     expect(document.activeElement).toBe(opener);
+  });
+
+  it("TD-013: 열린 상태로 onClose 클로저가 바뀌어도 Escape는 최신 콜백을 호출한다", async () => {
+    const onCloseWithId = vi.fn();
+    render(<ChangingOnCloseHarness onCloseWithId={onCloseWithId} />);
+
+    // open은 계속 true라 Escape 리스너 effect는 재구독되지 않는다 — 수정 전이었다면
+    // onClose가 마운트 시점 id=1을 캡처한 채로 굳어, Escape가 항상 1만 호출했을 것.
+    await userEvent.click(screen.getByRole("button", { name: "id 변경" }));
+    await userEvent.click(screen.getByRole("button", { name: "id 변경" }));
+    await userEvent.keyboard("{Escape}");
+
+    expect(onCloseWithId).toHaveBeenCalledExactlyOnceWith(3);
   });
 });
 

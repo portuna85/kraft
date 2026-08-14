@@ -2,6 +2,7 @@
 
 import { useEffect, useId, type MouseEvent, type ReactNode } from "react";
 
+import { useEventCallback } from "@/shared/hooks/use-event-callback";
 import { useFocusTrap } from "@/shared/hooks/use-focus-trap";
 
 import { IconButton } from "./button";
@@ -28,17 +29,19 @@ export function Drawer({
 }) {
   const titleId = useId();
   const panelRef = useFocusTrap<HTMLDivElement>(open);
+  // TD-013: dialog.tsx와 동일한 이유 — open이 유지되는 동안 새 onClose가 와도
+  // Escape가 오래된 콜백을 호출하지 않게 안정적인 래퍼를 쓴다.
+  const stableOnClose = useEventCallback(onClose);
 
   useEffect(() => {
     if (!open) return;
 
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") stableOnClose();
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, stableOnClose]);
 
   if (!open) return null;
 

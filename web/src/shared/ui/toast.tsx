@@ -3,6 +3,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
+import { useEventCallback } from "@/shared/hooks/use-event-callback";
+
 import styles from "./overlay.module.css";
 
 /**
@@ -47,12 +49,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 function ToastItem({ message, onExpire }: { message: string; onExpire: () => void }) {
+  // TD-013: onExpire는 매 렌더 새로 만들어지는 인라인 클로저다. 억제된 lint 대신
+  // useEventCallback으로 감싸면, 의도한 실행 시점(마운트 시 1회만 타이머 예약)을
+  // 그대로 유지하면서도 실제 만료 시점엔 항상 최신 onExpire를 호출한다는 게 명시적으로
+  // 보장된다 — 의존성 배열이 비어 있어도 더 이상 "우연히 안전한" 상태가 아니다.
+  const stableOnExpire = useEventCallback(onExpire);
+
   useEffect(() => {
-    const timer = window.setTimeout(onExpire, MIN_VISIBLE_MS);
+    const timer = window.setTimeout(stableOnExpire, MIN_VISIBLE_MS);
     return () => window.clearTimeout(timer);
-    // onExpire는 매 렌더 새로 만들어지므로 의존성에 넣으면 타이머가 계속 리셋된다.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [stableOnExpire]);
 
   return <div className={styles.toast}>{message}</div>;
 }

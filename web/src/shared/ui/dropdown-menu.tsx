@@ -3,6 +3,7 @@
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 
 import { useDisclosure } from "@/shared/hooks/use-disclosure";
+import { useEventCallback } from "@/shared/hooks/use-event-callback";
 
 import styles from "./overlay.module.css";
 
@@ -31,6 +32,10 @@ export function DropdownMenu({
   const { isOpen, close, toggle } = useDisclosure();
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  // TD-013: close는 useDisclosure가 useCallback([])으로 이미 안정적이지만, 그 사실은
+  // useDisclosure의 구현 세부사항이라 이 컴포넌트가 암묵적으로 의존하고 있었다 —
+  // useEventCallback으로 감싸 이 컴포넌트 자체의 안전성이 되게 만든다.
+  const stableClose = useEventCallback(close);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -38,12 +43,11 @@ export function DropdownMenu({
     menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
 
     function onPointerDown(event: PointerEvent) {
-      if (!wrapRef.current?.contains(event.target as Node)) close();
+      if (!wrapRef.current?.contains(event.target as Node)) stableClose();
     }
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, stableClose]);
 
   function onMenuKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key === "Escape") {

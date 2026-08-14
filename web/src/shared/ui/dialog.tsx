@@ -2,6 +2,7 @@
 
 import { useEffect, useId, type MouseEvent } from "react";
 
+import { useEventCallback } from "@/shared/hooks/use-event-callback";
 import { useFocusTrap } from "@/shared/hooks/use-focus-trap";
 
 import { Button, IconButton } from "./button";
@@ -20,19 +21,19 @@ import { InlineAlert } from "./states";
 export function Dialog({ open, onClose, title, size = "md", children }: DialogContract) {
   const titleId = useId();
   const panelRef = useFocusTrap<HTMLDivElement>(open);
+  // TD-013: open이 true로 유지되는 동안 호출부가 새 onClose 클로저를 넘겨도
+  // Escape가 오래된 콜백을 호출하지 않도록 안정적인 래퍼를 통해서만 부른다.
+  const stableOnClose = useEventCallback(onClose);
 
   useEffect(() => {
     if (!open) return;
 
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") stableOnClose();
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-    // onClose를 의존성에 넣으면 호출부가 인라인 화살표 함수를 넘길 때 매 렌더 재구독한다
-    // (레거시 FE-099). 최신 onClose가 필요한 상황이 아니므로 open만 본다.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, stableOnClose]);
 
   if (!open) return null;
 
