@@ -77,7 +77,16 @@ export function opsQuery<T>(path: string, schema: Schema<T>, token: string): Pro
 export function opsMutate<T>(
   path: string,
   schema: Schema<T>,
-  options: { token: string; method: "POST" | "PUT" | "PATCH" | "DELETE"; body?: unknown },
+  options: {
+    token: string;
+    method: "POST" | "PUT" | "PATCH" | "DELETE";
+    body?: unknown;
+    // TD-001: 수동 수집(/ops/collect/*)은 백엔드 재시도 봉투(최악 약 16.5초)가 기본
+    // 5초 상한보다 길어 클라이언트가 먼저 타임아웃되면서 실제로는 성공할 수집을
+    // 실패로 오인시킨다. 다른 ops 호출(summary/logs/rounds)은 기본값을 그대로 쓰고,
+    // 수집 두 호출만 entities/ops/api.ts에서 이 값을 넘겨 확장한다.
+    timeoutMs?: number;
+  },
 ): Promise<T> {
   const hasBody = options.body !== undefined;
   return opsRequest(path, schema, {
@@ -89,6 +98,6 @@ export function opsMutate<T>(
       ...(hasBody ? { "content-type": "application/json" } : {}),
     },
     ...(hasBody ? { body: JSON.stringify(options.body) } : {}),
-    signal: composeAbortSignal(undefined),
+    signal: composeAbortSignal(undefined, options.timeoutMs),
   });
 }
