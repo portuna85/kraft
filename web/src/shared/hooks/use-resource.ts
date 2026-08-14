@@ -58,8 +58,16 @@ function subscribe(key: string, listener: () => void): () => void {
  * 사용자에게 이전 사용자의 데이터가 잠깐 보인다.
  */
 export function invalidateResource(keyPrefix: string): void {
-  for (const key of [...cache.keys()]) {
-    if (key.startsWith(keyPrefix)) cache.delete(key);
+  for (const [key, entry] of [...cache.entries()]) {
+    if (!key.startsWith(keyPrefix)) continue;
+    // TD-012: 캐시에서만 지우고 진행 중인 요청은 그대로 두면, 그 fetch가 백그라운드에서
+    // 계속 돌다가 나중에 응답해 구독 훅 인스턴스의 .then 핸들러를 불필요하게 태운다
+    // (네트워크 낭비 + 오래된 응답이 새 시도를 덮어쓸 가능성). 언마운트 정리 경로(아래
+    // useResource의 cleanup)와 동일하게 abort 후 삭제한다 — settled.attempt !== attempt
+    // 체크가 이미 있어 오래된 응답이 새 시도 상태를 덮어쓰지는 않지만, 애초에 불필요한
+    // 요청 자체를 끊는 것이 목적이다.
+    entry.controller.abort();
+    cache.delete(key);
   }
   for (const [key, set] of listeners) {
     if (key.startsWith(keyPrefix)) {

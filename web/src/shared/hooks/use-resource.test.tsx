@@ -143,4 +143,46 @@ describe("useResource", () => {
 
     expect(observed?.aborted).toBe(true);
   });
+
+  it("TD-012: 진행 중 요청을 무효화하면 그 요청을 끊는다", async () => {
+    let observed: AbortSignal | undefined;
+    const load = (signal: AbortSignal) => {
+      observed = signal;
+      return new Promise<string>(() => {});
+    };
+
+    render(<Probe cacheKey="me:pending" load={load} ttlMs={10_000} />);
+    await screen.findByText("불러오는 중");
+
+    invalidateResource("me:");
+
+    expect(observed?.aborted).toBe(true);
+  });
+
+  it("TD-012: 무효화 후 새 시도는 끊긴 이전 요청의 응답으로 오염되지 않는다", async () => {
+    let firstReject: ((reason: unknown) => void) | undefined;
+    const load = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<string>((_resolve, reject) => {
+            firstReject = reject;
+          }),
+      )
+      .mockResolvedValue("새 값");
+
+    render(<Probe cacheKey="me:race" load={load} ttlMs={10_000} />);
+    await screen.findByText("불러오는 중");
+
+    invalidateResource("me:");
+    await screen.findByText("불러오는 중");
+
+    // 끊긴 첫 번째 요청이 abort 이후 뒤늦게 거부돼도(fetch가 AbortError로 reject하는
+    // 실제 상황을 흉내) 이미 새 시도(attempt)가 진행 중이므로 화면이 에러로 깜빡이지
+    // 않고 새 시도의 결과로만 이어져야 한다.
+    firstReject?.(new DOMException("aborted", "AbortError"));
+
+    expect(await screen.findByText("새 값")).toBeInTheDocument();
+    expect(screen.queryByText(/실패/)).not.toBeInTheDocument();
+  });
 });
