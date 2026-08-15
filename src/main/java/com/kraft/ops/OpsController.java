@@ -1,6 +1,7 @@
 package com.kraft.ops;
 
-import com.kraft.operationlog.WinningNumberOperationLogPageResponse;
+import com.kraft.common.web.PageResponse;
+import com.kraft.operationlog.WinningNumberOperationLogResponse;
 import com.kraft.winningnumber.WinningNumberResponse;
 import com.kraft.winningnumber.WinningNumberUpsertRequest;
 import jakarta.validation.Valid;
@@ -28,7 +29,7 @@ public class OpsController {
     }
 
     @GetMapping("/logs")
-    public WinningNumberOperationLogPageResponse logs(
+    public PageResponse<WinningNumberOperationLogResponse> logs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String operationType,

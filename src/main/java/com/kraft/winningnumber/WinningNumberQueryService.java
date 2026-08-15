@@ -2,6 +2,7 @@ package com.kraft.winningnumber;
 
 import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
+import com.kraft.common.web.PageResponse;
 import java.time.Clock;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -61,17 +62,11 @@ public class WinningNumberQueryService {
                 .orElseThrow(() -> new ApiException(ApiErrorCode.ROUND_NOT_FOUND, "당첨 번호 데이터가 없습니다."));
     }
 
-    public WinningNumberListResponse list(int page, int size) {
+    public PageResponse<WinningNumberResponse> list(int page, int size) {
         int clampedPage = Math.max(0, page);
         int clampedSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
         Page<WinningNumber> result =
                 winningNumberRepository.findAllByOrderByRoundDesc(PageRequest.of(clampedPage, clampedSize));
-        return new WinningNumberListResponse(
-                result.getContent().stream().map(WinningNumberResponse::from).toList(),
-                result.getNumber(),
-                result.getSize(),
-                result.getTotalElements(),
-                result.getTotalPages()
-        );
+        return PageResponse.from(result.map(WinningNumberResponse::from));
     }
 }

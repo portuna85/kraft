@@ -1,5 +1,6 @@
 package com.kraft.operationlog;
 
+import com.kraft.common.web.PageResponse;
 import com.kraft.common.web.RequestIdFilter;
 import com.kraft.winningnumber.WinningNumberCollectionLoggedEvent;
 import com.kraft.winningnumber.WinningNumberOperationType;
@@ -101,7 +102,8 @@ public class WinningNumberOperationLogService {
     }
 
     @Transactional(readOnly = true)
-    public WinningNumberOperationLogPageResponse getRecentLogs(int page, int size, WinningNumberOperationLogFilter filter) {
+    public PageResponse<WinningNumberOperationLogResponse> getRecentLogs(int page, int size,
+                                                                        WinningNumberOperationLogFilter filter) {
         var pageable = PageRequest.of(page, size, Sort.by(
                 Sort.Order.desc("createdAt"),
                 Sort.Order.desc("id")
@@ -125,13 +127,7 @@ public class WinningNumberOperationLogService {
             }
             return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
         }, pageable);
-        return new WinningNumberOperationLogPageResponse(
-                result.getContent().stream().map(WinningNumberOperationLogResponse::from).toList(),
-                result.getNumber(),
-                result.getSize(),
-                result.getTotalElements(),
-                result.getTotalPages()
-        );
+        return PageResponse.from(result.map(WinningNumberOperationLogResponse::from));
     }
 
     @Transactional(readOnly = true)

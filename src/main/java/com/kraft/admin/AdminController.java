@@ -1,10 +1,11 @@
 package com.kraft.admin;
 
 import com.kraft.common.web.ClientIpResolver;
+import com.kraft.common.web.PageResponse;
 import com.kraft.winningnumber.WinningNumberBackfillService;
 import com.kraft.winningnumber.WinningNumberCollectionService;
-import com.kraft.winningnumber.WinningNumberListResponse;
 import com.kraft.winningnumber.WinningNumberQueryService;
+import com.kraft.winningnumber.WinningNumberResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,7 +72,7 @@ public class AdminController {
         // 된다. HTML 관리자 화면이라 400 거부 대신 안전한 값으로 조용히 클램프한다.
         int clampedPage = Math.max(0, page);
         int clampedSize = Math.min(Math.max(1, size), ROUNDS_MAX_PAGE_SIZE);
-        WinningNumberListResponse list = queryService.list(clampedPage, clampedSize);
+        PageResponse<WinningNumberResponse> list = queryService.list(clampedPage, clampedSize);
         var items = list.items().stream().map(AdminRoundView::from).toList();
         model.addAttribute("rounds", new AdminRoundPageView(items, list.page(), list.totalElements(), list.totalPages()));
         return "admin/rounds";

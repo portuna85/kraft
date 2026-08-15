@@ -4,7 +4,7 @@ import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import com.kraft.operationlog.WinningNumberManualUpsertEvent;
 import com.kraft.operationlog.WinningNumberOperationLogFilter;
-import com.kraft.operationlog.WinningNumberOperationLogPageResponse;
+import com.kraft.operationlog.WinningNumberOperationLogResponse;
 import com.kraft.operationlog.WinningNumberOperationLogService;
 import com.kraft.operationlog.WinningNumberOperationStatus;
 import com.kraft.winningnumber.LottoDrawScheduleCalculator;
@@ -16,6 +16,7 @@ import com.kraft.winningnumber.WinningNumberResponse;
 import com.kraft.winningnumber.WinningNumberUpsertRequest;
 import com.kraft.winningnumber.WinningNumberUpsertResult;
 import com.kraft.winningnumber.WinningNumbersCollectedEvent;
+import com.kraft.common.web.PageResponse;
 import com.kraft.common.web.RequestIdFilter;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -93,13 +94,13 @@ public class OpsService {
     }
 
     @Transactional(readOnly = true)
-    public WinningNumberOperationLogPageResponse getRecentOperationLogs(int page,
-                                                                        int size,
-                                                                        String operationType,
-                                                                        String executionStatus,
-                                                                        Integer round,
-                                                                        String from,
-                                                                        String to) {
+    public PageResponse<WinningNumberOperationLogResponse> getRecentOperationLogs(int page,
+                                                                                 int size,
+                                                                                 String operationType,
+                                                                                 String executionStatus,
+                                                                                 Integer round,
+                                                                                 String from,
+                                                                                 String to) {
         int normalizedPage = Math.max(page, 0);
         int normalizedSize = Math.clamp(size, 1, 100);
         WinningNumberOperationLogFilter filter = new WinningNumberOperationLogFilter(
