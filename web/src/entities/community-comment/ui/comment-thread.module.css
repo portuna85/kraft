@@ -10,9 +10,40 @@
 
   .replies {
     margin-top: var(--space-3);
-    /* 들여쓰기는 관계의 시각적 보조일 뿐이다 — 관계 자체는 중첩 <ol>이 전달한다. */
+    /* 들여쓰기는 관계의 시각적 보조일 뿐이다 — 관계 자체는 중첩 <ol>이 전달한다.
+       세로선은 항목마다 L자로 그리므로 목록 자체에는 두지 않는다. */
     padding-inline-start: var(--space-5);
-    border-inline-start: 2px solid var(--color-border);
+  }
+
+  .replies > li {
+    position: relative;
+  }
+
+  /* L자 연결선: 위에서 내려와 모서리에서 부드럽게 꺾여 답글 카드로 붙는다.
+     마지막 답글에서 선이 끊기도록 항목마다 따로 그린다 — 목록에 통짜 세로선을
+     주면 마지막 항목 아래로 선이 남는다. */
+  .replies > li::before {
+    content: "";
+    position: absolute;
+    top: calc(-1 * var(--space-3));
+    left: calc(-1 * var(--space-4));
+    width: var(--space-3);
+    height: calc(var(--space-3) + var(--space-5));
+    border-left: 2px solid var(--color-border);
+    border-bottom: 2px solid var(--color-border);
+    border-bottom-left-radius: var(--radius-sm);
+    pointer-events: none;
+  }
+
+  /* 다음 답글로 이어지는 세로선. 마지막 항목에는 없다. */
+  .replies > li:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: calc(-1 * var(--space-3));
+    bottom: calc(-1 * var(--space-3));
+    left: calc(-1 * var(--space-4));
+    border-left: 2px solid var(--color-border);
+    pointer-events: none;
   }
 
   .item {

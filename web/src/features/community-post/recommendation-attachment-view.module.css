@@ -1,11 +1,13 @@
 @layer components {
+  /* 실물 복권 영수증 메타포. 첨부된 추천 세트는 "글 안에 붙은 티켓"이라
+     본문 카드와 시각적으로 구분돼야 한다. */
   .attachment {
     display: grid;
     gap: var(--space-3);
     padding: var(--space-4);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-surface-2);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-ticket);
   }
 
   .heading {
@@ -14,6 +16,9 @@
   }
 
   .meta {
+    padding-bottom: var(--space-3);
+    /* 영수증 미싱선. 메타 헤더와 조합 본문을 가른다. */
+    border-bottom: 1px dashed var(--color-border);
     font-size: var(--text-sm);
     color: var(--color-ink-muted);
   }

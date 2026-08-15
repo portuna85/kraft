@@ -176,7 +176,14 @@ export function SavedLibrary({ latestRound }: { latestRound: number }) {
                   </Button>
                 </div>
 
-                <LottoBallSet numbers={item.numbers} />
+                <LottoBallSet
+                  numbers={item.numbers}
+                  matchedNumbers={
+                    match !== undefined
+                      ? new Set(item.numbers.filter((value) => match.drawNumbers.includes(value)))
+                      : undefined
+                  }
+                />
 
                 {match !== undefined && (
                   <MatchResultBadge

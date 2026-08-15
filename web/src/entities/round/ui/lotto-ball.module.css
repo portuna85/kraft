@@ -98,6 +98,24 @@
       var(--glow-ball-bonus);
   }
 
+  /* 회차 대조에서 당첨 번호와 일치하는 볼의 강조. outline은 box-shadow와 별개
+     레이어라 구간별 그라디언트 규칙 순서를 신경 쓰지 않아도 항상 보인다. */
+  .matched {
+    outline: 3px solid #f59e0b;
+    outline-offset: 2px;
+    animation: matchPulse 1.4s var(--ease-in-out) infinite;
+  }
+
+  @keyframes matchPulse {
+    0%,
+    100% {
+      outline-color: rgba(245, 158, 11, 0.55);
+    }
+    50% {
+      outline-color: rgba(245, 158, 11, 1);
+    }
+  }
+
   .set {
     display: flex;
     flex-wrap: wrap;

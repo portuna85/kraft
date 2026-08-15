@@ -18,13 +18,21 @@ export function LottoBall({
   value,
   size = "md",
   bonus = false,
+  matched = false,
 }: {
   value: number;
   size?: "sm" | "md" | "lg";
   bonus?: boolean;
+  /** 보관함 회차 대조에서 당첨 번호와 일치하는 볼에 준다 — 장식용 강조라 텍스트
+   * 상태(MatchResultBadge)와 분리해도 정보 손실이 없다. */
+  matched?: boolean;
 }) {
   return (
-    <span className={`${styles.ball} ${styles[size]} ${bonus ? styles.bonus : rangeClass(value)}`}>
+    <span
+      className={`${styles.ball} ${styles[size]} ${bonus ? styles.bonus : rangeClass(value)} ${
+        matched ? styles.matched : ""
+      }`}
+    >
       {value}
     </span>
   );
@@ -41,17 +49,20 @@ export function LottoBallSet({
   numbers,
   bonusNumber,
   size = "md",
+  matchedNumbers,
 }: {
   numbers: readonly number[];
   bonusNumber?: number;
   size?: "sm" | "md" | "lg";
+  /** 이 안에 든 번호(보너스 포함)는 골드 링·펄스로 강조한다. */
+  matchedNumbers?: ReadonlySet<number>;
 }) {
   return (
     <div className={styles.set}>
       <ol className={styles.set}>
         {numbers.map((value) => (
           <li key={value}>
-            <LottoBall value={value} size={size} />
+            <LottoBall value={value} size={size} matched={matchedNumbers?.has(value)} />
           </li>
         ))}
       </ol>
@@ -63,7 +74,12 @@ export function LottoBallSet({
           </span>
           <span className={styles.set}>
             <span className="sr-only">보너스 번호</span>
-            <LottoBall value={bonusNumber} size={size} bonus />
+            <LottoBall
+              value={bonusNumber}
+              size={size}
+              bonus
+              matched={matchedNumbers?.has(bonusNumber)}
+            />
           </span>
         </>
       )}

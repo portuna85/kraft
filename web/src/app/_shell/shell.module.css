@@ -107,7 +107,45 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
 
+  /* 활성 탭을 뒤에서 따라다니는 캡슐. 탭 5개 고정이라 위치는 nth 선택자로 미리
+     정의해 둔다 — data-active-index가 없으면(탭 밖 라우트) 숨긴다. */
+  .indicator {
+    position: absolute;
+    top: var(--space-1);
+    bottom: calc(env(safe-area-inset-bottom) + var(--space-1));
+    left: 0;
+    width: calc(100% / 5);
+    border-radius: var(--radius-pill);
+    background: var(--color-brand-glow);
+    opacity: 0;
+    transition:
+      transform var(--duration-base) var(--ease-out),
+      opacity var(--duration-fast) var(--ease-out);
+  }
+
+  .tabBar[data-active-index="0"] .indicator {
+    opacity: 1;
+    transform: translateX(0%);
+  }
+  .tabBar[data-active-index="1"] .indicator {
+    opacity: 1;
+    transform: translateX(100%);
+  }
+  .tabBar[data-active-index="2"] .indicator {
+    opacity: 1;
+    transform: translateX(200%);
+  }
+  .tabBar[data-active-index="3"] .indicator {
+    opacity: 1;
+    transform: translateX(300%);
+  }
+  .tabBar[data-active-index="4"] .indicator {
+    opacity: 1;
+    transform: translateX(400%);
+  }
+
   .tabLink {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;

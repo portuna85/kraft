@@ -23,6 +23,29 @@
     opacity: 0.55;
   }
 
+  .button:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  /* 좋아요처럼 아이콘 없는 토글 버튼도 눌렀을 때 손맛이 필요하다 — 새 컴포넌트
+     없이 기존 primary 토글 버튼에만 한 번 튀는 연출을 얹는다. aria-pressed가
+     false→true로 바뀔 때만 새로 매칭되는 규칙이라 클릭마다 자연히 재생된다. */
+  .primary[aria-pressed="true"] {
+    animation: togglePop var(--duration-slow) var(--ease-out);
+  }
+
+  @keyframes togglePop {
+    0% {
+      transform: scale(1);
+    }
+    40% {
+      transform: scale(1.12);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
   .sm {
     min-height: var(--target-min);
     padding-inline: var(--space-3);
