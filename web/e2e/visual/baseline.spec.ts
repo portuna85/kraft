@@ -22,6 +22,26 @@ function fileNameOf(path: string): string {
   return path === "/" ? "home" : path.replace(/^\//, "").replace(/\//g, "_");
 }
 
+/**
+ * 시계를 고정한다.
+ *
+ * 홈의 추첨 카운트다운은 `new Date()`로 남은 시간을 계산해 매초 갱신한다. 실제 시각을
+ * 그대로 쓰면 베이스라인을 찍은 다음 초부터 스크린샷이 달라지고, 글자 수까지 바뀌어
+ * ("6일 23시간 59분 59초" ↔ "5분 3초") 좁은 뷰포트에서는 줄바꿈 위치마저 흔들린다 —
+ * 회귀를 잡는 대신 시계를 찍는 테스트가 된다.
+ *
+ * 마스킹 대신 시각을 고정하는 이유: 마스크로 덮으면 그 자리의 스타일 회귀를 영영 못
+ * 잡는다. 고정 시각이면 렌더 결과가 결정적이면서 실제 화면 그대로 남는다.
+ *
+ * 기준 시각은 추첨(토 20:35 KST) 사이 아무 지점이면 된다 — 2026-08-12(수) 09:00 UTC.
+ * `setFixedTime`은 Date만 고정하고 타이머는 건드리지 않아 하이드레이션에 영향이 없다.
+ */
+const FIXED_NOW = new Date("2026-08-12T09:00:00Z");
+
+test.beforeEach(async ({ page }) => {
+  await page.clock.setFixedTime(FIXED_NOW);
+});
+
 for (const { name, path } of ROUTES) {
   test(`${name} — 라이트 모드`, async ({ page }) => {
     await page.goto(path, { waitUntil: "networkidle" });
