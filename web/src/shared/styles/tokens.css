@@ -19,15 +19,18 @@
   --color-surface-2: rgba(248, 251, 255, 0.82);
   --color-surface-3: rgba(255, 255, 255, 0.9);
   --color-surface-solid: #ffffff;
+  --color-surface-ticket: #fafcff;
 
   /* ── 색: 잉크 ─────────────────────────────────────────────── */
   --color-ink: #0b1430;
   --color-ink-muted: #53617e;
+  --color-ink-subtle: #8a99ad;
   --color-ink-on-brand: #ffffff;
 
   /* ── 색: 브랜드·상태 ──────────────────────────────────────── */
   --color-brand: #087ca7;
   --color-brand-strong: #075b88;
+  --color-brand-glow: rgba(8, 124, 167, 0.28);
   --color-success: #1b5e20; /* 대비 7.00:1 */
   --color-warning: #8a5a00; /* 대비 5.27:1 */
   --color-danger: #a6231d; /* 대비 6.48:1 */
@@ -45,6 +48,22 @@
   --color-ball-31-40: #aaaaaa;
   --color-ball-41-45: #b0d840;
   --color-ball-bonus: #168b68;
+
+  /* 3D 입체 쉐이딩용 그라디언트 — 단색 --color-ball-*을 대체하지 않고 덧붙인다.
+     그라디언트를 못 그리는 상황(강제 색상 모드 등)에서는 위 단색이 폴백이 된다. */
+  --gradient-ball-1-10: radial-gradient(circle at 35% 30%, #fde68a 0%, #fbc400 60%, #b45309 100%);
+  --gradient-ball-11-20: radial-gradient(circle at 35% 30%, #bae6fd 0%, #69c8f2 60%, #0369a1 100%);
+  --gradient-ball-21-30: radial-gradient(circle at 35% 30%, #fecaca 0%, #ff7272 60%, #b91c1c 100%);
+  --gradient-ball-31-40: radial-gradient(circle at 35% 30%, #e5e5e5 0%, #aaaaaa 60%, #6b6b6b 100%);
+  --gradient-ball-41-45: radial-gradient(circle at 35% 30%, #a7f3d0 0%, #b0d840 60%, #047857 100%);
+  --gradient-ball-bonus: radial-gradient(circle at 35% 30%, #cffafe 0%, #168b68 60%, #0e7490 100%);
+
+  --glow-ball-1-10: 0 4px 12px rgba(251, 196, 0, 0.35);
+  --glow-ball-11-20: 0 4px 12px rgba(105, 200, 242, 0.35);
+  --glow-ball-21-30: 0 4px 12px rgba(255, 114, 114, 0.35);
+  --glow-ball-31-40: 0 4px 12px rgba(170, 170, 170, 0.35);
+  --glow-ball-41-45: 0 4px 12px rgba(176, 216, 64, 0.35);
+  --glow-ball-bonus: 0 4px 14px rgba(22, 139, 104, 0.45);
 
   /* ── 타이포 ───────────────────────────────────────────────── */
   --font-sans: var(--font-noto-sans-kr), system-ui, sans-serif;
@@ -74,6 +93,7 @@
   --space-16: 64px;
 
   /* ── 형태 ─────────────────────────────────────────────────── */
+  --radius-xs: 4px;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -120,13 +140,16 @@
   --color-surface-2: rgba(255, 255, 255, 0.05);
   --color-surface-3: rgba(255, 255, 255, 0.065);
   --color-surface-solid: #111936;
+  --color-surface-ticket: #131e3d;
 
   --color-ink: #f7f9ff;
   --color-ink-muted: #9aa7c7;
+  --color-ink-subtle: #64748b;
   --color-ink-on-brand: #04101b;
 
   --color-brand: #00e5ff;
   --color-brand-strong: #8ab4ff;
+  --color-brand-glow: rgba(0, 229, 255, 0.35);
   --color-success: #40f0b5;
   --color-warning: #ffd166;
   --color-danger: #ff8b9a;
@@ -136,4 +159,13 @@
 
   --shadow-1: 0 8px 20px rgba(0, 0, 0, 0.28);
   --shadow-2: 0 24px 70px rgba(0, 0, 0, 0.38);
+
+  /* 다크 캔버스 위에서는 드롭 글로우가 잘 보이도록 알파를 올린다 — 그라디언트 자체는
+     조명 방향 표현이라 라이트/다크 공통으로 재사용한다. */
+  --glow-ball-1-10: 0 4px 14px rgba(251, 196, 0, 0.45);
+  --glow-ball-11-20: 0 4px 14px rgba(105, 200, 242, 0.45);
+  --glow-ball-21-30: 0 4px 14px rgba(255, 114, 114, 0.45);
+  --glow-ball-31-40: 0 4px 14px rgba(200, 200, 200, 0.35);
+  --glow-ball-41-45: 0 4px 14px rgba(176, 216, 64, 0.45);
+  --glow-ball-bonus: 0 4px 16px rgba(22, 139, 104, 0.55);
 }

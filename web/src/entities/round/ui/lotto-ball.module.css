@@ -10,6 +10,19 @@
     /* 볼 색 위 텍스트는 흰색만으로는 대비가 안 나오는 구간이 있다(노랑·연두).
        구간별로 잉크 색을 따로 준다 — 색 대비는 장식이 아니라 판독의 문제다. */
     color: #14203c;
+
+    /* 3D 입체 쉐이딩: 상단 좌측 빛 반사 + 하단 우측 음영. 배경 자체(그라디언트)와는
+       별개 레이어라 구간마다 다시 정의할 필요가 없다. */
+    box-shadow:
+      inset -2px -3px 5px rgba(0, 0, 0, 0.22),
+      inset 2px 2px 4px rgba(255, 255, 255, 0.65);
+    transition:
+      transform var(--duration-fast) var(--ease-out),
+      box-shadow var(--duration-fast) var(--ease-out);
+  }
+
+  .ball:hover {
+    transform: translateY(-2px) scale(1.05);
   }
 
   .sm {
@@ -32,27 +45,57 @@
 
   .r1 {
     background: var(--color-ball-1-10);
+    background: var(--gradient-ball-1-10);
+    box-shadow:
+      inset -2px -3px 5px rgba(0, 0, 0, 0.22),
+      inset 2px 2px 4px rgba(255, 255, 255, 0.65),
+      var(--glow-ball-1-10);
   }
 
   .r2 {
     background: var(--color-ball-11-20);
+    background: var(--gradient-ball-11-20);
+    box-shadow:
+      inset -2px -3px 5px rgba(0, 0, 0, 0.22),
+      inset 2px 2px 4px rgba(255, 255, 255, 0.65),
+      var(--glow-ball-11-20);
   }
 
   .r3 {
     background: var(--color-ball-21-30);
+    background: var(--gradient-ball-21-30);
+    box-shadow:
+      inset -2px -3px 5px rgba(0, 0, 0, 0.22),
+      inset 2px 2px 4px rgba(255, 255, 255, 0.65),
+      var(--glow-ball-21-30);
   }
 
   .r4 {
     background: var(--color-ball-31-40);
+    background: var(--gradient-ball-31-40);
+    box-shadow:
+      inset -2px -3px 5px rgba(0, 0, 0, 0.22),
+      inset 2px 2px 4px rgba(255, 255, 255, 0.65),
+      var(--glow-ball-31-40);
   }
 
   .r5 {
     background: var(--color-ball-41-45);
+    background: var(--gradient-ball-41-45);
+    box-shadow:
+      inset -2px -3px 5px rgba(0, 0, 0, 0.22),
+      inset 2px 2px 4px rgba(255, 255, 255, 0.65),
+      var(--glow-ball-41-45);
   }
 
   .bonus {
     background: var(--color-ball-bonus);
+    background: var(--gradient-ball-bonus);
     color: #ffffff;
+    box-shadow:
+      inset -2px -3px 5px rgba(0, 0, 0, 0.22),
+      inset 2px 2px 4px rgba(255, 255, 255, 0.65),
+      var(--glow-ball-bonus);
   }
 
   .set {
