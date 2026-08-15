@@ -4,8 +4,7 @@ import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import com.kraft.community.block.CommunityBlockService;
 import com.kraft.community.post.CommunityPost;
-import com.kraft.community.post.CommunityPostRepository;
-import com.kraft.community.post.PostStatus;
+import com.kraft.community.post.CommunityPostAccessValidator;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
@@ -27,7 +26,7 @@ public class CommunityReactionService {
     private static final Logger log = LoggerFactory.getLogger(CommunityReactionService.class);
     private static final int UNLIKE_MAX_ATTEMPTS = 3;
 
-    private final CommunityPostRepository communityPostRepository;
+    private final CommunityPostAccessValidator communityPostAccessValidator;
     private final CommunityPostLikeRepository communityPostLikeRepository;
     private final CommunityPostBookmarkRepository communityPostBookmarkRepository;
     private final CommunityBlockService communityBlockService;
@@ -36,14 +35,14 @@ public class CommunityReactionService {
     private final Counter likeCreatedCounter;
     private final Counter bookmarkCreatedCounter;
 
-    public CommunityReactionService(CommunityPostRepository communityPostRepository,
+    public CommunityReactionService(CommunityPostAccessValidator communityPostAccessValidator,
                                      CommunityPostLikeRepository communityPostLikeRepository,
                                      CommunityPostBookmarkRepository communityPostBookmarkRepository,
                                      CommunityBlockService communityBlockService,
                                      CommunityReactionWriter communityReactionWriter,
                                      Clock clock,
                                      MeterRegistry meterRegistry) {
-        this.communityPostRepository = communityPostRepository;
+        this.communityPostAccessValidator = communityPostAccessValidator;
         this.communityPostLikeRepository = communityPostLikeRepository;
         this.communityPostBookmarkRepository = communityPostBookmarkRepository;
         this.communityBlockService = communityBlockService;
@@ -57,20 +56,6 @@ public class CommunityReactionService {
                 .description("생성된 반응(좋아요/북마크) 수")
                 .tag("type", "bookmark")
                 .register(meterRegistry);
-    }
-
-    /**
-     * B-P0-5: 대상 게시글이 존재하고 공개(PUBLISHED) 상태인지 먼저 확인한다 — 이전에는 존재
-     * 검증 없이 바로 insert해 FK 위반으로 500이 나거나, 숨김·삭제된 글에도 반응을 남길 수 있었다.
-     */
-    private CommunityPost requireVisiblePost(Long postId) {
-        CommunityPost post = communityPostRepository.findById(postId)
-                .orElseThrow(() -> new ApiException(ApiErrorCode.COMMUNITY_POST_NOT_FOUND,
-                        "게시글을 찾을 수 없습니다."));
-        if (post.getStatus() != PostStatus.PUBLISHED) {
-            throw new ApiException(ApiErrorCode.COMMUNITY_POST_NOT_FOUND, "게시글을 찾을 수 없습니다.");
-        }
-        return post;
     }
 
     /**
@@ -101,7 +86,7 @@ public class CommunityReactionService {
      * 성공했는데 그 뒤 커밋이 실패하면 좋아요 행은 있고 집계는 반영 안 되는 드리프트가 가능했다.
      */
     public void like(Long postId, Long userId) {
-        CommunityPost post = requireVisiblePost(postId);
+        CommunityPost post = communityPostAccessValidator.requireVisible(postId);
         requireNotBlocked(userId, post.getOwnerId());
         if (communityPostLikeRepository.findByPostIdAndUserId(postId, userId).isEmpty()) {
             try {
@@ -146,7 +131,7 @@ public class CommunityReactionService {
 
     /** KB-02: like()와 같은 이유로 insert 시도를 CommunityReactionWriter의 REQUIRES_NEW에 위임한다. */
     public void bookmark(Long postId, Long userId) {
-        CommunityPost post = requireVisiblePost(postId);
+        CommunityPost post = communityPostAccessValidator.requireVisible(postId);
         requireNotBlocked(userId, post.getOwnerId());
         if (communityPostBookmarkRepository.findByPostIdAndUserId(postId, userId).isEmpty()) {
             try {

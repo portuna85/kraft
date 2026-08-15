@@ -5,8 +5,7 @@ import com.kraft.common.error.ApiException;
 import com.kraft.community.block.CommunityBlockService;
 import com.kraft.community.post.CommunityPost;
 import com.kraft.community.post.CommunityPostMetricsRepository;
-import com.kraft.community.post.CommunityPostRepository;
-import com.kraft.community.post.PostStatus;
+import com.kraft.community.post.CommunityPostAccessValidator;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
@@ -33,7 +32,7 @@ public class CommunityCommentService {
     public static final int DEFAULT_PAGE_SIZE = 50;
 
     private final CommunityCommentRepository communityCommentRepository;
-    private final CommunityPostRepository communityPostRepository;
+    private final CommunityPostAccessValidator communityPostAccessValidator;
     private final CommunityPostMetricsRepository communityPostMetricsRepository;
     private final CommunityBlockService communityBlockService;
     private final Clock clock;
@@ -41,13 +40,13 @@ public class CommunityCommentService {
     private final Counter createdCounter;
 
     public CommunityCommentService(CommunityCommentRepository communityCommentRepository,
-                                    CommunityPostRepository communityPostRepository,
+                                    CommunityPostAccessValidator communityPostAccessValidator,
                                     CommunityPostMetricsRepository communityPostMetricsRepository,
                                     CommunityBlockService communityBlockService,
                                     Clock clock,
                                     MeterRegistry meterRegistry) {
         this.communityCommentRepository = communityCommentRepository;
-        this.communityPostRepository = communityPostRepository;
+        this.communityPostAccessValidator = communityPostAccessValidator;
         this.communityPostMetricsRepository = communityPostMetricsRepository;
         this.communityBlockService = communityBlockService;
         this.clock = clock;
@@ -65,7 +64,7 @@ public class CommunityCommentService {
      */
     @Transactional(readOnly = true)
     public CommunityCommentListResult list(Long postId, int page, int size) {
-        requireVisiblePost(postId);
+        communityPostAccessValidator.requireVisible(postId);
 
         int clampedPage = Math.max(0, page);
         int clampedSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
@@ -82,13 +81,14 @@ public class CommunityCommentService {
 
     /**
      * KB-01: 게시글이 존재하고 공개(PUBLISHED) 상태인지 먼저 확인한다 — list()(B-P0-7)·
-     * CommunityReactionService.requireVisiblePost()와 동일한 404 계약. 이전에는 존재만
-     * 확인해 숨김·삭제된 글의 postId로도 댓글을 남기고 commentCount를 증가시킬 수 있었다.
+     * 반응(B-P0-5)과 동일한 404 계약이라 {@link CommunityPostAccessValidator}가 소유한다.
+     * 이전에는 존재만 확인해 숨김·삭제된 글의 postId로도 댓글을 남기고 commentCount를
+     * 증가시킬 수 있었다.
      */
     @Transactional
     public CommunityCommentCreationResult create(Long ownerId, String authorNickname, Long postId,
                                                    CreateCommentRequest request) {
-        CommunityPost post = requireVisiblePost(postId);
+        CommunityPost post = communityPostAccessValidator.requireVisible(postId);
         // C-1: 차단은 저장·조회만 될 뿐 쓰기 경로를 막지 않았다 — 서로 차단한 사이라면
         // 어느 쪽이 차단했든 댓글을 달 수 없게 한다(표시 필터링과 별개로 서버가 강제).
         if (communityBlockService.isBlockedEitherWay(ownerId, post.getOwnerId())) {
@@ -160,17 +160,5 @@ public class CommunityCommentService {
         communityCommentRepository.saveAndFlush(comment);
         communityPostMetricsRepository.decrementCommentCount(comment.getPostId());
         tombstoneCounter.increment();
-    }
-
-    // L-1: list()·create() 둘 다 같은 존재+공개 상태 확인을 각자 인라인으로 갖고 있었다
-    // (B-P0-7/KB-01) — CommunityReactionService.requireVisiblePost()와 동일한 404 계약.
-    private CommunityPost requireVisiblePost(Long postId) {
-        CommunityPost post = communityPostRepository.findById(postId)
-                .orElseThrow(() -> new ApiException(ApiErrorCode.COMMUNITY_POST_NOT_FOUND,
-                        "게시글을 찾을 수 없습니다."));
-        if (post.getStatus() != PostStatus.PUBLISHED) {
-            throw new ApiException(ApiErrorCode.COMMUNITY_POST_NOT_FOUND, "게시글을 찾을 수 없습니다.");
-        }
-        return post;
     }
 }

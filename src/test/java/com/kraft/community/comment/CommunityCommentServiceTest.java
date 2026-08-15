@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import com.kraft.common.error.ApiException;
 import com.kraft.community.block.CommunityBlockService;
 import com.kraft.community.post.CommunityPost;
+import com.kraft.community.post.CommunityPostAccessValidator;
 import com.kraft.community.post.CommunityPostMetricsRepository;
 import com.kraft.community.post.CommunityPostRepository;
 import com.kraft.community.post.PostCategory;
@@ -57,7 +58,10 @@ class CommunityCommentServiceTest {
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(Instant.parse("2026-07-24T00:00:00Z"), ZoneOffset.UTC);
-        service = new CommunityCommentService(communityCommentRepository, communityPostRepository,
+        // 목이 아니라 진짜 validator를 끼운다 — 아래 테스트들이 findById 스텁으로 404 계약을
+        // 검증하고 있어서, validator를 목으로 바꾸면 그 검증이 통째로 무력화된다.
+        service = new CommunityCommentService(communityCommentRepository,
+                new CommunityPostAccessValidator(communityPostRepository),
                 communityPostMetricsRepository, communityBlockService, clock, new SimpleMeterRegistry());
     }
 
