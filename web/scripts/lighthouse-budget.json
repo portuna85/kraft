@@ -6,7 +6,7 @@
     "minPerformanceScore": 90
   },
   "/recommend": {
-    "maxLcpMs": 311,
+    "maxLcpMs": 278,
     "maxClsScore": 0.05,
     "maxTbtMs": 0,
     "minPerformanceScore": 90
@@ -30,7 +30,7 @@
     "minPerformanceScore": 85
   },
   "/community/posts/1": {
-    "maxLcpMs": 240,
+    "maxLcpMs": 228,
     "maxClsScore": 0.051,
     "maxTbtMs": 0,
     "minPerformanceScore": 90
