@@ -29,10 +29,35 @@
     fill: var(--color-brand);
   }
 
+  /* 히트맵: 기대값을 넘긴 번호는 브랜드 색, 못 미친 번호는 차분한 뮤트 톤 —
+     색만으로 전달하지 않는다. 값(회)이 항상 텍스트로 붙어 있다(§ FrequencyBar 주석). */
+  .fillHigh {
+    fill: var(--color-brand);
+  }
+
+  .fillLow {
+    fill: var(--color-ink-subtle);
+  }
+
   /* 기대값 마커. 이 선이 없으면 막대 길이는 "많다/적다"를 말하지 못한다. */
   .baseline {
     stroke: var(--color-ink-muted);
     stroke-width: 2;
+  }
+
+  .baselineDot {
+    fill: var(--color-ink-muted);
+    animation: baselinePulse 1.8s var(--ease-in-out) infinite;
+  }
+
+  @keyframes baselinePulse {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 1;
+    }
   }
 
   .number {

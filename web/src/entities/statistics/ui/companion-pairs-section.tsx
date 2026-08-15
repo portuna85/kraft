@@ -48,11 +48,12 @@ export function CompanionPairsSection({
           </tr>
         </thead>
         <tbody>
-          {visible.map((pair) => (
+          {visible.map((pair, index) => (
             <CompanionPairRow
               key={`${pair.ballA}-${pair.ballB}`}
               pair={pair}
               totalRounds={totalRounds}
+              rank={index + 1}
             />
           ))}
         </tbody>

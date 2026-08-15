@@ -28,7 +28,9 @@ export function FrequencyBar({
 }) {
   const scale = maxFrequency === 0 ? 0 : VIEWBOX_WIDTH / maxFrequency;
   const fillWidth = Math.max(frequency * scale, 0);
-  const baselineX = expectedFrequency(totalRounds) * scale;
+  const expected = expectedFrequency(totalRounds);
+  const baselineX = expected * scale;
+  const isAboveExpected = frequency > expected;
 
   return (
     <li className={styles.row}>
@@ -43,8 +45,16 @@ export function FrequencyBar({
         aria-hidden="true"
       >
         <rect className={styles.track} x="0" y="0" width={VIEWBOX_WIDTH} height="12" rx="6" />
-        <rect className={styles.fill} x="0" y="0" width={fillWidth} height="12" rx="6" />
+        <rect
+          className={`${styles.fill} ${isAboveExpected ? styles.fillHigh : styles.fillLow}`}
+          x="0"
+          y="0"
+          width={fillWidth}
+          height="12"
+          rx="6"
+        />
         <line className={styles.baseline} x1={baselineX} x2={baselineX} y1="-2" y2="14" />
+        <circle className={styles.baselineDot} cx={baselineX} cy="6" r="2.4" />
       </svg>
 
       <span className={styles.value}>{frequency}회</span>

@@ -107,7 +107,14 @@ export default async function FrequencyPage({
 
       <div className={styles.extremes}>
         <Card as="section" level={2}>
-          <h2>가장 많이 나온 6개</h2>
+          <h2>
+            가장 많이 나온 6개
+            {stats.topSix.wonFirstPrize && (
+              <span className={styles.trophy} aria-hidden="true">
+                🏆
+              </span>
+            )}
+          </h2>
           <LottoBallSet numbers={stats.topSix.balls.map((ball) => ball.ballNumber)} />
           <p>
             {stats.topSix.wonFirstPrize

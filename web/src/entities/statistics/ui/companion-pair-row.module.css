@@ -4,4 +4,44 @@
     align-items: center;
     gap: var(--space-2);
   }
+
+  /* 순위는 정렬 순서 자체가 말한다(CompanionPairRow 주석) — 메달은 상위 3개 행을
+     눈으로 더 빠르게 짚는 장식일 뿐, "몇 위"라는 텍스트는 별도로 붙이지 않는다. */
+  .medal {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: var(--radius-pill);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    color: var(--color-ink-on-brand);
+  }
+
+  .medal1 {
+    background: linear-gradient(135deg, #fde68a 0%, #f59e0b 100%);
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+  }
+
+  .medal2 {
+    background: linear-gradient(135deg, #e5e7eb 0%, #9ca3af 100%);
+    box-shadow: 0 0 8px rgba(156, 163, 175, 0.4);
+  }
+
+  .medal3 {
+    background: linear-gradient(135deg, #fbbf9a 0%, #c2703d 100%);
+    box-shadow: 0 0 8px rgba(194, 112, 61, 0.4);
+  }
+
+  .ratioChip {
+    display: inline-flex;
+    align-items: center;
+    padding-inline: var(--space-2);
+    border-radius: var(--radius-pill);
+    background: var(--color-surface-2);
+    color: var(--color-brand-strong);
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+  }
 }
