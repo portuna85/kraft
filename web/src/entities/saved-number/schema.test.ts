@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { components } from "@/generated/api-types";
 
 import {
+  isTopPrize,
   isWinning,
   NO_PRIZE_TIER,
   saveNumberResultSchema,
@@ -95,5 +96,20 @@ describe("당첨 여부 판정", () => {
   it("그 외 등수 문자열은 당첨으로 본다", () => {
     expect(isWinning("1등")).toBe(true);
     expect(isWinning("5등")).toBe(true);
+  });
+});
+
+describe("축하 연출 대상 등수", () => {
+  it("1~3등만 축하 대상이다", () => {
+    expect(isTopPrize("1등")).toBe(true);
+    expect(isTopPrize("2등")).toBe(true);
+    expect(isTopPrize("3등")).toBe(true);
+  });
+
+  it("4·5등과 낙첨에는 연출을 틀지 않는다", () => {
+    expect(isTopPrize("4등")).toBe(false);
+    expect(isTopPrize("5등")).toBe(false);
+    expect(isTopPrize(NO_PRIZE_TIER)).toBe(false);
+    expect(isTopPrize("")).toBe(false);
   });
 });

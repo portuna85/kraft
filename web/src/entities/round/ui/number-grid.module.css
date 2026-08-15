@@ -45,14 +45,16 @@
     background: var(--color-surface-2);
     color: var(--color-ink-muted);
     text-decoration: line-through;
-    overflow: hidden;
   }
 
-  /* 45도 빗금 오버레이 — 셀 배경 위에 얹는 장식 레이어라 숫자·뱃지와 별개로 그린다. */
+  /* 45도 빗금 오버레이 — 셀 배경 위에 얹는 장식 레이어라 숫자·뱃지와 별개로 그린다.
+     셀에 overflow:hidden을 걸면 모서리 밖으로 나가는 뱃지까지 잘리므로, 빗금 쪽에만
+     같은 라운딩을 줘서 스스로 모양을 맞춘다. */
   .excluded::before {
     content: "";
     position: absolute;
     inset: 0;
+    border-radius: inherit;
     background: repeating-linear-gradient(
       45deg,
       transparent 0 4px,

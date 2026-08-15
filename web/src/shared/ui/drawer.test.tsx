@@ -108,6 +108,58 @@ describe("Drawer", () => {
     expect(document.activeElement).toBe(opener);
   });
 
+  describe("바텀시트 스와이프", () => {
+    /** jsdom에는 포인터 캡처가 없다. 제스처 판정만 검증하면 되므로 no-op으로 채운다. */
+    function renderBottomDrawer(onClose: () => void) {
+      render(
+        <Drawer open onClose={onClose} title="제목" side="bottom">
+          내용
+        </Drawer>,
+      );
+
+      const handle = document.querySelector<HTMLDivElement>('[aria-hidden="true"][class]');
+      if (handle === null) throw new Error("드래그 핸들을 찾지 못했다");
+      handle.setPointerCapture = () => undefined;
+      return handle;
+    }
+
+    function swipe(handle: HTMLElement, deltaY: number) {
+      handle.dispatchEvent(
+        new PointerEvent("pointerdown", { bubbles: true, clientY: 0, pointerId: 1 }),
+      );
+      handle.dispatchEvent(
+        new PointerEvent("pointerup", { bubbles: true, clientY: deltaY, pointerId: 1 }),
+      );
+    }
+
+    it("아래로 충분히 끌면 닫는다", () => {
+      const onClose = vi.fn();
+      swipe(renderBottomDrawer(onClose), 120);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("조금만 움직이면 닫지 않는다 — 스크롤과 구분한다", () => {
+      const onClose = vi.fn();
+      swipe(renderBottomDrawer(onClose), 20);
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it("위로 끄는 동작으로는 닫지 않는다", () => {
+      const onClose = vi.fn();
+      swipe(renderBottomDrawer(onClose), -120);
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it("옆에서 나오는 드로어에는 핸들이 없다", () => {
+      render(
+        <Drawer open onClose={vi.fn()} title="제목" side="right">
+          내용
+        </Drawer>,
+      );
+      expect(document.querySelector('[aria-hidden="true"][class]')).toBeNull();
+    });
+  });
+
   it("TD-013: 열린 상태로 onClose 클로저가 바뀌어도 Escape는 최신 콜백을 호출한다", async () => {
     const onCloseWithId = vi.fn();
     render(<ChangingOnCloseHarness onCloseWithId={onCloseWithId} />);

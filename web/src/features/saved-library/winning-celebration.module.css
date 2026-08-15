@@ -1,0 +1,94 @@
+@layer components {
+  /* 화면 위를 덮되 클릭을 가로채지 않는다 — 축하 연출이 삭제·대조 버튼을 막으면
+     장식이 기능을 이긴다. */
+  .confetti {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-overlay);
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .piece {
+    position: absolute;
+    top: -16px;
+    width: 8px;
+    height: 14px;
+    border-radius: var(--radius-xs);
+    animation: confettiFall 2.4s var(--ease-in-out) forwards;
+  }
+
+  /* 12조각의 출발 위치·색·지연을 미리 적는다. 랜덤 값을 인라인 style로 주면
+     style-src에서 'unsafe-inline'을 뺄 수 없다(§20.3). */
+  .piece:nth-child(1) {
+    left: 6%;
+    background: var(--color-ball-1-10);
+    animation-delay: 0ms;
+  }
+  .piece:nth-child(2) {
+    left: 14%;
+    background: var(--color-ball-21-30);
+    animation-delay: 180ms;
+  }
+  .piece:nth-child(3) {
+    left: 23%;
+    background: var(--color-ball-11-20);
+    animation-delay: 60ms;
+  }
+  .piece:nth-child(4) {
+    left: 31%;
+    background: var(--color-ball-41-45);
+    animation-delay: 320ms;
+  }
+  .piece:nth-child(5) {
+    left: 39%;
+    background: var(--color-ball-bonus);
+    animation-delay: 120ms;
+  }
+  .piece:nth-child(6) {
+    left: 47%;
+    background: var(--color-ball-1-10);
+    animation-delay: 420ms;
+  }
+  .piece:nth-child(7) {
+    left: 55%;
+    background: var(--color-ball-21-30);
+    animation-delay: 240ms;
+  }
+  .piece:nth-child(8) {
+    left: 63%;
+    background: var(--color-ball-11-20);
+    animation-delay: 500ms;
+  }
+  .piece:nth-child(9) {
+    left: 71%;
+    background: var(--color-ball-41-45);
+    animation-delay: 80ms;
+  }
+  .piece:nth-child(10) {
+    left: 79%;
+    background: var(--color-ball-bonus);
+    animation-delay: 360ms;
+  }
+  .piece:nth-child(11) {
+    left: 87%;
+    background: var(--color-ball-1-10);
+    animation-delay: 200ms;
+  }
+  .piece:nth-child(12) {
+    left: 94%;
+    background: var(--color-ball-21-30);
+    animation-delay: 460ms;
+  }
+
+  @keyframes confettiFall {
+    0% {
+      opacity: 1;
+      transform: translateY(0) rotate(0deg);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(100vh) rotate(540deg);
+    }
+  }
+}

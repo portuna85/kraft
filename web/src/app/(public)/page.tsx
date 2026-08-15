@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 
 import { getLatestRound } from "@/entities/round/api";
+import { DrawCountdown } from "@/entities/round/ui/draw-countdown";
 import { LottoBallSet } from "@/entities/round/ui/lotto-ball";
 import { NONCE_HEADER } from "@/shared/config/csp";
 import { publicEnv } from "@/shared/config/env";
@@ -69,6 +70,8 @@ export default async function HomePage() {
             <span className={styles.prizeValue}>{formatPrize(latest.secondPrize)}</span>
           </p>
         </div>
+
+        <DrawCountdown nextRound={latest.round + 1} />
       </section>
 
       <nav className={styles.actions} aria-label="주요 기능">

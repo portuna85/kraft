@@ -16,7 +16,9 @@
     border-radius: var(--radius-pill);
     font-size: var(--text-xs);
     font-weight: 700;
-    color: var(--color-ink-on-brand);
+    /* 밝은 금/은/동 그라디언트 위에서는 흰 글자가 묻힌다 — 테마와 무관하게
+       어두운 잉크로 고정한다(배경도 테마와 무관한 고정 그라디언트다). */
+    color: #14203c;
   }
 
   .medal1 {

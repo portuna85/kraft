@@ -39,21 +39,19 @@
     fill: var(--color-ink-subtle);
   }
 
-  /* 기대값 마커. 이 선이 없으면 막대 길이는 "많다/적다"를 말하지 못한다. */
+  /* 기대값 마커. 이 선이 없으면 막대 길이는 "많다/적다"를 말하지 못한다.
+     펄스는 선 자체에 준다 — SVG가 preserveAspectRatio="none"이라 원을 그리면
+     가로로 늘어나 점이 아니라 뭉개진 막대가 된다. */
   .baseline {
     stroke: var(--color-ink-muted);
     stroke-width: 2;
-  }
-
-  .baselineDot {
-    fill: var(--color-ink-muted);
     animation: baselinePulse 1.8s var(--ease-in-out) infinite;
   }
 
   @keyframes baselinePulse {
     0%,
     100% {
-      opacity: 0.55;
+      opacity: 0.5;
     }
     50% {
       opacity: 1;

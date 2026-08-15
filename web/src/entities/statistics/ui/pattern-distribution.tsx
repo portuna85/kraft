@@ -42,6 +42,9 @@ export function PatternDistribution({
         {buckets.map((bucket) => {
           const share = total === 0 ? 0 : (bucket.count / total) * 100;
           const fillWidth = maxCount === 0 ? 0 : (bucket.count / maxCount) * VIEWBOX_WIDTH;
+          // 최빈 구간 하이라이트. 어느 구간이 봉우리인지는 각 화면의 안내 문장이
+          // 이미 말하고 있고(describePeak), 이건 그 문장을 표에서 눈으로 찾게 돕는다.
+          const isPeak = maxCount > 0 && bucket.count === maxCount;
 
           return (
             <tr key={bucket.bucketKey}>
@@ -62,9 +65,18 @@ export function PatternDistribution({
                       height="8"
                       rx="4"
                     />
-                    <rect className={styles.fill} x="0" y="0" width={fillWidth} height="8" rx="4" />
+                    <rect
+                      className={`${styles.fill} ${isPeak ? styles.fillPeak : ""}`}
+                      x="0"
+                      y="0"
+                      width={fillWidth}
+                      height="8"
+                      rx="4"
+                    />
                   </svg>
-                  <span className={styles.count}>{bucket.count}회</span>
+                  <span className={`${styles.count} ${isPeak ? styles.countPeak : ""}`}>
+                    {bucket.count}회
+                  </span>
                 </span>
               </td>
               <td>{share.toFixed(1)}%</td>

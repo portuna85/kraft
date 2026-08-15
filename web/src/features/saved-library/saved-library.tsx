@@ -11,7 +11,11 @@ import {
   matchAccountSavedNumbers,
   matchDeviceSavedNumbers,
 } from "@/entities/saved-number/api";
-import type { SavedNumber, SavedNumberMatch } from "@/entities/saved-number/schema";
+import {
+  isTopPrize,
+  type SavedNumber,
+  type SavedNumberMatch,
+} from "@/entities/saved-number/schema";
 import { MatchResultBadge } from "@/entities/saved-number/ui/match-result-badge";
 import { canQueryOwnerScope, useSession } from "@/entities/user-session/session-context";
 import { ROUTES } from "@/shared/config/routes";
@@ -22,6 +26,7 @@ import { EmptyState, ErrorState } from "@/shared/ui/states";
 import { Card } from "@/shared/ui/surface";
 
 import styles from "./library.module.css";
+import { WinningCelebration } from "./winning-celebration";
 
 /**
  * 보관함
@@ -45,11 +50,13 @@ export function SavedLibrary({ latestRound }: { latestRound: number }) {
   const [deleteTarget, setDeleteTarget] = useState<SavedNumber | null>(null);
   const [deletePending, setDeletePending] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [celebrating, setCelebrating] = useState(false);
 
   const load = useCallback(async () => {
     setLoadError(false);
     // 로그인 상태가 바뀌면 대조 결과도 의미가 없어진다.
     setMatches(null);
+    setCelebrating(false);
     try {
       setItems(loggedIn ? await listAccountSavedNumbers() : await listDeviceSavedNumbers());
     } catch {
@@ -82,6 +89,9 @@ export function SavedLibrary({ latestRound }: { latestRound: number }) {
         ? await matchAccountSavedNumbers(String(round))
         : await matchDeviceSavedNumbers(String(round));
       setMatches(new Map(results.map((result) => [result.savedNumber.id, result])));
+      // 축하 연출은 대조를 눌러 결과가 막 나온 순간에만 튼다. 목록을 다시 그릴
+      // 때마다 재생하면 삭제 한 번에도 콘페티가 쏟아진다.
+      setCelebrating(results.some((result) => isTopPrize(result.prizeTier)));
     } catch {
       setMatches(null);
     } finally {
@@ -138,6 +148,8 @@ export function SavedLibrary({ latestRound }: { latestRound: number }) {
 
   return (
     <div className="stack">
+      {celebrating && <WinningCelebration />}
+
       <div className={styles.compare}>
         <label className={styles.roundLabel} htmlFor="round">
           대조할 회차

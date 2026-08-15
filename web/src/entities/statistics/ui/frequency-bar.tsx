@@ -53,8 +53,17 @@ export function FrequencyBar({
           height="12"
           rx="6"
         />
-        <line className={styles.baseline} x1={baselineX} x2={baselineX} y1="-2" y2="14" />
-        <circle className={styles.baselineDot} cx={baselineX} cy="6" r="2.4" />
+        {/* preserveAspectRatio="none"는 stroke까지 가로로 늘린다 — 기대값 선이 2px가
+            아니라 20px 두께의 뭉툭한 덩어리로 보이던 원인이다. non-scaling-stroke는
+            선 두께만 변환에서 빼낸다. */}
+        <line
+          className={styles.baseline}
+          x1={baselineX}
+          x2={baselineX}
+          y1="-2"
+          y2="14"
+          vectorEffect="non-scaling-stroke"
+        />
       </svg>
 
       <span className={styles.value}>{frequency}회</span>

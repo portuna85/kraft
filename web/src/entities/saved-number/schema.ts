@@ -60,3 +60,10 @@ export const NO_PRIZE_TIER = "낙첨";
 export function isWinning(tier: string): boolean {
   return tier !== NO_PRIZE_TIER && tier !== "";
 }
+
+/** 축하 연출을 틀 만한 등수. 4·5등까지 콘페티를 쏘면 연출이 싸구려가 된다. */
+const TOP_PRIZE_TIERS: readonly string[] = ["1등", "2등", "3등"];
+
+export function isTopPrize(tier: string): boolean {
+  return TOP_PRIZE_TIERS.includes(tier);
+}
