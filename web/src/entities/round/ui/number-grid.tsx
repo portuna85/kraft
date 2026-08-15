@@ -77,6 +77,16 @@ export function NumberGrid({
             data-active={index === activeIndex || undefined}
           >
             {value}
+            {mark === "locked" && (
+              <span className={styles.badge} aria-hidden="true">
+                ★
+              </span>
+            )}
+            {mark === "excluded" && (
+              <span className={styles.badge} aria-hidden="true">
+                ✕
+              </span>
+            )}
           </button>
         );
       })}

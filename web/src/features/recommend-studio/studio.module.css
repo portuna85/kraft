@@ -54,10 +54,43 @@
 
   .results > li {
     padding-block: var(--space-3);
+    /* 슬롯이 맞춰지는 듯한 등장 연출. 매 "조합 만들기" 클릭마다 이 <li>들은 새로
+       마운트되는 요소라 별도 트리거 없이 애니메이션이 자연히 재생된다. */
+    animation: resultEnter var(--duration-slow) var(--ease-out) backwards;
+  }
+
+  .results > li:nth-child(1) {
+    animation-delay: 0ms;
+  }
+  .results > li:nth-child(2) {
+    animation-delay: 60ms;
+  }
+  .results > li:nth-child(3) {
+    animation-delay: 120ms;
+  }
+  .results > li:nth-child(4) {
+    animation-delay: 180ms;
+  }
+  .results > li:nth-child(5) {
+    animation-delay: 240ms;
+  }
+  .results > li:nth-child(n + 6) {
+    animation-delay: 300ms;
   }
 
   .results > li + li {
     border-top: 1px solid var(--color-border);
+  }
+
+  @keyframes resultEnter {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
   }
 
   .resultAction {

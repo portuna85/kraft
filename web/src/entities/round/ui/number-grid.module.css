@@ -7,6 +7,7 @@
 
   .cell {
     display: flex;
+    position: relative;
     align-items: center;
     justify-content: center;
     min-width: var(--target-min);
@@ -17,19 +18,67 @@
     color: var(--color-ink);
     font-variant-numeric: tabular-nums;
     cursor: pointer;
+    transition:
+      transform var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out),
+      background var(--duration-fast) var(--ease-out);
   }
 
-  /* 상태는 색만으로 전달하지 않는다 — 각 셀의 aria-label이 "고정"·"제외"를 말한다. */
+  .cell:hover {
+    border-color: var(--color-brand);
+    transform: scale(1.05);
+  }
+
+  /* 상태는 색만으로 전달하지 않는다 — 각 셀의 aria-label이 "고정"·"제외"를 말하고,
+     별(★)·엑스(✕) 뱃지가 시각적으로도 색맹/색약 사용자에게 동일한 정보를 준다. */
   .locked {
-    background: var(--color-brand);
+    background: linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-strong) 100%);
     border-color: var(--color-brand);
     color: var(--color-ink-on-brand);
     font-weight: 700;
+    box-shadow: 0 0 12px var(--color-brand-glow);
   }
 
   .excluded {
+    position: relative;
+    border: 1px dashed var(--color-danger);
     background: var(--color-surface-2);
     color: var(--color-ink-muted);
     text-decoration: line-through;
+    overflow: hidden;
+  }
+
+  /* 45도 빗금 오버레이 — 셀 배경 위에 얹는 장식 레이어라 숫자·뱃지와 별개로 그린다. */
+  .excluded::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      45deg,
+      transparent 0 4px,
+      rgba(166, 35, 29, 0.18) 4px 5px
+    );
+    pointer-events: none;
+  }
+
+  .badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: var(--radius-pill);
+    background: var(--color-surface-solid);
+    color: var(--color-danger);
+    font-size: 10px;
+    line-height: 1;
+    box-shadow: var(--shadow-1);
+  }
+
+  .locked .badge {
+    color: var(--color-warning);
   }
 }
