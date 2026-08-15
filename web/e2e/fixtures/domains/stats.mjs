@@ -12,6 +12,8 @@ export const LATEST_ROUND = {
   firstAccumAmount: 2_100_000_000,
 };
 
+export const BASE_LATEST_ROUND = { ...LATEST_ROUND };
+
 function ball(ballNumber) {
   return { ballNumber, frequency: 150 + (ballNumber % 7), lastRound: 1150 - (ballNumber % 30) };
 }

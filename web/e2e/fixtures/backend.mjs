@@ -45,6 +45,20 @@ const server = createServer(async (request, response) => {
   }
   if (url.pathname === "/__test__/reset" && method === "POST") {
     forcedFailurePath = null;
+    Object.assign(stats.LATEST_ROUND, stats.BASE_LATEST_ROUND);
+    response.statusCode = 204;
+    response.end();
+    return;
+  }
+  if (url.pathname === "/__test__/latest" && method === "PUT") {
+    const round = Number(url.searchParams.get("round"));
+    const drawDate = url.searchParams.get("drawDate");
+    if (!Number.isInteger(round) || drawDate === null) {
+      response.statusCode = 400;
+      response.end(JSON.stringify({ code: "INVALID_TEST_INPUT" }));
+      return;
+    }
+    Object.assign(stats.LATEST_ROUND, { round, drawDate });
     response.statusCode = 204;
     response.end();
     return;

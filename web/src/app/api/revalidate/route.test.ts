@@ -56,8 +56,8 @@ describe("POST /api/revalidate", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(cacheMocks.revalidateTag).toHaveBeenNthCalledWith(1, "rounds:latest", "max");
-    expect(cacheMocks.revalidateTag).toHaveBeenNthCalledWith(2, "stats:all", "max");
+    expect(cacheMocks.revalidateTag).toHaveBeenNthCalledWith(1, "rounds:latest", { expire: 0 });
+    expect(cacheMocks.revalidateTag).toHaveBeenNthCalledWith(2, "stats:all", { expire: 0 });
     expect(cacheMocks.revalidatePath).toHaveBeenNthCalledWith(1, "/");
     expect(cacheMocks.revalidatePath).toHaveBeenNthCalledWith(2, "/frequency");
     await expect(response.json()).resolves.toEqual({

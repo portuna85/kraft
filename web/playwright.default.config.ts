@@ -48,6 +48,7 @@ export default defineConfig({
         KRAFT_PUBLIC_BASE_URL: BASE_URL,
         KRAFT_BACKEND_INTERNAL_URL: `http://127.0.0.1:${BACKEND_PORT}`,
         KRAFT_OPS_ALLOWED_HOST: "127.0.0.1",
+        KRAFT_REVALIDATE_SECRET: "e2e-revalidate-secret",
       },
     },
   ],
