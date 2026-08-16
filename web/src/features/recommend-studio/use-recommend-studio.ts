@@ -85,7 +85,11 @@ export function useRecommendStudio({ loggedIn }: { loggedIn: boolean }) {
     (value: number) => {
       const mark = marks.get(value) ?? "none";
 
-      if (mark !== selectionMode && selectionMode === "locked" && lockedNumbers.length >= MAX_LOCKED_NUMBERS) {
+      if (
+        mark !== selectionMode &&
+        selectionMode === "locked" &&
+        lockedNumbers.length >= MAX_LOCKED_NUMBERS
+      ) {
         // I-27: 화면 요약(고정 X/5)은 있었지만 정적 텍스트라 값이 안 바뀌면 live
         // region이 재공지하지 않는다 — 거부된 번호 자체를 상태로 남겨 매 거부마다
         // 문구가 바뀌게 한다.

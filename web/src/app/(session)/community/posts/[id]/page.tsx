@@ -7,7 +7,11 @@ import { getPost } from "@/entities/community-post/api";
 import { CATEGORY_LABELS, isTombstone } from "@/entities/community-post/schema";
 import { ReportDialog } from "@/entities/community-report/ui/report-dialog";
 import { CommentSection } from "@/features/community-comments/comment-section";
-import { BlockButton, BlockedPostGate, ReportGate } from "@/features/community-post/blocked-post-gate";
+import {
+  BlockButton,
+  BlockedPostGate,
+  ReportGate,
+} from "@/features/community-post/blocked-post-gate";
 import { PostOwnerActions } from "@/features/community-post/post-owner-actions";
 import { ReactionBar } from "@/features/community-post/reaction-bar";
 import { RecommendationAttachmentView } from "@/features/community-post/recommendation-attachment-view";

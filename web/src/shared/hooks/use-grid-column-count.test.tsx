@@ -38,7 +38,9 @@ describe("useGridColumnCount", () => {
     vi.stubGlobal("ResizeObserver", MockResizeObserver);
     window.getComputedStyle = ((el: Element) =>
       el instanceof HTMLElement && el.dataset.testid === "grid"
-        ? ({ gridTemplateColumns: Array(mockColumnCount).fill("44px").join(" ") } as CSSStyleDeclaration)
+        ? ({
+            gridTemplateColumns: Array(mockColumnCount).fill("44px").join(" "),
+          } as CSSStyleDeclaration)
         : realGetComputedStyle(el)) as typeof window.getComputedStyle;
   });
 

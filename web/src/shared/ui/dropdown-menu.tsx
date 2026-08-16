@@ -95,7 +95,11 @@ export function DropdownMenu({
           {items.map((item) => (
             <div key={item.label}>
               {item.separatorBefore === true && (
-                <hr className={styles.menuSeparator} role="separator" aria-orientation="horizontal" />
+                <hr
+                  className={styles.menuSeparator}
+                  role="separator"
+                  aria-orientation="horizontal"
+                />
               )}
               {"href" in item ? (
                 // OAuth 등 전체 페이지 이동이 필요한 항목 — onClick으로 fetch하면 안 된다.

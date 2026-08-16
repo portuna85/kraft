@@ -87,7 +87,8 @@
        동시 노출된 sticky 광고)에 가려지지 않게 예약한다. footer는 main 뒤에 오므로
        스크롤 끝에서 이 여백이 없으면 마지막 링크가 탭바 뒤에 숨는다. */
     padding-bottom: calc(
-      var(--space-8) + var(--layout-tabbar-h) + env(safe-area-inset-bottom) + var(--fixed-bottom-inset, 0px)
+      var(--space-8) + var(--layout-tabbar-h) + env(safe-area-inset-bottom) +
+        var(--fixed-bottom-inset, 0px)
     );
   }
 

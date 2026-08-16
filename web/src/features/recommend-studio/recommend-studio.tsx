@@ -222,10 +222,10 @@ export function RecommendStudio() {
                               보이면 구분이 안 되어 톤을 분리한다. */}
                           <div className={styles.saveStatus} role="status">
                             {outcome?.kind === "saved" && (
-                              <Badge tone="success" label="저장했습니다" />
+                              <Badge tone="success" label="저장했습니다." />
                             )}
                             {outcome?.kind === "duplicate" && (
-                              <Badge tone="neutral" label="이미 저장한 조합입니다" />
+                              <Badge tone="neutral" label="이미 저장한 조합입니다." />
                             )}
                             {outcome?.kind === "failed" && (
                               <span className={styles.saveError}>{outcome.message}</span>

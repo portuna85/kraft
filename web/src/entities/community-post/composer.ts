@@ -61,7 +61,12 @@ export function updatePost(
   return browserMutate(`/api/v1/community/posts/${postId}`, communityPostSchema, {
     method: "PUT",
     // I-23: 분류도 함께 보낸다 — 백엔드 UpdatePostRequest가 이제 category를 받는다.
-    body: { title: values.title, content: values.content, category: values.category, expectedVersion },
+    body: {
+      title: values.title,
+      content: values.content,
+      category: values.category,
+      expectedVersion,
+    },
   });
 }
 

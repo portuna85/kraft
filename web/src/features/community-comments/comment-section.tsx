@@ -127,7 +127,12 @@ export function CommentSection({
       <h2 id="comments">원댓글 {total}개</h2>
 
       {loggedIn ? (
-        <CommentForm postId={postId} parentId={null} onDone={handleCommentCreated} label="댓글 작성" />
+        <CommentForm
+          postId={postId}
+          parentId={null}
+          onDone={handleCommentCreated}
+          label="댓글 작성"
+        />
       ) : (
         <p className={styles.note}>로그인하면 댓글을 남길 수 있습니다.</p>
       )}
