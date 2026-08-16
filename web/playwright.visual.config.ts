@@ -13,6 +13,11 @@ import { defineConfig, devices } from "@playwright/test";
  * maxDiffPixelRatio 0.002는 web-legacy의 playwright.visual.config.ts에서 실측으로 정한
  * 값을 그대로 가져왔다 — 0.02는 강조색 전체 변경도 못 잡았고, 0(기본값)은 같은 CI
  * 러너에서도 안티에일리어싱 노이즈로 매번 깨졌다.
+ *
+ * I-08: 로컬에서 CI와 같은 렌더링 결과를 재현하려면(디버깅 목적 — 여전히 그 결과를
+ * 베이스라인으로 커밋하지 않는다) `npm run test:e2e:visual:docker`로 이 CI 잡과 같은
+ * 고정 이미지를 그대로 쓴다. `scripts/check-visual-baseline-platform.sh`가 CI에서
+ * `*-linux.png`가 아닌 스냅샷이 커밋되면 실패시킨다.
  */
 const PORT = 3113;
 const BACKEND_PORT = 4113;

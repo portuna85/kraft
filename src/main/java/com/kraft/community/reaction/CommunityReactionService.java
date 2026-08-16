@@ -1,5 +1,6 @@
 package com.kraft.community.reaction;
 
+import com.kraft.common.concurrency.TransientWriteRetrier;
 import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import com.kraft.community.block.CommunityBlockService;
@@ -12,18 +13,15 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
 public class CommunityReactionService {
 
-    private static final Logger log = LoggerFactory.getLogger(CommunityReactionService.class);
     private static final int UNLIKE_MAX_ATTEMPTS = 3;
 
     private final CommunityPostAccessValidator communityPostAccessValidator;
@@ -31,6 +29,7 @@ public class CommunityReactionService {
     private final CommunityPostBookmarkRepository communityPostBookmarkRepository;
     private final CommunityBlockService communityBlockService;
     private final CommunityReactionWriter communityReactionWriter;
+    private final TransientWriteRetrier transientWriteRetrier;
     private final Clock clock;
     private final Counter likeCreatedCounter;
     private final Counter bookmarkCreatedCounter;
@@ -40,6 +39,7 @@ public class CommunityReactionService {
                                      CommunityPostBookmarkRepository communityPostBookmarkRepository,
                                      CommunityBlockService communityBlockService,
                                      CommunityReactionWriter communityReactionWriter,
+                                     TransientWriteRetrier transientWriteRetrier,
                                      Clock clock,
                                      MeterRegistry meterRegistry) {
         this.communityPostAccessValidator = communityPostAccessValidator;
@@ -47,6 +47,7 @@ public class CommunityReactionService {
         this.communityPostBookmarkRepository = communityPostBookmarkRepository;
         this.communityBlockService = communityBlockService;
         this.communityReactionWriter = communityReactionWriter;
+        this.transientWriteRetrier = transientWriteRetrier;
         this.clock = clock;
         this.likeCreatedCounter = Counter.builder("kraft_community_reaction_created_total")
                 .description("생성된 반응(좋아요/북마크) 수")
@@ -113,20 +114,16 @@ public class CommunityReactionService {
      * 드물게 "Record has changed since last read"(에러 1020)를 던질 수 있는데, 매
      * 재시도가 REQUIRES_NEW 덕에 완전히 새 트랜잭션이라 안전하게 다시 시도할 수 있다
      * (delete는 멱등, 감산은 count > 0 가드가 있어 재시도해도 이중 감산되지 않는다).
+     *
+     * <p>I-15: 이 메서드 자체는 이제 트랜잭션을 시작하지 않는다({@code NOT_SUPPORTED}) —
+     * 재시도 사이의 {@code Thread.sleep}이 바깥 트랜잭션의 커넥션을 붙잡고 있지 않게
+     * 하기 위해서다. 원자성은 {@code TransientWriteRetrier}가 감싸는 deleteLike 자체의
+     * {@code REQUIRES_NEW}가 그대로 보장한다.
      */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void unlike(Long postId, Long userId) {
-        for (int attempt = 1; attempt <= UNLIKE_MAX_ATTEMPTS; attempt++) {
-            try {
-                communityReactionWriter.deleteLike(postId, userId);
-                return;
-            } catch (DataAccessException raceLostAfterDelete) {
-                if (attempt == UNLIKE_MAX_ATTEMPTS) {
-                    throw raceLostAfterDelete;
-                }
-                log.debug("unlike 경합으로 재시도: postId={} attempt={}", postId, attempt);
-                sleepBriefly(attempt);
-            }
-        }
+        transientWriteRetrier.retry("community_unlike", UNLIKE_MAX_ATTEMPTS,
+                () -> communityReactionWriter.deleteLike(postId, userId));
     }
 
     /** KB-02: like()와 같은 이유로 insert 시도를 CommunityReactionWriter의 REQUIRES_NEW에 위임한다. */
@@ -145,15 +142,6 @@ public class CommunityReactionService {
 
     public void unbookmark(Long postId, Long userId) {
         communityPostBookmarkRepository.deleteByPostIdAndUserId(postId, userId);
-    }
-
-    // 동시 재시도가 곧바로 다시 충돌하지 않도록 시도 횟수에 비례한 짧은 무작위 지연을 둔다.
-    private void sleepBriefly(int attempt) {
-        try {
-            Thread.sleep((long) (Math.random() * 10 * attempt));
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
     }
 
     @Transactional(readOnly = true)

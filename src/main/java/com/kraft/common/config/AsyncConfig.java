@@ -1,5 +1,8 @@
 package com.kraft.common.config;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
 import org.springframework.context.annotation.Bean;
@@ -13,9 +16,11 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 public class AsyncConfig implements AsyncConfigurer {
 
     private final AsyncFailureMonitor asyncFailureMonitor;
+    private final MeterRegistry meterRegistry;
 
-    public AsyncConfig(AsyncFailureMonitor asyncFailureMonitor) {
+    public AsyncConfig(AsyncFailureMonitor asyncFailureMonitor, MeterRegistry meterRegistry) {
         this.asyncFailureMonitor = asyncFailureMonitor;
+        this.meterRegistry = meterRegistry;
     }
 
     @Override
@@ -34,9 +39,25 @@ public class AsyncConfig implements AsyncConfigurer {
         ex.setAwaitTerminationSeconds(30);
         // 큐 포화 시 기본 AbortPolicy는 이벤트를 조용히 유실한다.
         // CallerRuns는 발행 스레드에서 동기 처리해 유실 없이 역압을 전파한다.
-        ex.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        // I-16: executor.queued/executor.active 게이지(AsyncMetricsIntegrationTest)는
+        // "지금" 상태만 보여준다 — 포화가 실제로 몇 번 발생했는지(발행 스레드가 몇 번
+        // 대신 실행했는지)는 별도 카운터 없이는 알 수 없었다. CallerRunsPolicy를 감싸
+        // 발동할 때마다 센다.
+        Counter callerRunsCounter = Counter.builder("kraft_async_caller_runs_total")
+                .description("이벤트 실행기 포화로 발행 스레드가 대신 실행한 횟수(CallerRunsPolicy 발동 수)")
+                .tag("executor", "eventTaskExecutor")
+                .register(meterRegistry);
+        ex.setRejectedExecutionHandler(countingCallerRunsPolicy(callerRunsCounter));
         ex.initialize();
         return ex;
+    }
+
+    private static RejectedExecutionHandler countingCallerRunsPolicy(Counter counter) {
+        RejectedExecutionHandler delegate = new ThreadPoolExecutor.CallerRunsPolicy();
+        return (task, executor) -> {
+            counter.increment();
+            delegate.rejectedExecution(task, executor);
+        };
     }
 
     /**

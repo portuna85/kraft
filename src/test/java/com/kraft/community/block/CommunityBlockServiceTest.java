@@ -1,7 +1,9 @@
 package com.kraft.community.block;
 
+import com.kraft.common.concurrency.TransientWriteRetrier;
 import com.kraft.common.error.ApiException;
 import com.kraft.community.user.CommunityUserRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -38,7 +40,9 @@ class CommunityBlockServiceTest {
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(Instant.parse("2026-07-28T00:00:00Z"), ZoneOffset.UTC);
-        service = new CommunityBlockService(communityUserBlockRepository, communityUserRepository, clock);
+        TransientWriteRetrier transientWriteRetrier = new TransientWriteRetrier(new SimpleMeterRegistry());
+        service = new CommunityBlockService(
+                communityUserBlockRepository, communityUserRepository, transientWriteRetrier, clock);
     }
 
     @Test
@@ -95,7 +99,7 @@ class CommunityBlockServiceTest {
     @Test
     @DisplayName("차단 목록은 차단한 사용자 ID만 반환한다")
     void blockedUserIds_returnsBlockedIds() {
-        given(communityUserBlockRepository.findByBlockerUserId(1L)).willReturn(List.of(
+        given(communityUserBlockRepository.findTop100ByBlockerUserIdOrderByCreatedAtDesc(1L)).willReturn(List.of(
                 new CommunityUserBlock(1L, 2L, Instant.now().atOffset(ZoneOffset.UTC)),
                 new CommunityUserBlock(1L, 3L, Instant.now().atOffset(ZoneOffset.UTC))));
 

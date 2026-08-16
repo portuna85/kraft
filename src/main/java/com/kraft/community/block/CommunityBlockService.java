@@ -1,33 +1,34 @@
 package com.kraft.community.block;
 
+import com.kraft.common.concurrency.TransientWriteRetrier;
 import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import com.kraft.community.user.CommunityUserRepository;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
 public class CommunityBlockService {
 
-    private static final Logger log = LoggerFactory.getLogger(CommunityBlockService.class);
     private static final int BLOCK_MAX_ATTEMPTS = 3;
 
     private final CommunityUserBlockRepository communityUserBlockRepository;
     private final CommunityUserRepository communityUserRepository;
+    private final TransientWriteRetrier transientWriteRetrier;
     private final Clock clock;
 
     public CommunityBlockService(CommunityUserBlockRepository communityUserBlockRepository,
                                   CommunityUserRepository communityUserRepository,
+                                  TransientWriteRetrier transientWriteRetrier,
                                   Clock clock) {
         this.communityUserBlockRepository = communityUserBlockRepository;
         this.communityUserRepository = communityUserRepository;
+        this.transientWriteRetrier = transientWriteRetrier;
         this.clock = clock;
     }
 
@@ -41,7 +42,13 @@ public class CommunityBlockService {
      * 키를 두고 여러 요청이 경합하면 MariaDB가 드물게 SnapshotIsolationException을 던질 수
      * 있는데, 매 재시도가 REQUIRES_NEW 덕에 완전히 새 트랜잭션이라 안전하게 다시 시도할 수
      * 있다(upsert 자체가 멱등이라 재시도해도 중복 행이 생기지 않는다).
+     *
+     * <p>I-15: 이 메서드 자체는 이제 트랜잭션을 시작하지 않는다({@code NOT_SUPPORTED}) —
+     * 재시도 사이의 {@code Thread.sleep}이 바깥 트랜잭션의 커넥션을 붙잡고 있지 않게
+     * 하기 위해서다. 원자성은 {@code TransientWriteRetrier}가 감싸는 upsertBlock 자체의
+     * {@code REQUIRES_NEW}가 그대로 보장한다.
      */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void block(Long blockerUserId, Long blockedUserId) {
         if (blockerUserId.equals(blockedUserId)) {
             throw new ApiException(ApiErrorCode.COMMUNITY_SELF_BLOCK_NOT_ALLOWED,
@@ -51,29 +58,8 @@ public class CommunityBlockService {
             throw new ApiException(ApiErrorCode.COMMUNITY_USER_NOT_FOUND, "사용자를 찾을 수 없습니다.");
         }
 
-        for (int attempt = 1; attempt <= BLOCK_MAX_ATTEMPTS; attempt++) {
-            try {
-                communityUserBlockRepository.upsertBlock(blockerUserId, blockedUserId, OffsetDateTime.now(clock));
-                return;
-            } catch (DataAccessException raceLost) {
-                if (attempt == BLOCK_MAX_ATTEMPTS) {
-                    throw raceLost;
-                }
-                log.debug("block 경합으로 재시도: blockerUserId={} blockedUserId={} attempt={}",
-                        blockerUserId, blockedUserId, attempt);
-                sleepBriefly(attempt);
-            }
-        }
-    }
-
-    // 동시 재시도가 곧바로 다시 충돌하지 않도록 시도 횟수에 비례한 짧은 무작위 지연을 둔다
-    // (CommunityReactionService.sleepBriefly와 동일한 이유).
-    private void sleepBriefly(int attempt) {
-        try {
-            Thread.sleep((long) (Math.random() * 10 * attempt));
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        transientWriteRetrier.retry("community_block", BLOCK_MAX_ATTEMPTS,
+                () -> communityUserBlockRepository.upsertBlock(blockerUserId, blockedUserId, OffsetDateTime.now(clock)));
     }
 
     /** 멱등 — 차단돼 있지 않아도 그냥 성공(204)으로 처리한다. */
@@ -81,9 +67,11 @@ public class CommunityBlockService {
         communityUserBlockRepository.deleteByBlockerUserIdAndBlockedUserId(blockerUserId, blockedUserId);
     }
 
+    // I-17: /me/interactions의 postIds 상한(100, KB-10)과 맞춘다 — 무제한 전체
+    // 목록을 매 페이지 로드마다 내려보내지 않는다.
     @Transactional(readOnly = true)
     public List<Long> blockedUserIds(Long blockerUserId) {
-        return communityUserBlockRepository.findByBlockerUserId(blockerUserId).stream()
+        return communityUserBlockRepository.findTop100ByBlockerUserIdOrderByCreatedAtDesc(blockerUserId).stream()
                 .map(CommunityUserBlock::getBlockedUserId)
                 .toList();
     }

@@ -18,6 +18,14 @@ public interface CommunityUserBlockRepository extends JpaRepository<CommunityUse
 
     List<CommunityUserBlock> findByBlockerUserId(Long blockerUserId);
 
+    /**
+     * I-17: {@code /me/blocked-users}가 무제한 전체 목록을 반환하던 것을 막는다 —
+     * {@code /me/interactions}의 {@code postIds} 상한(100, KB-10)과 같은 값으로 맞춘다.
+     * 프런트는 이 ID 목록을 차단 여부 필터링(Set 멤버십 확인)에만 쓰고 "차단 관리" 화면을
+     * 별도로 렌더하지 않으므로, 페이지네이션이 아니라 최신 순 상한이면 충분하다.
+     */
+    List<CommunityUserBlock> findTop100ByBlockerUserIdOrderByCreatedAtDesc(Long blockerUserId);
+
     void deleteByBlockerUserIdOrBlockedUserId(Long blockerUserId, Long blockedUserId);
 
     void deleteByBlockerUserIdAndBlockedUserId(Long blockerUserId, Long blockedUserId);

@@ -92,6 +92,7 @@ jobs:
         run: |
           bash scripts/check-no-removed-features.sh
           bash scripts/check-env-drift.sh
+          bash scripts/check-visual-baseline-platform.sh
           node scripts/check-container-hardening.mjs
           node scripts/check-photo-asset-metadata.mjs
 
@@ -156,6 +157,46 @@ jobs:
           --build-cache
           --no-daemon
 
+  # I-06: 백엔드 의존성 취약점 스캔(SCA). npm 쪽은 web-next-build-test의 npm audit이
+  # 담당한다. NVD 데이터 디렉터리를 주 단위로 캐싱해 콜드 스타트(첫 실행, 캐시 미스)만
+  # 느리고 이후는 빠르다. NVD_API_KEY 시크릿이 없어도 동작하되 rate-limit이 심해 콜드
+  # 캐시일 때 특히 느리다 — 필요하면 추후 시크릿을 추가하면 된다(코드 변경 불필요).
+  dependency-check:
+    name: Dependency Vulnerability Scan (backend)
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          java-version: "25"
+          distribution: temurin
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - name: Compute cache week key
+        id: cache-week
+        run: echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
+      - name: Restore NVD data cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .dependency-check-data
+          key: dependency-check-nvd-${{ steps.cache-week.outputs.week }}
+          restore-keys: |
+            dependency-check-nvd-
+      - name: Run OWASP Dependency-Check
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: ./gradlew dependencyCheckAnalyze --no-daemon
+      - name: Upload dependency-check report
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dependency-check-report
+          path: build/reports/dependency-check-report.html
+          if-no-files-found: ignore
+          retention-days: 14
+
   web-next-build-test:
     name: Web Next Build & Test
     runs-on: ubuntu-latest
@@ -173,6 +214,10 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci --prefer-offline --no-audit --no-fund
+      # I-06: npm ci 자체는 --no-audit로 빠르게 설치만 하고, 취약점 스캔은 별도
+      # 단계로 분리해 실패 메시지를 명확히 구분한다(설치 실패 vs 취약점 발견).
+      - name: Audit npm dependencies (high/critical only)
+        run: npm audit --omit=dev --audit-level=high
       - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck
@@ -728,6 +773,7 @@ jobs:
       - repository-guards
       - backend-build-test
       - static-analysis
+      - dependency-check
       - web-next-build-test
       - web-next-e2e-proxy
       - web-next-e2e-default
@@ -750,6 +796,7 @@ jobs:
           GUARDS_RESULT: ${{ needs.repository-guards.result }}
           BACKEND_RESULT: ${{ needs.backend-build-test.result }}
           STATIC_RESULT: ${{ needs.static-analysis.result }}
+          DEPENDENCY_CHECK_RESULT: ${{ needs.dependency-check.result }}
           API_RESULT: ${{ needs.api-types-drift-guard.result }}
           WEB_NEXT_RESULT: ${{ needs.web-next-build-test.result }}
           WEB_NEXT_PROXY_RESULT: ${{ needs.web-next-e2e-proxy.result }}
@@ -775,6 +822,7 @@ jobs:
           if [[ "$BACKEND_CHANGED" == "true" ]]; then
             require_success "Backend" "$BACKEND_RESULT"
             require_success "Static analysis" "$STATIC_RESULT"
+            require_success "Dependency vulnerability scan" "$DEPENDENCY_CHECK_RESULT"
             require_success "API type drift" "$API_RESULT"
           fi
           if [[ "$WEB_CHANGED" == "true" ]]; then

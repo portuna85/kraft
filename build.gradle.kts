@@ -5,6 +5,7 @@ plugins {
     checkstyle
     id("com.github.spotbugs") version "6.5.10"
     id("info.solidsoft.pitest") version "1.19.0"
+    id("org.owasp.dependencycheck") version "13.0.0"
 }
 
 group = "com.kraft"
@@ -198,4 +199,23 @@ pitest {
     // 2026-08-03 로컬 측정 실제 점수 93%(63/68 killed) — 약간의 여유를 두되 유의미한
     // 하락은 잡도록 설정한다.
     mutationThreshold = 85
+}
+
+// ── 의존성 취약점 스캔 (I-06) ──────────────────────────────────────────────────
+// npm 쪽은 web/에서 별도로 `npm audit`을 돌린다(루트에 lockfile이 없어 여기서는 대상이
+// 없다). 여기는 Gradle(백엔드) 의존성 그래프를 NVD 데이터베이스와 대조한다.
+// NVD_API_KEY 환경변수가 없으면 동작은 하지만 요청이 심하게 rate-limit돼 콜드 캐시
+// 상태에서 매우 느리다(수십 분) — CI는 데이터 디렉터리를 캐싱해 첫 실행 이후는 빠르다.
+// NVD_API_KEY 시크릿을 추가하면 처음부터 빠르게 캐시가 채워진다(https://nvd.nist.gov/developers/request-an-api-key).
+dependencyCheck {
+    formats = listOf("HTML", "JSON")
+    // CVSS 7.0 이상(High/Critical)만 빌드를 실패시킨다 — Low/Medium은 리포트에만 남긴다.
+    failBuildOnCVSS = 7.0f
+    suppressionFiles = listOf("$rootDir/config/dependency-check/suppressions.xml")
+    nvd {
+        apiKey = System.getenv("NVD_API_KEY")
+    }
+    data {
+        directory = "$rootDir/.dependency-check-data"
+    }
 }

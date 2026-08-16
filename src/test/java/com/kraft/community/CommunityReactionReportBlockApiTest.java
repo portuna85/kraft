@@ -157,6 +157,14 @@ class CommunityReactionReportBlockApiTest {
     @Test
     @DisplayName("다른 사용자를 차단·해제할 수 있고 두 동작 모두 멱등하다")
     void block_andUnblock_areIdempotent() throws Exception {
+        // I-15: CommunityBlockService.block()이 이제 Propagation.NOT_SUPPORTED다 —
+        // 재시도 sleep 동안 커넥션을 붙잡지 않으려 바깥 트랜잭션을 정지시킨다. like_twice_
+        // isIdempotent()와 같은 이유로, setUp()의 owner/other가 커밋돼 있어야 별도
+        // 커넥션에서 도는 block()이 existsById로 찾을 수 있다.
+        TestTransaction.flagForCommit();
+        TestTransaction.end();
+        TestTransaction.start();
+
         mockMvc.perform(put("/api/v1/community/users/" + other.getId() + "/block")
                         .with(asUser(owner))
                         .with(csrf()))
@@ -180,6 +188,12 @@ class CommunityReactionReportBlockApiTest {
     @Test
     @DisplayName("차단 목록 전용 엔드포인트는 postIds 없이도 차단한 사용자 ID를 반환한다")
     void blockedUsers_returnsBlockedUserIds() throws Exception {
+        // I-15: block_andUnblock_areIdempotent()와 같은 이유 — block()이 NOT_SUPPORTED라
+        // setUp()의 owner/other를 별도 커넥션에서 보이게 커밋해 둬야 한다.
+        TestTransaction.flagForCommit();
+        TestTransaction.end();
+        TestTransaction.start();
+
         mockMvc.perform(put("/api/v1/community/users/" + other.getId() + "/block")
                         .with(asUser(owner))
                         .with(csrf()))

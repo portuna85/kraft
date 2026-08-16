@@ -26,6 +26,12 @@ run_case() {
     KRAFT_PUBLIC_BASE_URL=https://kraft.io.kr \
     GRAFANA_ADMIN_PASSWORD=grafana-password-value-long-enough \
     KRAFT_ADMIN_ALLOWED_CIDR=203.0.113.4/32 \
+    KRAFT_DOMAIN=kraft.io.kr \
+    KRAFT_ADMIN_DOMAIN=admin.kraft.io.kr \
+    KRAFT_BACKEND_IMAGE_REF=ghcr.io/example/backend \
+    KRAFT_BACKEND_IMAGE_TAG=abc1234 \
+    KRAFT_WEB_IMAGE_REF=ghcr.io/example/web \
+    KRAFT_WEB_IMAGE_TAG=abc1234 \
     "$@" \
     bash "$TARGET" 2>&1) && status=0 || status=$?
 
@@ -60,6 +66,16 @@ run_case fail KRAFT_REVALIDATE_SECRET=short-secret
 # 기존 예시값 blocklist는 계속 동작해야 한다.
 run_case fail KRAFT_OPS_TOKEN=local-dev-ops-token
 run_case fail KRAFT_ADMIN_BOOTSTRAP_USERNAME=admin KRAFT_ADMIN_BOOTSTRAP_PASSWORD=admin
+
+# I-18: docker-compose.prod.yml이 기본값 없이 참조하는 도메인·이미지 참조/태그
+# 변수도 REQUIRED_VARS에 있어야 한다 — 없으면 Caddy 도메인 매치나 이미지 참조가
+# 빈 값으로 조용히 `docker compose up`까지 흘러간다.
+run_case fail KRAFT_DOMAIN=
+run_case fail KRAFT_ADMIN_DOMAIN=
+run_case fail KRAFT_BACKEND_IMAGE_REF=
+run_case fail KRAFT_BACKEND_IMAGE_TAG=
+run_case fail KRAFT_WEB_IMAGE_REF=
+run_case fail KRAFT_WEB_IMAGE_TAG=
 
 echo "----"
 echo "passed: $pass_count, failed: $fail_count"

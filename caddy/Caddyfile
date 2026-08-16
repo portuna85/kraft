@@ -41,8 +41,13 @@ www.{$KRAFT_DOMAIN} {
 	# 아래 순서(첫 매치 우선)를 그대로 보장한다. 정렬에 맡기면 @blocked가
 	# catch-all reverse_proxy 뒤로 밀려나 /admin* 차단이 무력화된다.
 	route {
+		# I-33: 이 403은 앱을 거치지 않고 Caddy가 직접 낸다 — 본문·title·lang이 없어
+		# 빈 화면처럼 보였다. 차단 사유를 드러내지 않는 선에서 최소 본문만 붙인다.
+		# respond의 기본 Content-Type은 text/plain이라, HTML을 그대로 렌더하려면
+		# 명시적으로 text/html로 바꿔줘야 한다.
 		@blocked path /actuator* /ops* /admin* /api/revalidate
-		respond @blocked 403
+		header @blocked Content-Type "text/html; charset=utf-8"
+		respond @blocked `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>403</title></head><body><h1>403 Forbidden</h1></body></html>` 403
 
 		# 정적 자산 장기 캐시 (Next.js 콘텐츠 해시 포함)
 		# 주의: /rounds/opengraph-image 같은 라우트 전용 OG는 이 경로 매치(정확히 /opengraph-image)에

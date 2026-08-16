@@ -12,6 +12,16 @@ REQUIRED_VARS=(
   KRAFT_PUBLIC_BASE_URL
   GRAFANA_ADMIN_PASSWORD
   KRAFT_ADMIN_ALLOWED_CIDR
+  # I-18: docker-compose.prod.yml이 ${VAR} 형태(기본값 없음)로 참조하지만 여태 이
+  # 목록에 없었다 — 비어 있으면 Caddy 도메인 매치가 깨지거나(KRAFT_DOMAIN/
+  # KRAFT_ADMIN_DOMAIN) 이미지 참조가 ":"만 남는 채로(KRAFT_*_IMAGE_REF/TAG)
+  # `docker compose up`까지 그대로 흘러간다.
+  KRAFT_DOMAIN
+  KRAFT_ADMIN_DOMAIN
+  KRAFT_BACKEND_IMAGE_REF
+  KRAFT_BACKEND_IMAGE_TAG
+  KRAFT_WEB_IMAGE_REF
+  KRAFT_WEB_IMAGE_TAG
 )
 
 OPTIONAL_VARS=(

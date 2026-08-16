@@ -56,8 +56,12 @@ tasks.named<JacocoReport>("jacocoTestReport") {
     classDirectories.setFrom(jacocoClassDirs())
 }
 
-val strictCoverage = project.findProperty("strictCoverage") as String?
-if (strictCoverage == "true") {
+// I-05: 기본값을 엄격 모드로 뒤집었다 — 예전에는 -PstrictCoverage=true를 명시해야만
+// jacocoTestCoverageVerification가 check에 연결됐고, 평범한 `./gradlew check`는 이
+// task 자체를 아예 안 만들어 커버리지 하락이 실패는커녕 눈에 보이지도 않았다. 빠른
+// 로컬 점검이 필요할 때만 의도가 드러나는 이름으로 opt-out한다.
+val skipCoverageGate = project.findProperty("skipCoverageGate") == "true"
+if (!skipCoverageGate) {
     tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
         dependsOn(tasks.named<JacocoReport>("jacocoTestReport"))
         executionData(fileTree(layout.buildDirectory.dir("jacoco")) { include("*.exec") })

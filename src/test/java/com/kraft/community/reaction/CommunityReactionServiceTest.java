@@ -1,5 +1,6 @@
 package com.kraft.community.reaction;
 
+import com.kraft.common.concurrency.TransientWriteRetrier;
 import com.kraft.common.error.ApiException;
 import com.kraft.community.block.CommunityBlockService;
 import com.kraft.community.post.CommunityPost;
@@ -68,7 +69,7 @@ class CommunityReactionServiceTest {
         service = new CommunityReactionService(
                 new CommunityPostAccessValidator(communityPostRepository), communityPostLikeRepository,
                 communityPostBookmarkRepository, communityBlockService,
-                communityReactionWriter, clock, meterRegistry);
+                communityReactionWriter, new TransientWriteRetrier(meterRegistry), clock, meterRegistry);
     }
 
     @Test
