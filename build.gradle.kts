@@ -207,10 +207,10 @@ pitest {
 //
 // 정정(실측, 2026-08-16): "키 없어도 느리게 동작한다"는 최초 가정은 틀렸다 — 이
 // dependency-check-gradle 버전은 NVD_API_KEY가 아예 없어도(env 자체가 unset이어도
-// 재현됨) NvdApiException으로 하드 실패하고 취약점 평가 자체를 못 한다. 실제로 동작
-// 시키려면 NVD_API_KEY 시크릿이 **필수**다(https://nvd.nist.gov/developers/request-an-api-key).
-// 그 전까지는 이 CI 잡(.github/workflows/ci.yml의 dependency-check)이
-// continue-on-error로 비차단 처리돼 있다.
+// 재현됨) NvdApiException으로 하드 실패하고 취약점 평가 자체를 못 한다. NVD_API_KEY
+// 시크릿이 **필수**다(https://nvd.nist.gov/developers/request-an-api-key) — 리포지토리에
+// 등록 완료(2026-08-16), CI(.github/workflows/ci.yml의 dependency-check)는 다시 차단
+// 게이트다.
 dependencyCheck {
     formats = listOf("HTML", "JSON")
     // CVSS 7.0 이상(High/Critical)만 빌드를 실패시킨다 — Low/Medium은 리포트에만 남긴다.
