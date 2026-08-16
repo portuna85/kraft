@@ -110,6 +110,24 @@ check_header_present() {
   fi
 }
 
+check_header_count_exactly_one() {
+  local desc="$1" host="$2" path="$3" header_name="$4"
+  local headers count attempt
+  for attempt in 1 2 3; do
+    headers=$(curl -sk -D - -o /dev/null --max-time 5 --resolve "${host}:443:127.0.0.1" \
+      "https://${host}${path}" 2>/dev/null || echo "")
+    count=$(printf '%s' "$headers" | grep -ci "^${header_name}:" || true)
+    [[ "$count" -gt 0 ]] && break
+    [[ "$attempt" -lt 3 ]] && sleep 1
+  done
+  if [[ "$count" -eq 1 ]]; then
+    echo "  OK  [count=1] $desc"
+  else
+    echo "  FAIL[count=$count != 1] $desc (https://${host}${path}, header: $header_name)" >&2
+    FAIL=1
+  fi
+}
+
 echo "==> Caddy local routing check"
 check_status "public domain /admin blocked"        "$KRAFT_DOMAIN"       "/admin"          "403"
 check_status "public domain /actuator blocked"      "$KRAFT_DOMAIN"       "/actuator/health" "403"
@@ -123,6 +141,19 @@ check_body_over_limit_rejected "client-error 8KB body (Content-Length) rejected"
 check_body_over_limit_rejected "client-error 8KB body (chunked) rejected"               "$KRAFT_DOMAIN" "/api/client-error" 8192 "chunked"
 check_body_within_limit_not_rejected "client-error 100B body not rejected by proxy"     "$KRAFT_DOMAIN" "/api/client-error" 100
 check_header_present "client-error response has Cache-Control: no-store"               "$KRAFT_DOMAIN" "/api/client-error" "Cache-Control: no-store"
+
+# I-09: reverse_proxy의 header_up 순서 문제로 catch-all 페이지 응답에 Cache-Control이
+# 두 번(Caddy가 건 값 + Next.js가 낸 값) 붙었던 회귀를 잡는다.
+check_header_count_exactly_one "public domain / has exactly one Cache-Control"              "$KRAFT_DOMAIN" "/" "Cache-Control"
+# I-10: Caddy·SecurityHeadersFilter·Spring Security 기본 헤더 writer 세 곳이 같은 보안
+# 헤더를 각자 발급하던 회귀를 잡는다. HTML 라우트와 API 라우트 양쪽에서 검증한다.
+check_header_count_exactly_one "public domain / has exactly one Strict-Transport-Security"  "$KRAFT_DOMAIN" "/" "Strict-Transport-Security"
+check_header_count_exactly_one "public domain / has exactly one X-Frame-Options"             "$KRAFT_DOMAIN" "/" "X-Frame-Options"
+check_header_count_exactly_one "public domain / has exactly one X-Content-Type-Options"      "$KRAFT_DOMAIN" "/" "X-Content-Type-Options"
+check_header_count_exactly_one "public domain / has exactly one Referrer-Policy"             "$KRAFT_DOMAIN" "/" "Referrer-Policy"
+check_header_count_exactly_one "public domain / has exactly one Permissions-Policy"          "$KRAFT_DOMAIN" "/" "Permissions-Policy"
+check_header_count_exactly_one "public API /api/v1/rounds/latest has exactly one Strict-Transport-Security" "$KRAFT_DOMAIN" "/api/v1/rounds/latest" "Strict-Transport-Security"
+check_header_count_exactly_one "public API /api/v1/rounds/latest has exactly one X-Frame-Options"            "$KRAFT_DOMAIN" "/api/v1/rounds/latest" "X-Frame-Options"
 
 if [[ $FAIL -ne 0 ]]; then
   echo "==> Caddy local routing check FAILED — Caddyfile is misconfigured" >&2

@@ -42,13 +42,15 @@ class OpsApiIntegrationTest extends BaseApiIntegrationTest {
                 .andExpect(jsonPath("$.latestRound", is(2)));
     }
 
+    // I-10: X-Content-Type-Options·X-Frame-Options는 caddy/Caddyfile이 사이트 전역으로
+    // 발급하는 단일 소스로 옮겼다(SecurityHeadersFilter·Spring Security 기본값 모두 껐다) —
+    // MockMvc는 Caddy를 거치지 않으므로 여기서는 더 이상 확인할 수 없다. 이 필터가 여전히
+    // 책임지는 CSP만 검증한다.
     @Test
-    @DisplayName("토큰 없이 접근해 401을 받아도 보안 헤더가 붙는다 (필터 순서 회귀)")
+    @DisplayName("토큰 없이 접근해 401을 받아도 CSP 헤더가 붙는다 (필터 순서 회귀)")
     void opsUnauthorizedResponse_stillCarriesSecurityHeaders() throws Exception {
         mockMvc.perform(get("/ops/summary"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(header().string("X-Content-Type-Options", "nosniff"))
-                .andExpect(header().string("X-Frame-Options", "DENY"))
                 .andExpect(header().exists("Content-Security-Policy"));
     }
 

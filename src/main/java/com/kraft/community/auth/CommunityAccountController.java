@@ -49,6 +49,16 @@ public class CommunityAccountController {
         sessionCookie.setSecure(true);
         response.addCookie(sessionCookie);
 
+        // I-03: 탈퇴도 로그아웃과 마찬가지로 kraft_logged_in을 지운다 — 안 지우면 탈퇴 후에도
+        // 공개 라우트가 "로그인됨"으로 표시된다. CommunityLoginHandler가 심을 때와 같은
+        // 속성(HttpOnly=false)이라 CookieClearingLogoutHandler 방식(jakarta Cookie, HttpOnly
+        // 미설정 시 기본 false)으로 지운다.
+        Cookie loggedInCookie = new Cookie("kraft_logged_in", "");
+        loggedInCookie.setPath("/");
+        loggedInCookie.setMaxAge(0);
+        loggedInCookie.setSecure(true);
+        response.addCookie(loggedInCookie);
+
         return ResponseEntity.noContent().build();
     }
 }

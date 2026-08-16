@@ -28,6 +28,10 @@ public enum ApiErrorCode {
     RECOMMENDATION_SET_NOT_FOUND(HttpStatus.NOT_FOUND),
     RECOMMENDATION_SET_NOT_OWNED(HttpStatus.FORBIDDEN),
     RECOMMENDATION_SET_ATTACHED_TO_POST(HttpStatus.CONFLICT),
+    // I-04: strategy/explanation_codes 저장값이 현재 enum과 더 이상 맞지 않는 레거시 행을
+    // 디코드하려 할 때(예: 리팩터 이전에 생성된 추천 세트) 원시 RuntimeException이 그대로
+    // 새어나가 "예상하지 못한 서버 오류가 발생했습니다"라는 정체불명의 500이 되던 문제를 막는다.
+    RECOMMENDATION_SET_UNAVAILABLE(HttpStatus.CONFLICT),
     TOO_MANY_LOCKED_NUMBERS(HttpStatus.BAD_REQUEST),
     LOCKED_EXCLUDED_CONFLICT(HttpStatus.BAD_REQUEST),
     INVALID_RECOMMENDATION_STRATEGY(HttpStatus.BAD_REQUEST),

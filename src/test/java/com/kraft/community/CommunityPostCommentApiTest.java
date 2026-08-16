@@ -19,7 +19,12 @@ import com.kraft.community.post.CreatePostRequest;
 import com.kraft.community.post.UpdatePostRequest;
 import com.kraft.community.user.CommunityUser;
 import com.kraft.community.user.CommunityUserRepository;
+import com.kraft.recommend.ExplanationCode;
+import com.kraft.recommend.RecommendationItemView;
+import com.kraft.recommend.RecommendationSetHistoryService;
+import com.kraft.recommend.RecommendationStrategy;
 import java.time.OffsetDateTime;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -57,6 +62,9 @@ class CommunityPostCommentApiTest {
 
     @Autowired
     private CommunityUserRepository communityUserRepository;
+
+    @Autowired
+    private RecommendationSetHistoryService recommendationSetHistoryService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -192,6 +200,28 @@ class CommunityPostCommentApiTest {
                 .andExpect(jsonPath("$.code").value("COMMUNITY_CSRF_REJECTED"))
                 .andExpect(jsonPath("$.status").value(403))
                 .andExpect(jsonPath("$.path").value("/api/v1/community/posts"));
+    }
+
+    @Test
+    @DisplayName("I-04: 세 추천 전략 모두 추천 세트를 첨부해 게시글을 작성할 수 있다")
+    void creatingPost_withRecommendationSetAttachment_succeedsForEveryStrategy() throws Exception {
+        for (RecommendationStrategy strategy : RecommendationStrategy.values()) {
+            long setId = persistOwnedRecommendationSet(owner, strategy);
+
+            String body = mockMvc.perform(post("/api/v1/community/posts")
+                            .with(asUser(owner))
+                            .with(csrf())
+                            .contentType("application/json")
+                            .content(objectMapper.writeValueAsString(new CreatePostRequest(
+                                    "추천 공유 " + strategy, "본문", "RECOMMENDATION_SHARE", setId))))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.recommendationAttachment.setId").value(setId))
+                    .andExpect(jsonPath("$.recommendationAttachment.strategy").value(strategy.wireValue()))
+                    .andExpect(jsonPath("$.recommendationAttachment.items[0].numbers")
+                            .isArray())
+                    .andReturn().getResponse().getContentAsString();
+            assertThat(objectMapper.readTree(body).get("recommendationAttachment").get("items")).hasSize(1);
+        }
     }
 
     @Test
@@ -474,6 +504,22 @@ class CommunityPostCommentApiTest {
                 .andReturn().getResponse().getContentAsString();
         assertThat(body).isNotBlank();
         return objectMapper.readTree(body).get("id").asLong();
+    }
+
+    // I-04: BALANCED만 score/explanationCodes를 채운다(RecommendationCandidateGenerator) —
+    // 나머지 두 전략은 score=null, explanationCodes=List.of()로 실제 생성 결과 구조를 그대로 흉내낸다.
+    private long persistOwnedRecommendationSet(CommunityUser owner, RecommendationStrategy strategy) {
+        String clientTokenHash = "test-device-" + System.nanoTime();
+        boolean balanced = strategy == RecommendationStrategy.BALANCED;
+        RecommendationItemView item = new RecommendationItemView(
+                1, List.of(1, 2, 3, 4, 5, 6),
+                balanced ? 80 : null,
+                balanced ? List.of(ExplanationCode.ODD_EVEN_BALANCED, ExplanationCode.SUM_IN_RANGE) : List.of());
+        Long setId = recommendationSetHistoryService.persist(
+                clientTokenHash, strategy.wireValue(), "v1", 1236, "v1",
+                List.of(), List.of(), List.of(item), OffsetDateTime.now());
+        recommendationSetHistoryService.claimAll(clientTokenHash, owner.getId(), OffsetDateTime.now());
+        return setId;
     }
 
     private RequestPostProcessor asUser(CommunityUser user) {

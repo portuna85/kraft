@@ -1,7 +1,5 @@
 package com.kraft.winningnumber;
 
-import java.util.concurrent.TimeUnit;
-import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,20 +17,17 @@ public class RoundsApiController {
         this.winningNumberQueryService = winningNumberQueryService;
     }
 
-    // PublicApiCacheControlFilter가 이론상 이 응답에도 동일한 Cache-Control을 다시 설정하지만,
-    // 실제 운영 환경에서 컨트롤러가 일반 객체를 반환하면 필터가 헤더를 못 붙이는 사례가
-    // 확인되어(2026-07-21 배포 실패로 발견) ResponseEntity로 명시적으로 설정한다.
+    // REF-03/I-10: PublicApiCacheControlFilter가 이 경로(isCacheablePath)에 대해 2xx 응답마다
+    // Cache-Control을 무조건 setHeader(교체)하므로, 여기서 별도로 걸었던 값은 항상 그 값으로
+    // 덮여써져 wire에는 절대 나가지 않는 죽은 코드였다 — 운영 실측(§I-09/I-10 감사)도 필터의
+    // "public, max-age=60, must-revalidate"만 관측됐다. 정책은 필터 한 곳에서만 관리한다.
     @GetMapping("/latest")
     public ResponseEntity<WinningNumberResponse> latest() {
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.maxAge(60, TimeUnit.SECONDS).cachePublic())
-                .body(winningNumberQueryService.getLatest());
+        return ResponseEntity.ok(winningNumberQueryService.getLatest());
     }
 
     @GetMapping("/freshness")
     public ResponseEntity<RoundFreshnessResponse> freshness() {
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.maxAge(60, TimeUnit.SECONDS).cachePublic())
-                .body(winningNumberQueryService.getFreshness());
+        return ResponseEntity.ok(winningNumberQueryService.getFreshness());
     }
 }

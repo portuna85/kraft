@@ -9,6 +9,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -24,6 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class RecommendationSetHistoryService {
+
+    private static final Logger log = LoggerFactory.getLogger(RecommendationSetHistoryService.class);
 
     private final RecommendationSetRepository recommendationSetRepository;
     private final RecommendationItemRepository recommendationItemRepository;
@@ -82,6 +86,17 @@ public class RecommendationSetHistoryService {
         return toSummary(set);
     }
 
+    /**
+     * I-04: {@link #get(String, long)}과 동일한 소유권 검증이지만 {@link #toSummary}의 항목
+     * 디코드를 건너뛴다. 호출부(예: 게시글 첨부 시 소유권만 확인하고 요약은 버리는 경로)가
+     * 디코드 결과를 쓰지 않는데도 매번 전체 아이템을 조회·디코드해 레거시 데이터 디코드
+     * 실패에 불필요하게 노출되던 것을 없앤다.
+     */
+    @Transactional(readOnly = true)
+    public void assertOwnedByDevice(String clientTokenHash, long id) {
+        findOwnedByDevice(clientTokenHash, id);
+    }
+
     @Transactional(readOnly = true)
     public Page<RecommendationSetSummary> listForOwner(Long ownerUserId, int page, int size) {
         Page<RecommendationSet> sets = recommendationSetRepository.findByOwnerUserIdOrderByCreatedAtDesc(
@@ -117,6 +132,12 @@ public class RecommendationSetHistoryService {
     public RecommendationSetSummary getForOwner(Long ownerUserId, long id) {
         RecommendationSet set = findOwnedByOwner(ownerUserId, id);
         return toSummary(set);
+    }
+
+    /** I-04: {@link #assertOwnedByDevice(String, long)}의 계정 소유 버전. */
+    @Transactional(readOnly = true)
+    public void assertOwnedByOwner(Long ownerUserId, long id) {
+        findOwnedByOwner(ownerUserId, id);
     }
 
     /**
@@ -163,9 +184,15 @@ public class RecommendationSetHistoryService {
         }
         Map<Long, List<RecommendationItemView>> itemsBySetId = itemViewsBySetId(distinctIds);
 
+        // I-04: 목록 렌더링에서 세트 하나의 디코드 실패(레거시 strategy/explanation_codes 값)가
+        // 페이지 전체를 깨뜨리면 안 된다 — 그 게시글만 첨부 없이 표시하고 나머지는 정상 진행한다.
         Map<Long, RecommendationSetSummary> result = new LinkedHashMap<>();
         for (Long id : distinctIds) {
-            result.put(id, toSummary(setsById.get(id), itemsBySetId.getOrDefault(id, List.of())));
+            try {
+                result.put(id, toSummary(setsById.get(id), itemsBySetId.getOrDefault(id, List.of())));
+            } catch (ApiException e) {
+                log.warn("추천 세트 {} 첨부 렌더링 실패, 목록에서는 첨부 없이 표시합니다: {}", id, e.getMessage());
+            }
         }
         return result;
     }
@@ -230,7 +257,7 @@ public class RecommendationSetHistoryService {
     private RecommendationSetSummary toSummary(RecommendationSet set, List<RecommendationItemView> items) {
         return new RecommendationSetSummary(
                 set.getId(),
-                RecommendationStrategy.fromWire(set.getStrategy()),
+                strategyFromWire(set),
                 set.getAlgorithmVersion(),
                 set.getHistoryThroughRound(),
                 set.getExclusionPolicyVersion(),
@@ -240,18 +267,39 @@ public class RecommendationSetHistoryService {
                 items);
     }
 
+    // I-04: RecommendationStrategy.fromWire()는 저장값이 현재 enum 상수와 정확히 일치하지
+    // 않으면 원시 IllegalStateException을 던진다 — 호출부(대부분 GlobalExceptionHandler의
+    // 범용 catch-all)까지 그대로 새면 "예상하지 못한 서버 오류가 발생했습니다"라는 원인 불명의
+    // 500이 된다. 여기서 잡아 어떤 세트의 어떤 값이 문제인지 로그에 남기고, 클라이언트에는
+    // 복구 가능한 오류(RECOMMENDATION_SET_UNAVAILABLE)로 번역한다.
+    private static RecommendationStrategy strategyFromWire(RecommendationSet set) {
+        try {
+            return RecommendationStrategy.fromWire(set.getStrategy());
+        } catch (IllegalStateException e) {
+            throw new ApiException(ApiErrorCode.RECOMMENDATION_SET_UNAVAILABLE,
+                    "추천 세트 " + set.getId() + "의 저장된 전략 값을 해석할 수 없습니다: " + set.getStrategy(), e);
+        }
+    }
+
     private RecommendationItemView toItemView(RecommendationItem item) {
         return new RecommendationItemView(
                 item.getPosition(),
                 lottoNumberCodec.fromStorageValue(item.getNumbers()),
                 item.getScore(),
-                parseExplanationCodes(item.getExplanationCodes()));
+                parseExplanationCodes(item.getExplanationCodes(), item.getSetId()));
     }
 
-    private static List<ExplanationCode> parseExplanationCodes(String value) {
+    // I-04: ExplanationCode.valueOf()도 같은 이유로 원시 IllegalArgumentException을 던진다 —
+    // 동일하게 래핑한다.
+    private static List<ExplanationCode> parseExplanationCodes(String value, long setId) {
         if (value == null || value.isBlank()) {
             return List.of();
         }
-        return java.util.Arrays.stream(value.split(",")).map(ExplanationCode::valueOf).toList();
+        try {
+            return java.util.Arrays.stream(value.split(",")).map(ExplanationCode::valueOf).toList();
+        } catch (IllegalArgumentException e) {
+            throw new ApiException(ApiErrorCode.RECOMMENDATION_SET_UNAVAILABLE,
+                    "추천 세트 " + setId + "의 저장된 근거 코드 값을 해석할 수 없습니다: " + value, e);
+        }
     }
 }

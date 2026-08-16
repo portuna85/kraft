@@ -20,7 +20,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 /**
  * Fixed-window(tumbling) rate limiter for public API endpoints — 60초 텀블링 윈도우를
  * 구현한다(슬라이딩이 아님). 윈도우 경계에서 한도의 최대 ~2배 버스트가 가능하다.
- * trusted-proxy CIDR(172.28.0.0/16) 내부 IP는 우회 처리.
+ * trusted-proxy CIDR 내부 IP는 우회 처리 — 값은 KRAFT_SECURITY_TRUSTED_PROXY_CIDR
+ * 환경변수(SecurityProperties.trustedProxyCidr)로 정해지며 로컬(docker-compose.yml)과
+ * 운영(docker-compose.prod.yml)이 서로 다른 CIDR을 쓴다(운영은 RFC1918 전체가 기본값이라
+ * I-11 조사 대상 중 하나 — 코드 예시 상수를 여기 박아두지 않는다).
  * 실제 카운터 저장소는 RateLimitCounter(kraft.security.rate-limit-backend로 선택,
  * 기본 Caffeine/단일 인스턴스, redis 전환 시 다중 인스턴스 공유)에 위임한다.
  */
@@ -67,7 +70,17 @@ public class PublicRateLimitFilter extends OncePerRequestFilter {
                                     FilterChain chain) throws ServletException, IOException {
         String clientIp = clientIpResolver.resolve(request);
 
+        // I-11: 운영에서 X-RateLimit-* 헤더가 전혀 관측되지 않아 — 요청이 아래 두 조기 반환
+        // 분기(신뢰 프록시 우회 / 카운터 백엔드 장애 fail-open) 중 어디로 빠지는지 확정하기
+        // 전까지 임시로 남겨두는 진단 로그. 원인 확정 후(예: trustedProxyCidr 축소) 제거한다.
+        if (log.isDebugEnabled()) {
+            log.debug("Rate limit 분기 진단: remoteAddr={} xff={} resolvedIp={}",
+                    request.getRemoteAddr(), request.getHeader("X-Forwarded-For"), clientIp);
+        }
+
         if (clientIpResolver.isTrustedProxy(clientIp)) {
+            log.info("Rate limit 우회(trusted proxy): remoteAddr={} xff={} resolvedIp={} path={}",
+                    request.getRemoteAddr(), request.getHeader("X-Forwarded-For"), clientIp, request.getRequestURI());
             chain.doFilter(request, response);
             return;
         }
@@ -77,6 +90,8 @@ public class PublicRateLimitFilter extends OncePerRequestFilter {
 
         if (current.isEmpty()) {
             // 카운터 백엔드(Redis) 장애 — fail-open, 이번 요청은 한도 검사 없이 통과.
+            log.info("Rate limit 우회(카운터 백엔드 장애, fail-open): resolvedIp={} path={}",
+                    clientIp, request.getRequestURI());
             chain.doFilter(request, response);
             return;
         }

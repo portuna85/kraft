@@ -22,10 +22,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
-import org.springframework.security.web.authentication.AuthenticationFailureHandler;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
-import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
-import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.security.web.csrf.CsrfFilter;
@@ -49,6 +45,7 @@ public class CommunitySecurityConfig {
     private final CommunityUserRepository communityUserRepository;
     private final ApiErrorResponseWriter apiErrorResponseWriter;
     private final RateLimitCounter rateLimitCounter;
+    private final CommunityLoginHandler communityLoginHandler;
 
     public CommunitySecurityConfig(CommunityOAuth2UserService communityOAuth2UserService,
                                     CommunityAuthEntryPoint communityAuthEntryPoint,
@@ -57,7 +54,8 @@ public class CommunitySecurityConfig {
                                     MeterRegistry meterRegistry,
                                     CommunityUserRepository communityUserRepository,
                                     ApiErrorResponseWriter apiErrorResponseWriter,
-                                    RateLimitCounter rateLimitCounter) {
+                                    RateLimitCounter rateLimitCounter,
+                                    CommunityLoginHandler communityLoginHandler) {
         this.communityOAuth2UserService = communityOAuth2UserService;
         this.communityAuthEntryPoint = communityAuthEntryPoint;
         this.communityProperties = communityProperties;
@@ -66,6 +64,7 @@ public class CommunitySecurityConfig {
         this.communityUserRepository = communityUserRepository;
         this.apiErrorResponseWriter = apiErrorResponseWriter;
         this.rateLimitCounter = rateLimitCounter;
+        this.communityLoginHandler = communityLoginHandler;
     }
 
     @Bean
@@ -88,13 +87,15 @@ public class CommunitySecurityConfig {
                         AuthorizationFilter.class)
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.userService(communityOAuth2UserService))
-                        .successHandler(successHandler())
-                        .failureHandler(failureHandler()))
+                        .successHandler(communityLoginHandler)
+                        .failureHandler(communityLoginHandler))
                 .logout(logout -> logout
                         .logoutUrl("/logout")
                         .logoutSuccessUrl(redirectTarget())
                         .invalidateHttpSession(true)
-                        .deleteCookies("JSESSIONID"))
+                        // I-03: 로그아웃 시 kraft_logged_in도 함께 지운다 — 안 지우면 공개
+                        // 라우트가 로그아웃 후에도 "로그인됨"으로 표시된다.
+                        .deleteCookies("JSESSIONID", "kraft_logged_in"))
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(csrfTokenRepository)
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
@@ -102,6 +103,14 @@ public class CommunitySecurityConfig {
                         .authenticationEntryPoint(communityAuthEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler()))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+                // I-10: caddy/Caddyfile이 이미 이 헤더들을 사이트 전역으로 발급한다. Spring
+                // Security의 기본 HeadersConfigurer를 그대로 두면 세 번째 소스가 겹쳐(HSTS는
+                // preload 없는 " ; includeSubDomains" 포맷으로 Caddy 값과 갈라진다) 응답마다
+                // 같은 헤더가 중복 발급된다 — Caddy를 단일 소스로 두고 여기서는 끈다.
+                .headers(headers -> headers
+                        .frameOptions(fo -> fo.disable())
+                        .contentTypeOptions(cto -> cto.disable())
+                        .httpStrictTransportSecurity(hsts -> hsts.disable()))
                 .build();
     }
 
@@ -142,16 +151,6 @@ public class CommunitySecurityConfig {
                 filterChain.doFilter(request, response);
             }
         };
-    }
-
-    private AuthenticationSuccessHandler successHandler() {
-        SimpleUrlAuthenticationSuccessHandler handler = new SimpleUrlAuthenticationSuccessHandler(redirectTarget());
-        handler.setAlwaysUseDefaultTargetUrl(true);
-        return handler;
-    }
-
-    private AuthenticationFailureHandler failureHandler() {
-        return new SimpleUrlAuthenticationFailureHandler(redirectTarget() + "?login_error=1");
     }
 
     // 프런트(Next.js)가 별도로 존재하므로(4단계 이식 예정) 로그인/로그아웃 완료 후에는

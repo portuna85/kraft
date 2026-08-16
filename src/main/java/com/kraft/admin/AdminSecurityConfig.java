@@ -92,9 +92,16 @@ public class AdminSecurityConfig {
                         .deleteCookies("JSESSIONID"))
                 .exceptionHandling(exception -> exception
                         .accessDeniedHandler(adminAccessDeniedHandler()))
-                .headers(headers -> headers.contentSecurityPolicy(csp -> csp.policyDirectives(
-                        "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
-                                + "form-action 'self'; frame-ancestors 'none'; object-src 'none'")))
+                // I-10: caddy/Caddyfile의 {$KRAFT_ADMIN_DOMAIN} 블록도 사이트 전역으로 이
+                // 헤더들을 이미 발급한다. CSP만 Caddy가 못 내는 값(admin 전용 정책)이라 여기서
+                // 계속 관리하고, 나머지는 Spring Security 기본값을 꺼서 Caddy를 단일 소스로 둔다.
+                .headers(headers -> headers
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(
+                                "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+                                        + "form-action 'self'; frame-ancestors 'none'; object-src 'none'"))
+                        .frameOptions(fo -> fo.disable())
+                        .contentTypeOptions(cto -> cto.disable())
+                        .httpStrictTransportSecurity(hsts -> hsts.disable()))
                 .sessionManagement(sm -> sm.maximumSessions(1))
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(csrfTokenRepository)

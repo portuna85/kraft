@@ -1,0 +1,19 @@
+/*
+ * I-02: 인앱 브라우저 경고를 로그인 버튼 아래 드롭다운처럼 띄운다 —
+ * overlay.module.css의 .menuWrap/.menu와 같은 패턴(§ DropdownMenu).
+ */
+@layer components {
+  .wrap {
+    position: relative;
+    display: inline-flex;
+  }
+
+  .warning {
+    position: absolute;
+    top: calc(100% + var(--space-1));
+    right: 0;
+    z-index: var(--z-overlay);
+    width: max-content;
+    max-width: 280px;
+  }
+}

@@ -28,6 +28,15 @@ www.{$KRAFT_DOMAIN} {
 	header X-Frame-Options "DENY"
 	encode zstd gzip
 
+	# I-12: 2026-08-15 21:19~21:25경 RSC prefetch(?_rsc=...)가 여러 라우트에서 동시에 503을
+	# 낸 사건을 사후에 조사할 로그가 전혀 없었다(이 사이트 블록에 log 지시자 자체가 없었음 —
+	# {$KRAFT_ADMIN_DOMAIN} 블록만 별도 인시던트 때문에 로그가 있었다). 재발 시 진단 가능하도록
+	# 접근 로그를 추가한다. JSON으로 남겨 이후 쿼리 가능하게 한다.
+	log {
+		output stdout
+		format json
+	}
+
 	# route { } 로 감싸서 Caddy의 자동 specificity 정렬을 비활성화하고
 	# 아래 순서(첫 매치 우선)를 그대로 보장한다. 정렬에 맡기면 @blocked가
 	# catch-all reverse_proxy 뒤로 밀려나 /admin* 차단이 무력화된다.
@@ -130,9 +139,14 @@ www.{$KRAFT_DOMAIN} {
 			# 모든 페이지 경로: 브라우저 SWR 60s+300s.
 			# nonce 기반 CSP 때문에 HTML+CSP 헤더가 함께 캐시돼야 안전하므로
 			# CDN용 s-maxage는 추가하지 않음 (CDN 도입 시 nonce 제거 먼저 필요).
-			header Cache-Control "public, max-age=60, stale-while-revalidate=300"
+			# I-09: header 지시자를 reverse_proxy보다 앞에 두면 업스트림(Next.js)이 이미
+			# 낸 Cache-Control(레이아웃의 headers() 호출로 전 라우트가 동적 렌더라 항상
+			# private, no-store 계열)에 "교체"가 아니라 "추가"가 된다. RFC 9110상 동일 필드명이
+			# 두 개면 쉼표로 이어붙인 것과 동치라 모든 캐시가 더 제한적인 지시자를 채택한다.
+			# reverse_proxy의 header_down은 업스트림 헤더를 실제로 교체하므로 여기로 옮긴다.
 			reverse_proxy web:3000 {
 				header_up X-Real-IP {remote_host}
+				header_down Cache-Control "public, max-age=60, stale-while-revalidate=300"
 				@error status 4xx 5xx
 				handle_response @error {
 					# copy_response가 없으면 원본 상태코드/본문이 버려지고 200 빈 응답으로 대체된다 —

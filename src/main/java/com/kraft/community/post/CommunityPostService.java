@@ -90,10 +90,13 @@ public class CommunityPostService {
             // 헤더가 없거나 그 토큰으로 못 찾으면(FORBIDDEN) 로그인 계정 소유로 재시도한다 —
             // claim(계정 귀속) 이후에는 세트의 clientTokenHash가 null로 지워져 기기 토큰
             // 조회가 항상 실패하므로, 이 폴백이 없으면 귀속된 세트를 영원히 첨부할 수 없다.
+            // I-04: 소유권만 확인하면 되고 요약(디코드된 항목 목록)은 쓰지 않으므로 get()/
+            // getForOwner() 대신 디코드를 건너뛰는 assert 변형을 쓴다 — 매 첨부 검증마다
+            // 전체 아이템을 불필요하게 디코드해 레거시 데이터 디코드 실패에 노출되던 것을 없앤다.
             boolean ownedByDevice = false;
             if (clientTokenHash != null) {
                 try {
-                    recommendationSetHistoryService.get(clientTokenHash, recommendationSetId);
+                    recommendationSetHistoryService.assertOwnedByDevice(clientTokenHash, recommendationSetId);
                     ownedByDevice = true;
                 } catch (ApiException e) {
                     if (e.getStatus() != HttpStatus.FORBIDDEN) {
@@ -102,7 +105,7 @@ public class CommunityPostService {
                 }
             }
             if (!ownedByDevice) {
-                recommendationSetHistoryService.getForOwner(ownerId, recommendationSetId);
+                recommendationSetHistoryService.assertOwnedByOwner(ownerId, recommendationSetId);
             }
         }
 
@@ -215,8 +218,22 @@ public class CommunityPostService {
         CommunityPostMetrics metrics = communityPostMetricsRepository.findByPostId(post.getId()).orElse(null);
         RecommendationAttachmentView attachment = post.getRecommendationSetId() == null
                 ? null
-                : toAttachmentView(recommendationSetHistoryService.getForAttachment(post.getRecommendationSetId()));
+                : attachmentOrNull(post.getId(), post.getRecommendationSetId());
         return CommunityPostResponse.from(post, metrics, attachment);
+    }
+
+    // I-04: 이 메서드가 호출되는 시점에는 게시글이 이미 커밋돼 있다(create()의 @Transactional
+    // 경계가 컨트롤러로 돌아오기 전에 끝난다). 첨부 렌더링만 실패한 것으로 이미 성공한 쓰기를
+    // 5xx/4xx로 되돌려 보이면 안 되므로, 첨부 세트 디코드에 실패해도 게시글 자체는 정상
+    // 응답하고 첨부만 비운다.
+    private RecommendationAttachmentView attachmentOrNull(Long postId, Long recommendationSetId) {
+        try {
+            return toAttachmentView(recommendationSetHistoryService.getForAttachment(recommendationSetId));
+        } catch (ApiException e) {
+            log.warn("게시글 {}의 첨부 추천 세트 {} 렌더링 실패, 첨부 없이 응답합니다: {}",
+                    postId, recommendationSetId, e.getMessage());
+            return null;
+        }
     }
 
     public Page<CommunityPostResponse> toResponsePage(Page<CommunityPost> posts) {
@@ -234,9 +251,12 @@ public class CommunityPostService {
                 .getForAttachments(recommendationSetIds);
 
         return posts.map(post -> {
-            RecommendationAttachmentView attachment = post.getRecommendationSetId() == null
+            // I-04: getForAttachments()가 디코드 실패한 세트를 맵에서 건너뛸 수 있으므로
+            // (recommendationSetId != null인데도) null일 수 있다 — 그 게시글은 첨부 없이 표시한다.
+            RecommendationSetSummary summary = post.getRecommendationSetId() == null
                     ? null
-                    : toAttachmentView(attachmentsBySetId.get(post.getRecommendationSetId()));
+                    : attachmentsBySetId.get(post.getRecommendationSetId());
+            RecommendationAttachmentView attachment = summary == null ? null : toAttachmentView(summary);
             return CommunityPostResponse.from(post, metricsById.get(post.getId()), attachment);
         });
     }

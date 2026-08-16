@@ -53,6 +53,13 @@ public class WebSecurityConfig {
                         .requestMatchers("/actuator/**").access((a, ctx) ->
                                 new AuthorizationDecision(clientIpResolver.isTrustedProxy(ctx.getRequest().getRemoteAddr())))
                         .anyRequest().permitAll())
+                // I-10: caddy/Caddyfile이 이 헤더들을 사이트 전역으로 이미 발급한다(예:
+                // /api/v1/rounds/latest에서 HSTS가 Caddy 값 + Spring Security 기본값으로
+                // 두 번 발급되고 있었다). Caddy를 단일 소스로 두고 여기서는 끈다.
+                .headers(headers -> headers
+                        .frameOptions(fo -> fo.disable())
+                        .contentTypeOptions(cto -> cto.disable())
+                        .httpStrictTransportSecurity(hsts -> hsts.disable()))
                 .build();
     }
 }
