@@ -204,16 +204,23 @@ pitest {
 // ── 의존성 취약점 스캔 (I-06) ──────────────────────────────────────────────────
 // npm 쪽은 web/에서 별도로 `npm audit`을 돌린다(루트에 lockfile이 없어 여기서는 대상이
 // 없다). 여기는 Gradle(백엔드) 의존성 그래프를 NVD 데이터베이스와 대조한다.
-// NVD_API_KEY 환경변수가 없으면 동작은 하지만 요청이 심하게 rate-limit돼 콜드 캐시
-// 상태에서 매우 느리다(수십 분) — CI는 데이터 디렉터리를 캐싱해 첫 실행 이후는 빠르다.
-// NVD_API_KEY 시크릿을 추가하면 처음부터 빠르게 캐시가 채워진다(https://nvd.nist.gov/developers/request-an-api-key).
+//
+// 정정(실측, 2026-08-16): "키 없어도 느리게 동작한다"는 최초 가정은 틀렸다 — 이
+// dependency-check-gradle 버전은 NVD_API_KEY가 아예 없어도(env 자체가 unset이어도
+// 재현됨) NvdApiException으로 하드 실패하고 취약점 평가 자체를 못 한다. 실제로 동작
+// 시키려면 NVD_API_KEY 시크릿이 **필수**다(https://nvd.nist.gov/developers/request-an-api-key).
+// 그 전까지는 이 CI 잡(.github/workflows/ci.yml의 dependency-check)이
+// continue-on-error로 비차단 처리돼 있다.
 dependencyCheck {
     formats = listOf("HTML", "JSON")
     // CVSS 7.0 이상(High/Critical)만 빌드를 실패시킨다 — Low/Medium은 리포트에만 남긴다.
     failBuildOnCVSS = 7.0f
     suppressionFiles = listOf("$rootDir/config/dependency-check/suppressions.xml")
     nvd {
-        apiKey = System.getenv("NVD_API_KEY")
+        // CI가 시크릿 없이 이 env를 넘기면 빈 문자열("")이 된다 — 그래도 위 문제는
+        // 재현되지만(빈 값과 unset 둘 다 동일하게 실패), blank를 null로 접어 최소한
+        // "0글자짜리 키를 진짜로 보냈다"는 오해의 여지는 없앤다.
+        apiKey = System.getenv("NVD_API_KEY")?.takeIf { it.isNotBlank() }
     }
     data {
         directory = "$rootDir/.dependency-check-data"
