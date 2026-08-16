@@ -151,7 +151,7 @@ export function storedNumbers() {
 
   let savedId;
   try {
-    savedId = saveResponse.json()?.item?.id;
+    savedId = saveResponse.json()?.savedNumber?.id;
   } catch {
     savedId = undefined;
   }
