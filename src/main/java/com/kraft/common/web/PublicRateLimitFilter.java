@@ -22,8 +22,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * 구현한다(슬라이딩이 아님). 윈도우 경계에서 한도의 최대 ~2배 버스트가 가능하다.
  * trusted-proxy CIDR 내부 IP는 우회 처리 — 값은 KRAFT_SECURITY_TRUSTED_PROXY_CIDR
  * 환경변수(SecurityProperties.trustedProxyCidr)로 정해지며 로컬(docker-compose.yml)과
- * 운영(docker-compose.prod.yml)이 서로 다른 CIDR을 쓴다(운영은 RFC1918 전체가 기본값이라
- * I-11 조사 대상 중 하나 — 코드 예시 상수를 여기 박아두지 않는다).
+ * 운영(docker-compose.prod.yml)이 서로 다른 CIDR을 쓴다(코드 예시 상수를 여기 박아두지
+ * 않는다). I-11: 운영은 한때 서브넷이 Docker 자동 할당이라 RFC1918 전체를 기본값으로
+ * 신뢰해야 했다 — docker-compose.prod.yml의 app 네트워크에 172.30.0.0/16을 고정하고
+ * 기본값을 그 대역 하나로 좁혔다(caddy→backend 트래픽은 app 네트워크로만 오간다).
+ * 이 변경이 실제로 "운영 응답에 X-RateLimit-* 헤더가 없다"는 증상을 해소하는지는
+ * 아직 배포 후 확인 전이라 미검증 — 그때까지 아래 진단 로그를 유지한다.
  * 실제 카운터 저장소는 RateLimitCounter(kraft.security.rate-limit-backend로 선택,
  * 기본 Caffeine/단일 인스턴스, redis 전환 시 다중 인스턴스 공유)에 위임한다.
  */

@@ -11,18 +11,22 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.springframework.stereotype.Component;
 
 /**
  * TD-008 1단계: {@link LottoRecommendationService}에서 이력 스냅샷 수명주기(로드·버전
- * 관리·완전성 판정)를 분리했다. Spring 빈이 아니라 {@code LottoRecommendationService}
- * 생성자 안에서 직접 만들어지는 plain 협력자다 — 새 빈으로 등록하면 생성자 시그니처가
- * 바뀌어 테스트가 직접 두 번째 인스턴스를 만드는 지점(다중 인스턴스 staleness 테스트)이
- * 깨진다.
+ * 관리·완전성 판정)를 분리했다. REF-01: 이전에는 Spring 빈이 아니라
+ * {@code LottoRecommendationService} 생성자 안에서 직접 만드는 plain 협력자였다 — 다중
+ * 인스턴스 staleness 테스트({@code LottoRecommendationServiceTest}의 두 번째 인스턴스
+ * 생성부)가 이 클래스도 함께 손으로 만들어 주면 되므로, 실제로는 생성자 주입 전환이
+ * 그 테스트를 깨뜨리지 않는다 — {@code new}는 여전히 가능하고 프로덕션 조립만
+ * Spring에 맡긴다.
  *
  * 스로틀된 실패 로그는 이 클래스가 아니라 {@code LottoRecommendationService}가 담당한다
  * ({@link LottoRecommendationService}의 로거에 바인딩된 기존 테스트를 그대로 두기 위함) —
  * 이 클래스는 {@link #currentDatabaseVersion()}이 던지는 예외를 그대로 전파하기만 한다.
  */
+@Component
 final class RecommendationHistorySnapshotManager {
 
     private final WinningNumberRepository winningNumberRepository;

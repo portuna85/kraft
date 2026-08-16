@@ -10,11 +10,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.IntUnaryOperator;
+import org.springframework.stereotype.Component;
 
 /**
  * TD-008 3단계: {@link LottoRecommendationService}에서 전략 디스패치와 후보 생성(무작위
- * 샘플링, 형태 균형 정렬, 비인기도 최적화)을 분리했다. 1~2단계와 동일하게 Spring 빈이
- * 아니라 생성자 안에서 직접 만드는 plain 협력자다.
+ * 샘플링, 형태 균형 정렬, 비인기도 최적화)을 분리했다. REF-01: 1~2단계와 함께 Spring 빈으로
+ * 전환했다 — 프로덕션 조립은 Spring이 맡고, 테스트는 여전히 {@code new}로 직접 만든다.
  *
  * {@code randomSource}는 필드로 갖지 않고 호출마다 파라미터로 받는다 — {@code
  * LottoRecommendationService.setRandomSource(...)}가 패키지 프라이빗 테스트 전용
@@ -22,6 +23,7 @@ import java.util.function.IntUnaryOperator;
  * 호출과의 동기화 버그 여지가 생긴다. 매 호출마다 최신 값을 그대로 전달받으면 그런
  * 여지 자체가 없다.
  */
+@Component
 final class RecommendationCandidateGenerator {
 
     private static final int MAX_ATTEMPTS = 100;

@@ -112,6 +112,22 @@ check_header_contains "홈이 CSP 헤더를 반환" "$BASE/" "Content-Security-P
 # Next.js 하이드레이션이 숫자와 "회" 사이에 <!-- --> 주석을 삽입할 수 있어 옵셔널로 허용.
 check_body_matches "홈 최신 회차 렌더링" "$BASE/" 'data-testid="latest-round"[^>]*><strong[^>]*>[0-9]{3,4}(<!-- -->)?회' 20
 
+# I-12: 2026-08-15 21:19~21:25경 RSC prefetch(?_rsc=... 쿼리 + RSC:1 헤더)가 여러 라우트에서
+# 동시에 503을 낸 사건이 있었다(같은 URL의 전체 문서 로드는 내내 200이었음 — 계측 오류가
+# 아니라 실제 prefetch 경로에서만 벌어진 문제). Lighthouse/기존 체크는 콜드 단일 페이지
+# 로드만 재서 이런 종류의 회귀를 못 잡는다. Next 라우터가 실제로 보내는 두 시그널(쿼리
+# 파라미터 + RSC 헤더)을 그대로 재현해 라우트별로 한 번씩 확인한다.
+for rsc_path in / /recommend /analysis /saved /data /frequency /stats /companion /community /status; do
+  rsc_url="${BASE}${rsc_path}?_rsc=smoketest"
+  actual=$(curl -o /dev/null -sS -w "%{http_code}" --max-time 10 -H "RSC: 1" "$rsc_url" 2>/dev/null || echo "000")
+  if [[ "$actual" == "200" ]]; then
+    echo "  OK  [$actual] RSC prefetch $rsc_path"
+  else
+    echo "  FAIL[$actual != 200] RSC prefetch $rsc_path ($rsc_url)" >&2
+    FAIL=1
+  fi
+done
+
 # Removed paths (blueprint 17) must be 404.
 check_status "GET /api/v1/push/token -> 404" "$API/push/token" "404"
 check_status "GET /news -> 404" "$BASE/news" "404"

@@ -84,10 +84,23 @@ class LottoRecommendationServiceTest {
         given(historyStateRepository.findById(1)).willReturn(Optional.of(historyState));
         given(historyState.getVersion()).willReturn(1L);
         meterRegistry = new SimpleMeterRegistry();
-        service = new LottoRecommendationService(lottoNumberCodec, winningNumberRepository, combinationScorer,
-                new BalancedScorer(), recommendationSetHistoryService, historyStateRepository,
-                Clock.systemUTC(), meterRegistry);
+        service = newService(meterRegistry);
         service.loadHistoricalCombinations();
+    }
+
+    // REF-01: 세 협력자(HistorySnapshotManager/RequestValidator/CandidateGenerator)가
+    // @Component로 전환된 뒤에도 프로덕션과 별개로 테스트는 여전히 이렇게 직접 new로
+    // 조립할 수 있다 — 다중 인스턴스 staleness 테스트가 두 번째 인스턴스를 만들 때도 그대로 쓴다.
+    private LottoRecommendationService newService(SimpleMeterRegistry registry) {
+        LottoRecommendationService instance = new LottoRecommendationService(lottoNumberCodec,
+                recommendationSetHistoryService,
+                new RecommendationHistorySnapshotManager(
+                        winningNumberRepository, historyStateRepository, Clock.systemUTC(), registry),
+                new RecommendationRequestValidator(lottoNumberCodec, registry),
+                new RecommendationCandidateGenerator(
+                        lottoNumberCodec, combinationScorer, new BalancedScorer(), registry),
+                Clock.systemUTC(), registry);
+        return instance;
     }
 
     // ── 기본 추천 동작 ────────────────────────────────────────────────────────
@@ -181,10 +194,7 @@ class LottoRecommendationServiceTest {
             AtomicLong sharedVersion = new AtomicLong(1L);
             given(historyState.getVersion()).willAnswer(invocation -> sharedVersion.get());
 
-            LottoRecommendationService otherInstance = new LottoRecommendationService(
-                    lottoNumberCodec, winningNumberRepository, combinationScorer, new BalancedScorer(),
-                    recommendationSetHistoryService, historyStateRepository, Clock.systemUTC(),
-                    new SimpleMeterRegistry());
+            LottoRecommendationService otherInstance = newService(new SimpleMeterRegistry());
             otherInstance.loadHistoricalCombinations();
 
             given(winningNumberRepository.findAllBalls()).willReturn(List.of(

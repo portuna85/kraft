@@ -4,7 +4,6 @@ import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiException;
 import com.kraft.common.lotto.LottoBitmask;
 import com.kraft.common.lotto.LottoNumberCodec;
-import com.kraft.winningnumber.WinningNumberRepository;
 import com.kraft.winningnumber.WinningNumbersCollectedEvent;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -54,9 +53,9 @@ public class LottoRecommendationService {
 
     // TD-008 1~3단계: 이력 스냅샷 수명주기, 요청 파싱/실현가능성 검증, 전략 디스패치·후보
     // 생성을 각각 RecommendationHistorySnapshotManager/RecommendationRequestValidator/
-    // RecommendationCandidateGenerator로 옮겼다 — 셋 다 Spring 빈이 아니라 이 생성자
-    // 안에서 직접 만드는 plain 협력자다(별도 빈으로 등록하면 생성자 시그니처가 바뀌어
-    // 테스트가 직접 두 번째 인스턴스를 만드는 지점이 깨진다).
+    // RecommendationCandidateGenerator로 옮겼다. REF-01: 셋 다 @Component로 등록해 생성자
+    // 주입으로 받는다 — 테스트의 다중 인스턴스 staleness 시나리오는 이 세 협력자도 함께
+    // new로 만들어 생성자에 넘기면 되므로 DI 전환과 무관하게 계속 동작한다.
     private final RecommendationHistorySnapshotManager historySnapshotManager;
     private final RecommendationRequestValidator requestValidator;
     private final RecommendationCandidateGenerator candidateGenerator;
@@ -78,22 +77,19 @@ public class LottoRecommendationService {
     }
 
     public LottoRecommendationService(LottoNumberCodec lottoNumberCodec,
-                                      WinningNumberRepository winningNumberRepository,
-                                      CombinationScorer combinationScorer,
-                                      BalancedScorer balancedScorer,
                                       RecommendationSetHistoryService recommendationSetHistoryService,
-                                      RecommendationHistoryStateRepository historyStateRepository,
+                                      RecommendationHistorySnapshotManager historySnapshotManager,
+                                      RecommendationRequestValidator requestValidator,
+                                      RecommendationCandidateGenerator candidateGenerator,
                                       Clock clock,
                                       MeterRegistry meterRegistry) {
         this.lottoNumberCodec = lottoNumberCodec;
         this.recommendationSetHistoryService = recommendationSetHistoryService;
         this.clock = clock;
         this.meterRegistry = meterRegistry;
-        this.historySnapshotManager = new RecommendationHistorySnapshotManager(
-                winningNumberRepository, historyStateRepository, clock, meterRegistry);
-        this.requestValidator = new RecommendationRequestValidator(lottoNumberCodec, meterRegistry);
-        this.candidateGenerator = new RecommendationCandidateGenerator(
-                lottoNumberCodec, combinationScorer, balancedScorer, meterRegistry);
+        this.historySnapshotManager = historySnapshotManager;
+        this.requestValidator = requestValidator;
+        this.candidateGenerator = candidateGenerator;
         this.recommendTimer = Timer.builder("kraft_lotto_recommend_duration_seconds")
                 .description("추천 생성 1회 처리 시간(검증·재추첨 포함)")
                 .register(meterRegistry);

@@ -94,7 +94,11 @@
 
   .footerGroups {
     display: grid;
-    grid-template-columns: 1fr;
+    /* I-31: 세 그룹이 세로로 전부 펼쳐지면 모바일에서 footer가 지나치게 길어진다.
+       접기(JS 없이 details로 구현하려면 데스크톱에서 "항상 펼침"을 CSS만으로
+       강제할 수 없다) 대신 2열로 압축해 링크 접근성은 그대로 두고 세로 길이만
+       줄인다. */
+    grid-template-columns: repeat(2, 1fr);
     gap: var(--space-6);
   }
 

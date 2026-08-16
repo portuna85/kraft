@@ -9,17 +9,19 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.springframework.stereotype.Component;
 
 /**
  * TD-008 2단계: {@link LottoRecommendationService}에서 요청 파싱과 실현가능성(조합 수)
- * 검증을 분리했다. 무상태이며 {@code LottoRecommendationService} 생성자 안에서 직접
- * 만들어지는 plain 협력자다(1단계의 {@link RecommendationHistorySnapshotManager}와 같은
- * 이유로 Spring 빈으로 등록하지 않는다).
+ * 검증을 분리했다. 무상태다. REF-01: {@link RecommendationHistorySnapshotManager}와 같은
+ * 이유로 Spring 빈이 아니었으나, 생성자 주입으로 전환해도 테스트에서 여전히 {@code new}로
+ * 직접 만들 수 있어 실익이 없던 제약이었다.
  *
  * strategy 문자열 상수({@code STRATEGY_RANDOM} 등)는 후보 생성 디스패치에서도 쓰여
  * {@link LottoRecommendationService}에 그대로 둔다 — 패키지 프라이빗이라 여기서도
  * 그대로 참조한다.
  */
+@Component
 final class RecommendationRequestValidator {
 
     private static final int MAX_LOCKED_NUMBERS = 5;
