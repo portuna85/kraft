@@ -32,9 +32,10 @@ import styles from "./composer.module.css";
 /**
  * 글 작성·수정 폼
  *
- * 작성과 수정이 같은 컴포넌트인 이유는 필드가 같기 때문이다. 다른 것은 셋뿐이다:
- * 분류는 작성할 때만 고를 수 있고, 수정은 expectedVersion을 싣고, 409 충돌 처리가
- * 수정에만 있다.
+ * 작성과 수정이 같은 컴포넌트인 이유는 필드가 같기 때문이다. 다른 것은 이 정도다:
+ * 추천 세트 첨부는 작성할 때만 고를 수 있고(H-03, 첨부는 생성 당시 결과의 불변
+ * 스냅샷이라 발행 후에는 바꿀 수 없다 — I-23에서 분류는 풀었지만 첨부는 그대로 둔다),
+ * 수정은 expectedVersion을 싣고, 409 충돌 처리가 수정에만 있다.
  */
 export function PostForm({ existing }: { existing?: CommunityPost }) {
   const router = useRouter();
@@ -153,22 +154,21 @@ export function PostForm({ existing }: { existing?: CommunityPost }) {
         error={titleField.error}
       />
 
-      {existing === undefined && (
-        <Select
-          label="분류"
-          name="category"
-          value={form.state.values.category}
-          onChange={(event) =>
-            form.setValue("category", event.target.value as PostFormValues["category"])
-          }
-        >
-          {POST_CATEGORIES.map((category) => (
-            <option key={category} value={category}>
-              {CATEGORY_LABELS[category]}
-            </option>
-          ))}
-        </Select>
-      )}
+      {/* I-23: 발행 후에도 분류를 고칠 수 있다 — 이전에는 작성 시점에 영구 고정이었다. */}
+      <Select
+        label="분류"
+        name="category"
+        value={form.state.values.category}
+        onChange={(event) =>
+          form.setValue("category", event.target.value as PostFormValues["category"])
+        }
+      >
+        {POST_CATEGORIES.map((category) => (
+          <option key={category} value={category}>
+            {CATEGORY_LABELS[category]}
+          </option>
+        ))}
+      </Select>
 
       <TextArea
         label="내용"

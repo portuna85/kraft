@@ -2,6 +2,7 @@
 
 import type { MouseEvent } from "react";
 
+import { useGridColumnCount } from "@/shared/hooks/use-grid-column-count";
 import { useRovingGrid } from "@/shared/hooks/use-roving-grid";
 
 import styles from "./number-grid.module.css";
@@ -9,7 +10,9 @@ import styles from "./number-grid.module.css";
 export type NumberMark = "none" | "locked" | "excluded";
 
 const NUMBERS = Array.from({ length: 45 }, (_, index) => index + 1);
-const COLUMNS = 7;
+// I-14: 실제 열 수는 런타임에 useGridColumnCount가 측정한다 — 이건 측정 전(마운트
+// 직후 한 프레임) 임시 기본값일 뿐이다.
+const COLUMNS_FALLBACK = 7;
 
 const MARK_LABEL: Record<NumberMark, string> = {
   none: "",
@@ -30,15 +33,20 @@ const MARK_LABEL: Record<NumberMark, string> = {
 export function NumberGrid({
   marks,
   onToggle,
+  isDisabled,
   "aria-label": label,
 }: {
   marks: ReadonlyMap<number, NumberMark>;
   onToggle: (value: number) => void;
+  /** I-27: 지금 눌러도 반영되지 않는 셀(예: 고정 상한 도달) — 클릭은 여전히 훅으로
+   * 전달한다(호출부가 거부 이유를 안내한다), 여기서는 시각·의미 표시만 맡는다. */
+  isDisabled?: (value: number) => boolean;
   "aria-label": string;
 }) {
+  const [gridRef, columns] = useGridColumnCount<HTMLDivElement>(COLUMNS_FALLBACK);
   const { activeIndex, onKeyDown, getCellProps } = useRovingGrid({
     itemCount: NUMBERS.length,
-    columns: COLUMNS,
+    columns,
   });
 
   function onClick(event: MouseEvent<HTMLDivElement>) {
@@ -50,6 +58,7 @@ export function NumberGrid({
 
   return (
     <div
+      ref={gridRef}
       className={styles.grid}
       role="group"
       aria-label={label}
@@ -60,18 +69,25 @@ export function NumberGrid({
         const mark = marks.get(value) ?? "none";
         const markLabel = MARK_LABEL[mark];
         const cellProps = getCellProps(index);
+        const disabled = isDisabled?.(value) ?? false;
 
         return (
           <button
             key={value}
+            ref={cellProps.ref}
             type="button"
             data-number={value}
             className={`${styles.cell} ${mark === "locked" ? styles.locked : ""} ${
               mark === "excluded" ? styles.excluded : ""
-            }`}
+            } ${disabled ? styles.disabled : ""}`}
             // 상태를 색과 취소선으로만 전달하지 않는다.
-            aria-label={markLabel === "" ? `${value}번` : `${value}번 ${markLabel}`}
+            aria-label={
+              markLabel === ""
+                ? `${value}번${disabled ? " (선택할 수 없음)" : ""}`
+                : `${value}번 ${markLabel}`
+            }
             aria-pressed={mark !== "none"}
+            aria-disabled={disabled || undefined}
             tabIndex={cellProps.tabIndex}
             onFocus={cellProps.onFocus}
             data-active={index === activeIndex || undefined}

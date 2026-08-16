@@ -61,6 +61,21 @@ button {
   padding: 0;
 }
 
+/* I-20: 브라우저 기본 fieldset 테두리·padding·min-width가 그대로 남으면 그룹핑용
+   fieldset이 시각적으로 별도 사각 프레임처럼 보인다(전략 카드 바깥에 테두리가 하나
+   더 생기는 식). legend는 sr-only로만 쓰는 곳(추천 전략 그룹 등)이 많아 여백이
+   남으면 그 숨겨진 텍스트만큼 그룹 앞에 빈 공간이 생긴다. */
+fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+legend {
+  padding: 0;
+}
+
 table {
   border-collapse: collapse;
 }

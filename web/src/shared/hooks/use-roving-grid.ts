@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, type KeyboardEvent } from "react";
+import { useCallback, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 
 /**
  * 로빙 tabindex 그리드(NumberGrid)
@@ -28,6 +28,7 @@ function clamp(value: number, max: number): number {
 
 export function useRovingGrid({ itemCount, columns, isDisabled }: RovingGridOptions) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const cellRefs = useRef<(HTMLElement | null)[]>([]);
 
   const nextEnabled = useCallback(
     (from: number, step: number): number => {
@@ -78,11 +79,28 @@ export function useRovingGrid({ itemCount, columns, isDisabled }: RovingGridOpti
   /** 각 셀에 펼쳐 넣는다. 그리드 전체가 탭 정지점 하나가 된다. */
   const getCellProps = useCallback(
     (index: number) => ({
+      ref: (el: HTMLElement | null) => {
+        cellRefs.current[index] = el;
+      },
       tabIndex: index === activeIndex ? 0 : -1,
       onFocus: () => setActiveIndex(index),
     }),
     [activeIndex],
   );
+
+  // I-13: activeIndex는 "다음에 Tab이 멈출 셀"만 정했지 실제 브라우저 포커스는
+  // 옮기지 않았다 — 화살표 키를 눌러도 포커스 링이 그대로라 키보드가 죽은 것처럼
+  // 보였다. 포커스가 이미 그리드 안(이 훅이 관리하는 셀 중 하나)에 있을 때만 새
+  // activeIndex 셀로 옮긴다 — 그 가드가 없으면 마운트 시점에 activeIndex 기본값(0)
+  // 셀로 포커스를 강제로 뺏어온다.
+  useLayoutEffect(() => {
+    const focusIsInsideGrid = cellRefs.current.some(
+      (cell) => cell !== null && cell === document.activeElement,
+    );
+    if (focusIsInsideGrid) {
+      cellRefs.current[activeIndex]?.focus();
+    }
+  }, [activeIndex]);
 
   return { activeIndex, onKeyDown, getCellProps };
 }

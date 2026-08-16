@@ -51,6 +51,29 @@ describe("DropdownMenu", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
+  // I-33: 회원 탈퇴 같은 파괴적 항목이 일상 항목과 시각적으로 구분되지 않았다.
+  it("separatorBefore를 준 항목 위에 구분선을 그린다", async () => {
+    render(
+      <DropdownMenu
+        trigger={({ onClick, "aria-expanded": expanded }) => (
+          <button type="button" onClick={onClick} aria-expanded={expanded}>
+            메뉴 열기
+          </button>
+        )}
+        items={[
+          { label: "로그아웃", onSelect: vi.fn() },
+          { label: "회원 탈퇴", tone: "danger", separatorBefore: true, onSelect: vi.fn() },
+        ]}
+        aria-label="계정"
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "메뉴 열기" }));
+
+    expect(screen.getByRole("separator")).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "회원 탈퇴" })).toBeInTheDocument();
+  });
+
   it("Escape와 바깥 포인터 입력으로 닫고 리스너를 제거한다", async () => {
     renderMenu();
     const trigger = screen.getByRole("button", { name: "메뉴 열기" });

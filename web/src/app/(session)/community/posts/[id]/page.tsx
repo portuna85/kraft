@@ -7,7 +7,7 @@ import { getPost } from "@/entities/community-post/api";
 import { CATEGORY_LABELS, isTombstone } from "@/entities/community-post/schema";
 import { ReportDialog } from "@/entities/community-report/ui/report-dialog";
 import { CommentSection } from "@/features/community-comments/comment-section";
-import { BlockButton, BlockedPostGate } from "@/features/community-post/blocked-post-gate";
+import { BlockButton, BlockedPostGate, ReportGate } from "@/features/community-post/blocked-post-gate";
 import { PostOwnerActions } from "@/features/community-post/post-owner-actions";
 import { ReactionBar } from "@/features/community-post/reaction-bar";
 import { RecommendationAttachmentView } from "@/features/community-post/recommendation-attachment-view";
@@ -132,7 +132,9 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
 
       <div className={styles.postActions}>
         <PostOwnerActions postId={post.id} ownerId={post.ownerId} version={post.version} />
-        <ReportDialog targetType="POST" targetId={post.id} label="이 글 신고" />
+        <ReportGate ownerId={post.ownerId}>
+          <ReportDialog targetType="POST" targetId={post.id} label="이 글 신고" />
+        </ReportGate>
         <BlockButton ownerId={post.ownerId} />
       </div>
 

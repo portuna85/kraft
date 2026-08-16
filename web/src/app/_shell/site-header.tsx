@@ -5,6 +5,7 @@ import { ROUTES } from "@/shared/config/routes";
 
 import { PRIMARY_NAV } from "./nav-items";
 import styles from "./shell.module.css";
+import { ThemeToggle } from "./theme-toggle";
 
 /**
  * 공통 헤더. 계정 영역은 셸마다 다르므로 슬롯으로 받는다 —
@@ -27,7 +28,10 @@ export function SiteHeader({ accountSlot }: { accountSlot?: ReactNode }) {
           ))}
         </nav>
 
-        {accountSlot}
+        <div className={styles.headerActions}>
+          <ThemeToggle />
+          {accountSlot}
+        </div>
       </div>
     </header>
   );

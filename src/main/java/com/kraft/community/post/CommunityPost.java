@@ -113,9 +113,11 @@ public class CommunityPost {
         return updatedAt;
     }
 
-    void update(String title, String content, OffsetDateTime updatedAt) {
+    // I-23: 분류도 함께 고칠 수 있다 — 이전에는 발행 시점에 영구 고정이었다.
+    void update(String title, String content, PostCategory category, OffsetDateTime updatedAt) {
         this.title = title;
         this.content = content;
+        this.category = category;
         this.updatedAt = updatedAt;
     }
 

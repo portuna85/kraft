@@ -73,7 +73,14 @@ export function AccountMenu({ nickname }: { nickname: string }) {
         )}
         items={[
           { label: "로그아웃", onSelect: () => void handleLogout() },
-          { label: "회원 탈퇴", onSelect: () => setConfirmOpen(true) },
+          // I-33: 되돌릴 수 없는 삭제가 가장 자주 쓰는 동작(로그아웃) 바로 옆에
+          // 같은 톤으로 있었다 — 구분선과 danger 톤으로 시각적으로 갈라 둔다.
+          {
+            label: "회원 탈퇴",
+            tone: "danger",
+            separatorBefore: true,
+            onSelect: () => setConfirmOpen(true),
+          },
         ]}
       />
       {error && (

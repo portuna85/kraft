@@ -68,9 +68,17 @@ export default async function StatsPage() {
         </p>
       </header>
 
+      {/* I-33: 좁은 화면에서는 세 카드가 세로로 길게 이어진다 — 데스크톱은
+          이미 3열이라 문제가 없어 그 폭에서는 숨긴다(stats.module.css). */}
+      <nav className={styles.toc} aria-label="빠른 이동">
+        <a href="#odd-count">홀수 개수</a>
+        <a href="#high-count">고수 개수</a>
+        <a href="#sum">번호 합계</a>
+      </nav>
+
       <div className={styles.groups}>
         <Card as="section" level={2}>
-          <h2>홀수 개수</h2>
+          <h2 id="odd-count">홀수 개수</h2>
           <p className={styles.note}>
             당첨 번호 6개 중 홀수가 몇 개였는지의 분포입니다.{" "}
             {describePeak(oddCounts, formatCountBucket)}
@@ -83,7 +91,7 @@ export default async function StatsPage() {
         </Card>
 
         <Card as="section" level={2}>
-          <h2>고수 개수</h2>
+          <h2 id="high-count">고수 개수</h2>
           <p className={styles.note}>
             23~45번을 고수로 봤을 때 6개 중 고수가 몇 개였는지의 분포입니다.{" "}
             {describePeak(highCounts, formatCountBucket)}
@@ -96,7 +104,7 @@ export default async function StatsPage() {
         </Card>
 
         <Card as="section" level={2}>
-          <h2>번호 합계</h2>
+          <h2 id="sum">번호 합계</h2>
           <p className={styles.note}>
             당첨 번호 6개를 더한 값의 구간별 분포입니다. 가능한 범위는 21(1~6)부터
             255(40~45)까지입니다. {describePeak(sumBuckets, formatSumBucket)}

@@ -7,9 +7,13 @@ import { useEventCallback } from "@/shared/hooks/use-event-callback";
 
 import styles from "./overlay.module.css";
 
-export type MenuItem = { label: string } & (
-  { onSelect: () => void } | { href: string; onClick?: () => void }
-);
+export type MenuItem = {
+  label: string;
+  /** I-33: 되돌릴 수 없는 파괴적 항목(회원 탈퇴 등) 시각 구분용. */
+  tone?: "danger";
+  /** I-33: 이 항목 바로 위에 구분선을 그린다 — 파괴적 항목을 일상 항목과 갈라 둔다. */
+  separatorBefore?: boolean;
+} & ({ onSelect: () => void } | { href: string; onClick?: () => void });
 
 /**
  * DropdownMenu
@@ -88,34 +92,37 @@ export function DropdownMenu({
           aria-label={label}
           onKeyDown={onMenuKeyDown}
         >
-          {items.map((item) =>
-            "href" in item ? (
-              // OAuth 등 전체 페이지 이동이 필요한 항목 — onClick으로 fetch하면 안 된다.
-              // onClick은 이동 자체가 아니라 이동 전 부수 작업(예: 복귀 경로 저장)에만 쓴다.
-              <a
-                key={item.label}
-                role="menuitem"
-                className={styles.menuItem}
-                href={item.href}
-                onClick={item.onClick}
-              >
-                {item.label}
-              </a>
-            ) : (
-              <button
-                key={item.label}
-                type="button"
-                role="menuitem"
-                className={styles.menuItem}
-                onClick={() => {
-                  close();
-                  item.onSelect();
-                }}
-              >
-                {item.label}
-              </button>
-            ),
-          )}
+          {items.map((item) => (
+            <div key={item.label}>
+              {item.separatorBefore === true && (
+                <hr className={styles.menuSeparator} role="separator" aria-orientation="horizontal" />
+              )}
+              {"href" in item ? (
+                // OAuth 등 전체 페이지 이동이 필요한 항목 — onClick으로 fetch하면 안 된다.
+                // onClick은 이동 자체가 아니라 이동 전 부수 작업(예: 복귀 경로 저장)에만 쓴다.
+                <a
+                  role="menuitem"
+                  className={`${styles.menuItem} ${item.tone === "danger" ? styles.menuItemDanger : ""}`}
+                  href={item.href}
+                  onClick={item.onClick}
+                >
+                  {item.label}
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={`${styles.menuItem} ${item.tone === "danger" ? styles.menuItemDanger : ""}`}
+                  onClick={() => {
+                    close();
+                    item.onSelect();
+                  }}
+                >
+                  {item.label}
+                </button>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

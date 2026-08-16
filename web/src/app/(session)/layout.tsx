@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
+import { ClaimMergeToast } from "@/features/identity-session/claim-merge-toast";
 import { SessionProvider } from "@/features/identity-session/session-provider";
+import { ToastProvider } from "@/shared/ui/toast";
 
 import { AccountControl } from "../_shell/account-control";
 import { ReturnToRedirect } from "../_shell/return-to-redirect";
@@ -19,13 +21,16 @@ import { TabBar } from "../_shell/tab-bar";
 export default function SessionLayout({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>
-      <ReturnToRedirect />
-      <SiteHeader accountSlot={<AccountControl />} />
-      <main id="main" className={`shell ${styles.main}`}>
-        {children}
-      </main>
-      <SiteFooter />
-      <TabBar />
+      <ToastProvider>
+        <ReturnToRedirect />
+        <ClaimMergeToast />
+        <SiteHeader accountSlot={<AccountControl />} />
+        <main id="main" className={`shell ${styles.main}`}>
+          {children}
+        </main>
+        <SiteFooter />
+        <TabBar />
+      </ToastProvider>
     </SessionProvider>
   );
 }

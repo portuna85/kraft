@@ -138,7 +138,7 @@ class CommunityPostCommentApiTest {
                         .with(asUser(other))
                         .with(csrf())
                         .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(new UpdatePostRequest("새 제목", "새 내용", 0L))))
+                        .content(objectMapper.writeValueAsString(new UpdatePostRequest("새 제목", "새 내용", "GENERAL", 0L))))
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(delete("/api/v1/community/posts/" + postId)
@@ -173,7 +173,7 @@ class CommunityPostCommentApiTest {
                         .with(asUser(owner))
                         .with(csrf())
                         .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(new UpdatePostRequest("새 제목", "새 내용", 0L))))
+                        .content(objectMapper.writeValueAsString(new UpdatePostRequest("새 제목", "새 내용", "GENERAL", 0L))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("새 제목"))
                 .andExpect(jsonPath("$.version").value(1));
@@ -186,6 +186,26 @@ class CommunityPostCommentApiTest {
 
         mockMvc.perform(get("/api/v1/community/posts/" + postId))
                 .andExpect(status().isNotFound());
+    }
+
+    // I-23: 분류가 발행 후 영구 고정이라 잘못 분류한 글을 고칠 방법이 없었다.
+    @Test
+    @DisplayName("작성자는 게시글 분류를 수정할 수 있다")
+    void owner_canUpdatePostCategory() throws Exception {
+        long postId = createPost(owner, "제목", "내용");
+
+        mockMvc.perform(put("/api/v1/community/posts/" + postId)
+                        .with(asUser(owner))
+                        .with(csrf())
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(
+                                new UpdatePostRequest("제목", "내용", "RECOMMENDATION_SHARE", 0L))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.category").value("RECOMMENDATION_SHARE"));
+
+        mockMvc.perform(get("/api/v1/community/posts/" + postId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.category").value("RECOMMENDATION_SHARE"));
     }
 
     @Test
@@ -355,7 +375,7 @@ class CommunityPostCommentApiTest {
                         .with(asUser(owner))
                         .with(csrf())
                         .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(new UpdatePostRequest("새 제목", "새 내용", 999L))))
+                        .content(objectMapper.writeValueAsString(new UpdatePostRequest("새 제목", "새 내용", "GENERAL", 999L))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("COMMUNITY_POST_VERSION_CONFLICT"));
     }

@@ -554,6 +554,7 @@ export interface components {
         UpdatePostRequest: {
             title: string;
             content: string;
+            category: string;
             /** Format: int64 */
             expectedVersion: number;
         };

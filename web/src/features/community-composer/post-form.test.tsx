@@ -116,9 +116,11 @@ describe("글 작성·수정 폼", () => {
     expect(screen.getByText("수정할 수 없습니다")).toBeInTheDocument();
   });
 
-  it("수정 화면에는 분류를 두지 않는다", () => {
+  // I-23: 분류가 발행 후 영구 고정이라 잘못 분류한 글을 고칠 방법이 없었다 —
+  // 수정 화면에도 분류 선택을 둔다.
+  it("수정 화면에도 분류를 둔다", () => {
     renderForm(post());
-    expect(screen.queryByLabelText("분류")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("분류")).toBeInTheDocument();
   });
 
   it("작성 화면에는 분류를 둔다", () => {

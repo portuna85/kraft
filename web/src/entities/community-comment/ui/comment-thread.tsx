@@ -18,20 +18,31 @@ import styles from "./comment-thread.module.css";
 export function CommentThread({
   comments,
   renderActions,
+  highlightedId,
 }: {
   comments: readonly CommunityComment[];
   renderActions?: (comment: CommunityComment) => ReactNode;
+  /** UX-03: 방금 작성한 댓글로 스크롤한 뒤 잠깐 강조하려고 상위(feature)가 넘긴다. */
+  highlightedId?: number | null;
 }) {
   return (
     <ol className={styles.thread}>
       {comments.map((comment) => (
         <li key={comment.id}>
-          <CommentItem comment={comment} renderActions={renderActions} />
+          <CommentItem
+            comment={comment}
+            renderActions={renderActions}
+            highlighted={comment.id === highlightedId}
+          />
           {comment.replies.length > 0 && (
             <ol className={styles.replies}>
               {comment.replies.map((reply) => (
                 <li key={reply.id}>
-                  <CommentItem comment={reply} renderActions={renderActions} />
+                  <CommentItem
+                    comment={reply}
+                    renderActions={renderActions}
+                    highlighted={reply.id === highlightedId}
+                  />
                 </li>
               ))}
             </ol>
@@ -51,12 +62,19 @@ export function CommentThread({
 function CommentItem({
   comment,
   renderActions,
+  highlighted = false,
 }: {
   comment: CommunityComment;
   renderActions?: (comment: CommunityComment) => ReactNode;
+  highlighted?: boolean;
 }) {
   return (
-    <article className={`${styles.item} ${comment.deleted ? styles.deleted : ""}`}>
+    <article
+      id={`comment-${comment.id}`}
+      className={`${styles.item} ${comment.deleted ? styles.deleted : ""} ${
+        highlighted ? styles.highlighted : ""
+      }`}
+    >
       <header className={styles.meta}>
         <span className={styles.author}>{comment.authorNickname}</span>
         <time dateTime={comment.createdAt}>{formatDateTime(comment.createdAt)}</time>

@@ -62,4 +62,30 @@ describe("useRovingGrid", () => {
     expect(screen.getByRole("status", { name: "활성 인덱스" })).toHaveTextContent("3");
     expect(screen.getAllByRole("gridcell")[3]).toHaveAttribute("tabindex", "0");
   });
+
+  // I-13 회귀 테스트: activeIndex(탭 정지점) 변경만으로는 이 버그를 못 잡는다 — 위
+  // 테스트들이 전부 통과하는 상태에서도 실제 document.activeElement는 그대로였다.
+  // fireEvent.focus는 합성 이벤트만 보내고 실제 DOM 포커스는 옮기지 않으므로,
+  // 여기서는 반드시 실제 .focus()로 시작해 화살표 후 document.activeElement를
+  // 직접 확인한다.
+  it("화살표로 이동하면 실제 브라우저 포커스도 함께 옮긴다", () => {
+    render(<Grid />);
+    const grid = screen.getByRole("grid", { name: "번호" });
+    const cells = screen.getAllByRole("gridcell");
+
+    cells[0]!.focus();
+    expect(document.activeElement).toBe(cells[0]);
+
+    fireEvent.keyDown(grid, { key: "ArrowRight" });
+
+    expect(document.activeElement).toBe(cells[1]);
+    expect(screen.getByRole("status", { name: "활성 인덱스" })).toHaveTextContent("1");
+  });
+
+  it("포커스가 그리드 밖에 있을 때는 activeIndex 변경이 포커스를 뺏지 않는다", () => {
+    render(<Grid />);
+    // 마운트 직후 activeIndex 기본값(0)이 셀 0을 강제로 포커스하면 안 된다 —
+    // 그리드가 화면에 나타나는 순간 사용자가 보던 곳에서 포커스가 튀는 부작용이 된다.
+    expect(document.activeElement).not.toBe(screen.getAllByRole("gridcell")[0]);
+  });
 });

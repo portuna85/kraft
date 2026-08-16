@@ -179,7 +179,8 @@ public class CommunityPostService {
         if (post.getVersion() != request.expectedVersion()) {
             throw versionConflict(null);
         }
-        post.update(request.title(), request.content(), OffsetDateTime.now(clock));
+        PostCategory category = parseCategory(request.category());
+        post.update(request.title(), request.content(), category, OffsetDateTime.now(clock));
         try {
             return communityPostRepository.saveAndFlush(post);
         } catch (ObjectOptimisticLockingFailureException | JpaSystemException raceLostAfterCheck) {

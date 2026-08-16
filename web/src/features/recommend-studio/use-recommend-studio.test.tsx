@@ -193,6 +193,56 @@ describe("번호 선택 모드", () => {
   });
 });
 
+describe("I-28: 낡은 결과 표시", () => {
+  it("생성 직후에는 낡지 않은 상태다", async () => {
+    recommendNumbers.mockResolvedValue(response([[1, 2, 3, 4, 5, 6]]));
+    const { result } = renderHook(() => useRecommendStudio({ loggedIn: false }));
+
+    await act(async () => {
+      await result.current.generate();
+    });
+
+    expect(result.current.isStale).toBe(false);
+  });
+
+  it("결과가 나온 뒤 고정 번호를 바꾸면 낡은 상태가 된다", async () => {
+    recommendNumbers.mockResolvedValue(response([[1, 2, 3, 4, 5, 6]]));
+    const { result } = renderHook(() => useRecommendStudio({ loggedIn: false }));
+
+    await act(async () => {
+      await result.current.generate();
+    });
+    act(() => result.current.toggleNumber(7));
+
+    expect(result.current.isStale).toBe(true);
+  });
+
+  it("같은 조건으로 다시 만들면 낡은 상태가 풀린다", async () => {
+    recommendNumbers.mockResolvedValue(response([[1, 2, 3, 4, 5, 6]]));
+    const { result } = renderHook(() => useRecommendStudio({ loggedIn: false }));
+
+    await act(async () => {
+      await result.current.generate();
+    });
+    act(() => result.current.toggleNumber(7));
+    expect(result.current.isStale).toBe(true);
+
+    await act(async () => {
+      await result.current.generate();
+    });
+
+    expect(result.current.isStale).toBe(false);
+  });
+
+  it("결과가 없는 동안에는 낡은 상태를 표시하지 않는다", () => {
+    const { result } = renderHook(() => useRecommendStudio({ loggedIn: false }));
+
+    act(() => result.current.toggleNumber(7));
+
+    expect(result.current.isStale).toBe(false);
+  });
+});
+
 describe("조합 개수", () => {
   it("1~10 범위로 잘라낸다", () => {
     const { result } = renderHook(() => useRecommendStudio({ loggedIn: false }));

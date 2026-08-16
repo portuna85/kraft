@@ -36,13 +36,18 @@ export function CompanionPairRow({
     <tr>
       <th scope="row">
         <span className={styles.pair}>
-          {medal !== undefined && (
-            // 장식용 강조다 — 순위는 행 순서와 표 자체가 이미 말한다(§CompanionPairRow
-            // 주석). 대비가 낮은 그라디언트 배지라 스크린리더/접근성 검사 대상에서 뺀다.
-            <span className={`${styles.medal} ${styles[`medal${medal}`] ?? ""}`} aria-hidden="true">
-              {MEDAL_LABEL[medal]}
-            </span>
-          )}
+          {/* I-30: 메달 폭만큼 자리를 항상 잡아둔다 — 순위 밖 행은 이 뱃지가
+              없어 공이 왼쪽으로 당겨져 열이 어긋나 보였다. 색과 "금/은/동"
+              텍스트만으로는 몇 위인지 전달되지 않아 aria-label로 "N위"를 더한다. */}
+          <span
+            className={`${styles.medal} ${
+              medal !== undefined ? (styles[`medal${medal}`] ?? "") : styles.medalHidden
+            }`}
+            aria-hidden={medal === undefined ? true : undefined}
+            aria-label={medal !== undefined ? `${medal}위` : undefined}
+          >
+            {medal !== undefined ? MEDAL_LABEL[medal] : null}
+          </span>
           <LottoBall value={pair.ballA} size="sm" />
           <LottoBall value={pair.ballB} size="sm" />
         </span>

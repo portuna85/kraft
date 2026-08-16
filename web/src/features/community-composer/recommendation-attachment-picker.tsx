@@ -23,6 +23,10 @@ import styles from "./recommendation-attachment-picker.module.css";
  * 같은 두 갈래 규칙이다(§3.3, 백엔드 B-P0-2). v1은 첫 페이지(최근 20건)만 보여준다 —
  * 작성 중인 글에 붙일 세트를 고르는 용도라 페이지네이션 없이도 충분하다.
  */
+// I-22: 전부 펼치면(최대 20개) 저장 버튼이 화면 6배 넘게 아래로 밀렸다 — 기본은
+// 이만큼만 보여주고 나머지는 "더 보기"로 넘긴다.
+const INITIAL_VISIBLE_COUNT = 3;
+
 export function RecommendationAttachmentPicker({
   value,
   onChange,
@@ -35,10 +39,12 @@ export function RecommendationAttachmentPicker({
 
   const [items, setItems] = useState<RecommendationSet[] | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [showAll, setShowAll] = useState(false);
 
   const load = useCallback(async () => {
     setLoadError(false);
     setItems(null);
+    setShowAll(false);
     try {
       const result = loggedIn
         ? await listAccountRecommendationSets(0)
@@ -106,8 +112,8 @@ export function RecommendationAttachmentPicker({
       </div>
 
       <ol className={styles.options}>
-        {items.map((set) => (
-          <li key={set.id}>
+        {(showAll ? items : items.slice(0, INITIAL_VISIBLE_COUNT)).map((set) => (
+          <li key={set.id} data-selected={value === set.id}>
             <Radio
               name="recommendation-attachment"
               checked={value === set.id}
@@ -124,6 +130,12 @@ export function RecommendationAttachmentPicker({
           </li>
         ))}
       </ol>
+
+      {!showAll && items.length > INITIAL_VISIBLE_COUNT && (
+        <Button variant="secondary" onClick={() => setShowAll(true)}>
+          더 보기 ({items.length - INITIAL_VISIBLE_COUNT}개 더 있음)
+        </Button>
+      )}
     </fieldset>
   );
 }

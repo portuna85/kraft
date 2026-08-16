@@ -96,6 +96,31 @@ describe("Dialog", () => {
     expect(document.activeElement).toBe(opener);
   });
 
+  // I-26: 열려 있는 동안 배경 스크롤이 잠기지 않아, 백드롭 위에서 휠을 굴리면 뒷
+  // 페이지가 스크롤됐다.
+  it("열려 있는 동안 배경 스크롤을 잠그고 닫히면 되돌린다", () => {
+    const { rerender } = render(
+      <Dialog open={false} onClose={vi.fn()} title="제목">
+        내용
+      </Dialog>,
+    );
+    expect(document.body.style.overflow).not.toBe("hidden");
+
+    rerender(
+      <Dialog open onClose={vi.fn()} title="제목">
+        내용
+      </Dialog>,
+    );
+    expect(document.body.style.overflow).toBe("hidden");
+
+    rerender(
+      <Dialog open={false} onClose={vi.fn()} title="제목">
+        내용
+      </Dialog>,
+    );
+    expect(document.body.style.overflow).not.toBe("hidden");
+  });
+
   it("TD-013: 열린 상태로 onClose 클로저가 바뀌어도 Escape는 최신 콜백을 호출한다", async () => {
     const onCloseWithId = vi.fn();
     render(<ChangingOnCloseHarness onCloseWithId={onCloseWithId} />);

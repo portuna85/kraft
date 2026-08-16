@@ -101,6 +101,24 @@
     background: var(--color-surface-1);
   }
 
+  /* I-33: 회원 탈퇴가 로그아웃 바로 아래, 같은 톤으로 있어 되돌릴 수 없는 동작이
+     일상 동작과 구분되지 않았다. */
+  .menuSeparator {
+    height: 1px;
+    margin-block: var(--space-1);
+    border: 0;
+    background: var(--color-border);
+  }
+
+  .menuItemDanger {
+    color: var(--color-danger);
+  }
+
+  .menuItemDanger:hover,
+  .menuItemDanger:focus-visible {
+    background: var(--color-surface-1);
+  }
+
   .tooltipWrap {
     position: relative;
     display: inline-flex;

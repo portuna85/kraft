@@ -1,4 +1,20 @@
 @layer components {
+  /* I-31: /analysis의 좁은 단(입력)+넓은 단(결과) 패턴을 그대로 가져온다 —
+     히어로만 prose 폭으로 좁고 안내 카드가 셸 전체로 늘어나 데스크톱에서
+     불균형해 보였다. */
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+    align-items: start;
+  }
+
+  @media (min-width: 1024px) {
+    .layout {
+      grid-template-columns: minmax(320px, 630px) 1fr;
+    }
+  }
+
   .hero {
     display: flex;
     flex-direction: column;
@@ -11,6 +27,15 @@
     box-shadow:
       var(--shadow-2),
       0 0 32px var(--color-brand-glow);
+  }
+
+  /* I-32: 색인되는 유일한 h1이 서술형 문구 없이 회차 숫자로만 바뀌지 않도록
+     이 문구를 회차 앞에 둔다. */
+  .heading {
+    display: block;
+    margin-bottom: var(--space-2);
+    font-size: var(--text-md);
+    color: var(--color-ink-muted);
   }
 
   .roundLabel {

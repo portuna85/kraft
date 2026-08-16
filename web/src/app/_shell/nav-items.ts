@@ -17,6 +17,9 @@ export const PRIMARY_NAV: NavGroup[] = [
       { href: ROUTES.recommend, label: "번호 추천" },
       { href: ROUTES.analysis, label: "내 조합 진단" },
       { href: ROUTES.saved, label: "보관함" },
+      // I-21: /recommend/history가 어느 내비게이션에도 없는 고아 라우트였다 —
+      // noindex라 검색으로도 못 왔다. 여기 추가해 최소 한 곳에서는 도달 가능하게 한다.
+      { href: ROUTES.recommendHistory, label: "추천 이력" },
     ],
   },
   {

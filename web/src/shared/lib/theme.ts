@@ -7,6 +7,8 @@
  */
 
 export const THEME_STORAGE_KEY = "kraft-theme";
+/** I-33: 토글 버튼이 useSyncExternalStore로 구독할 변경 이벤트 이름. */
+export const THEME_CHANGE_EVENT = "kraft-theme-change";
 
 export type Theme = "light" | "dark";
 
@@ -49,4 +51,5 @@ export function applyTheme(theme: Theme): void {
   } catch {
     // 프라이빗 모드 등 저장 실패는 무시한다 — 이번 세션 동안은 적용된 상태로 남는다.
   }
+  window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
 }

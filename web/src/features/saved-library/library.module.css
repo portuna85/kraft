@@ -1,4 +1,20 @@
 @layer components {
+  /* I-31: /analysis의 좁은 조작부 + 넓은 결과 2단 패턴을 여기에도 적용한다 —
+     회차 대조 폼 하나만으로는 컨텐츠 폭이 좁아 데스크톱에서 절반이 비어
+     보였다. */
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+    align-items: start;
+  }
+
+  @media (min-width: 1024px) {
+    .layout {
+      grid-template-columns: minmax(260px, 340px) 1fr;
+    }
+  }
+
   .compare {
     display: flex;
     flex-wrap: wrap;

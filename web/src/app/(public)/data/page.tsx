@@ -47,7 +47,12 @@ export default function DataHubPage() {
           <Card as="li" level={2} key={feature.href}>
             <h2>{feature.title}</h2>
             <p className={styles.note}>{feature.description}</p>
-            <Link href={feature.href}>보기</Link>
+            {/* I-33: "보기" 텍스트만 클릭 대상이라 카드처럼 보이는 나머지 영역을
+                눌러도 반응이 없었다 — stretched-link로 카드 전체를 링크 히트
+                영역에 포함시키되, 접근 이름은 여전히 "보기" 하나만 남긴다. */}
+            <Link href={feature.href} className={styles.cardLink}>
+              보기
+            </Link>
           </Card>
         ))}
       </ul>

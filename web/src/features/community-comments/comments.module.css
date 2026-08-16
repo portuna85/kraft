@@ -9,4 +9,12 @@
     font-size: var(--text-sm);
     color: var(--color-ink-muted);
   }
+
+  /* I-25: 부모(comment-thread.module.css의 .actions)가 display:flex; flex-wrap:wrap이라
+     답글 패널이 버튼들과 나란한 flex 아이템으로 앉는다 — 폭 100%로 강제 줄바꿈시켜
+     버튼 행 아래 블록으로 내린다. */
+  .replyPanel {
+    flex-basis: 100%;
+    margin-top: var(--space-2);
+  }
 }

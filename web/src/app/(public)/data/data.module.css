@@ -19,4 +19,16 @@
     color: var(--color-ink-muted);
     font-size: var(--text-sm);
   }
+
+  /* I-33: 카드 전체가 클릭 대상처럼 보이지만 실제로는 "보기" 텍스트만 링크였다 —
+     stretched-link로 카드 전체를 히트 영역에 포함시킨다. */
+  .grid > li {
+    position: relative;
+  }
+
+  .cardLink::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
 }

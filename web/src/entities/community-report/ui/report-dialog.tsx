@@ -49,9 +49,11 @@ export function ReportDialog({
     <>
       {/* danger ghost/text. 신고는 부차 행동이라
           full-width gradient primary처럼 강한 톤을 쓰면 안 되지만, quiet(중립
-          색)로는 "위험/신고" 신호가 아예 없어져 danger 색의 ghost로 둔다. */}
+          색)로는 "위험/신고" 신호가 아예 없어져 danger 색의 ghost로 둔다.
+          I-33: 색만으로는 버튼인지 링크인지 즉시 구분되지 않는다는 지적이 있어
+          아이콘을 더한다 — 의미는 여전히 텍스트 라벨이 전달한다. */}
       <Button variant="dangerQuiet" onClick={() => setOpen(true)}>
-        {label}
+        <span aria-hidden="true">🚩</span> {label}
       </Button>
 
       {open && (

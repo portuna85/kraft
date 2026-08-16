@@ -9,6 +9,10 @@
     font-size: var(--text-xs);
     font-weight: 700;
     white-space: nowrap;
+    /* I-24: .stack(flex-direction:column)의 기본 align-items:stretch 안에서는
+       inline-flex라도 flex 아이템으로서 컨테이너 폭 전체로 늘어난다 — 텍스트 라벨만
+       왼쪽에 뜬 빈 알약처럼 보인다(입력 필드로 오인). */
+    align-self: start;
   }
 
   .badgeSm {

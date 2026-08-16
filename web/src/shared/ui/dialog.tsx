@@ -35,6 +35,18 @@ export function Dialog({ open, onClose, title, size = "md", children }: DialogCo
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open, stableOnClose]);
 
+  // I-26: 배경 스크롤이 잠기지 않아 백드롭 위에서 휠을 굴리면 뒷 페이지가 스크롤됐다.
+  // 공유 프리미티브에서 한 번만 고치면 ConfirmDialog(삭제·탈퇴 확인)를 포함한 모든
+  // 소비자에 적용된다.
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
   if (!open) return null;
 
   function onBackdropClick(event: MouseEvent<HTMLDivElement>) {

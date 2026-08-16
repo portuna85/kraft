@@ -5,10 +5,9 @@
     gap: var(--space-2);
   }
 
-  /* 순위는 정렬 순서 자체가 말한다(CompanionPairRow 주석) — 메달은 상위 3개 행을
-     눈으로 더 빠르게 짚는 장식일 뿐, "몇 위"라는 텍스트는 별도로 붙이지 않는다. */
   .medal {
     display: inline-flex;
+    flex-shrink: 0;
     align-items: center;
     justify-content: center;
     width: 20px;
@@ -19,6 +18,12 @@
     /* 밝은 금/은/동 그라디언트 위에서는 흰 글자가 묻힌다 — 테마와 무관하게
        어두운 잉크로 고정한다(배경도 테마와 무관한 고정 그라디언트다). */
     color: #14203c;
+  }
+
+  /* I-30: 순위 밖 행에도 이 폭만큼 빈 자리를 남겨 공 두 개의 시작 위치가 모든
+     행에서 같은 열에 맞도록 한다. */
+  .medalHidden {
+    visibility: hidden;
   }
 
   .medal1 {

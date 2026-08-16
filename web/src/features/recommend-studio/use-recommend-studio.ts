@@ -46,9 +46,19 @@ export function useRecommendStudio({ loggedIn }: { loggedIn: boolean }) {
   const [marks, setMarks] = useState<Map<number, NumberMark>>(new Map());
   const [state, setState] = useState<StudioState>({ status: "idle" });
   const [saveOutcomes, setSaveOutcomes] = useState<Map<number, SaveOutcome>>(new Map());
+  // I-20: 범위 밖 입력이 조용히 잘려나가면(99→10, 0→1) 사용자가 왜 값이 바뀌었는지
+  // 모른다 — 클램프가 실제로 일어났을 때만 안내 문구를 보여준다.
+  const [countClamped, setCountClamped] = useState(false);
+  // I-27: 고정 5/5에서 6번째를 눌러도 시각적으로도 보조기기로도 아무 신호가 없었다 —
+  // 마지막으로 거부된 번호를 기억해 live region에 안내한다.
+  const [rejectedNumber, setRejectedNumber] = useState<number | null>(null);
 
   // 최신 요청 번호. 응답이 도착했을 때 이 값과 다르면 낡은 응답이다.
   const sequenceRef = useRef(0);
+  // I-28: 결과가 나온 뒤 고정/제외를 바꿔도 결과는 그대로라 "결과가 이 조건으로
+  // 만들어졌다"는 착각을 준다 — 생성 성공 시점의 조건을 스냅샷으로 남겨 지금
+  // 조건과 다르면 낡은 결과로 취급한다. 렌더 중에는 ref를 읽지 않도록 state로 둔다.
+  const [resultMarksKey, setResultMarksKey] = useState<string | null>(null);
 
   const lockedNumbers = [...marks.entries()]
     .filter(([, mark]) => mark === "locked")
@@ -60,6 +70,9 @@ export function useRecommendStudio({ loggedIn }: { loggedIn: boolean }) {
     .map(([value]) => value)
     .sort((a, b) => a - b);
 
+  const marksKey = `${lockedNumbers.join(",")}|${excludedNumbers.join(",")}`;
+  const isStale = state.status === "ready" && resultMarksKey !== marksKey;
+
   /**
    * 모드 기반 선택
    *
@@ -70,30 +83,36 @@ export function useRecommendStudio({ loggedIn }: { loggedIn: boolean }) {
    */
   const toggleNumber = useCallback(
     (value: number) => {
+      const mark = marks.get(value) ?? "none";
+
+      if (mark !== selectionMode && selectionMode === "locked" && lockedNumbers.length >= MAX_LOCKED_NUMBERS) {
+        // I-27: 화면 요약(고정 X/5)은 있었지만 정적 텍스트라 값이 안 바뀌면 live
+        // region이 재공지하지 않는다 — 거부된 번호 자체를 상태로 남겨 매 거부마다
+        // 문구가 바뀌게 한다.
+        setRejectedNumber(value);
+        return;
+      }
+
+      setRejectedNumber(null);
       setMarks((current) => {
         const next = new Map(current);
-        const mark = next.get(value) ?? "none";
-
         if (mark === selectionMode) {
           next.delete(value); // 같은 모드에서 다시 누르면 해제
-          return next;
+        } else {
+          next.set(value, selectionMode);
         }
-        if (selectionMode === "locked" && lockedNumbers.length >= MAX_LOCKED_NUMBERS) {
-          // 고정 상한을 넘기면 조용히 무시하지 않고 아무 일도 하지 않는다 —
-          // 화면이 상한을 함께 표시하므로 사용자가 이유를 알 수 있다.
-          return current;
-        }
-        next.set(value, selectionMode);
         return next;
       });
     },
-    [selectionMode, lockedNumbers.length],
+    [selectionMode, lockedNumbers.length, marks],
   );
 
   const clearMarks = useCallback(() => setMarks(new Map()), []);
 
   const setCountSafely = useCallback((next: number) => {
-    setCount(Math.min(Math.max(next, MIN_COUNT), MAX_COUNT));
+    const clamped = Math.min(Math.max(next, MIN_COUNT), MAX_COUNT);
+    setCount(clamped);
+    setCountClamped(clamped !== next);
   }, []);
 
   /** 오직 사용자 클릭으로만 호출한다. 이펙트에서 부르지 않는다(F-P0-6/7). */
@@ -106,12 +125,13 @@ export function useRecommendStudio({ loggedIn }: { loggedIn: boolean }) {
     try {
       const result = await recommendNumbers({ strategy, count, lockedNumbers, excludedNumbers });
       if (sequence !== sequenceRef.current) return; // 낡은 응답 폐기
+      setResultMarksKey(marksKey);
       setState({ status: "ready", result });
     } catch (cause) {
       if (sequence !== sequenceRef.current) return;
       setState({ status: "error", error: toApiError(cause, "조합을 만들지 못했습니다.") });
     }
-  }, [strategy, count, lockedNumbers, excludedNumbers]);
+  }, [strategy, count, lockedNumbers, excludedNumbers, marksKey]);
 
   const save = useCallback(
     async (index: number, numbers: readonly number[]) => {
@@ -144,6 +164,7 @@ export function useRecommendStudio({ loggedIn }: { loggedIn: boolean }) {
     setStrategy,
     count,
     setCount: setCountSafely,
+    countClamped,
     selectionMode,
     setSelectionMode,
     marks,
@@ -151,6 +172,8 @@ export function useRecommendStudio({ loggedIn }: { loggedIn: boolean }) {
     excludedNumbers,
     toggleNumber,
     clearMarks,
+    rejectedNumber,
+    isStale,
     state,
     generate,
     save,

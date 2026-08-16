@@ -150,65 +150,78 @@ export function SavedLibrary({ latestRound }: { latestRound: number }) {
     <div className="stack">
       {celebrating && <WinningCelebration />}
 
-      <div className={styles.compare}>
-        <label className={styles.roundLabel} htmlFor="round">
-          대조할 회차
-        </label>
-        <input
-          className={styles.roundInput}
-          id="round"
-          type="number"
-          min={1}
-          max={latestRound}
-          value={round}
-          onChange={(event) => setRound(Number(event.target.value))}
-        />
-        {matching ? (
-          <Button loading loadingLabel="대조 중">
-            대조하기
-          </Button>
-        ) : (
-          <Button onClick={compare}>대조하기</Button>
-        )}
+      {/* I-31: 회차 대조 폼 하나만으로는 컨텐츠 폭이 좁아 보관함 화면이 데스크톱
+          절반을 비워둔 것처럼 보였다 — /analysis처럼 좁은 조작부와 넓은 목록을
+          나란히 둔다. */}
+      <div className={styles.layout}>
+        <section aria-labelledby="compare" className="stack">
+          <h2 id="compare">회차 대조</h2>
+          <div className={styles.compare}>
+            <label className={styles.roundLabel} htmlFor="round">
+              대조할 회차
+            </label>
+            <input
+              className={styles.roundInput}
+              id="round"
+              type="number"
+              min={1}
+              max={latestRound}
+              value={round}
+              onChange={(event) => setRound(Number(event.target.value))}
+            />
+            {matching ? (
+              <Button loading loadingLabel="대조 중">
+                대조하기
+              </Button>
+            ) : (
+              <Button onClick={compare}>대조하기</Button>
+            )}
+          </div>
+        </section>
+
+        <section aria-labelledby="saved-list" className="stack">
+          <h2 id="saved-list">저장한 번호</h2>
+          <ol className={styles.list}>
+            {items.map((item) => {
+              const match = matches?.get(item.id);
+              return (
+                <Card as="li" level={2} key={item.id}>
+                  <div className={styles.item}>
+                    <div className={styles.itemHeader}>
+                      <span className={styles.savedAt}>
+                        {formatDrawDate(item.createdAt.slice(0, 10))}
+                      </span>
+                      {/* danger ghost "delete는 danger ghost". */}
+                      <Button variant="dangerQuiet" onClick={() => setDeleteTarget(item)}>
+                        삭제
+                      </Button>
+                    </div>
+
+                    <LottoBallSet
+                      numbers={item.numbers}
+                      matchedNumbers={
+                        match !== undefined
+                          ? new Set(
+                              item.numbers.filter((value) => match.drawNumbers.includes(value)),
+                            )
+                          : undefined
+                      }
+                    />
+
+                    {match !== undefined && (
+                      <MatchResultBadge
+                        prizeTier={match.prizeTier}
+                        matchedCount={match.matchedCount}
+                        bonusMatch={match.bonusMatch}
+                      />
+                    )}
+                  </div>
+                </Card>
+              );
+            })}
+          </ol>
+        </section>
       </div>
-
-      <ol className={styles.list}>
-        {items.map((item) => {
-          const match = matches?.get(item.id);
-          return (
-            <Card as="li" level={2} key={item.id}>
-              <div className={styles.item}>
-                <div className={styles.itemHeader}>
-                  <span className={styles.savedAt}>
-                    {formatDrawDate(item.createdAt.slice(0, 10))}
-                  </span>
-                  {/* danger ghost "delete는 danger ghost". */}
-                  <Button variant="dangerQuiet" onClick={() => setDeleteTarget(item)}>
-                    삭제
-                  </Button>
-                </div>
-
-                <LottoBallSet
-                  numbers={item.numbers}
-                  matchedNumbers={
-                    match !== undefined
-                      ? new Set(item.numbers.filter((value) => match.drawNumbers.includes(value)))
-                      : undefined
-                  }
-                />
-
-                {match !== undefined && (
-                  <MatchResultBadge
-                    prizeTier={match.prizeTier}
-                    matchedCount={match.matchedCount}
-                    bonusMatch={match.bonusMatch}
-                  />
-                )}
-              </div>
-            </Card>
-          );
-        })}
-      </ol>
 
       <ConfirmDialog
         open={deleteTarget !== null}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { createComment, deleteComment, fetchCommentPage } from "@/entities/community-comment/api";
 import {
@@ -51,6 +51,19 @@ export function CommentSection({
   const [deletePending, setDeletePending] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  // UX-03: 작성 후 목록만 새로고침하고 새 댓글로는 데려가지 않아 사용자가 직접
+  // 스크롤해 찾아야 했다.
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (highlightedId === null) return;
+    document
+      .getElementById(`comment-${highlightedId}`)
+      ?.scrollIntoView({ block: "center", behavior: "smooth" });
+    const timer = setTimeout(() => setHighlightedId(null), 2000);
+    return () => clearTimeout(timer);
+  }, [highlightedId]);
+
   async function loadMore() {
     setLoadingMore(true);
     setError(null);
@@ -80,6 +93,17 @@ export function CommentSection({
     setTotal(fresh.totalTopLevelComments);
   }
 
+  /**
+   * UX-03: 새로고침 후 방금 쓴 댓글로 스크롤하고 잠깐 강조한다. targetPage가 0이
+   * 아니면(상위 댓글이 50개를 넘어 새 댓글이 다음 페이지에 있는 경우) 이 새로고침이
+   * 그 페이지까지 가져오지 않으므로 강조 대상이 DOM에 없어 스크롤은 조용히 아무
+   * 일도 하지 않는다 — 답글은 항상 부모의 페이지에 실려 있어 이 문제가 없다.
+   */
+  async function handleCommentCreated(created: CommunityComment) {
+    await refreshFirstPage();
+    setHighlightedId(created.id);
+  }
+
   async function confirmDelete() {
     if (deleteTarget === null) return;
     setDeletePending(true);
@@ -97,10 +121,13 @@ export function CommentSection({
 
   return (
     <section aria-labelledby="comments" className="stack">
-      <h2 id="comments">댓글 {total}개</h2>
+      {/* I-33: "댓글 N개"가 답글을 세지 않아 헤더 숫자와 실제 스레드 개수가
+          어긋나 보였다(§25.6 — 답글은 페이징 집계에 넣지 않는다). 집계 범위를
+          라벨에 그대로 드러낸다. */}
+      <h2 id="comments">원댓글 {total}개</h2>
 
       {loggedIn ? (
-        <CommentForm postId={postId} parentId={null} onDone={refreshFirstPage} label="댓글 작성" />
+        <CommentForm postId={postId} parentId={null} onDone={handleCommentCreated} label="댓글 작성" />
       ) : (
         <p className={styles.note}>로그인하면 댓글을 남길 수 있습니다.</p>
       )}
@@ -114,6 +141,7 @@ export function CommentSection({
       ) : (
         <CommentThread
           comments={comments}
+          highlightedId={highlightedId}
           renderActions={(comment) => (
             <>
               {loggedIn && comment.parentId === null && (
@@ -134,15 +162,21 @@ export function CommentSection({
                 <ReportDialog targetType="COMMENT" targetId={comment.id} label="신고" />
               )}
               {replyTo === comment.id && (
-                <CommentForm
-                  postId={postId}
-                  parentId={comment.id}
-                  label="답글 작성"
-                  onDone={async () => {
-                    setReplyTo(null);
-                    await refreshFirstPage();
-                  }}
-                />
+                // I-25: CommentThread가 이 전체를 한 flex-wrap 행(.actions)에 담아
+                // 답글 패널이 답글·삭제·신고 버튼과 나란한 flex 아이템이 됐었다 —
+                // 폭 100%로 강제 줄바꿈시켜 버튼 행 아래 블록으로 내린다.
+                <div className={styles.replyPanel}>
+                  <CommentForm
+                    postId={postId}
+                    parentId={comment.id}
+                    label="답글 작성"
+                    autoFocus
+                    onDone={async (created) => {
+                      setReplyTo(null);
+                      await handleCommentCreated(created);
+                    }}
+                  />
+                </div>
               )}
             </>
           )}
@@ -183,11 +217,16 @@ function CommentForm({
   parentId,
   label,
   onDone,
+  autoFocus,
 }: {
   postId: number;
   parentId: number | null;
   label: string;
-  onDone: () => Promise<void>;
+  onDone: (created: CommunityComment) => Promise<void>;
+  // I-25: 답글 패널이 펼쳐질 때 포커스가 textarea로 옮겨가지 않았다 — aria-expanded는
+  // 맞았지만 실제 포커스 이동이 없어 키보드 사용자가 직접 찾아 눌러야 했다. 상시
+  // 마운트된 최상단 "댓글 작성" 폼에는 켜지 않는다(페이지 진입 시 포커스를 뺏으면 안 된다).
+  autoFocus?: boolean;
 }) {
   const [content, setContent] = useState("");
   const [pending, setPending] = useState(false);
@@ -200,9 +239,9 @@ function CommentForm({
     setPending(true);
     setError(null);
     try {
-      await createComment(postId, content.trim(), parentId);
+      const created = await createComment(postId, content.trim(), parentId);
       setContent("");
-      await onDone();
+      await onDone(created);
     } catch {
       // 실패해도 입력은 지우지 않는다 — 쓴 것을 날리는 것이 가장 나쁜 실패다.
       setError("댓글을 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.");
@@ -220,6 +259,7 @@ function CommentForm({
         value={content}
         onChange={(event) => setContent(event.target.value)}
         hint={`${content.length} / ${COMMENT_MAX_LENGTH}자`}
+        autoFocus={autoFocus}
       />
       {error !== null && <InlineAlert tone="danger">{error}</InlineAlert>}
       {pending ? (

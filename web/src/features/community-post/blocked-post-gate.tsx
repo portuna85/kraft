@@ -58,6 +58,18 @@ export function BlockedPostGate({ ownerId, children }: { ownerId: number; childr
 }
 
 /**
+ * I-33: 신고 게이팅. 자기 글은 신고 대상이 될 수 없는데 `ReportDialog`가 소유자
+ * 구분 없이 항상 렌더돼 본인 글에도 "이 글 신고"가 보였다 — BlockButton과 같은
+ * 클라이언트 측 노출 판단(§주석) 방식으로 작성자 본인에게는 감춘다.
+ */
+export function ReportGate({ ownerId, children }: { ownerId: number; children: ReactNode }) {
+  const session = useSession();
+  const loggedIn = canQueryOwnerScope(session);
+  if (loggedIn && session.session?.userId === ownerId) return null;
+  return <>{children}</>;
+}
+
+/**
  * 차단·해제 버튼. 자기 자신은 차단할 수 없으므로 본인 글에서는 아예 렌더하지 않는다.
  */
 export function BlockButton({ ownerId }: { ownerId: number }) {

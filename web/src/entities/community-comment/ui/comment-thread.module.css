@@ -60,6 +60,30 @@
     font-style: italic;
   }
 
+  /* UX-03: 작성 후 목록을 새로고침만 하고 새 댓글로 스크롤·강조하지 않아
+     방금 쓴 댓글을 사용자가 직접 찾아 내려야 했다. */
+  .highlighted {
+    animation: commentHighlight 2s ease-out;
+  }
+
+  @keyframes commentHighlight {
+    0% {
+      background: var(--color-brand-glow);
+      border-color: var(--color-brand);
+    }
+    100% {
+      background: var(--color-surface-1);
+      border-color: var(--color-border);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .highlighted {
+      animation: none;
+      border-color: var(--color-brand);
+    }
+  }
+
   .meta {
     display: flex;
     flex-wrap: wrap;

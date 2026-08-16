@@ -93,6 +93,33 @@
     }
   }
 
+  .resultsHeader {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+
+  .historyLink {
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
+
+  .historyLink:hover {
+    color: var(--color-ink);
+  }
+
+  .staleNotice {
+    padding: var(--space-2) var(--space-3);
+    border: 1px dashed var(--color-warning);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-2);
+    color: var(--color-ink);
+    font-weight: 700;
+    font-size: var(--text-sm);
+  }
+
   .resultAction {
     display: flex;
     flex-direction: column;
@@ -100,7 +127,16 @@
     gap: var(--space-1);
   }
 
+  /* I-29: 저장 결과가 나타나는 순간 아래 조합 목록이 밀리지 않도록 문구가 없을
+     때도 배지 한 줄 높이만큼 자리를 미리 잡아둔다. */
   .saveStatus {
+    display: flex;
+    align-items: center;
+    min-height: 1.5rem;
+  }
+
+  .saveError {
+    color: var(--color-danger);
     font-size: var(--text-sm);
     font-weight: 700;
   }

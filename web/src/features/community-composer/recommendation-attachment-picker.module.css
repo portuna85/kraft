@@ -26,6 +26,12 @@
     padding: var(--space-3);
   }
 
+  /* I-22: 선택된 카드가 라디오 점 외에는 시각적으로 구분되지 않았다. */
+  .options > li[data-selected="true"] {
+    border-color: var(--color-brand);
+    background: var(--color-surface-2);
+  }
+
   .none {
     padding: var(--space-2) var(--space-3);
   }

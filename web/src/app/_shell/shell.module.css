@@ -36,6 +36,20 @@
     display: none;
   }
 
+  .headerActions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  /* I-33: 테마 확정 전(마운트 전) 버튼 자리만큼 미리 차지해 헤더가 흔들리지
+     않게 한다. */
+  .themeTogglePlaceholder {
+    display: inline-block;
+    min-width: var(--target-min);
+    min-height: var(--target-min);
+  }
+
   .navLink {
     display: inline-flex;
     align-items: center;
@@ -55,14 +69,26 @@
     display: block;
     padding-block: var(--space-6) var(--space-12);
     /* 하단 고정 UI(탭바·광고)가 본문 끝을 가리지 않도록 컴포넌트가 게시한 값을 쓴다.
-       전역 토큰을 광고 CSS가 재정의하던 암묵 결합을 없앤 자리다(§9.5). */
-    padding-bottom: calc(var(--space-12) + var(--fixed-bottom-inset, 0px));
+       전역 토큰을 광고 CSS가 재정의하던 암묵 결합을 없앤 자리다(§9.5).
+       I-19 정정: 기존에는 --space-12(48px)만 예약했는데, 실제 탭바 높이는
+       --layout-tabbar-h(56px)이고 노치 기기에서는 탭바 자체가
+       env(safe-area-inset-bottom)만큼 더 커진다 — 그 두 가지가 반영되지 않아
+       48px보다 큰 화면에서는 이미 여백이 부족했다. */
+    padding-bottom: calc(
+      var(--layout-tabbar-h) + env(safe-area-inset-bottom) + var(--fixed-bottom-inset, 0px)
+    );
   }
 
   .footer {
     border-top: 1px solid var(--color-border);
     background: var(--color-canvas-sunken);
     padding-block: var(--space-8);
+    /* I-19: .main과 같은 이유 — 마지막 푸터 링크가 고정 탭바(+ 세이프에어리어 +
+       동시 노출된 sticky 광고)에 가려지지 않게 예약한다. footer는 main 뒤에 오므로
+       스크롤 끝에서 이 여백이 없으면 마지막 링크가 탭바 뒤에 숨는다. */
+    padding-bottom: calc(
+      var(--space-8) + var(--layout-tabbar-h) + env(safe-area-inset-bottom) + var(--fixed-bottom-inset, 0px)
+    );
   }
 
   .footerGroups {

@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   title: "글쓰기",
   description: "KRAFT Lotto 커뮤니티에 글을 씁니다.",
   alternates: { canonical: "/community/write" },
+  // I-33: 수정 화면(edit/page.tsx)은 이미 noindex인데 글쓰기 화면만 빠져 있었다 —
+  // 둘 다 개인 작성 흐름이라 색인 대상이 아니다.
+  robots: { index: false, follow: false },
 };
 
 export default function CommunityWritePage() {

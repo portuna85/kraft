@@ -121,11 +121,18 @@ export default async function CommunityPage({
           />
         )
       ) : (
-        <ol className="stack">
-          {page.items.map((post) => (
-            <PostSummaryCard key={post.id} post={post} />
-          ))}
-        </ol>
+        // I-33: axe heading-order — 게시글 제목이 <h1> 바로 다음 <h3>라 <h2>를
+        // 건너뛰었다. 목록 시각 디자인은 그대로 두고 보이지 않는 <h2>로 단계만 채운다.
+        <section aria-labelledby="post-list">
+          <h2 id="post-list" className="sr-only">
+            게시글 목록
+          </h2>
+          <ol className="stack">
+            {page.items.map((post) => (
+              <PostSummaryCard key={post.id} post={post} />
+            ))}
+          </ol>
+        </section>
       )}
 
       {/*

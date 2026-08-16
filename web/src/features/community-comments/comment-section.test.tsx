@@ -81,7 +81,7 @@ describe("댓글 섹션", () => {
 
   it("초기 페이지를 그대로 보여준다 — 마운트 즉시 재조회하지 않는다", () => {
     renderSection(LOGGED_IN);
-    expect(screen.getByText("댓글 1개")).toBeInTheDocument();
+    expect(screen.getByText("원댓글 1개")).toBeInTheDocument();
     expect(fetchCommentPage).not.toHaveBeenCalled();
   });
 
@@ -106,7 +106,23 @@ describe("댓글 섹션", () => {
     await user.click(screen.getByRole("button", { name: "등록" }));
 
     await waitFor(() => expect(createComment).toHaveBeenCalledWith(100, "새 댓글", null));
-    await waitFor(() => expect(screen.getByText("댓글 2개")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("원댓글 2개")).toBeInTheDocument());
+  });
+
+  // UX-03: 작성 후 목록만 새로고침되고 새 댓글로는 스크롤·강조가 없어 사용자가
+  // 직접 찾아 내려가야 했다.
+  it("작성한 댓글로 스크롤하고 강조 표시한다", async () => {
+    const user = userEvent.setup();
+    createComment.mockResolvedValue(comment({ id: 42 }));
+    fetchCommentPage.mockResolvedValue(
+      initialPage({ topLevel: [comment({ id: 42 })], totalTopLevelComments: 1 }),
+    );
+
+    renderSection(LOGGED_IN);
+    await user.type(screen.getByLabelText("댓글 작성"), "새 댓글");
+    await user.click(screen.getByRole("button", { name: "등록" }));
+
+    await waitFor(() => expect(document.getElementById("comment-42")).toBeInTheDocument());
   });
 
   it("빈 내용으로는 등록 버튼이 비활성화된다", () => {
@@ -127,7 +143,7 @@ describe("댓글 섹션", () => {
 
     await waitFor(() => expect(deleteComment).toHaveBeenCalledWith(7));
     await waitFor(() => expect(fetchCommentPage).toHaveBeenCalledWith(100, 0));
-    expect(await screen.findByText("댓글 0개")).toBeInTheDocument();
+    expect(await screen.findByText("원댓글 0개")).toBeInTheDocument();
   });
 
   it("삭제 실패 시 오류 문구를 보여주고 댓글을 유지한다", async () => {
@@ -143,7 +159,7 @@ describe("댓글 섹션", () => {
     expect(
       await screen.findByText("댓글을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요."),
     ).toBeInTheDocument();
-    expect(screen.getByText("댓글 1개")).toBeInTheDocument();
+    expect(screen.getByText("원댓글 1개")).toBeInTheDocument();
   });
 
   it("본인 댓글에는 삭제 버튼을, 남의 댓글에는 신고 버튼을 보여준다", () => {

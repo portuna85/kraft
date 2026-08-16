@@ -79,7 +79,7 @@ class CommunityPostRepositoryConcurrencyTest {
     @DisplayName("같은 버전을 대상으로 동시에 수정하면 하나만 성공하고 나머지는 409를 받는다")
     void concurrentUpdateUpdate_onlyOneSucceeds() throws Exception {
         List<Object> outcomes = runConcurrentlyAllowingFailure(2, i ->
-                communityPostService.update(ownerId, postId, new UpdatePostRequest("새 제목 " + i, "새 내용 " + i, 0L)));
+                communityPostService.update(ownerId, postId, new UpdatePostRequest("새 제목 " + i, "새 내용 " + i, "GENERAL", 0L)));
 
         assertExactlyOneSucceedsWithConflict(outcomes);
     }
@@ -89,7 +89,7 @@ class CommunityPostRepositoryConcurrencyTest {
     void concurrentUpdateDelete_onlyOneSucceeds() throws Exception {
         List<Object> outcomes = runConcurrentlyAllowingFailure(2, i -> {
             if (i == 0) {
-                return communityPostService.update(ownerId, postId, new UpdatePostRequest("새 제목", "새 내용", 0L));
+                return communityPostService.update(ownerId, postId, new UpdatePostRequest("새 제목", "새 내용", "GENERAL", 0L));
             }
             communityPostService.delete(ownerId, postId, 0L);
             return "deleted";
