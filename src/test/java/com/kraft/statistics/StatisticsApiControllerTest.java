@@ -17,6 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.head;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -130,6 +131,28 @@ class StatisticsApiControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", "public, max-age=60, must-revalidate"))
                 .andExpect(header().exists("ETag"));
+    }
+
+    // 2026-08-16 회귀 테스트: PublicApiCacheControlFilter.shouldNotFilter는 GET이 아니면
+    // (HEAD 포함) 무조건 건너뛴다 — scripts/deploy/smoke-test.sh의 check_header_contains가
+    // curl -I(HEAD)로 이 값을 확인하는데, 컨트롤러 레벨 .cacheControl(...) 호출을 "죽은
+    // 코드"로 보고 지웠다가 배포 스모크 테스트가 깨졌다(HEAD 응답엔 그 호출이 유일한
+    // Cache-Control 소스였다). GET에서는 필터가 덮어써 값이 같지만, HEAD에서는 컨트롤러
+    // 값이 그대로 나가야 한다 — 둘 다 고정한다.
+    @Test
+    @DisplayName("HEAD 요청도 공개 캐시 헤더를 반환한다(배포 스모크 테스트가 실제로 쓰는 방식)")
+    void roundsLatest_headRequest_returnsCacheHeaders() throws Exception {
+        mockMvc.perform(head("/api/v1/rounds/latest"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("max-age=60")));
+    }
+
+    @Test
+    @DisplayName("HEAD 요청으로 조회 빈도도 공개 캐시 헤더를 반환한다(배포 스모크 테스트가 실제로 쓰는 방식)")
+    void frequency_headRequest_returnsCacheHeaders() throws Exception {
+        mockMvc.perform(head("/api/v1/stats/frequency"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("max-age=60")));
     }
 
     @Test

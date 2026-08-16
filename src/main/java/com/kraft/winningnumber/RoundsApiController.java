@@ -1,5 +1,7 @@
 package com.kraft.winningnumber;
 
+import java.util.concurrent.TimeUnit;
+import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,17 +19,24 @@ public class RoundsApiController {
         this.winningNumberQueryService = winningNumberQueryService;
     }
 
-    // REF-03/I-10: PublicApiCacheControlFilter가 이 경로(isCacheablePath)에 대해 2xx 응답마다
-    // Cache-Control을 무조건 setHeader(교체)하므로, 여기서 별도로 걸었던 값은 항상 그 값으로
-    // 덮여써져 wire에는 절대 나가지 않는 죽은 코드였다 — 운영 실측(§I-09/I-10 감사)도 필터의
-    // "public, max-age=60, must-revalidate"만 관측됐다. 정책은 필터 한 곳에서만 관리한다.
+    // 2026-08-16 정정: 이전에 REF-03/I-10 정리로 이 호출을 지웠다가 배포 직후 스모크
+    // 테스트(check_header_contains, curl -I 즉 HEAD 요청)가 깨졌다 — 원인은
+    // PublicApiCacheControlFilter.shouldNotFilter가 GET이 아니면(HEAD 포함) 무조건
+    // 건너뛰도록 되어 있어서다. GET에서는 이 호출이 필터에 덮여써지는 죽은 코드가
+    // 맞지만(§I-09/I-10 감사에서 실측 확인), HEAD에서는 필터가 아예 안 도므로 이
+    // 컨트롤러 레벨 값이 유일한 소스다 — 없애면 HEAD 응답에 Cache-Control이 아예
+    // 안 붙거나(또는 Spring Security 기본 writer의 no-store 계열로 남는다). 되돌린다.
     @GetMapping("/latest")
     public ResponseEntity<WinningNumberResponse> latest() {
-        return ResponseEntity.ok(winningNumberQueryService.getLatest());
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(60, TimeUnit.SECONDS).cachePublic())
+                .body(winningNumberQueryService.getLatest());
     }
 
     @GetMapping("/freshness")
     public ResponseEntity<RoundFreshnessResponse> freshness() {
-        return ResponseEntity.ok(winningNumberQueryService.getFreshness());
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(60, TimeUnit.SECONDS).cachePublic())
+                .body(winningNumberQueryService.getFreshness());
     }
 }
