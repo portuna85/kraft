@@ -75,6 +75,34 @@ dependencies {
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor:4.1.0")
     runtimeOnly("org.mariadb.jdbc:mariadb-java-client")
 
+    // 2026-08-16 CVE 대응: Boot 4.1.0 BOM이 관리하는 netty/tomcat-embed 버전에
+    // CVSS>=7.0 취약점이 있고, 아직 그걸 반영한 Boot 4.1.x 패치가 없다(Maven Central
+    // 메타데이터로 확인: 4.1.0이 최신). BOM 전체를 흔들지 않고 이 두 그룹만 각자의
+    // 최신 패치로 위로 고정한다 — 패치 버전만 올리는 것이라 API 변경 위험은 낮다.
+    // Boot가 이 버전들을 정식 반영하면 이 constraints 블록은 지워도 된다.
+    constraints {
+        listOf(
+            "netty-buffer", "netty-codec-base", "netty-codec-dns", "netty-common",
+            "netty-handler", "netty-resolver", "netty-resolver-dns", "netty-transport",
+            "netty-transport-native-unix-common",
+        ).forEach { module ->
+            implementation("io.netty:$module:4.2.17.Final") {
+                because("CVE-2026-56820 등 다수 — Boot 4.1.0 BOM 고정치(4.2.15.Final)에서 발견")
+            }
+        }
+        listOf("tomcat-embed-core", "tomcat-embed-websocket").forEach { module ->
+            implementation("org.apache.tomcat.embed:$module:11.0.24") {
+                because("CVE-2026-53434 등 다수 — Boot 4.1.0 BOM 고정치(11.0.22)에서 발견")
+            }
+        }
+        implementation("com.fasterxml.jackson.core:jackson-databind:2.22.1") {
+            because("CVE-2026-54515 — Boot 4.1.0 BOM 고정치(2.22.0)에서 발견")
+        }
+        implementation("org.apache.logging.log4j:log4j-api:2.26.1") {
+            because("CVE-2026-49844 — Boot 4.1.0 BOM 고정치(2.26.0/2.25.4)에서 발견")
+        }
+    }
+
     developmentOnly(platform("org.springframework.boot:spring-boot-dependencies:4.1.0"))
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     // H2: 로컬 bootRun(IntelliJ, Docker 없는 환경)과 테스트에서만 사용. bootJar 제외.
@@ -216,6 +244,17 @@ dependencyCheck {
     // CVSS 7.0 이상(High/Critical)만 빌드를 실패시킨다 — Low/Medium은 리포트에만 남긴다.
     failBuildOnCVSS = 7.0f
     suppressionFiles = listOf("$rootDir/config/dependency-check/suppressions.xml")
+    // 2026-08-16 실측: 기본값(전 configuration 스캔)은 checkstyle/spotbugs/pitest/
+    // dependency-check 플러그인 자신이 끌어오는 buildscript 전용 툴 의존성(httpcore5,
+    // httpclient5, commons-beanutils, plexus-utils, pitest-command-line)까지 취약점으로
+    // 잡는다 — dependencyInsight로 확인: 이 다섯은 runtimeClasspath·testRuntimeClasspath
+    // 어디에도 없다(즉 빌드 산출물·테스트 실행 어느 쪽에도 실려 나가지 않는다).
+    // runtimeClasspath가 아니라 productionRuntimeClasspath를 쓴다 — 전자는 devtools 같은
+    // developmentOnly 의존성까지 포함해(로컬 bootRun용) spring-boot-devtools의
+    // CVE-2022-31691을 오탐으로 잡는다(dependencyInsight로 확인). productionRuntimeClasspath는
+    // Spring Boot Gradle 플러그인이 developmentOnly/testAndDevelopmentOnly를 뺀, 실제
+    // kraft-backend.jar에 들어가는 것과 같은 집합이다.
+    scanConfigurations = listOf("productionRuntimeClasspath", "testRuntimeClasspath")
     nvd {
         // CI가 시크릿 없이 이 env를 넘기면 빈 문자열("")이 된다 — 그래도 위 문제는
         // 재현되지만(빈 값과 unset 둘 다 동일하게 실패), blank를 null로 접어 최소한
