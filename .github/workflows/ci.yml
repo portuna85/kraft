@@ -281,6 +281,8 @@ jobs:
         run: npm run build
         env:
           NEXT_DIST_DIR: .next-proxy
+          # REF-05: Caddy 없이 standalone 서버만 띄우는 트랙이라 필요하다(next.config.ts 참고).
+          NEXT_ENABLE_STANDALONE_REWRITES: "true"
           KRAFT_BACKEND_INTERNAL_URL: http://127.0.0.1:4110
           KRAFT_PUBLIC_BASE_URL: http://127.0.0.1:3110
       - run: npm run test:e2e:proxy
@@ -322,6 +324,7 @@ jobs:
         run: npm run build
         env:
           NEXT_DIST_DIR: .next-default
+          NEXT_ENABLE_STANDALONE_REWRITES: "true"
           KRAFT_BACKEND_INTERNAL_URL: http://127.0.0.1:4111
           KRAFT_PUBLIC_BASE_URL: http://127.0.0.1:3111
       - run: npm run test:e2e:default
@@ -361,6 +364,7 @@ jobs:
         run: npm run build
         env:
           NEXT_DIST_DIR: .next-a11y
+          NEXT_ENABLE_STANDALONE_REWRITES: "true"
           KRAFT_BACKEND_INTERNAL_URL: http://127.0.0.1:4112
           KRAFT_PUBLIC_BASE_URL: http://127.0.0.1:3112
       - run: npm run test:e2e:a11y
@@ -402,6 +406,7 @@ jobs:
         run: npm run build
         env:
           NEXT_DIST_DIR: .next-visual
+          NEXT_ENABLE_STANDALONE_REWRITES: "true"
           KRAFT_BACKEND_INTERNAL_URL: http://127.0.0.1:4113
           KRAFT_PUBLIC_BASE_URL: http://127.0.0.1:3113
       - run: npm run test:e2e:visual
@@ -442,6 +447,7 @@ jobs:
         run: npm run build
         env:
           NEXT_DIST_DIR: .next-cross-browser
+          NEXT_ENABLE_STANDALONE_REWRITES: "true"
           KRAFT_BACKEND_INTERNAL_URL: http://127.0.0.1:4114
           KRAFT_PUBLIC_BASE_URL: http://127.0.0.1:3114
       - run: npm run test:e2e:cross-browser
@@ -486,6 +492,7 @@ jobs:
       - run: npm ci --prefer-offline --no-audit --no-fund
       - run: npm run build
         env:
+          NEXT_ENABLE_STANDALONE_REWRITES: "true"
           KRAFT_BACKEND_INTERNAL_URL: http://127.0.0.1:4101
           KRAFT_PUBLIC_BASE_URL: http://127.0.0.1:3101
       - name: Run bundle and Lighthouse budgets

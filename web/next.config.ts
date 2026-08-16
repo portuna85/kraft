@@ -20,12 +20,16 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
-    const backendUrl = process.env.KRAFT_BACKEND_INTERNAL_URL ?? "http://backend:8080";
+    // REF-05: 프로덕션에서는 Caddy가 /api/v1/*·/ops-api/*를 Next를 거치지 않고 backend로
+    // 직접 보낸다(caddy/Caddyfile `handle`) — 이 rewrite는 그 앞단을 통과하지 못하므로
+    // 실제로는 절대 실행되지 않는다. Caddy 없이 standalone 서버만 띄우는 E2E 트랙(모든
+    // playwright.*.config.ts가 scripts/start-standalone.mjs로 이렇게 띄운다)에서만 브라우저
+    // 쪽 요청(browserQuery/browserMutate)이 갈 곳이 없어 필요하다 — 그 트랙들의 CI 빌드
+    // 스텝에서만 NEXT_ENABLE_STANDALONE_REWRITES=true를 준다. 프로덕션 빌드에는 절대 켜지
+    // 않아 죽은 rewrite 규칙이 산출물에 남지 않는다.
+    if (process.env.NEXT_ENABLE_STANDALONE_REWRITES !== "true") return [];
 
-    // 프로덕션에서는 Caddy가 /api/v1/*를 Next를 거치지 않고 backend로 직접 보낸다
-    // (caddy/Caddyfile `handle /api/v1/*`) — 이 rewrite는 그 앞단을 통과하지 못하므로
-    // 실제로는 절대 실행되지 않는다. Caddy 없이 standalone 서버만 띄우는 E2E 트랙에서
-    // 브라우저 쪽 요청(browserQuery/browserMutate)이 갈 곳이 없어 추가했다.
+    const backendUrl = process.env.KRAFT_BACKEND_INTERNAL_URL ?? "http://backend:8080";
     return [
       { source: "/ops-api/:path*", destination: `${backendUrl}/ops/:path*` },
       { source: "/api/v1/:path*", destination: `${backendUrl}/api/v1/:path*` },
