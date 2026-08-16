@@ -73,11 +73,17 @@ bash scripts/deploy/wait-readiness.sh
 # 실행하는 경로라 그 env가 없다 — 그러면 smoke-test.sh가 기본값 http://localhost로
 # 떨어져 Caddy의 자동 HTTPS 리다이렉트(308)에 전부 걸려 "롤백은 성공했는데 스모크
 # 테스트만 실패"로 보이는 거짓 경보가 뜬다(실제로 이 스크립트로 겪음). .env.prod를
-# 직접 소싱해 자급자족하게 만든다.
+# 자급자족용으로 읽어들이되, `source`로 셸 스크립트처럼 실행하지 않는다 —
+# KRAFT_EXTERNAL_LOTTO_AUTO_COLLECT_CRON="0 30/15 21-23 * * SAT"처럼 공백 포함
+# 값이 있으면 `source`는 이를 "VAR=0 명령 30/15 인자..."로 잘못 파싱해 `30/15`를
+# 명령으로 실행하려다 실패한다(2026-08-16 실제 장애: 롤백 자체가 이 줄에서 죽어
+# "수동 개입 필요"로 남았다). 값을 셸 문법으로 재해석하지 않는 read 루프로 대신한다.
 if [[ -f "$ENV_FILE" ]]; then
   set -a
-  # shellcheck source=/dev/null
-  source "$ENV_FILE"
+  while IFS='=' read -r env_key env_value; do
+    [[ -z "$env_key" || "$env_key" == \#* ]] && continue
+    export "$env_key=$env_value"
+  done < "$ENV_FILE"
   set +a
 fi
 
