@@ -13,9 +13,7 @@ describe("인앱 브라우저 감지", () => {
 
   it("인스타그램 인앱 브라우저를 감지한다", () => {
     expect(
-      isInAppBrowser(
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Instagram 300.0.0.0",
-      ),
+      isInAppBrowser("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Instagram 300.0.0.0"),
     ).toBe(true);
   });
 
