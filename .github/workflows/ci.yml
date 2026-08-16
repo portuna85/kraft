@@ -564,16 +564,8 @@ jobs:
         with:
           name: backend-boot-jar
           path: build/libs
-      # 부팅 전에 심어야 한다 — LottoRecommendationService.loadHistoricalCombinations()가
-      # @PostConstruct라 부팅 뒤에 심으면 첫 추천 호출이 스냅샷 재동기화 때문에 503로
-      # 닫힌다(의도된 fail-closed 동작 — 로컬 실측으로 재현·확인, 재시도 시 성공). 러너에
-      # DB 클라이언트를 설치하는 대신 같은 mariadb 이미지를 일회성 클라이언트로 쓴다.
-      - name: Seed winning-number history
-        run: |
-          docker run --rm --network=host \
-            -v "${{ github.workspace }}/scripts/load-test:/seed" \
-            mariadb:11.7@sha256:fcc7fcd7114adb5d41f14d116b8aac45f94280d2babfbbb71b4782922ee6d8d4 \
-            sh -c "mariadb -h127.0.0.1 -uroot -proot kraft_lotto < /seed/seed-history.sql"
+      # winning_numbers 테이블 자체가 Flyway 마이그레이션 산출물이라 부팅 전에는 심을 수
+      # 없다(먼저 시도했다가 "Table doesn't exist"로 확인) — 부팅부터 한다.
       - name: Start backend
         env:
           KRAFT_DB_URL: "jdbc:mariadb://127.0.0.1:3306/kraft_lotto?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul"
@@ -584,10 +576,14 @@ jobs:
         run: |
           nohup java -jar build/libs/kraft-backend.jar --server.port=8080 > backend.log 2>&1 &
           echo $! > backend.pid
+      # readiness 그룹에는 recommendationHistory 인디케이터가 포함돼 있고(application.yml),
+      # 그 ready()는 roundCount>0을 요구한다 — 시드 전에는 영원히 DOWN이라 이 시점 신호로
+      # 못 쓴다(로컬 실측으로 확인). liveness는 그 커스텀 인디케이터가 없어 앱이 뜨자마자
+      # UP이 된다 — "스키마까지 만들어졌다"만 확인하면 되는 지금 목적에 맞는 신호다.
       - name: Wait for backend readiness
         run: |
           for _ in $(seq 1 30); do
-            if curl -sf http://127.0.0.1:8080/api/v1/rounds/latest > /dev/null; then
+            if curl -fsS http://127.0.0.1:8080/actuator/health/liveness | grep -q '"status":"UP"'; then
               exit 0
             fi
             sleep 2
@@ -595,6 +591,23 @@ jobs:
           echo "::error::백엔드가 준비되지 않았다"
           cat backend.log
           exit 1
+      # 테이블이 이제 존재하므로 여기서 심는다. 러너에 DB 클라이언트를 설치하는 대신 같은
+      # mariadb 이미지를 일회성 클라이언트로 쓴다.
+      - name: Seed winning-number history
+        run: |
+          docker run --rm --network=host \
+            -v "${{ github.workspace }}/scripts/load-test:/seed" \
+            mariadb:11.7@sha256:fcc7fcd7114adb5d41f14d116b8aac45f94280d2babfbbb71b4782922ee6d8d4 \
+            sh -c "mariadb -h127.0.0.1 -uroot -proot kraft_lotto < /seed/seed-history.sql"
+      # 이 시점 스냅샷은 부팅 시점(빈 이력)에 멈춰 있다 — 시드가 DB 버전을 올렸으므로 다음
+      # 추천 호출은 fail-closed 503으로 스냅샷을 갱신만 하고 끝난다(의도된 동작, 로컬 실측
+      # 확인됨). k6가 이 워밍업 요청까지 측정하지 않도록 결과를 버리는 별도 호출로 미리
+      # 태운다.
+      - name: Warm up recommendation history snapshot
+        run: |
+          curl -s -o /dev/null -X POST http://127.0.0.1:8080/api/v1/numbers/recommend \
+            -H "Content-Type: application/json" \
+            -d '{"count":1,"strategy":"balanced"}' || true
       - name: Run k6 load test (informational — thresholds do not fail the build)
         run: |
           docker run --rm --network=host \
