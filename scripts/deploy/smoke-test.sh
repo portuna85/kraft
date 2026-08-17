@@ -117,13 +117,20 @@ check_body_matches "홈 최신 회차 렌더링" "$BASE/" 'data-testid="latest-r
 # 아니라 실제 prefetch 경로에서만 벌어진 문제). Lighthouse/기존 체크는 콜드 단일 페이지
 # 로드만 재서 이런 종류의 회귀를 못 잡는다. Next 라우터가 실제로 보내는 두 시그널(쿼리
 # 파라미터 + RSC 헤더)을 그대로 재현해 라우트별로 한 번씩 확인한다.
+#
+# 정정(실측, 2026-08-17): 이 curl은 `Next-Router-State-Tree`/`Next-Url` 등 실제 브라우저
+# prefetch가 함께 보내는 나머지 헤더 없이 `RSC: 1`만 보낸다 — 그 결과 이 체크를 추가한
+# 이후 첫 실운영 배포에서 전 라우트가 (구버전 포함, 즉 오늘 코드 변경과 무관하게) 일관되게
+# `307`을 반환함을 확인했다(구버전 대상 재현: `curl -H "RSC: 1"
+# ".../recommend?_rsc=smoketest"` → 307). 원래 잡으려던 증상은 503(업스트림 장애)이었으므로
+# 200 단일값이 아니라 5xx만 걸러낸다 — 307은 이 불완전한 헤더 조합에서 나오는 정상 동작이다.
 for rsc_path in / /recommend /analysis /saved /data /frequency /stats /companion /community /status; do
   rsc_url="${BASE}${rsc_path}?_rsc=smoketest"
   actual=$(curl -o /dev/null -sS -w "%{http_code}" --max-time 10 -H "RSC: 1" "$rsc_url" 2>/dev/null || echo "000")
-  if [[ "$actual" == "200" ]]; then
+  if [[ "$actual" != "000" && "$actual" -lt 500 ]]; then
     echo "  OK  [$actual] RSC prefetch $rsc_path"
   else
-    echo "  FAIL[$actual != 200] RSC prefetch $rsc_path ($rsc_url)" >&2
+    echo "  FAIL[$actual, expected <500] RSC prefetch $rsc_path ($rsc_url)" >&2
     FAIL=1
   fi
 done
