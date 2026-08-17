@@ -260,13 +260,6 @@ dependencyCheck {
         // 재현되지만(빈 값과 unset 둘 다 동일하게 실패), blank를 null로 접어 최소한
         // "0글자짜리 키를 진짜로 보냈다"는 오해의 여지는 없앤다.
         apiKey = System.getenv("NVD_API_KEY")?.takeIf { it.isNotBlank() }
-        // 실측(2026-08-17): NVD REST API가 503/timeout을 반환하는 외부 장애 구간에서
-        // 플러그인 기본 재시도 설정은 "Checking for updates and analyzing dependencies"
-        // 단계에서 40분 넘게 물러나지 않고 계속 재시도하다 CI 타임아웃(당시 25→45분)에
-        // 강제로 cancelled됐다(캐시를 완전히 비워도 재현됨 — 캐시 문제가 아니라 NVD
-        // 자체 장애). 재시도 횟수를 줄여 NVD가 실제로 다운돼 있을 때는 몇 분 안에
-        // 명확히 실패하게 만들고, 그 실패 자체를 "나중에 재시도" 신호로 쓴다.
-        maxRetryCount = 3
     }
     data {
         directory = "$rootDir/.dependency-check-data"
