@@ -5,7 +5,6 @@ plugins {
     checkstyle
     id("com.github.spotbugs") version "6.5.10"
     id("info.solidsoft.pitest") version "1.19.0"
-    id("org.owasp.dependencycheck") version "13.0.0"
 }
 
 group = "com.kraft"
@@ -229,39 +228,7 @@ pitest {
     mutationThreshold = 85
 }
 
-// ── 의존성 취약점 스캔 (I-06) ──────────────────────────────────────────────────
-// npm 쪽은 web/에서 별도로 `npm audit`을 돌린다(루트에 lockfile이 없어 여기서는 대상이
-// 없다). 여기는 Gradle(백엔드) 의존성 그래프를 NVD 데이터베이스와 대조한다.
-//
-// 정정(실측, 2026-08-16): "키 없어도 느리게 동작한다"는 최초 가정은 틀렸다 — 이
-// dependency-check-gradle 버전은 NVD_API_KEY가 아예 없어도(env 자체가 unset이어도
-// 재현됨) NvdApiException으로 하드 실패하고 취약점 평가 자체를 못 한다. NVD_API_KEY
-// 시크릿이 **필수**다(https://nvd.nist.gov/developers/request-an-api-key) — 리포지토리에
-// 등록 완료(2026-08-16), CI(.github/workflows/ci.yml의 dependency-check)는 다시 차단
-// 게이트다.
-dependencyCheck {
-    formats = listOf("HTML", "JSON")
-    // CVSS 7.0 이상(High/Critical)만 빌드를 실패시킨다 — Low/Medium은 리포트에만 남긴다.
-    failBuildOnCVSS = 7.0f
-    suppressionFiles = listOf("$rootDir/config/dependency-check/suppressions.xml")
-    // 2026-08-16 실측: 기본값(전 configuration 스캔)은 checkstyle/spotbugs/pitest/
-    // dependency-check 플러그인 자신이 끌어오는 buildscript 전용 툴 의존성(httpcore5,
-    // httpclient5, commons-beanutils, plexus-utils, pitest-command-line)까지 취약점으로
-    // 잡는다 — dependencyInsight로 확인: 이 다섯은 runtimeClasspath·testRuntimeClasspath
-    // 어디에도 없다(즉 빌드 산출물·테스트 실행 어느 쪽에도 실려 나가지 않는다).
-    // runtimeClasspath가 아니라 productionRuntimeClasspath를 쓴다 — 전자는 devtools 같은
-    // developmentOnly 의존성까지 포함해(로컬 bootRun용) spring-boot-devtools의
-    // CVE-2022-31691을 오탐으로 잡는다(dependencyInsight로 확인). productionRuntimeClasspath는
-    // Spring Boot Gradle 플러그인이 developmentOnly/testAndDevelopmentOnly를 뺀, 실제
-    // kraft-backend.jar에 들어가는 것과 같은 집합이다.
-    scanConfigurations = listOf("productionRuntimeClasspath", "testRuntimeClasspath")
-    nvd {
-        // CI가 시크릿 없이 이 env를 넘기면 빈 문자열("")이 된다 — 그래도 위 문제는
-        // 재현되지만(빈 값과 unset 둘 다 동일하게 실패), blank를 null로 접어 최소한
-        // "0글자짜리 키를 진짜로 보냈다"는 오해의 여지는 없앤다.
-        apiKey = System.getenv("NVD_API_KEY")?.takeIf { it.isNotBlank() }
-    }
-    data {
-        directory = "$rootDir/.dependency-check-data"
-    }
-}
+// I-06(의존성 취약점 스캔)에 쓰던 org.owasp.dependencycheck 플러그인은 제거됐다 —
+// NVD REST API(nvd.nist.gov) 자체 장애로 CI가 반복적으로 hang/timeout됐고(2026-08-17
+// 실측, 캐시를 완전히 비워도 재현) 외부 서비스 상태에 CI 전체가 발목 잡히는 상황이라
+// 걷어냈다. npm 쪽 `npm audit`(web-next-build-test)은 그대로 유지된다.

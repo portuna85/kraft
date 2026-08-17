@@ -157,51 +157,6 @@ jobs:
           --build-cache
           --no-daemon
 
-  # I-06: 백엔드 의존성 취약점 스캔(SCA). npm 쪽은 web-next-build-test의 npm audit이
-  # 담당한다. NVD 데이터 디렉터리를 주 단위로 캐싱해 콜드 스타트(첫 실행, 캐시 미스)만
-  # 느리고 이후는 빠르다.
-  #
-  # 정정(실측, 2026-08-16): "NVD_API_KEY 없어도 동작하되 느리다"는 애초 가정이
-  # 틀렸다 — 이 버전의 dependency-check-gradle은 키가 아예 없으면(빈 문자열이든
-  # 진짜 unset이든 둘 다 확인함) NVD 업데이트 자체가 NvdApiException으로 하드
-  # 실패하고 취약점 평가까지 가지 못한다. secrets.NVD_API_KEY를 리포지토리에
-  # 추가한 뒤로(2026-08-16) 정상적으로 CVSS 게이트가 작동한다 — 다시 차단 게이트다.
-  dependency-check:
-    name: Dependency Vulnerability Scan (backend)
-    runs-on: ubuntu-latest
-    needs: changes
-    if: needs.changes.outputs.backend == 'true'
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
-      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
-        with:
-          java-version: "25"
-          distribution: temurin
-      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
-      - name: Compute cache week key
-        id: cache-week
-        run: echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
-      - name: Restore NVD data cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .dependency-check-data
-          key: dependency-check-nvd-${{ steps.cache-week.outputs.week }}
-          restore-keys: |
-            dependency-check-nvd-
-      - name: Run OWASP Dependency-Check
-        env:
-          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
-        run: ./gradlew dependencyCheckAnalyze --no-daemon
-      - name: Upload dependency-check report
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: dependency-check-report
-          path: build/reports/dependency-check-report.html
-          if-no-files-found: ignore
-          retention-days: 14
-
   web-next-build-test:
     name: Web Next Build & Test
     runs-on: ubuntu-latest
@@ -897,7 +852,6 @@ jobs:
       - repository-guards
       - backend-build-test
       - static-analysis
-      - dependency-check
       - web-next-build-test
       - web-next-e2e-proxy
       - web-next-e2e-default
@@ -920,7 +874,6 @@ jobs:
           GUARDS_RESULT: ${{ needs.repository-guards.result }}
           BACKEND_RESULT: ${{ needs.backend-build-test.result }}
           STATIC_RESULT: ${{ needs.static-analysis.result }}
-          DEPENDENCY_CHECK_RESULT: ${{ needs.dependency-check.result }}
           API_RESULT: ${{ needs.api-types-drift-guard.result }}
           WEB_NEXT_RESULT: ${{ needs.web-next-build-test.result }}
           WEB_NEXT_PROXY_RESULT: ${{ needs.web-next-e2e-proxy.result }}
@@ -946,7 +899,6 @@ jobs:
           if [[ "$BACKEND_CHANGED" == "true" ]]; then
             require_success "Backend" "$BACKEND_RESULT"
             require_success "Static analysis" "$STATIC_RESULT"
-            require_success "Dependency vulnerability scan" "$DEPENDENCY_CHECK_RESULT"
             require_success "API type drift" "$API_RESULT"
           fi
           if [[ "$WEB_CHANGED" == "true" ]]; then
