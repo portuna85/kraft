@@ -68,9 +68,13 @@
     color: var(--color-ink-on-brand);
   }
 
-  .primary:hover:not(:disabled) {
-    background: var(--color-brand-strong);
-    border-color: var(--color-brand-strong);
+  /* hover는 마우스처럼 정밀 포인터가 있는 기기에서만 켠다 — 가드가 없으면 터치
+     기기에서 탭한 버튼이 hover 색으로 고착된 채 남는다(§ F-03). */
+  @media (hover: hover) and (pointer: fine) {
+    .primary:hover:not(:disabled) {
+      background: var(--color-brand-strong);
+      border-color: var(--color-brand-strong);
+    }
   }
 
   .secondary {
@@ -79,8 +83,10 @@
     color: var(--color-ink);
   }
 
-  .secondary:hover:not(:disabled) {
-    background: var(--color-surface-2);
+  @media (hover: hover) and (pointer: fine) {
+    .secondary:hover:not(:disabled) {
+      background: var(--color-surface-2);
+    }
   }
 
   .quiet {
@@ -88,9 +94,11 @@
     color: var(--color-ink-muted);
   }
 
-  .quiet:hover:not(:disabled) {
-    background: var(--color-surface-1);
-    color: var(--color-ink);
+  @media (hover: hover) and (pointer: fine) {
+    .quiet:hover:not(:disabled) {
+      background: var(--color-surface-1);
+      color: var(--color-ink);
+    }
   }
 
   .danger {
@@ -110,8 +118,10 @@
     color: var(--color-danger);
   }
 
-  .dangerQuiet:hover:not(:disabled) {
-    background: var(--color-surface-1);
+  @media (hover: hover) and (pointer: fine) {
+    .dangerQuiet:hover:not(:disabled) {
+      background: var(--color-surface-1);
+    }
   }
 
   .iconButton {

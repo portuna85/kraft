@@ -68,10 +68,4 @@
       display: none;
     }
   }
-
-  @media (max-height: 480px) {
-    .adStickyMobile {
-      display: none;
-    }
-  }
 }

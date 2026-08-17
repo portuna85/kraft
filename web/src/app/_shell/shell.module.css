@@ -60,9 +60,11 @@
     text-decoration: none;
   }
 
-  .navLink:hover {
-    color: var(--color-ink);
-    background: var(--color-surface-1);
+  @media (hover: hover) and (pointer: fine) {
+    .navLink:hover {
+      color: var(--color-ink);
+      background: var(--color-surface-1);
+    }
   }
 
   .main {
@@ -74,8 +76,12 @@
        --layout-tabbar-h(56px)이고 노치 기기에서는 탭바 자체가
        env(safe-area-inset-bottom)만큼 더 커진다 — 그 두 가지가 반영되지 않아
        48px보다 큰 화면에서는 이미 여백이 부족했다. */
+    /* --tabbar-reserve는 데스크톱(≥1024px)에서 0px로 재정의된다 — 탭바 자체는
+       display:none으로 숨지만 이 여백 계산은 별개라 재정의 없이는 데스크톱에서도
+       56px가 남는다. */
+    --tabbar-reserve: var(--layout-tabbar-h);
     padding-bottom: calc(
-      var(--layout-tabbar-h) + env(safe-area-inset-bottom) + var(--fixed-bottom-inset, 0px)
+      var(--tabbar-reserve) + env(safe-area-inset-bottom) + var(--fixed-bottom-inset, 0px)
     );
   }
 
@@ -86,8 +92,9 @@
     /* I-19: .main과 같은 이유 — 마지막 푸터 링크가 고정 탭바(+ 세이프에어리어 +
        동시 노출된 sticky 광고)에 가려지지 않게 예약한다. footer는 main 뒤에 오므로
        스크롤 끝에서 이 여백이 없으면 마지막 링크가 탭바 뒤에 숨는다. */
+    --tabbar-reserve: var(--layout-tabbar-h);
     padding-bottom: calc(
-      var(--space-8) + var(--layout-tabbar-h) + env(safe-area-inset-bottom) +
+      var(--space-8) + var(--tabbar-reserve) + env(safe-area-inset-bottom) +
         var(--fixed-bottom-inset, 0px)
     );
   }
@@ -201,6 +208,11 @@
 
     .tabBar {
       display: none;
+    }
+
+    .main,
+    .footer {
+      --tabbar-reserve: 0px;
     }
 
     .footerGroups {

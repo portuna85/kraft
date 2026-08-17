@@ -83,6 +83,32 @@ describe("Drawer", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  // I-26: dialog.test.tsx와 같은 이유 — 열려 있는 동안 배경 스크롤이 잠기지 않으면
+  // 백드롭 위에서 휠을 굴릴 때 뒷 페이지가 스크롤된다. Drawer에는 이 잠금이 아예
+  // 없었다(use-scroll-lock.ts로 Dialog와 공유하도록 고쳤다).
+  it("열려 있는 동안 배경 스크롤을 잠그고 닫히면 되돌린다", () => {
+    const { rerender } = render(
+      <Drawer open={false} onClose={vi.fn()} title="제목">
+        내용
+      </Drawer>,
+    );
+    expect(document.body.style.overflow).not.toBe("hidden");
+
+    rerender(
+      <Drawer open onClose={vi.fn()} title="제목">
+        내용
+      </Drawer>,
+    );
+    expect(document.body.style.overflow).toBe("hidden");
+
+    rerender(
+      <Drawer open={false} onClose={vi.fn()} title="제목">
+        내용
+      </Drawer>,
+    );
+    expect(document.body.style.overflow).not.toBe("hidden");
+  });
+
   it("닫을 때 포커스를 열기 전 요소로 되돌린다", async () => {
     function Harness() {
       const [open, setOpen] = useState(false);

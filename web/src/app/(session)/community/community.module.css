@@ -13,6 +13,8 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     background: var(--color-surface-solid);
+    /* field.module.css .control과 같은 이유 — iOS Safari 포커스 자동 확대 방지. */
+    font-size: max(16px, var(--text-base));
   }
 
   .search button {

@@ -21,8 +21,10 @@
       box-shadow var(--duration-fast) var(--ease-out);
   }
 
-  .ball:hover {
-    transform: translateY(-2px) scale(1.05);
+  @media (hover: hover) and (pointer: fine) {
+    .ball:hover {
+      transform: translateY(-2px) scale(1.05);
+    }
   }
 
   .sm {

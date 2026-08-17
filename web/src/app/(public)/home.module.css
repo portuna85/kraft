@@ -99,9 +99,11 @@
       box-shadow var(--duration-fast) var(--ease-out);
   }
 
-  .cta:hover {
-    box-shadow: 0 6px 20px var(--color-brand-glow);
-    transform: translateY(-1px);
+  @media (hover: hover) and (pointer: fine) {
+    .cta:hover {
+      box-shadow: 0 6px 20px var(--color-brand-glow);
+      transform: translateY(-1px);
+    }
   }
 
   .cta:active {

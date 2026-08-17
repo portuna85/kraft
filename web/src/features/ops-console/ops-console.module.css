@@ -1,29 +1,31 @@
-.tokenRow {
-  align-items: flex-start;
-  gap: var(--space-3);
-}
+@layer components {
+  .tokenRow {
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
 
-.note {
-  margin: 0;
-  color: var(--color-ink-muted);
-}
+  .note {
+    margin: 0;
+    color: var(--color-ink-muted);
+  }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
-  gap: var(--space-3);
-}
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+    gap: var(--space-3);
+  }
 
-.actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  align-items: flex-start;
-}
+  .actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    align-items: flex-start;
+  }
 
-.roundRow {
-  display: flex;
-  gap: var(--space-3);
-  align-items: flex-end;
-  flex-wrap: wrap;
+  .roundRow {
+    display: flex;
+    gap: var(--space-3);
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
 }

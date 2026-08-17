@@ -37,7 +37,11 @@ export function Table({
   captionVisible?: boolean;
 }) {
   return (
-    <div className={styles.tableWrap}>
+    // 표가 뷰포트보다 넓으면 가로 스크롤이 필요한데, Chrome·Firefox와 달리 Safari는
+    // 스크롤 가능한 컨테이너를 자동으로 키보드 포커스 대상에 넣지 않는다 — tabIndex와
+    // 접근 이름 없이는 키보드 사용자가 가려진 열에 도달할 방법이 없다. caption을 그대로
+    // region의 이름으로 재사용해 새 prop 없이 해결한다.
+    <div className={styles.tableWrap} tabIndex={0} role="region" aria-label={caption}>
       <table className={styles.table}>
         <caption className={captionVisible ? styles.caption : "sr-only"}>{caption}</caption>
         {children}

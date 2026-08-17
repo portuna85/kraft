@@ -18,6 +18,10 @@
     border-radius: var(--radius-md);
     background: var(--color-surface-solid);
     color: var(--color-ink);
+    /* --text-base의 clamp 상한(15.68px)이 16px에 못 미쳐 iOS Safari가 포커스 시
+       화면을 자동 확대한다 — 확대는 사용자가 되돌리기 어려우므로 하한을 고정한다.
+       maximum-scale/user-scalable로 확대 자체를 막지 않는다(WCAG 1.4.4 위반). */
+    font-size: max(16px, var(--text-base));
   }
 
   .lg {

@@ -10,6 +10,7 @@ import {
 
 import { useEventCallback } from "@/shared/hooks/use-event-callback";
 import { useFocusTrap } from "@/shared/hooks/use-focus-trap";
+import { useScrollLock } from "@/shared/hooks/use-scroll-lock";
 
 import { IconButton } from "./button";
 import styles from "./overlay.module.css";
@@ -38,6 +39,8 @@ export function Drawer({
 }) {
   const titleId = useId();
   const panelRef = useFocusTrap<HTMLDivElement>(open);
+  // I-26 원인: use-scroll-lock.ts 참고 — Dialog와 공유하는 프리미티브다.
+  useScrollLock(open);
   // TD-013: dialog.tsx와 동일한 이유 — open이 유지되는 동안 새 onClose가 와도
   // Escape가 오래된 콜백을 호출하지 않게 안정적인 래퍼를 쓴다.
   const stableOnClose = useEventCallback(onClose);

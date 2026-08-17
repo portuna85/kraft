@@ -1,40 +1,42 @@
-.stat {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-4);
-  background: var(--color-surface-2);
-  border-radius: var(--radius-md);
-}
+@layer components {
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-4);
+    background: var(--color-surface-2);
+    border-radius: var(--radius-md);
+  }
 
-.label {
-  margin: 0;
-  color: var(--color-ink-muted);
-  font-size: var(--text-sm);
-}
+  .label {
+    margin: 0;
+    color: var(--color-ink-muted);
+    font-size: var(--text-sm);
+  }
 
-.value {
-  margin: 0;
-  font-size: var(--text-lg);
-  font-weight: 700;
-}
+  .value {
+    margin: 0;
+    font-size: var(--text-lg);
+    font-weight: 700;
+  }
 
-.neutral {
-  color: var(--color-ink);
-}
+  .neutral {
+    color: var(--color-ink);
+  }
 
-.brand {
-  color: var(--color-brand);
-}
+  .brand {
+    color: var(--color-brand);
+  }
 
-.success {
-  color: var(--color-success);
-}
+  .success {
+    color: var(--color-success);
+  }
 
-.warning {
-  color: var(--color-warning);
-}
+  .warning {
+    color: var(--color-warning);
+  }
 
-.danger {
-  color: var(--color-danger);
+  .danger {
+    color: var(--color-danger);
+  }
 }

@@ -5,6 +5,9 @@
 
 html {
   background: var(--color-canvas);
+  /* 헤더가 position:sticky라 앵커 스크롤(#main skip-nav, /stats 목차 등)로 도착한
+     제목이 헤더 뒤에 가려졌다 — 헤더 높이만큼 스크롤 정지 위치를 앞당긴다. */
+  scroll-padding-top: calc(var(--layout-header-h) + var(--space-2));
 }
 
 body {

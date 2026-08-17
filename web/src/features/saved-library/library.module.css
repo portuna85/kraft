@@ -35,6 +35,8 @@
     background: var(--color-surface-solid);
     color: var(--color-ink);
     font-variant-numeric: tabular-nums;
+    /* field.module.css .control과 같은 이유 — iOS Safari 포커스 자동 확대 방지. */
+    font-size: max(16px, var(--text-base));
   }
 
   .list {

@@ -234,16 +234,22 @@ export function AdSenseSidebar({ slot }: { slot: string }) {
  * `--fixed-bottom-inset`(shell.module.css:59, overlay.module.css:113)에 광고
  * 높이를 게시한다 — 전역 토큰을 광고 CSS가 직접 재정의하지 않는다. */
 const STICKY_AD_INSET_PX = "66px";
+/** 낮은 뷰포트(가로모드 휴대폰 등)에서는 고정 광고를 내린다 — ad-unit.module.css의
+ * `@media (max-height: 480px)`는 CSS로만 숨겼는데, 이 게이트가 없으면 광고는
+ * display:none으로 안 보이는데도 `visible`은 true라 --fixed-bottom-inset이 66px로
+ * 계속 게시돼 세로 공간이 가장 부족한 화면에서 유령 여백이 남았다. */
+const SHORT_VIEWPORT_QUERY = "(max-height: 480px)";
 
 export function StickyMobileAd({ unit }: { unit: string }) {
   const [closed, setClosed] = useState(false);
   // CSS로는 ≥1024px에서 display:none으로만 숨기므로, 게이트 없이는 데스크톱에서도
   // 광고 유닛이 mount되어 숨겨진 채로 SDK 요청이 발생한다.
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
+  const isShortViewport = useMediaQuery(SHORT_VIEWPORT_QUERY);
   // 가상 키보드가 열려 있는 동안은 고정 광고를 내려 입력 폼과의 겹침을 막는다.
   const keyboardOpen = useKeyboardOpen();
 
-  const visible = !isDesktop && !closed && !keyboardOpen && Boolean(unit);
+  const visible = !isDesktop && !isShortViewport && !closed && !keyboardOpen && Boolean(unit);
 
   useEffect(() => {
     document.documentElement.style.setProperty(

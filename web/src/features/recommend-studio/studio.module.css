@@ -106,8 +106,10 @@
     color: var(--color-ink-muted);
   }
 
-  .historyLink:hover {
-    color: var(--color-ink);
+  @media (hover: hover) and (pointer: fine) {
+    .historyLink:hover {
+      color: var(--color-ink);
+    }
   }
 
   .staleNotice {

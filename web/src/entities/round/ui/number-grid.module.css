@@ -24,11 +24,6 @@
       background var(--duration-fast) var(--ease-out);
   }
 
-  .cell:hover {
-    border-color: var(--color-brand);
-    transform: scale(1.05);
-  }
-
   /* I-27: 상한 도달 시 나머지 셀이 hover 확대·포인터 커서를 그대로 유지해 여전히
      누를 수 있는 것처럼 보였다. */
   .disabled {
@@ -36,9 +31,16 @@
     cursor: not-allowed;
   }
 
-  .disabled:hover {
-    border-color: var(--color-border);
-    transform: none;
+  @media (hover: hover) and (pointer: fine) {
+    .cell:hover {
+      border-color: var(--color-brand);
+      transform: scale(1.05);
+    }
+
+    .disabled:hover {
+      border-color: var(--color-border);
+      transform: none;
+    }
   }
 
   /* 상태는 색만으로 전달하지 않는다 — 각 셀의 aria-label이 "고정"·"제외"를 말하고,

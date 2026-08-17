@@ -10,14 +10,17 @@ import {
   StickyMobileAd,
 } from "./ad-unit";
 
-// matchMedia mock — StickyMobileAd/AdSenseSidebar가 useMediaQuery(min-width:1024px)로
-// "사이드바/하단바가 그 뷰포트에서 아예 노출되는가"를 판단한다(콘텐츠 컬럼 폭과 무관).
-function mockMatchMedia(matches: boolean) {
+// matchMedia mock — StickyMobileAd/AdSenseSidebar가 useMediaQuery(min-width:1024px,
+// max-height:480px)로 "이 뷰포트에서 아예 노출되는가"를 판단한다(콘텐츠 컬럼 폭과 무관).
+// 쿼리별로 다른 값을 매치시켜야 하는 케이스(예: 데스크톱 아님 + 짧은 뷰포트)가 있어
+// 단일 boolean이 아니라 쿼리 문자열 기준 predicate도 받는다.
+function mockMatchMedia(matches: boolean | ((query: string) => boolean)) {
+  const resolve = typeof matches === "function" ? matches : () => matches;
   Object.defineProperty(window, "matchMedia", {
     writable: true,
     configurable: true,
     value: vi.fn().mockImplementation((query: string) => ({
-      matches,
+      matches: resolve(query),
       media: query,
       onchange: null,
       addListener: vi.fn(),
@@ -361,5 +364,16 @@ describe("모바일 하단 고정 배너", () => {
     const { container } = render(<StickyMobileAd unit="DAN-sticky123" />);
 
     expect(container).toBeEmptyDOMElement();
+  });
+
+  // F-06: CSS는 @media (max-height: 480px)로 .adStickyMobile을 숨기기만 했는데,
+  // 이 게이트가 JS 쪽에 없으면 광고는 안 보이는데도 --fixed-bottom-inset은 66px로
+  // 남아 세로 공간이 가장 부족한 가로모드 화면에서 유령 여백이 생겼다.
+  it("가로모드 등 짧은 뷰포트(max-height: 480px)에서는 mount하지 않고 인셋도 0으로 유지한다", () => {
+    mockMatchMedia((query) => query === "(max-height: 480px)");
+    const { container } = render(<StickyMobileAd unit="DAN-sticky123" />);
+
+    expect(container).toBeEmptyDOMElement();
+    expect(document.documentElement.style.getPropertyValue("--fixed-bottom-inset")).toBe("0px");
   });
 });

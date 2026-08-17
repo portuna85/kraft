@@ -17,8 +17,10 @@
     text-decoration: none;
   }
 
-  .title a:hover {
-    text-decoration: underline;
+  @media (hover: hover) and (pointer: fine) {
+    .title a:hover {
+      text-decoration: underline;
+    }
   }
 
   .counts {

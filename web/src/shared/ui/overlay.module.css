@@ -96,9 +96,16 @@
     cursor: pointer;
   }
 
-  .menuItem:hover,
   .menuItem:focus-visible {
     background: var(--color-surface-1);
+  }
+
+  /* :focus-visible은 포인터 능력과 무관하게 항상 켜져야 해서 위에서 분리했다 —
+     :hover만 가드로 감싼다(§ F-03). */
+  @media (hover: hover) and (pointer: fine) {
+    .menuItem:hover {
+      background: var(--color-surface-1);
+    }
   }
 
   /* I-33: 회원 탈퇴가 로그아웃 바로 아래, 같은 톤으로 있어 되돌릴 수 없는 동작이
@@ -114,9 +121,14 @@
     color: var(--color-danger);
   }
 
-  .menuItemDanger:hover,
   .menuItemDanger:focus-visible {
     background: var(--color-surface-1);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .menuItemDanger:hover {
+      background: var(--color-surface-1);
+    }
   }
 
   .tooltipWrap {

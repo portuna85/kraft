@@ -1,115 +1,117 @@
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
+@layer components {
+  .page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
 
-.header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
+  .header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
 
-.header > span {
-  display: block;
-}
+  .header > span {
+    display: block;
+  }
 
-.eyebrow {
-  width: 30%;
-}
+  .eyebrow {
+    width: 30%;
+  }
 
-.title {
-  width: 55%;
-}
+  .title {
+    width: 55%;
+  }
 
-.title > span {
-  height: 1.6em;
-}
+  .title > span {
+    height: 1.6em;
+  }
 
-.description {
-  width: 80%;
-}
+  .description {
+    width: 80%;
+  }
 
-.rows {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
+  .rows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
 
-.row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
+  .row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
 
-.row > span {
-  display: block;
-  width: 100%;
-}
+  .row > span {
+    display: block;
+    width: 100%;
+  }
 
-.line > span {
-  display: block;
-  width: 100%;
-}
+  .line > span {
+    display: block;
+    width: 100%;
+  }
 
-.bar > span {
-  display: block;
-}
+  .bar > span {
+    display: block;
+  }
 
-.bar1 {
-  width: 92%;
-}
+  .bar1 {
+    width: 92%;
+  }
 
-.bar2 {
-  width: 68%;
-}
+  .bar2 {
+    width: 68%;
+  }
 
-.bar3 {
-  width: 84%;
-}
+  .bar3 {
+    width: 84%;
+  }
 
-.bar4 {
-  width: 55%;
-}
+  .bar4 {
+    width: 55%;
+  }
 
-.bar5 {
-  width: 78%;
-}
+  .bar5 {
+    width: 78%;
+  }
 
-.bar6 {
-  width: 62%;
-}
+  .bar6 {
+    width: 62%;
+  }
 
-.bar7 {
-  width: 88%;
-}
+  .bar7 {
+    width: 88%;
+  }
 
-.bar8 {
-  width: 50%;
-}
+  .bar8 {
+    width: 50%;
+  }
 
-.balls {
-  display: flex;
-  gap: var(--space-2);
-}
+  .balls {
+    display: flex;
+    gap: var(--space-2);
+  }
 
-.cards {
-  display: grid;
-  gap: var(--space-3);
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-}
+  .cards {
+    display: grid;
+    gap: var(--space-3);
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
 
-.card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
 
-.card > span {
-  display: block;
-  width: 100%;
-}
+  .card > span {
+    display: block;
+    width: 100%;
+  }
 
-.card > span:last-child {
-  width: 60%;
+  .card > span:last-child {
+    width: 60%;
+  }
 }
