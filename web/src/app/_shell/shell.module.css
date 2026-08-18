@@ -155,7 +155,9 @@
     left: 0;
     width: calc(100% / 5);
     border-radius: var(--radius-pill);
-    background: var(--color-brand-glow);
+    /* --color-brand-glow이 아니라 --color-tabbar-active-bg를 쓴다 — 이 배경은
+       활성 탭 라벨 텍스트 바로 뒤에 깔려 색 대비에 직접 영향을 준다(F-19). */
+    background: var(--color-tabbar-active-bg);
     opacity: 0;
     transition:
       transform var(--duration-base) var(--ease-out),

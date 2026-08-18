@@ -31,6 +31,10 @@
   --color-brand: #087ca7;
   --color-brand-strong: #075b88;
   --color-brand-glow: rgba(8, 124, 167, 0.28);
+  /* --color-brand-glow은 box-shadow bloom용이라 알파가 높아도 무방하지만,
+     탭바 활성 인디케이터처럼 텍스트 "뒤" 배경으로 쓰면 그 알파가 텍스트
+     대비를 깎는다 — 대비가 보장되는 별도 값을 쓴다(F-19). */
+  --color-tabbar-active-bg: rgba(8, 124, 167, 0.28);
   --color-success: #1b5e20; /* 대비 7.00:1 */
   --color-warning: #8a5a00; /* 대비 5.27:1 */
   --color-danger: #a6231d; /* 대비 6.48:1 */
@@ -150,6 +154,11 @@
   --color-brand: #00e5ff;
   --color-brand-strong: #8ab4ff;
   --color-brand-glow: rgba(0, 229, 255, 0.35);
+  /* 다크 테마에서 --color-brand-glow(알파 0.35)를 탭바 인디케이터 배경으로
+     그대로 쓰면, 그 위에 얹히는 활성 탭 텍스트(--color-brand-strong)와의
+     대비가 약 3.4:1로 WCAG AA(4.5:1)에 못 미친다 — 0.20으로 낮춰 대비를
+     5:1 이상으로 확보한다(F-19). */
+  --color-tabbar-active-bg: rgba(0, 229, 255, 0.2);
   --color-success: #40f0b5;
   --color-warning: #ffd166;
   --color-danger: #ff8b9a;

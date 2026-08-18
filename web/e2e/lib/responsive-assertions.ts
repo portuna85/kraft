@@ -17,11 +17,26 @@ import { expect, type Page } from "@playwright/test";
 export async function assertNoHorizontalOverflow(page: Page) {
   const overflow = await page.evaluate(() => {
     const root = document.documentElement;
-    return { scrollWidth: root.scrollWidth, clientWidth: root.clientWidth };
+    const culprits: string[] = [];
+    // scrollWidth 자체는 어떤 요소가 원인인지 말해주지 않는다 — 문서 안의 모든
+    // 요소를 순회해 실제로 뷰포트 오른쪽 경계를 넘는 후보를 같이 보고한다.
+    document.querySelectorAll("body *").forEach((el) => {
+      const rect = el.getBoundingClientRect();
+      if (rect.right > root.clientWidth + 1) {
+        const cls = el.className ? `.${String(el.className).split(" ").join(".")}` : "";
+        culprits.push(`${el.tagName.toLowerCase()}${cls} right=${Math.round(rect.right)}`);
+      }
+    });
+    return {
+      scrollWidth: root.scrollWidth,
+      clientWidth: root.clientWidth,
+      url: location.href,
+      culprits: culprits.slice(0, 5),
+    };
   });
   expect(
     overflow.scrollWidth,
-    `documentElement.scrollWidth(${overflow.scrollWidth}) > clientWidth(${overflow.clientWidth}) — 의도치 않은 document 가로 스크롤`,
+    `${overflow.url}: documentElement.scrollWidth(${overflow.scrollWidth}) > clientWidth(${overflow.clientWidth}) — 의도치 않은 document 가로 스크롤. 후보: ${overflow.culprits.join(", ")}`,
   ).toBeLessThanOrEqual(overflow.clientWidth);
 }
 
