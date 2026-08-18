@@ -9,6 +9,14 @@
     align-items: start;
   }
 
+  /* 태블릿 세로(640–1023px)에서도 폭 절반이 비지 않도록 2열로 전환한다 —
+     home.module.css/analysis.module.css의 .layout과 같은 판단(§F-09). */
+  @media (min-width: 640px) {
+    .layout {
+      grid-template-columns: minmax(260px, 1fr) 1fr;
+    }
+  }
+
   @media (min-width: 1024px) {
     .layout {
       grid-template-columns: minmax(260px, 340px) 1fr;
