@@ -65,7 +65,8 @@ export async function assertFormControlFontSizeAtLeast16px(page: Page) {
       })
       .map((el) => {
         const style = window.getComputedStyle(el);
-        const name = el.getAttribute("name") ?? el.getAttribute("aria-label") ?? el.id ?? "(no-name)";
+        const name =
+          el.getAttribute("name") ?? el.getAttribute("aria-label") ?? el.id ?? "(no-name)";
         return `${el.tagName.toLowerCase()}[${name}] font-size=${style.fontSize}`;
       }),
   );
