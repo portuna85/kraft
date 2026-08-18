@@ -24,7 +24,13 @@ export function useGridColumnCount<T extends HTMLElement>(
     function measure() {
       const current = ref.current;
       if (!current) return;
-      const count = getComputedStyle(current).gridTemplateColumns.split(" ").filter(Boolean).length;
+      const value = getComputedStyle(current).gridTemplateColumns;
+      // used value가 아니라 지정값(`repeat(auto-fill, minmax(44px, 1fr))`)이 그대로
+      // 돌아오면(레이아웃 전이거나 display:none) 공백 split이 실제 열 수와 무관해진다.
+      // minmax()처럼 공백을 포함한 함수 토큰도 과다 계산을 만드므로, px 트랙 개수만
+      // 정규식으로 센다 — repeat(가 남아 있으면 계산하지 않고 fallback을 유지한다.
+      if (value.includes("repeat(")) return;
+      const count = value.match(/\d+(\.\d+)?px/g)?.length ?? 0;
       if (count > 0) setColumns(count);
     }
 
