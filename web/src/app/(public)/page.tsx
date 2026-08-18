@@ -3,19 +3,19 @@ import { headers } from "next/headers";
 import Link from "next/link";
 
 import { getLatestRound } from "@/entities/round/api";
-import { DrawCountdown } from "@/entities/round/ui/draw-countdown";
 import { LottoBallSet } from "@/entities/round/ui/lotto-ball";
 import { NONCE_HEADER } from "@/shared/config/csp";
 import { publicEnv } from "@/shared/config/env";
 import { ROUTES } from "@/shared/config/routes";
-import { formatDrawDate, formatPrize } from "@/shared/lib/format";
+import { formatDrawDate, formatWon } from "@/shared/lib/format";
+import { calculateNetPrize } from "@/shared/lib/prize-tax";
 import { JsonLd } from "@/shared/ui/json-ld";
 import { Card } from "@/shared/ui/surface";
 
 import styles from "./home.module.css";
 
 export const metadata: Metadata = {
-  title: "로또 당첨번호와 번호 추천",
+  title: "최신회차",
   description:
     "최신 회차 당첨번호를 확인하고, 과거 데이터 기반 통계로 나만의 번호 조합을 만들어 보세요.",
   alternates: { canonical: "/" },
@@ -61,7 +61,7 @@ export default async function HomePage() {
                   다음의 <strong>회차 숫자를 배포 게이트로 읽는다 — 문구·클래스가
                   바뀌어도 이 훅과 구조(다음 형제가 아니라 첫 자식으로 <strong>)는
                   유지한다. */}
-              <span className={styles.heading}>로또 당첨번호와 번호 추천</span>
+              <span className={styles.heading}>최신회차</span>
               <span className={styles.roundLabel} data-testid="latest-round">
                 <strong className={styles.roundNumber}>{latest.round}회</strong>
                 <span className={styles.drawDate}>{formatDrawDate(latest.drawDate)} 추첨</span>
@@ -71,17 +71,21 @@ export default async function HomePage() {
             <LottoBallSet numbers={latest.numbers} bonusNumber={latest.bonusNumber} size="lg" />
 
             <div className={styles.prizeRow}>
-              <p>
+              <div className={styles.prizeGroup}>
                 <span className={styles.prizeLabel}>1등 당첨금</span>
-                <span className={styles.prizeValue}>{formatPrize(latest.firstPrizeAmount)}</span>
-              </p>
-              <p>
+                <span className={styles.prizeValue}>{formatWon(latest.firstPrizeAmount)}</span>
+                <span className={styles.prizeNet}>
+                  실 수령액 {formatWon(calculateNetPrize(latest.firstPrizeAmount))}
+                </span>
+              </div>
+              <div className={styles.prizeGroup}>
                 <span className={styles.prizeLabel}>2등 당첨금</span>
-                <span className={styles.prizeValue}>{formatPrize(latest.secondPrize)}</span>
-              </p>
+                <span className={styles.prizeValue}>{formatWon(latest.secondPrize)}</span>
+                <span className={styles.prizeNet}>
+                  실 수령액 {formatWon(calculateNetPrize(latest.secondPrize))}
+                </span>
+              </div>
             </div>
-
-            <DrawCountdown nextRound={latest.round + 1} />
           </section>
 
           <nav className={styles.actions} aria-label="주요 기능">

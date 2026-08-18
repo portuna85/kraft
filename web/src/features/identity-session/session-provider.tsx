@@ -26,8 +26,10 @@ import { hasClaimSettled, markClaimSettled } from "./claim-flag";
  *        claim은 익명 기록을 옮기는 부가 작업이지 로그인의 전제 조건이 아니다.
  * - I-2: 디바이스 토큰 회전은 claim **성공** 경로에서만.
  * - I-3: 조회 실패를 { loggedIn: false }로 축약하지 않는다.
- * - I-4: 세션 스코프 밖 경로에서는 세션 API를 호출하지 않는다.
- *        (이 프로바이더가 (session) 셸에만 마운트되는 구조로 이미 강제돼 있다.)
+ * - I-4: 익명 방문자에게는 세션 API를 호출하지 않는다.
+ *        (이 프로바이더는 서버에서 `kraft_logged_in` 쿠키로 로그인이 이미 확인된
+ *        사용자에 한해서만 마운트된다 — (session) 셸 전체, 또는 (public) 셸의
+ *        `PublicAccountMenu`. 익명 방문자 경로에는 이 컴포넌트 자체가 없다.)
  */
 
 export function SessionProvider({ children }: { children: ReactNode }) {

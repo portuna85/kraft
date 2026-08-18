@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { logout, withdraw } from "@/entities/user-session/api";
+import { logout, SESSION_RESOURCE_KEY, withdraw } from "@/entities/user-session/api";
+import { invalidateResource } from "@/shared/hooks/use-resource";
 import { DropdownMenu } from "@/shared/ui/dropdown-menu";
 import { Button } from "@/shared/ui/button";
 import { ConfirmDialog } from "@/shared/ui/dialog";
@@ -12,7 +13,8 @@ import { InlineAlert } from "@/shared/ui/states";
 /**
  * 로그인 상태 계정 메뉴 ("Signed in: avatar/initial + menu")
  *
- * `(session)` 셸에서만 렌더된다 — 세션을 아는 곳이 여기뿐이다(불변식 I-4).
+ * `(session)` 셸, 그리고 `(public)` 셸의 `PublicAccountMenu`를 통해 로그인 사용자에게
+ * 렌더된다 — 세션을 아는 곳(불변식 I-4)에서만 마운트된다는 점은 그대로다.
  *
  * H-02: 회원 탈퇴는 되돌릴 수 없는 동작이라 ConfirmDialog(레거시 FE-003과 같은
  * 단일 확인 경로 원칙, `post-owner-actions.tsx`가 파괴적 액션에 쓰는 것과 동일한
@@ -34,6 +36,10 @@ export function AccountMenu({ nickname }: { nickname: string }) {
     setError(false);
     const ok = await logout();
     if (ok) {
+      // useResource의 TTL 캐시가 로그아웃 뒤에도 최대 30초간 "session" 응답을 그대로
+      // 돌려줄 수 있다 — router.refresh()는 서버 컴포넌트만 다시 그리므로 이 client
+      // 캐시는 별도로 비워야 헤더가 즉시 로그아웃 상태를 반영한다.
+      invalidateResource(SESSION_RESOURCE_KEY);
       router.refresh();
     } else {
       setPending(false);
@@ -47,6 +53,9 @@ export function AccountMenu({ nickname }: { nickname: string }) {
     const ok = await withdraw();
     if (ok) {
       setConfirmOpen(false);
+      // handleLogout과 같은 이유 — 탈퇴도 client 세션 캐시를 남겨두면 헤더가 잠깐
+      // 옛 상태를 보여줄 수 있다.
+      invalidateResource(SESSION_RESOURCE_KEY);
       router.refresh();
     } else {
       setWithdrawing(false);

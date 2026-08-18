@@ -12,6 +12,12 @@ export function formatNumber(value: number): string {
   return KRW.format(value);
 }
 
+/** 원 단위 그대로, 쉼표로만 구분한다("#,###,### 원"). 자릿수를 빠르게 대조해야 하는
+ * 실수령액처럼 억/만 축약(`formatPrize`)이 오히려 비교를 어렵게 하는 곳에 쓴다. */
+export function formatWon(amount: number): string {
+  return `${formatNumber(amount)}원`;
+}
+
 /**
  * 당첨금은 억/만 단위로 줄여 읽기 쉽게 한다. 원 단위 전체 숫자는 자릿수를 세어야
  * 크기를 알 수 있어, 정작 "얼마인지"가 늦게 전달된다.

@@ -81,6 +81,11 @@
     gap: var(--space-6);
   }
 
+  .prizeGroup {
+    display: flex;
+    flex-direction: column;
+  }
+
   .prizeLabel {
     display: block;
     color: var(--color-ink-muted);
@@ -91,6 +96,12 @@
     font-family: var(--font-accent);
     font-size: var(--text-lg);
     font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .prizeNet {
+    color: var(--color-ink-muted);
+    font-size: var(--text-xs);
     font-variant-numeric: tabular-nums;
   }
 

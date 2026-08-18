@@ -4,13 +4,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AccountMenu } from "./account-menu";
 
-const { logout, withdraw, refresh } = vi.hoisted(() => ({
+const { logout, withdraw, refresh, invalidateResource } = vi.hoisted(() => ({
   logout: vi.fn(),
   withdraw: vi.fn(),
   refresh: vi.fn(),
+  invalidateResource: vi.fn(),
 }));
 
-vi.mock("@/entities/user-session/api", () => ({ logout, withdraw }));
+vi.mock("@/entities/user-session/api", () => ({
+  logout,
+  withdraw,
+  SESSION_RESOURCE_KEY: "session",
+}));
+vi.mock("@/shared/hooks/use-resource", () => ({ invalidateResource }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh, back: vi.fn() }),
 }));
@@ -39,6 +45,7 @@ describe("계정 메뉴", () => {
 
     await waitFor(() => expect(logout).toHaveBeenCalled());
     await waitFor(() => expect(refresh).toHaveBeenCalled());
+    expect(invalidateResource).toHaveBeenCalledWith("session");
   });
 
   it("로그아웃 실패 시 오류 문구를 보여주고 새로고침하지 않는다", async () => {
@@ -53,6 +60,7 @@ describe("계정 메뉴", () => {
       await screen.findByText("로그아웃에 실패했습니다. 다시 시도해 주세요."),
     ).toBeInTheDocument();
     expect(refresh).not.toHaveBeenCalled();
+    expect(invalidateResource).not.toHaveBeenCalled();
   });
 
   it("H-02: 메뉴에 회원 탈퇴 항목이 있다", async () => {
@@ -96,6 +104,7 @@ describe("계정 메뉴", () => {
     await waitFor(() => expect(withdraw).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(refresh).toHaveBeenCalled());
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(invalidateResource).toHaveBeenCalledWith("session");
   });
 
   it("H-02: withdraw 실패 시 오류를 보여주고 다이얼로그를 유지하며 새로고침하지 않는다", async () => {
@@ -112,5 +121,6 @@ describe("계정 메뉴", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("dialog", { name: "정말 탈퇴할까요?" })).toBeInTheDocument();
     expect(refresh).not.toHaveBeenCalled();
+    expect(invalidateResource).not.toHaveBeenCalled();
   });
 });
