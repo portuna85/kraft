@@ -9,6 +9,15 @@
     align-items: start;
   }
 
+  /* 태블릿 세로(640–1023px)에서도 640–1023px 폭 절반이 그냥 비지 않도록 2열로
+     전환한다 — library.module.css의 .layout과 같은 판단. hero는 숫자 그리드가
+     아니라 텍스트/카드라 좁은 컬럼에서도 줄바꿈만 될 뿐 깨지지 않는다. */
+  @media (min-width: 640px) {
+    .layout {
+      grid-template-columns: minmax(260px, 1fr) 1fr;
+    }
+  }
+
   @media (min-width: 1024px) {
     .layout {
       grid-template-columns: minmax(320px, 630px) 1fr;
@@ -23,10 +32,20 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-xl);
     background: var(--color-surface-2);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
     backdrop-filter: blur(16px) saturate(180%);
     box-shadow:
       var(--shadow-2),
       0 0 32px var(--color-brand-glow);
+  }
+
+  /* iOS 17 이하는 무프리픽스 backdrop-filter를 지원하지 않는다(Safari 18부터).
+     --color-surface-2는 반투명(다크 테마 alpha 0.05)이라 블러가 없으면 배경이
+     그대로 비쳐 텍스트 대비가 무너진다 — 불투명 표면으로 폴백한다. */
+  @supports not (backdrop-filter: blur(1px)) {
+    .hero {
+      background: var(--color-surface-solid);
+    }
   }
 
   /* I-32: 색인되는 유일한 h1이 서술형 문구 없이 회차 숫자로만 바뀌지 않도록

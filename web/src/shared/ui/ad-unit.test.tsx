@@ -309,9 +309,10 @@ describe("사이드바 광고(뷰포트 게이트)", () => {
 
   it("데스크톱 미만 뷰포트에서는 mount하지 않는다(adsbygoogle.push 낭비 요청 방지)", () => {
     mockMatchMedia(false);
-    const { container } = render(<AdSenseSidebar slot="1234567890" />);
+    render(<AdSenseSidebar slot="1234567890" />);
 
-    expect(container).toBeEmptyDOMElement();
+    // CLS 방지용 자리 예약 div는 남지만(F-16), 광고 유닛 자체는 mount되지 않는다.
+    expect(screen.queryByLabelText("사이드바 광고")).not.toBeInTheDocument();
   });
 
   it("데스크톱 뷰포트에서는 mount한다", async () => {

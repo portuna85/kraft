@@ -27,6 +27,14 @@
     color: var(--color-ink-muted);
   }
 
+  /* 태블릿 세로(640–1023px)에서도 좌측 입력·우측 결과 2열로 전환한다. 번호판은
+     auto-fill/minmax라 컬럼이 좁아지면 줄 수만 줄어들 뿐 깨지지 않는다(§F-09). */
+  @media (min-width: 640px) {
+    .layout {
+      grid-template-columns: minmax(260px, 1fr) 1fr;
+    }
+  }
+
   /* 데스크톱은 좌측 입력·우측 결과(§23.6). 번호판이 7열이라 좁은 폭에서는 세로로 쌓는다. */
   @media (min-width: 1024px) {
     .layout {

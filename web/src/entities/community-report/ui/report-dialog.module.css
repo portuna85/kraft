@@ -12,8 +12,20 @@
 
   .dialogActions {
     display: flex;
+    flex-wrap: wrap;
     justify-content: flex-end;
     gap: var(--space-2);
     margin-top: var(--space-4);
+  }
+
+  /* 좁은 화면에서 버튼이 좁게 나란히 눌리는 대신 세로로 꽉 채워 탭하기 쉽게 한다. */
+  @media (max-width: 420px) {
+    .dialogActions {
+      flex-direction: column-reverse;
+    }
+
+    .dialogActions > * {
+      width: 100%;
+    }
   }
 }

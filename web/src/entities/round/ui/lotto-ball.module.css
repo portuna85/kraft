@@ -125,6 +125,22 @@
     gap: var(--space-2);
   }
 
+  /* 좁은 화면(≤420px)에서 lg(48px) 7개 + gap이 한 줄 폭을 넘어 번호 6개와
+     보너스 1개가 6+1로 갈라진다 — "당첨 번호 + 보너스"라는 하나의 묶음이
+     시각적으로 끊긴다. 상호작용 요소가 아니므로(홈 히어로 표시 전용) 44px
+     최소 타깃 제약 없이 줄어들어도 된다. */
+  @media (max-width: 420px) {
+    .set {
+      gap: var(--space-1);
+    }
+
+    .lg {
+      width: 36px;
+      height: 36px;
+      font-size: var(--text-sm);
+    }
+  }
+
   /* 보너스 구분자는 장식이 아니다 — 보조 기술에는 텍스트로도 전달한다. */
   .plus {
     color: var(--color-ink-muted);

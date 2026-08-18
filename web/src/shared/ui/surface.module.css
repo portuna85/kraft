@@ -45,6 +45,30 @@
   .tableWrap {
     /* 넓은 표는 페이지가 아니라 자기 컨테이너 안에서 가로 스크롤한다. */
     overflow-x: auto;
+    /* 표 끝에서 계속 가로로 스와이프하면 Chrome·Safari의 가로 오버스크롤
+       내비게이션(뒤로가기 제스처)으로 이어질 수 있다 — 그 전파를 막는다. */
+    overscroll-behavior-x: contain;
+    /* 스크롤 가능한 표라는 것을 시각적으로 알리는 가장자리 그림자. 스크린
+       리더 중복을 피하려 순수 배경 그러데이션으로만 표현한다(콘텐츠 없음).
+       두 개는 콘텐츠와 함께 스크롤(local)해 끝에서 사라지고, 두 개는 뷰포트에
+       고정(scroll)해 항상 옅게 남아 "여기서 더 있다"는 힌트를 준다. */
+    background:
+      linear-gradient(to right, var(--color-surface-solid) 30%, transparent) local,
+      linear-gradient(to left, var(--color-surface-solid) 30%, transparent) local,
+      linear-gradient(to right, var(--color-border), transparent) scroll,
+      linear-gradient(to left, var(--color-border), transparent) scroll;
+    background-repeat: no-repeat;
+    background-color: var(--color-surface-solid);
+    background-position:
+      left center,
+      right center,
+      left center,
+      right center;
+    background-size:
+      24px 100%,
+      24px 100%,
+      8px 100%,
+      8px 100%;
   }
 
   .table {

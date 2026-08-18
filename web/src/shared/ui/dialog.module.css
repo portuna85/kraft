@@ -17,6 +17,10 @@
     width: 100%;
     max-height: 85dvh;
     overflow-y: auto;
+    /* body 스크롤 잠금은 dialog.tsx의 useScrollLock이 담당하지만, iOS에서는
+       그마저 뚫릴 수 있다 — 패널 끝에서 배경으로 스크롤이 넘어가는 것 자체를
+       차단한다. */
+    overscroll-behavior: contain;
     padding: var(--space-6);
     border-radius: var(--radius-lg);
     background: var(--color-surface-solid);

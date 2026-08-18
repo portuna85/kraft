@@ -44,8 +44,28 @@ export function readStoredTheme(): Theme | null {
   }
 }
 
+/**
+ * layout.tsx의 `viewport.themeColor`와 같은 색이다. 그 정적 선언은
+ * `prefers-color-scheme` 미디어쿼리로만 갈리므로, OS는 라이트인데 사용자가
+ * 여기서 다크를 고르면(또는 그 반대) 브라우저 상단 바/상태 표시줄 색이
+ * 실제 페이지 테마와 어긋난다. 두 `<meta name="theme-color">` 모두의
+ * content를 덮어써 어느 쪽이 매칭되든 현재 테마 색이 나오게 한다.
+ */
+const THEME_COLOR: Record<Theme, string> = {
+  light: "#f3f7ff",
+  dark: "#050816",
+};
+
+function syncThemeColorMeta(theme: Theme): void {
+  const color = THEME_COLOR[theme];
+  document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+    meta.setAttribute("content", color);
+  });
+}
+
 export function applyTheme(theme: Theme): void {
   document.documentElement.dataset.theme = theme;
+  syncThemeColorMeta(theme);
   try {
     window.localStorage.setItem(THEME_STORAGE_KEY, theme);
   } catch {

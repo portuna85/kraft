@@ -88,7 +88,10 @@
     }
     100% {
       opacity: 0;
-      transform: translateY(100vh) rotate(540deg);
+      /* 100vh는 모바일에서 주소창이 접힌 상태(large viewport) 기준이라, 펼쳐진
+         상태에서는 조각이 화면 밖까지 내려가기 전에 사라진 것처럼 보인다 —
+         base.css/dialog/overlay가 이미 쓰는 dvh 계열과 맞춘다. */
+      transform: translateY(100lvh) rotate(540deg);
     }
   }
 }

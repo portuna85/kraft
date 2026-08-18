@@ -24,6 +24,10 @@ export default defineConfig({
   projects: [
     { name: "firefox", use: { ...devices["Desktop Firefox"] } },
     { name: "webkit", use: { ...devices["Desktop Safari"] } },
+    // 데스크톱 WebKit만으로는 iOS Safari 고유 동작(자동 확대, 탄성 스크롤,
+    // 가상 키보드)을 재현하지 못한다 — 실제 Safari는 아니지만 최소한
+    // 모바일 뷰포트/터치 에뮬레이션에서 같은 스펙을 재검증한다.
+    { name: "Mobile Safari", use: { ...devices["iPhone 14"] } },
   ],
   webServer: [
     {
