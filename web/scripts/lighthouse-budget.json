@@ -1,38 +1,38 @@
 {
   "/": {
-    "maxLcpMs": 254,
+    "maxLcpMs": 335,
     "maxClsScore": 0.05,
-    "maxTbtMs": 0,
+    "maxTbtMs": 100,
     "minPerformanceScore": 90
   },
   "/recommend": {
-    "maxLcpMs": 278,
-    "maxClsScore": 0.05,
-    "maxTbtMs": 0,
+    "maxLcpMs": 183,
+    "maxClsScore": 0.052,
+    "maxTbtMs": 100,
     "minPerformanceScore": 90
   },
   "/frequency": {
-    "maxLcpMs": 246,
+    "maxLcpMs": 149,
     "maxClsScore": 0.05,
-    "maxTbtMs": 0,
+    "maxTbtMs": 100,
     "minPerformanceScore": 90
   },
   "/community": {
-    "maxLcpMs": 209,
-    "maxClsScore": 0.051,
-    "maxTbtMs": 0,
+    "maxLcpMs": 177,
+    "maxClsScore": 0.052,
+    "maxTbtMs": 100,
     "minPerformanceScore": 90
   },
   "/saved": {
-    "maxLcpMs": 213,
-    "maxClsScore": 0.192,
-    "maxTbtMs": 0,
-    "minPerformanceScore": 85
+    "maxLcpMs": 90,
+    "maxClsScore": 0.172,
+    "maxTbtMs": 100,
+    "minPerformanceScore": 86
   },
-  "/community/posts/1": {
-    "maxLcpMs": 228,
-    "maxClsScore": 0.051,
-    "maxTbtMs": 0,
-    "minPerformanceScore": 90
+  "/recommend/history": {
+    "maxLcpMs": 110,
+    "maxClsScore": 0.172,
+    "maxTbtMs": 100,
+    "minPerformanceScore": 86
   }
 }

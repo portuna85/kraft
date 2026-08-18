@@ -5,6 +5,10 @@
 // 않는다. 이 스크립트는 배포 전 로컬/CI에서 회귀를 조기에 잡는 랩 진단이고, 운영
 // 판단의 근거는 실제 필드 데이터여야 한다.
 //
+// KF-05(docs/improvement.md): LCP는 게이트가 아니라 참고 정보다 — throttlingMethod
+// "provided"(무스로틀 localhost) 측정이라 실측 72~182ms에 예산 200~280ms를 걸어도
+// 실제 회귀를 잡을 수 없다. CLS/TBT/Score만 실패(exit 1)를 만든다.
+//
 // 사용 (앱이 이미 떠 있어야 함, 예: npm run build && npm start):
 //   node scripts/lighthouse-budget.mjs
 //   node scripts/lighthouse-budget.mjs --save-baseline
@@ -35,8 +39,19 @@ const ROUTES = [
   "/frequency",
   "/community",
   "/saved",
+  // KF-05(docs/improvement.md): 실측 CLS 0.116인 실패 라우트인데 예산에 없었다.
+  "/recommend/history",
   ...(POST_ID ? [`/community/posts/${POST_ID}`] : []),
 ];
+
+// KF-05(docs/improvement.md)이 아직 안 고쳐진 라우트 — 이 CLS는 알려진 결함
+// (KF-08, 세션 게이트 워터폴)이라 CWV_GOOD 상한을 걸면 매번 실패한다. KF-08 수정
+// (§10 4~5단계) 후 이 목록에서 빼고 --save-baseline을 다시 실행해 진짜 상한을 건다.
+const PENDING_CLS_ROOT_CAUSE = new Set(["/saved", "/recommend/history"]);
+
+// 느린 CI 머신에서 tbtMs 0ms 기준선의 ceil(0*1.5)=0 예산이 하드 실패하지 않도록
+// 하는 바닥값. CWV "good" TBT 기준(200ms)의 절반 — 실제 회귀엔 여전히 엄격하다.
+const MIN_TBT_BUDGET_MS = 100;
 
 async function runLighthouseFor(route, chrome) {
   const result = await lighthouse(`${baseUrl}${route}`, {
@@ -105,10 +120,19 @@ if (saveBaseline) {
   for (const [route, summary] of Object.entries(results)) {
     // 예산: 이번 측정치에 여유(LCP/TBT +50%, CLS +0.05, 점수 -10점)를 둔다 — 다른
     // 예산 스크립트(bundle-budget.mjs)와 같은 철학.
+    //
+    // KF-05(docs/improvement.md): 이 여유 공식이 그대로면 CWV "good" 기준(0.1)을
+    // 이미 넘긴 실패 상태(예: /saved 0.123)도 통째로 예산으로 승격돼 "게이트가
+    // 실패를 정상으로 승인"하는 꼴이 된다. PENDING_CLS_ROOT_CAUSE에 없는 라우트는
+    // CWV_GOOD.clsScore를 상한으로 건다.
+    const rawClsBudget = Math.round((summary.clsScore + 0.05) * 1000) / 1000;
+    const maxClsScore = PENDING_CLS_ROOT_CAUSE.has(route)
+      ? rawClsBudget
+      : Math.min(rawClsBudget, CWV_GOOD.clsScore);
     budget[route] = {
       maxLcpMs: Math.ceil(summary.lcpMs * 1.5),
-      maxClsScore: Math.round((summary.clsScore + 0.05) * 1000) / 1000,
-      maxTbtMs: Math.ceil(summary.tbtMs * 1.5),
+      maxClsScore,
+      maxTbtMs: Math.max(MIN_TBT_BUDGET_MS, Math.ceil(summary.tbtMs * 1.5)),
       minPerformanceScore: Math.max(0, summary.performanceScore - 10),
     };
   }
@@ -124,8 +148,15 @@ if (saveBaseline) {
       console.warn(`  SKIP ${route}: 이번 실행에 없음`);
       continue;
     }
+    // KF-05: LCP는 게이트가 아니라 참고 정보다(파일 상단 주석 참고) — 실패로
+    // 집계하지 않는다.
+    const lcpOk = actual.lcpMs <= limit.maxLcpMs;
+    console.log(
+      `  INFO ${route} LCP: ${actual.lcpMs}ms/${limit.maxLcpMs}ms` +
+        `${lcpOk ? "" : " (참고용, 게이트 아님)"}`,
+    );
+
     const checks = [
-      ["LCP", actual.lcpMs <= limit.maxLcpMs, `${actual.lcpMs}ms/${limit.maxLcpMs}ms`],
       ["CLS", actual.clsScore <= limit.maxClsScore, `${actual.clsScore}/${limit.maxClsScore}`],
       ["TBT", actual.tbtMs <= limit.maxTbtMs, `${actual.tbtMs}ms/${limit.maxTbtMs}ms`],
       [

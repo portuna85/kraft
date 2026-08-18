@@ -188,30 +188,38 @@ for (const [route, { maxKB, currentKB }] of Object.entries(budget)) {
     continue;
   }
 
-  if (actual.totalKB <= maxKB) {
-    console.log(`  통과  ${route}: ${actual.totalKB} KB / 목표 ${maxKB} KB`);
-    continue;
+  // KF-04(docs/improvement.md): 예전엔 목표(maxKB) 이내면 여기서 곧장 continue해
+  // 아래 회귀(currentKB) 비교에 아예 도달하지 못했다 — 목표 안에서 조용히 커지는
+  // 것을 몇 KB든 놓쳤다. 이제 목표 달성 여부와 회귀 여부를 라우트마다 항상 둘 다
+  // 계산한다.
+  const withinTarget = actual.totalKB <= maxKB;
+  if (!withinTarget) {
+    // 목표를 넘었다. 다만 지금 초과분의 대부분은 프레임워크 공용 청크(53KB)에서
+    // 오고, 이 값은 화면 코드로 줄일 수 있는 성질이 아니다. 목표는 앱이 완성된 뒤
+    // §29.4의 "공개 라우트가 현행 대비 증가하지 않음"으로 판정하고, 그때까지는
+    // **여기서 더 늘어나는 것**을 막는다. 기준선이 없는 라우트는 이번 값이
+    // 기준선이 된다.
+    overTarget.push(route);
   }
 
-  // 목표를 넘었다. 다만 지금 초과분의 대부분은 프레임워크 공용 청크(53KB)에서 오고,
-  // 이 값은 화면 코드로 줄일 수 있는 성질이 아니다. 목표는 앱이 완성된 뒤 §29.4의
-  // "공개 라우트가 현행 대비 증가하지 않음"으로 판정하고, 그때까지는 **여기서 더
-  // 늘어나는 것**을 막는다. 기준선이 없는 라우트는 이번 값이 기준선이 된다.
-  overTarget.push(route);
-
   if (currentKB === undefined) {
-    console.log(
-      `  기준선 없음 ${route}: ${actual.totalKB} KB (목표 ${maxKB} KB 초과) — ` +
-        "--save-baseline으로 기준선을 기록하세요.",
-    );
-    failed = true;
+    if (withinTarget) {
+      console.log(`  통과  ${route}: ${actual.totalKB} KB / 목표 ${maxKB} KB (기준선 없음)`);
+    } else {
+      console.log(
+        `  기준선 없음 ${route}: ${actual.totalKB} KB (목표 ${maxKB} KB 초과) — ` +
+          "--save-baseline으로 기준선을 기록하세요.",
+      );
+      failed = true;
+    }
     continue;
   }
 
   const grew = actual.totalKB > currentKB + REGRESSION_TOLERANCE_KB;
   if (grew) failed = true;
+  const status = grew ? "회귀" : withinTarget ? "통과" : "유지";
   console.log(
-    `  ${grew ? "회귀" : "유지"}  ${route}: ${actual.totalKB} KB ` +
+    `  ${status}  ${route}: ${actual.totalKB} KB ` +
       `(기준선 ${currentKB} KB, 목표 ${maxKB} KB)`,
   );
 }
