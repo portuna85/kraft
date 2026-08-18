@@ -55,6 +55,24 @@ export const metadata: Metadata = {
   verification: siteVerificationMetadata,
 };
 
+/**
+ * safe-area 정책: `viewportFit: "cover"`를 켜지 않는다(FE-RSP-05).
+ *
+ * cover를 켜면 배경이 노치/홈 인디케이터 영역까지 확장되고, 그 결과 header/footer/
+ * dialog/drawer 등 좌우로 맞닿는 모든 요소에 `env(safe-area-inset-left/right/top)`을
+ * 새로 추가해야 한다 — 지금은 이 프로젝트에 그런 edge-to-edge 배경이나 좌우 컷아웃과
+ * 맞닿는 UI가 없다(shell은 항상 --space-4 이상의 좌우 gutter를 둔다). 즉 이 앱은
+ * `viewportFit: "cover"` 없이도 기본 컨테이닝 블록이 이미 safe area 밖에 머무른다.
+ *
+ * 반면 하단 고정 UI(tabBar/StickyMobileAd/toast/drawer)는 `position: fixed`로 화면
+ * 맨 아래에 붙으므로 홈 인디케이터에 가려질 수 있다 — 그래서 `env(safe-area-inset-bottom)`
+ * 만 명시적으로 방어한다(shell.module.css:78,85,98,146,154, ad-unit.module.css:49,
+ * overlay.module.css:46). 이것이 "하단 전용" 정책이다.
+ *
+ * edge-to-edge를 채택할 이유(디자인 변경)가 생기면 `viewportFit: "cover"`를 켜고
+ * 위 목록의 각 fixed 요소에 좌우/상단 inset을 함께 추가해야 한다 — 하나만 켜면
+ * 배경은 늘어나는데 UI는 노치를 방어하지 못하는 상태가 된다.
+ */
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f3f7ff" },

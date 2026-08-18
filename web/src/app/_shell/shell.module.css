@@ -143,6 +143,8 @@
     grid-auto-columns: 1fr;
     background: var(--color-surface-solid);
     border-top: 1px solid var(--color-border);
+    /* 하단 전용 safe-area 정책(layout.tsx viewport export 주석 참조, FE-RSP-05) —
+       viewportFit: "cover"를 켜지 않으므로 left/right/top inset은 필요 없다. */
     padding-bottom: env(safe-area-inset-bottom);
   }
 
