@@ -356,6 +356,11 @@ jobs:
           KRAFT_BACKEND_INTERNAL_URL: http://127.0.0.1:4113
           KRAFT_PUBLIC_BASE_URL: http://127.0.0.1:3113
       - run: npm run test:e2e:visual
+        env:
+          # Desktop Firefox 프로젝트가 root로 실행되는 컨테이너에서 $HOME
+          # 소유자가 pwuser라 launch 자체를 거부한다 — cross-browser 잡과
+          # 같은 workaround(Playwright 공식 안내).
+          HOME: /root
       - name: Upload failure traces and actual screenshots
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
