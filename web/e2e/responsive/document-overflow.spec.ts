@@ -12,6 +12,19 @@ import { assertNoHorizontalOverflow } from "../lib/responsive-assertions";
  */
 const ROUTES = ["/", "/recommend", "/stats", "/analysis", "/frequency", "/data", "/community"];
 
+/**
+ * 홈의 추첨 카운트다운(`DrawCountdown`)은 실제 시각으로 남은 시간을 그린다 —
+ * 값 길이가 "6일 23시간 59분 59초"처럼 실행 시점마다 달라져, 320~360px처럼
+ * 좁은 폭에서는 우연히 실행한 순간에 따라 overflow 여부가 갈린다
+ * (baseline.spec.ts가 이미 같은 이유로 시계를 고정한다 — 그 절차를 그대로
+ * 따른다. 추첨 사이 아무 시각이면 된다).
+ */
+const FIXED_NOW = new Date("2026-08-12T09:00:00Z");
+
+test.beforeEach(async ({ page }) => {
+  await page.clock.setFixedTime(FIXED_NOW);
+});
+
 const BOUNDARY_WIDTHS = [320, 360, 390, 639, 640, 641, 768, 1023, 1024, 1025, 1280, 1440];
 
 test.describe("경계 뷰포트에서 document 가로 스크롤 없음", () => {
