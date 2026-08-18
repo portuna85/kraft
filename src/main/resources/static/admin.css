@@ -114,10 +114,17 @@ nav a {
     background 0.16s,
     color 0.16s;
 }
-nav a:hover,
 nav a.active {
   color: var(--text);
   background: rgba(0, 229, 255, 0.1);
+}
+/* hover는 정밀 포인터가 있는 기기에서만 켠다 — 가드가 없으면 터치 후 nav 항목이
+   hover 배경으로 고착된 채 active 항목과 혼동된다(FE-RSP-06). */
+@media (hover: hover) and (pointer: fine) {
+  nav a:hover {
+    color: var(--text);
+    background: rgba(0, 229, 255, 0.1);
+  }
 }
 nav .logout {
   margin-top: auto;
@@ -136,8 +143,10 @@ nav .logout {
   font: inherit;
   text-align: left;
 }
-.logout button:hover {
-  background: rgba(255, 139, 154, 0.09);
+@media (hover: hover) and (pointer: fine) {
+  .logout button:hover {
+    background: rgba(255, 139, 154, 0.09);
+  }
 }
 
 .admin-shell main {
@@ -315,9 +324,11 @@ h2 {
   color: #04101b;
   background: linear-gradient(90deg, var(--brand), var(--violet));
 }
-.btn-primary:hover {
-  filter: brightness(1.08);
-  transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+  }
 }
 .btn-sm {
   /* 파일 내 다른 상호작용 대상(44px)과 맞춘다 — 40px는 최소 터치 타깃 기준 미달. */
@@ -372,8 +383,10 @@ h2 {
 .admin-table tbody tr:last-child td {
   border-bottom: 0;
 }
-.admin-table tbody tr:hover td {
-  background: rgba(0, 229, 255, 0.06);
+@media (hover: hover) and (pointer: fine) {
+  .admin-table tbody tr:hover td {
+    background: rgba(0, 229, 255, 0.06);
+  }
 }
 .admin-table .empty-cell {
   padding: 1.5rem;
@@ -475,8 +488,10 @@ nav a:focus-visible,
   font: inherit;
   font-weight: 700;
 }
-.admin-login button:hover {
-  filter: brightness(1.08);
+@media (hover: hover) and (pointer: fine) {
+  .admin-login button:hover {
+    filter: brightness(1.08);
+  }
 }
 
 /* 관리자 화면은 web/의 640/1024px 체계를 따르지 않고 480/768px을 쓴다 —
