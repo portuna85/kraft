@@ -238,13 +238,13 @@ export function AdSenseSidebar({ slot }: { slot: string }) {
 }
 
 /** 광고가 화면에 떠 있는 동안 본문·오버레이 하단 여백이 겹치지 않게, 셸이 소비하는
- * `--fixed-bottom-inset`(shell.module.css:59, overlay.module.css:113)에 광고
+ * `--fixed-bottom-inset`(shell.module.css:85,99, overlay.module.css:167)에 광고
  * 높이를 게시한다 — 전역 토큰을 광고 CSS가 직접 재정의하지 않는다. */
 const STICKY_AD_INSET_PX = "66px";
-/** 낮은 뷰포트(가로모드 휴대폰 등)에서는 고정 광고를 내린다 — ad-unit.module.css의
- * `@media (max-height: 480px)`는 CSS로만 숨겼는데, 이 게이트가 없으면 광고는
- * display:none으로 안 보이는데도 `visible`은 true라 --fixed-bottom-inset이 66px로
- * 계속 게시돼 세로 공간이 가장 부족한 화면에서 유령 여백이 남았다. */
+/** 낮은 뷰포트(가로모드 휴대폰 등)에서는 고정 광고를 내린다. ad-unit.module.css에는
+ * 높이 기준 숨김 규칙이 없으므로(≥1024px 숨김만 CSS에 있음) 이 게이트가 유일한
+ * 판정 소스다 — 게이트가 없으면 광고 유닛이 계속 mount된 채 --fixed-bottom-inset이
+ * 66px로 게시돼, 세로 공간이 가장 부족한 화면에서 유령 여백이 남는다. */
 const SHORT_VIEWPORT_QUERY = "(max-height: 480px)";
 
 export function StickyMobileAd({ unit }: { unit: string }) {
