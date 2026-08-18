@@ -21,7 +21,21 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : [["list"]],
   use: { baseURL: BASE_URL, trace: "on-first-retry" },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    // KF-03(docs/improvement.md): CSS Grid의 automatic minimum size 처리가
+    // Firefox에서만 달라 `/stats` 320px가 실제로 가로 오버플로된다(scrollWidth 338
+    // vs clientWidth 320). Chromium 전용 커버리지로는 이걸 못 잡는다. responsive
+    // 트랙 전체를 firefox로 재실행하면 CI 비용이 두 배가 되므로
+    // `document-overflow.spec.ts`에만 스코프한다 — 이 파일이 이미 `/stats`를 포함한
+    // 라우트×폭 전체 조합을 스윕하므로 새 스펙 코드 없이 firefox 프로젝트 추가만으로
+    // 기존 `/stats@320` 케이스가 red가 된다.
+    {
+      name: "firefox-overflow",
+      testMatch: /document-overflow\.spec\.ts/,
+      use: { ...devices["Desktop Firefox"] },
+    },
+  ],
   webServer: [
     {
       command: "node e2e/fixtures/backend.mjs",

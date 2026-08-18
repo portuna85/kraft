@@ -18,7 +18,15 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : [["list"]],
   use: { baseURL: BASE_URL, trace: "on-first-retry" },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    // 부가 항목(docs/improvement.md KF-26) — axe 스캔이 지금까지 1280×720
+    // 데스크톱 뷰포트에서만 돌아, 1024px 미만에서만 마운트되는 하단 탭바나
+    // 데스크톱에서는 렌더되지 않는 광고 닫기 버튼 같은 모바일 전용 요소가 한 번도
+    // 스캔되지 않았다. `e2e/a11y/*.spec.ts`를 그대로 재사용해 모바일 뷰포트에서도
+    // axe가 돌게 한다.
+    { name: "mobile-chromium", use: { ...devices["Pixel 7"] } },
+  ],
   webServer: [
     {
       command: "node e2e/fixtures/backend.mjs",

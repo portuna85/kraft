@@ -46,6 +46,22 @@ const server = createServer(async (request, response) => {
   if (url.pathname === "/__test__/reset" && method === "POST") {
     forcedFailurePath = null;
     Object.assign(stats.LATEST_ROUND, stats.BASE_LATEST_ROUND);
+    community.resetCommunityState();
+    response.statusCode = 204;
+    response.end();
+    return;
+  }
+  // KF-01(docs/improvement.md): 로그인 상태를 테스트가 임의로 바꿀 수 있게 한다.
+  if (url.pathname === "/__test__/session" && method === "PUT") {
+    const loggedIn = url.searchParams.get("loggedIn") === "true";
+    const userId = url.searchParams.has("userId") ? Number(url.searchParams.get("userId")) : null;
+    const nickname = url.searchParams.get("nickname");
+    community.setSessionState({
+      loggedIn,
+      userId,
+      nickname,
+      activeProviders: ["google", "naver"],
+    });
     response.statusCode = 204;
     response.end();
     return;

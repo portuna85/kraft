@@ -80,10 +80,43 @@ const COMMENT_PAGE = {
   totalPages: 1,
 };
 
+// KF-01(docs/improvement.md): 로그인 상태를 테스트가 제어할 수 있어야 "로그인 생성 →
+// 계정 이력 미반영" 결함을 재현할 수 있다. 기본은 비로그인이고, `setSessionState`로
+// backend.mjs의 `__test__/session` 컨트롤 엔드포인트가 이 상태를 바꾼다.
+const DEFAULT_SESSION_STATE = {
+  loggedIn: false,
+  userId: null,
+  nickname: null,
+  activeProviders: ["google", "naver"],
+};
+let sessionState = { ...DEFAULT_SESSION_STATE };
+
+// 계정 스코프 추천 이력 저장소. 의도적으로 아무도 여기 쓰지 않는다 — 실제 백엔드가
+// `/api/v1/numbers/recommend`를 device-token 해시로만 영속화하고 계정 스코프 저장
+// 경로가 없다는 것이 KF-01의 근인이다(`numbers.mjs`의 `/api/v1/numbers/recommend`
+// 참고). 이 배열에 뭔가 쓰는 코드를 추가하면 결함을 픽스처에서 "고쳐버려" 테스트가
+// 더 이상 결함을 증명하지 못하게 된다.
+const accountRecommendationSets = [];
+
+export function setSessionState(next) {
+  sessionState = { ...sessionState, ...next };
+}
+
+export function resetCommunityState() {
+  sessionState = { ...DEFAULT_SESSION_STATE };
+}
+
 export const routes = [
+  ["/api/v1/community/session", () => sessionState],
   [
-    "/api/v1/community/session",
-    { loggedIn: false, userId: null, nickname: null, activeProviders: ["google", "naver"] },
+    "/api/v1/community/me/recommendation-sets",
+    () => ({
+      items: accountRecommendationSets,
+      page: 0,
+      size: 20,
+      totalElements: accountRecommendationSets.length,
+      totalPages: accountRecommendationSets.length === 0 ? 0 : 1,
+    }),
   ],
   [
     "/api/v1/community/posts",

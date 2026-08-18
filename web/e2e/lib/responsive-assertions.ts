@@ -89,6 +89,19 @@ export async function assertFormControlFontSizeAtLeast16px(page: Page) {
 }
 
 /**
+ * 지정한 셀렉터의 첫 요소가 계산된 높이 `max`px을 넘지 않아야 한다. 텍스트가
+ * 2줄로 래핑되면 1줄 대비 높이가 거의 두 배가 되므로, 문서 자체는 넘치지 않아도
+ * (`assertNoHorizontalOverflow`로는 못 잡는) 래핑을 이 방식으로 검출한다.
+ */
+export async function assertElementMaxHeight(page: Page, selector: string, max: number) {
+  const height = await page.locator(selector).first().evaluate((el) => el.getBoundingClientRect().height);
+  expect(
+    height,
+    `${selector}의 높이(${Math.round(height)}px)가 ${max}px를 초과한다 — 줄바꿈(래핑) 의심`,
+  ).toBeLessThanOrEqual(max);
+}
+
+/**
  * 고정 UI(헤더, 하단 탭바, 토스트 등)가 페이지의 마지막 focusable 요소나 주요
  * CTA를 가리지 않아야 한다. `fixedSelectors`로 가려서는 안 되는 고정 요소를,
  * `targetSelector`로 가려지면 안 되는 대상을 지정한다.
