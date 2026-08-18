@@ -39,7 +39,7 @@ export function TabBar() {
             href={item.href}
             aria-current={isCurrent ? "page" : undefined}
           >
-            {item.label}
+            <span className={styles.tabLabel}>{item.label}</span>
           </Link>
         );
       })}

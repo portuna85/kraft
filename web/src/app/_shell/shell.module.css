@@ -190,10 +190,25 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    /* grid item의 기본 min-width는 콘텐츠 폭이라 5칸 고정 grid에서 줄어들 수 없다 —
+       확대(예: 320px 상당 400%)로 칸 폭이 라벨보다 좁아지면 tabBar가 옆으로 밀린다. */
+    min-width: 0;
     min-height: var(--layout-tabbar-h);
+    padding-inline: var(--space-1);
     color: var(--color-ink-muted);
     font-size: var(--text-xs);
     text-decoration: none;
+  }
+
+  /* 라벨이 줄바꿈되면 flex 정렬로 인해 탭 높이가 --layout-tabbar-h보다 커지는데,
+     하단 고정 UI 여백 계산(.main/.footer의 --tabbar-reserve)은 그 상수를 그대로
+     쓰므로 실제 늘어난 높이와 어긋나 콘텐츠가 가려진다. 항상 한 줄로 자르고
+     좁을 때는 말줄임표로 알린다(F-18). */
+  .tabLabel {
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   .tabLink[aria-current="page"] {
