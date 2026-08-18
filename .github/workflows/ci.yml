@@ -356,6 +356,11 @@ jobs:
           KRAFT_BACKEND_INTERNAL_URL: http://127.0.0.1:4113
           KRAFT_PUBLIC_BASE_URL: http://127.0.0.1:3113
       - run: npm run test:e2e:visual
+        env:
+          # Desktop Firefox 프로젝트가 root로 실행되는 컨테이너에서 $HOME
+          # 소유자가 pwuser라 launch 자체를 거부한다 — cross-browser 잡과
+          # 같은 workaround(Playwright 공식 안내).
+          HOME: /root
       - name: Upload failure traces and actual screenshots
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -407,6 +412,47 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: web-next-playwright-cross-browser
+          path: |
+            web/test-results/
+            web/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # 경계 뷰포트·확대·고정 UI 가림을 프로그래매틱 단언으로 검증 — Phase 1
+  # (docs/improvement_claude_fe.md §7.3, docs/improvement_codex_fe.md §8.1).
+  web-next-e2e-responsive:
+    name: Web Next E2E (반응형 단언)
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    timeout-minutes: 15
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
+      options: --ipc=host
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --prefer-offline --no-audit --no-fund
+      - name: Build responsive-track application
+        run: npm run build
+        env:
+          NEXT_DIST_DIR: .next-responsive
+          NEXT_ENABLE_STANDALONE_REWRITES: "true"
+          KRAFT_BACKEND_INTERNAL_URL: http://127.0.0.1:4115
+          KRAFT_PUBLIC_BASE_URL: http://127.0.0.1:3115
+      - run: npm run test:e2e:responsive
+      - name: Upload failure traces
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: web-next-playwright-responsive
           path: |
             web/test-results/
             web/playwright-report/
@@ -859,6 +905,7 @@ jobs:
       - web-next-e2e-a11y
       - web-next-e2e-cross-browser
       - web-next-e2e-visual
+      - web-next-e2e-responsive
       - web-next-performance-budget
       - api-types-drift-guard
       - docker-publish-backend
@@ -882,6 +929,7 @@ jobs:
           WEB_NEXT_A11Y_RESULT: ${{ needs.web-next-e2e-a11y.result }}
           WEB_NEXT_CROSS_BROWSER_RESULT: ${{ needs.web-next-e2e-cross-browser.result }}
           WEB_NEXT_VISUAL_RESULT: ${{ needs.web-next-e2e-visual.result }}
+          WEB_NEXT_RESPONSIVE_RESULT: ${{ needs.web-next-e2e-responsive.result }}
           WEB_NEXT_PERF_RESULT: ${{ needs.web-next-performance-budget.result }}
           BACKEND_IMAGE_RESULT: ${{ needs.docker-publish-backend.result }}
           WEB_IMAGE_RESULT: ${{ needs.docker-publish-web.result }}
@@ -909,6 +957,7 @@ jobs:
             require_success "Web E2E (접근성)" "$WEB_NEXT_A11Y_RESULT"
             require_success "Web E2E (크로스브라우저)" "$WEB_NEXT_CROSS_BROWSER_RESULT"
             require_success "Web E2E (시각 회귀)" "$WEB_NEXT_VISUAL_RESULT"
+            require_success "Web E2E (반응형 단언)" "$WEB_NEXT_RESPONSIVE_RESULT"
             require_success "Web Performance Budget" "$WEB_NEXT_PERF_RESULT"
           fi
           if [[ "$EVENT_NAME" == "push" ]]; then

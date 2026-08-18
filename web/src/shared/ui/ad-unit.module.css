@@ -25,6 +25,18 @@
     margin-top: 0;
   }
 
+  /* 데스크톱(≥1024px)에서만 300×600 사이드바 광고가 mount되므로, 그 폭에서만
+     미리 자리를 예약한다 — 모바일에서는 0이라 낭비 여백이 남지 않는다. */
+  .adSidebarSlot {
+    min-height: 0;
+  }
+
+  @media (min-width: 1024px) {
+    .adSidebarSlot {
+      min-height: 600px;
+    }
+  }
+
   .adStickyMobile {
     position: fixed;
     inset-inline: 0;

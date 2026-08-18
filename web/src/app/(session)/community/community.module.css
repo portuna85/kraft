@@ -8,6 +8,10 @@
 
   .search input {
     flex: 1 1 200px;
+    /* flex item의 min-width 기본값은 auto(content-based)인데, text input의
+       내재적 최소 폭이 200px 근처라 flex-shrink가 있어도 그 아래로 줄지
+       않는다 — 320px처럼 좁은 화면에서 버튼과 함께 컨테이너 밖으로 넘친다. */
+    min-width: 0;
     min-height: var(--target-min);
     padding-inline: var(--space-3);
     border: 1px solid var(--color-border);

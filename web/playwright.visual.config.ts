@@ -40,6 +40,10 @@ export default defineConfig({
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
     { name: "Mobile Chrome", use: { ...devices["Pixel 5"] } },
     { name: "Tablet", use: { browserName: "chromium", ...devices["iPad (gen 7)"] } },
+    // Chromium 3종만으로는 WebKit·Gecko 렌더링 회귀(폰트 메트릭, flex/grid
+    // 세부, backdrop-filter, dvh 계산)를 못 잡는다.
+    { name: "Mobile Safari", use: { ...devices["iPhone 14"] } },
+    { name: "Desktop Firefox", use: { ...devices["Desktop Firefox"] } },
   ],
   webServer: [
     {

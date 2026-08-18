@@ -217,16 +217,23 @@ export function AdSenseSidebar({ slot }: { slot: string }) {
   // mount하면 adsbygoogle.push가 availableWidth=0 상태로 호출돼 낭비 요청·오류가
   // 발생하므로 뷰포트 판정으로 아예 mount하지 않는다.
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
-  if (!isDesktop) return null;
 
+  // useMediaQuery의 SSR 스냅샷은 항상 false라 데스크톱에서도 첫 페인트에는
+  // 사이드바가 없다가 하이드레이션 후 300×600이 삽입되며 레이아웃이 밀린다.
+  // shell.module.css의 themeTogglePlaceholder와 같은 패턴 — CSS 미디어쿼리로
+  // 자리를 먼저 예약하고, JS는 그 안에서 mount 여부만 정한다.
   return (
-    <AdSenseUnit
-      slot={slot}
-      width={300}
-      height={600}
-      label="사이드바 광고"
-      className={`ad-sidebar ${styles.adSidebar}`}
-    />
+    <div className={styles.adSidebarSlot}>
+      {isDesktop ? (
+        <AdSenseUnit
+          slot={slot}
+          width={300}
+          height={600}
+          label="사이드바 광고"
+          className={`ad-sidebar ${styles.adSidebar}`}
+        />
+      ) : null}
+    </div>
   );
 }
 

@@ -20,6 +20,7 @@
     "test:e2e:visual": "playwright test --config=playwright.visual.config.ts",
     "test:e2e:visual:docker": "docker run --rm --ipc=host -v \"$(pwd)/..:/repo\" -w /repo/web mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e bash -c \"npm ci --prefer-offline --no-audit --no-fund && NEXT_DIST_DIR=.next-visual NEXT_ENABLE_STANDALONE_REWRITES=true KRAFT_BACKEND_INTERNAL_URL=http://127.0.0.1:4113 KRAFT_PUBLIC_BASE_URL=http://127.0.0.1:3113 npm run build && npm run test:e2e:visual\"",
     "test:e2e:cross-browser": "playwright test --config=playwright.cross-browser.config.ts",
+    "test:e2e:responsive": "playwright test --config=playwright.responsive.config.ts",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "generate:api-types": "node scripts/generate-api-types.mjs",
@@ -64,5 +65,11 @@
   },
   "overrides": {
     "js-yaml": "^4.3.1"
-  }
+  },
+  "browserslist": [
+    "last 2 Chrome versions",
+    "last 2 Safari versions",
+    "last 2 Firefox versions",
+    "last 2 iOS versions"
+  ]
 }

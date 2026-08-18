@@ -27,6 +27,9 @@
     background: var(--color-surface-solid);
     box-shadow: var(--shadow-2);
     overflow-y: auto;
+    /* 패널 끝까지 스크롤한 뒤에도 계속 스와이프하면 배경 페이지로 스크롤이
+       넘어간다(scroll chaining) — iOS에서 특히 두드러진다. */
+    overscroll-behavior: contain;
   }
 
   .drawerLeft .drawerPanel,
@@ -76,6 +79,10 @@
     right: 0;
     z-index: var(--z-overlay);
     min-width: 200px;
+    /* 오른쪽 가장자리 트리거에서 좁은 화면(360~390px)이면 메뉴가 뷰포트 밖으로
+       나갈 수 있다 — 뷰포트 기준으로 클램프한다. CSS Anchor Positioning은
+       Safari·Firefox 미지원이라 채택하지 않는다. */
+    max-width: min(280px, calc(100vw - 2 * var(--space-4)));
     padding: var(--space-1);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
@@ -143,7 +150,9 @@
     translate: -50% 0;
     z-index: var(--z-overlay);
     width: max-content;
-    max-width: 240px;
+    /* 중앙 정렬(left:50%)이라 양쪽 가장자리 트리거에서 잘릴 수 있다 — 240px
+       상한을 뷰포트 기준으로도 클램프한다. */
+    max-width: min(240px, calc(100vw - 2 * var(--space-4)));
     padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-sm);
     background: var(--color-ink);

@@ -14,6 +14,8 @@
     right: 0;
     z-index: var(--z-overlay);
     width: max-content;
-    max-width: 280px;
+    /* right:0 고정이라 좁은 화면에서 왼쪽 가장자리를 넘어갈 수 있다 — 뷰포트
+       기준으로 클램프한다(overlay.module.css .menu와 동일 패턴). */
+    max-width: min(280px, calc(100vw - 2 * var(--space-4)));
   }
 }

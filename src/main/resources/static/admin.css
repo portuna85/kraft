@@ -23,7 +23,11 @@
 
 body {
   margin: 0;
+  /* 100vh는 모바일에서 주소창이 접힌 상태 기준이라, 로그인 폼에서 keyboard가
+     열리면 실제 가시 영역보다 커져 스크롤이 막힐 수 있다 — dvh를 지원하는
+     브라우저는 실제 가시 높이로 다시 계산한다(100vh는 미지원 브라우저 폴백). */
   min-height: 100vh;
+  min-height: 100dvh;
   color: var(--text);
   background:
     radial-gradient(
@@ -316,7 +320,8 @@ h2 {
   transform: translateY(-1px);
 }
 .btn-sm {
-  min-height: 40px;
+  /* 파일 내 다른 상호작용 대상(44px)과 맞춘다 — 40px는 최소 터치 타깃 기준 미달. */
+  min-height: 44px;
   padding: 0.45rem 0.7rem;
   font-size: 0.8rem;
 }
@@ -416,7 +421,16 @@ nav a:focus-visible,
     rgba(255, 255, 255, 0.035)
   );
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.4);
+  -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
+}
+/* iOS 17 이하는 무프리픽스 backdrop-filter를 지원하지 않는다. 카드 배경이
+   거의 투명(alpha 0.035~0.08)이라 블러가 없으면 뒤 배경이 그대로 비쳐 대비가
+   무너진다 — 불투명 표면으로 폴백한다. */
+@supports not (backdrop-filter: blur(1px)) {
+  .admin-login .card {
+    background: var(--surface-raised);
+  }
 }
 .admin-login h1 {
   margin-bottom: 0.25rem;
@@ -465,6 +479,11 @@ nav a:focus-visible,
   filter: brightness(1.08);
 }
 
+/* 관리자 화면은 web/의 640/1024px 체계를 따르지 않고 480/768px을 쓴다 —
+   sidebar+main 2단 셸이 사용자 웹의 카드형 grid와 다른 레이아웃이고, nav를
+   세로→가로 전환하는 지점은 그 shell 폭 자체(768px)에 맞춘 것이라 사용자 웹
+   콘텐츠 브레이크포인트와 통일할 이유가 없다(docs/improvement_codex_fe.md
+   FE-RSP-08). 값을 바꾸려면 아래 두 미디어쿼리를 함께 조정해야 한다. */
 @media (max-width: 768px) {
   .admin-shell {
     flex-direction: column;
