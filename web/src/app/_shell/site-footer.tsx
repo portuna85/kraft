@@ -14,7 +14,11 @@ export function SiteFooter() {
               <ul>
                 {group.items.map((item) => (
                   <li key={item.href}>
-                    <Link className={styles.footerLink} href={item.href}>
+                    {/* KF-20(docs/improvement.md): 푸터는 저의도 링크다 — 뷰포트에
+                        들어오는 즉시 자동 프리페치되던 초기 RSC 요청 팬아웃
+                        (21~39건)의 상당 부분이 여기였다. 주요 전환(헤더·탭바)은
+                        그대로 프리페치 유지. */}
+                    <Link className={styles.footerLink} href={item.href} prefetch={false}>
                       {item.label}
                     </Link>
                   </li>

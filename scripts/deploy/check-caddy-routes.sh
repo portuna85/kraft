@@ -137,6 +137,14 @@ check_status "admin domain /admin/login reachable"  "$KRAFT_ADMIN_DOMAIN" "/admi
 check_status "admin domain /ops-api routes to backend /ops" "$KRAFT_ADMIN_DOMAIN" "/ops-api/summary" "401"
 check_status "public domain /api/v1/community/session routes to backend" "$KRAFT_DOMAIN" "/api/v1/community/session" "200"
 check_status_not_404 "public domain /oauth2/authorization/google routes to backend (not Next.js 404)" "$KRAFT_DOMAIN" "/oauth2/authorization/google"
+# KF-21(docs/improvement.md): Next 16이 발행하는 실제 OG 경로는 콘텐츠 해시
+# 접미사가 붙어(/opengraph-image-1c1a04?...) 예전 정확 경로 매치로는 안 걸렸다
+# — 접두 매치로 바꿨다. Caddy의 header 지시자는 경로 매치만으로 실행되므로
+# 실제 발행된 해시를 몰라도 임의 접미사로 회귀를 잡을 수 있다.
+check_header_present "public domain root-level opengraph-image* gets immutable Cache-Control (KF-21)" \
+  "$KRAFT_DOMAIN" "/opengraph-image-regression-check" "Cache-Control: public, max-age=31536000, immutable"
+check_header_present "public domain nested /*/opengraph-image* gets immutable Cache-Control (KF-21)" \
+  "$KRAFT_DOMAIN" "/analysis/opengraph-image-regression-check" "Cache-Control: public, max-age=31536000, immutable"
 check_body_over_limit_rejected "client-error 8KB body (Content-Length) rejected"        "$KRAFT_DOMAIN" "/api/client-error" 8192 ""
 check_body_over_limit_rejected "client-error 8KB body (chunked) rejected"               "$KRAFT_DOMAIN" "/api/client-error" 8192 "chunked"
 check_body_within_limit_not_rejected "client-error 100B body not rejected by proxy"     "$KRAFT_DOMAIN" "/api/client-error" 100

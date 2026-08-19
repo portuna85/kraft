@@ -10,6 +10,10 @@ import styles from "./navigation.module.css";
  * 스크린리더가 "홈 슬래시 안내 슬래시"처럼 읽는다.
  *
  * 현재 페이지는 링크가 아니라 `aria-current="page"`를 단 텍스트다.
+ *
+ * KF-20(docs/improvement.md): 상위 경로는 이미 헤더·탭바 내비게이션이 프리페치
+ * 대상으로 커버하는 목적지를 다시 링크하는 저의도 재확인 링크다 — 프리페치를
+ * 끈다.
  */
 export function Breadcrumb({ items, current }: BreadcrumbContract) {
   return (
@@ -17,7 +21,9 @@ export function Breadcrumb({ items, current }: BreadcrumbContract) {
       <ol className={styles.crumbs}>
         {items.map((item) => (
           <li key={item.href} className={styles.crumb}>
-            <Link href={item.href}>{item.label}</Link>
+            <Link href={item.href} prefetch={false}>
+              {item.label}
+            </Link>
           </li>
         ))}
         <li className={styles.crumb}>

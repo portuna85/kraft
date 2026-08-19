@@ -50,9 +50,12 @@ www.{$KRAFT_DOMAIN} {
 		respond @blocked `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>403</title></head><body><h1>403 Forbidden</h1></body></html>` 403
 
 		# 정적 자산 장기 캐시 (Next.js 콘텐츠 해시 포함)
-		# 주의: /rounds/opengraph-image 같은 라우트 전용 OG는 이 경로 매치(정확히 /opengraph-image)에
-		# 걸리지 않고 아래 catch-all 60s 캐시로 떨어진다. 콘텐츠 해시가 없는 경로라 의도적으로 그대로 둔다.
-		@immutable path /_next/static/* /icon/* /apple-icon /opengraph-image
+		# KF-21(docs/improvement.md): Next 16이 실제 발행하는 OG 경로는 콘텐츠 해시
+		# 접미사가 붙는다(예: /opengraph-image-1c1a04?6824bb158b9cd20d,
+		# /analysis/opengraph-image-p0tcmv?...) — 정확 경로 매치로는 루트 OG조차
+		# 안 걸려 7개 전부 아래 60s catch-all로 떨어졌었다. 경로 해시 + 쿼리 해시를
+		# 둘 다 가져 접두 매치로도 immutable 캐싱이 안전하다.
+		@immutable path /_next/static/* /icon/* /apple-icon /opengraph-image* /*/opengraph-image*
 		handle @immutable {
 			header Cache-Control "public, max-age=31536000, immutable"
 			reverse_proxy web:3000 {
@@ -190,8 +193,10 @@ www.{$KRAFT_DOMAIN} {
 		@blocked path /actuator*
 		respond @blocked 403
 
-		# 정적 자산 장기 캐시
-		@immutable path /_next/static/* /icon/* /apple-icon /opengraph-image
+		# 정적 자산 장기 캐시 — KF-21(docs/improvement.md): public 도메인 블록과 같은
+		# 이유로 OG 경로를 접두 매치로 바꾼다(콘텐츠 해시 접미사 때문에 정확 매치가
+		# 안 걸렸다).
+		@immutable path /_next/static/* /icon/* /apple-icon /opengraph-image* /*/opengraph-image*
 		handle @immutable {
 			header Cache-Control "public, max-age=31536000, immutable"
 			reverse_proxy web:3000 {
