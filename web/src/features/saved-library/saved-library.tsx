@@ -132,9 +132,11 @@ export function SavedLibrary({ latestRound }: { latestRound: number }) {
 
   // KF-08(docs/improvement.md): 평문 한 줄이었다가 목록이 도착하면 N행으로
   // 급팽창해 푸터가 크게 밀렸다(실측 CLS 0.1174) — 스켈레톤으로 미리 높이를
-  // 예약해 급변 폭을 줄인다. 실제 레이아웃은 폼+목록 2단이라 완벽히 일치하진
-  // 않지만, 목표는 시프트 제거가 아니라 축소다.
-  if (items === null) return <ListRowsSkeleton />;
+  // 예약해 급변 폭을 줄인다. 기본 8행 스켈레톤을 그대로 쓰면 실제로 가장 흔한
+  // 케이스(항목 0개, CI 픽스처 기본값과 같음)에서 EmptyState로 무너질 때 오히려
+  // 이전보다 큰 시프트(실측 CLS 0.385)를 만든다 — EmptyState 높이에 더 가깝게
+  // 행 수를 줄여 과잉 예약을 막는다.
+  if (items === null) return <ListRowsSkeleton rows={1} />;
 
   if (items.length === 0) {
     return (
