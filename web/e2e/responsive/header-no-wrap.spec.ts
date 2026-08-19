@@ -3,35 +3,60 @@ import { test } from "@playwright/test";
 import { assertElementMaxHeight } from "../lib/responsive-assertions";
 
 /**
- * KF-02(docs/improvement.md) — 데스크톱 헤더가 1024~1151px에서 깨진다.
+ * KF-02(docs/improvement.md) — 데스크톱 헤더가 1024~1100px에서 깨졌었다.
  *
- * 브레이크포인트는 640px/1024px뿐이다(`shared/config/breakpoints.ts`의
- * `BP.desktop=1024`). `.primaryNav`(shell.module.css)는 정확히 `>=1024px`에서
- * 나타나 `nav-items.ts`의 `PRIMARY_NAV` 8개 항목과 함께 `.brand`·`.headerActions`와
- * 좁은 공간을 다툰다. `.brand`에는 `white-space:nowrap`/`flex-shrink:0`이 없어
- * 2줄로 래핑될 수 있다 — 감사 실측 기준선은 1023px/≥1152px에서 브랜드 높이 ~29px
- * (1줄), 1024~1151px에서 ~57px(2줄)이다.
+ * 근인: 데스크톱 nav 전환이 1024px에 걸려 있어, `nav-items.ts`의 `PRIMARY_NAV`
+ * 9개 항목이 `.brand`·`.headerActions`와 좁은 공간을 다퉜다(`.brand`에
+ * `white-space:nowrap`도 없었다). §10 4단계에서 데스크톱 nav 전환 자체를
+ * 1152px로 올렸다(`shared/config/breakpoints.ts`의 `BP.desktopNav`,
+ * `shell.module.css`의 `.primaryNav`/`.tabBar`/`--tabbar-reserve`가 모두 함께
+ * 전환). 1152px는 이 스펙이 실측으로 확인한, 이미 안전했던 경계다.
  *
- * **실측(이 스펙으로 재현): 1024/1060/1100px는 지금 실패해야 정상이다(red).**
- * 1151/1152/1280px는 실측상 이미 정상이다 — 감사 문서가 1151px까지를 결함
- * 구간으로 봤지만, 재현해 보면 1151px에서는 이미 브랜드가 1줄로 돌아온다. 이
- * 스펙의 실측치를 근거로 삼는다.
+ * KF-14(docs/improvement.md)로 `.brand`에 `min-height: var(--target-min)`
+ * (44px)을 추가해, 래핑 안 된 1줄 상태의 실측 높이도 ~29px → 44px로 늘었다 —
+ * 임계값을 그 높이 + 여유로 올린다. 실제로 2줄로 래핑되면 배 이상(80px+)이라
+ * 이 임계값으로도 충분히 구분된다.
  */
 const WIDTHS = [1024, 1060, 1100, 1151, 1152, 1280];
-
-// KF-02가 아직 안 고쳐진 폭 — 근본 수정(§10 4단계) 전까지 알려진 실패로 남긴다.
-const KNOWN_WRAP_WIDTHS = new Set([1024, 1060, 1100]);
+const MAX_SINGLE_LINE_HEIGHT = 48;
 
 test.describe("데스크톱 헤더 브랜드가 좁은 폭에서 래핑되지 않는다", () => {
   for (const width of WIDTHS) {
-    test(`${width}px에서 브랜드 링크 높이가 32px 이하다`, async ({ page }) => {
-      test.fail(
-        KNOWN_WRAP_WIDTHS.has(width),
-        "KF-02: 1024~1100px에서 브랜드가 2줄로 래핑됨 — 근본 수정 전까지 알려진 실패",
-      );
+    test(`${width}px에서 브랜드 링크 높이가 ${MAX_SINGLE_LINE_HEIGHT}px 이하다`, async ({
+      page,
+    }) => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/", { waitUntil: "networkidle" });
-      await assertElementMaxHeight(page, "header a", 32);
+      await assertElementMaxHeight(page, "header a", MAX_SINGLE_LINE_HEIGHT);
+    });
+  }
+});
+
+/**
+ * 로그인 상태에서도 확인한다 — 로그인 시 `AccountControl`이 닉네임 라벨을 가진
+ * `AccountMenu`를 렌더해(로그아웃 상태의 `LoginPopover`보다 넓을 수 있음)
+ * 헤더 폭 압박이 달라진다(감사 권고: "계정 라벨은 로그인 상태에서 더 길어지므로
+ * 인증 상태 기준으로 브레이크포인트를 잡을 것"). `(session)` 셸에서만
+ * `AccountControl`이 쓰이므로 `/recommend`로 확인한다.
+ */
+test.describe("로그인 상태에서도 데스크톱 헤더 브랜드가 래핑되지 않는다", () => {
+  test.beforeEach(async ({ request }) => {
+    await request.put(
+      "http://127.0.0.1:4115/__test__/session?loggedIn=true&userId=1&nickname=%ED%85%8C%EC%8A%A4%ED%84%B0",
+    );
+  });
+
+  test.afterEach(async ({ request }) => {
+    await request.post("http://127.0.0.1:4115/__test__/reset");
+  });
+
+  for (const width of WIDTHS) {
+    test(`${width}px 로그인 상태에서 브랜드 링크 높이가 ${MAX_SINGLE_LINE_HEIGHT}px 이하다`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/recommend", { waitUntil: "networkidle" });
+      await assertElementMaxHeight(page, "header a", MAX_SINGLE_LINE_HEIGHT);
     });
   }
 });

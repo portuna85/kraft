@@ -17,9 +17,15 @@ test.describe("44px 최소 hit area", () => {
   });
 
   test("헤더의 실제 상호작용 컨트롤(테마 토글 등)이 44px 이상이다", async ({ page }) => {
-    // 브랜드/로고 링크(`.brand`)는 인라인 텍스트 링크라 WCAG 2.5.8의 인라인
-    // 예외 대상이다 — aria-label이 붙은 명시적 컨트롤만 검사한다.
     await page.goto("/", { waitUntil: "networkidle" });
     await assertMinHitArea(page, "header [aria-label]");
+  });
+
+  // KF-14(docs/improvement.md): 브랜드 링크(`.brand`)는 셸의 블록 수준 내비게이션
+  // 요소라 WCAG 2.5.8의 인라인 텍스트 예외가 적용되지 않는다(§2.2② 판정) —
+  // 프로젝트 자체 --target-min 계약을 따라야 한다.
+  test("헤더 브랜드 링크가 44px 이상이다", async ({ page }) => {
+    await page.goto("/", { waitUntil: "networkidle" });
+    await assertMinHitArea(page, "header a");
   });
 });

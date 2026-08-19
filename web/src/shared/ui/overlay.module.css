@@ -43,7 +43,11 @@
     max-height: 80dvh;
     border-top-left-radius: var(--radius-lg);
     border-top-right-radius: var(--radius-lg);
-    padding-bottom: calc(var(--space-5) + env(safe-area-inset-bottom));
+    /* KF-06(docs/improvement.md): 광고가 떠 있는 동안 바텀시트가 열리면
+       --fixed-bottom-inset 없이는 마지막 콘텐츠가 광고에 가려질 수 있었다. */
+    padding-bottom: calc(
+      var(--space-5) + env(safe-area-inset-bottom) + var(--fixed-bottom-inset, 0px)
+    );
   }
 
   /* 바텀시트 드래그 핸들. 40x4는 §04 2.2 사양이고, 잡기 쉽도록 위아래 여백으로
@@ -164,7 +168,9 @@
     position: fixed;
     left: 50%;
     translate: -50% 0;
-    bottom: calc(var(--space-6) + var(--fixed-bottom-inset, 0px));
+    /* KF-06(docs/improvement.md): 다른 하단 고정 UI(탭바·광고·drawer)는 모두
+       env(safe-area-inset-bottom)을 포함하는데 토스트만 빠져 있었다. */
+    bottom: calc(var(--space-6) + env(safe-area-inset-bottom) + var(--fixed-bottom-inset, 0px));
     z-index: var(--z-toast);
     display: flex;
     flex-direction: column;

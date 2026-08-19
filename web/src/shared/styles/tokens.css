@@ -113,6 +113,14 @@
   --layout-header-h: 64px;
   --layout-tabbar-h: 56px;
   --target-min: 44px;
+  /* KF-06(docs/improvement.md): 탭바가 실제로 보이는지(폭 기준)를 셸 전역에서
+     읽을 수 있는 단일 소스 — .main/.footer(padding-bottom 계산)와
+     .adStickyMobile(탭바 위에 쌓이도록 bottom 계산, ad-unit.module.css)이
+     형제 요소라 지역 커스텀 프로퍼티로는 서로 못 본다. `:root`에 둬야 둘 다
+     읽는다. `--fixed-bottom-inset`(광고 자신의 높이)과는 다른 값이다 — 이건
+     탭바 높이다. */
+  --tabbar-reserve: var(--layout-tabbar-h);
+  --fixed-bottom-inset: 0px;
 
   /* ── 모션 ─────────────────────────────────────────────────── */
   --duration-fast: 120ms;
@@ -129,6 +137,16 @@
   --z-ad: 350;
   --z-overlay: 400;
   --z-toast: 500;
+}
+
+/* KF-02(docs/improvement.md): 탭바는 1152px부터 숨는다(shell.module.css의
+   .primaryNav/.tabBar 전환과 반드시 같은 값이어야 한다 — 따로 움직이면 탭바가
+   사라졌는데 하단 여백은 그대로 남거나, 광고가 이미 사라진 탭바 위로 계속
+   떠 있는 상태가 생긴다). */
+@media (min-width: 1152px) {
+  :root {
+    --tabbar-reserve: 0px;
+  }
 }
 
 /*

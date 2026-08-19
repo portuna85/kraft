@@ -124,6 +124,17 @@ type AdSenseUnitProps = {
  */
 const RESERVE_PLACEHOLDER = publicEnv.adsenseReservePlaceholder;
 
+/**
+ * KF-07(docs/improvement.md): `AdSenseUnit`이 실제로 뭔가 렌더할지(진짜 광고든
+ * CLS 방지용 자리 예약이든)를 판단하는 단일 소스. `AdSenseSidebar`가 이 판단과
+ * 무관하게 항상 600px를 예약해, client id/slot이 없을 때도 빈 사이드바가
+ * 남았다 — 두 곳이 같은 함수를 써야 어긋나지 않는다.
+ */
+function adUnitRendersContent(slot: string | undefined): boolean {
+  const enabled = Boolean(publicEnv.adsenseClientId && slot);
+  return enabled || RESERVE_PLACEHOLDER;
+}
+
 export function AdSenseUnit({ slot, width, height, label = "광고", className }: AdSenseUnitProps) {
   const clientId = publicEnv.adsenseClientId;
   const enabled = Boolean(clientId && slot);
@@ -138,7 +149,7 @@ export function AdSenseUnit({ slot, width, height, label = "광고", className }
     }
   }, [enabled]);
 
-  if (!enabled && !RESERVE_PLACEHOLDER) return null;
+  if (!adUnitRendersContent(slot)) return null;
 
   return (
     <div
@@ -218,12 +229,20 @@ export function AdSenseSidebar({ slot }: { slot: string }) {
   // 발생하므로 뷰포트 판정으로 아예 mount하지 않는다.
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
 
+  // KF-07(docs/improvement.md): 예전에는 isDesktop만으로 .adSidebarSlot(600px
+  // 예약)을 씌워, client id/slot이 없어 AdSenseUnit이 결국 null을 반환하는
+  // 설정에서도 빈 600px 블록이 남았다. adUnitRendersContent()로 실제로 뭔가
+  // 렌더할 확실한 경우에만 예약한다 — RESERVE_PLACEHOLDER(설정은 됐지만 로드가
+  // 늦는 경우의 CLS 방지 자리 예약)는 그대로 유지된다.
+  const willRender = isDesktop && adUnitRendersContent(slot);
+
   // useMediaQuery의 SSR 스냅샷은 항상 false라 데스크톱에서도 첫 페인트에는
   // 사이드바가 없다가 하이드레이션 후 300×600이 삽입되며 레이아웃이 밀린다.
   // shell.module.css의 themeTogglePlaceholder와 같은 패턴 — CSS 미디어쿼리로
-  // 자리를 먼저 예약하고, JS는 그 안에서 mount 여부만 정한다.
+  // 자리를 먼저 예약하고, JS는 그 안에서 mount 여부만 정한다. 렌더될 것이 확실할
+  // 때만 그 예약 클래스를 적용한다.
   return (
-    <div className={styles.adSidebarSlot}>
+    <div className={willRender ? styles.adSidebarSlot : undefined}>
       {isDesktop ? (
         <AdSenseUnit
           slot={slot}
@@ -239,8 +258,15 @@ export function AdSenseSidebar({ slot }: { slot: string }) {
 
 /** 광고가 화면에 떠 있는 동안 본문·오버레이 하단 여백이 겹치지 않게, 셸이 소비하는
  * `--fixed-bottom-inset`(shell.module.css:85,99, overlay.module.css:167)에 광고
- * 높이를 게시한다 — 전역 토큰을 광고 CSS가 직접 재정의하지 않는다. */
-const STICKY_AD_INSET_PX = "66px";
+ * 높이를 게시한다 — 전역 토큰을 광고 CSS가 직접 재정의하지 않는다.
+ *
+ * KF-06(docs/improvement.md): 이 값은 광고의 실제 콘텐츠 높이만 담는다 —
+ * `.adStickyMobile`(ad-unit.module.css) 자신의 안전영역 여백은 더 이상 여기
+ * 포함되지 않는다(탭바가 이미 그 아래에서 흡수한다, 아래 `.adStickyMobile`
+ * 위치 참고). `.adStickyMobile .adUnit`의 `min-height:50px` + `border-top:1px`
+ * 와 반드시 함께 바뀌어야 한다 — 어긋나면 광고 위 요소들이 실제 높이와 다른
+ * 만큼 밀린다. */
+const STICKY_AD_INSET_PX = "51px";
 /** 낮은 뷰포트(가로모드 휴대폰 등)에서는 고정 광고를 내린다. ad-unit.module.css에는
  * 높이 기준 숨김 규칙이 없으므로(≥1024px 숨김만 CSS에 있음) 이 게이트가 유일한
  * 판정 소스다 — 게이트가 없으면 광고 유닛이 계속 mount된 채 --fixed-bottom-inset이

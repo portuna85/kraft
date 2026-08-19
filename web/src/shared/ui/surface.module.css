@@ -6,6 +6,12 @@
     padding: var(--space-5);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
+    /* KF-03(docs/improvement.md): .card가 그리드 아이템일 때(예: stats.module.css
+       .groups) Firefox의 grid automatic minimum size가 내부 콘텐츠(표 등)의
+       min-content 폭을 그대로 트랙에 강제해 문서가 가로로 넘쳤다. .tableWrap이
+       이미 overflow-x:auto로 필요시 가로 스크롤을 흡수하므로, 카드 자체는
+       부모보다 작아질 수 있게 허용한다. */
+    min-width: 0;
   }
 
   .level1 {

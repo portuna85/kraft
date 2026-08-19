@@ -15,19 +15,13 @@ const ROUTES = ["/", "/recommend", "/stats", "/analysis", "/frequency", "/data",
 const BOUNDARY_WIDTHS = [320, 360, 390, 639, 640, 641, 768, 1023, 1024, 1025, 1280, 1440];
 
 // KF-03(docs/improvement.md): Firefox에서만 /stats@320/640/641px가 실제로 가로
-// 오버플로된다(CSS Grid automatic minimum size 차이, surface.module.css의 .card에
-// min-width:0 없음). Chromium/WebKit은 영향 없다 — 근본 수정(§10 4단계) 전까지는
-// firefox-overflow 프로젝트의 이 폭들만 알려진 실패(red)로 남긴다. 수정 후에는 이
-// 목록에서 빼서 test.fail이 "예상과 다르게 통과함"으로 걸리는지 확인한다.
-const KNOWN_FIREFOX_OVERFLOW_WIDTHS = new Set([320, 640, 641]);
+// 오버플로됐었다(CSS Grid automatic minimum size 차이). §10 4단계에서
+// surface.module.css의 .card에 min-width:0을 추가해 고쳤다 — firefox-overflow
+// 프로젝트도 이제 나머지 엔진과 동일하게 전 구간 통과해야 한다.
 
 test.describe("경계 뷰포트에서 document 가로 스크롤 없음", () => {
   for (const width of BOUNDARY_WIDTHS) {
-    test(`${width}px에서 모든 라우트가 가로 스크롤 없이 렌더된다`, async ({ page }, testInfo) => {
-      test.fail(
-        testInfo.project.name === "firefox-overflow" && KNOWN_FIREFOX_OVERFLOW_WIDTHS.has(width),
-        "KF-03: Firefox /stats 그리드 min-width:0 없음 — 근본 수정 전까지 알려진 실패",
-      );
+    test(`${width}px에서 모든 라우트가 가로 스크롤 없이 렌더된다`, async ({ page }) => {
       await page.setViewportSize({ width, height: 800 });
       for (const path of ROUTES) {
         await page.goto(path, { waitUntil: "networkidle" });
@@ -38,11 +32,7 @@ test.describe("경계 뷰포트에서 document 가로 스크롤 없음", () => {
 });
 
 test.describe("400% 확대 상당(320×512)에서 가로 스크롤 없음", () => {
-  test("모든 라우트가 320×512에서 가로 스크롤 없이 렌더된다", async ({ page }, testInfo) => {
-    test.fail(
-      testInfo.project.name === "firefox-overflow",
-      "KF-03: Firefox /stats 그리드 min-width:0 없음 — 근본 수정 전까지 알려진 실패",
-    );
+  test("모든 라우트가 320×512에서 가로 스크롤 없이 렌더된다", async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 512 });
     for (const path of ROUTES) {
       await page.goto(path, { waitUntil: "networkidle" });

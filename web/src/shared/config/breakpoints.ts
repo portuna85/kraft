@@ -8,4 +8,13 @@
 export const BP = {
   tablet: 640,
   desktop: 1024,
+  /**
+   * KF-02(docs/improvement.md): 데스크톱 헤더 nav 전환 전용 브레이크포인트.
+   * `desktop`(1024px)과 값이 다르다 — 1024~1100px에서 헤더 브랜드가 2줄로
+   * 래핑되는 실측 결함이 있어(`e2e/responsive/header-no-wrap.spec.ts`), 헤더의
+   * `.primaryNav`/`.tabBar`/`--tabbar-reserve` 전환만 1152px로 올렸다. 광고
+   * 데스크톱 전환(`ad-unit.tsx`의 `DESKTOP_QUERY`)은 헤더 nav와 무관한 별개
+   * 관심사라 `desktop`(1024px)을 그대로 쓴다 — 이 값과 혼동하지 말 것.
+   */
+  desktopNav: 1152,
 } as const;

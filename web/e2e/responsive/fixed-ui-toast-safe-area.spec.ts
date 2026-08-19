@@ -12,17 +12,13 @@ import { expect, test } from "@playwright/test";
  * 정책에서는 `env()`가 항상 0으로 해소되어 잠들어 있지만, 정책이 바뀌면 노치/홈
  * 인디케이터가 있는 기기에서 토스트가 안전영역보다 낮게 표시될 수 있다.
  *
- * **이 테스트는 지금 실패해야 정상이다(red).** `.toastRegion`의 `bottom` 계산식에
- * `env(safe-area-inset-bottom)`이 추가되면 통과해야 한다.
+ * §10 4단계에서 `.toastRegion`의 `bottom` 계산식에 `env(safe-area-inset-bottom)`을
+ * 추가해 고쳤다.
  */
 test.use({ viewport: { width: 390, height: 844 } });
 
 test.describe("토스트 영역이 다른 하단 고정 UI와 같은 safe-area 계약을 따른다", () => {
   test(".toastRegion의 bottom 계산식에 safe-area-inset-bottom이 포함된다", async ({ page }) => {
-    test.fail(
-      true,
-      "KF-06: .toastRegion에 safe-area-inset-bottom 누락 — 근본 수정 전까지 알려진 실패",
-    );
     await page.goto("/saved", { waitUntil: "networkidle" });
 
     const bottomValue = await page.evaluate(() => {

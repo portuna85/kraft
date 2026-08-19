@@ -347,7 +347,9 @@ describe("모바일 하단 고정 배너", () => {
     expect(ins).toBeInTheDocument();
     expect(ins).toHaveAttribute("data-ad-unit", "DAN-sticky123");
     expect(screen.getByLabelText("광고 닫기")).toBeInTheDocument();
-    expect(document.documentElement.style.getPropertyValue("--fixed-bottom-inset")).toBe("66px");
+    // KF-06: 51px = 광고 콘텐츠 높이(50px) + border-top(1px) — 탭바 안전영역
+    // 여백은 더 이상 여기 포함되지 않는다(탭바가 이미 흡수한다).
+    expect(document.documentElement.style.getPropertyValue("--fixed-bottom-inset")).toBe("51px");
   });
 
   it("닫기 버튼을 클릭하면 배너가 사라지고 --fixed-bottom-inset이 0으로 돌아간다", () => {
