@@ -22,6 +22,7 @@ import { ROUTES } from "@/shared/config/routes";
 import { formatDrawDate } from "@/shared/lib/format";
 import { Button, LinkButton } from "@/shared/ui/button";
 import { ConfirmDialog } from "@/shared/ui/dialog";
+import { ListRowsSkeleton } from "@/shared/ui/page-skeleton";
 import { EmptyState, ErrorState } from "@/shared/ui/states";
 import { Card } from "@/shared/ui/surface";
 
@@ -129,7 +130,11 @@ export function SavedLibrary({ latestRound }: { latestRound: number }) {
     );
   }
 
-  if (items === null) return <p className={styles.note}>보관함을 불러오는 중입니다…</p>;
+  // KF-08(docs/improvement.md): 평문 한 줄이었다가 목록이 도착하면 N행으로
+  // 급팽창해 푸터가 크게 밀렸다(실측 CLS 0.1174) — 스켈레톤으로 미리 높이를
+  // 예약해 급변 폭을 줄인다. 실제 레이아웃은 폼+목록 2단이라 완벽히 일치하진
+  // 않지만, 목표는 시프트 제거가 아니라 축소다.
+  if (items === null) return <ListRowsSkeleton />;
 
   if (items.length === 0) {
     return (

@@ -14,6 +14,7 @@ import { canQueryOwnerScope, useSession } from "@/entities/user-session/session-
 import { ROUTES } from "@/shared/config/routes";
 import { Button, LinkButton } from "@/shared/ui/button";
 import { ConfirmDialog } from "@/shared/ui/dialog";
+import { ListRowsSkeleton } from "@/shared/ui/page-skeleton";
 import { EmptyState, ErrorState } from "@/shared/ui/states";
 
 import styles from "./history.module.css";
@@ -117,7 +118,10 @@ export function RecommendHistoryList() {
     );
   }
 
-  if (items === null) return <p className={styles.note}>추천 이력을 불러오는 중입니다…</p>;
+  // KF-08(docs/improvement.md): 평문 한 줄이었다가 목록이 도착하면 N행으로
+  // 급팽창해 푸터가 크게 밀렸다(실측 CLS 0.1158) — 스켈레톤으로 미리 높이를
+  // 예약해 급변 폭을 줄인다.
+  if (items === null) return <ListRowsSkeleton />;
 
   if (items.length === 0) {
     return (

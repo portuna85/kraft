@@ -10,6 +10,7 @@ import type { RecommendationSet } from "@/entities/recommendation/schema";
 import { RecommendationCard } from "@/entities/recommendation/ui/recommendation-card";
 import { canQueryOwnerScope, useSession } from "@/entities/user-session/session-context";
 import { Radio } from "@/shared/ui/field";
+import { ListRowsSkeleton } from "@/shared/ui/page-skeleton";
 import { EmptyState, ErrorState } from "@/shared/ui/states";
 import { Button } from "@/shared/ui/button";
 
@@ -84,8 +85,11 @@ export function RecommendationAttachmentPicker({
     );
   }
 
+  // KF-08(docs/improvement.md): 이 위젯은 기본 3개만 보여준다 — 일반적인 8행
+  // 스켈레톤을 그대로 쓰면 로딩 종료 시 콘텐츠가 스켈레톤보다 작아져 시프트가
+  // 오히려 커질 수 있어 실제 기본 표시 개수에 맞춘다.
   if (items === null) {
-    return <p className={styles.note}>추천 세트를 불러오는 중입니다…</p>;
+    return <ListRowsSkeleton rows={INITIAL_VISIBLE_COUNT} />;
   }
 
   if (items.length === 0) {

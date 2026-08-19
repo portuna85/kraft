@@ -71,5 +71,9 @@
     "last 2 Safari versions",
     "last 2 Firefox versions",
     "last 2 iOS versions"
-  ]
+  ],
+  "allowScripts": {
+    "msw@2.15.0": true,
+    "unrs-resolver@1.12.2": true
+  }
 }

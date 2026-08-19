@@ -30,6 +30,29 @@ const BAR_WIDTH_CLASSES = [
   styles.bar8,
 ];
 
+/**
+ * KF-08(docs/improvement.md): `PageSkeleton`의 `list` variant 행 부분만 뽑았다 —
+ * `PageSkeleton` 자신은 eyebrow/title/description 헤더 블록을 항상 함께 그려서,
+ * 이미 진짜 헤더가 부모 페이지에 렌더된 자리(클라이언트 컴포넌트의 `items === null`
+ * 로딩 구간)에 그대로 못 꽂는다. `PageSkeleton`의 `list` variant는 `rows` 기본값
+ * (8)으로 이 컴포넌트를 그대로 호출하므로 그 렌더 결과·CSS는 이전과 동일하다
+ * (순수 추출). `rows`를 받는 이유는 소비자마다 실제로 보여줄 행 수가 다르기
+ * 때문이다 — 예를 들어 기본 3개만 보여주는 목록에 8행 스켈레톤을 쓰면, 로딩이
+ * 끝났을 때 오히려 스켈레톤보다 콘텐츠가 작아져 시프트가 더 커질 수 있다.
+ */
+export function ListRowsSkeleton({ rows = 8 }: { rows?: number }) {
+  return (
+    <div className={styles.rows} aria-busy="true" aria-label="콘텐츠를 불러오는 중">
+      {Array.from({ length: rows }, (_, index) => (
+        <div key={index} className={styles.row}>
+          <Skeleton shape="text" />
+          <Skeleton shape="block" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function PageSkeleton({ variant = "generic" }: { variant?: Variant }) {
   return (
     <div className={styles.page} aria-busy="true" aria-label="콘텐츠를 불러오는 중">
@@ -75,16 +98,7 @@ export function PageSkeleton({ variant = "generic" }: { variant?: Variant }) {
         </div>
       )}
 
-      {variant === "list" && (
-        <div className={styles.rows}>
-          {Array.from({ length: 8 }, (_, index) => (
-            <div key={index} className={styles.row}>
-              <Skeleton shape="text" />
-              <Skeleton shape="block" />
-            </div>
-          ))}
-        </div>
-      )}
+      {variant === "list" && <ListRowsSkeleton />}
 
       {variant === "generic" && (
         <div className={styles.rows}>

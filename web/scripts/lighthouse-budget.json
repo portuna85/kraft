@@ -1,38 +1,38 @@
 {
   "/": {
-    "maxLcpMs": 335,
+    "maxLcpMs": 288,
     "maxClsScore": 0.05,
     "maxTbtMs": 100,
     "minPerformanceScore": 90
   },
   "/recommend": {
-    "maxLcpMs": 183,
-    "maxClsScore": 0.052,
+    "maxLcpMs": 201,
+    "maxClsScore": 0.051,
     "maxTbtMs": 100,
     "minPerformanceScore": 90
   },
   "/frequency": {
-    "maxLcpMs": 149,
+    "maxLcpMs": 105,
     "maxClsScore": 0.05,
     "maxTbtMs": 100,
     "minPerformanceScore": 90
   },
   "/community": {
-    "maxLcpMs": 177,
-    "maxClsScore": 0.052,
+    "maxLcpMs": 161,
+    "maxClsScore": 0.051,
     "maxTbtMs": 100,
     "minPerformanceScore": 90
   },
   "/saved": {
-    "maxLcpMs": 90,
-    "maxClsScore": 0.172,
+    "maxLcpMs": 92,
+    "maxClsScore": 0.051,
     "maxTbtMs": 100,
-    "minPerformanceScore": 86
+    "minPerformanceScore": 90
   },
   "/recommend/history": {
-    "maxLcpMs": 110,
-    "maxClsScore": 0.172,
+    "maxLcpMs": 120,
+    "maxClsScore": 0.051,
     "maxTbtMs": 100,
-    "minPerformanceScore": 86
+    "minPerformanceScore": 90
   }
 }

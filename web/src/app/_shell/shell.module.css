@@ -58,6 +58,15 @@
     min-height: var(--target-min);
   }
 
+  /* KF-25①(docs/improvement.md): 세션 판정 전(account-control.tsx) 계정 영역
+     자리만큼 미리 차지한다 — .themeTogglePlaceholder와 같은 패턴. 로그인/로그아웃
+     최종 라벨 너비까지는 못 맞추지만 높이 시프트는 없앤다. */
+  .accountControlPlaceholder {
+    display: inline-block;
+    min-width: var(--target-min);
+    min-height: var(--target-min);
+  }
+
   .navLink {
     display: inline-flex;
     align-items: center;

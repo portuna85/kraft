@@ -80,10 +80,12 @@ export const routes = [
   [
     "/api/v1/recommendation-sets",
     (_params, _requestBody, method) => {
-      if (method !== "GET") return { items: [], page: 0, totalPages: 0, totalElements: 0 };
+      if (method !== "GET")
+        return { items: [], page: 0, size: 20, totalPages: 0, totalElements: 0 };
       return {
         items: recommendationSets,
         page: 0,
+        size: 20,
         totalPages: 1,
         totalElements: recommendationSets.length,
       };

@@ -35,6 +35,14 @@ const LOGGED_IN: SessionState = {
   retry: vi.fn(),
 };
 
+const ERROR: SessionState = {
+  session: null,
+  loading: false,
+  error: true,
+  claimStatus: "idle",
+  retry: vi.fn(),
+};
+
 function renderWith(session: SessionState) {
   return render(
     <SessionContext.Provider value={session}>
@@ -44,9 +52,10 @@ function renderWith(session: SessionState) {
 }
 
 describe("계정 영역 분기", () => {
-  it("세션 판정 전에는 아무것도 그리지 않는다", () => {
-    renderWith(LOADING);
+  it("KF-25①: 세션 판정 전에는 버튼 대신 자리 예약용 플레이스홀더를 그린다", () => {
+    const { container } = renderWith(LOADING);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(container.querySelector('[aria-hidden="true"]')).toBeInTheDocument();
   });
 
   it("비로그인은 로그인 팝오버를 보여준다", () => {
@@ -58,5 +67,11 @@ describe("계정 영역 분기", () => {
     renderWith(LOGGED_IN);
     expect(screen.getByRole("button", { name: "당첨기원님" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "로그인" })).not.toBeInTheDocument();
+  });
+
+  it("KF-25①: 세션 조회 실패도 미확정으로 취급해 플레이스홀더를 유지한다", () => {
+    const { container } = renderWith(ERROR);
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(container.querySelector('[aria-hidden="true"]')).toBeInTheDocument();
   });
 });

@@ -44,10 +44,11 @@ const ROUTES = [
   ...(POST_ID ? [`/community/posts/${POST_ID}`] : []),
 ];
 
-// KF-05(docs/improvement.md)이 아직 안 고쳐진 라우트 — 이 CLS는 알려진 결함
-// (KF-08, 세션 게이트 워터폴)이라 CWV_GOOD 상한을 걸면 매번 실패한다. KF-08 수정
-// (§10 4~5단계) 후 이 목록에서 빼고 --save-baseline을 다시 실행해 진짜 상한을 건다.
-const PENDING_CLS_ROOT_CAUSE = new Set(["/saved", "/recommend/history"]);
+// KF-05(docs/improvement.md): KF-08(세션 게이트 워터폴에 ListRowsSkeleton 적용)로
+// /saved·/recommend/history의 근인이 고쳐져 실측 CLS가 CWV_GOOD 상한 아래로
+// 내려왔다 — 실제 브라우저 흐름으로 데이터 5건을 채운 뒤 측정하면 두 라우트 모두
+// CLS ≈ 0.0006(기존 0.1174/0.1158 대비). 더는 예외가 필요 없어 빈 집합으로 둔다.
+const PENDING_CLS_ROOT_CAUSE = new Set();
 
 // 느린 CI 머신에서 tbtMs 0ms 기준선의 ceil(0*1.5)=0 예산이 하드 실패하지 않도록
 // 하는 바닥값. CWV "good" TBT 기준(200ms)의 절반 — 실제 회귀엔 여전히 엄격하다.
