@@ -39,3 +39,12 @@
 .prose {
   max-width: var(--layout-prose-max);
 }
+
+/* KF-28(docs/improvement.md): 15개 CSS 모듈이 바이트 동일한 "옅은 보조
+   텍스트" 규칙을 각자 복제했다 — 여기 한 곳으로 모아 JSX에서
+   `className="note"`로 직접 참조한다(Turbopack이 `@layer` 중첩 규칙
+   안의 `composes`를 지원하지 않아 CSS Modules 합성 대신 이 방식을 쓴다). */
+.note {
+  font-size: var(--text-sm);
+  color: var(--color-ink-muted);
+}

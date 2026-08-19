@@ -88,9 +88,7 @@ export function ReactionBar({
 
   if (!loggedIn) {
     return (
-      <p className={styles.note}>
-        좋아요 {likeCount}개 · 로그인하면 좋아요와 북마크를 남길 수 있습니다.
-      </p>
+      <p className="note">좋아요 {likeCount}개 · 로그인하면 좋아요와 북마크를 남길 수 있습니다.</p>
     );
   }
 

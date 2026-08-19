@@ -12,7 +12,10 @@ export const DEVICE_TOKEN_STORAGE_KEY = "kraft-device-token";
 export const DEVICE_TOKEN_HEADER_NAME = "X-Device-Token";
 
 function createToken(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+  if (typeof crypto === "undefined") {
+    throw new Error("crypto unavailable");
+  }
+  if (typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
   }
   const bytes = new Uint8Array(32);

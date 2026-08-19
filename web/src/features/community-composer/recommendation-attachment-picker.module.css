@@ -15,9 +15,6 @@
   .options {
     display: grid;
     gap: var(--space-3);
-    list-style: none;
-    padding: 0;
-    margin: 0;
   }
 
   .options > li {
@@ -34,10 +31,5 @@
 
   .none {
     padding: var(--space-2) var(--space-3);
-  }
-
-  .note {
-    font-size: var(--text-sm);
-    color: var(--color-ink-muted);
   }
 }

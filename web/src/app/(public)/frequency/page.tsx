@@ -79,7 +79,7 @@ export default async function FrequencyPage({
           return (
             <Link
               key={period.label}
-              className={styles.period}
+              className={`${styles.period} pillActive`}
               href={href}
               aria-current={isCurrent ? "page" : undefined}
             >
@@ -159,7 +159,7 @@ function RatioNote({
   if (ratio === null) return null;
 
   return (
-    <p className={styles.note}>
+    <p className="note">
       예를 들어 {first.ballNumber}번은 {first.frequency}회 나왔고, 이는 기대값의 {ratio.toFixed(2)}
       배입니다.
     </p>

@@ -67,7 +67,7 @@ export default async function CommunityPage({
 
       <nav className={styles.filters} aria-label="분류">
         <Link
-          className={styles.filter}
+          className={`${styles.filter} pillActive`}
           href={buildListHref(params, { category: undefined, page: 0 })}
           aria-current={params.category === undefined ? "page" : undefined}
         >
@@ -76,7 +76,7 @@ export default async function CommunityPage({
         {POST_CATEGORIES.map((category) => (
           <Link
             key={category}
-            className={styles.filter}
+            className={`${styles.filter} pillActive`}
             href={buildListHref(params, { category, page: 0 })}
             aria-current={params.category === category ? "page" : undefined}
           >
@@ -89,7 +89,7 @@ export default async function CommunityPage({
         {POST_SORTS.map((sort) => (
           <Link
             key={sort}
-            className={styles.filter}
+            className={`${styles.filter} pillActive`}
             href={buildListHref(params, { sort, page: 0 })}
             aria-current={params.sort === sort ? "page" : undefined}
           >
@@ -141,7 +141,7 @@ export default async function CommunityPage({
        * 지금까지는 숨기기만 하고 총 건수를 안 남겼다.
        */}
       {page.totalPages <= 1 && page.totalElements > 0 ? (
-        <p className={styles.note}>총 {page.totalElements}건</p>
+        <p className="note">총 {page.totalElements}건</p>
       ) : (
         <Pagination
           page={page.page}

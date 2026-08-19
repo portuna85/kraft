@@ -11,4 +11,5 @@
 @import url("../shared/styles/reset.css") layer(reset);
 @import url("../shared/styles/tokens.css") layer(tokens);
 @import url("../shared/styles/base.css") layer(base);
+@import url("../shared/styles/shared-components.css");
 @import url("../shared/styles/utilities.css") layer(utilities);

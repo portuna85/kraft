@@ -182,7 +182,7 @@ export function RecommendHistoryList() {
               더 보기
             </Button>
           )}
-          <p className={styles.note} role="status" aria-live="polite">
+          <p className="note" role="status" aria-live="polite">
             전체 {total}건 중 {items.length}건 표시
           </p>
           {loadMoreError && (

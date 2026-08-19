@@ -89,7 +89,10 @@
     border-radius: var(--radius-pill);
     background: var(--color-surface-solid);
     color: var(--color-danger);
-    font-size: 10px;
+    /* KF-26(docs/improvement.md): 이 뱃지는 색맹/색약 사용자에게 상태를
+       전달하는 비장식 요소다(위 .locked 주석 참고) — --text-xs 하한
+       미만의 리터럴은 안 쓴다. */
+    font-size: var(--text-xs);
     line-height: 1;
     box-shadow: var(--shadow-1);
   }

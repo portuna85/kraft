@@ -6,11 +6,6 @@
     align-items: start;
   }
 
-  .note {
-    color: var(--color-ink-muted);
-    font-size: var(--text-sm);
-  }
-
   /* I-33: 좁은 화면에서 세 카드가 세로로 길게 이어져 마지막 카드까지 가려면
      한참 스크롤해야 했다 — 짧은 목차로 바로 뛰어갈 수 있게 한다. */
   .toc {

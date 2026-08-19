@@ -1,4 +1,16 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import type { NextConfig } from "next";
+
+// KF-36(docs/improvement.md): RUM이 release를 항상 빈 문자열로 보내고 있었다 —
+// npm_package_version은 npm으로 직접 실행할 때만 보장되므로(Docker 런타임은
+// node로 직접 실행) 빌드 타임에 package.json을 읽어 고정 주입한다.
+const webDir = path.dirname(fileURLToPath(import.meta.url));
+const appVersion = (
+  JSON.parse(readFileSync(path.join(webDir, "package.json"), "utf-8")) as { version: string }
+).version;
 
 // 산출물 형태와 URL 계약은 인프라 제약이라 재작성 대상이 아니다: standalone 산출물 +
 // 컨테이너 포트 3000, 공개 라우트 URL 15개, permanent 리다이렉트 2개, /ops-api rewrite는
@@ -12,6 +24,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   ...(distDir ? { distDir } : {}),
   poweredByHeader: false,
+  env: { NEXT_PUBLIC_APP_VERSION: appVersion },
   allowedDevOrigins: ["127.0.0.1"],
   async redirects() {
     return [

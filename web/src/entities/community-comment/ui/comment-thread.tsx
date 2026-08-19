@@ -90,7 +90,7 @@ function CommentItem({
 
       {/* 삭제된 댓글에는 액션을 붙이지 않는다 — 신고할 내용도 지울 것도 없다. */}
       {!comment.deleted && renderActions !== undefined && (
-        <div className={styles.actions}>{renderActions(comment)}</div>
+        <div className="cluster">{renderActions(comment)}</div>
       )}
     </article>
   );

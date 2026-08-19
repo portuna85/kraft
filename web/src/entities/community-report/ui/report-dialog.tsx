@@ -39,7 +39,7 @@ export function ReportDialog({
 
   if (done) {
     return (
-      <p className={styles.note} role="status">
+      <p className="note" role="status">
         신고가 접수됐습니다. 운영진이 확인합니다.
       </p>
     );

@@ -40,10 +40,7 @@ const notoSansKr = localFont({
 });
 
 const spaceGrotesk = localFont({
-  src: [
-    { path: "../../public/fonts/space-grotesk-500.woff2", weight: "500" },
-    { path: "../../public/fonts/space-grotesk-700.woff2", weight: "700" },
-  ],
+  src: [{ path: "../../public/fonts/space-grotesk-700.woff2", weight: "700" }],
   display: "swap",
   variable: "--font-space-grotesk",
   preload: false,

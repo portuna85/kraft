@@ -63,13 +63,13 @@ export default async function CompanionPage({
 
       <section aria-labelledby="ball-filter" className="stack">
         <h2 id="ball-filter">번호로 좁혀 보기</h2>
-        <p className={styles.note}>
+        <p className="note">
           번호를 고르면 그 번호가 포함된 쌍 전체를 서버에서 다시 조회합니다 — 상위 50위 밖의 쌍도
           빠짐없이 나옵니다.
         </p>
         <nav className={styles.balls} aria-label="번호 필터">
           <Link
-            className={styles.ball}
+            className={`${styles.ball} pillActive`}
             href={ROUTES.companion}
             aria-current={ball === undefined ? "page" : undefined}
           >
@@ -78,7 +78,7 @@ export default async function CompanionPage({
           {Array.from({ length: 45 }, (_, index) => index + 1).map((value) => (
             <Link
               key={value}
-              className={styles.ball}
+              className={`${styles.ball} pillActive`}
               href={`${ROUTES.companion}?ball=${value}`}
               aria-current={value === ball ? "page" : undefined}
             >
@@ -120,7 +120,7 @@ export default async function CompanionPage({
           // 번호 필터: 서버가 그 번호가 낀 쌍 전량(최대 44개)을 돌려주고, 이 경우는
           // 12개로 줄이지 않는다(codex도 필터 후 즉시 전체 표시를 요구한다).
           <>
-            <p className={styles.note} role="status">
+            <p className="note" role="status">
               {pairs.length}개 쌍을 표시하고 있습니다. 배율은 쌍당 평균 {expected.toFixed(1)}회 대비
               값입니다.
             </p>

@@ -33,7 +33,7 @@ export function useKeyboardOpen(): boolean {
       setKeyboardOpen(viewport.height < baselineHeight * SHRINK_RATIO);
     }
 
-    viewport.addEventListener("resize", handleResize);
+    viewport.addEventListener("resize", handleResize, { passive: true });
     return () => viewport.removeEventListener("resize", handleResize);
   }, []);
 

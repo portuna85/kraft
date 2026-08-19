@@ -44,16 +44,13 @@
     color: var(--color-ink);
     font-variant-numeric: tabular-nums;
     /* field.module.css .control과 같은 이유 — iOS Safari 포커스 자동 확대 방지. */
-    font-size: max(16px, var(--text-base));
+    font-size: var(--font-size-input);
   }
 
   .list {
     display: grid;
     grid-template-columns: 1fr;
     gap: var(--space-4);
-    list-style: none;
-    padding: 0;
-    margin: 0;
   }
 
   .item {
@@ -69,11 +66,6 @@
   }
 
   .savedAt {
-    font-size: var(--text-sm);
-    color: var(--color-ink-muted);
-  }
-
-  .note {
     font-size: var(--text-sm);
     color: var(--color-ink-muted);
   }

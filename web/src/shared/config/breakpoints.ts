@@ -6,7 +6,6 @@
  * 함께 동기화해야 한다.
  */
 export const BP = {
-  tablet: 640,
   desktop: 1024,
   /**
    * KF-02(docs/improvement.md): 데스크톱 헤더 nav 전환 전용 브레이크포인트.

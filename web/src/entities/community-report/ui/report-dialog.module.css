@@ -1,9 +1,4 @@
 @layer components {
-  .note {
-    font-size: var(--text-sm);
-    color: var(--color-ink-muted);
-  }
-
   .reasons {
     display: grid;
     gap: var(--space-1);

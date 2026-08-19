@@ -7,7 +7,6 @@ import { Table } from "@/shared/ui/surface";
 
 import type { CompanionPair } from "../schema";
 import { CompanionPairRow } from "./companion-pair-row";
-import styles from "./companion-pairs-section.module.css";
 
 /**
  * 필터 없는 상태의 동반 출현 결과
@@ -35,7 +34,7 @@ export function CompanionPairsSection({
 
   return (
     <>
-      <p className={styles.note} role="status">
+      <p className="note" role="status">
         {visible.length}개 쌍을 표시하고 있습니다. 배율은 쌍당 평균 {expectedLabel}회 대비 값입니다.
       </p>
 

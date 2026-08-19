@@ -26,8 +26,5 @@
   .items {
     display: grid;
     gap: var(--space-2);
-    list-style: none;
-    padding: 0;
-    margin: 0;
   }
 }

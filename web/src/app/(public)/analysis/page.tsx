@@ -101,7 +101,7 @@ function AnalysisResult({ analysis }: { analysis: CombinationAnalysis }) {
             <dd>{analysis.consecutivePairCount}쌍</dd>
           </div>
         </dl>
-        <p className={styles.note}>
+        <p className="note">
           저수는 1~22번, 고수는 23~45번입니다. 이 값들은 조합의 생김새를 설명할 뿐 당첨 가능성과는
           무관합니다.
         </p>
@@ -127,7 +127,7 @@ function AnalysisResult({ analysis }: { analysis: CombinationAnalysis }) {
           <>
             <p>이 조합은 과거에 1등으로 당첨된 적이 있습니다.</p>
             <PrizeTable records={analysis.firstPrizeHistory} />
-            <p className={styles.note}>
+            <p className="note">
               이미 나온 조합이라고 해서 다시 나오지 않는 것은 아닙니다. 추첨은 이전 결과를 기억하지
               않습니다.
             </p>

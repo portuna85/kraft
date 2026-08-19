@@ -369,9 +369,12 @@ describe("모바일 하단 고정 배너", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  // F-06: CSS는 @media (max-height: 480px)로 .adStickyMobile을 숨기기만 했는데,
-  // 이 게이트가 JS 쪽에 없으면 광고는 안 보이는데도 --fixed-bottom-inset은 66px로
-  // 남아 세로 공간이 가장 부족한 가로모드 화면에서 유령 여백이 생겼다.
+  // F-06(과거 수정 배경): 예전엔 CSS의 @media (max-height: 480px)가
+  // .adStickyMobile을 숨기는 걸로 이 케이스를 처리했었다 — 그 CSS 규칙은
+  // 이후 제거됐고, 지금은 아래 matchMedia 게이트가 mount 자체를 막는
+  // 유일한 시행 지점이다. 이 게이트가 없으면 광고는 안 보이는데도
+  // --fixed-bottom-inset은 66px로 남아 세로 공간이 가장 부족한 가로모드
+  // 화면에서 유령 여백이 생긴다.
   it("가로모드 등 짧은 뷰포트(max-height: 480px)에서는 mount하지 않고 인셋도 0으로 유지한다", () => {
     mockMatchMedia((query) => query === "(max-height: 480px)");
     const { container } = render(<StickyMobileAd unit="DAN-sticky123" />);

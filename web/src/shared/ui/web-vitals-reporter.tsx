@@ -50,7 +50,7 @@ export function WebVitalsReporter() {
         rating: metric.rating,
         route: pathname,
         deviceClass: deviceClassOf(window.innerWidth),
-        release: "",
+        release: process.env.NEXT_PUBLIC_APP_VERSION ?? "",
       }),
     );
   });

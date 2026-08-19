@@ -136,7 +136,7 @@ export function CommentSection({
           label="댓글 작성"
         />
       ) : (
-        <p className={styles.note}>로그인하면 댓글을 남길 수 있습니다.</p>
+        <p className="note">로그인하면 댓글을 남길 수 있습니다.</p>
       )}
 
       {comments.length === 0 ? (

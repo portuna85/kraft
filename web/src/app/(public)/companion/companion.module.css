@@ -22,16 +22,4 @@
     font-variant-numeric: tabular-nums;
     text-decoration: none;
   }
-
-  .ball[aria-current="page"] {
-    background: var(--color-brand);
-    border-color: var(--color-brand);
-    color: var(--color-ink-on-brand);
-    font-weight: 700;
-  }
-
-  .note {
-    color: var(--color-ink-muted);
-    font-size: var(--text-sm);
-  }
 }

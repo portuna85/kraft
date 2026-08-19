@@ -60,7 +60,7 @@ export function DropdownMenu({
     function onPointerDown(event: PointerEvent) {
       if (!wrapRef.current?.contains(event.target as Node)) stableClose();
     }
-    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("pointerdown", onPointerDown, { passive: true });
     return () => {
       document.removeEventListener("pointerdown", onPointerDown);
       restoreFocusRef.current?.focus();

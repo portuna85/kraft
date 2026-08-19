@@ -60,7 +60,7 @@ export default async function StatusPage() {
               </time>
               ) 추첨분까지 반영돼 있습니다.
             </p>
-            <p className={styles.note}>
+            <p className="note">
               마지막 확인:{" "}
               <time dateTime={freshness.checkedAt}>{formatDateTime(freshness.checkedAt)}</time>
             </p>

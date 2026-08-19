@@ -3,9 +3,6 @@
     display: grid;
     grid-template-columns: 1fr;
     gap: var(--space-4);
-    list-style: none;
-    padding: 0;
-    margin: 0;
   }
 
   /* 태블릿·데스크톱 모두 2×2 — codex §12.3 */
@@ -13,11 +10,6 @@
     .grid {
       grid-template-columns: repeat(2, 1fr);
     }
-  }
-
-  .note {
-    color: var(--color-ink-muted);
-    font-size: var(--text-sm);
   }
 
   /* I-33: 카드 전체가 클릭 대상처럼 보이지만 실제로는 "보기" 텍스트만 링크였다 —

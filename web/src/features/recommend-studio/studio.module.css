@@ -46,12 +46,6 @@
   /* 조합 한 줄 자체의 레이아웃은 RecommendationResultRow가 소유한다 — 여기는
    * 목록 wrapper와, <li>로 감쌌기 때문에 못 먹는 행 간 구분선만 맡는다
    * (— 5개 이상이면 12px 간격). */
-  .results {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-
   .results > li {
     padding-block: var(--space-3);
     /* 슬롯이 맞춰지는 듯한 등장 연출. 매 "조합 만들기" 클릭마다 이 <li>들은 새로

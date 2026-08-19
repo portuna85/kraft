@@ -26,6 +26,12 @@
   --color-ink-muted: #53617e;
   --color-ink-subtle: #8a99ad;
   --color-ink-on-brand: #ffffff;
+  /* KF-29(docs/improvement.md): --color-ink-on-brand는 다크에서 뒤집혀
+     danger 버튼 텍스트에 재사용할 수 없다 — danger 배경은 라이트/다크
+     공통으로 흰 글자가 맞아 별도 토큰을 둔다. */
+  --color-ink-on-danger: #ffffff;
+  /* KF-29(docs/improvement.md): 오버레이 백드롭 스크림 색. */
+  --color-scrim: rgba(4, 10, 26, 0.55);
 
   /* ── 색: 브랜드·상태 ──────────────────────────────────────── */
   --color-brand: #087ca7;
@@ -52,6 +58,14 @@
   --color-ball-31-40: #aaaaaa;
   --color-ball-41-45: #b0d840;
   --color-ball-bonus: #168b68;
+  /* KF-32(docs/improvement.md): 로또볼·메달 칩이 공유하는 고정 잉크색 —
+     테마와 무관하게 밝은 배경 위에 얹혀 항상 같은 값이라 다크 재선언이
+     없다. */
+  --color-ink-fixed: #14203c;
+  /* KF-32(docs/improvement.md): 로또볼 인셋 쉐이딩(입체감) 2줄이
+     lotto-ball.module.css에서 7번 반복됐다 — 값은 그대로 토큰화만. */
+  --shadow-ball-inset-shade: rgba(0, 0, 0, 0.22);
+  --shadow-ball-inset-highlight: rgba(255, 255, 255, 0.65);
 
   /* 3D 입체 쉐이딩용 그라디언트 — 단색 --color-ball-*을 대체하지 않고 덧붙인다.
      그라디언트를 못 그리는 상황(강제 색상 모드 등)에서는 위 단색이 폴백이 된다. */
@@ -77,12 +91,14 @@
   --text-base: clamp(0.92rem, 0.87rem + 0.3vw, 0.98rem);
   --text-md: clamp(1.05rem, 0.99rem + 0.35vw, 1.12rem);
   --text-lg: clamp(1.2rem, 1.1rem + 0.5vw, 1.35rem);
-  --text-xl: clamp(1.45rem, 1.3rem + 0.75vw, 1.7rem);
   --text-2xl: clamp(1.75rem, 1.5rem + 1.25vw, 2.2rem);
-  --text-display: clamp(2.1rem, 1.7rem + 2vw, 2.75rem);
   --leading-tight: 1.25;
   --leading-normal: 1.6;
-  --leading-loose: 1.8;
+  /* KF-29(docs/improvement.md): iOS Safari가 16px 미만 입력 필드에
+     포커스하면 자동 확대한다 — 하한을 고정하는 관용구가 4곳에 복붙돼
+     있었다. 크기 갈래가 두 종류(--text-base/--text-md)라 토큰도 둘. */
+  --font-size-input: max(16px, var(--text-base));
+  --font-size-input-lg: max(16px, var(--text-md));
 
   /* ── 간격 (4px 기반) ──────────────────────────────────────── */
   --space-1: 4px;
@@ -92,9 +108,7 @@
   --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
-  --space-10: 40px;
   --space-12: 48px;
-  --space-16: 64px;
 
   /* ── 형태 ─────────────────────────────────────────────────── */
   --radius-xs: 4px;
@@ -131,7 +145,6 @@
 
   /* ── z 계층 ───────────────────────────────────────────────── */
   /* 현행은 z-index가 토큰화돼 있지 않아 값이 화면마다 제각각이었다. */
-  --z-sticky: 100;
   --z-header: 200;
   --z-tabbar: 300;
   --z-ad: 350;

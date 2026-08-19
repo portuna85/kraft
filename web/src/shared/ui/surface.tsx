@@ -114,7 +114,7 @@ export function Pagination({
         이전
       </PageLink>
 
-      <span className={styles.pageLink} aria-current="page">
+      <span className={`${styles.pageLink} pillActive`} aria-current="page">
         {page + 1} / {totalPages}
       </span>
 

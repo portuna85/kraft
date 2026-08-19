@@ -202,7 +202,7 @@ export function PostForm({ existing }: { existing?: CommunityPost }) {
       {conflict !== null && (
         <section className={styles.conflict} aria-labelledby="conflict">
           <h2 id="conflict">현재 저장된 내용</h2>
-          <p className={styles.note}>
+          <p className="note">
             위에 쓰신 내용은 그대로 있습니다. 아래는 다른 곳에서 저장된 최신 내용입니다.
           </p>
           <h3>{conflict.title}</h3>

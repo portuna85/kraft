@@ -104,13 +104,6 @@
     text-decoration: none;
   }
 
-  .pageLink[aria-current="page"] {
-    background: var(--color-brand);
-    border-color: var(--color-brand);
-    color: var(--color-ink-on-brand);
-    font-weight: 700;
-  }
-
   .pageDisabled {
     opacity: 0.45;
     pointer-events: none;
