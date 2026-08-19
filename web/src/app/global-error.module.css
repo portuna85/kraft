@@ -3,23 +3,29 @@
  * 경우의 최후 경계라 shared/ui(토큰 CSS 포함)를 의도적으로 import하지 않는다 —
  * 여기서도 리터럴 픽셀/색상 값만 쓴다. shared/styles/tokens.css 밖에 있는
  * co-located CSS 모듈이라, "공유 디자인 시스템이 깨졌다" 시나리오와 무관하다.
+ * @layer components로 감싸는 건(scripts/check-css-layer.mjs) 순수 캐스케이드
+ * 네임스페이스 선언이라 이 파일의 자기완결성과는 무관하다 — tokens.css의
+ * `@layer reset, tokens, base, components, utilities;` 순서 선언이 없어도
+ * 이 파일 단독으로 정상 동작한다.
  */
-.button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  min-width: 44px;
-  padding: 0 16px;
-  border: 1px solid #767676;
-  border-radius: 6px;
-  background: #f0f0f0;
-  color: #1a1a1a;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-}
+@layer components {
+  .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0 16px;
+    border: 1px solid #767676;
+    border-radius: 6px;
+    background: #f0f0f0;
+    color: #1a1a1a;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+  }
 
-.button:hover {
-  background: #e0e0e0;
+  .button:hover {
+    background: #e0e0e0;
+  }
 }
