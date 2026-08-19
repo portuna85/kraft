@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from "react";
 
 import { useDisclosure } from "@/shared/hooks/use-disclosure";
 import { useEventCallback } from "@/shared/hooks/use-event-callback";
@@ -29,13 +29,23 @@ export function DropdownMenu({
   items,
   "aria-label": label,
 }: {
-  trigger: (props: { onClick: () => void; "aria-expanded": boolean }) => ReactNode;
+  trigger: (props: {
+    onClick: () => void;
+    "aria-expanded": boolean;
+    "aria-haspopup": "menu";
+    "aria-controls": string;
+  }) => ReactNode;
   items: readonly MenuItem[];
   "aria-label": string;
 }) {
   const { isOpen, close, toggle } = useDisclosure();
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  // KF-18(docs/improvement.md): 열기 직전 포커스 요소를 저장해 두고 닫힐 때
+  // 되돌린다 — use-focus-trap.ts:67과 같은 캡처/복원 관용구. Dialog와 달리
+  // 메뉴는 트랩이 아니라 "닫히면 트리거로 복귀"만 필요하다.
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
+  const menuId = useId();
   // TD-013: close는 useDisclosure가 useCallback([])으로 이미 안정적이지만, 그 사실은
   // useDisclosure의 구현 세부사항이라 이 컴포넌트가 암묵적으로 의존하고 있었다 —
   // useEventCallback으로 감싸 이 컴포넌트 자체의 안전성이 되게 만든다.
@@ -44,13 +54,17 @@ export function DropdownMenu({
   useEffect(() => {
     if (!isOpen) return;
 
+    restoreFocusRef.current = document.activeElement as HTMLElement | null;
     menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
 
     function onPointerDown(event: PointerEvent) {
       if (!wrapRef.current?.contains(event.target as Node)) stableClose();
     }
     document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      restoreFocusRef.current?.focus();
+    };
   }, [isOpen, stableClose]);
 
   function onMenuKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -82,10 +96,16 @@ export function DropdownMenu({
 
   return (
     <div className={styles.menuWrap} ref={wrapRef}>
-      {trigger({ onClick: toggle, "aria-expanded": isOpen })}
+      {trigger({
+        onClick: toggle,
+        "aria-expanded": isOpen,
+        "aria-haspopup": "menu",
+        "aria-controls": menuId,
+      })}
 
       {isOpen && (
         <div
+          id={menuId}
           ref={menuRef}
           className={styles.menu}
           role="menu"

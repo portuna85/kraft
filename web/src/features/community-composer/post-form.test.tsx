@@ -73,6 +73,7 @@ function post(overrides: Partial<CommunityPost> = {}): CommunityPost {
 function renderForm(existing?: CommunityPost, session: SessionState = LOGGED_IN) {
   return render(
     <SessionContext.Provider value={session}>
+      <a href="/community">커뮤니티로</a>
       <PostForm existing={existing} />
     </SessionContext.Provider>,
   );
@@ -271,5 +272,74 @@ describe("글 작성·수정 폼", () => {
     await user.click(screen.getByRole("button", { name: "저장" }));
 
     await waitFor(() => expect(createPost).toHaveBeenCalledWith(expect.anything(), 42));
+  });
+
+  // KF-11(docs/improvement.md): beforeunload는 하드 새로고침·탭 닫기만 막았다 —
+  // 취소 버튼과 인앱 링크(브레드크럼·탭바 등)는 확인 없이 바로 나가졌다.
+  describe("KF-11: 더티 폼 이탈 가드", () => {
+    it("변경 없는 폼은 취소를 누르면 확인 없이 바로 뒤로 간다", async () => {
+      const user = userEvent.setup();
+      renderForm();
+
+      await user.click(screen.getByRole("button", { name: "취소" }));
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("더티 폼에서 취소를 누르면 확인창이 뜨고, 확인해야만 뒤로 간다", async () => {
+      const user = userEvent.setup();
+      renderForm();
+
+      await user.type(screen.getByLabelText("제목"), "쓰다 만 제목");
+      await user.click(screen.getByRole("button", { name: "취소" }));
+
+      const dialog = await screen.findByRole("dialog");
+      expect(dialog).toHaveTextContent("작성 중인 내용을 두고 나갈까요?");
+
+      await user.click(screen.getByRole("button", { name: "나가기" }));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("더티 폼에서 취소 확인창을 취소하면 폼 내용이 그대로 남는다", async () => {
+      const user = userEvent.setup();
+      renderForm();
+
+      await user.type(screen.getByLabelText("제목"), "쓰다 만 제목");
+      await user.click(screen.getByRole("button", { name: "취소" }));
+      await screen.findByRole("dialog");
+
+      await user.click(screen.getByRole("button", { name: "계속 작성" }));
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(screen.getByLabelText("제목")).toHaveValue("쓰다 만 제목");
+    });
+
+    it("더티 폼에서 인앱 링크를 클릭하면 가로채 확인창을 띄우고, 확인하면 그 경로로 이동한다", async () => {
+      const user = userEvent.setup();
+      renderForm();
+
+      await user.type(screen.getByLabelText("제목"), "쓰다 만 제목");
+      await user.click(screen.getByRole("link", { name: "커뮤니티로" }));
+
+      const dialog = await screen.findByRole("dialog");
+      expect(dialog).toBeInTheDocument();
+      expect(push).not.toHaveBeenCalled();
+
+      await user.click(screen.getByRole("button", { name: "나가기" }));
+      expect(push).toHaveBeenCalledWith("/community");
+    });
+
+    it("제출 성공은 자체 이동이라 이탈 확인창을 띄우지 않는다", async () => {
+      const user = userEvent.setup();
+      updatePost.mockResolvedValue(post());
+
+      renderForm(post());
+      await user.clear(screen.getByLabelText("제목"));
+      await user.type(screen.getByLabelText("제목"), "고친 제목");
+      await user.click(screen.getByRole("button", { name: "저장" }));
+
+      await waitFor(() => expect(push).toHaveBeenCalledWith("/community/posts/1"));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
   });
 });

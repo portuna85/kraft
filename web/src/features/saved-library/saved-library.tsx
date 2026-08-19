@@ -23,7 +23,7 @@ import { formatDrawDate } from "@/shared/lib/format";
 import { Button, LinkButton } from "@/shared/ui/button";
 import { ConfirmDialog } from "@/shared/ui/dialog";
 import { ListRowsSkeleton } from "@/shared/ui/page-skeleton";
-import { EmptyState, ErrorState } from "@/shared/ui/states";
+import { EmptyState, ErrorState, InlineAlert } from "@/shared/ui/states";
 import { Card } from "@/shared/ui/surface";
 
 import styles from "./library.module.css";
@@ -39,15 +39,18 @@ import { WinningCelebration } from "./winning-celebration";
  * **이 화면은 디바이스 토큰을 만들거나 회전시키지 않는다.** 그 일은 identity-session이
  * 전담한다(R-1). 여기서 토큰을 건드리면 익명 사용자의 저장 기록이 통째로 고립될 수 있다.
  */
-export function SavedLibrary({ latestRound }: { latestRound: number }) {
+export function SavedLibrary({ latestRound }: { latestRound: number | null }) {
   const session = useSession();
   const loggedIn = canQueryOwnerScope(session);
 
   const [items, setItems] = useState<SavedNumber[] | null>(null);
   const [matches, setMatches] = useState<Map<number, SavedNumberMatch> | null>(null);
-  const [round, setRound] = useState(latestRound);
+  // KF-12(docs/improvement.md): 문자열로 들고 있어야 빈 입력(`Number("") === 0`이
+  // 되는 함정)을 "숫자 0"과 구분해 판정할 수 있다.
+  const [roundInput, setRoundInput] = useState(latestRound !== null ? String(latestRound) : "");
   const [loadError, setLoadError] = useState(false);
   const [matching, setMatching] = useState(false);
+  const [compareError, setCompareError] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SavedNumber | null>(null);
   const [deletePending, setDeletePending] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -83,18 +86,32 @@ export function SavedLibrary({ latestRound }: { latestRound: number }) {
     };
   }, [load, session.loading]);
 
+  // KF-12(docs/improvement.md): `latestRound`를 모르면 대조 자체가 불가능하고,
+  // 알아도 1~latestRound 범위를 벗어난 값을 서버로 보낼 이유가 없다 — 여기서
+  // 막아야 버튼 비활성화·Enter 제출 양쪽이 같은 기준을 쓴다.
+  const parsedRound = Number(roundInput);
+  const isRoundValid =
+    latestRound !== null &&
+    roundInput.trim() !== "" &&
+    Number.isInteger(parsedRound) &&
+    parsedRound >= 1 &&
+    parsedRound <= latestRound;
+
   async function compare() {
+    if (!isRoundValid) return;
     setMatching(true);
+    setCompareError(false);
     try {
       const results = loggedIn
-        ? await matchAccountSavedNumbers(String(round))
-        : await matchDeviceSavedNumbers(String(round));
+        ? await matchAccountSavedNumbers(String(parsedRound))
+        : await matchDeviceSavedNumbers(String(parsedRound));
       setMatches(new Map(results.map((result) => [result.savedNumber.id, result])));
       // 축하 연출은 대조를 눌러 결과가 막 나온 순간에만 튼다. 목록을 다시 그릴
       // 때마다 재생하면 삭제 한 번에도 콘페티가 쏟아진다.
       setCelebrating(results.some((result) => isTopPrize(result.prizeTier)));
     } catch {
       setMatches(null);
+      setCompareError(true);
     } finally {
       setMatching(false);
     }
@@ -163,7 +180,13 @@ export function SavedLibrary({ latestRound }: { latestRound: number }) {
       <div className={styles.layout}>
         <section aria-labelledby="compare" className="stack">
           <h2 id="compare">회차 대조</h2>
-          <div className={styles.compare}>
+          <form
+            className={styles.compare}
+            onSubmit={(event) => {
+              event.preventDefault();
+              void compare();
+            }}
+          >
             <label className={styles.roundLabel} htmlFor="round">
               대조할 회차
             </label>
@@ -172,18 +195,33 @@ export function SavedLibrary({ latestRound }: { latestRound: number }) {
               id="round"
               type="number"
               min={1}
-              max={latestRound}
-              value={round}
-              onChange={(event) => setRound(Number(event.target.value))}
+              // KF-12(docs/improvement.md): 최신 회차를 모를 때 max=0처럼 불가능한
+              // 값을 두지 않는다 — 아예 렌더하지 않는다.
+              {...(latestRound !== null ? { max: latestRound } : {})}
+              value={roundInput}
+              disabled={latestRound === null}
+              onChange={(event) => setRoundInput(event.target.value)}
             />
             {matching ? (
-              <Button loading loadingLabel="대조 중">
+              <Button type="submit" loading loadingLabel="대조 중">
                 대조하기
               </Button>
             ) : (
-              <Button onClick={compare}>대조하기</Button>
+              <Button type="submit" disabled={!isRoundValid}>
+                대조하기
+              </Button>
             )}
-          </div>
+          </form>
+          {latestRound === null && (
+            <InlineAlert tone="danger">
+              최신 회차를 불러오지 못해 대조할 수 없습니다. 잠시 후 새로고침해 주세요.
+            </InlineAlert>
+          )}
+          {compareError && (
+            <InlineAlert tone="danger">
+              대조하지 못했습니다. 잠시 후 다시 시도해 주세요.
+            </InlineAlert>
+          )}
         </section>
 
         <section aria-labelledby="saved-list" className="stack">

@@ -45,7 +45,9 @@ test.describe("커뮤니티·상태·안내 읽기", () => {
     const pagination = page.getByRole("navigation", { name: "페이지 이동" });
     await expect(pagination).toBeVisible();
     await expect(page.getByText("1 / 3")).toBeVisible();
-    await expect(pagination.getByRole("link", { name: "처음" })).toHaveAttribute(
+    // KF-15(docs/improvement.md): 경계 항목은 이제 링크가 아니라 비링크 텍스트다.
+    await expect(pagination.getByRole("link", { name: "처음" })).toHaveCount(0);
+    await expect(pagination.getByText("처음", { exact: true })).toHaveAttribute(
       "aria-disabled",
       "true",
     );
@@ -57,7 +59,8 @@ test.describe("커뮤니티·상태·안내 읽기", () => {
     await pagination.getByRole("link", { name: "마지막" }).click();
     await expect(page).toHaveURL(/page=2/);
     await expect(page.getByText("3 / 3")).toBeVisible();
-    await expect(pagination.getByRole("link", { name: "다음" })).toHaveAttribute(
+    await expect(pagination.getByRole("link", { name: "다음" })).toHaveCount(0);
+    await expect(pagination.getByText("다음", { exact: true })).toHaveAttribute(
       "aria-disabled",
       "true",
     );

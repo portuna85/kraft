@@ -42,7 +42,10 @@ const BAR_WIDTH_CLASSES = [
  */
 export function ListRowsSkeleton({ rows = 8 }: { rows?: number }) {
   return (
-    <div className={styles.rows} aria-busy="true" aria-label="콘텐츠를 불러오는 중">
+    // axe(aria-prohibited-attr): 일반 <div>(암묵적 generic 역할)는 aria-label을
+    // 지원하지 않는다 — 명명을 지원하는 role="status"를 줘야 aria-busy/aria-label이
+    // 유효해진다.
+    <div className={styles.rows} role="status" aria-busy="true" aria-label="콘텐츠를 불러오는 중">
       {Array.from({ length: rows }, (_, index) => (
         <div key={index} className={styles.row}>
           <Skeleton shape="text" />
@@ -55,7 +58,7 @@ export function ListRowsSkeleton({ rows = 8 }: { rows?: number }) {
 
 export function PageSkeleton({ variant = "generic" }: { variant?: Variant }) {
   return (
-    <div className={styles.page} aria-busy="true" aria-label="콘텐츠를 불러오는 중">
+    <div className={styles.page} role="status" aria-busy="true" aria-label="콘텐츠를 불러오는 중">
       <div className={styles.header}>
         <div className={styles.eyebrow}>
           <Skeleton shape="text" />

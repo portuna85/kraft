@@ -20,8 +20,10 @@ import {
 import { canQueryOwnerScope, useSession } from "@/entities/user-session/session-context";
 import { ApiError } from "@/shared/api/error";
 import { ROUTES } from "@/shared/config/routes";
+import { useDirtyNavigationGuard } from "@/shared/hooks/use-dirty-navigation-guard";
 import { useForm } from "@/shared/hooks/use-form";
 import { Button } from "@/shared/ui/button";
+import { ConfirmDialog } from "@/shared/ui/dialog";
 import { Select, TextArea, TextField } from "@/shared/ui/field";
 import { InlineAlert } from "@/shared/ui/states";
 
@@ -119,6 +121,10 @@ export function PostForm({ existing }: { existing?: CommunityPost }) {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [form.state.isDirty]);
 
+  // KF-11(docs/improvement.md): beforeunload는 하드 새로고침·탭 닫기만 막는다 —
+  // 취소 버튼과 브레드크럼·탭바 같은 인앱 링크는 이 가드가 별도로 잡는다.
+  const leaveGuard = useDirtyNavigationGuard(form.state.isDirty);
+
   if (!loggedIn) {
     return (
       <InlineAlert tone="neutral" title="로그인이 필요합니다">
@@ -214,10 +220,24 @@ export function PostForm({ existing }: { existing?: CommunityPost }) {
         ) : (
           <Button type="submit">저장</Button>
         )}
-        <Button type="button" variant="quiet" onClick={() => router.back()}>
+        <Button
+          type="button"
+          variant="quiet"
+          onClick={() => leaveGuard.requestLeave(() => router.back())}
+        >
           취소
         </Button>
       </div>
+
+      <ConfirmDialog
+        open={leaveGuard.isPromptOpen}
+        onClose={leaveGuard.cancelLeave}
+        title="작성 중인 내용을 두고 나갈까요?"
+        description="저장하지 않은 내용은 사라집니다."
+        confirmLabel="나가기"
+        cancelLabel="계속 작성"
+        onConfirm={leaveGuard.confirmLeave}
+      />
     </form>
   );
 }

@@ -15,7 +15,7 @@ import { ROUTES } from "@/shared/config/routes";
 import { Button, LinkButton } from "@/shared/ui/button";
 import { ConfirmDialog } from "@/shared/ui/dialog";
 import { ListRowsSkeleton } from "@/shared/ui/page-skeleton";
-import { EmptyState, ErrorState } from "@/shared/ui/states";
+import { EmptyState, ErrorState, InlineAlert } from "@/shared/ui/states";
 
 import styles from "./history.module.css";
 
@@ -37,6 +37,7 @@ export function RecommendHistoryList() {
   const [total, setTotal] = useState(0);
   const [loadError, setLoadError] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<RecommendationSet | null>(null);
   const [deletePending, setDeletePending] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -72,8 +73,12 @@ export function RecommendHistoryList() {
     };
   }, [load, session.loading]);
 
+  // KF-13(docs/improvement.md): catch가 없어 거부가 미처리 프로미스로 새고
+  // 로딩만 리셋됐다 — 이미 로드된 행·커서(page)는 그대로 둬서 같은 요청으로
+  // 재시도할 수 있게 한다.
   async function loadMore() {
     setLoadingMore(true);
+    setLoadMoreError(false);
     try {
       const result = loggedIn
         ? await listAccountRecommendationSets(page + 1)
@@ -82,6 +87,8 @@ export function RecommendHistoryList() {
       setPage(result.page);
       setTotalPages(result.totalPages);
       setTotal(result.totalElements);
+    } catch {
+      setLoadMoreError(true);
     } finally {
       setLoadingMore(false);
     }
@@ -169,6 +176,11 @@ export function RecommendHistoryList() {
           <p className={styles.note} role="status" aria-live="polite">
             전체 {total}건 중 {items.length}건 표시
           </p>
+          {loadMoreError && (
+            <InlineAlert tone="danger">
+              더 보기를 불러오지 못했습니다. 다시 시도해 주세요.
+            </InlineAlert>
+          )}
         </div>
       ) : (
         <p className={styles.note} role="status" aria-live="polite">

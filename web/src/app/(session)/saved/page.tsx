@@ -18,11 +18,15 @@ export const metadata: Metadata = {
  *
  * **최신 회차 조회 실패가 이 화면을 죽이지 않는다.** 보관함 자체는 회차와 무관하게
  * 볼 수 있어야 한다 — 부수 데이터라 인라인으로 흡수한다(§7.6).
+ *
+ * KF-12(docs/improvement.md): 실패를 `0`으로 뭉개면 `SavedLibrary`가 `max=0`인
+ * 불가능한 범위를 받고도 대조 버튼은 계속 활성 상태였다 — "회차 미확정"을
+ * `null`로 명시해 `SavedLibrary`가 직접 판단하게 한다.
  */
 export default async function SavedPage() {
   const latestRound = await getLatestRound()
     .then((round) => round.round)
-    .catch(() => 0);
+    .catch(() => null);
 
   return (
     <div className="stack">

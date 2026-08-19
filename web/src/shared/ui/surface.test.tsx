@@ -35,11 +35,15 @@ describe("Pagination — 처음·이전·다음·마지막 (레거시 FE-052)", 
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("첫 페이지에서는 처음·이전이 비활성 표시고, 다음 페이지로 이동한다", () => {
+  // KF-15(docs/improvement.md): 경계 항목은 더 이상 <a>가 아니다 — 탭 순서·Enter
+  // 활성화를 없애려면 링크 자체가 없어야 한다(aria-disabled만으로는 못 막았다).
+  it("첫 페이지에서는 처음·이전이 비링크 텍스트고, 다음 페이지로 이동한다", () => {
     render(<Pagination page={0} totalPages={5} buildHref={buildHref} />);
 
-    expect(screen.getByRole("link", { name: "처음" })).toHaveAttribute("aria-disabled", "true");
-    expect(screen.getByRole("link", { name: "이전" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.queryByRole("link", { name: "처음" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "이전" })).not.toBeInTheDocument();
+    expect(screen.getByText("처음")).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByText("이전")).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("link", { name: "다음" })).toHaveAttribute("href", "/community?page=1");
     expect(screen.getByRole("link", { name: "마지막" })).toHaveAttribute(
       "href",
@@ -51,19 +55,23 @@ describe("Pagination — 처음·이전·다음·마지막 (레거시 FE-052)", 
   it("가운데 페이지에서는 네 링크 모두 활성화돼 있고 올바른 페이지를 가리킨다", () => {
     render(<Pagination page={2} totalPages={5} buildHref={buildHref} />);
 
-    expect(screen.getByRole("link", { name: "처음" })).not.toHaveAttribute("aria-disabled");
     expect(screen.getByRole("link", { name: "처음" })).toHaveAttribute("href", "/community?page=0");
     expect(screen.getByRole("link", { name: "이전" })).toHaveAttribute("href", "/community?page=1");
     expect(screen.getByRole("link", { name: "다음" })).toHaveAttribute("href", "/community?page=3");
-    expect(screen.getByRole("link", { name: "마지막" })).not.toHaveAttribute("aria-disabled");
+    expect(screen.getByRole("link", { name: "마지막" })).toHaveAttribute(
+      "href",
+      "/community?page=4",
+    );
     expect(screen.getByText("3 / 5")).toBeInTheDocument();
   });
 
-  it("마지막 페이지에서는 다음·마지막이 비활성 표시다", () => {
+  it("마지막 페이지에서는 다음·마지막이 비링크 텍스트다", () => {
     render(<Pagination page={4} totalPages={5} buildHref={buildHref} />);
 
-    expect(screen.getByRole("link", { name: "다음" })).toHaveAttribute("aria-disabled", "true");
-    expect(screen.getByRole("link", { name: "마지막" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.queryByRole("link", { name: "다음" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "마지막" })).not.toBeInTheDocument();
+    expect(screen.getByText("다음")).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByText("마지막")).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("link", { name: "이전" })).toHaveAttribute("href", "/community?page=3");
   });
 });

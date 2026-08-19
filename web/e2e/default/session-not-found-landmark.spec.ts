@@ -15,17 +15,20 @@ import { expect, test } from "@playwright/test";
  * 나타나지 않는다 — 그래서 반드시 "매치된 동적 라우트 안에서 notFound() 호출"
  * 시나리오로 재현해야 한다.)
  *
- * **이 테스트는 지금 실패해야 정상이다(red).**
+ * `(session)/not-found.tsx`(새 main 없이 본문만 렌더)를 추가해 고쳤다.
  */
 test.describe("세션 라우트 하위 404가 main 랜드마크를 하나만 만든다", () => {
   test("존재하지 않는 게시글 상세에서 main과 #main이 각각 하나뿐이다", async ({ page }) => {
-    test.fail(
-      true,
-      "KF-16: 세션 레이아웃 안에서 루트 not-found가 중첩됨 — 근본 수정 전까지 알려진 실패",
-    );
     // 픽스처(e2e/fixtures/domains/community.mjs)에는 id 1, 2 게시글만 있다 —
     // 999999는 확실히 매치되지 않아 getPost()가 404를 받고 notFound()를 던진다.
     await page.goto("/community/posts/999999");
+
+    await expect(page.locator("main")).toHaveCount(1);
+    await expect(page.locator("#main")).toHaveCount(1);
+  });
+
+  test("완전히 매치되지 않는 경로도 main과 #main이 각각 하나뿐이다", async ({ page }) => {
+    await page.goto("/recommend/does-not-exist");
 
     await expect(page.locator("main")).toHaveCount(1);
     await expect(page.locator("#main")).toHaveCount(1);

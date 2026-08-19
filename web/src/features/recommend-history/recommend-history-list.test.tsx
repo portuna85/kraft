@@ -117,6 +117,35 @@ describe("추천 이력", () => {
     expect(screen.queryByRole("button", { name: "더 보기" })).not.toBeInTheDocument();
   });
 
+  // KF-13(docs/improvement.md): loadMore()에 catch가 없어 거부가 미처리 프로미스로
+  // 새고 UI는 아무 안내도 없이 그냥 로딩만 풀렸다.
+  it("KF-13: 더 보기 실패 시 인라인 에러를 보이고 기존 행을 유지하며, 재시도하면 같은 커서로 이어붙는다", async () => {
+    const user = userEvent.setup();
+    listDeviceRecommendationSets.mockResolvedValueOnce(page({ totalPages: 2 }));
+    listDeviceRecommendationSets.mockRejectedValueOnce(new Error("network"));
+    listDeviceRecommendationSets.mockResolvedValueOnce(
+      page({ page: 1, totalPages: 2, items: [set({ id: 2 })], totalElements: 2 }),
+    );
+
+    renderList(ANONYMOUS);
+    await user.click(await screen.findByRole("button", { name: "더 보기" }));
+
+    expect(
+      await screen.findByText("더 보기를 불러오지 못했습니다. 다시 시도해 주세요."),
+    ).toBeInTheDocument();
+    expect(listDeviceRecommendationSets).toHaveBeenLastCalledWith(1);
+    // 실패해도 기존 행은 그대로다.
+    expect(screen.getAllByText("이 세트 삭제")).toHaveLength(1);
+
+    await user.click(screen.getByRole("button", { name: "더 보기" }));
+
+    await waitFor(() => expect(listDeviceRecommendationSets).toHaveBeenLastCalledWith(1));
+    expect(
+      screen.queryByText("더 보기를 불러오지 못했습니다. 다시 시도해 주세요."),
+    ).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByText("이 세트 삭제")).toHaveLength(2));
+  });
+
   it("삭제를 확인하면 해당 스코프의 삭제 API를 부른다", async () => {
     const user = userEvent.setup();
     listAccountRecommendationSets.mockResolvedValue(page());

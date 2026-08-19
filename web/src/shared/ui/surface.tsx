@@ -53,6 +53,36 @@ export function Table({
 export type PageLinkBuilder = (page: number) => string;
 
 /**
+ * KF-15(docs/improvement.md): 경계에서 `aria-disabled`+`pointer-events:none`을
+ * 준 `<Link>`는 여전히 유효한 href를 가진 네이티브 링크라 탭 순서에 남고 Enter로
+ * 진짜 이동했다 — ARIA/CSS는 시맨틱을 못 바꾼다. 비활성 상태는 아예 링크가 아닌
+ * `<span>`으로 렌더해 탭 순서·Enter 활성화 자체를 없앤다. 같은 클래스를 재사용해
+ * 시각적으로는 동일하게 유지한다.
+ */
+function PageLink({
+  disabled,
+  href,
+  children,
+}: {
+  disabled: boolean;
+  href: string;
+  children: ReactNode;
+}) {
+  if (disabled) {
+    return (
+      <span className={`${styles.pageLink} ${styles.pageDisabled}`} aria-disabled="true">
+        {children}
+      </span>
+    );
+  }
+  return (
+    <Link className={styles.pageLink} href={href}>
+      {children}
+    </Link>
+  );
+}
+
+/**
  * Pagination — 처음·이전·다음·마지막을 **전부** 제공한다(레거시 FE-052).
  *
  * 이전/다음만 있으면 100페이지짜리 목록에서 마지막으로 가는 방법이 없다. 링크로 만드는
@@ -77,39 +107,23 @@ export function Pagination({
 
   return (
     <nav className={styles.pagination} aria-label="페이지 이동">
-      <Link
-        className={`${styles.pageLink} ${isFirst ? styles.pageDisabled : ""}`}
-        href={buildHref(0)}
-        aria-disabled={isFirst || undefined}
-      >
+      <PageLink disabled={isFirst} href={buildHref(0)}>
         처음
-      </Link>
-      <Link
-        className={`${styles.pageLink} ${isFirst ? styles.pageDisabled : ""}`}
-        href={buildHref(Math.max(page - 1, 0))}
-        aria-disabled={isFirst || undefined}
-      >
+      </PageLink>
+      <PageLink disabled={isFirst} href={buildHref(Math.max(page - 1, 0))}>
         이전
-      </Link>
+      </PageLink>
 
       <span className={styles.pageLink} aria-current="page">
         {page + 1} / {totalPages}
       </span>
 
-      <Link
-        className={`${styles.pageLink} ${isLast ? styles.pageDisabled : ""}`}
-        href={buildHref(Math.min(page + 1, totalPages - 1))}
-        aria-disabled={isLast || undefined}
-      >
+      <PageLink disabled={isLast} href={buildHref(Math.min(page + 1, totalPages - 1))}>
         다음
-      </Link>
-      <Link
-        className={`${styles.pageLink} ${isLast ? styles.pageDisabled : ""}`}
-        href={buildHref(totalPages - 1)}
-        aria-disabled={isLast || undefined}
-      >
+      </PageLink>
+      <PageLink disabled={isLast} href={buildHref(totalPages - 1)}>
         마지막
-      </Link>
+      </PageLink>
     </nav>
   );
 }

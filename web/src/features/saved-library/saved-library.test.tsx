@@ -72,10 +72,10 @@ function item(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-function renderLibrary(session: SessionState) {
+function renderLibrary(session: SessionState, latestRound: number | null = 1150) {
   return render(
     <SessionContext.Provider value={session}>
-      <SavedLibrary latestRound={1150} />
+      <SavedLibrary latestRound={latestRound} />
     </SessionContext.Provider>,
   );
 }
@@ -160,6 +160,69 @@ describe("보관함", () => {
     expect(await screen.findByText("2개 일치")).toBeInTheDocument();
     expect(matchAccountSavedNumbers).toHaveBeenCalledWith("1150");
     expect(matchDeviceSavedNumbers).not.toHaveBeenCalled();
+  });
+
+  // KF-12(docs/improvement.md): 최신 회차 조회 실패가 .catch(() => 0)으로 뭉개져
+  // max=0인 불가능한 범위를 만들고도 대조 버튼은 계속 활성이었다.
+  it("KF-12: 최신 회차를 모르면(latestRound=null) 대조 입력·버튼이 비활성이고 안내를 보여준다", async () => {
+    listDeviceSavedNumbers.mockResolvedValue([item()]);
+    renderLibrary(ANONYMOUS, null);
+    await screen.findByText("삭제");
+
+    expect(screen.getByLabelText("대조할 회차")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "대조하기" })).toBeDisabled();
+    expect(
+      screen.getByText("최신 회차를 불러오지 못해 대조할 수 없습니다. 잠시 후 새로고침해 주세요."),
+    ).toBeInTheDocument();
+    expect(matchDeviceSavedNumbers).not.toHaveBeenCalled();
+  });
+
+  it("KF-12: 0·범위 밖 회차를 넣으면 대조 버튼이 비활성이고, 유효한 값이면 다시 활성화된다", async () => {
+    const user = userEvent.setup();
+    listDeviceSavedNumbers.mockResolvedValue([item()]);
+    renderLibrary(ANONYMOUS);
+    await screen.findByText("삭제");
+
+    const input = screen.getByLabelText("대조할 회차");
+    const button = screen.getByRole("button", { name: "대조하기" });
+    expect(button).toBeEnabled();
+
+    await user.clear(input);
+    expect(button).toBeDisabled();
+
+    await user.type(input, "0");
+    expect(button).toBeDisabled();
+
+    await user.clear(input);
+    await user.type(input, "1151");
+    expect(button).toBeDisabled();
+
+    await user.clear(input);
+    await user.type(input, "1150");
+    expect(button).toBeEnabled();
+  });
+
+  it("KF-12: 대조 실패 시 인라인 에러를 보이고 이미 로드된 저장 행은 유지한다", async () => {
+    const user = userEvent.setup();
+    listDeviceSavedNumbers.mockResolvedValue([item()]);
+    matchDeviceSavedNumbers.mockRejectedValueOnce(new Error("network"));
+    matchDeviceSavedNumbers.mockResolvedValueOnce([match()]);
+
+    renderLibrary(ANONYMOUS);
+    await screen.findByText("삭제");
+    await user.click(screen.getByRole("button", { name: "대조하기" }));
+
+    expect(
+      await screen.findByText("대조하지 못했습니다. 잠시 후 다시 시도해 주세요."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("삭제")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "대조하기" }));
+
+    expect(await screen.findByText("1등")).toBeInTheDocument();
+    expect(
+      screen.queryByText("대조하지 못했습니다. 잠시 후 다시 시도해 주세요."),
+    ).not.toBeInTheDocument();
   });
 
   it("익명으로 보던 중 로그인(claim)이 끝나면 계정 스코프로 다시 조회한다 (§25.2 이관 확인)", async () => {

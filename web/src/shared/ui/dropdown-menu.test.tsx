@@ -85,4 +85,58 @@ describe("DropdownMenu", () => {
     fireEvent.pointerDown(screen.getByRole("button", { name: "바깥" }));
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
+
+  // KF-18(docs/improvement.md): 닫힐 때 포커스가 <body>로 떨어져 로그아웃·로그인
+  // 메뉴를 쓰는 키보드 사용자가 매번 문서 처음으로 되돌아갔다.
+  it("KF-18: Escape로 닫으면 포커스가 트리거로 돌아간다", async () => {
+    renderMenu();
+    const trigger = screen.getByRole("button", { name: "메뉴 열기" });
+    await userEvent.click(trigger);
+
+    fireEvent.keyDown(screen.getByRole("menu", { name: "계정" }), { key: "Escape" });
+
+    expect(trigger).toHaveFocus();
+  });
+
+  it("KF-18: 항목을 선택해 닫으면 포커스가 트리거로 돌아간다", async () => {
+    const onSelect = renderMenu();
+    const trigger = screen.getByRole("button", { name: "메뉴 열기" });
+    await userEvent.click(trigger);
+
+    await userEvent.click(screen.getByRole("menuitem", { name: "로그아웃" }));
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(trigger).toHaveFocus();
+  });
+
+  it("KF-18: 바깥 포인터 입력으로 닫으면 포커스가 트리거로 돌아간다", async () => {
+    renderMenu();
+    const trigger = screen.getByRole("button", { name: "메뉴 열기" });
+    await userEvent.click(trigger);
+
+    fireEvent.pointerDown(screen.getByRole("button", { name: "바깥" }));
+
+    expect(trigger).toHaveFocus();
+  });
+
+  it("KF-18: 트리거에 aria-haspopup=menu와, 열린 메뉴를 가리키는 aria-controls가 있다", async () => {
+    render(
+      <DropdownMenu
+        trigger={(props) => (
+          <button type="button" {...props}>
+            메뉴 열기
+          </button>
+        )}
+        items={[{ label: "로그아웃", onSelect: vi.fn() }]}
+        aria-label="계정"
+      />,
+    );
+    const trigger = screen.getByRole("button", { name: "메뉴 열기" });
+    expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+
+    await userEvent.click(trigger);
+
+    const menu = screen.getByRole("menu", { name: "계정" });
+    expect(trigger.getAttribute("aria-controls")).toBe(menu.id);
+  });
 });
