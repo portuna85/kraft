@@ -70,9 +70,19 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
   const id = parseId((await params).id);
   if (id === null) notFound();
 
+  // KF-26(FE-OPT-23, docs/improvement.md): headers()는 post·comments 어느
+  // 쪽에도 의존하지 않는데 맨 뒤에 순차로 걸려 있었다 — getPost와 함께
+  // 병렬로 시작한다((public)/status/page.tsx와 같은 패턴). getCommentPage는
+  // tombstone 여부를 post로 판정한 뒤에만 불러도 되므로(가려진 글엔 댓글을
+  // 아예 안 보여줌) 그대로 순차 유지한다 — 투기적으로 병렬화하면 tombstone
+  // 글에도 댓글 요청이 나가는 낭비가 생긴다.
   let post;
+  let nonce;
   try {
-    post = await getPost(id);
+    [post, nonce] = await Promise.all([
+      getPost(id),
+      headers().then((h) => h.get(NONCE_HEADER) ?? undefined),
+    ]);
   } catch (cause) {
     // 404는 "없는 글"이라 오류 화면이 아니라 not-found로 보낸다. 그 외 실패는
     // 경계까지 던져 5xx가 되게 한다(§7.6).
@@ -94,7 +104,6 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
    * 본문은 이미 있으므로 여기서 5xx를 내면 읽을 수 있었던 글을 못 읽게 만든다.
    */
   const comments = await getCommentPage(id).catch(() => null);
-  const nonce = (await headers()).get(NONCE_HEADER) ?? undefined;
 
   return (
     <div className="stack">

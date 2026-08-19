@@ -102,9 +102,16 @@ export function setSessionState(next) {
   sessionState = { ...sessionState, ...next };
 }
 
+// KF-26(FE-OPT-23, docs/improvement.md): 게시글 상세 GET마다 조회수가 오른다는
+// 실제 백엔드 부수효과를 흉내낸다 — generateMetadata·페이지 본문이 각각
+// getPost를 부르는데 캐시로 하나로 안 합쳐지면 방문 1회에 조회수가 2 오른다.
+// 이 카운터로 e2e에서 정확히 1만 오르는지 확인한다.
+let post1ViewCount = POST_DETAIL.viewCount;
+
 export function resetCommunityState() {
   sessionState = { ...DEFAULT_SESSION_STATE };
   accountRecommendationSets.length = 0;
+  post1ViewCount = POST_DETAIL.viewCount;
 }
 
 export const routes = [
@@ -180,7 +187,14 @@ export const routes = [
       };
     },
   ],
-  ["/api/v1/community/posts/1", POST_DETAIL],
+  [
+    "/api/v1/community/posts/1",
+    (_searchParams, _requestBody, method) => {
+      if (method !== "GET") return POST_DETAIL;
+      post1ViewCount += 1;
+      return { ...POST_DETAIL, viewCount: post1ViewCount };
+    },
+  ],
   ["/api/v1/community/posts/2", POST_WITH_ATTACHMENT],
   [
     "/api/v1/community/posts/2/comments",

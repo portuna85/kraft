@@ -15,6 +15,19 @@ test.describe("커뮤니티·상태·안내 읽기", () => {
     await expect(page.getByText("본문 첫 줄")).toBeVisible();
   });
 
+  // KF-26(FE-OPT-23, docs/improvement.md): generateMetadata·페이지 본문이 각각
+  // getPost를 불러 캐시가 없으면 방문 1회에 조회수가 2 오른다. React cache()로
+  // 감싼 뒤 정확히 1만 오르는지 픽스처의 조회수 카운터로 확인한다.
+  test("게시글 상세 방문 1회에 조회수가 정확히 1만 오른다", async ({ page, request }) => {
+    await request.post("http://127.0.0.1:4111/__test__/reset");
+
+    await page.goto("/community/posts/1");
+    await expect(page.getByText("조회 42")).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByText("조회 43")).toBeVisible();
+  });
+
   test("게시글 상세가 상위 댓글과 답글을 함께 보여준다", async ({ page }) => {
     await page.goto("/community/posts/1");
     await expect(page.getByText("첫 댓글")).toBeVisible();

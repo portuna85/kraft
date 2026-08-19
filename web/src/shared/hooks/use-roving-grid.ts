@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 /**
  * 로빙 tabindex 그리드(NumberGrid)
@@ -29,6 +29,18 @@ function clamp(value: number, max: number): number {
 export function useRovingGrid({ itemCount, columns, isDisabled }: RovingGridOptions) {
   const [activeIndex, setActiveIndex] = useState(0);
   const cellRefs = useRef<(HTMLElement | null)[]>([]);
+  // KF-26(FE-OPT-42, docs/improvement.md): getCellProps는 셀마다 렌더 루프
+  // 안에서 매번 새로 호출되므로, getCellProps 자체를 useCallback으로 감싸도
+  // 그 반환값(특히 ref 콜백)은 매 렌더 새 클로저였다 — React가 ref 정체성
+  // 변화로 보고 45개 전부 detach/reattach했다. 인덱스별 ref 콜백을 한 번만
+  // 만들어 둔다(itemCount는 이 훅의 수명 동안 사실상 고정이라 사실상 1회 계산).
+  const cellRefCallbacks = useMemo(
+    () =>
+      Array.from({ length: itemCount }, (_, index) => (el: HTMLElement | null) => {
+        cellRefs.current[index] = el;
+      }),
+    [itemCount],
+  );
 
   const nextEnabled = useCallback(
     (from: number, step: number): number => {
@@ -79,13 +91,11 @@ export function useRovingGrid({ itemCount, columns, isDisabled }: RovingGridOpti
   /** 각 셀에 펼쳐 넣는다. 그리드 전체가 탭 정지점 하나가 된다. */
   const getCellProps = useCallback(
     (index: number) => ({
-      ref: (el: HTMLElement | null) => {
-        cellRefs.current[index] = el;
-      },
+      ref: cellRefCallbacks[index],
       tabIndex: index === activeIndex ? 0 : -1,
       onFocus: () => setActiveIndex(index),
     }),
-    [activeIndex],
+    [activeIndex, cellRefCallbacks],
   );
 
   // I-13: activeIndex는 "다음에 Tab이 멈출 셀"만 정했지 실제 브라우저 포커스는

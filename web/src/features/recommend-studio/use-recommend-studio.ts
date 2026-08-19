@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { recommendNumbers, recommendNumbersForAccount } from "@/entities/recommendation/api";
 import { saveNumbersToAccount, saveNumbersToDevice } from "@/entities/saved-number/api";
@@ -72,15 +72,27 @@ export function useRecommendStudio({
   // 조건과 다르면 낡은 결과로 취급한다. 렌더 중에는 ref를 읽지 않도록 state로 둔다.
   const [resultMarksKey, setResultMarksKey] = useState<string | null>(null);
 
-  const lockedNumbers = [...marks.entries()]
-    .filter(([, mark]) => mark === "locked")
-    .map(([value]) => value)
-    .sort((a, b) => a - b);
+  // KF-26(FE-OPT-41, docs/improvement.md): useMemo 없이 매 렌더 새 배열을
+  // 만들면 그 정체성이 아래 generate의 의존성이라 매 렌더 재생성되고,
+  // NumberGrid의 45개 버튼 props가 계속 바뀐다 — marks가 실제로 바뀔 때만
+  // 다시 계산한다.
+  const lockedNumbers = useMemo(
+    () =>
+      [...marks.entries()]
+        .filter(([, mark]) => mark === "locked")
+        .map(([value]) => value)
+        .sort((a, b) => a - b),
+    [marks],
+  );
 
-  const excludedNumbers = [...marks.entries()]
-    .filter(([, mark]) => mark === "excluded")
-    .map(([value]) => value)
-    .sort((a, b) => a - b);
+  const excludedNumbers = useMemo(
+    () =>
+      [...marks.entries()]
+        .filter(([, mark]) => mark === "excluded")
+        .map(([value]) => value)
+        .sort((a, b) => a - b),
+    [marks],
+  );
 
   const marksKey = `${lockedNumbers.join(",")}|${excludedNumbers.join(",")}`;
   const isStale = state.status === "ready" && resultMarksKey !== marksKey;

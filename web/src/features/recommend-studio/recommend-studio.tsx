@@ -207,7 +207,12 @@ export function RecommendStudio() {
                 const outcome = studio.saveOutcomes.get(index);
 
                 return (
-                  <li key={numbers.join("-")}>
+                  // KF-26(FE-OPT-43, docs/improvement.md): 값 기반 key였는데
+                  // 바로 아래 saveOutcomes는 index로 조회한다 — 중복 조합이
+                  // 섞이면 두 축이 어긋나 "저장했습니다" 배지가 엉뚱한 행에
+                  // 붙을 수 있었다. recommendations는 generate() 호출마다
+                  // 통째로 교체되는 원자적 결과라 index를 key로 써도 안전하다.
+                  <li key={index}>
                     <RecommendationResultRow
                       index={index + 1}
                       numbers={numbers}

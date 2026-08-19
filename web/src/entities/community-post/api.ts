@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { serverFetch } from "@/shared/api/transport";
 import { CACHE_TAGS } from "@/shared/config/cache-tags";
 import { serverEnv } from "@/shared/config/env";
@@ -46,11 +48,17 @@ export function getPostPage(params: ListParams): Promise<CommunityPostPage> {
  * 방문부터 백엔드에 요청이 가지 않아 조회수가 조용히 멈춘다. 지표가 망가진 것은
  * 화면상으로는 아무 문제가 없어 보여서 늦게 발견된다 — 그래서 성능을 이유로 이
  * 설정을 바꾸려는 시도를 막으려고 이유를 여기 남긴다(R-4).
+ *
+ * KF-26(FE-OPT-23, docs/improvement.md): 게시글 상세 라우트가 `generateMetadata`와
+ * 페이지 본문에서 각각 이 함수를 부른다 — 조회수 부수효과가 있어 중복 호출이면
+ * 방문 1회당 조회수가 2 올라간다. React `cache()`로 감싸 같은 요청 생명주기 안의
+ * 두 호출을 하나로 합친다. `cache()`는 요청 단위로만 유효해 다른 요청·다른
+ * 라우트(예: 수정 화면)의 호출에는 영향이 없다.
  */
-export function getPost(id: number): Promise<CommunityPost> {
+export const getPost = cache((id: number): Promise<CommunityPost> => {
   return serverFetch(
     `${serverEnv.backendInternalUrl}/api/v1/community/posts/${id}`,
     communityPostSchema,
     { cache: { mode: "no-store" } },
   );
-}
+});

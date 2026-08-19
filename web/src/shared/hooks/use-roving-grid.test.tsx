@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import type { KeyboardEvent } from "react";
 
 import { useRovingGrid } from "./use-roving-grid";
 
@@ -87,5 +88,34 @@ describe("useRovingGrid", () => {
     // 마운트 직후 activeIndex 기본값(0)이 셀 0을 강제로 포커스하면 안 된다 —
     // 그리드가 화면에 나타나는 순간 사용자가 보던 곳에서 포커스가 튀는 부작용이 된다.
     expect(document.activeElement).not.toBe(screen.getAllByRole("gridcell")[0]);
+  });
+
+  // KF-26(FE-OPT-42, docs/improvement.md) 회귀 테스트: getCellProps 자체를
+  // useCallback으로 감싸는 것만으로는 부족했다 — 반환값의 ref 콜백이 매 렌더
+  // 새 클로저라 activeIndex가 바뀔 때마다(화살표 키 이동) React가 45개 셀
+  // 전부 ref를 detach/reattach했다. 인덱스별 ref 콜백 정체성이 activeIndex
+  // 변경 전후로 안정적인지 직접 확인한다.
+  it("activeIndex가 바뀌어도 각 셀의 ref 콜백 정체성은 안정적으로 유지된다", () => {
+    const { result } = renderHook(() => useRovingGrid({ itemCount: 6, columns: 3 }));
+
+    const refsBefore = Array.from(
+      { length: 6 },
+      (_, index) => result.current.getCellProps(index).ref,
+    );
+
+    act(() => {
+      result.current.onKeyDown({
+        key: "ArrowRight",
+        preventDefault: () => {},
+      } as KeyboardEvent<HTMLElement>);
+    });
+    const refsAfter = Array.from(
+      { length: 6 },
+      (_, index) => result.current.getCellProps(index).ref,
+    );
+
+    for (let index = 0; index < 6; index += 1) {
+      expect(refsAfter[index]).toBe(refsBefore[index]);
+    }
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 // schema.ts가 아니라 combination.ts에서 가져온다 — schema.ts를 참조하면 valibot과
 // 통계 스키마 전량이 이 클라이언트 컴포넌트의 번들로 딸려 온다.
@@ -60,7 +60,12 @@ export function CombinationPicker({ initialNumbers }: { initialNumbers: readonly
     setSelected(parseCombinationInput(raw));
   }
 
-  const marks = new Map<number, NumberMark>(selected.map((value) => [value, "locked"]));
+  // KF-26(FE-OPT-41, docs/improvement.md): useMemo 없이 매 렌더 새 Map을
+  // 만들면 NumberGrid의 marks prop 정체성이 계속 바뀐다.
+  const marks = useMemo(
+    () => new Map<number, NumberMark>(selected.map((value) => [value, "locked"])),
+    [selected],
+  );
   const complete = isCompleteCombination(selected);
   const remaining = COMBINATION_SIZE - selected.length;
 
