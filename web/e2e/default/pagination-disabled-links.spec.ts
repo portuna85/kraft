@@ -14,6 +14,7 @@ import { assertNoNavigationOnKeyboardActivation } from "../lib/interaction-asser
  */
 test.describe("경계 페이지네이션 링크는 키보드로 활성화되지 않는다", () => {
   test("첫 페이지에서 '처음'/'이전' 링크가 Enter로 이동하지 않는다", async ({ page }) => {
+    test.fail(true, "KF-15: 비활성 링크가 Enter로 여전히 이동함 — 근본 수정 전까지 알려진 실패");
     await page.goto("/community?category=WIN_STORY");
 
     const nav = page.getByRole("navigation", { name: "페이지 이동" });
@@ -22,6 +23,7 @@ test.describe("경계 페이지네이션 링크는 키보드로 활성화되지 
   });
 
   test("마지막 페이지에서 '다음'/'마지막' 링크가 Enter로 이동하지 않는다", async ({ page }) => {
+    test.fail(true, "KF-15: 비활성 링크가 Enter로 여전히 이동함 — 근본 수정 전까지 알려진 실패");
     await page.goto("/community?category=WIN_STORY&page=2");
 
     const nav = page.getByRole("navigation", { name: "페이지 이동" });

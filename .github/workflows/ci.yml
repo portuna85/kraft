@@ -448,6 +448,12 @@ jobs:
           KRAFT_BACKEND_INTERNAL_URL: http://127.0.0.1:4115
           KRAFT_PUBLIC_BASE_URL: http://127.0.0.1:3115
       - run: npm run test:e2e:responsive
+        env:
+          # KF-03(docs/improvement.md): 이 트랙에 firefox 프로젝트가 추가되면서
+          # cross-browser 트랙과 같은 문제가 생겼다 — 컨테이너가 root로 실행되는데
+          # $HOME(/github/home)의 소유자가 pwuser라 Firefox가 launch 자체를
+          # 거부한다(Playwright 공식 안내 workaround).
+          HOME: /root
       - name: Upload failure traces
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

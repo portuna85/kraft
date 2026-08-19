@@ -219,8 +219,7 @@ for (const [route, { maxKB, currentKB }] of Object.entries(budget)) {
   if (grew) failed = true;
   const status = grew ? "회귀" : withinTarget ? "통과" : "유지";
   console.log(
-    `  ${status}  ${route}: ${actual.totalKB} KB ` +
-      `(기준선 ${currentKB} KB, 목표 ${maxKB} KB)`,
+    `  ${status}  ${route}: ${actual.totalKB} KB ` + `(기준선 ${currentKB} KB, 목표 ${maxKB} KB)`,
   );
 }
 

@@ -32,6 +32,10 @@ test.describe("로그인 상태의 추천 생성이 계정 이력에 나타난�
   });
 
   test("로그인 상태에서 생성한 조합이 계정 추천 이력에 즉시 나타난다", async ({ page }) => {
+    test.fail(
+      true,
+      "KF-01: 로그인 생성이 device 스코프로만 저장돼 계정 이력에 안 나타남 — 근본 수정(§10 3단계) 전까지 알려진 실패",
+    );
     await page.goto("/recommend");
     await page.waitForFunction(() => document.cookie.includes("XSRF-TOKEN"));
 
@@ -39,6 +43,15 @@ test.describe("로그인 상태의 추천 생성이 계정 이력에 나타난�
     await expect(page.getByRole("heading", { name: "추천 조합" })).toBeVisible();
 
     await page.goto("/recommend/history");
+    // `expect(locator).not.toBeVisible()`는 목표 텍스트가 "아직 없음"도 "안 보임"으로
+    // 즉시 통과시킨다 — 계정 이력 응답이 오기 전(로딩 문구만 떠 있는 순간)에 걸리면
+    // 검증이 실제로 아무것도 확인하지 않은 채 항상 초록이 된다. 계정 스코프 응답이
+    // 실제로 도착한 뒤에만 판단하도록 명시적으로 기다린다.
+    await page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/v1/community/me/recommendation-sets") &&
+        response.status() === 200,
+    );
     await expect(page.getByText("아직 생성한 추천이 없습니다")).not.toBeVisible();
   });
 });

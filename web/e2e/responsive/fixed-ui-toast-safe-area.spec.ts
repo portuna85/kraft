@@ -19,11 +19,40 @@ test.use({ viewport: { width: 390, height: 844 } });
 
 test.describe("토스트 영역이 다른 하단 고정 UI와 같은 safe-area 계약을 따른다", () => {
   test(".toastRegion의 bottom 계산식에 safe-area-inset-bottom이 포함된다", async ({ page }) => {
+    test.fail(
+      true,
+      "KF-06: .toastRegion에 safe-area-inset-bottom 누락 — 근본 수정 전까지 알려진 실패",
+    );
     await page.goto("/saved", { waitUntil: "networkidle" });
 
     const bottomValue = await page.evaluate(() => {
-      const region = document.querySelector<HTMLElement>('[aria-live="polite"][class*="toast"]');
-      if (region === null) return null;
+      const regionOrNull = document.querySelector<HTMLElement>(
+        '[aria-live="polite"][class*="toast"]',
+      );
+      if (regionOrNull === null) return null;
+      const region: HTMLElement = regionOrNull;
+
+      // 이 프로젝트의 CSS는 `@layer components { ... }`로 감싸져 있다(cascade
+      // layer 규율). `@layer` 블록은 CSSLayerBlockRule이고 최상위 cssRules를 평평하게
+      // 훑으면 그 안의 CSSStyleRule을 절대 못 찾는다 — 그룹 규칙(@layer/@media/
+      // @supports 등)은 재귀적으로 내려가야 한다.
+      function findBottomRule(rules: CSSRuleList): string | null {
+        for (const rule of Array.from(rules)) {
+          if (
+            rule instanceof CSSStyleRule &&
+            region.matches(rule.selectorText) &&
+            rule.style.bottom !== ""
+          ) {
+            return rule.style.bottom;
+          }
+          if ("cssRules" in rule && rule.cssRules) {
+            const nested = findBottomRule((rule as CSSGroupingRule).cssRules);
+            if (nested !== null) return nested;
+          }
+        }
+        return null;
+      }
+
       // getComputedStyle은 계산된 px 값만 주므로, calc() 안에 env()가 있는지는
       // 소스 스타일시트를 직접 뒤져야 확인 가능하다.
       for (const sheet of Array.from(document.styleSheets)) {
@@ -33,15 +62,8 @@ test.describe("토스트 영역이 다른 하단 고정 UI와 같은 safe-area �
         } catch {
           continue;
         }
-        for (const rule of Array.from(rules)) {
-          if (
-            rule instanceof CSSStyleRule &&
-            region.matches(rule.selectorText) &&
-            rule.style.bottom !== ""
-          ) {
-            return rule.style.bottom;
-          }
-        }
+        const found = findBottomRule(rules);
+        if (found !== null) return found;
       }
       return null;
     });

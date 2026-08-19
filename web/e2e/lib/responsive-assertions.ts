@@ -94,7 +94,10 @@ export async function assertFormControlFontSizeAtLeast16px(page: Page) {
  * (`assertNoHorizontalOverflow`로는 못 잡는) 래핑을 이 방식으로 검출한다.
  */
 export async function assertElementMaxHeight(page: Page, selector: string, max: number) {
-  const height = await page.locator(selector).first().evaluate((el) => el.getBoundingClientRect().height);
+  const height = await page
+    .locator(selector)
+    .first()
+    .evaluate((el) => el.getBoundingClientRect().height);
   expect(
     height,
     `${selector}의 높이(${Math.round(height)}px)가 ${max}px를 초과한다 — 줄바꿈(래핑) 의심`,

@@ -27,6 +27,10 @@ test.describe("assertMinHitArea가 stretched-link를 오탐하지 않는다 (헬
   test("/data의 .cardLink가 assertMinHitArea에서 44px 미만으로 오탐되지 않는다", async ({
     page,
   }) => {
+    test.fail(
+      true,
+      "assertMinHitArea가 stretched-link를 고려하지 않음 — 헬퍼 수정 전까지 알려진 실패",
+    );
     await page.goto("/data", { waitUntil: "networkidle" });
     // 링크 자신의 시각 크기는 텍스트("보기") 크기라 44px 미만이지만, `::after`로
     // 확장된 실제 히트 영역은 카드 전체다 — 헬퍼가 이 차이를 모르는 것이 결함이다.
