@@ -211,6 +211,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/community/me/recommendation-sets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["recommendationSets"];
+        put?: never;
+        post: operations["recommend_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/status": {
         parameters: {
             query?: never;
@@ -427,22 +443,6 @@ export interface paths {
             cookie?: never;
         };
         get: operations["savedNumberMatches"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/community/me/recommendation-sets": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["recommendationSets"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1433,6 +1433,53 @@ export interface operations {
             };
         };
     };
+    recommendationSets: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseRecommendationSetSummary"];
+                };
+            };
+        };
+    };
+    recommend_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RecommendNumbersRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RecommendNumbersResponse"];
+                };
+            };
+        };
+    };
     status: {
         parameters: {
             query?: never;
@@ -1752,29 +1799,6 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["SavedNumberMatchResult"][];
-                };
-            };
-        };
-    };
-    recommendationSets: {
-        parameters: {
-            query?: {
-                page?: number;
-                size?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PageResponseRecommendationSetSummary"];
                 };
             };
         };

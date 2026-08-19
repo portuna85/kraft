@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 
-import { recommendNumbers } from "@/entities/recommendation/api";
+import { recommendNumbers, recommendNumbersForAccount } from "@/entities/recommendation/api";
 import { saveNumbersToAccount, saveNumbersToDevice } from "@/entities/saved-number/api";
 import {
   MAX_COUNT,
@@ -24,6 +24,12 @@ import { ApiError, toApiError } from "@/shared/api/error";
  * 2. **경쟁 응답 폐기.** 사용자가 버튼을 연타하면 응답이 순서 없이 도착한다. 시퀀스
  *    번호가 최신이 아닌 응답은 버린다 — 안 그러면 방금 요청한 것과 다른 결과가 남는다.
  * 3. **로그인 상태면 계정으로 즉시 저장**(레거시 C-2). claim 완료를 기다리지 않는다.
+ * 4. **세션 준비 전에는 발사하지 않는다**(KF-09, docs/improvement.md). `sessionReady`가
+ *    false인 동안 `generate()`/`save()`는 조용히 아무것도 안 한다 — 호출부
+ *    (`recommend-studio.tsx`)가 이 구간에는 버튼을 비활성화해야 하므로 이 가드는
+ *    이중 안전장치다. 세션이 아직 로그인 여부를 모르는 채로 생성이 발사되면 CSRF
+ *    쿠키가 없어 무관한 오류가 뜨거나, 최악의 경우 로그인 사용자의 생성이 device
+ *    스코프로 잘못 만들어질 수 있다.
  */
 
 export type NumberMark = "none" | "locked" | "excluded";
@@ -39,7 +45,13 @@ export type SaveOutcome =
 
 export type SelectionMode = "locked" | "excluded";
 
-export function useRecommendStudio({ loggedIn }: { loggedIn: boolean }) {
+export function useRecommendStudio({
+  loggedIn,
+  sessionReady,
+}: {
+  loggedIn: boolean;
+  sessionReady: boolean;
+}) {
   const [strategy, setStrategy] = useState<Strategy>("balanced");
   const [count, setCount] = useState(5);
   const [selectionMode, setSelectionMode] = useState<SelectionMode>("locked");
@@ -121,13 +133,18 @@ export function useRecommendStudio({ loggedIn }: { loggedIn: boolean }) {
 
   /** 오직 사용자 클릭으로만 호출한다. 이펙트에서 부르지 않는다(F-P0-6/7). */
   const generate = useCallback(async () => {
+    if (!sessionReady) return; // KF-09: 세션이 아직 미확정이면 발사하지 않는다.
     sequenceRef.current += 1;
     const sequence = sequenceRef.current;
     setState({ status: "generating" });
     setSaveOutcomes(new Map());
 
     try {
-      const result = await recommendNumbers({ strategy, count, lockedNumbers, excludedNumbers });
+      // KF-01: 로그인 상태면 계정 소유로 직접 생성한다 — device 스코프에 만들었다가
+      // 나중에 claim으로 옮기는 경로에 기대지 않는다.
+      const result = loggedIn
+        ? await recommendNumbersForAccount({ strategy, count, lockedNumbers, excludedNumbers })
+        : await recommendNumbers({ strategy, count, lockedNumbers, excludedNumbers });
       if (sequence !== sequenceRef.current) return; // 낡은 응답 폐기
       setResultMarksKey(marksKey);
       setState({ status: "ready", result });
@@ -135,10 +152,11 @@ export function useRecommendStudio({ loggedIn }: { loggedIn: boolean }) {
       if (sequence !== sequenceRef.current) return;
       setState({ status: "error", error: toApiError(cause, "조합을 만들지 못했습니다.") });
     }
-  }, [strategy, count, lockedNumbers, excludedNumbers, marksKey]);
+  }, [strategy, count, lockedNumbers, excludedNumbers, marksKey, loggedIn, sessionReady]);
 
   const save = useCallback(
     async (index: number, numbers: readonly number[]) => {
+      if (!sessionReady) return; // KF-09: 세션이 아직 미확정이면 발사하지 않는다.
       try {
         // 로그인 상태면 claim 결과와 무관하게 계정으로 보낸다(C-2).
         const result = loggedIn
@@ -160,7 +178,7 @@ export function useRecommendStudio({ loggedIn }: { loggedIn: boolean }) {
         );
       }
     },
-    [loggedIn],
+    [loggedIn, sessionReady],
   );
 
   return {

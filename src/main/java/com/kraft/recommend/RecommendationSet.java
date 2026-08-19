@@ -63,6 +63,25 @@ public class RecommendationSet {
         this.createdAt = createdAt;
     }
 
+    /**
+     * KF-01(docs/improvement.md): 로그인 계정 소유로 생성 시점에 바로 만든다 — 이전에는
+     * 계정 귀속이 {@link #claimTo}로 사후 이전하는 경로뿐이었다. {@code client_token_hash}는
+     * 설정하지 않으므로 {@code chk_recommendation_sets_owner_xor} 제약을 그대로 만족한다.
+     */
+    public RecommendationSet(Long ownerUserId, String strategy, String algorithmVersion,
+                              int historyThroughRound, String exclusionPolicyVersion,
+                              String lockedNumbers, String excludedNumbers,
+                              OffsetDateTime createdAt) {
+        this.ownerUserId = ownerUserId;
+        this.strategy = strategy;
+        this.algorithmVersion = algorithmVersion;
+        this.historyThroughRound = historyThroughRound;
+        this.exclusionPolicyVersion = exclusionPolicyVersion;
+        this.lockedNumbers = lockedNumbers;
+        this.excludedNumbers = excludedNumbers;
+        this.createdAt = createdAt;
+    }
+
     public Long getId() {
         return id;
     }

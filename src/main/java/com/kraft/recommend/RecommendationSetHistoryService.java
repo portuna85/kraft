@@ -51,26 +51,51 @@ public class RecommendationSetHistoryService {
                          String exclusionPolicyVersion,
                          List<Integer> locked, List<Integer> excluded, List<RecommendationItemView> items,
                          OffsetDateTime createdAt) {
-        String lockedStorage = locked.isEmpty() ? null : lottoNumberCodec.toStorageValueSubset(locked);
-        String excludedStorage = excluded.isEmpty() ? null : lottoNumberCodec.toStorageValueSubset(excluded);
-
-        RecommendationSet set = recommendationSetRepository.save(new RecommendationSet(
+        return persistInternal(new RecommendationSet(
                 clientTokenHash, strategy, algorithmVersion, historyThroughRound, exclusionPolicyVersion,
-                lockedStorage, excludedStorage, createdAt));
+                lockedStorage(locked), excludedStorage(excluded), createdAt), items);
+    }
+
+    /**
+     * KF-01(docs/improvement.md): 로그인 계정 소유로 직접 영속화한다 — {@link #persist}와
+     * 달리 device-token 해시가 아니라 인증된 계정 id로 소유권을 정한다. 호출부
+     * ({@code LottoRecommendationService.recommendForOwner})가 서버가 확정한
+     * {@code ownerUserId}만 넘겨야 한다 — 클라이언트가 보낸 계정 식별자를 여기로
+     * 흘려보내면 안 된다.
+     */
+    public Long persistForOwner(Long ownerUserId, String strategy, String algorithmVersion, int historyThroughRound,
+                                 String exclusionPolicyVersion,
+                                 List<Integer> locked, List<Integer> excluded, List<RecommendationItemView> items,
+                                 OffsetDateTime createdAt) {
+        return persistInternal(new RecommendationSet(
+                ownerUserId, strategy, algorithmVersion, historyThroughRound, exclusionPolicyVersion,
+                lockedStorage(locked), excludedStorage(excluded), createdAt), items);
+    }
+
+    private String lockedStorage(List<Integer> locked) {
+        return locked.isEmpty() ? null : lottoNumberCodec.toStorageValueSubset(locked);
+    }
+
+    private String excludedStorage(List<Integer> excluded) {
+        return excluded.isEmpty() ? null : lottoNumberCodec.toStorageValueSubset(excluded);
+    }
+
+    private Long persistInternal(RecommendationSet set, List<RecommendationItemView> items) {
+        RecommendationSet saved = recommendationSetRepository.save(set);
 
         // M-8: 항목마다 save()를 개별 호출하면 N+1이 되고, application-prod.yml의
         // hibernate.jdbc.batch_size도 개별 save()에는 적용되지 않는다 — saveAll()로 한 번에
         // 묶어야 배치 insert가 실제로 일어난다.
         List<RecommendationItem> entities = items.stream()
                 .map(item -> new RecommendationItem(
-                        set.getId(), item.position(), lottoNumberCodec.toStorageValueSubset(item.numbers()),
+                        saved.getId(), item.position(), lottoNumberCodec.toStorageValueSubset(item.numbers()),
                         LottoBitmask.of(item.numbers()), item.score(),
                         item.explanationCodes().isEmpty()
                                 ? null
                                 : item.explanationCodes().stream().map(Enum::name).collect(Collectors.joining(","))))
                 .toList();
         recommendationItemRepository.saveAll(entities);
-        return set.getId();
+        return saved.getId();
     }
 
     @Transactional(readOnly = true)

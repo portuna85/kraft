@@ -49,3 +49,20 @@ export function useSession(): SessionState {
 export function canQueryOwnerScope(state: SessionState): boolean {
   return state.session?.loggedIn === true;
 }
+
+/**
+ * KF-09(docs/improvement.md) — 세션 준비성의 명시적 3상태 모델.
+ *
+ * 세션 조회가 끝나기 전(`unsettled`)에 소유권 민감·CSRF 의존 액션(추천 생성 등)이
+ * 발사되면, 로그인 사용자에게 원인과 무관한 "보안 토큰이 없어 요청을 보낼 수
+ * 없습니다" 오류를 보여주거나(CSRF 쿠키 미도착) 최악의 경우 아직 `loggedIn`을
+ * 모르는 채로 device 스코프로 잘못 생성될 위험이 있다. 조회 실패(`error`)도
+ * "로그인 여부를 안다"고 볼 수 없으므로 `unsettled`로 묶는다 — 이 함수는 오직
+ * "지금 안전하게 스코프를 확정할 수 있는가"만 답한다.
+ */
+export type SessionReadiness = "unsettled" | "anon-ready" | "auth-ready";
+
+export function sessionReadiness(state: SessionState): SessionReadiness {
+  if (state.loading || state.error || state.session === null) return "unsettled";
+  return state.session.loggedIn ? "auth-ready" : "anon-ready";
+}

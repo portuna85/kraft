@@ -14,7 +14,7 @@ import {
 } from "@/entities/recommendation/schema";
 import { RecommendationResultRow } from "@/entities/recommendation/ui/recommendation-result-row";
 import { NumberGrid } from "@/entities/round/ui/number-grid";
-import { useSession } from "@/entities/user-session/session-context";
+import { sessionReadiness, useSession } from "@/entities/user-session/session-context";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { TextField } from "@/shared/ui/field";
@@ -36,8 +36,11 @@ export function RecommendStudio() {
   const session = useSession();
   // claimStatus는 보지 않는다 — claim 실패는 저장 대상 스코프와 무관하다(불변식 I-1).
   const loggedIn = session.session?.loggedIn === true;
+  // KF-09: 세션이 미확정인 동안은 생성·저장을 게이팅한다(아래 버튼 비활성화 + 훅
+  // 내부의 이중 안전장치).
+  const sessionReady = sessionReadiness(session) !== "unsettled";
 
-  const studio = useRecommendStudio({ loggedIn });
+  const studio = useRecommendStudio({ loggedIn, sessionReady });
 
   const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
 
@@ -157,7 +160,9 @@ export function RecommendStudio() {
           조합 만들기
         </Button>
       ) : (
-        <Button size="lg" onClick={() => void studio.generate()}>
+        // KF-09: 세션이 아직 미확정이면 클릭 자체를 막는다 — "만드는 중" 스피너를
+        // 쓰면 아직 세션을 기다리는 중인데 생성이 진행 중이라고 오해를 준다.
+        <Button size="lg" disabled={!sessionReady} onClick={() => void studio.generate()}>
           조합 만들기
         </Button>
       )}

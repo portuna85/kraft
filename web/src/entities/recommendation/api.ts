@@ -29,9 +29,31 @@ export function recommendNumbers(
 ): Promise<RecommendNumbers> {
   return browserMutate("/api/v1/numbers/recommend", recommendNumbersSchema, {
     method: "POST",
-    // 익명 사용자의 추천 이력을 이 기기에 귀속시킨다. 로그인 사용자는 세션으로 식별되므로
-    // 백엔드가 계정 스코프를 우선한다.
+    // 익명 사용자의 추천 이력을 이 기기에 귀속시킨다.
     deviceScoped: true,
+    body: {
+      strategy: input.strategy,
+      count: input.count,
+      lockedNumbers: [...input.lockedNumbers],
+      excludedNumbers: [...input.excludedNumbers],
+    },
+    ...(signal === undefined ? {} : { signal }),
+  });
+}
+
+/**
+ * KF-01(docs/improvement.md): 로그인 계정으로 생성한다 — `deviceScoped`를 주지
+ * 않으므로 `X-Device-Token` 헤더가 안 붙는다(`saveNumbersToAccount`와 같은 패턴).
+ * 소유자는 서버가 인증 세션(`CommunityPrincipal`)으로 판단한다 — 클라이언트는
+ * 계정 식별자를 아예 보내지 않는다. 호출부(`use-recommend-studio.ts`)가
+ * `loggedIn` 상태에서만 이 함수를 쓴다.
+ */
+export function recommendNumbersForAccount(
+  input: RecommendInput,
+  signal?: AbortSignal,
+): Promise<RecommendNumbers> {
+  return browserMutate("/api/v1/community/me/recommendation-sets", recommendNumbersSchema, {
+    method: "POST",
     body: {
       strategy: input.strategy,
       count: input.count,

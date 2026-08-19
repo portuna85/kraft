@@ -208,13 +208,29 @@ public class LottoRecommendationService {
     public RecommendNumbersResponse recommend(RecommendNumbersRequest request, String clientTokenHash) {
         Timer.Sample sample = Timer.start(meterRegistry);
         try {
-            return doRecommend(request, clientTokenHash);
+            return doRecommend(request, clientTokenHash, null);
         } finally {
             sample.stop(recommendTimer);
         }
     }
 
-    private RecommendNumbersResponse doRecommend(RecommendNumbersRequest request, String clientTokenHash) {
+    /**
+     * KF-01(docs/improvement.md): 로그인 계정 소유로 생성·영속화한다.
+     * {@code MyLibraryController}(인증된 {@code /api/v1/community/me/**} 체인) 전용 —
+     * {@code ownerUserId}는 반드시 서버가 인증 컨텍스트({@code CommunityPrincipal})로
+     * 확정한 값이어야 하며, 클라이언트가 보낸 식별자를 그대로 넘기면 안 된다.
+     */
+    public RecommendNumbersResponse recommendForOwner(RecommendNumbersRequest request, Long ownerUserId) {
+        Timer.Sample sample = Timer.start(meterRegistry);
+        try {
+            return doRecommend(request, null, ownerUserId);
+        } finally {
+            sample.stop(recommendTimer);
+        }
+    }
+
+    private RecommendNumbersResponse doRecommend(RecommendNumbersRequest request, String clientTokenHash,
+                                                  Long ownerUserId) {
         RecommendationHistorySnapshotManager.HistorySnapshot snapshot = historySnapshotManager.currentSnapshot();
         HistoryStatus status = historyStatus();
         if (!status.ready()) {
@@ -260,12 +276,15 @@ public class LottoRecommendationService {
 
         Long setId = null;
         OffsetDateTime createdAt = null;
-        if (clientTokenHash != null) {
+        if (clientTokenHash != null || ownerUserId != null) {
             createdAt = OffsetDateTime.now(clock);
-            setId = recommendationSetHistoryService.persist(clientTokenHash, ctx.strategy(), algorithmVersion,
-                    snapshot.historyThroughRound(), EXCLUSION_POLICY_VERSION,
-                    ctx.locked(), ctx.excluded().stream().sorted().toList(),
-                    items, createdAt);
+            setId = ownerUserId != null
+                    ? recommendationSetHistoryService.persistForOwner(ownerUserId, ctx.strategy(), algorithmVersion,
+                            snapshot.historyThroughRound(), EXCLUSION_POLICY_VERSION,
+                            ctx.locked(), ctx.excluded().stream().sorted().toList(), items, createdAt)
+                    : recommendationSetHistoryService.persist(clientTokenHash, ctx.strategy(), algorithmVersion,
+                            snapshot.historyThroughRound(), EXCLUSION_POLICY_VERSION,
+                            ctx.locked(), ctx.excluded().stream().sorted().toList(), items, createdAt);
         }
 
         return new RecommendNumbersResponse(

@@ -80,6 +80,24 @@ class RecommendationSetHistoryServiceTest {
     }
 
     @Test
+    @DisplayName("KF-01: 로그인 계정 소유로 저장하면 owner_user_id로 저장되고 항목도 함께 저장된다")
+    void persistForOwner_savesSetWithOwnerAndItems() {
+        var captor = org.mockito.ArgumentCaptor.forClass(RecommendationSet.class);
+        given(recommendationSetRepository.save(captor.capture())).willReturn(setEntity(1L, TOKEN_HASH));
+
+        RecommendationItemView item = new RecommendationItemView(1, List.of(1, 2, 3, 4, 5, 6), null, List.of());
+        Long id = service.persistForOwner(99L, "random", "uniform-random-v1", 1189,
+                "historical-first-prize-v1", List.of(), List.of(), List.of(item), OffsetDateTime.now());
+
+        assertThat(id).isEqualTo(1L);
+        // KF-01: 계정 소유로 만든 행은 owner_user_id만 채우고 client_token_hash는 비워야
+        // chk_recommendation_sets_owner_xor 제약(V33)을 만족한다.
+        assertThat(captor.getValue().getOwnerUserId()).isEqualTo(99L);
+        assertThat(captor.getValue().getClientTokenHash()).isNull();
+        verify(recommendationItemRepository).saveAll(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     @DisplayName("소유한 클라이언트 토큰으로 조회하면 세트를 반환한다")
     void get_ownedSet_returnsSummary() {
         given(recommendationSetRepository.findById(1L)).willReturn(Optional.of(setEntity(1L, TOKEN_HASH)));

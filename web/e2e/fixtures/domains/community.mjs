@@ -91,11 +91,11 @@ const DEFAULT_SESSION_STATE = {
 };
 let sessionState = { ...DEFAULT_SESSION_STATE };
 
-// 계정 스코프 추천 이력 저장소. 의도적으로 아무도 여기 쓰지 않는다 — 실제 백엔드가
-// `/api/v1/numbers/recommend`를 device-token 해시로만 영속화하고 계정 스코프 저장
-// 경로가 없다는 것이 KF-01의 근인이다(`numbers.mjs`의 `/api/v1/numbers/recommend`
-// 참고). 이 배열에 뭔가 쓰는 코드를 추가하면 결함을 픽스처에서 "고쳐버려" 테스트가
-// 더 이상 결함을 증명하지 못하게 된다.
+// 계정 스코프 추천 이력 저장소. KF-01(docs/improvement.md) 수정 후 실제 백엔드가
+// `/api/v1/community/me/recommendation-sets`(POST)로 로그인 계정 소유 생성을
+// 지원하므로, 이 픽스처도 그 쓰기 경로를 흉내낸다 — `/api/v1/numbers/recommend`
+// (device-token, 익명 전용)와는 별개 저장소다.
+let nextAccountSetId = 300;
 const accountRecommendationSets = [];
 
 export function setSessionState(next) {
@@ -104,19 +104,55 @@ export function setSessionState(next) {
 
 export function resetCommunityState() {
   sessionState = { ...DEFAULT_SESSION_STATE };
+  accountRecommendationSets.length = 0;
 }
 
 export const routes = [
   ["/api/v1/community/session", () => sessionState],
   [
     "/api/v1/community/me/recommendation-sets",
-    () => ({
-      items: accountRecommendationSets,
-      page: 0,
-      size: 20,
-      totalElements: accountRecommendationSets.length,
-      totalPages: accountRecommendationSets.length === 0 ? 0 : 1,
-    }),
+    (_params, requestBody, method) => {
+      if (method === "GET") {
+        return {
+          items: accountRecommendationSets,
+          page: 0,
+          size: 20,
+          totalElements: accountRecommendationSets.length,
+          totalPages: accountRecommendationSets.length === 0 ? 0 : 1,
+        };
+      }
+      // POST — KF-01: 로그인 계정 소유로 생성한다. `/api/v1/numbers/recommend`
+      // (numbers.mjs)의 응답 모양과 동일해야 recommendNumbersSchema를 통과한다.
+      const strategy = requestBody?.strategy ?? "random";
+      const items = [
+        { position: 0, numbers: [2, 9, 18, 25, 34, 42], score: null, explanationCodes: [] },
+        { position: 1, numbers: [4, 13, 20, 27, 36, 45], score: null, explanationCodes: [] },
+      ];
+      const createdAt = "2026-08-01T16:00:00Z";
+      const setId = nextAccountSetId++;
+      accountRecommendationSets.unshift({
+        id: setId,
+        strategy,
+        algorithmVersion: "e2e-fixture",
+        historyThroughRound: 1150,
+        exclusionPolicyVersion: "e2e-fixture",
+        lockedNumbers: requestBody?.lockedNumbers ?? [],
+        excludedNumbers: requestBody?.excludedNumbers ?? [],
+        createdAt,
+        items,
+      });
+      return {
+        recommendations: items.map((item) => item.numbers),
+        strategy,
+        algorithmVersion: "e2e-fixture",
+        historyThroughRound: 1150,
+        historicalExclusionApplied: false,
+        exclusionPolicyVersion: "e2e-fixture",
+        setId,
+        items,
+        createdAt,
+      };
+    },
   ],
   [
     "/api/v1/community/posts",

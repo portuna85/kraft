@@ -2,6 +2,9 @@ package com.kraft.identity;
 
 import com.kraft.common.web.PageResponse;
 import com.kraft.community.auth.CommunityPrincipal;
+import com.kraft.recommend.LottoRecommendationService;
+import com.kraft.recommend.RecommendNumbersRequest;
+import com.kraft.recommend.RecommendNumbersResponse;
 import com.kraft.recommend.RecommendationSetHistoryService;
 import com.kraft.recommend.RecommendationSetSummary;
 import com.kraft.saved.CreateSavedNumberRequest;
@@ -38,11 +41,14 @@ public class MyLibraryController {
 
     private final SavedNumbersService savedNumbersService;
     private final RecommendationSetHistoryService recommendationSetHistoryService;
+    private final LottoRecommendationService lottoRecommendationService;
 
     public MyLibraryController(SavedNumbersService savedNumbersService,
-                                RecommendationSetHistoryService recommendationSetHistoryService) {
+                                RecommendationSetHistoryService recommendationSetHistoryService,
+                                LottoRecommendationService lottoRecommendationService) {
         this.savedNumbersService = savedNumbersService;
         this.recommendationSetHistoryService = recommendationSetHistoryService;
+        this.lottoRecommendationService = lottoRecommendationService;
     }
 
     @GetMapping("/saved-numbers")
@@ -83,6 +89,19 @@ public class MyLibraryController {
             @AuthenticationPrincipal CommunityPrincipal principal, @PathVariable long id) {
         savedNumbersService.deleteForOwner(principal.getUserId(), id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * KF-01(docs/improvement.md): 로그인 계정으로 추천을 생성·영속화한다.
+     * {@code /api/v1/numbers/recommend}(익명, device-token STATELESS 체인)와 달리
+     * 소유자는 {@link CommunityPrincipal}(이미 인증된 세션)에서만 온다 — 클라이언트가
+     * 보낸 계정 식별자를 신뢰하지 않는다.
+     */
+    @PostMapping("/recommendation-sets")
+    public RecommendNumbersResponse recommend(
+            @AuthenticationPrincipal CommunityPrincipal principal,
+            @Valid @RequestBody(required = false) RecommendNumbersRequest request) {
+        return lottoRecommendationService.recommendForOwner(request, principal.getUserId());
     }
 
     @GetMapping("/recommendation-sets")

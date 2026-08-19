@@ -876,5 +876,31 @@ class LottoRecommendationServiceTest {
                     org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
                     org.mockito.ArgumentMatchers.any());
         }
+
+        @Test
+        @DisplayName("KF-01: recommendForOwner는 device-token이 아니라 ownerUserId로 영속화하고 setId를 채운다")
+        void recommendForOwner_persistsByOwnerAndReturnsSetId() {
+            given(recommendationSetHistoryService.persistForOwner(
+                    org.mockito.ArgumentMatchers.eq(99L), org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyInt(),
+                    org.mockito.ArgumentMatchers.eq(LottoRecommendationService.EXCLUSION_POLICY_VERSION),
+                    anyList(), anyList(), org.mockito.ArgumentMatchers.anyList(),
+                    org.mockito.ArgumentMatchers.any()))
+                    .willReturn(42L);
+
+            RecommendNumbersRequest request = new RecommendNumbersRequest(1, null, null, null, null, null);
+            RecommendNumbersResponse response = service.recommendForOwner(request, 99L);
+
+            assertThat(response.setId()).isEqualTo(42L);
+            assertThat(response.createdAt()).isNotNull();
+            assertThat(response.items()).hasSize(1);
+            // 계정 소유 경로는 device-token 저장 경로를 절대 건드리면 안 된다.
+            verify(recommendationSetHistoryService, never()).persist(
+                    org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyInt(),
+                    org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.any());
+        }
     }
 }
