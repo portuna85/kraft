@@ -10,6 +10,14 @@ import { ROUTES } from "@/shared/config/routes";
 export type NavItem = { href: string; label: string };
 export type NavGroup = { title: string; items: NavItem[] };
 
+/**
+ * KF-25②(docs/improvement.md): TabBar·PrimaryNav 둘 다 "현재 라우트인가"를
+ * 판정해야 한다 — 한 곳에 두고 공유한다.
+ */
+export function isRouteCurrent(href: string, pathname: string | null): boolean {
+  return href === "/" ? pathname === "/" : (pathname?.startsWith(href) ?? false);
+}
+
 export const PRIMARY_NAV: NavGroup[] = [
   {
     title: "번호 뽑기",

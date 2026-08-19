@@ -84,6 +84,13 @@
     }
   }
 
+  /* KF-25②(docs/improvement.md): 데스크톱 내비게이션이 현재 라우트를 노출하지
+     않았다 — .tabLink[aria-current="page"]와 같은 패턴. */
+  .navLink[aria-current="page"] {
+    color: var(--color-brand-strong);
+    font-weight: 700;
+  }
+
   .main {
     display: block;
     padding-block: var(--space-6) var(--space-12);

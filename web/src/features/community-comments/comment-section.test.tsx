@@ -125,6 +125,29 @@ describe("댓글 섹션", () => {
     await waitFor(() => expect(document.getElementById("comment-42")).toBeInTheDocument());
   });
 
+  // KF-26 UX-04(docs/improvement.md): targetPage를 무시하고 항상 0페이지를
+  // 새로고침해, 상위 댓글이 많아 새 댓글이 다음 페이지에 있으면 강조 대상이
+  // DOM에 없어 스크롤이 조용히 실패했다.
+  it("KF-26 UX-04: targetPage가 0이 아니면 그 페이지를 가져와 스크롤·강조한다", async () => {
+    const user = userEvent.setup();
+    createComment.mockResolvedValue(comment({ id: 99, targetPage: 2 }));
+    fetchCommentPage.mockResolvedValue(
+      initialPage({
+        topLevel: [comment({ id: 99 })],
+        page: 2,
+        totalPages: 3,
+        totalTopLevelComments: 51,
+      }),
+    );
+
+    renderSection(LOGGED_IN);
+    await user.type(screen.getByLabelText("댓글 작성"), "새 댓글");
+    await user.click(screen.getByRole("button", { name: "등록" }));
+
+    await waitFor(() => expect(fetchCommentPage).toHaveBeenCalledWith(100, 2));
+    await waitFor(() => expect(document.getElementById("comment-99")).toBeInTheDocument());
+  });
+
   it("빈 내용으로는 등록 버튼이 비활성화된다", () => {
     renderSection(LOGGED_IN);
     expect(screen.getByRole("button", { name: "등록" })).toBeDisabled();

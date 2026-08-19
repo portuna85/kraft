@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 
 import { reportClientError } from "@/shared/lib/report-client-error";
+import { Button } from "@/shared/ui/button";
 
 /**
  * 세션 셸 오류 경계
@@ -29,9 +30,7 @@ export default function SessionError({
         로그인 상태와는 별개의 문제일 수 있습니다. 다시 시도해도 같으면 페이지를 새로 고쳐 주세요.
       </p>
       <p>
-        <button type="button" onClick={reset}>
-          다시 시도
-        </button>
+        <Button onClick={reset}>다시 시도</Button>
       </p>
     </div>
   );

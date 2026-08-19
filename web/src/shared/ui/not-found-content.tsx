@@ -1,6 +1,5 @@
-import Link from "next/link";
-
 import { ROUTES } from "@/shared/config/routes";
+import { LinkButton } from "@/shared/ui/button";
 
 /**
  * KF-16(docs/improvement.md): 루트 `not-found.tsx`와 `(session)/not-found.tsx`가
@@ -13,7 +12,7 @@ export function NotFoundContent() {
       <h1>페이지를 찾을 수 없습니다</h1>
       <p>주소가 바뀌었거나 삭제된 페이지입니다. 아래에서 원하는 화면으로 이동할 수 있습니다.</p>
       <p>
-        <Link href={ROUTES.home}>홈으로 가기</Link>
+        <LinkButton href={ROUTES.home}>홈으로 가기</LinkButton>
       </p>
     </div>
   );

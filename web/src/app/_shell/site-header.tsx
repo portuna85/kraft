@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 
 import { ROUTES } from "@/shared/config/routes";
 
-import { PRIMARY_NAV } from "./nav-items";
 import styles from "./shell.module.css";
+import { PrimaryNav } from "./primary-nav";
 import { ThemeToggle } from "./theme-toggle";
 
 /**
@@ -20,13 +20,7 @@ export function SiteHeader({ accountSlot }: { accountSlot?: ReactNode }) {
           KRAFT Lotto
         </Link>
 
-        <nav className={styles.primaryNav} aria-label="주요 메뉴">
-          {PRIMARY_NAV.flatMap((group) => group.items).map((item) => (
-            <Link key={item.href} className={styles.navLink} href={item.href}>
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        <PrimaryNav />
 
         <div className={styles.headerActions}>
           <ThemeToggle />

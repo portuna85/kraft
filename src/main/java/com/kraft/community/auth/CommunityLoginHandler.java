@@ -58,7 +58,24 @@ public class CommunityLoginHandler implements AuthenticationSuccessHandler, Auth
                 .tag("reason", reason)
                 .register(meterRegistry)
                 .increment();
-        response.sendRedirect(redirectTarget() + "?login_error=1&reason=" + reason);
+        String provider = classifyProvider(request);
+        String query = "?login_error=1&reason=" + reason
+                + (provider == null ? "" : "&provider=" + provider);
+        response.sendRedirect(redirectTarget() + query);
+    }
+
+    // KF-26 UX-05(docs/improvement.md): 재시도 링크가 provider와 무관하게 항상
+    // Google로 하드코딩돼 Naver 사용자가 조용히 다른 provider로 보내졌다. 콜백
+    // URI(/login/oauth2/code/{registrationId})의 마지막 세그먼트에서 실제 시도한
+    // provider를 얻되, classify(exception)과 같은 원칙으로 고정 허용목록만
+    // 반사한다 — 임의 문자열을 그대로 리다이렉트 URL에 실으면 안 된다.
+    private static String classifyProvider(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        String segment = uri.substring(uri.lastIndexOf('/') + 1);
+        return switch (segment) {
+            case "google", "naver" -> segment;
+            default -> null;
+        };
     }
 
     // OAuth2AuthenticationException은 authorization-request 단계(세션 유실·state 불일치 등

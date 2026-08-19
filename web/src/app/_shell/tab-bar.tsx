@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { TAB_BAR_ITEMS } from "./nav-items";
+import { isRouteCurrent, TAB_BAR_ITEMS } from "./nav-items";
 import styles from "./shell.module.css";
 
 /**
@@ -11,13 +11,9 @@ import styles from "./shell.module.css";
  * 셸에서 유일하게 JS를 쓰는 부분이라 여기 하나로 격리한다(§19.2 P-8: "use client"를
  * 잎에 가깝게).
  */
-function isTabCurrent(href: string, pathname: string | null): boolean {
-  return href === "/" ? pathname === "/" : (pathname?.startsWith(href) ?? false);
-}
-
 export function TabBar() {
   const pathname = usePathname();
-  const activeIndex = TAB_BAR_ITEMS.findIndex((item) => isTabCurrent(item.href, pathname));
+  const activeIndex = TAB_BAR_ITEMS.findIndex((item) => isRouteCurrent(item.href, pathname));
 
   return (
     <nav
@@ -31,7 +27,7 @@ export function TabBar() {
       <span className={styles.indicator} aria-hidden="true" />
 
       {TAB_BAR_ITEMS.map((item) => {
-        const isCurrent = isTabCurrent(item.href, pathname);
+        const isCurrent = isRouteCurrent(item.href, pathname);
         return (
           <Link
             key={item.href}

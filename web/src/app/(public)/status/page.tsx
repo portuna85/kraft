@@ -5,7 +5,7 @@ import { getStatusIncidents } from "@/entities/status-incident/api";
 import { incidentTypeLabel } from "@/entities/status-incident/schema";
 import { formatDateTime, formatDrawDate } from "@/shared/lib/format";
 import { StatusBadge } from "@/shared/ui/badge";
-import { EmptyState } from "@/shared/ui/states";
+import { EmptyState, InlineAlert } from "@/shared/ui/states";
 import { Table } from "@/shared/ui/surface";
 
 import styles from "./status.module.css";
@@ -41,9 +41,11 @@ export default async function StatusPage() {
       <section aria-labelledby="freshness" className="stack">
         <h2 id="freshness">현재 데이터 상태</h2>
         {freshness === null ? (
-          <p className={styles.note}>
+          // KF-23(docs/improvement.md): 평문 <p>라 실패인데도 스크린리더에
+          // 무성이었다 — role="alert"를 주는 InlineAlert로 바꾼다.
+          <InlineAlert tone="danger">
             지금은 데이터 상태를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.
-          </p>
+          </InlineAlert>
         ) : (
           <div className={styles.current}>
             {/* 색만으로 상태를 전달하지 않는다 — 라벨이 계약상 필수다. */}
@@ -69,7 +71,7 @@ export default async function StatusPage() {
       <section aria-labelledby="incidents" className="stack">
         <h2 id="incidents">최근 30일 수집·보정 이력</h2>
         {incidents === null ? (
-          <p className={styles.note}>지금은 이력을 불러올 수 없습니다.</p>
+          <InlineAlert tone="danger">지금은 이력을 불러올 수 없습니다.</InlineAlert>
         ) : incidents.length === 0 ? (
           <EmptyState
             reason="no-data"

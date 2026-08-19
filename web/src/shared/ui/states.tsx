@@ -7,10 +7,19 @@ import type { EmptyStateContract, ErrorStateContract, Tone } from "./contracts";
  * `reason`이 필수라 "검색 결과 없음"과 "원래 비어 있음"을 같은 화면으로 낼 수 없다.
  * 이 구분이 없으면 사용자는 필터를 지워야 한다는 것을 알 수 없고, 서비스가 고장 난
  * 것으로 오해한다. 필터로 인한 빈 결과에는 필터 해제 액션을 주는 것이 원칙이다.
+ *
+ * KF-23(docs/improvement.md): `reason="no-data"`(최초 빈 목록)는 의도적으로
+ * 무성 유지한다 — 방문 즉시 "결과 없음"을 읽으면 소음이다. `reason="filtered"`
+ * (사용자가 필터·검색을 조작해 결과가 0이 된 경우)는 그 행동의 직접 결과라
+ * `role="status"`로 알린다(이 role 자체가 `aria-live="polite"`를 내포한다).
  */
 export function EmptyState({ reason, title, description, action }: EmptyStateContract) {
   return (
-    <div className={styles.state} data-reason={reason}>
+    <div
+      className={styles.state}
+      data-reason={reason}
+      role={reason === "filtered" ? "status" : undefined}
+    >
       <p className={styles.stateTitle}>{title}</p>
       <div className={styles.stateDescription}>{description}</div>
       {action}

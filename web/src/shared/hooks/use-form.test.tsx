@@ -127,7 +127,9 @@ describe("useForm", () => {
     release?.();
   });
 
-  it("서버 오류를 해당 필드로 되돌린다", async () => {
+  it("서버 오류를 해당 필드로 되돌리고 그 필드로 포커스를 옮긴다", async () => {
+    // KF-23(docs/improvement.md): 계약 주석("첫 오류 필드로 포커스를 옮긴다")이
+    // 로컬 검증에만 지켜지고 서버 매핑 오류는 빠져 있었다.
     const onSubmit = vi.fn().mockRejectedValue(new ApiError("client", "중복", { status: 409 }));
     render(
       <PostForm
@@ -141,6 +143,7 @@ describe("useForm", () => {
     await userEvent.click(screen.getByRole("button", { name: "제출" }));
 
     expect(await screen.findByText("이미 같은 제목의 글이 있습니다.")).toBeInTheDocument();
+    expect(screen.getByLabelText("제목")).toHaveFocus();
   });
 
   it("필드로 매핑할 수 없는 서버 오류는 폼 오류로 남긴다", async () => {

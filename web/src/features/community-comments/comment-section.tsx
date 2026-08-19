@@ -81,12 +81,12 @@ export function CommentSection({
   }
 
   /**
-   * 작성 후 목록 전체를 다시 읽는다. 응답으로 온 댓글을 손으로 끼워 넣으면 답글이
+   * 목록 전체를 다시 읽는다. 응답으로 온 댓글을 손으로 끼워 넣으면 답글이
    * 어느 상위 댓글에 속하는지, 몇 페이지에 있어야 하는지를 화면이 다시 계산해야 하고
    * 그 계산이 서버와 어긋나기 시작한다.
    */
-  async function refreshFirstPage() {
-    const fresh = await fetchCommentPage(postId, 0);
+  async function refreshPage(targetPage: number) {
+    const fresh = await fetchCommentPage(postId, targetPage);
     setComments(fresh.topLevel);
     setPage(fresh.page);
     setTotalPages(fresh.totalPages);
@@ -94,13 +94,15 @@ export function CommentSection({
   }
 
   /**
-   * UX-03: 새로고침 후 방금 쓴 댓글로 스크롤하고 잠깐 강조한다. targetPage가 0이
-   * 아니면(상위 댓글이 50개를 넘어 새 댓글이 다음 페이지에 있는 경우) 이 새로고침이
-   * 그 페이지까지 가져오지 않으므로 강조 대상이 DOM에 없어 스크롤은 조용히 아무
-   * 일도 하지 않는다 — 답글은 항상 부모의 페이지에 실려 있어 이 문제가 없다.
+   * KF-26 UX-04(docs/improvement.md): 새로고침 후 방금 쓴 댓글로 스크롤하고
+   * 잠깐 강조한다. `created.targetPage`를 무시하고 항상 0페이지를 새로고침하면
+   * — 상위 댓글이 50개를 넘어 새 댓글이 다음 페이지에 있는 경우 — 그 페이지를
+   * 안 가져와 강조 대상이 DOM에 없어 스크롤이 조용히 아무 일도 안 했다. 답글은
+   * 항상 부모의 페이지에 실려 있어 `targetPage`가 곧 부모 페이지이므로 이
+   * 문제가 똑같이 적용된다.
    */
   async function handleCommentCreated(created: CommunityComment) {
-    await refreshFirstPage();
+    await refreshPage(created.targetPage ?? 0);
     setHighlightedId(created.id);
   }
 
@@ -110,7 +112,7 @@ export function CommentSection({
     setDeleteError(null);
     try {
       await deleteComment(deleteTarget);
-      await refreshFirstPage();
+      await refreshPage(0);
       setDeleteTarget(null);
     } catch {
       setDeleteError("댓글을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");

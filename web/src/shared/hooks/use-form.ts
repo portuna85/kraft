@@ -143,6 +143,12 @@ export function useForm<T extends Record<string, unknown>>({
           if (mapped?.field !== undefined) {
             setErrors({ [mapped.field]: mapped.message } as Partial<Record<keyof T, string>>);
             setTouched((current) => ({ ...current, [mapped.field as keyof T]: true }));
+            // KF-23(docs/improvement.md): 계약 주석("첫 오류 필드로 포커스를
+            // 옮긴다")이 로컬 검증에만 지켜지고 서버 매핑 오류는 빠져 있었다 —
+            // 위 로컬 검증 분기와 같은 formRef 룩업으로 맞춘다.
+            formRef.current
+              ?.querySelector<HTMLElement>(`[name="${String(mapped.field)}"]`)
+              ?.focus();
             return;
           }
           setFormError(

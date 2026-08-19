@@ -37,6 +37,25 @@ describe("EmptyState", () => {
     expect(screen.queryByText("아직 글이 없습니다")).not.toBeInTheDocument();
     expect(screen.getByText("조건에 맞는 글이 없습니다")).toBeInTheDocument();
   });
+
+  // KF-23(docs/improvement.md): 최초 빈 목록은 의도적으로 무성 유지하고(방문 즉시
+  // "결과 없음"을 읽으면 소음), 필터로 인한 빈 결과는 사용자 행동의 직접 결과라
+  // role="status"로 알린다.
+  it("KF-23: reason에 따라 role이 갈린다 — filtered만 role=status", () => {
+    const { rerender, container } = render(
+      <EmptyState reason="no-data" title="아직 글이 없습니다" description="첫 글을 써 보세요." />,
+    );
+    expect(container.firstElementChild).not.toHaveAttribute("role");
+
+    rerender(
+      <EmptyState
+        reason="filtered"
+        title="조건에 맞는 글이 없습니다"
+        description="검색어나 카테고리를 바꿔 보세요."
+      />,
+    );
+    expect(container.firstElementChild).toHaveAttribute("role", "status");
+  });
 });
 
 describe("ErrorState", () => {

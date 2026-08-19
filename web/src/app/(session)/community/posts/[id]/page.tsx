@@ -23,6 +23,7 @@ import { formatDateTime } from "@/shared/lib/format";
 import { Badge } from "@/shared/ui/badge";
 import { JsonLd } from "@/shared/ui/json-ld";
 import { Breadcrumb } from "@/shared/ui/navigation";
+import { InlineAlert } from "@/shared/ui/states";
 
 import styles from "../../community.module.css";
 
@@ -143,7 +144,9 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
       </div>
 
       {comments === null ? (
-        <p className={styles.postMeta}>지금은 댓글을 불러올 수 없습니다.</p>
+        // KF-23(docs/improvement.md): 평문 <p>라 댓글 로드 실패가 스크린리더에
+        // 무성이었다 — role="alert"를 주는 InlineAlert로 바꾼다.
+        <InlineAlert tone="danger">지금은 댓글을 불러올 수 없습니다.</InlineAlert>
       ) : (
         <CommentSection postId={post.id} initialPage={comments} />
       )}

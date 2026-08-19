@@ -12,7 +12,7 @@ import { ApiError } from "@/shared/api/error";
 import { formatDateTime } from "@/shared/lib/format";
 import { Badge, StatusBadge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
-import { EmptyState } from "@/shared/ui/states";
+import { EmptyState, InlineAlert } from "@/shared/ui/states";
 import { Table } from "@/shared/ui/surface";
 
 import styles from "./ops-console.module.css";
@@ -67,7 +67,10 @@ export function LogsTable({ token }: { token: string }) {
         )}
       </div>
 
-      {error !== null && <p className={styles.note}>{error}</p>}
+      {/* KF-23(docs/improvement.md): 평문 <p>라 스크린리더에 무성이었다 —
+          role="alert"가 있는 InlineAlert로 바꾼다. "이력 조회" 버튼이 이미
+          재시도 경로라 별도 액션은 추가하지 않는다. */}
+      {error !== null && <InlineAlert tone="danger">{error}</InlineAlert>}
 
       {logs !== null &&
         (logs.items.length === 0 ? (

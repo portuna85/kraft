@@ -1,0 +1,25 @@
+/*
+ * KF-25③(docs/improvement.md): global-error.tsx는 루트 레이아웃 자체가 실패한
+ * 경우의 최후 경계라 shared/ui(토큰 CSS 포함)를 의도적으로 import하지 않는다 —
+ * 여기서도 리터럴 픽셀/색상 값만 쓴다. shared/styles/tokens.css 밖에 있는
+ * co-located CSS 모듈이라, "공유 디자인 시스템이 깨졌다" 시나리오와 무관하다.
+ */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 16px;
+  border: 1px solid #767676;
+  border-radius: 6px;
+  background: #f0f0f0;
+  color: #1a1a1a;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: #e0e0e0;
+}

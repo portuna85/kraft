@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 
 import { reportClientError } from "@/shared/lib/report-client-error";
+import { Button } from "@/shared/ui/button";
 
 /**
  * 공개 셸 오류 경계
@@ -30,9 +31,7 @@ export default function PublicError({
         있습니다.
       </p>
       <p>
-        <button type="button" onClick={reset}>
-          다시 시도
-        </button>
+        <Button onClick={reset}>다시 시도</Button>
       </p>
     </div>
   );
