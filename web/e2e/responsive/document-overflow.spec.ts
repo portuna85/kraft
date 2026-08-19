@@ -10,7 +10,24 @@ import { assertNoHorizontalOverflow } from "../lib/responsive-assertions";
  * 표의 `.tableWrap` 같은 의도적 내부 scroller는 여기서 확인하지 않는다 —
  * document 레벨 scrollWidth만 본다.
  */
-const ROUTES = ["/", "/recommend", "/stats", "/analysis", "/frequency", "/data", "/community"];
+const ROUTES = [
+  "/",
+  "/recommend",
+  "/recommend/history",
+  "/stats",
+  "/analysis",
+  "/frequency",
+  "/data",
+  "/community",
+  "/community/write",
+  "/community/posts/1",
+  "/community/posts/1/edit",
+  "/companion",
+  "/status",
+  "/saved",
+  "/ops",
+  "/info/data-source",
+];
 
 const BOUNDARY_WIDTHS = [320, 360, 390, 639, 640, 641, 768, 1023, 1024, 1025, 1280, 1440];
 
