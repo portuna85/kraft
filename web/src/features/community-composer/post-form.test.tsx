@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CommunityPost } from "@/entities/community-post/schema";
 import { SessionContext, type SessionState } from "@/entities/user-session/session-context";
 import { ApiError } from "@/shared/api/error";
+import { resetResourceCacheForTests } from "@/shared/hooks/use-resource";
 
 import { PostForm } from "./post-form";
 
@@ -82,6 +83,9 @@ function renderForm(existing?: CommunityPost, session: SessionState = LOGGED_IN)
 describe("글 작성·수정 폼", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // KF-22(docs/improvement.md): useResource의 캐시가 모듈 스코프라 테스트
+    // 간에 새지 않게 리셋한다.
+    resetResourceCacheForTests();
     listAccountRecommendationSets.mockResolvedValue({
       items: [],
       page: 0,

@@ -74,18 +74,27 @@ export function recommendNumbersForAccount(
  */
 const HISTORY_PAGE_SIZE = 20;
 
-export function listDeviceRecommendationSets(page = 0): Promise<RecommendationSetPage> {
+// KF-22(docs/improvement.md): useResource가 언마운트 시 요청을 abort하려면
+// signal을 끝까지 전달받아야 한다.
+export function listDeviceRecommendationSets(
+  page = 0,
+  signal?: AbortSignal,
+): Promise<RecommendationSetPage> {
   return browserQuery(
     `/api/v1/recommendation-sets?page=${page}&size=${HISTORY_PAGE_SIZE}`,
     recommendationSetPageSchema,
-    { deviceScoped: true },
+    { deviceScoped: true, signal },
   );
 }
 
-export function listAccountRecommendationSets(page = 0): Promise<RecommendationSetPage> {
+export function listAccountRecommendationSets(
+  page = 0,
+  signal?: AbortSignal,
+): Promise<RecommendationSetPage> {
   return browserQuery(
     `/api/v1/community/me/recommendation-sets?page=${page}&size=${HISTORY_PAGE_SIZE}`,
     recommendationSetPageSchema,
+    { signal },
   );
 }
 

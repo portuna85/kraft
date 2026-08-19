@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SessionContext, type SessionState } from "@/entities/user-session/session-context";
+import { resetResourceCacheForTests } from "@/shared/hooks/use-resource";
 
 import { SavedLibrary } from "./saved-library";
 
@@ -83,6 +84,10 @@ function renderLibrary(session: SessionState, latestRound: number | null = 1150)
 describe("보관함", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // KF-22(docs/improvement.md): useResource의 캐시가 모듈 스코프라 테스트
+    // 간에 새지 않게 리셋한다 — 안 그러면 같은 키("me:saved:false" 등)를
+    // 재사용하는 이후 테스트가 이전 테스트의 캐시된 응답을 그대로 받는다.
+    resetResourceCacheForTests();
   });
 
   afterEach(() => {

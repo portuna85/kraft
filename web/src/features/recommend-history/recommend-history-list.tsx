@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   deleteAccountRecommendationSet,
@@ -10,8 +10,13 @@ import {
 } from "@/entities/recommendation/api";
 import type { RecommendationSet } from "@/entities/recommendation/schema";
 import { RecommendationCard } from "@/entities/recommendation/ui/recommendation-card";
-import { canQueryOwnerScope, useSession } from "@/entities/user-session/session-context";
+import {
+  canQueryOwnerScope,
+  sessionReadiness,
+  useSession,
+} from "@/entities/user-session/session-context";
 import { ROUTES } from "@/shared/config/routes";
+import { useResource } from "@/shared/hooks/use-resource";
 import { Button, LinkButton } from "@/shared/ui/button";
 import { ConfirmDialog } from "@/shared/ui/dialog";
 import { ListRowsSkeleton } from "@/shared/ui/page-skeleton";
@@ -30,48 +35,49 @@ import styles from "./history.module.css";
 export function RecommendHistoryList() {
   const session = useSession();
   const loggedIn = canQueryOwnerScope(session);
+  const sessionReady = sessionReadiness(session) !== "unsettled";
+
+  /**
+   * KF-22(docs/improvement.md): 최초 0페이지 로드만 useResource에 맡긴다 —
+   * "더 보기"는 페이지를 이어붙이는 누적 모델이라 useResource의 단일
+   * 키-단일 값 캐시와 안 맞아 그대로 수동 fetch로 둔다(아래 loadMore).
+   */
+  const resourceKey = sessionReady ? `me:history:${loggedIn}` : null;
+  const resource = useResource(resourceKey, (signal) =>
+    loggedIn ? listAccountRecommendationSets(0, signal) : listDeviceRecommendationSets(0, signal),
+  );
+  const loadError = resource.status === "error";
+  const firstPage = resource.status === "success" ? resource.data : null;
 
   const [items, setItems] = useState<RecommendationSet[] | null>(null);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
-  const [loadError, setLoadError] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<RecommendationSet | null>(null);
   const [deletePending, setDeletePending] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoadError(false);
-    try {
-      const result = loggedIn
-        ? await listAccountRecommendationSets(0)
-        : await listDeviceRecommendationSets(0);
-      setItems(result.items);
-      setPage(result.page);
-      setTotalPages(result.totalPages);
-      setTotal(result.totalElements);
-    } catch {
-      setItems(null);
-      setLoadError(true);
-    }
-  }, [loggedIn]);
-
+  // 스코프가 바뀌면(키 변경) 이전 스코프의 목록을 잠깐이라도 보여주지 않는다 —
+  // 새 키의 결과가 도착할 때까지 스켈레톤으로 되돌아간다. 이펙트 본문에서
+  // setState를 직접 트리거하지 않는다 — 마이크로태스크로 미룬다
+  // (identity-session/session-provider.tsx와 같은 관용구).
   useEffect(() => {
-    if (session.loading) return;
+    void Promise.resolve().then(() => setItems(null));
+  }, [resourceKey]);
 
-    let cancelled = false;
-    // 이펙트 본문에서 setState를 직접 트리거하지 않는다 — 마이크로태스크로 미룬다
-    // (identity-session/session-provider.tsx와 같은 관용구).
+  // 0페이지 응답이 도착하면 로컬 상태로 옮겨 심는다 — 이후 loadMore가 이
+  // 로컬 상태를 계속 이어붙인다.
+  useEffect(() => {
+    if (firstPage === null) return;
     void Promise.resolve().then(() => {
-      if (!cancelled) void load();
+      setItems(firstPage.items);
+      setPage(firstPage.page);
+      setTotalPages(firstPage.totalPages);
+      setTotal(firstPage.totalElements);
     });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [load, session.loading]);
+  }, [firstPage]);
 
   // KF-13(docs/improvement.md): catch가 없어 거부가 미처리 프로미스로 새고
   // 로딩만 리셋됐다 — 이미 로드된 행·커서(page)는 그대로 둬서 같은 요청으로
@@ -117,7 +123,10 @@ export function RecommendHistoryList() {
         title="추천 이력을 불러오지 못했습니다"
         description="잠시 후 다시 시도해 주세요."
         action={
-          <Button variant="secondary" onClick={() => void load()}>
+          <Button
+            variant="secondary"
+            onClick={() => resource.status === "error" && resource.retry()}
+          >
             다시 시도
           </Button>
         }

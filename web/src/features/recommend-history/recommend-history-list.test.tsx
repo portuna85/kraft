@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SessionContext, type SessionState } from "@/entities/user-session/session-context";
+import { resetResourceCacheForTests } from "@/shared/hooks/use-resource";
 
 import { RecommendHistoryList } from "./recommend-history-list";
 
@@ -73,6 +74,9 @@ function renderList(session: SessionState) {
 describe("추천 이력", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // KF-22(docs/improvement.md): useResource의 캐시가 모듈 스코프라 테스트
+    // 간에 새지 않게 리셋한다.
+    resetResourceCacheForTests();
   });
 
   afterEach(() => {
@@ -83,7 +87,9 @@ describe("추천 이력", () => {
     listDeviceRecommendationSets.mockResolvedValue(page());
     renderList(ANONYMOUS);
 
-    await waitFor(() => expect(listDeviceRecommendationSets).toHaveBeenCalledWith(0));
+    await waitFor(() =>
+      expect(listDeviceRecommendationSets).toHaveBeenCalledWith(0, expect.any(AbortSignal)),
+    );
     expect(listAccountRecommendationSets).not.toHaveBeenCalled();
   });
 
@@ -91,8 +97,35 @@ describe("추천 이력", () => {
     listAccountRecommendationSets.mockResolvedValue(page());
     renderList(LOGGED_IN);
 
-    await waitFor(() => expect(listAccountRecommendationSets).toHaveBeenCalledWith(0));
+    await waitFor(() =>
+      expect(listAccountRecommendationSets).toHaveBeenCalledWith(0, expect.any(AbortSignal)),
+    );
     expect(listDeviceRecommendationSets).not.toHaveBeenCalled();
+  });
+
+  // KF-22(docs/improvement.md): 세 소비자를 useResource로 이관하며 loggedIn을
+  // 캐시 키에 접었다 — 익명으로 보던 중 로그인(claim)이 끝나면 새 키로 자동
+  // 재조회되는지 확인한다(saved-library.test.tsx의 동등한 회귀 테스트와 짝).
+  it("익명으로 보던 중 로그인(claim)이 끝나면 계정 스코프로 다시 조회한다", async () => {
+    listDeviceRecommendationSets.mockResolvedValue(page({ items: [set({ id: 1 })] }));
+    listAccountRecommendationSets.mockResolvedValue(page({ items: [set({ id: 2 })] }));
+
+    const { rerender } = render(
+      <SessionContext.Provider value={ANONYMOUS}>
+        <RecommendHistoryList />
+      </SessionContext.Provider>,
+    );
+    await waitFor(() => expect(listDeviceRecommendationSets).toHaveBeenCalledTimes(1));
+    expect(listAccountRecommendationSets).not.toHaveBeenCalled();
+
+    rerender(
+      <SessionContext.Provider value={LOGGED_IN}>
+        <RecommendHistoryList />
+      </SessionContext.Provider>,
+    );
+
+    await waitFor(() => expect(listAccountRecommendationSets).toHaveBeenCalledTimes(1));
+    expect(listDeviceRecommendationSets).toHaveBeenCalledTimes(1);
   });
 
   it("빈 이력이면 추천받기 안내를 보여준다", async () => {

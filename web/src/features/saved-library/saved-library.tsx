@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { LottoBallSet } from "@/entities/round/ui/lotto-ball";
 import {
@@ -17,8 +17,13 @@ import {
   type SavedNumberMatch,
 } from "@/entities/saved-number/schema";
 import { MatchResultBadge } from "@/entities/saved-number/ui/match-result-badge";
-import { canQueryOwnerScope, useSession } from "@/entities/user-session/session-context";
+import {
+  canQueryOwnerScope,
+  sessionReadiness,
+  useSession,
+} from "@/entities/user-session/session-context";
 import { ROUTES } from "@/shared/config/routes";
+import { invalidateResource, useResource } from "@/shared/hooks/use-resource";
 import { formatDrawDate } from "@/shared/lib/format";
 import { Button, LinkButton } from "@/shared/ui/button";
 import { ConfirmDialog } from "@/shared/ui/dialog";
@@ -42,49 +47,41 @@ import { WinningCelebration } from "./winning-celebration";
 export function SavedLibrary({ latestRound }: { latestRound: number | null }) {
   const session = useSession();
   const loggedIn = canQueryOwnerScope(session);
+  const sessionReady = sessionReadiness(session) !== "unsettled";
 
-  const [items, setItems] = useState<SavedNumber[] | null>(null);
+  /**
+   * KF-22(docs/improvement.md): `session.loading` 가드 + 마이크로태스크 지연 +
+   * `cancelled` 플래그를 손으로 반복하던 걸 `useResource`에 맡긴다 — 세션이
+   * 아직 미확정이면 `key`가 `null`이라 조회 자체가 안 나간다. `loggedIn`을
+   * 키에 접어 스코프가 바뀌면(claim 등) 자동으로 새 키로 다시 조회되고,
+   * 언마운트 시 미완료 요청이 abort된다(이전엔 셋 다 없었던 동작).
+   */
+  const resourceKey = sessionReady ? `me:saved:${loggedIn}` : null;
+  const resource = useResource<SavedNumber[]>(resourceKey, (signal) =>
+    loggedIn ? listAccountSavedNumbers(signal) : listDeviceSavedNumbers(signal),
+  );
+  const items = resource.status === "success" ? resource.data : null;
+  const loadError = resource.status === "error";
+
   const [matches, setMatches] = useState<Map<number, SavedNumberMatch> | null>(null);
+  const [celebrating, setCelebrating] = useState(false);
+  // 목록이 (재)도착하면 대조 결과는 더 이상 의미가 없다 — 로그인 전환뿐
+  // 아니라 삭제 후 재조회에도 적용돼야 해서 items 자체를 의존성으로 쓴다.
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      setMatches(null);
+      setCelebrating(false);
+    });
+  }, [items]);
+
   // KF-12(docs/improvement.md): 문자열로 들고 있어야 빈 입력(`Number("") === 0`이
   // 되는 함정)을 "숫자 0"과 구분해 판정할 수 있다.
   const [roundInput, setRoundInput] = useState(latestRound !== null ? String(latestRound) : "");
-  const [loadError, setLoadError] = useState(false);
   const [matching, setMatching] = useState(false);
   const [compareError, setCompareError] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SavedNumber | null>(null);
   const [deletePending, setDeletePending] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [celebrating, setCelebrating] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoadError(false);
-    // 로그인 상태가 바뀌면 대조 결과도 의미가 없어진다.
-    setMatches(null);
-    setCelebrating(false);
-    try {
-      setItems(loggedIn ? await listAccountSavedNumbers() : await listDeviceSavedNumbers());
-    } catch {
-      setItems(null);
-      setLoadError(true);
-    }
-  }, [loggedIn]);
-
-  useEffect(() => {
-    // 세션 판정이 끝나기 전에 조회하면 익명 경로로 잘못 나간다.
-    if (session.loading) return;
-
-    let cancelled = false;
-    // 이펙트 본문에서 setState를 직접(동기로) 트리거하지 않는다 — 마이크로태스크로
-    // 미룬다(identity-session/session-provider.tsx와 같은 관용구,
-    // react-hooks/set-state-in-effect).
-    void Promise.resolve().then(() => {
-      if (!cancelled) void load();
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [load, session.loading]);
 
   // KF-12(docs/improvement.md): `latestRound`를 모르면 대조 자체가 불가능하고,
   // 알아도 1~latestRound 범위를 벗어난 값을 서버로 보낼 이유가 없다 — 여기서
@@ -124,7 +121,9 @@ export function SavedLibrary({ latestRound }: { latestRound: number | null }) {
     try {
       if (loggedIn) await deleteAccountSavedNumber(deleteTarget.id);
       else await deleteDeviceSavedNumber(deleteTarget.id);
-      await load();
+      // KF-22(docs/improvement.md): load()를 직접 다시 부르는 대신, 같은
+      // 키를 구독 중인 useResource 인스턴스에 재조회를 알린다.
+      if (resourceKey !== null) invalidateResource(resourceKey);
       setDeleteTarget(null);
     } catch {
       setDeleteError("삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
@@ -139,7 +138,10 @@ export function SavedLibrary({ latestRound }: { latestRound: number | null }) {
         title="보관함을 불러오지 못했습니다"
         description="잠시 후 다시 시도해 주세요."
         action={
-          <Button variant="secondary" onClick={() => void load()}>
+          <Button
+            variant="secondary"
+            onClick={() => resource.status === "error" && resource.retry()}
+          >
             다시 시도
           </Button>
         }

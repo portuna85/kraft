@@ -6,11 +6,9 @@ import { Badge, StatusBadge } from "./badge";
 import { Button, IconButton } from "./button";
 import { ConfirmDialog, Dialog } from "./dialog";
 import { Checkbox, Radio, Select, TextArea, TextField } from "./field";
+import { SegmentedControl } from "./segmented-control";
 import { Card, Pagination, Table } from "./surface";
 import { EmptyState, ErrorState, InlineAlert } from "./states";
-import { Tabs } from "./tabs";
-import { SegmentedControl, Switch } from "./toggle";
-import { Tooltip } from "./tooltip";
 
 /**
  * 프리미티브 axe 검사 Phase 3 검증 조건("프리미티브 axe 위반 0").
@@ -104,27 +102,15 @@ describe("프리미티브 접근성", () => {
   it("선택 위젯에 위반이 없다", async () => {
     expect(
       await violationsOf(
-        <div>
-          <Switch checked onChange={() => {}} label="다크 모드" />
-          <SegmentedControl
-            aria-label="정렬"
-            value="latest"
-            onChange={() => {}}
-            options={[
-              { value: "latest", label: "최신순" },
-              { value: "weekly_popular", label: "주간 인기" },
-            ]}
-          />
-          <Tabs
-            aria-label="기간"
-            value="all"
-            onChange={() => {}}
-            items={[{ value: "all", label: "전체", panel: <p>전체 기간</p> }]}
-          />
-          <Tooltip label="설명">
-            <span>도움말</span>
-          </Tooltip>
-        </div>,
+        <SegmentedControl
+          aria-label="정렬"
+          value="latest"
+          onChange={() => {}}
+          options={[
+            { value: "latest", label: "최신순" },
+            { value: "weekly_popular", label: "주간 인기" },
+          ]}
+        />,
       ),
     ).toEqual([]);
   });

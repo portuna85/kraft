@@ -28,26 +28,6 @@
     box-shadow: var(--shadow-2);
   }
 
-  .tabList {
-    display: flex;
-    gap: var(--space-1);
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .tab {
-    min-height: var(--target-min);
-    padding-inline: var(--space-4);
-    color: var(--color-ink-muted);
-    border-bottom: 2px solid transparent;
-    cursor: pointer;
-  }
-
-  .tab[aria-selected="true"] {
-    color: var(--color-ink);
-    font-weight: 700;
-    border-bottom-color: var(--color-brand);
-  }
-
   .tableWrap {
     /* 넓은 표는 페이지가 아니라 자기 컨테이너 안에서 가로 스크롤한다. */
     overflow-x: auto;

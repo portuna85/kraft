@@ -1,14 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   listAccountRecommendationSets,
   listDeviceRecommendationSets,
 } from "@/entities/recommendation/api";
-import type { RecommendationSet } from "@/entities/recommendation/schema";
 import { RecommendationCard } from "@/entities/recommendation/ui/recommendation-card";
-import { canQueryOwnerScope, useSession } from "@/entities/user-session/session-context";
+import {
+  canQueryOwnerScope,
+  sessionReadiness,
+  useSession,
+} from "@/entities/user-session/session-context";
+import { useResource } from "@/shared/hooks/use-resource";
 import { Radio } from "@/shared/ui/field";
 import { ListRowsSkeleton } from "@/shared/ui/page-skeleton";
 import { EmptyState, ErrorState } from "@/shared/ui/states";
@@ -37,38 +41,27 @@ export function RecommendationAttachmentPicker({
 }) {
   const session = useSession();
   const loggedIn = canQueryOwnerScope(session);
+  const sessionReady = sessionReadiness(session) !== "unsettled";
 
-  const [items, setItems] = useState<RecommendationSet[] | null>(null);
-  const [loadError, setLoadError] = useState(false);
+  /**
+   * KF-22(docs/improvement.md): 페이지네이션도, 재로드 후 자체 mutation도
+   * 없는 가장 단순한 사례라 items를 로컬 state로 복사할 필요 없이
+   * resource.data에서 바로 파생한다. 키는 recommend-history-list와
+   * **다르게** 둔다 — 같은 API를 부르지만 용도(첨부 선택 vs 이력 목록)가
+   * 달라 캐시를 섞지 않는다.
+   */
+  const resourceKey = sessionReady ? `me:attachment-sets:${loggedIn}` : null;
+  const resource = useResource(resourceKey, (signal) =>
+    loggedIn ? listAccountRecommendationSets(0, signal) : listDeviceRecommendationSets(0, signal),
+  );
+  const items = resource.status === "success" ? resource.data.items : null;
+  const loadError = resource.status === "error";
+
   const [showAll, setShowAll] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoadError(false);
-    setItems(null);
-    setShowAll(false);
-    try {
-      const result = loggedIn
-        ? await listAccountRecommendationSets(0)
-        : await listDeviceRecommendationSets(0);
-      setItems(result.items);
-    } catch {
-      setItems(null);
-      setLoadError(true);
-    }
-  }, [loggedIn]);
-
+  // 스코프 전환 시점 = 키 변경 시점과 정확히 일치한다.
   useEffect(() => {
-    if (session.loading) return;
-
-    let cancelled = false;
-    void Promise.resolve().then(() => {
-      if (!cancelled) void load();
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [load, session.loading]);
+    void Promise.resolve().then(() => setShowAll(false));
+  }, [resourceKey]);
 
   if (loadError) {
     return (
@@ -77,7 +70,10 @@ export function RecommendationAttachmentPicker({
         title="추천 세트를 불러오지 못했습니다"
         description="첨부 없이 계속 쓸 수 있습니다. 다시 시도하려면 아래 버튼을 눌러 주세요."
         action={
-          <Button variant="secondary" onClick={() => void load()}>
+          <Button
+            variant="secondary"
+            onClick={() => resource.status === "error" && resource.retry()}
+          >
             다시 시도
           </Button>
         }

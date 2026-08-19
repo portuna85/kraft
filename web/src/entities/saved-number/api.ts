@@ -21,12 +21,14 @@ import {
  * 보관함이 비어 보이거나, 저장한 것이 계정에 안 남는다.
  */
 
-export function listDeviceSavedNumbers(): Promise<SavedNumber[]> {
-  return browserQuery("/api/v1/saved", savedNumberListSchema, { deviceScoped: true });
+// KF-22(docs/improvement.md): useResource가 언마운트 시 요청을 abort하려면
+// signal을 끝까지 전달받아야 한다.
+export function listDeviceSavedNumbers(signal?: AbortSignal): Promise<SavedNumber[]> {
+  return browserQuery("/api/v1/saved", savedNumberListSchema, { deviceScoped: true, signal });
 }
 
-export function listAccountSavedNumbers(): Promise<SavedNumber[]> {
-  return browserQuery("/api/v1/community/me/saved-numbers", savedNumberListSchema);
+export function listAccountSavedNumbers(signal?: AbortSignal): Promise<SavedNumber[]> {
+  return browserQuery("/api/v1/community/me/saved-numbers", savedNumberListSchema, { signal });
 }
 
 export function matchDeviceSavedNumbers(round: string): Promise<SavedNumberMatch[]> {
