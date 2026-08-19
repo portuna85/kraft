@@ -17,9 +17,7 @@ import { expect, test } from "@playwright/test";
  * `(public)/not-found.tsx`(새 main 없이 본문만 렌더)를 추가해 고친다.
  */
 test.describe("공개 라우트 하위 404가 main 랜드마크를 하나만 만든다", () => {
-  test("존재하지 않는 정보 페이지 슬러그에서 main과 #main이 각각 하나뿐이다", async ({
-    page,
-  }) => {
+  test("존재하지 않는 정보 페이지 슬러그에서 main과 #main이 각각 하나뿐이다", async ({ page }) => {
     // info/[slug]/metadata.ts의 INFO_PAGE_SLUGS에 없는 슬러그 — isInfoPageSlug()가
     // false를 반환해 notFound()가 던져진다.
     await page.goto("/info/no-such-info-page");
@@ -28,9 +26,7 @@ test.describe("공개 라우트 하위 404가 main 랜드마크를 하나만 만
     await expect(page.locator("#main")).toHaveCount(1);
   });
 
-  test("완전히 매치되지 않는 공개 경로도 main과 #main이 각각 하나뿐이다", async ({
-    page,
-  }) => {
+  test("완전히 매치되지 않는 공개 경로도 main과 #main이 각각 하나뿐이다", async ({ page }) => {
     await page.goto("/no-such-public-route");
 
     await expect(page.locator("main")).toHaveCount(1);
