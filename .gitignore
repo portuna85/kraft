@@ -87,10 +87,8 @@ web/debug.log
 ### Migration credentials (never commit) ###
 scripts/archive/migrate-2026-06/env-migration.sh
 
-### Docs ###
-# 예전에는 docs/ 전체를 무시했다("Local-only docs"). 그 결과 코드 주석이 근거로
-# 참조하던 docs/improvement.md·improvement_codex_fe.md·improvement_claude_fe.md가
-# 이력 없이 유실됐고, KF-xx·FE-RSP-xx·I-xx ID의 원본 서술은 주석에 인용된 요약만
-# 남았다(docs/improvement_claude.md §0.2). 설계 근거 문서는 추적한다.
-#
-# 자격증명·서버 상태 같은 비공개 자료는 여기가 아니라 secret/·deploy/에 둔다.
+### Local-only docs (never commit) ###
+# 예외 1건: docs/improvement_claude.md는 이미 추적 중이다(2d0d2d9). .gitignore는
+# 추적되지 않는 파일에만 작용하므로 이 규칙과 충돌하지 않는다 — 새 문서를
+# 추가로 추적하려면 `git add -f`가 필요하다.
+docs/
