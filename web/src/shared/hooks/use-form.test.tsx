@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as v from "valibot";
 import { describe, expect, it, vi } from "vitest";
@@ -124,7 +124,9 @@ describe("useForm", () => {
 
     expect(await screen.findByRole("button", { name: "제출 중" })).toBeDisabled();
     expect(onSubmit).toHaveBeenCalledTimes(1);
-    release?.();
+    await act(async () => {
+      release?.();
+    });
   });
 
   it("서버 오류를 해당 필드로 되돌리고 그 필드로 포커스를 옮긴다", async () => {

@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { LoginPopover } from "./login-popover";
 
@@ -12,11 +12,26 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(mockSearch),
 }));
 
+// provider 링크는 실제 `<a href>` 전체 페이지 이동이다(의도적 설계 — 컴포넌트
+// 주석 참조). jsdom은 document 간 이동을 구현하지 않아 클릭 시
+// "Not implemented: navigation to another Document"를 찍는다 — 실패는 아니지만
+// 이 테스트 파일이 검증하는 행동(href·sessionStorage 저장)과 무관한 잡음이다.
+// 클릭을 막지 않고 기본 동작(이동)만 막아 잡음 없이 같은 것을 검증한다.
+function preventAnchorNavigation(event: MouseEvent) {
+  const anchor = (event.target as HTMLElement).closest("a[href]");
+  if (anchor) event.preventDefault();
+}
+
 describe("로그인 팝오버", () => {
   beforeEach(() => {
     window.sessionStorage.clear();
     mockPathname = "/frequency";
     mockSearch = "";
+    document.addEventListener("click", preventAnchorNavigation);
+  });
+
+  afterEach(() => {
+    document.removeEventListener("click", preventAnchorNavigation);
   });
 
   it("기본은 로그인 버튼 하나만 보인다", () => {

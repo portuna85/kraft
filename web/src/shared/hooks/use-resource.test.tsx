@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -114,7 +114,9 @@ describe("useResource", () => {
     render(<Probe cacheKey="me:saved" load={load} ttlMs={10_000} />);
     expect(await screen.findByText("이전")).toBeInTheDocument();
 
-    invalidateResource("me:");
+    act(() => {
+      invalidateResource("me:");
+    });
 
     expect(await screen.findByText("이후")).toBeInTheDocument();
   });
@@ -125,7 +127,9 @@ describe("useResource", () => {
     render(<Probe cacheKey="me:saved" load={load} ttlMs={10_000} />);
     expect(await screen.findByText("값")).toBeInTheDocument();
 
-    invalidateResource("community:");
+    act(() => {
+      invalidateResource("community:");
+    });
 
     expect(load).toHaveBeenCalledTimes(1);
   });
@@ -154,9 +158,16 @@ describe("useResource", () => {
     render(<Probe cacheKey="me:pending" load={load} ttlMs={10_000} />);
     await screen.findByText("불러오는 중");
 
-    invalidateResource("me:");
+    // 무효화가 (act로 인해 동기 flush되는) 재구독 재조회를 곧장 트리거해 `load`가
+    // 다시 불릴 수 있다 — 그러면 `observed`가 새 시도의 signal로 덮어써진다. 끊겨야
+    // 할 대상은 이 첫 시도의 signal이므로 무효화 전에 따로 붙잡아 둔다.
+    const firstSignal = observed;
 
-    expect(observed?.aborted).toBe(true);
+    act(() => {
+      invalidateResource("me:");
+    });
+
+    expect(firstSignal?.aborted).toBe(true);
   });
 
   it("TD-012: 무효화 후 새 시도는 끊긴 이전 요청의 응답으로 오염되지 않는다", async () => {
@@ -174,7 +185,9 @@ describe("useResource", () => {
     render(<Probe cacheKey="me:race" load={load} ttlMs={10_000} />);
     await screen.findByText("불러오는 중");
 
-    invalidateResource("me:");
+    act(() => {
+      invalidateResource("me:");
+    });
     await screen.findByText("불러오는 중");
 
     // 끊긴 첫 번째 요청이 abort 이후 뒤늦게 거부돼도(fetch가 AbortError로 reject하는
