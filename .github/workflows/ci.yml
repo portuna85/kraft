@@ -372,14 +372,14 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  # Firefox·WebKit에서 a11y 트랙 스펙을 재사용해 브라우저 호환성을 재검증한다 —
-  # Phase 7.
+  # Firefox·WebKit에서 a11y 트랙 스펙 + default 트랙(핵심 흐름)을 재사용해 브라우저
+  # 호환성을 재검증한다 — Phase 7 + docs/improvement.md 12단계(cross-browser testDir 확장).
   web-next-e2e-cross-browser:
     name: Web Next E2E (크로스브라우저)
     runs-on: ubuntu-latest
     needs: changes
     if: needs.changes.outputs.web == 'true'
-    timeout-minutes: 15
+    timeout-minutes: 20
     container:
       image: mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
       options: --ipc=host
@@ -407,6 +407,9 @@ jobs:
           # Firefox가 launch 자체를 거부한다 — web-legacy의 cross-browser 샤드와
           # 같은 workaround(Playwright 공식 안내).
           HOME: /root
+      - run: npm run test:e2e:cross-browser:default
+        env:
+          HOME: /root
       - name: Upload failure traces
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -415,6 +418,8 @@ jobs:
           path: |
             web/test-results/
             web/playwright-report/
+            web/test-results-cross-browser-default/
+            web/playwright-report-cross-browser-default/
           if-no-files-found: ignore
           retention-days: 7
 

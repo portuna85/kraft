@@ -3,6 +3,8 @@ import path from "node:path";
 
 import { expect, test } from "@playwright/test";
 
+import { fixtureBackendUrl } from "../lib/fixture-backend";
+
 /**
  * 핵심 데이터 실패 → 5xx — T-20
  *
@@ -44,22 +46,22 @@ test.beforeAll(() => {
 });
 
 test.describe("핵심 데이터 실패 전파", () => {
-  test.afterEach(async ({ request }) => {
-    await request.post("http://127.0.0.1:4111/__test__/reset");
+  test.afterEach(async ({ request, baseURL }) => {
+    await request.post(`${fixtureBackendUrl(baseURL)}/__test__/reset`);
   });
 
-  test("최신 회차 조회가 실패하면 홈이 200이 아니다", async ({ page, request }) => {
-    await request.put("http://127.0.0.1:4111/__test__/fail?path=/api/v1/rounds/latest");
+  test("최신 회차 조회가 실패하면 홈이 200이 아니다", async ({ page, request, baseURL }) => {
+    await request.put(`${fixtureBackendUrl(baseURL)}/__test__/fail?path=/api/v1/rounds/latest`);
 
     const response = await page.goto("/");
     expect(response?.status()).toBeGreaterThanOrEqual(500);
   });
 
-  test("장애 해제 후에는 다시 정상 렌더된다", async ({ page, request }) => {
-    await request.put("http://127.0.0.1:4111/__test__/fail?path=/api/v1/rounds/latest");
+  test("장애 해제 후에는 다시 정상 렌더된다", async ({ page, request, baseURL }) => {
+    await request.put(`${fixtureBackendUrl(baseURL)}/__test__/fail?path=/api/v1/rounds/latest`);
     await page.goto("/").catch(() => undefined);
 
-    await request.post("http://127.0.0.1:4111/__test__/reset");
+    await request.post(`${fixtureBackendUrl(baseURL)}/__test__/reset`);
     const response = await page.goto("/");
     expect(response?.status()).toBe(200);
   });

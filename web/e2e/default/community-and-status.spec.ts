@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { fixtureBackendUrl } from "../lib/fixture-backend";
+
 /**
  * 커뮤니티 읽기 흐름 + 서비스 상태 + 안내 라우트 — T-9, T-10
  *
@@ -18,8 +20,8 @@ test.describe("커뮤니티·상태·안내 읽기", () => {
   // KF-26(FE-OPT-23, docs/improvement.md): generateMetadata·페이지 본문이 각각
   // getPost를 불러 캐시가 없으면 방문 1회에 조회수가 2 오른다. React cache()로
   // 감싼 뒤 정확히 1만 오르는지 픽스처의 조회수 카운터로 확인한다.
-  test("게시글 상세 방문 1회에 조회수가 정확히 1만 오른다", async ({ page, request }) => {
-    await request.post("http://127.0.0.1:4111/__test__/reset");
+  test("게시글 상세 방문 1회에 조회수가 정확히 1만 오른다", async ({ page, request, baseURL }) => {
+    await request.post(`${fixtureBackendUrl(baseURL)}/__test__/reset`);
 
     await page.goto("/community/posts/1");
     await expect(page.getByText("조회 42")).toBeVisible();

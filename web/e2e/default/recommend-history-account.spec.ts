@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { fixtureBackendUrl } from "../lib/fixture-backend";
+
 /**
  * KF-01(docs/improvement.md) — 로그인 상태의 추천 생성이 계정 이력에 반영되지 않는다.
  *
@@ -15,14 +17,14 @@ import { expect, test } from "@playwright/test";
  * `/api/v1/community/me/recommendation-sets` POST 핸들러가 이 쓰기 경로를 흉내낸다.
  */
 test.describe("로그인 상태의 추천 생성이 계정 이력에 나타난다", () => {
-  test.beforeEach(async ({ request }) => {
+  test.beforeEach(async ({ request, baseURL }) => {
     await request.put(
-      "http://127.0.0.1:4111/__test__/session?loggedIn=true&userId=1&nickname=%ED%85%8C%EC%8A%A4%ED%84%B0",
+      `${fixtureBackendUrl(baseURL)}/__test__/session?loggedIn=true&userId=1&nickname=%ED%85%8C%EC%8A%A4%ED%84%B0`,
     );
   });
 
-  test.afterEach(async ({ request }) => {
-    await request.post("http://127.0.0.1:4111/__test__/reset");
+  test.afterEach(async ({ request, baseURL }) => {
+    await request.post(`${fixtureBackendUrl(baseURL)}/__test__/reset`);
   });
 
   test("로그인 상태에서 생성한 조합이 계정 추천 이력에 즉시 나타난다", async ({ page }) => {
