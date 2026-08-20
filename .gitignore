@@ -61,7 +61,9 @@ web/next-env.d.ts
 
 ### Playwright ###
 web/test-results/
+web/test-results-cross-browser-default/
 web/playwright-report/
+web/playwright-report-cross-browser-default/
 web/blob-report/
 web/playwright/.cache/
 
