@@ -757,9 +757,27 @@ jobs:
           sbom: true
           cache-from: type=gha,scope=backend-runtime
           cache-to: type=gha,mode=max,scope=backend-runtime
-      - name: Reuse previously verified backend image
+      # backend-released: 위 backend-verified와 다르다. verified는 "이 소스로 빌드가
+      # 성공했다"는 사실만 기록하는 태그라, 이 잡의 needs에 E2E가 없는 이상(의도된
+      # 병렬화 — docker-publish-web 주석 참고) 게이트를 통과하지 못한 이미지도 가리킬
+      # 수 있다. 그 상태에서 backend=false인 다음 커밋이 verified를 복제하면, 게이트에
+      # 떨어진 이미지가 그 커밋의 SHA 태그가 되고 promote를 타고 :latest까지 올라갔다.
+      # released는 quality-gate가 "그 컴포넌트 자신의" 게이트만 보고 판정해 advance-
+      # released-tags 잡에서만 전진하므로, 재사용 대상은 항상 게이트를 통과한 이미지다.
+      # 무관한 컴포넌트의 실패로 태그가 정체되던 예전 :latest 복제 방식의 문제(운영 DB가
+      # V31 마이그레이션 이전 이미지에 멈춘 사고)도 함께 피한다 — 판정이 컴포넌트별로
+      # 갈라져 있어 web이 깨져도 backend-released는 계속 전진한다.
+      - name: Reuse previously released backend image
         if: needs.changes.outputs.backend != 'true'
-        run: docker buildx imagetools create --tag "$IMAGE:$GITHUB_SHA" "$IMAGE:backend-verified"
+        run: |
+          source="$IMAGE:backend-released"
+          if ! docker buildx imagetools inspect "$source" > /dev/null 2>&1; then
+            # 부트스트랩(이 태그 도입 후 첫 실행에만 해당). :latest는 정의상 "마지막으로
+            # 전체 quality-gate를 통과한 이미지"라 released의 올바른 초기값이다.
+            echo "::notice::backend-released가 없어 :latest에서 부트스트랩합니다."
+            source="$IMAGE:latest"
+          fi
+          docker buildx imagetools create --tag "$IMAGE:$GITHUB_SHA" "$source"
 
   docker-publish-web:
     name: Docker Publish (web)
@@ -822,9 +840,18 @@ jobs:
           sbom: true
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
-      - name: Reuse previously verified web image
+      # web-released: backend-released와 같은 이유·같은 구조다(위 주석 참고).
+      # 이 잡의 needs에 E2E 6트랙이 빠져 있는 것은 파이프라인을 짧게 유지하려는
+      # 의도적 선택이므로 그대로 두고, "게이트를 통과했는가"는 별도 태그로 표현한다.
+      - name: Reuse previously released web image
         if: needs.changes.outputs.web != 'true'
-        run: docker buildx imagetools create --tag "$IMAGE:$GITHUB_SHA" "$IMAGE:web-verified"
+        run: |
+          source="$IMAGE:web-released"
+          if ! docker buildx imagetools inspect "$source" > /dev/null 2>&1; then
+            echo "::notice::web-released가 없어 :latest에서 부트스트랩합니다."
+            source="$IMAGE:latest"
+          fi
+          docker buildx imagetools create --tag "$IMAGE:$GITHUB_SHA" "$source"
 
   security-scan:
     name: Security Scan (${{ matrix.component }})
@@ -924,7 +951,82 @@ jobs:
       - security-scan
     if: always()
     timeout-minutes: 5
+    # 컴포넌트별 릴리스 판정을 advance-released-tags 잡에 넘긴다. 이 잡이 실패해도
+    # (예: web E2E가 깨져 아래 Verify 스텝이 exit 1) 이미 실행을 마친 스텝의 출력은
+    # 그대로 남으므로, backend만 통과한 경우 backend-released는 계속 전진할 수 있다 —
+    # 무관한 컴포넌트의 실패가 남의 태그를 정체시키지 않게 하는 것이 이 분리의 목적이다.
+    outputs:
+      backend_released: ${{ steps.release-status.outputs.backend_released }}
+      web_released: ${{ steps.release-status.outputs.web_released }}
     steps:
+      # 판정과 강제를 두 스텝으로 나눈다 — 한 스텝에서 exit 1로 끝내면 그 뒤에
+      # 출력을 쓸 기회가 없다. 이 스텝은 어떤 경우에도 성공으로 끝난다.
+      - name: Evaluate per-component release status
+        id: release-status
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
+          WEB_CHANGED: ${{ needs.changes.outputs.web }}
+          GUARDS_RESULT: ${{ needs.repository-guards.result }}
+          BACKEND_RESULT: ${{ needs.backend-build-test.result }}
+          STATIC_RESULT: ${{ needs.static-analysis.result }}
+          API_RESULT: ${{ needs.api-types-drift-guard.result }}
+          WEB_NEXT_RESULT: ${{ needs.web-next-build-test.result }}
+          WEB_NEXT_PROXY_RESULT: ${{ needs.web-next-e2e-proxy.result }}
+          WEB_NEXT_DEFAULT_RESULT: ${{ needs.web-next-e2e-default.result }}
+          WEB_NEXT_A11Y_RESULT: ${{ needs.web-next-e2e-a11y.result }}
+          WEB_NEXT_CROSS_BROWSER_RESULT: ${{ needs.web-next-e2e-cross-browser.result }}
+          WEB_NEXT_VISUAL_RESULT: ${{ needs.web-next-e2e-visual.result }}
+          WEB_NEXT_RESPONSIVE_RESULT: ${{ needs.web-next-e2e-responsive.result }}
+          WEB_NEXT_PERF_RESULT: ${{ needs.web-next-performance-budget.result }}
+          BACKEND_IMAGE_RESULT: ${{ needs.docker-publish-backend.result }}
+          WEB_IMAGE_RESULT: ${{ needs.docker-publish-web.result }}
+          SECURITY_RESULT: ${{ needs.security-scan.result }}
+        run: |
+          all_success() {
+            local result
+            for result in "$@"; do
+              [[ "$result" == "success" ]] || return 1
+            done
+            return 0
+          }
+
+          # 컴포넌트가 안 바뀐 커밋에서는 재사용 이미지가 곧 직전 released라, released를
+          # 그 SHA로 다시 붙이는 것이 같은 digest를 가리키는 멱등 연산이다. 그래서
+          # "변경 없음"도 released=true로 둔다 — 태그가 커밋마다 끊기지 않게 하려는 것이다.
+          backend_released=false
+          if all_success "$GUARDS_RESULT" "$BACKEND_IMAGE_RESULT" "$SECURITY_RESULT"; then
+            if [[ "$BACKEND_CHANGED" != "true" ]] \
+              || all_success "$BACKEND_RESULT" "$STATIC_RESULT" "$API_RESULT"; then
+              backend_released=true
+            fi
+          fi
+
+          # web은 자기 E2E 6트랙 + 성능 예산까지 통과해야 released다 — docker-publish-web이
+          # 이들을 needs로 갖지 않고 먼저 push하기 때문에 여기서 따로 확인해야 한다.
+          web_released=false
+          if all_success "$GUARDS_RESULT" "$WEB_IMAGE_RESULT" "$SECURITY_RESULT"; then
+            if [[ "$WEB_CHANGED" != "true" ]] \
+              || all_success "$WEB_NEXT_RESULT" "$WEB_NEXT_PROXY_RESULT" \
+                "$WEB_NEXT_DEFAULT_RESULT" "$WEB_NEXT_A11Y_RESULT" \
+                "$WEB_NEXT_CROSS_BROWSER_RESULT" "$WEB_NEXT_VISUAL_RESULT" \
+                "$WEB_NEXT_RESPONSIVE_RESULT" "$WEB_NEXT_PERF_RESULT"; then
+              web_released=true
+            fi
+          fi
+
+          # push가 아니면(PR) 이미지 자체가 없으므로 태그를 옮길 대상도 없다.
+          if [[ "$EVENT_NAME" != "push" ]]; then
+            backend_released=false
+            web_released=false
+          fi
+
+          echo "Release status: backend=$backend_released web=$web_released"
+          {
+            echo "backend_released=$backend_released"
+            echo "web_released=$web_released"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Verify every affected quality gate
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -976,6 +1078,42 @@ jobs:
             require_success "Web image" "$WEB_IMAGE_RESULT"
             require_success "Image security scans" "$SECURITY_RESULT"
           fi
+
+  advance-released-tags:
+    name: Advance released tags
+    runs-on: ubuntu-latest
+    needs: [quality-gate, docker-publish-backend, docker-publish-web]
+    # quality-gate가 실패해도(= :latest는 전진하지 않아도) 돌아야 한다. web E2E 하나가
+    # 깨졌을 때 backend-released까지 같이 멈추면, 그 뒤 backend=false 커밋들이 계속
+    # 낡은 backend 이미지를 복제하는 정체가 다시 생긴다(ci.yml의 backend-verified 주석이
+    # 기록한 V31 사고와 같은 형태). 그래서 promote와 달리 quality-gate 결과를 조건에
+    # 넣지 않고, 컴포넌트별 판정(quality-gate outputs)만 보고 각자 전진시킨다.
+    # promote 잡 주석의 다이아몬드 needs 이슈가 여기에도 그대로 적용돼 always()가 필수다.
+    if: >-
+      always() &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.docker-publish-backend.result == 'success' &&
+      needs.docker-publish-web.result == 'success'
+    timeout-minutes: 8
+    permissions:
+      packages: write
+    steps:
+      - name: Set image names
+        run: |
+          echo "BACKEND_IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}/backend" >> "$GITHUB_ENV"
+          echo "WEB_IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}/web" >> "$GITHUB_ENV"
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Advance backend-released
+        if: needs.quality-gate.outputs.backend_released == 'true'
+        run: docker buildx imagetools create --tag "$BACKEND_IMAGE:backend-released" "$BACKEND_IMAGE:$GITHUB_SHA"
+      - name: Advance web-released
+        if: needs.quality-gate.outputs.web_released == 'true'
+        run: docker buildx imagetools create --tag "$WEB_IMAGE:web-released" "$WEB_IMAGE:$GITHUB_SHA"
 
   promote:
     name: Promote to latest
