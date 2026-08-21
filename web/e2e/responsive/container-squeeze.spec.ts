@@ -29,33 +29,17 @@ const SPLIT_WIDTHS = [640, 700, 800, 1023];
 /** 홈 히어로는 1열 구간의 최소 폭도 함께 본다(RSP-26). */
 const HOME_WIDTHS = [320, 390, 640, 768, 810, 1023, 1024];
 
-const BACKEND = "http://127.0.0.1:4115";
-
 test.describe("2열 전환 직후 컨테이너에서 콘텐츠가 압착되지 않는다", () => {
   // 픽스처의 savedNumbers는 빈 배열로 시작한다 — 시드하지 않으면 이 스펙은 빈
-  // 화면을 재고 항상 green이 된다. reset은 numbers.resetNumbersState()가 맡는다.
-  test.beforeEach(async ({ request }) => {
-    await request.post(`${BACKEND}/__test__/reset`);
-    for (const numbers of [
-      [3, 11, 22, 27, 38, 44],
-      [7, 14, 19, 30, 35, 41],
-    ]) {
-      await request.post(`${BACKEND}/api/v1/saved`, { data: { numbers } });
-    }
-  });
-
-  test.afterEach(async ({ request }) => {
-    await request.post(`${BACKEND}/__test__/reset`);
+  // 화면을 재고 항상 green이 된다. 전역 상태(POST /api/v1/saved + __test__/reset)로
+  // 시드하면 chromium과 firefox-overflow 두 프로젝트가 이 스펙을 동시에 돌면서
+  // 서로의 시드를 지운다 — 컨텍스트 쿠키로 시드해 전역을 건드리지 않는다.
+  test.beforeEach(async ({ context }) => {
+    await context.addCookies([{ name: "e2e-saved", value: "2", url: "http://127.0.0.1:3115" }]);
   });
 
   for (const width of SPLIT_WIDTHS) {
     test(`${width}px에서 /saved 저장 카드가 압착되지 않는다`, async ({ page }) => {
-      // RSP-01: 아직 고쳐지지 않은 결함이므로 지금은 실패해야 정상이다. CI를 영구히
-      // 빨갛게 만들지 않으려고 "예상된 실패"로 표시한다(a14938e가 세운 관행).
-      // PR 3에서 `.list`의 전환을 @container로 옮기면 이 test.fail이 "예상과 다르게
-      // 통과함"으로 실패하므로, 이 줄을 지우는 것이 그 수정의 일부가 된다.
-      // 실측 red 폭: 640(3줄) / 700(3줄) / 800(2줄) / 1023(2줄).
-      test.fail(true, "RSP-01: .list가 .layout과 같은 640px에서 2열로 갈라진다");
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/saved", { waitUntil: "networkidle" });
 
@@ -99,13 +83,6 @@ test.describe("홈 히어로의 번호 의미 단위가 유지된다", () => {
 
   for (const width of [640, 768, 810, 1023]) {
     test(`${width}px에서 히어로의 당첨 번호 6개가 한 줄을 유지한다`, async ({ page }) => {
-      // RSP-26: 실측 red 폭은 640/768/810이다. 1023px은 이미 통과하므로
-      // 조건을 걸어 그쪽 회귀 감지력은 그대로 남긴다(a14938e가
-      // document-overflow.spec.ts에 쓴 것과 같은 방식).
-      test.fail(
-        width < 1023,
-        "RSP-26: 히어로 볼 축소가 뷰포트 max-width:420px 기준이라 2열 히어로를 보호하지 못한다",
-      );
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/", { waitUntil: "networkidle" });
 

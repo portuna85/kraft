@@ -47,6 +47,26 @@
     font-size: var(--font-size-input);
   }
 
+  /* RSP-01(docs/improvement.md): `.layout`이 2열로 갈라진 뒤의 우측 컬럼 실폭은
+     뷰포트에서 유도할 수 없다 — 640px 뷰포트에서 이 컬럼은 292px뿐이다. `.list`의
+     2열 전환 기준을 뷰포트가 아니라 이 컨테이너 폭으로 옮기려면 컨테이너가
+     필요하다.
+
+     컨테이너는 `.list` 자신이 아니라 반드시 **부모**여야 한다 —
+     `container-type: inline-size`는 그 요소에 `contain: inline-size`를 걸어
+     자식이 부모 폭을 늘리지 못하게 하므로, `.list`에 직접 걸면 자기 자신을
+     질의할 수 없다. */
+  /* 이름을 둘 준다. `saved-list`는 아래 `.list`의 열 수 판정용이고, `lotto-fit`은
+     `lotto-ball.module.css`가 볼 크기·간격을 줄일 때 질의하는 이름이다 —
+     `.list`를 1열로 되돌려도 640px 뷰포트에서는 이 컬럼이 292px뿐이라 카드 안쪽
+     가용 폭이 250px다. md 볼 6개는 gap 8px 기준 256px를 요구하므로 6px이 모자란다
+     (실측). `lotto-fit`에 참여시키면 그 폭에서 gap이 4px로 줄어 236px가 되어
+     들어간다. 홈 히어로가 쓰는 것과 **같은** 규칙이다. */
+  .listRegion {
+    container-type: inline-size;
+    container-name: saved-list lotto-fit;
+  }
+
   .list {
     display: grid;
     grid-template-columns: 1fr;
@@ -60,6 +80,17 @@
 
   .itemHeader {
     display: flex;
+    /* RSP-03(docs/improvement.md): `justify-content: space-between` + 가변 길이
+       텍스트 + flex-wrap 없음의 조합을 전수 조사한 결과 실제 위험은 여기 한
+       곳이다 — 카드가 좁아지면 날짜와 삭제 버튼이 서로를 min-content까지 민다.
+       여기서는 **래핑을 허용하는 것이 고침**이다. gap이 이미 있으므로 줄이
+       바뀌어도 두 줄이 붙지 않는다.
+
+       나머지 후보는 확인 완료라 재조사할 필요가 없다: `.headerInner`는
+       header-no-wrap.spec.ts가 실측 감시 + `.brand`에 nowrap, `dialog .header`의
+       제목은 reset.css의 `word-break: keep-all` 대상, `.resultsHeader`와
+       `page-header .header`는 이미 flex-wrap: wrap을 갖고 있다. */
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-3);
@@ -70,8 +101,22 @@
     color: var(--color-ink-muted);
   }
 
-  /* 데스크톱은 2열(§23.7). 카드 안이 번호 6개라 좁으면 줄바꿈이 지저분해진다. */
-  @media (min-width: 640px) {
+  /* 데스크톱은 2열(§23.7). 카드 안이 번호 6개라 좁으면 줄바꿈이 지저분해진다.
+     — 바로 그 이유 때문에 뷰포트가 아니라 컨테이너 폭으로 판정한다.
+
+     RSP-01(docs/improvement.md): 예전에는 `@media (min-width: 640px)`였다.
+     `.layout`도 **같은 640px**에서 2열로 갈라지므로 두 전환이 복리로 겹쳐,
+     640px 뷰포트에서 카드 1장의 내부 가용 폭이 96px까지 눌렸다:
+       640 - 셸 거터 32 = 608 -> .layout 2열 (608-24)/2 = 292
+           -> .list 2열 (292-16)/2 = 138 -> Card padding 40 + border 2 = 96
+     md 볼 6개는 36*6 + 8*5 = 256px를 요구하므로 실측 3줄로 접혔다(640·700px).
+     document 오버플로가 아니라 래핑이라 document-overflow.spec.ts가 640과 641을
+     둘 다 스윕하면서도 구조적으로 통과시켰다 — container-squeeze.spec.ts가
+     이걸 잡는다.
+
+     임계 608px의 근거: 볼 6개 256px + Card padding 40px = 카드 1장 296px,
+     2열이면 296*2 + gap 16 = 608px. */
+  @container saved-list (min-width: 608px) {
     .list {
       grid-template-columns: repeat(2, 1fr);
     }
