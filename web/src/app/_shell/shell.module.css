@@ -48,6 +48,27 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
+    /* RSP-25(docs/improvement.md): flex 아이템 기본 min-width는 auto(콘텐츠 폭)라,
+       계정 라벨이 길면 이 묶음이 줄어들지 못하고 .brand와 .primaryNav를 밀어낸다.
+       .tabLink가 같은 이유로 min-width:0을 갖는 것과 같은 처방이다. */
+    min-width: 0;
+  }
+
+  /* RSP-25(docs/improvement.md): 백엔드는 OAuth 닉네임을 100자까지 허용하는데
+     (CommunityOAuthAttributes) 계정 트리거는 그것을 그대로 출력했다. 폭 상한이
+     없어서 100자 닉네임이 320px에서 헤더 높이를 64px 계약의 5배(319px)까지
+     늘리고, 공백 없는 ASCII면 문서 자체가 가로로 넘쳤다(scrollWidth 1115px).
+
+     시각 라벨만 줄이고 접근 이름은 건드리지 않는다 — CSS 말줄임은 텍스트 콘텐츠를
+     바꾸지 않으므로 스크린리더에는 전체 닉네임이 그대로 전달된다. aria-label로
+     따로 보강하면 오히려 접근 이름을 우리가 다시 잘라야 한다. */
+  .accountLabel {
+    display: block;
+    min-width: 0;
+    max-width: clamp(3.5rem, 16vw, 10rem);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /* I-33: 테마 확정 전(마운트 전) 버튼 자리만큼 미리 차지해 헤더가 흔들리지
@@ -257,6 +278,13 @@
 
     .tabBar {
       display: none;
+    }
+
+    /* RSP-25(docs/improvement.md): 이 폭부터는 9개 주요 메뉴가 같은 행에
+       들어오므로 계정 라벨에 쓸 수 있는 여유가 오히려 **줄어든다**. 16vw를
+       그대로 두면 1280px에서 205px까지 자라 브랜드·메뉴를 밀어낸다. */
+    .accountLabel {
+      max-width: 8rem;
     }
   }
 

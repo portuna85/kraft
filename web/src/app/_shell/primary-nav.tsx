@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { isRouteCurrent, PRIMARY_NAV } from "./nav-items";
+import { currentNavHref, PRIMARY_NAV } from "./nav-items";
 import styles from "./shell.module.css";
 
 /**
@@ -15,15 +15,20 @@ import styles from "./shell.module.css";
  */
 export function PrimaryNav() {
   const pathname = usePathname();
+  const items = PRIMARY_NAV.flatMap((group) => group.items);
+  // RSP-23(docs/improvement.md): 항목마다 boolean을 따로 계산하면 부모/자식이
+  // 같은 메뉴에 있을 때 둘 다 현재가 된다(`/recommend/history`). 메뉴 전체에서
+  // 하나를 고른 뒤 그것과 같은지만 본다.
+  const currentHref = currentNavHref(items, pathname);
 
   return (
     <nav className={styles.primaryNav} aria-label="주요 메뉴">
-      {PRIMARY_NAV.flatMap((group) => group.items).map((item) => (
+      {items.map((item) => (
         <Link
           key={item.href}
           className={styles.navLink}
           href={item.href}
-          aria-current={isRouteCurrent(item.href, pathname) ? "page" : undefined}
+          aria-current={item.href === currentHref ? "page" : undefined}
         >
           {item.label}
         </Link>
