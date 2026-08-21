@@ -129,7 +129,34 @@
      보너스 1개가 6+1로 갈라진다 — "당첨 번호 + 보너스"라는 하나의 묶음이
      시각적으로 끊긴다. 상호작용 요소가 아니므로(홈 히어로 표시 전용) 44px
      최소 타깃 제약 없이 줄어들어도 된다. */
+  /* RSP-26(docs/improvement.md): 이 축소는 원래 뷰포트 `max-width: 420px`
+     기준이었다. 그런데 볼이 좁아지는 진짜 이유는 뷰포트가 아니라 **자기가 놓인
+     칸이 좁아서**다 — 홈 히어로는 640px부터 `minmax(260px, 1fr)` 컬럼 안으로
+     들어가 실폭이 292px, 안쪽 여백을 빼면 244px가 된다. lg 볼 7개(6 + 보너스)는
+     48*7 + gap 8*6 = 384px를 요구하므로 640·768·810px에서 실측 2줄로 접혔다.
+     뷰포트는 넓어졌는데 칸은 절반이 된, RSP-01과 정확히 같은 형태다.
+
+     그래서 소비처가 `container-name: lotto-fit`으로 opt-in한 폭을 질의한다.
+     지금 참여하는 곳은 둘이다 — `home.module.css`의 `.hero`,
+     `library.module.css`의 `.listRegion`(거기서는 lg가 아니라 md 볼의 gap이
+     6px 모자란 것을 이 gap 축소가 메운다).
+
+     뷰포트 쿼리도 그대로 남긴다 — opt-in하지 않은 소비처에서는 예전 동작이
+     유지돼야 하고, 컨테이너 쿼리는 컨테이너가 없으면 그냥 매치되지 않기
+     때문이다. 두 조건은 서로를 덮지 않고 OR로 동작한다. */
   @media (max-width: 420px) {
+    .set {
+      gap: var(--space-1);
+    }
+
+    .lg {
+      width: 36px;
+      height: 36px;
+      font-size: var(--text-sm);
+    }
+  }
+
+  @container lotto-fit (max-width: 420px) {
     .set {
       gap: var(--space-1);
     }

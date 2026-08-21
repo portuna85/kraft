@@ -24,7 +24,13 @@
     }
   }
 
+  /* RSP-26(docs/improvement.md): 히어로는 640px부터 minmax(260px, 1fr) 컬럼
+     안으로 들어가 뷰포트보다 훨씬 좁아진다(640px 뷰포트에서 실폭 292px, 안쪽
+     244px). 안에 든 lg 볼 7개는 384px를 요구하므로 640~1023px에서 오히려 모바일
+     보다 나쁘게 접혔다. lotto-ball.module.css가 이 이름으로 폭을 질의한다. */
   .hero {
+    container-type: inline-size;
+    container-name: lotto-fit;
     display: flex;
     flex-direction: column;
     gap: var(--space-4);

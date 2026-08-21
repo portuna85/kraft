@@ -30,9 +30,15 @@ export default defineConfig({
     // `document-overflow.spec.ts`에만 스코프한다 — 이 파일이 이미 `/stats`를 포함한
     // 라우트×폭 전체 조합을 스윕하므로 새 스펙 코드 없이 firefox 프로젝트 추가만으로
     // 기존 `/stats@320` 케이스가 red가 된다.
+    // RSP-13(docs/improvement.md): KF-03의 원인은 Firefox의 grid automatic
+    // minimum size 처리 차이였고 해법은 `.card { min-width: 0 }`이었다. RSP-01이
+    // `@container`를 도입하면서 `container-type: inline-size`가 `contain:
+    // inline-size`를 걸어 격리 경계가 하나 더 생겼다 — 그것도 `/saved`의
+    // `<section>`이라는 **grid 아이템** 위에. 브라우저 간 구현 차이가 다시 드러날
+    // 수 있는 정확히 그 지점이라, RSP-13이 미리 적어 둔 재평가 조건에 해당한다.
     {
       name: "firefox-overflow",
-      testMatch: /document-overflow\.spec\.ts/,
+      testMatch: /(document-overflow|container-squeeze)\.spec\.ts/,
       use: { ...devices["Desktop Firefox"] },
     },
     // RSP-10(docs/improvement.md): Desktop Chrome은 뷰포트를 390px로 줄여도

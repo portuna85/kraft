@@ -226,7 +226,7 @@ export function SavedLibrary({ latestRound }: { latestRound: number | null }) {
           )}
         </section>
 
-        <section aria-labelledby="saved-list" className="stack">
+        <section aria-labelledby="saved-list" className={`stack ${styles.listRegion}`}>
           <h2 id="saved-list">저장한 번호</h2>
           <ol className={styles.list}>
             {items.map((item) => {

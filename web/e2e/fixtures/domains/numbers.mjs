@@ -19,6 +19,33 @@ const recommendationSets = [];
  * fixed-ui-toast-safe-area.spec.ts)에도 새어 나간다. community가 이미 쓰는
  * 패턴과 같은 형태로 리셋 경로를 만든다.
  */
+/**
+ * RSP-01(docs/improvement.md): 브라우저 컨텍스트 단위 보관함 시드.
+ *
+ * `savedNumbers`는 픽스처 프로세스 전역이라, 여기에 POST로 시드하는 방식은
+ * `fullyParallel` 트랙에서 근본적으로 불안정하다 — container-squeeze는 chromium과
+ * firefox-overflow 두 프로젝트에서 동시에 돌고, 아무 스펙이나 `__test__/reset`을
+ * 부르면 남의 시드가 지워진다(실제로 firefox 쪽이 "저장 항목 0개"로 빨개졌다).
+ * `e2e-saved` 쿠키가 있으면 그 개수만큼 결정적인 목록을 만들어 돌려주고 전역은
+ * 전혀 건드리지 않는다 — community.mjs의 `e2e-nickname`과 같은 패턴이다.
+ */
+function savedFromCookie(headers) {
+  const raw = headers?.cookie;
+  if (typeof raw !== "string") return null;
+  const match = raw.match(/(?:^|;\s*)e2e-saved=(\d+)/);
+  if (match === null) return null;
+
+  const count = Math.min(Number(match[1]), 20);
+  return Array.from({ length: count }, (_, index) => ({
+    id: 900 + index,
+    // 두 자리 번호로 채운다 — 한 자리보다 넓어서 압착을 더 정직하게 드러낸다.
+    numbers: [11, 22, 33, 38, 41, 44 - index].sort((a, b) => a - b),
+    label: null,
+    source: "recommend",
+    createdAt: "2026-08-01T15:00:00Z",
+  }));
+}
+
 export function resetNumbersState() {
   savedNumbers.length = 0;
   recommendationSets.length = 0;
@@ -63,8 +90,8 @@ export const routes = [
   ],
   [
     "/api/v1/saved",
-    (_params, requestBody, method) => {
-      if (method === "GET") return savedNumbers;
+    (_params, requestBody, method, headers) => {
+      if (method === "GET") return savedFromCookie(headers) ?? savedNumbers;
       // POST — 새 저장 번호를 만든다(§25.5).
       const id = nextSavedId++;
       const created = {
