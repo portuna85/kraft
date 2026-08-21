@@ -170,9 +170,7 @@ describe("댓글 섹션", () => {
     await user.click(screen.getByRole("button", { name: "등록" }));
 
     await waitFor(() =>
-      expect(scrollIntoView).toHaveBeenCalledWith(
-        expect.objectContaining({ behavior: "smooth" }),
-      ),
+      expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ behavior: "smooth" })),
     );
   });
 
