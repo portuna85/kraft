@@ -49,8 +49,13 @@ export default function DataHubPage() {
             <p className="note">{feature.description}</p>
             {/* I-33: "보기" 텍스트만 클릭 대상이라 카드처럼 보이는 나머지 영역을
                 눌러도 반응이 없었다 — stretched-link로 카드 전체를 링크 히트
-                영역에 포함시키되, 접근 이름은 여전히 "보기" 하나만 남긴다. */}
+                영역에 포함시킨다.
+                RSP-28(docs/improvement.md): 네 카드 모두 접근 이름이 "보기"로
+                같아 스크린리더 링크 목록에서 목적지를 구별할 수 없었다. 시각
+                라벨은 "보기"로 유지하고 sr-only 텍스트를 앞에 조합해 접근
+                이름만 "출현 통계 보기"처럼 고유하게 만든다. */}
             <Link href={feature.href} className={styles.cardLink}>
+              <span className="sr-only">{feature.title} </span>
               보기
             </Link>
           </Card>

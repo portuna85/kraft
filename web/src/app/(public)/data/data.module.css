@@ -23,4 +23,27 @@
     position: absolute;
     inset: 0;
   }
+
+  /* RSP-28(docs/improvement.md): 전역 :focus-visible(base.css)은 실제 `<a>`
+     요소에 걸린다 — stretched-link라 히트 영역은 카드 전체인데 초점 표시는
+     "보기" 텍스트만큼만 작게 보였다. 초점 표시를 카드로 옮기고 링크 자체의
+     기본 링은 지운다.
+
+     :focus-within이 아니라 :has(:focus-visible)을 쓴다 — :focus-within은
+     마우스 클릭에도 걸려 base.css가 :focus-visible로 명시적으로 피한
+     "클릭에도 링이 남는" 문제를 카드 레벨에서 재도입한다. */
+  .grid > li:has(:focus-visible) {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+
+  .cardLink:focus-visible {
+    outline: none;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .grid > li:hover {
+      border-color: var(--color-brand);
+    }
+  }
 }

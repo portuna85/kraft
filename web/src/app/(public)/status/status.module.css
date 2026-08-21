@@ -4,4 +4,11 @@
     gap: var(--space-2);
     justify-items: start;
   }
+
+  /* RSP-27(docs/improvement.md): "2026년 8월 20일 14:32" 같은 타임스탬프가
+     4열 표에서 가장 길고 좁은 화면에서 임의 지점에 줄바꿈됐다. 넘치면
+     .tableWrap의 기존 가로 스크롤이 흡수한다. */
+  .timeCell {
+    white-space: nowrap;
+  }
 }
