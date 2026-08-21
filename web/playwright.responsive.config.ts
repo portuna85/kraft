@@ -35,6 +35,28 @@ export default defineConfig({
       testMatch: /document-overflow\.spec\.ts/,
       use: { ...devices["Desktop Firefox"] },
     },
+    // RSP-10(docs/improvement.md): Desktop Chrome은 뷰포트를 390px로 줄여도
+    // `hasTouch: false`라 `(hover: hover) and (pointer: fine)`을 **참으로** 평가한다.
+    // 그 미디어 특성은 뷰포트 크기가 아니라 `hasTouch`/`isMobile`에서 오기 때문이다.
+    // 즉 코드베이스 12곳(8개 파일)의 hover 가드 블록이 지금까지 전부 활성 상태로만
+    // 검증돼 왔고, **실제 모바일 사용자가 보는 CSS는 이 트랙에서 한 번도 렌더된 적이
+    // 없다.** 특히 lotto-ball.module.css:24와 number-grid.module.css:34의
+    // `scale(1.05)`는 요소의 실측 사각형을 직접 바꾸므로, `assertMinHitArea`가
+    // 터치 기기에는 존재하지 않는 확대 상태를 재고 있었을 수 있다.
+    //
+    // firefox-overflow와 같은 이유로 트랙 전체를 재실행하지 않고, 포인터 판정이
+    // 실제로 의미 있는 스펙에만 스코프한다. 와일드카드가 아니라 파일명을 끝까지
+    // 못박는 이유가 둘 있다.
+    //   - touch-target-stretched-link.spec.ts는 `test.fail(true, …)`로 선언된
+    //     의도적 red 문서화 테스트다. 와일드카드로 끌어들이면 터치 프로젝트에서
+    //     우연히 통과할 때 "passed unexpectedly"로 하드 실패한다.
+    //   - fixed-ui-toast-safe-area.spec.ts는 CSSOM 규칙을 파싱하는 스펙이라
+    //     포인터 종류와 무관하다 — 재실행해도 얻는 것이 없다.
+    {
+      name: "mobile-chromium",
+      testMatch: /(touch-target|form-controls|fixed-ui)\.spec\.ts$/,
+      use: { ...devices["Pixel 7"] },
+    },
   ],
   webServer: [
     {

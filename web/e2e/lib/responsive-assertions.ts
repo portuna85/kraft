@@ -141,3 +141,101 @@ export async function assertNotOccludedByFixedUi(
     ).toBe(false);
   }
 }
+
+/**
+ * RSP-12(docs/improvement.md): 한 줄이어야 할 요소가 여러 줄로 접혔는지 본다.
+ *
+ * `assertElementMaxHeight`는 임계 픽셀을 호출부가 알아야 하고 대상 하나만 본다.
+ * 여기서는 셀렉터에 걸린 **모든** 요소의 실제 줄 수를 세므로 폰트 크기·토큰 변경에
+ * 영향받지 않는다.
+ *
+ * 줄 수를 두 방식으로 나눠 센다 — 어느 쪽도 line-height 근사를 쓰지 않는다.
+ *   - 자식 요소가 있으면 자식들의 `rect.top`을 버킷팅해 행 수를 센다. flex-wrap
+ *     컨테이너(LottoBallSet의 `.set`, `.itemHeader`)가 정확히 이 경우다.
+ *   - 순수 텍스트면 `Range.getClientRects()`가 line box 하나당 사각형 하나를
+ *     주므로 그대로 줄 수가 된다.
+ *
+ * 이것이 RSP-01의 **주** 검출기다. `.set`은 `flex-wrap: wrap`이라 볼이 넘치지 않고
+ * 접히므로 `assertNoHorizontalOverflow`도 `assertFitsWithoutShrink`도 통과시킨다.
+ */
+export async function assertNoWrap(page: Page, selector: string, maxLines = 1) {
+  const wrapped = await page.$$eval(
+    selector,
+    (elements, limit) =>
+      elements
+        .filter((el) => {
+          const style = window.getComputedStyle(el);
+          return style.display !== "none" && style.visibility !== "hidden";
+        })
+        .map((el) => {
+          const children = Array.from(el.children).filter((child) => {
+            const rect = child.getBoundingClientRect();
+            if (rect.width === 0 && rect.height === 0) return false;
+            // 흐름에서 빠진 자식은 행을 만들지 않는다. `.sr-only`가 정확히 이
+            // 경우다 — position:absolute로 1px 상자가 되어 top이 형제와 어긋나므로
+            // 걸러내지 않으면 없는 줄이 하나 더 세어진다.
+            const childStyle = window.getComputedStyle(child);
+            return childStyle.position !== "absolute" && childStyle.position !== "fixed";
+          });
+
+          let lines: number;
+          if (children.length > 0) {
+            // 같은 행의 자식은 top이 미세하게 다를 수 있다(align-items, 폰트 메트릭).
+            // 2px 버킷으로 뭉쳐 "시각적으로 같은 줄"을 하나로 센다.
+            const tops = new Set(
+              children.map((child) => Math.round(child.getBoundingClientRect().top / 2)),
+            );
+            lines = tops.size;
+          } else {
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            lines = range.getClientRects().length;
+          }
+          return { el, lines };
+        })
+        .filter(({ lines }) => lines > limit)
+        .map(({ el, lines }) => {
+          const cls = el.className ? `.${String(el.className).split(" ").join(".")}` : "";
+          return `${el.tagName.toLowerCase()}${cls} (${lines}줄)`;
+        }),
+    maxLines,
+  );
+  expect(
+    wrapped,
+    `${maxLines}줄을 넘겨 래핑된 요소: ${wrapped.join(", ")} — 뷰포트는 넓어졌는데 안쪽 컨테이너가 좁아진 경우를 의심한다(RSP-01).`,
+  ).toEqual([]);
+}
+
+/**
+ * RSP-12(docs/improvement.md): 요소의 콘텐츠가 자기 폭 안에 들어가지 못하고
+ * 밖으로 밀렸는지 본다.
+ *
+ * flex/grid 아이템은 `min-width: auto` 아래로는 줄지 않으므로, 콘텐츠가 압착되어도
+ * **document** 오버플로는 생기지 않는다 — `assertNoHorizontalOverflow`가 구조적으로
+ * 못 보는 종류의 결함이 여기서 잡힌다.
+ *
+ * 한계: 대상이 스스로 래핑할 수 있으면(`flex-wrap: wrap`, 일반 텍스트) 넘치는 대신
+ * 접히므로 이 단언은 통과한다. 그 경우는 `assertNoWrap` 쪽이 담당한다. 즉 이 단언은
+ * `.itemHeader`처럼 nowrap 텍스트와 버튼이 서로를 min-content까지 미는 경우용
+ * **보조** 수단이다.
+ */
+export async function assertFitsWithoutShrink(page: Page, selector: string, tolerance = 1) {
+  const squeezed = await page.$$eval(
+    selector,
+    (elements, tol) =>
+      elements
+        .filter((el) => {
+          const style = window.getComputedStyle(el);
+          if (style.display === "none" || style.visibility === "hidden") return false;
+          // 의도적 내부 scroller는 넘치는 것이 목적이다(.tableWrap 등).
+          if (style.overflowX === "auto" || style.overflowX === "scroll") return false;
+          return el.scrollWidth > el.clientWidth + tol;
+        })
+        .map((el) => {
+          const cls = el.className ? `.${String(el.className).split(" ").join(".")}` : "";
+          return `${el.tagName.toLowerCase()}${cls} (scroll=${el.scrollWidth} client=${el.clientWidth})`;
+        }),
+    tolerance,
+  );
+  expect(squeezed, `콘텐츠가 컨테이너보다 넓게 눌린 요소: ${squeezed.join(", ")}`).toEqual([]);
+}

@@ -31,6 +31,26 @@ describe("PrimaryNav", () => {
     expect(screen.getByRole("link", { name: "커뮤니티" })).toHaveAttribute("aria-current", "page");
   });
 
+  /**
+   * RSP-23(docs/improvement.md): 기존 세 케이스는 충돌이 없는 경로만 골라
+   * 검증했다 — `/community/posts/1`은 매치될 수 있는 항목이 애초에 하나뿐이다.
+   * 실제 충돌은 같은 메뉴에 부모(`/recommend`)와 자식(`/recommend/history`)이
+   * 함께 있는 곳에서 난다. axe에도 `aria-current` 중복을 잡는 규칙은 없다.
+   */
+  // a14938e의 관행: 아직 안 고친 결함은 "예상된 실패"로 둔다. PR 2에서 matcher가
+  // 들어가면 "예상과 다르게 통과함"으로 실패하므로 `.fails`를 지우는 것이 그
+  // 수정의 일부가 된다.
+  it.fails("RSP-23: 부모/자식 메뉴가 함께 있어도 현재 페이지는 정확히 하나다", () => {
+    mockPathname = "/recommend/history";
+    render(<PrimaryNav />);
+
+    const current = screen
+      .getAllByRole("link")
+      .filter((link) => link.getAttribute("aria-current") === "page");
+
+    expect(current.map((link) => link.textContent)).toEqual(["추천 이력"]);
+  });
+
   it("PRIMARY_NAV 항목과 무관한 경로에서는 아무것도 현재로 표시하지 않는다", () => {
     mockPathname = "/";
     render(<PrimaryNav />);
