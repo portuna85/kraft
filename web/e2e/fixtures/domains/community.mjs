@@ -114,8 +114,32 @@ export function resetCommunityState() {
   post1ViewCount = POST_DETAIL.viewCount;
 }
 
+/**
+ * RSP-25(docs/improvement.md): 브라우저 컨텍스트 단위 세션 오버라이드.
+ *
+ * `__test__/session`은 픽스처 프로세스 전역을 바꾸므로 `fullyParallel: true`인
+ * 트랙에서 스펙 간에 샌다 — 100자 닉네임을 세팅한 스펙이 도는 동안 다른 스펙이
+ * 같은 셸을 렌더하면 그쪽이 오탐으로 빨개진다. `e2e-nickname` 쿠키가 있으면 그
+ * 컨텍스트에서만 로그인 상태로 응답해 전역 상태를 전혀 건드리지 않는다.
+ */
+function sessionFromCookie(headers) {
+  const raw = headers?.cookie;
+  if (typeof raw !== "string") return null;
+  const match = raw.match(/(?:^|;\s*)e2e-nickname=([^;]*)/);
+  if (match === null) return null;
+  return {
+    loggedIn: true,
+    userId: 1,
+    nickname: decodeURIComponent(match[1]),
+    activeProviders: ["google", "naver"],
+  };
+}
+
 export const routes = [
-  ["/api/v1/community/session", () => sessionState],
+  [
+    "/api/v1/community/session",
+    (_params, _body, _method, headers) => sessionFromCookie(headers) ?? sessionState,
+  ],
   [
     "/api/v1/community/me/recommendation-sets",
     (_params, requestBody, method) => {

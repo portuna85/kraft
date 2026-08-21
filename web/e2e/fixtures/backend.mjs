@@ -47,6 +47,10 @@ const server = createServer(async (request, response) => {
     forcedFailurePath = null;
     Object.assign(stats.LATEST_ROUND, stats.BASE_LATEST_ROUND);
     community.resetCommunityState();
+    // RSP-12(docs/improvement.md): 저장 번호·추천 이력도 상태를 갖는다.
+    // container-squeeze.spec.ts가 `/saved`에 항목을 시드하므로 여기서 되돌리지
+    // 않으면 같은 픽스처를 공유하는 다른 스펙에 샌다.
+    numbers.resetNumbersState();
     response.statusCode = 204;
     response.end();
     return;
@@ -115,7 +119,16 @@ const server = createServer(async (request, response) => {
   }
 
   // 쿼리나 본문, 메서드에 따라 응답이 달라지는 경로는 함수로 둔다.
-  const body = typeof entry === "function" ? entry(url.searchParams, requestBody, method) : entry;
+  //
+  // RSP-25(docs/improvement.md): 네 번째 인자로 요청 헤더를 넘긴다. `__test__/session`은
+  // 프로세스 전역 상태를 바꾸는데 responsive 트랙은 `fullyParallel: true`라, 긴 닉네임을
+  // 세팅한 스펙이 도는 동안 다른 스펙(document-overflow 등)이 같은 셸을 렌더해 엉뚱한
+  // 곳이 빨개진다. 브라우저 컨텍스트별 쿠키로 세션을 흉내내면 전역 상태를 건드리지
+  // 않는다 — next.config의 rewrites가 투명 프록시라 쿠키가 그대로 도달한다.
+  const body =
+    typeof entry === "function"
+      ? entry(url.searchParams, requestBody, method, request.headers)
+      : entry;
 
   response.statusCode = 200;
   response.end(JSON.stringify(body));

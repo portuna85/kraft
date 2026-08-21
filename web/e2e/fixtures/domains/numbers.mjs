@@ -11,6 +11,21 @@ const savedNumbers = [];
 let nextRecommendationSetId = 200;
 const recommendationSets = [];
 
+/**
+ * RSP-12(docs/improvement.md): 이 도메인의 상태는 지금까지 리셋 경로가 없었다 —
+ * `__test__/reset`이 stats와 community만 되돌렸다. responsive 트랙은
+ * `fullyParallel: true`라 하나의 픽스처 백엔드를 여러 스펙이 공유하므로,
+ * `/saved`에 항목을 시드하는 스펙이 생기는 순간 그 항목이 다른 스펙(예:
+ * fixed-ui-toast-safe-area.spec.ts)에도 새어 나간다. community가 이미 쓰는
+ * 패턴과 같은 형태로 리셋 경로를 만든다.
+ */
+export function resetNumbersState() {
+  savedNumbers.length = 0;
+  recommendationSets.length = 0;
+  nextSavedId = 100;
+  nextRecommendationSetId = 200;
+}
+
 export const routes = [
   [
     "/api/v1/numbers/recommend",
