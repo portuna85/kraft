@@ -102,7 +102,7 @@ export default async function StatusPage() {
                       label={incident.resolved ? "해결됨" : "확인 중"}
                     />
                   </td>
-                  <td>
+                  <td className={styles.timeCell}>
                     <time dateTime={incident.occurredAt}>
                       {formatDateTime(incident.occurredAt)}
                     </time>

@@ -48,7 +48,9 @@ export function PatternDistribution({
 
           return (
             <tr key={bucket.bucketKey}>
-              <th scope="row">{formatBucketKey(bucket.bucketKey)}</th>
+              <th scope="row" className={styles.bucketLabel}>
+                {formatBucketKey(bucket.bucketKey)}
+              </th>
               <td>
                 <span className={styles.barCell}>
                   <svg

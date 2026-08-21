@@ -70,9 +70,34 @@ function renderSection(session: SessionState, page = initialPage()) {
   );
 }
 
+// RSP-35(docs/improvement.md): ad-unit.test.tsx의 matchMedia mock과 같은 형태다.
+// prefers-reduced-motion 값을 useMediaQuery(useSyncExternalStore)가 읽는
+// matchMedia().matches로 고정한다.
+function mockMatchMedia(matches: boolean) {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    configurable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+}
+
 describe("댓글 섹션", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // RSP-35(docs/improvement.md): CommentSection이 이제 useMediaQuery를
+    // 무조건 호출한다 — jsdom은 matchMedia를 기본 제공하지 않으므로 이 값을
+    // 명시적으로 세팅하지 않는 테스트는 전부 렌더 시점에 터진다. 기본은
+    // reduced-motion 미설정이고, 해당 동작을 검증하는 테스트만 재정의한다.
+    mockMatchMedia(false);
   });
 
   afterEach(() => {
@@ -123,6 +148,50 @@ describe("댓글 섹션", () => {
     await user.click(screen.getByRole("button", { name: "등록" }));
 
     await waitFor(() => expect(document.getElementById("comment-42")).toBeInTheDocument());
+  });
+
+  /**
+   * RSP-35(docs/improvement.md): base.css의 전역 scroll-behavior:auto
+   * !important는 JS가 명시적으로 넘긴 behavior 옵션을 덮지 못한다(스펙상
+   * 명시적 옵션이 CSS보다 우선) — scrollIntoView 호출 자체가 reduced-motion을
+   * 지켜야 한다.
+   */
+  it("prefers-reduced-motion이 꺼져 있으면 부드럽게 스크롤한다", async () => {
+    mockMatchMedia(false);
+    const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView");
+    const user = userEvent.setup();
+    createComment.mockResolvedValue(comment({ id: 42 }));
+    fetchCommentPage.mockResolvedValue(
+      initialPage({ topLevel: [comment({ id: 42 })], totalTopLevelComments: 1 }),
+    );
+
+    renderSection(LOGGED_IN);
+    await user.type(screen.getByLabelText("댓글 작성"), "새 댓글");
+    await user.click(screen.getByRole("button", { name: "등록" }));
+
+    await waitFor(() =>
+      expect(scrollIntoView).toHaveBeenCalledWith(
+        expect.objectContaining({ behavior: "smooth" }),
+      ),
+    );
+  });
+
+  it("prefers-reduced-motion이 켜져 있으면 즉시 스크롤한다", async () => {
+    mockMatchMedia(true);
+    const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView");
+    const user = userEvent.setup();
+    createComment.mockResolvedValue(comment({ id: 42 }));
+    fetchCommentPage.mockResolvedValue(
+      initialPage({ topLevel: [comment({ id: 42 })], totalTopLevelComments: 1 }),
+    );
+
+    renderSection(LOGGED_IN);
+    await user.type(screen.getByLabelText("댓글 작성"), "새 댓글");
+    await user.click(screen.getByRole("button", { name: "등록" }));
+
+    await waitFor(() =>
+      expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ behavior: "auto" })),
+    );
   });
 
   // KF-26 UX-04(docs/improvement.md): targetPage를 무시하고 항상 0페이지를

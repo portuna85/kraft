@@ -12,6 +12,7 @@ import {
 import { CommentThread } from "@/entities/community-comment/ui/comment-thread";
 import { ReportDialog } from "@/entities/community-report/ui/report-dialog";
 import { canQueryOwnerScope, useSession } from "@/entities/user-session/session-context";
+import { useMediaQuery } from "@/shared/hooks/use-media-query";
 import { Button } from "@/shared/ui/button";
 import { ConfirmDialog } from "@/shared/ui/dialog";
 import { TextArea } from "@/shared/ui/field";
@@ -54,15 +55,20 @@ export function CommentSection({
   // UX-03: 작성 후 목록만 새로고침하고 새 댓글로는 데려가지 않아 사용자가 직접
   // 스크롤해 찾아야 했다.
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
+  // RSP-35(docs/improvement.md): base.css의 전역 `scroll-behavior: auto
+  // !important`는 anchor 이동 같은 암묵적 스크롤만 잡는다 — 스펙상 JS가 넘긴
+  // 명시적 `behavior` 옵션이 CSS보다 우선이라, 아래 scrollIntoView는 그 전역
+  // 대응과 무관하게 항상 부드럽게 스크롤했다.
+  const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
   useEffect(() => {
     if (highlightedId === null) return;
     document
       .getElementById(`comment-${highlightedId}`)
-      ?.scrollIntoView({ block: "center", behavior: "smooth" });
+      ?.scrollIntoView({ block: "center", behavior: prefersReducedMotion ? "auto" : "smooth" });
     const timer = setTimeout(() => setHighlightedId(null), 2000);
     return () => clearTimeout(timer);
-  }, [highlightedId]);
+  }, [highlightedId, prefersReducedMotion]);
 
   async function loadMore() {
     setLoadingMore(true);

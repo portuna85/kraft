@@ -1,4 +1,11 @@
 @layer components {
+  /* RSP-27(docs/improvement.md): "111-155" 같은 구간 라벨이 좁은 화면에서
+     하이픈 지점에 줄바꿈돼 값이 잘게 끊겼다. 짧은 식별자라 한 줄을 유지한다 —
+     넘치면 Table의 기존 가로 스크롤(.tableWrap)이 흡수한다. */
+  .bucketLabel {
+    white-space: nowrap;
+  }
+
   /* 막대와 숫자를 한 셀에 둔다 — 숫자가 열을 이루도록 막대 폭은 고정한다. */
   .barCell {
     display: grid;
