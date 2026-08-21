@@ -41,6 +41,7 @@ describe("WebVitalsReporter", () => {
       rating: "good",
       route: "/frequency",
       deviceClass: "desktop",
+      layoutClass: "desktop-nav",
     });
   });
 
@@ -65,6 +66,42 @@ describe("WebVitalsReporter", () => {
 
     const body = JSON.parse((sendBeacon.mock.calls[0] as [string, string])[1]);
     expect(body.deviceClass).toBe("mobile");
+  });
+
+  /**
+   * RSP-38(docs/improvement.md): deviceClass(640/1024px)와 실제 셸 전환
+   * (1152px, BP.desktopNav)이 어긋나 1024~1151px 탭바 UI가 desktop으로
+   * 집계됐다. 예전에는 375·1280px 두 값만 테스트돼 있어 어느 경계도 실측되지
+   * 않았다 — 여섯 경계 폭을 표로 고정한다.
+   */
+  describe("경계 폭에서 deviceClass·layoutClass가 정확히 갈린다", () => {
+    const CASES: {
+      width: number;
+      deviceClass: "mobile" | "tablet" | "desktop";
+      layoutClass: "compact" | "desktop-nav";
+    }[] = [
+      { width: 639, deviceClass: "mobile", layoutClass: "compact" },
+      { width: 640, deviceClass: "tablet", layoutClass: "compact" },
+      { width: 1023, deviceClass: "tablet", layoutClass: "compact" },
+      { width: 1024, deviceClass: "desktop", layoutClass: "compact" },
+      { width: 1151, deviceClass: "desktop", layoutClass: "compact" },
+      { width: 1152, deviceClass: "desktop", layoutClass: "desktop-nav" },
+    ];
+
+    for (const { width, deviceClass, layoutClass } of CASES) {
+      it(`${width}px -> deviceClass=${deviceClass}, layoutClass=${layoutClass}`, () => {
+        const sendBeacon = vi.fn();
+        vi.stubGlobal("navigator", { sendBeacon });
+        vi.stubGlobal("innerWidth", width);
+
+        render(<WebVitalsReporter />);
+        reportCallback.current?.(metric({ name: "CLS" }));
+
+        const body = JSON.parse((sendBeacon.mock.calls[0] as [string, string])[1]);
+        expect(body.deviceClass).toBe(deviceClass);
+        expect(body.layoutClass).toBe(layoutClass);
+      });
+    }
   });
 
   it("sendBeacon이 없으면 fetch(keepalive)로 대체한다", () => {

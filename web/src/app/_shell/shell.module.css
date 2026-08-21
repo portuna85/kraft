@@ -4,6 +4,17 @@
  * 이긴다는 규칙이 파일 로드 순서와 무관하게 성립한다(§9.2).
  */
 @layer components {
+  /* RSP-18(docs/improvement.md): sticky + backdrop-filter는 스크롤하는 모든
+     프레임에서 헤더 뒤 영역을 재샘플링·재블러한다 — 헤더 폭이 화면 전체라
+     샘플링 면적도 최대다. 모바일 GPU에서 가장 비싸고, lighthouse-budget.mjs가
+     throttlingMethod:"provided"(무스로틀 localhost)로 재기 때문에 어떤 게이트에도
+     걸리지 않는다(스크롤 중 페인트 비용은 로드 시점 지표가 아니라 원리상
+     측정되지 않는다).
+     기본은 불투명으로 두고, 탭바가 사라지는 것과 같은 1152px 경계에서만 블러를
+     켠다(새 브레이크포인트를 만들지 않는다 — KF-02 참고, 아래 @media 블록).
+     라이트 테마에서 --color-surface-solid(#fff)와 --color-canvas(#f3f7ff)가
+     가까워 border-bottom이 구분을 전담한다 — 그 경계선 자체의 대비는 RSP-16이
+     별도로 다룬다. */
   .header {
     position: sticky;
     top: 0;
@@ -11,10 +22,8 @@
     min-height: var(--layout-header-h);
     display: flex;
     align-items: center;
-    background: var(--color-surface-3);
+    background: var(--color-surface-solid);
     border-bottom: 1px solid var(--color-border);
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
   }
 
   .headerInner {
@@ -285,6 +294,25 @@
        그대로 두면 1280px에서 205px까지 자라 브랜드·메뉴를 밀어낸다. */
     .accountLabel {
       max-width: 8rem;
+    }
+
+    /* RSP-18(docs/improvement.md): 데스크톱 폭에서만 블러를 켠다 — 좁은 화면의
+       스크롤 페인트 비용을 피하면서 넓은 화면의 유리감 인상은 유지한다. */
+    .header {
+      background: var(--color-surface-3);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+    }
+  }
+
+  /* RSP-15(docs/improvement.md): 투명도 감소를 켠 사용자에게는 1152px 이상이어도
+     블러를 켜지 않는다 — 위 1152px 블록보다 소스 순서상 뒤에 둬야 그 블록을
+     이긴다(같은 특이성이면 나중 규칙이 이긴다). */
+  @media (prefers-reduced-transparency: reduce) {
+    .header {
+      background: var(--color-surface-solid);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
     }
   }
 

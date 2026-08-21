@@ -209,3 +209,58 @@
   --glow-ball-41-45: 0 4px 14px rgba(176, 216, 64, 0.45);
   --glow-ball-bonus: 0 4px 16px rgba(22, 139, 104, 0.55);
 }
+
+/*
+ * RSP-15(docs/improvement.md): 투명도 감소를 켠 사용자에게 알파 표면과
+ * backdrop-filter는 실제 접근성 문제다(전정기관 민감·인지 부하). 별칭 레이어가
+ * 없는 이 파일 설계 덕분에 표면 토큰 3개만 불투명으로 재선언하면 전 화면이
+ * 따라온다 — 컴포넌트 CSS는 건드리지 않는다. backdrop-filter를 실제로 쓰는
+ * 두 곳(.header, .hero)의 오버라이드는 각 컴포넌트 파일에 있다.
+ *
+ * 다크 --color-surface-1(알파 0.035)은 블러가 없으면 캔버스와 거의 구분되지
+ * 않는다 — 그래서 세 단계 모두 명도差를 눈에 보이게 벌린 불투명 값을 골랐다.
+ */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --color-surface-1: #eef4ff;
+    --color-surface-2: #f5f9ff;
+    --color-surface-3: #ffffff;
+  }
+
+  [data-theme="dark"] {
+    --color-surface-1: #0d1430;
+    --color-surface-2: #111936;
+    --color-surface-3: #16203f;
+  }
+}
+
+/*
+ * RSP-16(docs/improvement.md): --color-border는 라이트에서 캔버스(#f3f7ff) 위
+ * 실효 대비가 약 1.27:1로 WCAG 1.4.11(비텍스트 3:1)에 크게 못 미친다. axe의
+ * color-contrast 규칙은 텍스트만 보므로 이 결함은 자동 검사를 통과해 왔다
+ * (e2e/lib/expect-no-a11y-violations.ts 확인).
+ *
+ * 기본값을 올리면 전체 디자인 인상이 바뀌므로, 대비 강화를 명시적으로 요청한
+ * 사용자에게만 올린다. 경계선을 쓰는 컴포넌트가 10곳 이상(Card, 표, Field,
+ * 아코디언, 탭바 상단선, 푸터 구분선, 댓글 연결선, 드롭다운)이지만 이 파일
+ * 한 곳만 고치면 전부 따라온다 — 별칭 레이어를 없앤 설계의 직접적 이득이다.
+ *
+ * 대비 수치(WCAG 상대 휘도 공식으로 계산, 캔버스 위 실효색 기준):
+ *   라이트 rgba(31,57,105,0.55) on #f3f7ff -> 약 3.05:1
+ *   다크   rgba(255,255,255,0.45) on #050816 -> 약 4.47:1
+ */
+@media (prefers-contrast: more) {
+  :root {
+    --color-border: rgba(31, 57, 105, 0.55); /* 대비 약 3.05:1 */
+    --color-ink-muted: #3a4761;
+    --color-ink-subtle: #5a6a80;
+    --color-focus-ring: rgba(0, 90, 120, 0.9);
+  }
+
+  [data-theme="dark"] {
+    --color-border: rgba(255, 255, 255, 0.45); /* 대비 약 4.47:1 */
+    --color-ink-muted: #c3cde4;
+    --color-ink-subtle: #96a3bd;
+    --color-focus-ring: rgba(0, 229, 255, 0.95);
+  }
+}

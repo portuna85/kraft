@@ -11,6 +11,13 @@ import { guardCollectRequest } from "@/shared/lib/collect-request";
 const METRIC_NAMES = new Set(["LCP", "INP", "CLS"]);
 const RATINGS = new Set(["good", "needs-improvement", "poor"]);
 const DEVICE_CLASSES = new Set(["mobile", "tablet", "desktop"]);
+/**
+ * RSP-38(docs/improvement.md): `deviceClass`(640/1024px)와 실제 셸 전환
+ * (1152px, `BP.desktopNav`)이 어긋나 1024~1151px 탭바 UI가 `desktop`에 섞였다.
+ * `deviceClass`는 분석 호환성 때문에 유지하고, 실제 셸 상태를 반영하는
+ * `layoutClass`를 추가로 받는다.
+ */
+const LAYOUT_CLASSES = new Set(["compact", "desktop-nav"]);
 const MAX_ROUTE_LENGTH = 200;
 const MAX_RELEASE_LENGTH = 100;
 const MAX_BODY_BYTES = 2_048;
@@ -27,6 +34,7 @@ type VitalsPayload = {
   rating: string;
   route: string;
   deviceClass: string;
+  layoutClass: string;
   release: string;
 };
 
@@ -46,6 +54,8 @@ export function isValidPayload(body: unknown): body is VitalsPayload {
     b.route.length <= MAX_ROUTE_LENGTH &&
     typeof b.deviceClass === "string" &&
     DEVICE_CLASSES.has(b.deviceClass) &&
+    typeof b.layoutClass === "string" &&
+    LAYOUT_CLASSES.has(b.layoutClass) &&
     typeof b.release === "string" &&
     b.release.length <= MAX_RELEASE_LENGTH
   );
@@ -80,6 +90,7 @@ export async function POST(request: NextRequest) {
       rating: body.rating,
       route: body.route,
       deviceClass: body.deviceClass,
+      layoutClass: body.layoutClass,
       release: body.release,
     });
   }

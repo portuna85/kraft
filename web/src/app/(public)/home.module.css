@@ -54,6 +54,17 @@
     }
   }
 
+  /* RSP-15(docs/improvement.md): 투명도 감소를 켠 사용자에게는 지원 여부와
+     무관하게 블러를 끈다 — 위 @supports 폴백과 같은 결과(불투명 배경)를
+     내야 한다. */
+  @media (prefers-reduced-transparency: reduce) {
+    .hero {
+      background: var(--color-surface-solid);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+
   /* I-32: 색인되는 유일한 h1이 서술형 문구 없이 회차 숫자로만 바뀌지 않도록
      이 문구를 회차 앞에 둔다. */
   .heading {

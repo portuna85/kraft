@@ -1,4 +1,4 @@
-import { test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 import { assertElementMaxHeight, assertNoHorizontalOverflow } from "../lib/responsive-assertions";
 
@@ -112,3 +112,34 @@ for (const [label, nickname] of [
     }
   });
 }
+
+/**
+ * RSP-18(docs/improvement.md): sticky 헤더의 backdrop-filter는 스크롤하는 모든
+ * 프레임에서 헤더 뒤 영역을 재샘플링·재블러한다 — 어떤 성능 게이트에도 걸리지
+ * 않는 비용이다(lighthouse-budget.mjs가 throttlingMethod:"provided"라 로드
+ * 시점 지표만 잰다). 실제 프레임 비용은 수동 프로파일링으로만 확인할 수 있지만,
+ * "1152px 미만은 불투명, 그 이상만 블러"라는 **계약**은 computed style로 직접
+ * 확인할 수 있다 — 그 계약이 조용히 되돌려지는 회귀를 여기서 잡는다.
+ */
+test.describe("RSP-18: 헤더 블러는 1152px부터만 켜진다", () => {
+  const BLUR_BOUNDARY_WIDTHS = [1024, 1151, 1152, 1280];
+
+  for (const width of BLUR_BOUNDARY_WIDTHS) {
+    test(`${width}px에서 backdrop-filter 적용 여부가 계약과 일치한다`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/", { waitUntil: "networkidle" });
+
+      const backdropFilter = await page
+        .locator("header")
+        .first()
+        .evaluate((el) => window.getComputedStyle(el).backdropFilter);
+
+      // Chromium computed style은 미적용 시 "none"을 돌려준다.
+      if (width >= 1152) {
+        expect(backdropFilter).not.toBe("none");
+      } else {
+        expect(backdropFilter).toBe("none");
+      }
+    });
+  }
+});
