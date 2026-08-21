@@ -88,7 +88,9 @@ web/debug.log
 scripts/archive/migrate-2026-06/env-migration.sh
 
 ### Local-only docs (never commit) ###
-# 예외 1건: docs/improvement_claude.md는 이미 추적 중이다(2d0d2d9). .gitignore는
-# 추적되지 않는 파일에만 작용하므로 이 규칙과 충돌하지 않는다 — 새 문서를
-# 추가로 추적하려면 `git add -f`가 필요하다.
+# docs/ 하위 문서는 GitHub에 올리지 않는다(로컬 작업 자료 전용).
+# 예외는 없다 — 추적 중이던 docs/improvement_claude.md는 docs/improvement.md로
+# 통합되면서 추적 해제됐다. .gitignore는 추적되지 않는 파일에만 작용하므로,
+# 개별 문서를 `git add -f`로 우회하지 말고 공유가 필요하면 이 규칙 자체를
+# 팀 차원에서 먼저 재검토한다.
 docs/
