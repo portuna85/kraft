@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { isRouteCurrent, TAB_BAR_ITEMS } from "./nav-items";
+import { currentNavHref, TAB_BAR_ITEMS } from "./nav-items";
 import styles from "./shell.module.css";
 
 /**
@@ -13,7 +13,12 @@ import styles from "./shell.module.css";
  */
 export function TabBar() {
   const pathname = usePathname();
-  const activeIndex = TAB_BAR_ITEMS.findIndex((item) => isRouteCurrent(item.href, pathname));
+  // RSP-23/24(docs/improvement.md): 예전에는 인디케이터가 `findIndex`로 첫 매치
+  // 하나를 고르고, 각 링크는 `isRouteCurrent`를 독립적으로 다시 계산했다. 두 탭이
+  // 동시에 걸리면 `aria-current`는 둘인데 캡슐은 하나만 움직여, 시각 표시와 보조
+  // 기술이 서로 다른 답을 냈다. 이제 둘 다 이 하나의 결과에서 나온다.
+  const currentHref = currentNavHref(TAB_BAR_ITEMS, pathname);
+  const activeIndex = TAB_BAR_ITEMS.findIndex((item) => item.href === currentHref);
 
   return (
     <nav
@@ -27,7 +32,7 @@ export function TabBar() {
       <span className={styles.indicator} aria-hidden="true" />
 
       {TAB_BAR_ITEMS.map((item) => {
-        const isCurrent = isRouteCurrent(item.href, pathname);
+        const isCurrent = item.href === currentHref;
         return (
           <Link
             key={item.href}

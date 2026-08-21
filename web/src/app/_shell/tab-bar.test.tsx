@@ -22,14 +22,6 @@ vi.mock("next/navigation", () => ({
 /** 탭 인디케이터 CSS(shell.module.css:180,191-210)가 하드코딩한 탭 순서. */
 const TAB_INDEX = { 홈: 0, 추천: 1, 데이터: 2, 커뮤니티: 3, 보관함: 4 } as const;
 
-/**
- * RSP-24: `데이터` 탭이 흡수해야 하는데 지금은 어느 탭도 현재가 되지 않는 경로.
- * a14938e의 관행대로 "예상된 실패"로 표시한다 — PR 2에서 alias 계약이 들어가면
- * "예상과 다르게 통과함"으로 실패하므로 이 목록을 지우는 것이 그 수정의 일부다.
- */
-const DATA_ALIASES = ["/frequency", "/stats", "/companion", "/analysis"];
-const expectedFail = (broken: boolean) => (broken ? it.fails : it);
-
 const CASES: { pathname: string; expected: keyof typeof TAB_INDEX | null }[] = [
   { pathname: "/", expected: "홈" },
   { pathname: "/recommend", expected: "추천" },
@@ -55,35 +47,29 @@ describe("TabBar 현재 탭 계약", () => {
   });
 
   for (const { pathname, expected } of CASES) {
-    expectedFail(DATA_ALIASES.includes(pathname))(
-      `${pathname}에서 현재 탭은 ${expected ?? "(없음)"} 하나뿐이다`,
-      () => {
-        mockPathname = pathname;
-        render(<TabBar />);
+    it(`${pathname}에서 현재 탭은 ${expected ?? "(없음)"} 하나뿐이다`, () => {
+      mockPathname = pathname;
+      render(<TabBar />);
 
-        const current = screen
-          .getAllByRole("link")
-          .filter((link) => link.getAttribute("aria-current") === "page");
+      const current = screen
+        .getAllByRole("link")
+        .filter((link) => link.getAttribute("aria-current") === "page");
 
-        if (expected === null) {
-          expect(current).toHaveLength(0);
-        } else {
-          expect(current.map((link) => link.textContent)).toEqual([expected]);
-        }
-      },
-    );
+      if (expected === null) {
+        expect(current).toHaveLength(0);
+      } else {
+        expect(current.map((link) => link.textContent)).toEqual([expected]);
+      }
+    });
 
-    expectedFail(DATA_ALIASES.includes(pathname))(
-      `${pathname}의 data-active-index가 aria-current와 일치한다`,
-      () => {
-        mockPathname = pathname;
-        render(<TabBar />);
+    it(`${pathname}의 data-active-index가 aria-current와 일치한다`, () => {
+      mockPathname = pathname;
+      render(<TabBar />);
 
-        const nav = screen.getByRole("navigation", { name: "바로가기" });
-        expect(nav.getAttribute("data-active-index")).toBe(
-          expected === null ? null : String(TAB_INDEX[expected]),
-        );
-      },
-    );
+      const nav = screen.getByRole("navigation", { name: "바로가기" });
+      expect(nav.getAttribute("data-active-index")).toBe(
+        expected === null ? null : String(TAB_INDEX[expected]),
+      );
+    });
   }
 });

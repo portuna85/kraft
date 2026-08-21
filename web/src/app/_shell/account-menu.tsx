@@ -10,6 +10,8 @@ import { Button } from "@/shared/ui/button";
 import { ConfirmDialog } from "@/shared/ui/dialog";
 import { InlineAlert } from "@/shared/ui/states";
 
+import styles from "./shell.module.css";
+
 /**
  * 로그인 상태 계정 메뉴 ("Signed in: avatar/initial + menu")
  *
@@ -66,7 +68,7 @@ export function AccountMenu({ nickname }: { nickname: string }) {
   if (pending) {
     return (
       <Button variant="quiet" loading loadingLabel="로그아웃 중">
-        {nickname}님
+        <span className={styles.accountLabel}>{nickname}님</span>
       </Button>
     );
   }
@@ -77,7 +79,7 @@ export function AccountMenu({ nickname }: { nickname: string }) {
         aria-label="계정 메뉴"
         trigger={(props) => (
           <Button {...props} variant="quiet">
-            {nickname}님
+            <span className={styles.accountLabel}>{nickname}님</span>
           </Button>
         )}
         items={[
