@@ -1,6 +1,7 @@
 import { render } from "@testing-library/react";
 import axe from "axe-core";
-import { describe, expect, it } from "vitest";
+import type { ComponentProps } from "react";
+import { describe, expect, it, vi } from "vitest";
 
 import { Badge, StatusBadge } from "./badge";
 import { Button, IconButton } from "./button";
@@ -9,6 +10,29 @@ import { Checkbox, Radio, Select, TextArea, TextField } from "./field";
 import { SegmentedControl } from "./segmented-control";
 import { Card, Pagination, Table } from "./surface";
 import { EmptyState, ErrorState, InlineAlert } from "./states";
+
+// RSP-34(docs/improvement.md): Pagination이 렌더하는 실제 next/link의 내부
+// 이펙트(prefetch 관련)가 render()의 act 경계 밖에서 상태를 갱신해 "not wrapped
+// in act(...)" 경고가 났다. axe 검사는 실제 라우팅·prefetch 동작이 필요 없으므로
+// navigation.test.tsx와 같은 형태로 원인 자체를 제거한다 — 계측이 아니라 실제
+// Link를 평범한 <a>로 바꿔 이펙트를 없앤다(태그·role은 동일해 axe 결과에
+// 영향이 없다).
+vi.mock("next/link", () => ({
+  default: ({
+    href,
+    prefetch,
+    children,
+    ...rest
+  }: ComponentProps<"a"> & { prefetch?: boolean }) => (
+    <a
+      href={typeof href === "string" ? href : undefined}
+      data-prefetch={String(prefetch)}
+      {...rest}
+    >
+      {children}
+    </a>
+  ),
+}));
 
 /**
  * 프리미티브 axe 검사 Phase 3 검증 조건("프리미티브 axe 위반 0").

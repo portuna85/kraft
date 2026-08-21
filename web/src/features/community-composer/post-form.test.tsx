@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -128,8 +128,17 @@ describe("글 작성·수정 폼", () => {
     expect(screen.getByLabelText("분류")).toBeInTheDocument();
   });
 
-  it("작성 화면에는 분류를 둔다", () => {
+  it("작성 화면에는 분류를 둔다", async () => {
     renderForm();
+    // RSP-34(docs/improvement.md): RecommendationAttachmentPicker의 useResource
+    // 응답 처리와 showAll 이펙트(Promise.resolve().then(...))가 이 동기 테스트가
+    // 반환한 뒤에 상태를 갱신해 "not wrapped in act(...)" 경고가 났다. 이 테스트는
+    // 그 피커의 데이터를 신경 쓰지 않으므로, 매크로태스크 경계까지 act로 비워
+    // 두 프로미스 체인을 전부 정리한 뒤 단언한다(마이크로태스크 한 틱으로는
+    // 부족할 수 있다 — use-form.test.tsx의 act(async () => {...}) 선례와 같은 형태).
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
     expect(screen.getByLabelText("분류")).toBeInTheDocument();
   });
 

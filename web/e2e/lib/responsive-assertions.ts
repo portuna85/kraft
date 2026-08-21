@@ -239,3 +239,52 @@ export async function assertFitsWithoutShrink(page: Page, selector: string, tole
   );
   expect(squeezed, `콘텐츠가 컨테이너보다 넓게 눌린 요소: ${squeezed.join(", ")}`).toEqual([]);
 }
+
+/**
+ * RSP-31(docs/improvement.md): `assertMinHitArea`는 `getBoundingClientRect()`만
+ * 보므로 `::before`/`::after`로 확장된 히트 영역(예: stretched-link, 광고 닫기
+ * 버튼)을 반영하지 못해 실제로는 충분한 요소를 미달로 오탐한다
+ * (`touch-target-stretched-link.spec.ts`가 그 한계를 의도적 red로 문서화한다).
+ *
+ * 이 단언은 박스 크기 대신 실제 히트테스트 결과를 본다 — 각 요소의 중심에서
+ * `min/2`px 떨어진 네 모서리를 `elementFromPoint`로 찍어, 그 지점에서 클릭이
+ * 실제로 이 요소(또는 그 자손)에 도달하는지 확인한다. 의사 요소는 자신을
+ * 생성한 요소를 히트 대상으로 돌려주므로(스펙), `::after`로 카드 전체를 덮는
+ * stretched-link처럼 진짜 클릭 영역이 넓은 요소는 여기서 올바르게 통과한다.
+ */
+export async function assertHitAreaViaElementFromPoint(page: Page, selector: string, min = 44) {
+  const failing = await page.$$eval(
+    selector,
+    (elements, minSize) =>
+      elements
+        .filter((el) => {
+          const style = window.getComputedStyle(el);
+          return style.display !== "none" && style.visibility !== "hidden";
+        })
+        .filter((el) => {
+          const rect = el.getBoundingClientRect();
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          const half = minSize / 2;
+          const corners: [number, number][] = [
+            [cx - half, cy - half],
+            [cx + half, cy - half],
+            [cx - half, cy + half],
+            [cx + half, cy + half],
+          ];
+          return corners.some(([x, y]) => {
+            const hit = document.elementFromPoint(x, y);
+            return hit === null || !el.contains(hit);
+          });
+        })
+        .map((el) => {
+          const cls = el.className ? "." + String(el.className).split(" ").join(".") : "";
+          return `${el.tagName.toLowerCase()}${cls}`;
+        }),
+    min,
+  );
+  expect(
+    failing,
+    `실제 히트 영역(elementFromPoint 기준)이 ${min}px 미만인 요소: ${failing.join(", ")}`,
+  ).toEqual([]);
+}

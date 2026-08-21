@@ -40,8 +40,14 @@
   /* KF-06(docs/improvement.md): 예전에는 bottom:0이라 탭바(shell.module.css
      .tabBar, 역시 bottom:0)와 같은 자리에 겹쳐 z-index로만 위에 그렸다 —
      탭바가 가려질 수 있었다. 탭바 높이(--tabbar-reserve)만큼 띄워 실제로 탭바
-     "위에" 쌓이게 한다. 광고와 탭바는 항상 같은 폭 구간(<1152px)에서만 함께
-     보이므로(둘 다 데스크톱에서 숨김), --tabbar-reserve가 이미 안전영역 아래
+     "위에" 쌓이게 한다.
+
+     RSP-39(docs/improvement.md): 광고와 탭바가 "같은 폭 구간에서만 함께
+     보인다"는 예전 서술은 부정확했다 — 광고는 1024px, 탭바는 1152px에서
+     각각 독립적으로 숨는다(breakpoints.ts의 BP.desktopNav 주석이 "이 값과
+     혼동하지 말 것"이라고 명시한 바로 그 차이). 광고가 더 일찍 사라지므로
+     "탭바는 없는데 광고가 그 자리에 뜨는" 조합은 생기지 않는다 — 아래 로직이
+     기대는 것은 그 순서 하나뿐이다. --tabbar-reserve가 이미 안전영역 아래
      탭바가 있는지 여부를 반영한다. 탭바가 이미 자신의 박스 안에서
      env(safe-area-inset-bottom)를 흡수하므로, 광고 자신은 별도로 다시 더하지
      않는다(아래 padding-bottom 제거 — 이전에는 중복이었다). */
