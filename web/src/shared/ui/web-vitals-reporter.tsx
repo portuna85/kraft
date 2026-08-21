@@ -3,6 +3,8 @@
 import { usePathname } from "next/navigation";
 import { useReportWebVitals } from "next/web-vitals";
 
+import { BP } from "@/shared/config/breakpoints";
+
 /**
  * Web Vitals 클라이언트 수집
  *
@@ -21,6 +23,20 @@ function deviceClassOf(width: number): "mobile" | "tablet" | "desktop" {
   if (width < 640) return "mobile";
   if (width < 1024) return "tablet";
   return "desktop";
+}
+
+/**
+ * RSP-38(docs/improvement.md): `deviceClass`는 640/1024px로 기기를 나누는데
+ * 실제 셸 전환(탭바 ↔ 데스크톱 nav)은 `BP.desktopNav`(1152px)다. 그 결과
+ * 1024~1151px에서는 탭바가 보이는 화면인데도 `deviceClass`가 `desktop`으로
+ * 집계돼, 특정 레이아웃 회귀와 Web Vitals 변화를 현장 데이터로 연결할 수
+ * 없었다. `deviceClass`는 분석 호환성 때문에 그대로 두고, 실제 셸 상태를
+ * 정확히 반영하는 `layoutClass`를 별도로 추가한다 — 값은 `BP.desktopNav`에서
+ * 직접 가져온다(breakpoints.ts:8-18 주석대로 CSS와 이 상수는 수동 동기화
+ * 대상이다).
+ */
+function layoutClassOf(width: number): "compact" | "desktop-nav" {
+  return width >= BP.desktopNav ? "desktop-nav" : "compact";
 }
 
 function send(body: string): void {
@@ -50,6 +66,7 @@ export function WebVitalsReporter() {
         rating: metric.rating,
         route: pathname,
         deviceClass: deviceClassOf(window.innerWidth),
+        layoutClass: layoutClassOf(window.innerWidth),
         release: process.env.NEXT_PUBLIC_APP_VERSION ?? "",
       }),
     );
