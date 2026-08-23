@@ -903,4 +903,96 @@ class LottoRecommendationServiceTest {
                     org.mockito.ArgumentMatchers.any());
         }
     }
+
+    @Nested
+    @DisplayName("BE-PERF-03: historyStatus 관측 캐시")
+    class HistoryStatusCaching {
+
+        @Test
+        @DisplayName("TTL(1초) 안에서는 cachedHistoryStatus()를 5번 불러도 DB 조회는 1회뿐이다")
+        void cachedHistoryStatus_withinTtl_queriesDatabaseOnce() {
+            MutableClock clock = new MutableClock(java.time.Instant.parse("2026-01-01T00:00:00Z"), ZoneId.of("UTC"));
+            LottoRecommendationService instance = newService(meterRegistry, clock);
+            instance.loadHistoricalCombinations();
+            org.mockito.Mockito.clearInvocations(historyStateRepository);
+
+            for (int i = 0; i < 5; i++) {
+                instance.cachedHistoryStatus();
+            }
+
+            verify(historyStateRepository, org.mockito.Mockito.times(1)).findById(1);
+        }
+
+        @Test
+        @DisplayName("TTL이 지나면 cachedHistoryStatus()가 다시 DB를 조회한다")
+        void cachedHistoryStatus_afterTtlExpires_queriesDatabaseAgain() {
+            MutableClock clock = new MutableClock(java.time.Instant.parse("2026-01-01T00:00:00Z"), ZoneId.of("UTC"));
+            LottoRecommendationService instance = newService(meterRegistry, clock);
+            instance.loadHistoricalCombinations();
+            org.mockito.Mockito.clearInvocations(historyStateRepository);
+
+            instance.cachedHistoryStatus();
+            clock.advance(java.time.Duration.ofSeconds(2));
+            instance.cachedHistoryStatus();
+
+            verify(historyStateRepository, org.mockito.Mockito.times(2)).findById(1);
+        }
+
+        @Test
+        @DisplayName("historyStatus()는 캐시를 거치지 않고 호출마다 DB를 조회한다 "
+                + "(doRecommend의 샘플링 전/후 correctness 검사가 이 보장에 의존한다)")
+        void historyStatus_uncached_alwaysQueriesDatabase() {
+            MutableClock clock = new MutableClock(java.time.Instant.parse("2026-01-01T00:00:00Z"), ZoneId.of("UTC"));
+            LottoRecommendationService instance = newService(meterRegistry, clock);
+            instance.loadHistoricalCombinations();
+            org.mockito.Mockito.clearInvocations(historyStateRepository);
+
+            instance.historyStatus();
+            instance.historyStatus();
+            instance.historyStatus();
+
+            verify(historyStateRepository, org.mockito.Mockito.times(3)).findById(1);
+        }
+
+        private LottoRecommendationService newService(SimpleMeterRegistry registry, Clock clock) {
+            return new LottoRecommendationService(lottoNumberCodec,
+                    recommendationSetHistoryService,
+                    new RecommendationHistorySnapshotManager(
+                            winningNumberRepository, historyStateRepository, clock, registry),
+                    new RecommendationRequestValidator(lottoNumberCodec, registry),
+                    new RecommendationCandidateGenerator(
+                            lottoNumberCodec, combinationScorer, new BalancedScorer(), registry),
+                    clock, registry);
+        }
+
+        /** 시간을 수동으로 진행시켜 TTL 경계를 결정적으로 검증하기 위한 테스트 전용 Clock. */
+        private static final class MutableClock extends Clock {
+            private java.time.Instant instant;
+            private final ZoneId zone;
+
+            MutableClock(java.time.Instant instant, ZoneId zone) {
+                this.instant = instant;
+                this.zone = zone;
+            }
+
+            @Override
+            public ZoneId getZone() {
+                return zone;
+            }
+
+            @Override
+            public Clock withZone(ZoneId zone) {
+                return new MutableClock(instant, zone);
+            }
+
+            @Override
+            public java.time.Instant instant() {
+                return instant;
+            }
+
+            void advance(java.time.Duration duration) {
+                instant = instant.plus(duration);
+            }
+        }
+    }
 }

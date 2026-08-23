@@ -19,7 +19,7 @@ class RecommendationHistoryHealthIndicatorTest {
 
     @Test
     void health_whenHistoryIsComplete_reportsUpWithoutNullDetails() {
-        when(recommendationService.historyStatus()).thenReturn(
+        when(recommendationService.cachedHistoryStatus()).thenReturn(
                 new LottoRecommendationService.HistoryStatus(true, 29L, 29L, 1234, 1234, null));
         when(recommendationService.historyLoadedAt()).thenReturn(Instant.now().minusSeconds(5));
 
@@ -34,7 +34,7 @@ class RecommendationHistoryHealthIndicatorTest {
 
     @Test
     void health_whenHistoryHasGap_reportsDownWithMissingRound() {
-        when(recommendationService.historyStatus()).thenReturn(
+        when(recommendationService.cachedHistoryStatus()).thenReturn(
                 new LottoRecommendationService.HistoryStatus(false, 29L, 29L, 1233, 1234, 700));
         when(recommendationService.historyLoadedAt()).thenReturn(Instant.now().minusSeconds(5));
 

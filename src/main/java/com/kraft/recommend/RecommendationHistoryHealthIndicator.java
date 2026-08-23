@@ -18,7 +18,10 @@ public class RecommendationHistoryHealthIndicator implements HealthIndicator {
 
     @Override
     public Health health() {
-        LottoRecommendationService.HistoryStatus status = recommendationService.historyStatus();
+        // BE-PERF-03(docs/improvement.md): readiness 프로브도 관측 전용 호출이므로 짧은 TTL
+        // 캐시를 쓴다 — historyStatus()의 correctness-critical 용도(doRecommend 내부의
+        // 샘플링 전/후 재확인)와는 분리돼 있다.
+        LottoRecommendationService.HistoryStatus status = recommendationService.cachedHistoryStatus();
         Health.Builder builder = status.ready() ? Health.up() : Health.down();
         Integer firstMissingRound = status.firstMissingRound() == null
                 ? Integer.valueOf(0)

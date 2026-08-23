@@ -62,6 +62,15 @@ public class LottoRecommendationService {
 
     private final AtomicLong lastHistoryStatusFailureLogMillis = new AtomicLong(0);
 
+    // BE-PERF-03(docs/improvement.md): historyStatus()는 DB 조회 1회를 포함하는데, Gauge
+    // 콜백은 스크랩마다(15초 주기), readiness 프로브도 그때마다 이를 호출해 관측 전용
+    // 목적으로 DB를 반복해서 친다. LottoFreshnessMetrics와 같은 짧은 TTL 스냅숏 캐시로
+    // 이 관측 전용 호출부의 중복 쿼리를 없앤다 — cachedHistoryStatus()만 쓰고, doRecommend()의
+    // correctness 검사(§아래 주석)는 절대 이 캐시를 거치지 않는다.
+    private static final Duration HISTORY_STATUS_CACHE_TTL = Duration.ofSeconds(1);
+    private volatile HistoryStatus cachedHistoryStatusValue = new HistoryStatus(false, 0L, -1L, 0, 0, null);
+    private volatile Instant cachedHistoryStatusAt = Instant.EPOCH;
+
     /** readiness와 운영 지표가 사용하는 이력 상태의 읽기 전용 표현. */
     public record HistoryStatus(boolean ready, long snapshotVersion, long databaseVersion,
                                 int roundCount, int historyThroughRound, Integer firstMissingRound) {
@@ -123,7 +132,7 @@ public class LottoRecommendationService {
                 .description("현재 인스턴스 추천 이력 스냅샷 버전")
                 .register(meterRegistry);
         Gauge.builder("kraft_lotto_history_db_version", this,
-                        s -> (double) Math.max(-1L, s.historyStatus().databaseVersion()))
+                        s -> (double) Math.max(-1L, s.cachedHistoryStatus().databaseVersion()))
                 .description("Current recommendation-history version read from the database; -1 means unavailable")
                 .register(meterRegistry);
         Gauge.builder("kraft_lotto_history_snapshot_age_seconds", this,
@@ -177,6 +186,25 @@ public class LottoRecommendationService {
         return new HistoryStatus(snapshot.ready() && snapshot.version() == databaseVersion,
                 snapshot.version(), databaseVersion, snapshot.roundCount(), snapshot.historyThroughRound(),
                 snapshot.firstMissingRound());
+    }
+
+    /**
+     * BE-PERF-03(docs/improvement.md): {@link #historyStatus()}의 짧은 TTL 캐시 버전 — Gauge
+     * 콜백과 readiness 프로브 전용이다. {@link #doRecommend}의 두 {@code historyStatus()} 직접
+     * 호출(샘플링 전/후)은 **절대 이 메서드를 쓰지 않는다** — 그 두 호출은 "샘플링 도중 DB
+     * 버전이 실제로 바뀌었는가"를 확인하는 correctness 검사이자 추천의 선형화 지점이라,
+     * 캐시된 값을 쓰면 TTL 창 안에서 일어난 변경(대부분의 샘플링은 TTL보다 훨씬 짧게 끝난다)을
+     * 못 잡아 검사 자체가 무력화된다.
+     */
+    synchronized HistoryStatus cachedHistoryStatus() {
+        Instant now = Instant.now(clock);
+        if (Duration.between(cachedHistoryStatusAt, now).compareTo(HISTORY_STATUS_CACHE_TTL) < 0) {
+            return cachedHistoryStatusValue;
+        }
+        HistoryStatus status = historyStatus();
+        cachedHistoryStatusValue = status;
+        cachedHistoryStatusAt = now;
+        return status;
     }
 
     Instant historyLoadedAt() {
