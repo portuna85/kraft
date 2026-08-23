@@ -143,6 +143,19 @@ www.{$KRAFT_DOMAIN} {
 			}
 		}
 
+		# EDGE-CACHE-01(docs/improvement.md): (public) 셸 8개 라우트는 PublicAccountSlot이
+		# kraft_logged_in 쿠키로 서버에서 로그인 분기 HTML을 만드는데(_shell/public-account-slot.tsx),
+		# catch-all은 이 응답에 public, max-age=60을 강제한다 — 사용자별로 다른 HTML을 공유 캐시
+		# 가능하다고 광고하는 모순이다. 옵션 2(서버 로그인 UI 유지) 채택 — 공개 HTML을 쿠키 무관하게
+		# 만드는 대신 해당 라우트를 private, no-store로 전환한다.
+		@public_account_shell path / /stats /analysis /frequency /companion /data /status /info/*
+		handle @public_account_shell {
+			header Cache-Control "private, no-store"
+			reverse_proxy web:3000 {
+				header_up X-Real-IP {remote_host}
+			}
+		}
+
 		handle {
 			# 모든 페이지 경로: 브라우저 SWR 60s+300s.
 			# nonce 기반 CSP 때문에 HTML+CSP 헤더가 함께 캐시돼야 안전하므로

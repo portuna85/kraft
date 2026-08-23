@@ -128,6 +128,50 @@ check_header_count_exactly_one() {
   fi
 }
 
+# EDGE-CACHE-01(docs/improvement.md): check_header_present와 동일하지만 요청에 쿠키를 실어
+# 보낼 수 있다 — kraft_logged_in 쿠키 유무와 무관하게 (public) 셸이 캐시 불가 헤더를 받는지
+# 확인하는 데 쓴다.
+check_header_present_with_cookie() {
+  local desc="$1" host="$2" path="$3" header_line="$4" cookie="$5"
+  local headers actual attempt found
+  for attempt in 1 2 3; do
+    headers=$(curl -sk -D - -o /dev/null --max-time 5 --resolve "${host}:443:127.0.0.1" \
+      -b "$cookie" "https://${host}${path}" 2>/dev/null || echo "")
+    found=$(printf '%s' "$headers" | grep -Fi "$header_line" || true)
+    [[ -n "$found" ]] && break
+    [[ "$attempt" -lt 3 ]] && sleep 1
+  done
+  if [[ -n "$found" ]]; then
+    echo "  OK  [header present] $desc"
+  else
+    echo "  FAIL[header missing: $header_line] $desc (https://${host}${path}, cookie: $cookie)" >&2
+    FAIL=1
+  fi
+}
+
+# EDGE-CACHE-01: PublicAccountSlot이 kraft_logged_in 쿠키로 실제로 서버 분기를 하는지 —
+# 로그인 UI(LoginPopover, aria-label="로그인 방법 선택")가 쿠키 유무에 따라 나타나거나 사라지는지
+# 확인한다. 이 마크업이 두 상태에서 똑같다면 캐시 헤더를 고쳐도 애초에 분기가 죽어 있었다는 뜻이다.
+check_login_branch_present() {
+  local desc="$1" host="$2" path="$3" cookie="$4" should_contain="$5"
+  local body attempt found
+  for attempt in 1 2 3; do
+    body=$(curl -sk --max-time 5 --resolve "${host}:443:127.0.0.1" -b "$cookie" \
+      "https://${host}${path}" 2>/dev/null || echo "")
+    found=$(printf '%s' "$body" | grep -Fc 'aria-label="로그인 방법 선택"' || true)
+    { [[ "$should_contain" == "yes" && "$found" -gt 0 ]] || [[ "$should_contain" == "no" && "$found" -eq 0 ]]; } && break
+    [[ "$attempt" -lt 3 ]] && sleep 1
+  done
+  if [[ "$should_contain" == "yes" && "$found" -gt 0 ]]; then
+    echo "  OK  [login UI present] $desc"
+  elif [[ "$should_contain" == "no" && "$found" -eq 0 ]]; then
+    echo "  OK  [login UI absent] $desc"
+  else
+    echo "  FAIL[login UI presence=$found, expected should_contain=$should_contain] $desc (https://${host}${path}, cookie: $cookie)" >&2
+    FAIL=1
+  fi
+}
+
 echo "==> Caddy local routing check"
 check_status "public domain /admin blocked"        "$KRAFT_DOMAIN"       "/admin"          "403"
 check_status "public domain /actuator blocked"      "$KRAFT_DOMAIN"       "/actuator/health" "403"
@@ -162,6 +206,20 @@ check_header_count_exactly_one "public domain / has exactly one Referrer-Policy"
 check_header_count_exactly_one "public domain / has exactly one Permissions-Policy"          "$KRAFT_DOMAIN" "/" "Permissions-Policy"
 check_header_count_exactly_one "public API /api/v1/rounds/latest has exactly one Strict-Transport-Security" "$KRAFT_DOMAIN" "/api/v1/rounds/latest" "Strict-Transport-Security"
 check_header_count_exactly_one "public API /api/v1/rounds/latest has exactly one X-Frame-Options"            "$KRAFT_DOMAIN" "/api/v1/rounds/latest" "X-Frame-Options"
+
+# EDGE-CACHE-01(docs/improvement.md): (public) 셸이 kraft_logged_in 쿠키로 로그인 분기 HTML을
+# 만드는데도 catch-all이 public 캐시를 광고하던 문제. 옵션 2(private, no-store 전환) 적용 후
+# 익명/로그인 두 상태 모두 캐시 불가 헤더를 받는지, 그리고 실제로 분기가 살아있는지 함께 확인한다.
+check_header_present_with_cookie "public domain / (익명) 은 private, no-store" \
+  "$KRAFT_DOMAIN" "/" "Cache-Control: private, no-store" ""
+check_header_present_with_cookie "public domain / (로그인 쿠키 보유) 도 private, no-store" \
+  "$KRAFT_DOMAIN" "/" "Cache-Control: private, no-store" "kraft_logged_in=1"
+check_header_present_with_cookie "public domain /info/whatever (익명) 도 private, no-store" \
+  "$KRAFT_DOMAIN" "/info/whatever" "Cache-Control: private, no-store" ""
+check_login_branch_present "public domain / (익명) 은 로그인 UI를 렌더" \
+  "$KRAFT_DOMAIN" "/" "" "yes"
+check_login_branch_present "public domain / (로그인 쿠키 보유) 는 로그인 UI를 렌더하지 않음" \
+  "$KRAFT_DOMAIN" "/" "kraft_logged_in=1" "no"
 
 if [[ $FAIL -ne 0 ]]; then
   echo "==> Caddy local routing check FAILED — Caddyfile is misconfigured" >&2
