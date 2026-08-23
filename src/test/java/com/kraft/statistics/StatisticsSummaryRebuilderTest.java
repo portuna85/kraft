@@ -177,8 +177,10 @@ class StatisticsSummaryRebuilderTest {
         assertThat(lock).isPresent();
         heldLock = lock.get();
 
-        summaryRebuilder.rebuildAllSummaries();
+        StatisticsSummaryRebuilder.RebuildOutcome outcome = summaryRebuilder.rebuildAllSummaries();
 
+        // BE-STAT-01(docs/improvement.md): lock 경합은 이제 호출자가 구분할 수 있는 반환값이다.
+        assertThat(outcome).isEqualTo(StatisticsSummaryRebuilder.RebuildOutcome.SKIPPED);
         assertThat(frequencySummaryRepository.findAll()).isEmpty();
         assertThat(patternStatsSummaryRepository.findAll()).isEmpty();
         assertThat(companionPairSummaryRepository.findAll()).isEmpty();

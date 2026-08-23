@@ -14,6 +14,10 @@ public enum ApiErrorCode {
     INVALID_ROUND(HttpStatus.BAD_REQUEST),
     INVALID_LIMIT(HttpStatus.BAD_REQUEST),
     ROUND_NOT_FOUND(HttpStatus.NOT_FOUND),
+    // BE-STAT-01(docs/improvement.md): 통계 summary가 재계산 후에도(또는 다른 인스턴스의
+    // 재계산을 기다린 뒤에도) 여전히 불완전할 때만 쓴다 — 완전성이 검증되지 않은 데이터를
+    // 200으로 조용히 돌려주지 않기 위한 명시적 신호.
+    STATISTICS_NOT_READY(HttpStatus.SERVICE_UNAVAILABLE),
 
     DEVICE_TOKEN_REQUIRED(HttpStatus.BAD_REQUEST),
     INVALID_DEVICE_TOKEN(HttpStatus.BAD_REQUEST),

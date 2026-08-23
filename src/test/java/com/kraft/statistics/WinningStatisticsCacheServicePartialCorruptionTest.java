@@ -18,6 +18,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cache.CacheManager;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * P1-07: 패턴(odd/high/sum)·동반 출현 summary가 "완전히 비지는 않았지만 일부만 누락된"
@@ -50,11 +53,19 @@ class WinningStatisticsCacheServicePartialCorruptionTest {
     @Autowired
     private CacheManager cacheManager;
 
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
     @MockitoBean
     private StatisticsSummaryRebuilder summaryRebuilder;
 
+    private TransactionTemplate requiresNewTransactionTemplate;
+
     @BeforeEach
     void setUp() {
+        requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
+        requiresNewTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+
         cacheManager.getCacheNames().forEach(name -> {
             var cache = cacheManager.getCache(name);
             if (cache != null) {
@@ -67,10 +78,16 @@ class WinningStatisticsCacheServicePartialCorruptionTest {
         // 재계산이 호출되면(감지 성공) 완전한 정상 상태로 복구된다고 가정한다 — 이 목의
         // 목적은 재계산의 정확성이 아니라, 서비스가 불완전 상태를 감지해 재계산을
         // 호출하는지, 그리고 그 결과를 다시 읽어 응답에 반영하는지를 검증하는 것이다.
+        // BE-STAT-03: WinningStatisticsCacheService가 @Transactional(readOnly = true)가 되면서,
+        // 이 write를 호출자의 읽기 전용 트랜잭션 안에서 그냥 실행하면 flush가 안 돼(FlushMode
+        // MANUAL) 직후 재조회에 안 보인다 — 실제 StatisticsSummaryRebuilder가 REQUIRES_NEW로
+        // 도는 것과 똑같이 별도 트랜잭션에서 커밋해야 목이 실제 배선을 정확히 흉내낸다.
         doAnswer(inv -> {
-            insertFullPatternRows();
-            insertFullCompanionRows();
-            return null;
+            requiresNewTransactionTemplate.executeWithoutResult(status -> {
+                insertFullPatternRows();
+                insertFullCompanionRows();
+            });
+            return StatisticsSummaryRebuilder.RebuildOutcome.SUCCESS;
         }).when(summaryRebuilder).rebuildAllSummaries();
 
         insertFullPatternRows();

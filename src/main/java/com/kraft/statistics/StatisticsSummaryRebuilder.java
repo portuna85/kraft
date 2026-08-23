@@ -53,8 +53,11 @@ public class StatisticsSummaryRebuilder {
      * {@code kraft_alerts.yml:181}의 {@code outcome="failure"} 경보가 이 태그 값을
      * 그대로 참조하므로, 여기서 바꾸는 것은 태그 값이 아니라 "요청마다 Counter.builder를
      * 새로 만들지 않는다"는 등록 방식뿐이다(TD-022).
+     * BE-STAT-01: {@link #rebuildAllSummaries()}의 반환 타입이기도 하다 — 같은 패키지의
+     * {@link WinningStatisticsCacheService}가 SKIPPED와 나머지(SUCCESS/EMPTY)를 구분해야 해서
+     * package-private으로 공개했다. 그래서 {@code private}이 아니다.
      */
-    private enum RebuildOutcome {
+    enum RebuildOutcome {
         SUCCESS("success"),
         EMPTY("empty"),
         SKIPPED("skipped"),
@@ -106,10 +109,14 @@ public class StatisticsSummaryRebuilder {
         }
     }
 
+    // BE-STAT-01(docs/improvement.md): SKIPPED와 나머지(SUCCESS/EMPTY)를 호출자가 구분할 수
+    // 있도록 반환한다 — 예전엔 void라 lock을 못 얻고 조용히 반환한 경우와 실제로 재계산이
+    // 끝난 경우를 호출자가 구분할 방법이 없었다. 실제 실패는 여전히 예외로 전파한다(바뀌지
+    // 않음) — SKIPPED만 "예외 없이 반환하지만 아무 일도 안 했다"는 세 번째 결과였다.
     @CacheEvict(value = {CacheConfig.STATS_FREQUENCY, CacheConfig.STATS_FREQUENCY_BY_LIMIT,
                 CacheConfig.STATS_PATTERN, CacheConfig.STATS_COMPANION}, allEntries = true)
-    public void rebuildAllSummaries() {
-        LockingTaskExecutor.TaskResult<Boolean> result;
+    public RebuildOutcome rebuildAllSummaries() {
+        LockingTaskExecutor.TaskResult<RebuildOutcome> result;
         try {
             result = lockingTaskExecutor.executeWithLock(
                     () -> transactionTemplate.execute(status -> rebuildAllSummariesInternal()),
@@ -128,10 +135,12 @@ public class StatisticsSummaryRebuilder {
         if (!result.wasExecuted()) {
             log.info("statistics summary rebuild skipped because another instance holds the lock");
             recordRebuildOutcome(RebuildOutcome.SKIPPED);
+            return RebuildOutcome.SKIPPED;
         }
+        return result.getResult();
     }
 
-    private boolean rebuildAllSummariesInternal() {
+    private RebuildOutcome rebuildAllSummariesInternal() {
         Timer.Sample sample = Timer.start(meterRegistry);
         try {
             List<WinningBallsOnly> all = winningNumberRepository.findAllBalls();
@@ -149,9 +158,10 @@ public class StatisticsSummaryRebuilder {
             rebuildCompanions(all, now);
             int lastProcessedRound = all.stream().mapToInt(WinningBallsOnly::getRound).max().orElse(0);
             recordProjectionState(lastProcessedRound, all.size(), now);
-            recordRebuildOutcome(all.isEmpty() ? RebuildOutcome.EMPTY : RebuildOutcome.SUCCESS);
+            RebuildOutcome outcome = all.isEmpty() ? RebuildOutcome.EMPTY : RebuildOutcome.SUCCESS;
+            recordRebuildOutcome(outcome);
             log.info("Completed statistics summary rebuild");
-            return true;
+            return outcome;
         } catch (RuntimeException exception) {
             recordRebuildOutcome(RebuildOutcome.FAILURE);
             throw exception;
