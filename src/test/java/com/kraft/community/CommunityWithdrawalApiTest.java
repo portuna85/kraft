@@ -3,6 +3,7 @@ package com.kraft.community;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -22,6 +23,7 @@ import com.kraft.community.user.CommunityUser;
 import com.kraft.community.user.CommunityUserRepository;
 import java.time.OffsetDateTime;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -87,6 +89,19 @@ class CommunityWithdrawalApiTest {
         mockMvc.perform(post("/api/v1/community/posts").with(asUser(owner)).with(csrf()).contentType("application/json")
                         .content(objectMapper.writeValueAsString(new CreatePostRequest("title", "content", "GENERAL", null))))
                 .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value("COMMUNITY_ACCOUNT_DELETED"));
+    }
+
+    @Test
+    @DisplayName("BE-PERF-02: 탈퇴 후 stale 세션의 GET 요청은 의도적으로 통과한다(쓰기만 차단)")
+    void staleSessionGetRequestPassesThroughAfterWithdrawal() throws Exception {
+        mockMvc.perform(post("/api/v1/community/me/withdrawal").with(asUser(owner)).with(csrf())).andExpect(status().isNoContent());
+
+        // CommunityWithdrawnAccountFilter는 GET/HEAD/OPTIONS를 shouldNotFilter로 건너뛴다 — 매
+        // 읽기 요청마다 existsById를 실행하지 않기 위한 의도된 트레이드오프(BE-PERF-02).
+        // 인증이 필요한 GET 엔드포인트(/me/blocked-users)로 확인한다 — 게시글 GET은 permitAll이라
+        // 이 필터의 인증 분기 자체를 타지 않으므로 검증에 부적합하다.
+        mockMvc.perform(get("/api/v1/community/me/blocked-users").with(asUser(owner)))
+                .andExpect(status().isOk());
     }
 
     @Test
