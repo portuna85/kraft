@@ -58,11 +58,25 @@ public class PublicRateLimitFilter extends OncePerRequestFilter {
         UNKNOWN
     }
 
+    /**
+     * BE-SEC-02(docs/improvement.md, 3번): 이 필터가 각 요청에 실제로 내리는 판정 4가지.
+     * trusted-proxy 우회와 카운터 백엔드(Redis) fail-open은 이전까지 로그로만 남아 대시보드·
+     * 경보에서 관측할 수 없었다 — 특히 fail-open은 보안 경계가 실제로 무너지는 장애라
+     * 능동 경보(kraft_alerts.yml의 KraftRateLimitBackendFailOpen) 대상이다.
+     */
+    enum Outcome {
+        ALLOWED,
+        LIMITED,
+        TRUSTED_BYPASS,
+        BACKEND_FAIL_OPEN
+    }
+
     private final SecurityProperties securityProperties;
     private final ClientIpResolver clientIpResolver;
     private final RateLimitCounter rateLimitCounter;
     private final ApiErrorResponseWriter apiErrorResponseWriter;
     private final Map<Surface, Counter> exceededCounters;
+    private final Map<Outcome, Counter> decisionCounters;
 
     public PublicRateLimitFilter(SecurityProperties securityProperties,
                                  ClientIpResolver clientIpResolver,
@@ -79,6 +93,13 @@ public class PublicRateLimitFilter extends OncePerRequestFilter {
         for (Surface surface : Surface.values()) {
             exceededCounters.put(surface, Counter.builder("http.rate_limit.exceeded")
                     .tag("surface", surface.name().toLowerCase(Locale.ROOT))
+                    .register(meterRegistry));
+        }
+        this.decisionCounters = new EnumMap<>(Outcome.class);
+        for (Outcome outcome : Outcome.values()) {
+            decisionCounters.put(outcome, Counter.builder("rate_limit.decisions")
+                    .description("Rate limit filter decisions by outcome")
+                    .tag("outcome", outcome.name().toLowerCase(Locale.ROOT))
                     .register(meterRegistry));
         }
     }
@@ -117,6 +138,7 @@ public class PublicRateLimitFilter extends OncePerRequestFilter {
                 log.debug("Rate limit 우회(trusted proxy): remoteAddr={} xff={} resolvedIp={} path={}",
                         request.getRemoteAddr(), request.getHeader("X-Forwarded-For"), clientIp, request.getRequestURI());
             }
+            decisionCounters.get(Outcome.TRUSTED_BYPASS).increment();
             chain.doFilter(request, response);
             return;
         }
@@ -128,6 +150,7 @@ public class PublicRateLimitFilter extends OncePerRequestFilter {
             // 카운터 백엔드(Redis) 장애 — fail-open, 이번 요청은 한도 검사 없이 통과.
             log.info("Rate limit 우회(카운터 백엔드 장애, fail-open): resolvedIp={} path={}",
                     clientIp, request.getRequestURI());
+            decisionCounters.get(Outcome.BACKEND_FAIL_OPEN).increment();
             chain.doFilter(request, response);
             return;
         }
@@ -140,12 +163,14 @@ public class PublicRateLimitFilter extends OncePerRequestFilter {
             String path = request.getRequestURI();
             log.warn("Rate limit 초과: ip={} count={} limit={} path={}", clientIp, count, limit, path);
             exceededCounters.get(surfaceOf(request)).increment();
+            decisionCounters.get(Outcome.LIMITED).increment();
             response.setIntHeader("Retry-After", WINDOW_SECONDS);
             apiErrorResponseWriter.write(request, response, HttpStatus.TOO_MANY_REQUESTS,
                     "RATE_LIMIT_EXCEEDED", "요청 횟수가 너무 많습니다. 잠시 후 다시 시도하세요.");
             return;
         }
 
+        decisionCounters.get(Outcome.ALLOWED).increment();
         chain.doFilter(request, response);
     }
 

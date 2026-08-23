@@ -73,6 +73,35 @@ check_oauth_redirect() {
   fi
 }
 
+check_header_decreasing() {
+  # BE-SEC-02(docs/improvement.md, 4번): 배포 후 외부 관점에서 X-RateLimit-Remaining이
+  # 버스트 요청 동안 실제로 줄어드는지 확인한다. validate-env.sh는 셸 환경변수만 보므로
+  # KRAFT_SECURITY_TRUSTED_PROXY_CIDR를 아예 비워 docker-compose.prod.yml의 암시적 기본값
+  # (RFC1918 전체)이 적용되는 경우를 잡지 못한다 — 그 경우 실제로는 trusted-proxy 우회
+  # 분기를 타 이 헤더 자체가 안 나오므로, 여기서 감소를 못 잡으면 그 misconfiguration의
+  # 신호다.
+  local desc="$1"
+  shift
+  local values=("$@")
+  if [[ "${#values[@]}" -lt 2 ]]; then
+    echo "  FAIL[< 2 header samples captured] $desc" >&2
+    FAIL=1
+    return
+  fi
+  local prev="${values[0]}" decreased=0 monotonic=1 v
+  for v in "${values[@]:1}"; do
+    [[ "$v" -gt "$prev" ]] && monotonic=0
+    [[ "$v" -lt "$prev" ]] && decreased=1
+    prev="$v"
+  done
+  if [[ "$monotonic" -eq 1 && "$decreased" -eq 1 ]]; then
+    echo "  OK  [${values[*]}] $desc"
+  else
+    echo "  FAIL[non-decreasing sequence: ${values[*]}] $desc" >&2
+    FAIL=1
+  fi
+}
+
 check_body_matches() {
   local desc="$1" url="$2" pattern="$3" max_attempts="${4:-3}"
   local body attempt
@@ -171,12 +200,18 @@ fi
 
 if [[ "${KRAFT_SMOKE_RATE_LIMIT:-false}" == "true" ]]; then
   RATE_LIMIT_URL="$API/rounds/latest"
+  remaining_values=()
   for _ in $(seq 1 "${KRAFT_SMOKE_RATE_LIMIT_BURST:-130}"); do
-    actual=$(curl -o /dev/null -sS -w "%{http_code}" --max-time 10 "$RATE_LIMIT_URL" 2>/dev/null || echo "000")
+    burst_headers=$(curl -sS -D - -o /dev/null --max-time 10 "$RATE_LIMIT_URL" 2>/dev/null || true)
+    actual=$(printf '%s\n' "$burst_headers" | awk '$1 ~ /^HTTP\// {code=$2} END {print code}' | tr -d '\r')
+    remaining=$(printf '%s\n' "$burst_headers" \
+      | awk -F': ' 'tolower($1) == "x-ratelimit-remaining" {print $2}' | tr -d '\r')
+    [[ "$remaining" =~ ^[0-9]+$ ]] && remaining_values+=("$remaining")
     [[ "$actual" == "429" ]] && break
   done
   check_status "GET /api/v1/rounds/latest -> 429 after burst" "$RATE_LIMIT_URL" "429"
   check_header_contains "429 responses expose Retry-After" "$RATE_LIMIT_URL" "Retry-After" "60"
+  check_header_decreasing "버스트 동안 X-RateLimit-Remaining이 실제로 감소" "${remaining_values[@]}"
 fi
 
 # Flyway가 리포에 존재하는 최신 마이그레이션 버전까지 도달했는지 확인.
