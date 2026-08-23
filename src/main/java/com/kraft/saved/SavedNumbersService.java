@@ -145,16 +145,18 @@ public class SavedNumbersService {
         savedNumberClientLockInitializer.ensureExists(clientTokenHash);
         savedNumberClientLockRepository.lockByClientTokenHash(clientTokenHash);
 
-        List<SavedNumber> existing = savedNumberRepository.findByClientTokenHashOrderByCreatedAtDesc(clientTokenHash);
-
-        Optional<SavedNumber> duplicate = existing.stream()
-                .filter(saved -> saved.getNumbers().equals(normalizedNumbers))
-                .findFirst();
+        // BE-PERF-05(docs/improvement.md): 이전에는 최대 100행 전체를 엔티티로 올려 Java에서
+        // 중복·개수를 확인했다. 이 블록은 레코드 락을 든 트랜잭션 안에서 돌아 다른 동시 저장
+        // 요청의 대기 시간과 직결되므로, saveForOwner()가 이미 쓰는 것과 같은 targeted query
+        // 두 개(findByClientTokenHashAndNumbers/countByClientTokenHash)로 좁힌다 — 잠금 획득
+        // 순서·트랜잭션 경계는 그대로다.
+        Optional<SavedNumber> duplicate = savedNumberRepository.findByClientTokenHashAndNumbers(
+                clientTokenHash, normalizedNumbers);
         if (duplicate.isPresent()) {
             return new SaveNumberResult(toResponse(duplicate.get()), false);
         }
 
-        if (existing.size() >= savedProperties.maxPerClient()) {
+        if (savedNumberRepository.countByClientTokenHash(clientTokenHash) >= savedProperties.maxPerClient()) {
             throw new ApiException(ApiErrorCode.SAVED_LIMIT_REACHED, "이 기기에서 저장 가능한 번호 개수를 초과했습니다.");
         }
 

@@ -100,7 +100,8 @@ class SavedNumbersServiceTest {
     @DisplayName("새 번호 저장 시 생성됨을 반환한다")
     void save_newNumbers_returnsCreatedTrue() {
         String encoded = lottoNumberCodec.toStorageValue(VALID_NUMBERS);
-        given(savedNumberRepository.findByClientTokenHashOrderByCreatedAtDesc(TOKEN_HASH)).willReturn(List.of());
+        given(savedNumberRepository.findByClientTokenHashAndNumbers(TOKEN_HASH, encoded)).willReturn(Optional.empty());
+        given(savedNumberRepository.countByClientTokenHash(TOKEN_HASH)).willReturn(0L);
         given(savedNumberRepository.save(any(SavedNumber.class)))
                 .willAnswer(inv -> savedEntity(encoded, "즐겨찾기", "MANUAL"));
 
@@ -118,8 +119,8 @@ class SavedNumbersServiceTest {
     @DisplayName("이미 저장된 번호 재저장 시 생성되지 않았음을 반환한다")
     void save_duplicateNumbers_returnsCreatedFalse() {
         String encoded = lottoNumberCodec.toStorageValue(VALID_NUMBERS);
-        given(savedNumberRepository.findByClientTokenHashOrderByCreatedAtDesc(TOKEN_HASH))
-                .willReturn(List.of(savedEntity(encoded, "기존", "MANUAL")));
+        given(savedNumberRepository.findByClientTokenHashAndNumbers(TOKEN_HASH, encoded))
+                .willReturn(Optional.of(savedEntity(encoded, "기존", "MANUAL")));
 
         SaveNumberResult result = service.save(TOKEN_HASH, new CreateSavedNumberRequest(VALID_NUMBERS, null, null));
 
@@ -129,11 +130,9 @@ class SavedNumbersServiceTest {
     @Test
     @DisplayName("저장 한도 초과 시 충돌 예외가 발생한다")
     void save_overLimit_throwsConflictApiException() {
-        String otherEncoded = lottoNumberCodec.toStorageValue(List.of(1, 2, 3, 4, 5, 6));
-        List<SavedNumber> full = java.util.stream.IntStream.range(0, 100)
-                .mapToObj(i -> savedEntity(otherEncoded + i, null, "MANUAL"))
-                .toList();
-        given(savedNumberRepository.findByClientTokenHashOrderByCreatedAtDesc(TOKEN_HASH)).willReturn(full);
+        String encoded = lottoNumberCodec.toStorageValue(VALID_NUMBERS);
+        given(savedNumberRepository.findByClientTokenHashAndNumbers(TOKEN_HASH, encoded)).willReturn(Optional.empty());
+        given(savedNumberRepository.countByClientTokenHash(TOKEN_HASH)).willReturn(100L);
 
         assertThatThrownBy(() ->
                 service.save(TOKEN_HASH, new CreateSavedNumberRequest(VALID_NUMBERS, null, null))
@@ -194,7 +193,8 @@ class SavedNumbersServiceTest {
     @DisplayName("출처가 없으면 수동 저장으로 처리한다")
     void save_nullSource_defaultsToManual() {
         String encoded = lottoNumberCodec.toStorageValue(VALID_NUMBERS);
-        given(savedNumberRepository.findByClientTokenHashOrderByCreatedAtDesc(TOKEN_HASH)).willReturn(List.of());
+        given(savedNumberRepository.findByClientTokenHashAndNumbers(TOKEN_HASH, encoded)).willReturn(Optional.empty());
+        given(savedNumberRepository.countByClientTokenHash(TOKEN_HASH)).willReturn(0L);
         given(savedNumberRepository.save(any(SavedNumber.class)))
                 .willAnswer(inv -> savedEntity(encoded, null, "MANUAL"));
 
