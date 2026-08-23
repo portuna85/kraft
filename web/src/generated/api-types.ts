@@ -403,22 +403,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/home": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["home"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/community/session": {
         parameters: {
             query?: never;
@@ -860,20 +844,6 @@ export interface components {
         CombinationCheckResponse: {
             wonFirstPrize: boolean;
             firstPrizeHistory: components["schemas"]["FirstPrizeHistoryDto"][];
-        };
-        HomeCommunityPostSummary: {
-            /** Format: int64 */
-            id: number;
-            title: string;
-            authorNameSnapshot: string;
-            /** Format: date-time */
-            createdAt: string;
-        };
-        HomeResponse: {
-            latestRound: components["schemas"]["WinningNumberResponse"] | null;
-            freshness: components["schemas"]["RoundFreshnessResponse"] | null;
-            latestPosts: components["schemas"]["HomeCommunityPostSummary"][];
-            weeklyPopularPosts: components["schemas"]["HomeCommunityPostSummary"][];
         };
         CommunitySessionResponse: {
             loggedIn: boolean;
@@ -1737,26 +1707,6 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CombinationCheckResponse"];
-                };
-            };
-        };
-    };
-    home: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["HomeResponse"];
                 };
             };
         };

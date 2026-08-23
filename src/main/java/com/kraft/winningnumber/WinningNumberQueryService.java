@@ -59,8 +59,7 @@ public class WinningNumberQueryService {
     public RoundFreshnessResponse getFreshness() {
         // BE-PERF-01: this.findLatest()는 같은 클래스 내부 호출이라 @Cacheable 프록시를 우회한다
         // (자기호출 함정) — 이 메서드 자체가 캐시를 타지 않는 건 기존과 동일한 동작이다.
-        // HomeSummaryService처럼 외부에서 findLatest()를 먼저 부르고 freshnessOf()로 조합하는
-        // 호출자만 캐시 이득을 본다.
+        // 외부에서 findLatest()를 먼저 부르고 freshnessOf()로 조합하는 호출자만 캐시 이득을 본다.
         return findLatest()
                 .map(this::freshnessOf)
                 .orElseThrow(() -> new ApiException(ApiErrorCode.ROUND_NOT_FOUND, "당첨 번호 데이터가 없습니다."));
