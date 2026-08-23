@@ -20,8 +20,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -52,8 +50,8 @@ class HomeSummaryServiceTest {
     @DisplayName("최신 회차가 없으면 신선도 없이 빈 목록을 반환한다")
     void summarize_noLatestRound_returnsEmptyWithoutFreshness() {
         given(winningNumberQueryService.findLatest()).willReturn(Optional.empty());
-        given(communityPostRepository.findLatest(any(), any(), any())).willReturn(Page.empty());
-        given(communityPostRepository.findWeeklyPopular(any(), any(), any(), any())).willReturn(Page.empty());
+        given(communityPostRepository.findLatestPublished(any(), any(), any())).willReturn(List.of());
+        given(communityPostRepository.findWeeklyPopularPublished(any(), any(), any(), any())).willReturn(List.of());
 
         HomeResponse response = service.summarize();
 
@@ -69,14 +67,14 @@ class HomeSummaryServiceTest {
         WinningNumberResponse latest = new WinningNumberResponse(
                 1234, LocalDate.of(2026, 7, 25), List.of(1, 2, 3, 4, 5, 6), 7, 1_000_000_000L, 0L, 0, 0L, 0L);
         given(winningNumberQueryService.findLatest()).willReturn(Optional.of(latest));
-        given(winningNumberQueryService.getFreshness()).willReturn(
+        given(winningNumberQueryService.freshnessOf(latest)).willReturn(
                 new RoundFreshnessResponse(1234, LocalDate.of(2026, 7, 25), true, ZonedDateTime.now(CLOCK)));
 
         CommunityPost post = new CommunityPost(1L, "글쓴이", "제목", "내용", PostCategory.GENERAL, null,
                 OffsetDateTime.now(CLOCK), OffsetDateTime.now(CLOCK));
-        given(communityPostRepository.findLatest(any(), any(), any())).willReturn(new PageImpl<>(List.of(post)));
-        given(communityPostRepository.findWeeklyPopular(any(), any(), any(), any()))
-                .willReturn(new PageImpl<>(List.of(post)));
+        given(communityPostRepository.findLatestPublished(any(), any(), any())).willReturn(List.of(post));
+        given(communityPostRepository.findWeeklyPopularPublished(any(), any(), any(), any()))
+                .willReturn(List.of(post));
 
         HomeResponse response = service.summarize();
 
@@ -90,16 +88,17 @@ class HomeSummaryServiceTest {
     @DisplayName("숨김·삭제 상태 게시글은 리포지토리 쿼리 단계에서 걸러지므로 서비스는 category/query에 null을 넘겨 status=PUBLISHED 전체를 조회한다")
     void summarize_alwaysQueriesWithoutCategoryOrSearchFilter_relyingOnPublishedStatusFilter() {
         given(winningNumberQueryService.findLatest()).willReturn(Optional.empty());
-        given(communityPostRepository.findLatest(isNull(), isNull(), any())).willReturn(Page.empty());
-        given(communityPostRepository.findWeeklyPopular(isNull(), isNull(), any(), any())).willReturn(Page.empty());
+        given(communityPostRepository.findLatestPublished(isNull(), isNull(), any())).willReturn(List.of());
+        given(communityPostRepository.findWeeklyPopularPublished(isNull(), isNull(), any(), any())).willReturn(List.of());
 
         service.summarize();
 
         // B-P0-1 회귀 방지: 과거에는 status 필터가 없는
         // findAllByOrderByCreatedAtDesc/findByCreatedAtAfterOrderByCreatedAtDesc를 사용해
-        // 숨김(HIDDEN_BY_AUTHOR)·삭제 게시글이 홈에 그대로 노출됐다. findLatest/findWeeklyPopular는
-        // 둘 다 JPQL/native 쿼리에 status = PUBLISHED 조건이 있어 이 결함이 구조적으로 재발하지 않는다.
-        verify(communityPostRepository).findLatest(isNull(), isNull(), any());
-        verify(communityPostRepository).findWeeklyPopular(isNull(), isNull(), any(), any());
+        // 숨김(HIDDEN_BY_AUTHOR)·삭제 게시글이 홈에 그대로 노출됐다. findLatestPublished/
+        // findWeeklyPopularPublished는 둘 다 JPQL/native 쿼리에 status = PUBLISHED 조건이 있어
+        // 이 결함이 구조적으로 재발하지 않는다.
+        verify(communityPostRepository).findLatestPublished(isNull(), isNull(), any());
+        verify(communityPostRepository).findWeeklyPopularPublished(isNull(), isNull(), any(), any());
     }
 }
