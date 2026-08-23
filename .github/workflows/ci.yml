@@ -88,6 +88,8 @@ jobs:
           shellcheck "${ACTIVE_SCRIPTS[@]}"
       - name: Run validate-env.sh regression tests
         run: bash scripts/deploy/validate-env.test.sh
+      - name: Run resolve-trusted-proxy-cidr.sh regression tests
+        run: bash scripts/deploy/resolve-trusted-proxy-cidr.test.sh
       - name: Run repository policy guards
         run: |
           bash scripts/check-no-removed-features.sh
