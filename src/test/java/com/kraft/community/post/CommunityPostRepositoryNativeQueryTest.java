@@ -111,6 +111,40 @@ class CommunityPostRepositoryNativeQueryTest {
     }
 
     @Test
+    @DisplayName("DB-COMM-01: 점수·작성시각이 모두 같으면 id 내림차순으로 결정적이고 페이지 간 중복·누락이 없다")
+    void sameScoreAndTimestamp_breaksTieByIdDescendingWithoutDuplicateOrGap() {
+        OffsetDateTime sameInstant = OffsetDateTime.now().minusHours(1);
+        // 셋 다 좋아요·댓글·조회수 0(동점) + 동일 createdAt(동일 시간 감쇠) → score가 완전히 같다.
+        Long id1 = createPost("글1", sameInstant).getId();
+        Long id2 = createPost("글2", sameInstant).getId();
+        Long id3 = createPost("글3", sameInstant).getId();
+
+        List<Long> fullOrder = communityPostRepository
+                .findWeeklyPopular(null, null, OffsetDateTime.now().minusDays(7), PageRequest.of(0, 10))
+                .map(CommunityPost::getId)
+                .getContent();
+        // score 동점이라도 DB 실행계획에 따라 흔들리지 않고 id 내림차순으로 고정된다.
+        assertThat(fullOrder).containsExactly(id3, id2, id1);
+
+        List<Long> page0 = communityPostRepository
+                .findWeeklyPopular(null, null, OffsetDateTime.now().minusDays(7), PageRequest.of(0, 2))
+                .map(CommunityPost::getId)
+                .getContent();
+        List<Long> page1 = communityPostRepository
+                .findWeeklyPopular(null, null, OffsetDateTime.now().minusDays(7), PageRequest.of(1, 2))
+                .map(CommunityPost::getId)
+                .getContent();
+
+        assertThat(page0).containsExactly(id3, id2);
+        assertThat(page1).containsExactly(id1);
+        // 합집합이 전체와 같고(누락 없음), 교집합이 비어 있다(중복 없음).
+        assertThat(page0).doesNotContainAnyElementsOf(page1);
+        List<Long> union = new java.util.ArrayList<>(page0);
+        union.addAll(page1);
+        assertThat(union).containsExactlyInAnyOrderElementsOf(fullOrder);
+    }
+
+    @Test
     @DisplayName("7일보다 오래된 글은 since 컷오프로 제외된다")
     void excludesPostsOlderThanSinceCutoff() {
         createPost("최근 글", OffsetDateTime.now().minusHours(1));

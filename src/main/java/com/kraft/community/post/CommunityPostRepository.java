@@ -50,7 +50,8 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
             + "AND (:query IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) ESCAPE '!' "
             + "     OR LOWER(p.content) LIKE LOWER(CONCAT('%', :query, '%')) ESCAPE '!') "
             + "ORDER BY (m.like_count * 3 + m.comment_count * 2 + LEAST(m.view_count, 1000) / 20) "
-            + "  / POW(TIMESTAMPDIFF(SECOND, p.created_at, UTC_TIMESTAMP(6)) / 3600.0 + 2, 1.35) DESC",
+            + "  / POW(TIMESTAMPDIFF(SECOND, p.created_at, UTC_TIMESTAMP(6)) / 3600.0 + 2, 1.35) DESC, "
+            + "  p.created_at DESC, p.id DESC",
             countQuery = "SELECT COUNT(*) FROM community_posts p "
                     + "WHERE p.status = 'PUBLISHED' AND p.created_at >= :since "
                     + "AND (:category IS NULL OR p.category = :category) "
@@ -69,7 +70,8 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
             + "AND (:query IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) ESCAPE '!' "
             + "     OR LOWER(p.content) LIKE LOWER(CONCAT('%', :query, '%')) ESCAPE '!') "
             + "ORDER BY (m.like_count * 3 + m.comment_count * 2 + LEAST(m.view_count, 1000) / 20) "
-            + "  / POW(TIMESTAMPDIFF(SECOND, p.created_at, UTC_TIMESTAMP(6)) / 3600.0 + 2, 1.35) DESC",
+            + "  / POW(TIMESTAMPDIFF(SECOND, p.created_at, UTC_TIMESTAMP(6)) / 3600.0 + 2, 1.35) DESC, "
+            + "  p.created_at DESC, p.id DESC",
             nativeQuery = true)
     List<CommunityPost> findWeeklyPopularPublished(@Param("category") String category, @Param("query") String query,
                                                      @Param("since") OffsetDateTime since, Pageable pageable);
