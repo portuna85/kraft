@@ -38,18 +38,29 @@ export type CspInput = {
   adNetwork: AdNetwork;
   /** 개발 모드에서는 Next가 eval을 쓴다 — 프로덕션에서는 절대 켜지 않는다. */
   allowEval: boolean;
+  /**
+   * FE-SEC-01(docs/improvement.md): `ops`면 광고 네트워크 origin을 CSP에 아예 넣지
+   * 않는다. 운영 콘솔이 제3자 광고 네트워크와 완전히 분리돼야 한다는 요구는 컴포넌트
+   * 트리 분리(`(ops)/layout.tsx`가 광고 컴포넌트를 렌더하지 않는 것)만으로는
+   * 충분하지 않다 — CSP가 origin을 열어 두면 그 자체로 운영 호스트·referrer·접속
+   * 패턴이 외부 네트워크에 노출될 수 있는 공격 표면이 남는다.
+   */
+  surface: "public" | "ops";
 };
 
-function directives({ nonce, adNetwork, allowEval }: CspInput, styleSrc: string): string[] {
-  const ad = AD_ORIGINS[adNetwork];
+function directives(
+  { nonce, adNetwork, allowEval, surface }: CspInput,
+  styleSrc: string,
+): string[] {
+  const ad = surface === "public" ? AD_ORIGINS[adNetwork] : null;
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' ${ad.script}${allowEval ? " 'unsafe-eval'" : ""}`,
+    `script-src 'self' 'nonce-${nonce}'${ad ? ` ${ad.script}` : ""}${allowEval ? " 'unsafe-eval'" : ""}`,
     `style-src ${styleSrc}`,
-    `img-src 'self' data: ${ad.img}`,
+    `img-src 'self' data:${ad ? ` ${ad.img}` : ""}`,
     "font-src 'self'",
-    `connect-src 'self' ${ad.connect}`,
-    `frame-src ${ad.frame}`,
+    `connect-src 'self'${ad ? ` ${ad.connect}` : ""}`,
+    `frame-src ${ad ? ad.frame : "'none'"}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

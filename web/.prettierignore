@@ -10,3 +10,7 @@ src/generated
 # 번들 예산 측정 산출물 — gitignore 대상인데 포맷 검사에는 걸려서, 로컬에서 빌드만
 # 하면 format:check가 실패했다.
 scripts/bundle-results.json
+
+# DX-FMT-01(docs/improvement.md): Lighthouse 측정 산출물도 같은 이유로 제외한다 —
+# 로컬에서 budget:lighthouse만 실행해도 format:check가 실패했다.
+scripts/lighthouse-results.json

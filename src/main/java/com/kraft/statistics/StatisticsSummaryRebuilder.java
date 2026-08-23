@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +46,27 @@ public class StatisticsSummaryRebuilder {
     private static final Duration REBUILD_LOCK_AT_MOST_FOR = Duration.ofMinutes(10);
     private static final Duration REBUILD_LOCK_AT_LEAST_FOR = Duration.ZERO;
 
+    /**
+     * BE-SEC-01(docs/improvement.md) 계열 정리: {@code outcome} 태그 값 4가지는 이미
+     * 이 클래스 안에서만 쓰이는 고정 리터럴이었다(외부 입력 아님) — 값 자체(success/
+     * empty/skipped/failure)는 바꾸지 않는다. Grafana 대시보드와
+     * {@code kraft_alerts.yml:181}의 {@code outcome="failure"} 경보가 이 태그 값을
+     * 그대로 참조하므로, 여기서 바꾸는 것은 태그 값이 아니라 "요청마다 Counter.builder를
+     * 새로 만들지 않는다"는 등록 방식뿐이다(TD-022).
+     */
+    private enum RebuildOutcome {
+        SUCCESS("success"),
+        EMPTY("empty"),
+        SKIPPED("skipped"),
+        FAILURE("failure");
+
+        private final String tagValue;
+
+        RebuildOutcome(String tagValue) {
+            this.tagValue = tagValue;
+        }
+    }
+
     private final WinningNumberRepository winningNumberRepository;
     private final FrequencySummaryRepository frequencySummaryRepository;
     private final PatternStatsSummaryRepository patternStatsSummaryRepository;
@@ -54,6 +76,7 @@ public class StatisticsSummaryRebuilder {
     private final LockingTaskExecutor lockingTaskExecutor;
     private final MeterRegistry meterRegistry;
     private final TransactionTemplate transactionTemplate;
+    private final Map<RebuildOutcome, Counter> rebuildOutcomeCounters;
 
     public StatisticsSummaryRebuilder(WinningNumberRepository winningNumberRepository,
                                       FrequencySummaryRepository frequencySummaryRepository,
@@ -74,6 +97,13 @@ public class StatisticsSummaryRebuilder {
         this.meterRegistry = meterRegistry;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.rebuildOutcomeCounters = new EnumMap<>(RebuildOutcome.class);
+        for (RebuildOutcome outcome : RebuildOutcome.values()) {
+            rebuildOutcomeCounters.put(outcome, Counter.builder("statistics.summary.rebuild")
+                    .description("Statistics summary rebuild outcomes")
+                    .tag("outcome", outcome.tagValue)
+                    .register(meterRegistry));
+        }
     }
 
     @CacheEvict(value = {CacheConfig.STATS_FREQUENCY, CacheConfig.STATS_FREQUENCY_BY_LIMIT,
@@ -91,13 +121,13 @@ public class StatisticsSummaryRebuilder {
                     )
             );
         } catch (Throwable throwable) {
-            recordRebuildOutcome("failure");
+            recordRebuildOutcome(RebuildOutcome.FAILURE);
             throw new IllegalStateException("Failed to rebuild statistics summaries", throwable);
         }
 
         if (!result.wasExecuted()) {
             log.info("statistics summary rebuild skipped because another instance holds the lock");
-            recordRebuildOutcome("skipped");
+            recordRebuildOutcome(RebuildOutcome.SKIPPED);
         }
     }
 
@@ -119,11 +149,11 @@ public class StatisticsSummaryRebuilder {
             rebuildCompanions(all, now);
             int lastProcessedRound = all.stream().mapToInt(WinningBallsOnly::getRound).max().orElse(0);
             recordProjectionState(lastProcessedRound, all.size(), now);
-            recordRebuildOutcome(all.isEmpty() ? "empty" : "success");
+            recordRebuildOutcome(all.isEmpty() ? RebuildOutcome.EMPTY : RebuildOutcome.SUCCESS);
             log.info("Completed statistics summary rebuild");
             return true;
         } catch (RuntimeException exception) {
-            recordRebuildOutcome("failure");
+            recordRebuildOutcome(RebuildOutcome.FAILURE);
             throw exception;
         } finally {
             sample.stop(Timer.builder("statistics.summary.rebuild.duration")
@@ -145,12 +175,8 @@ public class StatisticsSummaryRebuilder {
         statisticsProjectionStateRepository.save(state);
     }
 
-    private void recordRebuildOutcome(String outcome) {
-        Counter.builder("statistics.summary.rebuild")
-                .description("Statistics summary rebuild outcomes")
-                .tag("outcome", outcome)
-                .register(meterRegistry)
-                .increment();
+    private void recordRebuildOutcome(RebuildOutcome outcome) {
+        rebuildOutcomeCounters.get(outcome).increment();
     }
 
     private void rebuildFrequency(List<WinningBallsOnly> rounds, OffsetDateTime now) {
