@@ -16,6 +16,22 @@ public interface CommunityUserBlockRepository extends JpaRepository<CommunityUse
 
     boolean existsByBlockerUserIdAndBlockedUserId(Long blockerUserId, Long blockedUserId);
 
+    /**
+     * BE-PERF-04(docs/improvement.md): {@code CommunityBlockService.isBlockedEitherWay}가
+     * 방향별로 {@code existsByBlockerUserIdAndBlockedUserId}를 최대 2회(단축 평가로 1회일 수도
+     * 있음) 부르던 것을 단일 쿼리로 합친다. 댓글·좋아요·북마크 등 커뮤니티 쓰기 경로마다
+     * 실행되는 쿼리라 왕복 수를 줄이는 효과가 있다. C-1의 상호 차단 의미론(A→B 또는 B→A 둘
+     * 중 하나라도 있으면 차단)은 OR 조건으로 그대로 유지한다 — 로컬 MariaDB `EXPLAIN`으로 실측
+     * 확인: 옵티마이저가 이 OR을 유니크 인덱스
+     * {@code uk_community_user_blocks_blocker_blocked(blocker_user_id, blocked_user_id)} 위의
+     * 단일 range 스캔으로 접어 `Using where; Using index`(커버링 인덱스, 테이블 접근 없음)로
+     * 실행한다 — 풀스캔도, 별도 index merge도 아니다.
+     */
+    @Query("select case when count(b) > 0 then true else false end from CommunityUserBlock b "
+            + "where (b.blockerUserId = :userA and b.blockedUserId = :userB) "
+            + "or (b.blockerUserId = :userB and b.blockedUserId = :userA)")
+    boolean existsBlockedEitherWay(@Param("userA") Long userA, @Param("userB") Long userB);
+
     List<CommunityUserBlock> findByBlockerUserId(Long blockerUserId);
 
     /**

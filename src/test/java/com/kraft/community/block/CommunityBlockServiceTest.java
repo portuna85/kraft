@@ -111,12 +111,17 @@ class CommunityBlockServiceTest {
     // C-1: 쓰기 경로(댓글·좋아요·북마크) 차단 강제는 방향과 무관해야 한다 — "내가 차단한
     // 사람"뿐 아니라 "나를 차단한 사람"의 글에도 상호작용할 수 없어야 차단이 실제로 보호가 된다.
     @Test
-    @DisplayName("A가 B를 차단했으면 방향과 무관하게 상호 차단으로 판정한다")
-    void isBlockedEitherWay_blockerToBlocked_true() {
-        given(communityUserBlockRepository.existsByBlockerUserIdAndBlockedUserId(1L, 2L)).willReturn(true);
+    @DisplayName("BE-PERF-04: isBlockedEitherWay는 단일 쿼리(existsBlockedEitherWay)에 위임한다")
+    void isBlockedEitherWay_delegatesToSingleQuery() {
+        given(communityUserBlockRepository.existsBlockedEitherWay(1L, 2L)).willReturn(true);
+        given(communityUserBlockRepository.existsBlockedEitherWay(2L, 1L)).willReturn(true);
 
         assertThat(service.isBlockedEitherWay(1L, 2L)).isTrue();
         assertThat(service.isBlockedEitherWay(2L, 1L)).isTrue();
+        // 방향별 개별 exists 호출로 되돌아가지 않았는지 — BE-PERF-04가 없애려던 왕복이다.
+        org.mockito.Mockito.verify(communityUserBlockRepository, org.mockito.Mockito.never())
+                .existsByBlockerUserIdAndBlockedUserId(org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.any());
     }
 
     @Test

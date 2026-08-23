@@ -95,6 +95,28 @@ class CommunityBlockConcurrencyTest {
         assertThat(blocks.get(0).getBlockedUserId()).isEqualTo(blockedId);
     }
 
+    @Test
+    @DisplayName("BE-PERF-04: existsBlockedEitherWay는 A→B/B→A/둘 다/없음 네 조합 모두 정확히 판정한다")
+    void existsBlockedEitherWay_coversAllFourDirectionCombinations() {
+        CommunityUser third = communityUserRepository.save(
+                new CommunityUser("google", "third-" + System.nanoTime(), "제3자", null, OffsetDateTime.now()));
+        Long thirdId = third.getId();
+
+        // A→B만 차단
+        communityBlockService.block(blockerId, blockedId);
+        assertThat(communityUserBlockRepository.existsBlockedEitherWay(blockerId, blockedId)).isTrue();
+        assertThat(communityUserBlockRepository.existsBlockedEitherWay(blockedId, blockerId)).isTrue();
+
+        // 관계 없음(제3자)
+        assertThat(communityUserBlockRepository.existsBlockedEitherWay(blockerId, thirdId)).isFalse();
+        assertThat(communityUserBlockRepository.existsBlockedEitherWay(thirdId, blockerId)).isFalse();
+
+        // 양방향 차단(B→A도 추가)
+        communityBlockService.block(blockedId, blockerId);
+        assertThat(communityUserBlockRepository.existsBlockedEitherWay(blockerId, blockedId)).isTrue();
+        assertThat(communityUserBlockRepository.existsBlockedEitherWay(blockedId, blockerId)).isTrue();
+    }
+
     private void runConcurrently(int threadCount, java.util.concurrent.Callable<Void> task) throws Exception {
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
         try {

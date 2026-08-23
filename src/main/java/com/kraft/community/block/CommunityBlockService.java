@@ -84,7 +84,6 @@ public class CommunityBlockService {
      */
     @Transactional(readOnly = true)
     public boolean isBlockedEitherWay(Long userA, Long userB) {
-        return communityUserBlockRepository.existsByBlockerUserIdAndBlockedUserId(userA, userB)
-                || communityUserBlockRepository.existsByBlockerUserIdAndBlockedUserId(userB, userA);
+        return communityUserBlockRepository.existsBlockedEitherWay(userA, userB);
     }
 }
