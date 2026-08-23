@@ -150,15 +150,20 @@ check_header_present_with_cookie() {
 }
 
 # EDGE-CACHE-01: PublicAccountSlot이 kraft_logged_in 쿠키로 실제로 서버 분기를 하는지 —
-# 로그인 UI(LoginPopover, aria-label="로그인 방법 선택")가 쿠키 유무에 따라 나타나거나 사라지는지
-# 확인한다. 이 마크업이 두 상태에서 똑같다면 캐시 헤더를 고쳐도 애초에 분기가 죽어 있었다는 뜻이다.
+# 로그인 트리거 버튼("로그인" 문구)이 쿠키 유무에 따라 나타나거나 사라지는지 확인한다. 이 마크업이
+# 두 상태에서 똑같다면 캐시 헤더를 고쳐도 애초에 분기가 죽어 있었다는 뜻이다.
+# LoginPopover의 aria-label="로그인 방법 선택"은 DropdownMenu의 열린 상태(isOpen)에서만
+# 렌더되는 메뉴 div에 붙어(dropdown-menu.tsx:106-112) curl(JS 미실행, 항상 닫힌 상태)로는 절대
+# 관측할 수 없다 — 처음 시도에서 이 마커를 썼다가 실제 배포에서 오탐(FAIL)으로 잡혔다. 대신 항상
+# 렌더되는 트리거 버튼의 텍스트("로그인", login-popover.tsx:46 — 로그인 상태의 트리거는 닉네임을
+# 보여준다, account-menu.tsx:82)를 쓴다.
 check_login_branch_present() {
   local desc="$1" host="$2" path="$3" cookie="$4" should_contain="$5"
   local body attempt found
   for attempt in 1 2 3; do
     body=$(curl -sk --max-time 5 --resolve "${host}:443:127.0.0.1" -b "$cookie" \
       "https://${host}${path}" 2>/dev/null || echo "")
-    found=$(printf '%s' "$body" | grep -Fc 'aria-label="로그인 방법 선택"' || true)
+    found=$(printf '%s' "$body" | grep -Fc '>로그인<' || true)
     { [[ "$should_contain" == "yes" && "$found" -gt 0 ]] || [[ "$should_contain" == "no" && "$found" -eq 0 ]]; } && break
     [[ "$attempt" -lt 3 ]] && sleep 1
   done
