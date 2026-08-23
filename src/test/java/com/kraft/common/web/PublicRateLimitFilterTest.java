@@ -62,6 +62,65 @@ class PublicRateLimitFilterTest {
     }
 
     @Test
+    @DisplayName("BE-SEC-02: rate_limit.decisions 메트릭이 outcome 4종으로 고정된다")
+    void rateLimitDecisions_meterCardinalityIsFixed() throws Exception {
+        String ip = "10.9.9.43";
+        mockMvc.perform(get("/api/v1/stats/frequency").with(remoteAddr(ip)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/stats/frequency").with(remoteAddr(ip)))
+                .andExpect(status().isTooManyRequests());
+
+        long meterCount = meterRegistry.find("rate_limit.decisions").meters().size();
+        assertThat(meterCount).isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("BE-SEC-02: 정상 통과 요청은 rate_limit.decisions{outcome=allowed}를 증가시킨다")
+    void allowedRequest_incrementsAllowedDecisionCounter() throws Exception {
+        double before = counterValue("allowed");
+
+        mockMvc.perform(get("/api/v1/stats/frequency").with(remoteAddr("10.9.9.44")))
+                .andExpect(status().isOk());
+
+        assertThat(counterValue("allowed")).isEqualTo(before + 1);
+    }
+
+    @Test
+    @DisplayName("BE-SEC-02: 429 응답은 rate_limit.decisions{outcome=limited}를 증가시킨다")
+    void limitedRequest_incrementsLimitedDecisionCounter() throws Exception {
+        String ip = "10.9.9.45";
+        mockMvc.perform(get("/api/v1/stats/frequency").with(remoteAddr(ip)))
+                .andExpect(status().isOk());
+        double before = counterValue("limited");
+
+        mockMvc.perform(get("/api/v1/stats/frequency").with(remoteAddr(ip)))
+                .andExpect(status().isTooManyRequests());
+
+        assertThat(counterValue("limited")).isEqualTo(before + 1);
+    }
+
+    @Test
+    @DisplayName("BE-SEC-02: trusted-proxy 대역 IP는 rate_limit.decisions{outcome=trusted_bypass}를 "
+            + "증가시키고 X-RateLimit-* 헤더를 세팅하지 않는다")
+    void trustedProxyIp_incrementsTrustedBypassDecisionCounter() throws Exception {
+        // 테스트 프로파일의 kraft.security.trusted-proxy-cidr 기본값(application.yml)은
+        // 172.28.0.0/16이다 — 이 대역 안 IP는 한도 검사 자체를 건너뛴다.
+        double before = counterValue("trusted_bypass");
+
+        mockMvc.perform(get("/api/v1/stats/frequency").with(remoteAddr("172.28.5.5")))
+                .andExpect(status().isOk())
+                .andExpect(header().doesNotExist("X-RateLimit-Limit"))
+                .andExpect(header().doesNotExist("X-RateLimit-Remaining"));
+
+        assertThat(counterValue("trusted_bypass")).isEqualTo(before + 1);
+    }
+
+    private double counterValue(String outcome) {
+        var counter = meterRegistry.find("rate_limit.decisions").tag("outcome", outcome).counter();
+        return counter == null ? 0.0 : counter.count();
+    }
+
+    @Test
     @DisplayName("429 응답에 재시도 안내 헤더가 포함되는지 확인")
     void rateLimitExceeded_returnsRetryAfterHeader() throws Exception {
         mockMvc.perform(get("/api/v1/stats/frequency"))

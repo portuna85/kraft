@@ -199,6 +199,24 @@ groups:
           description: "최근 15분 동안 lockout으로 거부된 로그인 시도가 3회 이상 발생함. brute-force 시도 가능성."
           runbook: "admin_audit_log에서 실패 시도 IP·계정 확인; 필요 시 KRAFT_ADMIN_ALLOWED_CIDR로 접근 자체를 더 좁힘"
 
+      # BE-SEC-02(docs/improvement.md, 5번): rate_limit_decisions_total{outcome=...}은 4개 고정
+      # 태그값을 가진다. backend_fail_open(카운터 백엔드 장애)만 임계값 경보를 건다 — 보안
+      # 경계(rate limit)가 실제로 무력화되는 장애라 즉시 조치 대상이다. trusted_bypass(신뢰
+      # 프록시 우회)는 프로덕션에서 Caddy를 거치는 모든 요청이 항상 타는 정상 경로이므로 여기에
+      # 임계값 경보를 걸지 않는다 — 급감/소멸이 KRAFT_SECURITY_TRUSTED_PROXY_CIDR 오설정 신호일
+      # 수는 있으나 정상적인 트래픽 변화와 구분할 수 없어, kraft-overview 대시보드에서 outcome별
+      # 추이를 관찰하는 것으로 충분하다.
+      - alert: KraftRateLimitBackendFailOpen
+        expr: increase(rate_limit_decisions_total{job="kraft-backend",outcome="backend_fail_open"}[5m]) >= 1
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          title: "레이트리밋 카운터 백엔드 장애(fail-open)"
+          summary: "레이트리밋 카운터 백엔드 장애로 요청이 한도 검사 없이 통과함"
+          description: "최근 5분 동안 rate_limit_decisions_total{outcome=\"backend_fail_open\"}이 1회 이상 증가함. kraft.security.rate-limit-backend=redis일 때 Redis 연결 실패가 원인일 수 있다."
+          runbook: "docker compose -f docker-compose.prod.yml logs backend | grep -i 'rate limit'으로 예외 확인; Redis 컨테이너 상태(docker compose ps redis)와 연결 설정 점검"
+
       - alert: KraftBackupStale
         expr: time() - kraft_backup_last_success_timestamp_seconds > 90000
         for: 0m
