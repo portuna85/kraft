@@ -85,6 +85,19 @@ class FlywayMigrationTest {
     }
 
     @Test
+    @DisplayName("DB-IDX-01/DB-IDX-02/DB-REC-01: V35 커뮤니티·추천 쿼리 계획 인덱스가 생성된다")
+    void communityQueryPlanIndexes_arePresent() {
+        assertThat(indexExists("community_posts", "idx_community_posts_status_created")).isTrue();
+        assertThat(indexExists("community_comments", "idx_community_comments_post_parent_created")).isTrue();
+        assertThat(indexExists("recommendation_sets", "idx_recommendation_sets_owner_created")).isTrue();
+        // DB-REC-01: 새 복합 인덱스가 FK owner_user_id 요구를 대신 만족하면서, V33이 FK
+        // 제약과 함께 자동 생성했던 단일 컬럼 인덱스는 MariaDB가 알아서 제거한다(로컬에서
+        // information_schema.statistics로 실측 확인 — 명시적 DROP INDEX가 불필요하고
+        // 시도하면 오히려 에러가 난다).
+        assertThat(indexExists("recommendation_sets", "fk_recommendation_sets_owner")).isFalse();
+    }
+
+    @Test
     @DisplayName("recommendation item trigger rejects historical combinations but permits a later winning combination")
     void historicalRecommendationTrigger_respectsHistoryThroughRound() {
         winningNumberRepository.deleteAll();

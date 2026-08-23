@@ -220,7 +220,7 @@ class RecommendationSetHistoryServiceTest {
     void claimAll_movesAllSetsToOwnerAndClearsToken() {
         RecommendationSet set1 = setEntity(1L, TOKEN_HASH);
         RecommendationSet set2 = setEntity(2L, TOKEN_HASH);
-        given(recommendationSetRepository.findByClientTokenHashOrderByCreatedAtDesc(TOKEN_HASH))
+        given(recommendationSetRepository.findByClientTokenHashOrderByCreatedAtDescIdDesc(TOKEN_HASH))
                 .willReturn(List.of(set1, set2));
         OffsetDateTime claimedAt = OffsetDateTime.now();
 
@@ -236,7 +236,7 @@ class RecommendationSetHistoryServiceTest {
     @Test
     @DisplayName("계정으로 귀속된 추천 세트 목록을 owner_user_id 기준으로 조회한다")
     void listForOwner_returnsOwnedSets() {
-        given(recommendationSetRepository.findByOwnerUserIdOrderByCreatedAtDesc(
+        given(recommendationSetRepository.findByOwnerUserIdOrderByCreatedAtDescIdDesc(
                 org.mockito.ArgumentMatchers.eq(99L), org.mockito.ArgumentMatchers.any(PageRequest.class)))
                 .willReturn(new PageImpl<>(List.of(setEntity(1L, null))));
         given(recommendationItemRepository.findBySetIdInOrderBySetIdAscPositionAsc(List.of(1L)))
@@ -253,7 +253,7 @@ class RecommendationSetHistoryServiceTest {
     void list_multipleSets_batchLoadsItemsInSingleQuery() {
         RecommendationSet set1 = setEntity(1L, TOKEN_HASH);
         RecommendationSet set2 = setEntity(2L, TOKEN_HASH);
-        given(recommendationSetRepository.findByClientTokenHashOrderByCreatedAtDesc(
+        given(recommendationSetRepository.findByClientTokenHashOrderByCreatedAtDescIdDesc(
                 org.mockito.ArgumentMatchers.eq(TOKEN_HASH), org.mockito.ArgumentMatchers.any(PageRequest.class)))
                 .willReturn(new PageImpl<>(List.of(set1, set2)));
         given(recommendationItemRepository.findBySetIdInOrderBySetIdAscPositionAsc(List.of(1L, 2L)))

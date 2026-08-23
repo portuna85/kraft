@@ -66,6 +66,55 @@ class FlywayUpgradeMigrationTest {
         }
     }
 
+    @Test
+    @DisplayName("DB-IDX-01/DB-IDX-02/DB-REC-01: V34 스키마와 기존 데이터를 V35로 올리고 커뮤니티·추천 쿼리 계획 인덱스를 추가한다")
+    void version34Snapshot_upgradesToLatestAndAddsCommunityQueryPlanIndexes() throws Exception {
+        Flyway.configure()
+                .dataSource(mariadb.getJdbcUrl(), mariadb.getUsername(), mariadb.getPassword())
+                .target(MigrationVersion.fromVersion("34"))
+                .load()
+                .migrate();
+
+        try (Connection connection = connection(); Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO community_users (provider, provider_id, nickname, created_at)
+                    VALUES ('google', 'v35-upgrade-user', 'v35-upgrade', NOW(6))
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO community_posts (
+                        owner_id, author_name_snapshot, title, content, created_at, updated_at
+                    ) VALUES (1, 'v35-upgrade', 'title', 'content', NOW(6), NOW(6))
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO community_comments (
+                        post_id, owner_id, author_name_snapshot, content, created_at
+                    ) VALUES (1, 1, 'v35-upgrade', 'comment', NOW(6))
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO recommendation_sets (
+                        owner_user_id, strategy, algorithm_version, history_through_round, created_at
+                    ) VALUES (1, 'RANDOM', 'v1', 1200, NOW(6))
+                    """);
+        }
+
+        Flyway.configure()
+                .dataSource(mariadb.getJdbcUrl(), mariadb.getUsername(), mariadb.getPassword())
+                .load()
+                .migrate();
+
+        try (Connection connection = connection(); Statement statement = connection.createStatement()) {
+            assertThat(count(statement, "SELECT COUNT(*) FROM community_posts")).isEqualTo(1);
+            assertThat(count(statement, "SELECT COUNT(*) FROM community_comments")).isEqualTo(1);
+            assertThat(count(statement, "SELECT COUNT(*) FROM recommendation_sets")).isEqualTo(1);
+            assertThat(indexExists(statement, "community_posts", "idx_community_posts_status_created")).isTrue();
+            assertThat(indexExists(statement, "community_comments",
+                    "idx_community_comments_post_parent_created")).isTrue();
+            assertThat(indexExists(statement, "recommendation_sets",
+                    "idx_recommendation_sets_owner_created")).isTrue();
+            assertThat(indexExists(statement, "recommendation_sets", "fk_recommendation_sets_owner")).isFalse();
+        }
+    }
+
     private static Connection connection() throws Exception {
         return DriverManager.getConnection(mariadb.getJdbcUrl(), mariadb.getUsername(), mariadb.getPassword());
     }

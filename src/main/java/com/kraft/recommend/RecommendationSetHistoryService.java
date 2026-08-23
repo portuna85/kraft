@@ -100,7 +100,7 @@ public class RecommendationSetHistoryService {
 
     @Transactional(readOnly = true)
     public Page<RecommendationSetSummary> list(String clientTokenHash, int page, int size) {
-        Page<RecommendationSet> sets = recommendationSetRepository.findByClientTokenHashOrderByCreatedAtDesc(
+        Page<RecommendationSet> sets = recommendationSetRepository.findByClientTokenHashOrderByCreatedAtDescIdDesc(
                 clientTokenHash, pageRequest(page, size));
         return mapWithBatchedItems(sets);
     }
@@ -124,7 +124,7 @@ public class RecommendationSetHistoryService {
 
     @Transactional(readOnly = true)
     public Page<RecommendationSetSummary> listForOwner(Long ownerUserId, int page, int size) {
-        Page<RecommendationSet> sets = recommendationSetRepository.findByOwnerUserIdOrderByCreatedAtDesc(
+        Page<RecommendationSet> sets = recommendationSetRepository.findByOwnerUserIdOrderByCreatedAtDescIdDesc(
                 ownerUserId, pageRequest(page, size));
         return mapWithBatchedItems(sets);
     }
@@ -170,7 +170,8 @@ public class RecommendationSetHistoryService {
      * 레코드라 저장 번호와 달리 중복 제거 없이 전부 옮긴다.
      */
     public int claimAll(String clientTokenHash, Long ownerUserId, OffsetDateTime claimedAt) {
-        List<RecommendationSet> anonymous = recommendationSetRepository.findByClientTokenHashOrderByCreatedAtDesc(clientTokenHash);
+        List<RecommendationSet> anonymous =
+                recommendationSetRepository.findByClientTokenHashOrderByCreatedAtDescIdDesc(clientTokenHash);
         anonymous.forEach(set -> set.claimTo(ownerUserId, claimedAt));
         return anonymous.size();
     }
