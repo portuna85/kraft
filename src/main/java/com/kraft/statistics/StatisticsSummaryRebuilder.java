@@ -24,7 +24,8 @@ import net.javacrumbs.shedlock.core.LockProvider;
 import net.javacrumbs.shedlock.core.LockingTaskExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -79,6 +80,7 @@ public class StatisticsSummaryRebuilder {
     private final LockingTaskExecutor lockingTaskExecutor;
     private final MeterRegistry meterRegistry;
     private final TransactionTemplate transactionTemplate;
+    private final CacheManager cacheManager;
     private final Map<RebuildOutcome, Counter> rebuildOutcomeCounters;
 
     public StatisticsSummaryRebuilder(WinningNumberRepository winningNumberRepository,
@@ -89,7 +91,8 @@ public class StatisticsSummaryRebuilder {
                                       Clock clock,
                                       LockProvider lockProvider,
                                       MeterRegistry meterRegistry,
-                                      PlatformTransactionManager transactionManager) {
+                                      PlatformTransactionManager transactionManager,
+                                      CacheManager cacheManager) {
         this.winningNumberRepository = winningNumberRepository;
         this.frequencySummaryRepository = frequencySummaryRepository;
         this.patternStatsSummaryRepository = patternStatsSummaryRepository;
@@ -98,6 +101,7 @@ public class StatisticsSummaryRebuilder {
         this.clock = clock;
         this.lockingTaskExecutor = new DefaultLockingTaskExecutor(lockProvider);
         this.meterRegistry = meterRegistry;
+        this.cacheManager = cacheManager;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.rebuildOutcomeCounters = new EnumMap<>(RebuildOutcome.class);
@@ -113,8 +117,14 @@ public class StatisticsSummaryRebuilder {
     // 있도록 반환한다 — 예전엔 void라 lock을 못 얻고 조용히 반환한 경우와 실제로 재계산이
     // 끝난 경우를 호출자가 구분할 방법이 없었다. 실제 실패는 여전히 예외로 전파한다(바뀌지
     // 않음) — SKIPPED만 "예외 없이 반환하지만 아무 일도 안 했다"는 세 번째 결과였다.
-    @CacheEvict(value = {CacheConfig.STATS_FREQUENCY, CacheConfig.STATS_FREQUENCY_BY_LIMIT,
-                CacheConfig.STATS_PATTERN, CacheConfig.STATS_COMPANION}, allEntries = true)
+    //
+    // BE-STAT-04(docs/improvement.md): 캐시 evict를 이 메서드에 @CacheEvict(allEntries=true)로
+    // 걸어뒀던 예전 버전은 SKIPPED 경로(락을 못 얻어 아무 작업도 안 한 경우)에도 정상 반환이라는
+    // 이유만으로 evict를 실행했다 — lock을 못 얻은 인스턴스가 "가진 것도 없는" 자기 캐시를
+    // 비운 뒤, winner의 commit이 끝나기 전에 DB를 다시 읽으면 옛 데이터를 캐시에 다시 채워
+    // TTL을 리셋시키는 꼴이 된다(실질적으로 정상 TTL보다 더 오래 stale). evict를 이 메서드
+    // 안으로 옮기고 result.wasExecuted()가 true일 때만(= 이 인스턴스가 실제로 락을 얻고
+    // 트랜잭션 commit까지 끝낸 경로만) 호출해, skip한 인스턴스는 자기 캐시를 건드리지 않는다.
     public RebuildOutcome rebuildAllSummaries() {
         LockingTaskExecutor.TaskResult<RebuildOutcome> result;
         try {
@@ -137,7 +147,18 @@ public class StatisticsSummaryRebuilder {
             recordRebuildOutcome(RebuildOutcome.SKIPPED);
             return RebuildOutcome.SKIPPED;
         }
+        evictSummaryCaches();
         return result.getResult();
+    }
+
+    private void evictSummaryCaches() {
+        for (String cacheName : List.of(CacheConfig.STATS_FREQUENCY, CacheConfig.STATS_FREQUENCY_BY_LIMIT,
+                CacheConfig.STATS_PATTERN, CacheConfig.STATS_COMPANION)) {
+            Cache cache = cacheManager.getCache(cacheName);
+            if (cache != null) {
+                cache.clear();
+            }
+        }
     }
 
     private RebuildOutcome rebuildAllSummariesInternal() {

@@ -9,6 +9,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
+import com.kraft.common.config.CacheConfig;
 import net.javacrumbs.shedlock.core.LockConfiguration;
 import net.javacrumbs.shedlock.core.LockProvider;
 import net.javacrumbs.shedlock.core.SimpleLock;
@@ -18,6 +19,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,6 +53,9 @@ class StatisticsSummaryRebuilderTest {
 
     @Autowired
     private StatisticsProjectionStateRepository statisticsProjectionStateRepository;
+
+    @Autowired
+    private CacheManager cacheManager;
 
     private SimpleLock heldLock;
 
@@ -97,6 +103,19 @@ class StatisticsSummaryRebuilderTest {
                 .hasValueSatisfying(row -> assertThat(row.getCoCount()).isZero());
         assertThat(companionPairSummaryRepository.findByBallAAndBallB(1, 10))
                 .hasValueSatisfying(row -> assertThat(row.getCoCount()).isEqualTo(1));
+    }
+
+    @Test
+    @DisplayName("BE-STAT-04: 락을 얻어 실제로 커밋에 성공하면 자기 로컬 캐시를 비운다")
+    void rebuildAllSummaries_succeeds_evictsLocalCache() {
+        Cache statsPatternCache = cacheManager.getCache(CacheConfig.STATS_PATTERN);
+        assertThat(statsPatternCache).isNotNull();
+        statsPatternCache.put("probe-key", "probe-value");
+
+        StatisticsSummaryRebuilder.RebuildOutcome outcome = summaryRebuilder.rebuildAllSummaries();
+
+        assertThat(outcome).isEqualTo(StatisticsSummaryRebuilder.RebuildOutcome.EMPTY);
+        assertThat(statsPatternCache.get("probe-key")).isNull();
     }
 
     @Test
@@ -184,6 +203,27 @@ class StatisticsSummaryRebuilderTest {
         assertThat(frequencySummaryRepository.findAll()).isEmpty();
         assertThat(patternStatsSummaryRepository.findAll()).isEmpty();
         assertThat(companionPairSummaryRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("BE-STAT-04: 락을 못 얻어 건너뛴 인스턴스는 자기 로컬 캐시를 비우지 않는다")
+    void rebuildAllSummaries_skipsWhenLockAlreadyHeld_doesNotEvictLocalCache() {
+        Cache statsPatternCache = cacheManager.getCache(CacheConfig.STATS_PATTERN);
+        assertThat(statsPatternCache).isNotNull();
+        statsPatternCache.put("probe-key", "probe-value");
+
+        Optional<SimpleLock> lock = lockProvider.lock(new LockConfiguration(
+                Clock.system(KST).instant(), REBUILD_LOCK_NAME, Duration.ofMinutes(10), Duration.ZERO));
+        assertThat(lock).isPresent();
+        heldLock = lock.get();
+
+        StatisticsSummaryRebuilder.RebuildOutcome outcome = summaryRebuilder.rebuildAllSummaries();
+
+        assertThat(outcome).isEqualTo(StatisticsSummaryRebuilder.RebuildOutcome.SKIPPED);
+        // 예전 구현(@CacheEvict가 메서드 전체를 감쌈)이었다면 SKIPPED 반환도 "정상 반환"이라
+        // evict가 실행돼 이 값이 사라졌을 것이다 — lock을 못 얻은 인스턴스는 실제로 작업한
+        // 게 없으므로 자기 캐시를 건드릴 이유가 없다.
+        assertThat(statsPatternCache.get("probe-key")).isNotNull();
     }
 
     @Test
