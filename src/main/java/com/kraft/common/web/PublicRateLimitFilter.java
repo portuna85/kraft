@@ -8,7 +8,11 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.EnumMap;
+import java.util.Locale;
+import java.util.Map;
 import java.util.OptionalInt;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
@@ -39,12 +43,26 @@ public class PublicRateLimitFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(PublicRateLimitFilter.class);
     private static final int WINDOW_SECONDS = 60;
     private static final String KEY_PREFIX = "ratelimit:public:";
+    private static final Set<String> WRITE_METHODS = Set.of("POST", "PUT", "DELETE", "PATCH");
+
+    /**
+     * BE-SEC-01(docs/improvement.md): 초과 메트릭의 태그. raw 요청 경로 대신 이 고정 집합만
+     * 태그로 쓴다 — 이전에는 {@code normalizePath}로 숫자 ID·UUID만 치환한 경로 문자열을
+     * 그대로 태그로 등록해, 존재하지 않는 임의 경로로 429를 유발할 때마다 새 Micrometer
+     * meter가 생겼다(무제한 카디널리티, JVM heap·scrape payload·Prometheus 저장 비용 증가).
+     */
+    enum Surface {
+        OPS,
+        COMMUNITY_WRITE,
+        PUBLIC_API,
+        UNKNOWN
+    }
 
     private final SecurityProperties securityProperties;
     private final ClientIpResolver clientIpResolver;
     private final RateLimitCounter rateLimitCounter;
-    private final MeterRegistry meterRegistry;
     private final ApiErrorResponseWriter apiErrorResponseWriter;
+    private final Map<Surface, Counter> exceededCounters;
 
     public PublicRateLimitFilter(SecurityProperties securityProperties,
                                  ClientIpResolver clientIpResolver,
@@ -54,8 +72,15 @@ public class PublicRateLimitFilter extends OncePerRequestFilter {
         this.securityProperties = securityProperties;
         this.clientIpResolver = clientIpResolver;
         this.rateLimitCounter = rateLimitCounter;
-        this.meterRegistry = meterRegistry;
         this.apiErrorResponseWriter = apiErrorResponseWriter;
+        // TD-022 계열: 요청마다 Counter.builder(...).register(...)를 부르지 않고 고정 태그
+        // 조합을 생성자에서 미리 등록한다. surface가 유한 집합이라 이 맵도 유한하다.
+        this.exceededCounters = new EnumMap<>(Surface.class);
+        for (Surface surface : Surface.values()) {
+            exceededCounters.put(surface, Counter.builder("http.rate_limit.exceeded")
+                    .tag("surface", surface.name().toLowerCase(Locale.ROOT))
+                    .register(meterRegistry));
+        }
     }
 
     @Override
@@ -84,8 +109,14 @@ public class PublicRateLimitFilter extends OncePerRequestFilter {
         }
 
         if (clientIpResolver.isTrustedProxy(clientIp)) {
-            log.info("Rate limit 우회(trusted proxy): remoteAddr={} xff={} resolvedIp={} path={}",
-                    request.getRemoteAddr(), request.getHeader("X-Forwarded-For"), clientIp, request.getRequestURI());
+            // BE-SEC-02(docs/improvement.md): 프로덕션의 모든 요청은 Caddy(신뢰 대역)를 거치므로
+            // 이 분기를 항상 탄다. application-prod.yml의 com.kraft=info에서는 log.info가
+            // 억제되지 않아 요청마다 로그 한 줄이 남았다 — 앱 전체 최대 로그 발생원이었다.
+            // I-11 진단은 debug로도 충분하다(바로 위 분기와 동일한 가드 패턴).
+            if (log.isDebugEnabled()) {
+                log.debug("Rate limit 우회(trusted proxy): remoteAddr={} xff={} resolvedIp={} path={}",
+                        request.getRemoteAddr(), request.getHeader("X-Forwarded-For"), clientIp, request.getRequestURI());
+            }
             chain.doFilter(request, response);
             return;
         }
@@ -108,10 +139,7 @@ public class PublicRateLimitFilter extends OncePerRequestFilter {
         if (count > limit) {
             String path = request.getRequestURI();
             log.warn("Rate limit 초과: ip={} count={} limit={} path={}", clientIp, count, limit, path);
-            Counter.builder("http.rate_limit.exceeded")
-                    .tag("path", normalizePath(path))
-                    .register(meterRegistry)
-                    .increment();
+            exceededCounters.get(surfaceOf(request)).increment();
             response.setIntHeader("Retry-After", WINDOW_SECONDS);
             apiErrorResponseWriter.write(request, response, HttpStatus.TOO_MANY_REQUESTS,
                     "RATE_LIMIT_EXCEEDED", "요청 횟수가 너무 많습니다. 잠시 후 다시 시도하세요.");
@@ -121,9 +149,23 @@ public class PublicRateLimitFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 
-    // Collapse dynamic segments (numeric IDs, UUIDs) to avoid high-cardinality labels.
-    private static String normalizePath(String path) {
-        return path.replaceAll("/\\d+", "/{id}")
-                   .replaceAll("/[0-9a-fA-F]{8}-[0-9a-fA-F-]{27}", "/{uuid}");
+    /**
+     * BE-SEC-01: 요청을 고정된 surface 하나로 분류한다. {@link #shouldNotFilter}가 이미
+     * {@code /api/**}·{@code /ops/**}만 통과시키므로 {@link Surface#UNKNOWN}은 이론상
+     * 도달하지 않지만, 향후 필터 적용 범위가 넓어져도 카디널리티가 무제한으로 늘지 않도록
+     * 안전망으로 남긴다.
+     */
+    private static Surface surfaceOf(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        if (path.startsWith("/ops/")) {
+            return Surface.OPS;
+        }
+        if (path.startsWith("/api/v1/community/") && WRITE_METHODS.contains(request.getMethod())) {
+            return Surface.COMMUNITY_WRITE;
+        }
+        if (path.startsWith("/api/")) {
+            return Surface.PUBLIC_API;
+        }
+        return Surface.UNKNOWN;
     }
 }

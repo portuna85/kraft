@@ -96,6 +96,21 @@ if [[ "${KRAFT_ALLOW_WORLD_OPEN_ADMIN:-}" != "true" ]]; then
   fi
 fi
 
+# BE-SEC-02(docs/improvement.md): docker-compose.prod.yml:122의 기본값(변수 미설정 시)이
+# RFC1918 전체(172.16.0.0/12,10.0.0.0/8,192.168.0.0/16)라, 신뢰 프록시 CIDR이 좁혀지지
+# 않은 채 배포되면 사실상 앱 네트워크의 모든 컨테이너가 IP 스푸핑으로 rate limit을 우회할
+# 수 있다. KRAFT_ADMIN_ALLOWED_CIDR의 0.0.0.0/0 거부와 같은 패턴 — 명시적으로 광역
+# 값을 넣었을 때만 거부한다(값을 아예 비워 compose 기본값이 적용되는 경우는 이 셸
+# 검증만으로는 잡을 수 없다 — 그 경우는 배포 후 BE-SEC-02의 나머지 항목인 외부 관점
+# smoke test로 확인한다).
+if [[ "${KRAFT_ALLOW_BROAD_TRUSTED_PROXY:-}" != "true" ]]; then
+  cidr="${KRAFT_SECURITY_TRUSTED_PROXY_CIDR:-}"
+  if [[ "$cidr" == *"10.0.0.0/8"* || "$cidr" == *"172.16.0.0/12"* || "$cidr" == *"192.168.0.0/16"* ]]; then
+    echo "ERROR: KRAFT_SECURITY_TRUSTED_PROXY_CIDR가 RFC1918 광역대를 포함합니다. 의도라면 KRAFT_ALLOW_BROAD_TRUSTED_PROXY=true를 명시하세요." >&2
+    error=1
+  fi
+fi
+
 # L-5: .env.local.example은 로컬 전용 의도로 admin/admin, local-dev-ops-token 같은
 # 약한 값을 그대로 적어 두는데, 이 파일을 복붙해 prod에 쓰는 실수를 막을 검증이
 # 없었다(KRAFT_ADMIN_ALLOWED_CIDR의 0.0.0.0/0 거부와 같은 패턴을 자격증명에도 적용).

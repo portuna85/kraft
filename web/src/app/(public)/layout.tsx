@@ -1,5 +1,9 @@
 import type { ReactNode } from "react";
 
+import { publicEnv } from "@/shared/config/env";
+import { StickyMobileAd } from "@/shared/ui/sticky-mobile-ad";
+import { WebVitalsReporter } from "@/shared/ui/web-vitals-reporter";
+
 import { LoginErrorBanner } from "../_shell/login-error-banner";
 import { PublicAccountSlot } from "../_shell/public-account-slot";
 import { ReturnToRedirect } from "../_shell/return-to-redirect";
@@ -18,10 +22,15 @@ import { TabBar } from "../_shell/tab-bar";
  *
  * I-03: 계정 영역은 이제 `PublicAccountSlot`(요청 쿠키의 비식별 boolean만 읽는 서버
  * 컴포넌트)이 맡는다 — 세션 API는 여전히 부르지 않는다.
+ *
+ * FE-SEC-01(docs/improvement.md): `WebVitalsReporter`·`StickyMobileAd`가 루트 레이아웃
+ * 대신 이 공개 셸과 `(session)` 셸에만 있다 — `(ops)` 셸은 광고·공개 RUM과 완전히
+ * 분리돼야 한다.
  */
 export default function PublicLayout({ children }: { children: ReactNode }) {
   return (
     <>
+      <WebVitalsReporter />
       <ReturnToRedirect />
       <SiteHeader accountSlot={<PublicAccountSlot />} />
       <LoginErrorBanner />
@@ -30,6 +39,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
       </main>
       <SiteFooter />
       <TabBar />
+      <StickyMobileAd unit={publicEnv.kakaoAdfitUnitSticky} />
     </>
   );
 }

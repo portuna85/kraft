@@ -122,7 +122,7 @@ public class CommunityReactionService {
      */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void unlike(Long postId, Long userId) {
-        transientWriteRetrier.retry("community_unlike", UNLIKE_MAX_ATTEMPTS,
+        transientWriteRetrier.retry(TransientWriteRetrier.Operation.COMMUNITY_UNLIKE, UNLIKE_MAX_ATTEMPTS,
                 () -> communityReactionWriter.deleteLike(postId, userId));
     }
 

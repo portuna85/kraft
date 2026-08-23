@@ -3,7 +3,13 @@ import { describe, expect, it } from "vitest";
 import { buildCsp, buildCspReportOnly, generateNonce, type CspInput } from "./csp";
 
 function input(overrides: Partial<CspInput> = {}): CspInput {
-  return { nonce: "test-nonce", adNetwork: "adfit", allowEval: false, ...overrides };
+  return {
+    nonce: "test-nonce",
+    adNetwork: "adfit",
+    allowEval: false,
+    surface: "public",
+    ...overrides,
+  };
 }
 
 function directive(policy: string, name: string): string {
@@ -41,6 +47,33 @@ describe("CSP 정책", () => {
 
   it("폰트는 자체 호스팅만 허용한다", () => {
     expect(directive(buildCsp(input()), "font-src")).toBe("font-src 'self'");
+  });
+});
+
+describe("FE-SEC-01: ops surface는 광고 네트워크 origin을 전혀 열지 않는다", () => {
+  it("adfit·adsense 어느 쪽을 골라도 ops CSP에 해당 origin이 없다", () => {
+    const opsAdfit = buildCsp(input({ surface: "ops", adNetwork: "adfit" }));
+    expect(opsAdfit).not.toContain("kakaocdn");
+
+    const opsAdsense = buildCsp(input({ surface: "ops", adNetwork: "adsense" }));
+    expect(opsAdsense).not.toContain("googlesyndication");
+    expect(opsAdsense).not.toContain("doubleclick");
+  });
+
+  it("script-src·img-src·connect-src에서 광고 origin이 빠지고 self만 남는다", () => {
+    const ops = buildCsp(input({ surface: "ops" }));
+    expect(directive(ops, "script-src")).toBe(`script-src 'self' 'nonce-test-nonce'`);
+    expect(directive(ops, "img-src")).toBe("img-src 'self' data:");
+    expect(directive(ops, "connect-src")).toBe("connect-src 'self'");
+  });
+
+  it("frame-src는 'none'이다 — 열어둘 광고 iframe이 없다", () => {
+    expect(directive(buildCsp(input({ surface: "ops" })), "frame-src")).toBe("frame-src 'none'");
+  });
+
+  it("public surface는 기존과 동일하게 광고 origin을 연다(회귀 없음)", () => {
+    const pub = buildCsp(input({ surface: "public", adNetwork: "adfit" }));
+    expect(pub).toContain("https://t1.kakaocdn.net");
   });
 });
 

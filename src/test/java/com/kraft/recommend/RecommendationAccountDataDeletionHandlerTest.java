@@ -1,5 +1,6 @@
 package com.kraft.recommend;
 
+import com.kraft.QueryCount;
 import com.kraft.community.user.CommunityUser;
 import com.kraft.community.user.CommunityUserRepository;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -11,7 +12,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -189,21 +189,15 @@ class RecommendationAccountDataDeletionHandlerTest {
         for (int i = 0; i < 25; i++) {
             seedOwnedSet(owner);
         }
-        SessionFactory sessionFactory = entityManagerFactory.unwrap(SessionFactory.class);
-        var statistics = sessionFactory.getStatistics();
-        statistics.setStatisticsEnabled(true);
-        statistics.clear();
         long timerCountBefore = meterRegistry.get("kraft_recommendation_account_deletion_duration_seconds")
                 .timer().count();
 
-        try {
-            deleteForAccountInTransaction(owner);
+        // QueryCount(docs/improvement.md): 이 인라인 측정 코드가 원본이었다 — 공용 하네스로
+        // 추출됐으니 여기서는 그 하네스를 쓴다.
+        long statementCount = QueryCount.measure(entityManagerFactory, () -> deleteForAccountInTransaction(owner));
 
-            assertThat(statistics.getPrepareStatementCount()).isEqualTo(3L);
-            assertThat(meterRegistry.get("kraft_recommendation_account_deletion_duration_seconds")
-                    .timer().count()).isEqualTo(timerCountBefore + 1);
-        } finally {
-            statistics.setStatisticsEnabled(false);
-        }
+        assertThat(statementCount).isEqualTo(3L);
+        assertThat(meterRegistry.get("kraft_recommendation_account_deletion_duration_seconds")
+                .timer().count()).isEqualTo(timerCountBefore + 1);
     }
 }

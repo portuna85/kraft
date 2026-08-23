@@ -58,7 +58,7 @@ public class CommunityBlockService {
             throw new ApiException(ApiErrorCode.COMMUNITY_USER_NOT_FOUND, "사용자를 찾을 수 없습니다.");
         }
 
-        transientWriteRetrier.retry("community_block", BLOCK_MAX_ATTEMPTS,
+        transientWriteRetrier.retry(TransientWriteRetrier.Operation.COMMUNITY_BLOCK, BLOCK_MAX_ATTEMPTS,
                 () -> communityUserBlockRepository.upsertBlock(blockerUserId, blockedUserId, OffsetDateTime.now(clock)));
     }
 

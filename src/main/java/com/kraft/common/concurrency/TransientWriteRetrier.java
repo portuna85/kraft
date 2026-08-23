@@ -2,6 +2,8 @@ package com.kraft.common.concurrency;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import java.util.EnumMap;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
@@ -25,46 +27,62 @@ public class TransientWriteRetrier {
 
     private static final Logger log = LoggerFactory.getLogger(TransientWriteRetrier.class);
 
-    private final MeterRegistry meterRegistry;
+    /**
+     * BE-SEC-01(docs/improvement.md) 계열 정리: 메트릭 태그를 호출부가 아무 문자열이나
+     * 넘길 수 있는 {@code String}이 아니라 이 클래스가 아는 고정 집합으로 좁힌다. 그래야
+     * 카운터를 요청마다 만들지 않고 생성자에서 한 번만 등록할 수 있다(TD-022). 새 재시도
+     * 대상이 생기면 이 enum에 상수를 추가한다 — 호출부에서 임의 문자열을 넘기는 경로를
+     * 만들지 않는다.
+     */
+    public enum Operation {
+        COMMUNITY_BLOCK("community_block"),
+        COMMUNITY_UNLIKE("community_unlike");
+
+        private final String tagValue;
+
+        Operation(String tagValue) {
+            this.tagValue = tagValue;
+        }
+    }
+
+    private final Map<Operation, Counter> retryCounters;
+    private final Map<Operation, Counter> exhaustedCounters;
 
     public TransientWriteRetrier(MeterRegistry meterRegistry) {
-        this.meterRegistry = meterRegistry;
+        this.retryCounters = new EnumMap<>(Operation.class);
+        this.exhaustedCounters = new EnumMap<>(Operation.class);
+        for (Operation operation : Operation.values()) {
+            retryCounters.put(operation, Counter.builder("kraft_transient_write_retry_total")
+                    .description("REQUIRES_NEW 쓰기가 경합(DataAccessException)으로 재시도된 횟수")
+                    .tag("operation", operation.tagValue)
+                    .register(meterRegistry));
+            exhaustedCounters.put(operation, Counter.builder("kraft_transient_write_retry_exhausted_total")
+                    .description("재시도를 모두 소진하고 최종적으로 실패한 횟수")
+                    .tag("operation", operation.tagValue)
+                    .register(meterRegistry));
+        }
     }
 
     /**
-     * @param operationName 메트릭 태그·로그에 쓰는 식별자(예: "community_block")
-     * @param maxAttempts   최대 시도 횟수(최초 시도 포함)
-     * @param write         REQUIRES_NEW 등으로 스스로 원자적인 쓰기 동작
+     * @param operation   메트릭 태그·로그에 쓰는 재시도 대상 식별자
+     * @param maxAttempts 최대 시도 횟수(최초 시도 포함)
+     * @param write       REQUIRES_NEW 등으로 스스로 원자적인 쓰기 동작
      */
-    public void retry(String operationName, int maxAttempts, Runnable write) {
+    public void retry(Operation operation, int maxAttempts, Runnable write) {
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
                 write.run();
                 return;
             } catch (DataAccessException raceLost) {
-                retryCounter(operationName).increment();
+                retryCounters.get(operation).increment();
                 if (attempt == maxAttempts) {
-                    exhaustedCounter(operationName).increment();
+                    exhaustedCounters.get(operation).increment();
                     throw raceLost;
                 }
-                log.debug("{} 경합으로 재시도: attempt={}", operationName, attempt);
+                log.debug("{} 경합으로 재시도: attempt={}", operation, attempt);
                 sleepBriefly(attempt);
             }
         }
-    }
-
-    private Counter retryCounter(String operationName) {
-        return Counter.builder("kraft_transient_write_retry_total")
-                .description("REQUIRES_NEW 쓰기가 경합(DataAccessException)으로 재시도된 횟수")
-                .tag("operation", operationName)
-                .register(meterRegistry);
-    }
-
-    private Counter exhaustedCounter(String operationName) {
-        return Counter.builder("kraft_transient_write_retry_exhausted_total")
-                .description("재시도를 모두 소진하고 최종적으로 실패한 횟수")
-                .tag("operation", operationName)
-                .register(meterRegistry);
     }
 
     // 동시 재시도가 곧바로 다시 충돌하지 않도록 시도 횟수에 비례한 짧은 무작위 지연을 둔다.

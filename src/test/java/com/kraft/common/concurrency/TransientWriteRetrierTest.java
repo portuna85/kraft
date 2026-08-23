@@ -3,6 +3,7 @@ package com.kraft.common.concurrency;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.kraft.common.concurrency.TransientWriteRetrier.Operation;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,6 +13,8 @@ import org.springframework.dao.TransientDataAccessResourceException;
 
 @DisplayName("TransientWriteRetrier 단위 테스트")
 class TransientWriteRetrierTest {
+
+    private static final Operation OP = Operation.COMMUNITY_BLOCK;
 
     private SimpleMeterRegistry meterRegistry;
     private TransientWriteRetrier retrier;
@@ -27,11 +30,11 @@ class TransientWriteRetrierTest {
     void succeedsOnFirstAttempt_doesNotIncrementRetryCounter() {
         AtomicInteger calls = new AtomicInteger();
 
-        retrier.retry("op", 3, calls::incrementAndGet);
+        retrier.retry(OP, 3, calls::incrementAndGet);
 
         assertThat(calls.get()).isEqualTo(1);
-        assertThat(retryCount("op")).isZero();
-        assertThat(exhaustedCount("op")).isZero();
+        assertThat(retryCount(OP)).isZero();
+        assertThat(exhaustedCount(OP)).isZero();
     }
 
     @Test
@@ -39,15 +42,15 @@ class TransientWriteRetrierTest {
     void retriesOnDataAccessException_thenSucceeds() {
         AtomicInteger calls = new AtomicInteger();
 
-        retrier.retry("op", 3, () -> {
+        retrier.retry(OP, 3, () -> {
             if (calls.incrementAndGet() < 2) {
                 throw new TransientDataAccessResourceException("경합");
             }
         });
 
         assertThat(calls.get()).isEqualTo(2);
-        assertThat(retryCount("op")).isEqualTo(1);
-        assertThat(exhaustedCount("op")).isZero();
+        assertThat(retryCount(OP)).isEqualTo(1);
+        assertThat(exhaustedCount(OP)).isZero();
     }
 
     @Test
@@ -55,14 +58,14 @@ class TransientWriteRetrierTest {
     void exhaustsAllAttempts_throwsAndIncrementsExhaustedCounter() {
         AtomicInteger calls = new AtomicInteger();
 
-        assertThatThrownBy(() -> retrier.retry("op", 3, () -> {
+        assertThatThrownBy(() -> retrier.retry(OP, 3, () -> {
             calls.incrementAndGet();
             throw new TransientDataAccessResourceException("계속 경합");
         })).isInstanceOf(TransientDataAccessResourceException.class);
 
         assertThat(calls.get()).isEqualTo(3);
-        assertThat(retryCount("op")).isEqualTo(3);
-        assertThat(exhaustedCount("op")).isEqualTo(1);
+        assertThat(retryCount(OP)).isEqualTo(3);
+        assertThat(exhaustedCount(OP)).isEqualTo(1);
     }
 
     @Test
@@ -70,7 +73,7 @@ class TransientWriteRetrierTest {
     void nonDataAccessException_propagatesWithoutRetry() {
         AtomicInteger calls = new AtomicInteger();
 
-        assertThatThrownBy(() -> retrier.retry("op", 3, () -> {
+        assertThatThrownBy(() -> retrier.retry(OP, 3, () -> {
             calls.incrementAndGet();
             throw new IllegalStateException("경합이 아님");
         })).isInstanceOf(IllegalStateException.class);
@@ -78,14 +81,34 @@ class TransientWriteRetrierTest {
         assertThat(calls.get()).isEqualTo(1);
     }
 
-    private double retryCount(String operation) {
-        var counter = meterRegistry.find("kraft_transient_write_retry_total").tag("operation", operation).counter();
+    @Test
+    @DisplayName("서로 다른 Operation은 독립된 카운터를 쓴다")
+    void differentOperations_useIndependentCounters() {
+        AtomicInteger unlikeCalls = new AtomicInteger();
+        retrier.retry(Operation.COMMUNITY_BLOCK, 3, () -> { });
+        retrier.retry(Operation.COMMUNITY_UNLIKE, 3, () -> {
+            if (unlikeCalls.incrementAndGet() < 2) {
+                throw new TransientDataAccessResourceException("경합");
+            }
+        });
+
+        assertThat(retryCount(Operation.COMMUNITY_BLOCK)).isZero();
+        assertThat(retryCount(Operation.COMMUNITY_UNLIKE)).isEqualTo(1);
+    }
+
+    private double retryCount(Operation operation) {
+        var counter = meterRegistry.find("kraft_transient_write_retry_total")
+                .tag("operation", tagValueOf(operation)).counter();
         return counter == null ? 0 : counter.count();
     }
 
-    private double exhaustedCount(String operation) {
-        var counter =
-                meterRegistry.find("kraft_transient_write_retry_exhausted_total").tag("operation", operation).counter();
+    private double exhaustedCount(Operation operation) {
+        var counter = meterRegistry.find("kraft_transient_write_retry_exhausted_total")
+                .tag("operation", tagValueOf(operation)).counter();
         return counter == null ? 0 : counter.count();
+    }
+
+    private static String tagValueOf(Operation operation) {
+        return operation.name().toLowerCase(java.util.Locale.ROOT);
     }
 }

@@ -1,10 +1,10 @@
 // globals.css는 반드시 다른 모든 import보다 먼저 와야 한다. `@layer reset, tokens,
 // base, components, utilities;` 마스터 선언이 여기 있는데, CSS Cascade Layers는
 // "레이어가 처음 등장한 순서"로 우선순위를 고정한다 — 이 선언문의 소스 위치가 아니라.
-// 아래에서 import하는 컴포넌트(StickyMobileAd 등)가 자기 CSS 모듈(@layer components)을
-// 먼저 실어 오면, "components"가 마스터 선언보다 먼저 등록돼 base보다도 낮은 우선순위로
-// 고정되고, .cta 같은 컴포넌트 스타일이 전역 `a { color }` 규칙에 조용히 진다
-// (Phase 10 컷오버 CI에서 실제로 겪은 접근성 회귀 — axe color-contrast).
+// 아래에서 import하는 컴포넌트가 자기 CSS 모듈(@layer components)을 먼저 실어 오면,
+// "components"가 마스터 선언보다 먼저 등록돼 base보다도 낮은 우선순위로 고정되고,
+// .cta 같은 컴포넌트 스타일이 전역 `a { color }` 규칙에 조용히 진다(Phase 10 컷오버
+// CI에서 실제로 겪은 접근성 회귀 — axe color-contrast).
 import "./globals.css";
 
 import type { Metadata, Viewport } from "next";
@@ -15,8 +15,6 @@ import type { ReactNode } from "react";
 import { NONCE_HEADER } from "@/shared/config/csp";
 import { publicEnv, siteVerificationMetadata } from "@/shared/config/env";
 import { THEME_INIT_SCRIPT } from "@/shared/lib/theme";
-import { StickyMobileAd } from "@/shared/ui/ad-unit";
-import { WebVitalsReporter } from "@/shared/ui/web-vitals-reporter";
 
 /*
  * 폰트는 자체 호스팅한다. next/font/google은 빌드마다 fonts.gstatic.com 네트워크를 타서
@@ -81,6 +79,13 @@ export const viewport: Viewport = {
  * 루트 레이아웃은 html/body·폰트 변수·테마 부트스트랩·skip-nav만 소유한다.
  * 헤더·푸터·탭바는 라우트 그룹별 셸이 각자 갖는다 — 공개 라우트가 커뮤니티 세션 코드를
  * 번들에 포함하지 않게 하려면 셸이 갈라져 있어야 한다(§6.3 M-4, §10.1).
+ *
+ * FE-SEC-01(docs/improvement.md): `WebVitalsReporter`·`StickyMobileAd`도 더 이상 여기
+ * 없다. 이전에는 루트 `<body>`가 두 컴포넌트를 모든 라우트 그룹에 렌더해, `/ops` 운영
+ * 콘솔이 (ops)/layout.tsx로 공개 내비를 빼도 광고 SDK·공개 RUM은 여전히 로드됐고
+ * ops 응답 CSP도 광고 네트워크 origin을 항상 허용했다. 이제 두 컴포넌트는
+ * `(public)/layout.tsx`·`(session)/layout.tsx`에만 있다 — `(ops)/layout.tsx`는
+ * 렌더하지 않는다.
  */
 export default async function RootLayout({ children }: { children: ReactNode }) {
   // proxy가 매 요청 발급한 nonce. 없으면 인라인 스크립트가 CSP에 막히므로,
@@ -97,9 +102,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <a className="skip-nav" href="#main">
           본문으로 건너뛰기
         </a>
-        <WebVitalsReporter />
         {children}
-        <StickyMobileAd unit={publicEnv.kakaoAdfitUnitSticky} />
       </body>
     </html>
   );

@@ -67,6 +67,18 @@ run_case fail KRAFT_REVALIDATE_SECRET=short-secret
 run_case fail KRAFT_OPS_TOKEN=local-dev-ops-token
 run_case fail KRAFT_ADMIN_BOOTSTRAP_USERNAME=admin KRAFT_ADMIN_BOOTSTRAP_PASSWORD=admin
 
+# BE-SEC-02: RFC1918 광역대를 명시하면 오버라이드 없이 거부돼야 한다.
+run_case fail KRAFT_SECURITY_TRUSTED_PROXY_CIDR=10.0.0.0/8
+run_case fail KRAFT_SECURITY_TRUSTED_PROXY_CIDR=172.16.0.0/12
+run_case fail KRAFT_SECURITY_TRUSTED_PROXY_CIDR=192.168.0.0/16
+run_case fail "KRAFT_SECURITY_TRUSTED_PROXY_CIDR=172.16.0.0/12,10.0.0.0/8,192.168.0.0/16"
+
+# 오버라이드 플래그를 명시하면 광역대도 통과해야 한다.
+run_case pass KRAFT_SECURITY_TRUSTED_PROXY_CIDR=10.0.0.0/8 KRAFT_ALLOW_BROAD_TRUSTED_PROXY=true
+
+# 좁은 CIDR(운영이 실제로 좁힌 값)은 그대로 통과해야 한다.
+run_case pass KRAFT_SECURITY_TRUSTED_PROXY_CIDR=172.28.0.5/32
+
 # I-18: docker-compose.prod.yml이 기본값 없이 참조하는 도메인·이미지 참조/태그
 # 변수도 REQUIRED_VARS에 있어야 한다 — 없으면 Caddy 도메인 매치나 이미지 참조가
 # 빈 값으로 조용히 `docker compose up`까지 흘러간다.
