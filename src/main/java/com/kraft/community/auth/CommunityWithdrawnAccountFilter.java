@@ -1,5 +1,6 @@
 package com.kraft.community.auth;
 
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.web.ApiErrorResponseWriter;
 import com.kraft.community.user.CommunityUserRepository;
 import jakarta.servlet.FilterChain;
@@ -57,7 +58,7 @@ public class CommunityWithdrawnAccountFilter extends OncePerRequestFilter {
             }
             SecurityContextHolder.clearContext();
             apiErrorResponseWriter.write(request, response, HttpStatus.UNAUTHORIZED,
-                    "COMMUNITY_ACCOUNT_DELETED", "삭제된 계정입니다.");
+                    ApiErrorCode.COMMUNITY_ACCOUNT_DELETED, "삭제된 계정입니다.");
             return;
         }
         chain.doFilter(request, response);

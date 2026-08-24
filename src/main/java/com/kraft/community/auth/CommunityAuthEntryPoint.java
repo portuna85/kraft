@@ -1,5 +1,6 @@
 package com.kraft.community.auth;
 
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.web.ApiErrorResponseWriter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -28,6 +29,6 @@ public class CommunityAuthEntryPoint implements AuthenticationEntryPoint {
     public void commence(HttpServletRequest request, HttpServletResponse response,
                           AuthenticationException authException) throws IOException {
         apiErrorResponseWriter.write(request, response, HttpStatus.UNAUTHORIZED,
-                "COMMUNITY_LOGIN_REQUIRED", "로그인이 필요합니다.");
+                ApiErrorCode.COMMUNITY_LOGIN_REQUIRED, "로그인이 필요합니다.");
     }
 }

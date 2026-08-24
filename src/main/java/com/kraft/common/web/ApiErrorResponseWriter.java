@@ -2,11 +2,13 @@ package com.kraft.common.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.error.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Instant;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -29,7 +31,7 @@ public class ApiErrorResponseWriter {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());
 
     public void write(HttpServletRequest request, HttpServletResponse response,
-                       HttpStatus status, String code, String message) throws IOException {
+                       HttpStatus status, ApiErrorCode code, String message) throws IOException {
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
@@ -37,9 +39,10 @@ public class ApiErrorResponseWriter {
                 Instant.now(),
                 status.value(),
                 status.getReasonPhrase(),
-                code,
+                code.name(),
                 message,
-                request.getRequestURI());
+                request.getRequestURI(),
+                MDC.get(RequestIdFilter.MDC_KEY));
         OBJECT_MAPPER.writeValue(response.getWriter(), body);
     }
 }

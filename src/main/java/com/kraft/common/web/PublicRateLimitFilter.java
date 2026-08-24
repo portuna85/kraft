@@ -1,6 +1,7 @@
 package com.kraft.common.web;
 
 import com.kraft.common.config.SecurityProperties;
+import com.kraft.common.error.ApiErrorCode;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.servlet.FilterChain;
@@ -166,7 +167,7 @@ public class PublicRateLimitFilter extends OncePerRequestFilter {
             decisionCounters.get(Outcome.LIMITED).increment();
             response.setIntHeader("Retry-After", WINDOW_SECONDS);
             apiErrorResponseWriter.write(request, response, HttpStatus.TOO_MANY_REQUESTS,
-                    "RATE_LIMIT_EXCEEDED", "요청 횟수가 너무 많습니다. 잠시 후 다시 시도하세요.");
+                    ApiErrorCode.RATE_LIMIT_EXCEEDED, "요청 횟수가 너무 많습니다. 잠시 후 다시 시도하세요.");
             return;
         }
 

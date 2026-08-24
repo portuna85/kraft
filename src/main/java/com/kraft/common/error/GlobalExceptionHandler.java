@@ -1,5 +1,6 @@
 package com.kraft.common.error;
 
+import com.kraft.common.web.RequestIdFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.time.Instant;
@@ -7,6 +8,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -41,7 +43,7 @@ public class GlobalExceptionHandler {
                     request.getRequestURI(),
                     exception);
             return ResponseEntity.status(exception.getStatus())
-                    .body(errorBody(exception.getStatus(), exception.getCode(), GENERIC_SERVER_ERROR_MESSAGE, request));
+                    .body(errorBody(exception.getStatus(), exception.getErrorCode(), GENERIC_SERVER_ERROR_MESSAGE, request));
         }
         log.warn("API 예외: status={} code={} path={} message={}",
                 exception.getStatus().value(),
@@ -49,7 +51,7 @@ public class GlobalExceptionHandler {
                 request.getRequestURI(),
                 exception.getMessage());
         return ResponseEntity.status(exception.getStatus())
-                .body(errorBody(exception.getStatus(), exception.getCode(), exception.getMessage(), request));
+                .body(errorBody(exception.getStatus(), exception.getErrorCode(), exception.getMessage(), request));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -62,7 +64,7 @@ public class GlobalExceptionHandler {
                         .collect(Collectors.joining(", "));
         log.warn("검증 예외: path={} message={}", request.getRequestURI(), message);
         return ResponseEntity.badRequest()
-                .body(errorBody(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", message, request));
+                .body(errorBody(HttpStatus.BAD_REQUEST, ApiErrorCode.VALIDATION_ERROR, message, request));
     }
 
     @ExceptionHandler(MissingRequestHeaderException.class)
@@ -70,11 +72,11 @@ public class GlobalExceptionHandler {
                                                          HttpServletRequest request) {
         if ("X-Device-Token".equals(exception.getHeaderName())) {
             return ResponseEntity.badRequest()
-                    .body(errorBody(HttpStatus.BAD_REQUEST, "DEVICE_TOKEN_REQUIRED",
+                    .body(errorBody(HttpStatus.BAD_REQUEST, ApiErrorCode.DEVICE_TOKEN_REQUIRED,
                             "X-Device-Token 헤더가 필요합니다.", request));
         }
         return ResponseEntity.badRequest()
-                .body(errorBody(HttpStatus.BAD_REQUEST, "MISSING_HEADER",
+                .body(errorBody(HttpStatus.BAD_REQUEST, ApiErrorCode.MISSING_HEADER,
                         exception.getHeaderName() + " 헤더가 필요합니다.", request));
     }
 
@@ -93,7 +95,7 @@ public class GlobalExceptionHandler {
                                 + ": " + violation.getMessage())
                         .collect(Collectors.joining(", "));
         return ResponseEntity.badRequest()
-                .body(errorBody(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", message, request));
+                .body(errorBody(HttpStatus.BAD_REQUEST, ApiErrorCode.VALIDATION_ERROR, message, request));
     }
 
     // "list.arg1" 같은 메서드 파라미터 경로에서 마지막 세그먼트("arg1")만 남긴다 — 전체
@@ -116,7 +118,7 @@ public class GlobalExceptionHandler {
                                                        HttpServletRequest request) {
         log.debug("요청 바디 파싱 실패: path={} message={}", request.getRequestURI(), exception.getMessage());
         return ResponseEntity.badRequest()
-                .body(errorBody(HttpStatus.BAD_REQUEST, "INVALID_REQUEST_BODY", "요청 바디를 읽을 수 없습니다.", request));
+                .body(errorBody(HttpStatus.BAD_REQUEST, ApiErrorCode.INVALID_REQUEST_BODY, "요청 바디를 읽을 수 없습니다.", request));
     }
 
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
@@ -124,7 +126,7 @@ public class GlobalExceptionHandler {
                                                                 HttpServletRequest request) {
         log.debug("지원되지 않는 Content-Type: contentType={} path={}", exception.getContentType(), request.getRequestURI());
         return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
-                .body(errorBody(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "UNSUPPORTED_MEDIA_TYPE",
+                .body(errorBody(HttpStatus.UNSUPPORTED_MEDIA_TYPE, ApiErrorCode.UNSUPPORTED_MEDIA_TYPE,
                         "지원되지 않는 Content-Type입니다.", request));
     }
 
@@ -136,7 +138,7 @@ public class GlobalExceptionHandler {
                 request.getRequestURI(),
                 exception.getResourcePath());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(errorBody(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "리소스를 찾을 수 없습니다.", request));
+                .body(errorBody(HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, "리소스를 찾을 수 없습니다.", request));
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
@@ -144,7 +146,7 @@ public class GlobalExceptionHandler {
                                                         HttpServletRequest request) {
         log.warn("필수 파라미터 누락: param={} path={}", exception.getParameterName(), request.getRequestURI());
         return ResponseEntity.badRequest()
-                .body(errorBody(HttpStatus.BAD_REQUEST, "MISSING_PARAMETER",
+                .body(errorBody(HttpStatus.BAD_REQUEST, ApiErrorCode.MISSING_PARAMETER,
                         exception.getParameterName() + " 파라미터가 필요합니다.", request));
     }
 
@@ -154,7 +156,7 @@ public class GlobalExceptionHandler {
         // 거부된 값은 사용자 입력이며 토큰·식별자 등의 민감정보일 수 있으므로 로그에 남기지 않는다.
         log.warn("파라미터 타입 불일치: param={} path={}", exception.getName(), request.getRequestURI());
         return ResponseEntity.badRequest()
-                .body(errorBody(HttpStatus.BAD_REQUEST, "INVALID_PARAMETER_TYPE",
+                .body(errorBody(HttpStatus.BAD_REQUEST, ApiErrorCode.INVALID_PARAMETER_TYPE,
                         exception.getName() + " 파라미터의 값이 올바르지 않습니다.", request));
     }
 
@@ -164,7 +166,7 @@ public class GlobalExceptionHandler {
         log.debug("지원되지 않는 메서드: method={} path={}", exception.getMethod(), request.getRequestURI());
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
                 .headers(h -> Optional.ofNullable(exception.getSupportedHttpMethods()).ifPresent(h::setAllow))
-                .body(errorBody(HttpStatus.METHOD_NOT_ALLOWED, "METHOD_NOT_ALLOWED",
+                .body(errorBody(HttpStatus.METHOD_NOT_ALLOWED, ApiErrorCode.METHOD_NOT_ALLOWED,
                         "지원되지 않는 HTTP 메서드입니다.", request));
     }
 
@@ -173,7 +175,7 @@ public class GlobalExceptionHandler {
                                                          HttpServletRequest request) {
         log.debug("지원되지 않는 Accept 형식: path={}", request.getRequestURI());
         return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE)
-                .body(errorBody(HttpStatus.NOT_ACCEPTABLE, "NOT_ACCEPTABLE",
+                .body(errorBody(HttpStatus.NOT_ACCEPTABLE, ApiErrorCode.NOT_ACCEPTABLE,
                         "요청한 Accept 형식으로 응답할 수 없습니다.", request));
     }
 
@@ -182,24 +184,25 @@ public class GlobalExceptionHandler {
                                                                     HttpServletRequest request) {
         log.warn("컨트롤러 파라미터 검증 실패: path={} message={}", request.getRequestURI(), exception.getMessage());
         return ResponseEntity.badRequest()
-                .body(errorBody(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "입력값 검증에 실패했습니다.", request));
+                .body(errorBody(HttpStatus.BAD_REQUEST, ApiErrorCode.VALIDATION_ERROR, "입력값 검증에 실패했습니다.", request));
     }
 
     @ExceptionHandler(Exception.class)
     ResponseEntity<ApiErrorResponse> handleUnexpected(Exception exception, HttpServletRequest request) {
         log.error("예상하지 못한 서버 예외 발생: path={}", request.getRequestURI(), exception);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(errorBody(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "예상하지 못한 서버 오류가 발생했습니다.", request));
+                .body(errorBody(HttpStatus.INTERNAL_SERVER_ERROR, ApiErrorCode.INTERNAL_ERROR, "예상하지 못한 서버 오류가 발생했습니다.", request));
     }
 
-    private ApiErrorResponse errorBody(HttpStatus status, String code, String message, HttpServletRequest request) {
+    private ApiErrorResponse errorBody(HttpStatus status, ApiErrorCode code, String message, HttpServletRequest request) {
         return new ApiErrorResponse(
                 Instant.now(),
                 status.value(),
                 status.getReasonPhrase(),
-                code,
+                code.name(),
                 message,
-                request.getRequestURI()
+                request.getRequestURI(),
+                MDC.get(RequestIdFilter.MDC_KEY)
         );
     }
 }

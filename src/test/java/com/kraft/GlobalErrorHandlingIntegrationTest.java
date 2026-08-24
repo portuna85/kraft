@@ -1,9 +1,12 @@
 package com.kraft;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MvcResult;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -54,5 +57,18 @@ class GlobalErrorHandlingIntegrationTest extends BaseApiIntegrationTest {
     void unacceptableMediaType_returns406NotInternalServerError() throws Exception {
         mockMvc.perform(get("/api/v1/rounds/latest").accept(MediaType.APPLICATION_XML))
                 .andExpect(status().isNotAcceptable());
+    }
+
+    @Test
+    @DisplayName("BE-API-01: 오류 응답 본문의 requestId가 X-Request-Id 응답 헤더와 일치한다")
+    void errorResponse_includesRequestIdMatchingHeader() throws Exception {
+        MvcResult result = mockMvc.perform(get("/api/v1/numbers/check"))
+                .andExpect(status().isBadRequest())
+                .andReturn();
+
+        String headerRequestId = result.getResponse().getHeader("X-Request-Id");
+        assertThat(headerRequestId).isNotBlank();
+        JsonNode body = OBJECT_MAPPER.readTree(result.getResponse().getContentAsString());
+        assertThat(body.get("requestId").asText()).isEqualTo(headerRequestId);
     }
 }

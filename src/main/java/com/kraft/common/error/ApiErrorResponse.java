@@ -8,6 +8,7 @@ public record ApiErrorResponse(
         String error,
         String code,
         String message,
-        String path
+        String path,
+        String requestId
 ) {
 }

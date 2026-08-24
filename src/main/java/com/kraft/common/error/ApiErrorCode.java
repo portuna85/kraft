@@ -79,6 +79,28 @@ public enum ApiErrorCode {
     // 이벤트(vitals/CSP/client error) 수신 endpoint의 공유 시크릿 인증 실패.
     OBSERVABILITY_UNAUTHORIZED(HttpStatus.UNAUTHORIZED),
 
+    // BE-API-01(docs/improvement.md): GlobalExceptionHandler의 프레임워크 예외 핸들러와
+    // ApiErrorResponseWriter.write(...)를 직접 부르는 필터/보안 설정이 문자열 리터럴로 쓰던
+    // code를 여기로 편입했다 — write(...)/errorBody(...)의 code 파라미터를 ApiErrorCode로
+    // 좁혀서 이 enum 밖의 리터럴을 컴파일러가 막게 한다.
+    VALIDATION_ERROR(HttpStatus.BAD_REQUEST),
+    MISSING_HEADER(HttpStatus.BAD_REQUEST),
+    INVALID_REQUEST_BODY(HttpStatus.BAD_REQUEST),
+    UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE),
+    RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND),
+    MISSING_PARAMETER(HttpStatus.BAD_REQUEST),
+    INVALID_PARAMETER_TYPE(HttpStatus.BAD_REQUEST),
+    METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED),
+    NOT_ACCEPTABLE(HttpStatus.NOT_ACCEPTABLE),
+    RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS),
+    COMMUNITY_WRITE_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS),
+    COMMUNITY_ACCOUNT_DELETED(HttpStatus.UNAUTHORIZED),
+    COMMUNITY_CSRF_REJECTED(HttpStatus.FORBIDDEN),
+    COMMUNITY_ACCESS_DENIED(HttpStatus.FORBIDDEN),
+    COMMUNITY_LOGIN_REQUIRED(HttpStatus.UNAUTHORIZED),
+    OPS_DISABLED(HttpStatus.SERVICE_UNAVAILABLE),
+    OPS_UNAUTHORIZED(HttpStatus.UNAUTHORIZED),
+
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final HttpStatus status;

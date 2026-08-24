@@ -2,6 +2,7 @@ package com.kraft.community.auth;
 
 import com.kraft.common.config.CommunityProperties;
 import com.kraft.common.config.PublicBaseUrlProperties;
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.web.ApiErrorResponseWriter;
 import com.kraft.common.web.RateLimitCounter;
 import com.kraft.community.user.CommunityUserRepository;
@@ -128,7 +129,7 @@ public class CommunitySecurityConfig {
                 csrfRejectedCounter.increment();
             }
             apiErrorResponseWriter.write(request, response, HttpStatus.FORBIDDEN,
-                    isCsrf ? "COMMUNITY_CSRF_REJECTED" : "COMMUNITY_ACCESS_DENIED",
+                    isCsrf ? ApiErrorCode.COMMUNITY_CSRF_REJECTED : ApiErrorCode.COMMUNITY_ACCESS_DENIED,
                     isCsrf ? "요청을 검증할 수 없습니다. 새로고침 후 다시 시도하세요." : "접근이 거부되었습니다.");
         };
     }

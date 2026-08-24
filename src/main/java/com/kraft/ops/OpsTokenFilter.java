@@ -1,6 +1,7 @@
 package com.kraft.ops;
 
 import com.kraft.common.config.OpsProperties;
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.web.ApiErrorResponseWriter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -44,7 +45,7 @@ public class OpsTokenFilter extends OncePerRequestFilter {
                                     FilterChain chain) throws ServletException, IOException {
         String expected = opsProperties.token();
         if (expected == null || expected.isBlank()) {
-            writeError(request, response, HttpStatus.SERVICE_UNAVAILABLE, "OPS_DISABLED",
+            writeError(request, response, HttpStatus.SERVICE_UNAVAILABLE, ApiErrorCode.OPS_DISABLED,
                     "운영 API 토큰이 설정되지 않았습니다.");
             return;
         }
@@ -52,7 +53,7 @@ public class OpsTokenFilter extends OncePerRequestFilter {
         if (token == null || !MessageDigest.isEqual(
                 expected.getBytes(StandardCharsets.UTF_8),
                 token.getBytes(StandardCharsets.UTF_8))) {
-            writeError(request, response, HttpStatus.UNAUTHORIZED, "OPS_UNAUTHORIZED",
+            writeError(request, response, HttpStatus.UNAUTHORIZED, ApiErrorCode.OPS_UNAUTHORIZED,
                     "운영 API 인증에 실패했습니다.");
             return;
         }
@@ -60,7 +61,7 @@ public class OpsTokenFilter extends OncePerRequestFilter {
     }
 
     private void writeError(HttpServletRequest request, HttpServletResponse response,
-                            HttpStatus status, String code, String message) throws IOException {
+                            HttpStatus status, ApiErrorCode code, String message) throws IOException {
         apiErrorResponseWriter.write(request, response, status, code, message);
     }
 }

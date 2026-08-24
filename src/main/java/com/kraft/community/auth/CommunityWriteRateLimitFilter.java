@@ -1,6 +1,7 @@
 package com.kraft.community.auth;
 
 import com.kraft.common.config.CommunityProperties;
+import com.kraft.common.error.ApiErrorCode;
 import com.kraft.common.web.ApiErrorResponseWriter;
 import com.kraft.common.web.RateLimitCounter;
 import jakarta.servlet.FilterChain;
@@ -73,7 +74,7 @@ public class CommunityWriteRateLimitFilter extends OncePerRequestFilter {
         if (current.getAsInt() > limit) {
             response.setIntHeader("Retry-After", WINDOW_SECONDS);
             apiErrorResponseWriter.write(request, response, HttpStatus.TOO_MANY_REQUESTS,
-                    "COMMUNITY_WRITE_RATE_LIMIT_EXCEEDED", "작성 요청이 너무 많습니다. 잠시 후 다시 시도하세요.");
+                    ApiErrorCode.COMMUNITY_WRITE_RATE_LIMIT_EXCEEDED, "작성 요청이 너무 많습니다. 잠시 후 다시 시도하세요.");
             return;
         }
 
