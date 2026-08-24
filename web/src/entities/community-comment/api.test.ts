@@ -37,9 +37,7 @@ describe("getCommentPage(서버) vs fetchCommentPage(브라우저) — 같은 �
 
     await getCommentPage(7, 0);
 
-    expect(urlOf(spy)).toBe(
-      "http://backend:8080/api/v1/community/posts/7/comments?page=0&size=50",
-    );
+    expect(urlOf(spy)).toBe("http://backend:8080/api/v1/community/posts/7/comments?page=0&size=50");
     const init = initOf(spy) as { cache?: string };
     expect(init.cache).toBe("no-store");
   });

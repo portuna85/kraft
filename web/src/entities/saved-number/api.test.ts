@@ -91,8 +91,6 @@ describe("회차 대조 — round 파라미터 인코딩", () => {
 
     await matchAccountSavedNumbers("1150&extra=1");
 
-    expect(urlOf(spy)).toBe(
-      "/api/v1/community/me/saved-numbers/matches?round=1150%26extra%3D1",
-    );
+    expect(urlOf(spy)).toBe("/api/v1/community/me/saved-numbers/matches?round=1150%26extra%3D1");
   });
 });

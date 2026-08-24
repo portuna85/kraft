@@ -21,7 +21,11 @@ describe("reportContent", () => {
     expect(urlOf(spy)).toBe("/api/v1/community/reports");
     const init = initOf(spy) as { method?: string; body?: string };
     expect(init.method).toBe("POST");
-    expect(JSON.parse(init.body ?? "{}")).toEqual({ targetType: "POST", targetId: 1, reason: "SPAM" });
+    expect(JSON.parse(init.body ?? "{}")).toEqual({
+      targetType: "POST",
+      targetId: 1,
+      reason: "SPAM",
+    });
   });
 
   it("CSRF 헤더를 자동으로 붙인다", async () => {

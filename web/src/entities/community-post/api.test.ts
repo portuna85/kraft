@@ -33,7 +33,13 @@ const postBody = {
   recommendationAttachment: null,
 };
 
-const pageBody = { items: [postBody], page: 0, size: DEFAULT_PAGE_SIZE, totalElements: 1, totalPages: 1 };
+const pageBody = {
+  items: [postBody],
+  page: 0,
+  size: DEFAULT_PAGE_SIZE,
+  totalElements: 1,
+  totalPages: 1,
+};
 
 describe("getPostPage", () => {
   it("page·size·sort를 쿼리스트링으로 붙인다(category·query 생략)", async () => {
@@ -62,7 +68,10 @@ describe("getPostPage", () => {
     await getPostPage(listParams);
 
     const init = initOf(spy) as { next?: { revalidate: number; tags: string[] } };
-    expect(init.next).toEqual({ revalidate: REVALIDATE_COMMUNITY_LIST_SECONDS, tags: ["community:posts"] });
+    expect(init.next).toEqual({
+      revalidate: REVALIDATE_COMMUNITY_LIST_SECONDS,
+      tags: ["community:posts"],
+    });
   });
 });
 

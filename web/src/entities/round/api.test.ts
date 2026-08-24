@@ -3,7 +3,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { CACHE_TAGS } from "@/shared/config/cache-tags";
 import { headersOf, initOf, jsonResponse, mockFetch, urlOf } from "@/shared/api/test/fetch-mock";
 
-import { getLatestRound, getRoundFreshness, REVALIDATE_LATEST_SECONDS, ROUNDS_LATEST_TAG } from "./api";
+import {
+  getLatestRound,
+  getRoundFreshness,
+  REVALIDATE_LATEST_SECONDS,
+  ROUNDS_LATEST_TAG,
+} from "./api";
 
 afterEach(() => {
   vi.unstubAllGlobals();

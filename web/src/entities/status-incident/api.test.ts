@@ -10,7 +10,13 @@ afterEach(() => {
 });
 
 const incidentsBody = [
-  { round: 1150, type: "EXTERNAL_COLLECT", resolved: true, occurredAt: "2025-01-01T00:00:00Z", occurrences: 1 },
+  {
+    round: 1150,
+    type: "EXTERNAL_COLLECT",
+    resolved: true,
+    occurredAt: "2025-01-01T00:00:00Z",
+    occurrences: 1,
+  },
 ];
 
 describe("getStatusIncidents", () => {
