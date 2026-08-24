@@ -15,8 +15,22 @@ import { defineConfig, devices } from "@playwright/test";
  * (소유권·CSRF·페이지네이션)을 검증하는 스펙이 대부분이라 3번째 모바일 패스의
  * 한계효용이 낮다.
  */
-const PORT = 3116;
-const BACKEND_PORT = 4116;
+// CI 포트 불일치 버그(2026-08-24 발견): next.config.ts의 rewrites()는 Next가
+// `next build` 시점에 process.env.KRAFT_BACKEND_INTERNAL_URL을 읽어 destination을
+// 산출물에 굽는다 — standalone 서버를 실행할 때 webServer.env로 값을 다시 줘도
+// 이미 구운 rewrite 목적지는 바뀌지 않는다. 아래 NEXT_DIST_DIR 주석대로 이 config는
+// ci.yml의 cross-browser 잡이 미리 만들어 둔 `.next-cross-browser`(빌드 시
+// PORT=3114/KRAFT_BACKEND_INTERNAL_URL=http://127.0.0.1:4114로 구워짐, ci.yml 참조)를
+// 재사용하므로, 이 config도 `playwright.cross-browser.config.ts`와 **완전히 같은
+// PORT·BACKEND_PORT(3114/4114)** 를 써야 한다 — 두 스크립트가 순차 실행이라(동시 아님)
+// 같은 포트를 이어 써도 충돌하지 않는다. 예전에 3116/4116을 썼을 때는 첫 스크립트
+// (test:e2e:cross-browser)가 끝나 실제 백엔드가 내려간 뒤에도 rewrite는 여전히 4114를
+// 가리켜 이 config의 모든 API 호출이 ECONNREFUSED로 실패했다. PORT를 3114로 맞추면
+// `e2e/lib/fixture-backend.ts`의 "BACKEND_PORT = PORT + 1000" 관례도 자동으로 다시
+// 맞아떨어진다(3114+1000=4114) — PORT는 그대로 두고 BACKEND_PORT만 4114로 바꿨다면
+// 이 관례가 깨져 `__test__/reset` 같은 직접 호출이 여전히 실패했을 것이다.
+const PORT = 3114;
+const BACKEND_PORT = 4114;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 
 export default defineConfig({
@@ -85,6 +99,10 @@ export default defineConfig({
         // 않는다.
         NEXT_DIST_DIR: ".next-cross-browser",
         KRAFT_PUBLIC_BASE_URL: BASE_URL,
+        // 이 값은 이제 사실상 문서용이다 — next.config.ts의 rewrite 목적지는 이미
+        // `.next-cross-browser` 빌드 시점에 고정됐다(위 BACKEND_PORT 주석 참조).
+        // 여기 값을 바꿔도 실제 라우팅에는 영향이 없으니, 반드시 BACKEND_PORT(위)를
+        // 4114로 유지해 이 값과 빌드 시점 값을 일치시켜야 한다.
         KRAFT_BACKEND_INTERNAL_URL: `http://127.0.0.1:${BACKEND_PORT}`,
         KRAFT_OPS_ALLOWED_HOST: "127.0.0.1",
         KRAFT_REVALIDATE_SECRET: "e2e-revalidate-secret",
