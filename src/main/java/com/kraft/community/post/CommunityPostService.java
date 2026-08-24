@@ -153,7 +153,7 @@ public class CommunityPostService {
     }
 
     @Transactional(readOnly = true)
-    public Page<CommunityPost> list(PostCategory category, String sort, String query, int page, int size) {
+    public Page<CommunityPost> list(PostCategory category, PostSort sort, String query, int page, int size) {
         int clampedPage = Math.max(0, page);
         int clampedSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
         String normalizedQuery = normalizeAndEscapeQuery(query);
@@ -162,7 +162,7 @@ public class CommunityPostService {
         // 검색어 있는 조회를 구분한다(검색은 LIKE 매칭이 섞여 지연 특성이 다르다).
         Timer.Sample sample = Timer.start(meterRegistry);
         try {
-            if ("weekly_popular".equalsIgnoreCase(sort)) {
+            if (sort == PostSort.WEEKLY_POPULAR) {
                 OffsetDateTime since = OffsetDateTime.now(clock).minusDays(WEEKLY_WINDOW_DAYS);
                 return communityPostRepository.findWeeklyPopular(
                         category == null ? null : category.name(), normalizedQuery, since, pageRequest);

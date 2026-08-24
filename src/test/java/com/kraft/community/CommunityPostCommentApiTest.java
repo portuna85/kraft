@@ -101,6 +101,14 @@ class CommunityPostCommentApiTest {
     }
 
     @Test
+    @DisplayName("API-COMM-01: 알 수 없는 sort는 조용히 latest로 처리하지 않고 400을 반환한다")
+    void unknownSort_returns400InvalidSort() throws Exception {
+        mockMvc.perform(get("/api/v1/community/posts").param("sort", "bogus"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_SORT"));
+    }
+
+    @Test
     @DisplayName("KB-03/KB-11: 게시글 목록·상세·댓글 GET은 명시적으로 no-store를 응답하고 상세에는 ETag가 없다")
     void publicGetEndpoints_returnNoStoreWithoutStaleEtagCaching() throws Exception {
         long postId = createPost(owner, "제목", "내용");

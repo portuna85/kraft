@@ -138,7 +138,7 @@ class CommunityPostRepositoryConcurrencyTest {
         communityPostService.create(ownerId, "글쓴이", null,
                 new CreatePostRequest("정확 50AAAsale! 행사", "와일드카드라면 잘못 포함될 글", "GENERAL", null));
 
-        for (String sort : List.of("latest", "weekly_popular")) {
+        for (PostSort sort : List.of(PostSort.LATEST, PostSort.WEEKLY_POPULAR)) {
             List<String> titles = communityPostService.list(null, sort, "50%_sale!", 0, 20)
                     .map(CommunityPost::getTitle)
                     .getContent();

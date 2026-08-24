@@ -290,7 +290,7 @@ class CommunityPostServiceTest {
     @Test
     @DisplayName("검색어 길이가 범위를 벗어나면 COMMUNITY_SEARCH_QUERY_INVALID로 거부된다")
     void list_queryTooShort_throwsApiException() {
-        assertThatThrownBy(() -> service.list(null, "latest", "a", 0, 20))
+        assertThatThrownBy(() -> service.list(null, PostSort.LATEST, "a", 0, 20))
                 .isInstanceOf(ApiException.class)
                 .satisfies(ex -> {
                     ApiException apiEx = (ApiException) ex;
@@ -306,7 +306,7 @@ class CommunityPostServiceTest {
         given(communityPostRepository.findWeeklyPopular(isNull(), isNull(), any(OffsetDateTime.class), any()))
                 .willReturn(page);
 
-        Page<CommunityPost> result = service.list(null, "weekly_popular", null, 0, 20);
+        Page<CommunityPost> result = service.list(null, PostSort.WEEKLY_POPULAR, null, 0, 20);
 
         assertThat(result).isSameAs(page);
     }
@@ -317,7 +317,7 @@ class CommunityPostServiceTest {
         Page<CommunityPost> page = new PageImpl<>(List.of());
         given(communityPostRepository.findLatest(isNull(), eq("50!%!_sale!!"), any())).willReturn(page);
 
-        Page<CommunityPost> result = service.list(null, "latest", " 50%_sale! ", 0, 20);
+        Page<CommunityPost> result = service.list(null, PostSort.LATEST, " 50%_sale! ", 0, 20);
 
         assertThat(result).isSameAs(page);
     }
@@ -330,7 +330,7 @@ class CommunityPostServiceTest {
                 isNull(), eq("50!%!_sale!!"), any(OffsetDateTime.class), any()))
                 .willReturn(page);
 
-        Page<CommunityPost> result = service.list(null, "weekly_popular", " 50%_sale! ", 0, 20);
+        Page<CommunityPost> result = service.list(null, PostSort.WEEKLY_POPULAR, " 50%_sale! ", 0, 20);
 
         assertThat(result).isSameAs(page);
     }
@@ -341,7 +341,7 @@ class CommunityPostServiceTest {
         Page<CommunityPost> page = new PageImpl<>(List.of());
         given(communityPostRepository.findLatest(eq(PostCategory.GENERAL), isNull(), any())).willReturn(page);
 
-        Page<CommunityPost> result = service.list(PostCategory.GENERAL, "latest", null, 0, 20);
+        Page<CommunityPost> result = service.list(PostCategory.GENERAL, PostSort.LATEST, null, 0, 20);
 
         assertThat(result).isSameAs(page);
     }
@@ -351,8 +351,8 @@ class CommunityPostServiceTest {
     void list_durationTimers_registeredWithStableNameAndSearchTag() {
         given(communityPostRepository.findLatest(any(), any(), any())).willReturn(new PageImpl<>(List.of()));
 
-        service.list(null, "latest", null, 0, 20);
-        service.list(null, "latest", "검색어", 0, 20);
+        service.list(null, PostSort.LATEST, null, 0, 20);
+        service.list(null, PostSort.LATEST, "검색어", 0, 20);
 
         assertThat(meterRegistry.get("kraft_community_post_list_duration_seconds")
                 .tag("search", "false").timer().count()).isEqualTo(1);

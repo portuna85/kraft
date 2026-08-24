@@ -45,7 +45,8 @@ public class CommunityPostController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         PostCategory parsedCategory = category == null || category.isBlank() ? null : parseCategoryParam(category);
-        Page<CommunityPost> result = communityPostService.list(parsedCategory, sort, query, page, size);
+        PostSort parsedSort = parseSortParam(sort);
+        Page<CommunityPost> result = communityPostService.list(parsedCategory, parsedSort, query, page, size);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(PageResponse.from(communityPostService.toResponsePage(result)));
@@ -116,6 +117,19 @@ public class CommunityPostController {
         } catch (IllegalArgumentException e) {
             throw new ApiException(ApiErrorCode.COMMUNITY_CATEGORY_INVALID,
                     "지원하지 않는 카테고리입니다: " + category);
+        }
+    }
+
+    // API-COMM-01(docs/improvement.md): null/blank만 latest로 기본 처리하고, 그 외 알 수 없는
+    // 값은 조용히 latest로 흡수하지 않고 400으로 거부한다.
+    private static PostSort parseSortParam(String sort) {
+        if (sort == null || sort.isBlank()) {
+            return PostSort.LATEST;
+        }
+        try {
+            return PostSort.valueOf(sort.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ApiException(ApiErrorCode.INVALID_SORT, "지원하지 않는 정렬입니다: " + sort);
         }
     }
 }
