@@ -329,7 +329,8 @@ public class CommunityPostService {
     // BE-COMM-01: MariaDB가 낙관적 잠금 충돌 시 던지는 "Record has changed since last
     // read"(error code 1020)만 버전 충돌로 인정한다. cause 체인을 타고 내려가 SQLException을
     // 찾고, 그 vendor code가 1020일 때만 true — 그 외 JpaSystemException(커넥션 유실,
-    // 제약 위반 등)은 여기서 걸러지지 않아 호출부가 그대로 재전파한다.
+    // 제약 위반 등)은 여기서 걸러지지 않아 호출부가 그대로 재전파한다. SQLState는 이 오류에서
+    // 일반값("HY000")만 나와 원인을 구분하지 못해 vendor code만 본다.
     private static final int MARIADB_RECORD_CHANGED_ERROR_CODE = 1020;
 
     private static boolean isRecordChangedRace(JpaSystemException exception) {
