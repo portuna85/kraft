@@ -100,10 +100,10 @@ describe("guardCollectRequest — 본문 크기 상한(UTF-8 byte 기준)", () =
   });
 
   it("Content-Length 헤더가 위조돼 실제보다 작아도 실측 byte로 최종 거부한다", async () => {
-    const result = await guardCollectRequest(
-      request({ body: "01234567890", contentLength: "1" }),
-      { ...BASE_OPTIONS, maxBodyBytes: 10 },
-    );
+    const result = await guardCollectRequest(request({ body: "01234567890", contentLength: "1" }), {
+      ...BASE_OPTIONS,
+      maxBodyBytes: 10,
+    });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.response.status).toBe(413);
   });

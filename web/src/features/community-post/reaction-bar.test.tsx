@@ -47,7 +47,11 @@ describe("좋아요·북마크", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetResourceCacheForTests();
-    getMyInteractions.mockResolvedValue({ likedPostIds: [], bookmarkedPostIds: [], blockedUserIds: [] });
+    getMyInteractions.mockResolvedValue({
+      likedPostIds: [],
+      bookmarkedPostIds: [],
+      blockedUserIds: [],
+    });
   });
 
   afterEach(() => {
