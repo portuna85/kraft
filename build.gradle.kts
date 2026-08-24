@@ -1,6 +1,6 @@
 plugins {
     java
-    id("org.springframework.boot") version "4.1.0"
+    id("org.springframework.boot") version "4.1.1"
     jacoco
     checkstyle
     id("com.github.spotbugs") version "6.5.11"
