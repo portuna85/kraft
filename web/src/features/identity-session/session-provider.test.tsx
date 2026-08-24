@@ -13,11 +13,13 @@ import { SessionProvider } from "./session-provider";
 
 const fetchSession = vi.fn();
 const claimDevice = vi.fn();
+const bootstrapCsrf = vi.fn();
 
 vi.mock("@/entities/user-session/api", () => ({
   SESSION_RESOURCE_KEY: "session",
   fetchSession: (signal: AbortSignal) => fetchSession(signal),
   claimDevice: () => claimDevice(),
+  bootstrapCsrf: () => bootstrapCsrf(),
 }));
 
 function Probe() {
@@ -36,9 +38,9 @@ function Probe() {
   );
 }
 
-function renderProvider() {
+function renderProvider(initialLoggedIn = true) {
   return render(
-    <SessionProvider>
+    <SessionProvider initialLoggedIn={initialLoggedIn}>
       <Probe />
     </SessionProvider>,
   );
@@ -56,6 +58,7 @@ beforeEach(() => {
   clearClaimFlagForTests();
   fetchSession.mockReset();
   claimDevice.mockReset();
+  bootstrapCsrf.mockReset();
 });
 
 afterEach(() => {
@@ -181,6 +184,54 @@ describe("세션 상태머신", () => {
 
     renderProvider();
     await waitFor(() => expect(claimDevice).toHaveBeenCalledTimes(2));
+  });
+});
+
+describe("FE-SEC-02(docs/improvement.md): initialLoggedIn=false — 익명 방문자", () => {
+  it("신원 조회(fetchSession)를 호출하지 않는다", async () => {
+    renderProvider(false);
+
+    await screen.findByText("session: false");
+    expect(fetchSession).not.toHaveBeenCalled();
+  });
+
+  it("CSRF 부트스트랩은 호출한다(신원 조회와 별개)", async () => {
+    renderProvider(false);
+
+    await waitFor(() => expect(bootstrapCsrf).toHaveBeenCalledTimes(1));
+  });
+
+  it("로딩 프레임 없이 즉시 익명 세션으로 확정된다", () => {
+    renderProvider(false);
+
+    // waitFor 없이 첫 렌더에서 바로 확정돼야 한다 — sessionReadiness()가
+    // "unsettled"에 머무르면 CSRF 의존 액션이 지연되거나 잘못된 스코프로 나간다.
+    expect(screen.getByText("loading: false")).toBeInTheDocument();
+    expect(screen.getByText("session: false")).toBeInTheDocument();
+    expect(screen.getByText("error: false")).toBeInTheDocument();
+  });
+
+  it("claim을 시도하지 않는다", async () => {
+    window.localStorage.setItem(DEVICE_TOKEN_STORAGE_KEY, "old-token");
+    renderProvider(false);
+
+    await screen.findByText("session: false");
+    expect(claimDevice).not.toHaveBeenCalled();
+  });
+});
+
+describe("initialLoggedIn=true — 기존 동작 회귀 확인", () => {
+  it("신원 조회를 호출하고 CSRF 부트스트랩은 호출하지 않는다", async () => {
+    fetchSession.mockResolvedValue({
+      loggedIn: false,
+      userId: null,
+      nickname: null,
+      activeProviders: [],
+    });
+    renderProvider(true);
+
+    await waitFor(() => expect(fetchSession).toHaveBeenCalledTimes(1));
+    expect(bootstrapCsrf).not.toHaveBeenCalled();
   });
 });
 

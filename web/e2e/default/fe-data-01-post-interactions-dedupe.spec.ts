@@ -12,6 +12,10 @@ import { expect, test } from "@playwright/test";
  * `sessionFromCookie`) — 픽스처 전역 상태를 건드리지 않고 이 브라우저 컨텍스트에서만
  * 로그인 상태로 응답하게 한다. 고정 픽스처 게시글(id=1, ownerId=10)은 로그인 사용자
  * (userId=1)와 다른 소유자라 `BlockButton`이 실제로 렌더된다.
+ *
+ * FE-SEC-02(docs/improvement.md): `kraft_logged_in`도 함께 심는다 —
+ * `(session)/layout.tsx`가 이 쿠키로 신원 조회(`fetchSession`) 호출 여부를 가르므로,
+ * 없으면 `e2e-nickname`을 읽는 `sessionFromCookie` 자체가 호출되지 않는다.
  */
 test.describe("게시글 상세 개인 상호작용 조회 dedupe", () => {
   test.beforeEach(async ({ context }) => {
@@ -21,6 +25,7 @@ test.describe("게시글 상세 개인 상호작용 조회 dedupe", () => {
         value: encodeURIComponent("테스트유저"),
         url: "http://127.0.0.1:3111",
       },
+      { name: "kraft_logged_in", value: "1", url: "http://127.0.0.1:3111" },
     ]);
   });
 

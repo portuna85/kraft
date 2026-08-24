@@ -17,6 +17,27 @@ export function fetchSession(signal: AbortSignal): Promise<CommunitySession> {
 }
 
 /**
+ * BE-CSRF-01(docs/improvement.md): 익명 방문자용 CSRF 쿠키 부트스트랩.
+ *
+ * `GET /api/v1/community/csrf`는 신원 조회 없이 `XSRF-TOKEN` 쿠키만 발급하는
+ * 경량 endpoint다(응답 204, 본문 없음) — `logout()`/`withdraw()`와 같은 이유로
+ * raw fetch를 쓴다(검증할 JSON 바디가 없다). 실패해도 던지지 않는다 — 실패하면
+ * 다음 쓰기 시도가 `CSRF_TOKEN_MISSING`으로 자연스럽게 드러난다(로그인 사용자
+ * 경로와 같은 실패 모드라 별도 오류 처리가 필요 없다).
+ */
+export async function bootstrapCsrf(): Promise<void> {
+  try {
+    await fetch("/api/v1/community/csrf", {
+      method: "GET",
+      credentials: "same-origin",
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch {
+    // 무시 — 위 주석 참고.
+  }
+}
+
+/**
  * 로그인 직후 익명 디바이스 기록을 계정으로 옮긴다.
  *
  * 로그인 사용자 요청 중 **유일하게 디바이스 토큰을 함께 보내는** 요청이다 — 토큰이

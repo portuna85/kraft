@@ -32,10 +32,23 @@ const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? "/", `http://127.0.0.1:${PORT}`);
   const method = request.method ?? "GET";
 
-  // XSRF-TOKEN 쿠키 — 실제 백엔드(Spring Security)가 GET 응답마다 내려주는 것과 같은
-  // 역할이다. 이게 없으면 browserMutate가 요청을 보내기 전에 스스로 막는다(§13.4).
-  response.setHeader("set-cookie", "XSRF-TOKEN=e2e-fixture-token; Path=/");
+  // XSRF-TOKEN 쿠키 — 실제 백엔드(Spring Security)가 /api/v1/community/** 요청에만
+  // 부수효과로 내려주는 것과 같은 역할이다(CommunitySecurityConfig의
+  // csrfCookieFilter, communityFilterChain의 securityMatcher). FE-SEC-02
+  // (docs/improvement.md): 예전에는 경로 상관없이 모든 응답에 내려줘, 프론트가
+  // 실제로는 이 쿠키를 발급하는 경로(옛 /session, 지금은 /csrf)를 안 불러도 e2e가
+  // 계속 통과했다 — 회귀를 못 잡는 픽스처였다. 실제 백엔드와 같은 범위로 좁힌다.
+  if (url.pathname.startsWith("/api/v1/community/")) {
+    response.setHeader("set-cookie", "XSRF-TOKEN=e2e-fixture-token; Path=/");
+  }
   response.setHeader("content-type", "application/json");
+
+  // BE-CSRF-01(docs/improvement.md): 신원 조회 없이 위 쿠키만 발급하는 경량 endpoint.
+  if (url.pathname === "/api/v1/community/csrf" && method === "GET") {
+    response.statusCode = 204;
+    response.end();
+    return;
+  }
 
   if (url.pathname === "/__test__/fail" && method === "PUT") {
     forcedFailurePath = url.searchParams.get("path");

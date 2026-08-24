@@ -17,10 +17,17 @@ import { fixtureBackendUrl } from "../lib/fixture-backend";
  * `/api/v1/community/me/recommendation-sets` POST 핸들러가 이 쓰기 경로를 흉내낸다.
  */
 test.describe("로그인 상태의 추천 생성이 계정 이력에 나타난다", () => {
-  test.beforeEach(async ({ request, baseURL }) => {
+  test.beforeEach(async ({ request, context, baseURL }) => {
     await request.put(
       `${fixtureBackendUrl(baseURL)}/__test__/session?loggedIn=true&userId=1&nickname=%ED%85%8C%EC%8A%A4%ED%84%B0`,
     );
+    // FE-SEC-02(docs/improvement.md): `(session)/layout.tsx`가 이제 실제 브라우저
+    // 쿠키(`kraft_logged_in`)로 신원 조회 여부를 가른다 — 위 `__test__/session`은
+    // 픽스처 프로세스 전역 상태만 바꿀 뿐 `page`의 쿠키 저장소와 별개라, 이 쿠키가
+    // 없으면 프론트가 이 방문자를 익명으로 보고 신원 조회 자체를 건너뛴다.
+    await context.addCookies([
+      { name: "kraft_logged_in", value: "1", url: baseURL ?? "http://127.0.0.1:3111" },
+    ]);
   });
 
   test.afterEach(async ({ request, baseURL }) => {

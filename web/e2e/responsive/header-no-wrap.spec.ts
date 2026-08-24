@@ -40,10 +40,16 @@ test.describe("데스크톱 헤더 브랜드가 좁은 폭에서 래핑되지 �
  * `AccountControl`이 쓰이므로 `/recommend`로 확인한다.
  */
 test.describe("로그인 상태에서도 데스크톱 헤더 브랜드가 래핑되지 않는다", () => {
-  test.beforeEach(async ({ request }) => {
+  test.beforeEach(async ({ request, context }) => {
     await request.put(
       "http://127.0.0.1:4115/__test__/session?loggedIn=true&userId=1&nickname=%ED%85%8C%EC%8A%A4%ED%84%B0",
     );
+    // FE-SEC-02(docs/improvement.md): request fixture는 page의 쿠키 저장소와
+    // 별개라 __test__/session만으로는 (session)/layout.tsx의 kraft_logged_in
+    // 게이트를 못 지난다 — 컨텍스트 쿠키로 직접 심는다.
+    await context.addCookies([
+      { name: "kraft_logged_in", value: "1", url: "http://127.0.0.1:3115" },
+    ]);
   });
 
   test.afterEach(async ({ request }) => {
@@ -89,6 +95,9 @@ for (const [label, nickname] of [
     // 전역 `__test__/session`이 아니라 컨텍스트 쿠키로 로그인 상태를 만든다 —
     // 이 트랙은 fullyParallel이라 전역을 바꾸면 다른 스펙이 이 닉네임으로 렌더된
     // 셸을 재게 된다(실제로 document-overflow.spec.ts의 320×512가 그렇게 빨개졌다).
+    // FE-SEC-02(docs/improvement.md): kraft_logged_in도 함께 심어야
+    // (session)/layout.tsx가 신원 조회(fetchSession)를 건너뛰지 않는다 —
+    // 안 심으면 e2e-nickname을 읽는 sessionFromCookie 자체가 호출되지 않는다.
     test.beforeEach(async ({ context }) => {
       await context.addCookies([
         {
@@ -96,6 +105,7 @@ for (const [label, nickname] of [
           value: encodeURIComponent(nickname),
           url: "http://127.0.0.1:3115",
         },
+        { name: "kraft_logged_in", value: "1", url: "http://127.0.0.1:3115" },
       ]);
     });
 

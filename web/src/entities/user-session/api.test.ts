@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CSRF_HEADER_NAME } from "@/shared/api/csrf";
 
-import { logout } from "./api";
+import { bootstrapCsrf, logout } from "./api";
 
 function mockFetch(response: Response | Promise<Response>) {
   const spy = vi.fn().mockResolvedValue(response);
@@ -53,5 +53,31 @@ describe("logout", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("failed to fetch")));
 
     expect(await logout()).toBe(false);
+  });
+});
+
+describe("bootstrapCsrf", () => {
+  it("GET /api/v1/community/csrf를 same-origin으로 부른다", async () => {
+    const spy = mockFetch(new Response(null, { status: 204 }));
+
+    await bootstrapCsrf();
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    const [url, init] = spy.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/v1/community/csrf");
+    expect(init.method).toBe("GET");
+    expect(init.credentials).toBe("same-origin");
+  });
+
+  it("네트워크 오류를 던지지 않고 흡수한다", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("failed to fetch")));
+
+    await expect(bootstrapCsrf()).resolves.toBeUndefined();
+  });
+
+  it("실패 응답(4xx/5xx)이어도 던지지 않는다", async () => {
+    mockFetch(new Response(null, { status: 503 }));
+
+    await expect(bootstrapCsrf()).resolves.toBeUndefined();
   });
 });

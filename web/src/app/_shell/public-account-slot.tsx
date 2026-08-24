@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
 
-import { PublicAccountArea } from "./public-account-area";
+import { LOGGED_IN_COOKIE_NAME } from "@/shared/config/cookies";
 
-const LOGGED_IN_COOKIE_NAME = "kraft_logged_in";
+import { PublicAccountArea } from "./public-account-area";
 
 /**
  * I-03: `(public)` 셸의 계정 영역.

@@ -13,8 +13,9 @@ import { expect, test } from "@playwright/test";
 test.describe("추천·저장 여정", () => {
   test("조합을 만들고 보관함에 저장한다", async ({ page }) => {
     await page.goto("/recommend");
-    // 세션 조회(마운트 시 1회)가 CSRF 쿠키를 심을 때까지 기다린다 — 그 전에 쓰기
-    // 요청을 보내면 transport가 스스로 막는다(§13.4).
+    // FE-SEC-02(docs/improvement.md): 익명 방문자는 신원 조회 대신 CSRF 부트스트랩
+    // (마운트 시 1회, GET /api/v1/community/csrf)만으로 쿠키를 받는다 — 그 전에
+    // 쓰기 요청을 보내면 transport가 스스로 막는다(§13.4).
     await page.waitForFunction(() => document.cookie.includes("XSRF-TOKEN"));
 
     await page.getByRole("button", { name: "조합 만들기" }).click();

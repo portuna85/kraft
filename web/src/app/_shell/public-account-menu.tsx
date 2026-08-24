@@ -15,7 +15,7 @@ import { AccountControl } from "./account-control";
  */
 export function PublicAccountMenu() {
   return (
-    <SessionProvider>
+    <SessionProvider initialLoggedIn>
       <AccountControl />
     </SessionProvider>
   );
