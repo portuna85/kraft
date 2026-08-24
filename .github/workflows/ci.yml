@@ -732,7 +732,7 @@ jobs:
         with:
           name: backend-boot-jar
           path: build/libs
-      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
         if: needs.changes.outputs.backend == 'true'
       # backend-verified 태그: 이 커밋에서 실제로 빌드·푸시가 성공했다는 사실만 기록하는
       # 태그다 — 이 잡 자체의 결과와 무관하게(예: 다른 컴포넌트의 E2E가 나중에 실패해도)
@@ -811,7 +811,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         if: needs.changes.outputs.web == 'true'
-      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
         if: needs.changes.outputs.web == 'true'
       # web-verified 태그: backend와 동일한 이유(quality-gate 결과와 무관하게 "실제로
       # 최근에 빌드된 소스"를 계속 정확히 가리키기 위함)로 둔다.
