@@ -43,7 +43,10 @@ export async function guardCollectRequest(
   // navigator.sendBeacon은 Content-Type을 text/plain으로 보낼 수 있어 req.json() 대신
   // 텍스트로 받아 호출부가 직접 파싱한다.
   const text = await request.text();
-  if (text.length > options.maxBodyBytes) {
+  // FE-API-01: text.length는 UTF-16 code unit 수이지 전송 byte 수가 아니다. 한글·emoji 같은
+  // multi-byte 문자는 이 검사만으로 실제 전송 byte 기준 상한을 우회할 수 있으므로, 실제
+  // UTF-8 인코딩 byte 길이로 검사한다.
+  if (new TextEncoder().encode(text).byteLength > options.maxBodyBytes) {
     return { ok: false, response: new Response(null, { status: 413 }) };
   }
 
