@@ -100,6 +100,12 @@ dependencies {
         implementation("org.apache.logging.log4j:log4j-api:2.26.1") {
             because("CVE-2026-49844 — Boot 4.1.0 BOM 고정치(2.26.0/2.25.4)에서 발견")
         }
+        // tools.jackson(Jackson 3)은 TD-019 코멘트대로 이 앱이 직접 참조하지 않는
+        // 전이 의존성이다 — SEC-SCA-01 OSV-Scanner 도입 시 productionRuntimeClasspath에서
+        // 발견(GHSA-5gvw-p9qm-jgwh, Boot 4.1.0 BOM 고정치 3.1.4).
+        implementation("tools.jackson.core:jackson-databind:3.1.5") {
+            because("GHSA-5gvw-p9qm-jgwh — Boot 4.1.0 BOM 고정치(3.1.4)에서 발견")
+        }
     }
 
     developmentOnly(platform("org.springframework.boot:spring-boot-dependencies:4.1.0"))
@@ -232,3 +238,12 @@ pitest {
 // NVD REST API(nvd.nist.gov) 자체 장애로 CI가 반복적으로 hang/timeout됐고(2026-08-17
 // 실측, 캐시를 완전히 비워도 재현) 외부 서비스 상태에 CI 전체가 발목 잡히는 상황이라
 // 걷어냈다. npm 쪽 `npm audit`(web-next-build-test)은 그대로 유지된다.
+//
+// SEC-SCA-01(docs/improvement.md, 2026-08-24): 공식 대체재는 OSV-Scanner다 —
+// `.github/workflows/pr.yml`의 dependency-scan job이 이 프로젝트의 `gradle.lockfile`을
+// 스캔한다. OSV.dev 데이터베이스를 쓰므로 NVD에 의존하지 않아 원래 장애가 구조적으로
+// 재발하지 않는다. Trivy fs 스캔(같은 워크플로)이 저장소 전체(Java+npm)를 훑는 것과
+// 별개로, OSV-Scanner는 Java classpath 전용으로 범위를 좁혀 SEC-SCA-01이 지적한
+// "Java 런타임 classpath SCA 게이트 부재"를 직접 메운다. checkstyle/spotbugs/pitest
+// 전용 classpath에서만 나오는 CVE(런타임에 실리지 않음)는 `.osv-scanner.toml`에
+// GHSA ID별로 사유를 남기고 예외 처리한다 — 조용히 숨기지 않는다.

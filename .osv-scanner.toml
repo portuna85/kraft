@@ -1,0 +1,24 @@
+# SEC-SCA-01(docs/improvement.md): checkstyle/spotbugs/pitest 전용 classpath에서만
+# 나오는 CVE — 런타임(productionRuntimeClasspath)에는 실리지 않아 예외 처리한다.
+# 프로덕션 classpath에서 나온 CVE는 여기 추가하지 말고 build.gradle.kts의
+# constraints 블록으로 실제로 고쳐야 한다.
+
+[[IgnoredVulns]]
+id = "GHSA-wxr5-93ph-8wr9" # commons-beanutils 1.10.1 — checkstyle 전용
+reason = "checkstyle 전용 classpath, 런타임 미포함"
+
+[[IgnoredVulns]]
+id = "GHSA-j288-q9x7-2f5v" # commons-lang3 3.8.1 — checkstyle 전용(런타임은 3.20.0)
+reason = "checkstyle 전용 classpath, 런타임 미포함"
+
+[[IgnoredVulns]]
+id = "GHSA-hjcp-jmpx-g3qm" # httpclient5 5.4.3 — checkstyle 전용
+reason = "checkstyle 전용 classpath, 런타임 미포함"
+
+[[IgnoredVulns]]
+id = "GHSA-qv9r-c865-cp47" # log4j-api 2.26.0 — spotbugs 전용(런타임은 2.26.1로 고정됨)
+reason = "spotbugs 전용 classpath, 런타임 미포함"
+
+[[IgnoredVulns]]
+id = "GHSA-6fmv-xxpf-w3cw" # plexus-utils 3.3.0 — checkstyle 전용
+reason = "checkstyle 전용 classpath, 런타임 미포함"

@@ -29,3 +29,19 @@ jobs:
           exit-code: "1"
           severity: HIGH,CRITICAL
           ignore-unfixed: true
+      # SEC-SCA-01(docs/improvement.md): 2026-08-17에 제거된 org.owasp.dependencycheck의
+      # 공식 대체재. NVD REST API에 의존하지 않는 OSV.dev 데이터베이스를 써서 원래
+      # 장애(외부 API가 CI 전체를 인질로 잡는 것)가 재발하지 않는다. Trivy가 이미
+      # 저장소 전체(Java+npm)를 훑으므로, 여기서는 Java 런타임 classpath 전용 게이트로
+      # 범위를 좁혀 gradle.lockfile 하나만 스캔한다(build.gradle.kts의
+      # dependencyLocking이 이 파일을 관리). 심각도 무관 모든 알려진 취약점에서 실패한다
+      # — OSV-Scanner CLI에는 Trivy 같은 severity 임계값 플래그가 없다. 빌드 도구
+      # 전용 classpath(런타임 미포함)에서만 나오는 CVE는 .osv-scanner.toml에서 예외
+      # 처리한다.
+      - name: OSV-Scanner (Java classpath, gradle.lockfile)
+        uses: google/osv-scanner-action/osv-scanner-action@6e4298ebc4db23e847df9b2e2de2939d6f066c67 # v2.5.1
+        with:
+          scan-args: |-
+            --config=./.osv-scanner.toml
+            -L
+            ./gradle.lockfile
