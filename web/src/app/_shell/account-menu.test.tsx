@@ -46,6 +46,9 @@ describe("계정 메뉴", () => {
     await waitFor(() => expect(logout).toHaveBeenCalled());
     await waitFor(() => expect(refresh).toHaveBeenCalled());
     expect(invalidateResource).toHaveBeenCalledWith("session");
+    // FE-DATA-01: 다음 사용자가 같은 탭에서 로그인해도 이전 사용자의
+    // me:interactions:* 같은 캐시를 보지 않도록 "me:" 접두어 전체를 비운다.
+    expect(invalidateResource).toHaveBeenCalledWith("me:");
   });
 
   it("로그아웃 실패 시 오류 문구를 보여주고 새로고침하지 않는다", async () => {
@@ -105,6 +108,7 @@ describe("계정 메뉴", () => {
     await waitFor(() => expect(refresh).toHaveBeenCalled());
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(invalidateResource).toHaveBeenCalledWith("session");
+    expect(invalidateResource).toHaveBeenCalledWith("me:");
   });
 
   it("H-02: withdraw 실패 시 오류를 보여주고 다이얼로그를 유지하며 새로고침하지 않는다", async () => {

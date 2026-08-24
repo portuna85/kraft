@@ -1,18 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-import { bookmarkPost, getMyInteractions, likePost } from "@/entities/community-post/interactions";
+import { bookmarkPost, likePost } from "@/entities/community-post/interactions";
 import { canQueryOwnerScope, useSession } from "@/entities/user-session/session-context";
 import { Button } from "@/shared/ui/button";
 
+import { usePostInteractions } from "./use-post-interactions";
 import styles from "./post-actions.module.css";
 
 /**
  * 좋아요·북마크
  *
  * 초기 좋아요 수는 SSR된 게시글에서 오지만 **내가 눌렀는지는 거기 없다.** 공개 ISR
- * HTML에 사용자 상태를 넣지 않기 때문이다(§5.4). 그래서 마운트 후 한 번 물어본다.
+ * HTML에 사용자 상태를 넣지 않기 때문이다(§5.4). 그래서 마운트 후 한 번 물어본다 —
+ * FE-DATA-01(docs/improvement.md): `BlockedPostGate`·`BlockButton`과 같은
+ * `me:interactions:${postId}` 리소스를 공유해 이 페이지에서 실제 네트워크 요청이
+ * 1회로 합쳐진다(`use-post-interactions.ts`).
  *
  * 토글은 낙관적으로 반영한다 — 왕복을 기다리면 누른 느낌이 나지 않는다. 실패하면
  * 되돌리고 이유를 말한다. 조용히 되돌리면 눌렀는데 안 눌린 것처럼 보인다.
@@ -26,6 +30,7 @@ export function ReactionBar({
 }) {
   const session = useSession();
   const loggedIn = canQueryOwnerScope(session);
+  const interactions = usePostInteractions(postId, loggedIn);
 
   const [liked, setLiked] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
@@ -33,24 +38,18 @@ export function ReactionBar({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!loggedIn) return;
-
-    let cancelled = false;
-    getMyInteractions([postId])
-      .then((interactions) => {
-        if (cancelled) return;
-        setLiked(interactions.likedPostIds.includes(postId));
-        setBookmarked(interactions.bookmarkedPostIds.includes(postId));
-      })
-      // 내 반응 상태를 못 읽은 것은 글 읽기를 막을 이유가 아니다. 버튼은 누르지 않은
-      // 상태로 두고, 실제로 누를 때 서버가 판단한다.
-      .catch(() => undefined);
-
-    return () => {
-      cancelled = true;
-    };
-  }, [postId, loggedIn]);
+  // 렌더 중 상태 조정(React 공식 패턴) — 이 postId의 서버 응답을 아직 반영하지
+  // 않았다면(최초 로딩 완료 시점) 한 번만 좋아요·북마크 초기값을 심는다. 이후
+  // 로그인 사용자가 직접 누른 낙관적 상태는 이 값이 다시 덮어쓰지 않는다. effect
+  // 대신 렌더 중 setState를 쓰는 이유는 이후 낙관적 토글 렌더에서 이 조정이
+  // 다시 실행되지 않아야 하기 때문이다(effect였다면 `interactions`가 안 바뀌므로
+  // 결과는 같지만, 셋스테이트-인-이펙트 린트 규칙이 이 패턴 자체를 금지한다).
+  const [seededPostId, setSeededPostId] = useState<number | null>(null);
+  if (interactions !== null && seededPostId !== postId) {
+    setSeededPostId(postId);
+    setLiked(interactions.likedPostIds.includes(postId));
+    setBookmarked(interactions.bookmarkedPostIds.includes(postId));
+  }
 
   async function toggleLike() {
     const next = !liked;

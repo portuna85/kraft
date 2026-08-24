@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
-import { blockUser, getBlockedUsers } from "@/entities/community-post/interactions";
+import { blockUser } from "@/entities/community-post/interactions";
 import { canQueryOwnerScope, useSession } from "@/entities/user-session/session-context";
+import { invalidateResource } from "@/shared/hooks/use-resource";
 import { Button } from "@/shared/ui/button";
 import { EmptyState } from "@/shared/ui/states";
 
 import styles from "./post-actions.module.css";
+import { usePostInteractions } from "./use-post-interactions";
 
 /**
  * 차단 게이팅
@@ -20,26 +22,20 @@ import styles from "./post-actions.module.css";
  * 차단 목록을 못 읽으면 **가리지 않는다.** 못 읽었다고 본문을 숨기면, 차단한 적 없는
  * 사용자가 네트워크 문제로 글을 못 보게 된다.
  */
-export function BlockedPostGate({ ownerId, children }: { ownerId: number; children: ReactNode }) {
+export function BlockedPostGate({
+  postId,
+  ownerId,
+  children,
+}: {
+  postId: number;
+  ownerId: number;
+  children: ReactNode;
+}) {
   const session = useSession();
   const loggedIn = canQueryOwnerScope(session);
-  const [blocked, setBlocked] = useState(false);
+  const interactions = usePostInteractions(postId, loggedIn);
+  const blocked = interactions?.blockedUserIds.includes(ownerId) ?? false;
   const [revealed, setRevealed] = useState(false);
-
-  useEffect(() => {
-    if (!loggedIn) return;
-
-    let cancelled = false;
-    getBlockedUsers()
-      .then((ids) => {
-        if (!cancelled) setBlocked(ids.includes(ownerId));
-      })
-      .catch(() => undefined);
-
-    return () => {
-      cancelled = true;
-    };
-  }, [ownerId, loggedIn]);
 
   if (!blocked || revealed) return <>{children}</>;
 
@@ -71,39 +67,46 @@ export function ReportGate({ ownerId, children }: { ownerId: number; children: R
 
 /**
  * 차단·해제 버튼. 자기 자신은 차단할 수 없으므로 본인 글에서는 아예 렌더하지 않는다.
+ *
+ * 차단 여부는 `BlockedPostGate`와 같은 `me:interactions:${postId}` 리소스를 공유한다.
+ * 토글 성공 후 그 키를 무효화하면 이 버튼과 게이트가 같은 갱신 한 번으로 함께
+ * 새로고침된다 — 낙관적 오버레이(`optimisticBlocked`)로 재조회가 끝나기 전에도
+ * 클릭에 즉시 반응한다.
  */
-export function BlockButton({ ownerId }: { ownerId: number }) {
+export function BlockButton({ postId, ownerId }: { postId: number; ownerId: number }) {
   const session = useSession();
   const loggedIn = canQueryOwnerScope(session);
-  const [blocked, setBlocked] = useState(false);
+  const interactions = usePostInteractions(postId, loggedIn);
+  const [optimisticBlocked, setOptimisticBlocked] = useState<boolean | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!loggedIn) return;
+  const serverBlocked = interactions?.blockedUserIds.includes(ownerId) ?? false;
+  const blocked = optimisticBlocked ?? serverBlocked;
 
-    let cancelled = false;
-    getBlockedUsers()
-      .then((ids) => {
-        if (!cancelled) setBlocked(ids.includes(ownerId));
-      })
-      .catch(() => undefined);
-
-    return () => {
-      cancelled = true;
-    };
-  }, [ownerId, loggedIn]);
+  // 렌더 중 상태 조정(React 공식 패턴, effect 아님 — set-state-in-effect 린트 규칙이
+  // effect 안에서의 setState를 금지한다). 무효화로 촉발된 재조회가 낙관적 값과 같은
+  // 결과를 확인해 주면 그 렌더에서 바로 오버레이를 내린다. 재조회가 아직 옛 값을
+  // 돌려주는 동안에는 지우지 않는다 — 그러면 "눌렀는데 잠깐 원상복구됐다 다시
+  // 바뀐다"는 깜빡임이 생긴다.
+  const [syncedServerBlocked, setSyncedServerBlocked] = useState(serverBlocked);
+  if (serverBlocked !== syncedServerBlocked) {
+    setSyncedServerBlocked(serverBlocked);
+    if (optimisticBlocked === serverBlocked) setOptimisticBlocked(null);
+  }
 
   if (!loggedIn || session.session?.userId === ownerId) return null;
 
   async function toggle() {
     const next = !blocked;
+    setOptimisticBlocked(next);
     setPending(true);
     setError(null);
     try {
       await blockUser(ownerId, next);
-      setBlocked(next);
+      invalidateResource(`me:interactions:${postId}`);
     } catch {
+      setOptimisticBlocked(!next);
       setError("차단 상태를 변경하지 못했습니다.");
     } finally {
       setPending(false);

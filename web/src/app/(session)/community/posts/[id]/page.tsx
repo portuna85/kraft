@@ -115,7 +115,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
         current={post.title}
       />
 
-      <BlockedPostGate ownerId={post.ownerId}>
+      <BlockedPostGate postId={post.id} ownerId={post.ownerId}>
         <article className={styles.postBody}>
           <header className="stack">
             <Badge tone="neutral" size="sm" label={CATEGORY_LABELS[post.category]} />
@@ -149,7 +149,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
         <ReportGate ownerId={post.ownerId}>
           <ReportDialog targetType="POST" targetId={post.id} label="이 글 신고" />
         </ReportGate>
-        <BlockButton ownerId={post.ownerId} />
+        <BlockButton postId={post.id} ownerId={post.ownerId} />
       </div>
 
       {comments === null ? (

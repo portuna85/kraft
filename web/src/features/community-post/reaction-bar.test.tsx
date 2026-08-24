@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SessionContext, type SessionState } from "@/entities/user-session/session-context";
+import { resetResourceCacheForTests } from "@/shared/hooks/use-resource";
 
 import { ReactionBar } from "./reaction-bar";
 
@@ -45,7 +46,8 @@ function render_(session: SessionState) {
 describe("좋아요·북마크", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getMyInteractions.mockResolvedValue({ likedPostIds: [], bookmarkedPostIds: [] });
+    resetResourceCacheForTests();
+    getMyInteractions.mockResolvedValue({ likedPostIds: [], bookmarkedPostIds: [], blockedUserIds: [] });
   });
 
   afterEach(() => {

@@ -42,6 +42,11 @@ export function AccountMenu({ nickname }: { nickname: string }) {
       // 돌려줄 수 있다 — router.refresh()는 서버 컴포넌트만 다시 그리므로 이 client
       // 캐시는 별도로 비워야 헤더가 즉시 로그아웃 상태를 반영한다.
       invalidateResource(SESSION_RESOURCE_KEY);
+      // FE-DATA-01(docs/improvement.md): `me:interactions:${postId}` 같은 사용자별
+      // 캐시를 남겨두면, 같은 탭에서 30초 안에 다른 계정으로 로그인한 사용자가 이전
+      // 사용자의 좋아요·북마크·차단 상태를 그대로 볼 수 있다 — session-provider.tsx의
+      // claim 성공 경로가 이미 같은 이유로 "me:"를 통째로 비우는 것과 동일한 조치.
+      invalidateResource("me:");
       router.refresh();
     } else {
       setPending(false);
@@ -58,6 +63,7 @@ export function AccountMenu({ nickname }: { nickname: string }) {
       // handleLogout과 같은 이유 — 탈퇴도 client 세션 캐시를 남겨두면 헤더가 잠깐
       // 옛 상태를 보여줄 수 있다.
       invalidateResource(SESSION_RESOURCE_KEY);
+      invalidateResource("me:");
       router.refresh();
     } else {
       setWithdrawing(false);
