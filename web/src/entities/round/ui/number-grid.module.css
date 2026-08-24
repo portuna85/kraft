@@ -60,6 +60,7 @@
     background: linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-strong) 100%);
     border-color: var(--color-brand);
     color: var(--color-ink-on-brand);
+    font-family: var(--font-sans-bold);
     font-weight: 700;
     box-shadow: 0 0 12px var(--color-brand-glow);
   }

@@ -48,6 +48,7 @@
 
   .title {
     font-size: var(--text-lg);
+    font-family: var(--font-sans-bold);
     font-weight: 700;
   }
 

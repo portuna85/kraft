@@ -10,6 +10,7 @@
     padding-inline: var(--space-4);
     border: 1px solid transparent;
     border-radius: var(--radius-md);
+    font-family: var(--font-sans-bold);
     font-weight: 700;
     line-height: var(--leading-tight);
     cursor: pointer;

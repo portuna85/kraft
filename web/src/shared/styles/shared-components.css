@@ -16,6 +16,7 @@
     background: var(--color-brand);
     border-color: var(--color-brand);
     color: var(--color-ink-on-brand);
+    font-family: var(--font-sans-bold);
     font-weight: 700;
   }
 }

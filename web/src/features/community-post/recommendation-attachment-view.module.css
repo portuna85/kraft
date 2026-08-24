@@ -12,6 +12,7 @@
 
   .heading {
     font-size: var(--text-sm);
+    font-family: var(--font-sans-bold);
     font-weight: 600;
   }
 

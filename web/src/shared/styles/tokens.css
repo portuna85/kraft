@@ -84,7 +84,8 @@
   --glow-ball-bonus: 0 4px 14px rgba(22, 139, 104, 0.45);
 
   /* ── 타이포 ───────────────────────────────────────────────── */
-  --font-sans: var(--font-noto-sans-kr), system-ui, sans-serif;
+  --font-sans: var(--font-noto-sans-kr-regular), system-ui, sans-serif;
+  --font-sans-bold: var(--font-noto-sans-kr-bold), system-ui, sans-serif;
   --font-accent: var(--font-space-grotesk), system-ui, sans-serif;
   --text-xs: clamp(0.76rem, 0.72rem + 0.25vw, 0.82rem);
   --text-sm: clamp(0.88rem, 0.83rem + 0.3vw, 0.94rem);

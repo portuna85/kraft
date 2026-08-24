@@ -171,6 +171,7 @@
   /* 보너스 구분자는 장식이 아니다 — 보조 기술에는 텍스트로도 전달한다. */
   .plus {
     color: var(--color-ink-muted);
+    font-family: var(--font-sans-bold);
     font-weight: 700;
   }
 }

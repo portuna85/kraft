@@ -20,6 +20,26 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/*
+ * FE-PERF-01(docs/improvement.md): h1-h6·th·strong·b는 브라우저 기본 스타일시트가
+ * `font-weight: bold`를 준다 — reset.css는 margin만 지우고 weight는 건드리지 않는다.
+ * 폰트를 웨이트별 localFont() 두 개로 분리하기 전에는 `--font-sans` 하나가 400/700을
+ * 모두 담은 합성 family라 브라우저가 자동으로 700 파일을 골랐다. 분리 후에는
+ * `--font-sans`가 400 전용 family가 되어, 이 요소들에 family 지정이 없으면
+ * 실제 700 파일 대신 브라우저 합성(faux) bold로 렌더된다 — 시각 회귀로 확인됨.
+ */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+th,
+strong,
+b {
+  font-family: var(--font-sans-bold);
+}
+
 a {
   color: var(--color-brand-strong);
   text-decoration-thickness: 1px;

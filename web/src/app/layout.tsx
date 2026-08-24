@@ -23,18 +23,28 @@ import { THEME_INIT_SCRIPT } from "@/shared/lib/theme";
  * 전에는 두 폰트 모두 preload를 껐다 — 완성형 한글 11,172자를 전부 담은 전역 프리로드
  * 1.29 MiB가 초기 네트워크 경쟁을 지배해 `/`의 LCP가 3,087ms로 예산(2,500ms)을
  * 넘겼다(레거시 H-3). 지금은 scripts/fetch-fonts.mjs가 한글 서브셋을 KS X 1001
- * 현대한글 2,350자로 좁혀 본문 폰트(noto-sans-kr) 합계가 536 KB로 줄었다(§19.2 P-5) —
- * 그래서 본문 폰트만 preload를 켠다. Space Grotesk는 이미 30 KB대로 작아 preload 여부가
- * LCP에 미치는 영향이 없어 그대로 끈 채로 둔다.
+ * 현대한글 2,350자로 좁혀 본문 폰트(noto-sans-kr) 합계가 536 KB로 줄었다(§19.2 P-5).
+ *
+ * FE-PERF-01(docs/improvement.md): 두 웨이트를 하나의 localFont() 호출에 담으면 Next가
+ * `preload: true`를 배열 전체에 적용해 700(제목류 전용, 277 KB)까지 함께 preload했다 —
+ * LCP 요소(당첨번호)는 400만 쓰는데 700이 초기 네트워크 경쟁에 끼어들어 `/`의 LCP를
+ * 2.2배(≈192ms → 428ms) 회귀시켰다. 그래서 웨이트별로 호출을 분리해 400만 preload한다.
+ * 이 분리는 각각 별도의 합성 font-family를 만들어내므로(같은 family 안에서 웨이트별
+ * @font-face를 자동 매칭하던 이전 방식과 달리) `--font-sans`(regular)와
+ * `--font-sans-bold`(bold)를 CSS에서 구분해 써야 한다 — `tokens.css` 참고.
  */
-const notoSansKr = localFont({
-  src: [
-    { path: "../../public/fonts/noto-sans-kr-400.woff2", weight: "400" },
-    { path: "../../public/fonts/noto-sans-kr-700.woff2", weight: "700" },
-  ],
+const notoSansKrRegular = localFont({
+  src: [{ path: "../../public/fonts/noto-sans-kr-400.woff2", weight: "400" }],
   display: "swap",
-  variable: "--font-noto-sans-kr",
+  variable: "--font-noto-sans-kr-regular",
   preload: true,
+});
+
+const notoSansKrBold = localFont({
+  src: [{ path: "../../public/fonts/noto-sans-kr-700.woff2", weight: "700" }],
+  display: "swap",
+  variable: "--font-noto-sans-kr-bold",
+  preload: false,
 });
 
 const spaceGrotesk = localFont({
@@ -93,7 +103,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const nonce = (await headers()).get(NONCE_HEADER) ?? undefined;
 
   return (
-    <html lang="ko" className={`${notoSansKr.variable} ${spaceGrotesk.variable}`}>
+    <html
+      lang="ko"
+      className={`${notoSansKrRegular.variable} ${notoSansKrBold.variable} ${spaceGrotesk.variable}`}
+    >
       <head>
         {/* 하이드레이션 전에 data-theme을 확정해 첫 페인트 번쩍임을 없앤다. */}
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />

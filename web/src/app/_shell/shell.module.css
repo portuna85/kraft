@@ -118,6 +118,7 @@
      않았다 — .tabLink[aria-current="page"]와 같은 패턴. */
   .navLink[aria-current="page"] {
     color: var(--color-brand-strong);
+    font-family: var(--font-sans-bold);
     font-weight: 700;
   }
 
@@ -164,6 +165,7 @@
 
   .footerTitle {
     font-size: var(--text-sm);
+    font-family: var(--font-sans-bold);
     font-weight: 700;
     color: var(--color-ink);
     margin-bottom: var(--space-2);
@@ -267,6 +269,7 @@
 
   .tabLink[aria-current="page"] {
     color: var(--color-brand-strong);
+    font-family: var(--font-sans-bold);
     font-weight: 700;
   }
 

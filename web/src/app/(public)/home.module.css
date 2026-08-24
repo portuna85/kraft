@@ -138,6 +138,7 @@
     border-radius: var(--radius-md);
     background: linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-strong) 100%);
     color: var(--color-ink-on-brand);
+    font-family: var(--font-sans-bold);
     font-weight: 700;
     text-decoration: none;
     box-shadow: 0 4px 14px var(--color-brand-glow);

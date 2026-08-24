@@ -39,6 +39,7 @@
   }
 
   .countPeak {
+    font-family: var(--font-sans-bold);
     font-weight: 700;
     color: var(--color-brand-strong);
   }
