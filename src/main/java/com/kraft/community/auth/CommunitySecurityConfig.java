@@ -75,6 +75,8 @@ public class CommunitySecurityConfig {
                 .securityMatcher("/api/v1/community/**", "/oauth2/**", "/login/**", "/logout")
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/community/session").permitAll()
+                        // BE-CSRF-01: 신원 조회 없이 CSRF 쿠키만 발급하는 경량 endpoint.
+                        .requestMatchers("/api/v1/community/csrf").permitAll()
                         .requestMatchers("/oauth2/**", "/login/**", "/logout").permitAll()
                         // 게시글/댓글 조회는 로그인 없이 공개, 쓰기(POST/PUT/DELETE)만 인증 요구.
                         .requestMatchers(HttpMethod.GET, "/api/v1/community/posts/**").permitAll()
