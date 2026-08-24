@@ -94,7 +94,7 @@ dependencies {
                 because("CVE-2026-53434 등 다수 — Boot 4.1.0 BOM 고정치(11.0.22)에서 발견")
             }
         }
-        implementation("com.fasterxml.jackson.core:jackson-databind:2.22.1") {
+        implementation("com.fasterxml.jackson.core:jackson-databind:2.22.2") {
             because("CVE-2026-54515 — Boot 4.1.0 BOM 고정치(2.22.0)에서 발견")
         }
         implementation("org.apache.logging.log4j:log4j-api:2.26.1") {
