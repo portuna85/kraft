@@ -1,6 +1,6 @@
 plugins {
     java
-    id("org.springframework.boot") version "4.1.0"
+    id("org.springframework.boot") version "4.1.1"
     jacoco
     checkstyle
     id("com.github.spotbugs") version "6.5.11"
@@ -37,7 +37,7 @@ tasks.withType<JavaCompile> {
 }
 
 dependencies {
-    implementation(platform("org.springframework.boot:spring-boot-dependencies:4.1.0"))
+    implementation(platform("org.springframework.boot:spring-boot-dependencies:4.1.1"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
@@ -71,7 +71,7 @@ dependencies {
     implementation("net.javacrumbs.shedlock:shedlock-provider-jdbc-template:7.8.0")
     implementation("io.github.resilience4j:resilience4j-spring-boot4:2.4.0")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0")
-    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor:4.1.0")
+    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor:4.1.1")
     runtimeOnly("org.mariadb.jdbc:mariadb-java-client")
 
     // 2026-08-16 CVE 대응: Boot 4.1.0 BOM이 관리하는 netty/tomcat-embed 버전에
@@ -94,7 +94,7 @@ dependencies {
                 because("CVE-2026-53434 등 다수 — Boot 4.1.0 BOM 고정치(11.0.22)에서 발견")
             }
         }
-        implementation("com.fasterxml.jackson.core:jackson-databind:2.22.1") {
+        implementation("com.fasterxml.jackson.core:jackson-databind:2.22.2") {
             because("CVE-2026-54515 — Boot 4.1.0 BOM 고정치(2.22.0)에서 발견")
         }
         implementation("org.apache.logging.log4j:log4j-api:2.26.1") {
@@ -108,7 +108,7 @@ dependencies {
         }
     }
 
-    developmentOnly(platform("org.springframework.boot:spring-boot-dependencies:4.1.0"))
+    developmentOnly(platform("org.springframework.boot:spring-boot-dependencies:4.1.1"))
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     // H2: 로컬 bootRun(IntelliJ, Docker 없는 환경)과 테스트에서만 사용. bootJar 제외.
     // compileOnly는 LocalSecurityConfig(JakartaWebServlet 임포트) 컴파일용; 런타임 jar 미포함.
@@ -116,8 +116,8 @@ dependencies {
     developmentOnly("com.h2database:h2")
     testImplementation("com.h2database:h2")
 
-    testImplementation("org.springframework.boot:spring-boot-starter-test:4.1.0")
-    testImplementation("org.springframework.boot:spring-boot-webmvc-test:4.1.0")
+    testImplementation("org.springframework.boot:spring-boot-starter-test:4.1.1")
+    testImplementation("org.springframework.boot:spring-boot-webmvc-test:4.1.1")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("com.fasterxml.jackson.core:jackson-databind")
     testImplementation(platform("org.testcontainers:testcontainers-bom:2.0.5"))
