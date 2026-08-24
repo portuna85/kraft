@@ -3,7 +3,7 @@ plugins {
     id("org.springframework.boot") version "4.1.0"
     jacoco
     checkstyle
-    id("com.github.spotbugs") version "6.5.10"
+    id("com.github.spotbugs") version "6.5.11"
     id("info.solidsoft.pitest") version "1.19.0"
 }
 
