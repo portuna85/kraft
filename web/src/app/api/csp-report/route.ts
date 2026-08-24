@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { guardCollectRequest } from "@/shared/lib/collect-request";
+import { pushObservabilityEvent } from "@/shared/lib/push-observability-event";
 
 /**
  * CSP Report-Only 수신처
@@ -62,6 +63,10 @@ export async function POST(request: NextRequest) {
   }
 
   console.warn("[csp-report-only-violation]", report);
+
+  // OBS-WEB-01: 메트릭에는 violatedDirective만 쓴다 — documentUri/blockedUri/
+  // sourceFile은 카디널리티가 없는 백엔드 집계에 필요 없다.
+  pushObservabilityEvent("csp-violations", { violatedDirective: report.violatedDirective });
 
   return new Response(null, { status: 204 });
 }

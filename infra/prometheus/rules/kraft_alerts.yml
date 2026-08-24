@@ -398,6 +398,48 @@ groups:
           description: "Alertmanager가 2분 이상 scrape 실패. 이 경보 자체가 전달되지 않을 수 있으니 별도 채널로 상태를 확인해야 함."
           runbook: "docker compose -f docker-compose.prod.yml logs alertmanager; Discord webhook URL 만료 여부 별도 확인(이 경보로는 전달 안 될 수 있음)"
 
+  # OBS-WEB-01(docs/improvement.md): web 컨테이너는 프로덕션에서 monitoring 네트워크와
+  # 격리돼 있어 Prometheus가 직접 스크랩할 수 없다 — web이 backend로 push한 이벤트를
+  # backend가 Micrometer로 집계해 kraft-backend job으로 노출한다. 그래서 이 그룹의
+  # 모든 expr은 job="kraft-backend"다(job="web"이 아니다).
+  - name: kraft_web
+    rules:
+      - alert: KraftWebCspViolationSpike
+        expr: increase(web_csp_violations_total{job="kraft-backend"}[15m]) >= 50
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          title: "CSP 위반 급증"
+          summary: "최근 15분간 CSP report-only 위반이 50건 이상 발생"
+          description: "web/src/shared/config/csp.ts의 정책과 실제 로드되는 리소스가 어긋났을 가능성. 배포 직후라면 새 코드가 정책에 없는 origin/inline을 쓰는지 의심."
+          runbook: "Grafana 'CSP 위반 (directive별)' 패널에서 어느 directive가 늘었는지 확인 후 최근 배포 diff와 대조; docker compose -f docker-compose.prod.yml logs web | grep csp-report-only-violation로 원문(sanitize된) 확인"
+
+      - alert: KraftWebClientErrorSpike
+        expr: increase(web_client_errors_total{job="kraft-backend"}[15m]) >= 50
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          title: "클라이언트 렌더 오류 급증"
+          summary: "최근 15분간 클라이언트 렌더 오류가 50건 이상 발생"
+          description: "특정 라우트의 error.tsx 경계가 반복적으로 걸리고 있을 가능성 — 배포 직후 회귀일 확률이 높다."
+          runbook: "Grafana '클라이언트 렌더 오류 (route별)' 패널에서 어느 route인지 확인; docker compose -f docker-compose.prod.yml logs web | grep client-side-render-error로 message(truncate됨) 확인 후 최근 배포와 대조"
+
+      # H-06과 같은 이유(KraftBackupMetricMissing) — "값이 이상함"과 "수집 파이프라인 자체가
+      # 죽음"을 구분한다. web -> backend push가 실패하면(시크릿 불일치, 네트워크 등)
+      # web_vitals_count가 아예 안 늘어난다.
+      - alert: KraftWebVitalsMetricMissing
+        expr: absent(web_vitals_count{job="kraft-backend"})
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          title: "Web Vitals 수집 파이프라인 중단"
+          summary: "web_vitals_count 메트릭이 1시간 이상 전혀 수집되지 않음"
+          description: "web -> backend push(POST /api/v1/observability/web-vitals)가 실패하고 있을 가능성 — KRAFT_WEB_OBSERVABILITY_SECRET 불일치, 네트워크 문제, 또는 프론트 배포로 push 코드 자체가 깨졌을 수 있다."
+          runbook: "docker compose -f docker-compose.prod.yml logs backend | grep observability로 401/에러 확인; web과 backend 양쪽의 KRAFT_WEB_OBSERVABILITY_SECRET이 일치하는지 확인; curl backend:8080/actuator/prometheus | grep web_vitals로 메트릭 자체 노출 여부 확인"
+
   - name: kraft_community
     rules:
       - alert: KraftCommunityOAuthLoginFailureSpike

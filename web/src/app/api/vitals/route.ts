@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { guardCollectRequest } from "@/shared/lib/collect-request";
+import { pushObservabilityEvent } from "@/shared/lib/push-observability-event";
 
 /**
  * Core Web Vitals 필드 데이터 수집
@@ -80,6 +81,17 @@ export async function POST(request: NextRequest) {
   if (!isValidPayload(body)) {
     return new Response(null, { status: 400 });
   }
+
+  // OBS-WEB-01: console 로깅의 20% 표본율은 로그 회전 보호가 목적이라 여기엔 적용하지
+  // 않는다 — Prometheus 집계는 표본이 아니라 전수를 원한다(그래야 p75 등이 정확하다).
+  pushObservabilityEvent("web-vitals", {
+    name: body.name,
+    value: body.value,
+    rating: body.rating,
+    route: body.route,
+    deviceClass: body.deviceClass,
+    layoutClass: body.layoutClass,
+  });
 
   if (Math.random() < SAMPLE_RATE) {
     // F-06: Lighthouse는 랩 진단일 뿐이고 운영 판단의 근거는 이 실사용자 필드

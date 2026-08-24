@@ -7,6 +7,8 @@ x-backend-common-env: &backend-common-env
   KRAFT_OPS_TOKEN: ${KRAFT_OPS_TOKEN:-}
   KRAFT_REVALIDATE_SECRET: ${KRAFT_REVALIDATE_SECRET:-}
   KRAFT_REVALIDATE_WEB_URL: ${KRAFT_REVALIDATE_WEB_URL:-http://web:3000}
+  # OBS-WEB-01: web -> backend 방향(반대). backend가 수신 검증용으로 쓴다.
+  KRAFT_WEB_OBSERVABILITY_SECRET: ${KRAFT_WEB_OBSERVABILITY_SECRET:-}
   KRAFT_SAVED_MAX_PER_CLIENT: ${KRAFT_SAVED_MAX_PER_CLIENT:-100}
   KRAFT_ADMIN_BOOTSTRAP_USERNAME: ${KRAFT_ADMIN_BOOTSTRAP_USERNAME:-}
   KRAFT_ADMIN_BOOTSTRAP_PASSWORD: ${KRAFT_ADMIN_BOOTSTRAP_PASSWORD:-}
@@ -164,7 +166,6 @@ services:
     read_only: true
     tmpfs:
       - "/tmp:size=32m,noexec,nosuid"
-      - "/app/logs/web:size=32m,uid=10001,gid=10001,mode=0755"
     security_opt:
       - "no-new-privileges:true"
     cap_drop:
@@ -185,6 +186,7 @@ services:
       KRAFT_BACKEND_INTERNAL_URL: ${KRAFT_BACKEND_INTERNAL_URL:-http://backend:8080}
       KRAFT_PUBLIC_BASE_URL: ${KRAFT_PUBLIC_BASE_URL:-http://localhost}
       KRAFT_REVALIDATE_SECRET: ${KRAFT_REVALIDATE_SECRET:-}
+      KRAFT_WEB_OBSERVABILITY_SECRET: ${KRAFT_WEB_OBSERVABILITY_SECRET:-}
       KRAFT_OPS_ALLOWED_HOST: ${KRAFT_OPS_ALLOWED_HOST:-}
     logging:
       driver: "json-file"

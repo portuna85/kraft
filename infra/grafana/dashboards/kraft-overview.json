@@ -285,6 +285,68 @@
         }
       ],
       "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 16,
+      "title": "Web Vitals 평균 — LCP/INP (route별, ms)",
+      "type": "timeseries",
+      "description": "OBS-WEB-01(docs/improvement.md): web -> backend push로 집계한 필드 데이터(RUM)다. 참고: web_vitals는 percentile histogram을 켜지 않았다(route×rating×device×layout 조합이 많아 버킷까지 켜면 시계열이 과도해진다) — 그래서 진짜 p75가 아니라 sum/count 평균이다. 정확한 p75가 필요해지면 metric별로 SLO 버킷을 나눠 켜는 후속 작업이 필요하다.",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 52 },
+      "targets": [
+        {
+          "expr": "sum(rate(web_vitals_sum{job=\"kraft-backend\",metric=~\"lcp|inp\"}[15m])) by (metric, route) / sum(rate(web_vitals_count{job=\"kraft-backend\",metric=~\"lcp|inp\"}[15m])) by (metric, route)",
+          "refId": "A",
+          "legendFormat": "{{metric}} {{route}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms" } }
+    },
+    {
+      "id": 17,
+      "title": "Web Vitals 평균 — CLS (route별)",
+      "type": "timeseries",
+      "description": "CLS는 단위 없는 0~1대 점수라 LCP/INP(ms)와 분리된 패널을 쓴다.",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 52 },
+      "targets": [
+        {
+          "expr": "sum(rate(web_vitals_sum{job=\"kraft-backend\",metric=\"cls\"}[15m])) by (route) / sum(rate(web_vitals_count{job=\"kraft-backend\",metric=\"cls\"}[15m])) by (route)",
+          "refId": "A",
+          "legendFormat": "{{route}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 18,
+      "title": "CSP 위반 (directive별)",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 60 },
+      "targets": [
+        {
+          "expr": "sum(rate(web_csp_violations_total{job=\"kraft-backend\"}[5m])) by (directive)",
+          "refId": "A",
+          "legendFormat": "{{directive}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "id": 19,
+      "title": "클라이언트 렌더 오류 (route별)",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 60 },
+      "targets": [
+        {
+          "expr": "sum(rate(web_client_errors_total{job=\"kraft-backend\"}[5m])) by (route)",
+          "refId": "A",
+          "legendFormat": "{{route}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
     }
   ]
 }

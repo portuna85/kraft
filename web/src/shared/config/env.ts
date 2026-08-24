@@ -18,6 +18,11 @@ export const serverEnv = {
   /** /api/revalidate 웹훅 인증 시크릿. Route Handler에서만 쓰이며 클라이언트 번들에
    * 들어가지 않는다. */
   revalidateSecret: process.env.KRAFT_REVALIDATE_SECRET,
+  /**
+   * OBS-WEB-01(docs/improvement.md): web -> backend 관측 이벤트(vitals/CSP/client-error)
+   * push 인증. revalidate 시크릿과 반대 방향(web이 보내는 쪽)이다.
+   */
+  webObservabilitySecret: process.env.KRAFT_WEB_OBSERVABILITY_SECRET,
 } as const;
 
 /** 빌드 시점에 인라인되는 공개 값. 비밀을 넣지 않는다. */

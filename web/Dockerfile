@@ -50,8 +50,8 @@ ENV HOSTNAME=0.0.0.0
 # 사용하지 않는 npm CLI 자체를 제거해 둔다.
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
     && useradd --create-home --uid 10001 nextjs \
-    && mkdir -p /app/logs/web /app/.next/cache \
-    && chown -R nextjs:nextjs /app/logs /app/.next/cache
+    && mkdir -p /app/.next/cache \
+    && chown -R nextjs:nextjs /app/.next/cache
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public

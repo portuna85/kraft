@@ -17,6 +17,8 @@ x-backend-common-env: &backend-common-env
   KRAFT_OPS_TOKEN: ${KRAFT_OPS_TOKEN:-}
   KRAFT_REVALIDATE_SECRET: ${KRAFT_REVALIDATE_SECRET:-}
   KRAFT_REVALIDATE_WEB_URL: ${KRAFT_REVALIDATE_WEB_URL:-http://web:3000}
+  # OBS-WEB-01: web -> backend 방향(반대). backend가 수신 검증용으로 쓴다.
+  KRAFT_WEB_OBSERVABILITY_SECRET: ${KRAFT_WEB_OBSERVABILITY_SECRET:-}
   KRAFT_SAVED_MAX_PER_CLIENT: ${KRAFT_SAVED_MAX_PER_CLIENT:-100}
   KRAFT_ADMIN_BOOTSTRAP_USERNAME: ${KRAFT_ADMIN_BOOTSTRAP_USERNAME:-}
   KRAFT_ADMIN_BOOTSTRAP_PASSWORD: ${KRAFT_ADMIN_BOOTSTRAP_PASSWORD:-}
@@ -166,10 +168,10 @@ services:
       KRAFT_BACKEND_INTERNAL_URL: ${KRAFT_BACKEND_INTERNAL_URL:-http://backend:8080}
       KRAFT_PUBLIC_BASE_URL: ${KRAFT_PUBLIC_BASE_URL}
       KRAFT_REVALIDATE_SECRET: ${KRAFT_REVALIDATE_SECRET:-}
+      KRAFT_WEB_OBSERVABILITY_SECRET: ${KRAFT_WEB_OBSERVABILITY_SECRET:-}
       KRAFT_OPS_ALLOWED_HOST: ${KRAFT_OPS_ALLOWED_HOST:-}
     volumes:
       - web-next-cache:/app/.next/cache
-      - web-logs:/app/logs/web
     expose:
       - "3000"
     deploy:
@@ -421,7 +423,6 @@ volumes:
   mariadb-data:
   backend-logs:
   web-next-cache:
-  web-logs:
   caddy-data:
   caddy-config:
   prometheus-data:

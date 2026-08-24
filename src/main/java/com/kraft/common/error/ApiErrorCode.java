@@ -74,6 +74,11 @@ public enum ApiErrorCode {
     INVALID_EXECUTION_STATUS(HttpStatus.BAD_REQUEST),
     INVALID_FROM_DATE(HttpStatus.BAD_REQUEST),
     INVALID_TO_DATE(HttpStatus.BAD_REQUEST),
+
+    // OBS-WEB-01(docs/improvement.md): web 컨테이너가 내부망 경계 없이 보내는 관측
+    // 이벤트(vitals/CSP/client error) 수신 endpoint의 공유 시크릿 인증 실패.
+    OBSERVABILITY_UNAUTHORIZED(HttpStatus.UNAUTHORIZED),
+
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final HttpStatus status;

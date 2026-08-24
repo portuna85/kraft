@@ -9,6 +9,7 @@ REQUIRED_VARS=(
   KRAFT_DB_PASSWORD
   KRAFT_OPS_TOKEN
   KRAFT_REVALIDATE_SECRET
+  KRAFT_WEB_OBSERVABILITY_SECRET
   KRAFT_PUBLIC_BASE_URL
   GRAFANA_ADMIN_PASSWORD
   KRAFT_ADMIN_ALLOWED_CIDR
@@ -137,5 +138,6 @@ check_min_length() {
 }
 check_min_length KRAFT_OPS_TOKEN
 check_min_length KRAFT_REVALIDATE_SECRET
+check_min_length KRAFT_WEB_OBSERVABILITY_SECRET
 
 [[ $error -eq 0 ]] && echo "OK: all required variables are set" || exit 1

@@ -23,6 +23,7 @@ run_case() {
     KRAFT_DB_PASSWORD=db-password-value-long-enough \
     KRAFT_OPS_TOKEN="$(printf 'a%.0s' {1..40})" \
     KRAFT_REVALIDATE_SECRET="$(printf 'b%.0s' {1..40})" \
+    KRAFT_WEB_OBSERVABILITY_SECRET="$(printf 'c%.0s' {1..40})" \
     KRAFT_PUBLIC_BASE_URL=https://kraft.io.kr \
     GRAFANA_ADMIN_PASSWORD=grafana-password-value-long-enough \
     KRAFT_ADMIN_ALLOWED_CIDR=203.0.113.4/32 \
@@ -62,6 +63,7 @@ run_case pass KRAFT_ADMIN_ALLOWED_CIDR=::/0 KRAFT_ALLOW_WORLD_OPEN_ADMIN=true
 # TD-005: 32자 미만의 짧은 토큰/시크릿은 거부돼야 한다.
 run_case fail KRAFT_OPS_TOKEN=short-token
 run_case fail KRAFT_REVALIDATE_SECRET=short-secret
+run_case fail KRAFT_WEB_OBSERVABILITY_SECRET=short-secret
 
 # 기존 예시값 blocklist는 계속 동작해야 한다.
 run_case fail KRAFT_OPS_TOKEN=local-dev-ops-token

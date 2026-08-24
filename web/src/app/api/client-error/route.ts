@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { guardCollectRequest } from "@/shared/lib/collect-request";
+import { pushObservabilityEvent } from "@/shared/lib/push-observability-event";
 
 /**
  * 클라이언트 렌더 오류 수집
@@ -59,6 +60,10 @@ export async function POST(request: NextRequest) {
     digest: body.digest !== undefined ? truncate(body.digest) : undefined,
     route: truncate(body.route),
   });
+
+  // OBS-WEB-01: 메트릭에는 route만 쓴다 — message/digest는 카디널리티 무한대라
+  // WebObservabilityMetrics가 애초에 받지도 않는다.
+  pushObservabilityEvent("client-errors", { route: truncate(body.route) });
 
   return new Response(null, { status: 204 });
 }

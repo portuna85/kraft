@@ -32,7 +32,7 @@ const EXPECTATIONS = {
   web: {
     capDropAll: true,
     readOnly: true,
-    note: "web-next-cache(+prod: web-logs) 볼륨 + /tmp tmpfs 조합.",
+    note: "web-next-cache 볼륨 + /tmp tmpfs 조합.",
   },
   caddy: {
     capDropAll: true,

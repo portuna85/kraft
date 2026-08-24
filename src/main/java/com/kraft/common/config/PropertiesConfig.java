@@ -11,7 +11,8 @@ import org.springframework.context.annotation.Configuration;
     SecurityProperties.class,
     RevalidateProperties.class,
     CommunityProperties.class,
-    PublicBaseUrlProperties.class
+    PublicBaseUrlProperties.class,
+    WebObservabilityProperties.class
 })
 public class PropertiesConfig {
 }

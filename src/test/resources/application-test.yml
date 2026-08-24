@@ -27,3 +27,5 @@ logging:
 kraft:
   ops:
     token: test-ops-token
+  web-observability:
+    secret: test-web-observability-secret
