@@ -7,6 +7,7 @@ import com.kraft.recommend.RecommendationSetSummary;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import java.sql.SQLException;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -183,15 +184,20 @@ public class CommunityPostService {
         post.update(request.title(), request.content(), category, OffsetDateTime.now(clock));
         try {
             return communityPostRepository.saveAndFlush(post);
-        } catch (ObjectOptimisticLockingFailureException | JpaSystemException raceLostAfterCheck) {
-            // 버전 사전 검증 이후에도 동시 수정이 끼어든 경우 — 광역 예외 대신
-            // 이 리소스에 특정된 409로 변환한다. Hibernate의 자체 행 수 검증은
-            // ObjectOptimisticLockingFailureException으로 오지만, 실 MariaDB에서는 드라이버가
-            // "Record has changed since last read"(1020)를 먼저 던져 JpaSystemException으로도
-            // 온다는 사실을 Testcontainers 동시성 테스트로 확인했다. H-6: 이 둘로 좁혀서, 이
-            // 사이(버전 확인~flush)에 발생할 수 있는 무관한 DB 장애(커넥션 유실 등)까지
-            // "버전 충돌"로 위장되지 않게 한다.
+        } catch (ObjectOptimisticLockingFailureException raceLostAfterCheck) {
+            // 버전 사전 검증 이후에도 동시 수정이 끼어든 경우 — Hibernate의 자체 행 수
+            // 검증이 감지한 낙관적 잠금 실패는 항상 버전 충돌이다.
             throw versionConflict(raceLostAfterCheck);
+        } catch (JpaSystemException possibleRace) {
+            // BE-COMM-01: JpaSystemException 자체는 Hibernate/JDBC의 광역 wrapper라
+            // flush 시점의 무관한 DB 오류(커넥션 유실 등)까지 담을 수 있다. 실 MariaDB에서는
+            // 버전 충돌 시 드라이버가 "Record has changed since last read"(1020)를 먼저
+            // 던져 이 타입으로 온다는 사실을 Testcontainers 동시성 테스트로 확인했으므로,
+            // 그 vendor code로 좁힌 경우에만 409로 변환하고 나머지는 재전파(500)한다.
+            if (isRecordChangedRace(possibleRace)) {
+                throw versionConflict(possibleRace);
+            }
+            throw possibleRace;
         }
     }
 
@@ -209,9 +215,14 @@ public class CommunityPostService {
         try {
             post.hideByAuthor(OffsetDateTime.now(clock));
             communityPostRepository.saveAndFlush(post);
-        } catch (ObjectOptimisticLockingFailureException | JpaSystemException raceLostAfterCheck) {
-            // H-6: update()와 동일한 이유로 두 타입으로 좁힌다.
+        } catch (ObjectOptimisticLockingFailureException raceLostAfterCheck) {
             throw versionConflict(raceLostAfterCheck);
+        } catch (JpaSystemException possibleRace) {
+            // BE-COMM-01: update()와 동일한 이유로 vendor code 1020으로 좁힌다.
+            if (isRecordChangedRace(possibleRace)) {
+                throw versionConflict(possibleRace);
+            }
+            throw possibleRace;
         }
     }
 
@@ -313,6 +324,23 @@ public class CommunityPostService {
                 .replace("!", "!!")
                 .replace("%", "!%")
                 .replace("_", "!_");
+    }
+
+    // BE-COMM-01: MariaDB가 낙관적 잠금 충돌 시 던지는 "Record has changed since last
+    // read"(error code 1020)만 버전 충돌로 인정한다. cause 체인을 타고 내려가 SQLException을
+    // 찾고, 그 vendor code가 1020일 때만 true — 그 외 JpaSystemException(커넥션 유실,
+    // 제약 위반 등)은 여기서 걸러지지 않아 호출부가 그대로 재전파한다.
+    private static final int MARIADB_RECORD_CHANGED_ERROR_CODE = 1020;
+
+    private static boolean isRecordChangedRace(JpaSystemException exception) {
+        Throwable cause = exception.getCause();
+        while (cause != null) {
+            if (cause instanceof SQLException sqlException) {
+                return sqlException.getErrorCode() == MARIADB_RECORD_CHANGED_ERROR_CODE;
+            }
+            cause = cause.getCause();
+        }
+        return false;
     }
 
     // B-08: update()/delete() 양쪽에서 사전 검증(버전 불일치)과 사후 경합(저장/삭제 시점에

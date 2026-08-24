@@ -167,6 +167,50 @@ class CommunityPostServiceTest {
     }
 
     @Test
+    @DisplayName("BE-COMM-01: 삭제 중 vendor code 1020(레코드 변경됨)은 409 버전 충돌로 변환된다")
+    void delete_jpaSystemExceptionWithVendorCode1020_convertsToVersionConflict() {
+        CommunityPost post = postEntity(1L, 1L, PostStatus.PUBLISHED);
+        given(communityPostRepository.findById(1L)).willReturn(Optional.of(post));
+        given(communityPostRepository.saveAndFlush(post)).willThrow(new JpaSystemException(new RuntimeException(
+                new java.sql.SQLException("Record has changed since last read in table 'community_posts'", "HY000",
+                        1020))));
+
+        assertThatThrownBy(() -> service.delete(1L, 1L, 0L))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> {
+                    ApiException apiEx = (ApiException) ex;
+                    assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(apiEx.getCode()).isEqualTo("COMMUNITY_POST_VERSION_CONFLICT");
+                });
+    }
+
+    @Test
+    @DisplayName("BE-COMM-01: 삭제 중 무관한 JpaSystemException(커넥션 유실 등)은 409로 위장되지 않고 재전파된다")
+    void delete_unrelatedJpaSystemException_propagatesInsteadOfBeingMisclassified() {
+        CommunityPost post = postEntity(1L, 1L, PostStatus.PUBLISHED);
+        given(communityPostRepository.findById(1L)).willReturn(Optional.of(post));
+        given(communityPostRepository.saveAndFlush(post)).willThrow(new JpaSystemException(new RuntimeException(
+                new java.sql.SQLException("Connection is closed", "08003", 0))));
+
+        assertThatThrownBy(() -> service.delete(1L, 1L, 0L))
+                .isInstanceOf(JpaSystemException.class)
+                .isNotInstanceOf(ApiException.class);
+    }
+
+    @Test
+    @DisplayName("BE-COMM-01: 삭제 중 SQLException이 없는 JpaSystemException(예: 제약 위반 래핑)도 재전파된다")
+    void delete_jpaSystemExceptionWithoutSqlExceptionCause_propagates() {
+        CommunityPost post = postEntity(1L, 1L, PostStatus.PUBLISHED);
+        given(communityPostRepository.findById(1L)).willReturn(Optional.of(post));
+        given(communityPostRepository.saveAndFlush(post))
+                .willThrow(new JpaSystemException(new RuntimeException("unrelated failure")));
+
+        assertThatThrownBy(() -> service.delete(1L, 1L, 0L))
+                .isInstanceOf(JpaSystemException.class)
+                .isNotInstanceOf(ApiException.class);
+    }
+
+    @Test
     @DisplayName("비공개 상태 게시글은 소유자가 아니면 COMMUNITY_POST_NOT_VISIBLE로 거부된다")
     void get_hiddenPost_nonOwner_throwsNotVisible() {
         CommunityPost post = postEntity(1L, 1L, PostStatus.HIDDEN_BY_AUTHOR);
