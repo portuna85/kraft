@@ -99,6 +99,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/observability/web-vitals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["vitals"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/observability/csp-violations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["cspViolations"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/observability/client-errors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["clientErrors"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/numbers/recommend": {
         parameters: {
             query?: never;
@@ -640,6 +688,21 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        WebVitalRequest: {
+            name: string;
+            /** Format: double */
+            value: number;
+            rating: string;
+            route: string;
+            deviceClass: string;
+            layoutClass: string;
+        };
+        CspViolationRequest: {
+            violatedDirective: string;
+        };
+        ClientErrorRequest: {
+            route: string;
+        };
         RecommendNumbersRequest: {
             /** Format: int32 */
             count?: number;
@@ -1156,6 +1219,78 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["SaveNumberResult"];
                 };
+            };
+        };
+    };
+    vitals: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Web-Observability-Secret"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebVitalRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    cspViolations: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Web-Observability-Secret"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CspViolationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    clientErrors: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Web-Observability-Secret"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClientErrorRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
