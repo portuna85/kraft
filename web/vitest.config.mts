@@ -23,11 +23,17 @@ export default defineConfig({
       // 71.48%, functions 71.23%, lines 75.69%)에서 각각 몇 포인트 낮춘 보수적 하한을
       // 둔다 — 레거시처럼 실측치에 딱 맞추면 사소한 리팩터링에도 깨진다. 실제 커버리지가
       // 여유 있게 올라가면 하한도 의도적으로 올린다(ratchet).
+      //
+      // QA-FE-01(docs/improvement.md): 프론트 API 어댑터 8개(round·community-post·
+      // community-report·recommendation·statistics·status-incident·saved-number·
+      // community-comment)에 위험 기반 테스트를 추가한 뒤 2026-08-24 재실측
+      // (statements 84.97%, branches 81.56%, functions 82.56%, lines 86.5%)에 맞춰
+      // 실측 대비 2~3%p 이내로 올렸다(문서 §6 성공 지표).
       thresholds: {
-        statements: 70,
-        branches: 65,
-        functions: 65,
-        lines: 70,
+        statements: 82,
+        branches: 78,
+        functions: 79,
+        lines: 83,
       },
     },
   },
