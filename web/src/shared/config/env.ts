@@ -7,7 +7,16 @@ import type { Metadata } from "next";
  * 값이 클라이언트 번들에 섞여 들어가도 눈에 띄지 않는다. 여기서만 읽는다.
  */
 
-/** 서버에서만 읽는다. 클라이언트 컴포넌트에서 import하면 값이 비어 있다. */
+/**
+ * 서버에서만 읽는다. 클라이언트 컴포넌트에서 import하면 값이 비어 있다.
+ *
+ * FE-SEC-03(docs/improvement.md): 이제 이건 관례가 아니라 `eslint.config.mjs`의
+ * `kraft-env-boundary/no-server-env-in-client` 규칙이 강제한다 — `"use client"` 파일에서
+ * `serverEnv`를 import하면 lint 에러다. entities 아래 api 모듈처럼 서버 전용 함수와 클라이언트
+ * 전용 함수를 의도적으로 한 파일에 공존시키는 모듈(그 파일 자체는 `"use client"`가 아니다)은
+ * 규칙 대상이 아니다 — `server-only` 패키지로 모듈 단위 분리를 하면 그런 파일을 쓰는
+ * `"use client"` 소비자의 빌드가 깨지기 때문에 그 경로 대신 이 규칙을 택했다.
+ */
 export const serverEnv = {
   backendInternalUrl: process.env.KRAFT_BACKEND_INTERNAL_URL ?? "http://backend:8080",
   /**
