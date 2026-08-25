@@ -56,6 +56,19 @@
             </rollingPolicy>
         </appender>
 
+        <!--
+            BE-OPS-02(docs/improvement.md): 가상 스레드 + 요청당 로그가 겹치면 요청 캐리어
+            스레드가 동기 파일 I/O 중 로깅 락에 pinning될 수 있다. APP_FILE만 비동기로
+            감싼다 — discardingThreshold=0은 큐가 80% 차도 INFO/DEBUG를 버리지 않는다는 뜻
+            (기본값은 버린다). ERROR_FILE은 감싸지 않는다 — 크래시 직전 로그가 큐에 남은 채
+            유실되는 것을 막기 위해서다(사고 조사에 가장 필요한 로그다).
+        -->
+        <appender name="ASYNC_APP_FILE" class="ch.qos.logback.classic.AsyncAppender">
+            <queueSize>512</queueSize>
+            <discardingThreshold>0</discardingThreshold>
+            <appender-ref ref="APP_FILE"/>
+        </appender>
+
         <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
             <file>${LOG_PATH}/kraft-error.log</file>
             <append>true</append>
@@ -91,7 +104,7 @@
     <springProfile name="!local &amp; !test &amp; !oauth-registration-test">
         <root level="${ROOT_LEVEL}">
             <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="APP_FILE"/>
+            <appender-ref ref="ASYNC_APP_FILE"/>
             <appender-ref ref="ERROR_FILE"/>
         </root>
     </springProfile>

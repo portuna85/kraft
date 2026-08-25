@@ -8,6 +8,16 @@ server:
         secure: true
         same-site: lax
         http-only: true
+  tomcat:
+    # BE-OPS-01(docs/improvement.md): 가상 스레드(spring.threads.virtual.enabled)는 Tomcat의
+    # 워커 스레드 상한을 사실상 없앤다 — threads.max가 요청 수용을 더 이상 못 막으므로,
+    # 대신 이 두 값이 accept 단계에서 backpressure를 건다. Hikari maximum-pool-size(15)의
+    # 배수로 잡아, 풀보다 훨씬 많은 요청이 들어와도 각자 connection-timeout(30초)을 기다리며
+    # 한꺼번에 타임아웃 나는 대신 accept 단계에서 빠르게 거절되게 한다.
+    # ⚠ 아직 부하테스트로 확정한 값이 아니다 — scripts/load-test/recommend-and-community.js를
+    # VU 계단식으로 올려 p95가 이 한도 근처에서 완만히 거절로 전환되는지 재측정한 뒤 조정한다.
+    max-connections: 150
+    accept-count: 50
 
 spring:
   config:
@@ -19,20 +29,20 @@ spring:
     password: ${KRAFT_DB_PASSWORD}
     driver-class-name: org.mariadb.jdbc.Driver
     hikari:
-      connection-timeout: 30000
+      # connection-timeout은 application.yml 기본 설정과 같은 값(30000ms)이라 여기서
+      # 다시 적지 않는다(BE-OPS-01 — 프로파일 간 값이 갈라져 있던 것을 정리했다).
       maximum-pool-size: 15
       minimum-idle: 3
       idle-timeout: 600000
   jpa:
-    # ddl-auto: validate, hibernate.jdbc.time_zone, sql.init.mode은 application.yml 기본 설정에서 상속
+    # ddl-auto: validate, hibernate.jdbc.time_zone, sql.init.mode·batch_size·order_inserts·
+    # order_updates는 application.yml 기본 설정에서 상속(BE-CFG-01 — 예전엔 이 파일에만 있어
+    # persistInternal의 배치 동작이 로컬·테스트에서 한 번도 실행되지 않았다).
     properties:
       hibernate:
         jdbc:
-          batch_size: 25
           fetch_size: 50
         format_sql: false
-        order_inserts: true
-        order_updates: true
 
 logging:
   level:

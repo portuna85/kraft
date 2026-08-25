@@ -17,6 +17,15 @@ spring:
       hibernate:
         jdbc:
           time_zone: Asia/Seoul
+          # BE-CFG-01(docs/improvement.md): 예전엔 prod 프로파일에만 있어
+          # RecommendationSetHistoryService.persistInternal(:86-88)이 기대는 배치 동작이
+          # 로컬·테스트에서 한 번도 실행되지 않았다. 모든 프로파일에서 같은 코드 경로가
+          # 돈다 — 다만 모든 엔티티가 GeneratedValue(IDENTITY)라 Hibernate는 insert를
+          # 배치하지 못한다(생성 키를 즉시 받아야 해서), 그래서 이 설정은 지금 update만
+          # 배치한다. IDENTITY를 시퀀스로 바꾸는 것은 마이그레이션이 필요한 별도 결정이다.
+          batch_size: 25
+        order_inserts: true
+        order_updates: true
   sql:
     init:
       mode: never
@@ -26,6 +35,9 @@ spring:
       minimum-idle: 1
       max-lifetime: 1800000
       keepalive-time: 30000
+      # BE-OPS-01(docs/improvement.md): prod에만 있었다. Hikari 자체 기본값(30000ms)과
+      # 같은 값을 명시해 "그 프로파일에만 있다"는 사실 자체를 없앤다(동작 변화 없음).
+      connection-timeout: 30000
   flyway:
     enabled: true
   profiles:
@@ -89,6 +101,15 @@ spring:
 server:
   port: 8080
   forward-headers-strategy: framework
+  # BE-OPS-01(docs/improvement.md): graceful은 인플라이트 요청이 끝날 때까지 기다린 뒤
+  # 종료한다 — AsyncConfig의 두 executor가 이미 setWaitForTasksToCompleteOnShutdown(true)로
+  # 같은 정책을 쓰므로 서버 레벨에서도 맞춘다. 상한(timeout-per-shutdown-phase)이 없으면
+  # 느린 요청 하나가 재배포를 무한정 붙잡는다.
+  shutdown: graceful
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
 
 logging:
   file:
