@@ -12,7 +12,9 @@ export default defineConfig({
     setupFiles: ["./tests/setup.ts"],
     // 테스트는 소스 옆에 co-locate 한다 — 현행의 평면 __tests__/(82개)는 대응 소스를
     // 찾기 어려웠다(L-3).
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    // PERF-BUNDLE-01: 예산 스크립트의 순수 계산부(허용치·청크 분류·판정)도 테스트
+    // 대상이다. coverage.include는 src/**로 그대로 둬서 임계값에는 영향이 없다.
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx", "scripts/**/*.test.mjs"],
     coverage: {
       provider: "v8",
       reportsDirectory: "./coverage",

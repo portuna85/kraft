@@ -14,12 +14,24 @@
 // 재산정하지 않는다 — codex도 "구현 후 측정해 확정한다"고 해 뒀으니, 실측치를 몇 번
 // 더 쌓은 뒤 별도로 판단한다.
 //
+// 순수 계산부(허용치·키 해석·공용 청크 분류·판정)는 bundle-budget-core.mjs에 있다.
+//
 //   npm run build && npm run budget:bundle          측정 + 예산 비교
 //   node scripts/bundle-budget.mjs --save-baseline  이번 측정치를 예산으로 저장
 import { existsSync, globSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
+
+import {
+  entryPathOf,
+  evaluateRoute,
+  ownEntryKey,
+  toKB,
+  routeOf,
+  sharedChunkSet,
+  splitSizes,
+} from "./bundle-budget-core.mjs";
 
 const webDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const distDir = path.join(webDir, process.env.NEXT_DIST_DIR ?? ".next");
@@ -33,8 +45,6 @@ if (!existsSync(appServerDir)) {
   process.exit(1);
 }
 
-const toKB = (bytes) => Math.round((bytes / 1024) * 10) / 10;
-
 function readManifest(file) {
   const source = readFileSync(file, "utf8");
   const body = source.slice(source.indexOf("= {") + 2).trim();
@@ -44,57 +54,25 @@ function readManifest(file) {
 function manifestFiles() {
   // route_…(API·robots·sitemap·아이콘·OG)는 브라우저가 렌더하는 페이지가 아니고,
   // _global-error는 Next 내부 래퍼라 둘 다 예산 대상이 아니다.
-  return globSync("**/page_client-reference-manifest.js", { cwd: appServerDir })
-    .filter((file) => !file.startsWith("_global-error"))
-    .map((file) => path.join(appServerDir, file));
+  return globSync("**/page_client-reference-manifest.js", { cwd: appServerDir }).filter(
+    (file) => !file.replaceAll("\\", "/").startsWith("_global-error"),
+  );
 }
 
-/** manifest 파일 경로 → Next 내부 entry 키에 쓰이는 상대 경로("(public)/page" 등). */
-function entryPathOf(file) {
-  return path
-    .relative(appServerDir, file)
-    .replaceAll("\\", "/")
-    .replace(/_client-reference-manifest\.js$/, "");
+/** gzip 압축 후 바이트 — 브라우저가 실제로 내려받는 크기(codex §17.4). 청크마다 1회만 잰다. */
+const chunkSizeCache = new Map();
+function chunkBytes(chunk) {
+  if (!chunkSizeCache.has(chunk)) {
+    const file = path.join(distDir, chunk);
+    chunkSizeCache.set(chunk, existsSync(file) ? gzipSync(readFileSync(file)).length : 0);
+  }
+  return chunkSizeCache.get(chunk);
 }
 
-/**
- * 라우트 이름. 라우트 그룹 세그먼트는 URL에 나타나지 않으므로 제거한다 —
- * `(public)/page`는 `/`, `(ops)/ops/page`는 `/ops`다. 예산 키는 URL 기준이라
- * 이걸 안 벗기면 실제 라우트와 매칭되지 않는다.
- */
-function routeOf(file) {
-  const segments = entryPathOf(file)
-    .split("/")
-    .filter((segment) => segment !== "" && segment !== "page" && !/^\(.+\)$/.test(segment));
-  return `/${segments.join("/")}`;
+/** 델타를 부호와 함께 — "+1.5"/"−"가 아니라 "0"도 그대로 보이게 한다. */
+function signed(value) {
+  return value > 0 ? `+${value}` : `${value}`;
 }
-
-/**
- * 이 manifest가 나타내는 페이지 자신의 entry 키를 고른다. 경로를 문자열로 조립해
- * 맞히려 들면 Next가 키를 정규화하는 방식(라우트 그룹·병렬 라우트)에 따라 조용히
- * 빗나가고, 그러면 모든 라우트가 레이아웃 바닥값으로 측정돼 예산이 무의미해진다.
- */
-function ownEntryKey(file, entries) {
-  const rel = entryPathOf(file);
-  const exact = Object.keys(entries).find((key) => key === `[project]/src/app/${rel}`);
-  if (exact) return exact;
-
-  const pageKeys = Object.keys(entries).filter((key) => key.endsWith("/page"));
-  return pageKeys.length === 1 ? pageKeys[0] : null;
-}
-
-/** gzip 압축 후 바이트 수 — 브라우저가 실제로 내려받는 크기(codex §17.4). */
-function gzipSize(file) {
-  return existsSync(file) ? gzipSync(readFileSync(file)).length : 0;
-}
-
-function chunkBytes(chunks) {
-  return [...new Set(chunks)].reduce((sum, chunk) => {
-    return sum + gzipSize(path.join(distDir, chunk));
-  }, 0);
-}
-
-const files = manifestFiles();
 
 /**
  * 이 라우트가 클라이언트 컴포넌트를 하나도 안 가져도 받는 JS — 자기 레이아웃 체인이다.
@@ -108,7 +86,7 @@ function layoutChunksOf(entries) {
 /**
  * icon.tsx/apple-icon.tsx/manifest.ts(메타데이터 라우트)를 추가하면서 Turbopack이
  * `[project]/src/app/icon--metadata`라는 전역 공유 entry를 새로 만든다 — 이 청크
- * (~56.7KB, 사실상 프레임워크 공용 런타임)는 모든 페이지의 `<link rel="icon">`이
+ * (사실상 프레임워크 공용 런타임)는 모든 페이지의 `<link rel="icon">`이
  * 참조하므로 실제로는 전 라우트가 받는다. 그런데 각 페이지 자신의 entryJSFiles
  * 목록에는 더 이상 포함되지 않아(예전에는 페이지 청크에 이미 섞여 있었다), 레이아웃
  * 청크처럼 별도로 더해 주지 않으면 모든 라우트가 실제보다 훨씬 작게 측정된다.
@@ -118,38 +96,60 @@ function iconMetadataChunksOf(entries) {
 }
 
 const measured = {};
-for (const file of files) {
-  const entries = readManifest(file).entryJSFiles ?? {};
-  const ownKey = ownEntryKey(file, entries);
+const degraded = [];
+
+for (const file of manifestFiles()) {
+  const entries = readManifest(path.join(appServerDir, file)).entryJSFiles ?? {};
+  const entryPath = entryPathOf(file);
+  const route = routeOf(entryPath);
+  const ownKey = ownEntryKey(entryPath, entries);
   const chunks = ownKey ? (entries[ownKey] ?? []) : [];
 
+  // 키를 못 찾았다는 것은 측정이 바닥값으로 퇴화했다는 뜻이다 — 조용히 넘기면 "예산
+  // 통과"가 거짓말이 된다. entry가 아예 없는 순수 RSC 라우트만 바닥값을 허용하고,
+  // entry가 있는데 자기 키만 못 찾은 경우는 측정 버그이므로 실패시킨다(PERF-BUNDLE-01).
   if (!ownKey && Object.keys(entries).length > 0) {
-    // 키를 못 찾았다는 것은 측정이 바닥값으로 퇴화했다는 뜻이다 — 조용히 넘기면
-    // "예산 통과"가 거짓말이 된다. 실제 키를 찍어 다음 수정에 쓴다.
-    console.warn(
-      `  경고 ${routeOf(file)}: 자기 entry 키를 찾지 못해 바닥값으로 측정합니다. ` +
-        `manifest 키: ${Object.keys(entries).join(", ")}`,
-    );
+    degraded.push({ route, keys: Object.keys(entries) });
   }
 
-  const layoutChunks = layoutChunksOf(entries);
-  const iconMetadataChunks = iconMetadataChunksOf(entries);
-  const effective = [...(chunks.length > 0 ? chunks : layoutChunks), ...iconMetadataChunks];
-  const unique = [...new Set(effective)];
+  const effective = [
+    ...(chunks.length > 0 ? chunks : layoutChunksOf(entries)),
+    ...iconMetadataChunksOf(entries),
+  ];
+  measured[route] = { chunks: [...new Set(effective)] };
+}
 
-  measured[routeOf(file)] = {
-    totalKB: toKB(chunkBytes(unique)),
-    chunkCount: unique.length,
-    chunks: unique,
-  };
+// 공용/전용 분류는 전 라우트를 다 본 뒤에야 가능하다 — 청크가 몇 개 라우트에 등장하는지가
+// 기준이기 때문이다.
+const sharedChunks = sharedChunkSet(
+  Object.fromEntries(Object.entries(measured).map(([route, info]) => [route, info.chunks])),
+);
+
+for (const info of Object.values(measured)) {
+  const { sharedKB, routeKB } = splitSizes(info.chunks, sharedChunks, chunkBytes);
+  // 총합은 부분의 합이 아니라 바이트 합에서 한 번에 낸다 — 부분마다 반올림한 뒤 더하면
+  // 기존 기준선과 0.1 KB씩 어긋나 가짜 회귀가 생긴다.
+  info.totalKB = toKB(info.chunks.reduce((sum, chunk) => sum + chunkBytes(chunk), 0));
+  info.sharedKB = sharedKB;
+  info.routeKB = routeKB;
+  info.chunkCount = info.chunks.length;
 }
 
 console.log("라우트별 초기 클라이언트 JS, gzip 기준 (내림차순):");
 for (const [route, info] of Object.entries(measured).sort((a, b) => b[1].totalKB - a[1].totalKB)) {
-  console.log(`  ${String(info.totalKB).padStart(7)} KB  (청크 ${info.chunkCount}개)  ${route}`);
-  // 어떤 청크가 무게를 차지하는지 없이는 "예산 초과"를 고칠 방법을 알 수 없다.
-  for (const chunk of info.chunks) {
-    console.log(`           ${String(toKB(chunkBytes([chunk]))).padStart(6)} KB  ${chunk}`);
+  console.log(
+    `  ${String(info.totalKB).padStart(7)} KB  (공용 ${info.sharedKB} + 전용 ${info.routeKB}, ` +
+      `청크 ${info.chunkCount}개)  ${route}`,
+  );
+}
+
+if (degraded.length > 0) {
+  for (const { route, keys } of degraded) {
+    console.error(
+      `\n  ERROR ${route}: 자기 entry 키를 찾지 못해 바닥값으로 측정됐습니다 — ` +
+        "예산이 무의미해집니다. bundle-budget-core.mjs의 ownEntryKey를 고치세요.\n" +
+        `        manifest 키: ${keys.join(", ")}`,
+    );
   }
 }
 
@@ -159,68 +159,88 @@ writeFileSync(
 );
 console.log(`\n결과 저장: ${resultsPath}`);
 
-/**
- * 회귀 허용치. 측정은 빌드마다 미세하게 흔들리므로 1KB까지는 같은 값으로 본다 —
- * 이보다 좁히면 코드와 무관한 실패가 생겨 게이트를 신뢰하지 않게 된다.
- */
-const REGRESSION_TOLERANCE_KB = 1;
-
 if (saveBaseline) {
-  const budget = JSON.parse(readFileSync(budgetPath, "utf8"));
+  // 퇴화한 측정을 기준선으로 굳히면 그 라우트는 영원히 게이트 밖에 남는다 —
+  // 실제로 /_not-found가 그렇게 4.3 KB에 묶여 있었다.
+  if (degraded.length > 0) {
+    console.error("\n퇴화한 측정이 있어 기준선을 갱신하지 않습니다. 먼저 위 ERROR를 해결하세요.");
+    process.exit(1);
+  }
+
+  const budgetFile = JSON.parse(readFileSync(budgetPath, "utf8"));
   for (const [route, info] of Object.entries(measured)) {
     // maxKB(현행에서 승계한 목표)는 건드리지 않는다. 갱신 대상은 회귀 기준선뿐이다.
-    budget.routes[route] = { ...budget.routes[route], currentKB: info.totalKB };
+    budgetFile.routes[route] = {
+      ...budgetFile.routes[route],
+      currentKB: info.totalKB,
+      currentSharedKB: info.sharedKB,
+      currentRouteKB: info.routeKB,
+    };
   }
-  writeFileSync(budgetPath, `${JSON.stringify(budget, null, 2)}\n`);
+
+  const stale = Object.keys(budgetFile.routes).filter((route) => !(route in measured));
+  if (stale.length > 0) {
+    // 자동 삭제하지 않는다 — 아직 구현되지 않은 라우트와 사라진 라우트를 여기서
+    // 구분할 수 없다. 사람이 판단하도록 알리기만 한다.
+    console.warn(
+      `\n  경고 예산에만 있고 측정되지 않은 라우트 ${stale.length}개: ${stale.join(", ")}\n` +
+        "        아직 구현 전이면 그대로 두고, 사라진 라우트면 예산에서 지우세요.",
+    );
+  }
+
+  writeFileSync(budgetPath, `${JSON.stringify(budgetFile, null, 2)}\n`);
   console.log(`회귀 기준선 갱신: ${budgetPath}`);
   process.exit(0);
 }
 
 const { routes: budget } = JSON.parse(readFileSync(budgetPath, "utf8"));
-let failed = false;
+let failed = degraded.length > 0;
 const overTarget = [];
+const sharedGrowth = [];
 
 console.log("\n예산 비교:");
-for (const [route, { maxKB, currentKB }] of Object.entries(budget)) {
+for (const [route, limits] of Object.entries(budget)) {
   const actual = measured[route];
   if (!actual) {
-    console.log(`  대기  ${route}: 아직 구현되지 않음 (목표 ${maxKB} KB)`);
+    console.log(`  대기  ${route}: 아직 구현되지 않음 (목표 ${limits.maxKB} KB)`);
     continue;
   }
 
-  // KF-04(docs/improvement.md): 예전엔 목표(maxKB) 이내면 여기서 곧장 continue해
-  // 아래 회귀(currentKB) 비교에 아예 도달하지 못했다 — 목표 안에서 조용히 커지는
-  // 것을 몇 KB든 놓쳤다. 이제 목표 달성 여부와 회귀 여부를 라우트마다 항상 둘 다
-  // 계산한다.
-  const withinTarget = actual.totalKB <= maxKB;
-  if (!withinTarget) {
-    // 목표를 넘었다. 다만 지금 초과분의 대부분은 프레임워크 공용 청크(53KB)에서
-    // 오고, 이 값은 화면 코드로 줄일 수 있는 성질이 아니다. 목표는 앱이 완성된 뒤
-    // §29.4의 "공개 라우트가 현행 대비 증가하지 않음"으로 판정하고, 그때까지는
-    // **여기서 더 늘어나는 것**을 막는다. 기준선이 없는 라우트는 이번 값이
-    // 기준선이 된다.
+  const verdict = evaluateRoute(limits, actual);
+  if (verdict.failed) failed = true;
+  if (!verdict.withinTarget) {
+    // 목표를 넘었다. 다만 지금 초과분의 대부분은 프레임워크 공용 청크에서 오고, 이 값은
+    // 화면 코드로 줄일 수 있는 성질이 아니다. 목표는 앱이 완성된 뒤 §29.4의 "공개
+    // 라우트가 현행 대비 증가하지 않음"으로 판정하고, 그때까지는 회귀만 막는다.
     overTarget.push(route);
   }
 
-  if (currentKB === undefined) {
-    if (withinTarget) {
-      console.log(`  통과  ${route}: ${actual.totalKB} KB / 목표 ${maxKB} KB (기준선 없음)`);
-    } else {
-      console.log(
-        `  기준선 없음 ${route}: ${actual.totalKB} KB (목표 ${maxKB} KB 초과) — ` +
-          "--save-baseline으로 기준선을 기록하세요.",
-      );
-      failed = true;
-    }
+  if (verdict.noBaseline) {
+    const suffix = verdict.failed
+      ? `(목표 ${limits.maxKB} KB 초과) — --save-baseline으로 기준선을 기록하세요.`
+      : `/ 목표 ${limits.maxKB} KB (기준선 없음)`;
+    console.log(`  ${verdict.status}  ${route}: ${actual.totalKB} KB ${suffix}`);
     continue;
   }
 
-  const grew = actual.totalKB > currentKB + REGRESSION_TOLERANCE_KB;
-  if (grew) failed = true;
-  const status = grew ? "회귀" : withinTarget ? "통과" : "유지";
-  console.log(
-    `  ${status}  ${route}: ${actual.totalKB} KB ` + `(기준선 ${currentKB} KB, 목표 ${maxKB} KB)`,
-  );
+  let line =
+    `  ${verdict.status}  ${route}: ${actual.totalKB} KB ` +
+    `(기준선 ${limits.currentKB} KB, 허용 +${verdict.allowedKB} KB, 목표 ${limits.maxKB} KB)`;
+  // 회귀했을 때 공용 셸이 커진 건지 그 화면이 커진 건지가 가장 먼저 알아야 할 정보다.
+  if (verdict.failed && verdict.sharedDeltaKB !== undefined) {
+    line += ` — 공용 ${signed(verdict.sharedDeltaKB)}, 전용 ${signed(verdict.routeDeltaKB)}`;
+    if (verdict.sharedDeltaKB > 0) sharedGrowth.push(route);
+  }
+  console.log(line);
+
+  if (verdict.failed) {
+    for (const chunk of actual.chunks) {
+      console.log(
+        `           ${String(toKB(chunkBytes(chunk))).padStart(6)} KB  ${chunk}` +
+          `${sharedChunks.has(chunk) ? "  (공용)" : ""}`,
+      );
+    }
+  }
 }
 
 for (const route of Object.keys(measured)) {
@@ -230,6 +250,14 @@ for (const route of Object.keys(measured)) {
       `  누락  ${route}: 예산이 정의돼 있지 않습니다 — bundle-budget.json에 추가하세요.`,
     );
   }
+}
+
+if (sharedGrowth.length > 1) {
+  console.log(
+    `\n공용 셸 증가가 ${sharedGrowth.length}개 라우트를 동시에 밀어올렸습니다: ` +
+      `${sharedGrowth.join(", ")}\n` +
+      "  개별 화면이 아니라 공용 청크를 먼저 보세요 — 위 목록의 (공용) 표시가 그 대상입니다.",
+  );
 }
 
 if (overTarget.length > 0) {
