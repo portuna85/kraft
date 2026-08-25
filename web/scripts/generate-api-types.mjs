@@ -1,4 +1,9 @@
-// 백엔드 /v3/api-docs에서 TypeScript 타입을 생성한다.
+// 백엔드 OpenAPI 그룹 문서에서 TypeScript 타입을 생성한다.
+//
+// FE-API-02: 계약이 두 그룹으로 나뉘어 있다(OpenApiConfig의 GroupedOpenApi).
+//   /v3/api-docs/public → src/generated/api-types.ts     (공개 API)
+//   /v3/api-docs/ops    → src/generated/ops-api-types.ts (운영 콘솔, prod에서는 미노출)
+// 한 파일로 합치지 않는 이유는 공개 계약 파일이 ops 스키마로 오염되지 않게 하기 위해서다.
 //
 // 생성 타입은 **컴파일 타임 계약**이고, Valibot 스키마는 **런타임 경계**다. 둘의 정합성은
 // 각 스키마 옆의 타입 레벨 테스트가 잡는다(T-29). 어느 한쪽만으로는 부족하다 — 생성
@@ -30,11 +35,18 @@ export class ApiTypeGenerationError extends Error {
 }
 
 const webDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const outputPath = path.join(webDir, "src", "generated", "api-types.ts");
 const backendUrl = process.env.KRAFT_BACKEND_INTERNAL_URL ?? "http://localhost:8080";
-const specUrl = `${backendUrl}/v3/api-docs`;
 
-function header() {
+/** 그룹 하나 = 생성 파일 하나. 백엔드 OpenApiConfig의 GroupedOpenApi group 이름과 맞춘다. */
+export const GROUPS = [
+  { group: "public", file: "api-types.ts" },
+  { group: "ops", file: "ops-api-types.ts" },
+];
+
+const specUrlOf = (group) => `${backendUrl}/v3/api-docs/${group}`;
+const outputPathOf = (file) => path.join(webDir, "src", "generated", file);
+
+function header(specUrl) {
   return [
     "// 자동 생성 파일 — 손으로 고치지 마세요.",
     `// 원본: ${specUrl}`,
@@ -44,9 +56,10 @@ function header() {
   ].join("\n");
 }
 
-async function generate() {
+async function generate(group) {
+  const specUrl = specUrlOf(group);
   try {
-    return header() + astToString(await openapiTS(new URL(specUrl)));
+    return header(specUrl) + astToString(await openapiTS(new URL(specUrl)));
   } catch (cause) {
     throw new ApiTypeGenerationError(
       "ENVIRONMENT_FAILURE",
@@ -61,30 +74,41 @@ export function matchesCommittedContract(generated, committed) {
 }
 
 async function main({ verify }) {
-  const generated = await generate();
+  // 환경 실패(백엔드 미기동)는 첫 그룹에서 즉시 던진다 — 나머지를 시도해도 같은 결과다.
+  const results = [];
+  for (const { group, file } of GROUPS) {
+    results.push({ group, file, generated: await generate(group) });
+  }
 
   if (!verify) {
-    mkdirSync(path.dirname(outputPath), { recursive: true });
-    writeFileSync(outputPath, generated);
-    console.log(`생성 완료: ${outputPath}`);
+    for (const { file, generated } of results) {
+      const outputPath = outputPathOf(file);
+      mkdirSync(path.dirname(outputPath), { recursive: true });
+      writeFileSync(outputPath, generated);
+      console.log(`생성 완료: ${outputPath}`);
+    }
     return;
   }
 
-  if (!existsSync(outputPath)) {
+  // 드리프트는 그룹마다 따로 보고한다 — 한 번의 CI 실행으로 두 계약을 모두 본다.
+  const drifted = [];
+  for (const { file, generated } of results) {
+    const outputPath = outputPathOf(file);
+    if (!existsSync(outputPath)) {
+      drifted.push(`src/generated/${file} (파일 없음)`);
+    } else if (!matchesCommittedContract(generated, readFileSync(outputPath, "utf8"))) {
+      drifted.push(`src/generated/${file}`);
+    }
+  }
+
+  if (drifted.length > 0) {
     throw new ApiTypeGenerationError(
       "CONTRACT_DRIFT",
-      `${outputPath}가 없습니다. "npm run generate:api-types" 후 커밋하세요.`,
+      `${drifted.join(", ")}이(가) 현재 백엔드 계약과 다릅니다. "npm run generate:api-types" 후 커밋하세요.`,
     );
   }
 
-  if (!matchesCommittedContract(generated, readFileSync(outputPath, "utf8"))) {
-    throw new ApiTypeGenerationError(
-      "CONTRACT_DRIFT",
-      'src/generated/api-types.ts가 현재 백엔드 계약과 다릅니다. "npm run generate:api-types" 후 커밋하세요.',
-    );
-  }
-
-  console.log("OK: 생성 타입이 현재 백엔드 계약과 일치합니다.");
+  console.log(`OK: 생성 타입 ${GROUPS.length}개 그룹이 모두 현재 백엔드 계약과 일치합니다.`);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

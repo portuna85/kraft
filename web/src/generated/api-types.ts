@@ -1,5 +1,5 @@
 // 자동 생성 파일 — 손으로 고치지 마세요.
-// 원본: http://localhost:8080/v3/api-docs
+// 원본: http://localhost:8080/v3/api-docs/public
 // 재생성: npm run generate:api-types (백엔드가 로컬에 떠 있어야 함)
 
 export interface paths {

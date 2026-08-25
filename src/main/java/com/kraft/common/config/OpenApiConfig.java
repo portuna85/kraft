@@ -11,19 +11,58 @@ import java.util.List;
 import java.util.Set;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springdoc.core.customizers.OpenApiCustomizer;
+import org.springdoc.core.models.GroupedOpenApi;
 
 /**
- * B-01: 공개 API 계약(/v3/api-docs) 메타데이터. pathsToMatch(application.yml)가 이미
- * 노출 범위를 /api/**로 제한하므로, 여기서는 스펙에 실리는 보안 스킴 2종만 선언한다
- * — 저장번호가 쓰는 디바이스 토큰 헤더와 커뮤니티 쓰기가 쓰는 세션 쿠키. ops 토큰·admin
- * 세션은 /api/**에 없으므로 이 스펙 범위 밖이다.
+ * B-01: OpenAPI 계약 메타데이터와 노출 범위. 노출 범위는 패키지가 아닌 **경로 기준**으로
+ * 잡는다 — com.kraft.ops 패키지에는 공개 API인 InfoController(/api/v1)와 토큰 가드인
+ * OpsController(/ops)가 같이 있어 패키지 기준 스캔은 InfoController까지 실수로 빠뜨릴 수
+ * 있다. 경로 기준이면 /admin, /actuator, /oauth2, /login, /logout은 자동으로 제외된다.
+ *
+ * <p>FE-API-02: 그 경로 필터를 두 개의 {@link GroupedOpenApi}로 나눴다 — 공개 계약은
+ * /v3/api-docs/public, 운영 콘솔 계약은 /v3/api-docs/ops. 프론트 코드젠
+ * (web/scripts/generate-api-types.mjs)이 두 문서를 각각 가져가 별도 파일로 생성하므로
+ * 공개 계약 파일이 ops 스키마로 오염되지 않는다. **그룹 빈이 생기면 무그룹
+ * /v3/api-docs는 더 이상 문서를 반환하지 않는다** — 저장소 안의 소비자는 위 스크립트와
+ * OpenApiContractTest뿐이고 둘 다 그룹 경로를 쓴다.
+ *
+ * <p>보안 스킴은 스펙에 실리는 2종만 선언한다 — 저장번호가 쓰는 디바이스 토큰 헤더와
+ * 커뮤니티 쓰기가 쓰는 세션 쿠키. ops 토큰·admin 세션은 여기서 선언하지 않는다
+ * (base OpenAPI의 components는 두 그룹이 공유하므로 공개 계약까지 바뀐다 — 별도 항목).
  */
 @Configuration
 public class OpenApiConfig {
 
     private static final String DEVICE_TOKEN_SCHEME = "deviceToken";
     private static final String COMMUNITY_SESSION_SCHEME = "communitySession";
+
+    /** 공개 API 계약 — /v3/api-docs/public. */
+    @Bean
+    GroupedOpenApi publicApiGroup(OpenApiCustomizer requiredResponsePropertiesCustomizer) {
+        return GroupedOpenApi.builder()
+                .group("public")
+                .pathsToMatch("/api/**")
+                .addOpenApiCustomizer(requiredResponsePropertiesCustomizer)
+                .build();
+    }
+
+    /**
+     * 운영 콘솔 계약 — /v3/api-docs/ops. **prod에서는 등록하지 않는다**: /ops는
+     * OpsTokenFilter(X-Ops-Token)로 게이트돼 있지만 api-docs 자체는 prod에서도 켜져 있어
+     * (application-prod.yml은 swagger-ui만 끈다), 그룹을 그대로 두면 운영 전용 엔드포인트
+     * 목록과 DTO 모양을 인증 없이 읽을 수 있다. 코드젠은 local 프로파일에서 돌므로 무영향.
+     */
+    @Bean
+    @Profile("!prod")
+    GroupedOpenApi opsApiGroup(OpenApiCustomizer requiredResponsePropertiesCustomizer) {
+        return GroupedOpenApi.builder()
+                .group("ops")
+                .pathsToMatch("/ops/**")
+                .addOpenApiCustomizer(requiredResponsePropertiesCustomizer)
+                .build();
+    }
 
     @Bean
     OpenAPI kraftOpenApi() {
@@ -32,7 +71,8 @@ public class OpenApiConfig {
                         .title("KRAFT Lotto Public API")
                         .version("v1")
                         .description("회차·통계·추천·저장번호·커뮤니티·상태 공개 API. "
-                                + "/ops, /admin은 별도 인증 체계를 쓰며 이 계약에 포함되지 않는다."))
+                                + "/ops는 별도 인증 체계(X-Ops-Token)를 쓰며 ops 그룹 문서로 분리돼 있다"
+                                + "(prod에서는 노출하지 않는다). /admin은 어느 계약에도 포함되지 않는다."))
                 .components(new Components()
                         .addSecuritySchemes(DEVICE_TOKEN_SCHEME, new SecurityScheme()
                                 .type(SecurityScheme.Type.APIKEY)

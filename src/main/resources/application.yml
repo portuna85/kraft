@@ -112,14 +112,18 @@ management:
     redis:
       enabled: false
 
-# 계약(B-01): pathsToMatch를 패키지가 아닌 경로 기준으로 잡는다. com.kraft.ops 패키지에는
-# 공개 API인 InfoController(/api/v1)와 토큰 가드인 OpsController(/ops)가 같이 있어 패키지
-# 기준 스캔은 InfoController까지 실수로 빠뜨릴 수 있다. 경로 기준이면 /ops, /admin,
-# /actuator, /oauth2, /login, /logout은 자동으로 제외되고 /api/**만 정확히 포함된다.
+# 계약(B-01): 노출 범위는 패키지가 아닌 경로 기준으로 잡는다 — 근거와 실제 필터는
+# OpenApiConfig의 GroupedOpenApi 빈에 있다(FE-API-02로 여기 pathsToMatch에서 옮겼다).
+# public 그룹은 /v3/api-docs/public, ops 그룹은 /v3/api-docs/ops로 나간다.
+#
+# 여기에 springdoc.pathsToMatch를 두면 **그룹 설정보다 우선해서** ops 그룹까지 /api/**로
+# 걸러 버린다(실측: /v3/api-docs/ops가 공개 경로 37개를 그대로 반환했다). 그래서 전역
+# 필터는 비워 두고 그룹이 범위를 정한다. 대신 그룹을 안 붙인 /v3/api-docs는 필터가 없어
+# 두 그룹의 합집합이 되는데, prod에서는 application-prod.yml이 이 전역 필터를 다시 켜서
+# 공개 계약만 남긴다(ops 그룹 빈 자체도 @Profile("!prod")로 빠진다 — 이중 방어).
 springdoc:
   api-docs:
     path: /v3/api-docs
-  pathsToMatch: /api/**
 
 resilience4j:
   circuitbreaker:

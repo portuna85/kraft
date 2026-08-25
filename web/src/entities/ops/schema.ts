@@ -3,12 +3,16 @@ import * as v from "valibot";
 /**
  * 운영 콘솔 계약
  *
- * `/ops` 계약은 OpenAPI 코드젠 대상에서 제외돼 있다(`springdoc.pathsToMatch:
- * /api/**`) — `generate-api-types.mjs`가 못 잡으므로 여기서 직접 손으로 쓴다.
+ * FE-API-02: `/ops`도 이제 OpenAPI 코드젠 대상이다 — 백엔드가 `ops` 그룹
+ * (`/v3/api-docs/ops`)을 따로 내보내고 `generate-api-types.mjs`가 이를
+ * `src/generated/ops-api-types.ts`로 생성한다. 아래 스키마는 여전히 손으로 쓰지만
+ * (Valibot은 런타임 경계라 생성 타입이 대신할 수 없다), `schema.test.ts`의 타입 레벨
+ * 단언이 생성 타입과의 정합성을 강제한다 — 백엔드가 필드를 바꾸면 CI가 빨개진다.
  *
  * 회차 응답 자체는 `entities/round/schema.ts`의 `winningNumberSchema`와 모양이
  * 같지만(백엔드 `WinningNumberResponse`), entity는 다른 entity를 import할 수
  * 없다는 아키텍처 제약(`no-restricted-imports`)이 있어 여기서 따로 정의한다.
+ * **그 복제가 조용히 갈라지는 것도 위 단언이 막는다** — 양쪽이 같은 생성 타입에 묶인다.
  */
 
 const lottoNumberSchema = v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(45));
