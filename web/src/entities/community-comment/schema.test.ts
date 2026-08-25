@@ -74,11 +74,15 @@ describe("댓글 제출 가능 여부", () => {
   });
 });
 
-/** 생성 타입과의 정합성 — M-07*/
+/** 생성 타입과의 정합성 — M-07, QA-FE-02(양방향) */
 type GeneratedComment = components["schemas"]["CommunityCommentResponse"];
 const _commentTypesMatch: CommunityComment extends GeneratedComment ? true : never = true;
 void _commentTypesMatch;
+const _commentReverseTypesMatch: GeneratedComment extends CommunityComment ? true : never = true;
+void _commentReverseTypesMatch;
 
 type GeneratedCommentPage = components["schemas"]["CommunityCommentPageResponse"];
 const _pageTypesMatch: CommentPage extends GeneratedCommentPage ? true : never = true;
 void _pageTypesMatch;
+const _pageReverseTypesMatch: GeneratedCommentPage extends CommentPage ? true : never = true;
+void _pageReverseTypesMatch;

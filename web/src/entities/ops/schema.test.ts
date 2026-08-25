@@ -147,22 +147,51 @@ describe("operationLogSchema", () => {
 type GeneratedOpsSummary = components["schemas"]["OpsSummaryResponse"];
 const _summaryTypesMatch: OpsSummary extends GeneratedOpsSummary ? true : never = true;
 void _summaryTypesMatch;
+const _summaryReverseTypesMatch: GeneratedOpsSummary extends OpsSummary ? true : never = true;
+void _summaryReverseTypesMatch;
 
 /** round entity의 winningNumberSchema 복제본이 갈라지지 않게 같은 생성 타입에 묶는다. */
 type GeneratedWinningNumber = components["schemas"]["WinningNumberResponse"];
 const _resultTypesMatch: WinningNumberResult extends GeneratedWinningNumber ? true : never = true;
 void _resultTypesMatch;
+const _resultReverseTypesMatch: GeneratedWinningNumber extends WinningNumberResult ? true : never =
+  true;
+void _resultReverseTypesMatch;
 
 type GeneratedUpsertRequest = components["schemas"]["WinningNumberUpsertRequest"];
 const _upsertTypesMatch: WinningNumberUpsertRequest extends GeneratedUpsertRequest ? true : never =
   true;
 void _upsertTypesMatch;
+const _upsertReverseTypesMatch: GeneratedUpsertRequest extends WinningNumberUpsertRequest
+  ? true
+  : never = true;
+void _upsertReverseTypesMatch;
 
 type GeneratedOperationLog = components["schemas"]["WinningNumberOperationLogResponse"];
 const _logTypesMatch: OperationLog extends GeneratedOperationLog ? true : never = true;
 void _logTypesMatch;
+/**
+ * operationType·executionStatus는 백엔드가 enum.name()을 그대로 문자열로 내보내
+ * 생성 타입이 string이다 — 프론트는 picklist로 **의도적으로 좁혔다**(API-COMM-01
+ * 커밋에서 그대로 유지하기로 확정). 그래서 역방향은 그 두 필드만 string으로 되돌려
+ * 예외 처리한다 — 이 필드 자체의 누락은 여전히 못 잡지만, id·round 같은 다른 필드가
+ * 새로 추가되는 것은 이 완화 없이도 계속 잡힌다.
+ */
+type OperationLogWidened = Omit<OperationLog, "operationType" | "executionStatus"> & {
+  operationType: string;
+  executionStatus: string;
+};
+const _logReverseTypesMatch: GeneratedOperationLog extends OperationLogWidened ? true : never =
+  true;
+void _logReverseTypesMatch;
 
 type GeneratedOperationLogPage =
   components["schemas"]["PageResponseWinningNumberOperationLogResponse"];
 const _logPageTypesMatch: OperationLogPage extends GeneratedOperationLogPage ? true : never = true;
 void _logPageTypesMatch;
+/** items 안의 operationType·executionStatus도 위와 같은 이유로 완화한다. */
+type OperationLogPageWidened = Omit<OperationLogPage, "items"> & { items: OperationLogWidened[] };
+const _logPageReverseTypesMatch: GeneratedOperationLogPage extends OperationLogPageWidened
+  ? true
+  : never = true;
+void _logPageReverseTypesMatch;

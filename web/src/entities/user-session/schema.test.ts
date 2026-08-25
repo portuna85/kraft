@@ -17,7 +17,9 @@ describe("세션 스키마", () => {
   });
 });
 
-/** 생성 타입과의 정합성 — M-07*/
+/** 생성 타입과의 정합성 — M-07, QA-FE-02(양방향) */
 type GeneratedSession = components["schemas"]["CommunitySessionResponse"];
 const _typesMatch: CommunitySession extends GeneratedSession ? true : never = true;
 void _typesMatch;
+const _reverseTypesMatch: GeneratedSession extends CommunitySession ? true : never = true;
+void _reverseTypesMatch;

@@ -13,10 +13,12 @@ import {
   type SavedNumber,
 } from "./schema";
 
-/** 생성 타입과의 정합성 */
+/** 생성 타입과의 정합성 — QA-FE-02: 양방향(누락도 잡는다) */
 type GeneratedSavedNumber = components["schemas"]["SavedNumberResponse"];
 const _typesMatch: SavedNumber extends GeneratedSavedNumber ? true : never = true;
 void _typesMatch;
+const _reverseTypesMatch: GeneratedSavedNumber extends SavedNumber ? true : never = true;
+void _reverseTypesMatch;
 
 describe("저장 번호 스키마", () => {
   const VALID = {

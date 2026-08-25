@@ -11,10 +11,15 @@ import { winningNumberSchema, type WinningNumber } from "./schema";
  * OpenAPI 생성 타입은 컴파일 타임 계약, Valibot 스키마는 런타임 경계다. 둘이
  * 어긋나면 여기서 컴파일이 실패한다 — 백엔드가 필드를 spelled 다르게 바꾸거나
  * 지워도 런타임 검증만으로는 못 잡는 것을 여기서 잡는다.
+ *
+ * QA-FE-02: 양방향으로 묶는다. 단방향(Ours extends Generated)만으로는 백엔드가
+ * 필수 필드를 추가해도 못 잡는다 — Valibot이 그 필드를 몰라도 단언은 그대로 통과한다.
  */
 type GeneratedWinningNumber = components["schemas"]["WinningNumberResponse"];
 const _typesMatch: WinningNumber extends GeneratedWinningNumber ? true : never = true;
 void _typesMatch;
+const _reverseTypesMatch: GeneratedWinningNumber extends WinningNumber ? true : never = true;
+void _reverseTypesMatch;
 
 const VALID = {
   round: 1150,

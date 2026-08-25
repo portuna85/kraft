@@ -203,19 +203,30 @@ describe("조합 분석 스키마", () => {
   });
 });
 
-/** 생성 타입과의 정합성 — M-07*/
+/** 생성 타입과의 정합성 — M-07, QA-FE-02(양방향) */
 type GeneratedAnalysis = components["schemas"]["AnalysisResponse"];
 const _analysisTypesMatch: CombinationAnalysis extends GeneratedAnalysis ? true : never = true;
 void _analysisTypesMatch;
+const _analysisReverseTypesMatch: GeneratedAnalysis extends CombinationAnalysis ? true : never =
+  true;
+void _analysisReverseTypesMatch;
 
 type GeneratedPatternStats = components["schemas"]["PatternStatsResponse"];
 const _patternTypesMatch: PatternStats extends GeneratedPatternStats ? true : never = true;
 void _patternTypesMatch;
+const _patternReverseTypesMatch: GeneratedPatternStats extends PatternStats ? true : never = true;
+void _patternReverseTypesMatch;
 
 type GeneratedFrequencyStats = components["schemas"]["FrequencyStatsResponse"];
 const _frequencyTypesMatch: FrequencyStats extends GeneratedFrequencyStats ? true : never = true;
 void _frequencyTypesMatch;
+const _frequencyReverseTypesMatch: GeneratedFrequencyStats extends FrequencyStats ? true : never =
+  true;
+void _frequencyReverseTypesMatch;
 
 type GeneratedCompanionStats = components["schemas"]["CompanionStatsResponse"];
 const _companionTypesMatch: CompanionStats extends GeneratedCompanionStats ? true : never = true;
 void _companionTypesMatch;
+const _companionReverseTypesMatch: GeneratedCompanionStats extends CompanionStats ? true : never =
+  true;
+void _companionReverseTypesMatch;

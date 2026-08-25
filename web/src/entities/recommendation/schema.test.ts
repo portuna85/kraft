@@ -59,11 +59,15 @@ describe("추천 세트 페이지 스키마", () => {
   });
 });
 
-/** 생성 타입과의 정합성 — M-07*/
+/** 생성 타입과의 정합성 — M-07, QA-FE-02(양방향) */
 type GeneratedSet = components["schemas"]["RecommendationSetSummary"];
 const _setTypesMatch: RecommendationSet extends GeneratedSet ? true : never = true;
 void _setTypesMatch;
+const _setReverseTypesMatch: GeneratedSet extends RecommendationSet ? true : never = true;
+void _setReverseTypesMatch;
 
 type GeneratedSetPage = components["schemas"]["PageResponseRecommendationSetSummary"];
 const _pageTypesMatch: RecommendationSetPage extends GeneratedSetPage ? true : never = true;
 void _pageTypesMatch;
+const _pageReverseTypesMatch: GeneratedSetPage extends RecommendationSetPage ? true : never = true;
+void _pageReverseTypesMatch;

@@ -47,7 +47,9 @@ describe("운영 유형 라벨", () => {
   });
 });
 
-/** 생성 타입과의 정합성 — M-07*/
+/** 생성 타입과의 정합성 — M-07, QA-FE-02(양방향) */
 type GeneratedIncident = components["schemas"]["PublicIncidentResponse"];
 const _typesMatch: StatusIncident extends GeneratedIncident ? true : never = true;
 void _typesMatch;
+const _reverseTypesMatch: GeneratedIncident extends StatusIncident ? true : never = true;
+void _reverseTypesMatch;
