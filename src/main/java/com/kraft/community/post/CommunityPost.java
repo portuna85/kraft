@@ -28,7 +28,11 @@ public class CommunityPost {
     @Column(name = "title", nullable = false, length = 200)
     private String title;
 
-    @Column(name = "content", nullable = false)
+    // DB-MAP-01(docs/improvement.md): 프로덕션 DDL은 content TEXT NOT NULL(V15:9)이지만
+    // columnDefinition이 없으면 Hibernate 기본 매핑은 varchar(255)다. prod는 ddl-auto:
+    // validate라 실제 DDL을 그대로 쓰지만, H2 create-drop 테스트 스키마는 varchar(255)로
+    // 생성돼 255자를 넘는 본문을 어떤 기본 테스트도 통과시킬 수 없었다.
+    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
     @Column(name = "category", nullable = false, length = 30)

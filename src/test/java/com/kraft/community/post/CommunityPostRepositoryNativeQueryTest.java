@@ -145,6 +145,26 @@ class CommunityPostRepositoryNativeQueryTest {
     }
 
     @Test
+    @DisplayName("QA-BE-01: findWeeklyPopularPublished는 findWeeklyPopular와 같은 순서를 반환한다")
+    void findWeeklyPopularPublished_returnsSameOrderAsPagedVariant() {
+        // findWeeklyPopular와 SQL이 완전히 같지만 별도 @Query(nativeQuery=true) 메서드라
+        // NativeQueryCoverageTest 인벤토리가 독립적으로 커버리지를 요구한다 — countQuery가
+        // 없는 List 반환 변형이 실제 MariaDB에서도 정상 동작하는지 여기서 직접 확인한다.
+        createPost("낮은 인기", OffsetDateTime.now().minusHours(1));
+        CommunityPost highEngagement = createPost("높은 인기", OffsetDateTime.now().minusHours(1));
+        bumpLikes(highEngagement.getId(), 10);
+
+        List<String> titles = communityPostRepository
+                .findWeeklyPopularPublished(null, null, OffsetDateTime.now().minusDays(7),
+                        PageRequest.of(0, 10))
+                .stream()
+                .map(CommunityPost::getTitle)
+                .toList();
+
+        assertThat(titles).containsExactly("높은 인기", "낮은 인기");
+    }
+
+    @Test
     @DisplayName("7일보다 오래된 글은 since 컷오프로 제외된다")
     void excludesPostsOlderThanSinceCutoff() {
         createPost("최근 글", OffsetDateTime.now().minusHours(1));
