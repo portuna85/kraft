@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 // schema.ts가 아니라 combination.ts에서 가져온다 — schema.ts를 참조하면 valibot과
 // 통계 스키마 전량이 이 클라이언트 컴포넌트의 번들로 딸려 온다.
@@ -39,21 +39,26 @@ export function CombinationPicker({ initialNumbers }: { initialNumbers: readonly
    */
   const [text, setText] = useState(() => initialNumbers.join(", "));
 
-  function apply(next: number[]) {
+  const apply = useCallback((next: number[]) => {
     setSelected(next);
     setText(next.join(", "));
-  }
+  }, []);
 
-  function toggle(value: number) {
-    if (selected.includes(value)) {
-      apply(selected.filter((n) => n !== value));
-      return;
-    }
-    // 6개를 넘겨 고르면 가장 먼저 고른 것을 밀어낸다. 조용히 무시하면 눌렀는데
-    // 아무 일도 안 일어난 것처럼 보인다.
-    const next = [...selected, value];
-    apply(next.length > COMBINATION_SIZE ? next.slice(next.length - COMBINATION_SIZE) : next);
-  }
+  // FE-PERF-03(docs/improvement.md): NumberGrid가 memo()로 감싸이므로 onToggle을
+  // 매 렌더 새 함수로 넘기면 그 최적화가 무효화된다.
+  const toggle = useCallback(
+    (value: number) => {
+      if (selected.includes(value)) {
+        apply(selected.filter((n) => n !== value));
+        return;
+      }
+      // 6개를 넘겨 고르면 가장 먼저 고른 것을 밀어낸다. 조용히 무시하면 눌렀는데
+      // 아무 일도 안 일어난 것처럼 보인다.
+      const next = [...selected, value];
+      apply(next.length > COMBINATION_SIZE ? next.slice(next.length - COMBINATION_SIZE) : next);
+    },
+    [selected, apply],
+  );
 
   function onTyped(raw: string) {
     setText(raw);
@@ -87,7 +92,7 @@ export function CombinationPicker({ initialNumbers }: { initialNumbers: readonly
 
       {/* 선택 개수는 번호판을 누를 때마다 바뀐다 — 시각적으로만 알리면 화면을 못 보는
           사용자는 몇 개를 골랐는지 알 수 없다. */}
-      <p className={styles.count} aria-live="polite">
+      <p className="note" aria-live="polite">
         {complete
           ? `${COMBINATION_SIZE}개를 모두 골랐습니다.`
           : selected.length === 0

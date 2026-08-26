@@ -25,13 +25,15 @@ export async function parseJson(response: Response): Promise<unknown> {
 }
 
 export function failureFrom(response: Response, body: unknown): ApiError {
-  const { code, message } = readBackendError(body);
+  const { code, message, requestId } = readBackendError(body);
   const kind = response.status >= 500 ? "server" : "client";
   // 5xx 원문 메시지는 사용자에게 그대로 보이면 안 된다(§20.6) — 코드·상태는 보존하되
   // 화면 문구는 호출부가 kind/status로 고른다.
   return new ApiError(kind, message ?? `요청이 실패했습니다 (${response.status}).`, {
     code,
     status: response.status,
+    // 본문에 없으면 응답 헤더(RequestIdFilter가 전 응답에 붙인다)로 보완한다.
+    requestId: requestId ?? response.headers.get("X-Request-Id"),
   });
 }
 

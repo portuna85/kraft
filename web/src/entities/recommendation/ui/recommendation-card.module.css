@@ -8,10 +8,8 @@
     background: var(--color-surface-1);
   }
 
-  .meta {
-    font-size: var(--text-sm);
-    color: var(--color-ink-muted);
-  }
+  /* FE-CSS-01(docs/improvement.md): 옅은 보조 텍스트는 utilities.css의 `.note`와
+     완전히 동일했다 — JSX에서 `className="note"`로 직접 참조한다. */
 
   /* 조합 한 줄 자체의 레이아웃은 RecommendationResultRow가 소유한다 — 여기는
    * 목록 wrapper의 기본 스타일만 남긴다. 구분선은 RecommendationResultRow의

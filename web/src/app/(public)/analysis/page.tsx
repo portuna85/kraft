@@ -79,25 +79,25 @@ function AnalysisResult({ analysis }: { analysis: CombinationAnalysis }) {
         <h3>조합 구성</h3>
         <dl className={styles.facts}>
           <div className={styles.fact}>
-            <dt>홀수 / 짝수</dt>
+            <dt className="note">홀수 / 짝수</dt>
             <dd>
               {analysis.oddCount} / {analysis.evenCount}
             </dd>
           </div>
           <div className={styles.fact}>
-            <dt>저수 / 고수</dt>
+            <dt className="note">저수 / 고수</dt>
             <dd>
               {analysis.lowCount} / {analysis.highCount}
             </dd>
           </div>
           <div className={styles.fact}>
-            <dt>번호 합계</dt>
+            <dt className="note">번호 합계</dt>
             <dd>
               {analysis.sumOfNumbers} ({analysis.sumBucket} 구간)
             </dd>
           </div>
           <div className={styles.fact}>
-            <dt>연속한 번호 쌍</dt>
+            <dt className="note">연속한 번호 쌍</dt>
             <dd>{analysis.consecutivePairCount}쌍</dd>
           </div>
         </dl>
@@ -113,7 +113,7 @@ function AnalysisResult({ analysis }: { analysis: CombinationAnalysis }) {
           <dl className={styles.facts}>
             {analysis.rangeDistribution.map((range) => (
               <div className={styles.fact} key={range.range}>
-                <dt>{range.range}</dt>
+                <dt className="note">{range.range}</dt>
                 <dd>{range.count}개</dd>
               </div>
             ))}

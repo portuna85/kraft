@@ -68,22 +68,21 @@ function directives(
   ];
 }
 
-/** 실제로 강제되는 정책. */
-export function buildCsp(input: CspInput): string {
-  return directives(input, "'self' 'unsafe-inline'").join("; ");
-}
-
 /**
- * 관측 전용 후보 정책 — style-src에서 'unsafe-inline'을 뺀 버전.
+ * 실제로 강제되는 정책.
  *
- * 재작성은 이 축소를 실제로 달성할 기회다(§20.3): 인라인 style을 쓰지 않는 컴포넌트만
- * 만들면 위반이 0이 되고, 그때 buildCsp의 style-src를 여기에 맞춰 좁히고 이 함수를
- * 지운다. 실패해도 현행과 같은 수준이라 회귀는 아니다(R-12).
+ * FE-CSP-01(docs/improvement.md): style-src의 `'unsafe-inline'`을 뺐다 — 마지막
+ * 남은 인라인 style 사용처(`ad-unit.tsx`)를 CSS 모듈 클래스로 옮겨 위반을 0으로
+ * 만든 뒤 좁혔다(과거 관측 전용 후보 정책이었던 `buildCspReportOnly`가 이 축소를
+ * 준비하는 역할이었다 — 이제 후보와 강제 정책이 같아져 지웠다).
+ * `report-uri`는 계속 남겨 향후 다른 directive에서 실수로 인라인/외부 자원이
+ * 섞여도 `/api/csp-report`가 계속 관측한다.
  */
-export function buildCspReportOnly(input: CspInput): string {
-  return [...directives(input, `'self' 'nonce-${input.nonce}'`), "report-uri /api/csp-report"].join(
-    "; ",
-  );
+export function buildCsp(input: CspInput): string {
+  return [
+    ...directives(input, `'self' 'nonce-${input.nonce}'`),
+    "report-uri /api/csp-report",
+  ].join("; ");
 }
 
 export function generateNonce(): string {

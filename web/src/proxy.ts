@@ -1,12 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-import {
-  buildCsp,
-  buildCspReportOnly,
-  generateNonce,
-  NONCE_HEADER,
-  type CspInput,
-} from "@/shared/config/csp";
+import { buildCsp, generateNonce, NONCE_HEADER, type CspInput } from "@/shared/config/csp";
 import { publicEnv, serverEnv } from "@/shared/config/env";
 
 /**
@@ -51,7 +45,6 @@ export function proxy(request: NextRequest): NextResponse {
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("Content-Security-Policy", buildCsp(cspInput));
-  response.headers.set("Content-Security-Policy-Report-Only", buildCspReportOnly(cspInput));
   return response;
 }
 

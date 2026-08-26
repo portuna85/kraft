@@ -189,7 +189,7 @@ export function SavedLibrary({ latestRound }: { latestRound: number | null }) {
               void compare();
             }}
           >
-            <label className={styles.roundLabel} htmlFor="round">
+            <label className="note" htmlFor="round">
               대조할 회차
             </label>
             <input
@@ -235,7 +235,7 @@ export function SavedLibrary({ latestRound }: { latestRound: number | null }) {
                 <Card as="li" level={2} key={item.id}>
                   <div className={styles.item}>
                     <div className={styles.itemHeader}>
-                      <span className={styles.savedAt}>
+                      <span className="note">
                         {formatDrawDate(item.createdAt.slice(0, 10))}
                       </span>
                       {/* danger ghost "delete는 danger ghost". */}

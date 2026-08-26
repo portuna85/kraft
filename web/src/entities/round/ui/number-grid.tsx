@@ -1,6 +1,6 @@
 "use client";
 
-import type { MouseEvent } from "react";
+import { memo, type MouseEvent } from "react";
 
 import { useGridColumnCount } from "@/shared/hooks/use-grid-column-count";
 import { useRovingGrid } from "@/shared/hooks/use-roving-grid";
@@ -29,8 +29,14 @@ const MARK_LABEL: Record<NumberMark, string> = {
  *
  * 키보드는 로빙 그리드다 — 45개를 전부 탭 순서에 넣으면 판 하나를 지나가는 데
  * Tab을 45번 눌러야 한다.
+ *
+ * FE-PERF-03(docs/improvement.md): `memo()`로 감싼다 — 부모가 이 그리드와 무관한
+ * 상태로 리렌더될 때 45개 버튼을 매번 다시 그리지 않기 위해서다. **호출부가
+ * `marks`/`onToggle`/`isDisabled`를 매 렌더 새 참조로 넘기면 `memo()`는 얕은
+ * 비교 비용만 추가하고 아무것도 막지 못한다** — 호출부에서 `useCallback`/`useMemo`로
+ * 안정화하는 것이 이 최적화의 전제 조건이다.
  */
-export function NumberGrid({
+function NumberGridImpl({
   marks,
   onToggle,
   isDisabled,
@@ -109,3 +115,5 @@ export function NumberGrid({
     </div>
   );
 }
+
+export const NumberGrid = memo(NumberGridImpl);

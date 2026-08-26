@@ -23,7 +23,7 @@ export function MatchResultBadge({
   return (
     <span className={styles.result}>
       <Badge tone={isWinning(prizeTier) ? "success" : "neutral"} label={prizeTier} />
-      <span className={styles.detail}>
+      <span className="note">
         {matchedCount}개 일치{bonusMatch && " · 보너스 일치"}
       </span>
     </span>

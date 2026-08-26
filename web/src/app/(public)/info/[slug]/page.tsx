@@ -1,15 +1,12 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { INFO_PAGE_SLUGS, ROUTES } from "@/shared/config/routes";
-import { NONCE_HEADER } from "@/shared/config/csp";
 import { formatDrawDate } from "@/shared/lib/format";
-import { JsonLd } from "@/shared/ui/json-ld";
 import { Breadcrumb } from "@/shared/ui/navigation";
 
 import { INFO_PAGE_CONTENT } from "./content";
-import { buildFaqJsonLd } from "./faq";
+import { FaqJsonLd } from "./faq-json-ld";
 import { INFO_PAGE_META, isInfoPageSlug } from "./metadata";
 
 import styles from "./info.module.css";
@@ -39,7 +36,6 @@ export default async function InfoPage({ params }: Props) {
   if (!isInfoPageSlug(slug)) notFound();
 
   const meta = INFO_PAGE_META[slug];
-  const nonce = (await headers()).get(NONCE_HEADER) ?? undefined;
 
   return (
     <div className="stack">
@@ -48,14 +44,14 @@ export default async function InfoPage({ params }: Props) {
       <header className="prose stack">
         <h1>{meta.title}</h1>
         <p>{meta.description}</p>
-        <p className={styles.updated}>
+        <p className="note">
           최종 수정: <time dateTime={meta.lastModified}>{formatDrawDate(meta.lastModified)}</time>
         </p>
       </header>
 
       <article className={`prose ${styles.article}`}>{INFO_PAGE_CONTENT[slug]}</article>
 
-      {slug === "faq" && <JsonLd data={buildFaqJsonLd()} nonce={nonce} />}
+      {slug === "faq" && <FaqJsonLd />}
     </div>
   );
 }

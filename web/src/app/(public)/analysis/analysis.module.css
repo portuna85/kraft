@@ -12,10 +12,8 @@
     gap: var(--space-3);
   }
 
-  .fact dt {
-    font-size: var(--text-sm);
-    color: var(--color-ink-muted);
-  }
+  /* FE-CSS-01(docs/improvement.md): dt의 옅은 보조 텍스트는 utilities.css의
+     `.note`와 완전히 동일했다 — JSX에서 `className="note"`로 직접 참조한다. */
 
   .fact dd {
     font-size: var(--text-md);

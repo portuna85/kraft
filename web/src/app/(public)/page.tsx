@@ -32,8 +32,8 @@ export const metadata: Metadata = {
  * (public) 셸의 error 경계가 받게 두는 것이 의도다(§6.5).
  */
 export default async function HomePage() {
-  const latest = await getLatestRound();
-  const nonce = (await headers()).get(NONCE_HEADER) ?? undefined;
+  const [latest, headerList] = await Promise.all([getLatestRound(), headers()]);
+  const nonce = headerList.get(NONCE_HEADER) ?? undefined;
 
   return (
     <div className="stack">

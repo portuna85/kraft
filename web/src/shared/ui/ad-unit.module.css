@@ -3,8 +3,28 @@
     display: flex;
     justify-content: center;
     min-height: 100px;
+    max-width: 100%;
     margin-top: var(--space-6);
     overflow: hidden;
+  }
+
+  /* FE-CSP-01(docs/improvement.md): AdUnit/AdSenseUnit의 컨테이너는 height prop이
+     90/100/250/600 중 하나로 고정돼 있다(§2 사전 준비의 광고 단위 크기). 인라인
+     style 대신 값별 클래스로 고른다 — style-src에서 'unsafe-inline'을 뺄 수 있다. */
+  .h90 {
+    min-height: 90px;
+  }
+
+  .h100 {
+    min-height: 100px;
+  }
+
+  .h250 {
+    min-height: 250px;
+  }
+
+  .h600 {
+    min-height: 600px;
   }
 
   /* PageAd/InArticleAd 컨테이너 폭 측정용 래퍼 — 포맷이 정해지기 전에도 자리를
@@ -15,6 +35,42 @@
     justify-content: center;
     overflow: hidden;
     margin-top: var(--space-6);
+  }
+
+  /* 포맷이 아직 안 정해졌거나(width===null) 실제로 뭔가 뜰 포맷이면 자리를
+     예약한다 — PageAd는 100px(320×100 모바일 기준), InArticleAdSense는
+     250px(300×250 애드센스 모바일 기준)만큼. 포맷이 "없음"으로 확정되면 어느
+     클래스도 안 붙어 min-height가 0으로 접힌다. */
+  .reserve100 {
+    min-height: 100px;
+  }
+
+  .reserve250 {
+    min-height: 250px;
+  }
+
+  /* adsbygoogle <ins>는 width/height가 실제 광고 크기와 정확히 일치해야 한다
+     (728×90 데스크톱, 300×250 인아티클 모바일, 300×600 사이드바) — 셋뿐이라
+     조합별 클래스로 고정한다. */
+  .insDesktopBanner {
+    display: inline-block;
+    width: 728px;
+    height: 90px;
+    max-width: 100%;
+  }
+
+  .insInArticleMobile {
+    display: inline-block;
+    width: 300px;
+    height: 250px;
+    max-width: 100%;
+  }
+
+  .insSidebar {
+    display: inline-block;
+    width: 300px;
+    height: 600px;
+    max-width: 100%;
   }
 
   .adSlotArticle .adUnit {

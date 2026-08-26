@@ -63,8 +63,10 @@ describe("광고 유닛", () => {
     expect(ins).toHaveAttribute("data-ad-width", "320");
     expect(ins).toHaveAttribute("data-ad-height", "100");
 
+    // FE-CSP-01(docs/improvement.md): 인라인 style 대신 높이별 CSS 모듈 클래스를 쓴다
+    // — jsdom은 실제 스타일시트를 적용하지 않으므로 클래스명으로 확인한다.
     const container = screen.getByLabelText("광고");
-    expect(container).toHaveStyle({ maxWidth: "100%", minHeight: "100px" });
+    expect(container.className).toContain("h100");
   });
 
   it("label을 지정하면 aria-label에 반영된다", () => {
@@ -232,7 +234,7 @@ describe("애드센스 플레이스홀더 옵트인(NEXT_PUBLIC_ADSENSE_RESERVE_
 
     expect(document.querySelector("ins.adsbygoogle")).not.toBeInTheDocument();
     const placeholder = screen.getByLabelText("사이드바 광고");
-    expect(placeholder).toHaveStyle({ maxWidth: "100%", minHeight: "600px" });
+    expect(placeholder.className).toContain("h600");
   });
 });
 

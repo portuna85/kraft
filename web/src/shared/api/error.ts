@@ -22,17 +22,26 @@ export class ApiError extends Error {
   readonly code: string | null;
   /** HTTP 상태. 네트워크·타임아웃이면 null */
   readonly status: number | null;
+  /** 백엔드가 `X-Request-Id`/응답 본문으로 준 상관관계 ID. FE-REL-01: 사고 대응 시
+   * `(ops)/error.tsx`가 이 값을 노출해 백엔드 로그와 대조할 수 있게 한다. */
+  readonly requestId: string | null;
 
   constructor(
     kind: ApiErrorKind,
     message: string,
-    options?: { code?: string | null; status?: number | null; cause?: unknown },
+    options?: {
+      code?: string | null;
+      status?: number | null;
+      requestId?: string | null;
+      cause?: unknown;
+    },
   ) {
     super(message, { cause: options?.cause });
     this.name = "ApiError";
     this.kind = kind;
     this.code = options?.code ?? null;
     this.status = options?.status ?? null;
+    this.requestId = options?.requestId ?? null;
   }
 
   /** 로그인 유도 대상인지. 403(CSRF 만료)과 구분해야 한다 — §15.5 */
@@ -51,13 +60,20 @@ export class ApiError extends Error {
   }
 }
 
-/** 백엔드 오류 응답 본문에서 코드·메시지를 최대한 살려낸다. 실패해도 던지지 않는다. */
-export function readBackendError(body: unknown): { code: string | null; message: string | null } {
-  if (typeof body !== "object" || body === null) return { code: null, message: null };
+/** 백엔드 오류 응답 본문에서 코드·메시지·requestId를 최대한 살려낸다. 실패해도 던지지 않는다. */
+export function readBackendError(body: unknown): {
+  code: string | null;
+  message: string | null;
+  requestId: string | null;
+} {
+  if (typeof body !== "object" || body === null) {
+    return { code: null, message: null, requestId: null };
+  }
   const record = body as Record<string, unknown>;
   return {
     code: typeof record.code === "string" ? record.code : null,
     message: typeof record.message === "string" ? record.message : null,
+    requestId: typeof record.requestId === "string" ? record.requestId : null,
   };
 }
 

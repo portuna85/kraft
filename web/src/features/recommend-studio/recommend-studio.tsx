@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { ROUTES } from "@/shared/config/routes";
 import {
@@ -56,6 +56,17 @@ export function RecommendStudio() {
       resultsHeadingRef.current?.focus();
     }
   }, [studio.state.status]);
+
+  // FE-PERF-03(docs/improvement.md): 인라인 화살표로 넘기면 NumberGrid의 memo()가
+  // 매 렌더 무효화된다 — selectionMode/lockedNumbers.length/marks가 실제로 바뀔 때만
+  // 새로 만든다.
+  const isNumberDisabled = useCallback(
+    (value: number) =>
+      studio.selectionMode === "locked" &&
+      studio.lockedNumbers.length >= MAX_LOCKED_NUMBERS &&
+      (studio.marks.get(value) ?? "none") !== "locked",
+    [studio.selectionMode, studio.lockedNumbers.length, studio.marks],
+  );
 
   return (
     <div className="stack">
@@ -125,11 +136,7 @@ export function RecommendStudio() {
         <NumberGrid
           marks={studio.marks}
           onToggle={studio.toggleNumber}
-          isDisabled={(value) =>
-            studio.selectionMode === "locked" &&
-            studio.lockedNumbers.length >= MAX_LOCKED_NUMBERS &&
-            (studio.marks.get(value) ?? "none") !== "locked"
-          }
+          isDisabled={isNumberDisabled}
           aria-label="고정하거나 제외할 번호 선택"
         />
 

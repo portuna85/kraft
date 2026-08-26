@@ -30,10 +30,8 @@
     gap: var(--space-3);
   }
 
-  .roundLabel {
-    font-size: var(--text-sm);
-    color: var(--color-ink-muted);
-  }
+  /* FE-CSS-01(docs/improvement.md): 옅은 보조 텍스트는 utilities.css의 `.note`와
+     완전히 동일했다 — JSX에서 `className="note"`로 직접 참조한다. */
 
   .roundInput {
     min-height: var(--target-min);
@@ -96,10 +94,8 @@
     gap: var(--space-3);
   }
 
-  .savedAt {
-    font-size: var(--text-sm);
-    color: var(--color-ink-muted);
-  }
+  /* FE-CSS-01(docs/improvement.md): 옅은 보조 텍스트는 utilities.css의 `.note`와
+     완전히 동일했다 — JSX에서 `className="note"`로 직접 참조한다. */
 
   /* 데스크톱은 2열(§23.7). 카드 안이 번호 6개라 좁으면 줄바꿈이 지저분해진다.
      — 바로 그 이유 때문에 뷰포트가 아니라 컨테이너 폭으로 판정한다.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildCsp, buildCspReportOnly, generateNonce, type CspInput } from "./csp";
+import { buildCsp, generateNonce, type CspInput } from "./csp";
 
 function input(overrides: Partial<CspInput> = {}): CspInput {
   return {
@@ -77,20 +77,15 @@ describe("FE-SEC-01: ops surface는 광고 네트워크 origin을 전혀 열지 
   });
 });
 
-describe("CSP Report-Only 후보 정책", () => {
-  it("style-src에서 unsafe-inline을 빼 인라인 style 사용을 관측한다", () => {
-    const styleSrc = directive(buildCspReportOnly(input()), "style-src");
+describe("FE-CSP-01: style-src에서 unsafe-inline을 뺀 강제 정책", () => {
+  it("style-src가 nonce 기반이고 unsafe-inline을 포함하지 않는다", () => {
+    const styleSrc = directive(buildCsp(input()), "style-src");
     expect(styleSrc).not.toContain("'unsafe-inline'");
     expect(styleSrc).toContain("'nonce-test-nonce'");
   });
 
   it("위반을 수집할 report-uri를 갖는다", () => {
-    expect(buildCspReportOnly(input())).toContain("report-uri /api/csp-report");
-  });
-
-  it("강제 정책은 아직 style-src에 unsafe-inline을 유지한다", () => {
-    // 후보 정책이 위반 0으로 안정되기 전에 강제 정책을 좁히면 화면이 깨진다.
-    expect(directive(buildCsp(input()), "style-src")).toContain("'unsafe-inline'");
+    expect(buildCsp(input())).toContain("report-uri /api/csp-report");
   });
 });
 

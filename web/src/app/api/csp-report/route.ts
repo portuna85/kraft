@@ -4,9 +4,11 @@ import { guardCollectRequest } from "@/shared/lib/collect-request";
 import { pushObservabilityEvent } from "@/shared/lib/push-observability-event";
 
 /**
- * CSP Report-Only 수신처
+ * CSP 위반 수신처
  *
- * `shared/config/csp.ts`의 report-only 정책이 위반을 여기로 보낸다. 브라우저가
+ * FE-CSP-01(docs/improvement.md): 과거엔 Report-Only 후보 정책만 여기로 보냈지만,
+ * 그 후보(unsafe-inline 없는 style-src)가 이제 실제 강제 정책이다 —
+ * `shared/config/csp.ts`의 `buildCsp`가 이 경로로 계속 위반을 보고한다. 브라우저가
  * report-uri로 POST하는 형식(Content-Type: application/csp-report, 본문은
  * `{"csp-report": {...}}`)만 지원한다. referrer·script-sample처럼 페이지 내용이
  * 섞일 수 있는 필드는 남기지 않는다(vitals 라우트와 같은 원칙).
@@ -62,7 +64,7 @@ export async function POST(request: NextRequest) {
     return new Response(null, { status: 400 });
   }
 
-  console.warn("[csp-report-only-violation]", report);
+  console.warn("[csp-violation]", report);
 
   // OBS-WEB-01: 메트릭에는 violatedDirective만 쓴다 — documentUri/blockedUri/
   // sourceFile은 카디널리티가 없는 백엔드 집계에 필요 없다.

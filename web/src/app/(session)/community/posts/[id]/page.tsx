@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 import { getCommentPage } from "@/entities/community-comment/api";
 import { getPost } from "@/entities/community-post/api";
@@ -23,6 +24,7 @@ import { formatDateTime } from "@/shared/lib/format";
 import { Badge } from "@/shared/ui/badge";
 import { JsonLd } from "@/shared/ui/json-ld";
 import { Breadcrumb } from "@/shared/ui/navigation";
+import { ListRowsSkeleton } from "@/shared/ui/page-skeleton";
 import { InlineAlert } from "@/shared/ui/states";
 
 import styles from "../../community.module.css";
@@ -99,12 +101,6 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
     );
   }
 
-  /**
-   * 댓글 실패가 글 읽기를 막지 않는다 — 부수 데이터라 인라인으로 흡수한다(§7.6).
-   * 본문은 이미 있으므로 여기서 5xx를 내면 읽을 수 있었던 글을 못 읽게 만든다.
-   */
-  const comments = await getCommentPage(id).catch(() => null);
-
   return (
     <div className="stack">
       <Breadcrumb
@@ -152,13 +148,15 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
         <BlockButton postId={post.id} ownerId={post.ownerId} />
       </div>
 
-      {comments === null ? (
-        // KF-23(docs/improvement.md): 평문 <p>라 댓글 로드 실패가 스크린리더에
-        // 무성이었다 — role="alert"를 주는 InlineAlert로 바꾼다.
-        <InlineAlert tone="danger">지금은 댓글을 불러올 수 없습니다.</InlineAlert>
-      ) : (
-        <CommentSection postId={post.id} initialPage={comments} />
-      )}
+      {/*
+       * FE-REL-02(docs/improvement.md): 댓글 fetch는 이미 `.catch(() => null)`로
+       * 실패를 흡수하도록 설계돼 있어(아래 PostComments) 본문(getPost)과 달리
+       * Suspense 안에 넣어도 "핵심 데이터 실패는 5xx" 계약(§7.6)을 건드리지
+       * 않는다. **본문은 절대 이 경계 안에 넣지 않는다.**
+       */}
+      <Suspense fallback={<ListRowsSkeleton rows={3} />}>
+        <PostComments postId={post.id} />
+      </Suspense>
 
       <JsonLd
         nonce={nonce}
@@ -187,4 +185,23 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
       />
     </div>
   );
+}
+
+/**
+ * FE-REL-02(docs/improvement.md): 댓글만 별도 컴포넌트로 분리해 `<Suspense>` 안에서
+ * 스트리밍한다 — 본문 HTML이 먼저 도착하고 댓글은 이어서 채워진다.
+ *
+ * 댓글 실패가 글 읽기를 막지 않는다 — 부수 데이터라 인라인으로 흡수한다(§7.6).
+ * 본문은 이미 있으므로 여기서 5xx를 내면 읽을 수 있었던 글을 못 읽게 만든다.
+ */
+async function PostComments({ postId }: { postId: number }) {
+  const comments = await getCommentPage(postId).catch(() => null);
+
+  if (comments === null) {
+    // KF-23(docs/improvement.md): 평문 <p>라 댓글 로드 실패가 스크린리더에
+    // 무성이었다 — role="alert"를 주는 InlineAlert로 바꾼다.
+    return <InlineAlert tone="danger">지금은 댓글을 불러올 수 없습니다.</InlineAlert>;
+  }
+
+  return <CommentSection postId={postId} initialPage={comments} />;
 }

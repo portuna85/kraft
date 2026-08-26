@@ -30,7 +30,7 @@ export function RecommendationCard({
 }) {
   return (
     <div className={styles.card}>
-      <p className={styles.meta}>
+      <p className="note">
         {STRATEGY_LABELS[strategy]} · {historyThroughRound}회까지 반영 ·{" "}
         <time dateTime={createdAt}>{formatDateTime(createdAt)}</time>
       </p>

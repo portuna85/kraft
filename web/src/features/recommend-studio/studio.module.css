@@ -96,6 +96,11 @@
     flex-wrap: wrap;
   }
 
+  /* FE-CSS-01(docs/improvement.md): 기본 선언은 `.note`와 바이트 동일하지만,
+     `.note`(utilities 레이어)와 합치지 않는다 — utilities는 `@layer` 선언 순서상
+     components보다 항상 이긴다(globals.css:9), 그래서 `.note`의 color가
+     `:hover`보다 명세상 나중이라도 레이어가 특이도를 이겨 hover 시 색이 절대
+     안 바뀐다. 이 규칙은 이 파일 안에 독립적으로 남긴다. */
   .historyLink {
     font-size: var(--text-sm);
     color: var(--color-ink-muted);

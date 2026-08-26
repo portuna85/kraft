@@ -53,13 +53,14 @@ test.describe("CSP nonce", () => {
     expect(violations, `CSP 위반 발생:\n${violations.join("\n")}`).toHaveLength(0);
   });
 
-  test("style-src 축소 후보 정책을 Report-Only로 관측한다", async ({ request }) => {
-    const reportOnly = (await request.get("/")).headers()["content-security-policy-report-only"];
+  test("FE-CSP-01: style-src가 unsafe-inline 없이 강제되고 위반을 관측한다", async ({
+    request,
+  }) => {
+    const csp = (await request.get("/")).headers()["content-security-policy"];
 
-    expect(reportOnly).toBeTruthy();
-    expect(reportOnly).toContain("report-uri /api/csp-report");
-    // 후보 정책은 style-src에서 unsafe-inline을 뺀 상태여야 관측 가치가 있다.
-    const styleSrc = reportOnly?.split("; ").find((part) => part.startsWith("style-src "));
+    expect(csp).toBeTruthy();
+    expect(csp).toContain("report-uri /api/csp-report");
+    const styleSrc = csp?.split("; ").find((part) => part.startsWith("style-src "));
     expect(styleSrc).not.toContain("'unsafe-inline'");
   });
 });

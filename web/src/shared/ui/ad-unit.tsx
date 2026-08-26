@@ -24,6 +24,25 @@ import styles from "./ad-unit.module.css";
  */
 const DESKTOP_QUERY = `(min-width: ${BP.desktop}px)`;
 
+/**
+ * FE-CSP-01(docs/improvement.md): 컨테이너 높이가 취할 수 있는 값은 광고 단위
+ * 크기표(§2)로 고정된 90/100/250/600뿐이다 — 인라인 style 대신 값별 CSS 클래스로
+ * 고른다.
+ */
+const HEIGHT_CLASS: Record<number, string | undefined> = {
+  90: styles.h90,
+  100: styles.h100,
+  250: styles.h250,
+  600: styles.h600,
+};
+
+/** adsbygoogle `<ins>`가 실제로 쓰는 (width, height) 조합은 셋뿐이다. */
+const INS_SIZE_CLASS: Record<string, string | undefined> = {
+  "728x90": styles.insDesktopBanner,
+  "300x250": styles.insInArticleMobile,
+  "300x600": styles.insSidebar,
+};
+
 type AdFormat = "desktop" | "mobile" | null;
 
 /**
@@ -49,10 +68,9 @@ type AdUnitProps = {
 export function AdUnit({ unit, width, height, label = "광고", className }: AdUnitProps) {
   return (
     <div
-      className={`${styles.adUnit}${className ? ` ${className}` : ""}`}
+      className={`${styles.adUnit} ${HEIGHT_CLASS[height] ?? ""}${className ? ` ${className}` : ""}`}
       role="group"
       aria-label={label}
-      style={{ maxWidth: "100%", minHeight: height }}
     >
       <ins
         className="kakao_ad_area"
@@ -96,11 +114,15 @@ export function PageAd({ slot }: PageAdProps) {
   if (!mobile && !desktop) return null;
 
   // width===null: 마운트 전이라 100px 자리를 잡아둔다. width가 측정됐는데도
-  // format이 null이면 "포맷 불가"가 확정된 것이므로 자리를 접는다.
-  const minHeight = width === null || format ? 100 : 0;
+  // format이 null이면 "포맷 불가"가 확정된 것이므로 자리를 접는다(reserve100 미적용).
+  const shouldReserve = width === null || format;
 
   return (
-    <div ref={ref} className={styles.adSlotArticle} style={{ minHeight }} aria-hidden={!format}>
+    <div
+      ref={ref}
+      className={`${styles.adSlotArticle}${shouldReserve ? ` ${styles.reserve100}` : ""}`}
+      aria-hidden={!format}
+    >
       {format === "desktop" && desktop && (
         <AdUnit unit={desktop} width={728} height={90} className="ad-desktop" />
       )}
@@ -154,18 +176,18 @@ export function AdSenseUnit({ slot, width, height, label = "광고", className }
 
   if (!adUnitRendersContent(slot)) return null;
 
+  const insSizeClass = INS_SIZE_CLASS[`${width}x${height}`] ?? "";
+
   return (
     <div
-      className={`${styles.adUnit}${className ? ` ${className}` : ""}`}
+      className={`${styles.adUnit} ${HEIGHT_CLASS[height] ?? ""}${className ? ` ${className}` : ""}`}
       role="group"
       aria-label={label}
-      style={{ maxWidth: "100%", minHeight: height }}
     >
       {enabled ? (
         <>
           <ins
-            className="adsbygoogle"
-            style={{ display: "inline-block", width, height, maxWidth: "100%" }}
+            className={`adsbygoogle ${insSizeClass}`}
             data-ad-client={clientId}
             data-ad-slot={slot}
           />
@@ -197,10 +219,14 @@ function InArticleAdSense({ slot }: PageAdProps) {
   const desktopSlot = IN_ARTICLE_ADSENSE_DESKTOP_ENV[slot] ?? "";
   const mobileSlot = IN_ARTICLE_ADSENSE_MOBILE_ENV[slot] ?? "";
 
-  const minHeight = width === null || format ? 250 : 0;
+  const shouldReserve = width === null || format;
 
   return (
-    <div ref={ref} className={styles.adSlotArticle} style={{ minHeight }} aria-hidden={!format}>
+    <div
+      ref={ref}
+      className={`${styles.adSlotArticle}${shouldReserve ? ` ${styles.reserve250}` : ""}`}
+      aria-hidden={!format}
+    >
       {format === "desktop" && (
         <AdSenseUnit slot={desktopSlot} width={728} height={90} className="ad-desktop" />
       )}
