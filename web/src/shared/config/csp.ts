@@ -79,10 +79,9 @@ function directives(
  * 섞여도 `/api/csp-report`가 계속 관측한다.
  */
 export function buildCsp(input: CspInput): string {
-  return [
-    ...directives(input, `'self' 'nonce-${input.nonce}'`),
-    "report-uri /api/csp-report",
-  ].join("; ");
+  return [...directives(input, `'self' 'nonce-${input.nonce}'`), "report-uri /api/csp-report"].join(
+    "; ",
+  );
 }
 
 export function generateNonce(): string {

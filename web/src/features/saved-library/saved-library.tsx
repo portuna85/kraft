@@ -235,9 +235,7 @@ export function SavedLibrary({ latestRound }: { latestRound: number | null }) {
                 <Card as="li" level={2} key={item.id}>
                   <div className={styles.item}>
                     <div className={styles.itemHeader}>
-                      <span className="note">
-                        {formatDrawDate(item.createdAt.slice(0, 10))}
-                      </span>
+                      <span className="note">{formatDrawDate(item.createdAt.slice(0, 10))}</span>
                       {/* danger ghost "delete는 danger ghost". */}
                       <Button variant="dangerQuiet" onClick={() => setDeleteTarget(item)}>
                         삭제
