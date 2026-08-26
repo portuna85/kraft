@@ -59,7 +59,12 @@ ENV JAVA_TOOL_OPTIONS="-XX:+UseZGC -XX:MaxRAMPercentage=55.0 -XX:+ExitOnOutOfMem
 # 달라질 수 있어 digest 고정의 재현성을 일부 무효화했고, healthcheck 하나 때문에
 # curl+의존 라이브러리만큼 이미지 크기·CVE 표면이 늘었다. HealthCheck.class(아래
 # COPY)가 JRE 내장 java.net.http.HttpClient만 쓰므로 이 apt-get 자체가 필요 없어졌다.
-RUN useradd --create-home --uid 10001 spring \
+# apt-get은 없앴지만 rm -f /usr/bin/pebble은 그대로 남긴다 — base 이미지 자체에
+# 이미 들어 있는 Go 바이너리(Canonical pebble)를 지우는 것이라 apt-get 유무와 무관하고,
+# Trivy가 그 바이너리의 golang.org/x/net·stdlib 취약점을 그대로 스캔해 잡는다
+# (Security Scan 잡에서 실측 확인 — 빠뜨렸다가 CVE 14건으로 게이트가 막혔었다).
+RUN rm -f /usr/bin/pebble \
+    && useradd --create-home --uid 10001 spring \
     && mkdir -p /app/logs \
     && chown -R spring:spring /app
 
