@@ -122,6 +122,53 @@
     font-weight: 700;
   }
 
+  /* "인사이트" 드롭다운 트리거 — .navLink 모양은 그대로 쓰되 네이티브 버튼
+     크롬만 지운다(배경·테두리·폰트 상속). */
+  .navMenuTrigger {
+    appearance: none;
+    background: none;
+    border: none;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  /* 트리거 자신은 현재 페이지가 아니라 하위 항목 중 하나가 현재일 뿐이라
+     aria-current가 아니라 data-active로 표시한다 — .navLink[aria-current]와
+     같은 시각 처리. */
+  .navMenuTrigger[data-active="true"] {
+    color: var(--color-brand-strong);
+    font-family: var(--font-sans-bold);
+    font-weight: 700;
+  }
+
+  /* 유틸리티(보관함) 링크 — 헤더 액션 영역에서 계정/테마와 나란히, 하지만
+     주요 메뉴와는 시각적으로 구분되게 .navLink 톤을 그대로 쓴다.
+     .primaryNav와 같은 1152px 경계에서만 켠다 — 그 아래 폭에서는 TabBar의
+     "보관함" 탭이 이미 같은 목적지를 제공하므로, 여기서도 보이면 같은 링크가
+     헤더와 탭바에 중복된다. */
+  .utilityLink {
+    display: none;
+    align-items: center;
+    min-height: var(--target-min);
+    padding-inline: var(--space-3);
+    border-radius: var(--radius-sm);
+    color: var(--color-ink-muted);
+    text-decoration: none;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .utilityLink:hover {
+      color: var(--color-ink);
+      background: var(--color-surface-1);
+    }
+  }
+
+  .utilityLink[aria-current="page"] {
+    color: var(--color-brand-strong);
+    font-family: var(--font-sans-bold);
+    font-weight: 700;
+  }
+
   .main {
     display: block;
     padding-block: var(--space-6) var(--space-12);
@@ -290,6 +337,10 @@
 
     .tabBar {
       display: none;
+    }
+
+    .utilityLink {
+      display: inline-flex;
     }
 
     /* RSP-25(docs/improvement.md): 이 폭부터는 9개 주요 메뉴가 같은 행에

@@ -65,12 +65,16 @@ describe("RSP-23: 데스크톱 주요 메뉴에서 현재 항목은 0개 또는 
     { pathname: "/community", expected: ["커뮤니티"] },
     { pathname: "/community/posts/1", expected: ["커뮤니티"] },
     { pathname: "/community/write", expected: ["커뮤니티"] },
-    { pathname: "/data", expected: ["데이터"] },
+    { pathname: "/data", expected: ["데이터 개요"] },
     { pathname: "/frequency", expected: ["번호별 출현"] },
     { pathname: "/stats", expected: ["당첨 패턴"] },
     { pathname: "/companion", expected: ["함께 나온 번호"] },
     { pathname: "/analysis", expected: ["내 조합 진단"] },
-    { pathname: "/saved", expected: ["보관함"] },
+    { pathname: "/info/data-source", expected: ["데이터 출처"] },
+    { pathname: "/info/methodology", expected: ["방법론"] },
+    // "보관함"은 4대 축 밖의 유틸리티라 PRIMARY_NAV에서 빠졌다 — utility nav
+    // (site-header.tsx의 SavedLink)로 옮겼다.
+    { pathname: "/saved", expected: [] },
     // 주요 메뉴에 없는 라우트는 아무것도 현재가 아니다.
     { pathname: "/", expected: [] },
     { pathname: "/status", expected: [] },

@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PrimaryNav } from "./primary-nav";
@@ -21,7 +22,10 @@ describe("PrimaryNav", () => {
     render(<PrimaryNav />);
 
     expect(screen.getByRole("link", { name: "번호 추천" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: "데이터" })).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("link", { name: "커뮤니티" })).not.toHaveAttribute("aria-current");
+    // kraft-redesign-plan.md P0: "인사이트"는 접힌 그룹이라 현재가 아닐 때
+    // data-active를 갖지 않는다.
+    expect(screen.getByRole("button", { name: "인사이트" })).not.toHaveAttribute("data-active");
   });
 
   it("하위 경로도 현재 라우트로 판정한다", () => {
@@ -55,5 +59,35 @@ describe("PrimaryNav", () => {
     for (const link of screen.getAllByRole("link")) {
       expect(link).not.toHaveAttribute("aria-current");
     }
+    expect(screen.getByRole("button", { name: "인사이트" })).not.toHaveAttribute("data-active");
+  });
+
+  // kraft-redesign-plan.md P0: "인사이트" 그룹은 DropdownMenu 하나로 접힌다 —
+  // 하위 라우트가 현재일 때 개별 링크가 아니라 트리거의 data-active로 드러난다.
+  it("인사이트 하위 라우트가 현재면 드롭다운 트리거가 data-active를 갖는다", () => {
+    mockPathname = "/frequency";
+    render(<PrimaryNav />);
+
+    expect(screen.getByRole("button", { name: "인사이트" })).toHaveAttribute("data-active", "true");
+  });
+
+  it("인사이트 트리거를 열면 하위 항목이 링크로 나타난다", async () => {
+    const user = userEvent.setup();
+    render(<PrimaryNav />);
+
+    await user.click(screen.getByRole("button", { name: "인사이트" }));
+
+    expect(screen.getByRole("menuitem", { name: "번호별 출현" })).toHaveAttribute(
+      "href",
+      "/frequency",
+    );
+    expect(screen.getByRole("menuitem", { name: "데이터 출처" })).toHaveAttribute(
+      "href",
+      "/info/data-source",
+    );
+    expect(screen.getByRole("menuitem", { name: "방법론" })).toHaveAttribute(
+      "href",
+      "/info/methodology",
+    );
   });
 });

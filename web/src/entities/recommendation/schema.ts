@@ -33,6 +33,20 @@ export const EXPLANATION_LABELS = {
 
 export type ExplanationCode = keyof typeof EXPLANATION_LABELS;
 
+/**
+ * kraft-redesign-plan.md P0: 결과 화면에서 매 조합마다 반복되는 전체 문장이
+ * 스캔을 느리게 만든다 — 짧은 칩 라벨을 별도로 둔다. `EXPLANATION_LABELS`(전체
+ * 문장)는 지우지 않고 "자세히" 펼침에서 그대로 쓴다. 이 라벨은 위 문구를
+ * 줄인 표현일 뿐 새로운 통계 주장을 추가하지 않는다.
+ */
+export const EXPLANATION_CHIP_LABELS: Record<ExplanationCode, string> = {
+  ODD_EVEN_BALANCED: "홀짝 균형",
+  LOW_HIGH_BALANCED: "고저 균형",
+  SUM_IN_RANGE: "합계 적정",
+  CONSECUTIVE_PAIR_LIMITED: "연속 번호 적음",
+  DECADE_SPREAD: "구간 분산",
+};
+
 export const explanationCodeSchema = v.picklist(
   Object.keys(EXPLANATION_LABELS) as ExplanationCode[],
 );

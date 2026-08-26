@@ -42,9 +42,12 @@ test.describe("키보드만으로 조작", () => {
     const firstBall = page.locator('[data-number="1"]');
 
     // 기본 모드(고정)에서 1번을 고정한다.
+    // kraft-redesign-plan.md P0: 선택 요약이 칩 두 개(Badge)로 나뉘어 렌더되므로
+    // 하나의 결합 문자열이 아니라 각 칩 텍스트를 따로 확인한다.
     await firstBall.focus();
     await page.keyboard.press("Enter");
-    await expect(page.getByText("고정 1/5 · 제외 0")).toBeVisible();
+    await expect(page.getByText("고정 1/5", { exact: true })).toBeVisible();
+    await expect(page.getByText("제외 0", { exact: true })).toBeVisible();
 
     // 화살표로 제외 모드로 바꾸고 같은 번호를 누르면 고정에서 빠져 제외로 옮겨간다.
     await lockedMode.focus();
@@ -56,6 +59,7 @@ test.describe("키보드만으로 조작", () => {
 
     await firstBall.focus();
     await page.keyboard.press("Enter");
-    await expect(page.getByText("고정 0/5 · 제외 1")).toBeVisible();
+    await expect(page.getByText("고정 0/5", { exact: true })).toBeVisible();
+    await expect(page.getByText("제외 1", { exact: true })).toBeVisible();
   });
 });

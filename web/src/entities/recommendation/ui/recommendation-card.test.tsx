@@ -42,8 +42,8 @@ describe("추천 카드", () => {
     expect(screen.getByText("홀짝이 고르게 섞였습니다")).toBeInTheDocument();
   });
 
-  it("설명 코드가 없는 항목에는 설명 목록을 만들지 않는다", () => {
-    const { container } = render(
+  it("설명 코드가 없는 항목에는 설명 칩·자세히 토글을 만들지 않는다", () => {
+    render(
       <RecommendationCard
         strategy="balanced"
         createdAt="2026-08-01T12:00:00Z"
@@ -52,12 +52,11 @@ describe("추천 카드", () => {
       />,
     );
 
-    // 조합 목록(ol) 안에 설명 목록(ul)이 없어야 한다 — 있으면 빈 목록이 렌더된 것이다.
-    expect(container.querySelector("ul")).toBeNull();
+    expect(screen.queryByRole("button", { name: "자세히" })).toBeNull();
   });
 
-  it("저장 슬롯이 없으면 렌더하지 않는다", () => {
-    const { container } = render(
+  it("저장 슬롯이 없으면 저장 버튼을 렌더하지 않는다", () => {
+    render(
       <RecommendationCard
         strategy="balanced"
         createdAt="2026-08-01T12:00:00Z"
@@ -65,7 +64,7 @@ describe("추천 카드", () => {
         items={ITEMS}
       />,
     );
-    expect(container.querySelector("button")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^저장/ })).toBeNull();
   });
 
   it("저장 슬롯을 항목별로 렌더한다", () => {

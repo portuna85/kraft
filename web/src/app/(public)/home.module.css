@@ -128,45 +128,74 @@
     gap: var(--space-3);
   }
 
-  .cta {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: var(--target-min);
-    padding-inline: var(--space-6);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: var(--radius-md);
-    background: linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-strong) 100%);
-    color: var(--color-ink-on-brand);
-    font-family: var(--font-sans-bold);
-    font-weight: 700;
-    text-decoration: none;
-    box-shadow: 0 4px 14px var(--color-brand-glow);
-    transition:
-      transform var(--duration-fast) var(--ease-out),
-      box-shadow var(--duration-fast) var(--ease-out);
+  /* kraft-redesign-plan.md P0: "이렇게 시작하세요" 3단계 안내. 데이터 없이
+     정적으로만 렌더한다(§7 no-loading.tsx 계약을 지키기 위해 새 fetch를
+     추가하지 않는다). */
+  .steps {
+    margin-top: var(--space-2);
   }
 
-  @media (hover: hover) and (pointer: fine) {
-    .cta:hover {
-      box-shadow: 0 6px 20px var(--color-brand-glow);
-      transform: translateY(-1px);
+  .stepList {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+    margin-top: var(--space-4);
+    list-style: none;
+    padding: 0;
+  }
+
+  @media (min-width: 640px) {
+    .stepList {
+      grid-template-columns: repeat(3, 1fr);
     }
   }
 
-  .cta:active {
-    transform: translateY(1px);
+  .stepList li > * {
+    height: 100%;
   }
 
-  .secondaryCta {
+  .stepNumber {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: var(--target-min);
-    padding-inline: var(--space-6);
+    min-width: var(--space-6);
+    min-height: var(--space-6);
+    border-radius: var(--radius-pill);
+    background: var(--color-brand-glow);
+    color: var(--color-brand-strong);
+    font-family: var(--font-sans-bold);
+    font-weight: 700;
+    font-size: var(--text-sm);
+  }
+
+  /* kraft-redesign-plan.md P0: 인사이트 미리보기 — 실시간 수치를 가져오지
+     않는다(새 fetch가 홈의 유일한 필수 조회인 getLatestRound()의 실패=5xx
+     계약을 흐릴 수 있어서다). 라우트로 안내하는 정적 타일뿐이다. */
+  .insightsGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+    margin-top: var(--space-4);
+  }
+
+  @media (min-width: 640px) {
+    .insightsGrid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .insightCard {
+    display: block;
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    color: var(--color-ink);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
     text-decoration: none;
+    transition: background-color var(--duration-fast) var(--ease-out);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .insightCard:hover {
+      background: var(--color-surface-1);
+    }
   }
 }
