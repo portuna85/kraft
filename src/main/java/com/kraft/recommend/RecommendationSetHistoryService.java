@@ -168,12 +168,13 @@ public class RecommendationSetHistoryService {
     /**
      * 로그인 계정 귀속 — 추천 세트는 각각이 독립된 이력
      * 레코드라 저장 번호와 달리 중복 제거 없이 전부 옮긴다.
+     *
+     * DATA-REC-01(docs/improvement.md): 세트 전체를 엔티티로 읽어 메모리에서
+     * 순회하지 않는다 — 단일 벌크 UPDATE로 처리한다(RecommendationSetRepository의
+     * claimAllByClientTokenHash 주석 참고).
      */
     public int claimAll(String clientTokenHash, Long ownerUserId, OffsetDateTime claimedAt) {
-        List<RecommendationSet> anonymous =
-                recommendationSetRepository.findByClientTokenHashOrderByCreatedAtDescIdDesc(clientTokenHash);
-        anonymous.forEach(set -> set.claimTo(ownerUserId, claimedAt));
-        return anonymous.size();
+        return recommendationSetRepository.claimAllByClientTokenHash(clientTokenHash, ownerUserId, claimedAt);
     }
 
     /**

@@ -7,8 +7,8 @@ import static org.mockito.Mockito.verify;
 import com.kraft.common.error.ApiException;
 import com.kraft.common.account.AccountDataDeletionHandler;
 import com.kraft.community.block.CommunityUserBlockRepository;
-import com.kraft.community.comment.CommunityComment;
 import com.kraft.community.comment.CommunityCommentRepository;
+import com.kraft.community.comment.CommunityCommentRepository.PostCommentCount;
 import com.kraft.community.post.CommunityPostMetricsRepository;
 import com.kraft.community.post.CommunityPostRepository;
 import com.kraft.community.reaction.CommunityPostBookmarkRepository;
@@ -52,8 +52,7 @@ class CommunityWithdrawalServiceTest {
         setId(user, 42L);
         given(users.lockById(42L)).willReturn(Optional.of(user));
         given(likes.findByUserId(42L)).willReturn(List.of());
-        given(comments.findByOwnerId(42L)).willReturn(List.of());
-        given(posts.findByOwnerId(42L)).willReturn(List.of());
+        given(comments.countNonDeletedGroupedByPostForOwner(42L)).willReturn(List.of());
 
         service.withdraw(42L);
 
@@ -61,12 +60,17 @@ class CommunityWithdrawalServiceTest {
         verify(bookmarks).deleteByUserId(42L);
         verify(reports).deleteByReporterUserId(42L);
         verify(blocks).deleteByBlockerUserIdOrBlockedUserId(42L, 42L);
+        verify(comments).eraseForAccountDeletion(42L);
+        verify(posts).eraseForAccountDeletion(org.mockito.ArgumentMatchers.eq(42L),
+                org.mockito.ArgumentMatchers.any(OffsetDateTime.class));
         verify(users).delete(user);
     }
 
-    // M-8: 좋아요·댓글마다 delete/save+감산을 반복 호출하던 N+1을 배치 호출로 바꿨다 —
-    // 게시글별로 올바른 개수만큼 감산되는지(특히 같은 게시글에 댓글이 여러 개인 경우)
-    // 검증한다.
+    // DATA-DEL-01(docs/improvement.md): 좋아요·댓글마다 delete/save+감산을 반복 호출하던
+    // 것을 벌크 UPDATE/DELETE로 바꿨다 — 게시글별로 올바른 개수만큼 감산되는지(특히 같은
+    // 게시글에 댓글이 여러 개인 경우) 검증한다. 이미 삭제된 댓글은 감산 대상이 아니라는
+    // 계약은 이제 repository의 countNonDeletedGroupedByPostForOwner 쿼리 자체(deleted=false
+    // 필터)가 진다 — 이 테스트는 서비스가 그 결과를 그대로 감산에 반영하는지만 본다.
     @Test
     void withdraw_batchesLikeAndCommentCleanup() {
         CommunityUser user = new CommunityUser("google", "sub-1", "user", "https://img", OffsetDateTime.now());
@@ -75,22 +79,32 @@ class CommunityWithdrawalServiceTest {
         given(likes.findByUserId(42L)).willReturn(List.of(
                 new CommunityPostLike(1L, 42L, OffsetDateTime.now()),
                 new CommunityPostLike(2L, 42L, OffsetDateTime.now())));
-        // 게시글 1에는 댓글이 2개(모두 미삭제), 게시글 2에는 1개(이미 삭제됨 — 감산 대상 아님).
-        CommunityComment liveCommentA = new CommunityComment(1L, null, 42L, "user", "내용1", OffsetDateTime.now());
-        CommunityComment liveCommentB = new CommunityComment(1L, null, 42L, "user", "내용2", OffsetDateTime.now());
-        CommunityComment alreadyDeleted = new CommunityComment(2L, null, 42L, "user", "내용3", OffsetDateTime.now());
-        alreadyDeleted.eraseForAccountDeletion();
-        given(comments.findByOwnerId(42L)).willReturn(List.of(liveCommentA, liveCommentB, alreadyDeleted));
-        given(posts.findByOwnerId(42L)).willReturn(List.of());
+        // 게시글 1에는 미삭제 댓글이 2개(감산 대상), 게시글 2는 결과에 없다(이미 삭제된
+        // 댓글뿐이라 쿼리가 애초에 postId 2를 돌려주지 않는다).
+        given(comments.countNonDeletedGroupedByPostForOwner(42L)).willReturn(List.of(postCommentCount(1L, 2)));
 
         service.withdraw(42L);
 
         verify(likes).deleteByUserId(42L);
         verify(metrics).decrementLikeCountForPosts(List.of(1L, 2L));
-        verify(comments).saveAllAndFlush(List.of(liveCommentA, liveCommentB, alreadyDeleted));
+        verify(comments).eraseForAccountDeletion(42L);
         verify(metrics).decrementCommentCountBy(1L, 2);
         org.mockito.Mockito.verify(metrics, org.mockito.Mockito.never()).decrementCommentCountBy(
                 org.mockito.ArgumentMatchers.eq(2L), org.mockito.ArgumentMatchers.anyInt());
+    }
+
+    private static PostCommentCount postCommentCount(Long postId, long count) {
+        return new PostCommentCount() {
+            @Override
+            public Long getPostId() {
+                return postId;
+            }
+
+            @Override
+            public long getCount() {
+                return count;
+            }
+        };
     }
 
     @Test

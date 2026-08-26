@@ -49,4 +49,28 @@ public interface CommunityCommentRepository extends JpaRepository<CommunityComme
     @Query("select count(c) from CommunityComment c "
             + "where c.postId = :postId and c.parentId is null and c.id <= :id")
     long countTopLevelUpToId(@Param("postId") Long postId, @Param("id") Long id);
+
+    /** DATA-DEL-01(docs/improvement.md): 계정 탈퇴 시 게시글별 댓글 수 감산량 계산용 투영. */
+    interface PostCommentCount {
+        Long getPostId();
+
+        long getCount();
+    }
+
+    // DATA-DEL-01(docs/improvement.md): 탈퇴 처리가 이 사용자의 댓글 전체를 엔티티로 읽어
+    // eraseForAccountDeletion()을 호출한 뒤 saveAllAndFlush하던 것을, 감산량 계산(이 쿼리)과
+    // 익명화(아래 eraseForAccountDeletion 벌크 UPDATE) 두 단계로 나눈다. 이미 tombstone된
+    // (deleted=true) 댓글은 community_post_metrics.commentCount에 반영돼 있지 않으므로
+    // 감산 대상에서 제외한다 — 기존 엔티티 루프의 `!comment.isDeleted()` 필터와 동일한 조건.
+    @Query("select c.postId as postId, count(c) as count from CommunityComment c "
+            + "where c.ownerId = :ownerId and c.deleted = false group by c.postId")
+    List<PostCommentCount> countNonDeletedGroupedByPostForOwner(@Param("ownerId") Long ownerId);
+
+    // DATA-DEL-01(docs/improvement.md): CommunityComment.eraseForAccountDeletion()과 정확히
+    // 같은 리터럴을 쓴다 — 엔티티 메서드는 JPQL에서 호출할 수 없으므로 값을 여기 그대로
+    // 옮겨 적었다. 엔티티 쪽 문구를 바꾸면 이 쿼리도 함께 바꿔야 한다.
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update CommunityComment c set c.ownerId = null, c.authorNameSnapshot = '삭제된 사용자', "
+            + "c.content = '삭제된 댓글입니다.', c.deleted = true where c.ownerId = :ownerId")
+    int eraseForAccountDeletion(@Param("ownerId") Long ownerId);
 }

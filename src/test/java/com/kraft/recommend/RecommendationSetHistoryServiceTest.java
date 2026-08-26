@@ -216,21 +216,16 @@ class RecommendationSetHistoryServiceTest {
     }
 
     @Test
-    @DisplayName("계정 귀속 시 해당 토큰의 모든 세트를 소유권 이전하고 client_token_hash를 비운다")
+    @DisplayName("계정 귀속 시 해당 토큰의 모든 세트를 벌크 UPDATE로 소유권 이전한다")
     void claimAll_movesAllSetsToOwnerAndClearsToken() {
-        RecommendationSet set1 = setEntity(1L, TOKEN_HASH);
-        RecommendationSet set2 = setEntity(2L, TOKEN_HASH);
-        given(recommendationSetRepository.findByClientTokenHashOrderByCreatedAtDescIdDesc(TOKEN_HASH))
-                .willReturn(List.of(set1, set2));
         OffsetDateTime claimedAt = OffsetDateTime.now();
+        given(recommendationSetRepository.claimAllByClientTokenHash(TOKEN_HASH, 99L, claimedAt))
+                .willReturn(2);
 
         int moved = service.claimAll(TOKEN_HASH, 99L, claimedAt);
 
         assertThat(moved).isEqualTo(2);
-        assertThat(set1.getOwnerUserId()).isEqualTo(99L);
-        assertThat(set1.getClientTokenHash()).isNull();
-        assertThat(set1.getClaimedAt()).isEqualTo(claimedAt);
-        assertThat(set2.getOwnerUserId()).isEqualTo(99L);
+        verify(recommendationSetRepository).claimAllByClientTokenHash(TOKEN_HASH, 99L, claimedAt);
     }
 
     @Test

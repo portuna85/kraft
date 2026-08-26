@@ -29,6 +29,13 @@ public class RecommendationAccountDataDeletionHandler implements AccountDataDele
     // 자체 트랜잭션을 열지 않는다 — AccountDataDeletionHandler 계약대로 호출자의
     // 트랜잭션 안에서 실행된다. recommendation_items.set_id FK에 ON DELETE CASCADE가
     // 없으므로 아이템을 세트보다 반드시 먼저 지워야 한다.
+    //
+    // DATA-REC-01(docs/improvement.md): setIds가 매우 크면 아이템 삭제의 `IN` 절
+    // 파라미터 수가 DB/드라이버 상한에 가까워질 수 있다 — CHUNK_SIZE 단위로 나눠
+    // 지운다. 세트 자체는 ownerUserId로 직접 지우므로(`IN` 절이 아니다) 청크가
+    // 필요 없다.
+    private static final int CHUNK_SIZE = 500;
+
     @Override
     public void deleteForAccount(Long userId) {
         deletionTimer.record(() -> deleteForAccountInternal(userId));
@@ -39,7 +46,10 @@ public class RecommendationAccountDataDeletionHandler implements AccountDataDele
         if (setIds.isEmpty()) {
             return;
         }
-        recommendationItemRepository.deleteBySetIdIn(setIds);
+        for (int start = 0; start < setIds.size(); start += CHUNK_SIZE) {
+            List<Long> chunk = setIds.subList(start, Math.min(start + CHUNK_SIZE, setIds.size()));
+            recommendationItemRepository.deleteBySetIdIn(chunk);
+        }
         recommendationSetRepository.deleteByOwnerUserId(userId);
     }
 }

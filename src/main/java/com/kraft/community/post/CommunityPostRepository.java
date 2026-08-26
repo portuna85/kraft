@@ -22,6 +22,20 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
     @Query("update CommunityPost p set p.authorNameSnapshot = :name where p.ownerId = :ownerId")
     int renameAuthorForOwner(@Param("ownerId") Long ownerId, @Param("name") String name);
 
+    // DATA-DEL-01(docs/improvement.md): 탈퇴 처리가 이 사용자의 게시글 전체를 엔티티로 읽어
+    // eraseForAccountDeletion()을 호출한 뒤 saveAllAndFlush하던 것을 단일 벌크 UPDATE로
+    // 대체한다. CommunityPost.eraseForAccountDeletion(OffsetDateTime)과 정확히 같은 리터럴을
+    // 쓴다 — 엔티티 메서드는 JPQL에서 호출할 수 없으므로 값을 그대로 옮겨 적었다. 엔티티
+    // 쪽 문구를 바꾸면 이 쿼리도 함께 바꿔야 한다. renameAuthorForOwner와 같은 이유로
+    // @Version은 증가하지 않는다 — 탈퇴 대상 계정 소유 게시글이라 동시 편집 경합 대상이
+    // 아니다.
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update CommunityPost p set p.ownerId = null, p.authorNameSnapshot = '삭제된 사용자', "
+            + "p.title = '삭제된 게시글입니다.', p.content = '삭제된 게시글입니다.', "
+            + "p.status = com.kraft.community.post.PostStatus.DELETED, p.recommendationSetId = null, "
+            + "p.updatedAt = :updatedAt where p.ownerId = :ownerId")
+    int eraseForAccountDeletion(@Param("ownerId") Long ownerId, @Param("updatedAt") OffsetDateTime updatedAt);
+
     @Query("SELECT p FROM CommunityPost p WHERE p.status = com.kraft.community.post.PostStatus.PUBLISHED "
             + "AND (:category IS NULL OR p.category = :category) "
             + "AND (:query IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) ESCAPE '!' "
