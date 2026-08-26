@@ -9,10 +9,40 @@ import { publicEnv } from "@/shared/config/env";
 import { ROUTES } from "@/shared/config/routes";
 import { formatDrawDate, formatWon } from "@/shared/lib/format";
 import { calculateNetPrize } from "@/shared/lib/prize-tax";
+import { LinkButton } from "@/shared/ui/button";
 import { JsonLd } from "@/shared/ui/json-ld";
+import { Stat } from "@/shared/ui/stat";
 import { Card } from "@/shared/ui/surface";
 
 import styles from "./home.module.css";
+
+/**
+ * kraft-redesign-plan.md P0: Home을 Generate·Analyze 중심으로 재구성한다.
+ * 3단계 안내·인사이트 미리보기는 전부 정적이다 — Home의 유일한 데이터
+ * 의존성은 여전히 `getLatestRound()` 하나이며(docs/improvement.md §7의
+ * `loading.tsx` 부재 계약·`serverFetch` 캐시 전략 필수 인자를 새로
+ * 건드리지 않기 위함), 새 fetch를 추가하지 않는다.
+ */
+const HOW_IT_WORKS = [
+  {
+    title: "전략 선택",
+    description: "원하는 추천 전략을 고르고, 필요하면 만들 조합 수를 정합니다.",
+  },
+  {
+    title: "번호 고정 · 제외",
+    description: "꼭 넣고 싶거나 빼고 싶은 번호가 있다면 선택합니다. 건너뛰어도 됩니다.",
+  },
+  {
+    title: "생성 및 저장",
+    description: "조합을 받아 살펴보고, 마음에 드는 조합을 저장합니다.",
+  },
+] as const;
+
+const INSIGHTS_PREVIEW = [
+  { href: ROUTES.frequency, label: "번호별 출현", value: "출현 빈도 보기" },
+  { href: ROUTES.stats, label: "당첨 패턴", value: "홀짝·고저·합계 보기" },
+  { href: ROUTES.companion, label: "함께 나온 번호", value: "동반 출현 보기" },
+] as const;
 
 export const metadata: Metadata = {
   title: "최신회차",
@@ -89,12 +119,16 @@ export default async function HomePage() {
           </section>
 
           <nav className={styles.actions} aria-label="주요 기능">
-            <Link className={styles.cta} href={ROUTES.recommend}>
+            {/* kraft-redesign-plan.md P0: Home의 두 CTA는 Generate·Analyze다 —
+                기존 두 번째 CTA(번호별 출현 통계)는 인사이트 미리보기 섹션으로
+                옮겼다. shared/ui/button.tsx의 LinkButton을 재사용해 앱 전역의
+                버튼 시각과 통일한다(기존 .cta/.secondaryCta 대체). */}
+            <LinkButton href={ROUTES.recommend} size="lg">
               번호 추천받기
-            </Link>
-            <Link className={styles.secondaryCta} href={ROUTES.frequency}>
-              번호별 출현 통계
-            </Link>
+            </LinkButton>
+            <LinkButton href={ROUTES.analysis} variant="secondary" size="lg">
+              내 조합 진단하기
+            </LinkButton>
           </nav>
         </div>
 
@@ -102,14 +136,38 @@ export default async function HomePage() {
           <h2>이 서비스가 하는 일</h2>
           <p>
             동행복권이 공개한 역대 당첨 데이터를 모아 번호별 출현 빈도, 홀짝·고저·합계 패턴, 함께
-            나온 번호를 계산합니다. 모든 수치는 과거 기록의 요약이며 다음 회차를 예측하지 않습니다.
-          </p>
-          <p>
-            로또는 매 회차 독립적인 무작위 추첨이고 1등 당첨 확률은 8,145,060분의 1입니다. 통계는
-            번호를 고르는 재미를 위한 참고 자료로만 사용하세요.
+            나온 번호를 계산합니다. 모든 수치는 과거 기록의 요약일 뿐 다음 회차를 예측하지 않습니다.
           </p>
         </Card>
       </div>
+
+      <section className={styles.steps} aria-labelledby="how-it-works">
+        <h2 id="how-it-works">이렇게 시작하세요</h2>
+        <ol className={styles.stepList}>
+          {HOW_IT_WORKS.map((step, index) => (
+            <li key={step.title}>
+              <Card level={2}>
+                <span className={styles.stepNumber} aria-hidden="true">
+                  {index + 1}
+                </span>
+                <h3>{step.title}</h3>
+                <p>{step.description}</p>
+              </Card>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section aria-labelledby="insights-preview">
+        <h2 id="insights-preview">데이터로 살펴보기</h2>
+        <div className={styles.insightsGrid}>
+          {INSIGHTS_PREVIEW.map((item) => (
+            <Link key={item.href} className={styles.insightCard} href={item.href}>
+              <Stat label={item.label} value={item.value} />
+            </Link>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

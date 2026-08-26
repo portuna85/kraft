@@ -101,6 +101,12 @@
      components보다 항상 이긴다(globals.css:9), 그래서 `.note`의 color가
      `:hover`보다 명세상 나중이라도 레이어가 특이도를 이겨 hover 시 색이 절대
      안 바뀐다. 이 규칙은 이 파일 안에 독립적으로 남긴다. */
+  .resultsHeaderActions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
   .historyLink {
     font-size: var(--text-sm);
     color: var(--color-ink-muted);
@@ -128,6 +134,13 @@
     flex-direction: column;
     align-items: flex-end;
     gap: var(--space-1);
+  }
+
+  .resultActionButtons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-2);
   }
 
   /* I-29: 저장 결과가 나타나는 순간 아래 조합 목록이 밀리지 않도록 문구가 없을

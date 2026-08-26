@@ -37,10 +37,16 @@ test.describe("홈·통계 렌더", () => {
     expect(data.name).toBe("KRAFT Lotto");
   });
 
-  test("번호별 출현 통계 카드로 이동한다", async ({ page }) => {
+  test("홈의 인사이트 미리보기 카드로 이동한다", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("link", { name: "번호별 출현 통계" }).click();
+    await page.getByRole("link", { name: "번호별 출현", exact: false }).click();
     await expect(page).toHaveURL(/\/frequency$/);
+  });
+
+  test("홈의 '내 조합 진단하기' CTA로 이동한다", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("link", { name: "내 조합 진단하기" }).click();
+    await expect(page).toHaveURL(/\/analysis$/);
   });
 
   test("/stats가 홀짝·고저·합계 패턴을 렌더한다", async ({ page }) => {

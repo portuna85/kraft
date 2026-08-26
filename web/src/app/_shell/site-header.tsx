@@ -5,6 +5,7 @@ import { ROUTES } from "@/shared/config/routes";
 
 import styles from "./shell.module.css";
 import { PrimaryNav } from "./primary-nav";
+import { SavedLink } from "./saved-link";
 import { ThemeToggle } from "./theme-toggle";
 
 /**
@@ -23,6 +24,7 @@ export function SiteHeader({ accountSlot }: { accountSlot?: ReactNode }) {
         <PrimaryNav />
 
         <div className={styles.headerActions}>
+          <SavedLink />
           <ThemeToggle />
           {accountSlot}
         </div>

@@ -16,13 +16,14 @@ import { RecommendationResultRow } from "@/entities/recommendation/ui/recommenda
 import { NumberGrid } from "@/entities/round/ui/number-grid";
 import { sessionReadiness, useSession } from "@/entities/user-session/session-context";
 import { Badge } from "@/shared/ui/badge";
-import { Button } from "@/shared/ui/button";
+import { Button, LinkButton } from "@/shared/ui/button";
 import { TextField } from "@/shared/ui/field";
 import { SegmentedControl } from "@/shared/ui/segmented-control";
 import { ErrorState } from "@/shared/ui/states";
 import { Card } from "@/shared/ui/surface";
 
 import { RecommendationDisclaimer } from "./disclaimer";
+import { GenerateActionBar } from "./generate-action-bar";
 import styles from "./studio.module.css";
 import { useRecommendStudio } from "./use-recommend-studio";
 
@@ -140,9 +141,11 @@ export function RecommendStudio() {
           aria-label="고정하거나 제외할 번호 선택"
         />
 
+        {/* kraft-redesign-plan.md P0: "선택 요약 칩" — aria-live 영역은 그대로,
+            시각적으로만 Badge 톤을 입혀 눈에 더 잘 띄게 한다. */}
         <p className={styles.markSummary} aria-live="polite">
-          고정 {studio.lockedNumbers.length}/{MAX_LOCKED_NUMBERS} · 제외{" "}
-          {studio.excludedNumbers.length}
+          <Badge tone="brand" label={`고정 ${studio.lockedNumbers.length}/${MAX_LOCKED_NUMBERS}`} />{" "}
+          <Badge tone="neutral" label={`제외 ${studio.excludedNumbers.length}`} />
         </p>
         {/* I-27: 상한 도달 후 클릭이 조용히 무시돼 키보드가 고장 난 것처럼 보였다 —
             거부된 번호가 바뀔 때마다 문구가 갱신돼 aria-live가 매번 재공지한다. */}
@@ -162,17 +165,11 @@ export function RecommendStudio() {
        * 생성은 이 버튼 클릭으로만 일어난다. 화면 진입만으로 POST가 나가면 사용자가
        * 원하지 않은 추천이 이력에 쌓인다(F-P0-6/7).
        */}
-      {studio.state.status === "generating" ? (
-        <Button size="lg" loading loadingLabel="조합을 만드는 중">
-          조합 만들기
-        </Button>
-      ) : (
-        // KF-09: 세션이 아직 미확정이면 클릭 자체를 막는다 — "만드는 중" 스피너를
-        // 쓰면 아직 세션을 기다리는 중인데 생성이 진행 중이라고 오해를 준다.
-        <Button size="lg" disabled={!sessionReady} onClick={() => void studio.generate()}>
-          조합 만들기
-        </Button>
-      )}
+      <GenerateActionBar
+        generating={studio.state.status === "generating"}
+        disabled={!sessionReady}
+        onGenerate={() => void studio.generate()}
+      />
 
       {studio.state.status === "error" && (
         <ErrorState
@@ -188,11 +185,30 @@ export function RecommendStudio() {
             <h2 id="results" ref={resultsHeadingRef} tabIndex={-1}>
               추천 조합
             </h2>
-            {/* I-21: /recommend/history가 어느 내비게이션에서도 도달 불가능했다 —
-                결과가 막 생겼을 때 바로 확인할 수 있는 진입점을 여기도 둔다. */}
-            <Link href={ROUTES.recommendHistory} className={styles.historyLink}>
-              추천 이력 보기
-            </Link>
+            <div className={styles.resultsHeaderActions}>
+              {/* kraft-redesign-plan.md P0: 조합마다 따로 누르지 않아도 전부
+                  저장할 수 있게 한다 — studio.save는 이미 index별 독립 호출을
+                  지원하므로(useRecommendStudio) 한 번의 클릭에서 N번 호출할
+                  뿐, 훅에는 새 API가 필요 없다. */}
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={studio.isStale}
+                onClick={() => {
+                  if (studio.state.status !== "ready") return;
+                  studio.state.result.recommendations.forEach((numbers, index) => {
+                    void studio.save(index, numbers);
+                  });
+                }}
+              >
+                전체 저장
+              </Button>
+              {/* I-21: /recommend/history가 어느 내비게이션에서도 도달 불가능했다 —
+                  결과가 막 생겼을 때 바로 확인할 수 있는 진입점을 여기도 둔다. */}
+              <Link href={ROUTES.recommendHistory} className={styles.historyLink}>
+                추천 이력 보기
+              </Link>
+            </div>
           </div>
           <p className="sr-only" role="status">
             {studio.state.result.recommendations.length}개 조합이 생성되었습니다.
@@ -226,13 +242,24 @@ export function RecommendStudio() {
                       explanationCodes={item?.explanationCodes}
                       action={
                         <div className={styles.resultAction}>
-                          <Button
-                            variant="secondary"
-                            disabled={studio.isStale}
-                            onClick={() => void studio.save(index, numbers)}
-                          >
-                            보관함에 저장
-                          </Button>
+                          <div className={styles.resultActionButtons}>
+                            <Button
+                              variant="secondary"
+                              disabled={studio.isStale}
+                              onClick={() => void studio.save(index, numbers)}
+                            >
+                              보관함에 저장
+                            </Button>
+                            {/* kraft-redesign-plan.md P0: 이 조합을 그대로 분석
+                                화면으로 넘긴다 — CombinationPicker와 같은 GET
+                                쿼리 계약(`?numbers=1,2,...`)을 쓴다. */}
+                            <LinkButton
+                              variant="quiet"
+                              href={`${ROUTES.analysis}?numbers=${numbers.join(",")}`}
+                            >
+                              이 조합으로 진단하기
+                            </LinkButton>
+                          </div>
                           {/* I-29: 저장 결과 문구가 나타날 때마다 아래 조합들이
                               밀렸다 — 결과가 없을 때도 자리를 미리 잡아둔다.
                               "이미 저장" 은 실패가 아니지만 새 성공과 같은 색으로

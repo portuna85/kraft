@@ -90,13 +90,22 @@ export function currentNavHref(
   return best?.href;
 }
 
+/**
+ * 4대 축 IA(kraft-redesign-plan.md §4): Generate·Analyze·Insights·Community.
+ * "보관함"은 어느 축에도 속하지 않는 개인 유틸리티라 여기서 빠지고 헤더의
+ * 계정 영역 옆(utility nav)으로 옮겼다 — `site-header.tsx` 참고. URL은
+ * 그대로다(R-13) — 이 배열은 라벨·묶음만 바꾼다.
+ *
+ * "인사이트" 그룹은 `primary-nav.tsx`에서 개별 링크가 아니라 `DropdownMenu`
+ * 하나로 묶여 렌더된다 — 9개였던 최상위 항목을 4개로 줄이는 것이 이 재구성의
+ * 핵심이므로, 그룹 자체를 접지 않으면 항목 수만 재배치될 뿐 목표를 달성하지
+ * 못한다.
+ */
 export const PRIMARY_NAV: NavGroup[] = [
   {
     title: "번호 뽑기",
     items: [
       { href: ROUTES.recommend, label: "번호 추천" },
-      { href: ROUTES.analysis, label: "내 조합 진단" },
-      { href: ROUTES.saved, label: "보관함" },
       // I-21: /recommend/history가 어느 내비게이션에도 없는 고아 라우트였다 —
       // noindex라 검색으로도 못 왔다. 여기 추가해 최소 한 곳에서는 도달 가능하게 한다.
       //
@@ -106,12 +115,18 @@ export const PRIMARY_NAV: NavGroup[] = [
     ],
   },
   {
-    title: "통계 보기",
+    title: "진단",
+    items: [{ href: ROUTES.analysis, label: "내 조합 진단" }],
+  },
+  {
+    title: "인사이트",
     items: [
-      { href: ROUTES.data, label: "데이터" },
+      { href: ROUTES.data, label: "데이터 개요" },
       { href: ROUTES.frequency, label: "번호별 출현" },
       { href: ROUTES.stats, label: "당첨 패턴" },
       { href: ROUTES.companion, label: "함께 나온 번호" },
+      { href: ROUTES.info("data-source"), label: "데이터 출처" },
+      { href: ROUTES.info("methodology"), label: "방법론" },
     ],
   },
   {
@@ -119,6 +134,9 @@ export const PRIMARY_NAV: NavGroup[] = [
     items: [{ href: ROUTES.community, label: "커뮤니티" }],
   },
 ];
+
+/** `primary-nav.tsx`가 "인사이트" 그룹을 드롭다운으로 접기 위해 찾아 쓰는 제목. */
+export const INSIGHTS_GROUP_TITLE = "인사이트";
 
 /**
  * 모바일 하단 탭. 5개를 넘기면 터치 타깃이 44px 아래로 내려간다(§12.7).

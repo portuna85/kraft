@@ -1,0 +1,16 @@
+@layer components {
+  /* 인라인 텍스트 버튼 — 문장 중간에 자연스럽게 앉히기 위해 링크처럼 보이되
+     `<button>`으로 둔다(페이지 이동이 아니라 같은 컴포넌트 안 펼침/접힘이라
+     next/link 대상이 없다). */
+  .toggle {
+    display: inline;
+    padding: 0;
+    border: none;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+}
