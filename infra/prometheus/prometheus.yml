@@ -24,6 +24,12 @@ scrape_configs:
     static_configs:
       - targets: ["node-exporter:9100"]
 
+  # OBS-PROM-01(docs/improvement.md): 이전에는 mariadb를 직접 스크랩하지 않았다 —
+  # DB 커넥션 포화·쿼리 지연을 Caddy 엣지 카운터로만 간접 추정할 수 있었다.
+  - job_name: "mariadb"
+    static_configs:
+      - targets: ["mariadb-exporter:9104"]
+
   - job_name: "caddy"
     static_configs:
       # 2020: Caddyfile의 전용 metrics-only 리스너(admin API 2019는 loopback 전용으로 유지).

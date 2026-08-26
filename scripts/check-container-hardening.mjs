@@ -48,6 +48,11 @@ const EXPECTATIONS = {
     readOnly: true,
     note: "호스트 /proc·/sys를 pid:host + /:/host:ro로만 읽는다 — 쓰기 자체가 불필요.",
   },
+  "mariadb-exporter": {
+    capDropAll: true,
+    readOnly: true,
+    note: "OBS-PROM-01: mariadb에 읽기 전용 쿼리만 날리고 로컬 상태를 쓰지 않는다.",
+  },
   grafana: {
     capDropAll: true,
     readOnly: false,

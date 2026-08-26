@@ -96,6 +96,7 @@ jobs:
           bash scripts/check-env-drift.sh
           bash scripts/check-visual-baseline-platform.sh
           node scripts/check-container-hardening.mjs
+          node scripts/check-env-anchor-drift.mjs
           node scripts/check-photo-asset-metadata.mjs
           node scripts/check-css-layer.mjs
 

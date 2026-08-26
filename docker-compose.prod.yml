@@ -28,6 +28,16 @@ x-backend-common-env: &backend-common-env
   KRAFT_EXTERNAL_LOTTO_REQUESTED_WITH: ${KRAFT_EXTERNAL_LOTTO_REQUESTED_WITH:-XMLHttpRequest}
   KRAFT_SECURITY_RATE_LIMIT_PER_MINUTE: ${KRAFT_SECURITY_RATE_LIMIT_PER_MINUTE:-120}
   KRAFT_SECURITY_RATE_LIMIT_MAX_KEYS: ${KRAFT_SECURITY_RATE_LIMIT_MAX_KEYS:-10000}
+  # OPS-ENV-01(docs/improvement.md): .env.example/.env.prod.example 양쪽에 문서화돼
+  # 있었지만 실제로는 어느 compose 파일의 environment:에도 없었다 — 기본값(20,
+  # application.yml:163)이 우연히 같아 증상이 없었을 뿐, 문서의 값을 바꿔도 컨테이너에
+  # 전달되지 않는 상태였다.
+  KRAFT_COMMUNITY_WRITE_RATE_LIMIT_PER_MINUTE: ${KRAFT_COMMUNITY_WRITE_RATE_LIMIT_PER_MINUTE:-20}
+  # OPS-ENV-01(docs/improvement.md): 이 셋도 .env.example에는 문서화됐지만 어느 compose
+  # 파일에도 실려 있지 않았다 — 같은 근본원인.
+  KRAFT_RETENTION_OPERATION_LOG_DAYS: ${KRAFT_RETENTION_OPERATION_LOG_DAYS:-30}
+  KRAFT_RETENTION_ADMIN_AUDIT_LOG_DAYS: ${KRAFT_RETENTION_ADMIN_AUDIT_LOG_DAYS:-90}
+  KRAFT_RETENTION_SAVED_NUMBER_LOCK_ORPHAN_DAYS: ${KRAFT_RETENTION_SAVED_NUMBER_LOCK_ORPHAN_DAYS:-30}
   # 기본 in-memory(단일 인스턴스). backend를 여러 인스턴스로 스케일아웃할 때만 redis로
   # 바꾸고 KRAFT_REDIS_HOST/PORT가 가리키는 Redis를 별도로 준비한다 — 이 compose는
   # Redis 서비스를 제공하지 않는다(현재 단일 인스턴스 배포라 아직 불필요, RedisRateLimitCounter
@@ -97,8 +107,14 @@ services:
     restart: unless-stopped
     init: true
     read_only: true
+    # OPS-JVM-01(docs/improvement.md): 64m는 OOM 시 -XX:+HeapDumpOnOutOfMemoryError가
+    # 쓰려는 힙 덤프(최대 힙 ~560MB, MaxRAMPercentage=55%×1g)를 담기엔 너무 작다 —
+    # 다 못 쓰고 잘린 덤프만 남는다. tmpfs는 RAM 기반이라 힙+덤프가 동시에 가득 차면
+    # cgroup 메모리 상한(1g)에 먼저 걸려 커널이 컨테이너를 죽일 수 있다는 트레이드오프가
+    # 있다 — 그래도 진단 덤프는 best-effort이므로(실패해도 ExitOnOutOfMemoryError로
+    # 어차피 재시작된다) 여유 있게 잡는 쪽을 택한다.
     tmpfs:
-      - "/tmp:size=64m,noexec,nosuid"
+      - "/tmp:size=700m,noexec,nosuid"
     security_opt:
       - "no-new-privileges:true"
     cap_drop:
@@ -140,7 +156,9 @@ services:
         max-size: "50m"
         max-file: "3"
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/actuator/health/readiness | grep -q '\"status\":\"UP\"'"]
+      # OPS-IMG-01(docs/improvement.md): curl 대신 이미지에 미리 컴파일해 둔 JRE 내장
+      # HttpClient 기반 프로브를 쓴다(Dockerfile 참고) — 런타임 apt-get이 없어졌다.
+      test: ["CMD", "java", "-cp", "/app/healthcheck", "HealthCheck"]
       interval: 5s
       timeout: 5s
       retries: 36
@@ -264,6 +282,10 @@ services:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
       - "--storage.tsdb.retention.time=30d"
+      # OBS-PROM-01(docs/improvement.md): retention.time만 있으면 디스크가 무제한으로
+      # 자랄 수 있다 — 30일 전에도 디스크 상한에 먼저 닿으면 그쪽이 이긴다(둘 중 먼저
+      # 도달하는 조건).
+      - "--storage.tsdb.retention.size=10GB"
       - "--web.enable-lifecycle"
       - "--web.listen-address=0.0.0.0:9090"
     volumes:
@@ -402,6 +424,36 @@ services:
         limits:
           memory: 64m
     networks:
+      - monitoring
+
+  # OBS-PROM-01(docs/improvement.md): 이전에는 mariadb를 직접 스크랩하지 않아 DB 커넥션
+  # 포화·쿼리 지연을 Caddy 엣지 카운터로만 간접 추정할 수 있었다. 기존 MARIADB_USER를
+  # 그대로 쓴다 — 읽기 전용 모니터링 전용 계정을 새로 만들려면 별도 마이그레이션이
+  # 필요해 이 항목의 범위를 벗어난다(알려진 한계로 남긴다). mariadb(app 네트워크)에
+  # 접속하면서 prometheus(monitoring 네트워크)에도 스크랩돼야 하므로 backend와 같은
+  # 방식으로 두 네트워크에 걸친다.
+  mariadb-exporter:
+    image: prom/mysqld-exporter:v0.20.0@sha256:abed8dac117b4ae5b70757f988e44795935b9a72c3b58d720c67ba688f8cb79e
+    container_name: kraft-mariadb-exporter
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: "${MARIADB_USER:-kraft_lotto}:${MARIADB_PASSWORD}@(mariadb:3306)/"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    expose:
+      - "9104"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+    networks:
+      - app
       - monitoring
 
 networks:
