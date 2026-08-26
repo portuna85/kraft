@@ -27,6 +27,18 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        # BE-CFG-01(docs/improvement.md): insert 배치가 실제로 도움이 되는지(또는
+        # V29/V30 트리거 비용이 병목이라 배치가 무의미한지) 판단하려면 실제 insert
+        # 횟수·시간이 필요하다 — 기본은 off(통계 수집 자체에 약간의 오버헤드가 있어
+        # 상시 켜두지 않는다). 로컬에서 실 MariaDB(KRAFT_DB_URL을 mariadb로 오버라이드,
+        # 이 파일 위쪽 주석 참고)로 뜬 뒤 KRAFT_JPA_GENERATE_STATISTICS=true로 측정한다
+        # — H2 create-drop 스키마에는 애초에 V29/V30 트리거가 없다(Flyway가 아니라
+        # Hibernate가 스키마를 만들어서, QA-BE-01 참고). 켜면 Spring Boot의
+        # HibernateMetricsAutoConfiguration이 자동으로 hibernate_statements_total 등을
+        # /actuator/prometheus에 노출한다(micrometer-registry-prometheus가 이미
+        # 의존성에 있다) — 추가 코드 없이 추천 생성 전후로 insert 문 수·시간을 비교할 수
+        # 있다.
+        generate_statistics: ${KRAFT_JPA_GENERATE_STATISTICS:false}
   flyway:
     enabled: ${KRAFT_FLYWAY_ENABLED:false}
     baseline-on-migrate: ${KRAFT_FLYWAY_BASELINE_ON_MIGRATE:false}
