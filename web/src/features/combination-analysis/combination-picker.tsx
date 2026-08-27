@@ -72,7 +72,12 @@ export function CombinationPicker({ initialNumbers }: { initialNumbers: readonly
     [selected],
   );
   const complete = isCompleteCombination(selected);
-  const remaining = COMBINATION_SIZE - selected.length;
+  // parseCombinationInput은 중복을 일부러 남긴다(직접 입력 경로) — 번호판 토글은
+  // 중복을 만들 수 없으니 여기서만 발생한다. 개수만 보면 6개를 다 채운 것처럼
+  // 보이는데 제출 버튼은 계속 막혀 있어, 왜 막혔는지 알려야 한다.
+  const uniqueCount = new Set(selected).size;
+  const hasDuplicates = uniqueCount !== selected.length;
+  const remaining = COMBINATION_SIZE - uniqueCount;
 
   return (
     <form className="stack" method="get" action={ROUTES.analysis}>
@@ -81,6 +86,7 @@ export function CombinationPicker({ initialNumbers }: { initialNumbers: readonly
       <TextField
         label="번호 직접 입력"
         hint={`쉼표나 공백으로 구분해 1~45 사이의 번호 ${COMBINATION_SIZE}개를 입력하세요. 위 번호판을 눌러도 됩니다.`}
+        error={hasDuplicates ? "같은 번호를 두 번 이상 입력했습니다. 서로 다른 번호를 입력하세요." : null}
         name="numbers"
         type="text"
         inputMode="numeric"
@@ -91,13 +97,14 @@ export function CombinationPicker({ initialNumbers }: { initialNumbers: readonly
       />
 
       {/* 선택 개수는 번호판을 누를 때마다 바뀐다 — 시각적으로만 알리면 화면을 못 보는
-          사용자는 몇 개를 골랐는지 알 수 없다. */}
+          사용자는 몇 개를 골랐는지 알 수 없다. 중복이 있으면 개수 문구 대신 위 TextField의
+          error가 이유를 알리므로, 여기서는 고유 개수 기준으로 남은 개수만 보여준다. */}
       <p className="note" aria-live="polite">
         {complete
           ? `${COMBINATION_SIZE}개를 모두 골랐습니다.`
           : selected.length === 0
             ? `${COMBINATION_SIZE}개를 골라 주세요.`
-            : `${COMBINATION_SIZE}개 중 ${selected.length}개 선택됨 — ${remaining}개 더 필요합니다.`}
+            : `${COMBINATION_SIZE}개 중 ${uniqueCount}개 선택됨 — ${remaining}개 더 필요합니다.`}
       </p>
 
       <div className={styles.actions}>

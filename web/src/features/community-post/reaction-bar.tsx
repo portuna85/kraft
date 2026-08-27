@@ -5,6 +5,7 @@ import { useState } from "react";
 import { bookmarkPost, likePost } from "@/entities/community-post/interactions";
 import { canQueryOwnerScope, useSession } from "@/entities/user-session/session-context";
 import { Button } from "@/shared/ui/button";
+import { InlineAlert } from "@/shared/ui/states";
 
 import { usePostInteractions } from "./use-post-interactions";
 import styles from "./post-actions.module.css";
@@ -109,11 +110,7 @@ export function ReactionBar({
       >
         {bookmarked ? "북마크됨" : "북마크"}
       </Button>
-      {error !== null && (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      )}
+      {error !== null && <InlineAlert tone="danger">{error}</InlineAlert>}
     </div>
   );
 }

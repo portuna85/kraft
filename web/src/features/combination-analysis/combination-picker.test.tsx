@@ -64,6 +64,20 @@ describe("조합 입력", () => {
     expect(screen.getByText("6개 중 1개 선택됨 — 5개 더 필요합니다.")).toBeInTheDocument();
   });
 
+  it("직접 입력에 같은 번호를 중복으로 치면 이유를 알리고 분석 버튼을 막는다", async () => {
+    const user = userEvent.setup();
+    render(<CombinationPicker initialNumbers={[]} />);
+
+    await user.type(input(), "1, 1, 1, 1, 1, 7");
+
+    // 개수만 보면 6개를 다 채운 것처럼 보이지만, 중복이라 완전한 조합이 아니다 —
+    // 그 이유가 화면에 텍스트로 남아 있어야 한다(조용히 막히면 왜 막혔는지 알 수 없다).
+    expect(screen.getByText("같은 번호를 두 번 이상 입력했습니다. 서로 다른 번호를 입력하세요.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "분석하기" })).toBeDisabled();
+    // 남은 개수 문구도 고유 개수(1과 7, 2개) 기준이라 "0개 더 필요"라는 모순된 안내를 하지 않는다.
+    expect(screen.getByText("6개 중 2개 선택됨 — 4개 더 필요합니다.")).toBeInTheDocument();
+  });
+
   it("7번째를 고르면 가장 먼저 고른 번호를 밀어낸다", async () => {
     const user = userEvent.setup();
     render(<CombinationPicker initialNumbers={[1, 2, 3, 4, 5, 6]} />);

@@ -6,9 +6,8 @@ import { blockUser } from "@/entities/community-post/interactions";
 import { canQueryOwnerScope, useSession } from "@/entities/user-session/session-context";
 import { invalidateResource } from "@/shared/hooks/use-resource";
 import { Button } from "@/shared/ui/button";
-import { EmptyState } from "@/shared/ui/states";
+import { EmptyState, InlineAlert } from "@/shared/ui/states";
 
-import styles from "./post-actions.module.css";
 import { usePostInteractions } from "./use-post-interactions";
 
 /**
@@ -118,11 +117,7 @@ export function BlockButton({ postId, ownerId }: { postId: number; ownerId: numb
       <Button variant="quiet" onClick={toggle} disabled={pending} aria-pressed={blocked}>
         {blocked ? "차단 해제" : "이 사용자 차단"}
       </Button>
-      {error !== null && (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      )}
+      {error !== null && <InlineAlert tone="danger">{error}</InlineAlert>}
     </>
   );
 }
