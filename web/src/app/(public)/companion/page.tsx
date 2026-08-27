@@ -5,6 +5,7 @@ import { getCompanionStats } from "@/entities/statistics/api";
 import { expectedCoOccurrence, TOTAL_PAIR_COUNT } from "@/entities/statistics/schema";
 import { CompanionPairRow } from "@/entities/statistics/ui/companion-pair-row";
 import { CompanionPairsSection } from "@/entities/statistics/ui/companion-pairs-section";
+import { InsightsHubNav } from "@/features/insights-hub-nav/insights-hub-nav";
 import { ROUTES } from "@/shared/config/routes";
 import { EmptyState } from "@/shared/ui/states";
 import { Table } from "@/shared/ui/surface";
@@ -60,6 +61,8 @@ export default async function CompanionPage({
           일부가 평균을 웃도는 것은 무작위 추첨에서도 반드시 생기는 일입니다.
         </p>
       </header>
+
+      <InsightsHubNav />
 
       <section aria-labelledby="ball-filter" className="stack">
         <h2 id="ball-filter">번호로 좁혀 보기</h2>

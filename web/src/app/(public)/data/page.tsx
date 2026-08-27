@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { InsightsHubNav } from "@/features/insights-hub-nav/insights-hub-nav";
 import { ROUTES } from "@/shared/config/routes";
 import { Card } from "@/shared/ui/surface";
 
@@ -52,6 +53,8 @@ export default function DataHubPage() {
           보여줄 뿐입니다.
         </p>
       </header>
+
+      <InsightsHubNav />
 
       <ul className={styles.grid}>
         {FEATURES.map((feature) => (

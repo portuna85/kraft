@@ -9,6 +9,7 @@ import {
   type PatternBucket,
 } from "@/entities/statistics/schema";
 import { PatternDistribution } from "@/entities/statistics/ui/pattern-distribution";
+import { InsightsHubNav } from "@/features/insights-hub-nav/insights-hub-nav";
 import { Card } from "@/shared/ui/surface";
 
 import styles from "./stats.module.css";
@@ -67,6 +68,8 @@ export default async function StatsPage() {
           흔한 패턴을 고른다고 당첨 확률이 올라가지는 않습니다.
         </p>
       </header>
+
+      <InsightsHubNav />
 
       {/* I-33: 좁은 화면에서는 세 카드가 세로로 길게 이어진다 — 데스크톱은
           이미 3열이라 문제가 없어 그 폭에서는 숨긴다(stats.module.css). */}

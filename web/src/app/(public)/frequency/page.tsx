@@ -9,6 +9,7 @@ import {
 import { expectedFrequency, frequencyRatio } from "@/entities/statistics/schema";
 import { FrequencyBar, FrequencyLegend } from "@/entities/statistics/ui/frequency-bar";
 import { LottoBallSet } from "@/entities/round/ui/lotto-ball";
+import { InsightsHubNav } from "@/features/insights-hub-nav/insights-hub-nav";
 import { publicEnv } from "@/shared/config/env";
 import { ROUTES } from "@/shared/config/routes";
 import { AdSenseSidebar, InArticleAd } from "@/shared/ui/ad-unit";
@@ -68,6 +69,8 @@ export default async function FrequencyPage({
           이 표는 과거 기록의 요약일 뿐입니다.
         </p>
       </header>
+
+      <InsightsHubNav />
 
       <nav className={styles.periods} aria-label="집계 기간">
         {PERIODS.map((period) => {

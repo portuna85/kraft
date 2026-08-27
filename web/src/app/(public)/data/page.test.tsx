@@ -25,8 +25,10 @@ describe("DataHubPage", () => {
   it("각 카드 링크의 접근 이름이 해당 기능 제목을 포함한다", () => {
     render(<DataHubPage />);
 
+    // InsightsHubNav 탭도 같은 제목 텍스트("출현 통계" 등)를 쓰므로, 카드 링크
+    // 고유의 "보기" 접미(RSP-28 sr-only 조합)로 카드 링크만 골라낸다.
     for (const title of ["출현 통계", "패턴 통계", "동반 출현", "번호 분석"]) {
-      expect(screen.getByRole("link", { name: new RegExp(title) })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: new RegExp(`${title}.*보기`) })).toBeInTheDocument();
     }
   });
 });
