@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { getLatestRound } from "@/entities/round/api";
+import { SavedHistoryNav } from "@/features/saved-history-nav/saved-history-nav";
 import { SavedLibrary } from "@/features/saved-library/saved-library";
-import { ROUTES } from "@/shared/config/routes";
 
 export const metadata: Metadata = {
   title: "보관함",
@@ -40,13 +39,7 @@ export default async function SavedPage() {
         </p>
       </header>
 
-      {/* e2e/responsive/touch-target.spec.ts의 `header a` 셀렉터는 셸 헤더뿐 아니라
-          이 페이지의 <header>(prose 제목 블록)도 잡는다 — 44px 미만의 인라인 텍스트
-          링크를 그 안에 두면 오탐이 아니라 실제 실패가 난다. <header> 밖에 둔다. */}
-      <p className="note">
-        지금까지 생성한 조합은 <Link href={ROUTES.recommendHistory}>추천 이력</Link>에서 따로 볼 수
-        있습니다.
-      </p>
+      <SavedHistoryNav />
 
       <SavedLibrary latestRound={latestRound} />
     </div>

@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { RecommendHistoryList } from "@/features/recommend-history/recommend-history-list";
-import { ROUTES } from "@/shared/config/routes";
+import { SavedHistoryNav } from "@/features/saved-history-nav/saved-history-nav";
 
 export const metadata: Metadata = {
   title: "추천 이력",
@@ -28,12 +27,7 @@ export default function RecommendHistoryPage() {
         </p>
       </header>
 
-      {/* e2e/responsive/touch-target.spec.ts의 `header a` 셀렉터는 셸 헤더뿐 아니라
-          이 페이지의 <header>(prose 제목 블록)도 잡는다 — 44px 미만의 인라인 텍스트
-          링크를 그 안에 두면 오탐이 아니라 실제 실패가 난다. <header> 밖에 둔다. */}
-      <p className="note">
-        저장한 번호는 <Link href={ROUTES.saved}>보관함</Link>에서 따로 볼 수 있습니다.
-      </p>
+      <SavedHistoryNav />
 
       <RecommendHistoryList />
     </div>
