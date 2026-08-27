@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { getLatestRound } from "@/entities/round/api";
 import { SavedLibrary } from "@/features/saved-library/saved-library";
+import { ROUTES } from "@/shared/config/routes";
 
 export const metadata: Metadata = {
   title: "보관함",
@@ -35,6 +37,10 @@ export default async function SavedPage() {
         <p>
           저장한 번호를 모아 보고 원하는 회차와 대조할 수 있습니다. 로그인하지 않고 저장한 번호는 이
           브라우저에만 연결되며, 로그인하면 계정으로 옮겨집니다.
+        </p>
+        <p className="note">
+          지금까지 생성한 조합은 <Link href={ROUTES.recommendHistory}>추천 이력</Link>에서 따로 볼
+          수 있습니다.
         </p>
       </header>
 

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { RecommendHistoryList } from "@/features/recommend-history/recommend-history-list";
+import { ROUTES } from "@/shared/config/routes";
 
 export const metadata: Metadata = {
   title: "추천 이력",
@@ -23,6 +25,9 @@ export default function RecommendHistoryPage() {
         <p>
           지금까지 생성한 번호 추천 조합을 최신 순으로 모았습니다. 로그인하지 않고 만든 조합은 이
           브라우저에만 연결되고, 로그인하면 계정에 연결된 이력만 보입니다.
+        </p>
+        <p className="note">
+          저장한 번호는 <Link href={ROUTES.saved}>보관함</Link>에서 따로 볼 수 있습니다.
         </p>
       </header>
 

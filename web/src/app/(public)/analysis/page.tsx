@@ -10,7 +10,7 @@ import type { CombinationAnalysis } from "@/entities/statistics/schema";
 import { LottoBallSet } from "@/entities/round/ui/lotto-ball";
 import { PrizeTable } from "@/entities/round/ui/prize-table";
 import { CombinationPicker } from "@/features/combination-analysis/combination-picker";
-import { Card } from "@/shared/ui/surface";
+import { Card, MetricCard, MetricCardGrid } from "@/shared/ui/surface";
 import { EmptyState } from "@/shared/ui/states";
 
 import styles from "./analysis.module.css";
@@ -75,49 +75,42 @@ function AnalysisResult({ analysis }: { analysis: CombinationAnalysis }) {
     <div className="stack">
       <LottoBallSet numbers={analysis.numbers} />
 
-      <Card as="section" level={2}>
-        <h3>조합 구성</h3>
-        <dl className={styles.facts}>
-          <div className={styles.fact}>
-            <dt className="note">홀수 / 짝수</dt>
-            <dd>
-              {analysis.oddCount} / {analysis.evenCount}
-            </dd>
-          </div>
-          <div className={styles.fact}>
-            <dt className="note">저수 / 고수</dt>
-            <dd>
-              {analysis.lowCount} / {analysis.highCount}
-            </dd>
-          </div>
-          <div className={styles.fact}>
-            <dt className="note">번호 합계</dt>
-            <dd>
-              {analysis.sumOfNumbers} ({analysis.sumBucket} 구간)
-            </dd>
-          </div>
-          <div className={styles.fact}>
-            <dt className="note">연속한 번호 쌍</dt>
-            <dd>{analysis.consecutivePairCount}쌍</dd>
-          </div>
-        </dl>
+      <section aria-labelledby="composition">
+        <h3 id="composition">조합 구성</h3>
+        <MetricCardGrid>
+          <MetricCard label="홀수 / 짝수" value={`${analysis.oddCount} / ${analysis.evenCount}`} />
+          <MetricCard label="저수 / 고수" value={`${analysis.lowCount} / ${analysis.highCount}`} />
+          <MetricCard
+            label="번호 합계"
+            value={analysis.sumOfNumbers}
+            hint={`${analysis.sumBucket} 구간`}
+          />
+          <MetricCard label="연속한 번호 쌍" value={`${analysis.consecutivePairCount}쌍`} />
+        </MetricCardGrid>
         <p className="note">
           저수는 1~22번, 고수는 23~45번입니다. 이 값들은 조합의 생김새를 설명할 뿐 당첨 가능성과는
           무관합니다.
         </p>
-      </Card>
+      </section>
 
       {analysis.rangeDistribution.length > 0 && (
         <Card as="section" level={2}>
-          <h3>구간별 분포</h3>
-          <dl className={styles.facts}>
-            {analysis.rangeDistribution.map((range) => (
-              <div className={styles.fact} key={range.range}>
-                <dt className="note">{range.range}</dt>
-                <dd>{range.count}개</dd>
-              </div>
-            ))}
-          </dl>
+          <h3 id="range-distribution">구간별 분포</h3>
+          <div className={styles.distribution} role="list" aria-labelledby="range-distribution">
+            {analysis.rangeDistribution.map((range) => {
+              const max = Math.max(...analysis.rangeDistribution.map((r) => r.count), 1);
+              const percent = Math.round((range.count / max) * 100);
+              return (
+                <div className={styles.distributionRow} role="listitem" key={range.range}>
+                  <span className={styles.distributionLabel}>{range.range}</span>
+                  <span className={styles.distributionTrack}>
+                    <span className={styles.distributionFill} style={{ width: `${percent}%` }} />
+                  </span>
+                  <span className={styles.distributionCount}>{range.count}개</span>
+                </div>
+              );
+            })}
+          </div>
         </Card>
       )}
 

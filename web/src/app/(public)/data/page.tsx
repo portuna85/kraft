@@ -24,11 +24,22 @@ export const metadata: Metadata = {
  * 대형 차트를 이 허브 자체에 두지 않는다(codex 명시) — 카드 4개는 각 기능으로
  * 가는 안내일 뿐이다.
  */
+/**
+ * kraft-redesign-plan.md §4 "Insights sub-navigation"은 다섯 항목(Overview·
+ * Number Frequency·Winning Patterns·Companion Numbers·Data Source & Methodology)을
+ * 나열한다 — 이 허브 자체가 Overview이고 나머지 넷이 이 카드 목록이다. 네 기능
+ * 카드는 그대로 두고, 마지막 다섯 번째로 데이터 출처 안내 카드를 더한다.
+ */
 const FEATURES: Array<{ href: string; title: string; description: string }> = [
   { href: ROUTES.frequency, title: "출현 통계", description: "번호별 누적·기간별 출현 횟수" },
   { href: ROUTES.stats, title: "패턴 통계", description: "홀짝·고저·합계 구간 분포" },
   { href: ROUTES.companion, title: "동반 출현", description: "두 번호가 함께 등장한 빈도" },
   { href: ROUTES.analysis, title: "번호 분석", description: "내가 선택한 6개 번호의 패턴 검사" },
+  {
+    href: ROUTES.info("data-source"),
+    title: "데이터 출처",
+    description: "통계가 어디서 오는지, 얼마나 자주 갱신되는지",
+  },
 ];
 
 export default function DataHubPage() {

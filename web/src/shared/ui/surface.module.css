@@ -108,4 +108,26 @@
     opacity: 0.45;
     pointer-events: none;
   }
+
+  .metricGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
+    gap: var(--space-3);
+  }
+
+  .metricLabel {
+    margin: 0;
+  }
+
+  .metricValue {
+    margin: 0;
+    font-size: var(--text-lg);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .metricHint {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+  }
 }

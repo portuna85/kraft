@@ -50,6 +50,37 @@ export function Table({
   );
 }
 
+/**
+ * MetricCard — kraft-redesign-plan.md §7 "Metric Card"
+ *
+ * `<dl>` fact 목록 대신 쓰는 개별 지표 타일. 라벨/값을 `<dt>`/`<dd>`가 아니라 `<p>`로
+ * 두는 이유는 여러 MetricCard를 늘어놓았을 때 그 자체가 하나의 정의 목록으로 읽힐
+ * 필요가 없어서다 — 각 카드는 독립된 카드일 뿐, 호출부가 필요하면 바깥에서
+ * `role="list"`/`<dl>`로 감싸면 된다.
+ */
+export function MetricCard({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: ReactNode;
+  hint?: string;
+}) {
+  return (
+    <Card as="div" level={2}>
+      <p className={`${styles.metricLabel} note`}>{label}</p>
+      <p className={styles.metricValue}>{value}</p>
+      {hint !== undefined && <p className={styles.metricHint}>{hint}</p>}
+    </Card>
+  );
+}
+
+/** MetricCard 여러 개를 반응형 그리드로 늘어놓는다. */
+export function MetricCardGrid({ children }: { children: ReactNode }) {
+  return <div className={styles.metricGrid}>{children}</div>;
+}
+
 export type PageLinkBuilder = (page: number) => string;
 
 /**
