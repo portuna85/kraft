@@ -86,7 +86,9 @@ export function CombinationPicker({ initialNumbers }: { initialNumbers: readonly
       <TextField
         label="번호 직접 입력"
         hint={`쉼표나 공백으로 구분해 1~45 사이의 번호 ${COMBINATION_SIZE}개를 입력하세요. 위 번호판을 눌러도 됩니다.`}
-        error={hasDuplicates ? "같은 번호를 두 번 이상 입력했습니다. 서로 다른 번호를 입력하세요." : null}
+        error={
+          hasDuplicates ? "같은 번호를 두 번 이상 입력했습니다. 서로 다른 번호를 입력하세요." : null
+        }
         name="numbers"
         type="text"
         inputMode="numeric"
