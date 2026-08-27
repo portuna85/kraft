@@ -41,6 +41,38 @@ export function getPostPage(params: ListParams): Promise<CommunityPostPage> {
   );
 }
 
+export const TRENDING_POST_LIMIT = 3;
+
+/**
+ * 이번 주 인기 글 미리보기 — kraft-redesign-plan.md P2 "Community discovery
+ * improvements".
+ *
+ * `weekly_popular` 정렬은 이미 있었지만 사용자가 정렬 탭을 직접 눌러야만
+ * 보였다 — 기본(최신순) 목록을 보는 동안에는 발견 경로가 없었다. 같은
+ * 엔드포인트를 size만 줄여 다시 불러 미리보기로 얹는다(새 백엔드 계약 없음).
+ * 목록과 같은 `COMMUNITY_POSTS_TAG`를 쓰므로 글 작성·좋아요로 무효화되면
+ * 이 미리보기도 함께 갱신된다.
+ */
+export function getTrendingPosts(): Promise<CommunityPost[]> {
+  const search = new URLSearchParams({
+    page: "0",
+    size: String(TRENDING_POST_LIMIT),
+    sort: "weekly_popular",
+  });
+
+  return serverFetch(
+    `${serverEnv.backendInternalUrl}/api/v1/community/posts?${search.toString()}`,
+    communityPostPageSchema,
+    {
+      cache: {
+        mode: "revalidate",
+        seconds: REVALIDATE_COMMUNITY_LIST_SECONDS,
+        tags: [COMMUNITY_POSTS_TAG],
+      },
+    },
+  ).then((page) => page.items);
+}
+
 /**
  * 게시글 상세는 **캐시하지 않는다** — 레거시 M-4/FE-064.
  *

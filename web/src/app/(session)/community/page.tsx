@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { getPostPage } from "@/entities/community-post/api";
+import { getPostPage, getTrendingPosts } from "@/entities/community-post/api";
 import { buildListHref, hasActiveFilter, parseListParams } from "@/entities/community-post/query";
 import {
   CATEGORY_LABELS,
@@ -35,7 +35,14 @@ export default async function CommunityPage({
   searchParams: Promise<{ page?: string; category?: string; sort?: string; query?: string }>;
 }) {
   const params = parseListParams(await searchParams);
-  const page = await getPostPage(params);
+  // 이번 주 인기 글 미리보기는 필터·정렬·페이지가 모두 기본값일 때만 보인다 —
+  // 검색·분류로 좁힌 결과, 이미 인기순으로 보고 있는 화면, 2페이지 이후에는
+  // "발견"이 아니라 중복된 안내가 된다.
+  const isDefaultBrowse = !hasActiveFilter(params) && params.sort === "latest" && params.page === 0;
+  const [page, trending] = await Promise.all([
+    getPostPage(params),
+    isDefaultBrowse ? getTrendingPosts() : Promise.resolve(null),
+  ]);
 
   return (
     <div className="stack">
@@ -97,6 +104,23 @@ export default async function CommunityPage({
           </Link>
         ))}
       </nav>
+
+      {trending !== null && trending.length > 0 && (
+        <section aria-labelledby="trending-posts" className={styles.trending}>
+          <h2 id="trending-posts">이번 주 인기 글</h2>
+          {/* 카드 제목처럼 <h3>로 두면 본문 목록의 같은 글과 접근 이름이
+              겹쳐 스크린리더 헤딩 탐색이 어느 쪽인지 구분할 수 없다 — 링크로만
+              둔다(이 섹션 자체의 <h2>가 이미 헤딩 구조를 채운다). */}
+          <ol className={styles.trendingList}>
+            {trending.map((post) => (
+              <li key={post.id}>
+                <Link href={ROUTES.communityPost(post.id)}>{post.title}</Link>
+                <span className="note">좋아요 {post.likeCount}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
 
       {page.items.length === 0 ? (
         // 빈 결과의 원인을 구분한다(FE-048) — 필터 때문인지 원래 없는지 모르면

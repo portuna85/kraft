@@ -85,4 +85,26 @@
     align-items: center;
     gap: var(--space-3);
   }
+
+  .trending {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+  }
+
+  .trendingList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .trendingList li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2);
+  }
 }

@@ -53,6 +53,24 @@ test.describe("커뮤니티·상태·안내 읽기", () => {
     await expect(page.getByRole("navigation", { name: "페이지 이동" })).not.toBeVisible();
   });
 
+  // kraft-redesign-plan.md P2 "Community discovery improvements" — 기본
+  // 목록(필터·정렬·페이지 전부 기본값)에서만 인기 글 미리보기가 보이고,
+  // 검색·분류로 좁힌 화면에서는 발견이 아니라 중복 안내가 되므로 감춘다.
+  test("기본 목록에서는 이번 주 인기 글 미리보기가 보이고, 분류로 좁히면 사라진다", async ({
+    page,
+  }) => {
+    await page.goto("/community");
+    const trending = page.getByRole("region", { name: "이번 주 인기 글" });
+    await expect(trending).toBeVisible();
+    await expect(trending.getByRole("link", { name: "첫 글입니다" })).toHaveAttribute(
+      "href",
+      "/community/posts/1",
+    );
+
+    await page.goto("/community?category=WIN_STORY");
+    await expect(page.getByRole("region", { name: "이번 주 인기 글" })).not.toBeVisible();
+  });
+
   test("여러 페이지가 있으면 처음·이전·다음·마지막으로 이동한다 (레거시 FE-052)", async ({
     page,
   }) => {
