@@ -12,10 +12,10 @@ import { expect, test } from "@playwright/test";
  * 옵션이 없어 여기서 함께 자동화하지 않는다 — 문서도 그쪽은 수동 확인만
  * 요구한다.
  *
- * 확인 라우트: 표가 가장 많은 `/stats`, 카드가 가장 많은 `/data`(문서 §RSP-16
- * 검증 절차와 동일한 선택).
+ * 확인 라우트: 통계 카드가 많은 `/analysis`, 게시글 카드 목록인 `/community`(문서
+ * §RSP-16 검증 절차와 동일한 취지의 선택).
  */
-const ROUTES = ["/stats", "/data"];
+const ROUTES = ["/analysis", "/community"];
 
 async function borderColorOf(page: import("@playwright/test").Page) {
   return page.evaluate(() =>

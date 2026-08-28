@@ -3,7 +3,7 @@ package com.kraft.common.config;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import com.kraft.statistics.StatisticsRefreshListener;
+import com.kraft.winningnumber.RoundEtagProvider;
 import com.kraft.winningnumber.WinningNumbersCollectedEvent;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.lang.reflect.Method;
@@ -34,7 +34,7 @@ class AsyncFailureMonitorTest {
     void knownListenerFailure_recordsBoundedMetricAndThrowable() throws Exception {
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
         AsyncFailureMonitor monitor = new AsyncFailureMonitor(registry);
-        Method method = StatisticsRefreshListener.class.getMethod(
+        Method method = RoundEtagProvider.class.getDeclaredMethod(
                 "onCollected", WinningNumbersCollectedEvent.class);
         IllegalStateException failure = new IllegalStateException("database unavailable");
         ListAppender<ILoggingEvent> appender = captureLogs();
@@ -42,11 +42,11 @@ class AsyncFailureMonitorTest {
         monitor.handleUncaughtException(failure, method, new WinningNumbersCollectedEvent(1201, true));
 
         assertThat(registry.get("kraft_async_listener_failures_total")
-                .tags("listener", "statistics-refresh", "outcome", "failure")
+                .tags("listener", "round-etag", "outcome", "failure")
                 .counter().count()).isEqualTo(1.0);
         assertThat(appender.list).singleElement().satisfies(event -> {
             assertThat(event.getLevel()).isEqualTo(Level.ERROR);
-            assertThat(event.getFormattedMessage()).contains("statistics-refresh", "onCollected");
+            assertThat(event.getFormattedMessage()).contains("round-etag", "onCollected");
             assertThat(event.getThrowableProxy()).isNotNull();
         });
     }

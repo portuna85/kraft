@@ -4,8 +4,6 @@ import { DEVICE_TOKEN_STORAGE_KEY } from "@/shared/api/device-token";
 import { headersOf, initOf, jsonResponse, mockFetch, urlOf } from "@/shared/api/test/fetch-mock";
 
 import {
-  deleteAccountRecommendationSet,
-  deleteDeviceRecommendationSet,
   listAccountRecommendationSets,
   listDeviceRecommendationSets,
   recommendNumbers,
@@ -78,21 +76,6 @@ describe("익명 vs 계정 스코프 — 엔드포인트가 다르다", () => {
 
     expect(urlOf(spy)).toBe("/api/v1/community/me/recommendation-sets?page=1&size=20");
     expect(headersOf(spy)["X-Device-Token"]).toBeUndefined();
-  });
-
-  it("deleteDeviceRecommendationSet/deleteAccountRecommendationSet가 서로 다른 경로로 DELETE한다", async () => {
-    const deviceSpy = mockFetch(new Response(null, { status: 204 }));
-    await deleteDeviceRecommendationSet(5);
-    expect(urlOf(deviceSpy)).toBe("/api/v1/recommendation-sets/5");
-    expect((initOf(deviceSpy) as { method?: string }).method).toBe("DELETE");
-    expect(headersOf(deviceSpy)["X-Device-Token"]).toBe("device-abc");
-
-    vi.unstubAllGlobals();
-
-    const accountSpy = mockFetch(new Response(null, { status: 204 }));
-    await deleteAccountRecommendationSet(5);
-    expect(urlOf(accountSpy)).toBe("/api/v1/community/me/recommendation-sets/5");
-    expect(headersOf(accountSpy)["X-Device-Token"]).toBeUndefined();
   });
 });
 

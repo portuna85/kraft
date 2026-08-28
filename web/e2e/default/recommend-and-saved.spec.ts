@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * 추천 생성 → 저장 → 보관함/이력에 반영 — T-4, T-7
+ * 추천 생성 → 저장 → 보관함에 반영 — T-4, T-7
  *
- * 익명 사용자(기기 토큰 스코프)의 핵심 여정이다. 픽스처 백엔드가 저장 번호·추천
- * 이력 상태를 실제로 들고 있어야(`e2e/fixtures/backend.mjs`) "생성했더니 이력에
- * 보인다"·"저장했더니 보관함에 보인다"를 확인할 수 있다.
+ * 익명 사용자(기기 토큰 스코프)의 핵심 여정이다. 픽스처 백엔드가 저장 번호 상태를
+ * 실제로 들고 있어야(`e2e/fixtures/backend.mjs`) "저장했더니 보관함에 보인다"를
+ * 확인할 수 있다.
  *
  * 테스트 간 픽스처 상태가 공유되므로(`fullyParallel: false`) 순서를 의도적으로
  * 잇는다 — 이 파일 안에서는 순서가 섞이지 않는다.
@@ -33,10 +33,5 @@ test.describe("추천·저장 여정", () => {
     await expect(page.getByRole("heading", { name: "보관함" })).toBeVisible();
     // 익명 저장이 목록에 최소 1건 이상 보여야 한다 — 빈 상태 안내가 아니어야 한다.
     await expect(page.getByText("저장한 번호가 없습니다")).not.toBeVisible();
-  });
-
-  test("생성한 조합이 추천 이력에도 나타난다", async ({ page }) => {
-    await page.goto("/recommend/history");
-    await expect(page.getByText("아직 생성한 추천이 없습니다")).not.toBeVisible();
   });
 });

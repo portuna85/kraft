@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { InsightsHubNav } from "@/features/insights-hub-nav/insights-hub-nav";
 import { INFO_PAGE_SLUGS, ROUTES } from "@/shared/config/routes";
 import { formatDrawDate } from "@/shared/lib/format";
 import { Breadcrumb } from "@/shared/ui/navigation";
@@ -14,7 +13,7 @@ import styles from "./info.module.css";
 
 type Props = { params: Promise<{ slug: string }> };
 
-/** 9개 슬러그를 빌드 시점에 만든다 — 내용이 정적이라 요청마다 만들 이유가 없다. */
+/** 슬러그를 빌드 시점에 만든다 — 내용이 정적이라 요청마다 만들 이유가 없다. */
 export function generateStaticParams() {
   return INFO_PAGE_SLUGS.map((slug) => ({ slug }));
 }
@@ -49,12 +48,6 @@ export default async function InfoPage({ params }: Props) {
           최종 수정: <time dateTime={meta.lastModified}>{formatDrawDate(meta.lastModified)}</time>
         </p>
       </header>
-
-      {/* kraft-redesign-plan.md §4 "Insights sub-navigation"의 다섯 번째 항목
-          (Data Source & Methodology)이 이 공용 라우트의 한 슬러그다 — 나머지
-          8개 슬러그(FAQ·약관 등)에는 인사이트 허브와 관계가 없으므로 이 탭을
-          붙이지 않는다. */}
-      {slug === "data-source" && <InsightsHubNav />}
 
       <article className={`prose ${styles.article}`}>{INFO_PAGE_CONTENT[slug]}</article>
 

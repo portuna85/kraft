@@ -11,8 +11,6 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * BE-CACHE-01(docs/improvement.md): {@link CacheConfig#ROUNDS_LATEST}를 회차 수집 이벤트로 비운다.
- * {@link com.kraft.statistics.StatisticsSummaryRebuilder}의 {@code @CacheEvict}(통계 캐시 4종)와는
- * 트리거·대상 캐시가 다르므로 섞지 않는다 — 회차 자체가 바뀌었는지만 본다.
  * {@code @CacheEvict}를 이 메서드에 직접 붙인 이유: 별도 메서드로 뽑아 그 메서드 안에서 호출하면
  * 같은 클래스 내부 호출이라 프록시를 우회해 무효화가 걸리지 않는다(자기호출 함정, BE-PERF-01의
  * findLatest/getFreshness 분리와 같은 이유). TTL 5분(CacheConfig)은 이 이벤트를 놓쳤을 때의

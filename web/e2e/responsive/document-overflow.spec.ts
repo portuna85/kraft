@@ -13,26 +13,21 @@ import { assertNoHorizontalOverflow } from "../lib/responsive-assertions";
 const ROUTES = [
   "/",
   "/recommend",
-  "/recommend/history",
-  "/stats",
   "/analysis",
-  "/frequency",
-  "/data",
   "/community",
   "/community/write",
   "/community/posts/1",
   "/community/posts/1/edit",
-  "/companion",
   "/status",
   "/saved",
   "/ops",
-  "/info/data-source",
+  "/info/faq",
 ];
 
 const BOUNDARY_WIDTHS = [320, 360, 390, 639, 640, 641, 768, 1023, 1024, 1025, 1280, 1440];
 
-// KF-03(docs/improvement.md): Firefox에서만 /stats@320/640/641px가 실제로 가로
-// 오버플로됐었다(CSS Grid automatic minimum size 차이). §10 4단계에서
+// KF-03(docs/improvement.md): Firefox에서만 카드 그리드가 특정 폭에서 실제로
+// 가로 오버플로됐었다(CSS Grid automatic minimum size 차이). §10 4단계에서
 // surface.module.css의 .card에 min-width:0을 추가해 고쳤다 — firefox-overflow
 // 프로젝트도 이제 나머지 엔진과 동일하게 전 구간 통과해야 한다.
 
@@ -61,7 +56,7 @@ test.describe("400% 확대 상당(320×512)에서 가로 스크롤 없음", () =
 test.describe("가로모드(844×390)에서 가로 스크롤 없음", () => {
   test("주요 라우트가 가로모드에서 가로 스크롤 없이 렌더된다", async ({ page }) => {
     await page.setViewportSize({ width: 844, height: 390 });
-    for (const path of ["/", "/recommend", "/stats"]) {
+    for (const path of ["/", "/recommend", "/analysis"]) {
       await page.goto(path, { waitUntil: "networkidle" });
       await assertNoHorizontalOverflow(page);
     }

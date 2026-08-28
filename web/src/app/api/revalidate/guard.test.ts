@@ -29,7 +29,7 @@ describe("재검증 시크릿 검증", () => {
 
 describe("경로 화이트리스트", () => {
   it("허용된 경로만 통과시킨다", () => {
-    expect(filterAllowedPaths(["/", "/frequency", "/unknown"])).toEqual(["/", "/frequency"]);
+    expect(filterAllowedPaths(["/", "/unknown"])).toEqual(["/"]);
   });
 
   it("배열이 아니면 빈 배열을 돌려준다", () => {

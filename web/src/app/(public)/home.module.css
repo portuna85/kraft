@@ -168,34 +168,4 @@
     font-size: var(--text-sm);
   }
 
-  /* kraft-redesign-plan.md P0: 인사이트 미리보기 — 실시간 수치를 가져오지
-     않는다(새 fetch가 홈의 유일한 필수 조회인 getLatestRound()의 실패=5xx
-     계약을 흐릴 수 있어서다). 라우트로 안내하는 정적 타일뿐이다. */
-  .insightsGrid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--space-4);
-    margin-top: var(--space-4);
-  }
-
-  @media (min-width: 640px) {
-    .insightsGrid {
-      grid-template-columns: repeat(3, 1fr);
-    }
-  }
-
-  .insightCard {
-    display: block;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: var(--space-4);
-    text-decoration: none;
-    transition: background-color var(--duration-fast) var(--ease-out);
-  }
-
-  @media (hover: hover) and (pointer: fine) {
-    .insightCard:hover {
-      background: var(--color-surface-1);
-    }
-  }
 }

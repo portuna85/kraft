@@ -116,24 +116,4 @@ public class MyLibraryController {
                 .body(PageResponse.from(result));
     }
 
-    /**
-     * B-P0-2: {@code /api/v1/recommendation-sets/{id}}는 기기 토큰(STATELESS) 전용이라
-     * claim(계정 귀속) 이후에는 더 이상 그 세트를 찾지 못한다(clientTokenHash가 null로
-     * 지워지기 때문 — 의도된 동작). 로그인 세션으로 단건 조회·삭제가 가능한 경로를 별도로 둔다.
-     */
-    @GetMapping("/recommendation-sets/{id}")
-    public ResponseEntity<RecommendationSetSummary> recommendationSet(
-            @AuthenticationPrincipal CommunityPrincipal principal, @PathVariable long id) {
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noStore())
-                .body(recommendationSetHistoryService.getForOwner(principal.getUserId(), id));
-    }
-
-    @DeleteMapping("/recommendation-sets/{id}")
-    @ApiResponse(responseCode = "204")
-    public ResponseEntity<Void> deleteRecommendationSet(
-            @AuthenticationPrincipal CommunityPrincipal principal, @PathVariable long id) {
-        recommendationSetHistoryService.deleteForOwner(principal.getUserId(), id);
-        return ResponseEntity.noContent().build();
-    }
 }

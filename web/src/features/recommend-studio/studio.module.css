@@ -107,17 +107,6 @@
     gap: var(--space-4);
   }
 
-  .historyLink {
-    font-size: var(--text-sm);
-    color: var(--color-ink-muted);
-  }
-
-  @media (hover: hover) and (pointer: fine) {
-    .historyLink:hover {
-      color: var(--color-ink);
-    }
-  }
-
   .staleNotice {
     padding: var(--space-2) var(--space-3);
     border: 1px dashed var(--color-warning);

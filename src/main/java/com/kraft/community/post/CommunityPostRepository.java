@@ -11,8 +11,6 @@ import org.springframework.data.repository.query.Param;
 
 public interface CommunityPostRepository extends JpaRepository<CommunityPost, Long> {
 
-    boolean existsByRecommendationSetId(Long recommendationSetId);
-
     List<CommunityPost> findByOwnerId(Long ownerId);
 
     // KB-04: 탈퇴 처리 시 기존 게시글의 작성자 표기를 일괄로 익명화한다.

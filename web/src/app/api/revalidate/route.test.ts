@@ -49,7 +49,7 @@ describe("POST /api/revalidate", () => {
     const response = await POST(
       request(
         JSON.stringify({
-          paths: ["/", "/frequency", "/community/posts/1"],
+          paths: ["/", "/community/posts/1"],
           tags: ["rounds:latest", "stats:all", "unknown"],
         }),
       ),
@@ -59,10 +59,9 @@ describe("POST /api/revalidate", () => {
     expect(cacheMocks.revalidateTag).toHaveBeenNthCalledWith(1, "rounds:latest", { expire: 0 });
     expect(cacheMocks.revalidateTag).toHaveBeenNthCalledWith(2, "stats:all", { expire: 0 });
     expect(cacheMocks.revalidatePath).toHaveBeenNthCalledWith(1, "/");
-    expect(cacheMocks.revalidatePath).toHaveBeenNthCalledWith(2, "/frequency");
     await expect(response.json()).resolves.toEqual({
       revalidated: true,
-      paths: ["/", "/frequency"],
+      paths: ["/"],
       tags: ["rounds:latest", "stats:all"],
     });
   });

@@ -1,4 +1,4 @@
-import { browserMutate, browserQuery, noContentSchema } from "@/shared/api/transport";
+import { browserMutate, browserQuery } from "@/shared/api/transport";
 
 import {
   recommendationSetPageSchema,
@@ -65,7 +65,7 @@ export function recommendNumbersForAccount(
 }
 
 /**
- * 추천 이력
+ * 생성한 추천 세트 목록 — 커뮤니티 글쓰기의 추천 첨부 선택기가 사용한다.
  *
  * 저장 번호와 마찬가지로 **엔드포인트가 두 벌**이다. 익명은 `/api/v1/recommendation-sets`
  * (기기 토큰 스코프), 로그인은 `/api/v1/community/me/recommendation-sets`(세션 스코프).
@@ -96,17 +96,4 @@ export function listAccountRecommendationSets(
     recommendationSetPageSchema,
     { signal },
   );
-}
-
-export function deleteDeviceRecommendationSet(id: number): Promise<null> {
-  return browserMutate(`/api/v1/recommendation-sets/${id}`, noContentSchema, {
-    method: "DELETE",
-    deviceScoped: true,
-  });
-}
-
-export function deleteAccountRecommendationSet(id: number): Promise<null> {
-  return browserMutate(`/api/v1/community/me/recommendation-sets/${id}`, noContentSchema, {
-    method: "DELETE",
-  });
 }

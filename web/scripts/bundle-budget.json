@@ -12,10 +12,6 @@
     "node scripts/bundle-budget.mjs --save-baseline",
     "(의도적으로 늘린 경우에만, 이유를 커밋 메시지에 남기고 갱신한다)",
     "",
-    "KF-04(docs/improvement.md): /data는 원래 maxKB가 없어 'x <= undefined'가 항상",
-    "false가 되고 영구히 목표 초과로 오분류됐다 — 같은 군의 최소 라우트(/,",
-    "/_not-found, /community, /info/[slug], /stats, /status)와 같은 51을 부여했다.",
-    "",
     "PERF-BUNDLE-01(docs/improvement.md): 회귀 허용치가 일률 1 KB에서 min(1 KB, 5%)",
     "(바닥 0.3 KB)로 바뀌었다 — 작은 라우트는 1 KB가 20%가 넘어 사실상 게이트가 아니었다.",
     "currentSharedKB/currentRouteKB는 회귀 원인을 공용 셸과 그 화면으로 귀속하기 위한",
@@ -29,8 +25,8 @@
   "routes": {
     "/": {
       "maxKB": 52,
-      "currentKB": 24.3,
-      "currentSharedKB": 24.3,
+      "currentKB": 23.2,
+      "currentSharedKB": 23.2,
       "currentRouteKB": 0
     },
     "/_not-found": {
@@ -41,92 +37,62 @@
     },
     "/analysis": {
       "maxKB": 61,
-      "currentKB": 27.3,
-      "currentSharedKB": 24.3,
-      "currentRouteKB": 3
+      "currentKB": 26.3,
+      "currentSharedKB": 23.2,
+      "currentRouteKB": 3.1
     },
     "/community": {
       "maxKB": 51,
-      "currentKB": 34.8,
-      "currentSharedKB": 34.8,
+      "currentKB": 33.7,
+      "currentSharedKB": 33.7,
       "currentRouteKB": 0
     },
     "/community/posts/[id]": {
       "maxKB": 62,
-      "currentKB": 44.5,
-      "currentSharedKB": 34.8,
+      "currentKB": 43.5,
+      "currentSharedKB": 33.7,
       "currentRouteKB": 9.7
     },
     "/community/posts/[id]/edit": {
       "maxKB": 63,
-      "currentKB": 43.4,
-      "currentSharedKB": 43.4,
+      "currentKB": 42.3,
+      "currentSharedKB": 42.3,
       "currentRouteKB": 0
     },
     "/community/write": {
       "maxKB": 63,
-      "currentKB": 43.4,
-      "currentSharedKB": 43.4,
-      "currentRouteKB": 0
-    },
-    "/companion": {
-      "maxKB": 56,
-      "currentKB": 32.8,
-      "currentSharedKB": 29.6,
-      "currentRouteKB": 3.2
-    },
-    "/frequency": {
-      "maxKB": 57,
-      "currentKB": 24.3,
-      "currentSharedKB": 24.3,
+      "currentKB": 42.3,
+      "currentSharedKB": 42.3,
       "currentRouteKB": 0
     },
     "/info/[slug]": {
       "maxKB": 51,
-      "currentKB": 24.3,
-      "currentSharedKB": 24.3,
+      "currentKB": 23.2,
+      "currentSharedKB": 23.2,
       "currentRouteKB": 0
     },
     "/ops": {
       "maxKB": 62,
-      "currentKB": 24.9,
-      "currentSharedKB": 9.6,
-      "currentRouteKB": 15.3
+      "currentKB": 25,
+      "currentSharedKB": 10.2,
+      "currentRouteKB": 14.9
     },
     "/recommend": {
       "maxKB": 64,
-      "currentKB": 43.8,
-      "currentSharedKB": 34.8,
-      "currentRouteKB": 9
-    },
-    "/recommend/history": {
-      "maxKB": 58,
-      "currentKB": 40,
-      "currentSharedKB": 34.8,
-      "currentRouteKB": 5.3
+      "currentKB": 42.7,
+      "currentSharedKB": 33.7,
+      "currentRouteKB": 8.9
     },
     "/saved": {
       "maxKB": 65,
-      "currentKB": 39.4,
-      "currentSharedKB": 34.8,
+      "currentKB": 38.4,
+      "currentSharedKB": 33.7,
       "currentRouteKB": 4.7
-    },
-    "/stats": {
-      "maxKB": 51,
-      "currentKB": 24.3,
-      "currentSharedKB": 24.3,
-      "currentRouteKB": 0
     },
     "/status": {
       "maxKB": 51,
-      "currentKB": 24.3,
-      "currentSharedKB": 24.3,
-      "currentRouteKB": 0
-    },
-    "/data": {
-      "maxKB": 51,
-      "currentKB": 24.3,
-      "currentSharedKB": 24.3,
+      "currentKB": 23.2,
+      "currentSharedKB": 23.2,
       "currentRouteKB": 0
     }
   }

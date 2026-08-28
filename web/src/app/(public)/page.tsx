@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import Link from "next/link";
 
 import { getLatestRound } from "@/entities/round/api";
 import { LottoBallSet } from "@/entities/round/ui/lotto-ball";
@@ -11,7 +10,6 @@ import { formatDrawDate, formatWon } from "@/shared/lib/format";
 import { calculateNetPrize } from "@/shared/lib/prize-tax";
 import { LinkButton } from "@/shared/ui/button";
 import { JsonLd } from "@/shared/ui/json-ld";
-import { Stat } from "@/shared/ui/stat";
 import { Card } from "@/shared/ui/surface";
 
 import styles from "./home.module.css";
@@ -36,12 +34,6 @@ const HOW_IT_WORKS = [
     title: "생성 및 저장",
     description: "조합을 받아 살펴보고, 마음에 드는 조합을 저장합니다.",
   },
-] as const;
-
-const INSIGHTS_PREVIEW = [
-  { href: ROUTES.frequency, label: "번호별 출현", value: "출현 빈도 보기" },
-  { href: ROUTES.stats, label: "당첨 패턴", value: "홀짝·고저·합계 보기" },
-  { href: ROUTES.companion, label: "함께 나온 번호", value: "동반 출현 보기" },
 ] as const;
 
 export const metadata: Metadata = {
@@ -135,8 +127,8 @@ export default async function HomePage() {
         <Card as="section" level={2}>
           <h2>이 서비스가 하는 일</h2>
           <p>
-            동행복권이 공개한 역대 당첨 데이터를 모아 번호별 출현 빈도, 홀짝·고저·합계 패턴, 함께
-            나온 번호를 계산합니다. 모든 수치는 과거 기록의 요약일 뿐 다음 회차를 예측하지 않습니다.
+            동행복권이 공개한 역대 당첨 데이터를 기반으로 번호를 추천합니다. 추천된 조합은 과거
+            기록의 요약일 뿐 다음 회차를 예측하지 않습니다.
           </p>
         </Card>
       </div>
@@ -156,17 +148,6 @@ export default async function HomePage() {
             </li>
           ))}
         </ol>
-      </section>
-
-      <section aria-labelledby="insights-preview">
-        <h2 id="insights-preview">데이터로 살펴보기</h2>
-        <div className={styles.insightsGrid}>
-          {INSIGHTS_PREVIEW.map((item) => (
-            <Link key={item.href} className={styles.insightCard} href={item.href}>
-              <Stat label={item.label} value={item.value} />
-            </Link>
-          ))}
-        </div>
       </section>
     </div>
   );

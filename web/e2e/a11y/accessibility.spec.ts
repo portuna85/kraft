@@ -16,19 +16,14 @@ import { expectNoA11yViolations } from "../lib/expect-no-a11y-violations";
  * 않았다. /ops는 토큰 게이트 뒤 클라이언트 컴포넌트라 토큰 없이 열면 자동 fetch가 없는
  * 정적 폼만 렌더된다(ops-console.tsx) — 이 트랙의 픽스처 백엔드가 /ops/* 를 구현하지 않아도
  * 안전하게 스캔할 수 있는 이유다. info 슬러그는 INFO_PAGE_META를 순회해 목록이 라우트
- * 레지스트리(shared/config/routes.ts)를 그대로 따라가게 한다(faq 포함 9개 전부 —
+ * 레지스트리(shared/config/routes.ts)를 그대로 따라가게 한다(faq 포함 전부 —
  * 기존에 따로 있던 faq 하드코딩 항목은 중복이라 지웠다).
  */
 const PAGES: Array<{ name: string; path: string }> = [
   { name: "홈", path: "/" },
-  { name: "데이터 허브", path: "/data" },
   { name: "번호 추천", path: "/recommend" },
-  { name: "추천 이력", path: "/recommend/history" },
   { name: "번호 분석", path: "/analysis?numbers=1,8,17,24,33,41" },
   { name: "보관함", path: "/saved" },
-  { name: "번호별 출현", path: "/frequency" },
-  { name: "당첨 패턴", path: "/stats" },
-  { name: "함께 나온 번호", path: "/companion" },
   { name: "커뮤니티 목록", path: "/community" },
   { name: "커뮤니티 글쓰기", path: "/community/write" },
   { name: "게시글 상세(댓글·답글·tombstone 포함)", path: "/community/posts/1" },

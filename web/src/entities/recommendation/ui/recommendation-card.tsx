@@ -10,10 +10,9 @@ import styles from "./recommendation-card.module.css";
 /**
  * 추천 조합 1세트
  *
- * `/recommend/history`에서 쓴다. 저장 슬롯은 선택적이다 — 이력의 조합은 만든 시점에
- * 이미 저장돼 있어 별도 저장 액션이 없다(레거시 참조: recommendation-history-client.tsx
- * 는 조회·삭제만 제공한다). 다른 화면이 재사용하며 즉석 저장이 필요해지면
- * `renderSaveSlot`으로 항목별 액션을 끼워 넣는다.
+ * 커뮤니티 글쓰기의 추천 첨부 선택기(`recommendation-attachment-picker.tsx`)와 게시글의
+ * 추천 첨부 표시(`recommendation-attachment-view.tsx`)가 쓴다. 저장 슬롯은 선택적이다 —
+ * 즉석 저장이 필요한 화면만 `renderSaveSlot`으로 항목별 액션을 끼워 넣는다.
  */
 export function RecommendationCard({
   strategy,

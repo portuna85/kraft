@@ -7,7 +7,8 @@ import { LATEST_ROUND } from "./stats.mjs";
 let nextSavedId = 100;
 const savedNumbers = [];
 
-// 추천 이력도 마찬가지로 상태를 갖는다 — 생성 후 이력 화면에서 보여야 한다.
+// 생성한 추천 세트도 마찬가지로 상태를 갖는다 — 커뮤니티 글쓰기의 추천 첨부
+// 선택기가 생성 직후 이 목록을 그대로 읽는다.
 let nextRecommendationSetId = 200;
 const recommendationSets = [];
 
@@ -146,15 +147,6 @@ export const dynamicRoutes = [
     handle: (id) => {
       const index = savedNumbers.findIndex((item) => item.id === Number(id));
       if (index !== -1) savedNumbers.splice(index, 1);
-      return { status: 204, body: null };
-    },
-  },
-  {
-    pattern: /^\/api\/v1\/recommendation-sets\/(\d+)$/,
-    method: "DELETE",
-    handle: (id) => {
-      const index = recommendationSets.findIndex((item) => item.id === Number(id));
-      if (index !== -1) recommendationSets.splice(index, 1);
       return { status: 204, body: null };
     },
   },

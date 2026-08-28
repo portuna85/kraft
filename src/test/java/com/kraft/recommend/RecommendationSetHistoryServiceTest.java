@@ -4,7 +4,6 @@ import com.kraft.common.error.ApiException;
 import com.kraft.common.lotto.LottoNumberCodec;
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,9 +30,6 @@ class RecommendationSetHistoryServiceTest {
     @Mock
     private RecommendationItemRepository recommendationItemRepository;
 
-    @Mock
-    private RecommendationSetAttachmentChecker attachmentChecker;
-
     private RecommendationSetHistoryService service;
 
     private static final String TOKEN_HASH = "hash-1";
@@ -51,17 +47,10 @@ class RecommendationSetHistoryServiceTest {
         }
     }
 
-    /** B-P0-2: claim된(계정 귀속) 세트를 흉내낸다 — clientTokenHash는 null, ownerUserId만 있다. */
-    private static RecommendationSet claimedSetEntity(long id, Long ownerUserId) {
-        RecommendationSet entity = setEntity(id, null);
-        entity.claimTo(ownerUserId, OffsetDateTime.now());
-        return entity;
-    }
-
     @BeforeEach
     void setUp() {
         service = new RecommendationSetHistoryService(recommendationSetRepository, recommendationItemRepository,
-                new LottoNumberCodec(), attachmentChecker);
+                new LottoNumberCodec());
     }
 
     @Test
@@ -95,124 +84,6 @@ class RecommendationSetHistoryServiceTest {
         assertThat(captor.getValue().getOwnerUserId()).isEqualTo(99L);
         assertThat(captor.getValue().getClientTokenHash()).isNull();
         verify(recommendationItemRepository).saveAll(org.mockito.ArgumentMatchers.any());
-    }
-
-    @Test
-    @DisplayName("소유한 클라이언트 토큰으로 조회하면 세트를 반환한다")
-    void get_ownedSet_returnsSummary() {
-        given(recommendationSetRepository.findById(1L)).willReturn(Optional.of(setEntity(1L, TOKEN_HASH)));
-        given(recommendationItemRepository.findBySetIdOrderByPosition(1L)).willReturn(List.of());
-
-        RecommendationSetSummary summary = service.get(TOKEN_HASH, 1L);
-
-        assertThat(summary.id()).isEqualTo(1L);
-        assertThat(summary.strategy()).isEqualTo(RecommendationStrategy.RANDOM);
-    }
-
-    @Test
-    @DisplayName("존재하지 않는 세트를 조회하면 404 RECOMMENDATION_SET_NOT_FOUND를 던진다")
-    void get_notFound_throwsApiException() {
-        given(recommendationSetRepository.findById(1L)).willReturn(Optional.empty());
-
-        assertThatThrownBy(() -> service.get(TOKEN_HASH, 1L))
-                .isInstanceOf(ApiException.class)
-                .satisfies(ex -> {
-                    ApiException apiEx = (ApiException) ex;
-                    assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
-                    assertThat(apiEx.getCode()).isEqualTo("RECOMMENDATION_SET_NOT_FOUND");
-                });
-    }
-
-    @Test
-    @DisplayName("다른 클라이언트의 세트를 조회하면 403 RECOMMENDATION_SET_NOT_OWNED를 던진다")
-    void get_notOwned_throwsApiException() {
-        given(recommendationSetRepository.findById(1L)).willReturn(Optional.of(setEntity(1L, "other-hash")));
-
-        assertThatThrownBy(() -> service.get(TOKEN_HASH, 1L))
-                .isInstanceOf(ApiException.class)
-                .satisfies(ex -> {
-                    ApiException apiEx = (ApiException) ex;
-                    assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.FORBIDDEN);
-                    assertThat(apiEx.getCode()).isEqualTo("RECOMMENDATION_SET_NOT_OWNED");
-                });
-    }
-
-    @Test
-    @DisplayName("B-P0-2: claim된 세트는 귀속된 owner_user_id로 조회할 수 있다")
-    void getForOwner_claimedSetWithMatchingOwnerUserId_returnsSummary() {
-        given(recommendationSetRepository.findById(1L)).willReturn(Optional.of(claimedSetEntity(1L, 99L)));
-        given(recommendationItemRepository.findBySetIdOrderByPosition(1L)).willReturn(List.of());
-
-        RecommendationSetSummary summary = service.getForOwner(99L, 1L);
-
-        assertThat(summary.id()).isEqualTo(1L);
-    }
-
-    @Test
-    @DisplayName("B-P0-2: claim된 세트를 옛 기기 토큰으로 조회하면 여전히 403이다(의도된 동작 — 토큰은 null로 지워짐)")
-    void get_claimedSet_stillRejectedByOldDeviceToken() {
-        given(recommendationSetRepository.findById(1L)).willReturn(Optional.of(claimedSetEntity(1L, 99L)));
-
-        assertThatThrownBy(() -> service.get(TOKEN_HASH, 1L))
-                .isInstanceOf(ApiException.class)
-                .satisfies(ex -> assertThat(((ApiException) ex).getCode()).isEqualTo("RECOMMENDATION_SET_NOT_OWNED"));
-    }
-
-    @Test
-    @DisplayName("다른 계정 소유의 세트를 owner_user_id로 조회하면 403 RECOMMENDATION_SET_NOT_OWNED를 던진다")
-    void getForOwner_notOwned_throwsApiException() {
-        given(recommendationSetRepository.findById(1L)).willReturn(Optional.of(claimedSetEntity(1L, 42L)));
-
-        assertThatThrownBy(() -> service.getForOwner(99L, 1L))
-                .isInstanceOf(ApiException.class)
-                .satisfies(ex -> {
-                    ApiException apiEx = (ApiException) ex;
-                    assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.FORBIDDEN);
-                    assertThat(apiEx.getCode()).isEqualTo("RECOMMENDATION_SET_NOT_OWNED");
-                });
-    }
-
-    @Test
-    @DisplayName("삭제 시 항목을 먼저 지우고 세트를 지운다")
-    void delete_removesItemsThenSet() {
-        RecommendationSet entity = setEntity(1L, TOKEN_HASH);
-        given(recommendationSetRepository.findById(1L)).willReturn(Optional.of(entity));
-        given(attachmentChecker.isAttachedToPost(1L)).willReturn(false);
-
-        service.delete(TOKEN_HASH, 1L);
-
-        verify(recommendationItemRepository).deleteBySetId(1L);
-        verify(recommendationSetRepository).delete(entity);
-    }
-
-    @Test
-    @DisplayName("커뮤니티 게시글에 첨부된 추천 세트는 삭제 시 409로 거부된다")
-    void delete_attachedToPost_throwsConflict() {
-        RecommendationSet entity = setEntity(1L, TOKEN_HASH);
-        given(recommendationSetRepository.findById(1L)).willReturn(Optional.of(entity));
-        given(attachmentChecker.isAttachedToPost(1L)).willReturn(true);
-
-        assertThatThrownBy(() -> service.delete(TOKEN_HASH, 1L))
-                .isInstanceOf(ApiException.class)
-                .satisfies(ex -> {
-                    ApiException apiEx = (ApiException) ex;
-                    assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.CONFLICT);
-                    assertThat(apiEx.getCode()).isEqualTo("RECOMMENDATION_SET_ATTACHED_TO_POST");
-                });
-        verify(recommendationItemRepository, org.mockito.Mockito.never()).deleteBySetId(org.mockito.ArgumentMatchers.any());
-    }
-
-    @Test
-    @DisplayName("B-P0-2: claim된 세트를 owner_user_id로 삭제할 수 있다")
-    void deleteForOwner_claimedSet_deletesItemsThenSet() {
-        RecommendationSet entity = claimedSetEntity(1L, 99L);
-        given(recommendationSetRepository.findById(1L)).willReturn(Optional.of(entity));
-        given(attachmentChecker.isAttachedToPost(1L)).willReturn(false);
-
-        service.deleteForOwner(99L, 1L);
-
-        verify(recommendationItemRepository).deleteBySetId(1L);
-        verify(recommendationSetRepository).delete(entity);
     }
 
     @Test
@@ -258,6 +129,43 @@ class RecommendationSetHistoryServiceTest {
 
         assertThat(result.getContent()).extracting(RecommendationSetSummary::id).containsExactly(1L, 2L);
         verify(recommendationItemRepository, org.mockito.Mockito.never()).findBySetIdOrderByPosition(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    @DisplayName("소유한 클라이언트 토큰이면 조용히 통과한다")
+    void assertOwnedByDevice_ownedSet_doesNotThrow() {
+        given(recommendationSetRepository.findById(1L)).willReturn(java.util.Optional.of(setEntity(1L, TOKEN_HASH)));
+
+        service.assertOwnedByDevice(TOKEN_HASH, 1L);
+    }
+
+    @Test
+    @DisplayName("다른 클라이언트의 세트를 검증하면 403 RECOMMENDATION_SET_NOT_OWNED를 던진다")
+    void assertOwnedByDevice_notOwned_throwsApiException() {
+        given(recommendationSetRepository.findById(1L))
+                .willReturn(java.util.Optional.of(setEntity(1L, "other-hash")));
+
+        assertThatThrownBy(() -> service.assertOwnedByDevice(TOKEN_HASH, 1L))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> {
+                    ApiException apiEx = (ApiException) ex;
+                    assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.FORBIDDEN);
+                    assertThat(apiEx.getCode()).isEqualTo("RECOMMENDATION_SET_NOT_OWNED");
+                });
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 세트를 검증하면 404 RECOMMENDATION_SET_NOT_FOUND를 던진다")
+    void assertOwnedByDevice_notFound_throwsApiException() {
+        given(recommendationSetRepository.findById(1L)).willReturn(java.util.Optional.empty());
+
+        assertThatThrownBy(() -> service.assertOwnedByDevice(TOKEN_HASH, 1L))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> {
+                    ApiException apiEx = (ApiException) ex;
+                    assertThat(apiEx.getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
+                    assertThat(apiEx.getCode()).isEqualTo("RECOMMENDATION_SET_NOT_FOUND");
+                });
     }
 
     @Test

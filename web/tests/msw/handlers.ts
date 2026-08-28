@@ -31,17 +31,6 @@ const ROUND_FRESHNESS = {
   checkedAt: "2026-08-01T12:00:00Z",
 };
 
-const FREQUENCY_STATS = {
-  totalRounds: 1150,
-  frequencies: Array.from({ length: 45 }, (_, index) => ({
-    ballNumber: index + 1,
-    frequency: 150 + (index % 7),
-    lastRound: 1150 - (index % 30),
-  })),
-  topSix: { balls: [], wonFirstPrize: false, firstPrizeHistory: [] },
-  bottomSix: { balls: [], wonFirstPrize: false, firstPrizeHistory: [] },
-};
-
 const EMPTY_POST_PAGE = { items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 };
 
 const ANONYMOUS_SESSION = {
@@ -130,7 +119,6 @@ const RECOMMENDATION_SET_PAGE = {
 export const handlers: RequestHandler[] = [
   http.get(`${BACKEND}/api/v1/rounds/latest`, () => HttpResponse.json(LATEST_ROUND)),
   http.get(`${BACKEND}/api/v1/rounds/freshness`, () => HttpResponse.json(ROUND_FRESHNESS)),
-  http.get(`${BACKEND}/api/v1/stats/frequency`, () => HttpResponse.json(FREQUENCY_STATS)),
   http.get(`${BACKEND}/api/v1/community/posts`, () => HttpResponse.json(EMPTY_POST_PAGE)),
   http.get("/api/v1/community/session", () => HttpResponse.json(ANONYMOUS_SESSION)),
 
@@ -205,14 +193,9 @@ export const handlers: RequestHandler[] = [
   // 장애 이력
   http.get(`${BACKEND}/api/v1/status/incidents`, () => HttpResponse.json(STATUS_INCIDENTS)),
 
-  // 추천 이력
+  // 생성한 추천 세트 목록 — 커뮤니티 글쓰기의 추천 첨부 선택기가 사용한다.
   http.get("/api/v1/recommendation-sets", () => HttpResponse.json(RECOMMENDATION_SET_PAGE)),
   http.get("/api/v1/community/me/recommendation-sets", () =>
     HttpResponse.json(RECOMMENDATION_SET_PAGE),
-  ),
-  http.delete("/api/v1/recommendation-sets/:id", () => new HttpResponse(null, { status: 204 })),
-  http.delete(
-    "/api/v1/community/me/recommendation-sets/:id",
-    () => new HttpResponse(null, { status: 204 }),
   ),
 ];

@@ -58,7 +58,7 @@ class OpsTokenFilterTest {
     @Test
     @DisplayName("/ops가 아닌 경로는 필터를 타지 않는다")
     void nonOpsPath_bypassesFilter() throws Exception {
-        mockMvc.perform(get("/api/v1/stats/patterns"))
+        mockMvc.perform(get("/api/v1/community/posts"))
                 .andExpect(status().isOk());
     }
 }

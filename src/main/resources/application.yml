@@ -164,13 +164,6 @@ resilience4j:
         retry-exceptions:
           - org.springframework.web.client.ResourceAccessException
           - org.springframework.web.client.HttpServerErrorException
-      # KB-16: 통계 summary rebuild는 비동기 이벤트 리스너에서 트리거되고 실패해도
-      # 사용자 요청을 막지 않으므로, catch-log만 하던 이전보다 넉넉하게 재시도한다 —
-      # 그래도 무한 재시도는 아니다(3회 실패 시 그대로 포기하고 다음 회차 수집 이벤트나
-      # 주간 reconciliation이 다시 시도한다).
-      statisticsRebuild:
-        max-attempts: 3
-        wait-duration: 2s
 
 kraft:
   public-base-url: ${KRAFT_PUBLIC_BASE_URL:}

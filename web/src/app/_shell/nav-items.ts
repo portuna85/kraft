@@ -104,39 +104,17 @@ export function currentNavHref(
 export const PRIMARY_NAV: NavGroup[] = [
   {
     title: "번호 뽑기",
-    items: [
-      { href: ROUTES.recommend, label: "번호 추천" },
-      // I-21: /recommend/history가 어느 내비게이션에도 없는 고아 라우트였다 —
-      // noindex라 검색으로도 못 왔다. 여기 추가해 최소 한 곳에서는 도달 가능하게 한다.
-      //
-      // RSP-23: 부모(`/recommend`)가 같은 메뉴에 있으므로 exact다. subtree로 두면
-      // 이 항목 아래에 하위 경로가 생겼을 때 다시 부모와 겹친다.
-      { href: ROUTES.recommendHistory, label: "추천 이력", match: "exact" },
-    ],
+    items: [{ href: ROUTES.recommend, label: "번호 추천" }],
   },
   {
     title: "진단",
     items: [{ href: ROUTES.analysis, label: "내 조합 진단" }],
   },
   {
-    title: "인사이트",
-    items: [
-      { href: ROUTES.data, label: "데이터 개요" },
-      { href: ROUTES.frequency, label: "번호별 출현" },
-      { href: ROUTES.stats, label: "당첨 패턴" },
-      { href: ROUTES.companion, label: "함께 나온 번호" },
-      { href: ROUTES.info("data-source"), label: "데이터 출처" },
-      { href: ROUTES.info("methodology"), label: "방법론" },
-    ],
-  },
-  {
     title: "커뮤니티",
     items: [{ href: ROUTES.community, label: "커뮤니티" }],
   },
 ];
-
-/** `primary-nav.tsx`가 "인사이트" 그룹을 드롭다운으로 접기 위해 찾아 쓰는 제목. */
-export const INSIGHTS_GROUP_TITLE = "인사이트";
 
 /**
  * 모바일 하단 탭. 5개를 넘기면 터치 타깃이 44px 아래로 내려간다(§12.7).
@@ -148,18 +126,11 @@ export const INSIGHTS_GROUP_TITLE = "인사이트";
  * 매칭되는 규칙이 없어 아예 사라진다. `.tabBar` 자체는 `grid-auto-columns: 1fr`
  * 이라 개수에 무관하다 — 어긋나는 것은 `.indicator`뿐이다.
  *
- * RSP-24(docs/improvement.md): `데이터` 탭이 통계 상세 4개를 alias로 흡수한다.
- * 이 화면들은 `/data` 하위가 아니라 별도 최상위 URL이라, alias가 없으면
- * 1152px 미만에서 정보 구조가 통째로 끊긴다(다섯 탭 모두 비활성).
  */
 export const TAB_BAR_ITEMS: NavItem[] = [
   { href: ROUTES.home, label: "홈" },
   { href: ROUTES.recommend, label: "추천" },
-  {
-    href: ROUTES.data,
-    label: "데이터",
-    aliases: [ROUTES.frequency, ROUTES.stats, ROUTES.companion, ROUTES.analysis],
-  },
+  { href: ROUTES.analysis, label: "진단" },
   { href: ROUTES.community, label: "커뮤니티" },
   { href: ROUTES.saved, label: "보관함" },
 ];
@@ -169,8 +140,6 @@ export const FOOTER_NAV: NavGroup[] = [
     title: "서비스 안내",
     items: [
       { href: ROUTES.info("about"), label: "운영자 소개" },
-      { href: ROUTES.info("data-source"), label: "데이터 출처" },
-      { href: ROUTES.info("methodology"), label: "분석 방법론" },
       { href: ROUTES.status, label: "서비스 상태" },
     ],
   },

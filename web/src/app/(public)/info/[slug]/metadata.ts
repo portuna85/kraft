@@ -19,20 +19,6 @@ export type InfoPageMeta = {
 };
 
 export const INFO_PAGE_META: Record<InfoPageSlug, InfoPageMeta> = {
-  "data-source": {
-    title: "데이터 출처",
-    description: "KRAFT Lotto에서 사용하는 당첨 결과 데이터의 출처와 반영 기준을 안내합니다.",
-    lastModified: "2026-01-01",
-    changeFrequency: "monthly",
-    priority: 0.5,
-  },
-  methodology: {
-    title: "분석 방법론",
-    description: "빈도, 패턴, 동반 출현 등 KRAFT Lotto 통계 화면의 계산 기준을 설명합니다.",
-    lastModified: "2026-07-29",
-    changeFrequency: "monthly",
-    priority: 0.5,
-  },
   faq: {
     title: "자주 묻는 질문",
     description: "추천 번호, 보관함, 데이터 반영 시점 등 자주 묻는 질문을 모았습니다.",

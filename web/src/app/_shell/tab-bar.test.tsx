@@ -20,17 +20,12 @@ vi.mock("next/navigation", () => ({
  */
 
 /** 탭 인디케이터 CSS(shell.module.css:180,191-210)가 하드코딩한 탭 순서. */
-const TAB_INDEX = { 홈: 0, 추천: 1, 데이터: 2, 커뮤니티: 3, 보관함: 4 } as const;
+const TAB_INDEX = { 홈: 0, 추천: 1, 진단: 2, 커뮤니티: 3, 보관함: 4 } as const;
 
 const CASES: { pathname: string; expected: keyof typeof TAB_INDEX | null }[] = [
   { pathname: "/", expected: "홈" },
   { pathname: "/recommend", expected: "추천" },
-  { pathname: "/recommend/history", expected: "추천" },
-  { pathname: "/data", expected: "데이터" },
-  { pathname: "/frequency", expected: "데이터" },
-  { pathname: "/stats", expected: "데이터" },
-  { pathname: "/companion", expected: "데이터" },
-  { pathname: "/analysis", expected: "데이터" },
+  { pathname: "/analysis", expected: "진단" },
   { pathname: "/community", expected: "커뮤니티" },
   { pathname: "/community/posts/1", expected: "커뮤니티" },
   { pathname: "/community/posts/1/edit", expected: "커뮤니티" },

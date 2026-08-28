@@ -60,18 +60,10 @@ describe("isRouteCurrent — 경로 경계", () => {
 describe("RSP-23: 데스크톱 주요 메뉴에서 현재 항목은 0개 또는 정확히 1개다", () => {
   const CASES: { pathname: string; expected: string[] }[] = [
     { pathname: "/recommend", expected: ["번호 추천"] },
-    // 핵심 케이스: 예전에는 `/recommend`와 `/recommend/history`가 동시에 현재였다.
-    { pathname: "/recommend/history", expected: ["추천 이력"] },
     { pathname: "/community", expected: ["커뮤니티"] },
     { pathname: "/community/posts/1", expected: ["커뮤니티"] },
     { pathname: "/community/write", expected: ["커뮤니티"] },
-    { pathname: "/data", expected: ["데이터 개요"] },
-    { pathname: "/frequency", expected: ["번호별 출현"] },
-    { pathname: "/stats", expected: ["당첨 패턴"] },
-    { pathname: "/companion", expected: ["함께 나온 번호"] },
     { pathname: "/analysis", expected: ["내 조합 진단"] },
-    { pathname: "/info/data-source", expected: ["데이터 출처"] },
-    { pathname: "/info/methodology", expected: ["방법론"] },
     // "보관함"은 4대 축 밖의 유틸리티라 PRIMARY_NAV에서 빠졌다 — utility nav
     // (site-header.tsx의 SavedLink)로 옮겼다.
     { pathname: "/saved", expected: [] },
@@ -92,13 +84,7 @@ describe("RSP-24: 모바일 탭에서 현재 탭은 0개 또는 정확히 1개�
   const CASES: { pathname: string; expected: string[] }[] = [
     { pathname: "/", expected: ["홈"] },
     { pathname: "/recommend", expected: ["추천"] },
-    { pathname: "/recommend/history", expected: ["추천"] },
-    { pathname: "/data", expected: ["데이터"] },
-    // 핵심 케이스: 데이터 하위 화면은 별도 최상위 URL이라 alias 없이는 현재 탭이 사라진다.
-    { pathname: "/frequency", expected: ["데이터"] },
-    { pathname: "/stats", expected: ["데이터"] },
-    { pathname: "/companion", expected: ["데이터"] },
-    { pathname: "/analysis", expected: ["데이터"] },
+    { pathname: "/analysis", expected: ["진단"] },
     { pathname: "/community", expected: ["커뮤니티"] },
     { pathname: "/community/posts/1", expected: ["커뮤니티"] },
     { pathname: "/community/posts/1/edit", expected: ["커뮤니티"] },

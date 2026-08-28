@@ -32,19 +32,16 @@ public class RecommendationSetHistoryService {
     private final RecommendationSetRepository recommendationSetRepository;
     private final RecommendationItemRepository recommendationItemRepository;
     private final LottoNumberCodec lottoNumberCodec;
-    private final RecommendationSetAttachmentChecker attachmentChecker;
 
     // KB-05: 목록 API가 무제한 배열을 반환하던 문제를 막는 상한 — CommunityPostService와 동일한 값.
     private static final int MAX_PAGE_SIZE = 50;
 
     public RecommendationSetHistoryService(RecommendationSetRepository recommendationSetRepository,
                                             RecommendationItemRepository recommendationItemRepository,
-                                            LottoNumberCodec lottoNumberCodec,
-                                            RecommendationSetAttachmentChecker attachmentChecker) {
+                                            LottoNumberCodec lottoNumberCodec) {
         this.recommendationSetRepository = recommendationSetRepository;
         this.recommendationItemRepository = recommendationItemRepository;
         this.lottoNumberCodec = lottoNumberCodec;
-        this.attachmentChecker = attachmentChecker;
     }
 
     public Long persist(String clientTokenHash, String strategy, String algorithmVersion, int historyThroughRound,
@@ -105,12 +102,6 @@ public class RecommendationSetHistoryService {
         return mapWithBatchedItems(sets);
     }
 
-    @Transactional(readOnly = true)
-    public RecommendationSetSummary get(String clientTokenHash, long id) {
-        RecommendationSet set = findOwnedByDevice(clientTokenHash, id);
-        return toSummary(set);
-    }
-
     /**
      * I-04: {@link #get(String, long)}과 동일한 소유권 검증이지만 {@link #toSummary}의 항목
      * 디코드를 건너뛴다. 호출부(예: 게시글 첨부 시 소유권만 확인하고 요약은 버리는 경로)가
@@ -145,18 +136,6 @@ public class RecommendationSetHistoryService {
         List<Long> setIds = content.stream().map(RecommendationSet::getId).toList();
         Map<Long, List<RecommendationItemView>> itemsBySetId = itemViewsBySetId(setIds);
         return sets.map(set -> toSummary(set, itemsBySetId.getOrDefault(set.getId(), List.of())));
-    }
-
-    /**
-     * B-P0-2: claim(계정 귀속) 이후 세트는 clientTokenHash가 null로 지워지므로 익명 기기
-     * 토큰으로는 더 이상 찾을 수 없다(의도된 동작 — claim 후에는 로그인 세션만 접근해야 한다).
-     * {@code /api/v1/recommendation-sets/{id}}는 STATELESS 기기 토큰 체인이라 로그인 여부를
-     * 알 수 없으므로, 로그인 사용자를 위한 별도 조회·삭제 경로(ownerUserId 기준)를 제공한다.
-     */
-    @Transactional(readOnly = true)
-    public RecommendationSetSummary getForOwner(Long ownerUserId, long id) {
-        RecommendationSet set = findOwnedByOwner(ownerUserId, id);
-        return toSummary(set);
     }
 
     /** I-04: {@link #assertOwnedByDevice(String, long)}의 계정 소유 버전. */
@@ -222,25 +201,6 @@ public class RecommendationSetHistoryService {
             }
         }
         return result;
-    }
-
-    public void delete(String clientTokenHash, long id) {
-        RecommendationSet set = findOwnedByDevice(clientTokenHash, id);
-        deleteOwnedSet(set);
-    }
-
-    public void deleteForOwner(Long ownerUserId, long id) {
-        RecommendationSet set = findOwnedByOwner(ownerUserId, id);
-        deleteOwnedSet(set);
-    }
-
-    private void deleteOwnedSet(RecommendationSet set) {
-        if (attachmentChecker.isAttachedToPost(set.getId())) {
-            throw new ApiException(ApiErrorCode.RECOMMENDATION_SET_ATTACHED_TO_POST,
-                    "커뮤니티 게시글에 첨부된 추천 세트는 삭제할 수 없습니다.");
-        }
-        recommendationItemRepository.deleteBySetId(set.getId());
-        recommendationSetRepository.delete(set);
     }
 
     private RecommendationSet findById(long id) {

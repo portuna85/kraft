@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 
 import { getLatestRound } from "@/entities/round/api";
-import { SavedHistoryNav } from "@/features/saved-history-nav/saved-history-nav";
 import { SavedLibrary } from "@/features/saved-library/saved-library";
 
 export const metadata: Metadata = {
@@ -38,8 +37,6 @@ export default async function SavedPage() {
           브라우저에만 연결되며, 로그인하면 계정으로 옮겨집니다.
         </p>
       </header>
-
-      <SavedHistoryNav />
 
       <SavedLibrary latestRound={latestRound} />
     </div>

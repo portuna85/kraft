@@ -12,12 +12,7 @@ import { ROUTES } from "@/shared/config/routes";
  * 한다(R-6). `community:posts`는 백엔드의 어떤 웹훅도 보내지 않으므로 넣지 않는다 —
  * 넣어도 절대 오지 않는 값이라 검증이 아니라 장식이 된다.
  */
-export const ALLOWED_PATHS = new Set<string>([
-  ROUTES.home,
-  ROUTES.frequency,
-  ROUTES.stats,
-  ROUTES.companion,
-]);
+export const ALLOWED_PATHS = new Set<string>([ROUTES.home]);
 
 export const ALLOWED_TAGS = new Set<string>([CACHE_TAGS.roundsLatest, CACHE_TAGS.statsAll]);
 

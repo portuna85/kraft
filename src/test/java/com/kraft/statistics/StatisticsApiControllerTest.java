@@ -35,25 +35,10 @@ class StatisticsApiControllerTest {
     @Autowired
     private WinningNumberRepository winningNumberRepository;
 
-    @Autowired
-    private FrequencySummaryRepository frequencySummaryRepository;
-
-    @Autowired
-    private PatternStatsSummaryRepository patternStatsSummaryRepository;
-
-    @Autowired
-    private CompanionPairSummaryRepository companionPairSummaryRepository;
-
-    @Autowired
-    private StatisticsSummaryRebuilder summaryRebuilder;
-
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     @BeforeEach
     void setUp() {
-        frequencySummaryRepository.deleteAll();
-        patternStatsSummaryRepository.deleteAll();
-        companionPairSummaryRepository.deleteAll();
         winningNumberRepository.deleteAll();
 
         winningNumberRepository.save(com.kraft.winningnumber.WinningNumberTestFactory.create(1, LocalDate.of(2026, 1, 4),
@@ -64,64 +49,6 @@ class StatisticsApiControllerTest {
                 10, 20, 30, 40, 41, 42, 43,
                 2_000_000_000L, 0L, 0, 0L, 0L,
                 OffsetDateTime.now(Clock.system(KST))));
-    }
-
-    @Test
-    @DisplayName("번호별 출현 빈도 조회 시 비어있으면 재생성하고 200을 반환하는지 확인")
-    void getFrequency_returns200_andTriggersRebuildWhenEmpty() throws Exception {
-        mockMvc.perform(get("/api/v1/stats/frequency"))
-                .andExpect(status().isOk())
-                .andExpect(header().string("Cache-Control", "public, max-age=60, must-revalidate"))
-                .andExpect(header().exists("ETag"))
-                .andExpect(jsonPath("$.totalRounds").value(2))
-                .andExpect(jsonPath("$.frequencies", hasSize(45)));
-    }
-
-    @Test
-    @DisplayName("패턴 통계 조회 시 200을 반환하는지 확인")
-    void getPatterns_returns200() throws Exception {
-        summaryRebuilder.rebuildAllSummaries();
-        mockMvc.perform(get("/api/v1/stats/patterns"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalRounds").value(2));
-    }
-
-    @Test
-    @DisplayName("동반 출연 번호 조회 시 200을 반환하는지 확인")
-    void getCompanion_returns200() throws Exception {
-        summaryRebuilder.rebuildAllSummaries();
-        mockMvc.perform(get("/api/v1/stats/companion"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalRounds").value(2));
-    }
-
-    @Test
-    @DisplayName("ball 파라미터로 해당 번호가 포함된 쌍만 반환한다")
-    void getCompanion_withBallParam_returnsOnlyMatchingPairs() throws Exception {
-        summaryRebuilder.rebuildAllSummaries();
-
-        mockMvc.perform(get("/api/v1/stats/companion").param("ball", "1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalRounds").value(2))
-                .andExpect(jsonPath("$.topPairs[*].ballA").exists())
-                .andExpect(result -> {
-                    String json = result.getResponse().getContentAsString();
-                    org.assertj.core.api.Assertions.assertThat(json)
-                            .contains("\"ballA\":1")
-                            .doesNotContain("\"ballA\":10,\"ballB\":20");
-                });
-    }
-
-    @Test
-    @DisplayName("ball이 1~45 밖이면 400을 반환한다")
-    void getCompanion_withInvalidBall_returns400() throws Exception {
-        mockMvc.perform(get("/api/v1/stats/companion").param("ball", "0"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_BALL"));
-
-        mockMvc.perform(get("/api/v1/stats/companion").param("ball", "46"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_BALL"));
     }
 
     @Test
@@ -143,14 +70,6 @@ class StatisticsApiControllerTest {
     @DisplayName("HEAD 요청도 공개 캐시 헤더를 반환한다(배포 스모크 테스트가 실제로 쓰는 방식)")
     void roundsLatest_headRequest_returnsCacheHeaders() throws Exception {
         mockMvc.perform(head("/api/v1/rounds/latest"))
-                .andExpect(status().isOk())
-                .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("max-age=60")));
-    }
-
-    @Test
-    @DisplayName("HEAD 요청으로 조회 빈도도 공개 캐시 헤더를 반환한다(배포 스모크 테스트가 실제로 쓰는 방식)")
-    void frequency_headRequest_returnsCacheHeaders() throws Exception {
-        mockMvc.perform(head("/api/v1/stats/frequency"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("max-age=60")));
     }

@@ -9,11 +9,6 @@
 export const ROUTES = {
   home: "/",
   recommend: "/recommend",
-  recommendHistory: "/recommend/history",
-  data: "/data",
-  frequency: "/frequency",
-  stats: "/stats",
-  companion: "/companion",
   analysis: "/analysis",
   saved: "/saved",
   status: "/status",
@@ -27,8 +22,6 @@ export const ROUTES = {
 
 /** 백엔드·사이트맵과 공유하는 계약 — 임의로 늘리거나 줄이지 않는다(§3.6). */
 export const INFO_PAGE_SLUGS = [
-  "data-source",
-  "methodology",
   "faq",
   "privacy",
   "terms",

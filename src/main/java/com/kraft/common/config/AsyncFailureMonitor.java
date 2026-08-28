@@ -25,7 +25,6 @@ public class AsyncFailureMonitor implements AsyncUncaughtExceptionHandler {
             "LottoRecommendationService", "recommendation-history",
             "RevalidateWebhookListener", "revalidate-webhook",
             "RoundEtagProvider", "round-etag",
-            "StatisticsRefreshListener", "statistics-refresh",
             "WinningNumberBackfillService", "winning-number-backfill"
     );
 

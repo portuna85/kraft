@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef } from "react";
 
 import { ROUTES } from "@/shared/config/routes";
@@ -203,11 +202,6 @@ export function RecommendStudio() {
               >
                 전체 저장
               </Button>
-              {/* I-21: /recommend/history가 어느 내비게이션에서도 도달 불가능했다 —
-                  결과가 막 생겼을 때 바로 확인할 수 있는 진입점을 여기도 둔다. */}
-              <Link href={ROUTES.recommendHistory} className={styles.historyLink}>
-                추천 이력 보기
-              </Link>
             </div>
           </div>
           <p className="sr-only" role="status">

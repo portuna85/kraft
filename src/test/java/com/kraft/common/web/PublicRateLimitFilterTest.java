@@ -1,8 +1,15 @@
 package com.kraft.common.web;
 
 import com.kraft.Application;
+import com.kraft.winningnumber.WinningNumberRepository;
+import com.kraft.winningnumber.WinningNumberTestFactory;
 import io.micrometer.core.instrument.MeterRegistry;
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +44,23 @@ class PublicRateLimitFilterTest {
     @Autowired
     private MeterRegistry meterRegistry;
 
+    @Autowired
+    private WinningNumberRepository winningNumberRepository;
+
+    // 이 필터는 라우팅 이전 단계에서 동작하므로 원래는 매핑되지 않은 경로로도 검증할 수
+    // 있지만, OPTIONS 프리플라이트는 Spring Security의 공개 API 체인(WebSecurityConfig)을
+    // 타야 인증 없이 통과한다 — 커뮤니티 체인(/api/v1/community/**)은 GET만 permitAll이라
+    // OPTIONS가 401이 된다. /api/v1/rounds/latest는 공개 체인이면서 실제 컨트롤러 응답도
+    // 필요하므로 회차 데이터를 하나 심어 둔다.
+    @BeforeEach
+    void seedRound() {
+        winningNumberRepository.deleteAll();
+        winningNumberRepository.save(WinningNumberTestFactory.create(1, LocalDate.of(2026, 1, 3),
+                1, 2, 3, 4, 5, 6, 7,
+                1_000_000_000L, 0L, 0, 0L, 0L,
+                OffsetDateTime.now(Clock.system(ZoneId.of("Asia/Seoul")))));
+    }
+
     @Test
     @DisplayName("BE-SEC-01: 서로 다른 임의 경로로 429를 유발해도 초과 메트릭 시계열 수가 고정된다")
     void rateLimitExceeded_arbitraryPaths_doNotIncreaseMeterCardinality() throws Exception {
@@ -65,9 +89,9 @@ class PublicRateLimitFilterTest {
     @DisplayName("BE-SEC-02: rate_limit.decisions 메트릭이 outcome 4종으로 고정된다")
     void rateLimitDecisions_meterCardinalityIsFixed() throws Exception {
         String ip = "10.9.9.43";
-        mockMvc.perform(get("/api/v1/stats/frequency").with(remoteAddr(ip)))
+        mockMvc.perform(get("/api/v1/rounds/latest").with(remoteAddr(ip)))
                 .andExpect(status().isOk());
-        mockMvc.perform(get("/api/v1/stats/frequency").with(remoteAddr(ip)))
+        mockMvc.perform(get("/api/v1/rounds/latest").with(remoteAddr(ip)))
                 .andExpect(status().isTooManyRequests());
 
         long meterCount = meterRegistry.find("rate_limit.decisions").meters().size();
@@ -79,7 +103,7 @@ class PublicRateLimitFilterTest {
     void allowedRequest_incrementsAllowedDecisionCounter() throws Exception {
         double before = counterValue("allowed");
 
-        mockMvc.perform(get("/api/v1/stats/frequency").with(remoteAddr("10.9.9.44")))
+        mockMvc.perform(get("/api/v1/rounds/latest").with(remoteAddr("10.9.9.44")))
                 .andExpect(status().isOk());
 
         assertThat(counterValue("allowed")).isEqualTo(before + 1);
@@ -89,11 +113,11 @@ class PublicRateLimitFilterTest {
     @DisplayName("BE-SEC-02: 429 응답은 rate_limit.decisions{outcome=limited}를 증가시킨다")
     void limitedRequest_incrementsLimitedDecisionCounter() throws Exception {
         String ip = "10.9.9.45";
-        mockMvc.perform(get("/api/v1/stats/frequency").with(remoteAddr(ip)))
+        mockMvc.perform(get("/api/v1/rounds/latest").with(remoteAddr(ip)))
                 .andExpect(status().isOk());
         double before = counterValue("limited");
 
-        mockMvc.perform(get("/api/v1/stats/frequency").with(remoteAddr(ip)))
+        mockMvc.perform(get("/api/v1/rounds/latest").with(remoteAddr(ip)))
                 .andExpect(status().isTooManyRequests());
 
         assertThat(counterValue("limited")).isEqualTo(before + 1);
@@ -107,7 +131,7 @@ class PublicRateLimitFilterTest {
         // 172.28.0.0/16이다 — 이 대역 안 IP는 한도 검사 자체를 건너뛴다.
         double before = counterValue("trusted_bypass");
 
-        mockMvc.perform(get("/api/v1/stats/frequency").with(remoteAddr("172.28.5.5")))
+        mockMvc.perform(get("/api/v1/rounds/latest").with(remoteAddr("172.28.5.5")))
                 .andExpect(status().isOk())
                 .andExpect(header().doesNotExist("X-RateLimit-Limit"))
                 .andExpect(header().doesNotExist("X-RateLimit-Remaining"));
@@ -123,12 +147,12 @@ class PublicRateLimitFilterTest {
     @Test
     @DisplayName("429 응답에 재시도 안내 헤더가 포함되는지 확인")
     void rateLimitExceeded_returnsRetryAfterHeader() throws Exception {
-        mockMvc.perform(get("/api/v1/stats/frequency"))
+        mockMvc.perform(get("/api/v1/rounds/latest"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("X-RateLimit-Limit", "1"))
                 .andExpect(header().string("X-RateLimit-Remaining", "0"));
 
-        mockMvc.perform(get("/api/v1/stats/frequency"))
+        mockMvc.perform(get("/api/v1/rounds/latest"))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().string("Retry-After", "60"))
                 .andExpect(header().string("X-RateLimit-Limit", "1"))
@@ -136,7 +160,7 @@ class PublicRateLimitFilterTest {
                 .andExpect(header().string("Content-Type", "application/json;charset=UTF-8"))
                 .andExpect(jsonPath("$.status").value(429))
                 .andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"))
-                .andExpect(jsonPath("$.path").value("/api/v1/stats/frequency"));
+                .andExpect(jsonPath("$.path").value("/api/v1/rounds/latest"));
     }
 
     @Test
@@ -144,14 +168,14 @@ class PublicRateLimitFilterTest {
     void preflightOptions_doesNotConsumeRateLimit() throws Exception {
         // limit=1이므로 OPTIONS가 카운트를 소모하면 뒤따르는 GET이 429가 된다
         for (int i = 0; i < 3; i++) {
-            mockMvc.perform(options("/api/v1/stats/frequency")
+            mockMvc.perform(options("/api/v1/rounds/latest")
                             .with(remoteAddr("10.9.9.1"))
                             .header("Origin", "https://example.com")
                             .header("Access-Control-Request-Method", "GET"))
                     .andExpect(status().isOk());
         }
 
-        mockMvc.perform(get("/api/v1/stats/frequency")
+        mockMvc.perform(get("/api/v1/rounds/latest")
                         .with(remoteAddr("10.9.9.1")))
                 .andExpect(status().isOk());
     }
@@ -159,12 +183,12 @@ class PublicRateLimitFilterTest {
     @Test
     @DisplayName("한도 초과 429 응답에도 CORS 헤더가 포함된다")
     void rateLimitExceeded_includesCorsHeaders() throws Exception {
-        mockMvc.perform(get("/api/v1/stats/frequency")
+        mockMvc.perform(get("/api/v1/rounds/latest")
                         .with(remoteAddr("10.9.9.2"))
                         .header("Origin", "https://example.com"))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/api/v1/stats/frequency")
+        mockMvc.perform(get("/api/v1/rounds/latest")
                         .with(remoteAddr("10.9.9.2"))
                         .header("Origin", "https://example.com"))
                 .andExpect(status().isTooManyRequests())

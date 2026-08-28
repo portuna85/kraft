@@ -12,13 +12,10 @@ import { expect, test } from "@playwright/test";
 const ROUTES: Array<{ name: string; path: string }> = [
   { name: "홈", path: "/" },
   { name: "번호 추천", path: "/recommend" },
-  { name: "당첨 패턴", path: "/stats" },
   { name: "커뮤니티 목록", path: "/community" },
   { name: "게시글 상세", path: "/community/posts/1" },
   { name: "서비스 상태", path: "/status" },
   { name: "조합 분석", path: "/analysis" },
-  { name: "번호별 빈도", path: "/frequency" },
-  { name: "데이터", path: "/data" },
   { name: "보관함", path: "/saved" },
 ];
 
