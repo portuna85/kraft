@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Post-deploy smoke test suite.
-# Checks: /api/v1/stats/* returns 200;
+# Checks: /api/v1/rounds/latest returns 200 with key headers;
 #         key public headers are present;
 #         previously removed paths are 404;
 #         /admin is blocked (403) on the public domain.
@@ -120,13 +120,15 @@ check_body_matches() {
 
 echo "==> Smoke tests against $BASE"
 
-# Core API: stats work even with an empty DB.
-check_status "GET /api/v1/stats/frequency -> 200" "$API/stats/frequency" "200"
-check_status "GET /api/v1/stats/patterns -> 200" "$API/stats/patterns" "200"
-check_status "GET /api/v1/stats/companion -> 200" "$API/stats/companion" "200"
-check_header_contains "GET /api/v1/stats/frequency exposes Cache-Control" "$API/stats/frequency" "Cache-Control" "max-age=60"
-check_header_contains "GET /api/v1/stats/frequency exposes X-Request-Id" "$API/stats/frequency" "X-Request-Id" ""
+# Core API: rounds work even with an empty DB.
 check_header_contains "GET /api/v1/rounds/latest exposes Cache-Control" "$API/rounds/latest" "Cache-Control" "max-age=60"
+check_header_contains "GET /api/v1/rounds/latest exposes X-Request-Id" "$API/rounds/latest" "X-Request-Id" ""
+
+# 2026-08-28 기능 제거: 번호별 출현/당첨 패턴/함께 나온 번호 엔드포인트가 사라졌다 —
+# 되살아나지 않았는지 배포마다 확인한다.
+check_status "GET /api/v1/stats/frequency -> 404" "$API/stats/frequency" "404"
+check_status "GET /api/v1/stats/patterns -> 404" "$API/stats/patterns" "404"
+check_status "GET /api/v1/stats/companion -> 404" "$API/stats/companion" "404"
 
 # 홈이 CSP nonce 헤더를 반환하는지, 최신 회차가 실제 렌더링되는지.
 # 홈은 서버 컴포넌트에서 backend로 SSR fetch(AbortSignal.timeout 5s)를 하는데, web
@@ -168,8 +170,9 @@ done
 check_status "GET /api/v1/push/token -> 404" "$API/push/token" "404"
 check_status "GET /news -> 404" "$BASE/news" "404"
 
-# Next.js permanent:true redirects return 308 (not 301).
-check_status "GET /data-source -> 308" "$BASE/data-source" "308"
+# 2026-08-28 기능 제거: /data-source -> /info/data-source 리다이렉트를 없앴다(대상
+# 페이지 자체가 사라졌으므로) — 되살아나지 않았는지 확인한다.
+check_status "GET /data-source -> 404" "$BASE/data-source" "404"
 
 # /admin* is blocked with 403 on the public domain (Caddyfile security rule).
 check_status "GET /admin -> 403 on public domain" "$BASE/admin" "403"

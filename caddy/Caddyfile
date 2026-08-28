@@ -143,7 +143,7 @@ www.{$KRAFT_DOMAIN} {
 			}
 		}
 
-		# EDGE-CACHE-01(docs/improvement.md): (public) 셸 8개 라우트는 PublicAccountSlot이
+		# EDGE-CACHE-01(docs/improvement.md): (public) 셸 라우트는 PublicAccountSlot이
 		# kraft_logged_in 쿠키로 서버에서 로그인 분기 HTML을 만드는데(_shell/public-account-slot.tsx),
 		# catch-all은 이 응답에 public, max-age=60을 강제한다 — 사용자별로 다른 HTML을 공유 캐시
 		# 가능하다고 광고하는 모순이다. 옵션 2(서버 로그인 UI 유지) 채택 — 공개 HTML을 쿠키 무관하게
@@ -152,7 +152,7 @@ www.{$KRAFT_DOMAIN} {
 		# 있어 reverse_proxy 앞의 bare header(추가)를 썼더니 실제 배포에서 중복 헤더가 나
 		# (count=2) I-09 회귀 테스트가 잡았다. @community_no_cache류의 "추가" 관용구는 이 라우트엔
 		# 안 맞는다.
-		@public_account_shell path / /stats /analysis /frequency /companion /data /status /info/*
+		@public_account_shell path / /analysis /status /info/*
 		handle @public_account_shell {
 			reverse_proxy web:3000 {
 				header_up X-Real-IP {remote_host}
