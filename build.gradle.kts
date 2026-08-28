@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "com.kraft"
-version = "1.0-SNAPSHOT"
+version = "1.0.1-SNAPSHOT"
 
 tasks.bootJar {
     archiveFileName.set("kraft-backend.jar")
