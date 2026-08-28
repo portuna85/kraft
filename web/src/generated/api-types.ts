@@ -307,54 +307,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/stats/patterns": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["patterns"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/stats/frequency": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["frequency"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/stats/companion": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["companion"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/saved/matches": {
         parameters: {
             query?: never;
@@ -419,22 +371,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/recommendation-sets/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["get"];
-        put?: never;
-        post?: never;
-        delete: operations["delete_1"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/numbers/check": {
         parameters: {
             query?: never;
@@ -478,22 +414,6 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/community/me/recommendation-sets/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["recommendationSet"];
-        put?: never;
-        post?: never;
-        delete: operations["deleteRecommendationSet"];
         options?: never;
         head?: never;
         patch?: never;
@@ -557,7 +477,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete: operations["delete_2"];
+        delete: operations["delete_1"];
         options?: never;
         head?: never;
         patch?: never;
@@ -589,7 +509,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete: operations["delete_3"];
+        delete: operations["delete_2"];
         options?: never;
         head?: never;
         patch?: never;
@@ -806,51 +726,6 @@ export interface components {
             occurredAt: string;
             /** Format: int32 */
             occurrences: number;
-        };
-        PatternBucketDto: {
-            bucketKey: string;
-            /** Format: int32 */
-            count: number;
-        };
-        PatternStatsResponse: {
-            /** Format: int32 */
-            totalRounds: number;
-            oddCounts: components["schemas"]["PatternBucketDto"][];
-            highCounts: components["schemas"]["PatternBucketDto"][];
-            sumBuckets: components["schemas"]["PatternBucketDto"][];
-        };
-        BallFrequencyDto: {
-            /** Format: int32 */
-            ballNumber: number;
-            /** Format: int32 */
-            frequency: number;
-            /** Format: int32 */
-            lastRound: number;
-        };
-        FrequencyStatsResponse: {
-            /** Format: int32 */
-            totalRounds: number;
-            frequencies: components["schemas"]["BallFrequencyDto"][];
-            topSix: components["schemas"]["RankedCombinationDto"];
-            bottomSix: components["schemas"]["RankedCombinationDto"];
-        };
-        RankedCombinationDto: {
-            balls: components["schemas"]["BallFrequencyDto"][];
-            wonFirstPrize: boolean;
-            firstPrizeHistory: components["schemas"]["FirstPrizeHistoryDto"][];
-        };
-        CompanionPairDto: {
-            /** Format: int32 */
-            ballA: number;
-            /** Format: int32 */
-            ballB: number;
-            /** Format: int32 */
-            coCount: number;
-        };
-        CompanionStatsResponse: {
-            /** Format: int32 */
-            totalRounds: number;
-            topPairs: components["schemas"]["CompanionPairDto"][];
         };
         SavedNumberMatchResult: {
             savedNumber: components["schemas"]["SavedNumberResponse"];
@@ -1641,70 +1516,6 @@ export interface operations {
             };
         };
     };
-    patterns: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PatternStatsResponse"];
-                };
-            };
-        };
-    };
-    frequency: {
-        parameters: {
-            query?: {
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["FrequencyStatsResponse"];
-                };
-            };
-        };
-    };
-    companion: {
-        parameters: {
-            query?: {
-                ball?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["CompanionStatsResponse"];
-                };
-            };
-        };
-    };
     matches: {
         parameters: {
             query?: {
@@ -1794,52 +1605,6 @@ export interface operations {
             };
         };
     };
-    get: {
-        parameters: {
-            query?: never;
-            header: {
-                "X-Device-Token": string;
-            };
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["RecommendationSetSummary"];
-                };
-            };
-        };
-    };
-    delete_1: {
-        parameters: {
-            query?: never;
-            header: {
-                "X-Device-Token": string;
-            };
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No Content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     check: {
         parameters: {
             query: {
@@ -1904,48 +1669,6 @@ export interface operations {
             };
         };
     };
-    recommendationSet: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["RecommendationSetSummary"];
-                };
-            };
-        };
-    };
-    deleteRecommendationSet: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No Content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     interactions: {
         parameters: {
             query: {
@@ -2006,7 +1729,7 @@ export interface operations {
             };
         };
     };
-    delete_2: {
+    delete_1: {
         parameters: {
             query?: never;
             header: {
@@ -2048,7 +1771,7 @@ export interface operations {
             };
         };
     };
-    delete_3: {
+    delete_2: {
         parameters: {
             query?: never;
             header?: never;
