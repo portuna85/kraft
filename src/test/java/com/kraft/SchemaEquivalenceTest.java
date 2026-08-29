@@ -79,31 +79,7 @@ class SchemaEquivalenceTest {
             "device_claims.device_token_hash: flyway=char hbm=varchar",
             "recommendation_sets.client_token_hash: flyway=char hbm=varchar",
             "saved_number_client_locks.client_token_hash: flyway=char hbm=varchar",
-            "saved_numbers.client_token_hash: flyway=char hbm=varchar",
-            // 번호별 출현·당첨 패턴·함께 나온 번호 기능 제거(2026-08-28)로 JPA 엔티티는
-            // 지웠지만 테이블은 그대로 남겨뒀다 — 운영 DB에서 즉시 DROP하기보다 별도
-            // 마이그레이션으로 정리하기로 한 결정. hbm 스키마에는 대응 엔티티가 없으므로
-            // "없음"이 정상이다.
-            "winning_number_frequency_summary.id: flyway=bigint hbm=(없음)",
-            "winning_number_frequency_summary.ball_number: flyway=int hbm=(없음)",
-            "winning_number_frequency_summary.frequency: flyway=int hbm=(없음)",
-            "winning_number_frequency_summary.last_round: flyway=int hbm=(없음)",
-            "winning_number_frequency_summary.updated_at: flyway=datetime hbm=(없음)",
-            "pattern_stats_summary.id: flyway=bigint hbm=(없음)",
-            "pattern_stats_summary.stat_type: flyway=varchar hbm=(없음)",
-            "pattern_stats_summary.bucket_key: flyway=varchar hbm=(없음)",
-            "pattern_stats_summary.count_val: flyway=int hbm=(없음)",
-            "pattern_stats_summary.updated_at: flyway=datetime hbm=(없음)",
-            "companion_pair_summary.id: flyway=bigint hbm=(없음)",
-            "companion_pair_summary.ball_a: flyway=int hbm=(없음)",
-            "companion_pair_summary.ball_b: flyway=int hbm=(없음)",
-            "companion_pair_summary.co_count: flyway=int hbm=(없음)",
-            "companion_pair_summary.updated_at: flyway=datetime hbm=(없음)",
-            "statistics_projection_state.id: flyway=bigint hbm=(없음)",
-            "statistics_projection_state.last_processed_round: flyway=int hbm=(없음)",
-            "statistics_projection_state.source_row_count: flyway=bigint hbm=(없음)",
-            "statistics_projection_state.succeeded_at: flyway=datetime hbm=(없음)",
-            "statistics_projection_state.version: flyway=bigint hbm=(없음)");
+            "saved_numbers.client_token_hash: flyway=char hbm=varchar");
 
     /**
      * JPA 엔티티가 아니라 비교 대상이 아닌 테이블. {@code flyway_schema_history}는 Flyway가
