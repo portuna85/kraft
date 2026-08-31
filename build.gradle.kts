@@ -67,8 +67,8 @@ dependencies {
     // 스케일아웃 시에만 사용) — 기본값은 여전히 in-memory(Caffeine)라 이 스타터가 있어도
     // Redis 서버 없이 기동·테스트 전부 그대로 동작한다(RedisRateLimitCounter 참고).
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
-    implementation("net.javacrumbs.shedlock:shedlock-spring:7.8.0")
-    implementation("net.javacrumbs.shedlock:shedlock-provider-jdbc-template:7.8.0")
+    implementation("net.javacrumbs.shedlock:shedlock-spring:7.9.0")
+    implementation("net.javacrumbs.shedlock:shedlock-provider-jdbc-template:7.9.0")
     implementation("io.github.resilience4j:resilience4j-spring-boot4:2.4.0")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0")
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor:4.1.1")
