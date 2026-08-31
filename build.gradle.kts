@@ -103,7 +103,7 @@ dependencies {
         // tools.jackson(Jackson 3)은 TD-019 코멘트대로 이 앱이 직접 참조하지 않는
         // 전이 의존성이다 — SEC-SCA-01 OSV-Scanner 도입 시 productionRuntimeClasspath에서
         // 발견(GHSA-5gvw-p9qm-jgwh, Boot 4.1.0 BOM 고정치 3.1.4).
-        implementation("tools.jackson.core:jackson-databind:3.1.5") {
+        implementation("tools.jackson.core:jackson-databind:3.2.2") {
             because("GHSA-5gvw-p9qm-jgwh — Boot 4.1.0 BOM 고정치(3.1.4)에서 발견")
         }
     }
