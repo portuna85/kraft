@@ -34,6 +34,16 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
             + "p.updatedAt = :updatedAt where p.ownerId = :ownerId")
     int eraseForAccountDeletion(@Param("ownerId") Long ownerId, @Param("updatedAt") OffsetDateTime updatedAt);
 
+    // BE-02(docs/improvement.md): 탈퇴 시 위 eraseForAccountDeletion은 탈퇴자 본인 소유
+    // 게시글만 recommendationSetId를 끊는다. 하지만 세트는 claim(IdentityMergeService)으로
+    // 다른 계정에 귀속될 수 있으므로, 탈퇴자가 소유했던 세트를 "다른 계정"의 게시글이 여전히
+    // 참조할 수 있다. recommendation_set_id는 ON DELETE RESTRICT(V21)라 세트 삭제 전에
+    // 소유자 무관하게 참조를 전부 끊어야 한다 — 그러지 않으면 세트 삭제가
+    // DataIntegrityViolationException으로 500이 된다.
+    @Modifying
+    @Query("update CommunityPost p set p.recommendationSetId = null where p.recommendationSetId in :setIds")
+    int detachRecommendationSetIds(@Param("setIds") List<Long> setIds);
+
     @Query("SELECT p FROM CommunityPost p WHERE p.status = com.kraft.community.post.PostStatus.PUBLISHED "
             + "AND (:category IS NULL OR p.category = :category) "
             + "AND (:query IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) ESCAPE '!' "

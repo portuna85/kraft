@@ -243,4 +243,24 @@ class CommunityReactionServiceTest {
         assertThat(response.bookmarkedPostIds()).containsExactly(2L);
         assertThat(response.blockedUserIds()).containsExactly(99L);
     }
+
+    // BE-01(docs/improvement.md): like()/bookmark()가 클래스 레벨 @Transactional(REQUIRED)
+    // 안에 남아 있으면 아래 REQUIRES_NEW 호출과 중첩되어 요청 한 건이 커넥션을 2개씩 잡는다
+    // (CommunityPostService.java의 조회수 카운터 인시던트와 같은 모양). unlike()와 동일하게
+    // NOT_SUPPORTED로 이탈해야 한다 — 실제 커넥션 풀 점유를 재현하는 통합 테스트는
+    // Testcontainers/Docker 환경의 타이밍에 취약해, 애노테이션 자체가 회귀하지 않는지 보는
+    // 이 가벼운 리플렉션 테스트로 지킨다.
+    @Test
+    @DisplayName("BE-01: like()·bookmark()는 unlike()와 같은 NOT_SUPPORTED로 ambient 트랜잭션을 이탈한다")
+    void likeAndBookmark_declareNotSupportedPropagationLikeUnlike() throws NoSuchMethodException {
+        for (String methodName : List.of("like", "bookmark", "unlike")) {
+            var method = CommunityReactionService.class.getMethod(methodName, Long.class, Long.class);
+            var transactional = method.getAnnotation(org.springframework.transaction.annotation.Transactional.class);
+            assertThat(transactional)
+                    .as(methodName + "()에 메서드 레벨 @Transactional이 있어야 한다").isNotNull();
+            assertThat(transactional.propagation())
+                    .as(methodName + "()의 propagation")
+                    .isEqualTo(org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED);
+        }
+    }
 }

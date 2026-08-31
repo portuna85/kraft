@@ -34,6 +34,14 @@ public class RecommendationAccountDataDeletionHandler implements AccountDataDele
     // 파라미터 수가 DB/드라이버 상한에 가까워질 수 있다 — CHUNK_SIZE 단위로 나눠
     // 지운다. 세트 자체는 ownerUserId로 직접 지우므로(`IN` 절이 아니다) 청크가
     // 필요 없다.
+    //
+    // BE-02(docs/improvement.md): 이 메서드가 삭제하는 세트를 다른 계정의 게시글이
+    // 여전히 참조할 수 있다(세트는 claim으로 소유권이 넘어갈 수 있다 —
+    // IdentityMergeService.claim()). recommendation_set_id는 ON DELETE RESTRICT(V21)이므로
+    // 그 참조를 먼저 끊는 책임은 recommend가 아니라 community가 진다 — community가 이미
+    // recommend를 아는 방향(CommunityPostService)이라 반대 방향 의존을 만들지 않기 위해서다.
+    // 호출자(CommunityWithdrawalService.withdraw)가 이 메서드를 부르기 전에
+    // CommunityPostRepository.detachRecommendationSetIds(setIds)로 참조를 끊는다.
     private static final int CHUNK_SIZE = 500;
 
     @Override

@@ -15,6 +15,7 @@ import com.kraft.community.reaction.CommunityPostBookmarkRepository;
 import com.kraft.community.reaction.CommunityPostLike;
 import com.kraft.community.reaction.CommunityPostLikeRepository;
 import com.kraft.community.report.CommunityReportRepository;
+import com.kraft.recommend.RecommendationSetRepository;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -36,6 +37,7 @@ class CommunityWithdrawalServiceTest {
     @Mock CommunityPostBookmarkRepository bookmarks;
     @Mock CommunityReportRepository reports;
     @Mock CommunityUserBlockRepository blocks;
+    @Mock RecommendationSetRepository recommendationSets;
     @Mock AccountDataDeletionHandler accountDataDeletionHandler;
 
     private CommunityWithdrawalService service;
@@ -43,7 +45,7 @@ class CommunityWithdrawalServiceTest {
     @BeforeEach
     void setUp() {
         service = new CommunityWithdrawalService(users, posts, comments, metrics, likes, bookmarks, reports, blocks,
-                List.of(accountDataDeletionHandler), Clock.systemUTC());
+                recommendationSets, List.of(accountDataDeletionHandler), Clock.systemUTC());
     }
 
     @Test
@@ -53,6 +55,7 @@ class CommunityWithdrawalServiceTest {
         given(users.lockById(42L)).willReturn(Optional.of(user));
         given(likes.findByUserId(42L)).willReturn(List.of());
         given(comments.countNonDeletedGroupedByPostForOwner(42L)).willReturn(List.of());
+        given(recommendationSets.findIdsByOwnerUserId(42L)).willReturn(List.of());
 
         service.withdraw(42L);
 
@@ -64,6 +67,24 @@ class CommunityWithdrawalServiceTest {
         verify(posts).eraseForAccountDeletion(org.mockito.ArgumentMatchers.eq(42L),
                 org.mockito.ArgumentMatchers.any(OffsetDateTime.class));
         verify(users).delete(user);
+    }
+
+    // BE-02(docs/improvement.md): 탈퇴자가 소유했던 세트를 다른 계정의 게시글이 여전히
+    // 참조할 수 있다(claim으로 소유권이 넘어간 세트). RecommendationAccountDataDeletionHandler가
+    // 그 세트를 삭제하기 전에, 소유자 무관하게 참조를 끊는 detachRecommendationSetIds가
+    // 실제로 호출되는지 검증한다 — 안 그러면 ON DELETE RESTRICT(V21)로 500이 난다.
+    @Test
+    void withdraw_detachesOwnedRecommendationSetReferencesBeforeDeletionHandlers() {
+        CommunityUser user = new CommunityUser("google", "sub-1", "user", "https://img", OffsetDateTime.now());
+        setId(user, 42L);
+        given(users.lockById(42L)).willReturn(Optional.of(user));
+        given(likes.findByUserId(42L)).willReturn(List.of());
+        given(comments.countNonDeletedGroupedByPostForOwner(42L)).willReturn(List.of());
+        given(recommendationSets.findIdsByOwnerUserId(42L)).willReturn(List.of(7L, 8L));
+
+        service.withdraw(42L);
+
+        verify(posts).detachRecommendationSetIds(List.of(7L, 8L));
     }
 
     // DATA-DEL-01(docs/improvement.md): 좋아요·댓글마다 delete/save+감산을 반복 호출하던

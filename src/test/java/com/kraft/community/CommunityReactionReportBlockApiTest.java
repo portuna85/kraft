@@ -209,6 +209,15 @@ class CommunityReactionReportBlockApiTest {
     @DisplayName("개인 반응 상태 API가 좋아요·북마크·차단 목록을 반환한다")
     void meInteractions_returnsLikedBookmarkedAndBlocked() throws Exception {
         long postId = createPost(owner, "제목", "내용");
+
+        // BE-01(docs/improvement.md): like()/bookmark()도 이제 like_twice_isIdempotent()의
+        // block()과 같은 이유로 NOT_SUPPORTED다 — 위 createPost()가 만든 게시글이 이 테스트
+        // 클래스의 커밋 안 된 트랜잭션 안에만 있으면, 별도 커넥션에서 도는 requireVisible()의
+        // SELECT가 그 게시글을 보지 못해 404가 난다.
+        TestTransaction.flagForCommit();
+        TestTransaction.end();
+        TestTransaction.start();
+
         mockMvc.perform(put("/api/v1/community/posts/" + postId + "/like").with(asUser(other)).with(csrf()))
                 .andExpect(status().isNoContent());
         mockMvc.perform(put("/api/v1/community/posts/" + postId + "/bookmark").with(asUser(other)).with(csrf()))

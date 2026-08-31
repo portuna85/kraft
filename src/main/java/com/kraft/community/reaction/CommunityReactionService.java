@@ -72,8 +72,12 @@ public class CommunityReactionService {
 
     /**
      * 멱등 PUT — 이미 좋아요를 눌렀어도 성공으로 흡수한다(REACTION_ALREADY_APPLIED는 오류가
-     * 아니다). KB-02: insert 시도 자체는 {@link CommunityReactionWriter}의 REQUIRES_NEW
-     * 트랜잭션에 위임한다 — CommunityPostLike는 IDENTITY라 save() 시 즉시 INSERT가 나가는데,
+     * 아니다). BE-01(docs/improvement.md): unlike()와 마찬가지로 {@code NOT_SUPPORTED}로
+     * ambient 트랜잭션을 이탈한다 — 이 메서드가 클래스 레벨 @Transactional 안에 남아 있으면
+     * 아래 REQUIRES_NEW insert와 중첩되어 요청 한 건이 커넥션을 2개씩 잡는다(같은 증상이
+     * CommunityPostService.java의 조회수 카운터에서 이미 발생했다 — 클래스 주석 참고). insert
+     * 시도 자체는 {@link CommunityReactionWriter}의 REQUIRES_NEW 트랜잭션에 위임한다 —
+     * CommunityPostLike는 IDENTITY라 save() 시 즉시 INSERT가 나가는데,
      * 유니크 위반을 이 메서드와 같은 트랜잭션 안에서 catch하면 Hibernate 세션이
      * rollback-only로 마킹돼 커밋 시점에 UnexpectedRollbackException이 날 수 있었다
      * (Mockito mock 테스트만으로는 못 잡던 경로 — Testcontainers 실 MariaDB로 확인). insert를
@@ -86,6 +90,7 @@ public class CommunityReactionService {
      * 대칭인 구조다. 예전에는 증가가 이 메서드의 ambient 트랜잭션에서 별도로 실행돼, insert는
      * 성공했는데 그 뒤 커밋이 실패하면 좋아요 행은 있고 집계는 반영 안 되는 드리프트가 가능했다.
      */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void like(Long postId, Long userId) {
         CommunityPost post = communityPostAccessValidator.requireVisible(postId);
         requireNotBlocked(userId, post.getOwnerId());
@@ -126,7 +131,12 @@ public class CommunityReactionService {
                 () -> communityReactionWriter.deleteLike(postId, userId));
     }
 
-    /** KB-02: like()와 같은 이유로 insert 시도를 CommunityReactionWriter의 REQUIRES_NEW에 위임한다. */
+    /**
+     * KB-02: like()와 같은 이유로 insert 시도를 CommunityReactionWriter의 REQUIRES_NEW에
+     * 위임한다. BE-01(docs/improvement.md): like()와 같은 이유로 NOT_SUPPORTED로 ambient
+     * 트랜잭션을 이탈한다.
+     */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void bookmark(Long postId, Long userId) {
         CommunityPost post = communityPostAccessValidator.requireVisible(postId);
         requireNotBlocked(userId, post.getOwnerId());

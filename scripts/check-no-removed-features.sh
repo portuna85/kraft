@@ -34,4 +34,17 @@ if [ -f "$ROUNDS_CONTROLLER" ] && grep -nE '@GetMapping\s*(\(\s*\))?\s*$|@GetMap
   echo "ERROR: 공개 rounds list/detail 매핑이 재등장했습니다"; FAIL=1
 fi
 
+# 5) FE-01(docs/improvement.md): 2ed298b에서 제거한 7개 비핵심 기능(추천이력·데이터
+# 개요·번호별 출현·당첨 패턴·함께 나온 번호·데이터 출처·방법론)의 라우트 디렉터리 부재.
+REMOVED_FEATURE_DIRS=(
+  "web/src/app/(public)/companion"
+  "web/src/app/(public)/data"
+  "web/src/app/(public)/frequency"
+  "web/src/app/(public)/stats"
+  "web/src/app/(session)/recommend/history"
+)
+for dir in "${REMOVED_FEATURE_DIRS[@]}"; do
+  [ -d "$dir" ] && { echo "ERROR: $dir must not exist (제거된 기능이 재유입됨)"; FAIL=1; }
+done
+
 exit "$FAIL"
