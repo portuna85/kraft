@@ -5,10 +5,31 @@ plugins {
     checkstyle
     id("com.github.spotbugs") version "6.5.11"
     id("info.solidsoft.pitest") version "1.19.0"
+    idea
 }
 
 group = "com.kraft"
 version = "1.0.1-SNAPSHOT"
+
+// IntelliJ가 web/의 Next.js 빌드 산출물을 색인하지 않도록 제외한다.
+// 산출물 안에도 package.json이 남아 있어, 제외하지 않으면 npm 툴 윈도우가
+// 그 stale한 package.json을 실제 프로젝트로 착각해 엉뚱한 디렉터리에서 install을
+// 돌리게 된다(web/.npmrc의 legacy-peer-deps가 적용되지 않아 peer 충돌로 실패).
+idea {
+    module {
+        excludeDirs.addAll(
+            listOf(
+                file("web/node_modules"),
+                file("web/.next"),
+                file("web/.next-e2e"),
+                file("web/.next-proxy"),
+                file("web/.next-visual"),
+                file("web/test-results"),
+                file("web/playwright-report"),
+            )
+        )
+    }
+}
 
 tasks.bootJar {
     archiveFileName.set("kraft-backend.jar")
