@@ -110,9 +110,12 @@ dependencies {
                 because("CVE-2026-56820 등 다수 — Boot 4.1.0 BOM 고정치(4.2.15.Final)에서 발견")
             }
         }
-        listOf("tomcat-embed-core", "tomcat-embed-websocket").forEach { module ->
-            implementation("org.apache.tomcat.embed:$module:11.0.24") {
-                because("CVE-2026-53434 등 다수 — Boot 4.1.0 BOM 고정치(11.0.22)에서 발견")
+        // 2026-09-03 CI 차단(run 33712641694): Trivy가 11.0.24에서 CRITICAL 3건을
+        // 새로 잡았다(CVE-2026-65182/65905/68525, fixed=11.0.25). embed 아티팩트는 함께
+        // 릴리스되므로 버전 스큐를 남기지 않도록 el도 같이 올려 셋을 정렬한다.
+        listOf("tomcat-embed-core", "tomcat-embed-websocket", "tomcat-embed-el").forEach { module ->
+            implementation("org.apache.tomcat.embed:$module:11.0.25") {
+                because("CVE-2026-65182/65905/68525 등 다수 — Boot 4.1.1 BOM 고정치(11.0.24)에서 발견")
             }
         }
         implementation("com.fasterxml.jackson.core:jackson-databind:2.22.2") {
