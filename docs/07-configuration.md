@@ -217,7 +217,13 @@ public class SecurityConfig {
 - `hasRole(Role.USER.name())` 대신 **`authenticated()`**를 사용했다. 기획상 `GUEST`도 로그인은
   가능해야 하고(이메일 인증 전), 이번 범위에서는 역할 기반 인가까지 세분화하지 않기로 했다(P2).
 - `loginPage("/login")`을 명시하지 않고 **Spring Security 기본 로그인 페이지**를 그대로 사용했다.
-  `GET /login`이 `200`으로 정상 응답함을 확인했다.
+  `GET /login`이 `200`으로 정상 응답함을 확인했다. **2026-09-10 변경**: 프론트엔드 디자인
+  개선(6.6절) 과정에서 `.loginPage("/login")`을 명시하고 `templates/user/login.html`을 새로
+  만들어 다른 화면과 동일한 네비게이션 바·카드형 레이아웃을 적용했다. `anyRequest().permitAll()`
+  catch-all이 이미 `/login`(GET/POST)을 커버하고 있어 `authorizeHttpRequests` 규칙은 손대지
+  않았다 — 상세 배경은 [06장](06-view-and-templates.md#로그인-화면-커스텀-템플릿-추가-2026-09-10)
+  참고. 로그인 실패 시 리다이렉트되는 `/login?error`,
+  기본 성공 URL(`/`)은 동일하게 유지된다.
 - 마지막 규칙을 `anyRequest().authenticated()`가 아니라 **`anyRequest().permitAll()`**로 뒀다.
   `/posts/save`, `/posts/update/{id}` 같은 화면 라우팅은 비로그인 사용자도 접근은 가능하게 하고,
   실제 쓰기는 `/api/v1/**`의 `authenticated()` 규칙이 막는다(화면은 보이되 등록 시도 시 로그인

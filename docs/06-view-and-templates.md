@@ -486,3 +486,32 @@ Bootstrap의 Toast JS가 `show()` 호출 시 `.hide` 클래스를 제거하는 �
 **검증**: `document.elementFromPoint()`로 Login 링크 위치를 찍어 링크 자신이 최상단 엘리먼트임을
 확인한 뒤, 실제 브라우저 클릭으로 글 등록/Login/회원가입 3개 버튼이 각각 `/posts/save`,
 `/login`, `/signup`으로 정상 이동함을 재확인했다. `./gradlew test` 91개 재확인(회귀 없음).
+
+### 로그인 화면 커스텀 템플릿 추가 (2026-09-10)
+
+사용자가 `/login` 접속 시 "Please sign in / Username / Password" 같은 영문 무스타일 화면이
+나온다고 보고했다. 원인은 `SecurityConfig`가 `formLogin()`에 `loginPage(...)`를 지정하지 않아
+Spring Security가 **자체 내장 기본 로그인 페이지**(`DefaultLoginPageGeneratingFilter`가 생성하는
+하드코딩된 HTML)를 그대로 보여주고 있었기 때문이다 — 이 페이지는 우리 Thymeleaf
+`layout/header·footer·navbar` fragment나 `static/css/style.css`를 전혀 거치지 않는, 애초에
+저희가 만든 템플릿이 아니었다(P1-9 단계부터 의도적으로 전용 화면을 만들지 않고 넘어간 부분,
+[08장](08-issues-and-todo.md) 참고). 다른 6개 화면은 전부 디자인을 손봤지만 `/login`만 원래
+템플릿이 없어 이번 디자인 개선 범위에서 빠져 있었다.
+
+- **`templates/user/login.html`**(신규): 다른 화면과 동일한 `navbar` + `card-kraft` 레이아웃.
+  이메일(`name="username"`)/비밀번호(`name="password"`) 필드는 Spring Security 기본 파라미터명
+  그대로 사용, `th:name="${_csrf.parameterName}" th:value="${_csrf.token}"` 히든 필드로 CSRF
+  토큰을 넣었다(폼이 AJAX가 아닌 일반 POST이므로 `index.js`의 헤더 기반 CSRF 주입과는 별개 경로).
+  `${param.error}`/`${param.logout}` 모델 속성으로 실패/로그아웃 메시지를 카드 상단 alert로
+  표시한다.
+- **`SecurityConfig.formLogin()`에 `.loginPage("/login")` 추가**: `/login`(GET/POST)은
+  기존 `anyRequest().permitAll()` catch-all이 이미 커버하고 있어 **`authorizeHttpRequests`
+  규칙은 전혀 수정하지 않았다** — 이번에도 매처 표를 먼저 확인한 뒤 진행하는 원칙을 지켰다.
+- **`IndexController`에 `GET /login` 매핑 추가**: `loginPage(...)`를 지정하면 Spring Security의
+  자동 생성 필터가 비활성화되므로, 실제로 그 경로를 렌더링할 컨트롤러가 있어야 한다.
+
+**검증**: 서버 재기동 후 curl로 `/login` 응답 본문이 우리 템플릿(네비게이션 바 포함)으로
+바뀌었음을 확인, 브라우저로 잘못된 비밀번호 입력 → "이메일 또는 비밀번호가 올바르지 않습니다"
+alert 표시 → 올바른 비밀번호로 재시도 → `/`로 리다이렉트되고 네비게이션 바에 이메일이 표시됨을
+확인했다. `./gradlew test` 91개 재확인(기존 `redirectedUrl("/login")` 단언들은 로그인 페이지
+URL 자체가 안 바뀌었으므로 수정 없이 통과).

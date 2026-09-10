@@ -1,0 +1,41 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{layout/header :: header}"></head>
+<body>
+
+<div th:replace="~{layout/navbar :: navbar}"></div>
+
+<div class="container py-4">
+    <h1 class="page-title">로그인</h1>
+    <div class="col-md-6">
+        <div class="card-kraft">
+            <div class="alert alert-danger" th:if="${param.error != null}">
+                이메일 또는 비밀번호가 올바르지 않습니다.
+            </div>
+            <div class="alert alert-success" th:if="${param.logout != null}">
+                로그아웃되었습니다.
+            </div>
+            <form th:action="@{/login}" method="post">
+                <div class="form-group">
+                    <label for="username">이메일</label>
+                    <input type="email" class="form-control" id="username" name="username"
+                           placeholder="이메일을 입력하세요" autofocus>
+                </div>
+                <div class="form-group">
+                    <label for="password">비밀번호</label>
+                    <input type="password" class="form-control" id="password" name="password"
+                           placeholder="비밀번호를 입력하세요">
+                </div>
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                <div class="btn-group-gap">
+                    <a href="/" role="button" class="btn btn-secondary">취소</a>
+                    <button type="submit" class="btn btn-primary">로그인</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{layout/footer :: footer}"></div>
+</body>
+</html>

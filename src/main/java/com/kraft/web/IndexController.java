@@ -46,6 +46,11 @@ public class IndexController {
         return "user/signup";
     }
 
+    @GetMapping("/login")
+    public String login() {
+        return "user/login";
+    }
+
     @GetMapping("/users/me/password")
     public String changePassword() {
         return "user/change-password";

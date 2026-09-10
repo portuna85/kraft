@@ -140,7 +140,11 @@
 15. `UserRepository.findByEmail`/`existsByEmail` 추가 (P1-10)
 16. `User`에 `@Builder`, `changePassword()`, `promoteToUser()` 추가
 17. `UserService` 회원가입/비밀번호 변경 구현
-18. `UserDetailsService` 구현. **로그인 화면은 Spring Security 기본 로그인 페이지를 그대로 사용**했다(전용 템플릿 미제작, P2) (P1-9)
+18. `UserDetailsService` 구현. 로그인 화면은 Spring Security 기본 로그인 페이지를 그대로 사용했다
+    (전용 템플릿 미제작, P1-9) — ✅ **2026-09-10 해결** — 전용 `user/login.html` 템플릿을 만들어
+    다른 화면과 동일한 디자인으로 통일했다. 상세는
+    [06장](06-view-and-templates.md#로그인-화면-커스텀-템플릿-추가-2026-09-10),
+    [07장 7.3절](07-configuration.md#73-해결됨-securityconfig-부재) 참고.
 19. 게시글 수정/삭제 권한 검증 (P2-4) — ✅ **2026-09-09 추가 구현 완료** (아래 8.5절 참고)
 
 ### 5단계 — 품질 강화 (미수행, P2로 이월)
