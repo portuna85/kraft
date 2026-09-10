@@ -461,3 +461,28 @@ BS5로 가도 어차피 계속 필요해(BS5의 "jQuery 제거"라는 이점을 
 `/users/verify`) `200` 확인, `/css/style.css` 정상 서빙 확인, 로그인 후 `index.html`의 네비게이션
 바에 `sec:authentication="name"`이 실제 이메일을 정확히 표시함을 확인, 게시글 등록 API 호출이
 CSRF 헤더와 함께 여전히 `200`으로 성공함을 확인해 `ajaxSend` 로직이 손상되지 않았음을 재확인했다.
+
+### [버그 수정] 네비게이션 바 버튼이 클릭되지 않던 문제 (2026-09-10)
+
+디자인 개선 직후 사용자가 "글 등록/Login/회원가입 버튼이 눌러지지 않는다"고 보고했다. 실제
+브라우저에서 재현해보니 `document.elementFromPoint()`로 좌표를 찍어봐도 확인 전에는 원인이
+바로 보이지 않을 정도로 은밀한 CSS 버그였다.
+
+**원인**: Bootstrap 4의 `.toast` 클래스는 기본 상태에서 `opacity: 0`만 적용할 뿐
+`display: none`은 적용하지 않는다(`display: none`은 별도의 `.hide` 클래스가 있어야 적용됨 —
+Bootstrap의 Toast JS가 `show()` 호출 시 `.hide` 클래스를 제거하는 방식으로 동작하기 때문에,
+초기 마크업에 `.hide`가 빠지면 항상 "투명하지만 여전히 클릭을 받는" 상태로 남는다). `footer.html`
+에 토스트를 추가할 때 `class="toast"`만 쓰고 `hide`를 빠뜨렸는데, 이 투명한 토스트 박스가
+`#toast-container`의 `position: fixed; top: 1rem; right: 1rem; z-index: 1080` 스타일 때문에
+화면 우상단에 항상 떠 있었고, 하필 그 자리가 네비게이션 바의 "글 등록"/"Login"/"회원가입" 버튼
+위치와 겹쳐서 클릭을 전부 가로챘다.
+
+**수정**: `footer.html`의 `#app-toast`에 초기 클래스를 `class="toast hide"`로 변경(Bootstrap의
+`show()`가 기대하는 초기 상태와 일치시킴). 추가로 `style.css`에 방어적 규칙을 넣어 같은 종류의
+버그가 재발해도 클릭을 막지 않도록 했다: `#toast-container`와 내부 `.toast`에
+`pointer-events: none`을 기본값으로 주고, 실제로 보이는 `.toast.show` 상태에서만
+`pointer-events: auto`로 되돌린다.
+
+**검증**: `document.elementFromPoint()`로 Login 링크 위치를 찍어 링크 자신이 최상단 엘리먼트임을
+확인한 뒤, 실제 브라우저 클릭으로 글 등록/Login/회원가입 3개 버튼이 각각 `/posts/save`,
+`/login`, `/signup`으로 정상 이동함을 재확인했다. `./gradlew test` 91개 재확인(회귀 없음).

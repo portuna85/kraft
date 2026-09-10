@@ -129,8 +129,14 @@ body {
     top: 1rem;
     right: 1rem;
     z-index: 1080;
+    pointer-events: none;
 }
 
 #toast-container .toast {
     min-width: 260px;
+    pointer-events: none;
+}
+
+#toast-container .toast.show {
+    pointer-events: auto;
 }
