@@ -11,6 +11,13 @@ spring:
   session:
     store-type: jdbc
 
+  threads:
+    virtual:
+      # 가상 스레드(Java 21+ Project Loom) 활성화. 톰캣 요청 처리·@Async 등 Spring Boot가
+      # 관리하는 실행기를 플랫폼 스레드 풀 대신 가상 스레드로 구동한다. 이 프로젝트는
+      # Java 25 툴체인을 쓰므로(build.gradle.kts) 별도 준비 없이 바로 켤 수 있다.
+      enabled: true
+
 app:
   upload:
     # 게시글 사진 업로드 저장 경로(상대 경로는 애플리케이션 실행 위치 기준). 운영 환경에서

@@ -555,3 +555,24 @@ INSERT를 관대하게 허용해 지금까지 드러나지 않았지만, MariaDB
 회원가입 → 이메일 인증(콘솔 로그 링크) → 로그인 → 게시글 등록 → 댓글 등록까지 전부
 Docker MariaDB 위에서 정상 동작함을 확인했다. `./gradlew test` 95개는 프로파일과 무관하게
 (H2 기반 테스트) 그대로 전부 통과.
+
+## 7.11 가상 스레드 활성화 (`spring.threads.virtual.enabled`) — ✅ 구현 완료 (2026-09-10)
+
+`application.yml`(공통, 모든 프로파일에 적용)에 추가했다.
+
+```yaml
+spring:
+  threads:
+    virtual:
+      enabled: true
+```
+
+`build.gradle.kts`의 `java.toolchain`이 이미 **Java 25**(가상 스레드는 21에서 GA)라 별도
+준비 없이 바로 켤 수 있었다. 이 설정 하나로 Tomcat의 요청 처리 스레드 풀이 가상 스레드
+기반으로 바뀐다 — 별도 `@Bean` 등록이나 `Executor` 커스터마이징이 필요 없다(Spring Boot
+3.2+/4.x가 `TomcatProtocolHandlerCustomizer`로 자동 적용).
+
+**검증**: `bootRun` 후 요청을 보내고 로그의 스레드 이름을 확인했다. 기존 플랫폼 스레드 풀
+패턴이던 `http-nio-8080-exec-N`이 **`tomcat-handler-N`**(가상 스레드 실행기가 요청마다 새
+가상 스레드를 만들 때 쓰는 명명 패턴)으로 바뀐 것을 확인해 실제로 가상 스레드가 요청을
+처리하고 있음을 재확인했다. `./gradlew test` 95개 회귀 없음(테스트는 스레드 모델과 무관).
