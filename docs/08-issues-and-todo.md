@@ -96,14 +96,14 @@
 | P2-14 | 프로파일 미분리 | `local`/`prod` 분리 | ✅ 해결(2026-09-09 추가 구현) — `application.yml`(공통)+`application-local.yml`+`application-prod.yml`. 상세는 8.8절 |
 | P2-15 | 기능 테스트 부재 | 계층별 슬라이스 테스트 추가 | ✅ 해결(2026-09-09 추가 구현) — 44개 테스트(서비스/리포지토리/웹). 상세는 8.10절 |
 
-### P3 — 2단계 기능 — 실제 이메일 인증 발송만 남고 나머지 전부 해결(소셜 로그인은 제외 결정)
+### P3 — 2단계 기능 — 전 항목 해결(소셜 로그인은 제외 결정)
 
 | ID | 항목 | 상태 |
 | --- | --- | --- |
 | P3-1 | `Comment` 엔티티 완성 (`@GeneratedValue`, `BaseEntity` 상속, `Post`/`User` 연관관계) | ✅ 해결(2026-09-10 추가 구현). 상세는 8.13절 |
 | P3-2 | `CommentRepository`, `CommentService`, `CommentApiController` | ✅ 해결(2026-09-10 추가 구현). 상세는 8.13절 |
 | P3-3 | 댓글 화면 및 AJAX | ✅ 해결(2026-09-10 추가 구현, 수정 UI는 의도적으로 제외 — 8.13절 참고) |
-| P3-4 | 이메일 인증 플로우 (`GUEST` → `USER` 승격) | 부분 해결 — `UserService.promoteToUser()` 메서드는 존재하나 실제 토큰 발급/메일 발송/컨트롤러 노출은 없음(여전히 미해결) |
+| P3-4 | 이메일 인증 플로우 (`GUEST` → `USER` 승격) | ✅ 해결(2026-09-10 추가 구현) — 토큰 발급/메일 발송/검증 컨트롤러까지 전부 구현. 상세는 8.15절 |
 | P3-5 | 게시글 사진 업로드 (`Post.picture` 실제 활용) | ✅ 해결(2026-09-10 추가 구현) — 로컬 디스크 저장 + `/images/**` 서빙. 상세는 8.14절 |
 | P3-6 | `web/dto/user` 패키지 DTO 작성 (현재 디렉터리만 존재) | ✅ 해결 — `SignUpRequestDto`(record) 추가 |
 | P3-7 | 회원가입 HTML 화면 | ✅ 해결(2026-09-10 추가 구현) — `templates/user/signup.html`. 상세는 8.13절 |
@@ -673,3 +673,119 @@ Windows 경로 변환 후 재시도해 우회함 — 실제 애플리케이션 �
 `./gradlew clean test` → 기존 65개 + 신규 16개(`PostImageServiceTest` 5, `UserServiceTest`
 +2, `PostApiControllerTest` +4, `UserApiControllerTest` +4, `IndexControllerTest` +1) =
 **81개 테스트 전부 통과**.
+
+## 8.15 [추가 구현] P3-4 이메일 인증 플로우 (2026-09-10)
+
+**범위 재확정**: 사용자가 소셜 로그인(OAuth2)을 재차 명시적으로 제외했고("Oauth 인증방식은 제거
+한다"), 사진 업로드·비밀번호 변경이 이미 완료되어 P3의 마지막 남은 항목인 실제 이메일 인증 발송을
+진행했다. `spring-boot-starter-mail` 추가가 필요함을 사전에 사용자에게 알리고(AskUserQuestion)
+승인받은 뒤 진행했다 — 이번 작업 전체에서 새 의존성을 추가한 유일한 사례다.
+
+### 설계: 프로파일별 `EmailSender` 추상화
+
+로컬 개발 환경에는 실제 SMTP 서버가 없으므로, 메일 발송 방식을 인터페이스로 추상화하고 프로파일별로
+구현체를 분리했다(`local`은 콘솔 로그, `prod`는 실제 SMTP).
+
+- **`EmailSender`**(신규 인터페이스): `void send(String to, String subject, String text)`.
+- **`ConsoleEmailSender`**(신규, `@Profile("local")`): `JavaMailSender` 의존성이 전혀 없다 —
+  `@Slf4j`로 제목/본문을 콘솔에 그대로 출력한다. `MailSenderAutoConfiguration`은
+  `spring.mail.host`가 설정된 경우에만 `JavaMailSender` 빈을 생성하므로(jar 역컴파일로
+  `MailSenderCondition$HostProperty` 확인), `local` 프로파일에서는 애초에 그 빈이 존재하지
+  않는다 — 즉 로컬 개발에 SMTP 서버가 전혀 필요 없다.
+- **`SmtpEmailSender`**(신규, `@Profile("prod")`): `JavaMailSender`+`SimpleMailMessage`로 실제
+  발송. `application-prod.yml`에 `spring.mail.*`를 환경변수(`MAIL_HOST`, `MAIL_PORT`,
+  `MAIL_USERNAME`, `MAIL_PASSWORD`)로 추가했다.
+  **`DataSource`와의 차이를 주석으로 명시**: `DataSource`는 자격 증명이 없으면 컨텍스트 기동
+  시점에 즉시 실패하지만(fail-fast), `JavaMailSenderImpl`은 빈 생성 시점에 연결을 시도하지 않고
+  `send()` 호출 시점에만 연결한다 — 즉 자격 증명 누락이 "이메일 발송 시점"에야 드러난다(다른
+  실패 시점이라는 점을 운영자가 알고 있어야 함).
+
+### 도메인/서비스
+
+- **`EmailVerificationToken`**(신규 엔티티): `token`(unique, length 100), `User` 연관관계
+  (`@ManyToOne(LAZY)`), `expiresAt`, `isExpired()`. `BaseEntity`는 상속하지 않음(생성 시각은
+  `expiresAt` 자체로 충분하고 수정 개념이 없는 일회용 토큰이라 `updatedAt`이 불필요).
+- **`EmailVerificationTokenRepository`**(신규): `findByToken(String token)`.
+- **`EmailVerificationService`**(신규): `TOKEN_TTL = 24시간`.
+  - `sendVerificationEmail(email)`: 회원 조회 → UUID 토큰 생성/저장 → `{baseUrl}/users/verify?
+    token={token}` 링크를 본문에 담아 `EmailSender.send()` 호출.
+  - `sendVerificationEmailSafely(email)`: 회원가입 직후 호출하는 안전 버전. 메일 발송 실패가
+    회원가입 응답 자체를 실패시키지 않도록 예외를 흡수하고 로그만 남긴다 — 이미 생성된 회원
+    정보는 그대로 유효하다(인증 메일 재발송 API는 이번 범위에서 제외).
+  - `verify(token)`: 토큰 조회(없으면 예외) → 만료 확인(만료 시 토큰 삭제 후 예외) → 유효하면
+    `UserService.promoteToUser()`로 `GUEST`→`USER` 승격 후 토큰 삭제(일회용).
+- **`UserApiController.signUp()`** 수정: `userService.signUp(...)` 성공 직후
+  `emailVerificationService.sendVerificationEmailSafely(requestDto.email())` 호출 추가.
+- **`IndexController`** 수정: `GET /users/verify?token=...`(화면 라우트, JSON API 아님) —
+  `emailVerificationService.verify(token)` 성공 시 `success=true`, `IllegalArgumentException`
+  발생 시 `success=false`+`message`를 모델에 담아 동일한 `user/verify-result` 뷰를 렌더링.
+- **`templates/user/verify-result.html`**(신규): 성공/실패 메시지 + 로그인 페이지 링크.
+
+### SecurityConfig 변경 없음 (사전 검증)
+
+`GET /users/verify`는 어떤 permitAll 패턴에도 명시적으로 매치되지 않지만, 기존 마지막 규칙
+`anyRequest().permitAll()`에 의해 누구나 열람 가능하다 — `/posts/save`, `/signup`,
+`/users/me/password`와 동일한 패턴이다. 화면 자체를 여는 것과 실제 승격 처리는 분리되어 있지
+않지만(토큰 자체가 비밀정보이므로 URL을 아는 사람만 접근 가능), 이번에도 **`SecurityConfig`는
+전혀 수정하지 않았다**.
+
+**의도적으로 범위 밖으로 남긴 것**: `GUEST`와 `USER`의 쓰기 권한을 실제로 차등화하는 것(즉 미인증
+이메일 사용자의 게시글/댓글 작성을 서버가 거부하는 것)은 이번 범위에서 구현하지 않았다. 이메일
+인증의 "승격"이라는 목적 자체는 완성됐지만, 이를 강제하려면 `SecurityConfig`의 인가 규칙을
+이번 세션 최초로 수정해야 하며 사용자가 명시적으로 요청하지 않았으므로 손대지 않았다 — 의도된
+경계다.
+
+### 설정 (`application.yml` / `application-prod.yml`)
+
+```yaml
+# application.yml (공통)
+app:
+  base-url: http://localhost:8080   # 인증 링크에 붙일 기본 URL. 운영은 prod 프로파일에서 덮어씀
+
+# application-prod.yml
+spring:
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+app:
+  base-url: ${APP_BASE_URL}   # 기본값 없음 — 지정하지 않으면 인증 링크에 문자열 그대로 노출되어
+                               # 눈에 띄게 실패한다(의도된 fail-loud 동작)
+```
+
+### 검증(curl E2E, `bootRun` + `local` 프로파일)
+
+1. `POST /api/v1/users`로 신규 가입(`verifyuser@example.com`) → `200` + 회원 id 반환
+2. 콘솔 로그(`ConsoleEmailSender`)에 인증 링크가 정확히 출력됨을 확인:
+   `http://localhost:8080/users/verify?token=<uuid>`
+3. 로그에서 추출한 토큰으로 `GET /users/verify?token=<uuid>` → `200`,
+   "이메일 인증이 완료되었습니다..." 메시지 렌더링
+4. Hibernate SQL 로그에 `update users set ... role=? where id=?`가 실제로 실행됨을 확인 —
+   `GUEST`→`USER` 승격이 DB에 반영됨을 반증
+5. **같은 토큰으로 재요청** → `200`이지만 "유효하지 않은 인증 링크입니다." (토큰이 이미 삭제되어
+   1회용임을 확인)
+6. 존재하지 않는 임의 토큰으로 요청 → 동일하게 "유효하지 않은 인증 링크입니다."
+
+### 테스트
+
+- **`EmailVerificationServiceTest`**(신규, Mockito): `sendVerificationEmail` 회원없음 예외/정상
+  발송(토큰 저장 + 메일 본문에 `baseUrl+token` 링크 포함 검증), `sendVerificationEmailSafely`
+  예외 흡수, `verify` 토큰없음/만료(삭제 확인)/정상(승격+삭제 확인) — `@Value`로 주입되는
+  `baseUrl`은 순수 Mockito 테스트에 스프링 컨텍스트가 없어 `ReflectionTestUtils`로 직접 설정
+  (`CommentServiceTest`와 동일 패턴).
+- **`EmailVerificationTokenRepositoryTest`**(신규, `@DataJpaTest`): `findByToken` 존재/미존재.
+  감사 필드가 없는 엔티티라 `JpaConfig` import는 불필요(`CommentRepositoryTest`와 차이).
+- **`UserApiControllerTest`**: `EmailVerificationService`를 `@MockitoBean` 추가, 회원가입
+  성공 테스트에 `verify(emailVerificationService).sendVerificationEmailSafely(...)` 단언 추가.
+- **`IndexControllerTest`**: `EmailVerificationService`를 `@MockitoBean` 추가, `/users/verify`
+  성공/실패 케이스 2건 추가.
+
+`./gradlew clean test` → 기존 81개 + 신규 10개(`EmailVerificationServiceTest` 7,
+`EmailVerificationTokenRepositoryTest` 2, `IndexControllerTest` +1) = **91개 테스트 전부 통과**.
+(`UserApiControllerTest`는 새 단언만 추가되어 케이스 수 변화 없음.)
+
+이로써 **P3의 모든 항목이 해결되었다**(소셜 로그인은 사용자 결정으로 명시적 제외).

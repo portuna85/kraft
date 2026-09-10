@@ -29,6 +29,7 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-session-jdbc")
+    implementation("org.springframework.boot:spring-boot-starter-mail")
     runtimeOnly("com.h2database:h2")
     runtimeOnly("org.mariadb.jdbc:mariadb-java-client")
     testImplementation("org.springframework.boot:spring-boot-starter-security-test")

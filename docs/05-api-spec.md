@@ -267,6 +267,34 @@ Content-Type: application/json; charset=utf-8
 **옛 비밀번호로 로그인 시도 시 실제로 실패**(`/login?error`)하고 **새 비밀번호로는 로그인
 성공**함을 확인해, 응답 코드만이 아니라 비밀번호가 실제로 바뀌었는지까지 검증했다.
 
+### 5.3.9 이메일 인증 — ✅ 구현·검증 완료 (2026-09-10 신규, P3)
+
+트리거는 회원가입 성공 직후 서버 내부에서 자동으로 일어나며, 별도의 발송 요청 API는 없다.
+
+```
+POST /api/v1/users   (기존 회원가입 API)
+→ 성공 시 서버가 내부적으로 인증 메일을 발송한다(응답 자체는 기존과 동일하게 Long ID).
+```
+
+인증 완료는 JSON API가 아니라 **화면 라우트**다(이메일 클릭용 링크이므로 브라우저 GET 이동을
+전제로 함):
+
+```
+GET /users/verify?token={uuid}
+```
+
+**응답**: 항상 `200` + `user/verify-result` 뷰. 토큰이 유효하면 승격 완료 메시지, 무효(존재하지
+않음/이미 사용됨/만료됨)면 사유 메시지를 화면에 담아 렌더링한다 — HTTP 상태 코드로 성공/실패를
+구분하지 않고 화면 텍스트로 구분하는 방식이다(사용자가 클릭한 링크가 깨진 것처럼 보이지 않도록
+항상 200으로 응답).
+
+**검증(curl E2E, `bootRun` + `local` 프로파일, `ConsoleEmailSender`가 콘솔에 남긴 링크 사용)**:
+- 회원가입 → 콘솔 로그에 `http://localhost:8080/users/verify?token=<uuid>` 링크 출력 확인
+- 해당 토큰으로 `GET /users/verify` → `200` + 성공 메시지, Hibernate 로그에
+  `update users set ... role=?` 실행 확인(실제 DB 반영)
+- **같은 토큰 재요청** → `200`이지만 실패 메시지("유효하지 않은 인증 링크입니다.") — 1회용 확인
+- 존재하지 않는 임의 토큰 → 동일한 실패 메시지
+
 ## 5.4 예외 응답 — ✅ 해결됨 (2026-09-09, `ApiExceptionHandler`)
 
 `web.api` 패키지의 REST 컨트롤러에 한정된 `@RestControllerAdvice`(`ApiExceptionHandler`)가

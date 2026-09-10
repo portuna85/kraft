@@ -3,6 +3,7 @@ package com.kraft.web;
 import com.kraft.config.security.SecurityConfig;
 import com.kraft.service.comment.CommentService;
 import com.kraft.service.post.PostService;
+import com.kraft.service.user.EmailVerificationService;
 import com.kraft.web.dto.post.PostResponseDto;
 import com.kraft.web.dto.post.PostsPageResponseDto;
 import org.junit.jupiter.api.DisplayName;
@@ -19,6 +20,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -46,6 +48,9 @@ class IndexControllerTest {
 
     @MockitoBean
     private CommentService commentService;
+
+    @MockitoBean
+    private EmailVerificationService emailVerificationService;
 
     @Test
     @DisplayName("GET / 는 목록을 모델에 담아 index 뷰를 렌더링한다")
@@ -130,5 +135,27 @@ class IndexControllerTest {
         mockMvc.perform(get("/users/me/password"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("user/change-password"));
+    }
+
+    @Test
+    @DisplayName("GET /users/verify 는 토큰이 유효하면 success=true로 렌더링한다")
+    void 이메일인증은_토큰이_유효하면_성공화면을_렌더링한다() throws Exception {
+        mockMvc.perform(get("/users/verify").param("token", "valid-token"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("user/verify-result"))
+                .andExpect(model().attribute("success", true));
+    }
+
+    @Test
+    @DisplayName("GET /users/verify 는 토큰이 유효하지 않으면 success=false와 메시지를 담아 렌더링한다")
+    void 이메일인증은_토큰이_유효하지_않으면_실패화면을_렌더링한다() throws Exception {
+        willThrow(new IllegalArgumentException("유효하지 않은 인증 링크입니다."))
+                .given(emailVerificationService).verify("invalid-token");
+
+        mockMvc.perform(get("/users/verify").param("token", "invalid-token"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("user/verify-result"))
+                .andExpect(model().attribute("success", false))
+                .andExpect(model().attribute("message", "유효하지 않은 인증 링크입니다."));
     }
 }

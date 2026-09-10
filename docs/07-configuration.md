@@ -401,11 +401,49 @@ java -jar build\libs\kraft-0.0.1-SNAPSHOT.jar --spring.profiles.active=local
 
 | 파일 | 역할 |
 | --- | --- |
-| `application.yml` | 공통 설정(`spring.application.name`, `spring.profiles.default: local`, `spring.jpa.open-in-view: false`, `spring.session.store-type`, **`app.upload.dir`**(2026-09-10 추가, 게시글 사진 업로드 저장 경로, P3-5)) |
-| `application-local.yml` | 로컬 개발 기본값(H2, `ddl-auto: create-drop`, H2 콘솔 활성화 등) — 무프로파일 시 자동 적용 |
-| `application-prod.yml` | 운영 값(환경변수 기반 DataSource, `ddl-auto: validate`, H2 콘솔 비활성화 등) — `--spring.profiles.active=prod`로 명시 필요 |
+| `application.yml` | 공통 설정(`spring.application.name`, `spring.profiles.default: local`, `spring.jpa.open-in-view: false`, `spring.session.store-type`, `app.upload.dir`(2026-09-10 추가, 게시글 사진 업로드 저장 경로, P3-5), **`app.base-url`**(2026-09-10 추가, 이메일 인증 링크의 기본 URL, P3-4)) |
+| `application-local.yml` | 로컬 개발 기본값(H2, `ddl-auto: create-drop`, H2 콘솔 활성화 등) — 무프로파일 시 자동 적용. `spring.mail.*`은 설정하지 않음(의도적 — 아래 7.8절 참고) |
+| `application-prod.yml` | 운영 값(환경변수 기반 DataSource, `ddl-auto: validate`, H2 콘솔 비활성화, **환경변수 기반 `spring.mail.*`**(2026-09-10 추가, P3-4) 등) — `--spring.profiles.active=prod`로 명시 필요 |
 
 각 파일의 전체 내용은 7.4절을 참고. 7.2절에서 지적된 항목 중 `hibernate.dialect` 하드코딩은
 **제거**, `datasource`/`ddl-auto`/`session.jdbc.initialize-schema`/`h2.console.enabled`/
 `thymeleaf.cache`는 프로파일별로 값을 다르게 **추가**했다. `open-in-view: false`(7.2.6절)도
 ✅ 2026-09-09에 공통 `application.yml`에 추가로 반영했다.
+
+## 7.8 이메일 발송 설정 (`spring.mail.*`) — ✅ 구현 완료 (2026-09-10, P3-4)
+
+이번 세션에서 유일하게 추가한 의존성인 `spring-boot-starter-mail`과 함께 도입되었다.
+`local` 프로파일은 `spring.mail.host`를 아예 설정하지 않는다 — Boot의
+`MailSenderAutoConfiguration`은 `spring.mail.host`가 있을 때만 `JavaMailSender` 빈을
+생성하므로(jar 역컴파일로 `MailSenderCondition$HostProperty` 확인), 로컬 개발 환경에는
+SMTP 서버가 전혀 필요 없다. 대신 `ConsoleEmailSender`(`@Profile("local")`)가 인증 링크를
+콘솔에 로그로 남긴다.
+
+```yaml
+# application-prod.yml
+spring:
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+app:
+  base-url: ${APP_BASE_URL}   # 기본값 없음 — 인증 링크 생성에 필수
+```
+
+**`DataSource`와 실패 시점이 다르다는 점이 중요하다.** `DataSource`는 자격 증명이 없으면
+컨텍스트 기동 시점에 즉시 실패한다(fail-fast, 7.2.4절). 반면 `JavaMailSenderImpl`은 빈 생성
+시점에 연결을 시도하지 않고 `send()`가 호출되는 시점에만 실제로 연결한다 — 즉 `MAIL_*` 환경변수
+누락은 애플리케이션이 정상 기동된 뒤 첫 이메일 발송 시점에야 드러난다. 이 차이를
+`application-prod.yml`에 주석으로 명시해뒀다.
+
+또한 `EmailVerificationService.sendVerificationEmailSafely()`가 발송 실패 예외를 흡수하므로,
+운영 환경에서 `MAIL_*` 자격 증명이 잘못되어도 회원가입 자체는 실패하지 않고 로그만 남는다(08장
+8.15절 참고) — 다만 이 경우 사용자는 인증 메일을 받지 못하므로 운영 모니터링에서 반드시 관련
+경고 로그를 감시해야 한다.

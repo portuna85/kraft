@@ -1,4 +1,4 @@
-# 09. 구현 요약 (P0+P1+P2 완료, P3 — 이메일 인증 발송만 남음)
+# 09. 구현 요약 (P0+P1+P2+P3 전 항목 완료, 소셜 로그인만 사용자 결정으로 제외)
 
 이 문서는 `01~08` 문서에서 지적된 문제들을 실제로 수정한 뒤의 **현재 상태**를 정리한다.
 분석 당시(구현 전) 상태는 각 문서의 서술과 [`08-issues-and-todo.md`](08-issues-and-todo.md)에 남아 있으며,
@@ -433,3 +433,49 @@ Windows 경로로 바꿔 재시도해 해결했다. 애플리케이션 자체의
 상세는 [03장](03-domain-model.md), [05장 5.3.7~5.3.8절](05-api-spec.md),
 [06장 6.4.4절](06-view-and-templates.md#644-사진-업로드--비밀번호-변경-화면--신규-구현-2026-09-10-p3),
 [08장 8.14절](08-issues-and-todo.md#814-추가-구현-p3-5-게시글-사진-업로드--p3-9-비밀번호-변경-화면-2026-09-10) 참고.
+
+## 16. [추가 구현] 이메일 인증 플로우 (2026-09-10, P3-4) — 이 시점부터 P3 표 전 항목 해결
+
+사용자가 소셜 로그인을 재차 명시적으로 제외("Oauth 인증방식은 제거한다")한 뒤, P3의 마지막
+남은 항목인 실제 이메일 인증 발송을 진행했다. `spring-boot-starter-mail`이 필요함을
+AskUserQuestion으로 사전에 알리고 승인받아 추가했다 — **이번 세션 전체에서 새 의존성을
+추가한 유일한 사례**다.
+
+**설계**: `EmailSender` 인터페이스를 프로파일별로 분리했다 — `ConsoleEmailSender`
+(`@Profile("local")`, `JavaMailSender` 의존성 없이 콘솔 로그만 남김)와 `SmtpEmailSender`
+(`@Profile("prod")`, 실제 SMTP 발송). `local`은 `spring.mail.host`를 설정하지 않으므로 Boot가
+`JavaMailSender` 빈 자체를 만들지 않는다(jar 역컴파일로 조건 확인) — 로컬 개발에 SMTP 서버가
+전혀 필요 없다.
+
+**신규 도메인**: `EmailVerificationToken`(unique token, `User` 연관관계, `expiresAt`,
+`isExpired()`) + `EmailVerificationTokenRepository`. **신규 서비스**: `EmailVerificationService`
+— `sendVerificationEmail`(UUID 토큰 발급+저장+메일 발송), `sendVerificationEmailSafely`
+(회원가입 흐름에서 호출, 발송 실패를 흡수해 가입 자체는 실패시키지 않음), `verify`(토큰 검증 →
+`UserService.promoteToUser()`로 승격 → 토큰 삭제, 1회용).
+
+`UserApiController.signUp()`이 가입 성공 직후 `sendVerificationEmailSafely`를 호출하도록
+수정했고, `IndexController`에 `GET /users/verify?token=...` 화면 라우트를 추가했다(JSON API가
+아닌 이메일 링크 클릭용). 이번에도 **`SecurityConfig.java`는 전혀 수정하지 않았다** — 이
+경로는 `anyRequest().permitAll()` catch-all에 걸려 자동으로 공개된다(`/posts/save`, `/signup`
+과 동일한 패턴).
+
+**의도적으로 범위 밖에 남긴 것**: `GUEST`의 쓰기 권한을 실제로 차단하는 인가 규칙 차등화는
+구현하지 않았다. 이를 강제하려면 `SecurityConfig`의 인가 규칙을 이번 세션 최초로 수정해야 하고,
+사용자가 명시적으로 요청하지 않았기 때문이다.
+
+**검증(curl E2E, `bootRun` + `local` 프로파일)**: 회원가입 → 콘솔 로그에 인증 링크
+(`http://localhost:8080/users/verify?token=<uuid>`) 출력 확인 → 해당 토큰으로 검증 요청 →
+`200`+성공 메시지, Hibernate 로그에 `update users set ... role=?` 실행 확인(실제 DB 반영) →
+**같은 토큰 재요청 시 "유효하지 않은 인증 링크입니다"**(1회용 확인) → 존재하지 않는 토큰도
+동일하게 실패 처리됨을 확인.
+
+`./gradlew clean test` → 기존 81개 + 신규 10개(`EmailVerificationServiceTest` 7,
+`EmailVerificationTokenRepositoryTest` 2, `IndexControllerTest` +1) = **91개 테스트 전부 통과**.
+
+상세는 [03장 3.9절](03-domain-model.md#39-emailverificationtoken--구현-완료-2026-09-10),
+[04장 4.9절](04-architecture-and-layers.md#49-이메일-인증-계층--구현-완료-2026-09-10),
+[05장 5.3.9절](05-api-spec.md), [07장 7.8절](07-configuration.md#78-이메일-발송-설정-springmail--구현-완료-2026-09-10-p3-4),
+[08장 8.15절](08-issues-and-todo.md#815-추가-구현-p3-4-이메일-인증-플로우-2026-09-10) 참고.
+
+**이로써 P3의 모든 항목이 해결되었다**(소셜 로그인은 사용자 결정으로 명시적 제외) — 이 프로젝트는
+P0/P1/P2/P3 전 범위가 구현·검증 완료된 상태다.

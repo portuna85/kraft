@@ -532,3 +532,51 @@ API 경로는 `web.api` 패키지(→`ApiExceptionHandler` 자동 적용)에 두
 실제 권한은 서버(`OwnershipPolicy` → 403)가 강제하므로, 타인 댓글 삭제를 시도하면 alert로
 오류 메시지가 뜨는 정도의 UX를 허용했다 — `post-update.html`이 기존에도 수정/삭제 버튼을
 소유권과 무관하게 항상 보여주는 것과 동일한 패턴이다.
+
+## 4.9 이메일 인증 계층 — ✅ 구현 완료 (2026-09-10)
+
+`GUEST` → `USER` 승격을 위한 이메일 인증 토큰 발급·검증 계층. 새 의존성
+`spring-boot-starter-mail`을 이번 세션에서 유일하게 추가했다(사전에 사용자 승인받음).
+
+### `EmailSender` 프로파일별 추상화
+
+```
+EmailSender (interface)
+ ├─ ConsoleEmailSender  @Profile("local")  — JavaMailSender 의존성 없음, @Slf4j로 콘솔 출력
+ └─ SmtpEmailSender     @Profile("prod")   — JavaMailSender + SimpleMailMessage로 실제 발송
+```
+
+`local` 프로파일은 `spring.mail.host`를 설정하지 않으므로 `MailSenderAutoConfiguration`이
+`JavaMailSender` 빈 자체를 생성하지 않는다(jar 역컴파일로 `MailSenderCondition$HostProperty`
+확인) — `ConsoleEmailSender`는 이 빈에 의존하지 않아 로컬 개발에 SMTP 서버가 전혀 필요 없다.
+이는 7.4절에서 이미 확립된 "프로파일별 빈 구현체 분리" 패턴(`SecurityConfig`의 로그인 성공
+핸들러 등)을 그대로 재사용한 것이다.
+
+### `EmailVerificationService`
+
+```
+sendVerificationEmail(email)        회원 조회 → UUID 토큰 저장(TTL 24h) → 링크 포함 메일 발송
+sendVerificationEmailSafely(email)  위 메서드를 호출하되 예외를 흡수(회원가입 응답에 영향 없음)
+verify(token)                        토큰 조회 → 만료 확인 → UserService.promoteToUser() → 토큰 삭제(1회용)
+```
+
+`UserApiController.signUp()`이 `userService.signUp(...)` 성공 직후
+`sendVerificationEmailSafely(...)`를 호출한다. `IndexController`에 `GET /users/verify` 화면
+라우트를 추가해 `verify(token)` 결과를 `user/verify-result.html`로 렌더링한다(JSON API가 아닌
+이메일 링크 클릭용 화면 엔드포인트).
+
+### `SecurityConfig` 매처 커버리지
+
+| 요청 | 매칭되는 기존 규칙 | 결과 |
+| --- | --- | --- |
+| `GET /users/verify` | 어떤 permitAll 패턴에도 불일치 → `anyRequest().permitAll()` | 누구나 열람 가능(토큰 자체가 비밀정보) |
+
+`/posts/save`, `/signup`, `/users/me/password`와 동일하게, 화면 자체는 `anyRequest().permitAll()`
+catch-all에 걸려 공개된다. 이번에도 **`SecurityConfig.java`는 전혀 수정하지 않았다.**
+
+### 의도적으로 남긴 범위 밖 항목
+
+이메일 인증의 목적(승격)은 완성되었지만, `GUEST`가 게시글/댓글을 쓰지 못하도록 인가 규칙에서
+역할을 차등화하는 것은 구현하지 않았다. 이를 강제하려면 `SecurityConfig`의 `authorizeHttpRequests`
+규칙을 이번 세션 최초로 수정해야 하며, 사용자가 명시적으로 요청하지 않았으므로 의도적으로
+범위 밖에 남겼다(08장 8.15절 참고).

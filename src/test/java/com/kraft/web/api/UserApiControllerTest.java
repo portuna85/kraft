@@ -1,6 +1,7 @@
 package com.kraft.web.api;
 
 import com.kraft.config.security.SecurityConfig;
+import com.kraft.service.user.EmailVerificationService;
 import com.kraft.service.user.UserService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,6 +43,9 @@ class UserApiControllerTest {
     @MockitoBean
     private UserService userService;
 
+    @MockitoBean
+    private EmailVerificationService emailVerificationService;
+
     @Test
     @DisplayName("회원가입은 인증 없이(CSRF 토큰만 있으면) 가능하다")
     void 회원가입은_인증없이_가능하다() throws Exception {
@@ -53,6 +57,8 @@ class UserApiControllerTest {
                         .content("{\"name\":\"tester\",\"email\":\"tester@example.com\",\"password\":\"password123\"}"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("1"));
+
+        verify(emailVerificationService).sendVerificationEmailSafely("tester@example.com");
     }
 
     @Test

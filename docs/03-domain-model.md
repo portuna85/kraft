@@ -366,3 +366,35 @@ create table comment (
 컬럼 길이·유니크 제약이 3.3절 수정 사항대로 반영되었다. `comment` 테이블은 최초 분석 시점 기준이며,
 2026-09-10 이후 `comments`(복수형) 테이블로 완성되었다([3.6절](#36-comment--구현-완료-2026-09-10) 참고). `application.yml`의 `ddl-auto: create-drop` 설정은
 [07. 설정과 실행](07-configuration.md)에서 확정했다.
+
+## 3.9 EmailVerificationToken — ✅ 구현 완료 (2026-09-10)
+
+회원가입 시 발급되는 이메일 인증 토큰. `User`가 `GUEST`에서 `USER`로 승격되기 전까지 유효하며,
+사용(인증 완료) 또는 만료 시 삭제되는 일회용 토큰이다. `BaseEntity`는 상속하지 않는다 — 생성 시각은
+`expiresAt` 자체로 충분하고 수정 개념이 없는 일회용 엔티티라 `updatedAt`이 불필요하기 때문이다.
+
+```java
+@Entity
+@Table(name = "email_verification_tokens")
+public class EmailVerificationToken {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 100)
+    private String token;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    @Column(nullable = false)
+    private LocalDateTime expiresAt;
+
+    public boolean isExpired() {
+        return LocalDateTime.now().isAfter(expiresAt);
+    }
+}
+```
+
+`EmailVerificationTokenRepository`는 `findByToken(String token)` 하나만 제공한다. 구현 배경과
+플로우 전체는 [08. 이슈와 할 일 8.15절](08-issues-and-todo.md)에 정리되어 있다.
