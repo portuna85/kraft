@@ -1,15 +1,18 @@
 <!DOCTYPE HTML>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{layout/header :: header}"></head>
 <body>
 
-<h1>이메일 인증</h1>
+<div th:replace="~{layout/navbar :: navbar}"></div>
 
-<div class="col-md-12">
-    <div class="col-md-4">
-        <p th:if="${success}">이메일 인증이 완료되었습니다. 이제 게시글과 댓글을 작성할 수 있습니다.</p>
-        <p th:unless="${success}" th:text="${message}"></p>
-        <a href="/login" role="button" class="btn btn-primary">로그인하러 가기</a>
+<div class="container py-4">
+    <h1 class="page-title">이메일 인증</h1>
+    <div class="col-md-6">
+        <div class="card-kraft">
+            <p th:if="${success}">이메일 인증이 완료되었습니다. 이제 게시글과 댓글을 작성할 수 있습니다.</p>
+            <p th:unless="${success}" th:text="${message}"></p>
+            <a href="/login" role="button" class="btn btn-primary">로그인하러 가기</a>
+        </div>
     </div>
 </div>
 

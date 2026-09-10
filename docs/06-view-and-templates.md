@@ -385,9 +385,11 @@ contentType: false`를 지정한다(전역 CSRF 헤더 주입은 콘텐츠 타�
 
 | 경로 | 설명 |
 | --- | --- |
-| `static/js/app/index.js` | 게시글 CRUD AJAX. 상세 분석은 [05장 5.6절](05-api-spec.md) 참고. **2026-09-10**: `comment`(등록/삭제), `signup`(가입) 객체 추가(P3) — 기존 `main` 객체는 변경 없음, 해당 요소가 없는 페이지에서는 jQuery가 조용히 무시하는 기존 원칙 그대로 |
+| `static/js/app/index.js` | 게시글 CRUD AJAX. 상세 분석은 [05장 5.6절](05-api-spec.md) 참고. **2026-09-10**: `comment`(등록/삭제), `signup`(가입) 객체 추가(P3) — 기존 `main` 객체는 변경 없음, 해당 요소가 없는 페이지에서는 jQuery가 조용히 무시하는 기존 원칙 그대로. **2026-09-10(디자인 개선)**: `showToast()`/`extractErrorMessage()` 헬퍼 추가(6.6절 참고) |
+| `static/css/style.css` | ✅ **2026-09-10 신규(디자인 개선)** — 브랜드 색상·카드형 레이아웃·토스트 스타일을 담은 로컬 커스텀 CSS. CDN이 아니므로 SRI 불필요. 상세는 6.6절 |
 
-CSS/이미지 디렉터리는 없으며 Bootstrap 4.3.1과 jQuery 3.3.1을 CDN으로 로드합니다.
+CSS는 로컬 커스텀 파일(`static/css/style.css`) 하나가 추가됐고, 이미지 디렉터리는 없으며
+Bootstrap 4.3.1과 jQuery 3.3.1은 그대로 CDN으로 로드합니다(버전 변경 없음 — 이유는 6.6절 참고).
 
 - ✅ **CDN 무결성 검증(SRI) — 2026-09-09 추가 구현.** `header.html`의 Bootstrap CSS, `footer.html`의
   jQuery/Bootstrap JS 3개 태그 모두 `integrity`/`crossorigin="anonymous"`를 추가했다. 해시는
@@ -397,3 +399,65 @@ CSS/이미지 디렉터리는 없으며 Bootstrap 4.3.1과 jQuery 3.3.1을 CDN�
   상세 값과 계산 과정은 [08장 8.9절](08-issues-and-todo.md#89-추가-구현-p2-13-cdn-무결성-속성-2026-09-09) 참고.
 - 오프라인/폐쇄망 배포가 예정되어 있다면 `static/` 하위로 내려받아 번들해야 합니다.
 - ✅ **해결(2026-09-10)** — `Post.picture` 업로드 파일은 `/images/**`로 서빙된다(6.4.4절 참고).
+
+## 6.6 프론트엔드 디자인·UX 개선 — ✅ 신규 구현 (2026-09-10)
+
+기능 구현이 전부 끝난 뒤, 화면 자체가 최초 분석 시점 그대로 방치돼 있던 문제(로그인 상태 표시가
+`index.html`에만 있고 `style="display:inline"`로 땜빵, 다른 화면에는 네비게이션 자체가 없음,
+피드백이 전부 네이티브 `alert()`/`confirm()`)를 개선했다. **범위는 디자인·UX 개선으로 한정** —
+백엔드 코드, `/api/v1/**` 계약, `SecurityConfig`는 전혀 건드리지 않았다.
+
+### Bootstrap 버전은 그대로 유지 (4.3.1)
+Bootstrap 5로 올리지 않기로 결정했다. jQuery는 `index.js`의 CSRF 헤더 주입·AJAX 로직 때문에
+BS5로 가도 어차피 계속 필요해(BS5의 "jQuery 제거"라는 이점을 못 살림), 버전을 올리면
+`form-group`/`form-control-file` 등 BS4 전용 클래스 전수 교체와 SRI 해시 재계산(7장·08장 8.9절
+참고)만 위험으로 남는다. CDN URL을 전혀 바꾸지 않았으므로 **기존 3개 SRI 해시는 그대로 유효**하다.
+
+### 신규 파일
+- **`static/css/style.css`**: CDN이 아닌 로컬 파일이라 SRI 불필요. `:root` 커스텀 프로퍼티(브랜드
+  색상·배경·테두리·라운드 반경), 네비게이션 바 스킨, 게시글 목록 테이블에 카드형 그림자/호버
+  효과(`<table>`+`th:each` 구조 자체는 그대로 — 모델 바인딩 변경 없이 순수 CSS만으로 개선), 폼
+  포커스링, 버튼 간격 유틸리티(`.btn-group-gap`), 토스트 위치(우상단 고정) 등을 담았다.
+- **`layout/navbar.html`**(신규 fragment): 기존 `index.html`에만 있던
+  `sec:authorize="isAuthenticated()"`/`isAnonymous()` 로그인 상태 분기를
+  `<nav class="navbar navbar-expand navbar-dark navbar-kraft">` 컴포넌트로 재구성했다. **조건부
+  권한 판정 로직은 문자 그대로 보존**하고 마크업만 재포장했다. 이 fragment를 `index.html` 뿐
+  아니라 `post-save.html`/`post-update.html`/`signup.html`/`change-password.html`/
+  `verify-result.html` 등 화면 6개 전체의 `<body>` 시작 직후에 삽입해, 어느 화면에서나 로그인
+  상태와 주요 이동 경로(글 등록/비밀번호 변경/로그아웃/로그인/회원가입)가 일관되게 보이도록 했다.
+
+### `layout/header.html` / `layout/footer.html` 보강
+- `header.html`: `<meta name="viewport">` 추가(기존에 없어 모바일 반응형이 전혀 안 됐음),
+  인라인 SVG data-URI 파비콘(새 바이너리 파일·SRI 이슈 없음), `/css/style.css` 링크 추가.
+- `footer.html`: 모든 화면에 한 번만 포함되는 이 fragment에 **토스트 컨테이너**(Bootstrap 4
+  Toast, 기본 숨김, JS로 수동 `.toast('show')` 호출)와 **댓글 삭제 확인 모달**(`#confirmDeleteModal`)
+  을 추가했다.
+
+### `index.js` — alert()/confirm() 전면 교체 (AJAX 경로·CSRF 로직은 무변경)
+- `showToast(message, type)` 헬퍼 추가. 기존 성공 시 `alert('...')` 9곳을
+  `showToast('...', 'success')`로 교체.
+- 실패 시 `alert(JSON.stringify(error))`(원시 `ProblemDetail` JSON을 그대로 노출하던 문제)를
+  `extractErrorMessage(error)`로 교체 — `error.responseJSON.detail`(이미 `ApiExceptionHandler`가
+  반환하던 필드)만 추려 사람이 읽을 수 있는 메시지로 보여준다. **백엔드 응답 계약 변경 없음.**
+- `comment.remove(id)`의 동기 `confirm('댓글을 삭제하시겠습니까?')` 패턴을 제거하고, 삭제할
+  `id`를 저장한 뒤 모달을 여는 `confirmRemove(id)`로 분리했다. 실제 DELETE AJAX 호출은 모달의
+  "삭제" 버튼 클릭 핸들러(`#btn-confirm-comment-delete`)로 옮겨 비동기 콜백 구조로 전환했다.
+- **`$(document).ajaxSend`의 CSRF 헤더 주입 블록은 한 글자도 수정하지 않았다** — 모든 AJAX 호출이
+  여기 의존하므로 최우선 보존 대상이었다.
+- `window.location.href`/`window.location.reload()` 하드 네비게이션 패턴(저장/삭제 후 페이지
+  이동·새로고침)은 이번 범위에서 의도적으로 그대로 뒀다 — 요청 범위(디자인+UX)를 벗어나는 더 큰
+  JS 리팩터링이 필요해 별도 작업으로 남겨둔다.
+
+### 나머지 템플릿 — 카드형 레이아웃 통일
+`post-save.html`/`post-update.html`/`signup.html`/`change-password.html`/`verify-result.html`/
+`index.html` 전부 최상단을 `<div class="container py-4">`로 감싸고, 폼이 있는 화면은
+`.card-kraft` 박스 안에 넣어 중앙 정렬·여백을 통일했다. `post-update.html`의 댓글 삭제 버튼은
+`.btn-comment-delete` 클릭 시 `confirmRemove()`를 호출해 모달을 열도록 그대로 연결돼 있다(마크업
+`data-id` 속성은 변경 없음).
+
+### 검증
+`./gradlew clean test` — 91개 전부 통과(백엔드 미변경이므로 회귀 없음 확인). `bootRun` 후 curl로
+전 화면(`/`, `/posts/save`, `/posts/update/{id}`, `/signup`, `/users/me/password`,
+`/users/verify`) `200` 확인, `/css/style.css` 정상 서빙 확인, 로그인 후 `index.html`의 네비게이션
+바에 `sec:authentication="name"`이 실제 이메일을 정확히 표시함을 확인, 게시글 등록 API 호출이
+CSRF 헤더와 함께 여전히 `200`으로 성공함을 확인해 `ajaxSend` 로직이 손상되지 않았음을 재확인했다.

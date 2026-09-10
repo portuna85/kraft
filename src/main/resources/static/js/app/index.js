@@ -1,3 +1,30 @@
+function showToast(message, type) {
+    var $toast = $('#app-toast');
+    var $body = $('#app-toast-body');
+    var $title = $('#app-toast-title');
+
+    $toast.removeClass('bg-success text-white bg-danger');
+    if (type === 'success') {
+        $toast.addClass('bg-success text-white');
+        $title.text('완료');
+    } else if (type === 'danger') {
+        $toast.addClass('bg-danger text-white');
+        $title.text('오류');
+    } else {
+        $title.text('알림');
+    }
+
+    $body.text(message);
+    $toast.toast('show');
+}
+
+function extractErrorMessage(error) {
+    if (error && error.responseJSON && error.responseJSON.detail) {
+        return error.responseJSON.detail;
+    }
+    return '오류가 발생했습니다.';
+}
+
 var main = {
     init : function () {
         var _this = this;
@@ -39,7 +66,7 @@ var main = {
         }).done(function (response) {
             callback(response.url);
         }).fail(function (error) {
-            alert(JSON.stringify(error));
+            showToast(extractErrorMessage(error), 'danger');
         });
     },
     doSave : function (pictureUrl) {
@@ -56,10 +83,10 @@ var main = {
             contentType:'application/json; charset=utf-8',
             data: JSON.stringify(data)
         }).done(function() {
-            alert('글이 등록되었습니다.');
+            showToast('글이 등록되었습니다.', 'success');
             window.location.href = '/';
         }).fail(function (error) {
-            alert(JSON.stringify(error));
+            showToast(extractErrorMessage(error), 'danger');
         });
     },
     update : function () {
@@ -77,10 +104,10 @@ var main = {
             contentType:'application/json; charset=utf-8',
             data: JSON.stringify(data)
         }).done(function() {
-            alert('글이 수정되었습니다.');
+            showToast('글이 수정되었습니다.', 'success');
             window.location.href = '/';
         }).fail(function (error) {
-            alert(JSON.stringify(error));
+            showToast(extractErrorMessage(error), 'danger');
         });
     },
     delete : function () {
@@ -92,16 +119,17 @@ var main = {
             dataType: 'json',
             contentType:'application/json; charset=utf-8'
         }).done(function() {
-            alert('글이 삭제되었습니다.');
+            showToast('글이 삭제되었습니다.', 'success');
             window.location.href = '/';
         }).fail(function (error) {
-            alert(JSON.stringify(error));
+            showToast(extractErrorMessage(error), 'danger');
         });
     }
 
 };
 
 var comment = {
+    pendingDeleteId : null,
     init : function () {
         var _this = this;
         $('#btn-comment-save').on('click', function () {
@@ -109,7 +137,11 @@ var comment = {
         });
 
         $(document).on('click', '.btn-comment-delete', function () {
-            _this.remove($(this).data('id'));
+            _this.confirmRemove($(this).data('id'));
+        });
+
+        $('#btn-confirm-comment-delete').on('click', function () {
+            _this.remove();
         });
     },
     save : function () {
@@ -125,14 +157,19 @@ var comment = {
             contentType:'application/json; charset=utf-8',
             data: JSON.stringify(data)
         }).done(function() {
-            alert('댓글이 등록되었습니다.');
+            showToast('댓글이 등록되었습니다.', 'success');
             window.location.reload();
         }).fail(function (error) {
-            alert(JSON.stringify(error));
+            showToast(extractErrorMessage(error), 'danger');
         });
     },
-    remove : function (id) {
-        if (!confirm('댓글을 삭제하시겠습니까?')) {
+    confirmRemove : function (id) {
+        this.pendingDeleteId = id;
+        $('#confirmDeleteModal').modal('show');
+    },
+    remove : function () {
+        var id = this.pendingDeleteId;
+        if (!id) {
             return;
         }
 
@@ -142,10 +179,12 @@ var comment = {
             dataType: 'json',
             contentType:'application/json; charset=utf-8'
         }).done(function() {
-            alert('댓글이 삭제되었습니다.');
+            $('#confirmDeleteModal').modal('hide');
+            showToast('댓글이 삭제되었습니다.', 'success');
             window.location.reload();
         }).fail(function (error) {
-            alert(JSON.stringify(error));
+            $('#confirmDeleteModal').modal('hide');
+            showToast(extractErrorMessage(error), 'danger');
         });
     }
 };
@@ -170,10 +209,10 @@ var signup = {
             contentType:'application/json; charset=utf-8',
             data: JSON.stringify(data)
         }).done(function() {
-            alert('회원가입이 완료되었습니다. 로그인해 주세요.');
+            showToast('회원가입이 완료되었습니다. 로그인해 주세요.', 'success');
             window.location.href = '/login';
         }).fail(function (error) {
-            alert(JSON.stringify(error));
+            showToast(extractErrorMessage(error), 'danger');
         });
     }
 };
@@ -196,10 +235,10 @@ var changePassword = {
             contentType:'application/json; charset=utf-8',
             data: JSON.stringify(data)
         }).done(function() {
-            alert('비밀번호가 변경되었습니다. 다시 로그인해 주세요.');
+            showToast('비밀번호가 변경되었습니다. 다시 로그인해 주세요.', 'success');
             window.location.href = '/logout';
         }).fail(function (error) {
-            alert(JSON.stringify(error));
+            showToast(extractErrorMessage(error), 'danger');
         });
     }
 };

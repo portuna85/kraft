@@ -1,28 +1,33 @@
 <!DOCTYPE HTML>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{layout/header :: header}"></head>
 <body>
 
-<h1>회원가입</h1>
+<div th:replace="~{layout/navbar :: navbar}"></div>
 
-<div class="col-md-12">
-    <div class="col-md-4">
-        <form>
-            <div class="form-group">
-                <label for="name">이름</label>
-                <input type="text" class="form-control" id="name" placeholder="이름을 입력하세요">
+<div class="container py-4">
+    <h1 class="page-title">회원가입</h1>
+    <div class="col-md-6">
+        <div class="card-kraft">
+            <form>
+                <div class="form-group">
+                    <label for="name">이름</label>
+                    <input type="text" class="form-control" id="name" placeholder="이름을 입력하세요">
+                </div>
+                <div class="form-group">
+                    <label for="email">이메일</label>
+                    <input type="email" class="form-control" id="email" placeholder="이메일을 입력하세요">
+                </div>
+                <div class="form-group">
+                    <label for="password">비밀번호 (8자 이상)</label>
+                    <input type="password" class="form-control" id="password" placeholder="비밀번호를 입력하세요">
+                </div>
+            </form>
+            <div class="btn-group-gap">
+                <a href="/" role="button" class="btn btn-secondary">취소</a>
+                <button type="button" class="btn btn-primary" id="btn-signup">가입하기</button>
             </div>
-            <div class="form-group">
-                <label for="email">이메일</label>
-                <input type="email" class="form-control" id="email" placeholder="이메일을 입력하세요">
-            </div>
-            <div class="form-group">
-                <label for="password">비밀번호 (8자 이상)</label>
-                <input type="password" class="form-control" id="password" placeholder="비밀번호를 입력하세요">
-            </div>
-        </form>
-        <a href="/" role="button" class="btn btn-secondary">취소</a>
-        <button type="button" class="btn btn-primary" id="btn-signup">가입하기</button>
+        </div>
     </div>
 </div>
 

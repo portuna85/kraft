@@ -1,0 +1,22 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+<nav th:fragment="navbar" class="navbar navbar-expand navbar-dark navbar-kraft mb-4">
+    <a class="navbar-brand" href="/">kraft</a>
+    <div class="ml-auto d-flex align-items-center">
+        <a href="/posts/save" role="button" class="btn btn-light btn-sm">글 등록</a>
+        <span sec:authorize="isAuthenticated()" class="d-flex align-items-center">
+            <span class="navbar-text ml-2">
+                <span id="user" sec:authentication="name"></span>
+            </span>
+            <a href="/users/me/password" class="btn btn-outline-light btn-sm ml-2">비밀번호 변경</a>
+            <a href="/logout" class="btn btn-outline-light btn-sm ml-2">Logout</a>
+        </span>
+        <span sec:authorize="isAnonymous()">
+            <a href="/login" class="btn btn-outline-light btn-sm ml-2">Login</a>
+            <a href="/signup" class="btn btn-light btn-sm ml-2">회원가입</a>
+        </span>
+    </div>
+</nav>
+</body>
+</html>

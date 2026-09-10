@@ -1,0 +1,136 @@
+:root {
+    --kraft-primary: #4f46e5;
+    --kraft-primary-dark: #4338ca;
+    --kraft-surface: #ffffff;
+    --kraft-bg: #f4f5f9;
+    --kraft-border: #e5e7eb;
+    --kraft-text-muted: #6b7280;
+    --kraft-radius: 0.6rem;
+}
+
+body {
+    background-color: var(--kraft-bg);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", -apple-system,
+        BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #1f2937;
+}
+
+.navbar-kraft {
+    background-color: var(--kraft-primary);
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+}
+
+.navbar-kraft .navbar-brand {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.navbar-kraft .nav-link,
+.navbar-kraft .navbar-text {
+    color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.navbar-kraft .btn {
+    margin-left: 0.35rem;
+}
+
+.page-title {
+    font-weight: 700;
+    margin-bottom: 1.25rem;
+}
+
+.card-kraft {
+    background-color: var(--kraft-surface);
+    border: 1px solid var(--kraft-border);
+    border-radius: var(--kraft-radius);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    padding: 1.5rem;
+}
+
+.table-kraft {
+    background-color: var(--kraft-surface);
+    border-radius: var(--kraft-radius);
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.table-kraft thead {
+    background-color: #eef0fb;
+}
+
+.table-kraft tbody tr {
+    transition: background-color 0.12s ease-in;
+}
+
+.table-kraft tbody tr:hover {
+    background-color: #f6f7fd;
+}
+
+.table-kraft a {
+    color: var(--kraft-primary);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.table-kraft a:hover {
+    text-decoration: underline;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.92rem;
+}
+
+.form-control:focus {
+    border-color: var(--kraft-primary);
+    box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.15);
+}
+
+.btn-primary {
+    background-color: var(--kraft-primary);
+    border-color: var(--kraft-primary);
+}
+
+.btn-primary:hover {
+    background-color: var(--kraft-primary-dark);
+    border-color: var(--kraft-primary-dark);
+}
+
+.btn-group-gap > * {
+    margin-right: 0.5rem;
+}
+
+.btn-group-gap > *:last-child {
+    margin-right: 0;
+}
+
+#comment-list .list-group-item {
+    border-radius: var(--kraft-radius) !important;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--kraft-border);
+}
+
+#comment-list .list-group-item:last-child {
+    margin-bottom: 0;
+}
+
+.pagination .page-link {
+    color: var(--kraft-primary);
+}
+
+.pagination .page-item.active .page-link {
+    background-color: var(--kraft-primary);
+    border-color: var(--kraft-primary);
+}
+
+#toast-container {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1080;
+}
+
+#toast-container .toast {
+    min-width: 260px;
+}

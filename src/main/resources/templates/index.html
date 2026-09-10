@@ -3,26 +3,13 @@
 <head th:replace="~{layout/header :: header}"></head>
 <body>
 
-<h1>스프링부트로 시작하는 웹 서비스 Ver.2</h1>
-<div class="col-md-12">
-    <div class="row">
-        <div class="col-md-6">
-            <a href="/posts/save" role="button" class="btn btn-primary">글 등록</a>
-            <div sec:authorize="isAuthenticated()" style="display:inline">
-                Logged in as: <span id="user" sec:authentication="name"></span>
-                <a href="/users/me/password" class="btn btn-outline-secondary active" role="button">비밀번호 변경</a>
-                <a href="/logout" class="btn btn-info active" role="button">Logout</a>
-            </div>
-            <div sec:authorize="isAnonymous()" style="display:inline">
-                <a href="/login" class="btn btn-success active" role="button">Login</a>
-                <a href="/signup" class="btn btn-outline-success active" role="button">회원가입</a>
-            </div>
-        </div>
-    </div>
-    <br>
+<div th:replace="~{layout/navbar :: navbar}"></div>
+
+<div class="container py-4">
+    <h1 class="page-title">스프링부트로 시작하는 웹 서비스 Ver.2</h1>
     <!-- 목록 출력 영역 -->
-    <table class="table table-horizontal table-bordered">
-        <thead class="thead-strong">
+    <table class="table table-kraft">
+        <thead>
         <tr>
             <th>게시글번호</th>
             <th>제목</th>
@@ -41,7 +28,7 @@
     </table>
 
     <!-- 페이징 -->
-    <nav th:if="${postsPage.totalPages > 1}">
+    <nav th:if="${postsPage.totalPages > 1}" class="mt-3">
         <ul class="pagination">
             <li class="page-item" th:classappend="${postsPage.first} ? 'disabled'">
                 <a class="page-link" th:href="@{/(page=${postsPage.page - 1})}">이전</a>
