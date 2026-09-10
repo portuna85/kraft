@@ -60,7 +60,16 @@ public class EmailVerificationService {
      * 회원가입 직후 호출하는 안전 버전. 메일 발송 실패(SMTP 오류 등)가 회원가입 응답 자체를
      * 실패시키지 않도록 예외를 여기서 흡수하고 로그만 남긴다 — 이미 생성된 회원 정보는 그대로
      * 유효하며, 인증 메일 재발송은 이번 범위에서는 별도로 제공하지 않는다.
+     * <p>
+     * {@code @Transactional}을 명시하지 않으면 클래스 레벨의 {@code readOnly = true}를 그대로
+     * 물려받는다. 이 메서드가 내부에서 {@code sendVerificationEmail(email)}을 호출하는 것은
+     * self-invocation이라 Spring 프록시를 거치지 않으므로, 그 메서드에 붙은
+     * {@code @Transactional}(쓰기 가능)이 무시되고 바깥의 읽기 전용 트랜잭션이 그대로 적용된다.
+     * H2는 읽기 전용 트랜잭션에서도 INSERT를 관대하게 허용해 로컬에서는 드러나지 않았지만,
+     * MariaDB는 엄격히 거부한다(Docker 검증 중 실제로 재현). 여기 {@code @Transactional}을 명시해
+     * 바깥 트랜잭션 자체를 쓰기 가능하게 만들어 해결한다.
      */
+    @Transactional
     public void sendVerificationEmailSafely(String email) {
         try {
             sendVerificationEmail(email);

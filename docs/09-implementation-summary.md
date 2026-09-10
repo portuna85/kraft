@@ -527,3 +527,21 @@ P0~P3 구현이 모두 완료된 상태에서, 그동안 주로 curl로만 검�
 [06장](06-view-and-templates.md#네비게이션-바-정책-조정--로그아웃-목적지-예외-2026-09-10),
 [07장 7.9절](07-configuration.md#79-이메일-암호화-키-설정-appsecurityemail-encryption-key---구현-완료-2026-09-10),
 [08장 8.17절](08-issues-and-todo.md#817-추가-구현-로그인-후-네비게이션-정책--회원가입-검증-강화--이메일-암호화-2026-09-10) 참고.
+
+## 19. [추가 구현] Docker + 실제 MariaDB 로컬 브라우저 검증 (2026-09-10)
+
+사용자가 Docker + 실제 MariaDB + `.env` 민감정보로 로컬 브라우저에서 직접 확인해 달라고
+요청했다. 진행 전 이 머신에 이미 남아있던 Docker 리소스(`kraft-mariadb` 컨테이너·볼륨·
+네트워크, 이전 세션 잔재)를 사용자 지시대로 전부 삭제한 뒤 새로 구성했다: `docker-compose.yml`
+(MariaDB 단일 서비스), `.env`/`.env.example`(DB 접속정보·`EMAIL_ENCRYPTION_KEY`·`APP_BASE_URL`),
+새 `docker` Spring 프로파일(`ddl-auto: create-drop`, `ConsoleEmailSender` 재사용).
+
+이 과정에서 **H2로는 절대 드러나지 않는 실제 버그**를 발견했다 — `EmailVerificationService`가
+self-invocation 때문에 읽기 전용 트랜잭션 안에서 INSERT를 시도하고 있었는데, H2는 관대하게
+허용하지만 MariaDB는 엄격히 거부해 회원가입 직후 인증 메일 발송이 500으로 실패했다. `prod`도
+MariaDB를 쓰므로 이 검증이 없었다면 실제 운영에서 터졌을 버그였다. `sendVerificationEmailSafely()`
+에 `@Transactional`을 명시해 해결했다.
+
+Docker 컨테이너 안 MariaDB를 직접 조회해 `email`이 암호문으로 저장됨을 재확인했고, 브라우저로
+회원가입→이메일 인증→로그인→게시글/댓글 등록까지 전부 정상 동작함을 확인했다. 상세는
+[07장 7.10절](07-configuration.md#710-docker로-실제-mariadb-붙여-로컬-브라우저-검증---구현-완료-2026-09-10) 참고.

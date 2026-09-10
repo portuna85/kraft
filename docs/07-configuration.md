@@ -491,3 +491,67 @@ app:
 암호화 키 로테이션이 조회 기능 자체를 막지는 않는다 — 다만 로테이션 시점 이전에 저장된 행의
 `email` 컬럼은 새 키로 복호화가 실패하므로, 실제로 키를 바꿔야 한다면 전체 재암호화가 필요하다
 (이번 범위에서는 그런 마이그레이션 도구까지는 구현하지 않았다).
+
+## 7.10 Docker로 실제 MariaDB 붙여 로컬 브라우저 검증 — ✅ 구현 완료 (2026-09-10)
+
+지금까지는 `local` 프로파일(H2 인메모리)로만 검증해왔다. 사용자가 Docker + 실제 MariaDB +
+`.env` 기반 민감정보로 로컬 브라우저에서 직접 확인해 달라고 요청해 새 `docker` 프로파일과
+`docker-compose.yml`을 추가했다.
+
+### 사전 작업: 기존 Docker 리소스 전체 삭제
+
+사용자가 명시적으로 요청한 대로, 새로 만들기 전에 이 머신의 Docker 리소스를 전부 지웠다(당시
+이미 `kraft-mariadb`라는 이름의 컨테이너·볼륨·네트워크가 남아 있었다 — 이번 세션에서 만든 것은
+아니고 이전에 존재하던 것). `docker rm -f`(전체 컨테이너) → `docker rmi -f`(전체 이미지) →
+`docker volume rm`(전체 볼륨) → `docker network rm`(커스텀 네트워크) →
+`docker system prune -a --volumes -f` 순으로 진행해 `docker ps -a`/`images`/`volume ls`/
+`network ls`가 전부 비어 있음을 확인한 뒤에 새로 구성했다.
+
+### 신규 파일
+
+- **`docker-compose.yml`**: `mariadb:11.7` 단일 서비스. 이미지 초기화 값(`MARIADB_ROOT_PASSWORD`
+  등)은 `.env`에서 읽는다. `healthcheck`로 실제 쿼리 가능 상태까지 기다린 뒤에야 앱을 붙이도록
+  했다. 스프링 부트 앱 자체는 컨테이너화하지 않았다 — `./gradlew bootRun`으로 로컬에서 그대로
+  실행하고 DB만 Docker를 쓴다(빌드를 컨테이너화하는 것보다 훨씬 가볍고, 지금까지의 curl/브라우저
+  검증 워크플로를 그대로 재사용할 수 있다).
+- **`.env`**(신규, `.gitignore`에 등록되어 커밋되지 않음) / **`.env.example`**(신규, 커밋됨,
+  실제 값 없이 각 변수의 용도만 설명): MariaDB 초기화 값(`MARIADB_*`), Spring 쪽 DataSource
+  접속 정보(`DB_URL`/`DB_USERNAME`/`DB_PASSWORD` — `MARIADB_USER`/`MARIADB_PASSWORD`와 같은 값),
+  `EMAIL_ENCRYPTION_KEY`, `APP_BASE_URL`. 전부 무작위로 새로 생성한 값을 썼다.
+- **`application-docker.yml`**(신규 Spring 프로파일): `prod`와 달리 `ddl-auto: create-drop`을
+  써서(운영 스키마 마이그레이션 없이) 매 실행마다 스키마를 새로 만든다 — 눈으로 빠르게 확인하는
+  용도이므로 실제 운영에는 이 프로파일을 쓰면 안 된다. `spring.mail.*`을 설정하지 않아
+  `JavaMailSender` 빈이 생성되지 않으므로, `ConsoleEmailSender`의 `@Profile`에 `"docker"`를
+  추가해(`local`과 함께) 재사용했다 — 실제 SMTP 없이도 이메일 인증 플로우를 끝까지 확인할 수
+  있다.
+
+### 실행 방법
+
+```bash
+docker compose up -d                      # MariaDB 기동, healthy 대기
+set -a; source .env; set +a               # .env를 셸 환경변수로 로드
+./gradlew bootRun --args='--spring.profiles.active=docker'
+```
+
+### [버그 발견·수정] H2에서는 안 보이던 읽기 전용 트랜잭션 오류
+
+Docker 검증 중 회원가입 직후 인증 메일 발송이 500으로 실패하는 걸 발견했다:
+`Cannot execute statement in a READ ONLY transaction`(MariaDB). 원인은
+`EmailVerificationService`의 클래스 레벨 `@Transactional(readOnly = true)`였다 —
+`sendVerificationEmailSafely()`에는 메서드 레벨 오버라이드가 없어 이 기본값을 그대로 물려받는데,
+그 메서드 내부에서 `sendVerificationEmail()`을 호출하는 것은 **self-invocation**이라 Spring
+프록시를 거치지 않고, 그 메서드에 붙은 쓰기 가능 `@Transactional`이 무시된 채 바깥의 읽기 전용
+트랜잭션 안에서 `tokenRepository.save(...)`가 실행되고 있었다. **H2는 읽기 전용 트랜잭션에서도
+INSERT를 관대하게 허용해 지금까지 드러나지 않았지만, MariaDB는 엄격히 거부한다** — `local`
+프로파일(H2)로만 검증해온 이번 세션 전체에서 한 번도 재현되지 않았던, 진짜 운영(MariaDB) 환경
+전용 버그였다. `sendVerificationEmailSafely()`에 `@Transactional`(쓰기 가능)을 명시해 바깥
+트랜잭션 자체를 쓰기 가능하게 만들어 해결했다. `prod` 프로파일도 MariaDB를 쓰므로, 이 Docker
+검증이 없었다면 실제 운영 첫 회원가입에서 터졌을 버그다.
+
+### 검증
+
+`docker exec kraft-mariadb mariadb -u... kraft -e "SELECT ..."`로 실제 컨테이너 안 DB를 직접
+조회해 `email`이 암호문으로, `email_hash`가 SHA-512로 저장됨을 재확인했고, 브라우저로
+회원가입 → 이메일 인증(콘솔 로그 링크) → 로그인 → 게시글 등록 → 댓글 등록까지 전부
+Docker MariaDB 위에서 정상 동작함을 확인했다. `./gradlew test` 95개는 프로파일과 무관하게
+(H2 기반 테스트) 그대로 전부 통과.
