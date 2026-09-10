@@ -1,0 +1,112 @@
+package com.kraft.service.user;
+
+import com.kraft.domain.user.Role;
+import com.kraft.domain.user.User;
+import com.kraft.domain.user.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
+/**
+ * {@link UserService} 단위 테스트. {@link PasswordEncoder}도 모킹해 실제 BCrypt 연산 없이
+ * "인코딩된 값이 저장되는가"만 빠르게 검증한다.
+ */
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
+    private UserService userService;
+
+    @BeforeEach
+    void setUp() {
+        userService = new UserService(userRepository, passwordEncoder);
+    }
+
+    @Test
+    @DisplayName("signUp: 이메일이 중복되지 않으면 비밀번호를 인코딩해 GUEST로 저장한다")
+    void signUp_정상_가입() {
+        given(userRepository.existsByEmail("new@example.com")).willReturn(false);
+        given(passwordEncoder.encode("rawPassword")).willReturn("encodedPassword");
+
+        User saved = User.builder().name("new").email("new@example.com")
+                .password("encodedPassword").role(Role.GUEST).build();
+        ReflectionTestUtils.setField(saved, "id", 1L);
+        given(userRepository.save(any(User.class))).willReturn(saved);
+
+        Long id = userService.signUp("new", "new@example.com", "rawPassword");
+
+        assertThat(id).isEqualTo(1L);
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        assertThat(captor.getValue().getRole()).isEqualTo(Role.GUEST);
+        assertThat(captor.getValue().getPassword()).isEqualTo("encodedPassword");
+        assertThat(captor.getValue().getEmail()).isEqualTo("new@example.com");
+    }
+
+    @Test
+    @DisplayName("signUp: 이메일이 이미 있으면 IllegalArgumentException이고 저장을 시도하지 않는다")
+    void signUp_이메일_중복이면_예외() {
+        given(userRepository.existsByEmail("dup@example.com")).willReturn(true);
+
+        assertThatThrownBy(() -> userService.signUp("dup", "dup@example.com", "pw12345678"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("이미 가입된 이메일");
+
+        verify(userRepository, never()).save(any());
+        verify(passwordEncoder, never()).encode(any());
+    }
+
+    @Test
+    @DisplayName("changePassword: 대상 회원의 비밀번호를 인코딩된 값으로 변경한다")
+    void changePassword_정상_변경() {
+        User user = User.builder().name("a").email("a@example.com").password("old").role(Role.USER).build();
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(passwordEncoder.encode("newRawPassword")).willReturn("newEncoded");
+
+        userService.changePassword(1L, "newRawPassword");
+
+        assertThat(user.getPassword()).isEqualTo("newEncoded");
+    }
+
+    @Test
+    @DisplayName("promoteToUser: GUEST를 USER로 승격한다")
+    void promoteToUser_승격() {
+        User user = User.builder().name("a").email("a@example.com").password("pw").role(Role.GUEST).build();
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+
+        userService.promoteToUser(1L);
+
+        assertThat(user.getRole()).isEqualTo(Role.USER);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 회원 ID에 대해서는 IllegalArgumentException")
+    void 존재하지_않는_회원이면_예외() {
+        given(userRepository.findById(999L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.changePassword(999L, "pw12345678"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("id=999");
+    }
+}

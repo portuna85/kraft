@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: kraft
+
+  profiles:
+    default: local
+
+  jpa:
+    open-in-view: false
+
+  session:
+    store-type: jdbc

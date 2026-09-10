@@ -1,0 +1,160 @@
+package com.kraft.web.api;
+
+import com.kraft.config.security.SecurityConfig;
+import com.kraft.service.post.PostService;
+import com.kraft.web.dto.post.PostSaveRequestDto;
+import com.kraft.web.dto.post.PostUpdateRequestDto;
+import com.kraft.web.dto.post.PostsPageResponseDto;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.List;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * {@link PostApiController} 웹 계층 테스트. {@link PostService}는 {@code @MockitoBean}으로
+ * 대체하고, 실제 {@link SecurityConfig}를 {@code @Import}해 인증/CSRF/인가 규칙이 문서에
+ * 기록된 그대로 동작하는지 확인한다. {@link com.kraft.web.exception.ApiExceptionHandler}는
+ * {@code com.kraft.web.api} 패키지 대상 {@code @RestControllerAdvice}라 별도 {@code @Import}
+ * 없이도 이 슬라이스에 함께 적용된다.
+ */
+@WebMvcTest(PostApiController.class)
+@Import(SecurityConfig.class)
+class PostApiControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockitoBean
+    private PostService postService;
+
+    @Test
+    @DisplayName("GET /api/v1/posts 는 인증 없이도 호출할 수 있다")
+    void 목록조회는_인증없이_가능하다() throws Exception {
+        given(postService.findAllDesc(any(Pageable.class)))
+                .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
+
+        mockMvc.perform(get("/api/v1/posts"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.first").value(true));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/posts/{id} 는 없는 글이면 400 ProblemDetail을 반환한다")
+    void 단건조회_존재하지_않으면_400() throws Exception {
+        given(postService.findById(999L))
+                .willThrow(new IllegalArgumentException("해당 게시글이 없습니다. id=999"));
+
+        mockMvc.perform(get("/api/v1/posts/999"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("해당 게시글이 없습니다. id=999"))
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    @DisplayName("[회귀 방지] 옛 경로 GET /api/v1/posts/list 는 id 타입 변환 실패로 500이 아니라 400을 반환한다")
+    void 숫자가_아닌_id는_500이_아니라_400() throws Exception {
+        mockMvc.perform(get("/api/v1/posts/list"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/posts 는 CSRF 토큰이 없으면 403")
+    void 등록은_CSRF_토큰이_없으면_403() throws Exception {
+        mockMvc.perform(post("/api/v1/posts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"t\",\"content\":\"c\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/posts 는 CSRF 토큰이 있어도 미인증이면 로그인 페이지로 리다이렉트된다")
+    void 등록은_미인증이면_로그인으로_리다이렉트된다() throws Exception {
+        mockMvc.perform(post("/api/v1/posts")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"t\",\"content\":\"c\"}"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/posts 는 인증+CSRF+유효한 본문이면 200과 ID를 반환한다")
+    void 등록은_인증되고_유효하면_ID를_반환한다() throws Exception {
+        given(postService.save(eq("tester@example.com"), any(PostSaveRequestDto.class))).willReturn(1L);
+
+        mockMvc.perform(post("/api/v1/posts")
+                        .with(user("tester@example.com"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"제목\",\"content\":\"내용\",\"picture\":null}"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("1"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/posts 는 제목이 비어 있으면 400이고 서비스는 호출되지 않는다")
+    void 등록시_제목이_비어있으면_400() throws Exception {
+        mockMvc.perform(post("/api/v1/posts")
+                        .with(user("tester@example.com"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"\",\"content\":\"내용\",\"picture\":null}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("title: 제목은 필수입니다."));
+
+        verify(postService, org.mockito.Mockito.never()).save(any(), any());
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/posts/{id} 는 작성자가 아니면 403 ProblemDetail")
+    void 수정시_권한이_없으면_403() throws Exception {
+        given(postService.update(eq(1L), any(PostUpdateRequestDto.class), any(Authentication.class)))
+                .willThrow(new AccessDeniedException("작성자 본인 또는 관리자만 수정·삭제할 수 있습니다. id=1"));
+
+        mockMvc.perform(put("/api/v1/posts/1")
+                        .with(user("intruder@example.com"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"해킹\",\"content\":\"해킹\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403));
+    }
+
+    @Test
+    @DisplayName("DELETE /api/v1/posts/{id} 는 인증된 사용자가 요청하면 ID를 반환한다")
+    void 삭제는_인증되면_ID를_반환한다() throws Exception {
+        mockMvc.perform(delete("/api/v1/posts/1")
+                        .with(user("tester@example.com"))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().string("1"));
+
+        verify(postService).delete(eq(1L), any(Authentication.class));
+    }
+}
