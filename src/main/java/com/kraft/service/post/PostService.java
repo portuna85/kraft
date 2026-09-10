@@ -9,8 +9,10 @@ import com.kraft.service.support.OwnershipPolicy;
 import com.kraft.web.dto.post.PostResponseDto;
 import com.kraft.web.dto.post.PostSaveRequestDto;
 import com.kraft.web.dto.post.PostUpdateRequestDto;
+import com.kraft.web.dto.post.PostViewDto;
 import com.kraft.web.dto.post.PostsListResponseDto;
 import com.kraft.web.dto.post.PostsPageResponseDto;
+import com.kraft.web.exception.PostNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -52,6 +54,16 @@ public class PostService {
         return new PostResponseDto(findPost(id));
     }
 
+    /**
+     * 상세 화면용 조회. 인증 객체와 엔티티를 함께 볼 수 있는 이 지점에서 관리 권한을 계산해
+     * 화면 전용 DTO로 내려준다. 화면이 작성자 이름과 로그인 이메일을 비교하는 방식(잘못된
+     * 소유권 추정)을 쓰지 않게 하려는 것이다. 공개 REST DTO는 그대로 둔다.
+     */
+    public PostViewDto findByIdForView(Long id, Authentication authentication) {
+        Post post = findPost(id);
+        return new PostViewDto(post, OwnershipPolicy.canManage(authentication, post.getUser()));
+    }
+
     public PostsPageResponseDto findAllDesc(Pageable pageable) {
         Page<PostsListResponseDto> page = postRepository.findAllDesc(pageable)
                 .map(PostsListResponseDto::new);
@@ -60,7 +72,7 @@ public class PostService {
 
     private Post findPost(Long id) {
         return postRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 없습니다. id=" + id));
+                .orElseThrow(() -> new PostNotFoundException(id));
     }
 
     /**

@@ -1,16 +1,22 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
+
+<!-- 이동 후 한 번만 표시되는 결과 메시지 영역. 내용은 index.js의 flash가 채운다. -->
+<div th:fragment="flash" id="flash" class="flash" role="status" hidden>
+    <span id="flash-text"></span>
+</div>
+
 <div th:fragment="footer">
     <form id="logout-form" th:action="@{/logout}" method="post" style="display:none;">
         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
     </form>
 
-    <div id="toast-container" aria-live="polite" aria-atomic="true">
-        <div id="app-toast" class="toast hide" role="alert" aria-live="assertive" aria-atomic="true"
+    <div id="toast-container">
+        <div id="app-toast" class="toast hide" role="status" aria-live="polite" aria-atomic="true"
              data-delay="3000">
             <div class="toast-header">
                 <strong class="mr-auto" id="app-toast-title">알림</strong>
-                <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
+                <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="닫기">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
@@ -18,22 +24,25 @@
         </div>
     </div>
 
+    <!--
+      게시글·댓글이 함께 쓰는 삭제 확인 모달. 제목과 본문 문구는 대상에 따라 JS가 바꾸고,
+      기본 포커스는 "취소"에 둔다.
+    -->
     <div class="modal fade" id="confirmDeleteModal" tabindex="-1" role="dialog"
          aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="confirmDeleteModalLabel">댓글 삭제</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <h2 class="modal-title h5" id="confirmDeleteModalLabel">삭제 확인</h2>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="닫기">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-                <div class="modal-body">
-                    댓글을 삭제하시겠습니까?
-                </div>
+                <div class="modal-body" id="confirmDeleteMessage">삭제하시겠습니까?</div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">취소</button>
-                    <button type="button" class="btn btn-danger" id="btn-confirm-comment-delete">삭제</button>
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-delete"
+                            data-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-danger" id="btn-confirm-delete">삭제</button>
                 </div>
             </div>
         </div>
