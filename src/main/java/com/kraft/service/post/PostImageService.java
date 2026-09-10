@@ -13,7 +13,7 @@ import java.util.UUID;
 /**
  * 게시글 사진(Post.picture)을 로컬 디스크에 저장하고, 브라우저에서 접근 가능한 공개 URL을
  * 돌려준다. Post.picture는 이미지 바이너리가 아니라 "경로/URL"을 저장하는 필드라는 기존 설계
- * 의도(docs/03-domain-model.md)를 그대로 구현한 것이다.
+ * 의도를 그대로 구현한 것이다.
  * <p>
  * 저장 경로는 {@code /images/**}로 서빙되며({@link com.kraft.config.WebConfig}), 이 경로는
  * {@code SecurityConfig}에 이미 permitAll로 등록되어 있어 별도 보안 설정 변경이 필요 없다.

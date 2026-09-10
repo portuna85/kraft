@@ -28,7 +28,7 @@ public class Post extends BaseEntity {
     private String content;
 
     // 사진등록 타입이 String가 맞나요? -> String이 맞다. 실제 이미지 바이너리가 아니라
-    // 파일 경로/URL을 저장하는 용도이므로 500자로 제한한다(docs/03-domain-model.md 참고).
+    // 파일 경로/URL을 저장하는 용도이므로 500자로 제한한다.
     @Column(length = 500)
     private String picture;
 
