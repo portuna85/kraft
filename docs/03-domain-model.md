@@ -364,7 +364,7 @@ create table comment (
 ```
 
 컬럼 길이·유니크 제약이 3.3절 수정 사항대로 반영되었다. `comment` 테이블은 최초 분석 시점 기준이며,
-2026-09-10 이후 `comments`(복수형) 테이블로 완성되었다([3.6절](#36-comment--구현-완료-2026-09-10) 참고). `application.yml`의 `ddl-auto: create-drop` 설정은
+2026-09-10 이후 `comments`(복수형) 테이블로 완성되었다([3.6절](#36-comment---구현-완료-2026-09-10) 참고). `application.yml`의 `ddl-auto: create-drop` 설정은
 [07. 설정과 실행](07-configuration.md)에서 확정했다.
 
 ## 3.9 EmailVerificationToken — ✅ 구현 완료 (2026-09-10)

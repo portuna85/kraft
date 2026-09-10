@@ -318,7 +318,7 @@ public class ApiExceptionHandler {
 단일 `application.yml`을 공통 파일 + `application-local.yml` + `application-prod.yml` 3개로
 분리했다. `application.yml`에 `spring.profiles.default: local`을 지정해, 프로파일을 명시하지
 않으면 자동으로 `local`이 적용되도록 해 기존 `./gradlew bootRun`/`./gradlew test` 사용법을
-그대로 유지했다. 각 파일의 전체 내용은 [07장 7.4절](07-configuration.md#74-프로파일-분리--해결됨-2026-09-09-추가-구현) 참고.
+그대로 유지했다. 각 파일의 전체 내용은 [07장 7.4절](07-configuration.md#74-프로파일-분리---해결됨-2026-09-09-추가-구현) 참고.
 
 `local`과 `prod`의 실질적 차이:
 
@@ -540,7 +540,7 @@ catch-all에 잡혀 **500**이 되는 것을 curl로 직접 확인했다. 클라
 - `grep -rn "getPosts()\|\.posts\b"`로 `User.posts`(P2-6에서 이미 제거됨)가 남아 있지 않음을
   재확인 — 댓글이 `User`가 아닌 `Post`/`Comment` 양방향으로만 연관관계를 맺으므로 무관함을 확인.
 - `/api/v1/posts/list`처럼 댓글 API도 `SecurityConfig`의 기존 매처와 충돌하지 않는지 매처 표로
-  사전 검증([04장 4.8절](04-architecture-and-layers.md#48-댓글comment-계층--구현-완료-2026-09-10)) →
+  사전 검증([04장 4.8절](04-architecture-and-layers.md#48-댓글comment-계층---구현-완료-2026-09-10)) →
   **`SecurityConfig.java`는 이번 작업에서 한 줄도 수정하지 않았다.**
 - `PostServiceTest`가 `AccessDeniedException`을 `.isInstanceOf(...)`로만 검증(메시지 미검증)하고
   `PostApiControllerTest`가 `PostService`를 완전히 모킹함을 `grep`으로 확인한 뒤,

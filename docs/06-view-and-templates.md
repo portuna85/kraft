@@ -243,7 +243,7 @@ Thymeleaf는 **완결된 마크업 조각(fragment) 단위**로 동작하므로 
 ```
 
 동시에 `index.js`의 `save()`에서 `author` 전송을 제거합니다. ✅ 실제 `index.js`에서 `author` 필드가
-빠졌음을 확인했다([05장 5.6절](05-api-spec.md#56-클라이언트-스크립트-분석-staticjsappindexjs--수정-완료) 참고).
+빠졌음을 확인했다([05장 5.6절](05-api-spec.md#56-클라이언트-스크립트-분석-staticjsappindexjs---수정-완료) 참고).
 
 ### 6.4.2 post-update.html 조치 — ✅ 적용 완료
 
@@ -316,7 +316,7 @@ Thymeleaf는 **완결된 마크업 조각(fragment) 단위**로 동작하므로 
 댓글 목록은 `IndexController.postsUpdate()`가 `CommentService.findByPostId(id)`로 서버사이드에서
 함께 조회해 모델에 담는다(게시글 조회와 동일 패턴, 별도 AJAX GET 불필요). 삭제 버튼은
 소유권과 무관하게 로그인한 모든 사용자에게 노출하고 실제 권한은 서버가 강제한다(근거는
-[04장 4.8절](04-architecture-and-layers.md#48-댓글comment-계층--구현-완료-2026-09-10) 참고).
+[04장 4.8절](04-architecture-and-layers.md#48-댓글comment-계층---구현-완료-2026-09-10) 참고).
 
 **`templates/user/signup.html`** (신규)은 `post-save.html`과 동일한 구조(header/footer fragment,
 Bootstrap 폼)로 이름/이메일/비밀번호 입력과 `id="btn-signup"` 버튼을 담는다. `index.html`의
