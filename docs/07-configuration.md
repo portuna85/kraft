@@ -387,7 +387,9 @@ java -jar build\libs\kraft-0.0.1-SNAPSHOT.jar --spring.profiles.active=local
 | 화면 라우팅/렌더링 | `@WebMvcTest` + 뷰 검증 | `spring-boot-starter-thymeleaf-test` | `IndexControllerTest` |
 | 리포지토리 | `@DataJpaTest` | `spring-boot-starter-data-jpa-test` (신규 추가) | `PostRepositoryTest`, `UserRepositoryTest` |
 
-`./gradlew test` 실행 결과 **44개 테스트 전부 통과**를 확인했다. 상세 구성, 구현 중 실제로
+`./gradlew test` 실행 결과 **44개 테스트 전부 통과**를 확인했다(이후 댓글/사진 업로드/비밀번호
+변경 기능이 추가되며 81개로 늘었다 — 최신 총계는 [09장](09-implementation-summary.md) 참고).
+상세 구성, 구현 중 실제로
 부딪힌 문제(Boot 4의 테스트 애노테이션 패키지 이동, `@MockBean`→`@MockitoBean`,
 `@DataJpaTest`가 `JpaConfig`를 자동 포함하지 않는 점, MockMvc의 예외 전파 방식 등)는
 [08장 8.10절](08-issues-and-todo.md#810-추가-구현-p2-15-계층별-테스트-코드-2026-09-09) 참고.
@@ -399,7 +401,7 @@ java -jar build\libs\kraft-0.0.1-SNAPSHOT.jar --spring.profiles.active=local
 
 | 파일 | 역할 |
 | --- | --- |
-| `application.yml` | 공통 설정(`spring.application.name`, `spring.profiles.default: local`, `spring.jpa.open-in-view: false`, `spring.session.store-type`) |
+| `application.yml` | 공통 설정(`spring.application.name`, `spring.profiles.default: local`, `spring.jpa.open-in-view: false`, `spring.session.store-type`, **`app.upload.dir`**(2026-09-10 추가, 게시글 사진 업로드 저장 경로, P3-5)) |
 | `application-local.yml` | 로컬 개발 기본값(H2, `ddl-auto: create-drop`, H2 콘솔 활성화 등) — 무프로파일 시 자동 적용 |
 | `application-prod.yml` | 운영 값(환경변수 기반 DataSource, `ddl-auto: validate`, H2 콘솔 비활성화 등) — `--spring.profiles.active=prod`로 명시 필요 |
 

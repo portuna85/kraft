@@ -14,10 +14,39 @@ var main = {
         });
     },
     save : function () {
+        var _this = this;
+        var file = $('#picture').length ? $('#picture')[0].files[0] : null;
+
+        if (file) {
+            _this.uploadImage(file, function (url) {
+                _this.doSave(url);
+            });
+        } else {
+            _this.doSave(null);
+        }
+    },
+    uploadImage : function (file, callback) {
+        var formData = new FormData();
+        formData.append('file', file);
+
+        $.ajax({
+            type: 'POST',
+            url: '/api/v1/posts/images',
+            data: formData,
+            processData: false,
+            contentType: false,
+            dataType: 'json'
+        }).done(function (response) {
+            callback(response.url);
+        }).fail(function (error) {
+            alert(JSON.stringify(error));
+        });
+    },
+    doSave : function (pictureUrl) {
         var data = {
             title: $('#title').val(),
             content: $('#content').val(),
-            picture: null
+            picture: pictureUrl
         };
 
         $.ajax({
@@ -149,6 +178,32 @@ var signup = {
     }
 };
 
+var changePassword = {
+    init : function () {
+        $('#btn-change-password').on('click', function () {
+            changePassword.save();
+        });
+    },
+    save : function () {
+        var data = {
+            currentPassword: $('#currentPassword').val(),
+            newPassword: $('#newPassword').val()
+        };
+
+        $.ajax({
+            type: 'PUT',
+            url: '/api/v1/users/me/password',
+            contentType:'application/json; charset=utf-8',
+            data: JSON.stringify(data)
+        }).done(function() {
+            alert('비밀번호가 변경되었습니다. 다시 로그인해 주세요.');
+            window.location.href = '/logout';
+        }).fail(function (error) {
+            alert(JSON.stringify(error));
+        });
+    }
+};
+
 $(function () {
     var csrfToken = $('meta[name="_csrf"]').attr('content');
     var csrfHeader = $('meta[name="_csrf_header"]').attr('content');
@@ -162,4 +217,5 @@ $(function () {
     main.init();
     comment.init();
     signup.init();
+    changePassword.init();
 });

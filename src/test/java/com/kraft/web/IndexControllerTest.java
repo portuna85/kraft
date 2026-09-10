@@ -123,4 +123,12 @@ class IndexControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("user/signup"));
     }
+
+    @Test
+    @DisplayName("GET /users/me/password 는 비밀번호 변경 화면을 보여준다")
+    void 비밀번호변경화면이_렌더링된다() throws Exception {
+        mockMvc.perform(get("/users/me/password"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("user/change-password"));
+    }
 }

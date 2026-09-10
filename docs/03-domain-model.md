@@ -195,8 +195,10 @@ public class Post extends BaseEntity {
 
    **`String`이 맞습니다.** 타입은 그대로 유지했고, `PostSaveRequestDto.picture`도 nullable로
    구현해 실제 파일 업로드 없이도 등록이 가능하도록 했다. ✅ **2026-09-09 추가**: 컬럼 길이도
-   `@Column(length = 500)`으로 명시했다(기본 255 → 500, P2-9 해결). 실제 업로드/저장소 연동은
-   P3 범위 그대로.
+   `@Column(length = 500)`으로 명시했다(기본 255 → 500, P2-9 해결). ✅ **2026-09-10 추가**:
+   실제 업로드/저장소 연동도 구현했다 — `PostImageService`가 로컬 디스크에 저장하고 `/images/**`로
+   서빙하는 URL을 `picture`에 담는다. 상세는
+   [08장 8.14절](08-issues-and-todo.md#814-추가-구현-p3-5-게시글-사진-업로드--p3-9-비밀번호-변경-화면-2026-09-10) 참고.
 
 5. ✅ **해결** — **비즈니스 메서드 부재**
    `update(String title, String content)`를 추가했다. `picture`는 수정 대상에서 제외했다

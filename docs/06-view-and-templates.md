@@ -326,6 +326,42 @@ Bootstrap 폼)로 이름/이메일/비밀번호 입력과 `id="btn-signup"` 버�
 렌더링됨을 확인. 비로그인으로 같은 페이지 접근 시 댓글 작성 폼(`#comment-content`)과 삭제 버튼이
 전혀 렌더링되지 않고 "로그인 후 댓글을 작성할 수 있습니다." 링크만 보임을 확인했다.
 
+### 6.4.4 사진 업로드 + 비밀번호 변경 화면 — ✅ 신규 구현 (2026-09-10, P3)
+
+**`post-save.html`**에 파일 입력을 추가했다:
+
+```html
+<div class="form-group">
+    <label for="picture"> 사진 </label>
+    <input type="file" class="form-control-file" id="picture" accept="image/*">
+</div>
+```
+
+`index.js`의 `main.save()`는 파일이 선택되어 있으면 먼저 `POST /api/v1/posts/images`로
+업로드해 URL을 받고, 그 URL을 포함해 게시글을 등록하는 2단계 흐름으로 바뀌었다(`uploadImage()`
+→ `doSave()`). 업로드는 `FormData`로 보내야 하므로 이 요청만 `processData: false,
+contentType: false`를 지정한다(전역 CSRF 헤더 주입은 콘텐츠 타입과 무관하게 그대로 적용된다).
+
+**`post-update.html`**은 `post.picture`가 있으면 읽기전용 `<img>`로 보여준다(수정 화면에서
+사진 교체는 이번 범위에서 제외 — 등록 시 첨부만 지원):
+
+```html
+<div class="form-group" th:if="${post.picture}">
+    <label>사진</label><br>
+    <img th:src="${post.picture}" style="max-width:100%;" alt="게시글 사진">
+</div>
+```
+
+**`templates/user/change-password.html`**(신규)은 `post-save.html`과 동일한 구조로 현재
+비밀번호/새 비밀번호 입력과 `id="btn-change-password"` 버튼을 담는다. `index.html`의 로그인
+사용자 영역에 "비밀번호 변경" 링크를 추가했다.
+
+**검증**(curl): 업로드한 이미지가 `/images/{uuid}.png`로 실제 서빙되고(`GET`으로 원본과 동일한
+바이트 크기 확인), 게시글 등록 후 `GET /posts/update/{id}` 응답에 `<img src="/images/...">`가
+정확히 포함됨을 확인했다. 비밀번호 변경 화면에서 성공 후 옛 비밀번호 로그인이 실패하고 새
+비밀번호 로그인이 성공함을 확인했다. 상세는
+[08장 8.14절](08-issues-and-todo.md#814-추가-구현-p3-5-게시글-사진-업로드--p3-9-비밀번호-변경-화면-2026-09-10) 참고.
+
 ## 6.5 정적 리소스
 
 | 경로 | 설명 |
@@ -341,4 +377,4 @@ CSS/이미지 디렉터리는 없으며 Bootstrap 4.3.1과 jQuery 3.3.1을 CDN�
   차단해 CSS/jQuery가 통째로 사라지는 심각한 회귀를 유발하므로, 추측이 아닌 실측값을 사용).
   상세 값과 계산 과정은 [08장 8.9절](08-issues-and-todo.md#89-추가-구현-p2-13-cdn-무결성-속성-2026-09-09) 참고.
 - 오프라인/폐쇄망 배포가 예정되어 있다면 `static/` 하위로 내려받아 번들해야 합니다.
-- `Post.picture` 기능을 구현하면 업로드 파일을 서빙할 경로 설계가 추가로 필요합니다.
+- ✅ **해결(2026-09-10)** — `Post.picture` 업로드 파일은 `/images/**`로 서빙된다(6.4.4절 참고).

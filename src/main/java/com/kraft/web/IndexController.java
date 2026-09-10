@@ -42,4 +42,9 @@ public class IndexController {
     public String signup() {
         return "user/signup";
     }
+
+    @GetMapping("/users/me/password")
+    public String changePassword() {
+        return "user/change-password";
+    }
 }

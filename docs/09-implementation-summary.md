@@ -1,4 +1,4 @@
-# 09. 구현 요약 (P0+P1+P2 완료, P3 일부 완료)
+# 09. 구현 요약 (P0+P1+P2 완료, P3 — 이메일 인증 발송만 남음)
 
 이 문서는 `01~08` 문서에서 지적된 문제들을 실제로 수정한 뒤의 **현재 상태**를 정리한다.
 분석 당시(구현 전) 상태는 각 문서의 서술과 [`08-issues-and-todo.md`](08-issues-and-todo.md)에 남아 있으며,
@@ -20,8 +20,11 @@ P2/P3 각 항목의 계획은 `C:\Users\portu\.claude\plans\lazy-rolling-henness
 - ~~`open-in-view`(P2-7)/`User.posts`(P2-6)/`Post.picture` 길이(P2-9)/`/api/v1/posts/list` 경로(P2-11)~~ → **2026-09-09 추가 구현** (13절) — **P2 표 전 항목 해결**
 - ~~댓글(Comment) 기능~~ → **2026-09-10 추가 구현** (P3-1~3, 14절)
 - ~~회원가입 HTML 화면~~ → **2026-09-10 추가 구현** (P3-7, 14절)
-- 실제 이메일 인증 토큰 발급/메일 발송, 소셜 로그인(OAuth2 client 미도입), 게시글 사진 업로드
-  연동, 비밀번호 변경 HTML 화면 — 여전히 미해결(P3, 새 의존성 필요 또는 이번 범위에서 제외)
+- ~~게시글 사진 업로드~~ → **2026-09-10 추가 구현** (P3-5, 15절)
+- ~~비밀번호 변경 HTML 화면~~ → **2026-09-10 추가 구현** (P3-9, 15절)
+- **소셜 로그인은 사용자가 명시적으로 제외를 결정**(2026-09-10, "OAuth 인증방식은 제거한다") —
+  코드상 애초에 도입된 적이 없어(P0/P1에서 이미 `/login`으로 대체) 실제로 제거할 코드는 없었음
+- 실제 이메일 인증 토큰 발급/메일 발송(`spring-boot-starter-mail` 신규 필요) — 유일하게 남은 P3 항목
 
 ## 2. 변경된 파일
 
@@ -53,6 +56,12 @@ P2/P3 각 항목의 계획은 `C:\Users\portu\.claude\plans\lazy-rolling-henness
 | `src/test/java/com/kraft/service/comment/CommentServiceTest.java` | `CommentService` Mockito 단위 테스트 9개 (2026-09-10 추가 — 14절) |
 | `src/test/java/com/kraft/domain/comment/CommentRepositoryTest.java` | `CommentRepository` `@DataJpaTest` 3개 (2026-09-10 추가 — 14절) |
 | `src/test/java/com/kraft/web/api/CommentApiControllerTest.java` | `CommentApiController` `@WebMvcTest` 7개 (2026-09-10 추가 — 14절) |
+| `src/main/java/com/kraft/service/post/PostImageService.java` | 게시글 사진 로컬 저장 + URL 생성 (2026-09-10 추가 — 15절) |
+| `src/main/java/com/kraft/config/WebConfig.java` | `/images/**` → 업로드 디렉터리 정적 리소스 매핑 (2026-09-10 추가 — 15절) |
+| `src/main/java/com/kraft/web/dto/post/ImageUploadResponseDto.java` | 사진 업로드 응답 (record, 2026-09-10 추가 — 15절) |
+| `src/main/java/com/kraft/web/dto/user/ChangePasswordRequestDto.java` | 비밀번호 변경 요청 (record, 2026-09-10 추가 — 15절) |
+| `src/main/resources/templates/user/change-password.html` | 비밀번호 변경 화면 (2026-09-10 추가 — 15절) |
+| `src/test/java/com/kraft/service/post/PostImageServiceTest.java` | `PostImageService` 단위 테스트 5개(`@TempDir` 사용) (2026-09-10 추가 — 15절) |
 
 ### 수정된 파일
 
@@ -65,18 +74,17 @@ P2/P3 각 항목의 계획은 `C:\Users\portu\.claude\plans\lazy-rolling-henness
 | `domain/post/PostRepository.java` | `findAllDesc()`를 `JOIN FETCH p.user`로 변경(N+1 방지). **2026-09-09**: `List<Post>` → `Page<Post> findAllDesc(Pageable)`(P2-10, 7절) |
 | `web/dto/post/*.java` (4종) | **record로 구현** — 3절 참고 |
 | `service/post/PostService.java` | `save/update/delete/findById/findAllDesc` 5개 메서드 전체 구현. **2026-09-09**: `update`/`delete`에 `validateOwner()` 권한 검증 추가(P2-4, 6절), `findAllDesc`가 `Pageable`을 받아 `PostsPageResponseDto` 반환하도록 변경(P2-10, 7절). **2026-09-10**: `validateOwner()`가 `OwnershipPolicy`에 1줄 위임하도록 축소(14절) |
-| `service/user/UserService.java` | `signUp/changePassword/promoteToUser` 구현 |
-| `web/api/PostApiController.java` | 클래스명 `PostsApiController` → `PostApiController`(파일명 일치), `@Valid`, `Authentication` 기반 작성자 결정. **2026-09-09**: `update`/`delete`가 `Authentication` 전달(P2-4), `findAll`이 `Pageable` 파라미터 지원(P2-10), `GET /api/v1/posts/list` → `GET /api/v1/posts` 경로 변경(P2-11, 13절) |
-| `web/api/UserApiController.java` | `POST /api/v1/users` 회원가입 엔드포인트 |
-| `web/IndexController.java` | `/`, `/posts/save`, `/posts/update/{id}` 라우팅. **2026-09-09**: `/`가 `Pageable`을 받아 페이지네이션 지원(P2-10). **2026-09-10**: `CommentService` 주입, `comments` 모델 추가, `GET /signup` 라우팅 추가(14절) |
-| `application.yml` | DataSource, `ddl-auto`, 세션 스키마 초기화, H2 콘솔, Thymeleaf 캐시 보강. `dialect` 하드코딩 제거. **2026-09-09**: 공통 설정만 남기고 `local`/`prod`로 분리(P2-14, 9절) — 아래 신규 파일 참고. `open-in-view: false` 추가(P2-7, 13절) |
+| `service/user/UserService.java` | `signUp/changePassword/promoteToUser` 구현. **2026-09-10**: `changePassword` 시그니처를 `(userId, rawPassword)`에서 `(email, currentPassword, newPassword)`로 변경, `passwordEncoder.matches()`로 현재 비밀번호 검증 추가(P3-9, 15절) |
+| `web/api/PostApiController.java` | 클래스명 `PostsApiController` → `PostApiController`(파일명 일치), `@Valid`, `Authentication` 기반 작성자 결정. **2026-09-09**: `update`/`delete`가 `Authentication` 전달(P2-4), `findAll`이 `Pageable` 파라미터 지원(P2-10), `GET /api/v1/posts/list` → `GET /api/v1/posts` 경로 변경(P2-11, 13절). **2026-09-10**: `POST /api/v1/posts/images` 사진 업로드 엔드포인트 추가(P3-5, 15절) |
+| `web/api/UserApiController.java` | `POST /api/v1/users` 회원가입 엔드포인트. **2026-09-10**: `PUT /api/v1/users/me/password` 비밀번호 변경 엔드포인트 추가(P3-9, 15절) |
+| `web/IndexController.java` | `/`, `/posts/save`, `/posts/update/{id}` 라우팅. **2026-09-09**: `/`가 `Pageable`을 받아 페이지네이션 지원(P2-10). **2026-09-10**: `CommentService` 주입, `comments` 모델 추가, `GET /signup` 라우팅 추가(14절), `GET /users/me/password` 라우팅 추가(15절) |
+| `application.yml` | DataSource, `ddl-auto`, 세션 스키마 초기화, H2 콘솔, Thymeleaf 캐시 보강. `dialect` 하드코딩 제거. **2026-09-09**: 공통 설정만 남기고 `local`/`prod`로 분리(P2-14, 9절) — 아래 신규 파일 참고. `open-in-view: false` 추가(P2-7, 13절). **2026-09-10**: `app.upload.dir` 추가(P3-5, 15절) |
 | `templates/layout/header.html`, `footer.html` | Thymeleaf `th:fragment`로 재구성, CSRF 메타태그 추가. **2026-09-09**: CDN 리소스 3종에 `integrity`/`crossorigin` 추가(P2-13, 10절) |
-| `templates/index.html` | Mustache → Thymeleaf(`th:each`, `sec:authorize`, `sec:authentication`), OAuth2 링크 → `/login`. **2026-09-09**: Bootstrap 페이지네이션 UI 추가(P2-10, 7절). **2026-09-10**: 회원가입 링크 추가(14절) |
-| `templates/post/post-save.html` | Mustache → Thymeleaf, 작성자란을 `sec:authentication="name"` 읽기전용으로 표시 |
-| `templates/post/post-update.html` | Mustache → Thymeleaf, **`label for` 오류 수정**(각 label이 대응 input을 정확히 가리키도록). **2026-09-10**: `xmlns:sec` 추가 + 댓글 목록/작성 폼 추가(14절) |
-| `static/js/app/index.js` | CSRF 헤더 자동 주입, `author` 필드 제거. **2026-09-10**: `comment`(save/remove), `signup`(save) 객체 추가(14절) |
+| `templates/index.html` | Mustache → Thymeleaf(`th:each`, `sec:authorize`, `sec:authentication`), OAuth2 링크 → `/login`. **2026-09-09**: Bootstrap 페이지네이션 UI 추가(P2-10, 7절). **2026-09-10**: 회원가입 링크(14절), 비밀번호 변경 링크(15절) 추가 |
+| `templates/post/post-save.html` | Mustache → Thymeleaf, 작성자란을 `sec:authentication="name"` 읽기전용으로 표시. **2026-09-10**: 사진 파일 입력 추가(P3-5, 15절) |
+| `templates/post/post-update.html` | Mustache → Thymeleaf, **`label for` 오류 수정**(각 label이 대응 input을 정확히 가리키도록). **2026-09-10**: `xmlns:sec` 추가 + 댓글 목록/작성 폼 추가(14절), 사진 `<img>` 표시 추가(15절) |
+| `static/js/app/index.js` | 전역 CSRF 헤더 자동 주입(`ajaxSend`), `save()`에서 `author` 필드 제거. **2026-09-10**: `comment`(save/remove), `signup`(save) 객체 추가(14절), 사진 업로드 2단계 흐름(`uploadImage`→`doSave`), `changePassword`(save) 객체 추가(15절) |
 | `domain/comment/Comment.java` | 전면 재작성 — `@GeneratedValue`, `BaseEntity` 상속, `Post`/`User` 연관관계, 테이블명 `comments`로 통일 (2026-09-10 — 14절) |
-| `static/js/app/index.js` | 전역 CSRF 헤더 주입(`ajaxSend`), `save()`에서 `author` 필드 제거 |
 
 ## 3. DTO를 record로 전환한 결정
 
@@ -379,8 +387,49 @@ CSS/JS 두 값은 공식 문서 게시값과 실측치가 일치했지만, jQuer
 
 ### 남은 P3 항목 (이번 범위에서 명시적으로 제외)
 
-- 실제 이메일 인증 토큰 발급/메일 발송(`spring-boot-starter-mail` 필요)
-- 소셜 로그인(`spring-boot-starter-oauth2-client` 필요)
-- 게시글 사진 업로드 실제 연동(`Post.picture`는 경로/URL 저장만 지원, 파일 업로드 미구현)
-- 비밀번호 변경 HTML 화면(API는 `UserService.changePassword()`로 존재)
-- 댓글 페이징/대댓글, 댓글 인라인 수정 UI
+- 실제 이메일 인증 토큰 발급/메일 발송(`spring-boot-starter-mail` 필요) — **유일하게 남은 P3**
+- ~~소셜 로그인~~ → 사용자가 명시적으로 제외 결정(2026-09-10)
+- ~~게시글 사진 업로드 실제 연동~~ → **2026-09-10 추가 구현** (P3-5, 15절)
+- ~~비밀번호 변경 HTML 화면~~ → **2026-09-10 추가 구현** (P3-9, 15절)
+- 댓글 페이징/대댓글, 댓글 인라인 수정 UI (범위 밖으로 유지)
+
+## 15. [추가 구현] 게시글 사진 업로드 + 비밀번호 변경 화면 (2026-09-10, P3-5·P3-9)
+
+사용자가 남은 P3 중 이 두 항목만 선택했고, 소셜 로그인은 "OAuth 인증방식은 제거한다"고 명시적으로
+제외를 결정했다(코드상 애초에 도입된 적이 없어 실제로 제거할 것은 없었음). 실제 이메일 인증
+발송은 이번에도 선택되지 않아 유일하게 남은 P3 항목이 되었다.
+
+**게시글 사진 업로드**: 새 의존성 없이 `spring-boot-starter-webmvc`의 Multipart 지원만으로
+구현했다. `PostImageService`가 확장자 화이트리스트(jpg/jpeg/png/gif/webp)·5MB 크기 제한을
+검증해 `app.upload.dir`(기본 `uploads/images`)에 UUID 파일명으로 저장하고, `WebConfig`가
+`/images/**`(기존에 이미 `SecurityConfig`에 permitAll로 있던 경로를 재사용 — **보안 설정
+변경 없음**)로 서빙한다. `POST /api/v1/posts/images`(인증 필요, 역시 `SecurityConfig` 변경
+없이 기존 `/api/v1/**` authenticated 규칙에 자동으로 걸림)가 업로드를 받아 URL을 반환하면,
+`index.js`가 그 URL을 `PostSaveRequestDto.picture`에 담아 게시글을 등록하는 2단계 흐름으로
+구현했다.
+
+**비밀번호 변경**: `UserService.changePassword()`의 시그니처를 바꿔 **현재 비밀번호 검증을
+실제로 추가**했다(기존에는 `userId`+새 비밀번호만 받아 누구든 검증 없이 바꿀 수 있는 상태였으나
+호출하는 곳이 없어 실제 위험은 없었다 — 화면을 붙이는 이번 시점에 `User.java` 클래스 주석이
+원래 의도했던 안전장치를 구현). `PUT /api/v1/users/me/password`도 `SecurityConfig`의
+`/api/v1/users`(정확히 일치하는 경로만 매치, 와일드카드 없음) permitAll 규칙에는 걸리지 않고
+`/api/v1/**` authenticated로 자동 커버됨을 사전에 확인한 뒤 진행했다 — **이번에도
+`SecurityConfig.java`는 한 줄도 수정하지 않았다.**
+
+**검증(curl E2E)**: 이미지 업로드(CSRF 없음 403, 미인증 302, 정상 업로드 200+URL, 반환 URL
+직접 접근 시 원본과 동일한 바이트 크기, 허용 안 된 확장자 400) → 업로드 URL로 게시글 등록 →
+단건 조회 응답과 수정 화면(`<img>` 태그)에 정확히 반영 확인. 비밀번호 변경(화면 렌더링, 미인증
+302, 현재 비밀번호 오입력 400, 정상 변경 204) → **옛 비밀번호 로그인 실패, 새 비밀번호 로그인
+성공**까지 실제로 재로그인해 검증했다(상태 코드만이 아니라 실제 동작 확인).
+
+Windows 환경 특이사항: `curl.exe`(mingw32 네이티브 빌드)가 Git Bash의 MSYS 경로(`/tmp/...`)를
+`-F` 멀티파트 옵션 안에서는 자동 변환하지 못해 최초 시도가 실패했다(`HTTP 000`) — `cygpath -w`로
+Windows 경로로 바꿔 재시도해 해결했다. 애플리케이션 자체의 문제는 아니었다.
+
+`./gradlew clean test` → 기존 65개 + 신규 16개(`PostImageServiceTest` 5, `UserServiceTest`
++2, `PostApiControllerTest` +4, `UserApiControllerTest` +4, `IndexControllerTest` +1) =
+**81개 테스트 전부 통과**.
+
+상세는 [03장](03-domain-model.md), [05장 5.3.7~5.3.8절](05-api-spec.md),
+[06장 6.4.4절](06-view-and-templates.md#644-사진-업로드--비밀번호-변경-화면--신규-구현-2026-09-10-p3),
+[08장 8.14절](08-issues-and-todo.md#814-추가-구현-p3-5-게시글-사진-업로드--p3-9-비밀번호-변경-화면-2026-09-10) 참고.

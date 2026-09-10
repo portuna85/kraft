@@ -20,11 +20,17 @@
 | GET | `/api/v1/posts/{postId}/comments` | 댓글 목록 조회 | `CommentApiController.findByPostId` | ✅ 구현·검증 완료(공개). **2026-09-10 신규(P3)** |
 | PUT | `/api/v1/comments/{id}` | 댓글 수정 | `CommentApiController.update` | ✅ 구현·검증 완료(인증+소유자). **2026-09-10 신규(P3)**, UI 미노출(API만) |
 | DELETE | `/api/v1/comments/{id}` | 댓글 삭제 | `CommentApiController.delete` | ✅ 구현·검증 완료(인증+소유자). **2026-09-10 신규(P3)** |
+| POST | `/api/v1/posts/images` | 게시글 사진 업로드(multipart) | `PostApiController.uploadImage` | ✅ 구현·검증 완료(인증 필요). **2026-09-10 신규(P3)** |
+| PUT | `/api/v1/users/me/password` | 비밀번호 변경 | `UserApiController.changePassword` | ✅ 구현·검증 완료(인증 필요, 현재 비밀번호 확인). **2026-09-10 신규(P3)** |
 
-`UserApiController`에는 회원가입 엔드포인트 1개가 있다(로그인은 Spring Security의 `formLogin`이
-`POST /login`으로 처리하므로 별도 API를 만들지 않았다). 댓글 API는 `SecurityConfig`를 **전혀
-수정하지 않고도** 기존 매처(`GET /api/v1/posts/**` permitAll, `/api/v1/**` authenticated)에
-자동으로 커버된다 — 상세 근거는 [04장 4.8절](04-architecture-and-layers.md#48-댓글comment-계층--구현-완료-2026-09-10) 참고.
+`UserApiController`에는 회원가입 + 비밀번호 변경 엔드포인트가 있다(로그인은 Spring Security의
+`formLogin`이 `POST /login`으로 처리하므로 별도 API를 만들지 않았다). 댓글 API와 사진 업로드
+API는 `SecurityConfig`를 **전혀 수정하지 않고도** 기존 매처(`GET /api/v1/posts/**` permitAll,
+`/api/v1/**` authenticated)에 자동으로 커버된다. `/api/v1/users/me/password`도 마찬가지로
+`/api/v1/users`(와일드카드 없는 정확한 경로 매치) permitAll 규칙에는 걸리지 않고
+`/api/v1/**` authenticated로 떨어진다 — 상세 근거는
+[04장 4.8절](04-architecture-and-layers.md#48-댓글comment-계층--구현-완료-2026-09-10),
+[08장 8.14절](08-issues-and-todo.md#814-추가-구현-p3-5-게시글-사진-업로드--p3-9-비밀번호-변경-화면-2026-09-10) 참고.
 
 ## 5.2 [해결됨] 클래스명 / 파일명 불일치
 
@@ -219,6 +225,47 @@ DELETE /api/v1/comments/{id}             댓글 삭제 (작성자 본인/관리�
 관리자만 수정·삭제할 수 있습니다. id=1", ...}`, 댓글이 그대로 남아있음을 재확인 → `userA` 본인이
 삭제 시 `200`, 목록에서 사라짐 → `GET /posts/update/{postId}` 화면에 댓글이 정확히 반영됨(삭제된
 댓글 미노출)까지 전부 확인했다. 상세는 [09장](09-implementation-summary.md) 참고.
+
+### 5.3.7 게시글 사진 업로드 — ✅ 구현·검증 완료 (2026-09-10 신규, P3)
+
+```
+POST /api/v1/posts/images
+Content-Type: multipart/form-data; boundary=...
+(필드명 "file")
+```
+
+허용 확장자: jpg/jpeg/png/gif/webp, 최대 5MB. **실제 응답**(`ImageUploadResponseDto` record):
+
+```json
+{ "url": "/images/cf59db8f-659f-446e-bc2b-13b4071f6a5a.png" }
+```
+
+이 `url`을 `PostSaveRequestDto.picture`에 그대로 넣어 게시글을 등록한다(2단계 흐름 —
+[06장](06-view-and-templates.md) 참고).
+
+**검증(curl E2E)**: CSRF 없이 업로드 → `403` / CSRF만 있고 미인증 → `302` / 로그인 후 정상
+PNG 업로드 → `200`+URL, 반환된 URL을 직접 GET하면 `200`과 원본 파일 크기 그대로 확인 /
+`.txt` 확장자 업로드 → `400` `{"detail":"허용되지 않는 파일 형식입니다: txt", ...}` / 업로드
+URL로 게시글 등록 후 단건 조회 응답에 `picture` 필드 정상 반영 / `GET /posts/update/{id}`에
+`<img>` 태그로 정확히 렌더링됨을 확인했다.
+
+### 5.3.8 비밀번호 변경 — ✅ 구현·검증 완료 (2026-09-10 신규, P3)
+
+```
+PUT /api/v1/users/me/password
+Content-Type: application/json; charset=utf-8
+
+{ "currentPassword": "old12345", "newPassword": "new12345" }
+```
+
+**응답**: 성공 시 `204 No Content`(본문 없음 — 이 프로젝트의 다른 API가 대부분 `Long` ID를
+반환하는 것과 다른 규약이다. 반환할 자연스러운 ID가 없는 요청이라 REST 관례에 맞춰 의도적으로
+다르게 설계했다).
+
+**검증(curl E2E)**: 미인증+CSRF만 → `302`(로그인 페이지) / 현재 비밀번호 틀림 → `400`
+`{"detail":"현재 비밀번호가 일치하지 않습니다.", ...}` / 올바른 현재 비밀번호로 변경 → `204` →
+**옛 비밀번호로 로그인 시도 시 실제로 실패**(`/login?error`)하고 **새 비밀번호로는 로그인
+성공**함을 확인해, 응답 코드만이 아니라 비밀번호가 실제로 바뀌었는지까지 검증했다.
 
 ## 5.4 예외 응답 — ✅ 해결됨 (2026-09-09, `ApiExceptionHandler`)
 

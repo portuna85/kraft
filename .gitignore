@@ -5,6 +5,9 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
+### 런타임 업로드 파일 (app.upload.dir, 로컬 실행 시 생성됨) ###
+/uploads/
+
 ### STS ###
 .apt_generated
 .classpath

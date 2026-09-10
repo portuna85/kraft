@@ -7,7 +7,9 @@
 > `User.posts`/`Post.picture` 길이/`/api/v1/posts/list` 경로 정리(P2-7, P2-6, P2-9, P2-11,
 > 8.12절)를 추가로 구현·검증했다. 이 시점부터 **P2 표의 모든 항목이 해결됨**. **2026-09-10**:
 > 사용자가 선택한 P3 항목 — 댓글(Comment) 기능 전체 스택(P3-1~3)과 회원가입 HTML 화면(P3-7) —
-> 도 구현·검증했다(8.13절). 나머지 P3(이메일 인증 발송, 소셜 로그인, 사진 업로드)는 여전히 미해결.
+> 도 구현·검증했다(8.13절). 같은 날 게시글 사진 업로드(P3-5)와 비밀번호 변경 화면(P3-9)도
+> 추가로 구현했고(8.14절), 소셜 로그인은 사용자가 명시적으로 제외를 결정했다(P3-8). 나머지
+> P3(실제 이메일 인증 발송)는 여전히 미해결.
 > 8.1~8.2절은 원래 발견 당시 기록을 유지하고 해결 여부를 표시했다. 8.3절의 작업 순서는
 > 실제로 그대로 수행되었다. 나머지 P2/P3는 여전히 미해결이며 이후 별도 작업이다.
 > 전체 검증 결과는 [09. 구현 요약](09-implementation-summary.md) 참고.
@@ -94,7 +96,7 @@
 | P2-14 | 프로파일 미분리 | `local`/`prod` 분리 | ✅ 해결(2026-09-09 추가 구현) — `application.yml`(공통)+`application-local.yml`+`application-prod.yml`. 상세는 8.8절 |
 | P2-15 | 기능 테스트 부재 | 계층별 슬라이스 테스트 추가 | ✅ 해결(2026-09-09 추가 구현) — 44개 테스트(서비스/리포지토리/웹). 상세는 8.10절 |
 
-### P3 — 2단계 기능 — 사용자 선택 항목(댓글, 회원가입 화면) 완료, 나머지 미해결
+### P3 — 2단계 기능 — 실제 이메일 인증 발송만 남고 나머지 전부 해결(소셜 로그인은 제외 결정)
 
 | ID | 항목 | 상태 |
 | --- | --- | --- |
@@ -102,10 +104,11 @@
 | P3-2 | `CommentRepository`, `CommentService`, `CommentApiController` | ✅ 해결(2026-09-10 추가 구현). 상세는 8.13절 |
 | P3-3 | 댓글 화면 및 AJAX | ✅ 해결(2026-09-10 추가 구현, 수정 UI는 의도적으로 제외 — 8.13절 참고) |
 | P3-4 | 이메일 인증 플로우 (`GUEST` → `USER` 승격) | 부분 해결 — `UserService.promoteToUser()` 메서드는 존재하나 실제 토큰 발급/메일 발송/컨트롤러 노출은 없음(여전히 미해결) |
-| P3-5 | 게시글 사진 업로드 (`Post.picture` 실제 활용) | ❌ 미해결 — 필드는 nullable로 정상 동작, 실제 업로드 연동 없음 |
+| P3-5 | 게시글 사진 업로드 (`Post.picture` 실제 활용) | ✅ 해결(2026-09-10 추가 구현) — 로컬 디스크 저장 + `/images/**` 서빙. 상세는 8.14절 |
 | P3-6 | `web/dto/user` 패키지 DTO 작성 (현재 디렉터리만 존재) | ✅ 해결 — `SignUpRequestDto`(record) 추가 |
 | P3-7 | 회원가입 HTML 화면 | ✅ 해결(2026-09-10 추가 구현) — `templates/user/signup.html`. 상세는 8.13절 |
-| P3-8 | 소셜 로그인(OAuth2) | ❌ 미해결 — `spring-boot-starter-oauth2-client` 신규 의존성 필요(이번 범위에서 사용자가 제외) |
+| P3-8 | 소셜 로그인(OAuth2) | ❌ **사용자가 명시적으로 제외 결정(2026-09-10)** — "OAuth 인증방식은 제거한다." 코드상으로도 애초에 도입된 적이 없어(P0/P1에서 이미 `/login`으로 대체) 실제로 제거할 코드는 없었다. 향후 재검토 시에도 이 결정을 기본값으로 삼는다. |
+| P3-9 | 비밀번호 변경 HTML 화면 | ✅ 해결(2026-09-10 추가 구현) — `UserService.changePassword()`가 현재 비밀번호 검증 로직을 갖추도록 함께 보강됨. 상세는 8.14절 |
 
 ## 8.3 권장 작업 순서 — ✅ 아래 그대로 수행 완료 (P1-12는 2026-09-09 추가 구현으로 완료)
 
@@ -596,3 +599,77 @@ catch-all에 잡혀 **500**이 되는 것을 curl로 직접 확인했다. 클라
     (`btn-comment-delete`), 작성 폼(`id="comment-content"`)이 모두 정확히 렌더링됨
 13. 비로그인으로 같은 화면 접근 시 댓글 폼·삭제 버튼이 전혀 없고 "로그인 후 댓글을 작성할 수
     있습니다." 링크만 노출됨 + `index.html`에 `/signup` 링크 렌더링 확인
+
+## 8.14 [추가 구현] P3-5 게시글 사진 업로드 + P3-9 비밀번호 변경 화면 (2026-09-10)
+
+**범위 재확정**: 사용자가 남은 P3 중 "게시글 사진 업로드"와 "비밀번호 변경 화면"만 진행하도록
+선택했고, 소셜 로그인(OAuth2)은 "OAuth 인증방식은 제거한다"고 명시적으로 제외를 결정했다(코드상
+애초에 도입된 적이 없어 실제로 제거할 것은 없었음 — P0/P1 단계에서 이미 `/login`으로 대체됨).
+실제 이메일 인증 발송은 이번에도 선택되지 않아 여전히 미해결(P3-4)로 남는다.
+
+### 게시글 사진 업로드 (P3-5)
+
+새 의존성 없이 `spring-boot-starter-webmvc`에 이미 포함된 Multipart 지원만으로 구현했다.
+
+- **`PostImageService`**(신규): 확장자 화이트리스트(jpg/jpeg/png/gif/webp), 5MB 크기 제한을
+  검증한 뒤 `app.upload.dir`(기본값 `uploads/images`, `application.yml` 공통 설정) 아래에
+  UUID 파일명으로 저장하고 `/images/{filename}` 공개 URL을 반환한다.
+- **`WebConfig`**(신규, `WebMvcConfigurer`): `/images/**` 요청을 업로드 디렉터리로 매핑하는
+  정적 리소스 핸들러. **`SecurityConfig`는 수정하지 않았다** — `/images/**`는 이미
+  permitAll 목록에 있었다(애초에 정적 이미지 서빙을 염두에 두고 넣어뒀던 경로를 그대로 재사용).
+- **`POST /api/v1/posts/images`**(`PostApiController`에 추가, multipart): `/api/v1/**`
+  authenticated 규칙에 자동으로 걸려 로그인이 필요하다(이번에도 SecurityConfig 변경 없음).
+  응답은 `{"url": "/images/..."}`(`ImageUploadResponseDto`).
+- **화면**: `post-save.html`에 파일 입력(`<input type="file">`) 추가. `index.js`의
+  `main.save()`가 파일이 선택되어 있으면 먼저 `/api/v1/posts/images`로 업로드해 URL을 받고,
+  그 URL을 포함해 게시글을 등록하도록 2단계 흐름으로 바꿨다(`uploadImage()` → `doSave()`).
+  `post-update.html`은 `post.picture`가 있으면 `<img>`로 표시만 한다(수정 시 사진 교체는
+  이번 범위에서 제외 — 등록 시 첨부만 지원).
+- **운영 환경 한계를 문서화**: `application.yml`에 "컨테이너 재배포 시 파일이 유실될 수 있으므로
+  영구 볼륨이나 오브젝트 스토리지로 교체를 권장한다"는 주석을 남겼다. 로컬 디스크 저장은 학습·
+  단일 서버 배포 범위에서만 안전하다.
+
+**검증(curl E2E, Windows curl.exe가 MSYS 경로를 `-F` 옵션 안에서 인식하지 못해 `cygpath -w`로
+Windows 경로 변환 후 재시도해 우회함 — 실제 애플리케이션 문제 아님)**:
+- CSRF 없이 업로드 → `403` / CSRF만 있고 미인증 → `302`(로그인 페이지)
+- 로그인 후 PNG 업로드 → `200` + `{"url": "/images/<uuid>.png"}`
+- 반환된 URL을 직접 GET → `200`, 업로드한 파일과 동일한 바이트 크기 확인
+- 허용되지 않는 확장자(`.txt`) 업로드 → `400` `{"detail":"허용되지 않는 파일 형식입니다: txt", ...}`
+- 업로드 URL을 `picture`로 지정해 게시글 등록 → 단건 조회 API 응답에 `picture` 필드 정상 포함
+- `GET /posts/update/{id}` 렌더링 결과에 `<img src="/images/<uuid>.png" ...>` 정확히 포함됨을 확인
+
+### 비밀번호 변경 화면 (P3-9)
+
+- **`UserService.changePassword()` 시그니처를 `(Long userId, String rawPassword)`에서
+  `(String email, String currentPassword, String newPassword)`로 변경**하고, 현재 비밀번호를
+  `passwordEncoder.matches()`로 검증한 뒤에만 변경하도록 보강했다. 기존 시그니처는 현재 비밀번호
+  확인 없이 누구든 자유롭게 바꿀 수 있는 상태였는데(호출하는 곳이 없어 실제 위험은 없었음), 화면을
+  붙이는 시점에 `User.java` 클래스 주석("회원정보 변경은 비밀번호 변경만 가능")이 원래 의도한
+  안전장치를 함께 구현했다.
+- **`ChangePasswordRequestDto`**(신규 record): `currentPassword`, `newPassword`(`@NotBlank`,
+  8자 이상).
+- **`PUT /api/v1/users/me/password`**(`UserApiController`에 추가): `SecurityConfig`의
+  `/api/v1/users` permitAll 규칙은 **정확히 일치하는 경로에만** 적용되어(와일드카드 없음)
+  `/api/v1/users/me/password`는 매치되지 않고 `/api/v1/**` authenticated로 떨어진다 — 이번에도
+  **SecurityConfig 변경 없이** 의도한 인증 요구가 자동으로 적용됨을 사전에 확인하고 진행했다.
+  성공 시 `204 No Content`.
+- **화면**: `templates/user/change-password.html`(신규), `GET /users/me/password`
+  (`IndexController`). 이 경로도 어떤 permitAll 패턴에도 걸리지 않지만 마지막
+  `anyRequest().permitAll()`에 의해 화면 자체는 누구나 열람 가능하다(기존 `/posts/save`,
+  `/signup`과 동일한 패턴 — 쓰기는 API가 인증을 강제).
+  `index.html`의 로그인 사용자 영역에 "비밀번호 변경" 링크를 추가했다.
+
+**검증(curl E2E)**:
+1. `GET /users/me/password` → `200`, `id="btn-change-password"` 포함
+2. 미인증 + CSRF만 → `302`(로그인 페이지)
+3. 로그인 후 틀린 현재 비밀번호로 시도 → `400` `{"detail":"현재 비밀번호가 일치하지 않습니다.", ...}`
+4. 올바른 현재 비밀번호로 변경 → `204`
+5. **옛 비밀번호로 로그인 시도 → 실패**(`/login?error`로 리다이렉트) — 실제로 비밀번호가
+   바뀌었음을 반증
+6. **새 비밀번호로 로그인 → 성공**, `sec:authentication="name"`에 정상 표시
+
+### 종합 검증
+
+`./gradlew clean test` → 기존 65개 + 신규 16개(`PostImageServiceTest` 5, `UserServiceTest`
++2, `PostApiControllerTest` +4, `UserApiControllerTest` +4, `IndexControllerTest` +1) =
+**81개 테스트 전부 통과**.

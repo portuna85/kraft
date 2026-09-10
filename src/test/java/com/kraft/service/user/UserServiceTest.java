@@ -78,15 +78,40 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("changePassword: 대상 회원의 비밀번호를 인코딩된 값으로 변경한다")
+    @DisplayName("changePassword: 현재 비밀번호가 일치하면 새 비밀번호로 변경한다")
     void changePassword_정상_변경() {
-        User user = User.builder().name("a").email("a@example.com").password("old").role(Role.USER).build();
-        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        User user = User.builder().name("a").email("a@example.com").password("oldEncoded").role(Role.USER).build();
+        given(userRepository.findByEmail("a@example.com")).willReturn(Optional.of(user));
+        given(passwordEncoder.matches("oldRaw", "oldEncoded")).willReturn(true);
         given(passwordEncoder.encode("newRawPassword")).willReturn("newEncoded");
 
-        userService.changePassword(1L, "newRawPassword");
+        userService.changePassword("a@example.com", "oldRaw", "newRawPassword");
 
         assertThat(user.getPassword()).isEqualTo("newEncoded");
+    }
+
+    @Test
+    @DisplayName("changePassword: 현재 비밀번호가 틀리면 IllegalArgumentException이고 비밀번호는 변경되지 않는다")
+    void changePassword_현재비밀번호_불일치면_예외() {
+        User user = User.builder().name("a").email("a@example.com").password("oldEncoded").role(Role.USER).build();
+        given(userRepository.findByEmail("a@example.com")).willReturn(Optional.of(user));
+        given(passwordEncoder.matches("wrongRaw", "oldEncoded")).willReturn(false);
+
+        assertThatThrownBy(() -> userService.changePassword("a@example.com", "wrongRaw", "newRawPassword"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("현재 비밀번호가 일치하지 않습니다");
+
+        assertThat(user.getPassword()).isEqualTo("oldEncoded");
+    }
+
+    @Test
+    @DisplayName("changePassword: 존재하지 않는 이메일이면 IllegalArgumentException")
+    void changePassword_존재하지_않는_회원이면_예외() {
+        given(userRepository.findByEmail("nobody@example.com")).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.changePassword("nobody@example.com", "raw", "newRawPassword"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("존재하지 않는 회원");
     }
 
     @Test
@@ -101,11 +126,11 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("존재하지 않는 회원 ID에 대해서는 IllegalArgumentException")
-    void 존재하지_않는_회원이면_예외() {
+    @DisplayName("promoteToUser: 존재하지 않는 회원 ID면 IllegalArgumentException")
+    void promoteToUser_존재하지_않는_회원이면_예외() {
         given(userRepository.findById(999L)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> userService.changePassword(999L, "pw12345678"))
+        assertThatThrownBy(() -> userService.promoteToUser(999L))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("id=999");
     }

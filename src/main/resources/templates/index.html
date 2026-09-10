@@ -10,6 +10,7 @@
             <a href="/posts/save" role="button" class="btn btn-primary">글 등록</a>
             <div sec:authorize="isAuthenticated()" style="display:inline">
                 Logged in as: <span id="user" sec:authentication="name"></span>
+                <a href="/users/me/password" class="btn btn-outline-secondary active" role="button">비밀번호 변경</a>
                 <a href="/logout" class="btn btn-info active" role="button">Logout</a>
             </div>
             <div sec:authorize="isAnonymous()" style="display:inline">

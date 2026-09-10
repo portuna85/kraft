@@ -1,6 +1,7 @@
 package com.kraft.web.api;
 
 import com.kraft.config.security.SecurityConfig;
+import com.kraft.service.post.PostImageService;
 import com.kraft.service.post.PostService;
 import com.kraft.web.dto.post.PostSaveRequestDto;
 import com.kraft.web.dto.post.PostUpdateRequestDto;
@@ -12,6 +13,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -22,11 +24,13 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -50,6 +54,9 @@ class PostApiControllerTest {
 
     @MockitoBean
     private PostService postService;
+
+    @MockitoBean
+    private PostImageService postImageService;
 
     @Test
     @DisplayName("GET /api/v1/posts 는 인증 없이도 호출할 수 있다")
@@ -128,7 +135,7 @@ class PostApiControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("title: 제목은 필수입니다."));
 
-        verify(postService, org.mockito.Mockito.never()).save(any(), any());
+        verify(postService, never()).save(any(), any());
     }
 
     @Test
@@ -156,5 +163,51 @@ class PostApiControllerTest {
                 .andExpect(content().string("1"));
 
         verify(postService).delete(eq(1L), any(Authentication.class));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/posts/images 는 CSRF 토큰이 없으면 403")
+    void 이미지업로드는_CSRF_토큰이_없으면_403() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "photo.png", "image/png", "img".getBytes());
+
+        mockMvc.perform(multipart("/api/v1/posts/images").file(file))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/posts/images 는 CSRF 토큰이 있어도 미인증이면 로그인 페이지로 리다이렉트된다")
+    void 이미지업로드는_미인증이면_로그인으로_리다이렉트된다() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "photo.png", "image/png", "img".getBytes());
+
+        mockMvc.perform(multipart("/api/v1/posts/images").file(file).with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/posts/images 는 인증+CSRF+유효한 파일이면 200과 업로드된 URL을 반환한다")
+    void 이미지업로드는_인증되고_유효하면_URL을_반환한다() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "photo.png", "image/png", "img".getBytes());
+        given(postImageService.store(any())).willReturn("/images/generated-uuid.png");
+
+        mockMvc.perform(multipart("/api/v1/posts/images").file(file)
+                        .with(user("tester@example.com"))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.url").value("/images/generated-uuid.png"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/posts/images 는 허용되지 않는 파일이면 400 ProblemDetail을 반환한다")
+    void 이미지업로드는_허용되지_않는_파일이면_400() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "malware.exe", "application/octet-stream", "x".getBytes());
+        given(postImageService.store(any()))
+                .willThrow(new IllegalArgumentException("허용되지 않는 파일 형식입니다: exe"));
+
+        mockMvc.perform(multipart("/api/v1/posts/images").file(file)
+                        .with(user("tester@example.com"))
+                        .with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("허용되지 않는 파일 형식입니다: exe"));
     }
 }
