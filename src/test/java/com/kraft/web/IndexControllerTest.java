@@ -4,21 +4,24 @@ import com.kraft.config.security.SecurityConfig;
 import com.kraft.service.comment.CommentService;
 import com.kraft.service.post.PostService;
 import com.kraft.service.user.EmailVerificationService;
-import com.kraft.web.dto.post.PostResponseDto;
+import com.kraft.web.dto.post.PostViewDto;
 import com.kraft.web.dto.post.PostsPageResponseDto;
+import com.kraft.web.exception.PostNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -61,7 +64,7 @@ class IndexControllerTest {
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("index"))
-                .andExpect(model().attributeExists("posts", "postsPage"));
+                .andExpect(model().attributeExists("posts", "postsPage", "pageWindow"));
     }
 
     @Test
@@ -97,9 +100,10 @@ class IndexControllerTest {
     @Test
     @DisplayName("GET /posts/update/{id} 는 조회한 게시글과 댓글 목록을 모델에 담아 렌더링한다")
     void 수정화면은_게시글과_댓글을_모델에_담는다() throws Exception {
-        given(postService.findById(1L))
-                .willReturn(new PostResponseDto(1L, "제목", "내용", null, "작성자"));
-        given(commentService.findByPostId(1L)).willReturn(List.of());
+        given(postService.findByIdForView(eq(1L), nullable(Authentication.class)))
+                .willReturn(new PostViewDto(1L, "제목", "내용", null, "작성자", false));
+        given(commentService.findByPostIdForView(eq(1L), nullable(Authentication.class)))
+                .willReturn(List.of());
 
         mockMvc.perform(get("/posts/update/1"))
                 .andExpect(status().isOk())
@@ -108,17 +112,16 @@ class IndexControllerTest {
     }
 
     @Test
-    @DisplayName("[의도된 동작] 존재하지 않는 게시글의 수정 화면은 예외가 그대로 전파된다 — " +
-            "ApiExceptionHandler는 web.api 패키지에만 적용되므로 화면 컨트롤러는 범위 밖. " +
-            "실제 서버(Tomcat)에서는 이 예외가 500으로 응답되지만(bootRun으로 curl 확인 완료), " +
-            "MockMvc는 컨테이너 없이 동작하므로 처리되지 않은 예외를 감싸서 그대로 던진다.")
-    void 존재하지_않는_게시글_수정화면은_예외가_전파된다() {
-        given(postService.findById(999L))
-                .willThrow(new IllegalArgumentException("해당 게시글이 없습니다. id=999"));
+    @DisplayName("[의도된 동작] 존재하지 않는 게시글의 읽기 화면은 404 안내 화면을 렌더링한다 — " +
+            "PostNotFoundException은 ApiExceptionHandler(web.api 패키지 전용)의 범위 밖이지만, " +
+            "ViewExceptionHandler가 화면 컨트롤러 전용으로 404 + error/not-found 뷰로 변환한다.")
+    void 존재하지_않는_게시글_읽기화면은_404를_반환한다() throws Exception {
+        given(postService.findByIdForView(eq(999L), nullable(Authentication.class)))
+                .willThrow(new PostNotFoundException(999L));
 
-        assertThatThrownBy(() -> mockMvc.perform(get("/posts/update/999")))
-                .hasRootCauseInstanceOf(IllegalArgumentException.class)
-                .hasRootCauseMessage("해당 게시글이 없습니다. id=999");
+        mockMvc.perform(get("/posts/update/999"))
+                .andExpect(status().isNotFound())
+                .andExpect(view().name("error/not-found"));
     }
 
     @Test

@@ -11,6 +11,8 @@ import com.kraft.service.support.OwnershipPolicy;
 import com.kraft.web.dto.comment.CommentResponseDto;
 import com.kraft.web.dto.comment.CommentSaveRequestDto;
 import com.kraft.web.dto.comment.CommentUpdateRequestDto;
+import com.kraft.web.dto.comment.CommentViewDto;
+import com.kraft.web.exception.PostNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -30,7 +32,7 @@ public class CommentService {
     @Transactional
     public Long save(Long postId, String email, CommentSaveRequestDto requestDto) {
         Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 없습니다. id=" + postId));
+                .orElseThrow(() -> new PostNotFoundException(postId));
         User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + email));
         return commentRepository.save(requestDto.toEntity(post, user)).getId();
@@ -54,6 +56,17 @@ public class CommentService {
     public List<CommentResponseDto> findByPostId(Long postId) {
         return commentRepository.findAllByPostIdAsc(postId).stream()
                 .map(CommentResponseDto::new)
+                .toList();
+    }
+
+    /**
+     * 상세 화면용 댓글 조회. 댓글마다 관리 권한을 서버에서 계산해 내려준다. 조회 쿼리가 이미
+     * {@code JOIN FETCH c.user}이므로 권한 계산 때문에 댓글당 추가 조회가 발생하지 않는다.
+     */
+    public List<CommentViewDto> findByPostIdForView(Long postId, Authentication authentication) {
+        return commentRepository.findAllByPostIdAsc(postId).stream()
+                .map(comment -> new CommentViewDto(comment,
+                        OwnershipPolicy.canManage(authentication, comment.getUser())))
                 .toList();
     }
 

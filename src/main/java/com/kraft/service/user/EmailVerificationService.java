@@ -85,7 +85,10 @@ public class EmailVerificationService {
 
         if (verificationToken.isExpired()) {
             tokenRepository.delete(verificationToken);
-            throw new IllegalArgumentException("인증 링크가 만료되었습니다. 인증 메일을 다시 요청해 주세요.");
+            // 인증 메일 재발송 API가 없으므로 제공되지 않는 행동("다시 요청해 주세요")을
+            // 안내하지 않는다. 재가입은 이메일 중복 검사에 걸리므로 실제 복구 경로가 없다는
+            // 점을 화면에서 왜곡하지 않는다.
+            throw new IllegalArgumentException("인증 링크가 만료되었습니다.");
         }
 
         userService.promoteToUser(verificationToken.getUser().getId());

@@ -4,9 +4,11 @@ import com.kraft.service.comment.CommentService;
 import com.kraft.service.post.PostService;
 import com.kraft.service.user.EmailVerificationService;
 import com.kraft.web.dto.post.PostsPageResponseDto;
+import com.kraft.web.support.PageWindow;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,33 +28,46 @@ public class IndexController {
         PostsPageResponseDto postsPage = postService.findAllDesc(pageable);
         model.addAttribute("posts", postsPage.content());
         model.addAttribute("postsPage", postsPage);
+        model.addAttribute("pageWindow", PageWindow.of(postsPage.page(), postsPage.totalPages()));
+        model.addAttribute("pageTitle", "전체 게시글");
         return "index";
     }
 
     @GetMapping("/posts/save")
-    public String postsSave() {
+    public String postsSave(Model model) {
+        model.addAttribute("pageTitle", "글쓰기");
         return "post/post-save";
     }
 
+    /**
+     * 게시글 읽기 화면. 편집은 같은 경로에서 상태만 전환한다.
+     * <p>
+     * 관리 버튼 노출 여부는 브라우저가 추정하지 않고 서버가 계산한 값을 그대로 쓴다
+     * (익명 요청이면 {@code authentication}이 null이거나 익명 토큰이며, 두 경우 모두 false).
+     */
     @GetMapping("/posts/update/{id}")
-    public String postsUpdate(@PathVariable Long id, Model model) {
-        model.addAttribute("post", postService.findById(id));
-        model.addAttribute("comments", commentService.findByPostId(id));
+    public String postsUpdate(@PathVariable Long id, Authentication authentication, Model model) {
+        model.addAttribute("post", postService.findByIdForView(id, authentication));
+        model.addAttribute("comments", commentService.findByPostIdForView(id, authentication));
+        model.addAttribute("pageTitle", "게시글 읽기");
         return "post/post-update";
     }
 
     @GetMapping("/signup")
-    public String signup() {
+    public String signup(Model model) {
+        model.addAttribute("pageTitle", "회원가입");
         return "user/signup";
     }
 
     @GetMapping("/login")
-    public String login() {
+    public String login(Model model) {
+        model.addAttribute("pageTitle", "로그인");
         return "user/login";
     }
 
     @GetMapping("/users/me/password")
-    public String changePassword() {
+    public String changePassword(Model model) {
+        model.addAttribute("pageTitle", "비밀번호 변경");
         return "user/change-password";
     }
 
@@ -69,6 +84,7 @@ public class IndexController {
             model.addAttribute("success", false);
             model.addAttribute("message", e.getMessage());
         }
+        model.addAttribute("pageTitle", "이메일 인증");
         return "user/verify-result";
     }
 }

@@ -1,38 +1,66 @@
 <!DOCTYPE HTML>
-<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{layout/header :: header}"></head>
 <body>
 
-<div th:replace="~{layout/navbar :: navbar}"></div>
+<a class="skip-link" href="#main">본문 바로가기</a>
+<div th:replace="~{layout/navbar :: topbar}"></div>
 
-<div class="container py-4">
-    <h1 class="page-title">게시글 등록</h1>
-    <div class="col-md-6">
-        <div class="card-kraft">
-            <form>
+<div class="kraft-shell">
+    <div th:replace="~{layout/navbar :: sitenav}"></div>
+
+    <main id="main" class="kraft-main kraft-main--narrow">
+        <div th:replace="~{layout/footer :: flash}"></div>
+
+        <h1 class="page-title">게시글 등록</h1>
+
+        <div class="card-kraft" sec:authorize="isAuthenticated()">
+            <form id="post-save-form">
                 <div class="form-group">
                     <label for="title">제목</label>
-                    <input type="text" class="form-control" id="title" placeholder="제목을 입력하세요">
+                    <input type="text" class="form-control" id="title" placeholder="제목을 입력하세요" maxlength="255" required>
                 </div>
                 <div class="form-group">
-                    <label for="author"> 작성자 </label>
+                    <label for="author">작성자</label>
                     <input type="text" class="form-control" id="author" sec:authentication="name" readonly>
+                    <small class="form-text text-muted">작성자는 로그인 계정으로 자동 지정됩니다.</small>
                 </div>
                 <div class="form-group">
-                    <label for="content"> 내용 </label>
-                    <textarea class="form-control" id="content" placeholder="내용을 입력하세요"></textarea>
+                    <label for="content">내용</label>
+                    <textarea class="form-control post-edit__textarea" id="content" placeholder="내용을 입력하세요" required></textarea>
                 </div>
                 <div class="form-group">
-                    <label for="picture"> 사진 </label>
-                    <input type="file" class="form-control-file" id="picture" accept="image/*">
+                    <label for="picture">사진</label>
+                    <input type="file" class="form-control-file" id="picture" accept="image/jpeg,image/png,image/gif,image/webp">
+                    <small class="form-text text-muted">JPG, JPEG, PNG, GIF, WEBP · 최대 5MB · 1개</small>
                 </div>
+
+                <!-- 선택한 파일의 이름·크기·로컬 미리보기. 파일이 없으면 JS가 hidden을 유지한다. -->
+                <div class="picture-preview" id="picture-preview" hidden>
+                    <img class="picture-preview__image" id="picture-preview-image" alt="선택한 이미지 미리보기">
+                    <div class="picture-preview__meta">
+                        <p class="picture-preview__name" id="picture-preview-name"></p>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-picture-clear">선택 해제</button>
+                    </div>
+                </div>
+
+                <!-- 업로드→저장 진행 상태. 평소에는 비어 있고 JS가 텍스트를 채우는 순간에만 보인다. -->
+                <p class="form-progress" id="post-save-progress" aria-live="polite" hidden></p>
             </form>
             <div class="btn-group-gap">
                 <a href="/" role="button" class="btn btn-secondary">취소</a>
-                <button type="button" class="btn btn-primary" id="btn-save">등록</button>
+                <button type="submit" form="post-save-form" class="btn btn-primary" id="btn-save">등록</button>
             </div>
         </div>
-    </div>
+
+        <div class="card-kraft" sec:authorize="isAnonymous()">
+            <p>로그인 후 게시글을 작성할 수 있습니다.</p>
+            <div class="btn-group-gap">
+                <a href="/login" class="btn btn-primary">로그인하러 가기</a>
+                <a href="/" class="btn btn-secondary">목록으로</a>
+            </div>
+        </div>
+    </main>
 </div>
 
 <div th:replace="~{layout/footer :: footer}"></div>

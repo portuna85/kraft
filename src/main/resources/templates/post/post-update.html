@@ -1,67 +1,106 @@
 <!DOCTYPE HTML>
-<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{layout/header :: header}"></head>
 <body>
 
-<div th:replace="~{layout/navbar :: navbar}"></div>
+<a class="skip-link" href="#main">본문 바로가기</a>
+<div th:replace="~{layout/navbar :: topbar}"></div>
 
-<div class="container py-4">
-    <h1 class="page-title">게시글 수정</h1>
-    <div class="col-md-6">
-        <div class="card-kraft">
-            <form>
-                <div class="form-group">
-                    <label for="id">글 번호</label>
-                    <input type="text" class="form-control" id="id" th:value="${post.id}" readonly>
-                </div>
-                <div class="form-group">
-                    <label for="title">제목</label>
-                    <input type="text" class="form-control" id="title" th:value="${post.title}">
-                </div>
-                <div class="form-group">
-                    <label for="author"> 작성자 </label>
-                    <input type="text" class="form-control" id="author" th:value="${post.author}" readonly>
-                </div>
-                <div class="form-group">
-                    <label for="content"> 내용 </label>
-                    <textarea class="form-control" id="content" th:text="${post.content}"></textarea>
-                </div>
-                <div class="form-group" th:if="${post.picture}">
-                    <label>사진</label><br>
-                    <img th:src="${post.picture}" style="max-width:100%;" alt="게시글 사진">
-                </div>
-            </form>
-            <div class="btn-group-gap">
-                <a href="/" role="button" class="btn btn-secondary">취소</a>
-                <button type="button" class="btn btn-primary" id="btn-update">수정 완료</button>
-                <button type="button" class="btn btn-danger" id="btn-delete">삭제</button>
+<div class="kraft-shell">
+    <div th:replace="~{layout/navbar :: sitenav}"></div>
+
+    <main id="main" class="kraft-main kraft-main--narrow">
+        <div th:replace="~{layout/footer :: flash}"></div>
+
+        <a href="/" class="back-link">← 목록으로</a>
+
+        <input type="hidden" id="id" th:value="${post.id}">
+        <input type="hidden" id="original-title" th:value="${post.title}">
+        <input type="hidden" id="original-content" th:value="${post.content}">
+
+        <!-- 읽기 기본 상태 -->
+        <article id="post-view">
+            <h1 class="post-title" id="post-title-text" th:text="${post.title}">제목</h1>
+            <p class="post-byline">
+                <span th:text="${post.author}">작성자</span> · 글 번호 <span th:text="${post.id}">1</span>
+            </p>
+
+            <div class="post-body" id="post-content-text" th:text="${post.content}">내용</div>
+
+            <div class="post-image" th:if="${post.picture}">
+                <img th:src="${post.picture}" alt="게시글 첨부 이미지">
             </div>
-        </div>
 
-        <h3 class="mt-4 mb-3">댓글</h3>
-        <ul class="list-group" id="comment-list">
-            <li class="list-group-item" th:each="c : ${comments}">
-                <div class="d-flex justify-content-between">
-                    <strong th:text="${c.author}"></strong>
-                    <small class="text-muted" th:text="${c.createdAt}"></small>
-                </div>
-                <p class="mb-1" th:text="${c.content}"></p>
-                <span sec:authorize="isAuthenticated()">
-                    <button type="button" class="btn btn-sm btn-outline-danger btn-comment-delete"
-                            th:attr="data-id=${c.id}">삭제</button>
-                </span>
-            </li>
-        </ul>
+            <div class="btn-group-gap post-actions" th:if="${post.canManagePost}">
+                <button type="button" class="btn btn-outline-primary" id="btn-edit">수정</button>
+                <button type="button" class="btn btn-outline-danger" id="btn-delete-post"
+                        data-target-kind="post">삭제</button>
+            </div>
+        </article>
 
-        <div sec:authorize="isAuthenticated()" class="form-group mt-3">
-            <input type="hidden" id="comment-post-id" th:value="${post.id}">
-            <textarea class="form-control" id="comment-content" placeholder="댓글을 입력하세요"></textarea>
-            <button type="button" class="btn btn-primary mt-2" id="btn-comment-save">댓글 등록</button>
-        </div>
-        <div sec:authorize="isAnonymous()" class="mt-3">
-            <a href="/login">로그인 후 댓글을 작성할 수 있습니다.</a>
-        </div>
-    </div>
+        <!-- 편집 상태: 관리 권한이 있을 때만 DOM에 만든다. -->
+        <form id="post-edit" class="card-kraft post-edit" th:if="${post.canManagePost}" hidden>
+            <div class="form-group">
+                <label for="title">제목</label>
+                <input type="text" class="form-control" id="title" th:value="${post.title}" maxlength="255">
+            </div>
+            <div class="form-group">
+                <label for="content">내용</label>
+                <textarea class="form-control post-edit__textarea" id="content"
+                          th:text="${post.content}"></textarea>
+            </div>
+            <div class="btn-group-gap">
+                <button type="button" class="btn btn-secondary" id="btn-cancel-edit">취소</button>
+                <button type="submit" class="btn btn-primary" id="btn-update">저장</button>
+            </div>
+        </form>
+
+        <section class="comments" aria-labelledby="comments-heading">
+            <h2 id="comments-heading" class="comments__heading">
+                댓글 <span th:text="${#lists.size(comments)}">0</span>개
+            </h2>
+
+            <p class="comments__empty" th:if="${#lists.isEmpty(comments)}">첫 댓글을 남겨 보세요.</p>
+
+            <ul class="comment-list" id="comment-list" th:unless="${#lists.isEmpty(comments)}">
+                <li class="comment-list__item" th:each="c : ${comments}" th:attr="data-comment-id=${c.id}">
+                    <div class="comment-view">
+                        <div class="comment-list__head">
+                            <strong th:text="${c.author}">작성자</strong>
+                            <small class="text-muted"
+                                   th:text="${c.createdAt != null} ? ${#temporals.format(c.createdAt, 'yyyy.MM.dd HH:mm')} : ''">2026.01.01 00:00</small>
+                        </div>
+                        <p class="comment-list__content" th:text="${c.content}">댓글 내용</p>
+                        <div class="btn-group-gap comment-actions" th:if="${c.canManage}">
+                            <button type="button" class="btn btn-sm btn-outline-secondary btn-comment-edit">수정</button>
+                            <button type="button" class="btn btn-sm btn-outline-danger btn-comment-delete"
+                                    data-target-kind="comment">삭제</button>
+                        </div>
+                    </div>
+                    <form class="comment-edit-form" hidden>
+                        <div class="form-group">
+                            <label class="sr-only">댓글 내용</label>
+                            <textarea class="form-control comment-edit__textarea" th:text="${c.content}"></textarea>
+                        </div>
+                        <div class="btn-group-gap">
+                            <button type="button" class="btn btn-sm btn-secondary btn-comment-cancel">취소</button>
+                            <button type="submit" class="btn btn-sm btn-primary btn-comment-save">저장</button>
+                        </div>
+                    </form>
+                </li>
+            </ul>
+
+            <div sec:authorize="isAuthenticated()" class="form-group comment-form">
+                <input type="hidden" id="comment-post-id" th:value="${post.id}">
+                <label for="comment-content">댓글 작성</label>
+                <textarea class="form-control" id="comment-content" placeholder="댓글을 입력하세요"></textarea>
+                <button type="button" class="btn btn-primary mt-2" id="btn-comment-save">댓글 등록</button>
+            </div>
+            <p sec:authorize="isAnonymous()" class="comments__login-hint">
+                <a href="/login">로그인 후 댓글을 작성할 수 있습니다.</a>
+            </p>
+        </section>
+    </main>
 </div>
 
 <div th:replace="~{layout/footer :: footer}"></div>

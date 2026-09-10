@@ -1,7 +1,7 @@
 <!DOCTYPE HTML>
 <html xmlns:th="http://www.thymeleaf.org">
 <head th:fragment="header">
-    <title>스프링부트 웹서비스</title>
+    <title th:text="${pageTitle != null} ? ${pageTitle} + ' · Kraft' : 'Kraft'">Kraft</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="_csrf" th:content="${_csrf.token}" />
