@@ -195,10 +195,11 @@ public class SecurityConfig {
                         .anyRequest().permitAll()
                 )
                 .formLogin(form -> form
+                        .loginPage("/login")
                         .defaultSuccessUrl("/", true)
                 )
                 .logout(logout -> logout
-                        .logoutSuccessUrl("/")
+                        .logoutSuccessHandler(refererLogoutSuccessHandler())
                 )
                 .headers(headers -> headers
                         .frameOptions(frame -> frame.sameOrigin())
@@ -209,8 +210,19 @@ public class SecurityConfig {
 
         return http.build();
     }
+
+    // 로그아웃 성공 시 Referer(같은 오리진일 때만)로 돌려보낸다. 2026-09-10 추가 — 6.6절 참고.
+    private LogoutSuccessHandler refererLogoutSuccessHandler() { ... }
 }
 ```
+
+> **2026-09-10 변경**: `loginPage("/login")`과 `refererLogoutSuccessHandler()`는 프론트엔드
+> 디자인 개선(6.6절)과 그 직후 발견된 `/logout` 404 회귀 수정 과정에서 추가됐다. 둘 다
+> `authorizeHttpRequests` 규칙은 건드리지 않았다 — `/login`·`/logout`(GET/POST) 모두 기존
+> `anyRequest().permitAll()` catch-all이 이미 커버하고 있었기 때문이다. 상세 배경은
+> [06장](06-view-and-templates.md#로그인-화면-커스텀-템플릿-추가-2026-09-10)과
+> [06장 로그아웃 회귀 절](06-view-and-templates.md#회귀-발견수정-logout이-404로-깨짐-2026-09-10)
+> 참고.
 
 **당초 제안과의 차이**(구현 과정에서 내린 실제 결정):
 

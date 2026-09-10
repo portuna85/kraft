@@ -515,3 +515,45 @@ Spring Security가 **자체 내장 기본 로그인 페이지**(`DefaultLoginPag
 alert 표시 → 올바른 비밀번호로 재시도 → `/`로 리다이렉트되고 네비게이션 바에 이메일이 표시됨을
 확인했다. `./gradlew test` 91개 재확인(기존 `redirectedUrl("/login")` 단언들은 로그인 페이지
 URL 자체가 안 바뀌었으므로 수정 없이 통과).
+
+### [회귀 발견·수정] `/logout`이 404로 깨짐 (2026-09-10)
+
+사용자가 "로그인 페이지처럼 빠진 화면이 더 없는지" 확인해 달라고 요청해 전 화면을 재점검하던 중,
+직접 `.loginPage("/login")`을 추가한 부작용으로 **`/logout`이 완전히 깨져 있는 것을 발견했다**
+(Whitelabel Error Page, `404`). 원인: Spring Security는 `DefaultLoginPageGeneratingFilter`와
+`DefaultLogoutPageGeneratingFilter`를 한 세트로 묶어서 관리한다 — `formLogin().loginPage(...)`로
+로그인 화면을 커스텀하는 순간 로그인용 자동 생성 필터뿐 아니라 **로그아웃 확인 페이지 자동 생성
+필터까지 함께 비활성화**된다. 기존에는 GET `/logout` 요청을 이 필터가 가로채 "정말
+로그아웃하시겠습니까?" 확인 화면(내부적으로 POST 폼 포함)을 자동으로 그려줬는데, 그 필터가
+사라지면서 GET `/logout`을 받아줄 곳이 없어져 404가 난 것이다.
+
+사용자가 명시적으로 요구한 동작은 두 가지였다: **(1) 확인 페이지 없이 바로 로그아웃**, **(2)
+로그아웃 직후에는 항상 메인이 아니라 로그아웃을 누른 그 페이지로 되돌아갈 것.** 최신 Spring
+Security는 CSRF 보호가 켜져 있으면 로그아웃 처리 자체를 **POST**로만 받는다(GET 기반 로그아웃은
+CSRF에 취약해 제거됨) — 예전에 GET으로도 "동작하는 것처럼" 보인 건 자동 생성 확인 페이지가
+그 다리 역할(GET으로 열어 보여주고, 그 안의 폼이 실제로는 POST)을 해줬기 때문이었다.
+
+- **`layout/footer.html`**: 모든 화면에 포함되는 숨겨진 `<form id="logout-form" th:action="@{/logout}" method="post">`를 CSRF 히든 필드와 함께 추가했다.
+- **`layout/navbar.html`**: `<a href="/logout">Logout</a>`를 `<button type="button" id="btn-logout">Logout</button>`로 변경 — 더 이상 GET 링크가 아니다.
+- **`index.js`**: `$('#btn-logout')` 클릭 시 `$('#logout-form').trigger('submit')`로 즉시 POST 로그아웃(확인 페이지 없음). 비밀번호 변경 성공 후 자동 로그아웃하던 `window.location.href = '/logout'`(GET, 이제 깨짐)도 동일한 폼 제출 방식으로 교체했다.
+- **`SecurityConfig`에 `refererLogoutSuccessHandler()` 추가**: `logoutSuccessUrl("/")` 고정 대신, 로그아웃 요청의 `Referer` 헤더를 읽어 **같은 오리진일 때만** 그 페이지로 리다이렉트하고, `Referer`가 없거나 외부 도메인이면 `/`로 안전하게 대체한다(오픈 리다이렉트 방지). 폼이 매 페이지의 네비게이션 바 안에서 제출되므로 `Referer`는 항상 로그아웃을 누른 바로 그 페이지가 된다.
+
+**검증**: 로그인 후 `/posts/save`(글 등록 화면)로 이동한 상태에서 네비게이션 바의 Logout 버튼
+클릭 → 확인 페이지 없이 즉시 로그아웃 → **`/posts/save`(메인이 아님)로 그대로 복귀**하고
+네비게이션 바가 비로그인 상태(Login/회원가입)로 전환됨을 브라우저로 확인했다. `./gradlew test`
+91개 재확인(기존 로그아웃 관련 단언 없음, 회귀 없음).
+
+### 전 화면 점검 결과 (2026-09-10)
+
+`/login`·`/logout` 두 건을 고친 뒤, "로그인 페이지처럼 빠진 곳이 더 있는지" 전 화면을 점검했다.
+
+- **점검 대상**: `IndexController`의 모든 `@GetMapping`(`/`, `/posts/save`, `/posts/update/{id}`,
+  `/signup`, `/login`, `/users/me/password`, `/users/verify`) + `templates/` 아래 모든 `.html`
+  파일(고아 템플릿 여부 확인) — 전부 컨트롤러에 연결되어 있고 이번 디자인 개선 6개 화면 + 이번에
+  고친 로그인 화면까지 전부 커버됨을 확인했다. 고아 템플릿 없음.
+- **의도적으로 범위 밖에 남긴 것(신규 발견 아님, 기존에 이미 문서화된 결정)**: 화면 컨트롤러
+  (`IndexController`)에서 발생하는 예외는 `web.api` 패키지 전용인 `ApiExceptionHandler`가 적용되지
+  않아 Spring Boot 기본 Whitelabel Error Page(404/500)가 그대로 노출된다. 이는 이번 재점검에서
+  새로 발견한 문제가 아니라 P1 단계부터 의도적으로 남겨둔 스코프 경계다(05장 5.4절 표의
+  "화면 컨트롤러의 오류" 행 참고). `/h2-console`은 H2가 제공하는 서드파티 도구 UI라 애초에
+  스킨 대상이 아니다.

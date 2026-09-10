@@ -236,7 +236,7 @@ var changePassword = {
             data: JSON.stringify(data)
         }).done(function() {
             showToast('비밀번호가 변경되었습니다. 다시 로그인해 주세요.', 'success');
-            window.location.href = '/logout';
+            $('#logout-form').trigger('submit');
         }).fail(function (error) {
             showToast(extractErrorMessage(error), 'danger');
         });
@@ -251,6 +251,10 @@ $(function () {
         if (csrfHeader) {
             xhr.setRequestHeader(csrfHeader, csrfToken);
         }
+    });
+
+    $('#btn-logout').on('click', function () {
+        $('#logout-form').trigger('submit');
     });
 
     main.init();

@@ -10,7 +10,7 @@
                 <span id="user" sec:authentication="name"></span>
             </span>
             <a href="/users/me/password" class="btn btn-outline-light btn-sm ml-2">비밀번호 변경</a>
-            <a href="/logout" class="btn btn-outline-light btn-sm ml-2">Logout</a>
+            <button type="button" id="btn-logout" class="btn btn-outline-light btn-sm ml-2">Logout</button>
         </span>
         <span sec:authorize="isAnonymous()">
             <a href="/login" class="btn btn-outline-light btn-sm ml-2">Login</a>
