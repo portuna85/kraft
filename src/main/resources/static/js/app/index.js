@@ -18,15 +18,46 @@ function showToast(message, type) {
     $toast.toast('show');
 }
 
-function extractErrorMessage(error) {
-    if (error && error.responseJSON && error.responseJSON.detail) {
-        return error.responseJSON.detail;
+/**
+ * 서버 오류 응답에서 사용자에게 보여줄 메시지를 뽑아낸다.
+ * <p>
+ * 401/403, 그리고 "JSON을 기대한 요청에 200으로 로그인 페이지 HTML이 돌아온 경우"(세션 만료로
+ * 로그인 폼으로 리다이렉트되었지만 브라우저가 그 응답을 그대로 따라가 최종 상태 코드가 200이
+ * 되는 상황 — dataType:'json'이 파싱에 실패해 이 함수까지 도달한다)를 구분해 안내한다. 이
+ * 경우를 성공으로 처리하지 않는다. 403은 권한 부족일 수도, CSRF·세션 만료일 수도 있으므로
+ * 무조건 "인증 만료"로 단정하지 않고 재시도·재로그인을 함께 안내한다.
+ */
+function extractErrorMessage(xhr) {
+    if (!xhr) {
+        return '오류가 발생했습니다.';
+    }
+    if (xhr.responseJSON && xhr.responseJSON.detail) {
+        return xhr.responseJSON.detail;
+    }
+    if (xhr.status === 401 || (xhr.status === 200 && !xhr.responseJSON)) {
+        return '로그인이 필요합니다. 다시 로그인해 주세요.';
+    }
+    if (xhr.status === 403) {
+        return '권한이 없거나 세션·보안 토큰이 만료되었습니다. 새로고침 후 다시 시도하거나 다시 로그인해 주세요.';
+    }
+    if (xhr.status === 0) {
+        return '네트워크 오류가 발생했습니다. 다시 시도해 주세요.';
     }
     return '오류가 발생했습니다.';
 }
 
+function formatFileSize(bytes) {
+    if (bytes < 1024) {
+        return bytes + ' B';
+    }
+    if (bytes < 1024 * 1024) {
+        return (bytes / 1024).toFixed(0) + ' KB';
+    }
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
 /**
- * 이동 후 목적 화면에서 한 번만 표시하는 결과 메시지.
+ * 이동 후 목적 화면에서 한 번만 표시하는 결과 메시지이자, 폼이 즉시 표시하는 지속 오류 요약.
  * 허용된 키만 저장·표시한다 — 비밀번호·본문·토큰 같은 사용자 입력은 절대 넣지 않는다.
  * sessionStorage를 쓸 수 없는 환경(예외를 던지는 브라우저 설정)에서도 이동 자체는
  * 정상 동작해야 하므로 모든 접근을 try/catch로 감싼다.
@@ -39,7 +70,9 @@ var flash = {
         POST_DELETED: { text: '글이 삭제되었습니다.', type: 'success' },
         COMMENT_SAVED: { text: '댓글이 등록되었습니다.', type: 'success' },
         COMMENT_UPDATED: { text: '댓글이 수정되었습니다.', type: 'success' },
-        COMMENT_DELETED: { text: '댓글이 삭제되었습니다.', type: 'success' }
+        COMMENT_DELETED: { text: '댓글이 삭제되었습니다.', type: 'success' },
+        SIGNUP_DONE: { text: '가입이 완료되었습니다. 이메일 인증 안내를 확인해 주세요.', type: 'success' },
+        PASSWORD_CHANGED: { text: '비밀번호가 변경되었습니다. 다시 로그인해 주세요.', type: 'success' }
     },
     set: function (key) {
         if (!this.MESSAGES[key]) {
@@ -50,6 +83,22 @@ var flash = {
         } catch (e) {
             // 저장소를 쓸 수 없어도 이동은 정상적으로 진행된다.
         }
+    },
+    /**
+     * 화면에 즉시 오류 요약을 띄운다(이동 없이). 사라지는 토스트 대신 지속되는 영역에 남겨
+     * 사용자가 다시 시도하기 전까지 원인을 계속 읽을 수 있게 한다. role="alert"로 올려 즉시
+     * 주의가 필요한 오류임을 알린다 — 일반 성공 메시지는 role="status"(polite)를 유지한다.
+     */
+    showError: function (text) {
+        this.render(text, true);
+    },
+    /**
+     * 사용자가 원인을 스스로 고친 뒤(예: 파일을 다시 선택)에도 이전 오류가 화면에 남아 있으면
+     * 이미 해결된 문제처럼 보이지 않게 감춘다. 다음 제출에서 다시 실패하면 render()가 새로
+     * 채운다.
+     */
+    hide: function () {
+        $('#flash').attr('hidden', 'hidden');
     },
     consume: function () {
         var key = null;
@@ -66,13 +115,16 @@ var flash = {
         if (!entry) {
             return;
         }
-
+        this.render(entry.text, entry.type === 'danger');
+    },
+    render: function (text, isError) {
         var $flash = $('#flash');
         if (!$flash.length) {
             return;
         }
-        $('#flash-text').text(entry.text);
-        $flash.toggleClass('flash--danger', entry.type === 'danger');
+        $('#flash-text').text(text);
+        $flash.toggleClass('flash--danger', !!isError);
+        $flash.attr('role', isError ? 'alert' : 'status');
         $flash.removeAttr('hidden');
     }
 };
@@ -110,13 +162,12 @@ var siteNav = {
     }
 };
 
-var main = {
+/**
+ * 게시글 읽기·편집 화면(post-update.html)의 읽기/편집 상태 전환과 저장.
+ */
+var postEdit = {
     init: function () {
         var _this = this;
-        $('#btn-save').on('click', function () {
-            _this.save();
-        });
-
         $('#btn-edit').on('click', function () {
             _this.enterEdit();
         });
@@ -147,59 +198,6 @@ var main = {
         $('#post-view').removeAttr('hidden');
         $('#btn-edit').trigger('focus');
     },
-    save: function () {
-        var _this = this;
-        var file = $('#picture').length ? $('#picture')[0].files[0] : null;
-
-        if (file) {
-            _this.uploadImage(file, function (url) {
-                _this.doSave(url);
-            });
-        } else {
-            _this.doSave(null);
-        }
-    },
-    uploadImage: function (file, callback) {
-        var formData = new FormData();
-        formData.append('file', file);
-
-        $.ajax({
-            type: 'POST',
-            url: '/api/v1/posts/images',
-            data: formData,
-            processData: false,
-            contentType: false,
-            dataType: 'json'
-        }).done(function (response) {
-            callback(response.url);
-        }).fail(function (error) {
-            showToast(extractErrorMessage(error), 'danger');
-        });
-    },
-    doSave: function (pictureUrl) {
-        var data = {
-            title: $('#title').val(),
-            content: $('#content').val(),
-            picture: pictureUrl
-        };
-
-        $('#btn-save').prop('disabled', true).attr('aria-busy', 'true');
-
-        $.ajax({
-            type: 'POST',
-            url: '/api/v1/posts',
-            dataType: 'json',
-            contentType: 'application/json; charset=utf-8',
-            data: JSON.stringify(data)
-        }).done(function () {
-            flash.set('POST_SAVED');
-            window.location.href = '/';
-        }).fail(function (error) {
-            showToast(extractErrorMessage(error), 'danger');
-        }).always(function () {
-            $('#btn-save').prop('disabled', false).removeAttr('aria-busy');
-        });
-    },
     update: function () {
         var data = {
             title: $('#title').val(),
@@ -222,6 +220,187 @@ var main = {
         }).fail(function (error) {
             showToast(extractErrorMessage(error), 'danger');
             $('#btn-update').prop('disabled', false).removeAttr('aria-busy');
+        });
+    }
+};
+
+/**
+ * 게시글 등록 화면(post-save.html): 제목·내용·선택한 이미지를 미리보기로 보여주고,
+ * 업로드→저장 2단계 요청을 진행 상태와 함께 처리한다.
+ * <p>
+ * uploadedUrl/uploadedForFile은 "이미 업로드에 성공한 파일"을 기억해, 업로드는 성공했지만
+ * 글 저장만 실패했을 때 재시도가 같은 파일을 다시 올리지 않게 한다. 파일을 바꾸거나
+ * 선택을 해제하면 즉시 초기화한다.
+ */
+var postForm = {
+    MAX_SIZE: 5 * 1024 * 1024,
+    ALLOWED_EXT: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+    previewUrl: null,
+    uploadedUrl: null,
+    uploadedForFile: null,
+
+    init: function () {
+        var _this = this;
+        var $form = $('#post-save-form');
+        if (!$form.length) {
+            return;
+        }
+
+        $form.on('submit', function (e) {
+            e.preventDefault();
+            _this.submit();
+        });
+
+        $('#picture').on('change', function () {
+            _this.onFileChange();
+        });
+
+        $('#btn-picture-clear').on('click', function () {
+            _this.clearFile();
+        });
+
+        // 탭을 벗어나거나 닫을 때도 object URL을 해제한다(교체·해제 시점은 각 핸들러가 처리).
+        $(window).on('pagehide', function () {
+            _this.revokePreview();
+        });
+    },
+
+    onFileChange: function () {
+        var file = $('#picture').length ? $('#picture')[0].files[0] : null;
+        this.uploadedUrl = null;
+        this.uploadedForFile = null;
+        this.revokePreview();
+
+        if (!file) {
+            $('#picture-preview').attr('hidden', 'hidden');
+            return;
+        }
+
+        // 클라이언트 사전 검사는 불필요한 왕복을 줄이기 위한 것일 뿐, 서버(PostImageService)의
+        // 확장자·용량 검증을 대체하지 않는다 — 실제 판정은 항상 서버가 내린다.
+        var extension = (file.name.split('.').pop() || '').toLowerCase();
+        if (this.ALLOWED_EXT.indexOf(extension) === -1) {
+            flash.showError('JPG, JPEG, PNG, GIF, WEBP 형식만 첨부할 수 있습니다.');
+            this.clearFile();
+            return;
+        }
+        if (file.size > this.MAX_SIZE) {
+            flash.showError('파일 크기는 5MB를 초과할 수 없습니다.');
+            this.clearFile();
+            return;
+        }
+
+        flash.hide();
+        this.previewUrl = URL.createObjectURL(file);
+        $('#picture-preview-image').attr('src', this.previewUrl);
+        $('#picture-preview-name').text(file.name + ' · ' + formatFileSize(file.size));
+        $('#picture-preview').removeAttr('hidden');
+    },
+
+    clearFile: function () {
+        $('#picture').val('');
+        this.uploadedUrl = null;
+        this.uploadedForFile = null;
+        this.revokePreview();
+        $('#picture-preview').attr('hidden', 'hidden');
+    },
+
+    revokePreview: function () {
+        if (this.previewUrl) {
+            URL.revokeObjectURL(this.previewUrl);
+            this.previewUrl = null;
+        }
+    },
+
+    setProgress: function (text) {
+        var $progress = $('#post-save-progress');
+        if (!$progress.length) {
+            return;
+        }
+        if (!text) {
+            $progress.attr('hidden', 'hidden').text('');
+            return;
+        }
+        $progress.text(text).removeAttr('hidden');
+    },
+
+    setBusy: function (busy) {
+        $('#btn-save').prop('disabled', busy).attr('aria-busy', busy ? 'true' : 'false');
+    },
+
+    submit: function () {
+        var _this = this;
+        var title = $('#title').val();
+        var content = $('#content').val();
+
+        if (!title || !content) {
+            flash.showError('제목과 내용을 모두 입력해 주세요.');
+            return;
+        }
+
+        var file = $('#picture').length ? $('#picture')[0].files[0] : null;
+
+        this.setBusy(true);
+
+        if (file && this.uploadedUrl && this.uploadedForFile === file) {
+            // 같은 파일로 이전 시도의 업로드까지는 성공했다 — 재업로드 없이 저장만 재시도한다.
+            this.doSave(this.uploadedUrl);
+            return;
+        }
+
+        if (file) {
+            this.setProgress('이미지 업로드 중…');
+            var formData = new FormData();
+            formData.append('file', file);
+
+            $.ajax({
+                type: 'POST',
+                url: '/api/v1/posts/images',
+                data: formData,
+                processData: false,
+                contentType: false,
+                dataType: 'json'
+            }).done(function (response) {
+                _this.uploadedUrl = response.url;
+                _this.uploadedForFile = file;
+                _this.doSave(response.url);
+            }).fail(function (error) {
+                _this.setProgress(null);
+                _this.setBusy(false);
+                flash.showError('이미지 업로드에 실패했습니다. ' + extractErrorMessage(error));
+            });
+        } else {
+            this.doSave(null);
+        }
+    },
+
+    doSave: function (pictureUrl) {
+        var _this = this;
+        var data = {
+            title: $('#title').val(),
+            content: $('#content').val(),
+            picture: pictureUrl
+        };
+
+        this.setProgress('게시글 등록 중…');
+
+        $.ajax({
+            type: 'POST',
+            url: '/api/v1/posts',
+            dataType: 'json',
+            contentType: 'application/json; charset=utf-8',
+            data: JSON.stringify(data)
+        }).done(function () {
+            _this.revokePreview();
+            flash.set('POST_SAVED');
+            window.location.href = '/';
+        }).fail(function (error) {
+            _this.setProgress(null);
+            _this.setBusy(false);
+            var retryHint = pictureUrl
+                ? ' 이미지는 이미 업로드되어 있으니 다시 "등록"을 누르면 같은 이미지로 재시도합니다.'
+                : '';
+            flash.showError('게시글 등록에 실패했습니다. ' + extractErrorMessage(error) + retryHint);
         });
     }
 };
@@ -382,12 +561,24 @@ var signup = {
             signup.save();
         });
     },
+    clearFieldError: function () {
+        $('#passwordConfirm').removeClass('is-invalid').removeAttr('aria-invalid');
+        $('#passwordConfirm-error').text('');
+    },
+    showFieldError: function (message) {
+        var $field = $('#passwordConfirm');
+        $field.addClass('is-invalid').attr('aria-invalid', 'true');
+        $('#passwordConfirm-error').text(message);
+        $field.trigger('focus');
+    },
     save: function () {
+        this.clearFieldError();
+
         var password = $('#password').val();
         var passwordConfirm = $('#passwordConfirm').val();
 
         if (password !== passwordConfirm) {
-            showToast('비밀번호가 일치하지 않습니다.', 'danger');
+            this.showFieldError('비밀번호가 일치하지 않습니다.');
             return;
         }
 
@@ -397,6 +588,9 @@ var signup = {
             password: password
         };
 
+        var $btn = $('#btn-signup');
+        $btn.prop('disabled', true).attr('aria-busy', 'true');
+
         $.ajax({
             type: 'POST',
             url: '/api/v1/users',
@@ -404,10 +598,11 @@ var signup = {
             contentType: 'application/json; charset=utf-8',
             data: JSON.stringify(data)
         }).done(function () {
-            showToast('회원가입이 완료되었습니다. 로그인해 주세요.', 'success');
+            flash.set('SIGNUP_DONE');
             window.location.href = '/login';
         }).fail(function (error) {
-            showToast(extractErrorMessage(error), 'danger');
+            flash.showError(extractErrorMessage(error));
+            $btn.prop('disabled', false).removeAttr('aria-busy');
         });
     }
 };
@@ -424,16 +619,20 @@ var changePassword = {
             newPassword: $('#newPassword').val()
         };
 
+        var $btn = $('#btn-change-password');
+        $btn.prop('disabled', true).attr('aria-busy', 'true');
+
         $.ajax({
             type: 'PUT',
             url: '/api/v1/users/me/password',
             contentType: 'application/json; charset=utf-8',
             data: JSON.stringify(data)
         }).done(function () {
-            showToast('비밀번호가 변경되었습니다. 다시 로그인해 주세요.', 'success');
+            flash.set('PASSWORD_CHANGED');
             $('#logout-form').trigger('submit');
         }).fail(function (error) {
-            showToast(extractErrorMessage(error), 'danger');
+            flash.showError(extractErrorMessage(error));
+            $btn.prop('disabled', false).removeAttr('aria-busy');
         });
     }
 };
@@ -454,7 +653,8 @@ $(function () {
 
     flash.consume();
     siteNav.init();
-    main.init();
+    postEdit.init();
+    postForm.init();
     deleteConfirm.init();
     comment.init();
     signup.init();

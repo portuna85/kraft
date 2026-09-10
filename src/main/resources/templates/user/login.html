@@ -11,6 +11,7 @@
 
     <main id="main" class="kraft-main kraft-main--account">
         <h1 class="page-title">로그인</h1>
+        <div th:replace="~{layout/footer :: flash}"></div>
         <div class="card-kraft">
             <div class="alert alert-danger" th:if="${param.error != null}">
                 이메일 또는 비밀번호가 올바르지 않습니다.

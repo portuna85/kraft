@@ -9,6 +9,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.stream.Collectors;
 
@@ -79,6 +80,30 @@ public class ApiExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ProblemDetail handleAccessDenied(AccessDeniedException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.getMessage());
+    }
+
+    /**
+     * multipart 요청이 {@code application.yml}의 수신 한도({@code spring.servlet.multipart.
+     * max-file-size/max-request-size})를 넘었을 때 413으로 변환한다. 이 한도는 서비스 검사(5MB)
+     * 보다 한 단계 위(6MB)로 잡아두었으므로, 여기 도달한다는 것은 서비스의 "5MB 초과" 안내로도
+     * 부족할 만큼 큰 요청이라는 뜻이다 — 같은 사용자 문구로 안내해 두 경로의 오류가 다르게
+     * 보이지 않게 한다.
+     * <p>
+     * 실측(로컬 bootRun + curl, 6MB 초과 파일 업로드)으로 두 가지를 확인했다:
+     * <ol>
+     * <li>{@code spring.servlet.multipart.resolve-lazily: true}(application.yml)가 없으면
+     * DispatcherServlet이 핸들러 진입 "전" checkMultipart() 단계에서 멀티파트 전체를 즉시
+     * 파싱한다. 한도 초과가 스트림을 읽는 도중에 발생해 Tomcat이 완료되지 못한 요청 바디를
+     * 그대로 끊어버리므로, 이 핸들러가 호출되기는 하지만 커넥션이 먼저 리셋되어(TCP RST)
+     * 클라이언트는 본문 없는 413(Content-Length: 0, Connection: close)만 받는다.</li>
+     * <li>{@code resolve-lazily: true}로 파싱을 컨트롤러가 실제로 파라미터에 접근하는 시점까지
+     * 미루면, 예외가 정상적인 요청 처리 흐름 안에서 발생해 이 핸들러가 413 JSON 본문을
+     * 온전히 내려줄 수 있다 — 재검증으로 확인 완료.</li>
+     * </ol>
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ProblemDetail handleUploadTooLarge(MaxUploadSizeExceededException e) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONTENT_TOO_LARGE, "파일 크기는 5MB를 초과할 수 없습니다.");
     }
 
     /**

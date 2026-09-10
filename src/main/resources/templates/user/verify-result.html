@@ -14,6 +14,13 @@
         <div class="card-kraft">
             <p th:if="${success}">이메일 인증이 완료되었습니다.</p>
             <p th:unless="${success}" th:text="${message}"></p>
+
+            <!-- 인증 성공이 이미 로그인된 세션의 권한을 즉시 갱신하지는 않는다. 현재 세션이
+                 있으면 로그아웃 후 다시 로그인해야 바뀐 역할이 반영된다는 사실을 안내한다. -->
+            <p th:if="${success}" class="text-muted" sec:authorize="isAuthenticated()">
+                이미 로그인되어 있다면, 계정 메뉴에서 로그아웃한 뒤 다시 로그인해야 바뀐 권한이 반영됩니다.
+            </p>
+
             <a href="/login" role="button" class="btn btn-primary">로그인하러 가기</a>
         </div>
     </main>

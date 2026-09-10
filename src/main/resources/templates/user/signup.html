@@ -11,8 +11,9 @@
 
     <main id="main" class="kraft-main kraft-main--account">
         <h1 class="page-title">회원가입</h1>
+        <div th:replace="~{layout/footer :: flash}"></div>
         <div class="card-kraft">
-            <form>
+            <form id="signup-form">
                 <div class="form-group">
                     <label for="name">이름</label>
                     <input type="text" class="form-control" id="name" placeholder="이름을 입력하세요" maxlength="50">
@@ -30,7 +31,8 @@
                 <div class="form-group">
                     <label for="passwordConfirm">비밀번호 확인</label>
                     <input type="password" class="form-control" id="passwordConfirm" placeholder="비밀번호를 다시 입력하세요"
-                           autocomplete="new-password">
+                           autocomplete="new-password" aria-describedby="passwordConfirm-error">
+                    <div class="invalid-feedback" id="passwordConfirm-error"></div>
                 </div>
             </form>
             <div class="btn-group-gap">

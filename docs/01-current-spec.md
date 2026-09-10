@@ -86,6 +86,8 @@
 
 5MB는 서비스 코드의 검사 기준이다. 저장소의 `application*.yml`에는 multipart 최대 파일·요청 크기 설정이 명시되어 있지 않다. 실제 수신 제한이 서비스보다 작을 가능성이 있으므로 실행 환경의 multipart·프록시 제한을 확인하기 전에는 5MB 파일의 업로드 성공이 검증되었다고 간주하지 않는다.
 
+> **갱신(2026-09-10, V7 구현)**: 위 문단은 기준 커밋(`7913255`) 당시의 실제 결함을 기록한 것이다. 이 결함(Spring Boot 기본값 `max-file-size=1MB`가 적용되어 1~5MB 파일이 서비스의 5MB 검사에 닿기도 전에 거부됨)을 `application.yml`에 `spring.servlet.multipart.max-file-size: 6MB`·`max-request-size: 7MB`·`resolve-lazily: true`를 추가해 고쳤다. 컨테이너 한도를 서비스 검사(5MB)보다 한 단계 위에 두어 5MB 판정자를 `PostImageService` 하나로 일원화했고, 그 이상은 `ApiExceptionHandler`가 413으로 받는다. 로컬 curl 실측으로 300KB·1.1MB·5MB 경계·5.5MB·6.5MB 전 구간을 확인했다(`docs/04-implementation-plan.md` §4 참고). 배포 환경의 프록시(nginx `client_max_body_size` 등) 한도는 코드로 강제할 수 없으므로 여전히 별도 확인이 필요하다.
+
 이미지 업로드와 게시글 저장은 별도 요청이다. 업로드 성공 후 글 저장이 실패할 수 있으며, 현재 업로드 파일 삭제 API는 없다. 수정 API에는 `picture`가 없으므로 기존 게시글의 이미지 교체·삭제 UI는 이번 범위에 넣지 않는다.
 
 근거: [요청 DTO](../src/main/java/com/kraft/web/dto), [Post.java](../src/main/java/com/kraft/domain/post/Post.java), [User.java](../src/main/java/com/kraft/domain/user/User.java), [PostImageService.java](../src/main/java/com/kraft/service/post/PostImageService.java), [index.js](../src/main/resources/static/js/app/index.js).
