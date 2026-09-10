@@ -227,6 +227,7 @@ Thymeleaf는 **완결된 마크업 조각(fragment) 단위**로 동작하므로 
 | `post/post-save.html` | 등록 폼 | Mustache include, `author` 입력 필드가 서버 인증 정책과 충돌 | ✅ Thymeleaf 전환, `author`는 `sec:authentication="name"` 읽기전용 표시(서버 전송 안 함) |
 | `post/post-update.html` | 수정 폼 | Mustache 표현식, `label for="title"`이 3회 중복 | ✅ Thymeleaf 전환(`th:value`/`th:text`), label for 오류 수정 확인(curl로 렌더링 결과 대조). **2026-09-10**: `xmlns:sec` 추가 + 댓글 목록/작성 폼 추가(P3, 6.4.3절) |
 | `user/signup.html` | 회원가입 폼 | (구현 전에는 파일 자체가 없었음) | ✅ **2026-09-10 신규(P3)** — `post-save.html`과 동일 구조 |
+| `user/verify-result.html` | 이메일 인증 결과 화면 | (구현 전에는 파일 자체가 없었음) | ✅ **2026-09-10 신규(P3)** — 인증 성공/실패 메시지 + 로그인 링크(6.4.5절) |
 
 ### 6.4.1 post-save.html 조치 — ✅ 적용 완료
 
@@ -361,6 +362,24 @@ contentType: false`를 지정한다(전역 CSRF 헤더 주입은 콘텐츠 타�
 정확히 포함됨을 확인했다. 비밀번호 변경 화면에서 성공 후 옛 비밀번호 로그인이 실패하고 새
 비밀번호 로그인이 성공함을 확인했다. 상세는
 [08장 8.14절](08-issues-and-todo.md#814-추가-구현-p3-5-게시글-사진-업로드--p3-9-비밀번호-변경-화면-2026-09-10) 참고.
+
+### 6.4.5 verify-result.html — ✅ 신규 구현 (2026-09-10, P3)
+
+이메일 인증 링크(`GET /users/verify?token=...`)를 클릭했을 때 보여주는 결과 화면이다.
+`IndexController.verifyEmail()`이 `EmailVerificationService.verify(token)`을 호출해 성공하면
+`success=true`를, `IllegalArgumentException`이 발생하면 `success=false`+`message`(실패 사유)를
+모델에 담아 이 뷰를 렌더링한다.
+
+```html
+<p th:if="${success}">이메일 인증이 완료되었습니다. 이제 게시글과 댓글을 작성할 수 있습니다.</p>
+<p th:unless="${success}" th:text="${message}"></p>
+<a href="/login" role="button" class="btn btn-primary">로그인하러 가기</a>
+```
+
+**HTTP 상태 코드는 성공·실패 모두 `200`이다** — 이메일 클릭으로 진입하는 화면이라 깨진 링크처럼
+보이지 않도록 상태 코드가 아니라 화면 텍스트로만 성공/실패를 구분하도록 의도적으로 설계했다
+(05장 5.3.9절과 동일한 설명). 상세 검증 결과는
+[08장 8.15절](08-issues-and-todo.md#815-추가-구현-p3-4-이메일-인증-플로우-2026-09-10) 참고.
 
 ## 6.5 정적 리소스
 

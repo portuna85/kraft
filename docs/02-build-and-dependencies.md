@@ -46,6 +46,11 @@ Spring Boot 4에서는 기존의 거대 스타터가 세분화되었습니다. �
 | `spring-boot-starter-thymeleaf` | Thymeleaf 3 템플릿 엔진 | 동일 |
 | `spring-boot-starter-validation` | Jakarta Bean Validation (Hibernate Validator) | 동일 |
 | `spring-boot-starter-data-jpa` | Spring Data JPA + Hibernate + HikariCP | 동일 |
+| `spring-boot-starter-mail` | `JavaMailSender` 기반 이메일 발송 | `spring-boot-starter-mail`(Boot 3와 동일) |
+
+> **2026-09-10 추가**: `spring-boot-starter-mail`은 이메일 인증 기능(P3-4) 구현 시 도입된,
+> 이 프로젝트에서 유일한 신규 의존성이다. 상세는 [07장 7.8절](07-configuration.md#78-이메일-발송-설정-springmail--구현-완료-2026-09-10-p3-4),
+> [08장 8.15절](08-issues-and-todo.md#815-추가-구현-p3-4-이메일-인증-플로우-2026-09-10) 참고.
 
 ### 2.2.2 런타임 / 서드파티
 
