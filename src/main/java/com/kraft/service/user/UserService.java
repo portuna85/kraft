@@ -1,5 +1,6 @@
 package com.kraft.service.user;
 
+import com.kraft.domain.user.EmailHasher;
 import com.kraft.domain.user.Role;
 import com.kraft.domain.user.User;
 import com.kraft.domain.user.UserRepository;
@@ -18,7 +19,10 @@ public class UserService {
 
     @Transactional
     public Long signUp(String name, String email, String rawPassword) {
-        if (userRepository.existsByEmail(email)) {
+        if (userRepository.existsByName(name)) {
+            throw new IllegalArgumentException("이미 사용중인 이름입니다. name=" + name);
+        }
+        if (userRepository.existsByEmailHash(EmailHasher.sha512Hex(email))) {
             throw new IllegalArgumentException("이미 가입된 이메일입니다. email=" + email);
         }
 
@@ -38,7 +42,7 @@ public class UserService {
      */
     @Transactional
     public void changePassword(String email, String currentPassword, String newPassword) {
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + email));
 
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {

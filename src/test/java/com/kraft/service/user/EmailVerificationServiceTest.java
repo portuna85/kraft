@@ -1,5 +1,6 @@
 package com.kraft.service.user;
 
+import com.kraft.domain.user.EmailHasher;
 import com.kraft.domain.user.EmailVerificationToken;
 import com.kraft.domain.user.EmailVerificationTokenRepository;
 import com.kraft.domain.user.Role;
@@ -65,7 +66,7 @@ class EmailVerificationServiceTest {
     @Test
     @DisplayName("sendVerificationEmail: 존재하지 않는 회원이면 IllegalArgumentException")
     void sendVerificationEmail_회원_없으면_예외() {
-        given(userRepository.findByEmail("nobody@example.com")).willReturn(Optional.empty());
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> emailVerificationService.sendVerificationEmail("nobody@example.com"))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -79,7 +80,7 @@ class EmailVerificationServiceTest {
     @DisplayName("sendVerificationEmail: 회원이 존재하면 토큰을 저장하고 baseUrl+token 링크가 포함된 메일을 발송한다")
     void sendVerificationEmail_정상_발송() {
         User user = userWithId(1L, "tester@example.com");
-        given(userRepository.findByEmail("tester@example.com")).willReturn(Optional.of(user));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(user));
 
         emailVerificationService.sendVerificationEmail("tester@example.com");
 
@@ -98,7 +99,7 @@ class EmailVerificationServiceTest {
     @Test
     @DisplayName("sendVerificationEmailSafely: 내부에서 예외가 발생해도 전파되지 않는다")
     void sendVerificationEmailSafely_예외를_흡수한다() {
-        given(userRepository.findByEmail("nobody@example.com")).willReturn(Optional.empty());
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
 
         emailVerificationService.sendVerificationEmailSafely("nobody@example.com");
 

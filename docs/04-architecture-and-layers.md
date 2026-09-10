@@ -580,3 +580,52 @@ catch-all에 걸려 공개된다. 이번에도 **`SecurityConfig.java`는 전혀
 역할을 차등화하는 것은 구현하지 않았다. 이를 강제하려면 `SecurityConfig`의 `authorizeHttpRequests`
 규칙을 이번 세션 최초로 수정해야 하며, 사용자가 명시적으로 요청하지 않았으므로 의도적으로
 범위 밖에 남겼다(08장 8.15절 참고).
+
+## 4.10 회원가입 검증 강화 + 이메일 암호화 — ✅ 신규 구현 (2026-09-10)
+
+프론트엔드 디자인 개선 작업 도중 사용자가 회원가입 검증 강화(이름·이메일 DB 중복확인, 비밀번호
+복잡도·2회 입력 확인)와 개인정보 보호(비밀번호·이메일 암호화 저장)를 추가로 요청했다.
+
+### 회원가입 검증
+
+- **이름/이메일 DB 중복확인**: `UserRepository`에 `existsByName(String)` 추가.
+  `UserService.signUp()`이 이름 중복 → 이메일 중복(해시 기반, 아래 참고) 순서로 검사해 각각
+  다른 메시지의 `IllegalArgumentException`을 던진다(`ApiExceptionHandler`가 400으로 변환).
+- **비밀번호 복잡도**: `SignUpRequestDto.password`에 `@Pattern` 추가 —
+  `^(?=.*[a-z])(?=.*[A-Z])(?=.*[^a-zA-Z0-9]).*$` (대문자·소문자·특수문자 각 1자 이상). 기존
+  `@Size(min=8)`은 그대로 유지.
+- **비밀번호 2회 입력 확인**: 서버 API 계약(`SignUpRequestDto`)은 바꾸지 않고, 순수 클라이언트
+  단에서 처리한다 — `signup.html`에 `비밀번호 확인` 필드를 추가하고, `index.js`의
+  `signup.save()`가 두 값을 비교해 다르면 API 호출 자체를 하지 않고 토스트로 안내한다("비밀번호
+  일치 확인"은 본질적으로 UI 개념이라 서버로 두 번째 값을 보낼 필요가 없다는 판단).
+
+### 이메일 암호화 (비밀번호는 이미 BCrypt로 암호화되어 있었음)
+
+사용자가 처음 "이메일도 암호화"만 요청했을 때는 SHA-512(단방향 해시)를 제안했으나, 이메일은
+인증 메일 재발송·네비게이션 바 표시 등에 원문이 필요해 단방향 해시만으로는 요구사항을 만족할 수
+없다는 점을 설명하고, 다음 3가지 선택지를 제시해 **"AES 암호화 + SHA-512 조회용 해시 컬럼"
+방식을 사용자가 직접 선택**했다:
+
+- `EmailAttributeConverter`(신규, `@Component` + `@Converter`): `User.email` 필드에
+  `@Convert`로 연결. 저장 시 `Encryptors.delux(key, salt)`(AES, 비결정적 — 매 호출마다 IV가
+  달라져 동일 평문도 매번 다른 암호문)로 암호화하고 조회 시 복호화한다. 새 의존성 없음 —
+  `spring-security-crypto`는 `spring-boot-starter-security`가 이미 가져오는 전이 의존성.
+- `EmailHasher`(신규, 순수 유틸): `SHA-512` hex 다이제스트. `User`의 `@PrePersist`/`@PreUpdate`
+  훅이 `email`이 바뀔 때마다 `email_hash` 컬럼을 자동으로 갱신한다.
+- 이메일로 사용자를 찾아야 하는 6곳(`UserDetailsServiceImpl`, `CommentService`, `PostService`,
+  `EmailVerificationService`, `UserService` 2곳)을 전부 `findByEmail(email)` →
+  `findByEmailHash(EmailHasher.sha512Hex(email))` 패턴으로 바꿨다. `User` 자바 객체의
+  `email` 필드 자체는 항상 평문이다(컨버터는 JDBC 바인딩 경계에서만 작동) — `user.getEmail()`을
+  쓰는 기존 코드(로그인 principal, 인증 메일 수신자 등)는 전혀 손댈 필요가 없었다.
+
+**`@DataJpaTest` 슬라이스 주의점**: `EmailAttributeConverter`는 `@Value`로 암호화 키를 주입받는
+Spring 빈이어야 Hibernate가 그 인스턴스를 쓴다. `@DataJpaTest`는 JPA 관련 빈만 스캔하므로
+`User`를 저장하는 슬라이스 테스트(`UserRepositoryTest`, `CommentRepositoryTest`,
+`PostRepositoryTest`, `EmailVerificationTokenRepositoryTest`)마다
+`@Import(EmailAttributeConverter.class)`를 명시적으로 추가해야 한다(기존 `@Import(JpaConfig.class)`
+패턴과 동일한 이유).
+
+**검증**: `./gradlew test` 95개 전부 통과(신규 4개: 이름 중복 400, 비밀번호 복잡도 400,
+`signUp_이름_중복이면_예외`, `existsByName_동작확인`). `bootRun` + H2 콘솔로 실제 DB를 직접
+조회해 `email` 컬럼이 hex 암호문으로, `email_hash`가 128자 SHA-512 hex로 저장됨을 확인했고,
+그 상태에서도 로그인·회원가입 중복확인·댓글/게시글 작성이 전부 정상 동작함을 재확인했다.

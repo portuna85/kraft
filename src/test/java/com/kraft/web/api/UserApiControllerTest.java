@@ -49,12 +49,12 @@ class UserApiControllerTest {
     @Test
     @DisplayName("회원가입은 인증 없이(CSRF 토큰만 있으면) 가능하다")
     void 회원가입은_인증없이_가능하다() throws Exception {
-        given(userService.signUp("tester", "tester@example.com", "password123")).willReturn(1L);
+        given(userService.signUp("tester", "tester@example.com", "Password123!")).willReturn(1L);
 
         mockMvc.perform(post("/api/v1/users")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"tester\",\"email\":\"tester@example.com\",\"password\":\"password123\"}"))
+                        .content("{\"name\":\"tester\",\"email\":\"tester@example.com\",\"password\":\"Password123!\"}"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("1"));
 
@@ -95,6 +95,18 @@ class UserApiControllerTest {
     }
 
     @Test
+    @DisplayName("비밀번호에 대문자·소문자·특수문자가 모두 포함되지 않으면 400")
+    void 비밀번호가_복잡도_요건을_충족하지_않으면_400() throws Exception {
+        mockMvc.perform(post("/api/v1/users")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"tester\",\"email\":\"tester@example.com\",\"password\":\"alllowercase123\"}"))
+                .andExpect(status().isBadRequest());
+
+        verify(userService, never()).signUp(any(), any(), any());
+    }
+
+    @Test
     @DisplayName("이메일이 중복이면 400 ProblemDetail을 반환한다")
     void 이메일_중복이면_400() throws Exception {
         given(userService.signUp(any(), any(), any()))
@@ -103,9 +115,23 @@ class UserApiControllerTest {
         mockMvc.perform(post("/api/v1/users")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"tester\",\"email\":\"dup@example.com\",\"password\":\"password123\"}"))
+                        .content("{\"name\":\"tester\",\"email\":\"dup@example.com\",\"password\":\"Password123!\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("이미 가입된 이메일입니다. email=dup@example.com"));
+    }
+
+    @Test
+    @DisplayName("이름이 중복이면 400 ProblemDetail을 반환한다")
+    void 이름_중복이면_400() throws Exception {
+        given(userService.signUp(any(), any(), any()))
+                .willThrow(new IllegalArgumentException("이미 사용중인 이름입니다. name=dupName"));
+
+        mockMvc.perform(post("/api/v1/users")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"dupName\",\"email\":\"new@example.com\",\"password\":\"Password123!\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("이미 사용중인 이름입니다. name=dupName"));
     }
 
     @Test

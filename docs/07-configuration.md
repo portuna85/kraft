@@ -465,3 +465,29 @@ app:
 운영 환경에서 `MAIL_*` 자격 증명이 잘못되어도 회원가입 자체는 실패하지 않고 로그만 남는다(08장
 8.15절 참고) — 다만 이 경우 사용자는 인증 메일을 받지 못하므로 운영 모니터링에서 반드시 관련
 경고 로그를 감시해야 한다.
+
+## 7.9 이메일 암호화 키 설정 (`app.security.email-encryption-key`) — ✅ 구현 완료 (2026-09-10)
+
+`User.email` 컬럼을 AES로 암호화해 저장하기 위한 키(04장 4.10절, `EmailAttributeConverter`
+참고). `DB_URL`/`MAIL_HOST`와 동일한 등급의 비밀로 취급한다.
+
+```yaml
+# application-local.yml — 로컬 개발 전용 고정값(비밀 아님, 그냥 개발 편의용)
+app:
+  security:
+    email-encryption-key: local-dev-only-email-key-do-not-use-in-prod
+
+# application-prod.yml — 기본값 없음(fail-fast, DB_URL과 동일한 패턴)
+app:
+  security:
+    email-encryption-key: ${EMAIL_ENCRYPTION_KEY}
+```
+
+**이 키를 운영 중에 바꾸면 안 된다.** 이미 암호화되어 저장된 기존 이메일들은 새 키로는 복호화할
+수 없다(재암호화 마이그레이션 스크립트 없이는). 키가 유출되면 저장된 모든 회원의 이메일을
+복호화할 수 있으므로 `DB_URL`/`MAIL_HOST`와 같은 수준으로 접근을 통제해야 한다.
+
+조회/중복확인은 이 키와 무관한 별도의 `email_hash`(SHA-512, 결정적 해시) 컬럼으로 이뤄지므로,
+암호화 키 로테이션이 조회 기능 자체를 막지는 않는다 — 다만 로테이션 시점 이전에 저장된 행의
+`email` 컬럼은 새 키로 복호화가 실패하므로, 실제로 키를 바꿔야 한다면 전체 재암호화가 필요하다
+(이번 범위에서는 그런 마이그레이션 도구까지는 구현하지 않았다).

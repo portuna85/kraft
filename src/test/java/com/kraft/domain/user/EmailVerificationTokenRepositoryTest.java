@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
+import org.springframework.context.annotation.Import;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -15,8 +16,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * {@link EmailVerificationTokenRepository} 통합 테스트. 감사 필드가 없는 엔티티라
  * {@code JpaConfig}(EnableJpaAuditing) import는 불필요하다({@code CommentRepositoryTest}와 달리).
+ * {@code User}를 저장하므로 {@link EmailAttributeConverter}는 import해야 한다.
  */
 @DataJpaTest
+@Import(EmailAttributeConverter.class)
 class EmailVerificationTokenRepositoryTest {
 
     @Autowired

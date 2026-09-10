@@ -1,6 +1,7 @@
 package com.kraft.domain.post;
 
 import com.kraft.config.JpaConfig;
+import com.kraft.domain.user.EmailAttributeConverter;
 import com.kraft.domain.user.Role;
 import com.kraft.domain.user.User;
 import com.kraft.domain.user.UserRepository;
@@ -22,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 실제로 채워지는지 검증한다(P1-2 회귀 방지).
  */
 @DataJpaTest
-@Import(JpaConfig.class)
+@Import({JpaConfig.class, EmailAttributeConverter.class})
 class PostRepositoryTest {
 
     @Autowired

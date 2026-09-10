@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 @Entity
-@Table(name = "users", uniqueConstraints = @UniqueConstraint(name = "UK_USER_EMAIL", columnNames = "email"))
+@Table(name = "users", uniqueConstraints = @UniqueConstraint(name = "UK_USER_EMAIL_HASH", columnNames = "email_hash"))
 public class User extends BaseEntity {
 
     @Id
@@ -28,8 +28,14 @@ public class User extends BaseEntity {
     @Column(nullable = false, length = 50)
     private String name;
 
-    @Column(nullable = false, length = 100)
+    // AES로 암호화해 저장한다(EmailAttributeConverter). 조회는 이 컬럼이 아니라 emailHash로 한다.
+    @Column(nullable = false, length = 500)
+    @Convert(converter = EmailAttributeConverter.class)
     private String email;
+
+    // email의 SHA-512 해시. 조회·중복확인·유니크 제약은 전부 이 컬럼을 통해 이뤄진다(EmailHasher).
+    @Column(name = "email_hash", nullable = false, length = 128)
+    private String emailHash;
 
     @Column(nullable = false, length = 100)
     private String password;
@@ -56,5 +62,11 @@ public class User extends BaseEntity {
 
     public void promoteToUser() {
         this.role = Role.USER;
+    }
+
+    @PrePersist
+    @PreUpdate
+    private void hashEmail() {
+        this.emailHash = EmailHasher.sha512Hex(this.email);
     }
 }

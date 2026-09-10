@@ -1,5 +1,6 @@
 package com.kraft.service.user;
 
+import com.kraft.domain.user.EmailHasher;
 import com.kraft.domain.user.EmailVerificationToken;
 import com.kraft.domain.user.EmailVerificationTokenRepository;
 import com.kraft.domain.user.User;
@@ -36,7 +37,7 @@ public class EmailVerificationService {
 
     @Transactional
     public void sendVerificationEmail(String email) {
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + email));
 
         String token = UUID.randomUUID().toString();

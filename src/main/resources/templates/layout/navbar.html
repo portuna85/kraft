@@ -4,8 +4,8 @@
 <nav th:fragment="navbar" class="navbar navbar-expand navbar-dark navbar-kraft mb-4">
     <a class="navbar-brand" href="/">kraft</a>
     <div class="ml-auto d-flex align-items-center">
-        <a href="/posts/save" role="button" class="btn btn-light btn-sm">글 등록</a>
         <span sec:authorize="isAuthenticated()" class="d-flex align-items-center">
+            <a href="/posts/save" role="button" class="btn btn-light btn-sm">글 등록</a>
             <span class="navbar-text ml-2">
                 <span id="user" sec:authentication="name"></span>
             </span>

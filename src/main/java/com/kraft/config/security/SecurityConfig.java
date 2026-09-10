@@ -47,8 +47,10 @@ public class SecurityConfig {
     }
 
     /**
-     * 로그아웃 성공 시 로그아웃을 요청한 그 페이지로 되돌아간다(요청). Referer가 같은 오리진일
-     * 때만 신뢰하고, 없거나 외부 도메인이면 "/"로 안전하게 대체한다(오픈 리다이렉트 방지).
+     * 로그아웃 성공 시 로그아웃을 요청한 그 페이지로 되돌아간다. Referer가 같은 오리진일 때만
+     * 신뢰하고, 없거나 외부 도메인이면 "/"로 안전하게 대체한다(오픈 리다이렉트 방지). 단,
+     * 게시글 등록 화면(`/posts/save`)에서 로그아웃하는 경우는 예외로 항상 "/"로 보낸다 —
+     * 로그아웃하면 익명 사용자가 되어 "글 등록" 자체가 더는 의미가 없는 화면이기 때문이다.
      */
     private LogoutSuccessHandler refererLogoutSuccessHandler() {
         return (request, response, authentication) -> {
@@ -56,7 +58,13 @@ public class SecurityConfig {
             String baseUrl = request.getScheme() + "://" + request.getServerName()
                     + (request.getServerPort() == 80 || request.getServerPort() == 443
                             ? "" : ":" + request.getServerPort());
-            String redirectUrl = (referer != null && referer.startsWith(baseUrl)) ? referer : "/";
+            String redirectUrl = "/";
+            if (referer != null && referer.startsWith(baseUrl)) {
+                String path = referer.substring(baseUrl.length());
+                if (!path.equals("/posts/save") && !path.startsWith("/posts/save?")) {
+                    redirectUrl = referer;
+                }
+            }
             response.sendRedirect(redirectUrl);
         };
     }

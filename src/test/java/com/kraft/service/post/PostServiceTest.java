@@ -2,6 +2,7 @@ package com.kraft.service.post;
 
 import com.kraft.domain.post.Post;
 import com.kraft.domain.post.PostRepository;
+import com.kraft.domain.user.EmailHasher;
 import com.kraft.domain.user.Role;
 import com.kraft.domain.user.User;
 import com.kraft.domain.user.UserRepository;
@@ -74,7 +75,7 @@ class PostServiceTest {
     @DisplayName("save: 존재하는 회원이면 작성자로 지정해 저장하고 ID를 반환한다")
     void save_존재하는_회원이면_저장한다() {
         User user = userWithEmail("tester@example.com", 1L);
-        given(userRepository.findByEmail("tester@example.com")).willReturn(Optional.of(user));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(user));
         Post saved = postOf(user, 10L);
         given(postRepository.save(any(Post.class))).willReturn(saved);
 
@@ -87,7 +88,7 @@ class PostServiceTest {
     @Test
     @DisplayName("save: 존재하지 않는 회원이면 IllegalArgumentException")
     void save_존재하지_않는_회원이면_예외() {
-        given(userRepository.findByEmail("nobody@example.com")).willReturn(Optional.empty());
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> postService.save("nobody@example.com",
                 new PostSaveRequestDto("제목", "내용", null)))

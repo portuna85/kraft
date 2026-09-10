@@ -26,3 +26,9 @@ spring:
 logging:
   level:
     org.hibernate.SQL: debug
+
+app:
+  security:
+    # 로컬 개발 전용 키. 운영에서는 반드시 EMAIL_ENCRYPTION_KEY 환경변수로 덮어써야 한다
+    # (application-prod.yml 참고 — 기본값이 없어 지정하지 않으면 기동 자체가 실패한다).
+    email-encryption-key: local-dev-only-email-key-do-not-use-in-prod

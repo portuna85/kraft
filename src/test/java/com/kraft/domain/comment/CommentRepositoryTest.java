@@ -3,6 +3,7 @@ package com.kraft.domain.comment;
 import com.kraft.config.JpaConfig;
 import com.kraft.domain.post.Post;
 import com.kraft.domain.post.PostRepository;
+import com.kraft.domain.user.EmailAttributeConverter;
 import com.kraft.domain.user.Role;
 import com.kraft.domain.user.User;
 import com.kraft.domain.user.UserRepository;
@@ -24,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 감사 필드({@code createdAt})가 실제로 채워지는지 검증할 수 있다(PostRepositoryTest와 동일 패턴).
  */
 @DataJpaTest
-@Import(JpaConfig.class)
+@Import({JpaConfig.class, EmailAttributeConverter.class})
 class CommentRepositoryTest {
 
     @Autowired

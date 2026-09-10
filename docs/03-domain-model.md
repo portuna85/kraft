@@ -111,10 +111,15 @@ public class User extends BaseEntity {
 ### 발견된 문제 (해결 현황)
 
 1. ✅ **해결** — **`email` 유니크 제약 없음**
-   `@Table(name = "users", uniqueConstraints = @UniqueConstraint(name = "UK_USER_EMAIL", columnNames = "email"))`로 반영했다. H2 콘솔에서 제약 생성 확인 완료.
+   최초에는 `@UniqueConstraint(columnNames = "email")`로 반영했으나, **2026-09-10 이메일
+   암호화(7번 항목) 적용 이후 `email` 컬럼은 매번 IV가 달라지는 비결정적 암호문이라 그 자체로는
+   유니크 제약의 의미가 없어져** `email_hash`(SHA-512 해시) 컬럼으로 제약을 옮겼다
+   (`UK_USER_EMAIL_HASH`). H2 콘솔에서 제약 생성 확인 완료.
 
 2. ✅ **해결** — **컬럼 길이 미지정**
-   `name` 50자, `email`/`password` 100자로 지정했다.
+   `name` 50자, `password` 100자로 지정했다. `email`은 암호화 이후 암호문이 원문보다 훨씬 길어져
+   **500자**로 넉넉히 늘렸다(7번 항목 참고). `email_hash`는 SHA-512 hex 다이제스트 고정 길이인
+   128자.
 
 3. ✅ **해결** — **생성자 / 정적 팩터리 부재**
    `@Builder`가 붙은 `User(String name, String email, String password, Role role)` 생성자를 추가했다.
@@ -134,6 +139,24 @@ public class User extends BaseEntity {
    엔티티를 그대로 직렬화하면 비밀번호 해시가 응답에 포함됩니다. 현재 컨트롤러는 `User` 엔티티를
    직접 반환하지 않고 DTO(record)만 응답하므로 실제 유출 경로는 없지만, 엔티티 자체의 방어 설계는
    아니라는 점은 그대로 남아 있다.
+
+7. ✅ **해결(2026-09-10)** — **`email` 컬럼 평문 저장**
+   비밀번호는 이미 BCrypt로 저장되고 있었지만 이메일은 평문이었다. 사용자 요청에 따라 이메일도
+   DB에 암호화해 저장하도록 다음 구조로 바꿨다:
+   - **`email`**: `EmailAttributeConverter`(`@Convert`)가 저장 시 AES(`Encryptors.delux`,
+     매 호출마다 IV가 달라지는 비결정적 암호화)로 암호화하고, 조회 시 복호화한다. 키는
+     `app.security.email-encryption-key`(로컬은 개발용 고정값, 운영은 `${EMAIL_ENCRYPTION_KEY}`
+     — 기본값 없어 미설정 시 기동 자체가 실패하는 fail-fast, `DB_URL`/`MAIL_HOST`와 동일 패턴).
+   - **`email_hash`**(신규 컬럼): `EmailHasher.sha512Hex(email)`을 `@PrePersist`/`@PreUpdate`로
+     자동 계산해 저장한다. 암호문은 비결정적이라 등호 조회가 불가능하므로, 조회·중복확인·유니크
+     제약은 전부 이 결정적 해시 컬럼을 통해서만 이뤄진다(`UserRepository.findByEmailHash`/
+     `existsByEmailHash`). `UserDetailsServiceImpl`, `CommentService`, `PostService`,
+     `EmailVerificationService`, `UserService`의 이메일 조회 6곳을 전부 이 방식으로 바꿨다.
+
+   H2 콘솔로 직접 확인: `SELECT email, email_hash FROM users` 결과 `email`은 hex 암호문
+   (예: `d29ce3ca...`), `email_hash`는 128자리 SHA-512 hex 값으로 저장되어 있었다(평문
+   노출 없음). 로그인·회원가입·댓글/게시글 작성자 조회까지 전부 해시 기반으로 정상 동작함을
+   재확인했다. 상세는 [04장 4.10절](04-architecture-and-layers.md), [07장 7.9절](07-configuration.md) 참고.
 
 ## 3.4 Role
 

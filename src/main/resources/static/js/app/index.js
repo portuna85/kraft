@@ -196,10 +196,18 @@ var signup = {
         });
     },
     save : function () {
+        var password = $('#password').val();
+        var passwordConfirm = $('#passwordConfirm').val();
+
+        if (password !== passwordConfirm) {
+            showToast('비밀번호가 일치하지 않습니다.', 'danger');
+            return;
+        }
+
         var data = {
             name: $('#name').val(),
             email: $('#email').val(),
-            password: $('#password').val()
+            password: password
         };
 
         $.ajax({

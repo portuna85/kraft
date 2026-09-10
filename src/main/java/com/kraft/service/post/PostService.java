@@ -2,6 +2,7 @@ package com.kraft.service.post;
 
 import com.kraft.domain.post.Post;
 import com.kraft.domain.post.PostRepository;
+import com.kraft.domain.user.EmailHasher;
 import com.kraft.domain.user.User;
 import com.kraft.domain.user.UserRepository;
 import com.kraft.service.support.OwnershipPolicy;
@@ -27,7 +28,7 @@ public class PostService {
 
     @Transactional
     public Long save(String email, PostSaveRequestDto requestDto) {
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + email));
         return postRepository.save(requestDto.toEntity(user)).getId();
     }

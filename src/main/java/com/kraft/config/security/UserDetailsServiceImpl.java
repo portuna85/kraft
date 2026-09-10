@@ -1,5 +1,6 @@
 package com.kraft.config.security;
 
+import com.kraft.domain.user.EmailHasher;
 import com.kraft.domain.user.User;
 import com.kraft.domain.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +17,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
                 .orElseThrow(() -> new UsernameNotFoundException("존재하지 않는 회원입니다. email=" + email));
 
         return org.springframework.security.core.userdetails.User.builder()

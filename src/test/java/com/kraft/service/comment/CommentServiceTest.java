@@ -4,6 +4,7 @@ import com.kraft.domain.comment.Comment;
 import com.kraft.domain.comment.CommentRepository;
 import com.kraft.domain.post.Post;
 import com.kraft.domain.post.PostRepository;
+import com.kraft.domain.user.EmailHasher;
 import com.kraft.domain.user.Role;
 import com.kraft.domain.user.User;
 import com.kraft.domain.user.UserRepository;
@@ -84,7 +85,7 @@ class CommentServiceTest {
         Post post = postOf(1L);
         User user = userWithEmail("tester@example.com", 1L);
         given(postRepository.findById(1L)).willReturn(Optional.of(post));
-        given(userRepository.findByEmail("tester@example.com")).willReturn(Optional.of(user));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(user));
         Comment saved = commentOf(user, 100L);
         given(commentRepository.save(any(Comment.class))).willReturn(saved);
 
@@ -109,7 +110,7 @@ class CommentServiceTest {
     @DisplayName("save: 회원이 없으면 IllegalArgumentException")
     void save_회원_없으면_예외() {
         given(postRepository.findById(1L)).willReturn(Optional.of(postOf(1L)));
-        given(userRepository.findByEmail("nobody@example.com")).willReturn(Optional.empty());
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> commentService.save(1L, "nobody@example.com", new CommentSaveRequestDto("내용")))
                 .isInstanceOf(IllegalArgumentException.class)
