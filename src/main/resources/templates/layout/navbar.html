@@ -41,6 +41,9 @@
             <li sec:authorize="isAuthenticated()" class="kraft-nav__account">
                 <span class="kraft-nav__email" id="user" sec:authentication="name"></span>
             </li>
+            <li sec:authorize="hasRole('GUEST')">
+                <button type="button" id="btn-resend-verification" class="kraft-nav__link kraft-nav__link--button">인증 메일 재발송</button>
+            </li>
             <li sec:authorize="isAnonymous()">
                 <a href="/login" class="kraft-nav__link"
                    th:classappend="${currentPath == '/login'} ? 'is-current'"

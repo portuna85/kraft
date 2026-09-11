@@ -203,4 +203,39 @@ class UserApiControllerTest {
 
         verify(userService, never()).changePassword(any(), any(), any());
     }
+
+    @Test
+    @DisplayName("POST /api/v1/users/me/verify-email/resend 는 CSRF 토큰이 있어도 미인증이면 로그인 페이지로 리다이렉트된다")
+    void 인증메일재발송은_미인증이면_로그인으로_리다이렉트된다() throws Exception {
+        mockMvc.perform(post("/api/v1/users/me/verify-email/resend")
+                        .with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login"));
+
+        verifyNoInteractions(emailVerificationService);
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/users/me/verify-email/resend 는 인증+CSRF면 204를 반환한다")
+    void 인증메일재발송은_인증되고_CSRF가_있으면_204를_반환한다() throws Exception {
+        mockMvc.perform(post("/api/v1/users/me/verify-email/resend")
+                        .with(user("tester@example.com"))
+                        .with(csrf()))
+                .andExpect(status().isNoContent());
+
+        verify(emailVerificationService).resend("tester@example.com");
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/users/me/verify-email/resend 는 이미 인증된 계정이면 400 ProblemDetail을 반환한다")
+    void 인증메일재발송은_이미_인증된_계정이면_400() throws Exception {
+        willThrow(new IllegalArgumentException("이미 인증된 계정입니다."))
+                .given(emailVerificationService).resend("tester@example.com");
+
+        mockMvc.perform(post("/api/v1/users/me/verify-email/resend")
+                        .with(user("tester@example.com"))
+                        .with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("이미 인증된 계정입니다."));
+    }
 }

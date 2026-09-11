@@ -33,4 +33,10 @@ public class UserApiController {
         userService.changePassword(authentication.getName(), requestDto.currentPassword(), requestDto.newPassword());
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/api/v1/users/me/verify-email/resend")
+    public ResponseEntity<Void> resendVerificationEmail(Authentication authentication) {
+        emailVerificationService.resend(authentication.getName());
+        return ResponseEntity.noContent().build();
+    }
 }

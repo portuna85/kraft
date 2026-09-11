@@ -90,6 +90,19 @@ class PostServiceTest {
     }
 
     @Test
+    @DisplayName("save: 이메일 인증 전(GUEST) 회원이면 AccessDeniedException이고 저장되지 않는다")
+    void save_GUEST_회원이면_거부된다() {
+        User guest = User.builder().name("tester").email("guest@example.com").password("encoded").role(Role.GUEST).build();
+        ReflectionTestUtils.setField(guest, "id", 1L);
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("guest@example.com"))).willReturn(Optional.of(guest));
+
+        assertThatThrownBy(() -> postService.save("guest@example.com", new PostSaveRequestDto("제목", "내용", null)))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(postRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("save: 존재하지 않는 회원이면 IllegalArgumentException")
     void save_존재하지_않는_회원이면_예외() {
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());

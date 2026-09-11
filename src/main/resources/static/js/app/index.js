@@ -637,6 +637,29 @@ var changePassword = {
     }
 };
 
+var verifyEmail = {
+    init: function () {
+        $('#btn-resend-verification').on('click', function () {
+            verifyEmail.resend();
+        });
+    },
+    resend: function () {
+        var $btn = $('#btn-resend-verification');
+        $btn.prop('disabled', true).attr('aria-busy', 'true');
+
+        $.ajax({
+            type: 'POST',
+            url: '/api/v1/users/me/verify-email/resend'
+        }).done(function () {
+            showToast('인증 메일을 다시 보냈습니다. 메일함을 확인해 주세요.', 'success');
+        }).fail(function (error) {
+            showToast(extractErrorMessage(error), 'danger');
+        }).always(function () {
+            $btn.prop('disabled', false).removeAttr('aria-busy');
+        });
+    }
+};
+
 $(function () {
     var csrfToken = $('meta[name="_csrf"]').attr('content');
     var csrfHeader = $('meta[name="_csrf_header"]').attr('content');
@@ -659,4 +682,5 @@ $(function () {
     comment.init();
     signup.init();
     changePassword.init();
+    verifyEmail.init();
 });

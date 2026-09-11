@@ -8,6 +8,7 @@ import com.kraft.domain.user.EmailHasher;
 import com.kraft.domain.user.User;
 import com.kraft.domain.user.UserRepository;
 import com.kraft.service.support.OwnershipPolicy;
+import com.kraft.service.support.WriteAccessPolicy;
 import com.kraft.web.dto.comment.CommentResponseDto;
 import com.kraft.web.dto.comment.CommentSaveRequestDto;
 import com.kraft.web.dto.comment.CommentUpdateRequestDto;
@@ -35,6 +36,7 @@ public class CommentService {
                 .orElseThrow(() -> new PostNotFoundException(postId));
         User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + email));
+        WriteAccessPolicy.requireVerified(user);
         return commentRepository.save(requestDto.toEntity(post, user)).getId();
     }
 

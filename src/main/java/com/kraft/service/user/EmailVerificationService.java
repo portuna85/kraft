@@ -3,6 +3,7 @@ package com.kraft.service.user;
 import com.kraft.domain.user.EmailHasher;
 import com.kraft.domain.user.EmailVerificationToken;
 import com.kraft.domain.user.EmailVerificationTokenRepository;
+import com.kraft.domain.user.Role;
 import com.kraft.domain.user.User;
 import com.kraft.domain.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -59,7 +60,7 @@ public class EmailVerificationService {
     /**
      * 회원가입 직후 호출하는 안전 버전. 메일 발송 실패(SMTP 오류 등)가 회원가입 응답 자체를
      * 실패시키지 않도록 예외를 여기서 흡수하고 로그만 남긴다 — 이미 생성된 회원 정보는 그대로
-     * 유효하며, 인증 메일 재발송은 이번 범위에서는 별도로 제공하지 않는다.
+     * 유효하며, 인증 메일이 도착하지 않았다면 {@link #resend}로 다시 요청할 수 있다.
      * <p>
      * {@code @Transactional}을 명시하지 않으면 클래스 레벨의 {@code readOnly = true}를 그대로
      * 물려받는다. 이 메서드가 내부에서 {@code sendVerificationEmail(email)}을 호출하는 것은
@@ -85,13 +86,30 @@ public class EmailVerificationService {
 
         if (verificationToken.isExpired()) {
             tokenRepository.delete(verificationToken);
-            // 인증 메일 재발송 API가 없으므로 제공되지 않는 행동("다시 요청해 주세요")을
-            // 안내하지 않는다. 재가입은 이메일 중복 검사에 걸리므로 실제 복구 경로가 없다는
-            // 점을 화면에서 왜곡하지 않는다.
-            throw new IllegalArgumentException("인증 링크가 만료되었습니다.");
+            throw new IllegalArgumentException("인증 링크가 만료되었습니다. 다시 요청해 주세요.");
         }
 
         userService.promoteToUser(verificationToken.getUser().getId());
         tokenRepository.delete(verificationToken);
+    }
+
+    /**
+     * 사용자가 명시적으로 재발송을 요청했을 때 호출한다. 회원가입 직후의
+     * {@link #sendVerificationEmailSafely}와 달리 메일 발송 실패를 흡수하지 않고 그대로
+     * 전파한다 — 사용자가 결과를 기대하고 누른 버튼이므로 실패를 조용히 감추면 안 된다.
+     * 이미 인증된(Role이 GUEST가 아닌) 계정은 재발송 대상이 아니므로 거부한다. 재발송 전
+     * 기존 토큰을 지워, 같은 사용자에 대해 유효한 토큰이 여러 개 동시에 쌓이지 않게 한다.
+     */
+    @Transactional
+    public void resend(String email) {
+        User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + email));
+
+        if (user.getRole() != Role.GUEST) {
+            throw new IllegalArgumentException("이미 인증된 계정입니다.");
+        }
+
+        tokenRepository.deleteByUserId(user.getId());
+        sendVerificationEmail(email);
     }
 }

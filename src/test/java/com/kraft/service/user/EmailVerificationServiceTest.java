@@ -153,4 +153,45 @@ class EmailVerificationServiceTest {
         verify(userService, times(1)).promoteToUser(1L);
         verify(tokenRepository).delete(validToken);
     }
+
+    @Test
+    @DisplayName("resend: 존재하지 않는 회원이면 IllegalArgumentException")
+    void resend_회원_없으면_예외() {
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> emailVerificationService.resend("nobody@example.com"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("존재하지 않는 회원입니다");
+
+        verify(tokenRepository, never()).deleteByUserId(any());
+        verify(emailSender, never()).send(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("resend: 이미 인증된(GUEST가 아닌) 회원이면 IllegalArgumentException")
+    void resend_이미_인증된_회원이면_예외() {
+        User verifiedUser = User.builder().name("tester").email("tester@example.com").password("encoded").role(Role.USER).build();
+        ReflectionTestUtils.setField(verifiedUser, "id", 1L);
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(verifiedUser));
+
+        assertThatThrownBy(() -> emailVerificationService.resend("tester@example.com"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("이미 인증된 계정입니다");
+
+        verify(tokenRepository, never()).deleteByUserId(any());
+        verify(emailSender, never()).send(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("resend: GUEST 회원이면 기존 토큰을 지우고 새 토큰으로 메일을 다시 발송한다")
+    void resend_GUEST_회원이면_기존_토큰을_지우고_재발송한다() {
+        User user = userWithId(1L, "tester@example.com");
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(user));
+
+        emailVerificationService.resend("tester@example.com");
+
+        verify(tokenRepository).deleteByUserId(1L);
+        verify(tokenRepository).save(any(EmailVerificationToken.class));
+        verify(emailSender).send(org.mockito.ArgumentMatchers.eq("tester@example.com"), anyString(), anyString());
+    }
 }

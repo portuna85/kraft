@@ -107,6 +107,20 @@ class CommentServiceTest {
     }
 
     @Test
+    @DisplayName("save: 이메일 인증 전(GUEST) 회원이면 AccessDeniedException이고 저장되지 않는다")
+    void save_GUEST_회원이면_거부된다() {
+        User guest = User.builder().name("tester").email("guest@example.com").password("encoded").role(Role.GUEST).build();
+        ReflectionTestUtils.setField(guest, "id", 1L);
+        given(postRepository.findById(1L)).willReturn(Optional.of(postOf(1L)));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("guest@example.com"))).willReturn(Optional.of(guest));
+
+        assertThatThrownBy(() -> commentService.save(1L, "guest@example.com", new CommentSaveRequestDto("내용")))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(commentRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("save: 회원이 없으면 IllegalArgumentException")
     void save_회원_없으면_예외() {
         given(postRepository.findById(1L)).willReturn(Optional.of(postOf(1L)));
