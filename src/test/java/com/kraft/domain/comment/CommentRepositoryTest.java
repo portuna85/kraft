@@ -16,6 +16,7 @@ import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.context.annotation.Import;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -105,6 +106,35 @@ class CommentRepositoryTest {
         em.flush();
 
         assertThat(postRepository.findById(post.getId())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("countByPostIdIn: 여러 게시글의 댓글 수를 postId → count 맵으로 한 번에 반환한다")
+    void countByPostIdIn_은_게시글별_댓글수를_맵으로_반환한다() {
+        commentRepository.save(Comment.builder().content("댓글1").post(post).user(user).build());
+        commentRepository.save(Comment.builder().content("댓글2").post(post).user(user).build());
+        commentRepository.save(Comment.builder().content("다른글 댓글").post(otherPost).user(user).build());
+        em.flush();
+        em.clear();
+
+        Map<Long, Long> counts = commentRepository.countByPostIdIn(List.of(post.getId(), otherPost.getId()));
+
+        assertThat(counts.get(post.getId())).isEqualTo(2L);
+        assertThat(counts.get(otherPost.getId())).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("countByPostIdIn: 댓글이 없는 게시글 ID는 결과 맵에 아예 없다")
+    void countByPostIdIn_은_댓글이_없으면_맵에_키가_없다() {
+        Map<Long, Long> counts = commentRepository.countByPostIdIn(List.of(post.getId()));
+
+        assertThat(counts).doesNotContainKey(post.getId());
+    }
+
+    @Test
+    @DisplayName("countByPostIdIn: 빈 목록이면 쿼리 없이 빈 맵을 반환한다")
+    void countByPostIdIn_은_빈_목록이면_빈_맵을_반환한다() {
+        assertThat(commentRepository.countByPostIdIn(List.of())).isEmpty();
     }
 
     @Test

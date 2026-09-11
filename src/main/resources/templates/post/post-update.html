@@ -21,9 +21,11 @@
 
         <!-- 읽기 기본 상태 -->
         <article id="post-view">
+            <span class="post-category" th:text="${post.category.title}">분류</span>
             <h1 class="post-title" id="post-title-text" th:text="${post.title}">제목</h1>
             <p class="post-byline">
                 <span th:text="${post.author}">작성자</span> · 글 번호 <span th:text="${post.id}">1</span>
+                · 조회 <span th:text="${post.viewCount}">0</span>
             </p>
 
             <div class="post-body" id="post-content-text" th:text="${post.content}">내용</div>
@@ -31,6 +33,18 @@
             <div class="post-image" th:if="${post.picture}">
                 <img th:src="${post.picture}" alt="게시글 첨부 이미지">
             </div>
+
+            <div class="btn-group-gap post-actions" sec:authorize="isAuthenticated()">
+                <button type="button" id="btn-like" class="btn btn-outline-primary"
+                        th:classappend="${post.likedByMe} ? 'is-active'"
+                        th:attr="aria-pressed=${post.likedByMe}">
+                    추천 <span id="like-count" th:text="${post.likeCount}">0</span>
+                </button>
+            </div>
+            <p class="post-actions" sec:authorize="isAnonymous()">
+                추천 <span th:text="${post.likeCount}">0</span>개 ·
+                <a href="/login">로그인 후 추천할 수 있습니다.</a>
+            </p>
 
             <div class="btn-group-gap post-actions" th:if="${post.canManagePost}">
                 <button type="button" class="btn btn-outline-primary" id="btn-edit">수정</button>
@@ -44,6 +58,13 @@
             <div class="form-group">
                 <label for="title">제목</label>
                 <input type="text" class="form-control" id="title" th:value="${post.title}" maxlength="255">
+            </div>
+            <div class="form-group">
+                <label for="edit-category">분류</label>
+                <select class="form-control" id="edit-category">
+                    <option th:each="c : ${T(com.kraft.domain.post.Category).values()}"
+                            th:value="${c}" th:text="${c.title}" th:selected="${c == post.category}"></option>
+                </select>
             </div>
             <div class="form-group">
                 <label for="content">내용</label>

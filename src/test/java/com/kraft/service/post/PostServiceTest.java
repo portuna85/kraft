@@ -1,7 +1,9 @@
 package com.kraft.service.post;
 
 import com.kraft.domain.comment.CommentRepository;
+import com.kraft.domain.post.Category;
 import com.kraft.domain.post.Post;
+import com.kraft.domain.post.PostLikeRepository;
 import com.kraft.domain.post.PostRepository;
 import com.kraft.domain.user.EmailHasher;
 import com.kraft.domain.user.Role;
@@ -9,6 +11,7 @@ import com.kraft.domain.user.User;
 import com.kraft.domain.user.UserRepository;
 import com.kraft.web.dto.post.PostSaveRequestDto;
 import com.kraft.web.dto.post.PostUpdateRequestDto;
+import com.kraft.web.dto.post.PostsListResponseDto;
 import com.kraft.web.dto.post.PostsPageResponseDto;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,6 +29,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -54,11 +58,14 @@ class PostServiceTest {
     @Mock
     private PostImageService postImageService;
 
+    @Mock
+    private PostLikeRepository postLikeRepository;
+
     private PostService postService;
 
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
-        postService = new PostService(postRepository, userRepository, commentRepository, postImageService);
+        postService = new PostService(postRepository, userRepository, commentRepository, postImageService, postLikeRepository);
     }
 
     private static User userWithEmail(String email, Long id) {
@@ -87,7 +94,7 @@ class PostServiceTest {
         given(postRepository.save(any(Post.class))).willReturn(saved);
 
         Long id = postService.save("tester@example.com",
-                new PostSaveRequestDto("제목", "내용", null));
+                new PostSaveRequestDto("제목", "내용", null, null));
 
         assertThat(id).isEqualTo(10L);
     }
@@ -99,7 +106,7 @@ class PostServiceTest {
         ReflectionTestUtils.setField(guest, "id", 1L);
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("guest@example.com"))).willReturn(Optional.of(guest));
 
-        assertThatThrownBy(() -> postService.save("guest@example.com", new PostSaveRequestDto("제목", "내용", null)))
+        assertThatThrownBy(() -> postService.save("guest@example.com", new PostSaveRequestDto("제목", "내용", null, null)))
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(postRepository, never()).save(any());
@@ -111,7 +118,7 @@ class PostServiceTest {
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> postService.save("nobody@example.com",
-                new PostSaveRequestDto("제목", "내용", null)))
+                new PostSaveRequestDto("제목", "내용", null, null)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("존재하지 않는 회원");
 
@@ -125,7 +132,7 @@ class PostServiceTest {
         Post post = postOf(owner, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
 
-        Long id = postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용", null),
+        Long id = postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용", null, null),
                 authOf("owner@example.com", Role.USER));
 
         assertThat(id).isEqualTo(100L);
@@ -141,7 +148,7 @@ class PostServiceTest {
         ReflectionTestUtils.setField(post, "picture", "/images/old.png");
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
 
-        postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용", "/images/new.png"),
+        postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용", "/images/new.png", null),
                 authOf("owner@example.com", Role.USER));
 
         assertThat(post.getPicture()).isEqualTo("/images/new.png");
@@ -156,7 +163,7 @@ class PostServiceTest {
         ReflectionTestUtils.setField(post, "picture", "/images/same.png");
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
 
-        postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용", "/images/same.png"),
+        postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용", "/images/same.png", null),
                 authOf("owner@example.com", Role.USER));
 
         verify(postImageService, never()).deleteIfExists(any());
@@ -169,7 +176,7 @@ class PostServiceTest {
         Post post = postOf(owner, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
 
-        assertThatThrownBy(() -> postService.update(100L, new PostUpdateRequestDto("해킹", "해킹", null),
+        assertThatThrownBy(() -> postService.update(100L, new PostUpdateRequestDto("해킹", "해킹", null, null),
                 authOf("intruder@example.com", Role.USER)))
                 .isInstanceOf(AccessDeniedException.class);
 
@@ -183,7 +190,7 @@ class PostServiceTest {
         Post post = postOf(owner, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
 
-        postService.update(100L, new PostUpdateRequestDto("관리자 수정", "관리자 수정", null),
+        postService.update(100L, new PostUpdateRequestDto("관리자 수정", "관리자 수정", null, null),
                 authOf("admin@example.com", Role.ADMIN));
 
         assertThat(post.getTitle()).isEqualTo("관리자 수정");
@@ -196,7 +203,7 @@ class PostServiceTest {
         ReflectionTestUtils.setField(post, "id", 200L);
         given(postRepository.findById(200L)).willReturn(Optional.of(post));
 
-        assertThatThrownBy(() -> postService.update(200L, new PostUpdateRequestDto("x", "y", null),
+        assertThatThrownBy(() -> postService.update(200L, new PostUpdateRequestDto("x", "y", null, null),
                 authOf("someone@example.com", Role.USER)))
                 .isInstanceOf(AccessDeniedException.class);
     }
@@ -260,7 +267,7 @@ class PostServiceTest {
         Post post = postOf(owner, 1L);
         Pageable pageable = PageRequest.of(0, 10);
         Page<Post> page = new PageImpl<>(List.of(post), pageable, 1);
-        given(postRepository.findAllDesc(pageable)).willReturn(page);
+        given(postRepository.search(null, null, pageable)).willReturn(page);
 
         PostsPageResponseDto result = postService.findAllDesc(pageable);
 
@@ -271,5 +278,113 @@ class PostServiceTest {
         assertThat(result.content()).hasSize(1);
         assertThat(result.content().get(0).title()).isEqualTo("원래 제목");
         assertThat(result.content().get(0).author()).isEqualTo("tester");
+    }
+
+    @Test
+    @DisplayName("findAllDesc(keyword, category): 검색어·분류를 리포지토리에 그대로 전달하고 댓글 수를 함께 담는다")
+    void findAllDesc_검색어와_분류를_전달하고_댓글수를_담는다() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Post post = postOf(owner, 1L);
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Post> page = new PageImpl<>(List.of(post), pageable, 1);
+        given(postRepository.search("공지", Category.NOTICE, pageable)).willReturn(page);
+        given(commentRepository.countByPostIdIn(List.of(1L))).willReturn(Map.of(1L, 3L));
+
+        PostsPageResponseDto result = postService.findAllDesc(pageable, "공지", Category.NOTICE);
+
+        assertThat(result.content().get(0).commentCount()).isEqualTo(3L);
+    }
+
+    @Test
+    @DisplayName("findAllDesc: 검색어가 공백뿐이면 null로 정규화해 리포지토리에 전달한다")
+    void findAllDesc_공백_검색어는_null로_정규화된다() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Post> page = new PageImpl<>(List.of(), pageable, 0);
+        given(postRepository.search(null, null, pageable)).willReturn(page);
+
+        postService.findAllDesc(pageable, "   ", null);
+
+        verify(postRepository).search(null, null, pageable);
+    }
+
+    @Test
+    @DisplayName("findPopular: 조회수 상위 N개를 댓글 수와 함께 반환한다")
+    void findPopular_조회수_상위N개를_반환한다() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Post post = postOf(owner, 1L);
+        given(postRepository.findTopByViewCountDesc(PageRequest.of(0, 5))).willReturn(List.of(post));
+        given(commentRepository.countByPostIdIn(List.of(1L))).willReturn(Map.of(1L, 2L));
+
+        List<PostsListResponseDto> result = postService.findPopular(5);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).commentCount()).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("findByIdForView: 조회할 때마다 조회수를 1 늘리고, 추천 수·내가 눌렀는지를 함께 담는다")
+    void findByIdForView_조회수를_늘리고_추천정보를_담는다() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Post post = postOf(owner, 100L);
+        given(postRepository.findById(100L)).willReturn(Optional.of(post));
+        given(postLikeRepository.existsByPostIdAndUserId(100L, 1L)).willReturn(true);
+        given(postLikeRepository.countByPostId(100L)).willReturn(3L);
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("owner@example.com"))).willReturn(Optional.of(owner));
+
+        var result = postService.findByIdForView(100L, authOf("owner@example.com", Role.USER));
+
+        assertThat(post.getViewCount()).isEqualTo(1L);
+        assertThat(result.viewCount()).isEqualTo(1L);
+        assertThat(result.likeCount()).isEqualTo(3L);
+        assertThat(result.likedByMe()).isTrue();
+    }
+
+    @Test
+    @DisplayName("findByIdForView: 익명이면 likedByMe는 항상 false다")
+    void findByIdForView_익명이면_likedByMe는_false() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Post post = postOf(owner, 100L);
+        given(postRepository.findById(100L)).willReturn(Optional.of(post));
+        given(postLikeRepository.countByPostId(100L)).willReturn(0L);
+
+        var result = postService.findByIdForView(100L, null);
+
+        assertThat(result.likedByMe()).isFalse();
+        verify(postLikeRepository, never()).existsByPostIdAndUserId(any(), any());
+    }
+
+    @Test
+    @DisplayName("toggleLike: 아직 안 눌렀으면 추천을 추가하고 liked=true를 반환한다")
+    void toggleLike_안눌렀으면_추가한다() {
+        User user = userWithEmail("liker@example.com", 2L);
+        Post post = postOf(user, 100L);
+        given(postRepository.findById(100L)).willReturn(Optional.of(post));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("liker@example.com"))).willReturn(Optional.of(user));
+        given(postLikeRepository.existsByPostIdAndUserId(100L, 2L)).willReturn(false);
+        given(postLikeRepository.countByPostId(100L)).willReturn(1L);
+
+        var result = postService.toggleLike(100L, authOf("liker@example.com", Role.USER));
+
+        assertThat(result.liked()).isTrue();
+        assertThat(result.likeCount()).isEqualTo(1L);
+        verify(postLikeRepository).save(any());
+        verify(postLikeRepository, never()).deleteByPostIdAndUserId(any(), any());
+    }
+
+    @Test
+    @DisplayName("toggleLike: 이미 눌렀으면 추천을 취소하고 liked=false를 반환한다")
+    void toggleLike_이미눌렀으면_취소한다() {
+        User user = userWithEmail("liker@example.com", 2L);
+        Post post = postOf(user, 100L);
+        given(postRepository.findById(100L)).willReturn(Optional.of(post));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("liker@example.com"))).willReturn(Optional.of(user));
+        given(postLikeRepository.existsByPostIdAndUserId(100L, 2L)).willReturn(true);
+        given(postLikeRepository.countByPostId(100L)).willReturn(0L);
+
+        var result = postService.toggleLike(100L, authOf("liker@example.com", Role.USER));
+
+        assertThat(result.liked()).isFalse();
+        verify(postLikeRepository).deleteByPostIdAndUserId(100L, 2L);
+        verify(postLikeRepository, never()).save(any());
     }
 }

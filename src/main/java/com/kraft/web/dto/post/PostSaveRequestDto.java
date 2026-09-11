@@ -1,5 +1,6 @@
 package com.kraft.web.dto.post;
 
+import com.kraft.domain.post.Category;
 import com.kraft.domain.post.Post;
 import com.kraft.domain.user.User;
 import jakarta.validation.constraints.NotBlank;
@@ -14,7 +15,9 @@ public record PostSaveRequestDto(
         @NotBlank(message = "내용은 필수입니다.")
         String content,
 
-        String picture
+        String picture,
+
+        Category category
 ) {
 
     public Post toEntity(User user) {
@@ -23,6 +26,7 @@ public record PostSaveRequestDto(
                 .content(content)
                 .picture(picture)
                 .user(user)
+                .category(category)
                 .build();
     }
 }

@@ -1,5 +1,6 @@
 package com.kraft.web.dto.post;
 
+import com.kraft.domain.post.Category;
 import com.kraft.domain.post.Post;
 
 /**
@@ -13,17 +14,25 @@ public record PostViewDto(
         String content,
         String picture,
         String author,
-        boolean canManagePost
+        boolean canManagePost,
+        Category category,
+        long viewCount,
+        long likeCount,
+        boolean likedByMe
 ) {
 
-    public PostViewDto(Post entity, boolean canManagePost) {
+    public PostViewDto(Post entity, boolean canManagePost, long likeCount, boolean likedByMe) {
         this(
                 entity.getId(),
                 entity.getTitle(),
                 entity.getContent(),
                 entity.getPicture(),
                 entity.getUser() != null ? entity.getUser().getName() : null,
-                canManagePost
+                canManagePost,
+                entity.getCategory(),
+                entity.getViewCount(),
+                likeCount,
+                likedByMe
         );
     }
 }

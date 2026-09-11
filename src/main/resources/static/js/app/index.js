@@ -350,7 +350,8 @@ var postEdit = {
         var data = {
             title: $('#title').val(),
             content: $('#content').val(),
-            picture: pictureUrl
+            picture: pictureUrl,
+            category: $('#edit-category').val()
         };
 
         var id = $('#id').val();
@@ -532,7 +533,8 @@ var postForm = {
         var data = {
             title: $('#title').val(),
             content: $('#content').val(),
-            picture: pictureUrl
+            picture: pictureUrl,
+            category: $('#category').val()
         };
 
         this.setProgress('게시글 등록 중…');
@@ -629,6 +631,41 @@ var deleteConfirm = {
             showToast(extractErrorMessage(error), 'danger');
         }).always(function () {
             $confirmBtn.prop('disabled', false);
+        });
+    }
+};
+
+/**
+ * 게시글 상세 화면의 추천(좋아요) 토글 버튼. 서버가 반환하는 최종 상태(liked/likeCount)로만
+ * 화면을 갱신한다 — 클릭 즉시 낙관적으로 뒤집지 않는 이유는, 이미 다른 탭에서 취소했거나
+ * 요청이 실패했을 때 버튼 상태가 실제와 어긋나는 것을 피하기 위해서다.
+ */
+var postLike = {
+    init: function () {
+        var _this = this;
+        $('#btn-like').on('click', function () {
+            _this.toggle();
+        });
+    },
+    toggle: function () {
+        var $btn = $('#btn-like');
+        if (!$btn.length || $btn.prop('disabled')) {
+            return;
+        }
+        var id = $('#id').val();
+        $btn.prop('disabled', true);
+
+        $.ajax({
+            type: 'PUT',
+            url: '/api/v1/posts/' + id + '/like',
+            dataType: 'json'
+        }).done(function (response) {
+            $('#like-count').text(response.likeCount);
+            $btn.toggleClass('is-active', response.liked).attr('aria-pressed', response.liked ? 'true' : 'false');
+        }).fail(function (error) {
+            showToast(extractErrorMessage(error), 'danger');
+        }).always(function () {
+            $btn.prop('disabled', false);
         });
     }
 };
@@ -830,6 +867,7 @@ $(function () {
     flash.consume();
     siteNav.init();
     postEdit.init();
+    postLike.init();
     postForm.init();
     deleteConfirm.init();
     comment.init();

@@ -1,5 +1,6 @@
 package com.kraft.web.dto.post;
 
+import com.kraft.domain.post.Category;
 import com.kraft.domain.post.Post;
 
 public record PostResponseDto(
@@ -7,7 +8,9 @@ public record PostResponseDto(
         String title,
         String content,
         String picture,
-        String author
+        String author,
+        Category category,
+        long viewCount
 ) {
 
     public PostResponseDto(Post entity) {
@@ -16,7 +19,9 @@ public record PostResponseDto(
                 entity.getTitle(),
                 entity.getContent(),
                 entity.getPicture(),
-                entity.getUser() != null ? entity.getUser().getName() : null
+                entity.getUser() != null ? entity.getUser().getName() : null,
+                entity.getCategory(),
+                entity.getViewCount()
         );
     }
 }

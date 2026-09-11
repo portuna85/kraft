@@ -1,5 +1,6 @@
 package com.kraft.web;
 
+import com.kraft.domain.post.Category;
 import com.kraft.service.comment.CommentService;
 import com.kraft.service.post.PostService;
 import com.kraft.service.user.EmailVerificationService;
@@ -24,11 +25,18 @@ public class IndexController {
     private final EmailVerificationService emailVerificationService;
 
     @GetMapping("/")
-    public String index(@PageableDefault(size = 10) Pageable pageable, Model model) {
-        PostsPageResponseDto postsPage = postService.findAllDesc(pageable);
+    public String index(@PageableDefault(size = 10) Pageable pageable,
+                         @RequestParam(required = false) String q,
+                         @RequestParam(required = false) Category category,
+                         Model model) {
+        PostsPageResponseDto postsPage = postService.findAllDesc(pageable, q, category);
         model.addAttribute("posts", postsPage.content());
         model.addAttribute("postsPage", postsPage);
         model.addAttribute("pageWindow", PageWindow.of(postsPage.page(), postsPage.totalPages()));
+        model.addAttribute("popularPosts", postService.findPopular(5));
+        model.addAttribute("q", q);
+        model.addAttribute("category", category);
+        model.addAttribute("categories", Category.values());
         model.addAttribute("pageTitle", "전체 게시글");
         return "index";
     }

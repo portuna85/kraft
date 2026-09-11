@@ -12,10 +12,20 @@ spring:
 
   jpa:
     hibernate:
-      # 운영 스키마는 마이그레이션 도구나 수동 DDL로 관리한다. 애플리케이션이 스키마를 만들거나
-      # 지우지 않는다 — 스키마가 엔티티 매핑과 불일치하면 기동 자체가 실패한다(의도된 동작).
+      # 운영 스키마는 Flyway(아래)가 관리한다. 애플리케이션이 스키마를 만들거나 지우지
+      # 않는다 — 스키마가 엔티티 매핑과 불일치하면 기동 자체가 실패한다(의도된 동작).
       ddl-auto: validate
     show-sql: false
+
+  flyway:
+    enabled: true
+    # 이 세션에서 Flyway를 처음 도입한다. 이미 스키마가 있는 기존 운영 DB에 처음 연결할 때는
+    # flyway_schema_history 테이블이 없으므로, baseline-on-migrate가 V1을 "실제로 실행하지 않고
+    # 이미 적용된 것으로 기록"한 뒤 V2부터 정상적으로 마이그레이션을 진행한다. 완전히 새로
+    # 만드는 DB에서는 이 옵션이 아무 영향을 주지 않고(스키마가 비어 있으므로) V1부터 그대로
+    # 실행된다.
+    baseline-on-migrate: true
+    baseline-version: "1"
 
   h2:
     console:

@@ -50,15 +50,15 @@ V4는 없는 게시글이라는 원인을 구별할 수 있는 화면 조회 예
 
 | 항목 | 필요한 이유 / 처리 방침 |
 | --- | --- |
-| 이메일 인증 전 작성 제한 | 현재 `authenticated()` 정책 변경이 필요. `USER/ADMIN` 검사와 화면 상태를 함께 정의하는 별도 기능 작업 |
-| 인증 메일 재발송·전송 상태 | API·실패 복구 계약이 필요. 현재 화면에 동작하지 않는 버튼 추가 금지 |
-| 로그인 후 원래 위치 복귀 | 현재 강제 `/` 이동 정책과 충돌. 별도 인증 흐름 변경 |
-| 비밀번호 변경 후 로그인으로 고정 이동 | 현재 로그아웃 복귀 정책 조정 필요 |
-| 가입·변경 비밀번호 규칙 통일 | 서버 검증 정책 변경 필요. 현재 UI는 각 API 규칙을 정확히 안내 |
+| 이메일 인증 전 작성 제한 | 현재 `authenticated()` 정책 변경이 필요. `USER/ADMIN` 검사와 화면 상태를 함께 정의하는 별도 기능 작업 — **완료(2026-09-11)**: `WriteAccessPolicy.requireVerified(User)`를 신설해 `Role.GUEST`면 `AccessDeniedException`(403)을 던지도록 `PostService.save`·`CommentService.save`에 적용했다. 네비게이션에 GUEST 전용 "인증 메일 재발송" 버튼을 추가했다 |
+| 인증 메일 재발송·전송 상태 | API·실패 복구 계약이 필요. 현재 화면에 동작하지 않는 버튼 추가 금지 — **완료(2026-09-11)**: `EmailVerificationService.resend(email)`이 기존 토큰을 지우고 재발송한다(실패를 흡수하지 않고 그대로 전파). `POST /api/v1/users/me/verify-email/resend` API와 위 재발송 버튼으로 노출한다 |
+| 로그인 후 원래 위치 복귀 | 현재 강제 `/` 이동 정책과 충돌. 별도 인증 흐름 변경 — **완료(2026-09-11)**: 이 앱은 모든 화면 경로가 `permitAll`이라 Spring Security 기본 `RequestCache`가 채워질 일이 없다는 것을 확인했다. 대신 네비게이션의 로그인 링크가 현재 경로를 `?redirect=`로 실어 보내고, 로그인 폼 히든 필드로 POST까지 옮겨 커스텀 `AuthenticationSuccessHandler`가 그 경로로 돌려보낸다(외부 URL·프로토콜 상대 URL은 "/"로 안전하게 대체) |
+| 비밀번호 변경 후 로그인으로 고정 이동 | 현재 로그아웃 복귀 정책 조정 필요 — **완료(2026-09-11)**: `refererLogoutSuccessHandler`에 `/users/me/password` 예외를 추가해 Referer와 무관하게 항상 `/login`으로 보낸다(`/posts/save` 예외와 같은 패턴) |
+| 가입·변경 비밀번호 규칙 통일 | 서버 검증 정책 변경 필요. 현재 UI는 각 API 규칙을 정확히 안내 — **완료(2026-09-11)**: `ChangePasswordRequestDto.newPassword`에 `SignUpRequestDto.password`와 동일한 대소문자·특수문자 `@Pattern`을 추가했다 |
 | 제목·이름 최대 길이의 API 검증 | DB 길이에 맞춘 요청 DTO 검증 보완. 클라이언트 제한만으로 API 검증을 대체하지 않음 — **완료(2026-09-11)**: `SignUpRequestDto.name`(`@Size(max=50)`), `PostSaveRequestDto`·`PostUpdateRequestDto.title`(`@Size(max=255)`)에 DB 컬럼 길이와 일치하는 검증을 추가하고 `PostApiControllerTest`·`UserApiControllerTest`에 초과 시 400을 확인하는 테스트를 추가했다(`gradlew.bat test` 전체 통과) |
 | 게시글 삭제 시 댓글 처리 | 서비스·엔티티·DB 관계를 확인해야 함. 연관 댓글이 있는 삭제의 실패가 재현되면 기능 회귀 작업으로 처리 — **완료(2026-09-11)**: 실제로 `comments.post_id` FK 제약(cascade 없음)으로 인해 댓글이 있는 게시글을 삭제하면 `TransientPropertyValueException`으로 실패함을 통합 테스트로 재현했다. `CommentRepository.deleteAllByPostId(postId)`를 추가하고 `PostService.delete()`에서 게시글 삭제 전에 호출하도록 수정했다. `CommentRepositoryTest`에 재현·회귀 방지 테스트, `PostServiceTest`에 호출 순서(`commentRepository.deleteAllByPostId` → `postRepository.delete`) 검증 테스트를 추가했다(`gradlew.bat test` 전체 통과) |
-| 업로드 파일 정리·기존 이미지 변경 | 파일 삭제·수정 API와 정리 정책 필요 |
-| 검색·분류·조회 수·추천·인기글·댓글 수 | 데이터 모델·조회 API 확장 필요 |
+| 업로드 파일 정리·기존 이미지 변경 | 파일 삭제·수정 API와 정리 정책 필요 — **완료(2026-09-11)**: `PostImageService.deleteIfExists(url)`을 추가해(경로 조작 방어 포함) `PostService.delete()`가 삭제된 게시글의 이미지 파일을 지우고, `PostService.update()`는 picture가 바뀌면 이전 파일을 지운다. `PostUpdateRequestDto.picture`를 추가하고 `post-update.html`에 이미지 교체·삭제 UI를 이식했다. 로컬 `bootRun` + `claude-in-chrome`으로 교체·삭제 후 실제 파일이 지워지는 것까지 확인했다 |
+| 검색·분류·조회 수·추천·인기글·댓글 수 | 데이터 모델·조회 API 확장 필요 — **완료(2026-09-11)**: `Post.category`(`Category` enum: 자유/질문/공지, 기본 FREE)·`viewCount`(상세 조회마다 +1, 중복 방지 없음) 필드와 `PostLike` 엔티티(사용자당 게시글별 1회 토글)를 추가했다. `PostRepository.search(keyword, category, pageable)`로 제목·본문 LIKE 검색과 분류 필터를 함께 지원하고, `findTopByViewCountDesc`로 조회수 상위 인기글을 뽑는다. 목록 화면에 검색창·분류 필터·인기글 섹션·조회수·댓글 수 컬럼을 추가했고, 상세 화면에 추천 버튼을 추가했다(`PUT /api/v1/posts/{id}/like`). 운영 스키마는 Flyway로 전환했다(아래 §8 참고) |
 
 ## 4. 단계별 작업 순서
 
@@ -178,3 +178,14 @@ Java 25 환경을 사용한다. `gradlew.bat test`는 매 단계 구현 직후 �
 - [x] 변경에 필요한 테스트가 통과했다(`gradlew.bat test`, 매 단계 후 재확인). **부분 완료** — 실제 화면 캡처로 밀도·줄바꿈·겹침은 대표 뷰포트 위주로 확인했고, 320~1920px 전 구간 캡처 매트릭스나 Edge·Safari·실제 기기 검토는 남아 있다.
 
 이번 1~5단계 구현·검증으로 Kraft 반응형 프론트엔드의 핵심 기능(공통 셸, 목록, 권한 기반 읽기·편집·댓글, 글쓰기·업로드, 계정 피드백)은 실제로 동작한다. 남은 항목(정밀 접근성 검증, 크로스 브라우저·실기기 확인, 전 구간 캡처)은 이 문서에 명시한 대로 후속 작업으로 추적한다.
+
+## 8. Flyway 도입 (2026-09-11)
+
+§3 "검색·분류·조회 수·추천·인기글·댓글 수" 구현으로 `posts.category`·`posts.view_count`·`post_likes` 테이블이 새로 필요해졌다. 운영(`ddl-auto: validate`)은 애플리케이션이 스키마를 바꾸지 않으므로, 이번 기회에 Flyway를 도입해 앞으로의 스키마 변경을 마이그레이션 파일로 관리하기로 했다.
+
+- `build.gradle.kts`에 `spring-boot-flyway`, `flyway-mysql`(MariaDB용) 의존성을 추가했다.
+- `src/main/resources/db/migration/V1__baseline.sql`이 이번 세션 이전까지의 스키마(users/posts/comments/email_verification_tokens)를, `V2__add_post_extras.sql`이 이번에 추가된 컬럼·테이블을 담는다.
+- Flyway는 **운영(`application-prod.yml`)에서만 활성화**한다(`spring.flyway.enabled: true` + `baseline-on-migrate: true`, `baseline-version: "1"`). 로컬(H2)·docker(MariaDB, `create-drop`)는 기본값(`application.yml`의 `spring.flyway.enabled: false`)을 유지해 Hibernate가 엔티티 매핑으로 스키마를 직접 만든다 — 두 스키마 관리자가 같은 DB를 동시에 건드리는 상황(Flyway가 만든 테이블을 Hibernate가 `create-drop`으로 다시 지우는 등)을 피하기 위해서다.
+- `baseline-on-migrate`는 이미 스키마가 있는 기존 운영 DB에 처음 연결할 때 `V1`을 실제로 실행하지 않고 "이미 적용됨"으로만 기록한 뒤 `V2`부터 진행하도록 한다. 완전히 새로 만드는 DB에서는 `V1`부터 그대로 실행된다.
+
+**검증하지 못한 부분 — 실제 운영 반영 전 사람이 확인 필요**: 이 세션에는 실제 MariaDB(운영 또는 docker 프로파일)가 연결되어 있지 않아 `V1`/`V2`가 진짜 MariaDB에서 실행되는 것을 확인하지 못했다. 로컬 H2에서 Hibernate가 생성한 DDL 로그로 컬럼·제약을 간접 확인했을 뿐이다(`gradlew.bat test`, `bootRun` 모두 H2 기준). 특히 `role`/`category` 같은 `@Enumerated(STRING)` 필드는 Hibernate 버전에 따라 H2에서 네이티브 `ENUM(...)` 타입으로 생성되는 것을 실측으로 확인했는데, 마이그레이션 SQL은 이식성을 위해 `VARCHAR`로 작성했다 — MariaDB에서 Hibernate가 실제로 어떤 타입을 기대하는지, `ddl-auto: validate`가 `VARCHAR` 컬럼을 그대로 통과시키는지는 실제 MariaDB(예: `docker compose up -d` 후 `--spring.profiles.active=docker`, 또는 스테이징 환경)에 한 번 반영해 확인해야 한다. 문제가 있으면 `V1`/`V2`를 실제 환경에 맞게 조정한다.

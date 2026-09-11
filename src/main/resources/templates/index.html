@@ -21,23 +21,50 @@
         </div>
         <p class="board-head__desc">최근 등록 순으로 게시글을 확인하세요.</p>
 
+        <form class="board-search" method="get" action="/">
+            <label for="search-q" class="sr-only">검색어</label>
+            <input type="search" id="search-q" name="q" class="form-control board-search__input"
+                   placeholder="제목·내용 검색" th:value="${q}">
+            <label for="search-category" class="sr-only">분류</label>
+            <select id="search-category" name="category" class="form-control board-search__category">
+                <option value="" th:selected="${category == null}">전체 분류</option>
+                <option th:each="c : ${categories}" th:value="${c}" th:text="${c.title}"
+                        th:selected="${category == c}"></option>
+            </select>
+            <button type="submit" class="btn btn-outline-primary">검색</button>
+        </form>
+
+        <section class="popular-posts" th:if="${!#lists.isEmpty(popularPosts)}" aria-labelledby="popular-heading">
+            <h2 id="popular-heading" class="popular-posts__title">인기글</h2>
+            <ol class="popular-posts__list">
+                <li class="popular-posts__item" th:each="p : ${popularPosts}">
+                    <a th:href="@{'/posts/update/' + ${p.id}}" th:text="${p.title}">제목</a>
+                    <span class="popular-posts__views" th:text="'조회 ' + ${p.viewCount}">조회 0</span>
+                </li>
+            </ol>
+        </section>
+
         <!-- 목록은 하나의 데이터로만 렌더링한다. 열 정렬은 넓은 화면에서 CSS Grid가 담당한다. -->
         <ul class="post-list" th:if="${!#lists.isEmpty(posts)}">
             <li class="post-list__head" aria-hidden="true">
-                <span>번호</span><span>제목</span><span>작성자</span><span>최종수정일</span>
+                <span>번호</span><span>제목</span><span>작성자</span><span>최종수정일</span><span>조회</span><span>댓글</span>
             </li>
             <li class="post-list__item" th:each="post : ${posts}">
                 <span class="post-list__no">
                     <span class="post-list__no-label">#</span><span th:text="${post.id}">1</span>
                 </span>
-                <a class="post-list__title" th:href="@{'/posts/update/' + ${post.id}}"
-                   th:text="${post.title}">제목</a>
+                <a class="post-list__title" th:href="@{'/posts/update/' + ${post.id}}">
+                    <span class="post-list__category" th:text="${post.category.title}">분류</span>
+                    <span th:text="${post.title}">제목</span>
+                </a>
                 <span class="post-list__meta">
                     <span class="post-list__author" th:text="${post.author}">작성자</span>
                     <span class="post-list__date"
                           th:text="${post.modifiedDate != null}
                                    ? ${#temporals.format(post.modifiedDate, 'yyyy.MM.dd HH:mm')} : ''">2026.01.01 00:00</span>
                 </span>
+                <span class="post-list__views" th:text="${post.viewCount}">0</span>
+                <span class="post-list__comments" th:text="${post.commentCount}">0</span>
             </li>
         </ul>
 
@@ -54,7 +81,7 @@
 
         <nav class="pager" th:if="${postsPage.totalPages > 1}" aria-label="게시글 목록 페이지 이동">
             <a class="pager__step" th:if="${pageWindow.hasPrev}"
-               th:href="@{/(page=${pageWindow.prev})}">이전</a>
+               th:href="@{/(page=${pageWindow.prev}, q=${q}, category=${category})}">이전</a>
             <span class="pager__step is-disabled" th:unless="${pageWindow.hasPrev}"
                   aria-hidden="true">이전</span>
 
@@ -65,14 +92,14 @@
             <span class="pager__numbers">
                 <th:block th:each="i : ${pageWindow.pages}">
                     <a class="pager__page" th:if="${i != postsPage.page}"
-                       th:href="@{/(page=${i})}" th:text="${i + 1}">1</a>
+                       th:href="@{/(page=${i}, q=${q}, category=${category})}" th:text="${i + 1}">1</a>
                     <span class="pager__page is-current" th:if="${i == postsPage.page}"
                           th:text="${i + 1}" aria-current="page">1</span>
                 </th:block>
             </span>
 
             <a class="pager__step" th:if="${pageWindow.hasNext}"
-               th:href="@{/(page=${pageWindow.next})}">다음</a>
+               th:href="@{/(page=${pageWindow.next}, q=${q}, category=${category})}">다음</a>
             <span class="pager__step is-disabled" th:unless="${pageWindow.hasNext}"
                   aria-hidden="true">다음</span>
         </nav>

@@ -36,17 +36,31 @@ public class Post extends BaseEntity {
     @JoinColumn(name = "user_id")
     private User user;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Category category;
+
+    @Column(name = "view_count", nullable = false)
+    private long viewCount;
+
     @Builder
-    public Post(String title, String content, String picture, User user) {
+    public Post(String title, String content, String picture, User user, Category category) {
         this.title = title;
         this.content = content;
         this.picture = picture;
         this.user = user;
+        this.category = category != null ? category : Category.FREE;
+        this.viewCount = 0L;
     }
 
-    public void update(String title, String content, String picture) {
+    public void update(String title, String content, String picture, Category category) {
         this.title = title;
         this.content = content;
         this.picture = picture;
+        this.category = category != null ? category : this.category;
+    }
+
+    public void increaseViewCount() {
+        this.viewCount++;
     }
 }

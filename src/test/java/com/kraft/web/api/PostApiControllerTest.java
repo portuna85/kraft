@@ -1,8 +1,10 @@
 package com.kraft.web.api;
 
 import com.kraft.config.security.SecurityConfig;
+import com.kraft.domain.post.Category;
 import com.kraft.service.post.PostImageService;
 import com.kraft.service.post.PostService;
+import com.kraft.web.dto.post.PostLikeResponseDto;
 import com.kraft.web.dto.post.PostSaveRequestDto;
 import com.kraft.web.dto.post.PostUpdateRequestDto;
 import com.kraft.web.dto.post.PostsPageResponseDto;
@@ -62,13 +64,61 @@ class PostApiControllerTest {
     @Test
     @DisplayName("GET /api/v1/posts 는 인증 없이도 호출할 수 있다")
     void 목록조회는_인증없이_가능하다() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class)))
+        given(postService.findAllDesc(any(Pageable.class), any(), any()))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
 
         mockMvc.perform(get("/api/v1/posts"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(0))
                 .andExpect(jsonPath("$.first").value(true));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/posts?q=...&category=... 는 검색어·분류를 서비스에 그대로 전달한다")
+    void 목록조회는_검색어와_분류를_서비스에_전달한다() throws Exception {
+        given(postService.findAllDesc(any(Pageable.class), eq("공지"), eq(Category.NOTICE)))
+                .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
+
+        mockMvc.perform(get("/api/v1/posts").param("q", "공지").param("category", "NOTICE"))
+                .andExpect(status().isOk());
+
+        verify(postService).findAllDesc(any(Pageable.class), eq("공지"), eq(Category.NOTICE));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/posts/{id}/like 는 CSRF 토큰이 있어도 미인증이면 로그인 페이지로 리다이렉트된다")
+    void 추천토글은_미인증이면_로그인으로_리다이렉트된다() throws Exception {
+        mockMvc.perform(put("/api/v1/posts/1/like").with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login"));
+
+        verify(postService, never()).toggleLike(any(), any());
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/posts/{id}/like 는 인증+CSRF면 토글 결과를 반환한다")
+    void 추천토글은_인증되고_CSRF가_있으면_결과를_반환한다() throws Exception {
+        given(postService.toggleLike(eq(1L), any(Authentication.class)))
+                .willReturn(new PostLikeResponseDto(true, 3L));
+
+        mockMvc.perform(put("/api/v1/posts/1/like")
+                        .with(user("tester@example.com"))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.liked").value(true))
+                .andExpect(jsonPath("$.likeCount").value(3));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/posts/{id}/like 는 없는 글이면 400 ProblemDetail을 반환한다")
+    void 추천토글은_없는_글이면_400() throws Exception {
+        given(postService.toggleLike(eq(999L), any(Authentication.class)))
+                .willThrow(new com.kraft.web.exception.PostNotFoundException(999L));
+
+        mockMvc.perform(put("/api/v1/posts/999/like")
+                        .with(user("tester@example.com"))
+                        .with(csrf()))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

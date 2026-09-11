@@ -1,5 +1,6 @@
 package com.kraft.web.dto.post;
 
+import com.kraft.domain.post.Category;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -13,6 +14,8 @@ public record PostUpdateRequestDto(
         String content,
 
         @Size(max = 500, message = "이미지 경로가 올바르지 않습니다.")
-        String picture
+        String picture,
+
+        Category category
 ) {
 }

@@ -8,6 +8,13 @@ spring:
   jpa:
     open-in-view: false
 
+  flyway:
+    # 로컬(H2)·docker(MariaDB, create-drop)는 Hibernate가 엔티티 매핑으로 스키마를 직접
+    # 만들므로 Flyway를 끈다. 운영(application-prod.yml)에서만 명시적으로 켠다 — 두 스키마
+    # 관리자가 동시에 같은 DB를 건드리면(Flyway가 만든 테이블을 Hibernate가 create-drop으로
+    # 다시 지우는 등) 예측하기 어려워지기 때문이다.
+    enabled: false
+
   session:
     store-type: jdbc
 

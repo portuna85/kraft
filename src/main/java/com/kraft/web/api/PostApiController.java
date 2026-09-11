@@ -1,8 +1,10 @@
 package com.kraft.web.api;
 
+import com.kraft.domain.post.Category;
 import com.kraft.service.post.PostImageService;
 import com.kraft.service.post.PostService;
 import com.kraft.web.dto.post.ImageUploadResponseDto;
+import com.kraft.web.dto.post.PostLikeResponseDto;
 import com.kraft.web.dto.post.PostResponseDto;
 import com.kraft.web.dto.post.PostSaveRequestDto;
 import com.kraft.web.dto.post.PostUpdateRequestDto;
@@ -46,12 +48,19 @@ public class PostApiController {
     }
 
     @GetMapping("/api/v1/posts")
-    public PostsPageResponseDto findAll(@PageableDefault(size = 10) Pageable pageable) {
-        return postService.findAllDesc(pageable);
+    public PostsPageResponseDto findAll(@PageableDefault(size = 10) Pageable pageable,
+                                         @RequestParam(required = false) String q,
+                                         @RequestParam(required = false) Category category) {
+        return postService.findAllDesc(pageable, q, category);
     }
 
     @PostMapping(value = "/api/v1/posts/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ImageUploadResponseDto uploadImage(@RequestParam("file") MultipartFile file) {
         return new ImageUploadResponseDto(postImageService.store(file));
+    }
+
+    @PutMapping("/api/v1/posts/{id}/like")
+    public PostLikeResponseDto toggleLike(@PathVariable Long id, Authentication authentication) {
+        return postService.toggleLike(id, authentication);
     }
 }

@@ -1,6 +1,7 @@
 package com.kraft.web;
 
 import com.kraft.config.security.SecurityConfig;
+import com.kraft.domain.post.Category;
 import com.kraft.service.comment.CommentService;
 import com.kraft.service.post.PostService;
 import com.kraft.service.user.EmailVerificationService;
@@ -58,8 +59,9 @@ class IndexControllerTest {
     @Test
     @DisplayName("GET / 는 목록을 모델에 담아 index 뷰를 렌더링한다")
     void 목록화면은_정상_렌더링된다() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class)))
+        given(postService.findAllDesc(any(Pageable.class), any(), any()))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
+        given(postService.findPopular(5)).willReturn(List.of());
 
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
@@ -70,8 +72,9 @@ class IndexControllerTest {
     @Test
     @DisplayName("[회귀 방지] GET /?page=-1 은 500이 아니라 정상 렌더링된다")
     void 음수_페이지_요청은_500이_아니다() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class)))
+        given(postService.findAllDesc(any(Pageable.class), any(), any()))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
+        given(postService.findPopular(5)).willReturn(List.of());
 
         mockMvc.perform(get("/").param("page", "-1"))
                 .andExpect(status().isOk())
@@ -81,12 +84,27 @@ class IndexControllerTest {
     @Test
     @DisplayName("[회귀 방지] GET /?page=999 (범위 초과) 도 500이 아니라 정상 렌더링된다")
     void 범위초과_페이지_요청도_500이_아니다() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class)))
+        given(postService.findAllDesc(any(Pageable.class), any(), any()))
                 .willReturn(new PostsPageResponseDto(List.of(), 999, 10, 0, 0, true, true));
+        given(postService.findPopular(5)).willReturn(List.of());
 
         mockMvc.perform(get("/").param("page", "999"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("index"));
+    }
+
+    @Test
+    @DisplayName("GET /?q=키워드&category=NOTICE 는 검색어·분류를 서비스에 그대로 전달한다")
+    void 검색어와_분류를_서비스에_전달한다() throws Exception {
+        given(postService.findAllDesc(any(Pageable.class), eq("키워드"), eq(Category.NOTICE)))
+                .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
+        given(postService.findPopular(5)).willReturn(List.of());
+
+        mockMvc.perform(get("/").param("q", "키워드").param("category", "NOTICE"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("index"))
+                .andExpect(model().attribute("q", "키워드"))
+                .andExpect(model().attribute("category", Category.NOTICE));
     }
 
     @Test
@@ -101,7 +119,7 @@ class IndexControllerTest {
     @DisplayName("GET /posts/update/{id} 는 조회한 게시글과 댓글 목록을 모델에 담아 렌더링한다")
     void 수정화면은_게시글과_댓글을_모델에_담는다() throws Exception {
         given(postService.findByIdForView(eq(1L), nullable(Authentication.class)))
-                .willReturn(new PostViewDto(1L, "제목", "내용", null, "작성자", false));
+                .willReturn(new PostViewDto(1L, "제목", "내용", null, "작성자", false, Category.FREE, 0L, 0L, false));
         given(commentService.findByPostIdForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(List.of());
 
