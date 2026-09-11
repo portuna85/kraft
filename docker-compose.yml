@@ -1,3 +1,8 @@
+# Kraft 로컬 개발용 MariaDB. 2026-09-11부터 local(기본) 스프링 프로파일이 H2 대신 이
+# 컨테이너에 접속하므로(application-local.yml 참고), 앱을 실행하기 전에 반드시
+# `docker compose up -d`로 이 서비스를 먼저 띄워야 한다. 접속 정보는 .env(.env.example
+# 참고)에서 환경변수로 주입한다. gradlew test는 이 컨테이너와 무관하다(test 프로파일이
+# H2 인메모리를 쓴다 — application-test.yml, build.gradle.kts 참고).
 services:
   mariadb:
     image: mariadb:11.7
