@@ -9,7 +9,7 @@ class PageWindowTest {
 
     @Test
     @DisplayName("전체 페이지가 0이면 빈 창을 반환한다")
-    void 전체_페이지가_0이면_빈_창() {
+    void of_whenTotalPagesIsZero_returnsEmptyWindow() {
         PageWindow window = PageWindow.of(0, 0);
 
         assertThat(window.pages()).isEmpty();
@@ -19,7 +19,7 @@ class PageWindowTest {
 
     @Test
     @DisplayName("전체 페이지가 1이면 이전·다음이 모두 없다")
-    void 전체_페이지가_1개() {
+    void of_whenTotalPagesIsOne_hasNoPrevAndNoNext() {
         PageWindow window = PageWindow.of(0, 1);
 
         assertThat(window.pages()).containsExactly(0);
@@ -31,7 +31,7 @@ class PageWindowTest {
 
     @Test
     @DisplayName("첫 페이지에서는 이전이 없고 다음은 있다")
-    void 첫_페이지() {
+    void of_whenFirstPage_hasNoPrevAndHasNext() {
         PageWindow window = PageWindow.of(0, 7);
 
         assertThat(window.hasPrev()).isFalse();
@@ -42,7 +42,7 @@ class PageWindowTest {
 
     @Test
     @DisplayName("마지막 페이지에서는 다음이 없고 이전은 있다")
-    void 마지막_페이지() {
+    void of_whenLastPage_hasPrevAndNoNext() {
         PageWindow window = PageWindow.of(6, 7);
 
         assertThat(window.hasPrev()).isTrue();
@@ -53,7 +53,7 @@ class PageWindowTest {
 
     @Test
     @DisplayName("가운데 페이지는 앞뒤로 창이 균형 있게 잡힌다")
-    void 가운데_페이지() {
+    void of_whenMiddlePage_balancesWindow() {
         PageWindow window = PageWindow.of(3, 7);
 
         assertThat(window.pages()).containsExactly(1, 2, 3, 4, 5);
@@ -61,7 +61,7 @@ class PageWindowTest {
 
     @Test
     @DisplayName("범위를 초과한 페이지 요청은 마지막 페이지로 보정한다")
-    void 범위초과_페이지는_마지막으로_보정() {
+    void of_whenPageExceedsTotalPages_adjustsToLastPage() {
         PageWindow window = PageWindow.of(999, 3);
 
         assertThat(window.displayPage()).isEqualTo(3);
@@ -72,7 +72,7 @@ class PageWindowTest {
 
     @Test
     @DisplayName("음수 페이지 요청은 첫 페이지로 보정한다")
-    void 음수_페이지는_첫_페이지로_보정() {
+    void of_whenPageIsNegative_adjustsToFirstPage() {
         PageWindow window = PageWindow.of(-1, 3);
 
         assertThat(window.displayPage()).isEqualTo(1);
@@ -82,7 +82,7 @@ class PageWindowTest {
 
     @Test
     @DisplayName("전체 페이지가 5개 이하이면 창이 전체 범위를 그대로 담는다")
-    void 전체_페이지가_적으면_창이_전체를_담는다() {
+    void of_whenTotalPagesIsFiveOrLess_containsAllPages() {
         PageWindow window = PageWindow.of(1, 3);
 
         assertThat(window.pages()).containsExactly(0, 1, 2);

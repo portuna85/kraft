@@ -65,7 +65,7 @@ class EmailVerificationServiceTest {
 
     @Test
     @DisplayName("sendVerificationEmail: 존재하지 않는 회원이면 IllegalArgumentException")
-    void sendVerificationEmail_회원_없으면_예외() {
+    void sendVerificationEmail_whenUserNotFound_throwsIllegalArgumentException() {
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> emailVerificationService.sendVerificationEmail("nobody@example.com"))
@@ -78,7 +78,7 @@ class EmailVerificationServiceTest {
 
     @Test
     @DisplayName("sendVerificationEmail: 회원이 존재하면 토큰을 저장하고 baseUrl+token 링크가 포함된 메일을 발송한다")
-    void sendVerificationEmail_정상_발송() {
+    void sendVerificationEmail_whenUserExists_savesTokenAndSendsEmail() {
         User user = userWithId(1L, "tester@example.com");
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(user));
 
@@ -98,7 +98,7 @@ class EmailVerificationServiceTest {
 
     @Test
     @DisplayName("sendVerificationEmailSafely: 내부에서 예외가 발생해도 전파되지 않는다")
-    void sendVerificationEmailSafely_예외를_흡수한다() {
+    void sendVerificationEmailSafely_absorbsInternalException() {
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
 
         emailVerificationService.sendVerificationEmailSafely("nobody@example.com");
@@ -108,7 +108,7 @@ class EmailVerificationServiceTest {
 
     @Test
     @DisplayName("verify: 존재하지 않는 토큰이면 IllegalArgumentException")
-    void verify_토큰_없으면_예외() {
+    void verify_whenTokenNotFound_throwsIllegalArgumentException() {
         given(tokenRepository.findByToken("unknown")).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> emailVerificationService.verify("unknown"))
@@ -120,7 +120,7 @@ class EmailVerificationServiceTest {
 
     @Test
     @DisplayName("verify: 만료된 토큰이면 IllegalArgumentException을 던지고 토큰을 삭제한다")
-    void verify_만료된_토큰이면_예외를_던지고_삭제한다() {
+    void verify_whenTokenExpired_throwsIllegalArgumentExceptionAndDeletesToken() {
         User user = userWithId(1L, "tester@example.com");
         EmailVerificationToken expiredToken = EmailVerificationToken.builder()
                 .token("expired-token")
@@ -139,7 +139,7 @@ class EmailVerificationServiceTest {
 
     @Test
     @DisplayName("verify: 유효한 토큰이면 회원을 승격시키고 토큰을 삭제한다")
-    void verify_유효한_토큰이면_승격시키고_삭제한다() {
+    void verify_whenTokenValid_promotesUserAndDeletesToken() {
         User user = userWithId(1L, "tester@example.com");
         EmailVerificationToken validToken = EmailVerificationToken.builder()
                 .token("valid-token")
@@ -156,7 +156,7 @@ class EmailVerificationServiceTest {
 
     @Test
     @DisplayName("resend: 존재하지 않는 회원이면 IllegalArgumentException")
-    void resend_회원_없으면_예외() {
+    void resend_whenUserNotFound_throwsIllegalArgumentException() {
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> emailVerificationService.resend("nobody@example.com"))
@@ -169,7 +169,7 @@ class EmailVerificationServiceTest {
 
     @Test
     @DisplayName("resend: 이미 인증된(GUEST가 아닌) 회원이면 IllegalArgumentException")
-    void resend_이미_인증된_회원이면_예외() {
+    void resend_whenUserAlreadyVerified_throwsIllegalArgumentException() {
         User verifiedUser = User.builder().name("tester").email("tester@example.com").password("encoded").role(Role.USER).build();
         ReflectionTestUtils.setField(verifiedUser, "id", 1L);
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(verifiedUser));
@@ -184,7 +184,7 @@ class EmailVerificationServiceTest {
 
     @Test
     @DisplayName("resend: GUEST 회원이면 기존 토큰을 지우고 새 토큰으로 메일을 다시 발송한다")
-    void resend_GUEST_회원이면_기존_토큰을_지우고_재발송한다() {
+    void resend_whenUserIsGuest_deletesOldTokenAndResendsEmail() {
         User user = userWithId(1L, "tester@example.com");
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(user));
 

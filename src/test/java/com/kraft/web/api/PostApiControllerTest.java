@@ -63,7 +63,7 @@ class PostApiControllerTest {
 
     @Test
     @DisplayName("GET /api/v1/posts 는 인증 없이도 호출할 수 있다")
-    void 목록조회는_인증없이_가능하다() throws Exception {
+    void listPosts_isAccessibleWithoutAuthentication() throws Exception {
         given(postService.findAllDesc(any(Pageable.class), any(), any()))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
 
@@ -75,7 +75,7 @@ class PostApiControllerTest {
 
     @Test
     @DisplayName("GET /api/v1/posts?q=...&category=... 는 검색어·분류를 서비스에 그대로 전달한다")
-    void 목록조회는_검색어와_분류를_서비스에_전달한다() throws Exception {
+    void listPosts_passesSearchKeywordAndCategoryToService() throws Exception {
         given(postService.findAllDesc(any(Pageable.class), eq("공지"), eq(Category.NOTICE)))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
 
@@ -87,7 +87,7 @@ class PostApiControllerTest {
 
     @Test
     @DisplayName("PUT /api/v1/posts/{id}/like 는 CSRF 토큰이 있어도 미인증이면 로그인 페이지로 리다이렉트된다")
-    void 추천토글은_미인증이면_로그인으로_리다이렉트된다() throws Exception {
+    void toggleLike_whenUnauthenticated_redirectsToLoginPage() throws Exception {
         mockMvc.perform(put("/api/v1/posts/1/like").with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login"));
@@ -97,7 +97,7 @@ class PostApiControllerTest {
 
     @Test
     @DisplayName("PUT /api/v1/posts/{id}/like 는 인증+CSRF면 토글 결과를 반환한다")
-    void 추천토글은_인증되고_CSRF가_있으면_결과를_반환한다() throws Exception {
+    void toggleLike_whenAuthenticatedWithCsrf_returnsToggleResult() throws Exception {
         given(postService.toggleLike(eq(1L), any(Authentication.class)))
                 .willReturn(new PostLikeResponseDto(true, 3L));
 
@@ -111,7 +111,7 @@ class PostApiControllerTest {
 
     @Test
     @DisplayName("PUT /api/v1/posts/{id}/like 는 없는 글이면 400 ProblemDetail을 반환한다")
-    void 추천토글은_없는_글이면_400() throws Exception {
+    void toggleLike_whenPostNotFound_returns400BadRequest() throws Exception {
         given(postService.toggleLike(eq(999L), any(Authentication.class)))
                 .willThrow(new com.kraft.web.exception.PostNotFoundException(999L));
 
@@ -123,7 +123,7 @@ class PostApiControllerTest {
 
     @Test
     @DisplayName("GET /api/v1/posts/{id} 는 없는 글이면 400 ProblemDetail을 반환한다")
-    void 단건조회_존재하지_않으면_400() throws Exception {
+    void getPost_whenPostNotFound_returns400BadRequest() throws Exception {
         given(postService.findById(999L))
                 .willThrow(new IllegalArgumentException("해당 게시글이 없습니다. id=999"));
 
@@ -135,7 +135,7 @@ class PostApiControllerTest {
 
     @Test
     @DisplayName("[회귀 방지] 옛 경로 GET /api/v1/posts/list 는 id 타입 변환 실패로 500이 아니라 400을 반환한다")
-    void 숫자가_아닌_id는_500이_아니라_400() throws Exception {
+    void getPost_withNonNumericId_returns400BadRequest() throws Exception {
         mockMvc.perform(get("/api/v1/posts/list"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400));
@@ -143,7 +143,7 @@ class PostApiControllerTest {
 
     @Test
     @DisplayName("POST /api/v1/posts 는 CSRF 토큰이 없으면 403")
-    void 등록은_CSRF_토큰이_없으면_403() throws Exception {
+    void savePost_withoutCsrfToken_returns403Forbidden() throws Exception {
         mockMvc.perform(post("/api/v1/posts")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"t\",\"content\":\"c\"}"))
@@ -152,7 +152,7 @@ class PostApiControllerTest {
 
     @Test
     @DisplayName("POST /api/v1/posts 는 CSRF 토큰이 있어도 미인증이면 로그인 페이지로 리다이렉트된다")
-    void 등록은_미인증이면_로그인으로_리다이렉트된다() throws Exception {
+    void savePost_whenUnauthenticated_redirectsToLoginPage() throws Exception {
         mockMvc.perform(post("/api/v1/posts")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -163,7 +163,7 @@ class PostApiControllerTest {
 
     @Test
     @DisplayName("POST /api/v1/posts 는 인증+CSRF+유효한 본문이면 200과 ID를 반환한다")
-    void 등록은_인증되고_유효하면_ID를_반환한다() throws Exception {
+    void savePost_whenAuthenticatedAndValid_returns200AndId() throws Exception {
         given(postService.save(eq("tester@example.com"), any(PostSaveRequestDto.class))).willReturn(1L);
 
         mockMvc.perform(post("/api/v1/posts")
@@ -177,7 +177,7 @@ class PostApiControllerTest {
 
     @Test
     @DisplayName("POST /api/v1/posts 는 제목이 비어 있으면 400이고 서비스는 호출되지 않는다")
-    void 등록시_제목이_비어있으면_400() throws Exception {
+    void savePost_whenTitleIsEmpty_returns400BadRequest() throws Exception {
         mockMvc.perform(post("/api/v1/posts")
                         .with(user("tester@example.com"))
                         .with(csrf())
@@ -191,7 +191,7 @@ class PostApiControllerTest {
 
     @Test
     @DisplayName("POST /api/v1/posts 는 제목이 255자를 초과하면 400이고 서비스는 호출되지 않는다")
-    void 등록시_제목이_255자를_초과하면_400() throws Exception {
+    void savePost_whenTitleExceedsMaxLength_returns400BadRequest() throws Exception {
         String tooLongTitle = "가".repeat(256);
 
         mockMvc.perform(post("/api/v1/posts")
@@ -207,7 +207,7 @@ class PostApiControllerTest {
 
     @Test
     @DisplayName("PUT /api/v1/posts/{id} 는 작성자가 아니면 403 ProblemDetail")
-    void 수정시_권한이_없으면_403() throws Exception {
+    void updatePost_whenNotAuthor_returns403Forbidden() throws Exception {
         given(postService.update(eq(1L), any(PostUpdateRequestDto.class), any(Authentication.class)))
                 .willThrow(new AccessDeniedException("작성자 본인 또는 관리자만 수정·삭제할 수 있습니다. id=1"));
 
@@ -222,7 +222,7 @@ class PostApiControllerTest {
 
     @Test
     @DisplayName("PUT /api/v1/posts/{id} 는 picture를 포함한 요청 본문을 그대로 서비스에 전달한다")
-    void 수정시_picture를_포함해_서비스에_전달한다() throws Exception {
+    void updatePost_passesPictureAndRequestBodyToService() throws Exception {
         given(postService.update(eq(1L), any(PostUpdateRequestDto.class), any(Authentication.class))).willReturn(1L);
 
         mockMvc.perform(put("/api/v1/posts/1")
@@ -240,7 +240,7 @@ class PostApiControllerTest {
 
     @Test
     @DisplayName("PUT /api/v1/posts/{id} 는 제목이 255자를 초과하면 400이고 서비스는 호출되지 않는다")
-    void 수정시_제목이_255자를_초과하면_400() throws Exception {
+    void updatePost_whenTitleExceedsMaxLength_returns400BadRequest() throws Exception {
         String tooLongTitle = "가".repeat(256);
 
         mockMvc.perform(put("/api/v1/posts/1")
@@ -256,7 +256,7 @@ class PostApiControllerTest {
 
     @Test
     @DisplayName("DELETE /api/v1/posts/{id} 는 인증된 사용자가 요청하면 ID를 반환한다")
-    void 삭제는_인증되면_ID를_반환한다() throws Exception {
+    void deletePost_whenAuthenticated_returns200AndId() throws Exception {
         mockMvc.perform(delete("/api/v1/posts/1")
                         .with(user("tester@example.com"))
                         .with(csrf()))
@@ -268,7 +268,7 @@ class PostApiControllerTest {
 
     @Test
     @DisplayName("POST /api/v1/posts/images 는 CSRF 토큰이 없으면 403")
-    void 이미지업로드는_CSRF_토큰이_없으면_403() throws Exception {
+    void uploadImage_withoutCsrfToken_returns403Forbidden() throws Exception {
         MockMultipartFile file = new MockMultipartFile("file", "photo.png", "image/png", "img".getBytes());
 
         mockMvc.perform(multipart("/api/v1/posts/images").file(file))
@@ -277,7 +277,7 @@ class PostApiControllerTest {
 
     @Test
     @DisplayName("POST /api/v1/posts/images 는 CSRF 토큰이 있어도 미인증이면 로그인 페이지로 리다이렉트된다")
-    void 이미지업로드는_미인증이면_로그인으로_리다이렉트된다() throws Exception {
+    void uploadImage_whenUnauthenticated_redirectsToLoginPage() throws Exception {
         MockMultipartFile file = new MockMultipartFile("file", "photo.png", "image/png", "img".getBytes());
 
         mockMvc.perform(multipart("/api/v1/posts/images").file(file).with(csrf()))
@@ -287,7 +287,7 @@ class PostApiControllerTest {
 
     @Test
     @DisplayName("POST /api/v1/posts/images 는 인증+CSRF+유효한 파일이면 200과 업로드된 URL을 반환한다")
-    void 이미지업로드는_인증되고_유효하면_URL을_반환한다() throws Exception {
+    void uploadImage_whenAuthenticatedAndValid_returns200AndUrl() throws Exception {
         MockMultipartFile file = new MockMultipartFile("file", "photo.png", "image/png", "img".getBytes());
         given(postImageService.store(any())).willReturn("/images/generated-uuid.png");
 
@@ -300,7 +300,7 @@ class PostApiControllerTest {
 
     @Test
     @DisplayName("POST /api/v1/posts/images 는 허용되지 않는 파일이면 400 ProblemDetail을 반환한다")
-    void 이미지업로드는_허용되지_않는_파일이면_400() throws Exception {
+    void uploadImage_withDisallowedExtension_returns400BadRequest() throws Exception {
         MockMultipartFile file = new MockMultipartFile("file", "malware.exe", "application/octet-stream", "x".getBytes());
         given(postImageService.store(any()))
                 .willThrow(new IllegalArgumentException("허용되지 않는 파일 형식입니다: exe"));

@@ -32,7 +32,7 @@ class UserRepositoryTest {
 
     @Test
     @DisplayName("findByEmailHash: 저장된 이메일의 해시면 회원을 조회한다")
-    void findByEmailHash_존재하면_조회된다() {
+    void findByEmailHash_whenEmailHashExists_returnsUser() {
         userRepository.save(user("found@example.com"));
 
         Optional<User> result = userRepository.findByEmailHash(EmailHasher.sha512Hex("found@example.com"));
@@ -44,13 +44,13 @@ class UserRepositoryTest {
 
     @Test
     @DisplayName("findByEmailHash: 존재하지 않는 이메일의 해시면 빈 Optional")
-    void findByEmailHash_존재하지_않으면_빈값() {
+    void findByEmailHash_whenEmailHashDoesNotExist_returnsEmptyOptional() {
         assertThat(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).isEmpty();
     }
 
     @Test
     @DisplayName("existsByEmailHash: 저장 여부에 따라 true/false")
-    void existsByEmailHash_동작확인() {
+    void existsByEmailHash_returnsCorrectBooleanBasedOnExistence() {
         userRepository.save(user("exists@example.com"));
 
         assertThat(userRepository.existsByEmailHash(EmailHasher.sha512Hex("exists@example.com"))).isTrue();
@@ -59,7 +59,7 @@ class UserRepositoryTest {
 
     @Test
     @DisplayName("existsByName: 저장 여부에 따라 true/false")
-    void existsByName_동작확인() {
+    void existsByName_returnsCorrectBooleanBasedOnExistence() {
         userRepository.save(user("name-check@example.com"));
 
         assertThat(userRepository.existsByName("tester")).isTrue();
@@ -68,7 +68,7 @@ class UserRepositoryTest {
 
     @Test
     @DisplayName("email_hash 유니크 제약: 같은 이메일을 두 번 저장하면 DataIntegrityViolationException")
-    void emailHash_유니크_제약이_실제로_동작한다() {
+    void save_duplicateEmail_violatesUniqueConstraint() {
         userRepository.saveAndFlush(user("dup@example.com"));
 
         assertThatThrownBy(() -> userRepository.saveAndFlush(user("dup@example.com")))
@@ -77,7 +77,7 @@ class UserRepositoryTest {
 
     @Test
     @DisplayName("저장하면 IDENTITY 전략으로 ID가 채워진다 (감사 필드 검증은 PostRepositoryTest에서 함께 수행)")
-    void 저장하면_ID가_채워진다() {
+    void save_assignsGeneratedId() {
         User saved = userRepository.save(user("id-check@example.com"));
 
         assertThat(saved.getId()).isNotNull();

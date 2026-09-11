@@ -51,7 +51,7 @@ class CommentApiControllerTest {
 
     @Test
     @DisplayName("GET /api/v1/posts/{postId}/comments 는 인증 없이도 호출할 수 있다")
-    void 목록조회는_인증없이_가능하다() throws Exception {
+    void listComments_isAccessibleWithoutAuthentication() throws Exception {
         given(commentService.findByPostId(1L))
                 .willReturn(List.of(new CommentResponseDto(1L, 1L, "댓글", "tester", LocalDateTime.now())));
 
@@ -62,7 +62,7 @@ class CommentApiControllerTest {
 
     @Test
     @DisplayName("POST .../comments 는 CSRF 토큰이 없으면 403")
-    void 등록은_CSRF_토큰이_없으면_403() throws Exception {
+    void saveComment_withoutCsrfToken_returns403Forbidden() throws Exception {
         mockMvc.perform(post("/api/v1/posts/1/comments")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"댓글\"}"))
@@ -71,7 +71,7 @@ class CommentApiControllerTest {
 
     @Test
     @DisplayName("POST .../comments 는 CSRF 토큰이 있어도 미인증이면 로그인 페이지로 리다이렉트된다")
-    void 등록은_미인증이면_로그인으로_리다이렉트된다() throws Exception {
+    void saveComment_whenUnauthenticated_redirectsToLoginPage() throws Exception {
         mockMvc.perform(post("/api/v1/posts/1/comments")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -82,7 +82,7 @@ class CommentApiControllerTest {
 
     @Test
     @DisplayName("POST .../comments 는 인증+CSRF+유효한 본문이면 200과 ID를 반환한다")
-    void 등록은_인증되고_유효하면_ID를_반환한다() throws Exception {
+    void saveComment_whenAuthenticatedAndValid_returns200AndId() throws Exception {
         given(commentService.save(eq(1L), eq("tester@example.com"), any())).willReturn(10L);
 
         mockMvc.perform(post("/api/v1/posts/1/comments")
@@ -96,7 +96,7 @@ class CommentApiControllerTest {
 
     @Test
     @DisplayName("POST .../comments 는 내용이 비어 있으면 400이고 서비스는 호출되지 않는다")
-    void 등록시_내용이_비어있으면_400() throws Exception {
+    void saveComment_whenContentIsEmpty_returns400BadRequest() throws Exception {
         mockMvc.perform(post("/api/v1/posts/1/comments")
                         .with(user("tester@example.com"))
                         .with(csrf())
@@ -110,7 +110,7 @@ class CommentApiControllerTest {
 
     @Test
     @DisplayName("PUT /api/v1/comments/{id} 는 작성자가 아니면 403 ProblemDetail")
-    void 수정시_권한이_없으면_403() throws Exception {
+    void updateComment_whenNotAuthor_returns403Forbidden() throws Exception {
         given(commentService.update(eq(1L), any(CommentUpdateRequestDto.class), any(Authentication.class)))
                 .willThrow(new AccessDeniedException("작성자 본인 또는 관리자만 수정·삭제할 수 있습니다. id=1"));
 
@@ -125,7 +125,7 @@ class CommentApiControllerTest {
 
     @Test
     @DisplayName("DELETE /api/v1/comments/{id} 는 인증된 사용자가 요청하면 ID를 반환한다")
-    void 삭제는_인증되면_ID를_반환한다() throws Exception {
+    void deleteComment_whenAuthenticated_returns200AndId() throws Exception {
         mockMvc.perform(delete("/api/v1/comments/1")
                         .with(user("tester@example.com"))
                         .with(csrf()))

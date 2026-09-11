@@ -48,7 +48,7 @@ class UserApiControllerTest {
 
     @Test
     @DisplayName("회원가입은 인증 없이(CSRF 토큰만 있으면) 가능하다")
-    void 회원가입은_인증없이_가능하다() throws Exception {
+    void signUp_isAccessibleWithoutAuthentication() throws Exception {
         given(userService.signUp("tester", "tester@example.com", "Password123!")).willReturn(1L);
 
         mockMvc.perform(post("/api/v1/users")
@@ -63,7 +63,7 @@ class UserApiControllerTest {
 
     @Test
     @DisplayName("회원가입은 CSRF 토큰이 없으면 403")
-    void 회원가입은_CSRF_토큰이_없으면_403() throws Exception {
+    void signUp_withoutCsrfToken_returns403Forbidden() throws Exception {
         mockMvc.perform(post("/api/v1/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"tester\",\"email\":\"tester@example.com\",\"password\":\"password123\"}"))
@@ -74,7 +74,7 @@ class UserApiControllerTest {
 
     @Test
     @DisplayName("이름이 50자를 초과하면 400이고 서비스는 호출되지 않는다")
-    void 이름이_50자를_초과하면_400() throws Exception {
+    void signUp_whenNameExceedsMaxLength_returns400BadRequest() throws Exception {
         String tooLongName = "가".repeat(51);
 
         mockMvc.perform(post("/api/v1/users")
@@ -89,7 +89,7 @@ class UserApiControllerTest {
 
     @Test
     @DisplayName("이메일 형식이 올바르지 않으면 400이고 서비스는 호출되지 않는다")
-    void 이메일_형식이_잘못되면_400() throws Exception {
+    void signUp_withInvalidEmailFormat_returns400BadRequest() throws Exception {
         mockMvc.perform(post("/api/v1/users")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -101,7 +101,7 @@ class UserApiControllerTest {
 
     @Test
     @DisplayName("비밀번호가 8자 미만이면 400")
-    void 비밀번호가_8자_미만이면_400() throws Exception {
+    void signUp_whenPasswordIsTooShort_returns400BadRequest() throws Exception {
         mockMvc.perform(post("/api/v1/users")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -111,7 +111,7 @@ class UserApiControllerTest {
 
     @Test
     @DisplayName("비밀번호에 대문자·소문자·특수문자가 모두 포함되지 않으면 400")
-    void 비밀번호가_복잡도_요건을_충족하지_않으면_400() throws Exception {
+    void signUp_whenPasswordDoesNotMeetComplexityRequirements_returns400BadRequest() throws Exception {
         mockMvc.perform(post("/api/v1/users")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -123,7 +123,7 @@ class UserApiControllerTest {
 
     @Test
     @DisplayName("이메일이 중복이면 400 ProblemDetail을 반환한다")
-    void 이메일_중복이면_400() throws Exception {
+    void signUp_whenEmailAlreadyExists_returns400BadRequest() throws Exception {
         given(userService.signUp(any(), any(), any()))
                 .willThrow(new IllegalArgumentException("이미 가입된 이메일입니다. email=dup@example.com"));
 
@@ -137,7 +137,7 @@ class UserApiControllerTest {
 
     @Test
     @DisplayName("이름이 중복이면 400 ProblemDetail을 반환한다")
-    void 이름_중복이면_400() throws Exception {
+    void signUp_whenNameAlreadyExists_returns400BadRequest() throws Exception {
         given(userService.signUp(any(), any(), any()))
                 .willThrow(new IllegalArgumentException("이미 사용중인 이름입니다. name=dupName"));
 
@@ -151,7 +151,7 @@ class UserApiControllerTest {
 
     @Test
     @DisplayName("PUT /api/v1/users/me/password 는 CSRF 토큰이 있어도 미인증이면 로그인 페이지로 리다이렉트된다")
-    void 비밀번호변경은_미인증이면_로그인으로_리다이렉트된다() throws Exception {
+    void changePassword_whenUnauthenticated_redirectsToLoginPage() throws Exception {
         mockMvc.perform(put("/api/v1/users/me/password")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -164,7 +164,7 @@ class UserApiControllerTest {
 
     @Test
     @DisplayName("PUT /api/v1/users/me/password 는 인증+CSRF+유효한 본문이면 204를 반환한다")
-    void 비밀번호변경은_인증되고_유효하면_204를_반환한다() throws Exception {
+    void changePassword_whenAuthenticatedAndValid_returns204NoContent() throws Exception {
         mockMvc.perform(put("/api/v1/users/me/password")
                         .with(user("tester@example.com"))
                         .with(csrf())
@@ -177,7 +177,7 @@ class UserApiControllerTest {
 
     @Test
     @DisplayName("PUT /api/v1/users/me/password 는 현재 비밀번호가 틀리면 400 ProblemDetail을 반환한다")
-    void 비밀번호변경은_현재비밀번호_틀리면_400() throws Exception {
+    void changePassword_whenCurrentPasswordMismatch_returns400BadRequest() throws Exception {
         // changePassword는 void 메서드라 BDDMockito.given이 아니라 willThrow(...).given(...) 형태로 스텁한다.
         willThrow(new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다."))
                 .given(userService).changePassword("tester@example.com", "wrong", "New12345!");
@@ -193,7 +193,7 @@ class UserApiControllerTest {
 
     @Test
     @DisplayName("PUT /api/v1/users/me/password 는 새 비밀번호가 8자 미만이면 400이고 서비스는 호출되지 않는다")
-    void 비밀번호변경은_새비밀번호가_짧으면_400() throws Exception {
+    void changePassword_whenNewPasswordIsTooShort_returns400BadRequest() throws Exception {
         mockMvc.perform(put("/api/v1/users/me/password")
                         .with(user("tester@example.com"))
                         .with(csrf())
@@ -206,7 +206,7 @@ class UserApiControllerTest {
 
     @Test
     @DisplayName("PUT /api/v1/users/me/password 는 새 비밀번호에 대문자·소문자·특수문자가 모두 포함되지 않으면 400이고 서비스는 호출되지 않는다")
-    void 비밀번호변경은_새비밀번호가_복잡도_요건을_충족하지_않으면_400() throws Exception {
+    void changePassword_whenNewPasswordDoesNotMeetComplexityRequirements_returns400BadRequest() throws Exception {
         mockMvc.perform(put("/api/v1/users/me/password")
                         .with(user("tester@example.com"))
                         .with(csrf())
@@ -219,7 +219,7 @@ class UserApiControllerTest {
 
     @Test
     @DisplayName("POST /api/v1/users/me/verify-email/resend 는 CSRF 토큰이 있어도 미인증이면 로그인 페이지로 리다이렉트된다")
-    void 인증메일재발송은_미인증이면_로그인으로_리다이렉트된다() throws Exception {
+    void resendVerificationEmail_whenUnauthenticated_redirectsToLoginPage() throws Exception {
         mockMvc.perform(post("/api/v1/users/me/verify-email/resend")
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
@@ -230,7 +230,7 @@ class UserApiControllerTest {
 
     @Test
     @DisplayName("POST /api/v1/users/me/verify-email/resend 는 인증+CSRF면 204를 반환한다")
-    void 인증메일재발송은_인증되고_CSRF가_있으면_204를_반환한다() throws Exception {
+    void resendVerificationEmail_whenAuthenticatedWithCsrf_returns204NoContent() throws Exception {
         mockMvc.perform(post("/api/v1/users/me/verify-email/resend")
                         .with(user("tester@example.com"))
                         .with(csrf()))
@@ -241,7 +241,7 @@ class UserApiControllerTest {
 
     @Test
     @DisplayName("POST /api/v1/users/me/verify-email/resend 는 이미 인증된 계정이면 400 ProblemDetail을 반환한다")
-    void 인증메일재발송은_이미_인증된_계정이면_400() throws Exception {
+    void resendVerificationEmail_whenAlreadyVerified_returns400BadRequest() throws Exception {
         willThrow(new IllegalArgumentException("이미 인증된 계정입니다."))
                 .given(emailVerificationService).resend("tester@example.com");
 

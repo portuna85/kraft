@@ -55,7 +55,7 @@ class CommentRepositoryTest {
 
     @Test
     @DisplayName("findAllByPostIdAsc: 해당 게시글의 댓글만 id 오름차순으로 조회하고, 다른 게시글 댓글은 제외한다")
-    void findAllByPostIdAsc_는_postId로_필터링하고_오름차순_정렬한다() {
+    void findAllByPostIdAsc_filtersByPostIdAndSortsAscending() {
         Comment first = commentRepository.save(Comment.builder().content("첫 댓글").post(post).user(user).build());
         Comment second = commentRepository.save(Comment.builder().content("둘째 댓글").post(post).user(user).build());
         commentRepository.save(Comment.builder().content("다른 게시글 댓글").post(otherPost).user(user).build());
@@ -70,7 +70,7 @@ class CommentRepositoryTest {
 
     @Test
     @DisplayName("findAllByPostIdAsc: JOIN FETCH로 작성자가 함께 조회되어 지연로딩 예외가 없다")
-    void findAllByPostIdAsc_는_JOIN_FETCH로_작성자를_함께_조회한다() {
+    void findAllByPostIdAsc_fetchesAuthorEagerlyWithJoinFetch() {
         commentRepository.save(Comment.builder().content("댓글").post(post).user(user).build());
         em.flush();
         em.clear();
@@ -82,7 +82,7 @@ class CommentRepositoryTest {
 
     @Test
     @DisplayName("deleteAllByPostId: 해당 게시글의 댓글만 삭제하고 다른 게시글 댓글은 남긴다")
-    void deleteAllByPostId_는_해당_게시글_댓글만_삭제한다() {
+    void deleteAllByPostId_deletesOnlyCommentsOfGivenPost() {
         commentRepository.save(Comment.builder().content("삭제될 댓글").post(post).user(user).build());
         Comment untouched = commentRepository.save(Comment.builder().content("남을 댓글").post(otherPost).user(user).build());
         em.flush();
@@ -97,7 +97,7 @@ class CommentRepositoryTest {
 
     @Test
     @DisplayName("[회귀 방지] 댓글이 있는 게시글도 댓글을 먼저 지우면 FK 위반 없이 삭제할 수 있다")
-    void 댓글을_먼저_지우면_게시글_삭제가_FK_위반없이_성공한다() {
+    void deletePost_succeedsWithoutForeignKeyViolation_whenCommentsDeletedFirst() {
         commentRepository.save(Comment.builder().content("댓글").post(post).user(user).build());
         em.flush();
 
@@ -110,7 +110,7 @@ class CommentRepositoryTest {
 
     @Test
     @DisplayName("countByPostIdIn: 여러 게시글의 댓글 수를 postId → count 맵으로 한 번에 반환한다")
-    void countByPostIdIn_은_게시글별_댓글수를_맵으로_반환한다() {
+    void countByPostIdIn_returnsCommentCountMapByPostIds() {
         commentRepository.save(Comment.builder().content("댓글1").post(post).user(user).build());
         commentRepository.save(Comment.builder().content("댓글2").post(post).user(user).build());
         commentRepository.save(Comment.builder().content("다른글 댓글").post(otherPost).user(user).build());
@@ -125,7 +125,7 @@ class CommentRepositoryTest {
 
     @Test
     @DisplayName("countByPostIdIn: 댓글이 없는 게시글 ID는 결과 맵에 아예 없다")
-    void countByPostIdIn_은_댓글이_없으면_맵에_키가_없다() {
+    void countByPostIdIn_excludesPostIdsWithoutCommentsFromMap() {
         Map<Long, Long> counts = commentRepository.countByPostIdIn(List.of(post.getId()));
 
         assertThat(counts).doesNotContainKey(post.getId());
@@ -133,13 +133,13 @@ class CommentRepositoryTest {
 
     @Test
     @DisplayName("countByPostIdIn: 빈 목록이면 쿼리 없이 빈 맵을 반환한다")
-    void countByPostIdIn_은_빈_목록이면_빈_맵을_반환한다() {
+    void countByPostIdIn_returnsEmptyMap_whenPostIdsEmpty() {
         assertThat(commentRepository.countByPostIdIn(List.of())).isEmpty();
     }
 
     @Test
     @DisplayName("저장하면 BaseEntity의 createdAt이 자동으로 채워진다 (JpaConfig의 @EnableJpaAuditing)")
-    void 감사필드가_자동으로_채워진다() {
+    void save_automaticallyPopulatesCreatedAtAuditField() {
         Comment saved = commentRepository.save(Comment.builder().content("댓글").post(post).user(user).build());
         em.flush();
 

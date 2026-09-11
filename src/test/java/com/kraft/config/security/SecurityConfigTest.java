@@ -48,7 +48,7 @@ class SecurityConfigTest {
 
     @Test
     @DisplayName("로그인 성공: redirect 파라미터로 넘어온 원래 페이지로 이동한다")
-    void 로그인_성공시_redirect_파라미터_위치로_이동한다() throws Exception {
+    void loginSuccess_redirectsToTargetUrl() throws Exception {
         mockMvc.perform(post("/login")
                         .param("username", "tester@example.com")
                         .param("password", "Password123!")
@@ -60,7 +60,7 @@ class SecurityConfigTest {
 
     @Test
     @DisplayName("로그인 성공: redirect 파라미터가 없으면 \"/\"로 이동한다")
-    void 로그인_성공시_redirect_없으면_루트로_이동한다() throws Exception {
+    void loginSuccess_withoutRedirectParam_redirectsToRoot() throws Exception {
         mockMvc.perform(post("/login")
                         .param("username", "tester@example.com")
                         .param("password", "Password123!")
@@ -71,7 +71,7 @@ class SecurityConfigTest {
 
     @Test
     @DisplayName("로그인 성공: redirect가 외부 절대 URL이면 무시하고 \"/\"로 이동한다(오픈 리다이렉트 방지)")
-    void 로그인_성공시_redirect가_외부_URL이면_무시한다() throws Exception {
+    void loginSuccess_withExternalRedirectUrl_redirectsToRoot() throws Exception {
         mockMvc.perform(post("/login")
                         .param("username", "tester@example.com")
                         .param("password", "Password123!")
@@ -83,7 +83,7 @@ class SecurityConfigTest {
 
     @Test
     @DisplayName("로그인 성공: redirect가 //로 시작하는 프로토콜 상대 URL이면 무시하고 \"/\"로 이동한다")
-    void 로그인_성공시_redirect가_프로토콜_상대_URL이면_무시한다() throws Exception {
+    void loginSuccess_withProtocolRelativeRedirectUrl_redirectsToRoot() throws Exception {
         mockMvc.perform(post("/login")
                         .param("username", "tester@example.com")
                         .param("password", "Password123!")
@@ -95,7 +95,7 @@ class SecurityConfigTest {
 
     @Test
     @DisplayName("로그아웃: 게시글 등록 화면(Referer)에서 로그아웃하면 \"/\"로 이동한다")
-    void 게시글등록_화면에서_로그아웃하면_루트로_이동한다() throws Exception {
+    void logout_fromPostSavePage_redirectsToRoot() throws Exception {
         mockMvc.perform(post("/logout")
                         .header("Referer", "http://localhost/posts/save")
                         .with(user("tester@example.com"))
@@ -106,7 +106,7 @@ class SecurityConfigTest {
 
     @Test
     @DisplayName("로그아웃: 비밀번호 변경 화면(Referer)에서 로그아웃하면 \"/login\"으로 이동한다")
-    void 비밀번호변경_화면에서_로그아웃하면_로그인으로_이동한다() throws Exception {
+    void logout_fromPasswordChangePage_redirectsToLoginPage() throws Exception {
         mockMvc.perform(post("/logout")
                         .header("Referer", "http://localhost/users/me/password")
                         .with(user("tester@example.com"))
@@ -117,7 +117,7 @@ class SecurityConfigTest {
 
     @Test
     @DisplayName("로그아웃: 그 외 화면(Referer)에서 로그아웃하면 Referer로 되돌아간다")
-    void 그외_화면에서_로그아웃하면_Referer로_이동한다() throws Exception {
+    void logout_fromOtherPages_redirectsToReferer() throws Exception {
         mockMvc.perform(post("/logout")
                         .header("Referer", "http://localhost/")
                         .with(user("tester@example.com"))

@@ -45,7 +45,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("signUp: 이메일이 중복되지 않으면 비밀번호를 인코딩해 GUEST로 저장한다")
-    void signUp_정상_가입() {
+    void signUp_whenValid_encodesPasswordAndSavesGuestUser() {
         given(userRepository.existsByName("new")).willReturn(false);
         given(userRepository.existsByEmailHash(EmailHasher.sha512Hex("new@example.com"))).willReturn(false);
         given(passwordEncoder.encode("rawPassword")).willReturn("encodedPassword");
@@ -68,7 +68,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("signUp: 이메일이 이미 있으면 IllegalArgumentException이고 저장을 시도하지 않는다")
-    void signUp_이메일_중복이면_예외() {
+    void signUp_whenEmailAlreadyExists_throwsIllegalArgumentExceptionAndDoesNotSave() {
         given(userRepository.existsByName("dup")).willReturn(false);
         given(userRepository.existsByEmailHash(EmailHasher.sha512Hex("dup@example.com"))).willReturn(true);
 
@@ -82,7 +82,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("signUp: 이름이 이미 있으면 IllegalArgumentException이고 이메일 중복확인·저장을 시도하지 않는다")
-    void signUp_이름_중복이면_예외() {
+    void signUp_whenNameAlreadyExists_throwsIllegalArgumentExceptionAndDoesNotCheckEmailOrSave() {
         given(userRepository.existsByName("dupName")).willReturn(true);
 
         assertThatThrownBy(() -> userService.signUp("dupName", "new2@example.com", "pw12345678"))
@@ -96,7 +96,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("changePassword: 현재 비밀번호가 일치하면 새 비밀번호로 변경한다")
-    void changePassword_정상_변경() {
+    void changePassword_whenCurrentPasswordMatches_changesToNewPassword() {
         User user = User.builder().name("a").email("a@example.com").password("oldEncoded").role(Role.USER).build();
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("a@example.com"))).willReturn(Optional.of(user));
         given(passwordEncoder.matches("oldRaw", "oldEncoded")).willReturn(true);
@@ -109,7 +109,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("changePassword: 현재 비밀번호가 틀리면 IllegalArgumentException이고 비밀번호는 변경되지 않는다")
-    void changePassword_현재비밀번호_불일치면_예외() {
+    void changePassword_whenCurrentPasswordMismatch_throwsIllegalArgumentException() {
         User user = User.builder().name("a").email("a@example.com").password("oldEncoded").role(Role.USER).build();
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("a@example.com"))).willReturn(Optional.of(user));
         given(passwordEncoder.matches("wrongRaw", "oldEncoded")).willReturn(false);
@@ -123,7 +123,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("changePassword: 존재하지 않는 이메일이면 IllegalArgumentException")
-    void changePassword_존재하지_않는_회원이면_예외() {
+    void changePassword_whenUserNotFound_throwsIllegalArgumentException() {
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.changePassword("nobody@example.com", "raw", "newRawPassword"))
@@ -133,7 +133,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("promoteToUser: GUEST를 USER로 승격한다")
-    void promoteToUser_승격() {
+    void promoteToUser_promotesGuestToUser() {
         User user = User.builder().name("a").email("a@example.com").password("pw").role(Role.GUEST).build();
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
 
@@ -144,7 +144,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("promoteToUser: 존재하지 않는 회원 ID면 IllegalArgumentException")
-    void promoteToUser_존재하지_않는_회원이면_예외() {
+    void promoteToUser_whenUserNotFound_throwsIllegalArgumentException() {
         given(userRepository.findById(999L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.promoteToUser(999L))

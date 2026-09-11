@@ -87,7 +87,7 @@ class PostServiceTest {
 
     @Test
     @DisplayName("save: 존재하는 회원이면 작성자로 지정해 저장하고 ID를 반환한다")
-    void save_존재하는_회원이면_저장한다() {
+    void save_whenUserExists_savesPostAndReturnsId() {
         User user = userWithEmail("tester@example.com", 1L);
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(user));
         Post saved = postOf(user, 10L);
@@ -101,7 +101,7 @@ class PostServiceTest {
 
     @Test
     @DisplayName("save: 이메일 인증 전(GUEST) 회원이면 AccessDeniedException이고 저장되지 않는다")
-    void save_GUEST_회원이면_거부된다() {
+    void save_whenUserIsGuest_throwsAccessDeniedExceptionAndDoesNotSave() {
         User guest = User.builder().name("tester").email("guest@example.com").password("encoded").role(Role.GUEST).build();
         ReflectionTestUtils.setField(guest, "id", 1L);
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("guest@example.com"))).willReturn(Optional.of(guest));
@@ -114,7 +114,7 @@ class PostServiceTest {
 
     @Test
     @DisplayName("save: 존재하지 않는 회원이면 IllegalArgumentException")
-    void save_존재하지_않는_회원이면_예외() {
+    void save_whenUserNotFound_throwsIllegalArgumentException() {
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> postService.save("nobody@example.com",
@@ -127,7 +127,7 @@ class PostServiceTest {
 
     @Test
     @DisplayName("update: 작성자 본인이면 제목/내용이 변경 감지로 반영된다")
-    void update_작성자_본인이면_수정된다() {
+    void update_whenAuthor_updatesTitleAndContent() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
@@ -142,7 +142,7 @@ class PostServiceTest {
 
     @Test
     @DisplayName("update: picture가 기존과 다르면 반영하고 이전 이미지 파일을 지운다")
-    void update_이미지가_바뀌면_이전_파일을_지운다() {
+    void update_whenPictureChanges_updatesPictureAndDeletesOldImage() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
         ReflectionTestUtils.setField(post, "picture", "/images/old.png");
@@ -157,7 +157,7 @@ class PostServiceTest {
 
     @Test
     @DisplayName("update: picture가 기존과 같으면 이미지 파일을 지우지 않는다")
-    void update_이미지가_그대로면_파일을_지우지_않는다() {
+    void update_whenPictureUnchanged_doesNotDeleteImageFile() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
         ReflectionTestUtils.setField(post, "picture", "/images/same.png");
@@ -171,7 +171,7 @@ class PostServiceTest {
 
     @Test
     @DisplayName("update: 작성자가 아니면 AccessDeniedException, 내용은 변경되지 않는다")
-    void update_타인이면_거부된다() {
+    void update_whenNotAuthor_throwsAccessDeniedExceptionAndDoesNotModify() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
@@ -185,7 +185,7 @@ class PostServiceTest {
 
     @Test
     @DisplayName("update: ROLE_ADMIN이면 작성자가 아니어도 수정할 수 있다")
-    void update_관리자는_타인_글도_수정할_수_있다() {
+    void update_whenAdmin_updatesEvenIfNotAuthor() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
@@ -198,7 +198,7 @@ class PostServiceTest {
 
     @Test
     @DisplayName("update: 작성자가 없는(user=null) 게시글은 관리자만 수정할 수 있다")
-    void update_작성자없는_글은_관리자만_가능() {
+    void update_whenPostHasNoAuthor_throwsAccessDeniedExceptionForNonAdmin() {
         Post post = Post.builder().title("고아 게시글").content("c").user(null).build();
         ReflectionTestUtils.setField(post, "id", 200L);
         given(postRepository.findById(200L)).willReturn(Optional.of(post));
@@ -210,7 +210,7 @@ class PostServiceTest {
 
     @Test
     @DisplayName("delete: 작성자가 아니면 AccessDeniedException이고 delete가 호출되지 않는다")
-    void delete_타인이면_거부된다() {
+    void delete_whenNotAuthor_throwsAccessDeniedExceptionAndDoesNotDelete() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
@@ -225,7 +225,7 @@ class PostServiceTest {
 
     @Test
     @DisplayName("delete: 작성자 본인이면 댓글을 먼저 지우고 게시글을 삭제한다 (comments.post_id FK 위반 방지)")
-    void delete_작성자_본인이면_댓글을_먼저_지우고_삭제된다() {
+    void delete_whenAuthor_deletesCommentsFirstThenDeletesPost() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
@@ -239,7 +239,7 @@ class PostServiceTest {
 
     @Test
     @DisplayName("delete: 게시글에 이미지가 있으면 삭제 후 이미지 파일도 정리한다")
-    void delete_이미지가_있으면_파일도_정리한다() {
+    void delete_whenPostHasImage_cleansUpImageFileAfterDelete() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
         ReflectionTestUtils.setField(post, "picture", "/images/old.png");
@@ -252,7 +252,7 @@ class PostServiceTest {
 
     @Test
     @DisplayName("findById: 존재하지 않는 ID면 IllegalArgumentException")
-    void findById_존재하지_않으면_예외() {
+    void findById_whenNotFound_throwsIllegalArgumentException() {
         given(postRepository.findById(999L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> postService.findById(999L))
@@ -262,7 +262,7 @@ class PostServiceTest {
 
     @Test
     @DisplayName("findAllDesc: Repository의 Page를 PostsPageResponseDto로 그대로 변환한다")
-    void findAllDesc_페이지를_변환한다() {
+    void findAllDesc_convertsPageToDto() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 1L);
         Pageable pageable = PageRequest.of(0, 10);
@@ -282,7 +282,7 @@ class PostServiceTest {
 
     @Test
     @DisplayName("findAllDesc(keyword, category): 검색어·분류를 리포지토리에 그대로 전달하고 댓글 수를 함께 담는다")
-    void findAllDesc_검색어와_분류를_전달하고_댓글수를_담는다() {
+    void findAllDesc_passesKeywordAndCategoryAndIncludesCommentCounts() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 1L);
         Pageable pageable = PageRequest.of(0, 10);
@@ -297,7 +297,7 @@ class PostServiceTest {
 
     @Test
     @DisplayName("findAllDesc: 검색어가 공백뿐이면 null로 정규화해 리포지토리에 전달한다")
-    void findAllDesc_공백_검색어는_null로_정규화된다() {
+    void findAllDesc_normalizesBlankKeywordToNull() {
         Pageable pageable = PageRequest.of(0, 10);
         Page<Post> page = new PageImpl<>(List.of(), pageable, 0);
         given(postRepository.search(null, null, pageable)).willReturn(page);
@@ -309,7 +309,7 @@ class PostServiceTest {
 
     @Test
     @DisplayName("findPopular: 조회수 상위 N개를 댓글 수와 함께 반환한다")
-    void findPopular_조회수_상위N개를_반환한다() {
+    void findPopular_returnsTopPostsWithCommentCounts() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 1L);
         given(postRepository.findTopByViewCountDesc(PageRequest.of(0, 5))).willReturn(List.of(post));
@@ -323,7 +323,7 @@ class PostServiceTest {
 
     @Test
     @DisplayName("findByIdForView: 조회할 때마다 조회수를 1 늘리고, 추천 수·내가 눌렀는지를 함께 담는다")
-    void findByIdForView_조회수를_늘리고_추천정보를_담는다() {
+    void findByIdForView_increasesViewCountAndIncludesLikeInformation() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
@@ -341,7 +341,7 @@ class PostServiceTest {
 
     @Test
     @DisplayName("findByIdForView: 익명이면 likedByMe는 항상 false다")
-    void findByIdForView_익명이면_likedByMe는_false() {
+    void findByIdForView_whenAnonymous_likedByMeIsFalse() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
@@ -355,7 +355,7 @@ class PostServiceTest {
 
     @Test
     @DisplayName("toggleLike: 아직 안 눌렀으면 추천을 추가하고 liked=true를 반환한다")
-    void toggleLike_안눌렀으면_추가한다() {
+    void toggleLike_whenNotLikedYet_addsLikeAndReturnsLikedTrue() {
         User user = userWithEmail("liker@example.com", 2L);
         Post post = postOf(user, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
@@ -373,7 +373,7 @@ class PostServiceTest {
 
     @Test
     @DisplayName("toggleLike: 이미 눌렀으면 추천을 취소하고 liked=false를 반환한다")
-    void toggleLike_이미눌렀으면_취소한다() {
+    void toggleLike_whenAlreadyLiked_removesLikeAndReturnsLikedFalse() {
         User user = userWithEmail("liker@example.com", 2L);
         Post post = postOf(user, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));

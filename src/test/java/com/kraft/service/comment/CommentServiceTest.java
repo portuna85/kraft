@@ -81,7 +81,7 @@ class CommentServiceTest {
 
     @Test
     @DisplayName("save: 게시글과 회원이 모두 존재하면 댓글을 저장하고 ID를 반환한다")
-    void save_정상_저장() {
+    void save_whenPostAndUserExist_savesCommentAndReturnsId() {
         Post post = postOf(1L);
         User user = userWithEmail("tester@example.com", 1L);
         given(postRepository.findById(1L)).willReturn(Optional.of(post));
@@ -96,7 +96,7 @@ class CommentServiceTest {
 
     @Test
     @DisplayName("save: 게시글이 없으면 IllegalArgumentException")
-    void save_게시글_없으면_예외() {
+    void save_whenPostNotFound_throwsIllegalArgumentException() {
         given(postRepository.findById(999L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> commentService.save(999L, "tester@example.com", new CommentSaveRequestDto("내용")))
@@ -108,7 +108,7 @@ class CommentServiceTest {
 
     @Test
     @DisplayName("save: 이메일 인증 전(GUEST) 회원이면 AccessDeniedException이고 저장되지 않는다")
-    void save_GUEST_회원이면_거부된다() {
+    void save_whenUserIsGuest_throwsAccessDeniedExceptionAndDoesNotSave() {
         User guest = User.builder().name("tester").email("guest@example.com").password("encoded").role(Role.GUEST).build();
         ReflectionTestUtils.setField(guest, "id", 1L);
         given(postRepository.findById(1L)).willReturn(Optional.of(postOf(1L)));
@@ -122,7 +122,7 @@ class CommentServiceTest {
 
     @Test
     @DisplayName("save: 회원이 없으면 IllegalArgumentException")
-    void save_회원_없으면_예외() {
+    void save_whenUserNotFound_throwsIllegalArgumentException() {
         given(postRepository.findById(1L)).willReturn(Optional.of(postOf(1L)));
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
 
@@ -135,7 +135,7 @@ class CommentServiceTest {
 
     @Test
     @DisplayName("update: 작성자 본인이면 내용이 변경된다")
-    void update_작성자_본인이면_수정된다() {
+    void update_whenAuthor_updatesContent() {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
@@ -149,7 +149,7 @@ class CommentServiceTest {
 
     @Test
     @DisplayName("update: 작성자가 아니면 AccessDeniedException이고 내용은 변경되지 않는다")
-    void update_타인이면_거부된다() {
+    void update_whenNotAuthor_throwsAccessDeniedExceptionAndDoesNotModify() {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
@@ -163,7 +163,7 @@ class CommentServiceTest {
 
     @Test
     @DisplayName("update: ROLE_ADMIN이면 작성자가 아니어도 수정할 수 있다")
-    void update_관리자는_타인_댓글도_수정할_수_있다() {
+    void update_whenAdmin_updatesContentEvenIfNotAuthor() {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
@@ -176,7 +176,7 @@ class CommentServiceTest {
 
     @Test
     @DisplayName("delete: 작성자가 아니면 AccessDeniedException이고 delete가 호출되지 않는다")
-    void delete_타인이면_거부된다() {
+    void delete_whenNotAuthor_throwsAccessDeniedExceptionAndDoesNotDelete() {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
@@ -189,7 +189,7 @@ class CommentServiceTest {
 
     @Test
     @DisplayName("delete: 작성자 본인이면 정상적으로 삭제된다")
-    void delete_작성자_본인이면_삭제된다() {
+    void delete_whenAuthor_deletesSuccessfully() {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
@@ -201,7 +201,7 @@ class CommentServiceTest {
 
     @Test
     @DisplayName("findByPostId: Repository 결과를 CommentResponseDto 리스트로 변환한다")
-    void findByPostId_변환() {
+    void findByPostId_convertsRepositoryResultToResponseDtoList() {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
         given(commentRepository.findAllByPostIdAsc(1L)).willReturn(List.of(comment));

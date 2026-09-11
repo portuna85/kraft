@@ -32,7 +32,7 @@ class PostImageServiceTest {
 
     @Test
     @DisplayName("store: 허용된 확장자의 파일을 저장하고 /images/로 시작하는 공개 URL을 반환한다")
-    void store_정상_저장() {
+    void store_withAllowedExtension_savesFileAndReturnsPublicUrl() {
         MockMultipartFile file = new MockMultipartFile("file", "photo.png", "image/png", "fake-image".getBytes());
 
         String url = postImageService.store(file);
@@ -42,7 +42,7 @@ class PostImageServiceTest {
 
     @Test
     @DisplayName("store: 파일이 없으면 IllegalArgumentException")
-    void store_파일없으면_예외() {
+    void store_whenFileIsEmpty_throwsIllegalArgumentException() {
         MockMultipartFile emptyFile = new MockMultipartFile("file", "photo.png", "image/png", new byte[0]);
 
         assertThatThrownBy(() -> postImageService.store(emptyFile))
@@ -52,7 +52,7 @@ class PostImageServiceTest {
 
     @Test
     @DisplayName("store: 허용되지 않는 확장자면 IllegalArgumentException")
-    void store_허용되지_않는_확장자면_예외() {
+    void store_withDisallowedExtension_throwsIllegalArgumentException() {
         MockMultipartFile file = new MockMultipartFile("file", "malware.exe", "application/octet-stream", "x".getBytes());
 
         assertThatThrownBy(() -> postImageService.store(file))
@@ -62,7 +62,7 @@ class PostImageServiceTest {
 
     @Test
     @DisplayName("store: 5MB를 초과하면 IllegalArgumentException")
-    void store_5MB초과하면_예외() {
+    void store_whenFileSizeExceedsLimit_throwsIllegalArgumentException() {
         byte[] tooLarge = new byte[5 * 1024 * 1024 + 1];
         MockMultipartFile file = new MockMultipartFile("file", "big.png", "image/png", tooLarge);
 
@@ -73,7 +73,7 @@ class PostImageServiceTest {
 
     @Test
     @DisplayName("store: 확장자가 없으면 IllegalArgumentException")
-    void store_확장자없으면_예외() {
+    void store_whenFileHasNoExtension_throwsIllegalArgumentException() {
         MockMultipartFile file = new MockMultipartFile("file", "noextension", "image/png", "x".getBytes());
 
         assertThatThrownBy(() -> postImageService.store(file))
@@ -83,7 +83,7 @@ class PostImageServiceTest {
 
     @Test
     @DisplayName("deleteIfExists: store()가 만든 URL로 실제 파일을 지운다")
-    void deleteIfExists_정상_삭제() {
+    void deleteIfExists_withStoredUrl_deletesActualFile() {
         MockMultipartFile file = new MockMultipartFile("file", "photo.png", "image/png", "fake-image".getBytes());
         String url = postImageService.store(file);
         Path saved = uploadDir.resolve(url.substring("/images/".length()));
@@ -96,25 +96,25 @@ class PostImageServiceTest {
 
     @Test
     @DisplayName("deleteIfExists: null이면 아무 일도 하지 않는다")
-    void deleteIfExists_null이면_무시() {
+    void deleteIfExists_whenUrlIsNull_doesNothing() {
         postImageService.deleteIfExists(null);
     }
 
     @Test
     @DisplayName("deleteIfExists: /images/ 접두어가 아니면 무시한다")
-    void deleteIfExists_접두어가_아니면_무시() {
+    void deleteIfExists_whenUrlDoesNotStartWithImagesPrefix_doesNothing() {
         postImageService.deleteIfExists("https://external.example.com/photo.png");
     }
 
     @Test
     @DisplayName("deleteIfExists: 존재하지 않는 파일이면 예외 없이 무시한다")
-    void deleteIfExists_존재하지_않는_파일이면_무시() {
+    void deleteIfExists_whenFileDoesNotExist_doesNothingWithoutException() {
         postImageService.deleteIfExists("/images/never-existed.png");
     }
 
     @Test
     @DisplayName("deleteIfExists: 경로 조작(../)으로 업로드 디렉터리 밖을 가리키면 지우지 않는다")
-    void deleteIfExists_경로조작이면_지우지_않는다() throws IOException {
+    void deleteIfExists_withPathTraversal_doesNotDeleteFileOutsideDirectory() throws IOException {
         Path outside = uploadDir.getParent().resolve("outside-secret.png");
         Files.writeString(outside, "secret");
 

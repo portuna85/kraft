@@ -45,7 +45,7 @@ class PostRepositoryTest {
 
     @Test
     @DisplayName("search: 검색어·분류가 없으면 ID 내림차순으로, JOIN FETCH로 작성자가 함께 조회된다")
-    void search_필터가_없으면_ID_내림차순으로_JOIN_FETCH하여_조회한다() {
+    void search_withoutFilters_returnsPostsDescWithAuthorJoinFetched() {
         Post first = postRepository.save(Post.builder().title("첫 글").content("c1").user(user).build());
         Post second = postRepository.save(Post.builder().title("둘째 글").content("c2").user(user).build());
         em.flush();
@@ -63,7 +63,7 @@ class PostRepositoryTest {
 
     @Test
     @DisplayName("search: size만큼 잘라서 반환하고 totalPages를 정확히 계산한다")
-    void search_는_페이지_단위로_잘라서_반환한다() {
+    void search_paginatesAndCalculatesTotalPagesCorrectly() {
         for (int i = 1; i <= 15; i++) {
             postRepository.save(Post.builder().title("글 " + i).content("내용 " + i).user(user).build());
         }
@@ -85,7 +85,7 @@ class PostRepositoryTest {
 
     @Test
     @DisplayName("search: 키워드가 제목이나 본문에 포함되면(대소문자 무시) 매치한다")
-    void search_키워드가_제목이나_본문에_있으면_매치한다() {
+    void search_matchesWhenKeywordInTitleOrContent() {
         Post titleMatch = postRepository.save(Post.builder().title("Kraft 소개").content("내용").user(user).build());
         Post contentMatch = postRepository.save(Post.builder().title("공지").content("KRAFT 업데이트 안내").user(user).build());
         postRepository.save(Post.builder().title("관련 없음").content("다른 내용").user(user).build());
@@ -100,7 +100,7 @@ class PostRepositoryTest {
 
     @Test
     @DisplayName("search: category로 좁히면 해당 분류의 글만 반환한다")
-    void search_카테고리로_좁히면_해당_분류만_반환한다() {
+    void search_filtersByCategory() {
         Post notice = postRepository.save(Post.builder().title("공지").content("c").user(user).category(Category.NOTICE).build());
         postRepository.save(Post.builder().title("자유글").content("c").user(user).category(Category.FREE).build());
         em.flush();
@@ -113,7 +113,7 @@ class PostRepositoryTest {
 
     @Test
     @DisplayName("findTopByViewCountDesc: 조회수 내림차순으로 상위 N개를 반환한다")
-    void findTopByViewCountDesc_는_조회수_내림차순으로_상위N개를_반환한다() {
+    void findTopByViewCountDesc_returnsTopPostsOrderedByViewCountDesc() {
         Post low = postRepository.save(Post.builder().title("낮음").content("c").user(user).build());
         Post high = postRepository.save(Post.builder().title("높음").content("c").user(user).build());
         Post mid = postRepository.save(Post.builder().title("중간").content("c").user(user).build());
@@ -131,7 +131,7 @@ class PostRepositoryTest {
 
     @Test
     @DisplayName("저장하면 BaseEntity의 createdAt/updatedAt이 자동으로 채워진다 (JpaConfig의 @EnableJpaAuditing)")
-    void 감사필드가_자동으로_채워진다() {
+    void save_automaticallyPopulatesAuditFields() {
         Post saved = postRepository.save(Post.builder().title("t").content("c").user(user).build());
         em.flush();
 
@@ -141,7 +141,7 @@ class PostRepositoryTest {
 
     @Test
     @DisplayName("update() 이후 flush하면 updatedAt이 최초 저장 시점보다 뒤로 갱신된다")
-    void 수정하면_updatedAt이_갱신된다() throws InterruptedException {
+    void update_updatesUpdatedAtAfterFlush() throws InterruptedException {
         Post saved = postRepository.save(Post.builder().title("t").content("c").user(user).build());
         em.flush();
         var createdUpdatedAt = saved.getUpdatedAt();
