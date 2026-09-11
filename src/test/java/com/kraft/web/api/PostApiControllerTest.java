@@ -139,6 +139,22 @@ class PostApiControllerTest {
     }
 
     @Test
+    @DisplayName("POST /api/v1/posts 는 제목이 255자를 초과하면 400이고 서비스는 호출되지 않는다")
+    void 등록시_제목이_255자를_초과하면_400() throws Exception {
+        String tooLongTitle = "가".repeat(256);
+
+        mockMvc.perform(post("/api/v1/posts")
+                        .with(user("tester@example.com"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"" + tooLongTitle + "\",\"content\":\"내용\",\"picture\":null}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("title: 제목은 255자 이하로 입력하세요."));
+
+        verify(postService, never()).save(any(), any());
+    }
+
+    @Test
     @DisplayName("PUT /api/v1/posts/{id} 는 작성자가 아니면 403 ProblemDetail")
     void 수정시_권한이_없으면_403() throws Exception {
         given(postService.update(eq(1L), any(PostUpdateRequestDto.class), any(Authentication.class)))
@@ -151,6 +167,22 @@ class PostApiControllerTest {
                         .content("{\"title\":\"해킹\",\"content\":\"해킹\"}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/posts/{id} 는 제목이 255자를 초과하면 400이고 서비스는 호출되지 않는다")
+    void 수정시_제목이_255자를_초과하면_400() throws Exception {
+        String tooLongTitle = "가".repeat(256);
+
+        mockMvc.perform(put("/api/v1/posts/1")
+                        .with(user("tester@example.com"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"" + tooLongTitle + "\",\"content\":\"내용\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("title: 제목은 255자 이하로 입력하세요."));
+
+        verify(postService, never()).update(any(), any(), any());
     }
 
     @Test

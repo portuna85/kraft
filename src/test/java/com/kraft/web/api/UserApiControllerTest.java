@@ -73,6 +73,21 @@ class UserApiControllerTest {
     }
 
     @Test
+    @DisplayName("이름이 50자를 초과하면 400이고 서비스는 호출되지 않는다")
+    void 이름이_50자를_초과하면_400() throws Exception {
+        String tooLongName = "가".repeat(51);
+
+        mockMvc.perform(post("/api/v1/users")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + tooLongName + "\",\"email\":\"tester@example.com\",\"password\":\"Password123!\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("name: 이름은 50자 이하로 입력하세요."));
+
+        verify(userService, never()).signUp(any(), any(), any());
+    }
+
+    @Test
     @DisplayName("이메일 형식이 올바르지 않으면 400이고 서비스는 호출되지 않는다")
     void 이메일_형식이_잘못되면_400() throws Exception {
         mockMvc.perform(post("/api/v1/users")
