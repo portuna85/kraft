@@ -1,6 +1,6 @@
 # Docker(docker-compose.yml)로 띄운 실제 MariaDB에 연결해 로컬 브라우저로 직접 검증하기 위한
-# 프로파일. `local`(H2 인메모리)과 달리 진짜 MariaDB를 쓴다는 점만 다르고, 나머지는 로컬 개발
-# 편의(스키마 자동 생성, Thymeleaf 캐시 끔, ConsoleEmailSender 재사용)를 그대로 따른다.
+# 프로파일. `local`(H2 인메모리)과 달리 진짜 MariaDB를 쓰고, 이메일도 SmtpEmailSender로 실제
+# 발송한다(2026-09-11부터) — DB와 마찬가지로 "실제 서비스처럼" 눈으로 검증하기 위해서다.
 #
 # 실행 전: docker compose up -d 로 MariaDB를 먼저 띄우고, .env의 값을 셸 환경변수로 로드한 뒤
 # (`set -a; source .env; set +a`) --spring.profiles.active=docker로 bootRun 한다.
@@ -28,6 +28,21 @@ spring:
 
   thymeleaf:
     cache: false
+
+  # 실제 SMTP로 인증 메일을 보낸다(SmtpEmailSender). 값이 없으면 발송 시점에만 실패하고
+  # 기동 자체는 실패하지 않는다(JavaMailSenderImpl은 연결을 지연 생성한다) — DB_URL과 달리
+  # 이 값이 빠졌다고 앱이 죽지는 않으니, 회원가입 후 로그에서 발송 실패를 직접 확인해야 한다.
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 logging:
   level:
