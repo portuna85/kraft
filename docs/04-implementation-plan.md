@@ -195,7 +195,7 @@ Java 25 환경을 사용한다. `gradlew.bat test`는 매 단계 구현 직후 �
 지금까지 `local`(기본값, H2 인메모리)과 `docker`(수동으로 `--spring.profiles.active=docker` 지정, 실제 MariaDB) 두 프로파일이 따로 있었다. 로컬에서 항상 실제 MariaDB로 개발·확인하길 원해서, 이 둘을 하나로 합쳤다.
 
 - `src/main/resources/application-local.yml`을 H2 설정에서 `application-docker.yml`이 쓰던 MariaDB(docker-compose) 접속 설정으로 바꿨다. `application-docker.yml`은 삭제했다 — 이제 프로파일을 따로 지정할 필요 없이 `./gradlew bootRun`만 실행하면(기본 프로파일이 `local`이므로) Docker MariaDB에 붙는다.
-- `gradlew test`가 계속 빠르고 격리된 H2로 돌게 하려고, **`src/test/resources/application-local.yml`**을 새로 만들어 옛 H2 설정을 그대로 옮겼다. Gradle의 `test` 런타임 클래스패스는 `test/resources`가 `main/resources`보다 앞에 오므로, Spring Boot가 `classpath:application-local.yml`을 찾을 때 테스트 쪽 파일을 먼저 찾아 그것만 쓴다(같은 이름의 두 파일이 병합되지 않고, 먼저 찾은 파일만 적용됨 — 흔히 쓰이는 "test/resources로 메인 설정 오버라이드" 패턴). 그 결과 `gradlew test`는 Docker가 떠 있지 않아도 항상 통과한다.
+- `gradlew test`가 계속 빠르고 격리된 H2로 돌게 하려고, 별도의 **`test` 스프링 프로파일**을 만들었다: `src/test/resources/application-test.yml`에 옛 H2 설정을 그대로 옮기고, `build.gradle.kts`의 `Test` 태스크에 `systemProperty("spring.profiles.active", "test")`를 추가했다 — `local`(기본값)의 자리를 `test`가 대신하도록 명시적으로 지정하는 방식이다(처음에는 같은 이름의 파일을 test/resources에 둬 클래스패스 우선순위로 덮어쓰는 방법을 썼으나, 파일명을 `application-test.yml`로 분리하면서 이 방식으로 바꿨다 — 이름이 다르면 프로파일을 실제로 활성화해야 로딩되기 때문이다). `@DataJpaTest` 슬라이스(예: `PostRepositoryTest`)는 기본적으로 임베디드 DB로 자동 교체되어 이 설정과 무관하게 이미 H2로 돌고 있었고, `@SpringBootTest`(`KraftApplicationTests`, `SecurityConfigTest`)가 실제 이 설정의 적용 대상이다. 그 결과 `gradlew test`는 Docker가 떠 있지 않아도 항상 통과한다.
 - 실행 순서는 이전 `docker` 프로파일과 같다: `docker compose up -d` → `.env` 값을 OS 환경변수로 로드 → `./gradlew bootRun`(프로파일 지정 불필요). `.env.example`에 절차를 정리해 남겼다.
 - `EmailSender`/`SmtpEmailSender`의 주석과 `application.yml`의 Flyway 관련 주석에서 "docker 프로파일" 언급을 제거하고 "local(기본값)"로 통일했다.
 

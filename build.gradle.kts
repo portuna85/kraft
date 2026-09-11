@@ -46,4 +46,10 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    // local(기본값)은 2026-09-11부터 Docker MariaDB를 쓰므로, 테스트가 Docker 없이도 항상
+    // 빠르고 격리되어 돌도록 test 프로파일(src/test/resources/application-test.yml, H2
+    // 인메모리)을 강제한다. @DataJpaTest 슬라이스는 기본적으로 임베디드 DB로 자동 교체되어
+    // 이 설정과 무관하지만, @SpringBootTest(KraftApplicationTests, SecurityConfigTest)는
+    // 실제 데이터소스 설정을 그대로 쓰므로 이 프로파일이 없으면 Docker가 떠 있어야만 통과한다.
+    systemProperty("spring.profiles.active", "test")
 }

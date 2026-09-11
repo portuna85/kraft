@@ -1,0 +1,36 @@
+# test 프로파일 전용 설정. build.gradle.kts의 Test 태스크가 -Dspring.profiles.active=test를
+# 강제하므로, gradlew test는 항상 이 파일(H2 인메모리)로 돈다 — main/resources의
+# application-local.yml은 2026-09-11부터 Docker MariaDB를 쓰도록 바뀌었는데, 테스트는 Docker가
+# 떠 있는지와 무관하게 빠르고 격리되어야 하므로 별도 프로파일로 분리했다.
+#
+# main/resources/application-local.yml이 바뀌기 전의 원래 로컬(H2) 설정과 동일하다.
+spring:
+  datasource:
+    url: jdbc:h2:mem:kraft;MODE=MariaDB
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+
+  h2:
+    console:
+      enabled: true
+
+  session:
+    jdbc:
+      initialize-schema: always
+
+  thymeleaf:
+    cache: false
+
+logging:
+  level:
+    org.hibernate.SQL: debug
+
+app:
+  security:
+    email-encryption-key: local-dev-only-email-key-do-not-use-in-prod
