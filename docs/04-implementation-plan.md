@@ -185,7 +185,18 @@ Java 25 환경을 사용한다. `gradlew.bat test`는 매 단계 구현 직후 �
 
 - `build.gradle.kts`에 `spring-boot-flyway`, `flyway-mysql`(MariaDB용) 의존성을 추가했다.
 - `src/main/resources/db/migration/V1__baseline.sql`이 이번 세션 이전까지의 스키마(users/posts/comments/email_verification_tokens)를, `V2__add_post_extras.sql`이 이번에 추가된 컬럼·테이블을 담는다.
-- Flyway는 **운영(`application-prod.yml`)에서만 활성화**한다(`spring.flyway.enabled: true` + `baseline-on-migrate: true`, `baseline-version: "1"`). 로컬(H2)·docker(MariaDB, `create-drop`)는 기본값(`application.yml`의 `spring.flyway.enabled: false`)을 유지해 Hibernate가 엔티티 매핑으로 스키마를 직접 만든다 — 두 스키마 관리자가 같은 DB를 동시에 건드리는 상황(Flyway가 만든 테이블을 Hibernate가 `create-drop`으로 다시 지우는 등)을 피하기 위해서다.
+- Flyway는 **운영(`application-prod.yml`)에서만 활성화**한다(`spring.flyway.enabled: true` + `baseline-on-migrate: true`, `baseline-version: "1"`). local(기본값)은 `application.yml`의 `spring.flyway.enabled: false`를 유지해 Hibernate가 엔티티 매핑으로 스키마를 직접 만든다(`create-drop`) — 두 스키마 관리자가 같은 DB를 동시에 건드리는 상황(Flyway가 만든 테이블을 Hibernate가 `create-drop`으로 다시 지우는 등)을 피하기 위해서다.
 - `baseline-on-migrate`는 이미 스키마가 있는 기존 운영 DB에 처음 연결할 때 `V1`을 실제로 실행하지 않고 "이미 적용됨"으로만 기록한 뒤 `V2`부터 진행하도록 한다. 완전히 새로 만드는 DB에서는 `V1`부터 그대로 실행된다.
 
-**검증하지 못한 부분 — 실제 운영 반영 전 사람이 확인 필요**: 이 세션에는 실제 MariaDB(운영 또는 docker 프로파일)가 연결되어 있지 않아 `V1`/`V2`가 진짜 MariaDB에서 실행되는 것을 확인하지 못했다. 로컬 H2에서 Hibernate가 생성한 DDL 로그로 컬럼·제약을 간접 확인했을 뿐이다(`gradlew.bat test`, `bootRun` 모두 H2 기준). 특히 `role`/`category` 같은 `@Enumerated(STRING)` 필드는 Hibernate 버전에 따라 H2에서 네이티브 `ENUM(...)` 타입으로 생성되는 것을 실측으로 확인했는데, 마이그레이션 SQL은 이식성을 위해 `VARCHAR`로 작성했다 — MariaDB에서 Hibernate가 실제로 어떤 타입을 기대하는지, `ddl-auto: validate`가 `VARCHAR` 컬럼을 그대로 통과시키는지는 실제 MariaDB(예: `docker compose up -d` 후 `--spring.profiles.active=docker`, 또는 스테이징 환경)에 한 번 반영해 확인해야 한다. 문제가 있으면 `V1`/`V2`를 실제 환경에 맞게 조정한다.
+**후속 검증(2026-09-11, local→Docker MariaDB 전환 이후)**: 아래 §9의 전환 이후 local 프로파일이 실제 Docker MariaDB에 붙으면서, Hibernate `create-drop`이 실제 MariaDB에 스키마를 만드는 것을 여러 차례 실측했다(회원가입·게시글 작성·이미지 교체·추천·댓글 있는 글 삭제까지 전체 기능 검증 포함). 이 과정에서 `role`/`category` 같은 `@Enumerated(STRING)` 필드가 **MariaDB에서도 H2와 마찬가지로 네이티브 `ENUM(...)` 타입으로 생성**되는 것을 boot 로그로 직접 확인했다(`category enum ('FREE','NOTICE','QNA') not null`) — 즉 H2 한정 현상이 아니었다. 반면 `V1`/`V2` 마이그레이션 SQL은 이식성을 위해 `VARCHAR`로 작성해뒀다. **아직 확인하지 못한 것**: Flyway는 여전히 local에서 비활성 상태라 `V1`/`V2`가 실제로 실행된 적은 없다 — `ddl-auto: validate`가 Hibernate 기대 타입(`ENUM`)과 마이그레이션이 만든 타입(`VARCHAR`)의 차이를 허용하는지는 운영 반영 전(또는 Flyway를 잠시 켜본 별도 실험 환경에서) 반드시 확인해야 한다. 문제가 있으면 `V1`/`V2`의 컬럼 타입을 `ENUM(...)`으로 맞춘다.
+
+## 9. local 프로파일을 Docker MariaDB로 전환 (2026-09-11)
+
+지금까지 `local`(기본값, H2 인메모리)과 `docker`(수동으로 `--spring.profiles.active=docker` 지정, 실제 MariaDB) 두 프로파일이 따로 있었다. 로컬에서 항상 실제 MariaDB로 개발·확인하길 원해서, 이 둘을 하나로 합쳤다.
+
+- `src/main/resources/application-local.yml`을 H2 설정에서 `application-docker.yml`이 쓰던 MariaDB(docker-compose) 접속 설정으로 바꿨다. `application-docker.yml`은 삭제했다 — 이제 프로파일을 따로 지정할 필요 없이 `./gradlew bootRun`만 실행하면(기본 프로파일이 `local`이므로) Docker MariaDB에 붙는다.
+- `gradlew test`가 계속 빠르고 격리된 H2로 돌게 하려고, **`src/test/resources/application-local.yml`**을 새로 만들어 옛 H2 설정을 그대로 옮겼다. Gradle의 `test` 런타임 클래스패스는 `test/resources`가 `main/resources`보다 앞에 오므로, Spring Boot가 `classpath:application-local.yml`을 찾을 때 테스트 쪽 파일을 먼저 찾아 그것만 쓴다(같은 이름의 두 파일이 병합되지 않고, 먼저 찾은 파일만 적용됨 — 흔히 쓰이는 "test/resources로 메인 설정 오버라이드" 패턴). 그 결과 `gradlew test`는 Docker가 떠 있지 않아도 항상 통과한다.
+- 실행 순서는 이전 `docker` 프로파일과 같다: `docker compose up -d` → `.env` 값을 OS 환경변수로 로드 → `./gradlew bootRun`(프로파일 지정 불필요). `.env.example`에 절차를 정리해 남겼다.
+- `EmailSender`/`SmtpEmailSender`의 주석과 `application.yml`의 Flyway 관련 주석에서 "docker 프로파일" 언급을 제거하고 "local(기본값)"로 통일했다.
+
+**검증**: `gradlew.bat test` 전체 통과(H2 기준, Docker 없이도 성공). `docker compose down -v` → `up -d`로 완전히 새 볼륨을 만든 뒤 `./gradlew bootRun`(프로파일 지정 없이)으로 기동해 실제 MariaDB에 스키마가 만들어지고, 회원가입·이메일 인증·게시글 작성까지 정상 동작함을 확인했다.

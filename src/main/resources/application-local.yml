@@ -1,11 +1,22 @@
-# 로컬 개발 프로파일. spring.profiles.default=local(application.yml)이므로
-# 별도 지정 없이 ./gradlew bootRun / test를 실행하면 자동으로 이 설정이 적용된다.
+# 로컬 개발 프로파일. spring.profiles.default=local(application.yml)이므로 별도 지정 없이
+# ./gradlew bootRun을 실행하면 자동으로 이 설정이 적용된다.
+#
+# 2026-09-11부터 H2 인메모리 대신 docker-compose.yml로 띄운 실제 MariaDB를 쓴다 — 로컬에서도
+# "실제 서비스처럼" 데이터가 재시작 후에도 남고, 운영과 같은 DB 엔진으로 검증할 수 있게
+# 하기 위해서다. gradlew test는 이 설정이 아니라 src/test/resources/application-local.yml의
+# H2 인메모리를 쓴다(테스트 클래스패스가 우선하도록 만든 오버라이드 — 그 파일 주석 참고).
+#
+# 실행 전: docker compose up -d 로 MariaDB를 먼저 띄우고, .env의 값을 셸 환경변수로 로드한 뒤
+# (`set -a; source .env; set +a`, PowerShell은 README 참고) `./gradlew bootRun`을 실행한다.
+# ddl-auto: create-drop을 써서 매 실행마다 스키마를 새로 만든다 — 운영 스키마 마이그레이션
+# 없이 빠르게 눈으로 확인하는 용도이므로, 이 설정을 실제 운영에 쓰면 안 된다(운영은 prod
+# 프로파일 + Flyway).
 spring:
   datasource:
-    url: jdbc:h2:mem:kraft;MODE=MariaDB
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.mariadb.jdbc.Driver
 
   jpa:
     hibernate:
@@ -14,7 +25,7 @@ spring:
 
   h2:
     console:
-      enabled: true
+      enabled: false
 
   session:
     jdbc:
@@ -31,4 +42,5 @@ app:
   security:
     # 로컬 개발 전용 키. 운영에서는 반드시 EMAIL_ENCRYPTION_KEY 환경변수로 덮어써야 한다
     # (application-prod.yml 참고 — 기본값이 없어 지정하지 않으면 기동 자체가 실패한다).
-    email-encryption-key: local-dev-only-email-key-do-not-use-in-prod
+    email-encryption-key: ${EMAIL_ENCRYPTION_KEY:local-dev-only-email-key-do-not-use-in-prod}
+  base-url: ${APP_BASE_URL:http://localhost:8080}

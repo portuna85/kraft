@@ -9,10 +9,11 @@ spring:
     open-in-view: false
 
   flyway:
-    # 로컬(H2)·docker(MariaDB, create-drop)는 Hibernate가 엔티티 매핑으로 스키마를 직접
-    # 만들므로 Flyway를 끈다. 운영(application-prod.yml)에서만 명시적으로 켠다 — 두 스키마
-    # 관리자가 동시에 같은 DB를 건드리면(Flyway가 만든 테이블을 Hibernate가 create-drop으로
-    # 다시 지우는 등) 예측하기 어려워지기 때문이다.
+    # local(테스트는 H2, 실제 실행은 Docker MariaDB — 둘 다 ddl-auto: create-drop)은
+    # Hibernate가 엔티티 매핑으로 스키마를 직접 만들므로 Flyway를 끈다. 운영
+    # (application-prod.yml)에서만 명시적으로 켠다 — 두 스키마 관리자가 같은 DB를 동시에
+    # 건드리면(Flyway가 만든 테이블을 Hibernate가 create-drop으로 다시 지우는 등) 예측하기
+    # 어려워지기 때문이다.
     enabled: false
 
   session:
@@ -26,7 +27,7 @@ spring:
   # JavaMailSenderImpl은 빈 생성 시점에 실제로 연결하지 않으므로 기동은 항상 성공한다 — 메일을
   # 실제로 보내는 시점(회원가입·재발송)에만, 값이 없거나 틀리면 그때 실패가 드러난다.
   # 로컬에서 실제로 받아보려면 MAIL_HOST/MAIL_PORT/MAIL_USERNAME/MAIL_PASSWORD를 OS 환경변수로
-  # 지정한 뒤 실행한다(.env.example 참고, docker 프로파일과 같은 값을 재사용해도 된다).
+  # 지정한 뒤 실행한다(.env.example 참고 — DB 접속 정보와 같은 .env 파일에서 함께 로드한다).
   mail:
     host: ${MAIL_HOST:localhost}
     port: ${MAIL_PORT:587}
