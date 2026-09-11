@@ -41,21 +41,7 @@ spring:
   thymeleaf:
     cache: true
 
-  # SMTP 자격 증명도 DataSource와 동일하게 환경변수로 주입한다. 다만 DataSource와 달리
-  # JavaMailSenderImpl은 빈 생성 시점에 실제로 연결을 시도하지 않고 send() 호출 시점에만
-  # 연결하므로, 값이 없어도 기동 자체는 실패하지 않고 "이메일 발송 시점"에만 실패한다
-  # (DB_URL과 다른 실패 시점이라는 점을 알고 있어야 한다).
-  mail:
-    host: ${MAIL_HOST}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
+  # SMTP 설정(spring.mail.*)은 모든 프로파일이 공유하는 application.yml에 있다.
 
 app:
   # 이메일 인증 링크에 사용할 실제 배포 도메인. 반드시 환경변수로 지정해야 한다(기본값 없음 —

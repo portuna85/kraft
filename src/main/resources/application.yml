@@ -18,6 +18,27 @@ spring:
   session:
     store-type: jdbc
 
+  # 모든 프로파일(local 포함, 2026-09-11부터)이 실제 SMTP로 인증 메일을 보낸다(SmtpEmailSender).
+  # 값에 기본값을 둔 이유: spring.mail.host는 @ConditionalOnProperty로 JavaMailSender 자동
+  # 구성 여부를 가르는데, 이 Spring Boot 버전은 값이 없는 플레이스홀더를 조건 평가 시점에
+  # PlaceholderResolutionException으로 던진다(gradlew test 실측 — DataSource처럼 리터럴
+  # 문자열을 그대로 넘기며 조용히 통과하지 않음). 기본값(localhost)을 주면 빈은 항상 만들어지고,
+  # JavaMailSenderImpl은 빈 생성 시점에 실제로 연결하지 않으므로 기동은 항상 성공한다 — 메일을
+  # 실제로 보내는 시점(회원가입·재발송)에만, 값이 없거나 틀리면 그때 실패가 드러난다.
+  # 로컬에서 실제로 받아보려면 MAIL_HOST/MAIL_PORT/MAIL_USERNAME/MAIL_PASSWORD를 OS 환경변수로
+  # 지정한 뒤 실행한다(.env.example 참고, docker 프로파일과 같은 값을 재사용해도 된다).
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
   servlet:
     multipart:
       # 게시글 사진 업로드의 실제 수신 한도. 설정이 없으면 Spring Boot 기본값이
