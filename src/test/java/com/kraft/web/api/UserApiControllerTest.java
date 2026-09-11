@@ -155,7 +155,7 @@ class UserApiControllerTest {
         mockMvc.perform(put("/api/v1/users/me/password")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"currentPassword\":\"old12345\",\"newPassword\":\"new12345\"}"))
+                        .content("{\"currentPassword\":\"old12345\",\"newPassword\":\"New12345!\"}"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login"));
 
@@ -169,10 +169,10 @@ class UserApiControllerTest {
                         .with(user("tester@example.com"))
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"currentPassword\":\"old12345\",\"newPassword\":\"new12345\"}"))
+                        .content("{\"currentPassword\":\"old12345\",\"newPassword\":\"New12345!\"}"))
                 .andExpect(status().isNoContent());
 
-        verify(userService).changePassword("tester@example.com", "old12345", "new12345");
+        verify(userService).changePassword("tester@example.com", "old12345", "New12345!");
     }
 
     @Test
@@ -180,13 +180,13 @@ class UserApiControllerTest {
     void 비밀번호변경은_현재비밀번호_틀리면_400() throws Exception {
         // changePassword는 void 메서드라 BDDMockito.given이 아니라 willThrow(...).given(...) 형태로 스텁한다.
         willThrow(new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다."))
-                .given(userService).changePassword("tester@example.com", "wrong", "new12345");
+                .given(userService).changePassword("tester@example.com", "wrong", "New12345!");
 
         mockMvc.perform(put("/api/v1/users/me/password")
                         .with(user("tester@example.com"))
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"currentPassword\":\"wrong\",\"newPassword\":\"new12345\"}"))
+                        .content("{\"currentPassword\":\"wrong\",\"newPassword\":\"New12345!\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("현재 비밀번호가 일치하지 않습니다."));
     }
@@ -199,6 +199,19 @@ class UserApiControllerTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"currentPassword\":\"old12345\",\"newPassword\":\"short\"}"))
+                .andExpect(status().isBadRequest());
+
+        verify(userService, never()).changePassword(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/users/me/password 는 새 비밀번호에 대문자·소문자·특수문자가 모두 포함되지 않으면 400이고 서비스는 호출되지 않는다")
+    void 비밀번호변경은_새비밀번호가_복잡도_요건을_충족하지_않으면_400() throws Exception {
+        mockMvc.perform(put("/api/v1/users/me/password")
+                        .with(user("tester@example.com"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"old12345\",\"newPassword\":\"alllowercase123\"}"))
                 .andExpect(status().isBadRequest());
 
         verify(userService, never()).changePassword(any(), any(), any());

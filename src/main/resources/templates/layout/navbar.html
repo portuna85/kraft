@@ -45,7 +45,7 @@
                 <button type="button" id="btn-resend-verification" class="kraft-nav__link kraft-nav__link--button">인증 메일 재발송</button>
             </li>
             <li sec:authorize="isAnonymous()">
-                <a href="/login" class="kraft-nav__link"
+                <a th:href="@{/login(redirect=${currentPath})}" class="kraft-nav__link"
                    th:classappend="${currentPath == '/login'} ? 'is-current'"
                    th:attr="aria-current=${currentPath == '/login'} ? 'page' : null">로그인</a>
             </li>
