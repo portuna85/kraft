@@ -1,5 +1,6 @@
 package com.kraft.service.post;
 
+import com.kraft.domain.comment.CommentRepository;
 import com.kraft.domain.post.Post;
 import com.kraft.domain.post.PostRepository;
 import com.kraft.domain.user.EmailHasher;
@@ -47,11 +48,14 @@ class PostServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private CommentRepository commentRepository;
+
     private PostService postService;
 
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
-        postService = new PostService(postRepository, userRepository);
+        postService = new PostService(postRepository, userRepository, commentRepository);
     }
 
     private static User userWithEmail(String email, Long id) {
@@ -163,18 +167,21 @@ class PostServiceTest {
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(postRepository, never()).delete(any());
+        verify(commentRepository, never()).deleteAllByPostId(any());
     }
 
     @Test
-    @DisplayName("delete: 작성자 본인이면 정상적으로 삭제된다")
-    void delete_작성자_본인이면_삭제된다() {
+    @DisplayName("delete: 작성자 본인이면 댓글을 먼저 지우고 게시글을 삭제한다 (comments.post_id FK 위반 방지)")
+    void delete_작성자_본인이면_댓글을_먼저_지우고_삭제된다() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
 
         postService.delete(100L, authOf("owner@example.com", Role.USER));
 
-        verify(postRepository).delete(post);
+        var inOrder = org.mockito.Mockito.inOrder(commentRepository, postRepository);
+        inOrder.verify(commentRepository).deleteAllByPostId(100L);
+        inOrder.verify(postRepository).delete(post);
     }
 
     @Test

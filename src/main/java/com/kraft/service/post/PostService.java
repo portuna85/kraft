@@ -1,5 +1,6 @@
 package com.kraft.service.post;
 
+import com.kraft.domain.comment.CommentRepository;
 import com.kraft.domain.post.Post;
 import com.kraft.domain.post.PostRepository;
 import com.kraft.domain.user.EmailHasher;
@@ -27,6 +28,7 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final UserRepository userRepository;
+    private final CommentRepository commentRepository;
 
     @Transactional
     public Long save(String email, PostSaveRequestDto requestDto) {
@@ -47,6 +49,8 @@ public class PostService {
     public void delete(Long id, Authentication authentication) {
         Post post = findPost(id);
         validateOwner(post, authentication);
+        // 댓글이 남아 있으면 comments.post_id FK 제약 위반으로 삭제가 실패하므로 먼저 지운다.
+        commentRepository.deleteAllByPostId(id);
         postRepository.delete(post);
     }
 

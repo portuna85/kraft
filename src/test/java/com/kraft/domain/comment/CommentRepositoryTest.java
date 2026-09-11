@@ -80,6 +80,34 @@ class CommentRepositoryTest {
     }
 
     @Test
+    @DisplayName("deleteAllByPostId: 해당 게시글의 댓글만 삭제하고 다른 게시글 댓글은 남긴다")
+    void deleteAllByPostId_는_해당_게시글_댓글만_삭제한다() {
+        commentRepository.save(Comment.builder().content("삭제될 댓글").post(post).user(user).build());
+        Comment untouched = commentRepository.save(Comment.builder().content("남을 댓글").post(otherPost).user(user).build());
+        em.flush();
+        em.clear();
+
+        commentRepository.deleteAllByPostId(post.getId());
+        em.flush();
+
+        assertThat(commentRepository.findAllByPostIdAsc(post.getId())).isEmpty();
+        assertThat(commentRepository.findById(untouched.getId())).isPresent();
+    }
+
+    @Test
+    @DisplayName("[회귀 방지] 댓글이 있는 게시글도 댓글을 먼저 지우면 FK 위반 없이 삭제할 수 있다")
+    void 댓글을_먼저_지우면_게시글_삭제가_FK_위반없이_성공한다() {
+        commentRepository.save(Comment.builder().content("댓글").post(post).user(user).build());
+        em.flush();
+
+        commentRepository.deleteAllByPostId(post.getId());
+        postRepository.delete(post);
+        em.flush();
+
+        assertThat(postRepository.findById(post.getId())).isEmpty();
+    }
+
+    @Test
     @DisplayName("저장하면 BaseEntity의 createdAt이 자동으로 채워진다 (JpaConfig의 @EnableJpaAuditing)")
     void 감사필드가_자동으로_채워진다() {
         Comment saved = commentRepository.save(Comment.builder().content("댓글").post(post).user(user).build());
