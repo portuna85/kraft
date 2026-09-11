@@ -17,6 +17,7 @@
         <input type="hidden" id="id" th:value="${post.id}">
         <input type="hidden" id="original-title" th:value="${post.title}">
         <input type="hidden" id="original-content" th:value="${post.content}">
+        <input type="hidden" id="original-picture" th:value="${post.picture}">
 
         <!-- 읽기 기본 상태 -->
         <article id="post-view">
@@ -49,6 +50,34 @@
                 <textarea class="form-control post-edit__textarea" id="content"
                           th:text="${post.content}"></textarea>
             </div>
+            <div class="form-group">
+                <label for="edit-picture">사진</label>
+                <input type="file" class="form-control-file" id="edit-picture"
+                       accept="image/jpeg,image/png,image/gif,image/webp">
+                <small class="form-text text-muted">JPG, JPEG, PNG, GIF, WEBP · 최대 5MB · 1개. 새 파일을 선택하면 기존 이미지를 대체합니다.</small>
+            </div>
+
+            <!-- 기존 이미지(교체할 파일을 아직 선택하지 않았을 때만 표시). "이미지 삭제"를 누르면
+                 숨기고 저장 시 picture를 null로 보낸다. -->
+            <div class="picture-preview" id="edit-picture-current" th:if="${post.picture}">
+                <img class="picture-preview__image" th:src="${post.picture}" alt="현재 첨부된 이미지">
+                <div class="picture-preview__meta">
+                    <p class="picture-preview__name">현재 이미지</p>
+                    <button type="button" class="btn btn-sm btn-outline-danger" id="btn-edit-picture-remove">이미지 삭제</button>
+                </div>
+            </div>
+
+            <!-- 새로 선택한 파일의 로컬 미리보기. -->
+            <div class="picture-preview" id="edit-picture-preview" hidden>
+                <img class="picture-preview__image" id="edit-picture-preview-image" alt="선택한 이미지 미리보기">
+                <div class="picture-preview__meta">
+                    <p class="picture-preview__name" id="edit-picture-preview-name"></p>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-edit-picture-clear">선택 해제</button>
+                </div>
+            </div>
+
+            <p class="form-progress" id="post-update-progress" aria-live="polite" hidden></p>
+
             <div class="btn-group-gap">
                 <button type="button" class="btn btn-secondary" id="btn-cancel-edit">취소</button>
                 <button type="submit" class="btn btn-primary" id="btn-update">저장</button>

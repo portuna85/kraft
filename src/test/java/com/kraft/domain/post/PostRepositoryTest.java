@@ -101,7 +101,7 @@ class PostRepositoryTest {
         var createdUpdatedAt = saved.getUpdatedAt();
 
         Thread.sleep(5); // 타임스탬프 해상도 차이를 확실히 만들기 위한 최소 대기
-        saved.update("수정된 제목", "수정된 내용");
+        saved.update("수정된 제목", "수정된 내용", null);
         em.flush();
 
         assertThat(saved.getUpdatedAt()).isAfter(createdUpdatedAt);

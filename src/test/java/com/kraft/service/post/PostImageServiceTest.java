@@ -7,6 +7,8 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,9 +21,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class PostImageServiceTest {
 
     private PostImageService postImageService;
+    private Path uploadDir;
 
     @BeforeEach
     void setUp(@TempDir Path tempDir) {
+        uploadDir = tempDir;
         postImageService = new PostImageService();
         ReflectionTestUtils.setField(postImageService, "uploadDir", tempDir.toString());
     }
@@ -75,5 +79,48 @@ class PostImageServiceTest {
         assertThatThrownBy(() -> postImageService.store(file))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("확장자");
+    }
+
+    @Test
+    @DisplayName("deleteIfExists: store()가 만든 URL로 실제 파일을 지운다")
+    void deleteIfExists_정상_삭제() {
+        MockMultipartFile file = new MockMultipartFile("file", "photo.png", "image/png", "fake-image".getBytes());
+        String url = postImageService.store(file);
+        Path saved = uploadDir.resolve(url.substring("/images/".length()));
+        assertThat(Files.exists(saved)).isTrue();
+
+        postImageService.deleteIfExists(url);
+
+        assertThat(Files.exists(saved)).isFalse();
+    }
+
+    @Test
+    @DisplayName("deleteIfExists: null이면 아무 일도 하지 않는다")
+    void deleteIfExists_null이면_무시() {
+        postImageService.deleteIfExists(null);
+    }
+
+    @Test
+    @DisplayName("deleteIfExists: /images/ 접두어가 아니면 무시한다")
+    void deleteIfExists_접두어가_아니면_무시() {
+        postImageService.deleteIfExists("https://external.example.com/photo.png");
+    }
+
+    @Test
+    @DisplayName("deleteIfExists: 존재하지 않는 파일이면 예외 없이 무시한다")
+    void deleteIfExists_존재하지_않는_파일이면_무시() {
+        postImageService.deleteIfExists("/images/never-existed.png");
+    }
+
+    @Test
+    @DisplayName("deleteIfExists: 경로 조작(../)으로 업로드 디렉터리 밖을 가리키면 지우지 않는다")
+    void deleteIfExists_경로조작이면_지우지_않는다() throws IOException {
+        Path outside = uploadDir.getParent().resolve("outside-secret.png");
+        Files.writeString(outside, "secret");
+
+        postImageService.deleteIfExists("/images/../outside-secret.png");
+
+        assertThat(Files.exists(outside)).isTrue();
+        Files.deleteIfExists(outside);
     }
 }

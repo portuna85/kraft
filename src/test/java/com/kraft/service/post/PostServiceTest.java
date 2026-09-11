@@ -51,11 +51,14 @@ class PostServiceTest {
     @Mock
     private CommentRepository commentRepository;
 
+    @Mock
+    private PostImageService postImageService;
+
     private PostService postService;
 
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
-        postService = new PostService(postRepository, userRepository, commentRepository);
+        postService = new PostService(postRepository, userRepository, commentRepository, postImageService);
     }
 
     private static User userWithEmail(String email, Long id) {
@@ -122,12 +125,41 @@ class PostServiceTest {
         Post post = postOf(owner, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
 
-        Long id = postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용"),
+        Long id = postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용", null),
                 authOf("owner@example.com", Role.USER));
 
         assertThat(id).isEqualTo(100L);
         assertThat(post.getTitle()).isEqualTo("새 제목");
         assertThat(post.getContent()).isEqualTo("새 내용");
+    }
+
+    @Test
+    @DisplayName("update: picture가 기존과 다르면 반영하고 이전 이미지 파일을 지운다")
+    void update_이미지가_바뀌면_이전_파일을_지운다() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Post post = postOf(owner, 100L);
+        ReflectionTestUtils.setField(post, "picture", "/images/old.png");
+        given(postRepository.findById(100L)).willReturn(Optional.of(post));
+
+        postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용", "/images/new.png"),
+                authOf("owner@example.com", Role.USER));
+
+        assertThat(post.getPicture()).isEqualTo("/images/new.png");
+        verify(postImageService).deleteIfExists("/images/old.png");
+    }
+
+    @Test
+    @DisplayName("update: picture가 기존과 같으면 이미지 파일을 지우지 않는다")
+    void update_이미지가_그대로면_파일을_지우지_않는다() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Post post = postOf(owner, 100L);
+        ReflectionTestUtils.setField(post, "picture", "/images/same.png");
+        given(postRepository.findById(100L)).willReturn(Optional.of(post));
+
+        postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용", "/images/same.png"),
+                authOf("owner@example.com", Role.USER));
+
+        verify(postImageService, never()).deleteIfExists(any());
     }
 
     @Test
@@ -137,7 +169,7 @@ class PostServiceTest {
         Post post = postOf(owner, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
 
-        assertThatThrownBy(() -> postService.update(100L, new PostUpdateRequestDto("해킹", "해킹"),
+        assertThatThrownBy(() -> postService.update(100L, new PostUpdateRequestDto("해킹", "해킹", null),
                 authOf("intruder@example.com", Role.USER)))
                 .isInstanceOf(AccessDeniedException.class);
 
@@ -151,7 +183,7 @@ class PostServiceTest {
         Post post = postOf(owner, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
 
-        postService.update(100L, new PostUpdateRequestDto("관리자 수정", "관리자 수정"),
+        postService.update(100L, new PostUpdateRequestDto("관리자 수정", "관리자 수정", null),
                 authOf("admin@example.com", Role.ADMIN));
 
         assertThat(post.getTitle()).isEqualTo("관리자 수정");
@@ -164,7 +196,7 @@ class PostServiceTest {
         ReflectionTestUtils.setField(post, "id", 200L);
         given(postRepository.findById(200L)).willReturn(Optional.of(post));
 
-        assertThatThrownBy(() -> postService.update(200L, new PostUpdateRequestDto("x", "y"),
+        assertThatThrownBy(() -> postService.update(200L, new PostUpdateRequestDto("x", "y", null),
                 authOf("someone@example.com", Role.USER)))
                 .isInstanceOf(AccessDeniedException.class);
     }
@@ -181,6 +213,7 @@ class PostServiceTest {
 
         verify(postRepository, never()).delete(any());
         verify(commentRepository, never()).deleteAllByPostId(any());
+        verify(postImageService, never()).deleteIfExists(any());
     }
 
     @Test
@@ -195,6 +228,19 @@ class PostServiceTest {
         var inOrder = org.mockito.Mockito.inOrder(commentRepository, postRepository);
         inOrder.verify(commentRepository).deleteAllByPostId(100L);
         inOrder.verify(postRepository).delete(post);
+    }
+
+    @Test
+    @DisplayName("delete: 게시글에 이미지가 있으면 삭제 후 이미지 파일도 정리한다")
+    void delete_이미지가_있으면_파일도_정리한다() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Post post = postOf(owner, 100L);
+        ReflectionTestUtils.setField(post, "picture", "/images/old.png");
+        given(postRepository.findById(100L)).willReturn(Optional.of(post));
+
+        postService.delete(100L, authOf("owner@example.com", Role.USER));
+
+        verify(postImageService).deleteIfExists("/images/old.png");
     }
 
     @Test

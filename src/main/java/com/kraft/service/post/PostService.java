@@ -30,6 +30,7 @@ public class PostService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final CommentRepository commentRepository;
+    private final PostImageService postImageService;
 
     @Transactional
     public Long save(String email, PostSaveRequestDto requestDto) {
@@ -43,7 +44,11 @@ public class PostService {
     public Long update(Long id, PostUpdateRequestDto requestDto, Authentication authentication) {
         Post post = findPost(id);
         validateOwner(post, authentication);
-        post.update(requestDto.title(), requestDto.content());
+        String oldPicture = post.getPicture();
+        post.update(requestDto.title(), requestDto.content(), requestDto.picture());
+        if (oldPicture != null && !oldPicture.equals(requestDto.picture())) {
+            postImageService.deleteIfExists(oldPicture);
+        }
         return id;
     }
 
@@ -54,6 +59,7 @@ public class PostService {
         // 댓글이 남아 있으면 comments.post_id FK 제약 위반으로 삭제가 실패하므로 먼저 지운다.
         commentRepository.deleteAllByPostId(id);
         postRepository.delete(post);
+        postImageService.deleteIfExists(post.getPicture());
     }
 
     public PostResponseDto findById(Long id) {

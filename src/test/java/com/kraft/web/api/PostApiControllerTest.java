@@ -21,6 +21,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -167,6 +168,24 @@ class PostApiControllerTest {
                         .content("{\"title\":\"해킹\",\"content\":\"해킹\"}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/posts/{id} 는 picture를 포함한 요청 본문을 그대로 서비스에 전달한다")
+    void 수정시_picture를_포함해_서비스에_전달한다() throws Exception {
+        given(postService.update(eq(1L), any(PostUpdateRequestDto.class), any(Authentication.class))).willReturn(1L);
+
+        mockMvc.perform(put("/api/v1/posts/1")
+                        .with(user("tester@example.com"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"제목\",\"content\":\"내용\",\"picture\":\"/images/new.png\"}"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("1"));
+
+        var captor = org.mockito.ArgumentCaptor.forClass(PostUpdateRequestDto.class);
+        verify(postService).update(eq(1L), captor.capture(), any(Authentication.class));
+        assertThat(captor.getValue().picture()).isEqualTo("/images/new.png");
     }
 
     @Test

@@ -43,6 +43,32 @@ public class PostImageService {
         return "/images/" + filename;
     }
 
+    /**
+     * {@code store()}가 만든 공개 URL(예: {@code /images/uuid.png})을 근거로 실제 파일을
+     * 지운다. url이 없거나 {@code /images/} 접두어가 아니면 조용히 무시한다(정리할 이미지가
+     * 없는 정상 상태). url은 클라이언트가 요청 본문에 그대로 실어 보낸 문자열이므로, 정규화한
+     * 경로가 업로드 디렉터리 밖을 가리키면(경로 조작 시도) 삭제하지 않고 조용히 무시한다 —
+     * {@code store()}가 UUID로만 파일명을 만드는 것과 달리, 삭제는 클라이언트가 지정한 경로를
+     * 다루므로 이 방어가 반드시 필요하다.
+     */
+    public void deleteIfExists(String url) {
+        if (url == null || url.isBlank() || !url.startsWith("/images/")) {
+            return;
+        }
+
+        Path base = Path.of(uploadDir).toAbsolutePath().normalize();
+        Path target = base.resolve(url.substring("/images/".length())).normalize();
+        if (!target.startsWith(base)) {
+            return;
+        }
+
+        try {
+            Files.deleteIfExists(target);
+        } catch (IOException e) {
+            throw new IllegalArgumentException("이미지 삭제에 실패했습니다.", e);
+        }
+    }
+
     private void validate(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("업로드할 파일이 없습니다.");

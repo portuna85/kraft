@@ -164,8 +164,21 @@ var siteNav = {
 
 /**
  * 게시글 읽기·편집 화면(post-update.html)의 읽기/편집 상태 전환과 저장.
+ * <p>
+ * 이미지 교체는 {@code postForm}과 같은 업로드→저장 2단계 패턴을 따른다. 편집 폼에는 세 가지
+ * 이미지 상태가 있다: (1) 손대지 않음 — 저장 시 기존 picture를 그대로 다시 보낸다, (2) 새 파일을
+ * 선택함 — 업로드 후 그 URL로 교체한다, (3) "이미지 삭제"를 눌러 명시적으로 지움 — 저장 시
+ * picture를 null로 보낸다. {@code removedExisting}이 (3)을 표시하고, 파일을 다시 선택하면
+ * 그 표시는 무시된다(파일이 있으면 항상 우선).
  */
 var postEdit = {
+    MAX_SIZE: 5 * 1024 * 1024,
+    ALLOWED_EXT: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+    previewUrl: null,
+    uploadedUrl: null,
+    uploadedForFile: null,
+    removedExisting: false,
+
     init: function () {
         var _this = this;
         $('#btn-edit').on('click', function () {
@@ -178,7 +191,23 @@ var postEdit = {
 
         $('#post-edit').on('submit', function (e) {
             e.preventDefault();
-            _this.update();
+            _this.submit();
+        });
+
+        $('#edit-picture').on('change', function () {
+            _this.onFileChange();
+        });
+
+        $('#btn-edit-picture-clear').on('click', function () {
+            _this.clearFile();
+        });
+
+        $('#btn-edit-picture-remove').on('click', function () {
+            _this.removeExisting();
+        });
+
+        $(window).on('pagehide', function () {
+            _this.revokePreview();
         });
     },
     enterEdit: function () {
@@ -189,24 +218,143 @@ var postEdit = {
     cancelEdit: function () {
         var titleChanged = $('#title').val() !== $('#original-title').val();
         var contentChanged = $('#content').val() !== $('#original-content').val();
-        if ((titleChanged || contentChanged) && !window.confirm('변경한 내용을 버리시겠습니까?')) {
+        var pictureChanged = this.removedExisting || !!($('#edit-picture').length && $('#edit-picture')[0].files[0]);
+        if ((titleChanged || contentChanged || pictureChanged) && !window.confirm('변경한 내용을 버리시겠습니까?')) {
             return;
         }
         $('#title').val($('#original-title').val());
         $('#content').val($('#original-content').val());
+        this.resetPictureState();
         $('#post-edit').attr('hidden', 'hidden');
         $('#post-view').removeAttr('hidden');
         $('#btn-edit').trigger('focus');
     },
-    update: function () {
+    resetPictureState: function () {
+        $('#edit-picture').val('');
+        this.uploadedUrl = null;
+        this.uploadedForFile = null;
+        this.removedExisting = false;
+        this.revokePreview();
+        $('#edit-picture-preview').attr('hidden', 'hidden');
+        if ($('#original-picture').val()) {
+            $('#edit-picture-current').removeAttr('hidden');
+        }
+    },
+    onFileChange: function () {
+        var file = $('#edit-picture').length ? $('#edit-picture')[0].files[0] : null;
+        this.uploadedUrl = null;
+        this.uploadedForFile = null;
+        this.revokePreview();
+
+        if (!file) {
+            $('#edit-picture-preview').attr('hidden', 'hidden');
+            return;
+        }
+
+        // 클라이언트 사전 검사는 불필요한 왕복을 줄이기 위한 것일 뿐, 서버(PostImageService)의
+        // 확장자·용량 검증을 대체하지 않는다 — 실제 판정은 항상 서버가 내린다.
+        var extension = (file.name.split('.').pop() || '').toLowerCase();
+        if (this.ALLOWED_EXT.indexOf(extension) === -1) {
+            flash.showError('JPG, JPEG, PNG, GIF, WEBP 형식만 첨부할 수 있습니다.');
+            this.clearFile();
+            return;
+        }
+        if (file.size > this.MAX_SIZE) {
+            flash.showError('파일 크기는 5MB를 초과할 수 없습니다.');
+            this.clearFile();
+            return;
+        }
+
+        flash.hide();
+        this.removedExisting = false;
+        $('#edit-picture-current').attr('hidden', 'hidden');
+        this.previewUrl = URL.createObjectURL(file);
+        $('#edit-picture-preview-image').attr('src', this.previewUrl);
+        $('#edit-picture-preview-name').text(file.name + ' · ' + formatFileSize(file.size));
+        $('#edit-picture-preview').removeAttr('hidden');
+    },
+    clearFile: function () {
+        $('#edit-picture').val('');
+        this.uploadedUrl = null;
+        this.uploadedForFile = null;
+        this.revokePreview();
+        $('#edit-picture-preview').attr('hidden', 'hidden');
+        if (!this.removedExisting && $('#original-picture').val()) {
+            $('#edit-picture-current').removeAttr('hidden');
+        }
+    },
+    removeExisting: function () {
+        this.removedExisting = true;
+        $('#edit-picture-current').attr('hidden', 'hidden');
+    },
+    revokePreview: function () {
+        if (this.previewUrl) {
+            URL.revokeObjectURL(this.previewUrl);
+            this.previewUrl = null;
+        }
+    },
+    setProgress: function (text) {
+        var $progress = $('#post-update-progress');
+        if (!$progress.length) {
+            return;
+        }
+        if (!text) {
+            $progress.attr('hidden', 'hidden').text('');
+            return;
+        }
+        $progress.text(text).removeAttr('hidden');
+    },
+    setBusy: function (busy) {
+        $('#btn-update').prop('disabled', busy).attr('aria-busy', busy ? 'true' : 'false');
+    },
+    submit: function () {
+        var _this = this;
+        var file = $('#edit-picture').length ? $('#edit-picture')[0].files[0] : null;
+
+        this.setBusy(true);
+
+        if (file && this.uploadedUrl && this.uploadedForFile === file) {
+            this.doUpdate(this.uploadedUrl);
+            return;
+        }
+
+        if (file) {
+            this.setProgress('이미지 업로드 중…');
+            var formData = new FormData();
+            formData.append('file', file);
+
+            $.ajax({
+                type: 'POST',
+                url: '/api/v1/posts/images',
+                data: formData,
+                processData: false,
+                contentType: false,
+                dataType: 'json'
+            }).done(function (response) {
+                _this.uploadedUrl = response.url;
+                _this.uploadedForFile = file;
+                _this.doUpdate(response.url);
+            }).fail(function (error) {
+                _this.setProgress(null);
+                _this.setBusy(false);
+                flash.showError('이미지 업로드에 실패했습니다. ' + extractErrorMessage(error));
+            });
+        } else if (this.removedExisting) {
+            this.doUpdate(null);
+        } else {
+            this.doUpdate($('#original-picture').val() || null);
+        }
+    },
+    doUpdate: function (pictureUrl) {
+        var _this = this;
         var data = {
             title: $('#title').val(),
-            content: $('#content').val()
+            content: $('#content').val(),
+            picture: pictureUrl
         };
 
         var id = $('#id').val();
-
-        $('#btn-update').prop('disabled', true).attr('aria-busy', 'true');
+        this.setProgress('게시글 저장 중…');
 
         $.ajax({
             type: 'PUT',
@@ -215,11 +363,16 @@ var postEdit = {
             contentType: 'application/json; charset=utf-8',
             data: JSON.stringify(data)
         }).done(function () {
+            _this.revokePreview();
             flash.set('POST_UPDATED');
             window.location.href = '/';
         }).fail(function (error) {
-            showToast(extractErrorMessage(error), 'danger');
-            $('#btn-update').prop('disabled', false).removeAttr('aria-busy');
+            _this.setProgress(null);
+            _this.setBusy(false);
+            var retryHint = pictureUrl
+                ? ' 이미지는 이미 업로드되어 있으니 다시 "저장"을 누르면 같은 이미지로 재시도합니다.'
+                : '';
+            showToast(extractErrorMessage(error) + retryHint, 'danger');
         });
     }
 };
