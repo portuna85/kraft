@@ -8,6 +8,9 @@ build/
 ### 런타임 업로드 파일 (app.upload.dir, 로컬 실행 시 생성됨) ###
 /uploads/
 
+### 런타임 로그 파일 (logback-spring.xml, 로컬 실행 시 생성됨) ###
+/logs/
+
 ### STS ###
 .apt_generated
 .classpath

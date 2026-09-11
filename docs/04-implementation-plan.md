@@ -200,3 +200,17 @@ Java 25 환경을 사용한다. `gradlew.bat test`는 매 단계 구현 직후 �
 - `EmailSender`/`SmtpEmailSender`의 주석과 `application.yml`의 Flyway 관련 주석에서 "docker 프로파일" 언급을 제거하고 "local(기본값)"로 통일했다.
 
 **검증**: `gradlew.bat test` 전체 통과(H2 기준, Docker 없이도 성공). `docker compose down -v` → `up -d`로 완전히 새 볼륨을 만든 뒤 `./gradlew bootRun`(프로파일 지정 없이)으로 기동해 실제 MariaDB에 스키마가 만들어지고, 회원가입·이메일 인증·게시글 작성까지 정상 동작함을 확인했다.
+
+## 10. 로그 파일 분리 (logback-spring.xml, 2026-09-11)
+
+이메일 발송 문제를 조사하는 과정에서 콘솔 로그만으로는 실행이 끝나면 사라지고, SQL·보안·이메일 로그가 한데 뒤섞여 원인을 찾기 번거로웠다. `src/main/resources/logback-spring.xml`을 새로 추가해 로그를 파일로 남기고 성격별로 나눴다.
+
+- `logs/kraft.log` — 전체 애플리케이션 로그(콘솔과 동일, INFO 이상). Hibernate SQL은 여기서 뺐다(아래).
+- `logs/kraft-error.log` — ERROR만 모은다(어떤 로거에서 나왔든). 장애를 빠르게 훑어볼 때 쓴다.
+- `logs/kraft-sql.log` — `org.hibernate.SQL`/`org.hibernate.orm.jdbc.bind`. `additivity="false"`로 둬서 `kraft.log`에는 안 섞이고 콘솔·이 파일에만 남는다(레벨은 각 `application-*.yml`의 `logging.level.org.hibernate.SQL`이 그대로 결정 — XML은 등급이 아니라 "어디로 보낼지"만 담당).
+- `logs/kraft-security.log` — `org.springframework.security`. `kraft.log`에도 그대로 남고 이 파일에도 따로 모인다.
+- `logs/kraft-email.log` — `com.kraft.service.user`(인증 토큰 발급·재발송, 실제 SMTP 발송). 이번 세션에 이메일 문제를 여러 번 다룬 것을 계기로 추가했다.
+
+날짜별·20MB 초과 시 회전해 `logs/archive/*.log.gz`로 압축 보관한다(`kraft-error.log`는 90일, 나머지는 14~30일 보관). `logs/`는 `.gitignore`에 등록했다(`uploads/`와 같은 패턴).
+
+**검증**: `gradlew.bat test`로 5개 파일이 모두 만들어지고 내용이 의도대로 나뉘는 것을 확인했다(`kraft-sql.log`에 Hibernate DEBUG, `kraft.log`에는 SQL이 섞이지 않음, `kraft-email.log`에 재발송 테스트의 경고+스택트레이스, `kraft-error.log`는 실패 없어 빈 파일). 실제 `bootRun`으로도 동일하게 분리되는 것을 재확인했다.
