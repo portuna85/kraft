@@ -1,17 +1,20 @@
 # 로컬 개발 프로파일. spring.profiles.default=local(application.yml)이므로 별도 지정 없이
 # ./gradlew bootRun을 실행하면 자동으로 이 설정이 적용된다.
 #
-# 2026-09-11부터 H2 인메모리 대신 docker-compose.yml로 띄운 실제 MariaDB를 쓴다 — 로컬에서도
-# "실제 서비스처럼" 데이터가 재시작 후에도 남고, 운영과 같은 DB 엔진으로 검증할 수 있게
-# 하기 위해서다. gradlew test는 이 설정이 아니라 src/test/resources/application-local.yml의
-# H2 인메모리를 쓴다(테스트 클래스패스가 우선하도록 만든 오버라이드 — 그 파일 주석 참고).
+# 로컬에서도 운영과 같은 DB 엔진으로 검증하도록 docker-compose.yml의 MariaDB를 쓴다.
+# gradlew test는 test 프로파일을 활성화해 src/test/resources/application-test.yml의
+# H2 인메모리를 쓴다(build.gradle.kts 참고).
 #
-# 실행 전: docker compose up -d 로 MariaDB를 먼저 띄우고, .env의 값을 셸 환경변수로 로드한 뒤
-# (`set -a; source .env; set +a`, PowerShell은 README 참고) `./gradlew bootRun`을 실행한다.
+# 실행 전: 루트 .env를 준비하고 docker compose up -d 로 MariaDB를 띄운 뒤,
+# 프로젝트 루트에서 ./gradlew bootRun을 실행한다. local만 .env를 자동으로 읽으며,
+# 같은 이름의 OS 환경변수가 있으면 그 값이 우선한다(README.md 참고).
 # ddl-auto: create-drop을 써서 매 실행마다 스키마를 새로 만든다 — 운영 스키마 마이그레이션
 # 없이 빠르게 눈으로 확인하는 용도이므로, 이 설정을 실제 운영에 쓰면 안 된다(운영은 prod
 # 프로파일 + Flyway).
 spring:
+  config:
+    import: "optional:file:./.env[.properties]"
+
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
