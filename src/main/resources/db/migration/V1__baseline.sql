@@ -3,7 +3,7 @@
 -- (spring.flyway.baseline-on-migrate=true, baseline-version=1 설정으로) 이 파일이 실제로
 -- 실행되지 않고 "이미 적용됨"으로만 표시된다. 완전히 새로 만드는 DB에서만 실제로 실행된다.
 --
--- 로컬(H2)·docker(MariaDB, ddl-auto: create-drop) 프로파일은 Flyway를 쓰지 않고 Hibernate가
+-- 로컬(MariaDB, ddl-auto: update)·테스트(H2, create-drop) 프로파일은 Flyway를 쓰지 않고 Hibernate가
 -- 엔티티 매핑으로 스키마를 직접 만들므로, 이 파일은 운영(MariaDB)에서만 실행 대상이다.
 
 CREATE TABLE users (

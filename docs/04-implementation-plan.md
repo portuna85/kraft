@@ -185,7 +185,7 @@ Java 25 환경을 사용한다. `gradlew.bat test`는 매 단계 구현 직후 �
 
 - `build.gradle.kts`에 `spring-boot-flyway`, `flyway-mysql`(MariaDB용) 의존성을 추가했다.
 - `src/main/resources/db/migration/V1__baseline.sql`이 이번 세션 이전까지의 스키마(users/posts/comments/email_verification_tokens)를, `V2__add_post_extras.sql`이 이번에 추가된 컬럼·테이블을 담는다.
-- Flyway는 **운영(`application-prod.yml`)에서만 활성화**한다(`spring.flyway.enabled: true` + `baseline-on-migrate: true`, `baseline-version: "1"`). local(기본값)은 `application.yml`의 `spring.flyway.enabled: false`를 유지해 Hibernate가 엔티티 매핑으로 스키마를 직접 만든다(`create-drop`) — 두 스키마 관리자가 같은 DB를 동시에 건드리는 상황(Flyway가 만든 테이블을 Hibernate가 `create-drop`으로 다시 지우는 등)을 피하기 위해서다.
+- Flyway는 **운영(`application-prod.yml`)에서만 활성화**한다(`spring.flyway.enabled: true` + `baseline-on-migrate: true`, `baseline-version: "1"`). local(기본값)은 `application.yml`의 `spring.flyway.enabled: false`를 유지해 Hibernate가 엔티티 매핑으로 스키마를 직접 만든다(당시 `create-drop`, 2026-09-12부터 `update` — §15 참고) — 두 스키마 관리자가 같은 DB를 동시에 건드리는 상황(Flyway가 만든 테이블을 Hibernate가 `create-drop`으로 다시 지우는 등)을 피하기 위해서다.
 - `baseline-on-migrate`는 이미 스키마가 있는 기존 운영 DB에 처음 연결할 때 `V1`을 실제로 실행하지 않고 "이미 적용됨"으로만 기록한 뒤 `V2`부터 진행하도록 한다. 완전히 새로 만드는 DB에서는 `V1`부터 그대로 실행된다.
 
 **후속 검증(2026-09-11, local→Docker MariaDB 전환 이후)**: 아래 §9의 전환 이후 local 프로파일이 실제 Docker MariaDB에 붙으면서, Hibernate `create-drop`이 실제 MariaDB에 스키마를 만드는 것을 여러 차례 실측했다(회원가입·게시글 작성·이미지 교체·추천·댓글 있는 글 삭제까지 전체 기능 검증 포함). 이 과정에서 `role`/`category` 같은 `@Enumerated(STRING)` 필드가 **MariaDB에서도 H2와 마찬가지로 네이티브 `ENUM(...)` 타입으로 생성**되는 것을 boot 로그로 직접 확인했다(`category enum ('FREE','NOTICE','QNA') not null`) — 즉 H2 한정 현상이 아니었다. 반면 `V1`/`V2` 마이그레이션 SQL은 이식성을 위해 `VARCHAR`로 작성해뒀다. **이때 남겨둔 미검증 항목**(Flyway가 local에서 비활성이라 `V1`/`V2`가 한 번도 실행된 적이 없다는 점)은 2026-09-12에 실제로 검증했고, 그 결과 배포를 막는 결함 2건이 드러났다 — 아래 §11 참고.
@@ -270,7 +270,7 @@ Hibernate `create-drop`으로 현재 스키마를 만든 DB(= `flyway_schema_his
 4. **기동 성공만으로는 부족하다** — 세션 테이블 문제는 `validate`가 잡지 못하고 **첫 로그인에서만 드러난다.** 배포 후 스모크 테스트에 반드시 **로그인 1회**를 포함하고, `SELECT COUNT(*) FROM SPRING_SESSION;`으로 행이 생기는지 확인한다.
 5. **`@Enumerated(STRING)` 필드를 추가하거나 enum 값을 바꿀 때** — 마이그레이션 SQL의 `ENUM(...)` 값 목록을 Hibernate가 생성하는 것과 똑같이 **알파벳 순**으로 맞춘다. 확인은 local 기동 후 `logs/kraft-sql.log`의 `create table` 문을 보면 된다.
 
-**정리**: 검증 후 `docker compose down -v` → `up -d`로 볼륨을 비워 평소 local(`create-drop`) 개발 상태로 되돌렸다.
+**정리**: 검증 후 `docker compose down -v` → `up -d`로 볼륨을 비워 평소 local 개발 상태로 되돌렸다.
 
 ## 12. 아이폰 사진(HEIC) 업로드 처리 (2026-09-12)
 
@@ -310,3 +310,15 @@ Hibernate `create-drop`으로 현재 스키마를 만든 DB(= `flyway_schema_his
 - 폼 자체의 취소·저장 버튼과 페이저는 이동·계정 버튼이 아니므로 본문에 그대로 둔다.
 
 **검증**: `gradlew.bat test` 전체 통과. 실제 기동해 익명·로그인 두 상태에서 8개 화면(`/`, `/login`, `/signup`, `/posts/save`, `/users/me/password`, `/users/verify`, 게시글 읽기, 없는 게시글)이 모두 200으로 렌더링되고 헤더 오른쪽에 상태에 맞는 버튼만 나오는 것을 확인했다(현재 화면 항목은 `is-current`로 강조). 토글 버튼의 열림·닫힘이 `hidden`/`aria-expanded`를 정확히 뒤집는 것도 확인했다. 320~767px 실제 렌더링은 이 세션의 자동화 도구가 뷰포트를 1920px로 고정하는 제약(§6) 때문에 여전히 사람이 직접 봐야 한다.
+
+## 15. local의 DB 데이터를 기동 사이에 유지 (2026-09-12)
+
+local이 `ddl-auto: create-drop`이라 **`./gradlew bootRun`을 다시 할 때마다 계정·게시글이 전부 사라졌다.** Docker 볼륨(`kraft-mariadb-data`)은 데이터를 잘 들고 있었고, 앱이 기동할 때 스스로 전체 drop·재생성을 한 것이 원인이다(컨테이너 재시작이나 `docker compose down`(볼륨 유지)으로는 사라지지 않았다).
+
+`application-local.yml`의 `ddl-auto`를 **`update`**로 바꿨다. 테이블·컬럼 추가는 계속 자동 반영하면서 기존 데이터는 남는다.
+
+- **`update`의 한계**: 컬럼·테이블 삭제, 타입 변경, 제약 변경은 반영하지 않는다. 엔티티에서 필드를 지우거나 타입을 바꿨다면 `docker compose down -v && docker compose up -d`로 스키마를 한 번 비워야 실제와 맞는다. README와 `application-local.yml` 주석에 이 절차를 적어뒀다.
+- **테스트는 그대로 `create-drop`** — `src/test/resources/application-test.yml`(H2 인메모리)은 매번 깨끗한 상태가 맞으므로 건드리지 않았다.
+- **운영은 영향 없다** — prod는 `validate` + Flyway이며, 운영 스키마의 정합성은 이 설정이 아니라 `db/migration`이 책임진다(§11의 배포 전 점검 절차).
+
+**검증**: 볼륨을 비우고(`down -v` → `up -d`) 기동해 회원가입 → 이메일 인증 → 로그인 → 게시글 작성까지 한 뒤, **앱을 정상 종료하고 다시 띄웠다.** 재기동 후에도 `users`(role=USER)와 `posts`가 그대로 남아 있고 목록 화면에도 그 글이 보였다. 재기동 로그 구간에 `drop table` 0건, WARN 0건, ERROR 0건.

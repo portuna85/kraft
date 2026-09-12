@@ -34,8 +34,14 @@ bash에서는 같은 위치에서 `./gradlew bootRun`을 사용합니다.
 같은 이름의 OS 환경변수가 있으면 `.env`보다 우선하며, `.env` 없이 환경변수만 전달해도 됩니다.
 DB 설정이 두 곳 모두에 없으면 앱 기동이 실패합니다. `prod`와 `test` 프로파일은 `.env`를 자동으로 읽지 않습니다.
 
-현재 `local`의 `ddl-auto=create-drop` 설정은 앱 시작 시 테이블을 다시 만들고 정상 종료 시 삭제합니다.
-기존 스키마와 데이터를 유지하면서 연결을 확인할 때는 다음 명령을 사용합니다. 스키마는 미리 준비되어 있어야 합니다.
+현재 `local`은 `ddl-auto=update`라 **앱을 다시 띄워도 Docker 볼륨의 데이터가 그대로 남습니다.**
+엔티티에서 필드를 지우거나 타입을 바꿨다면 `update`가 그 변경을 반영하지 못하므로, 스키마를 한 번 비워야 실제와 맞습니다.
+
+```powershell
+docker compose down -v; docker compose up -d
+```
+
+앱이 스키마를 전혀 건드리지 않게 하고 연결만 확인할 때는 다음 명령을 사용합니다. 스키마는 미리 준비되어 있어야 합니다.
 
 ```powershell
 .\gradlew.bat bootRun --args="--spring.jpa.hibernate.ddl-auto=validate --spring.session.jdbc.initialize-schema=never"
