@@ -1,8 +1,11 @@
 -- 검색·분류·조회수·추천(좋아요)·인기글·댓글수 기능에 필요한 스키마 변경.
 -- category는 기존 게시글에도 기본값 FREE(자유)로 채워지고, view_count는 0부터 시작한다.
 
+-- category를 ENUM으로 두는 이유는 V1의 users.role 주석 참고(Hibernate가 MariaDB에서
+-- 네이티브 ENUM을 기대하므로 VARCHAR면 ddl-auto: validate가 기동을 막는다).
+-- 값 목록은 Hibernate가 만드는 것과 같은 알파벳 순이다.
 ALTER TABLE posts
-    ADD COLUMN category VARCHAR(20) NOT NULL DEFAULT 'FREE',
+    ADD COLUMN category ENUM('FREE','NOTICE','QNA') NOT NULL DEFAULT 'FREE',
     ADD COLUMN view_count BIGINT NOT NULL DEFAULT 0;
 
 CREATE TABLE post_likes (

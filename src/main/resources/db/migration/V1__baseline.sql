@@ -14,7 +14,11 @@ CREATE TABLE users (
     email VARCHAR(500) NOT NULL,
     email_hash VARCHAR(128) NOT NULL,
     password VARCHAR(100) NOT NULL,
-    role VARCHAR(20) NOT NULL,
+    -- Hibernate는 MariaDB에서 @Enumerated(STRING)을 네이티브 ENUM으로 만들고 기대한다
+    -- (logs/kraft-sql.log의 create table users: `role enum ('ADMIN','GUEST','USER') not null`).
+    -- VARCHAR로 두면 운영의 ddl-auto: validate가 타입 불일치로 기동을 막는다. 값 목록은
+    -- Hibernate가 만드는 것과 똑같이 알파벳 순(선언 순서가 아님)으로 맞춘다.
+    role ENUM('ADMIN','GUEST','USER') NOT NULL,
     PRIMARY KEY (id),
     CONSTRAINT UK_USER_EMAIL_HASH UNIQUE (email_hash)
 ) ENGINE=InnoDB;

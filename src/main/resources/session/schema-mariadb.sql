@@ -9,6 +9,9 @@
 --
 -- 내용 자체는 spring-session-jdbc 4.1.1의 schema-mysql.sql과 동일하다(버전을 올릴 때
 -- 원본이 바뀌었는지 확인할 것).
+--
+-- 운영은 Flyway가 같은 내용을 db/migration/V3__spring_session.sql로 만든다(운영은
+-- initialize-schema: never라 이 파일을 쓰지 않는다). 둘 중 하나를 고치면 다른 쪽도 함께 고칠 것.
 
 CREATE TABLE IF NOT EXISTS SPRING_SESSION (
 	PRIMARY_ID CHAR(36) NOT NULL,

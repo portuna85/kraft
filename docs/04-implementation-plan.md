@@ -188,7 +188,7 @@ Java 25 환경을 사용한다. `gradlew.bat test`는 매 단계 구현 직후 �
 - Flyway는 **운영(`application-prod.yml`)에서만 활성화**한다(`spring.flyway.enabled: true` + `baseline-on-migrate: true`, `baseline-version: "1"`). local(기본값)은 `application.yml`의 `spring.flyway.enabled: false`를 유지해 Hibernate가 엔티티 매핑으로 스키마를 직접 만든다(`create-drop`) — 두 스키마 관리자가 같은 DB를 동시에 건드리는 상황(Flyway가 만든 테이블을 Hibernate가 `create-drop`으로 다시 지우는 등)을 피하기 위해서다.
 - `baseline-on-migrate`는 이미 스키마가 있는 기존 운영 DB에 처음 연결할 때 `V1`을 실제로 실행하지 않고 "이미 적용됨"으로만 기록한 뒤 `V2`부터 진행하도록 한다. 완전히 새로 만드는 DB에서는 `V1`부터 그대로 실행된다.
 
-**후속 검증(2026-09-11, local→Docker MariaDB 전환 이후)**: 아래 §9의 전환 이후 local 프로파일이 실제 Docker MariaDB에 붙으면서, Hibernate `create-drop`이 실제 MariaDB에 스키마를 만드는 것을 여러 차례 실측했다(회원가입·게시글 작성·이미지 교체·추천·댓글 있는 글 삭제까지 전체 기능 검증 포함). 이 과정에서 `role`/`category` 같은 `@Enumerated(STRING)` 필드가 **MariaDB에서도 H2와 마찬가지로 네이티브 `ENUM(...)` 타입으로 생성**되는 것을 boot 로그로 직접 확인했다(`category enum ('FREE','NOTICE','QNA') not null`) — 즉 H2 한정 현상이 아니었다. 반면 `V1`/`V2` 마이그레이션 SQL은 이식성을 위해 `VARCHAR`로 작성해뒀다. **아직 확인하지 못한 것**: Flyway는 여전히 local에서 비활성 상태라 `V1`/`V2`가 실제로 실행된 적은 없다 — `ddl-auto: validate`가 Hibernate 기대 타입(`ENUM`)과 마이그레이션이 만든 타입(`VARCHAR`)의 차이를 허용하는지는 운영 반영 전(또는 Flyway를 잠시 켜본 별도 실험 환경에서) 반드시 확인해야 한다. 문제가 있으면 `V1`/`V2`의 컬럼 타입을 `ENUM(...)`으로 맞춘다.
+**후속 검증(2026-09-11, local→Docker MariaDB 전환 이후)**: 아래 §9의 전환 이후 local 프로파일이 실제 Docker MariaDB에 붙으면서, Hibernate `create-drop`이 실제 MariaDB에 스키마를 만드는 것을 여러 차례 실측했다(회원가입·게시글 작성·이미지 교체·추천·댓글 있는 글 삭제까지 전체 기능 검증 포함). 이 과정에서 `role`/`category` 같은 `@Enumerated(STRING)` 필드가 **MariaDB에서도 H2와 마찬가지로 네이티브 `ENUM(...)` 타입으로 생성**되는 것을 boot 로그로 직접 확인했다(`category enum ('FREE','NOTICE','QNA') not null`) — 즉 H2 한정 현상이 아니었다. 반면 `V1`/`V2` 마이그레이션 SQL은 이식성을 위해 `VARCHAR`로 작성해뒀다. **이때 남겨둔 미검증 항목**(Flyway가 local에서 비활성이라 `V1`/`V2`가 한 번도 실행된 적이 없다는 점)은 2026-09-12에 실제로 검증했고, 그 결과 배포를 막는 결함 2건이 드러났다 — 아래 §11 참고.
 
 ## 9. local 프로파일을 Docker MariaDB로 전환 (2026-09-11)
 
@@ -214,3 +214,60 @@ Java 25 환경을 사용한다. `gradlew.bat test`는 매 단계 구현 직후 �
 날짜별·20MB 초과 시 회전해 `logs/archive/*.log.gz`로 압축 보관한다(`kraft-error.log`는 90일, 나머지는 14~30일 보관). `logs/`는 `.gitignore`에 등록했다(`uploads/`와 같은 패턴).
 
 **검증**: `gradlew.bat test`로 5개 파일이 모두 만들어지고 내용이 의도대로 나뉘는 것을 확인했다(`kraft-sql.log`에 Hibernate DEBUG, `kraft.log`에는 SQL이 섞이지 않음, `kraft-email.log`에 재발송 테스트의 경고+스택트레이스, `kraft-error.log`는 실패 없어 빈 파일). 실제 `bootRun`으로도 동일하게 분리되는 것을 재확인했다.
+
+## 11. Flyway 마이그레이션 정합성 결함 2건 수정 + 실증 (2026-09-12)
+
+§8의 미검증 항목(“`V1`/`V2`가 실제로 실행된 적이 없다”)을 확인한 결과, 단순 미검증이 아니라 **운영 배포를 실제로 막을 결함 2건**이었다. 둘 다 수정하고, 운영과 동일한 스키마 경로(Flyway + `validate` + `session.jdbc.initialize-schema: never`)로 실제 Docker MariaDB에 기동해 실측했다.
+
+### 결함 1 — `ddl-auto: validate` 기동 실패 (ENUM vs VARCHAR)
+
+Hibernate는 MariaDB에서 `@Enumerated(STRING)` 필드를 네이티브 `enum`으로 만들고, `validate`도 그 타입을 기대한다(`logs/kraft-sql.log`: `role enum ('ADMIN','GUEST','USER') not null`). 반면 `V1`/`V2`는 `VARCHAR(20)`이었다.
+
+- 처음에는 **엔티티 쪽을 VARCHAR로 고정**(`@JdbcTypeCode(SqlTypes.VARCHAR)`)하려 했으나, 그러면 Hibernate가 `check (role in (...))` 제약을 함께 만들고 H2가 이를 평가하지 못해 `@DataJpaTest` 20여 개가 `DataIntegrityViolationException: Check constraint invalid` (H2 23514)로 깨졌다. Hibernate 7에는 이 체크 제약 생성을 끄는 설정도, 전역 enum JDBC 타입 설정(`preferred_enum_jdbc_type`, 7에서 제거)도 없다.
+- 따라서 **마이그레이션 쪽을 Hibernate 생성물에 맞추는 폴백**을 택했다: `V1`의 `users.role`, `V2`의 `posts.category`를 `ENUM('ADMIN','GUEST','USER')` / `ENUM('FREE','NOTICE','QNA')`로 바꿨다. 값 목록은 Hibernate가 만드는 것과 동일하게 **선언 순서가 아닌 알파벳 순**이어야 한다.
+
+### 결함 2 — 운영에 `SPRING_SESSION` 테이블을 만드는 주체가 없음 (조용한 런타임 실패)
+
+`application.yml`이 모든 프로파일에 `spring.session.store-type: jdbc`를 강제하는데, 운영은 `initialize-schema: never`이고 `db/migration/`에도 세션 테이블이 없었다. 세션 테이블은 JPA 엔티티가 아니라 `validate`가 잡지 못한다 — **기동은 성공하고 첫 로그인에서 터진다.** `db/migration/V3__spring_session.sql`을 추가해 해결했다. `IF NOT EXISTS`를 유지해 과거 배포에서 Spring Session이 이미 만들어 둔 DB에서도 안전하다. local은 계속 `session/schema-mariadb.sql`을 쓰므로(local은 Flyway 비활성) **두 파일은 같은 내용으로 유지해야 하며**, 양쪽 주석에 상호 참조를 남겼다. 유일한 차이는 V3에서 PRIMARY KEY 제약의 이름을 뺀 것이다(MariaDB가 이름을 무시하면서 WARN 1280을 남겨서).
+
+### 실증 결과
+
+운영 설정을 건드리지 않고 명령행 오버라이드로 재현했다.
+
+```powershell
+.\gradlew.bat bootRun --args="--spring.flyway.enabled=true --spring.jpa.hibernate.ddl-auto=validate --spring.session.jdbc.initialize-schema=never"
+```
+
+**시나리오 A — 새 운영 DB (`docker compose down -v` → `up -d`): 통과**
+
+- `Successfully applied 3 migrations to schema kraft, now at version v3`, `Initialized JPA EntityManagerFactory`(= `validate` 통과), `Started KraftApplication in 3.6s`.
+- 기능 확인: 회원가입 → 인증 링크 클릭(`role`이 `GUEST`→`USER`) → **로그인 성공(302 → `/`)** → 게시글 작성 성공.
+- `SPRING_SESSION`에 `PRINCIPAL_NAME`이 채워진 세션 행이 남았다(결함 2의 실제 검증 기준). `logs/kraft-error.log` 0줄, `logs/kraft.log` WARN 0건.
+
+**시나리오 B — 기존 DB (`baseline-on-migrate` 경로): 예상대로 실패, 처방까지 실측**
+
+Hibernate `create-drop`으로 현재 스키마를 만든 DB(= `flyway_schema_history` 없음)에 위 명령으로 기동했다.
+
+1. 오버라이드만으로는 재현되지 않는다 — `baseline-on-migrate`/`baseline-version`은 `application-prod.yml`에만 있어 local 기동에는 적용되지 않는다. 이때는 `FlywayException: Found non-empty schema(s) 'kraft' but no schema history table.`로 기동 실패한다. 운영 경로를 재현하려면 `--spring.flyway.baseline-on-migrate=true --spring.flyway.baseline-version=1`을 함께 줘야 한다.
+2. 운영과 같은 `baseline-version=1`로 기동하면 V1을 건너뛰고 V2부터 적용하는데, 이미 컬럼이 있으므로 실패한다:
+   ```
+   Successfully baselined schema with version: 1
+   Migrating schema `kraft` to version "2 - add post extras"
+   SQL State  : 42S21 / Error Code : 1060
+   Message    : Duplicate column name 'category'
+   Location   : db/migration/V2__add_post_extras.sql  Line: 7
+   ```
+   `flyway_schema_history`에는 baseline 1행 + `success=0`인 V2 행이 남는다(복구하려면 실패 행을 지우거나 `flyway repair`).
+3. 같은 DB에 **실제 상태에 맞는 `baseline-version=3`**으로 다시 기동하면 정상이다: `Successfully baselined schema with version: 3` → `Schema is up to date. No migration necessary.` → `Started KraftApplication`.
+
+즉 결함이 아니라 **대상 DB의 실제 상태에 맞는 `baseline-version`을 골라야 한다는 배포 절차 문제**다.
+
+### 배포 전 점검 절차 (재발 방지)
+
+1. **대상 DB 상태 판별** — `SHOW TABLES;`로 (a) 완전히 빈 DB인지, (b) `flyway_schema_history`가 있는지, (c) `posts`에 `category`/`view_count`가 있고 `post_likes`·`SPRING_SESSION`이 있는지 확인한다.
+2. **`baseline-version` 결정** — 빈 DB면 설정을 그대로 두면 된다(V1부터 전부 실행). 기존 DB면 실제 상태에 맞춘다: §3 기능 이전 스키마면 `1`, `category`/`view_count`/`post_likes`까지 있으면 `2`, 세션 테이블까지 있으면 `3`. `application-prod.yml`의 `baseline-version: "1"`은 **빈 DB나 §3 이전 스키마를 가정한 값**이므로 그대로 배포하지 말 것.
+3. **리허설** — 운영 데이터의 사본(또는 같은 상태로 만든 DB)에 위 `bootRun` 오버라이드 명령을 한 번 돌려 Flyway 적용과 `validate` 통과를 확인한다. 마이그레이션을 새로 추가할 때마다 반복한다.
+4. **기동 성공만으로는 부족하다** — 세션 테이블 문제는 `validate`가 잡지 못하고 **첫 로그인에서만 드러난다.** 배포 후 스모크 테스트에 반드시 **로그인 1회**를 포함하고, `SELECT COUNT(*) FROM SPRING_SESSION;`으로 행이 생기는지 확인한다.
+5. **`@Enumerated(STRING)` 필드를 추가하거나 enum 값을 바꿀 때** — 마이그레이션 SQL의 `ENUM(...)` 값 목록을 Hibernate가 생성하는 것과 똑같이 **알파벳 순**으로 맞춘다. 확인은 local 기동 후 `logs/kraft-sql.log`의 `create table` 문을 보면 된다.
+
+**정리**: 검증 후 `docker compose down -v` → `up -d`로 볼륨을 비워 평소 local(`create-drop`) 개발 상태로 되돌렸다.
