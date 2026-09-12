@@ -21,15 +21,29 @@
         </button>
 
         <nav id="site-nav" class="kraft-actions" aria-label="계정 메뉴" hidden>
-            <span sec:authorize="isAuthenticated()" class="kraft-actions__email" id="user"
-                  sec:authentication="name"></span>
+            <!--
+              로그인 아이디(이메일)가 아니라 가입 시 입력한 닉네임을 보여준다
+              (KraftUserDetails.displayName).
+
+              principal 타입을 확인하고 쓰는 이유: 세션은 DB(SPRING_SESSION)에 저장되어 배포·재기동
+              뒤에도 살아남는데, KraftUserDetails 도입 이전에 만들어진 세션에는 displayName이 없는
+              옛 principal이 그대로 들어 있다. 바로 참조하면 그 세션의 사용자에게는 모든 화면이
+              500으로 깨진다(실제로 재현했다). 그런 세션은 이메일로 안전하게 물러선다.
+            -->
+            <span sec:authorize="isAuthenticated()" class="kraft-actions__name" id="user"
+                  th:with="principal=${#authentication.principal}"
+                  th:text="${principal instanceof T(com.kraft.config.security.KraftUserDetails)}
+                           ? ${principal.displayName} : ${#authentication.name}"></span>
 
             <a sec:authorize="isAuthenticated()" href="/posts/save" class="kraft-actions__link"
                th:classappend="${currentPath == '/posts/save'} ? 'is-current'"
                th:attr="aria-current=${currentPath == '/posts/save'} ? 'page' : null">글쓰기</a>
 
+            <!-- 인증 메일 재발송·비밀번호 변경은 화면을 떠나지 않고 현재 페이지 위 모달에서
+                 처리한다(모달 자체는 layout/footer :: footer에 있다). -->
             <button sec:authorize="hasRole('GUEST')" type="button" id="btn-resend-verification"
-                    class="kraft-actions__link kraft-actions__link--button">인증 메일 재발송</button>
+                    class="kraft-actions__link kraft-actions__link--button"
+                    data-toggle="modal" data-target="#resendVerificationModal">인증 메일 재발송</button>
 
             <a sec:authorize="isAnonymous()" th:href="@{/login(redirect=${currentPath})}" class="kraft-actions__link"
                th:classappend="${currentPath == '/login'} ? 'is-current'"
@@ -39,9 +53,8 @@
                th:classappend="${currentPath == '/signup'} ? 'is-current'"
                th:attr="aria-current=${currentPath == '/signup'} ? 'page' : null">회원가입</a>
 
-            <a sec:authorize="isAuthenticated()" href="/users/me/password" class="kraft-actions__link"
-               th:classappend="${currentPath == '/users/me/password'} ? 'is-current'"
-               th:attr="aria-current=${currentPath == '/users/me/password'} ? 'page' : null">비밀번호 변경</a>
+            <button sec:authorize="isAuthenticated()" type="button" class="kraft-actions__link kraft-actions__link--button"
+                    data-toggle="modal" data-target="#changePasswordModal">비밀번호 변경</button>
 
             <button sec:authorize="isAuthenticated()" type="button" id="btn-logout"
                     class="kraft-actions__link kraft-actions__link--button">로그아웃</button>

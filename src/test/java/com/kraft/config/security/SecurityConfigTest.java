@@ -105,14 +105,39 @@ class SecurityConfigTest {
     }
 
     @Test
-    @DisplayName("로그아웃: 비밀번호 변경 화면(Referer)에서 로그아웃하면 \"/login\"으로 이동한다")
-    void logout_fromPasswordChangePage_redirectsToLoginPage() throws Exception {
+    @DisplayName("로그아웃: next 파라미터가 있으면 Referer보다 우선해 그곳으로 이동한다(비밀번호 변경 모달 경로)")
+    void logout_withNextParameter_redirectsToThatPath() throws Exception {
         mockMvc.perform(post("/logout")
-                        .header("Referer", "http://localhost/users/me/password")
+                        .param("next", "/login")
+                        .header("Referer", "http://localhost/")
                         .with(user("tester@example.com"))
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login"));
+    }
+
+    @Test
+    @DisplayName("로그아웃: next가 외부 URL이면 무시하고 Referer 규칙을 따른다")
+    void logout_withExternalNextParameter_ignoresIt() throws Exception {
+        mockMvc.perform(post("/logout")
+                        .param("next", "//evil.example.com")
+                        .header("Referer", "http://localhost/")
+                        .with(user("tester@example.com"))
+                        .with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("http://localhost/"));
+    }
+
+    @Test
+    @DisplayName("로그아웃: next가 비어 있으면 Referer 규칙을 따른다")
+    void logout_withBlankNextParameter_followsRefererRule() throws Exception {
+        mockMvc.perform(post("/logout")
+                        .param("next", "")
+                        .header("Referer", "http://localhost/posts/save")
+                        .with(user("tester@example.com"))
+                        .with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"));
     }
 
     @Test

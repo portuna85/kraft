@@ -73,12 +73,6 @@ public class IndexController {
         return "user/login";
     }
 
-    @GetMapping("/users/me/password")
-    public String changePassword(Model model) {
-        model.addAttribute("pageTitle", "비밀번호 변경");
-        return "user/change-password";
-    }
-
     /**
      * 이메일로 발송된 인증 링크를 클릭했을 때 호출된다. AJAX가 아니라 브라우저가 직접 이동하는
      * 링크이므로 JSON이 아니라 결과 화면을 렌더링한다.

@@ -27,7 +27,11 @@
                 </div>
                 <div class="form-group">
                     <label for="author">작성자</label>
-                    <input type="text" class="form-control" id="author" sec:authentication="name" readonly>
+                    <!-- 닉네임을 보여준다. 옛 세션 대비 물러서기는 layout/navbar 주석 참고. -->
+                    <input type="text" class="form-control" id="author" readonly
+                           th:with="principal=${#authentication.principal}"
+                           th:value="${principal instanceof T(com.kraft.config.security.KraftUserDetails)}
+                                     ? ${principal.displayName} : ${#authentication.name}">
                     <small class="form-text text-muted">작성자는 로그인 계정으로 자동 지정됩니다.</small>
                 </div>
                 <div class="form-group">

@@ -815,11 +815,40 @@ var signup = {
     }
 };
 
+/**
+ * 비밀번호 변경 모달(#changePasswordModal). 별도 화면이 없어졌으므로 어느 화면에서든
+ * 헤더의 "비밀번호 변경"으로 열린다.
+ * <p>
+ * 오류는 화면 이동이 없으니 flash(이동 후 1회 표시)가 아니라 모달 안에서 바로 보여준다.
+ * 성공하면 기존 정책대로 로그아웃하는데, 이때 로그아웃 폼의 next에 "/login"을 채워
+ * 로그인 화면으로 보낸다(예전에는 Referer가 비밀번호 변경 화면인 것으로 판별했지만,
+ * 모달은 어느 화면에서나 열리므로 Referer로는 구분할 수 없다).
+ */
 var changePassword = {
     init: function () {
+        var $modal = $('#changePasswordModal');
+        if (!$modal.length) {
+            return;
+        }
+
         $('#btn-change-password').on('click', function () {
             changePassword.save();
         });
+
+        // 열 때마다 이전 입력과 오류를 지우고 첫 입력에 포커스를 둔다.
+        $modal.on('show.bs.modal', function () {
+            $('#change-password-form')[0].reset();
+            changePassword.hideError();
+        });
+        $modal.on('shown.bs.modal', function () {
+            $('#currentPassword').trigger('focus');
+        });
+    },
+    showError: function (message) {
+        $('#change-password-error').text(message).removeAttr('hidden');
+    },
+    hideError: function () {
+        $('#change-password-error').text('').attr('hidden', 'hidden');
     },
     save: function () {
         var data = {
@@ -829,6 +858,7 @@ var changePassword = {
 
         var $btn = $('#btn-change-password');
         $btn.prop('disabled', true).attr('aria-busy', 'true');
+        changePassword.hideError();
 
         $.ajax({
             type: 'PUT',
@@ -837,22 +867,27 @@ var changePassword = {
             data: JSON.stringify(data)
         }).done(function () {
             flash.set('PASSWORD_CHANGED');
+            $('#logout-next').val('/login');
             $('#logout-form').trigger('submit');
         }).fail(function (error) {
-            flash.showError(extractErrorMessage(error));
+            changePassword.showError(extractErrorMessage(error));
             $btn.prop('disabled', false).removeAttr('aria-busy');
         });
     }
 };
 
+/**
+ * 인증 메일 재발송 모달(#resendVerificationModal). 버튼을 누르는 즉시 메일이 나가던 것을
+ * 한 번 확인받도록 바꿨다 — 재발송은 이전 토큰을 무효로 만들기 때문이다.
+ */
 var verifyEmail = {
     init: function () {
-        $('#btn-resend-verification').on('click', function () {
+        $('#btn-confirm-resend').on('click', function () {
             verifyEmail.resend();
         });
     },
     resend: function () {
-        var $btn = $('#btn-resend-verification');
+        var $btn = $('#btn-confirm-resend');
         $btn.prop('disabled', true).attr('aria-busy', 'true');
 
         $.ajax({
@@ -864,6 +899,7 @@ var verifyEmail = {
             showToast(extractErrorMessage(error), 'danger');
         }).always(function () {
             $btn.prop('disabled', false).removeAttr('aria-busy');
+            $('#resendVerificationModal').modal('hide');
         });
     }
 };

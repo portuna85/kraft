@@ -322,3 +322,21 @@ local이 `ddl-auto: create-drop`이라 **`./gradlew bootRun`을 다시 할 때�
 - **운영은 영향 없다** — prod는 `validate` + Flyway이며, 운영 스키마의 정합성은 이 설정이 아니라 `db/migration`이 책임진다(§11의 배포 전 점검 절차).
 
 **검증**: 볼륨을 비우고(`down -v` → `up -d`) 기동해 회원가입 → 이메일 인증 → 로그인 → 게시글 작성까지 한 뒤, **앱을 정상 종료하고 다시 띄웠다.** 재기동 후에도 `users`(role=USER)와 `posts`가 그대로 남아 있고 목록 화면에도 그 글이 보였다. 재기동 로그 구간에 `drop table` 0건, WARN 0건, ERROR 0건.
+
+## 16. 인증 메일 재발송·비밀번호 변경을 모달로, 헤더에는 닉네임 표시 (2026-09-12)
+
+### 모달 전환
+
+두 행동 모두 **현재 화면을 떠나지 않고** 처리하도록 바꿨다. 모달은 `layout/footer :: footer`에 두어 모든 화면이 공유한다(헤더 버튼과 같은 위치 전략).
+
+- **비밀번호 변경** — 별도 화면(`/users/me/password`)과 `user/change-password.html`, `IndexController`의 매핑을 삭제하고 `#changePasswordModal`로 옮겼다. 화면 이동이 없으므로 오류는 flash(이동 후 1회 표시)가 아니라 모달 안(`#change-password-error`)에 바로 띄운다. 모달을 열 때마다 입력과 오류를 초기화하고 첫 입력에 포커스를 준다.
+- **인증 메일 재발송** — 누르는 즉시 메일이 나가던 것을 `#resendVerificationModal`에서 한 번 확인받도록 했다. 재발송은 이전 토큰을 무효로 만들기 때문이다. 결과는 기존대로 토스트로 알리고 모달은 닫는다.
+- **로그아웃 복귀 규칙 변경** — "비밀번호 변경 후에는 로그인 화면으로"라는 기존 정책(§3)은 지금까지 Referer가 `/users/me/password`인지로 판별했는데, 모달은 어느 화면에서나 열리므로 Referer로는 구분할 수 없다. 로그아웃 폼에 `next` 히든 필드를 추가하고(`layout/footer.html`), 변경 성공 시에만 JS가 `/login`을 채운다. `SecurityConfig`의 로그아웃 성공 처리는 `next`가 `/`로 시작하고 `//`(외부 도메인)로 시작하지 않을 때만 신뢰한다 — 로그인 성공 후 복귀와 같은 규칙이다. `SecurityConfigTest`에 `next` 우선 적용·외부 URL 무시·빈 값 폴백 3건을 추가했다.
+
+### 헤더에 이메일 대신 닉네임
+
+`sec:authentication="name"`은 로그인 아이디(=이메일)라서, 화면 표시용 이름을 담는 `KraftUserDetails`(`displayName`)를 만들고 `UserDetailsServiceImpl`이 이를 반환하도록 했다. **`getUsername()`은 이메일 그대로 둔다** — 서비스 계층이 `authentication.getName()`으로 회원을 조회하기 때문이다. 글쓰기 화면의 "작성자" 칸도 같은 값으로 바꿨다(목록의 작성자 표시와 이제 일치한다).
+
+**실제로 밟은 함정**: 처음에는 템플릿에서 `principal.displayName`을 바로 참조했는데, **세션이 DB(`SPRING_SESSION`)에 저장되어 재기동·배포 뒤에도 살아남기 때문에** 변경 이전에 만들어진 세션에는 `displayName`이 없는 옛 principal이 그대로 들어 있었다. 그 세션으로 접속하면 헤더를 쓰는 **모든 화면이 500**으로 깨졌다(`NotReadablePropertyException`, 실제 재현). principal 타입을 확인하고 아니면 이메일로 물러서도록 고쳤다. 운영 배포에서도 똑같이 발생할 상황이라 템플릿 주석에 이유를 남겼다.
+
+**검증**: `gradlew.bat test` 전체 통과(166건). 실제 기동해 브라우저로 확인했다 — 헤더에 닉네임(`Modal Tester`) 표시, 비밀번호 변경 모달에서 현재 비밀번호를 틀리면 모달 안에 "현재 비밀번호가 일치하지 않습니다."가 뜨고 모달이 닫히지 않으며, 올바르게 입력하면 로그아웃되고 `/login`으로 이동해 "비밀번호가 변경되었습니다. 다시 로그인해 주세요." 안내가 뜬다(바뀐 비밀번호로 로그인되는 것까지 확인). 재발송 모달은 확인 후 토스트가 뜨고 모달이 닫힌다. 옛 principal이 담긴 세션으로도 화면이 200으로 렌더링되는 것을 확인했다.

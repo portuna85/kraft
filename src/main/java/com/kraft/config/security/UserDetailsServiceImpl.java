@@ -4,10 +4,13 @@ import com.kraft.domain.user.EmailHasher;
 import com.kraft.domain.user.User;
 import com.kraft.domain.user.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @RequiredArgsConstructor
 @Service
@@ -20,10 +23,13 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
                 .orElseThrow(() -> new UsernameNotFoundException("존재하지 않는 회원입니다. email=" + email));
 
-        return org.springframework.security.core.userdetails.User.builder()
-                .username(user.getEmail())
-                .password(user.getPassword())
-                .authorities(user.getRoleKey())
-                .build();
+        // username은 이메일 그대로 둔다(서비스 계층이 authentication.getName()으로 회원을 찾는다).
+        // 화면 표시용 닉네임은 displayName으로 따로 싣는다.
+        return new KraftUserDetails(
+                user.getEmail(),
+                user.getPassword(),
+                user.getName(),
+                List.of(new SimpleGrantedAuthority(user.getRoleKey()))
+        );
     }
 }

@@ -70,18 +70,27 @@ public class SecurityConfig {
 
     /**
      * 로그아웃 성공 시 로그아웃을 요청한 그 페이지로 되돌아간다. Referer가 같은 오리진일 때만
-     * 신뢰하고, 없거나 외부 도메인이면 "/"로 안전하게 대체한다(오픈 리다이렉트 방지). 다음 두
-     * 화면은 예외로 둔다:
+     * 신뢰하고, 없거나 외부 도메인이면 "/"로 안전하게 대체한다(오픈 리다이렉트 방지).
+     * <p>
+     * 두 가지 예외가 있다:
      * <ul>
+     * <li>{@code next} 파라미터가 있으면 그곳으로 보낸다 — 비밀번호 변경이 모달로 바뀌면서
+     * 어느 화면에서나 일어날 수 있게 됐고, 변경 성공 후에는 항상 로그인 화면으로 보내야 하는데
+     * Referer만으로는 그 상황을 구분할 수 없다. 그래서 로그아웃 폼이 {@code next=/login}을
+     * 실어 보낸다(layout/footer.html). 로그인 성공 후 복귀와 같은 규칙으로, "/"로 시작하고
+     * "//"(프로토콜 상대 URL = 외부 도메인)로 시작하지 않을 때만 신뢰한다.</li>
      * <li>게시글 등록 화면(`/posts/save`) — 로그아웃하면 익명 사용자가 되어 "글 등록" 자체가
      * 더는 의미가 없는 화면이므로 "/"로 보낸다.</li>
-     * <li>비밀번호 변경 화면(`/users/me/password`) — 변경 성공 후 이 화면으로 되돌아가면
-     * "다시 로그인해 주세요" 안내가 로그인 폼 없이 떠 있는 상태가 된다. 항상 "/login"으로
-     * 명시적으로 보낸다.</li>
      * </ul>
      */
     private LogoutSuccessHandler refererLogoutSuccessHandler() {
         return (request, response, authentication) -> {
+            String next = request.getParameter("next");
+            if (next != null && next.startsWith("/") && !next.startsWith("//")) {
+                response.sendRedirect(next);
+                return;
+            }
+
             String referer = request.getHeader("Referer");
             String baseUrl = request.getScheme() + "://" + request.getServerName()
                     + (request.getServerPort() == 80 || request.getServerPort() == 443
@@ -89,9 +98,7 @@ public class SecurityConfig {
             String redirectUrl = "/";
             if (referer != null && referer.startsWith(baseUrl)) {
                 String path = referer.substring(baseUrl.length());
-                if (path.equals("/users/me/password") || path.startsWith("/users/me/password?")) {
-                    redirectUrl = "/login";
-                } else if (!path.equals("/posts/save") && !path.startsWith("/posts/save?")) {
+                if (!path.equals("/posts/save") && !path.startsWith("/posts/save?")) {
                     redirectUrl = referer;
                 }
             }

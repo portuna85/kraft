@@ -151,11 +151,10 @@ class IndexControllerTest {
     }
 
     @Test
-    @DisplayName("GET /users/me/password 는 비밀번호 변경 화면을 보여준다")
-    void changePassword_rendersChangePasswordView() throws Exception {
+    @DisplayName("GET /users/me/password 는 더 이상 화면이 아니다(비밀번호 변경은 모달로 옮겼다)")
+    void changePasswordPage_isGone() throws Exception {
         mockMvc.perform(get("/users/me/password"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("user/change-password"));
+                .andExpect(status().isNotFound());
     }
 
     @Test

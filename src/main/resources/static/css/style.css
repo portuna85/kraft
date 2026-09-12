@@ -230,7 +230,7 @@ a {
     color: #ffffff;
 }
 
-.kraft-actions__email {
+.kraft-actions__name {
     display: flex;
     align-items: center;
     padding: var(--kraft-space-2) var(--kraft-space-3);
@@ -263,7 +263,7 @@ a {
         min-height: 40px;
     }
 
-    .kraft-actions__email {
+    .kraft-actions__name {
         max-width: 220px;
         overflow: hidden;
         text-overflow: ellipsis;
