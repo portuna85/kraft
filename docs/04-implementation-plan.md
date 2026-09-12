@@ -271,3 +271,18 @@ Hibernate `create-drop`으로 현재 스키마를 만든 DB(= `flyway_schema_his
 5. **`@Enumerated(STRING)` 필드를 추가하거나 enum 값을 바꿀 때** — 마이그레이션 SQL의 `ENUM(...)` 값 목록을 Hibernate가 생성하는 것과 똑같이 **알파벳 순**으로 맞춘다. 확인은 local 기동 후 `logs/kraft-sql.log`의 `create table` 문을 보면 된다.
 
 **정리**: 검증 후 `docker compose down -v` → `up -d`로 볼륨을 비워 평소 local(`create-drop`) 개발 상태로 되돌렸다.
+
+## 12. 아이폰 사진(HEIC) 업로드 처리 (2026-09-12)
+
+§6에 남아 있는 "크로스 브라우저·실기기 확인" 중 **iOS Safari에서 실제로 깨질 가능성이 가장 큰 지점**을 선제적으로 처리했다. `PostImageService`의 허용 확장자는 `jpg/jpeg/png/gif/webp`인데, 아이폰의 기본 촬영 포맷은 HEIC라 사진 보관함에서 고른 파일이 그대로 도착하면 `허용되지 않는 파일 형식입니다: heic`로 거부되고, 사용자는 무엇을 해야 할지 알 수 없었다.
+
+**HEIC를 허용 목록에 넣지 않은 이유**: 받는 것 자체는 가능하지만 **Chrome·Firefox·Edge가 HEIC를 렌더링하지 못한다**(Safari만 표시 가능). 허용하면 업로드는 성공하고 다른 방문자 화면에서만 깨진 이미지가 되어 더 나쁘다. 서버에서 JPG로 변환하려면 JDK에 없는 네이티브 디코더(libheif 등)가 필요해 이번 범위를 넘는다. 그래서 **명확히 거부하되 해결 방법을 안내**하는 쪽을 택했다.
+
+- `PostImageService`에 HEIC/HEIF 전용 분기와 안내 문구를 추가했다(아이폰 [설정] > [카메라] > [포맷]을 '높은 호환성'으로).
+- **확장자만 믿지 않는다** — 공유·복사 과정에서 이름만 `.jpg`로 바뀐 HEIC가 실제로 생긴다. ISO base media file format 헤더(4~8바이트 `ftyp` + 브랜드 `heic`/`mif1` 등)를 읽어 내용으로도 판별하고 같은 안내로 응답한다. 헤더보다 짧거나 읽지 못하면 판단하지 않고 기존 확장자 검사로 넘어간다.
+- `index.js`의 클라이언트 사전 검사에도 같은 분기를 넣어 왕복 없이 바로 안내한다(판정은 여전히 서버가 내린다).
+- **함께 고친 결함**: 검증은 확장자를 소문자로 바꿔 비교했지만 저장은 원본 확장자를 그대로 썼다. 휴대폰·카메라가 흔히 만드는 `IMG_0001.JPG`가 `uuid.JPG`로 저장돼 대소문자를 구분하는 파일 시스템에서 문제가 될 수 있었다. 정규화한 확장자를 저장까지 쓰도록 통일했다.
+
+**검증**: `PostImageServiceTest` 15건 통과(신규 5건 — 대문자 확장자, `.heic` 확장자, 이름만 `.jpg`인 HEIC, HEIF가 아닌 `ftyp` 파일, 헤더보다 짧은 파일). 실제 기동 후 `POST /api/v1/posts/images`로 3종을 올려 실측했다: 이름만 `.jpg`인 HEIC → 400 + 안내 문구, `.heic` → 400 + 안내 문구, `IMG_0001.JPG` → 200 + `/images/<uuid>.jpg`(소문자).
+
+**남은 크로스 브라우저 검증**(여전히 사람이 직접 해야 함): Edge에서 핵심 흐름 1회(Chromium이라 리스크 낮음), iOS Safari 실기기에서 flex `gap`(`style.css` 20곳, Safari 14.1 미만 미지원) 간격 유지 여부, `position: sticky`(`style.css:270` `.kraft-nav`) 동작, Bootstrap 4.3.1 모달의 body 스크롤, `type="search"` 렌더링. 실기기 접속은 PC의 LAN IP로 8080을 열고 `APP_BASE_URL`을 그 주소로 지정해야 인증 메일 링크가 폰에서 열린다.

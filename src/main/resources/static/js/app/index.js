@@ -174,6 +174,9 @@ var siteNav = {
 var postEdit = {
     MAX_SIZE: 5 * 1024 * 1024,
     ALLOWED_EXT: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+    // 아이폰 기본 촬영 포맷. 서버(PostImageService)와 같은 이유로 거부하되, 사용자가 실제로
+    // 할 수 있는 조치를 안내하려고 일반 형식 오류와 따로 처리한다.
+    HEIF_EXT: ['heic', 'heif'],
     previewUrl: null,
     uploadedUrl: null,
     uploadedForFile: null,
@@ -254,6 +257,12 @@ var postEdit = {
         // 클라이언트 사전 검사는 불필요한 왕복을 줄이기 위한 것일 뿐, 서버(PostImageService)의
         // 확장자·용량 검증을 대체하지 않는다 — 실제 판정은 항상 서버가 내린다.
         var extension = (file.name.split('.').pop() || '').toLowerCase();
+        if (this.HEIF_EXT.indexOf(extension) !== -1) {
+            flash.showError('아이폰 사진 형식(HEIC)은 일부 브라우저에서 표시되지 않아 첨부할 수 없습니다. '
+                + '아이폰 [설정] > [카메라] > [포맷]을 \'높은 호환성\'으로 바꾸면 JPG로 저장됩니다.');
+            this.clearFile();
+            return;
+        }
         if (this.ALLOWED_EXT.indexOf(extension) === -1) {
             flash.showError('JPG, JPEG, PNG, GIF, WEBP 형식만 첨부할 수 있습니다.');
             this.clearFile();
@@ -389,6 +398,9 @@ var postEdit = {
 var postForm = {
     MAX_SIZE: 5 * 1024 * 1024,
     ALLOWED_EXT: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+    // 아이폰 기본 촬영 포맷. 서버(PostImageService)와 같은 이유로 거부하되, 사용자가 실제로
+    // 할 수 있는 조치를 안내하려고 일반 형식 오류와 따로 처리한다.
+    HEIF_EXT: ['heic', 'heif'],
     previewUrl: null,
     uploadedUrl: null,
     uploadedForFile: null,
@@ -433,6 +445,12 @@ var postForm = {
         // 클라이언트 사전 검사는 불필요한 왕복을 줄이기 위한 것일 뿐, 서버(PostImageService)의
         // 확장자·용량 검증을 대체하지 않는다 — 실제 판정은 항상 서버가 내린다.
         var extension = (file.name.split('.').pop() || '').toLowerCase();
+        if (this.HEIF_EXT.indexOf(extension) !== -1) {
+            flash.showError('아이폰 사진 형식(HEIC)은 일부 브라우저에서 표시되지 않아 첨부할 수 없습니다. '
+                + '아이폰 [설정] > [카메라] > [포맷]을 \'높은 호환성\'으로 바꾸면 JPG로 저장됩니다.');
+            this.clearFile();
+            return;
+        }
         if (this.ALLOWED_EXT.indexOf(extension) === -1) {
             flash.showError('JPG, JPEG, PNG, GIF, WEBP 형식만 첨부할 수 있습니다.');
             this.clearFile();

@@ -8,6 +8,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -58,6 +59,58 @@ class PostImageServiceTest {
         assertThatThrownBy(() -> postImageService.store(file))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("허용되지 않는 파일 형식");
+    }
+
+    @Test
+    @DisplayName("store: 대문자 확장자(IMG_0001.JPG)도 허용하고 소문자 확장자로 저장한다")
+    void store_withUppercaseExtension_savesWithLowercaseExtension() {
+        MockMultipartFile file = new MockMultipartFile("file", "IMG_0001.JPG", "image/jpeg", "fake-image".getBytes());
+
+        String url = postImageService.store(file);
+
+        assertThat(url).endsWith(".jpg");
+        assertThat(Files.exists(uploadDir.resolve(url.substring("/images/".length())))).isTrue();
+    }
+
+    @Test
+    @DisplayName("store: 아이폰 HEIC는 확장자만으로 거부하고 해결 방법을 안내한다")
+    void store_withHeicExtension_throwsWithGuidanceMessage() {
+        MockMultipartFile file = new MockMultipartFile("file", "IMG_0001.HEIC", "image/heic", "x".getBytes());
+
+        assertThatThrownBy(() -> postImageService.store(file))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("HEIC")
+                .hasMessageContaining("높은 호환성");
+    }
+
+    @Test
+    @DisplayName("store: 확장자를 .jpg로 바꾼 HEIC도 파일 내용(ftyp 브랜드)으로 걸러낸다")
+    void store_withHeicContentRenamedToJpg_throwsWithGuidanceMessage() {
+        MockMultipartFile file = new MockMultipartFile("file", "renamed.jpg", "image/jpeg", heifHeader("heic"));
+
+        assertThatThrownBy(() -> postImageService.store(file))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("HEIC");
+    }
+
+    @Test
+    @DisplayName("store: ftyp 박스지만 HEIF 브랜드가 아니면(예: mp4) 확장자 검사로 넘어간다")
+    void store_withNonHeifFtypBrand_fallsBackToExtensionCheck() {
+        MockMultipartFile file = new MockMultipartFile("file", "clip.mp4", "video/mp4", heifHeader("isom"));
+
+        assertThatThrownBy(() -> postImageService.store(file))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("허용되지 않는 파일 형식");
+    }
+
+    @Test
+    @DisplayName("store: 헤더보다 짧은 파일이어도 내용 검사에서 예외 없이 넘어간다")
+    void store_withFileShorterThanHeader_doesNotFailOnContentCheck() {
+        MockMultipartFile file = new MockMultipartFile("file", "tiny.png", "image/png", "ab".getBytes());
+
+        String url = postImageService.store(file);
+
+        assertThat(url).endsWith(".png");
     }
 
     @Test
@@ -122,5 +175,13 @@ class PostImageServiceTest {
 
         assertThat(Files.exists(outside)).isTrue();
         Files.deleteIfExists(outside);
+    }
+
+    /** ISO base media file format 헤더: [size(4)][ftyp][brand(4)]. */
+    private byte[] heifHeader(String brand) {
+        byte[] header = new byte[24];
+        System.arraycopy("ftyp".getBytes(StandardCharsets.US_ASCII), 0, header, 4, 4);
+        System.arraycopy(brand.getBytes(StandardCharsets.US_ASCII), 0, header, 8, 4);
+        return header;
     }
 }
