@@ -30,6 +30,10 @@ spring:
   session:
     jdbc:
       initialize-schema: always
+      # 기본 schema-mysql.sql은 IF NOT EXISTS가 없어서, 볼륨에 세션 테이블이 이미 있으면
+      # 매 기동마다 "already exists"/"Duplicate key name" WARN 5줄이 찍힌다. 멱등 버전으로
+      # 바꿔 조용히 넘어가게 한다(파일 주석 참고).
+      schema: classpath:session/schema-mariadb.sql
 
   thymeleaf:
     cache: false
