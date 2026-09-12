@@ -285,4 +285,16 @@ Hibernate `create-drop`으로 현재 스키마를 만든 DB(= `flyway_schema_his
 
 **검증**: `PostImageServiceTest` 15건 통과(신규 5건 — 대문자 확장자, `.heic` 확장자, 이름만 `.jpg`인 HEIC, HEIF가 아닌 `ftyp` 파일, 헤더보다 짧은 파일). 실제 기동 후 `POST /api/v1/posts/images`로 3종을 올려 실측했다: 이름만 `.jpg`인 HEIC → 400 + 안내 문구, `.heic` → 400 + 안내 문구, `IMG_0001.JPG` → 200 + `/images/<uuid>.jpg`(소문자).
 
-**남은 크로스 브라우저 검증**(여전히 사람이 직접 해야 함): Edge에서 핵심 흐름 1회(Chromium이라 리스크 낮음), iOS Safari 실기기에서 flex `gap`(`style.css` 20곳, Safari 14.1 미만 미지원) 간격 유지 여부, `position: sticky`(`style.css:270` `.kraft-nav`) 동작, Bootstrap 4.3.1 모달의 body 스크롤, `type="search"` 렌더링. 실기기 접속은 PC의 LAN IP로 8080을 열고 `APP_BASE_URL`을 그 주소로 지정해야 인증 메일 링크가 폰에서 열린다.
+**남은 크로스 브라우저 검증**(여전히 사람이 직접 해야 함): Edge에서 핵심 흐름 1회(Chromium이라 리스크 낮음), iOS Safari 실기기에서 `position: sticky`(`style.css:270` `.kraft-nav`) 동작, Bootstrap 4.3.1 모달의 body 스크롤, `type="search"` 렌더링. 실기기 접속은 PC의 LAN IP로 8080을 열고 `APP_BASE_URL`을 그 주소로 지정해야 인증 메일 링크가 폰에서 열린다.
+
+## 13. 지원 브라우저 범위 확정 (2026-09-12)
+
+§12에서 남긴 크로스 브라우저 항목을 판단하려면 하한선이 필요해, **데스크톱 Chrome·Edge 최신 2개 + Safari 15+, 모바일 iOS 15+ / Android Chrome 최신 2개**로 정했다(표와 근거는 [03. 반응형 화면 명세](03-responsive-ui-spec.md) "지원 브라우저 범위").
+
+이 결정으로 **하지 않기로 한 것**과 **해야 했던 것**:
+
+- **flex `gap` 폴백은 넣지 않는다** — Safari는 14.1부터 지원하므로 iOS 15는 기준을 넘는다. `style.css`의 20곳을 그대로 둔다. 이것이 이번 결정의 가장 큰 실익이다(폴백을 넣었다면 20곳에 마진 규칙이 중복될 뻔했다).
+- **`:focus-visible`만 범위에 어긋났다** — Safari는 **15.4**부터 지원해 iOS 15.0~15.3에서는 규칙이 통째로 무시되고 **키보드 포커스 표시가 사라진다.** `:focus`로 먼저 깔고 `:focus:not(:focus-visible)`로 마우스 포커스의 테두리만 걷어내는 방식으로 고쳤다 — `:focus-visible`을 모르는 브라우저는 두 번째 규칙도 해석하지 못해 `:focus` 표시를 그대로 유지한다.
+- **그 밖에 범위를 벗어나는 기능은 없다**(실측 스캔): CSS는 `:has()`·컨테이너 쿼리·`dvh`·`aspect-ratio`·`accent-color`·`subgrid`를 쓰지 않고, JS는 ES5 + jQuery 3.3.1이라 화살표 함수·`const`/`let`·`fetch`·옵셔널 체이닝이 없다(최신 API는 `Element.closest()`와 `FormData`뿐). CSS·JS를 정적 파일로 그대로 서빙해 빌드 단계가 없으므로, **문서에 적은 범위가 곧 실제 하한**이다.
+
+**검증**: 실제 기동한 화면에서 Tab 이동 시 `:focus-visible`이 걸리고 `outline: solid 2px rgb(79, 70, 229)`가 계산값으로 적용되는 것을, 키보드가 아닌 경로의 포커스에서는 `outline`이 제거되는 것을 브라우저에서 확인했다.

@@ -53,6 +53,22 @@ a {
     color: var(--kraft-primary);
 }
 
+/*
+ * 키보드 포커스 표시. 지원 범위는 iOS 15+인데(docs/03-responsive-ui-spec.md "지원 브라우저 범위")
+ * Safari의 :focus-visible은 15.4부터라 iOS 15.0~15.3에서는 아래 :focus-visible 규칙이 통째로
+ * 무시된다 — 그대로 두면 그 구간에서 포커스 표시가 사라진다. 그래서 :focus로 먼저 깔고,
+ * :focus-visible을 아는 브라우저에서만 "마우스 클릭 포커스"의 테두리를 걷어낸다.
+ * :focus-visible을 모르는 브라우저는 두 번째 규칙도 해석하지 못해 :focus 표시를 유지한다.
+ */
+:focus {
+    outline: 2px solid var(--kraft-primary);
+    outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+    outline: none;
+}
+
 :focus-visible {
     outline: 2px solid var(--kraft-primary);
     outline-offset: 2px;
