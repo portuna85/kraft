@@ -7,8 +7,6 @@
 <div th:replace="~{layout/navbar :: topbar}"></div>
 
 <div class="kraft-shell">
-    <div th:replace="~{layout/navbar :: sitenav}"></div>
-
     <main id="main" class="kraft-main kraft-main--narrow">
         <div th:replace="~{layout/footer :: flash}"></div>
 
@@ -62,10 +60,6 @@
 
         <div class="card-kraft" sec:authorize="isAnonymous()">
             <p>로그인 후 게시글을 작성할 수 있습니다.</p>
-            <div class="btn-group-gap">
-                <a href="/login" class="btn btn-primary">로그인하러 가기</a>
-                <a href="/" class="btn btn-secondary">목록으로</a>
-            </div>
         </div>
     </main>
 </div>

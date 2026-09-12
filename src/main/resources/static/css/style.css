@@ -148,11 +148,11 @@ a {
     font-size: 0.9rem;
 }
 
-/* 데스크톱에서는 탐색이 항상 펼쳐져 있으므로 토글 버튼을 숨긴다. 이 규칙은 반드시
-   위 기본 .kraft-nav-toggle 선언 "다음"에 와야 한다 — 동일 특이도에서는 소스 순서가
-   이기므로, 앞서 두면 미디어 쿼리가 기본 선언에 덮여써져 992px 이상에서도 버튼이
-   계속 보이는 회귀가 생긴다. */
-@media (min-width: 992px) {
+/* 768px 이상에서는 버튼들이 헤더 안에 가로로 다 들어가므로 토글 버튼을 숨긴다. 이 규칙은
+   반드시 위 기본 .kraft-nav-toggle 선언 "다음"에 와야 한다 — 동일 특이도에서는 소스 순서가
+   이기므로, 앞서 두면 미디어 쿼리가 기본 선언에 덮여써져 넓은 화면에서도 버튼이 계속 보이는
+   회귀가 생긴다. */
+@media (min-width: 768px) {
     .kraft-nav-toggle {
         display: none;
     }
@@ -182,39 +182,25 @@ a {
     top: 6px;
 }
 
-/* 모바일: 메뉴는 헤더 아래로 펼쳐지는 영역. hidden 속성으로 닫힘 상태를 표현하므로
-   내부 링크가 탭 순서에서 자연히 제외된다. */
-.kraft-nav {
+/* 헤더 오른쪽 계정·이동 버튼 모음. 768px 미만에서는 헤더 아래로 펼쳐지는 패널이고
+   (hidden 속성으로 닫힘을 표현하므로 내부 링크가 탭 순서에서 자연히 제외된다),
+   768px 이상에서는 헤더 안의 가로 한 줄이 된다. */
+.kraft-actions {
     background-color: var(--kraft-header);
-    padding: var(--kraft-space-4);
-    display: flex;
-    flex-direction: column;
-    gap: var(--kraft-space-6);
-}
-
-.kraft-nav__title {
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 0.8rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    margin: 0 0 var(--kraft-space-2);
-}
-
-.kraft-nav__list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
     display: flex;
     flex-direction: column;
     gap: var(--kraft-space-1);
+    padding: var(--kraft-space-2) var(--kraft-space-4) var(--kraft-space-4);
+    /* 헤더 아래 전체 너비를 차지하도록 셋째 플렉스 아이템을 다음 줄로 내린다. */
+    flex-basis: 100%;
+    order: 3;
+    margin: 0 calc(-1 * var(--kraft-space-4));
 }
 
-.kraft-nav__link {
-    display: block;
-    min-height: 44px;
+.kraft-actions__link {
     display: flex;
     align-items: center;
+    min-height: 44px;
     padding: var(--kraft-space-2) var(--kraft-space-3);
     border-radius: var(--kraft-radius-control);
     color: rgba(255, 255, 255, 0.9);
@@ -225,32 +211,65 @@ a {
     width: 100%;
     text-align: left;
     font-size: 1rem;
+    white-space: nowrap;
 }
 
-.kraft-nav__link--button {
+.kraft-actions__link--button {
     cursor: pointer;
 }
 
-.kraft-nav__link:hover,
-.kraft-nav__link:focus {
+.kraft-actions__link:hover,
+.kraft-actions__link:focus {
     background-color: rgba(255, 255, 255, 0.08);
     color: #ffffff;
     text-decoration: none;
 }
 
-.kraft-nav__link.is-current {
+.kraft-actions__link.is-current {
     background-color: var(--kraft-primary);
     color: #ffffff;
 }
 
-.kraft-nav__account {
+.kraft-actions__email {
+    display: flex;
+    align-items: center;
     padding: var(--kraft-space-2) var(--kraft-space-3);
-}
-
-.kraft-nav__email {
     color: rgba(255, 255, 255, 0.85);
     font-size: 0.9rem;
     word-break: break-all;
+}
+
+@media (min-width: 768px) {
+    /* 토글이 숨는 구간이므로 닫힘 상태(hidden)를 무시하고 항상 펼쳐 보인다. */
+    .kraft-actions[hidden] {
+        display: flex !important;
+    }
+
+    .kraft-actions {
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: var(--kraft-space-1);
+        flex-basis: auto;
+        order: 0;
+        margin: 0;
+        padding: 0;
+        background: transparent;
+    }
+
+    .kraft-actions__link {
+        width: auto;
+        min-height: 40px;
+    }
+
+    .kraft-actions__email {
+        max-width: 220px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        word-break: normal;
+    }
 }
 
 /* ==========================================================================
@@ -271,26 +290,17 @@ a {
     }
 }
 
+/* 탐색은 헤더로 올라갔으므로 셸에는 왼쪽 열이 없다. 본문은 항상 한 열이고, 목록 화면만
+   넓은 화면에서 오른쪽 안내 영역을 한 열 더 쓴다. */
 @media (min-width: 992px) {
     .kraft-shell {
-        grid-template-columns: 192px minmax(0, 1fr);
         align-items: start;
-    }
-
-    .kraft-nav[hidden] {
-        display: flex !important;
-    }
-
-    .kraft-nav {
-        border-radius: var(--kraft-radius);
-        position: sticky;
-        top: var(--kraft-space-6);
     }
 }
 
 @media (min-width: 1200px) {
     .kraft-shell--with-aside {
-        grid-template-columns: 192px minmax(0, 1fr) 248px;
+        grid-template-columns: minmax(0, 1fr) 248px;
     }
 }
 
@@ -328,12 +338,6 @@ a {
     color: var(--kraft-text-muted);
     font-size: 0.9rem;
     line-height: 1.6;
-}
-
-.kraft-aside__actions {
-    display: flex;
-    flex-direction: column;
-    gap: var(--kraft-space-2);
 }
 
 /* ==========================================================================
@@ -778,17 +782,6 @@ textarea.form-control {
 /* ==========================================================================
    게시글 읽기 / 편집
    ========================================================================== */
-.back-link {
-    display: inline-block;
-    margin-bottom: var(--kraft-space-4);
-    color: var(--kraft-text-muted);
-    text-decoration: none;
-}
-
-.back-link:hover {
-    color: var(--kraft-primary);
-}
-
 .post-category {
     display: inline-block;
     padding: 2px 10px;

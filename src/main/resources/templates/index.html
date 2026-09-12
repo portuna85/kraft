@@ -7,17 +7,15 @@
 <div th:replace="~{layout/navbar :: topbar}"></div>
 
 <div class="kraft-shell kraft-shell--with-aside">
-    <div th:replace="~{layout/navbar :: sitenav}"></div>
-
     <main id="main" class="kraft-main">
         <div th:replace="~{layout/footer :: flash}"></div>
 
+        <!-- 글쓰기 버튼은 헤더 오른쪽 한 곳에만 둔다(layout/navbar :: topbar). -->
         <div class="board-head">
             <div class="board-head__text">
                 <h1 class="board-head__title">전체 게시글</h1>
                 <p class="board-head__count">총 <strong th:text="${postsPage.totalElements}">0</strong>개</p>
             </div>
-            <a sec:authorize="isAuthenticated()" href="/posts/save" class="btn btn-primary">글쓰기</a>
         </div>
         <p class="board-head__desc">최근 등록 순으로 게시글을 확인하세요.</p>
 
@@ -70,9 +68,9 @@
 
         <!-- 빈 상태: 게시글이 하나도 없는 경우와, 요청한 페이지만 비어 있는 경우를 구분한다. -->
         <div class="empty-state" th:if="${#lists.isEmpty(posts) and postsPage.totalElements == 0}">
-            <p class="empty-state__text">아직 게시글이 없습니다.</p>
-            <a sec:authorize="isAuthenticated()" href="/posts/save" class="btn btn-primary">첫 글 작성하기</a>
-            <a sec:authorize="isAnonymous()" href="/login" class="btn btn-primary">로그인하고 글쓰기</a>
+            <!-- 글쓰기·로그인 버튼은 헤더 오른쪽에만 둔다. 여기서는 안내 문구만 남긴다. -->
+            <p class="empty-state__text" sec:authorize="isAuthenticated()">아직 게시글이 없습니다. 헤더의 글쓰기로 첫 글을 남겨 보세요.</p>
+            <p class="empty-state__text" sec:authorize="isAnonymous()">아직 게시글이 없습니다. 헤더의 로그인 후 글을 쓸 수 있습니다.</p>
         </div>
         <div class="empty-state" th:if="${#lists.isEmpty(posts) and postsPage.totalElements > 0}">
             <p class="empty-state__text">이 페이지에 게시글이 없습니다.</p>
@@ -112,10 +110,6 @@
             <li>이미지는 JPG, JPEG, PNG, GIF, WEBP 형식, 최대 5MB까지 등록할 수 있습니다.</li>
             <li>작성한 글과 댓글은 본인만 수정·삭제할 수 있습니다.</li>
         </ul>
-        <div sec:authorize="isAnonymous()" class="kraft-aside__actions">
-            <a href="/login" class="btn btn-primary btn-block">로그인</a>
-            <a href="/signup" class="btn btn-outline-primary btn-block">회원가입</a>
-        </div>
     </aside>
 </div>
 

@@ -7,8 +7,6 @@
 <div th:replace="~{layout/navbar :: topbar}"></div>
 
 <div class="kraft-shell">
-    <div th:replace="~{layout/navbar :: sitenav}"></div>
-
     <main id="main" class="kraft-main kraft-main--account">
         <h1 class="page-title">이메일 인증</h1>
         <div class="card-kraft">
@@ -20,8 +18,6 @@
             <p th:if="${success}" class="text-muted" sec:authorize="isAuthenticated()">
                 이미 로그인되어 있다면, 계정 메뉴에서 로그아웃한 뒤 다시 로그인해야 바뀐 권한이 반영됩니다.
             </p>
-
-            <a href="/login" role="button" class="btn btn-primary">로그인하러 가기</a>
         </div>
     </main>
 </div>

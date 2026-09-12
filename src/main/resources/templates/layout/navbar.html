@@ -3,67 +3,50 @@
 <body>
 
 <!--
-  헤더(topbar)와 탐색(sitenav)을 분리한다. 탐색 링크는 화면 전체에서 한 번만 렌더링하고,
-  작은 화면에서는 헤더 아래로 펼쳐지는 패널, 992px 이상에서는 셸 그리드의 왼쪽 열이 된다
-  (CSS만으로 전환하므로 링크·랜드마크·탭 순서가 중복되지 않는다).
+  모든 이동·계정 버튼은 헤더 오른쪽 한 곳에만 둔다(이전에는 왼쪽 열 탐색 패널에 있었고,
+  목록 화면과 오른쪽 안내 영역에도 같은 버튼이 중복으로 있었다). 화면당 한 번만 렌더링하므로
+  링크·랜드마크·탭 순서가 중복되지 않는다.
+
+  좁은 화면에서는 버튼이 한 줄에 들어가지 않으므로 "메뉴" 토글로 헤더 아래에 펼치고,
+  768px 이상에서는 CSS가 항상 가로 한 줄로 펼쳐 보인다(토글 버튼은 숨는다).
 -->
 <header th:fragment="topbar" class="kraft-topbar">
     <div class="kraft-topbar__inner">
         <a class="kraft-brand" href="/">Kraft</a>
+
         <button type="button" class="kraft-nav-toggle" id="btn-nav-toggle"
                 aria-expanded="false" aria-controls="site-nav">
             <span class="kraft-nav-toggle__bars" aria-hidden="true"></span>
             <span>메뉴</span>
         </button>
+
+        <nav id="site-nav" class="kraft-actions" aria-label="계정 메뉴" hidden>
+            <span sec:authorize="isAuthenticated()" class="kraft-actions__email" id="user"
+                  sec:authentication="name"></span>
+
+            <a sec:authorize="isAuthenticated()" href="/posts/save" class="kraft-actions__link"
+               th:classappend="${currentPath == '/posts/save'} ? 'is-current'"
+               th:attr="aria-current=${currentPath == '/posts/save'} ? 'page' : null">글쓰기</a>
+
+            <button sec:authorize="hasRole('GUEST')" type="button" id="btn-resend-verification"
+                    class="kraft-actions__link kraft-actions__link--button">인증 메일 재발송</button>
+
+            <a sec:authorize="isAnonymous()" th:href="@{/login(redirect=${currentPath})}" class="kraft-actions__link"
+               th:classappend="${currentPath == '/login'} ? 'is-current'"
+               th:attr="aria-current=${currentPath == '/login'} ? 'page' : null">로그인</a>
+
+            <a sec:authorize="isAnonymous()" href="/signup" class="kraft-actions__link"
+               th:classappend="${currentPath == '/signup'} ? 'is-current'"
+               th:attr="aria-current=${currentPath == '/signup'} ? 'page' : null">회원가입</a>
+
+            <a sec:authorize="isAuthenticated()" href="/users/me/password" class="kraft-actions__link"
+               th:classappend="${currentPath == '/users/me/password'} ? 'is-current'"
+               th:attr="aria-current=${currentPath == '/users/me/password'} ? 'page' : null">비밀번호 변경</a>
+
+            <button sec:authorize="isAuthenticated()" type="button" id="btn-logout"
+                    class="kraft-actions__link kraft-actions__link--button">로그아웃</button>
+        </nav>
     </div>
 </header>
-
-<nav th:fragment="sitenav" id="site-nav" class="kraft-nav" aria-label="사이트 메뉴" hidden>
-    <div class="kraft-nav__group">
-        <h2 class="kraft-nav__title">커뮤니티</h2>
-        <ul class="kraft-nav__list">
-            <li>
-                <a href="/" class="kraft-nav__link"
-                   th:classappend="${currentPath == '/'} ? 'is-current'"
-                   th:attr="aria-current=${currentPath == '/'} ? 'page' : null">전체 게시글</a>
-            </li>
-            <li sec:authorize="isAuthenticated()">
-                <a href="/posts/save" class="kraft-nav__link"
-                   th:classappend="${currentPath == '/posts/save'} ? 'is-current'"
-                   th:attr="aria-current=${currentPath == '/posts/save'} ? 'page' : null">글쓰기</a>
-            </li>
-        </ul>
-    </div>
-
-    <div class="kraft-nav__group">
-        <h2 class="kraft-nav__title">계정</h2>
-        <ul class="kraft-nav__list">
-            <li sec:authorize="isAuthenticated()" class="kraft-nav__account">
-                <span class="kraft-nav__email" id="user" sec:authentication="name"></span>
-            </li>
-            <li sec:authorize="hasRole('GUEST')">
-                <button type="button" id="btn-resend-verification" class="kraft-nav__link kraft-nav__link--button">인증 메일 재발송</button>
-            </li>
-            <li sec:authorize="isAnonymous()">
-                <a th:href="@{/login(redirect=${currentPath})}" class="kraft-nav__link"
-                   th:classappend="${currentPath == '/login'} ? 'is-current'"
-                   th:attr="aria-current=${currentPath == '/login'} ? 'page' : null">로그인</a>
-            </li>
-            <li sec:authorize="isAnonymous()">
-                <a href="/signup" class="kraft-nav__link"
-                   th:classappend="${currentPath == '/signup'} ? 'is-current'"
-                   th:attr="aria-current=${currentPath == '/signup'} ? 'page' : null">회원가입</a>
-            </li>
-            <li sec:authorize="isAuthenticated()">
-                <a href="/users/me/password" class="kraft-nav__link"
-                   th:classappend="${currentPath == '/users/me/password'} ? 'is-current'"
-                   th:attr="aria-current=${currentPath == '/users/me/password'} ? 'page' : null">비밀번호 변경</a>
-            </li>
-            <li sec:authorize="isAuthenticated()">
-                <button type="button" id="btn-logout" class="kraft-nav__link kraft-nav__link--button">로그아웃</button>
-            </li>
-        </ul>
-    </div>
-</nav>
 </body>
 </html>
