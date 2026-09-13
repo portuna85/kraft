@@ -49,8 +49,9 @@ docker compose logs --tail 100 app mariadb
 Docker 앱은 `docker` 프로파일, IDE 실행은 `local` 프로파일을 사용합니다.
 두 프로파일은 Hibernate `update`와 멱등 세션 SQL을 사용하고 기존 데이터를 유지합니다.
 운영 배포는 `prod`의 Flyway + `validate` 경로를 별도로 사용합니다.
-기존 개발 DB에 `prod`를 바로 적용하면 V2의 중복 컬럼 오류가 발생할 수 있으므로,
-[Flyway 전환 점검 절차](docs/04-implementation-plan.md#11-flyway-마이그레이션-정합성-결함-2건-수정--실증-2026-09-12)를 먼저 확인합니다.
+기존 개발 DB에 `prod`를 바로 적용하면 V2의 중복 컬럼 오류가 발생할 수 있습니다.
+대상 DB에 `flyway_schema_history`와 `posts.category`가 있는지 먼저 확인해 실제 상태에 맞는
+`spring.flyway.baseline-version`을 정하고, 배포 전 같은 설정으로 1회 리허설합니다.
 
 | 데이터 | 저장 위치 |
 | --- | --- |
@@ -115,8 +116,3 @@ Docker 이미지 빌드도 같은 테스트를 통과해야 실행 JAR를 만듭
 - 다른 기기에서 접속: `APP_BIND_ADDRESS=0.0.0.0`, `APP_BASE_URL=http://<PC 주소>:<APP_PORT>`를 설정합니다.
 - SMTP 실패: `logs/docker/kraft-email.log`를 확인합니다. 컨테이너에서 호스트 SMTP에 접속하려면
   Docker Desktop의 `host.docker.internal`을 사용합니다.
-
-## 분석 및 설계 문서
-
-- [전체 파일 분석과 Docker 리팩터링 검증](docs/05-docker-refactoring.md)
-- [화면 구성과 프론트엔드 구현 기록](docs/README.md)

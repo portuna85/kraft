@@ -15,8 +15,8 @@
 # update의 한계: 컬럼·테이블 추가는 반영하지만 삭제·타입 변경·제약 변경은 반영하지 않는다.
 # 엔티티에서 필드를 지우거나 타입을 바꿨다면 데이터를 백업하고 명시적인 SQL로 변경한다.
 # (운영 스키마의 정합성은 이 설정이 아니라 db/migration의 Flyway 마이그레이션이 책임진다.
-#  마이그레이션을 새로 추가했다면 docs/04-implementation-plan.md §11의 배포 전 점검 절차로
-#  운영과 같은 경로를 한 번 리허설할 것.)
+#  마이그레이션을 새로 추가했다면 운영과 같은 경로 — Flyway + validate + 세션 스키마 미초기화 —
+#  로 배포 전에 한 번 리허설할 것. README.md "환경변수와 데이터 보존" 참고.)
 spring:
   config:
     import: "optional:file:./.env[.properties]"
