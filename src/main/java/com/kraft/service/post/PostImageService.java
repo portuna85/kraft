@@ -70,6 +70,26 @@ public class PostImageService {
         return "/images/" + filename;
     }
 
+    /** {@code store()}가 돌려주는 공개 URL의 접두어. */
+    public static final String PUBLIC_PREFIX = "/images/";
+
+    /**
+     * 공개 URL에서 파일명만 뽑는다. {@code store()}가 만든 모양({@code /images/uuid.ext} —
+     * 하위 경로 없는 파일명 하나)이 아니면 {@code null}을 돌려준다. url은 클라이언트가 보낸
+     * 문자열이므로, 소유권 조회({@code PostImageRegistry})와 파일 삭제가 같은 판정을 쓰도록
+     * 여기 한 곳에 모았다.
+     */
+    public static String fileNameOf(String url) {
+        if (url == null || url.isBlank() || !url.startsWith(PUBLIC_PREFIX)) {
+            return null;
+        }
+        String fileName = url.substring(PUBLIC_PREFIX.length());
+        if (fileName.isBlank() || fileName.contains("/") || fileName.contains("\\") || fileName.contains("..")) {
+            return null;
+        }
+        return fileName;
+    }
+
     /**
      * {@code store()}가 만든 공개 URL(예: {@code /images/uuid.png})을 근거로 실제 파일을
      * 지운다. url이 없거나 {@code /images/} 접두어가 아니면 조용히 무시한다(정리할 이미지가

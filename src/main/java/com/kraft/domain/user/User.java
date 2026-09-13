@@ -17,14 +17,18 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 @Entity
-@Table(name = "users", uniqueConstraints = @UniqueConstraint(name = "UK_USER_EMAIL_HASH", columnNames = "email_hash"))
+@Table(name = "users", uniqueConstraints = {
+        @UniqueConstraint(name = "UK_USER_EMAIL_HASH", columnNames = "email_hash"),
+        @UniqueConstraint(name = "UK_USER_NAME", columnNames = "name")
+})
 public class User extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 회원 계정정보
+    // 회원 계정정보. 표시 이름이자 중복 금지 대상이다 — UserService의 사전 검사만으로는
+    // 검사와 INSERT 사이에 같은 이름이 들어올 수 있어, DB 유니크 제약이 최종 경계다.
     @Column(nullable = false, length = 50)
     private String name;
 

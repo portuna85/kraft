@@ -15,6 +15,7 @@ public record PostSaveRequestDto(
         @NotBlank(message = "내용은 필수입니다.")
         String content,
 
+        @Size(max = 500, message = "이미지 경로가 올바르지 않습니다.")
         String picture,
 
         Category category

@@ -16,6 +16,13 @@ public record PostUpdateRequestDto(
         @Size(max = 500, message = "이미지 경로가 올바르지 않습니다.")
         String picture,
 
-        Category category
+        Category category,
+
+        /**
+         * 편집을 시작할 때 화면이 받아간 게시글 버전. 저장 시점에 DB의 버전과 다르면 그 사이
+         * 다른 곳에서 저장이 일어난 것이므로 409로 거절한다(덮어쓰기 방지). null이면 검사하지
+         * 않는다 — 버전을 싣지 않는 요청의 기존 동작을 그대로 둔다.
+         */
+        Long version
 ) {
 }

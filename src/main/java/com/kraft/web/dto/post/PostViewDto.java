@@ -18,7 +18,9 @@ public record PostViewDto(
         Category category,
         long viewCount,
         long likeCount,
-        boolean likedByMe
+        boolean likedByMe,
+        /** 수정 요청이 그대로 돌려보낼 낙관적 잠금 버전. 편집 충돌 감지에 쓴다. */
+        Long version
 ) {
 
     public PostViewDto(Post entity, boolean canManagePost, long likeCount, boolean likedByMe) {
@@ -32,7 +34,8 @@ public record PostViewDto(
                 entity.getCategory(),
                 entity.getViewCount(),
                 likeCount,
-                likedByMe
+                likedByMe,
+                entity.getVersion()
         );
     }
 }

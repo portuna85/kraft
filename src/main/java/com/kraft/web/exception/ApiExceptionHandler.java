@@ -1,6 +1,8 @@
 package com.kraft.web.exception;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -80,6 +82,29 @@ public class ApiExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ProblemDetail handleAccessDenied(AccessDeniedException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.getMessage());
+    }
+
+    /**
+     * 편집 충돌을 409로 변환한다. 화면이 편집을 시작할 때 받아간 게시글 버전과 저장 시점의
+     * DB 버전이 다르면(그 사이 다른 곳에서 저장됨) {@code PostService.update()}가 이 예외를
+     * 던진다. 예전에는 나중 저장이 먼저 저장을 말없이 덮어썼다.
+     */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ProblemDetail handleEditConflict(OptimisticLockingFailureException e) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
+                "다른 곳에서 이미 수정된 글입니다. 새로고침 후 다시 시도해 주세요.");
+    }
+
+    /**
+     * 유니크 제약 위반(예: 같은 이름으로 동시에 가입)을 409로 변환한다. 서비스의 사전 중복
+     * 검사와 INSERT 사이의 경쟁은 DB 제약만이 최종적으로 막을 수 있고, 그때 나오는 예외가
+     * catch-all에 잡혀 500이 되지 않게 한다.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ProblemDetail handleDataIntegrityViolation(DataIntegrityViolationException e) {
+        log.warn("데이터 무결성 제약을 위반했습니다.", e);
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
+                "이미 사용 중인 값입니다. 다른 값으로 다시 시도해 주세요.");
     }
 
     /**

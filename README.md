@@ -42,12 +42,20 @@ IntelliJ IDEA에서는 `com.kraft.KraftApplication`의 `Working directory`를 `$
 | 데이터 | 저장 위치 |
 | --- | --- |
 | DB·로그인 세션 | Docker 볼륨 `kraft_kraft-mariadb-data` |
-| 업로드 이미지 | `uploads/images/` |
+| 업로드 이미지 | `uploads/images/` (소유권·상태는 DB의 `post_images`) |
 | 앱 로그 | `logs/` |
 | 자동 테스트 로그 | `build/test-logs/` |
 
 `local`은 Hibernate `update`와 멱등 세션 SQL을 사용해 재기동 후에도 기존 데이터를 유지합니다.
 운영 배포는 `prod`의 Flyway + `validate` 경로를 별도로 사용합니다.
+
+`V5__unique_user_name.sql`은 `users.name`에 유니크 제약을 추가하므로, **기존 DB에 중복
+닉네임이 있으면 마이그레이션이 실패합니다.** 적용 전에 확인하고 정리합니다.
+
+```sql
+SELECT name, COUNT(*) FROM users GROUP BY name HAVING COUNT(*) > 1;
+```
+
 기존 개발 DB에 `prod`를 바로 적용하면 V2의 중복 컬럼 오류가 발생할 수 있습니다.
 대상 DB에 `flyway_schema_history`와 `posts.category`가 있는지 먼저 확인해 실제 상태에 맞는
 `spring.flyway.baseline-version`을 정하고, 배포 전 같은 설정으로 1회 리허설합니다.
@@ -85,3 +93,8 @@ docker compose up -d --wait
 - 포트 충돌: 기존 프로세스를 확인하거나 `DB_PORT`를 바꾸고 `DB_URL`도 함께 수정합니다.
 - 다른 기기에서 접속: `APP_BASE_URL=http://<PC 주소>:8080`을 설정합니다.
 - SMTP 실패: `logs/kraft-email.log`를 확인합니다.
+- 업로드 이미지가 안 지워짐: 삭제는 DB 커밋 후에 실행하고, 실패하면 `post_images`에
+  `PENDING_DELETE`로 남겨 주기 작업이 다시 시도합니다(`app.upload.cleanup-*`).
+  글에 연결하지 않은 업로드는 24시간 뒤 정리됩니다.
+- 비밀번호 변경 후 로그아웃됨: 의도된 동작입니다. 변경 시 그 계정의 모든 기기 세션을
+  서버에서 폐기하므로 다시 로그인해야 합니다.

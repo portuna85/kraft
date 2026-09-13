@@ -25,7 +25,11 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
@@ -119,7 +123,7 @@ class IndexControllerTest {
     @DisplayName("GET /posts/update/{id} 는 조회한 게시글과 댓글 목록을 모델에 담아 렌더링한다")
     void postsUpdate_rendersUpdateViewWithPostAndComments() throws Exception {
         given(postService.findByIdForView(eq(1L), nullable(Authentication.class)))
-                .willReturn(new PostViewDto(1L, "제목", "내용", null, "작성자", false, Category.FREE, 0L, 0L, false));
+                .willReturn(new PostViewDto(1L, "제목", "내용", null, "작성자", false, Category.FREE, 0L, 0L, false, 0L));
         given(commentService.findByPostIdForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(List.of());
 
@@ -177,5 +181,37 @@ class IndexControllerTest {
                 .andExpect(view().name("user/verify-result"))
                 .andExpect(model().attribute("success", false))
                 .andExpect(model().attribute("message", "유효하지 않은 인증 링크입니다."));
+    }
+
+    @Test
+    @DisplayName("GET /posts/save 는 일반 사용자에게 공지(NOTICE) 분류 옵션을 보여주지 않는다")
+    void postsSave_hidesNoticeOptionFromNonAdmin() throws Exception {
+        mockMvc.perform(get("/posts/save").with(user("tester@example.com").roles("USER")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("value=\"FREE\"")))
+                .andExpect(content().string(containsString("value=\"QNA\"")))
+                .andExpect(content().string(not(containsString("value=\"NOTICE\""))));
+    }
+
+    @Test
+    @DisplayName("GET /posts/save 는 관리자에게 공지(NOTICE) 분류 옵션을 보여준다")
+    void postsSave_showsNoticeOptionToAdmin() throws Exception {
+        mockMvc.perform(get("/posts/save").with(user("admin@example.com").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("value=\"NOTICE\"")));
+    }
+
+    @Test
+    @DisplayName("GET /posts/update/{id} 는 편집 충돌 감지용 버전을 히든 필드로 내려준다")
+    void postsUpdate_rendersVersionForConflictDetection() throws Exception {
+        given(postService.findByIdForView(eq(1L), nullable(Authentication.class)))
+                .willReturn(new PostViewDto(1L, "제목", "내용", null, "작성자", true, Category.FREE, 0L, 0L, false, 7L));
+        given(commentService.findByPostIdForView(eq(1L), nullable(Authentication.class)))
+                .willReturn(List.of());
+
+        mockMvc.perform(get("/posts/update/1").with(user("tester@example.com").roles("USER")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("id=\"post-version\"")))
+                .andExpect(content().string(containsString("value=\"7\"")));
     }
 }

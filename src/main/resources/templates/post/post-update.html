@@ -14,6 +14,9 @@
         <input type="hidden" id="original-title" th:value="${post.title}">
         <input type="hidden" id="original-content" th:value="${post.content}">
         <input type="hidden" id="original-picture" th:value="${post.picture}">
+        <!-- 편집을 시작한 시점의 버전. 저장 요청이 그대로 돌려보내면, 그 사이 다른 곳에서
+             저장이 일어났는지 서버가 판별해 409로 거절한다(덮어쓰기 방지). -->
+        <input type="hidden" id="post-version" th:value="${post.version}">
 
         <!-- 읽기 기본 상태 -->
         <article id="post-view">
@@ -57,8 +60,14 @@
             </div>
             <div class="form-group">
                 <label for="edit-category">분류</label>
+                <!--/* 공지(NOTICE)는 관리자만 쓸 수 있다. 이미 공지인 글을 관리자가 아닌 사람이
+                       수정하는 경우에도 현재 값은 보여야 하므로, 선택된 분류는 항상 남긴다.
+                       실제 경계는 서버의 CategoryPolicy가 잡는다. */-->
                 <select class="form-control" id="edit-category">
                     <option th:each="c : ${T(com.kraft.domain.post.Category).values()}"
+                            th:if="${c.name() != 'NOTICE'
+                                    or c == post.category
+                                    or #authorization.expression('hasRole(''ADMIN'')')}"
                             th:value="${c}" th:text="${c.title}" th:selected="${c == post.category}"></option>
                 </select>
             </div>

@@ -9,6 +9,8 @@ import com.kraft.domain.post.PostRepository;
 import com.kraft.domain.user.EmailHasher;
 import com.kraft.domain.user.User;
 import com.kraft.domain.user.UserRepository;
+import com.kraft.service.support.AfterCommit;
+import com.kraft.service.support.CategoryPolicy;
 import com.kraft.service.support.OwnershipPolicy;
 import com.kraft.service.support.WriteAccessPolicy;
 import com.kraft.web.dto.post.PostLikeResponseDto;
@@ -23,10 +25,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -41,23 +45,59 @@ public class PostService {
     private final CommentRepository commentRepository;
     private final PostImageService postImageService;
     private final PostLikeRepository postLikeRepository;
+    private final PostImageRegistry postImageRegistry;
+    private final PostImageCleaner postImageCleaner;
 
+    /**
+     * 이미지를 저장하고 업로더를 대장에 기록한다. 업로드 권한을 글쓰기 권한과 같게 맞춘다 —
+     * 예전에는 이메일 미인증(GUEST)도 업로드 API를 쓸 수 있었다(개선 보고서 F06).
+     */
     @Transactional
-    public Long save(String email, PostSaveRequestDto requestDto) {
-        User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + email));
+    public String uploadImage(MultipartFile file, Authentication authentication) {
+        User user = findUser(authentication.getName());
         WriteAccessPolicy.requireVerified(user);
-        return postRepository.save(requestDto.toEntity(user)).getId();
+
+        String url = postImageService.store(file);
+        postImageRegistry.register(url, user);
+        return url;
     }
 
+    @Transactional
+    public Long save(Authentication authentication, PostSaveRequestDto requestDto) {
+        User user = findUser(authentication.getName());
+        WriteAccessPolicy.requireVerified(user);
+        CategoryPolicy.requireCanUse(authentication, requestDto.category());
+
+        Post post = postRepository.save(requestDto.toEntity(user));
+        postImageRegistry.attach(requestDto.picture(), user, post);
+        return post.getId();
+    }
+
+    /**
+     * 게시글을 수정한다. 이미지 교체가 있으면 <b>새 이미지의 소유권을 먼저 검사</b>하고, 기존
+     * 이미지는 파일을 바로 지우는 대신 삭제 예약만 남긴다 — 이 트랜잭션이 실패해 롤백되면
+     * 예약도 함께 사라져 기존 이미지가 그대로 보존된다(개선 보고서 F05).
+     */
     @Transactional
     public Long update(Long id, PostUpdateRequestDto requestDto, Authentication authentication) {
         Post post = findPost(id);
         validateOwner(post, authentication);
+        validateVersion(post, requestDto.version());
+        CategoryPolicy.requireCanUse(authentication, requestDto.category());
+
         String oldPicture = post.getPicture();
-        post.update(requestDto.title(), requestDto.content(), requestDto.picture(), requestDto.category());
-        if (oldPicture != null && !oldPicture.equals(requestDto.picture())) {
-            postImageService.deleteIfExists(oldPicture);
+        String newPicture = requestDto.picture();
+        boolean pictureChanged = oldPicture == null ? newPicture != null : !oldPicture.equals(newPicture);
+
+        if (pictureChanged && newPicture != null) {
+            postImageRegistry.attach(newPicture, findUser(authentication.getName()), post);
+        }
+
+        post.update(requestDto.title(), requestDto.content(), newPicture, requestDto.category());
+
+        if (pictureChanged && oldPicture != null) {
+            postImageRegistry.markForDeletion(oldPicture);
+            cleanUpAfterCommit();
         }
         return id;
     }
@@ -66,11 +106,15 @@ public class PostService {
     public void delete(Long id, Authentication authentication) {
         Post post = findPost(id);
         validateOwner(post, authentication);
+
+        // 삭제 예약이 post_id를 비워야 FK 제약(FK_POST_IMAGES_POST)이 게시글 삭제를 막지 않는다.
+        postImageRegistry.markPostImagesForDeletion(id);
         // 댓글·추천이 남아 있으면 FK 제약 위반으로 삭제가 실패하므로 먼저 지운다.
         commentRepository.deleteAllByPostId(id);
         postLikeRepository.deleteAllByPostId(id);
         postRepository.delete(post);
-        postImageService.deleteIfExists(post.getPicture());
+
+        cleanUpAfterCommit();
     }
 
     public PostResponseDto findById(Long id) {
@@ -82,13 +126,16 @@ public class PostService {
      * 화면 전용 DTO로 내려준다. 화면이 작성자 이름과 로그인 이메일을 비교하는 방식(잘못된
      * 소유권 추정)을 쓰지 않게 하려는 것이다. 공개 REST DTO는 그대로 둔다.
      * <p>
-     * 상세 화면을 열 때마다 조회수를 1 늘린다(새로고침·중복 방문에 대한 별도 방지 로직은
-     * 없음 — 단순한 카운터다). 쓰기 작업이라 클래스 기본값(readOnly)을 오버라이드한다.
+     * 조회수는 엔티티를 읽기 <b>전에</b> 별도의 원자적 UPDATE로 올린다. 엔티티를 바꿔 변경
+     * 감지에 맡기면 제목·본문·분류까지 함께 UPDATE에 실려, 단순 열람이 다른 트랜잭션의 편집을
+     * 되돌리고 최종수정일까지 바꿨다(개선 보고서 F02·F11). 순서를 이렇게 두면 늘어난 조회수가
+     * 그대로 화면에 반영된다(새로고침·중복 방문 방지는 여전히 없는 단순 카운터다).
      */
     @Transactional
     public PostViewDto findByIdForView(Long id, Authentication authentication) {
+        postRepository.increaseViewCount(id);
+
         Post post = findPost(id);
-        post.increaseViewCount();
         Long userId = currentUserId(authentication);
         boolean likedByMe = userId != null && postLikeRepository.existsByPostIdAndUserId(id, userId);
         long likeCount = postLikeRepository.countByPostId(id);
@@ -133,8 +180,7 @@ public class PostService {
     @Transactional
     public PostLikeResponseDto toggleLike(Long id, Authentication authentication) {
         Post post = findPost(id);
-        User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(authentication.getName()))
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + authentication.getName()));
+        User user = findUser(authentication.getName());
 
         boolean alreadyLiked = postLikeRepository.existsByPostIdAndUserId(id, user.getId());
         if (alreadyLiked) {
@@ -146,8 +192,31 @@ public class PostService {
         return new PostLikeResponseDto(!alreadyLiked, postLikeRepository.countByPostId(id));
     }
 
+    /**
+     * 삭제가 예약된 이미지 파일을 커밋 직후 곧바로 치운다. 실패하거나 그 직후 프로세스가
+     * 죽더라도 예약은 DB에 남아 {@link PostImageCleaner}의 주기 작업이 다시 시도한다.
+     */
+    private void cleanUpAfterCommit() {
+        AfterCommit.run(postImageCleaner::cleanPendingDeletions);
+    }
+
+    /**
+     * 화면이 받아간 버전과 지금 DB의 버전이 다르면, 그 사이 다른 곳에서 저장이 일어난 것이다.
+     * 버전을 보내지 않는 요청은 기존처럼 그대로 저장한다.
+     */
+    private void validateVersion(Post post, Long expectedVersion) {
+        if (expectedVersion != null && !expectedVersion.equals(post.getVersion())) {
+            throw new ObjectOptimisticLockingFailureException(Post.class, post.getId());
+        }
+    }
+
     private String normalize(String keyword) {
         return (keyword == null || keyword.isBlank()) ? null : keyword.trim();
+    }
+
+    private User findUser(String email) {
+        return userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + email));
     }
 
     private Long currentUserId(Authentication authentication) {

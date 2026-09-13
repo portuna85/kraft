@@ -360,7 +360,9 @@ var postEdit = {
             title: $('#title').val(),
             content: $('#content').val(),
             picture: pictureUrl,
-            category: $('#edit-category').val()
+            category: $('#edit-category').val(),
+            // 편집을 시작할 때 받아간 버전. 그 사이 다른 곳에서 저장됐으면 서버가 409로 거절한다.
+            version: $('#post-version').val()
         };
 
         var id = $('#id').val();
@@ -820,9 +822,11 @@ var signup = {
  * 헤더의 "비밀번호 변경"으로 열린다.
  * <p>
  * 오류는 화면 이동이 없으니 flash(이동 후 1회 표시)가 아니라 모달 안에서 바로 보여준다.
- * 성공하면 기존 정책대로 로그아웃하는데, 이때 로그아웃 폼의 next에 "/login"을 채워
- * 로그인 화면으로 보낸다(예전에는 Referer가 비밀번호 변경 화면인 것으로 판별했지만,
- * 모달은 어느 화면에서나 열리므로 Referer로는 구분할 수 없다).
+ * 성공하면 로그인 화면으로 보낸다. 로그아웃 자체는 여기서 하지 않는다 — 서버가 비밀번호
+ * 변경을 커밋한 뒤 이 계정의 모든 세션을 폐기하기 때문이다(UserService.changePassword).
+ * 예전에는 이 화면의 JS가 이어서 /logout을 호출하는 방식이었는데, 그러면 API를 직접
+ * 호출하거나 후속 요청이 실패할 때 세션이 그대로 남았고 다른 기기의 세션은 애초에 끊기지
+ * 않았다.
  */
 var changePassword = {
     init: function () {
@@ -866,9 +870,10 @@ var changePassword = {
             contentType: 'application/json; charset=utf-8',
             data: JSON.stringify(data)
         }).done(function () {
+            // 세션 폐기는 서버가 한다(UserService.changePassword). 이 시점에는 현재 세션도
+            // 이미 없어졌으므로 로그아웃 폼을 제출하면 CSRF·세션 검사에 걸린다 — 바로 이동한다.
             flash.set('PASSWORD_CHANGED');
-            $('#logout-next').val('/login');
-            $('#logout-form').trigger('submit');
+            window.location.href = '/login';
         }).fail(function (error) {
             changePassword.showError(extractErrorMessage(error));
             $btn.prop('disabled', false).removeAttr('aria-busy');

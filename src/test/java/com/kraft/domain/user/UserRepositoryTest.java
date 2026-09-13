@@ -30,6 +30,10 @@ class UserRepositoryTest {
         return User.builder().name("tester").email(email).password("encoded").role(Role.USER).build();
     }
 
+    private static User user(String name, String email) {
+        return User.builder().name(name).email(email).password("encoded").role(Role.USER).build();
+    }
+
     @Test
     @DisplayName("findByEmailHash: 저장된 이메일의 해시면 회원을 조회한다")
     void findByEmailHash_whenEmailHashExists_returnsUser() {
@@ -69,9 +73,21 @@ class UserRepositoryTest {
     @Test
     @DisplayName("email_hash 유니크 제약: 같은 이메일을 두 번 저장하면 DataIntegrityViolationException")
     void save_duplicateEmail_violatesUniqueConstraint() {
-        userRepository.saveAndFlush(user("dup@example.com"));
+        // 이름은 서로 다르게 둔다 — 이름 유니크 제약이 먼저 걸려 이메일 제약을 가리지 않도록.
+        userRepository.saveAndFlush(user("first", "dup@example.com"));
 
-        assertThatThrownBy(() -> userRepository.saveAndFlush(user("dup@example.com")))
+        assertThatThrownBy(() -> userRepository.saveAndFlush(user("second", "dup@example.com")))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("name 유니크 제약: 이메일이 달라도 같은 이름은 두 번 저장되지 않는다")
+    void save_duplicateName_violatesUniqueConstraint() {
+        // existsByName() 사전 검사와 INSERT 사이의 경쟁은 DB 제약만이 막을 수 있다. 예전에는
+        // 이 제약이 없어 서로 다른 이메일이 같은 이름을 갖는 상태가 실제로 저장됐다(F09).
+        userRepository.saveAndFlush(user("같은닉네임", "one@example.com"));
+
+        assertThatThrownBy(() -> userRepository.saveAndFlush(user("같은닉네임", "two@example.com")))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 

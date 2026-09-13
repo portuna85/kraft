@@ -73,6 +73,12 @@ app:
     # 컨테이너 재배포 시 파일이 유실될 수 있으므로(임시 파일시스템), 영구 볼륨을 마운트하거나
     # 오브젝트 스토리지로 교체하는 것을 권장한다(이번 범위에서는 로컬 디스크로 구현).
     dir: uploads/images
+    # 삭제 예약(PENDING_DELETE)·만료된 미연결(ORPHAN) 이미지 파일을 치우는 주기 작업.
+    # 삭제 예약분은 게시글 수정·삭제 커밋 직후에도 곧바로 한 번 정리되므로, 이 주기는
+    # "그때 실패했거나 프로세스가 죽어서 남은 것"을 다시 시도하는 안전망이다.
+    cleanup-enabled: true
+    cleanup-initial-delay-ms: 600000
+    cleanup-interval-ms: 3600000
   # 이메일 인증 링크를 만들 때 붙일 기본 URL. 운영에서는 실제 배포 도메인으로 덮어써야 한다
   # (application-prod.yml 참고).
   base-url: http://localhost:8080

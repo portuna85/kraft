@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -61,11 +62,18 @@ class PostServiceTest {
     @Mock
     private PostLikeRepository postLikeRepository;
 
+    @Mock
+    private PostImageRegistry postImageRegistry;
+
+    @Mock
+    private PostImageCleaner postImageCleaner;
+
     private PostService postService;
 
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
-        postService = new PostService(postRepository, userRepository, commentRepository, postImageService, postLikeRepository);
+        postService = new PostService(postRepository, userRepository, commentRepository, postImageService,
+                postLikeRepository, postImageRegistry, postImageCleaner);
     }
 
     private static User userWithEmail(String email, Long id) {
@@ -93,7 +101,7 @@ class PostServiceTest {
         Post saved = postOf(user, 10L);
         given(postRepository.save(any(Post.class))).willReturn(saved);
 
-        Long id = postService.save("tester@example.com",
+        Long id = postService.save(authOf("tester@example.com", Role.USER),
                 new PostSaveRequestDto("제목", "내용", null, null));
 
         assertThat(id).isEqualTo(10L);
@@ -106,7 +114,7 @@ class PostServiceTest {
         ReflectionTestUtils.setField(guest, "id", 1L);
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("guest@example.com"))).willReturn(Optional.of(guest));
 
-        assertThatThrownBy(() -> postService.save("guest@example.com", new PostSaveRequestDto("제목", "내용", null, null)))
+        assertThatThrownBy(() -> postService.save(authOf("guest@example.com", Role.USER), new PostSaveRequestDto("제목", "내용", null, null)))
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(postRepository, never()).save(any());
@@ -117,7 +125,7 @@ class PostServiceTest {
     void save_whenUserNotFound_throwsIllegalArgumentException() {
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> postService.save("nobody@example.com",
+        assertThatThrownBy(() -> postService.save(authOf("nobody@example.com", Role.USER),
                 new PostSaveRequestDto("제목", "내용", null, null)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("존재하지 않는 회원");
@@ -132,7 +140,7 @@ class PostServiceTest {
         Post post = postOf(owner, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
 
-        Long id = postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용", null, null),
+        Long id = postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용", null, null, null),
                 authOf("owner@example.com", Role.USER));
 
         assertThat(id).isEqualTo(100L);
@@ -141,31 +149,36 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("update: picture가 기존과 다르면 반영하고 이전 이미지 파일을 지운다")
-    void update_whenPictureChanges_updatesPictureAndDeletesOldImage() {
+    @DisplayName("update: picture가 기존과 다르면 새 이미지의 소유권을 확인하고 이전 이미지는 삭제 예약만 한다")
+    void update_whenPictureChanges_attachesNewImageAndSchedulesOldForDeletion() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
         ReflectionTestUtils.setField(post, "picture", "/images/old.png");
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("owner@example.com"))).willReturn(Optional.of(owner));
 
-        postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용", "/images/new.png", null),
+        postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용", "/images/new.png", null, null),
                 authOf("owner@example.com", Role.USER));
 
         assertThat(post.getPicture()).isEqualTo("/images/new.png");
-        verify(postImageService).deleteIfExists("/images/old.png");
+        verify(postImageRegistry).attach("/images/new.png", owner, post);
+        // 파일을 직접 지우지 않는다. 트랜잭션이 롤백되면 예약도 사라져 기존 이미지가 보존된다(F05).
+        verify(postImageRegistry).markForDeletion("/images/old.png");
+        verify(postImageService, never()).deleteIfExists(any());
     }
 
     @Test
-    @DisplayName("update: picture가 기존과 같으면 이미지 파일을 지우지 않는다")
-    void update_whenPictureUnchanged_doesNotDeleteImageFile() {
+    @DisplayName("update: picture가 기존과 같으면 삭제를 예약하지 않는다")
+    void update_whenPictureUnchanged_doesNotScheduleDeletion() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
         ReflectionTestUtils.setField(post, "picture", "/images/same.png");
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
 
-        postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용", "/images/same.png", null),
+        postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용", "/images/same.png", null, null),
                 authOf("owner@example.com", Role.USER));
 
+        verify(postImageRegistry, never()).markForDeletion(any());
         verify(postImageService, never()).deleteIfExists(any());
     }
 
@@ -176,7 +189,7 @@ class PostServiceTest {
         Post post = postOf(owner, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
 
-        assertThatThrownBy(() -> postService.update(100L, new PostUpdateRequestDto("해킹", "해킹", null, null),
+        assertThatThrownBy(() -> postService.update(100L, new PostUpdateRequestDto("해킹", "해킹", null, null, null),
                 authOf("intruder@example.com", Role.USER)))
                 .isInstanceOf(AccessDeniedException.class);
 
@@ -190,7 +203,7 @@ class PostServiceTest {
         Post post = postOf(owner, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
 
-        postService.update(100L, new PostUpdateRequestDto("관리자 수정", "관리자 수정", null, null),
+        postService.update(100L, new PostUpdateRequestDto("관리자 수정", "관리자 수정", null, null, null),
                 authOf("admin@example.com", Role.ADMIN));
 
         assertThat(post.getTitle()).isEqualTo("관리자 수정");
@@ -203,7 +216,7 @@ class PostServiceTest {
         ReflectionTestUtils.setField(post, "id", 200L);
         given(postRepository.findById(200L)).willReturn(Optional.of(post));
 
-        assertThatThrownBy(() -> postService.update(200L, new PostUpdateRequestDto("x", "y", null, null),
+        assertThatThrownBy(() -> postService.update(200L, new PostUpdateRequestDto("x", "y", null, null, null),
                 authOf("someone@example.com", Role.USER)))
                 .isInstanceOf(AccessDeniedException.class);
     }
@@ -238,8 +251,8 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("delete: 게시글에 이미지가 있으면 삭제 후 이미지 파일도 정리한다")
-    void delete_whenPostHasImage_cleansUpImageFileAfterDelete() {
+    @DisplayName("delete: 게시글에 붙은 이미지의 삭제를 예약하고, 커밋 후 정리를 맡긴다")
+    void delete_whenPostHasImage_schedulesImageDeletionAndTriggersCleanup() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
         ReflectionTestUtils.setField(post, "picture", "/images/old.png");
@@ -247,7 +260,13 @@ class PostServiceTest {
 
         postService.delete(100L, authOf("owner@example.com", Role.USER));
 
-        verify(postImageService).deleteIfExists("/images/old.png");
+        // 예약이 post_id를 비워야 게시글 DELETE가 FK에 걸리지 않는다.
+        var inOrder = org.mockito.Mockito.inOrder(postImageRegistry, postRepository);
+        inOrder.verify(postImageRegistry).markPostImagesForDeletion(100L);
+        inOrder.verify(postRepository).delete(post);
+        // 트랜잭션 밖에서 호출했으므로 AfterCommit이 즉시 실행된다.
+        verify(postImageCleaner).cleanPendingDeletions();
+        verify(postImageService, never()).deleteIfExists(any());
     }
 
     @Test
@@ -322,8 +341,8 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("findByIdForView: 조회할 때마다 조회수를 1 늘리고, 추천 수·내가 눌렀는지를 함께 담는다")
-    void findByIdForView_increasesViewCountAndIncludesLikeInformation() {
+    @DisplayName("findByIdForView: 조회수는 엔티티를 건드리지 않고 원자적 UPDATE로 올리고, 추천 정보를 함께 담는다")
+    void findByIdForView_increasesViewCountAtomicallyAndIncludesLikeInformation() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
@@ -333,8 +352,14 @@ class PostServiceTest {
 
         var result = postService.findByIdForView(100L, authOf("owner@example.com", Role.USER));
 
-        assertThat(post.getViewCount()).isEqualTo(1L);
-        assertThat(result.viewCount()).isEqualTo(1L);
+        // 조회수 증가는 전용 UPDATE 한 문장이다. 엔티티를 바꿔 변경 감지에 맡기면 제목·본문까지
+        // 함께 UPDATE에 실려 겹친 편집을 되돌린다(F02). 실제 증가분은 PostViewCountIsolationTest가
+        // 진짜 DB로 검증한다 — mock 리포지토리로는 관찰할 수 없는 지점이다.
+        var inOrder = org.mockito.Mockito.inOrder(postRepository);
+        inOrder.verify(postRepository).increaseViewCount(100L);
+        inOrder.verify(postRepository).findById(100L);
+        assertThat(post.getViewCount()).isZero();
+
         assertThat(result.likeCount()).isEqualTo(3L);
         assertThat(result.likedByMe()).isTrue();
     }
@@ -386,5 +411,77 @@ class PostServiceTest {
         assertThat(result.liked()).isFalse();
         verify(postLikeRepository).deleteByPostIdAndUserId(100L, 2L);
         verify(postLikeRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("save: 일반 사용자는 NOTICE 분류로 글을 쓸 수 없다")
+    void save_whenUserUsesNoticeCategory_throwsAccessDeniedException() {
+        User user = userWithEmail("tester@example.com", 1L);
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> postService.save(authOf("tester@example.com", Role.USER),
+                new PostSaveRequestDto("공지", "내용", null, Category.NOTICE)))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("공지 분류는 관리자만");
+
+        verify(postRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("save: 관리자는 NOTICE 분류로 글을 쓸 수 있다")
+    void save_whenAdminUsesNoticeCategory_saves() {
+        User admin = userWithEmail("admin@example.com", 1L);
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("admin@example.com"))).willReturn(Optional.of(admin));
+        given(postRepository.save(any(Post.class))).willReturn(postOf(admin, 10L));
+
+        Long id = postService.save(authOf("admin@example.com", Role.ADMIN),
+                new PostSaveRequestDto("공지", "내용", null, Category.NOTICE));
+
+        assertThat(id).isEqualTo(10L);
+    }
+
+    @Test
+    @DisplayName("update: 일반 사용자는 자기 글이어도 NOTICE로 바꿀 수 없다")
+    void update_whenUserSwitchesToNoticeCategory_throwsAccessDeniedException() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Post post = postOf(owner, 100L);
+        given(postRepository.findById(100L)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> postService.update(100L,
+                new PostUpdateRequestDto("제목", "내용", null, Category.NOTICE, null),
+                authOf("owner@example.com", Role.USER)))
+                .isInstanceOf(AccessDeniedException.class);
+
+        assertThat(post.getTitle()).isEqualTo("원래 제목");
+    }
+
+    @Test
+    @DisplayName("update: 화면이 보낸 버전이 지금 버전과 다르면 충돌로 거절하고 내용은 그대로다")
+    void update_withStaleVersion_throwsOptimisticLockingFailureException() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Post post = postOf(owner, 100L);
+        ReflectionTestUtils.setField(post, "version", 3L);
+        given(postRepository.findById(100L)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> postService.update(100L,
+                new PostUpdateRequestDto("나중 저장", "내용", null, null, 1L),
+                authOf("owner@example.com", Role.USER)))
+                .isInstanceOf(OptimisticLockingFailureException.class);
+
+        assertThat(post.getTitle()).isEqualTo("원래 제목");
+    }
+
+    @Test
+    @DisplayName("update: 버전을 보내지 않으면(null) 충돌 검사를 하지 않는다")
+    void update_withoutVersion_skipsConflictCheck() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Post post = postOf(owner, 100L);
+        ReflectionTestUtils.setField(post, "version", 3L);
+        given(postRepository.findById(100L)).willReturn(Optional.of(post));
+
+        postService.update(100L, new PostUpdateRequestDto("수정됨", "내용", null, null, null),
+                authOf("owner@example.com", Role.USER));
+
+        assertThat(post.getTitle()).isEqualTo("수정됨");
     }
 }

@@ -2,7 +2,7 @@ package com.kraft.web.api;
 
 import com.kraft.config.security.SecurityConfig;
 import com.kraft.domain.post.Category;
-import com.kraft.service.post.PostImageService;
+import com.kraft.domain.post.Post;
 import com.kraft.service.post.PostService;
 import com.kraft.web.dto.post.PostLikeResponseDto;
 import com.kraft.web.dto.post.PostSaveRequestDto;
@@ -16,6 +16,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -57,9 +58,6 @@ class PostApiControllerTest {
 
     @MockitoBean
     private PostService postService;
-
-    @MockitoBean
-    private PostImageService postImageService;
 
     @Test
     @DisplayName("GET /api/v1/posts 는 인증 없이도 호출할 수 있다")
@@ -164,7 +162,7 @@ class PostApiControllerTest {
     @Test
     @DisplayName("POST /api/v1/posts 는 인증+CSRF+유효한 본문이면 200과 ID를 반환한다")
     void savePost_whenAuthenticatedAndValid_returns200AndId() throws Exception {
-        given(postService.save(eq("tester@example.com"), any(PostSaveRequestDto.class))).willReturn(1L);
+        given(postService.save(any(Authentication.class), any(PostSaveRequestDto.class))).willReturn(1L);
 
         mockMvc.perform(post("/api/v1/posts")
                         .with(user("tester@example.com"))
@@ -289,7 +287,7 @@ class PostApiControllerTest {
     @DisplayName("POST /api/v1/posts/images 는 인증+CSRF+유효한 파일이면 200과 업로드된 URL을 반환한다")
     void uploadImage_whenAuthenticatedAndValid_returns200AndUrl() throws Exception {
         MockMultipartFile file = new MockMultipartFile("file", "photo.png", "image/png", "img".getBytes());
-        given(postImageService.store(any())).willReturn("/images/generated-uuid.png");
+        given(postService.uploadImage(any(), any(Authentication.class))).willReturn("/images/generated-uuid.png");
 
         mockMvc.perform(multipart("/api/v1/posts/images").file(file)
                         .with(user("tester@example.com"))
@@ -302,7 +300,7 @@ class PostApiControllerTest {
     @DisplayName("POST /api/v1/posts/images 는 허용되지 않는 파일이면 400 ProblemDetail을 반환한다")
     void uploadImage_withDisallowedExtension_returns400BadRequest() throws Exception {
         MockMultipartFile file = new MockMultipartFile("file", "malware.exe", "application/octet-stream", "x".getBytes());
-        given(postImageService.store(any()))
+        given(postService.uploadImage(any(), any(Authentication.class)))
                 .willThrow(new IllegalArgumentException("허용되지 않는 파일 형식입니다: exe"));
 
         mockMvc.perform(multipart("/api/v1/posts/images").file(file)
@@ -310,5 +308,33 @@ class PostApiControllerTest {
                         .with(csrf()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("허용되지 않는 파일 형식입니다: exe"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/posts/images 는 이메일 인증 전(GUEST)이면 403 ProblemDetail을 반환한다")
+    void uploadImage_whenGuest_returns403Forbidden() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "photo.png", "image/png", "img".getBytes());
+        given(postService.uploadImage(any(), any(Authentication.class)))
+                .willThrow(new AccessDeniedException("이메일 인증을 완료해야 글을 작성할 수 있습니다. id=1"));
+
+        mockMvc.perform(multipart("/api/v1/posts/images").file(file)
+                        .with(user("guest@example.com"))
+                        .with(csrf()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/posts/{id} 는 편집 충돌이면 409 ProblemDetail을 반환한다")
+    void updatePost_whenEditConflict_returns409Conflict() throws Exception {
+        given(postService.update(eq(1L), any(PostUpdateRequestDto.class), any(Authentication.class)))
+                .willThrow(new ObjectOptimisticLockingFailureException(Post.class, 1L));
+
+        mockMvc.perform(put("/api/v1/posts/1")
+                        .with(user("tester@example.com"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"제목\",\"content\":\"내용\",\"version\":1}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("다른 곳에서 이미 수정된 글입니다. 새로고침 후 다시 시도해 주세요."));
     }
 }
