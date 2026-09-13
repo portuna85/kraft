@@ -26,10 +26,6 @@ export default [
                 // 이유는 SRI가 깨지고 모듈 평가 시점에 네트워크 왕복이 생기기 때문이다.
                 // 여기 선언해 두면 "Unresolved variable or type bootstrap"이 사라진다.
                 bootstrap: 'readonly',
-                // jQuery는 걷어내는 중이다. 제거가 끝나면 이 두 줄을 지운다 — 그러면 남은
-                // 사용처가 no-undef로 즉시 드러난다.
-                $: 'readonly',
-                jQuery: 'readonly',
             },
         },
         rules: {

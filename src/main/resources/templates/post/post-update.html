@@ -57,7 +57,7 @@
         <form id="post-edit" class="card-kraft post-edit" th:if="${post.canManagePost}" hidden>
             <div class="mb-3">
                 <label for="title">제목</label>
-                <input type="text" class="form-control" id="title" th:value="${post.title}" maxlength="255">
+                <input type="text" class="form-control" id="title" th:value="${post.title}" maxlength="255" required>
             </div>
             <div class="mb-3">
                 <label for="edit-category">분류</label>
@@ -74,7 +74,7 @@
             </div>
             <div class="mb-3">
                 <label for="content">내용</label>
-                <textarea class="form-control post-edit__textarea" id="content" maxlength="10000"
+                <textarea class="form-control post-edit__textarea" id="content" maxlength="10000" required
                           th:text="${post.content}"></textarea>
             </div>
             <div class="mb-3">

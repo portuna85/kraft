@@ -63,6 +63,9 @@ export default defineConfig({
         // "포트가 열렸다"가 아니라 "실제로 페이지를 준다"를 기다리게 된다.
         // (actuator는 커밋 1080614에서 의도적으로 제거했으므로 쓰지 않는다.)
         url: `${BASE_URL}/login`,
+        // 로컬에서는 JVM을 매번 다시 띄우지 않는다. 다만 이미 떠 있는 앱은 **예전 JAR**일 수
+        // 있다 — 코드를 고친 뒤에는 그 프로세스를 끄고 bootJar를 다시 만들어야 새 코드가 검증된다.
+        // (끄지 않으면 Windows에서는 JAR 파일이 잠겨 bootJar 자체가 멈추기도 한다.)
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
         stdout: 'pipe',
