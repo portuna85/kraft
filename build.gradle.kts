@@ -45,10 +45,6 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-tasks.bootJar {
-    archiveFileName.set("kraft.jar")
-}
-
 tasks.withType<Test> {
     useJUnitPlatform()
     // local(기본값)은 2026-09-11부터 Docker MariaDB를 쓰므로, 테스트가 Docker 없이도 항상
