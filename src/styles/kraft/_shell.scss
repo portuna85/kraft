@@ -1,0 +1,67 @@
+/* ==========================================================================
+   본문 셸 그리드
+   ========================================================================== */
+.kraft-shell {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: var(--kraft-space-4);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--kraft-space-6);
+}
+
+@media (min-width: 768px) {
+    .kraft-shell {
+        padding: var(--kraft-space-6);
+    }
+}
+
+/* 탐색은 헤더로 올라갔으므로 셸에는 왼쪽 열이 없다. 본문은 항상 한 열이고, 목록 화면만
+   넓은 화면에서 오른쪽 안내 영역을 한 열 더 쓴다. */
+@media (min-width: 992px) {
+    .kraft-shell {
+        align-items: start;
+    }
+}
+
+@media (min-width: 1200px) {
+    .kraft-shell--with-aside {
+        grid-template-columns: minmax(0, 1fr) 248px;
+    }
+}
+
+.kraft-main {
+    min-width: 0;
+}
+
+.kraft-main--narrow {
+    max-width: 960px;
+}
+
+.kraft-main--account {
+    max-width: 480px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.kraft-aside {
+    background-color: var(--kraft-surface);
+    border: 1px solid var(--kraft-border);
+    border-radius: var(--kraft-radius);
+    padding: var(--kraft-space-4);
+    min-width: 0;
+}
+
+.kraft-aside__title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: var(--kraft-space-2);
+}
+
+.kraft-aside__list {
+    padding-left: 1.1rem;
+    margin-bottom: var(--kraft-space-4);
+    color: var(--kraft-text-muted);
+    font-size: 0.9rem;
+    line-height: 1.6;
+}

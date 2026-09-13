@@ -1,0 +1,33 @@
+/* ==========================================================================
+   피드백: 지속 메시지 / 토스트
+   ========================================================================== */
+.flash {
+    padding: var(--kraft-space-3) var(--kraft-space-4);
+    border-radius: var(--kraft-radius-control);
+    background-color: var(--kraft-accent-bg);
+    color: var(--kraft-accent-text);
+    margin-bottom: var(--kraft-space-4);
+    font-weight: 500;
+}
+
+.flash.flash--danger {
+    background-color: #fef2f2;
+    color: var(--kraft-danger);
+}
+
+#toast-container {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1080;
+    pointer-events: none;
+}
+
+#toast-container .toast {
+    min-width: 260px;
+    pointer-events: none;
+}
+
+#toast-container .toast.show {
+    pointer-events: auto;
+}

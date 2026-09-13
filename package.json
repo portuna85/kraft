@@ -9,8 +9,10 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "typecheck": "tsc --noEmit -p jsconfig.json",
-    "build:css": "sass --load-path=node_modules/bootstrap/scss --style=compressed --no-source-map --quiet-deps src/styles/bootstrap-custom.scss src/main/resources/static/css/bootstrap.custom.css",
-    "check:css": "npm run build:css && git diff --exit-code --stat -- src/main/resources/static/css/bootstrap.custom.css"
+    "build:css": "npm run build:css:bootstrap && npm run build:css:app",
+    "check:css": "npm run build:css && git diff --exit-code --stat -- src/main/resources/static/css",
+    "build:css:bootstrap": "sass --load-path=node_modules/bootstrap/scss --style=compressed --no-source-map --quiet-deps src/styles/bootstrap-custom.scss src/main/resources/static/css/bootstrap.custom.css",
+    "build:css:app": "sass --style=compressed --no-source-map --quiet-deps src/styles/style.scss src/main/resources/static/css/style.css"
   },
   "devDependencies": {
     "@playwright/test": "1.56.0",

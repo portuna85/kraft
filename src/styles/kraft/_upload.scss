@@ -1,0 +1,76 @@
+/* ==========================================================================
+   글쓰기: 선택한 이미지 미리보기 / 업로드·저장 진행 상태
+   ========================================================================== */
+.picture-preview {
+    display: flex;
+    align-items: center;
+    gap: var(--kraft-space-3);
+    margin-top: var(--kraft-space-2);
+    padding: var(--kraft-space-3);
+    border: 1px solid var(--kraft-border);
+    border-radius: var(--kraft-radius);
+    background-color: var(--kraft-surface-subtle);
+}
+
+.picture-preview__image {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: var(--kraft-radius-control);
+    border: 1px solid var(--kraft-border);
+    flex-shrink: 0;
+}
+
+.picture-preview__meta {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--kraft-space-2);
+}
+
+.picture-preview__name {
+    margin: 0;
+    overflow-wrap: anywhere;
+    font-size: 0.9rem;
+    color: var(--kraft-text-muted);
+}
+
+.form-progress {
+    margin-top: var(--kraft-space-3);
+    color: var(--kraft-text-muted);
+    font-size: 0.9rem;
+}
+
+.btn-primary {
+    background-color: var(--kraft-primary);
+    border-color: var(--kraft-primary);
+}
+
+.btn-primary:hover {
+    background-color: var(--kraft-primary-dark);
+    border-color: var(--kraft-primary-dark);
+}
+
+.btn-outline-primary {
+    color: var(--kraft-primary);
+    border-color: var(--kraft-primary);
+}
+
+.btn-outline-danger,
+.btn-danger {
+    color: var(--kraft-danger);
+}
+
+.btn-danger {
+    background-color: var(--kraft-danger);
+    border-color: var(--kraft-danger);
+    color: #ffffff;
+}
+
+.btn-group-gap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--kraft-space-2);
+}

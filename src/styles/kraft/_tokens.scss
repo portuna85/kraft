@@ -1,0 +1,30 @@
+/* ==========================================================================
+   Kraft 디자인 토큰
+   ========================================================================== */
+:root {
+    --kraft-primary: #4f46e5;
+    --kraft-primary-dark: #4338ca;
+    --kraft-header: #192335;
+    --kraft-bg: #f3f4f6;
+    --kraft-surface: #ffffff;
+    --kraft-surface-subtle: #f8fafc;
+    --kraft-text: #1f2937;
+    --kraft-text-muted: #5f6b7a;
+    --kraft-border: #d5dae3;
+    --kraft-control-border: #768397;
+    --kraft-accent-text: #80601e;
+    --kraft-accent-bg: #fff7e0;
+    --kraft-success: #166534;
+    --kraft-danger: #b42318;
+
+    --kraft-radius: 0.5rem;
+    --kraft-radius-control: 0.375rem;
+
+    --kraft-space-1: 4px;
+    --kraft-space-2: 8px;
+    --kraft-space-3: 12px;
+    --kraft-space-4: 16px;
+    --kraft-space-6: 24px;
+    --kraft-space-8: 32px;
+    --kraft-space-12: 48px;
+}

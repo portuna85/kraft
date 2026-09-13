@@ -1,0 +1,51 @@
+/* ==========================================================================
+   댓글
+   ========================================================================== */
+.comments__heading {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: var(--kraft-space-4);
+}
+
+.comments__empty {
+    color: var(--kraft-text-muted);
+    margin-bottom: var(--kraft-space-4);
+}
+
+.comment-list {
+    list-style: none;
+    margin: 0 0 var(--kraft-space-4);
+    padding: 0;
+}
+
+.comment-list__item {
+    border: 1px solid var(--kraft-border);
+    border-radius: var(--kraft-radius);
+    padding: var(--kraft-space-4);
+    margin-bottom: var(--kraft-space-2);
+}
+
+.comment-list__item:last-child {
+    margin-bottom: 0;
+}
+
+.comment-list__head {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--kraft-space-2);
+    margin-bottom: var(--kraft-space-1);
+}
+
+.comment-list__content {
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    margin-bottom: var(--kraft-space-2);
+}
+
+.comment-edit__textarea {
+    min-height: 80px;
+}
+
+.comments__login-hint {
+    color: var(--kraft-text-muted);
+}

@@ -1,0 +1,51 @@
+/* ==========================================================================
+   카드 / 폼 / 버튼 공통
+   ========================================================================== */
+.card-kraft {
+    background-color: var(--kraft-surface);
+    border: 1px solid var(--kraft-border);
+    border-radius: var(--kraft-radius);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    padding: var(--kraft-space-6);
+}
+
+/* Bootstrap 5에는 .form-group이 없어 .mb-3로 바꿨다(간격 유틸리티가 그 역할을 한다).
+   폼 라벨 스타일은 계속 필요하므로 폼 안의 label을 직접 가리킨다(.form-label은 템플릿이 쓰지 않는다). */
+.card-kraft form label,
+.modal-body form label,
+.comment-form label {
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.92rem;
+}
+
+.form-control,
+.btn,
+.form-select {
+    min-height: 44px;
+}
+
+.form-control {
+    border-color: var(--kraft-control-border);
+    font-size: 1rem;
+}
+
+.form-control:focus {
+    border-color: var(--kraft-primary);
+    box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.15);
+}
+
+textarea.form-control {
+    min-height: 120px;
+    resize: vertical;
+}
+
+.post-edit__textarea {
+    min-height: 240px;
+}
+
+@media (min-width: 992px) {
+    .post-edit__textarea {
+        min-height: 360px;
+    }
+}
