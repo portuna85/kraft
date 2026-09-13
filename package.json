@@ -8,13 +8,17 @@
     "lint": "eslint src/main/resources/static/js e2e && npm run typecheck",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "typecheck": "tsc --noEmit -p jsconfig.json"
+    "typecheck": "tsc --noEmit -p jsconfig.json",
+    "build:css": "sass --load-path=node_modules/bootstrap/scss --style=compressed --no-source-map --quiet-deps src/styles/bootstrap-custom.scss src/main/resources/static/css/bootstrap.custom.css",
+    "check:css": "npm run build:css && git diff --exit-code --stat -- src/main/resources/static/css/bootstrap.custom.css"
   },
   "devDependencies": {
     "@playwright/test": "1.56.0",
     "@types/bootstrap": "^5.2.11",
+    "bootstrap": "^5.3.8",
     "eslint": "^9.37.0",
     "globals": "^16.5.0",
+    "sass": "^1.104.1",
     "typescript": "^7.0.2"
   }
 }

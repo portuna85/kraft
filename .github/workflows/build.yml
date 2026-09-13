@@ -73,6 +73,11 @@ jobs:
       - name: Lint and typecheck
         run: npm run lint
 
+      # 커밋된 bootstrap.custom.css가 SCSS 소스와 일치하는지 본다. 소스만 고치고 다시
+      # 빌드하지 않으면 화면과 저장소가 어긋나므로, 여기서 잡는다.
+      - name: Check generated CSS is up to date
+        run: npm run check:css
+
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 

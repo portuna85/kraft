@@ -46,7 +46,7 @@ export default [
             sourceType: 'module',
             // 스펙 파일은 Node에서 돌지만 page.evaluate() 콜백 안은 브라우저 컨텍스트라
             // document·window를 정당하게 쓴다. 둘 다 허용한다.
-            globals: { ...globals.node, ...globals.browser },
+            globals: { ...globals.node, ...globals.browser, bootstrap: 'readonly' },
         },
         rules: {
             ...js.configs.recommended.rules,

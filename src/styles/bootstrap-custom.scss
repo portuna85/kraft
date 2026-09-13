@@ -1,0 +1,54 @@
+// Kraft가 실제로 쓰는 Bootstrap만 담은 빌드.
+//
+// 템플릿이 쓰는 Bootstrap 클래스는 36개뿐인데 CDN에서 232KB 전체를 받고 있었다. 그리드·카드·
+// 내비바·테이블·페이지네이션·드롭다운은 전부 kraft-* 로 직접 구현되어 있어 한 번도 매칭되지
+// 않는다. 필요한 컴포넌트만 소스에서 컴파일해 자체 호스팅한다.
+//
+// 자체 호스팅으로 얻는 것이 하나 더 있다: 감사 보고서가 지적한 "CDN 장애 시 핵심 동작 의존"에서
+// CSS 쪽이 빠진다. JS(bootstrap.min.js)는 모달·토스트 때문에 여전히 CDN이다.
+//
+// 이 파일을 고치면 `npm run build:css`로 다시 만들어 커밋해야 한다. Gradle 빌드는 Node 없이
+// 돌아야 하므로 생성물을 저장소에 둔다(CI가 최신인지 검사한다).
+
+@use "sass:map";
+
+// ── 필수 배관 (CSS를 만들지 않는다) ───────────────────────────────────────────
+@import "functions";
+@import "variables";
+@import "variables-dark";
+@import "maps";
+@import "mixins";
+@import "utilities";
+
+// ── 유틸리티는 쓰는 것만 남긴다 ───────────────────────────────────────────────
+// 전체 유틸리티 API는 1,500개가 넘는 클래스를 만든다. 템플릿과 JS가 실제로 쓰는 것은
+// 간격(mb/mt/ms/me), 글자색(text-muted/text-white), 배경(bg-success/bg-danger)뿐이다.
+$used-utilities: (
+    "margin", "margin-top", "margin-end", "margin-bottom", "margin-start",
+    "color", "background-color"
+);
+$filtered: ();
+@each $key in $used-utilities {
+    $filtered: map.merge($filtered, ($key: map.get($utilities, $key)));
+}
+$utilities: $filtered;
+
+// ── 기본 ─────────────────────────────────────────────────────────────────────
+@import "root";      // CSS 변수(--bs-*). 아래 컴포넌트들이 참조한다.
+@import "reboot";    // 기본 리셋·타이포그래피
+@import "type";      // .h5 (모달 제목에 쓴다)
+
+// ── 실제로 쓰는 컴포넌트만 ───────────────────────────────────────────────────
+@import "transitions";  // .fade — 모달·토스트의 페이드
+@import "buttons";      // .btn 계열
+@import "close";        // .btn-close — 모달·토스트 닫기
+@import "forms";        // .form-control, .form-select, .form-text, .invalid-feedback(.is-invalid)
+@import "alert";        // 로그인 화면의 성공·실패 안내
+@import "modal";        // .modal-backdrop, .modal-open 등 JS가 붙이는 클래스 포함
+@import "toasts";
+
+// ── helper ───────────────────────────────────────────────────────────────────
+@import "helpers/visually-hidden";  // 화면에는 없고 보조기기만 읽는 라벨
+
+// ── 유틸리티 생성 (위에서 걸러낸 것만) ────────────────────────────────────────
+@import "utilities/api";
