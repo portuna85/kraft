@@ -90,33 +90,37 @@ class PostApiControllerTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login"));
 
-        verify(postService, never()).toggleLike(any(), any());
+        verify(postService, never()).setLike(any(), org.mockito.ArgumentMatchers.anyBoolean(), any());
     }
 
     @Test
     @DisplayName("PUT /api/v1/posts/{id}/like 는 인증+CSRF면 토글 결과를 반환한다")
     void toggleLike_whenAuthenticatedWithCsrf_returnsToggleResult() throws Exception {
-        given(postService.toggleLike(eq(1L), any(Authentication.class)))
+        given(postService.setLike(eq(1L), eq(true), any(Authentication.class)))
                 .willReturn(new PostLikeResponseDto(true, 3L));
 
         mockMvc.perform(put("/api/v1/posts/1/like")
                         .with(user("tester@example.com"))
-                        .with(csrf()))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"liked\":true}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.liked").value(true))
                 .andExpect(jsonPath("$.likeCount").value(3));
     }
 
     @Test
-    @DisplayName("PUT /api/v1/posts/{id}/like 는 없는 글이면 400 ProblemDetail을 반환한다")
-    void toggleLike_whenPostNotFound_returns400BadRequest() throws Exception {
-        given(postService.toggleLike(eq(999L), any(Authentication.class)))
+    @DisplayName("PUT /api/v1/posts/{id}/like 는 없는 글이면 404 ProblemDetail을 반환한다")
+    void setLike_whenPostNotFound_returns404NotFound() throws Exception {
+        given(postService.setLike(eq(999L), eq(true), any(Authentication.class)))
                 .willThrow(new com.kraft.web.exception.PostNotFoundException(999L));
 
         mockMvc.perform(put("/api/v1/posts/999/like")
                         .with(user("tester@example.com"))
-                        .with(csrf()))
-                .andExpect(status().isBadRequest());
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"liked\":true}"))
+                .andExpect(status().isNotFound());
     }
 
     @Test

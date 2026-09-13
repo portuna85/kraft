@@ -49,11 +49,14 @@ class EmailVerificationServiceTest {
     @Mock
     private EmailSender emailSender;
 
+    @Mock
+    private ExpiredTokenPurger expiredTokenPurger;
+
     private EmailVerificationService emailVerificationService;
 
     @BeforeEach
     void setUp() {
-        emailVerificationService = new EmailVerificationService(tokenRepository, userRepository, userService, emailSender);
+        emailVerificationService = new EmailVerificationService(tokenRepository, userRepository, userService, emailSender, expiredTokenPurger);
         ReflectionTestUtils.setField(emailVerificationService, "baseUrl", BASE_URL);
     }
 
@@ -119,21 +122,25 @@ class EmailVerificationServiceTest {
     }
 
     @Test
-    @DisplayName("verify: 만료된 토큰이면 IllegalArgumentException을 던지고 토큰을 삭제한다")
-    void verify_whenTokenExpired_throwsIllegalArgumentExceptionAndDeletesToken() {
+    @DisplayName("verify: 만료된 토큰이면 별도 트랜잭션에 삭제를 맡기고 IllegalArgumentException을 던진다")
+    void verify_whenTokenExpired_delegatesDeletionToPurgerAndThrows() {
         User user = userWithId(1L, "tester@example.com");
         EmailVerificationToken expiredToken = EmailVerificationToken.builder()
                 .token("expired-token")
                 .user(user)
                 .expiresAt(LocalDateTime.now().minusHours(1))
                 .build();
+        ReflectionTestUtils.setField(expiredToken, "id", 42L);
         given(tokenRepository.findByToken("expired-token")).willReturn(Optional.of(expiredToken));
 
         assertThatThrownBy(() -> emailVerificationService.verify("expired-token"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("만료되었습니다");
 
-        verify(tokenRepository).delete(expiredToken);
+        // 이 트랜잭션에서 직접 지우면 이어지는 예외가 삭제까지 롤백시킨다(개선 보고서 F08).
+        // "실제로 DB에서 사라지는지"는 ExpiredTokenPurgeTest가 진짜 트랜잭션으로 검증한다.
+        verify(expiredTokenPurger).purge(42L);
+        verify(tokenRepository, never()).delete(any());
         verify(userService, never()).promoteToUser(any());
     }
 

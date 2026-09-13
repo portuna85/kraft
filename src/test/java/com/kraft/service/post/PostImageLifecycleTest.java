@@ -9,6 +9,7 @@ import com.kraft.domain.post.PostRepository;
 import com.kraft.domain.user.Role;
 import com.kraft.domain.user.User;
 import com.kraft.domain.user.UserRepository;
+import com.kraft.support.TestImages;
 import com.kraft.web.dto.post.PostSaveRequestDto;
 import com.kraft.web.dto.post.PostUpdateRequestDto;
 import org.junit.jupiter.api.BeforeEach;
@@ -156,6 +157,54 @@ class PostImageLifecycleTest {
     }
 
     @Test
+    @DisplayName("F06: 확장자만 이미지인 파일은 내용 검사에서 거부하고 대장에도 남기지 않는다")
+    void uploadImage_withTextContentNamedPng_isRejected() {
+        var notAnImage = new MockMultipartFile("file", "not-an-image.png", "image/png",
+                "이건 그냥 텍스트입니다".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        assertThatThrownBy(() -> postService.uploadImage(notAnImage, alice))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("이미지 파일이 아니거나");
+
+        assertThat(postImageRepository.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("F06: 계정별 저장량 한도를 넘으면 파일을 쓰기 전에 거부한다")
+    void uploadImage_overQuota_isRejectedBeforeWritingFile() {
+        postService.uploadImage(imageFile(), alice);
+        // 이미 한도를 다 쓴 상태로 만든다.
+        jdbcTemplate.update("UPDATE post_images SET size_bytes = ? WHERE owner_id = "
+                + "(SELECT id FROM users WHERE name = 'alice')", PostImageRegistry.MAX_BYTES_PER_USER);
+        // 업로드 디렉터리는 이 클래스의 테스트들이 함께 쓰므로 절대 개수가 아니라 증감을 본다.
+        int filesBefore = uploadedFileCount();
+
+        assertThatThrownBy(() -> postService.uploadImage(imageFile(), alice))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("저장 공간을 모두 사용했습니다");
+
+        // 거부된 업로드는 디스크에도 대장에도 흔적을 남기지 않는다.
+        assertThat(postImageRepository.count()).isEqualTo(1);
+        assertThat(uploadedFileCount()).isEqualTo(filesBefore);
+    }
+
+    private int uploadedFileCount() {
+        java.io.File[] files = uploadDir.toFile().listFiles();
+        return files == null ? 0 : files.length;
+    }
+
+    @Test
+    @DisplayName("F06: 다른 사람의 저장량은 내 한도에 영향을 주지 않는다")
+    void uploadImage_quotaIsPerUser() {
+        postService.uploadImage(imageFile(), alice);
+        jdbcTemplate.update("UPDATE post_images SET size_bytes = ? WHERE owner_id = "
+                + "(SELECT id FROM users WHERE name = 'alice')", PostImageRegistry.MAX_BYTES_PER_USER);
+
+        // 밥은 아직 한 번도 올리지 않았으므로 정상 동작해야 한다.
+        assertThat(postService.uploadImage(imageFile(), bob)).startsWith("/images/");
+    }
+
+    @Test
     @DisplayName("F05: 게시글 삭제가 커밋되면 붙어 있던 이미지 파일도 정리된다")
     void delete_afterCommit_removesImageFile() {
         String url = postService.uploadImage(imageFile(), alice);
@@ -243,7 +292,7 @@ class PostImageLifecycleTest {
     }
 
     private static MockMultipartFile imageFile() {
-        return new MockMultipartFile("file", "photo.png", "image/png", "fake-image".getBytes());
+        return TestImages.pngFile("photo.png");
     }
 
     private static String fileNameOf(String url) {

@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import com.kraft.support.TestImages;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -34,7 +35,7 @@ class PostImageServiceTest {
     @Test
     @DisplayName("store: 허용된 확장자의 파일을 저장하고 /images/로 시작하는 공개 URL을 반환한다")
     void store_withAllowedExtension_savesFileAndReturnsPublicUrl() {
-        MockMultipartFile file = new MockMultipartFile("file", "photo.png", "image/png", "fake-image".getBytes());
+        MockMultipartFile file = TestImages.pngFile("photo.png");
 
         String url = postImageService.store(file);
 
@@ -64,7 +65,7 @@ class PostImageServiceTest {
     @Test
     @DisplayName("store: 대문자 확장자(IMG_0001.JPG)도 허용하고 소문자 확장자로 저장한다")
     void store_withUppercaseExtension_savesWithLowercaseExtension() {
-        MockMultipartFile file = new MockMultipartFile("file", "IMG_0001.JPG", "image/jpeg", "fake-image".getBytes());
+        MockMultipartFile file = TestImages.jpegFile("IMG_0001.JPG");
 
         String url = postImageService.store(file);
 
@@ -104,13 +105,36 @@ class PostImageServiceTest {
     }
 
     @Test
-    @DisplayName("store: 헤더보다 짧은 파일이어도 내용 검사에서 예외 없이 넘어간다")
-    void store_withFileShorterThanHeader_doesNotFailOnContentCheck() {
+    @DisplayName("store: 헤더보다 짧은 파일은 IOException이 아니라 형식 오류로 거부한다")
+    void store_withFileShorterThanHeader_isRejectedAsInvalidImage() {
         MockMultipartFile file = new MockMultipartFile("file", "tiny.png", "image/png", "ab".getBytes());
 
-        String url = postImageService.store(file);
+        assertThatThrownBy(() -> postImageService.store(file))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("이미지 파일이 아니거나");
+    }
 
-        assertThat(url).endsWith(".png");
+    @Test
+    @DisplayName("store: 확장자만 .png인 일반 텍스트는 내용 검사에서 거부한다")
+    void store_withTextContentNamedPng_isRejected() {
+        // 예전에는 확장자만 봤기 때문에 이 파일이 그대로 저장됐다(개선 보고서 F06).
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "not-an-image.png", "text/plain", "이건 그냥 텍스트입니다".getBytes(StandardCharsets.UTF_8));
+
+        assertThatThrownBy(() -> postImageService.store(file))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("이미지 파일이 아니거나");
+    }
+
+    @Test
+    @DisplayName("store: 내용은 PNG인데 확장자가 .jpg면 형식이 다르다고 거부한다")
+    void store_whenContentAndExtensionDisagree_isRejected() {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "disguised.jpg", "image/jpeg", TestImages.pngBytes(1, 1));
+
+        assertThatThrownBy(() -> postImageService.store(file))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("확장자와 실제 형식이 다릅니다");
     }
 
     @Test
@@ -137,7 +161,7 @@ class PostImageServiceTest {
     @Test
     @DisplayName("deleteIfExists: store()가 만든 URL로 실제 파일을 지운다")
     void deleteIfExists_withStoredUrl_deletesActualFile() {
-        MockMultipartFile file = new MockMultipartFile("file", "photo.png", "image/png", "fake-image".getBytes());
+        MockMultipartFile file = TestImages.pngFile("photo.png");
         String url = postImageService.store(file);
         Path saved = uploadDir.resolve(url.substring("/images/".length()));
         assertThat(Files.exists(saved)).isTrue();

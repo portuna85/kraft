@@ -41,6 +41,17 @@ public class ApiExceptionHandler {
     }
 
     /**
+     * "대상이 없음"은 검증 실패가 아니라 404다. {@link PostNotFoundException}이
+     * {@link IllegalArgumentException}을 상속하는 탓에 API에서도 400으로 나갔는데, 클라이언트가
+     * "요청이 잘못됨"과 "글이 삭제됨"을 구분할 수 없었다. 더 구체적인 타입의 핸들러가 우선하므로
+     * 이 메서드가 위의 {@link #handleIllegalArgument}보다 먼저 선택된다.
+     */
+    @ExceptionHandler(PostNotFoundException.class)
+    public ProblemDetail handleNotFound(PostNotFoundException e) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
+    }
+
+    /**
      * {@code @Valid @RequestBody} 검증 실패(예: 빈 제목)를 400으로 변환하고,
      * 필드별 오류 메시지를 하나의 문자열로 모아 반환한다.
      */

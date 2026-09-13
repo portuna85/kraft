@@ -3,7 +3,6 @@ package com.kraft.service.post;
 import com.kraft.domain.comment.CommentRepository;
 import com.kraft.domain.post.Category;
 import com.kraft.domain.post.Post;
-import com.kraft.domain.post.PostLike;
 import com.kraft.domain.post.PostLikeRepository;
 import com.kraft.domain.post.PostRepository;
 import com.kraft.domain.user.EmailHasher;
@@ -22,6 +21,7 @@ import com.kraft.web.dto.post.PostsListResponseDto;
 import com.kraft.web.dto.post.PostsPageResponseDto;
 import com.kraft.web.exception.PostNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -47,6 +47,7 @@ public class PostService {
     private final PostLikeRepository postLikeRepository;
     private final PostImageRegistry postImageRegistry;
     private final PostImageCleaner postImageCleaner;
+    private final PostLikeWriter postLikeWriter;
 
     /**
      * 이미지를 저장하고 업로더를 대장에 기록한다. 업로드 권한을 글쓰기 권한과 같게 맞춘다 —
@@ -57,8 +58,10 @@ public class PostService {
         User user = findUser(authentication.getName());
         WriteAccessPolicy.requireVerified(user);
 
+        postImageRegistry.validateQuota(user, file.getSize());
+
         String url = postImageService.store(file);
-        postImageRegistry.register(url, user);
+        postImageRegistry.register(url, user, file.getSize());
         return url;
     }
 
@@ -173,23 +176,41 @@ public class PostService {
     }
 
     /**
-     * 게시글 추천을 토글한다(이미 눌렀으면 취소). 이 엔드포인트는 항상 인증된 사용자만
+     * 게시글 추천을 <b>원하는 상태로 맞춘다</b>. 이 엔드포인트는 항상 인증된 사용자만
      * 호출할 수 있으므로(SecurityConfig의 {@code /api/v1/**} authenticated() 규칙) 익명
      * 처리를 따로 두지 않는다.
+     * <p>
+     * 예전에는 현재 상태를 뒤집는 토글이었다. 그래서 네트워크가 불안해 같은 요청이 두 번
+     * 도달하면 사용자의 의도가 되돌아갔고, 두 요청이 겹치면 둘 다 "아직 안 눌렀음"을 읽어
+     * 한쪽이 유니크 제약 위반으로 실패했다(개선 보고서 F10).
+     * <p>
+     * 지금은 호출하는 쪽이 원하는 최종 상태를 지정하므로 <b>몇 번을 보내도 결과가 같다</b>.
+     * 경쟁에서 밀려 INSERT가 제약에 걸리는 경우도 결국 원하던 상태("추천됨")와 같으므로
+     * 성공으로 처리한다.
      */
     @Transactional
-    public PostLikeResponseDto toggleLike(Long id, Authentication authentication) {
+    public PostLikeResponseDto setLike(Long id, boolean liked, Authentication authentication) {
         Post post = findPost(id);
         User user = findUser(authentication.getName());
 
-        boolean alreadyLiked = postLikeRepository.existsByPostIdAndUserId(id, user.getId());
-        if (alreadyLiked) {
-            postLikeRepository.deleteByPostIdAndUserId(id, user.getId());
+        if (liked) {
+            addLikeIfAbsent(post, user);
         } else {
-            postLikeRepository.save(PostLike.builder().post(post).user(user).build());
+            postLikeRepository.deleteByPostIdAndUserId(id, user.getId());
         }
 
-        return new PostLikeResponseDto(!alreadyLiked, postLikeRepository.countByPostId(id));
+        return new PostLikeResponseDto(liked, postLikeRepository.countByPostId(id));
+    }
+
+    private void addLikeIfAbsent(Post post, User user) {
+        if (postLikeRepository.existsByPostIdAndUserId(post.getId(), user.getId())) {
+            return;
+        }
+        try {
+            postLikeWriter.insert(post, user);
+        } catch (DataIntegrityViolationException e) {
+            // 검사와 INSERT 사이에 같은 추천이 들어왔다. 원하던 최종 상태와 같으므로 그대로 둔다.
+        }
     }
 
     /**

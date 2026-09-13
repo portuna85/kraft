@@ -106,6 +106,9 @@ a {
     align-items: center;
     justify-content: space-between;
     gap: var(--kraft-space-4);
+    /* 모바일에서 메뉴가 열리면 다음 줄로 펼쳐져야 한다. flex-wrap이 없으면 한 줄에 눌려
+       긴 닉네임이 브랜드 로고를 밀어낸다. */
+    flex-wrap: wrap;
 }
 
 @media (min-width: 768px) {

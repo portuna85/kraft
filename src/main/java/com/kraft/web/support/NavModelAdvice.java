@@ -13,8 +13,15 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 @ControllerAdvice(assignableTypes = IndexController.class)
 public class NavModelAdvice {
 
+    /**
+     * 쿼리 문자열까지 포함한다. 이 값은 로그인 링크의 복귀 주소로도 쓰이는데, 경로만 담으면
+     * 검색어나 페이지 번호를 보던 사용자가 로그인 후 목록 첫 화면으로 떨어진다.
+     */
     @ModelAttribute("currentPath")
     public String currentPath(HttpServletRequest request) {
-        return request.getRequestURI();
+        String query = request.getQueryString();
+        return query == null || query.isBlank()
+                ? request.getRequestURI()
+                : request.getRequestURI() + "?" + query;
     }
 }

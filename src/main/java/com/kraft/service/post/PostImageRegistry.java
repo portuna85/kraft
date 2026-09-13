@@ -23,18 +23,39 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class PostImageRegistry {
 
+    /** 계정 하나가 쓸 수 있는 이미지 저장량 상한. */
+    static final long MAX_BYTES_PER_USER = 50L * 1024 * 1024;
+
     private final PostImageRepository postImageRepository;
 
     /**
      * 업로드 직후 대장에 올린다. 이 시점에는 아직 어떤 게시글에도 속하지 않으므로 ORPHAN이다.
      */
     @Transactional
-    public void register(String url, User owner) {
+    public void register(String url, User owner, long sizeBytes) {
         String fileName = PostImageService.fileNameOf(url);
         if (fileName == null) {
             return;
         }
-        postImageRepository.save(PostImage.builder().fileName(fileName).owner(owner).build());
+        postImageRepository.save(PostImage.builder()
+                .fileName(fileName)
+                .owner(owner)
+                .sizeBytes(sizeBytes)
+                .build());
+    }
+
+    /**
+     * 계정별 누적 저장량을 확인한다. 파일 하나당 5MB 제한만으로는 반복 업로드로 디스크를
+     * 채우는 것을 막을 수 없다(개선 보고서 F06). 업로드 <b>전에</b> 검사해, 한도를 넘으면
+     * 파일을 디스크에 쓰기 전에 거절한다.
+     */
+    public void validateQuota(User owner, long incomingBytes) {
+        long used = postImageRepository.sumSizeBytesByOwnerId(owner.getId());
+        if (used + incomingBytes > MAX_BYTES_PER_USER) {
+            throw new IllegalArgumentException(
+                    "이미지 저장 공간을 모두 사용했습니다(계정당 " + MAX_BYTES_PER_USER / (1024 * 1024)
+                            + "MB). 쓰지 않는 이미지가 있는 게시글을 정리한 뒤 다시 시도해 주세요.");
+        }
     }
 
     /**

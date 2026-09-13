@@ -103,6 +103,28 @@ docker compose up -d --wait
 
 테스트는 `test` 프로파일의 H2 인메모리 DB를 사용하며 Docker MariaDB나 `.env`가 필요하지 않습니다.
 
+## 백업·복구
+
+DB만 받아두면 복구되지 않습니다. **세 가지를 같은 시점으로 함께** 보관해야 합니다.
+
+| 대상 | 이유 |
+| --- | --- |
+| DB 덤프 | 회원·게시글·댓글·세션 |
+| `uploads/images/` | 이미지 파일. DB의 `post_images`가 이 파일들을 가리킵니다 |
+| `EMAIL_ENCRYPTION_KEY` | 이 키가 없으면 복구한 DB의 이메일을 복호화할 수 없습니다 |
+
+```powershell
+docker compose exec mariadb mariadb-dump -u root -p"$env:MARIADB_ROOT_PASSWORD" --single-transaction kraft > backup.sql
+Compress-Archive -Path uploads -DestinationPath uploads-backup.zip
+```
+
+복구 후에는 로그인, 이미지가 보이는 글 열기, 새 글 작성까지 실제로 해봐야 세 가지가 맞물렸는지
+확인됩니다. DB만 되돌리면 `post_images` 행은 있는데 파일이 없는 상태가 될 수 있습니다.
+
+`EMAIL_ENCRYPTION_KEY`를 바꾸려면 기존 이메일을 옛 키로 복호화해 새 키로 다시 암호화하는
+절차가 필요합니다. 키만 교체하면 기존 계정의 이메일을 읽을 수 없게 되고, 로그인 조회에 쓰는
+`email_hash`는 키를 쓰지 않으므로 로그인은 되는데 이메일만 깨진 상태가 됩니다.
+
 ## 문제 확인
 
 - DB 연결 거부: `docker compose ps`와 `docker compose logs --tail 100 mariadb`로 DB 준비 상태를 확인합니다.

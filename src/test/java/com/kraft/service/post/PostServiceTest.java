@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -68,12 +69,15 @@ class PostServiceTest {
     @Mock
     private PostImageCleaner postImageCleaner;
 
+    @Mock
+    private PostLikeWriter postLikeWriter;
+
     private PostService postService;
 
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
         postService = new PostService(postRepository, userRepository, commentRepository, postImageService,
-                postLikeRepository, postImageRegistry, postImageCleaner);
+                postLikeRepository, postImageRegistry, postImageCleaner, postLikeWriter);
     }
 
     private static User userWithEmail(String email, Long id) {
@@ -379,8 +383,8 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("toggleLike: 아직 안 눌렀으면 추천을 추가하고 liked=true를 반환한다")
-    void toggleLike_whenNotLikedYet_addsLikeAndReturnsLikedTrue() {
+    @DisplayName("setLike(true): 아직 안 눌렀으면 추천을 추가하고 liked=true를 반환한다")
+    void setLike_toTrueWhenNotLikedYet_addsLikeAndReturnsLikedTrue() {
         User user = userWithEmail("liker@example.com", 2L);
         Post post = postOf(user, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
@@ -388,29 +392,64 @@ class PostServiceTest {
         given(postLikeRepository.existsByPostIdAndUserId(100L, 2L)).willReturn(false);
         given(postLikeRepository.countByPostId(100L)).willReturn(1L);
 
-        var result = postService.toggleLike(100L, authOf("liker@example.com", Role.USER));
+        var result = postService.setLike(100L, true, authOf("liker@example.com", Role.USER));
 
         assertThat(result.liked()).isTrue();
         assertThat(result.likeCount()).isEqualTo(1L);
-        verify(postLikeRepository).save(any());
+        verify(postLikeWriter).insert(post, user);
         verify(postLikeRepository, never()).deleteByPostIdAndUserId(any(), any());
     }
 
     @Test
-    @DisplayName("toggleLike: 이미 눌렀으면 추천을 취소하고 liked=false를 반환한다")
-    void toggleLike_whenAlreadyLiked_removesLikeAndReturnsLikedFalse() {
+    @DisplayName("setLike(false): 추천을 취소하고 liked=false를 반환한다")
+    void setLike_toFalse_removesLikeAndReturnsLikedFalse() {
+        User user = userWithEmail("liker@example.com", 2L);
+        Post post = postOf(user, 100L);
+        given(postRepository.findById(100L)).willReturn(Optional.of(post));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("liker@example.com"))).willReturn(Optional.of(user));
+        given(postLikeRepository.countByPostId(100L)).willReturn(0L);
+
+        var result = postService.setLike(100L, false, authOf("liker@example.com", Role.USER));
+
+        assertThat(result.liked()).isFalse();
+        verify(postLikeRepository).deleteByPostIdAndUserId(100L, 2L);
+        verify(postLikeWriter, never()).insert(any(), any());
+    }
+
+    @Test
+    @DisplayName("setLike(true): 이미 추천한 상태면 아무것도 쓰지 않고 같은 결과를 돌려준다(멱등)")
+    void setLike_toTrueWhenAlreadyLiked_isIdempotent() {
         User user = userWithEmail("liker@example.com", 2L);
         Post post = postOf(user, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("liker@example.com"))).willReturn(Optional.of(user));
         given(postLikeRepository.existsByPostIdAndUserId(100L, 2L)).willReturn(true);
-        given(postLikeRepository.countByPostId(100L)).willReturn(0L);
+        given(postLikeRepository.countByPostId(100L)).willReturn(1L);
 
-        var result = postService.toggleLike(100L, authOf("liker@example.com", Role.USER));
+        var result = postService.setLike(100L, true, authOf("liker@example.com", Role.USER));
 
-        assertThat(result.liked()).isFalse();
-        verify(postLikeRepository).deleteByPostIdAndUserId(100L, 2L);
-        verify(postLikeRepository, never()).save(any());
+        assertThat(result.liked()).isTrue();
+        verify(postLikeWriter, never()).insert(any(), any());
+    }
+
+    @Test
+    @DisplayName("setLike(true): 검사와 INSERT 사이에 같은 추천이 들어와도 성공으로 처리한다")
+    void setLike_whenConcurrentInsertWins_treatsAsSuccess() {
+        User user = userWithEmail("liker@example.com", 2L);
+        Post post = postOf(user, 100L);
+        given(postRepository.findById(100L)).willReturn(Optional.of(post));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("liker@example.com"))).willReturn(Optional.of(user));
+        given(postLikeRepository.existsByPostIdAndUserId(100L, 2L)).willReturn(false);
+        given(postLikeRepository.countByPostId(100L)).willReturn(1L);
+        // 다른 요청이 먼저 저장해 유니크 제약에 걸린 상황.
+        org.mockito.BDDMockito.willThrow(new DataIntegrityViolationException("UK_POST_LIKE_POST_USER"))
+                .given(postLikeWriter).insert(post, user);
+
+        var result = postService.setLike(100L, true, authOf("liker@example.com", Role.USER));
+
+        // 원하던 최종 상태와 같으므로 오류가 아니다.
+        assertThat(result.liked()).isTrue();
+        assertThat(result.likeCount()).isEqualTo(1L);
     }
 
     @Test

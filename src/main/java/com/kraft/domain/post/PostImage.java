@@ -52,10 +52,15 @@ public class PostImage extends BaseEntity {
     @Column(nullable = false, length = 20)
     private PostImageStatus status;
 
+    /** 저장된 파일의 바이트 수. 계정별 저장량 제한을 계산하는 근거다. */
+    @Column(name = "size_bytes", nullable = false)
+    private long sizeBytes;
+
     @Builder
-    public PostImage(String fileName, User owner) {
+    public PostImage(String fileName, User owner, long sizeBytes) {
         this.fileName = fileName;
         this.owner = owner;
+        this.sizeBytes = sizeBytes;
         this.status = PostImageStatus.ORPHAN;
     }
 

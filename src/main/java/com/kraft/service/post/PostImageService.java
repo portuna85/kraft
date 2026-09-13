@@ -4,11 +4,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Iterator;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -26,6 +30,12 @@ public class PostImageService {
 
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of("jpg", "jpeg", "png", "gif", "webp");
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+    /** 시그니처 판별에 필요한 앞부분 길이(WEBP의 "WEBP" 표시가 8~12바이트에 있다). */
+    private static final int SIGNATURE_HEADER_LENGTH = 12;
+
+    /** 압축을 풀었을 때의 픽셀 수 상한(약 50메가픽셀). 파일은 작지만 펼치면 거대한 이미지를 막는다. */
+    private static final long MAX_PIXELS = 50_000_000L;
 
     /**
      * 아이폰 기본 촬영 포맷(HEIC/HEIF). 허용 목록에 넣지 않는 이유는 "받을 수 없어서"가 아니라
@@ -135,7 +145,95 @@ public class PostImageService {
         if (!ALLOWED_EXTENSIONS.contains(extension)) {
             throw new IllegalArgumentException("허용되지 않는 파일 형식입니다: " + extension);
         }
+        validateRealImage(file, extension);
         return extension;
+    }
+
+    /**
+     * 확장자가 아니라 <b>내용</b>이 실제로 그 이미지 형식인지 확인한다.
+     * <p>
+     * 예전에는 일반 텍스트를 {@code not-an-image.png}로 올려도 그대로 저장됐다
+     * (개선 보고서 F06). 두 단계로 막는다:
+     * <ol>
+     * <li>매직 바이트(파일 시그니처)가 확장자와 맞는지 — 이름만 바꾼 파일을 걸러낸다.</li>
+     * <li>{@link ImageIO}로 실제 크기를 읽어 픽셀 수 상한을 넘는지 — 파일은 작지만 압축을 풀면
+     * 거대한 이미지(decompression bomb)를 걸러낸다. WEBP는 JDK 기본 ImageIO에 디코더가 없어
+     * 이 단계를 건너뛴다(시그니처 검사는 그대로 적용된다).</li>
+     * </ol>
+     */
+    private void validateRealImage(MultipartFile file, String extension) {
+        byte[] header = readHeader(file, SIGNATURE_HEADER_LENGTH);
+        if (!matchesSignature(header, extension)) {
+            throw new IllegalArgumentException(
+                    "이미지 파일이 아니거나 확장자와 실제 형식이 다릅니다: " + extension);
+        }
+        validatePixelCount(file);
+    }
+
+    private boolean matchesSignature(byte[] header, String extension) {
+        return switch (extension) {
+            case "png" -> startsWith(header, 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A);
+            case "jpg", "jpeg" -> startsWith(header, 0xFF, 0xD8, 0xFF);
+            case "gif" -> startsWith(header, 0x47, 0x49, 0x46, 0x38); // "GIF8"
+            // RIFF....WEBP — 4~8바이트는 파일 크기라 건너뛴다.
+            case "webp" -> startsWith(header, 0x52, 0x49, 0x46, 0x46)
+                    && header.length >= 12
+                    && "WEBP".equals(new String(header, 8, 4, StandardCharsets.US_ASCII));
+            default -> false;
+        };
+    }
+
+    /**
+     * 디코딩하지 않고 헤더에서 크기만 읽어 픽셀 수를 제한한다. 전체를 {@code ImageIO.read()}로
+     * 펼치면 그 자체가 메모리를 먹으므로, 리더에게 폭·높이만 물어본다.
+     */
+    private void validatePixelCount(MultipartFile file) {
+        try (ImageInputStream input = ImageIO.createImageInputStream(file.getInputStream())) {
+            if (input == null) {
+                return;
+            }
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
+            if (!readers.hasNext()) {
+                // WEBP처럼 JDK에 디코더가 없는 형식. 시그니처 검사는 이미 통과했다.
+                return;
+            }
+
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(input);
+                long pixels = (long) reader.getWidth(0) * reader.getHeight(0);
+                if (pixels > MAX_PIXELS) {
+                    throw new IllegalArgumentException(
+                            "이미지 크기가 너무 큽니다. 가로×세로 " + MAX_PIXELS / 1_000_000 + "메가픽셀 이하만 올릴 수 있습니다.");
+                }
+            } finally {
+                reader.dispose();
+            }
+        } catch (IOException e) {
+            throw new IllegalArgumentException("이미지 파일을 읽을 수 없습니다.", e);
+        }
+    }
+
+    private byte[] readHeader(MultipartFile file, int length) {
+        byte[] header = new byte[length];
+        try (InputStream in = file.getInputStream()) {
+            int read = in.readNBytes(header, 0, length);
+            return read < length ? java.util.Arrays.copyOf(header, read) : header;
+        } catch (IOException e) {
+            throw new IllegalArgumentException("이미지 파일을 읽을 수 없습니다.", e);
+        }
+    }
+
+    private boolean startsWith(byte[] header, int... signature) {
+        if (header.length < signature.length) {
+            return false;
+        }
+        for (int i = 0; i < signature.length; i++) {
+            if ((header[i] & 0xFF) != signature[i]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

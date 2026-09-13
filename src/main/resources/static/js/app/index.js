@@ -221,12 +221,18 @@ var postEdit = {
     cancelEdit: function () {
         var titleChanged = $('#title').val() !== $('#original-title').val();
         var contentChanged = $('#content').val() !== $('#original-content').val();
+        // 분류도 제목·본문과 똑같이 확인하고 되돌린다. 예전에는 검사와 복원 양쪽에서 빠져 있어,
+        // 분류만 바꾸고 취소하면 확인창도 뜨지 않은 채 바뀐 분류가 남았고 다시 편집해 저장하면
+        // 그때 딸려 들어갔다.
+        var categoryChanged = $('#edit-category').val() !== $('#original-category').val();
         var pictureChanged = this.removedExisting || !!($('#edit-picture').length && $('#edit-picture')[0].files[0]);
-        if ((titleChanged || contentChanged || pictureChanged) && !window.confirm('변경한 내용을 버리시겠습니까?')) {
+        if ((titleChanged || contentChanged || categoryChanged || pictureChanged)
+                && !window.confirm('변경한 내용을 버리시겠습니까?')) {
             return;
         }
         $('#title').val($('#original-title').val());
         $('#content').val($('#original-content').val());
+        $('#edit-category').val($('#original-category').val());
         this.resetPictureState();
         $('#post-edit').attr('hidden', 'hidden');
         $('#post-view').removeAttr('hidden');
@@ -673,12 +679,17 @@ var postLike = {
             return;
         }
         var id = $('#id').val();
+        // 서버에 "뒤집어라"가 아니라 "이 상태로 만들어라"를 보낸다. 같은 요청이 재시도로 두 번
+        // 도달해도 결과가 같다(예전 토글 방식은 재시도가 사용자의 의도를 되돌렸다).
+        var desired = !$btn.hasClass('is-active');
         $btn.prop('disabled', true);
 
         $.ajax({
             type: 'PUT',
             url: '/api/v1/posts/' + id + '/like',
-            dataType: 'json'
+            dataType: 'json',
+            contentType: 'application/json; charset=utf-8',
+            data: JSON.stringify({ liked: desired })
         }).done(function (response) {
             $('#like-count').text(response.likeCount);
             $btn.toggleClass('is-active', response.liked).attr('aria-pressed', response.liked ? 'true' : 'false');

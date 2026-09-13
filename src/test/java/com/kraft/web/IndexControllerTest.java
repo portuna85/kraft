@@ -214,4 +214,19 @@ class IndexControllerTest {
                 .andExpect(content().string(containsString("id=\"post-version\"")))
                 .andExpect(content().string(containsString("value=\"7\"")));
     }
+
+    @Test
+    @DisplayName("F12: 편집 취소가 분류를 되돌릴 수 있도록 원본 분류를 히든 필드로 내려준다")
+    void postsUpdate_rendersOriginalCategoryForCancel() throws Exception {
+        given(postService.findByIdForView(eq(1L), nullable(Authentication.class)))
+                .willReturn(new PostViewDto(1L, "제목", "내용", null, "작성자", true, Category.QNA, 0L, 0L, false, 0L));
+        given(commentService.findByPostIdForView(eq(1L), nullable(Authentication.class)))
+                .willReturn(List.of());
+
+        // 이 필드가 없어서 cancelEdit()이 분류만 복원하지 못했다 — 변경 감지에서도 빠져 있었다.
+        mockMvc.perform(get("/posts/update/1").with(user("tester@example.com").roles("USER")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("id=\"original-category\"")))
+                .andExpect(content().string(containsString("value=\"QNA\"")));
+    }
 }

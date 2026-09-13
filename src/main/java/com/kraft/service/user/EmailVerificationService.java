@@ -32,6 +32,7 @@ public class EmailVerificationService {
     private final UserRepository userRepository;
     private final UserService userService;
     private final EmailSender emailSender;
+    private final ExpiredTokenPurger expiredTokenPurger;
 
     @Value("${app.base-url}")
     private String baseUrl;
@@ -79,13 +80,18 @@ public class EmailVerificationService {
         }
     }
 
+    /**
+     * 만료된 토큰은 {@link ExpiredTokenPurger}가 <b>별도 트랜잭션에서</b> 지운다. 여기서 바로
+     * {@code tokenRepository.delete()}를 부르면, 이어지는 예외가 이 쓰기 트랜잭션을 롤백시키면서
+     * 삭제까지 되돌려 만료 토큰이 그대로 남았다(개선 보고서 F08).
+     */
     @Transactional
     public void verify(String token) {
         EmailVerificationToken verificationToken = tokenRepository.findByToken(token)
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 인증 링크입니다."));
 
         if (verificationToken.isExpired()) {
-            tokenRepository.delete(verificationToken);
+            expiredTokenPurger.purge(verificationToken.getId());
             throw new IllegalArgumentException("인증 링크가 만료되었습니다. 다시 요청해 주세요.");
         }
 
