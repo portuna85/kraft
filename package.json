@@ -1,0 +1,17 @@
+{
+  "name": "kraft-frontend-checks",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Kraft의 브라우저 검증(Playwright)과 정적 검사(ESLint). 애플리케이션 번들과는 무관하며, Gradle 빌드는 이 패키지 없이도 그대로 돈다.",
+  "scripts": {
+    "lint": "eslint src/main/resources/static/js e2e",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.0",
+    "eslint": "^9.37.0",
+    "globals": "^16.5.0"
+  }
+}

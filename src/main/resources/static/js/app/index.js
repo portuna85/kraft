@@ -1,7 +1,7 @@
 function showToast(message, type) {
-    var $toast = $('#app-toast');
-    var $body = $('#app-toast-body');
-    var $title = $('#app-toast-title');
+    const $toast = $('#app-toast');
+    const $body = $('#app-toast-body');
+    const $title = $('#app-toast-title');
 
     $toast.removeClass('bg-success text-white bg-danger');
     if (type === 'success') {
@@ -78,7 +78,7 @@ function formatFileSize(bytes) {
  * sessionStorage를 쓸 수 없는 환경(예외를 던지는 브라우저 설정)에서도 이동 자체는
  * 정상 동작해야 하므로 모든 접근을 try/catch로 감싼다.
  */
-var flash = {
+const flash = {
     STORAGE_KEY: 'kraft.flash',
     MESSAGES: {
         POST_SAVED: { text: '글이 등록되었습니다.', type: 'success' },
@@ -96,7 +96,7 @@ var flash = {
         }
         try {
             sessionStorage.setItem(this.STORAGE_KEY, key);
-        } catch (e) {
+        } catch {
             // 저장소를 쓸 수 없어도 이동은 정상적으로 진행된다.
         }
     },
@@ -117,24 +117,24 @@ var flash = {
         $('#flash').attr('hidden', 'hidden');
     },
     consume: function () {
-        var key = null;
+        let key = null;
         try {
             key = sessionStorage.getItem(this.STORAGE_KEY);
             if (key) {
                 sessionStorage.removeItem(this.STORAGE_KEY);
             }
-        } catch (e) {
+        } catch {
             return;
         }
 
-        var entry = key ? this.MESSAGES[key] : null;
+        const entry = key ? this.MESSAGES[key] : null;
         if (!entry) {
             return;
         }
         this.render(entry.text, entry.type === 'danger');
     },
     render: function (text, isError) {
-        var $flash = $('#flash');
+        const $flash = $('#flash');
         if (!$flash.length) {
             return;
         }
@@ -149,16 +149,16 @@ var flash = {
  * 헤더 오른쪽 버튼 모음의 토글. 768px 미만에서는 hidden 속성으로 열림·닫힘을 표현하고,
  * 그 이상에서는 CSS가 항상 펼쳐 보이므로 이 스크립트가 상태를 건드리지 않는다.
  */
-var siteNav = {
+const siteNav = {
     init: function () {
-        var $toggle = $('#btn-nav-toggle');
-        var $nav = $('#site-nav');
+        const $toggle = $('#btn-nav-toggle');
+        const $nav = $('#site-nav');
         if (!$toggle.length || !$nav.length) {
             return;
         }
 
         $toggle.on('click', function () {
-            var expanded = $toggle.attr('aria-expanded') === 'true';
+            const expanded = $toggle.attr('aria-expanded') === 'true';
             if (expanded) {
                 $nav.attr('hidden', 'hidden');
                 $toggle.attr('aria-expanded', 'false');
@@ -187,7 +187,7 @@ var siteNav = {
  * picture를 null로 보낸다. {@code removedExisting}이 (3)을 표시하고, 파일을 다시 선택하면
  * 그 표시는 무시된다(파일이 있으면 항상 우선).
  */
-var postEdit = {
+const postEdit = {
     MAX_SIZE: 5 * 1024 * 1024,
     ALLOWED_EXT: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
     // 아이폰 기본 촬영 포맷. 서버(PostImageService)와 같은 이유로 거부하되, 사용자가 실제로
@@ -199,7 +199,7 @@ var postEdit = {
     removedExisting: false,
 
     init: function () {
-        var _this = this;
+        const _this = this;
         $('#btn-edit').on('click', function () {
             _this.enterEdit();
         });
@@ -235,13 +235,13 @@ var postEdit = {
         $('#title').trigger('focus');
     },
     cancelEdit: function () {
-        var titleChanged = $('#title').val() !== $('#original-title').val();
-        var contentChanged = $('#content').val() !== $('#original-content').val();
+        const titleChanged = $('#title').val() !== $('#original-title').val();
+        const contentChanged = $('#content').val() !== $('#original-content').val();
         // 분류도 제목·본문과 똑같이 확인하고 되돌린다. 예전에는 검사와 복원 양쪽에서 빠져 있어,
         // 분류만 바꾸고 취소하면 확인창도 뜨지 않은 채 바뀐 분류가 남았고 다시 편집해 저장하면
         // 그때 딸려 들어갔다.
-        var categoryChanged = $('#edit-category').val() !== $('#original-category').val();
-        var pictureChanged = this.removedExisting || !!($('#edit-picture').length && $('#edit-picture')[0].files[0]);
+        const categoryChanged = $('#edit-category').val() !== $('#original-category').val();
+        const pictureChanged = this.removedExisting || !!($('#edit-picture').length && $('#edit-picture')[0].files[0]);
         if ((titleChanged || contentChanged || categoryChanged || pictureChanged)
                 && !window.confirm('변경한 내용을 버리시겠습니까?')) {
             return;
@@ -266,7 +266,7 @@ var postEdit = {
         }
     },
     onFileChange: function () {
-        var file = $('#edit-picture').length ? $('#edit-picture')[0].files[0] : null;
+        const file = $('#edit-picture').length ? $('#edit-picture')[0].files[0] : null;
         this.uploadedUrl = null;
         this.uploadedForFile = null;
         this.revokePreview();
@@ -278,7 +278,7 @@ var postEdit = {
 
         // 클라이언트 사전 검사는 불필요한 왕복을 줄이기 위한 것일 뿐, 서버(PostImageService)의
         // 확장자·용량 검증을 대체하지 않는다 — 실제 판정은 항상 서버가 내린다.
-        var extension = (file.name.split('.').pop() || '').toLowerCase();
+        const extension = (file.name.split('.').pop() || '').toLowerCase();
         if (this.HEIF_EXT.indexOf(extension) !== -1) {
             flash.showError('아이폰 사진 형식(HEIC)은 일부 브라우저에서 표시되지 않아 첨부할 수 없습니다. '
                 + '아이폰 [설정] > [카메라] > [포맷]을 \'높은 호환성\'으로 바꾸면 JPG로 저장됩니다.');
@@ -325,7 +325,7 @@ var postEdit = {
         }
     },
     setProgress: function (text) {
-        var $progress = $('#post-update-progress');
+        const $progress = $('#post-update-progress');
         if (!$progress.length) {
             return;
         }
@@ -339,8 +339,8 @@ var postEdit = {
         $('#btn-update').prop('disabled', busy).attr('aria-busy', busy ? 'true' : 'false');
     },
     submit: function () {
-        var _this = this;
-        var file = $('#edit-picture').length ? $('#edit-picture')[0].files[0] : null;
+        const _this = this;
+        const file = $('#edit-picture').length ? $('#edit-picture')[0].files[0] : null;
 
         this.setBusy(true);
 
@@ -351,7 +351,7 @@ var postEdit = {
 
         if (file) {
             this.setProgress('이미지 업로드 중…');
-            var formData = new FormData();
+            const formData = new FormData();
             formData.append('file', file);
 
             $.ajax({
@@ -377,8 +377,8 @@ var postEdit = {
         }
     },
     doUpdate: function (pictureUrl) {
-        var _this = this;
-        var data = {
+        const _this = this;
+        const data = {
             title: $('#title').val(),
             content: $('#content').val(),
             picture: pictureUrl,
@@ -387,7 +387,7 @@ var postEdit = {
             version: $('#post-version').val()
         };
 
-        var id = $('#id').val();
+        const id = $('#id').val();
         this.setProgress('게시글 저장 중…');
 
         $.ajax({
@@ -403,7 +403,7 @@ var postEdit = {
         }).fail(function (error) {
             _this.setProgress(null);
             _this.setBusy(false);
-            var retryHint = pictureUrl
+            const retryHint = pictureUrl
                 ? ' 이미지는 이미 업로드되어 있으니 다시 "저장"을 누르면 같은 이미지로 재시도합니다.'
                 : '';
             showToast(extractErrorMessage(error) + retryHint, 'danger');
@@ -419,7 +419,7 @@ var postEdit = {
  * 글 저장만 실패했을 때 재시도가 같은 파일을 다시 올리지 않게 한다. 파일을 바꾸거나
  * 선택을 해제하면 즉시 초기화한다.
  */
-var postForm = {
+const postForm = {
     MAX_SIZE: 5 * 1024 * 1024,
     ALLOWED_EXT: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
     // 아이폰 기본 촬영 포맷. 서버(PostImageService)와 같은 이유로 거부하되, 사용자가 실제로
@@ -430,8 +430,8 @@ var postForm = {
     uploadedForFile: null,
 
     init: function () {
-        var _this = this;
-        var $form = $('#post-save-form');
+        const _this = this;
+        const $form = $('#post-save-form');
         if (!$form.length) {
             return;
         }
@@ -456,7 +456,7 @@ var postForm = {
     },
 
     onFileChange: function () {
-        var file = $('#picture').length ? $('#picture')[0].files[0] : null;
+        const file = $('#picture').length ? $('#picture')[0].files[0] : null;
         this.uploadedUrl = null;
         this.uploadedForFile = null;
         this.revokePreview();
@@ -468,7 +468,7 @@ var postForm = {
 
         // 클라이언트 사전 검사는 불필요한 왕복을 줄이기 위한 것일 뿐, 서버(PostImageService)의
         // 확장자·용량 검증을 대체하지 않는다 — 실제 판정은 항상 서버가 내린다.
-        var extension = (file.name.split('.').pop() || '').toLowerCase();
+        const extension = (file.name.split('.').pop() || '').toLowerCase();
         if (this.HEIF_EXT.indexOf(extension) !== -1) {
             flash.showError('아이폰 사진 형식(HEIC)은 일부 브라우저에서 표시되지 않아 첨부할 수 없습니다. '
                 + '아이폰 [설정] > [카메라] > [포맷]을 \'높은 호환성\'으로 바꾸면 JPG로 저장됩니다.');
@@ -509,7 +509,7 @@ var postForm = {
     },
 
     setProgress: function (text) {
-        var $progress = $('#post-save-progress');
+        const $progress = $('#post-save-progress');
         if (!$progress.length) {
             return;
         }
@@ -525,16 +525,16 @@ var postForm = {
     },
 
     submit: function () {
-        var _this = this;
-        var title = $('#title').val();
-        var content = $('#content').val();
+        const _this = this;
+        const title = $('#title').val();
+        const content = $('#content').val();
 
         if (!title || !content) {
             flash.showError('제목과 내용을 모두 입력해 주세요.');
             return;
         }
 
-        var file = $('#picture').length ? $('#picture')[0].files[0] : null;
+        const file = $('#picture').length ? $('#picture')[0].files[0] : null;
 
         this.setBusy(true);
 
@@ -546,7 +546,7 @@ var postForm = {
 
         if (file) {
             this.setProgress('이미지 업로드 중…');
-            var formData = new FormData();
+            const formData = new FormData();
             formData.append('file', file);
 
             $.ajax({
@@ -571,8 +571,8 @@ var postForm = {
     },
 
     doSave: function (pictureUrl) {
-        var _this = this;
-        var data = {
+        const _this = this;
+        const data = {
             title: $('#title').val(),
             content: $('#content').val(),
             picture: pictureUrl,
@@ -594,7 +594,7 @@ var postForm = {
         }).fail(function (error) {
             _this.setProgress(null);
             _this.setBusy(false);
-            var retryHint = pictureUrl
+            const retryHint = pictureUrl
                 ? ' 이미지는 이미 업로드되어 있으니 다시 "등록"을 누르면 같은 이미지로 재시도합니다.'
                 : '';
             flash.showError('게시글 등록에 실패했습니다. ' + extractErrorMessage(error) + retryHint);
@@ -607,17 +607,17 @@ var postForm = {
  * 확인을 누르면 그 대상에 맞는 삭제를 수행하고, 모달을 닫으면 호출 버튼으로
  * 포커스를 되돌린다.
  */
-var deleteConfirm = {
+const deleteConfirm = {
     pending: null, // { kind: 'post' | 'comment', id, $trigger }
     init: function () {
-        var _this = this;
+        const _this = this;
 
         $(document).on('click', '[data-target-kind="post"]', function () {
             _this.open('post', $('#id').val(), $(this));
         });
 
         $(document).on('click', '[data-target-kind="comment"]', function () {
-            var $item = $(this).closest('.comment-list__item');
+            const $item = $(this).closest('.comment-list__item');
             _this.open('comment', $item.attr('data-comment-id'), $(this));
         });
 
@@ -634,7 +634,7 @@ var deleteConfirm = {
     },
     open: function (kind, id, $trigger) {
         this.pending = { kind: kind, id: id, $trigger: $trigger };
-        var message = kind === 'post' ? '이 게시글을 삭제하시겠습니까?' : '이 댓글을 삭제하시겠습니까?';
+        const message = kind === 'post' ? '이 게시글을 삭제하시겠습니까?' : '이 댓글을 삭제하시겠습니까?';
         $('#confirmDeleteModalLabel').text(kind === 'post' ? '게시글 삭제' : '댓글 삭제');
         $('#confirmDeleteMessage').text(message);
         bsModal('#confirmDeleteModal').show();
@@ -643,17 +643,17 @@ var deleteConfirm = {
         if (!this.pending) {
             return;
         }
-        var pending = this.pending;
-        var $confirmBtn = $('#btn-confirm-delete');
+        const pending = this.pending;
+        const $confirmBtn = $('#btn-confirm-delete');
         if ($confirmBtn.prop('disabled')) {
             return;
         }
         $confirmBtn.prop('disabled', true);
 
-        var url = pending.kind === 'post'
+        const url = pending.kind === 'post'
             ? '/api/v1/posts/' + pending.id
             : '/api/v1/comments/' + pending.id;
-        var flashKey = pending.kind === 'post' ? 'POST_DELETED' : 'COMMENT_DELETED';
+        const flashKey = pending.kind === 'post' ? 'POST_DELETED' : 'COMMENT_DELETED';
 
         $.ajax({
             type: 'DELETE',
@@ -682,22 +682,22 @@ var deleteConfirm = {
  * 화면을 갱신한다 — 클릭 즉시 낙관적으로 뒤집지 않는 이유는, 이미 다른 탭에서 취소했거나
  * 요청이 실패했을 때 버튼 상태가 실제와 어긋나는 것을 피하기 위해서다.
  */
-var postLike = {
+const postLike = {
     init: function () {
-        var _this = this;
+        const _this = this;
         $('#btn-like').on('click', function () {
             _this.toggle();
         });
     },
     toggle: function () {
-        var $btn = $('#btn-like');
+        const $btn = $('#btn-like');
         if (!$btn.length || $btn.prop('disabled')) {
             return;
         }
-        var id = $('#id').val();
+        const id = $('#id').val();
         // 서버에 "뒤집어라"가 아니라 "이 상태로 만들어라"를 보낸다. 같은 요청이 재시도로 두 번
         // 도달해도 결과가 같다(예전 토글 방식은 재시도가 사용자의 의도를 되돌렸다).
-        var desired = !$btn.hasClass('is-active');
+        const desired = !$btn.hasClass('is-active');
         $btn.prop('disabled', true);
 
         $.ajax({
@@ -717,23 +717,23 @@ var postLike = {
     }
 };
 
-var comment = {
+const comment = {
     init: function () {
-        var _this = this;
+        const _this = this;
         $('#btn-comment-save').on('click', function () {
             _this.save();
         });
 
         $(document).on('click', '.btn-comment-edit', function () {
-            var $item = $(this).closest('.comment-list__item');
+            const $item = $(this).closest('.comment-list__item');
             $item.find('.comment-view').attr('hidden', 'hidden');
-            var $form = $item.find('.comment-edit-form');
+            const $form = $item.find('.comment-edit-form');
             $form.removeAttr('hidden');
             $form.find('textarea').trigger('focus');
         });
 
         $(document).on('click', '.btn-comment-cancel', function () {
-            var $item = $(this).closest('.comment-list__item');
+            const $item = $(this).closest('.comment-list__item');
             $item.find('.comment-edit-form').attr('hidden', 'hidden');
             $item.find('.comment-view').removeAttr('hidden');
         });
@@ -744,12 +744,12 @@ var comment = {
         });
     },
     save: function () {
-        var postId = $('#comment-post-id').val();
-        var data = {
+        const postId = $('#comment-post-id').val();
+        const data = {
             content: $('#comment-content').val()
         };
 
-        var $btn = $('#btn-comment-save');
+        const $btn = $('#btn-comment-save');
         $btn.prop('disabled', true).attr('aria-busy', 'true');
 
         $.ajax({
@@ -767,13 +767,13 @@ var comment = {
         });
     },
     update: function ($form) {
-        var $item = $form.closest('.comment-list__item');
-        var id = $item.attr('data-comment-id');
-        var data = {
+        const $item = $form.closest('.comment-list__item');
+        const id = $item.attr('data-comment-id');
+        const data = {
             content: $form.find('textarea').val()
         };
 
-        var $btn = $form.find('.btn-comment-save');
+        const $btn = $form.find('.btn-comment-save');
         $btn.prop('disabled', true).attr('aria-busy', 'true');
 
         $.ajax({
@@ -792,7 +792,7 @@ var comment = {
     }
 };
 
-var signup = {
+const signup = {
     init: function () {
         $('#btn-signup').on('click', function () {
             signup.save();
@@ -803,7 +803,7 @@ var signup = {
         $('#passwordConfirm-error').text('');
     },
     showFieldError: function (message) {
-        var $field = $('#passwordConfirm');
+        const $field = $('#passwordConfirm');
         $field.addClass('is-invalid').attr('aria-invalid', 'true');
         $('#passwordConfirm-error').text(message);
         $field.trigger('focus');
@@ -811,21 +811,21 @@ var signup = {
     save: function () {
         this.clearFieldError();
 
-        var password = $('#password').val();
-        var passwordConfirm = $('#passwordConfirm').val();
+        const password = $('#password').val();
+        const passwordConfirm = $('#passwordConfirm').val();
 
         if (password !== passwordConfirm) {
             this.showFieldError('비밀번호가 일치하지 않습니다.');
             return;
         }
 
-        var data = {
+        const data = {
             name: $('#name').val(),
             email: $('#email').val(),
             password: password
         };
 
-        var $btn = $('#btn-signup');
+        const $btn = $('#btn-signup');
         $btn.prop('disabled', true).attr('aria-busy', 'true');
 
         $.ajax({
@@ -855,9 +855,9 @@ var signup = {
  * 호출하거나 후속 요청이 실패할 때 세션이 그대로 남았고 다른 기기의 세션은 애초에 끊기지
  * 않았다.
  */
-var changePassword = {
+const changePassword = {
     init: function () {
-        var $modal = $('#changePasswordModal');
+        const $modal = $('#changePasswordModal');
         if (!$modal.length) {
             return;
         }
@@ -882,12 +882,12 @@ var changePassword = {
         $('#change-password-error').text('').attr('hidden', 'hidden');
     },
     save: function () {
-        var data = {
+        const data = {
             currentPassword: $('#currentPassword').val(),
             newPassword: $('#newPassword').val()
         };
 
-        var $btn = $('#btn-change-password');
+        const $btn = $('#btn-change-password');
         $btn.prop('disabled', true).attr('aria-busy', 'true');
         changePassword.hideError();
 
@@ -912,14 +912,14 @@ var changePassword = {
  * 인증 메일 재발송 모달(#resendVerificationModal). 버튼을 누르는 즉시 메일이 나가던 것을
  * 한 번 확인받도록 바꿨다 — 재발송은 이전 토큰을 무효로 만들기 때문이다.
  */
-var verifyEmail = {
+const verifyEmail = {
     init: function () {
         $('#btn-confirm-resend').on('click', function () {
             verifyEmail.resend();
         });
     },
     resend: function () {
-        var $btn = $('#btn-confirm-resend');
+        const $btn = $('#btn-confirm-resend');
         $btn.prop('disabled', true).attr('aria-busy', 'true');
 
         $.ajax({
@@ -937,8 +937,8 @@ var verifyEmail = {
 };
 
 $(function () {
-    var csrfToken = $('meta[name="_csrf"]').attr('content');
-    var csrfHeader = $('meta[name="_csrf_header"]').attr('content');
+    const csrfToken = $('meta[name="_csrf"]').attr('content');
+    const csrfHeader = $('meta[name="_csrf_header"]').attr('content');
 
     $(document).ajaxSend(function (e, xhr) {
         if (csrfHeader) {
