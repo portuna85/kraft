@@ -668,7 +668,12 @@ a {
     padding: var(--kraft-space-6);
 }
 
-.form-group label {
+/* Bootstrap 5에는 .form-group이 없어 .mb-3로 바꿨다(간격 유틸리티가 그 역할을 한다).
+   폼 라벨 스타일은 계속 필요하므로 선택자를 .form-label과 폼 안의 label로 맞춘다. */
+.form-label,
+.card-kraft form label,
+.modal-body form label,
+.comment-form label {
     font-weight: 600;
     color: #374151;
     font-size: 0.92rem;
@@ -676,7 +681,7 @@ a {
 
 .form-control,
 .btn,
-.form-control-file {
+.form-select {
     min-height: 44px;
 }
 

@@ -55,16 +55,16 @@
 
         <!-- 편집 상태: 관리 권한이 있을 때만 DOM에 만든다. -->
         <form id="post-edit" class="card-kraft post-edit" th:if="${post.canManagePost}" hidden>
-            <div class="form-group">
+            <div class="mb-3">
                 <label for="title">제목</label>
                 <input type="text" class="form-control" id="title" th:value="${post.title}" maxlength="255">
             </div>
-            <div class="form-group">
+            <div class="mb-3">
                 <label for="edit-category">분류</label>
                 <!--/* 공지(NOTICE)는 관리자만 쓸 수 있다. 이미 공지인 글을 관리자가 아닌 사람이
                        수정하는 경우에도 현재 값은 보여야 하므로, 선택된 분류는 항상 남긴다.
                        실제 경계는 서버의 CategoryPolicy가 잡는다. */-->
-                <select class="form-control" id="edit-category">
+                <select class="form-select" id="edit-category">
                     <option th:each="c : ${T(com.kraft.domain.post.Category).values()}"
                             th:if="${c.name() != 'NOTICE'
                                     or c == post.category
@@ -72,14 +72,14 @@
                             th:value="${c}" th:text="${c.title}" th:selected="${c == post.category}"></option>
                 </select>
             </div>
-            <div class="form-group">
+            <div class="mb-3">
                 <label for="content">내용</label>
                 <textarea class="form-control post-edit__textarea" id="content" maxlength="10000"
                           th:text="${post.content}"></textarea>
             </div>
-            <div class="form-group">
+            <div class="mb-3">
                 <label for="edit-picture">사진</label>
-                <input type="file" class="form-control-file" id="edit-picture"
+                <input type="file" class="form-control" id="edit-picture"
                        accept="image/jpeg,image/png,image/gif,image/webp">
                 <small class="form-text text-muted">JPG, JPEG, PNG, GIF, WEBP · 최대 5MB · 1개. 새 파일을 선택하면 기존 이미지를 대체합니다.</small>
             </div>
@@ -134,8 +134,8 @@
                         </div>
                     </div>
                     <form class="comment-edit-form" hidden>
-                        <div class="form-group">
-                            <label class="sr-only">댓글 내용</label>
+                        <div class="mb-3">
+                            <label class="visually-hidden">댓글 내용</label>
                             <textarea class="form-control comment-edit__textarea" maxlength="1000" th:text="${c.content}"></textarea>
                         </div>
                         <div class="btn-group-gap">
@@ -146,7 +146,7 @@
                 </li>
             </ul>
 
-            <div sec:authorize="isAuthenticated()" class="form-group comment-form">
+            <div sec:authorize="isAuthenticated()" class="mb-3 comment-form">
                 <input type="hidden" id="comment-post-id" th:value="${post.id}">
                 <label for="comment-content">댓글 작성</label>
                 <textarea class="form-control" id="comment-content" placeholder="댓글을 입력하세요" maxlength="1000"></textarea>

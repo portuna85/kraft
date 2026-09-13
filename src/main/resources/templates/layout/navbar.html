@@ -43,7 +43,7 @@
                  처리한다(모달 자체는 layout/footer :: footer에 있다). -->
             <button sec:authorize="hasRole('GUEST')" type="button" id="btn-resend-verification"
                     class="kraft-actions__link kraft-actions__link--button"
-                    data-toggle="modal" data-target="#resendVerificationModal">인증 메일 재발송</button>
+                    data-bs-toggle="modal" data-bs-target="#resendVerificationModal">인증 메일 재발송</button>
 
             <a sec:authorize="isAnonymous()" th:href="@{/login(redirect=${currentPath})}" class="kraft-actions__link"
                th:classappend="${currentPath == '/login'} ? 'is-current'"
@@ -54,7 +54,7 @@
                th:attr="aria-current=${currentPath == '/signup'} ? 'page' : null">회원가입</a>
 
             <button sec:authorize="isAuthenticated()" type="button" class="kraft-actions__link kraft-actions__link--button"
-                    data-toggle="modal" data-target="#changePasswordModal">비밀번호 변경</button>
+                    data-bs-toggle="modal" data-bs-target="#changePasswordModal">비밀번호 변경</button>
 
             <button sec:authorize="isAuthenticated()" type="button" id="btn-logout"
                     class="kraft-actions__link kraft-actions__link--button">로그아웃</button>

@@ -20,10 +20,10 @@
         <p class="board-head__desc">최근 등록 순으로 게시글을 확인하세요.</p>
 
         <form class="board-search" method="get" action="/">
-            <label for="search-q" class="sr-only">검색어</label>
+            <label for="search-q" class="visually-hidden">검색어</label>
             <input type="search" id="search-q" name="q" class="form-control board-search__input"
                    placeholder="제목·내용 검색" th:value="${q}">
-            <label for="search-category" class="sr-only">분류</label>
+            <label for="search-category" class="visually-hidden">분류</label>
             <select id="search-category" name="category" class="form-control board-search__category">
                 <option value="" th:selected="${category == null}">전체 분류</option>
                 <option th:each="c : ${categories}" th:value="${c}" th:text="${c.title}"

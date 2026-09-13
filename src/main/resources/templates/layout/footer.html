@@ -15,13 +15,11 @@
     </form>
 
     <div id="toast-container">
-        <div id="app-toast" class="toast hide" role="status" aria-live="polite" aria-atomic="true"
-             data-delay="3000">
+        <div id="app-toast" class="toast" role="status" aria-live="polite" aria-atomic="true"
+             data-bs-delay="3000">
             <div class="toast-header">
-                <strong class="mr-auto" id="app-toast-title">알림</strong>
-                <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="닫기">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <strong class="me-auto" id="app-toast-title">알림</strong>
+                <button type="button" class="btn-close ms-2" data-bs-dismiss="toast" aria-label="닫기"></button>
             </div>
             <div class="toast-body" id="app-toast-body"></div>
         </div>
@@ -37,14 +35,12 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h2 class="modal-title h5" id="confirmDeleteModalLabel">삭제 확인</h2>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="닫기">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
                 </div>
                 <div class="modal-body" id="confirmDeleteMessage">삭제하시겠습니까?</div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" id="btn-cancel-delete"
-                            data-dismiss="modal">취소</button>
+                            data-bs-dismiss="modal">취소</button>
                     <button type="button" class="btn btn-danger" id="btn-confirm-delete">삭제</button>
                 </div>
             </div>
@@ -63,19 +59,17 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h2 class="modal-title h5" id="changePasswordModalLabel">비밀번호 변경</h2>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="닫기">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
                 </div>
                 <div class="modal-body">
                     <div id="change-password-error" class="flash flash--danger" role="alert" hidden></div>
                     <form id="change-password-form">
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="currentPassword">현재 비밀번호</label>
                             <input type="password" class="form-control" id="currentPassword"
                                    autocomplete="current-password">
                         </div>
-                        <div class="form-group">
+                        <div class="mb-3">
                             <label for="newPassword">새 비밀번호 (8자 이상, 대문자·소문자·특수문자 포함)</label>
                             <input type="password" class="form-control" id="newPassword"
                                    autocomplete="new-password">
@@ -84,7 +78,7 @@
                     <p class="text-muted mb-0">변경하면 자동으로 로그아웃되고 로그인 화면으로 이동합니다.</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
                     <button type="button" class="btn btn-primary" id="btn-change-password">변경하기</button>
                 </div>
             </div>
@@ -98,27 +92,39 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h2 class="modal-title h5" id="resendVerificationModalLabel">인증 메일 재발송</h2>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="닫기">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
                 </div>
                 <div class="modal-body">
                     <p class="mb-1">가입한 이메일 주소로 인증 메일을 다시 보냅니다.</p>
                     <p class="text-muted mb-0">이전에 받은 인증 링크는 더 이상 사용할 수 없습니다.</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
                     <button type="button" class="btn btn-primary" id="btn-confirm-resend">재발송</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.3.1.min.js"
-            integrity="sha384-tsQFqpEReu7ZLhBV2VZlAu7zcOV+rXbYlF2cqB8txI/8aZajjp4Bqd+V6D5IgvKT"
+    <!--
+      jQuery 4.0.0. 3.3.1에는 3.5.0에서 고쳐진 DOM 처리 관련 보안 수정이 빠져 있었다.
+      4.x는 메이저 업그레이드지만 제거된 API($.trim, .bind(), $.isFunction 등)를 이 앱은
+      쓰지 않는다 — index.js는 .val/.attr/.on/.ajax 같은 표준 API만 사용한다.
+
+      Bootstrap 5는 jQuery에 의존하지 않는다. 그래서 아래 두 스크립트의 순서는 더 이상
+      중요하지 않지만, index.js가 jQuery와 전역 bootstrap 객체를 모두 쓰므로 index.js는
+      반드시 뒤에 와야 한다.
+
+      Popper가 필요한 컴포넌트(드롭다운·툴팁·팝오버)는 쓰지 않으므로 bundle 대신
+      본체만 불러온다.
+    -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/4.0.0/jquery.min.js"
+            integrity="sha512-8LENNbXmzI/Gbj+OwXmqR6V4QaUAw0/porPzy1+dQoJqC0JPHedWoe0DDOTL2uHA5XXJyIsPtiMHH86pVlay6A=="
+            referrerpolicy="no-referrer"
             crossorigin="anonymous"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
-            integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/js/bootstrap.min.js"
+            integrity="sha512-nKXmKvJyiGQy343jatQlzDprflyB5c+tKCzGP3Uq67v+lmzfnZUi/ZT+fc6ITZfSC5HhaBKUIvr/nTLCV+7F+Q=="
+            referrerpolicy="no-referrer"
             crossorigin="anonymous"></script>
 
     <!--index.js 추가-->

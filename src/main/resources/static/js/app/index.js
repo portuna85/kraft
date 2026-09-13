@@ -15,7 +15,23 @@ function showToast(message, type) {
     }
 
     $body.text(message);
-    $toast.toast('show');
+    bsToast('#app-toast').show();
+}
+
+/**
+ * Bootstrap 5는 jQuery 플러그인($el.modal('show') 같은 형태)을 제공하지 않는다. 전역
+ * bootstrap 객체의 클래스를 쓰되, 같은 요소에 인스턴스가 중복 생성되지 않도록
+ * getOrCreateInstance로 감싼다.
+ * <p>
+ * 반면 'show.bs.modal' 같은 이벤트는 요소에서 발생하는 실제 DOM 이벤트라 jQuery의 .on()으로
+ * 그대로 받을 수 있다 — 그 부분은 바꿀 필요가 없다.
+ */
+function bsModal(selector) {
+    return bootstrap.Modal.getOrCreateInstance($(selector)[0]);
+}
+
+function bsToast(selector) {
+    return bootstrap.Toast.getOrCreateInstance($(selector)[0]);
 }
 
 /**
@@ -621,7 +637,7 @@ var deleteConfirm = {
         var message = kind === 'post' ? '이 게시글을 삭제하시겠습니까?' : '이 댓글을 삭제하시겠습니까?';
         $('#confirmDeleteModalLabel').text(kind === 'post' ? '게시글 삭제' : '댓글 삭제');
         $('#confirmDeleteMessage').text(message);
-        $('#confirmDeleteModal').modal('show');
+        bsModal('#confirmDeleteModal').show();
     },
     confirm: function () {
         if (!this.pending) {
@@ -645,7 +661,7 @@ var deleteConfirm = {
             dataType: 'json',
             contentType: 'application/json; charset=utf-8'
         }).done(function () {
-            $('#confirmDeleteModal').modal('hide');
+            bsModal('#confirmDeleteModal').hide();
             flash.set(flashKey);
             if (pending.kind === 'post') {
                 window.location.href = '/';
@@ -653,7 +669,7 @@ var deleteConfirm = {
                 window.location.reload();
             }
         }).fail(function (error) {
-            $('#confirmDeleteModal').modal('hide');
+            bsModal('#confirmDeleteModal').hide();
             showToast(extractErrorMessage(error), 'danger');
         }).always(function () {
             $confirmBtn.prop('disabled', false);
@@ -915,7 +931,7 @@ var verifyEmail = {
             showToast(extractErrorMessage(error), 'danger');
         }).always(function () {
             $btn.prop('disabled', false).removeAttr('aria-busy');
-            $('#resendVerificationModal').modal('hide');
+            bsModal('#resendVerificationModal').hide();
         });
     }
 };
