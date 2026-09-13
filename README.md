@@ -159,5 +159,16 @@ Compress-Archive -Path uploads -DestinationPath uploads-backup.zip
 - 업로드 이미지가 안 지워짐: 삭제는 DB 커밋 후에 실행하고, 실패하면 `post_images`에
   `PENDING_DELETE`로 남겨 주기 작업이 다시 시도합니다(`app.upload.cleanup-*`).
   글에 연결하지 않은 업로드는 24시간 뒤 정리됩니다.
+- 평소 상태 확인: `logs/kraft-metrics.log`에 5분마다 한 줄씩 남습니다(요청 수·오류율·평균
+  응답·DB 커넥션 풀·디스크 여유·메일 대기열). 상태 확인 엔드포인트나 외부 수집기가 없어도
+  "어제 이 시간과 비교해 지금이 이상한가"를 이 파일 하나로 볼 수 있습니다.
+
+  기준을 넘기면 같은 줄이 ERROR로 올라가 `logs/kraft-error.log`에도 남으므로, 장애를 훑을 때는
+  그쪽만 봐도 됩니다. 기준은 `app.metrics.*`로 조정합니다 — 너무 예민하면 아무도 로그를 보지
+  않게 되므로, 실제로 울린 것을 보고 맞춰 가는 편이 좋습니다.
+
+  ```powershell
+  Get-Content logs\kraft-metrics.log -Tail 20 -Wait
+  ```
 - 비밀번호 변경 후 로그아웃됨: 의도된 동작입니다. 변경 시 그 계정의 모든 기기 세션을
   서버에서 폐기하므로 다시 로그인해야 합니다.

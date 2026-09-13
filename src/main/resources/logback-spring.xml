@@ -14,6 +14,10 @@
     - kraft-email.log  : com.kraft.service.user(이메일 인증 발급·재발송, 실제 SMTP 발송)만 따로
                           모은다 — 이메일 발송 문제를 조사할 때 다른 로그에 섞이지 않게 하기 위해서다.
 
+    - kraft-metrics.log : com.kraft.observability(주기 상태 점검) 전용. additivity="false"라
+                          kraft.log에는 안 섞인다 — 5분마다 남는 정상 보고가 다른 로그를 밀어내지
+                          않게 하기 위해서다. 다만 ERROR(임계 초과)는 kraft-error.log에도 남는다.
+
     파일은 logs/ 아래에 남고(.gitignore에 등록됨), 매일 또는 20MB를 넘길 때 회전해
     logs/archive/*.log.gz로 압축 보관한다.
 -->
@@ -97,6 +101,20 @@
         </encoder>
     </appender>
 
+    <appender name="METRICS_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/kraft-metrics.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_ARCHIVE}/kraft-metrics.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>20MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>500MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FILE_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
     <!-- additivity="false": kraft.log(루트)에는 안 남기고 콘솔 + 전용 파일에만 남긴다.
          레벨은 각 application-*.yml의 logging.level.org.hibernate.SQL이 결정한다. -->
     <logger name="org.hibernate.SQL" additivity="false">
@@ -118,6 +136,14 @@
 
     <logger name="com.kraft.service.user" additivity="true">
         <appender-ref ref="EMAIL_FILE"/>
+    </logger>
+
+    <!-- additivity="false": 5분마다 남는 정상 보고로 kraft.log를 채우지 않는다.
+         임계를 넘긴 ERROR만 ERROR_FILE에 함께 남아 장애를 훑을 때 보인다. -->
+    <logger name="com.kraft.observability" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="METRICS_FILE"/>
+        <appender-ref ref="ERROR_FILE"/>
     </logger>
 
     <root level="INFO">

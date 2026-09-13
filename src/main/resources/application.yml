@@ -79,6 +79,25 @@ app:
     # 이 시간 넘게 "발송 중"이면 도중에 중단된 것으로 보고 대기열로 되돌린다.
     stuck-after-ms: 300000
 
+  metrics:
+    # 앱이 스스로 상태를 점검해 logs/kraft-metrics.log에 한 줄씩 남긴다. 기준을 넘기면 ERROR로
+    # 올려 logs/kraft-error.log에도 남는다. 외부 수집기나 상태 확인 엔드포인트에 의존하지 않는다
+    # — 이 앱은 호스트에서 직접 실행되어 프로브를 찌를 오케스트레이터가 없다.
+    enabled: true
+    initial-delay-ms: 60000
+    interval-ms: 300000
+    # 오류율·응답 지연은 요청이 이만큼은 모여야 판정한다. 표본이 적으면 비율이 요동친다.
+    min-requests: 20
+    error-rate: 0.1
+    # 5xx는 비율과 무관하게 한 건만 나와도 남긴다. 사용자 잘못이 아니기 때문이다.
+    server-errors: 0
+    avg-response-ms: 1000
+    pool-usage: 0.8
+    # 1GB. 업로드 디렉터리가 있는 디스크 기준.
+    disk-free-bytes: 1073741824
+    mail-pending: 20
+    mail-failed: 0
+
   upload:
     # 게시글 사진 업로드 저장 경로(상대 경로는 애플리케이션 실행 위치 기준). 운영 환경에서
     # 컨테이너 재배포 시 파일이 유실될 수 있으므로(임시 파일시스템), 영구 볼륨을 마운트하거나

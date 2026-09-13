@@ -19,4 +19,7 @@ public interface OutboxMailRepository extends JpaRepository<OutboxMail, Long> {
      * 그 메일은 영영 PENDING으로 돌아오지 못한다.
      */
     List<OutboxMail> findByStatusAndUpdatedAtBefore(OutboxMailStatus status, LocalDateTime threshold);
+
+    /** 상태 보고에 쓴다 — 대기·실패가 쌓이면 메일이 안 나가고 있다는 뜻이다. */
+    long countByStatus(OutboxMailStatus status);
 }
