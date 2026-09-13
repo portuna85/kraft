@@ -145,7 +145,17 @@ Compress-Archive -Path uploads -DestinationPath uploads-backup.zip
 - DB 인증 실패: 기존 볼륨의 계정과 `.env`가 일치하는지 확인합니다. 볼륨 삭제로 해결하지 않습니다.
 - 포트 충돌: 기존 프로세스를 확인하거나 `DB_PORT`를 바꾸고 `DB_URL`도 함께 수정합니다.
 - 다른 기기에서 접속: `APP_BASE_URL=http://<PC 주소>:8080`을 설정합니다.
-- SMTP 실패: `logs/kraft-email.log`를 확인합니다.
+- SMTP 실패: `logs/kraft-email.log`와 **`outbox_mails` 테이블**을 확인합니다. 메일은 요청
+  트랜잭션 안에서 보내지 않고 이 대기열을 거쳐 나가므로, 상태와 실패 원인이 행에 남습니다.
+
+  ```sql
+  SELECT id, user_id, status, attempts, last_error, created_at, sent_at
+  FROM outbox_mails WHERE status <> 'SENT' ORDER BY id DESC;
+  ```
+
+  `PENDING`은 아직 보내지 않은 것(주기 작업이 다시 시도합니다), `FAILED`는 재시도 횟수를
+  모두 쓴 것입니다. 원인을 고친 뒤 다시 보내려면 해당 행을 `PENDING`으로 되돌리고
+  `attempts`를 0으로 낮춥니다. 발송 주기와 재시도 횟수는 `app.mail.*`로 조정합니다.
 - 업로드 이미지가 안 지워짐: 삭제는 DB 커밋 후에 실행하고, 실패하면 `post_images`에
   `PENDING_DELETE`로 남겨 주기 작업이 다시 시도합니다(`app.upload.cleanup-*`).
   글에 연결하지 않은 업로드는 24시간 뒤 정리됩니다.

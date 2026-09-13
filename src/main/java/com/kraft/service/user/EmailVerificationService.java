@@ -6,9 +6,9 @@ import com.kraft.domain.user.EmailVerificationTokenRepository;
 import com.kraft.domain.user.Role;
 import com.kraft.domain.user.User;
 import com.kraft.domain.user.UserRepository;
+import com.kraft.service.support.AfterCommit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,7 +18,9 @@ import java.util.UUID;
 
 /**
  * 회원가입 후 "GUEST → USER" 승격을 위한 이메일 인증 토큰 발급·검증을 담당한다.
- * 실제 이메일 발송은 {@link EmailSender}(프로파일별 구현체)에 위임한다.
+ * <p>
+ * 메일은 여기서 보내지 않는다. 대기열({@link OutboxMailStore})에 넣기만 하고 실제 발송은
+ * {@link OutboxMailWorker}가 트랜잭션 밖에서 한다 — 그 이유는 {@link #sendVerificationEmail} 참고.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -28,15 +30,28 @@ public class EmailVerificationService {
 
     private static final Duration TOKEN_TTL = Duration.ofHours(24);
 
+    /** 재발송 요청 사이에 두는 최소 간격. */
+    private static final Duration RESEND_COOLDOWN = Duration.ofSeconds(60);
+
     private final EmailVerificationTokenRepository tokenRepository;
     private final UserRepository userRepository;
     private final UserService userService;
-    private final EmailSender emailSender;
+    private final OutboxMailStore outboxMailStore;
+    private final OutboxMailWorker outboxMailWorker;
     private final ExpiredTokenPurger expiredTokenPurger;
 
-    @Value("${app.base-url}")
-    private String baseUrl;
-
+    /**
+     * 인증 토큰을 만들고 메일을 <b>대기열에 넣는다.</b> 실제 발송은 이 트랜잭션이 커밋된 뒤
+     * 별도 흐름에서 일어난다.
+     * <p>
+     * 예전에는 여기서 SMTP를 그대로 호출했다. 연결·읽기·쓰기 타임아웃이 각각 5초라 메일 서버가
+     * 굼뜨면 <b>DB 커넥션 하나를 최대 15초 붙잡은 채</b> 기다렸고, 동시에 몇 명만 가입해도
+     * 커넥션 풀이 말랐다(개선 보고서 "메일 안정성").
+     * <p>
+     * 발송을 단순히 {@code afterCommit}으로 미루는 것으로는 부족하다 — Spring은 그 콜백을
+     * 커넥션을 반납하는 {@code cleanupAfterCompletion}<b>보다 먼저</b> 실행하므로 커넥션은 여전히
+     * 잡혀 있다. 그래서 발송을 {@code @Async}로 다른 스레드에 넘겨 완전히 떼어 놓는다.
+     */
     @Transactional
     public void sendVerificationEmail(String email) {
         User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
@@ -49,34 +64,33 @@ public class EmailVerificationService {
                 .expiresAt(LocalDateTime.now().plus(TOKEN_TTL))
                 .build());
 
-        String link = baseUrl + "/users/verify?token=" + token;
-        emailSender.send(
-                user.getEmail(),
-                "[kraft] 이메일 인증을 완료해 주세요",
-                "아래 링크를 클릭해 이메일 인증을 완료해 주세요:\n" + link
-                        + "\n\n이 링크는 24시간 동안 유효합니다."
-        );
+        // 토큰과 대기열 행은 같은 트랜잭션에서 함께 커밋된다. 한쪽만 남는 일이 없어야 한다.
+        outboxMailStore.enqueue(user, token);
+
+        // 커밋이 끝난 뒤 다른 스레드에서 보낸다. 사용자가 주기 작업을 기다리지 않아도 된다.
+        AfterCommit.run(outboxMailWorker::drainAsync);
     }
 
     /**
-     * 회원가입 직후 호출하는 안전 버전. 메일 발송 실패(SMTP 오류 등)가 회원가입 응답 자체를
-     * 실패시키지 않도록 예외를 여기서 흡수하고 로그만 남긴다 — 이미 생성된 회원 정보는 그대로
-     * 유효하며, 인증 메일이 도착하지 않았다면 {@link #resend}로 다시 요청할 수 있다.
+     * 회원가입 직후 호출하는 안전 버전. 예외를 흡수해 회원가입 응답 자체가 실패하지 않게 한다 —
+     * 이미 생성된 회원 정보는 그대로 유효하며, 인증 메일이 오지 않았다면 {@link #resend}로 다시
+     * 요청할 수 있다.
      * <p>
-     * {@code @Transactional}을 명시하지 않으면 클래스 레벨의 {@code readOnly = true}를 그대로
-     * 물려받는다. 이 메서드가 내부에서 {@code sendVerificationEmail(email)}을 호출하는 것은
-     * self-invocation이라 Spring 프록시를 거치지 않으므로, 그 메서드에 붙은
-     * {@code @Transactional}(쓰기 가능)이 무시되고 바깥의 읽기 전용 트랜잭션이 그대로 적용된다.
-     * H2는 읽기 전용 트랜잭션에서도 INSERT를 관대하게 허용해 로컬에서는 드러나지 않았지만,
-     * MariaDB는 엄격히 거부한다(Docker 검증 중 실제로 재현). 여기 {@code @Transactional}을 명시해
-     * 바깥 트랜잭션 자체를 쓰기 가능하게 만들어 해결한다.
+     * 이 메서드가 막아 주는 것이 이제 SMTP 오류는 아니다. 발송은 대기열에 들어간 뒤 별도 흐름에서
+     * 일어나므로 여기까지 올라오지 않는다. 남은 것은 토큰·대기열 저장이 실패하는 경우다.
+     * <p>
+     * {@code @Transactional}을 명시하는 이유는 그대로다. 이 메서드가 내부에서
+     * {@code sendVerificationEmail(email)}을 호출하는 것은 self-invocation이라 Spring 프록시를
+     * 거치지 않으므로, 그 메서드의 {@code @Transactional}(쓰기 가능)이 무시되고 클래스 레벨의
+     * {@code readOnly = true}가 적용된다. H2는 읽기 전용 트랜잭션에서도 INSERT를 관대하게
+     * 허용해 로컬에서는 드러나지 않았지만 MariaDB는 엄격히 거부한다(Docker 검증 중 실제로 재현).
      */
     @Transactional
     public void sendVerificationEmailSafely(String email) {
         try {
             sendVerificationEmail(email);
         } catch (Exception e) {
-            log.warn("인증 메일 발송에 실패했습니다. email={}", email, e);
+            log.warn("인증 메일을 대기열에 넣지 못했습니다. email={}", email, e);
         }
     }
 
@@ -100,11 +114,13 @@ public class EmailVerificationService {
     }
 
     /**
-     * 사용자가 명시적으로 재발송을 요청했을 때 호출한다. 회원가입 직후의
-     * {@link #sendVerificationEmailSafely}와 달리 메일 발송 실패를 흡수하지 않고 그대로
-     * 전파한다 — 사용자가 결과를 기대하고 누른 버튼이므로 실패를 조용히 감추면 안 된다.
-     * 이미 인증된(Role이 GUEST가 아닌) 계정은 재발송 대상이 아니므로 거부한다. 재발송 전
-     * 기존 토큰을 지워, 같은 사용자에 대해 유효한 토큰이 여러 개 동시에 쌓이지 않게 한다.
+     * 사용자가 명시적으로 재발송을 요청했을 때 호출한다. 이미 인증된(Role이 GUEST가 아닌) 계정은
+     * 대상이 아니므로 거부한다. 재발송 전 기존 토큰을 지워, 같은 사용자에 대해 유효한 토큰이
+     * 여러 개 쌓이지 않게 한다.
+     * <p>
+     * 짧은 간격의 반복 요청은 막는다. 버튼을 연타하면 메일이 그만큼 쌓이는데, 재발송이 기존 토큰을
+     * 지우므로 <b>먼저 도착한 링크들이 전부 무효가 된다</b> — 받는 사람은 여러 통을 받고 그중
+     * 마지막 하나만 동작하는 상황이 된다. 발송 비용보다 이 혼란이 더 문제다.
      */
     @Transactional
     public void resend(String email) {
@@ -114,8 +130,22 @@ public class EmailVerificationService {
         if (user.getRole() != Role.GUEST) {
             throw new IllegalArgumentException("이미 인증된 계정입니다.");
         }
+        requireResendAllowed(user.getId());
 
         tokenRepository.deleteByUserId(user.getId());
         sendVerificationEmail(email);
+    }
+
+    private void requireResendAllowed(Long userId) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime earliestNext = outboxMailStore.lastQueuedAt(userId)
+                .map(last -> last.plus(RESEND_COOLDOWN))
+                .orElse(LocalDateTime.MIN);
+
+        if (now.isBefore(earliestNext)) {
+            long waitSeconds = Math.max(1, Duration.between(now, earliestNext).toSeconds());
+            throw new IllegalArgumentException(
+                    "인증 메일을 방금 보냈습니다. " + waitSeconds + "초 후에 다시 시도해 주세요.");
+        }
     }
 }

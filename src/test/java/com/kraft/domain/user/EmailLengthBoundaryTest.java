@@ -55,13 +55,17 @@ class EmailLengthBoundaryTest {
     private EmailVerificationTokenRepository tokenRepository;
 
     @Autowired
+    private OutboxMailRepository outboxMailRepository;
+
+    @Autowired
     private EmailAttributeConverter emailAttributeConverter;
 
     @BeforeEach
     void setUp() {
         postRepository.deleteAll();
-        // 가입하면 인증 토큰이 함께 생기므로, users보다 먼저 지워야 FK에 걸리지 않는다.
+        // 가입하면 인증 토큰과 메일 대기열 행이 함께 생기므로, users보다 먼저 지워야 FK에 걸리지 않는다.
         tokenRepository.deleteAll();
+        outboxMailRepository.deleteAll();
         userRepository.deleteAll();
     }
 

@@ -28,14 +28,15 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
- * {@link EmailVerificationService} 단위 테스트. {@code @Value}로 주입되는 {@code baseUrl}은
- * Mockito 순수 단위 테스트에서는 스프링 컨텍스트가 없어 자동 주입되지 않으므로
- * {@link ReflectionTestUtils}로 직접 값을 설정한다({@code CommentServiceTest}와 동일한 패턴).
+ * {@link EmailVerificationService} 단위 테스트.
+ * <p>
+ * 메일 본문과 baseUrl은 더 이상 이 서비스의 관심사가 아니다 — 서비스는 대기열에 넣기만 하고
+ * 링크 생성과 발송은 {@link OutboxMailWorker}가 한다. 그래서 여기서는 "같은 토큰이 대기열에
+ * 들어갔는가"까지만 확인한다.
  */
 @ExtendWith(MockitoExtension.class)
 class EmailVerificationServiceTest {
 
-    private static final String BASE_URL = "http://localhost:8080";
 
     @Mock
     private EmailVerificationTokenRepository tokenRepository;
@@ -47,7 +48,10 @@ class EmailVerificationServiceTest {
     private UserService userService;
 
     @Mock
-    private EmailSender emailSender;
+    private OutboxMailStore outboxMailStore;
+
+    @Mock
+    private OutboxMailWorker outboxMailWorker;
 
     @Mock
     private ExpiredTokenPurger expiredTokenPurger;
@@ -56,8 +60,8 @@ class EmailVerificationServiceTest {
 
     @BeforeEach
     void setUp() {
-        emailVerificationService = new EmailVerificationService(tokenRepository, userRepository, userService, emailSender, expiredTokenPurger);
-        ReflectionTestUtils.setField(emailVerificationService, "baseUrl", BASE_URL);
+        emailVerificationService = new EmailVerificationService(tokenRepository, userRepository, userService,
+                outboxMailStore, outboxMailWorker, expiredTokenPurger);
     }
 
     private static User userWithId(Long id, String email) {
@@ -76,11 +80,11 @@ class EmailVerificationServiceTest {
                 .hasMessageContaining("존재하지 않는 회원입니다");
 
         verify(tokenRepository, never()).save(any());
-        verify(emailSender, never()).send(anyString(), anyString(), anyString());
+        verify(outboxMailStore, never()).enqueue(any(), anyString());
     }
 
     @Test
-    @DisplayName("sendVerificationEmail: 회원이 존재하면 토큰을 저장하고 baseUrl+token 링크가 포함된 메일을 발송한다")
+    @DisplayName("sendVerificationEmail: 회원이 존재하면 토큰을 저장하고 같은 토큰으로 메일을 대기열에 넣는다")
     void sendVerificationEmail_whenUserExists_savesTokenAndSendsEmail() {
         User user = userWithId(1L, "tester@example.com");
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(user));
@@ -94,9 +98,8 @@ class EmailVerificationServiceTest {
         assertThat(savedToken.getUser()).isEqualTo(user);
         assertThat(savedToken.getExpiresAt()).isAfter(LocalDateTime.now());
 
-        ArgumentCaptor<String> textCaptor = ArgumentCaptor.forClass(String.class);
-        verify(emailSender).send(org.mockito.ArgumentMatchers.eq("tester@example.com"), anyString(), textCaptor.capture());
-        assertThat(textCaptor.getValue()).contains(BASE_URL + "/users/verify?token=" + savedToken.getToken());
+        // SMTP는 여기서 부르지 않는다. 같은 트랜잭션에서 대기열에 같은 토큰이 들어가야 한다.
+        verify(outboxMailStore).enqueue(user, savedToken.getToken());
     }
 
     @Test
@@ -171,7 +174,7 @@ class EmailVerificationServiceTest {
                 .hasMessageContaining("존재하지 않는 회원입니다");
 
         verify(tokenRepository, never()).deleteByUserId(any());
-        verify(emailSender, never()).send(anyString(), anyString(), anyString());
+        verify(outboxMailStore, never()).enqueue(any(), anyString());
     }
 
     @Test
@@ -186,11 +189,11 @@ class EmailVerificationServiceTest {
                 .hasMessageContaining("이미 인증된 계정입니다");
 
         verify(tokenRepository, never()).deleteByUserId(any());
-        verify(emailSender, never()).send(anyString(), anyString(), anyString());
+        verify(outboxMailStore, never()).enqueue(any(), anyString());
     }
 
     @Test
-    @DisplayName("resend: GUEST 회원이면 기존 토큰을 지우고 새 토큰으로 메일을 다시 발송한다")
+    @DisplayName("resend: GUEST 회원이면 기존 토큰을 지우고 새 토큰으로 메일을 다시 대기열에 넣는다")
     void resend_whenUserIsGuest_deletesOldTokenAndResendsEmail() {
         User user = userWithId(1L, "tester@example.com");
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(user));
@@ -199,6 +202,6 @@ class EmailVerificationServiceTest {
 
         verify(tokenRepository).deleteByUserId(1L);
         verify(tokenRepository).save(any(EmailVerificationToken.class));
-        verify(emailSender).send(org.mockito.ArgumentMatchers.eq("tester@example.com"), anyString(), anyString());
+        verify(outboxMailStore).enqueue(org.mockito.ArgumentMatchers.eq(user), anyString());
     }
 }

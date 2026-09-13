@@ -64,6 +64,13 @@ test('가입하고 인증 링크를 열면 글을 쓸 수 있게 된다', async 
     await expect(page.locator('#post-save-form')).toHaveCount(0);
 
     // 발송된 메일에서 인증 링크를 꺼내 연다.
+    // 메일은 DB 트랜잭션 밖에서 비동기로 나가므로(OutboxMailWorker) 곧바로 도착해 있지 않을 수
+    // 있다. 도착할 때까지 짧게 기다린다 — 이것이 실제 사용자가 겪는 흐름이기도 하다.
+    await expect
+        .poll(async () => (await request.get(`/e2e/mails/latest?to=${encodeURIComponent(email)}`)).status(),
+            { timeout: 10_000 })
+        .toBe(200);
+
     const mail = await (await request.get(`/e2e/mails/latest?to=${encodeURIComponent(email)}`)).json();
     const verifyUrl = mail.text.match(/https?:\/\/\S+/)[0];
     await page.goto(verifyUrl);

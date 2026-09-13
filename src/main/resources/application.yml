@@ -68,6 +68,17 @@ spring:
       enabled: true
 
 app:
+  mail:
+    # 메일 발송은 DB 트랜잭션 밖에서 처리한다(OutboxMailWorker). 가입·재발송 직후 한 번 보내고,
+    # 그때 실패했거나 앱이 내려가 있던 것을 주기 작업이 다시 시도한다.
+    enabled: true
+    batch-size: 20
+    max-attempts: 5
+    drain-initial-delay-ms: 30000
+    drain-interval-ms: 60000
+    # 이 시간 넘게 "발송 중"이면 도중에 중단된 것으로 보고 대기열로 되돌린다.
+    stuck-after-ms: 300000
+
   upload:
     # 게시글 사진 업로드 저장 경로(상대 경로는 애플리케이션 실행 위치 기준). 운영 환경에서
     # 컨테이너 재배포 시 파일이 유실될 수 있으므로(임시 파일시스템), 영구 볼륨을 마운트하거나

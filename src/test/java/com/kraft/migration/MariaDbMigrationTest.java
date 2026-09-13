@@ -24,6 +24,10 @@ import org.testcontainers.containers.MariaDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -33,7 +37,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 운영과 같은 MariaDB에서 Flyway 마이그레이션 전체(V1→V6)를 실제로 실행해 검증한다.
+ * 운영과 같은 MariaDB에서 Flyway 마이그레이션 전체를 실제로 실행해 검증한다.
  * <p>
  * 나머지 테스트는 전부 H2 + {@code ddl-auto: create-drop}이라 <b>{@code db/migration}의 SQL을
  * 한 번도 실행하지 않는다</b> — Hibernate가 엔티티 매핑으로 스키마를 직접 만들기 때문이다.
@@ -42,7 +46,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>
  * 여기서 확인하는 것은 네 가지다:
  * <ol>
- * <li>빈 DB에서 V1~V6이 순서대로 성공한다.</li>
+ * <li>빈 DB에서 db/migration의 모든 마이그레이션이 순서대로 성공한다.</li>
  * <li>{@code ddl-auto: validate}가 통과한다 — 컨텍스트가 뜨는 것 자체가 "마이그레이션이 만든
  * 스키마와 엔티티 매핑이 일치한다"는 증거다. MariaDB 네이티브 ENUM의 <b>값 순서</b>처럼
  * H2에서는 드러나지 않는 불일치가 여기서 잡힌다.</li>
@@ -91,14 +95,16 @@ class MariaDbMigrationTest {
     private PasswordEncoder passwordEncoder;
 
     @Test
-    @DisplayName("빈 DB에서 V1~V6 마이그레이션이 모두 성공한다")
-    void allMigrations_applySuccessfullyOnEmptyDatabase() {
+    @DisplayName("빈 DB에서 모든 마이그레이션이 순서대로 성공한다")
+    void allMigrations_applySuccessfullyOnEmptyDatabase() throws IOException {
         List<Map<String, Object>> history = jdbcTemplate.queryForList(
                 "SELECT version, description, success FROM flyway_schema_history "
                         + "WHERE version IS NOT NULL ORDER BY installed_rank");
 
+        // 기대값을 손으로 적지 않고 db/migration의 파일 목록에서 읽는다. 마이그레이션을 더할
+        // 때마다 이 테스트를 같이 고쳐야 했고, 실제로 V7을 추가하면서 깨졌다.
         assertThat(history).extracting(row -> row.get("version").toString())
-                .containsExactly("1", "2", "3", "4", "5", "6");
+                .containsExactlyElementsOf(migrationVersionsOnDisk());
         assertThat(history).allSatisfy(row ->
                 assertThat(row.get("success")).as("마이그레이션 %s 성공 여부", row.get("version")).isEqualTo(true));
     }
@@ -115,7 +121,7 @@ class MariaDbMigrationTest {
     }
 
     @Test
-    @DisplayName("V4~V6이 추가한 컬럼·제약이 실제로 존재한다")
+    @DisplayName("나중 마이그레이션이 추가한 컬럼·제약이 실제로 존재한다")
     void laterMigrationsAddedTheirColumnsAndConstraints() {
         assertThat(columnExists("posts", "version")).isTrue();
         assertThat(columnExists("post_images", "size_bytes")).isTrue();
@@ -172,6 +178,17 @@ class MariaDbMigrationTest {
         // 조회수 증가는 별도 UPDATE 한 문장이다(F02). 운영 DB에서도 같은 SQL이 도는지 본다.
         postService.findByIdForView(id, auth);
         assertThat(postRepository.findById(id).orElseThrow().getViewCount()).isEqualTo(1L);
+    }
+
+    /** {@code V3__spring_session.sql} → {@code "3"}. 파일 이름 순이 곧 적용 순서다. */
+    private static List<String> migrationVersionsOnDisk() throws IOException {
+        try (var files = Files.list(Path.of("src/main/resources/db/migration"))) {
+            return files.map(path -> path.getFileName().toString())
+                    .filter(name -> name.startsWith("V") && name.endsWith(".sql"))
+                    .map(name -> name.substring(1, name.indexOf("__")))
+                    .sorted(Comparator.comparingInt(Integer::parseInt))
+                    .toList();
+        }
     }
 
     private String columnTypeOf(String table, String column) {
