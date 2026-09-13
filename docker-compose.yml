@@ -1,20 +1,53 @@
-# Kraft 로컬 개발용 MariaDB. 2026-09-11부터 local(기본) 스프링 프로파일이 H2 대신 이
-# 컨테이너에 접속하므로(application-local.yml 참고), 앱을 실행하기 전에 반드시
-# `docker compose up -d`로 이 서비스를 먼저 띄워야 한다. 접속 정보는 .env(.env.example
-# 참고)에서 환경변수로 주입한다. gradlew test는 이 컨테이너와 무관하다(test 프로파일이
-# H2 인메모리를 쓴다 — application-test.yml, build.gradle.kts 참고).
+# 전체 실행: docker compose up -d --build --wait
+# IDE 개발용 DB만 실행: docker compose up -d --wait mariadb
+name: kraft
+
 services:
+  app:
+    image: kraft-app:local
+    build:
+      context: .
+    restart: unless-stopped
+    init: true
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: jdbc:mariadb://mariadb:3306/${MARIADB_DATABASE:?Set MARIADB_DATABASE in .env}
+      DB_USERNAME: ${MARIADB_USER:?Set MARIADB_USER in .env}
+      DB_PASSWORD: ${MARIADB_PASSWORD:?Set MARIADB_PASSWORD in .env}
+      EMAIL_ENCRYPTION_KEY: ${EMAIL_ENCRYPTION_KEY:-local-dev-only-email-key-do-not-use-in-prod}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080}
+      MAIL_HOST: ${MAIL_HOST:-localhost}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      TZ: Asia/Seoul
+    ports:
+      - "${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:8080"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs/docker:/app/logs
+    stop_grace_period: 40s
+    logging:
+      driver: local
+      options:
+        max-size: "20m"
+        max-file: "5"
+
   mariadb:
-    image: mariadb:11.7
-    container_name: kraft-mariadb
+    # 기존 볼륨이 사용하던 버전을 유지한다. 업그레이드는 백업·호환성 검증 후 별도로 진행한다.
+    image: mariadb:11.7.2
     restart: unless-stopped
     environment:
-      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
-      MARIADB_DATABASE: ${MARIADB_DATABASE}
-      MARIADB_USER: ${MARIADB_USER}
-      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?Set MARIADB_ROOT_PASSWORD in .env}
+      MARIADB_DATABASE: ${MARIADB_DATABASE:?Set MARIADB_DATABASE in .env}
+      MARIADB_USER: ${MARIADB_USER:?Set MARIADB_USER in .env}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:?Set MARIADB_PASSWORD in .env}
+      TZ: Asia/Seoul
     ports:
-      - "3306:3306"
+      - "127.0.0.1:${DB_PORT:-3306}:3306"
     volumes:
       - kraft-mariadb-data:/var/lib/mysql
     healthcheck:
@@ -23,6 +56,14 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
+    stop_grace_period: 40s
+    logging:
+      driver: local
+      options:
+        max-size: "20m"
+        max-file: "5"
 
 volumes:
   kraft-mariadb-data:
+    # 기존 Compose 볼륨을 그대로 연결한다.
+    name: kraft_kraft-mariadb-data

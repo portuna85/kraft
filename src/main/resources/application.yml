@@ -36,6 +36,9 @@ spring:
       mail:
         smtp:
           auth: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
           starttls:
             enable: true
 
@@ -63,6 +66,21 @@ spring:
       # 관리하는 실행기를 플랫폼 스레드 풀 대신 가상 스레드로 구동한다. 이 프로젝트는
       # Java 25 툴체인을 쓰므로(build.gradle.kts) 별도 준비 없이 바로 켤 수 있다.
       enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+      group:
+        # 웹·DB의 준비 상태를 검사한다. 선택 기능인 외부 SMTP에는 접속하지 않는다.
+        readiness:
+          include: readinessState,db
 
 app:
   upload:

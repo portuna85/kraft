@@ -15,6 +15,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -44,6 +46,30 @@ class SecurityConfigTest {
                 .password(passwordEncoder.encode("Password123!"))
                 .role(Role.USER)
                 .build());
+    }
+
+    @Test
+    @DisplayName("컨테이너 readiness는 로그인 없이 DB 상태를 확인하고 상세 정보는 숨긴다")
+    void readiness_isPublicAndDoesNotExposeDetails() throws Exception {
+        mockMvc.perform(get("/actuator/health/readiness"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"))
+                .andExpect(jsonPath("$.components").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("liveness는 로그인 없이 확인할 수 있다")
+    void liveness_isPublic() throws Exception {
+        mockMvc.perform(get("/actuator/health/liveness"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"));
+    }
+
+    @Test
+    @DisplayName("로그인한 사용자도 상태 확인 외 관리 엔드포인트에 접근할 수 없다")
+    void otherActuatorEndpoints_areDenied() throws Exception {
+        mockMvc.perform(get("/actuator/env").with(user("tester@example.com")))
+                .andExpect(status().isForbidden());
     }
 
     @Test

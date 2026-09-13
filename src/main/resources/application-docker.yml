@@ -1,0 +1,45 @@
+# Docker 개발 실행 전용. Compose가 접속 정보를 환경변수로 주입한다.
+# 기존 local DB와 암호화 키를 공유하며, Hibernate update로 데이터를 유지한다.
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.mariadb.jdbc.Driver
+    hikari:
+      connection-timeout: 3000
+      validation-timeout: 1000
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+  session:
+    jdbc:
+      initialize-schema: always
+      schema: classpath:session/schema-mariadb.sql
+
+  thymeleaf:
+    cache: true
+
+  h2:
+    console:
+      enabled: false
+
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+server:
+  shutdown: graceful
+
+app:
+  upload:
+    dir: /app/uploads/images
+  base-url: ${APP_BASE_URL:http://localhost:8080}
+  security:
+    email-encryption-key: ${EMAIL_ENCRYPTION_KEY:local-dev-only-email-key-do-not-use-in-prod}
+
+logging:
+  file:
+    path: /app/logs

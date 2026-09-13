@@ -5,7 +5,7 @@
 # gradlew test는 test 프로파일을 활성화해 src/test/resources/application-test.yml의
 # H2 인메모리를 쓴다(build.gradle.kts 참고).
 #
-# 실행 전: 루트 .env를 준비하고 docker compose up -d 로 MariaDB를 띄운 뒤,
+# 실행 전: 루트 .env를 준비하고 docker compose up -d --wait mariadb 로 DB를 띄운 뒤,
 # 프로젝트 루트에서 ./gradlew bootRun을 실행한다. local만 .env를 자동으로 읽으며,
 # 같은 이름의 OS 환경변수가 있으면 그 값이 우선한다(README.md 참고).
 # ddl-auto: update를 써서 docker 볼륨의 데이터를 기동 사이에 유지한다. 계정·게시글을 만들어
@@ -13,8 +13,7 @@
 # 비워졌다). 어느 쪽이든 운영에는 쓰면 안 된다 — 운영은 prod 프로파일 + Flyway + validate다.
 #
 # update의 한계: 컬럼·테이블 추가는 반영하지만 삭제·타입 변경·제약 변경은 반영하지 않는다.
-# 엔티티에서 필드를 지우거나 타입을 바꿨다면 스키마를 한 번 비워야 실제와 맞는다:
-#   docker compose down -v && docker compose up -d
+# 엔티티에서 필드를 지우거나 타입을 바꿨다면 데이터를 백업하고 명시적인 SQL로 변경한다.
 # (운영 스키마의 정합성은 이 설정이 아니라 db/migration의 Flyway 마이그레이션이 책임진다.
 #  마이그레이션을 새로 추가했다면 docs/04-implementation-plan.md §11의 배포 전 점검 절차로
 #  운영과 같은 경로를 한 번 리허설할 것.)

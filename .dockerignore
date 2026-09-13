@@ -1,0 +1,12 @@
+# Only source and the Gradle wrapper enter the build context.
+**
+!Dockerfile
+!gradlew
+!gradle/
+!gradle/wrapper/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+!build.gradle.kts
+!settings.gradle.kts
+!src/
+!src/**
