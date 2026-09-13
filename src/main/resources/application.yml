@@ -67,21 +67,6 @@ spring:
       # Java 25 툴체인을 쓰므로(build.gradle.kts) 별도 준비 없이 바로 켤 수 있다.
       enabled: true
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health
-  endpoint:
-    health:
-      show-details: never
-      probes:
-        enabled: true
-      group:
-        # 웹·DB의 준비 상태를 검사한다. 선택 기능인 외부 SMTP에는 접속하지 않는다.
-        readiness:
-          include: readinessState,db
-
 app:
   upload:
     # 게시글 사진 업로드 저장 경로(상대 경로는 애플리케이션 실행 위치 기준). 운영 환경에서

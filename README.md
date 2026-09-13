@@ -22,12 +22,6 @@ bash에서는 `./gradlew bootRun`을 사용합니다.
 IntelliJ IDEA에서는 `com.kraft.KraftApplication`의 `Working directory`를 `$PROJECT_DIR$`로 설정합니다.
 실행 구성에 DB 환경변수가 남아 있으면 그 값이 `.env`보다 우선하므로 함께 확인합니다.
 
-앱 상태는 로그인 없이 확인할 수 있습니다. DB 연결이 끊어지면 readiness는 503을 반환합니다.
-
-```powershell
-Invoke-RestMethod http://localhost:8080/actuator/health/readiness
-```
-
 ## 환경변수와 데이터 보존
 
 | 설정 | 역할 |
