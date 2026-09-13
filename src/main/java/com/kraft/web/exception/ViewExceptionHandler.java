@@ -2,6 +2,7 @@ package com.kraft.web.exception;
 
 import com.kraft.web.IndexController;
 import org.springframework.http.HttpStatus;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -18,7 +19,8 @@ public class ViewExceptionHandler {
 
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(PostNotFoundException.class)
-    public String handlePostNotFound() {
+    public String handlePostNotFound(Model model) {
+        model.addAttribute("pageTitle", "페이지를 찾을 수 없음");
         return "error/not-found";
     }
 }

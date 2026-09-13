@@ -10,34 +10,72 @@
  * 유지하되, 그것이 의도된 동작임을 이름과 주석으로 드러낸다.
  */
 
-export const byId = (id) => document.getElementById(id);
+/**
+ * @template {HTMLElement} [T=HTMLElement]
+ * @param {string} id
+ * @returns {T | null}
+ */
+export const byId = (id) => /** @type {T | null} */ (document.getElementById(id));
 
-export const qs = (selector, root = document) => root.querySelector(selector);
+/**
+ * @template {Element} [T=Element]
+ * @param {string} selector
+ * @param {ParentNode} [root=document]
+ * @returns {T | null}
+ */
+export const qs = (selector, root = document) => /** @type {T | null} */ (root.querySelector(selector));
 
+/**
+ * @template {Element} [T=Element]
+ * @param {string} selector
+ * @param {ParentNode} [root=document]
+ * @returns {T[]}
+ */
 export const qsa = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
-/** 요소가 있을 때만 이벤트를 건다. */
-export function on(target, type, handler) {
+/**
+ * 요소가 있을 때만 이벤트를 건다.
+ *
+ * @template {Event} [E=Event]
+ * @param {EventTarget | null} target
+ * @param {string} type
+ * @param {(event: E) => void} handler
+ * @param {AddEventListenerOptions | boolean} [options]
+ */
+export function on(target, type, handler, options) {
     if (!target) {
         return;
     }
-    target.addEventListener(type, handler);
+    target.addEventListener(type, /** @type {EventListener} */ (handler), options);
 }
 
 /**
  * 이벤트 위임. 댓글 목록처럼 나중에 다시 그려지는 영역은 document에 한 번만 걸어 둔다.
  * handler는 선택자에 맞는 요소를 첫 인자로 받는다.
+ *
+ * @template {Element} [T=Element]
+ * @template {Event} [E=Event]
+ * @param {string} type
+ * @param {string} selector
+ * @param {(element: T, event: E) => void} handler
+ * @param {ParentNode} [root=document]
  */
 export function delegate(type, selector, handler, root = document) {
     root.addEventListener(type, (event) => {
-        const match = event.target.closest?.(selector);
+        const target = /** @type {Element | null} */ (event.target);
+        const match = target?.closest?.(selector);
         if (match && root.contains(match)) {
-            handler(match, event);
+            handler(/** @type {T} */ (match), /** @type {E} */ (event));
         }
     });
 }
 
-/** hidden 속성 토글. 대상이 없으면 넘어간다. */
+/**
+ * hidden 속성 토글. 대상이 없으면 넘어간다.
+ *
+ * @param {HTMLElement | null} target
+ * @param {boolean} hidden
+ */
 export function setHidden(target, hidden) {
     if (!target) {
         return;
@@ -45,25 +83,45 @@ export function setHidden(target, hidden) {
     target.hidden = hidden;
 }
 
-/** 버튼을 눌린 상태로 잠그고 보조기기에도 알린다. */
+/**
+ * 버튼을 눌린 상태로 잠그고 보조기기에도 알린다.
+ *
+ * @param {HTMLButtonElement | HTMLElement | null} target
+ * @param {boolean} busy
+ */
 export function setBusy(target, busy) {
     if (!target) {
         return;
     }
-    target.disabled = busy;
+    if ('disabled' in target) {
+        /** @type {HTMLButtonElement} */ (target).disabled = busy;
+    }
     target.setAttribute('aria-busy', busy ? 'true' : 'false');
 }
 
-/** 값 읽기. 요소가 없으면 빈 문자열 — jQuery의 .val()과 같은 관용구다. */
-export const valueOf = (target) => (target ? target.value : '');
+/**
+ * 값 읽기. 요소가 없으면 빈 문자열 — jQuery의 .val()과 같은 관용구다.
+ *
+ * @param {HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | Element | null} target
+ * @returns {string}
+ */
+export const valueOf = (target) => ('value' in (target || {}) ? /** @type {HTMLInputElement} */ (target).value.trim() : '');
 
+/**
+ * @param {Element | null} target
+ * @param {string | number | null | undefined} text
+ */
 export function setText(target, text) {
     if (!target) {
         return;
     }
-    target.textContent = text;
+    target.textContent = text == null ? '' : String(text);
 }
 
+/**
+ * @param {number} bytes
+ * @returns {string}
+ */
 export function formatFileSize(bytes) {
     if (bytes < 1024) {
         return `${bytes} B`;

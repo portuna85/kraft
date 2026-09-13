@@ -4,6 +4,7 @@ import com.kraft.domain.post.Category;
 import com.kraft.service.comment.CommentService;
 import com.kraft.service.post.PostService;
 import com.kraft.service.user.EmailVerificationService;
+import com.kraft.web.dto.post.PostViewDto;
 import com.kraft.web.dto.post.PostsPageResponseDto;
 import com.kraft.web.support.PageWindow;
 import lombok.RequiredArgsConstructor;
@@ -55,9 +56,10 @@ public class IndexController {
      */
     @GetMapping("/posts/update/{id}")
     public String postsUpdate(@PathVariable Long id, Authentication authentication, Model model) {
-        model.addAttribute("post", postService.findByIdForView(id, authentication));
+        PostViewDto post = postService.findByIdForView(id, authentication);
+        model.addAttribute("post", post);
         model.addAttribute("comments", commentService.findByPostIdForView(id, authentication));
-        model.addAttribute("pageTitle", "게시글 읽기");
+        model.addAttribute("pageTitle", post.title());
         return "post/post-update";
     }
 

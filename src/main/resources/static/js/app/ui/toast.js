@@ -5,6 +5,9 @@ import { toast } from '../core/bootstrap-ui.js';
  * 잠깐 떴다 사라지는 알림.
  *
  * 언제 토스트를 쓰고 언제 지속 배너(flash)를 쓰는지는 ui/flash.js의 규칙 참고.
+ *
+ * @param {string} message
+ * @param {'success' | 'danger' | 'info' | string} [type]
  */
 export function showToast(message, type) {
     const element = byId('app-toast');

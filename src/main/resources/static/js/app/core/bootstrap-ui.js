@@ -1,6 +1,18 @@
 import { qs } from './dom.js';
 
 /**
+ * @typedef {Object} BootstrapUiHandle
+ * @property {() => void} show
+ * @property {() => void} hide
+ */
+
+/** @type {BootstrapUiHandle} */
+const NOOP_HANDLE = Object.freeze({
+    show() {},
+    hide() {},
+});
+
+/**
  * 전역 `bootstrap` 객체를 만지는 유일한 모듈.
  *
  * Bootstrap 5는 jQuery 플러그인($el.modal('show') 같은 형태)을 제공하지 않으므로 클래스 API를
@@ -11,21 +23,53 @@ import { qs } from './dom.js';
  *
  * 'show.bs.modal' 같은 이벤트는 요소에서 발생하는 실제 DOM 이벤트라 addEventListener로 그대로
  * 받을 수 있다 — 그 부분은 이 모듈을 거치지 않는다.
+ *
+ * @returns {typeof import('bootstrap') | null}
  */
+function getBootstrap() {
+    if (typeof window !== 'undefined' && window.bootstrap) {
+        return window.bootstrap;
+    }
+    if (typeof bootstrap !== 'undefined') {
+        return bootstrap;
+    }
+    return null;
+}
 
-const NOOP_HANDLE = { show() {}, hide() {} };
-
-function instanceOf(component, selector) {
-    const element = qs(selector);
+/**
+ * @param {string | Element | null} selectorOrElement
+ * @returns {import('bootstrap').Modal | BootstrapUiHandle}
+ */
+export function modal(selectorOrElement) {
+    const element = typeof selectorOrElement === 'string'
+        ? qs(selectorOrElement)
+        : selectorOrElement;
     if (!element) {
         return NOOP_HANDLE;
     }
-    if (typeof bootstrap === 'undefined') {
-        console.warn(`Bootstrap을 불러오지 못해 ${selector}를 열 수 없습니다.`);
+    const bs = getBootstrap();
+    if (!bs || !bs.Modal || typeof bs.Modal.getOrCreateInstance !== 'function') {
+        console.warn(`Bootstrap을 불러오지 못해 Modal(${selectorOrElement})을 열 수 없습니다.`);
         return NOOP_HANDLE;
     }
-    return bootstrap[component].getOrCreateInstance(element);
+    return bs.Modal.getOrCreateInstance(element);
 }
 
-export const modal = (selector) => instanceOf('Modal', selector);
-export const toast = (selector) => instanceOf('Toast', selector);
+/**
+ * @param {string | Element | null} selectorOrElement
+ * @returns {import('bootstrap').Toast | BootstrapUiHandle}
+ */
+export function toast(selectorOrElement) {
+    const element = typeof selectorOrElement === 'string'
+        ? qs(selectorOrElement)
+        : selectorOrElement;
+    if (!element) {
+        return NOOP_HANDLE;
+    }
+    const bs = getBootstrap();
+    if (!bs || !bs.Toast || typeof bs.Toast.getOrCreateInstance !== 'function') {
+        console.warn(`Bootstrap을 불러오지 못해 Toast(${selectorOrElement})를 열 수 없습니다.`);
+        return NOOP_HANDLE;
+    }
+    return bs.Toast.getOrCreateInstance(element);
+}

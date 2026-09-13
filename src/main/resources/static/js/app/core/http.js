@@ -120,7 +120,12 @@ export const api = {
     upload: (url, formData) => request(url, { method: 'POST', formData }),
 };
 
-/** 알 수 없는 예외까지 포함해 보여줄 문구를 고른다. */
+/**
+ * 알 수 없는 예외까지 포함해 보여줄 문구를 고른다.
+ *
+ * @param {unknown} error
+ * @returns {string}
+ */
 export function messageOf(error) {
     return error instanceof ApiError ? error.message : GENERIC;
 }

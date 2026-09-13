@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "checkJs": false,
+    "allowJs": true,
+    "types": [
+      "bootstrap"
+    ]
+  },
+  "include": [
+    "types/**/*",
+    "src/main/resources/static/js/**/*",
+    "e2e/**/*"
+  ]
+}
