@@ -60,6 +60,23 @@ SELECT name, COUNT(*) FROM users GROUP BY name HAVING COUNT(*) > 1;
 대상 DB에 `flyway_schema_history`와 `posts.category`가 있는지 먼저 확인해 실제 상태에 맞는
 `spring.flyway.baseline-version`을 정하고, 배포 전 같은 설정으로 1회 리허설합니다.
 
+## 입력 길이 정책
+
+저장소 한계와 어긋나지 않도록 입력 검증·컬럼·세션을 같은 기준으로 맞춰 둡니다.
+
+| 항목 | 최대 | 결정 근거 |
+| --- | ---: | --- |
+| 이메일 | 100자 | 가장 좁은 경계인 `SPRING_SESSION.PRINCIPAL_NAME VARCHAR(100)`에 맞춤 (`EmailPolicy`) |
+| 이름(닉네임) | 50자 | `users.name VARCHAR(50)` |
+| 게시글 제목 | 255자 | `posts.title VARCHAR(255)` |
+| 게시글 본문 | 10,000자 | `TEXT`는 65,535바이트. 한 자 최대 3바이트 기준 30,000바이트 (`ContentPolicy`) |
+| 댓글 본문 | 1,000자 | 위와 같은 기준으로 3,000바이트 |
+
+이메일은 AES 암호화 후 hex로 저장되어 `평문 × 2 + 64`자가 됩니다(100자 → 264자,
+`users.email VARCHAR(500)`). 로그인 식별자가 이메일 전체이므로 세션의 `PRINCIPAL_NAME`
+100자가 실질 상한이고, 그보다 긴 주소는 가입 시점에 거부합니다 — 예전에는 101~218자 주소로
+가입은 되는데 로그인이 안 되는 계정이 만들어졌습니다.
+
 ## 중지·재시작
 
 ```powershell
