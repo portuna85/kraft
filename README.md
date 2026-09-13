@@ -49,6 +49,10 @@ IntelliJ IDEA에서는 `com.kraft.KraftApplication`의 `Working directory`를 `$
 `local`은 Hibernate `update`와 멱등 세션 SQL을 사용해 재기동 후에도 기존 데이터를 유지합니다.
 운영 배포는 `prod`의 Flyway + `validate` 경로를 별도로 사용합니다.
 
+빈 DB에서의 V1~V6 적용은 `MariaDbMigrationTest`가 실제 MariaDB로 검증합니다. 다만 **이미
+데이터가 있는 기존 DB의 전환은 자동 검증 대상이 아니므로**, 배포 전 같은 설정으로 1회
+리허설해야 합니다.
+
 `V5__unique_user_name.sql`은 `users.name`에 유니크 제약을 추가하므로, **기존 DB에 중복
 닉네임이 있으면 마이그레이션이 실패합니다.** 적용 전에 확인하고 정리합니다.
 
@@ -101,7 +105,17 @@ docker compose up -d --wait
 .\gradlew.bat test
 ```
 
-테스트는 `test` 프로파일의 H2 인메모리 DB를 사용하며 Docker MariaDB나 `.env`가 필요하지 않습니다.
+대부분의 테스트는 `test` 프로파일의 H2 인메모리 DB를 사용하며 Docker MariaDB나 `.env`가
+필요하지 않습니다.
+
+예외는 `MariaDbMigrationTest` 하나입니다. 이 테스트는 Testcontainers로 실제 MariaDB를 띄워
+`db/migration`의 V1~V6을 순서대로 실행하고, `ddl-auto: validate`로 "마이그레이션이 만든 스키마와
+엔티티 매핑이 일치하는지"를 확인합니다. H2는 Hibernate가 엔티티로 스키마를 직접 만들기 때문에
+**마이그레이션 SQL을 한 줄도 실행하지 않습니다** — 그래서 이 검증이 따로 필요합니다.
+
+Docker가 없으면 이 클래스만 건너뛰므로 `gradlew test`는 그대로 통과합니다. 다만 그때는
+마이그레이션이 검증되지 않은 것이므로, **운영 배포 전에는 Docker를 켠 상태로 한 번 돌려야
+합니다.** CI는 Docker가 있는 환경에서 항상 실행합니다.
 
 ## 백업·복구
 

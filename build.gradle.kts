@@ -39,6 +39,11 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
+    // 운영과 같은 MariaDB에서 Flyway 마이그레이션·ddl-auto validate·JDBC 세션을 실제로 검증한다.
+    // H2(create-drop)로 도는 나머지 테스트는 db/migration의 SQL을 한 번도 실행하지 않는다.
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+    testImplementation("org.testcontainers:testcontainers-mariadb")
     testCompileOnly("org.projectlombok:lombok")
     testAnnotationProcessor("org.projectlombok:lombok")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
