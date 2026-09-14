@@ -3,6 +3,46 @@
 Java 25 · Spring Boot 4.1.1 · Thymeleaf · MariaDB 기반 커뮤니티 애플리케이션입니다.
 앱은 호스트에서 직접 실행하고, DB만 Docker 컨테이너로 띄웁니다.
 
+## 프로젝트 구조
+
+Java 코드는 기능을 먼저 구분하고, 각 기능 안에서 책임별로 나눕니다. 테스트도 같은 패키지를
+따릅니다. 새로운 게시글 기능은 `post` 아래에서 도메인·서비스·DTO·웹 진입점을 함께 찾을 수 있습니다.
+
+| 패키지 (`com.kraft` 기준) | 책임 |
+| --- | --- |
+| `post/{domain,service,dto,web}` | 게시글·검색·추천·이미지와 게시판 화면 |
+| `comment/{domain,service,dto,web}` | 댓글과 댓글 API |
+| `user/{domain,service,dto,web}` | 회원가입·비밀번호·인증과 회원 화면 |
+| `user/mail` | 발송 인터페이스·SMTP 구현·메일 대기열·발송 작업자 |
+| `shared/domain` | 공통 감사 필드와 본문 길이 정책 |
+| `shared/security` | 작성 권한·소유권 정책 |
+| `shared/transaction` | DB 커밋 후 실행 지원 |
+| `shared/web` | API 예외 응답·탐색 모델·페이지 계산·안전한 복귀 경로 |
+| `config`, `config/security` | JPA·웹·인증 구성 |
+| `observability` | 요청 지표와 상태 점검 |
+| `operations/rekey` | 이메일 암호화 키 교체 도구 |
+
+의존 방향은 `web → service → domain`이며, 서비스와 웹이 공유하는 DTO는 기능별 `dto`에 둡니다.
+도메인은 서비스나 웹에 의존하지 않습니다. 게시글을 찾지 못한 예외는 `post/domain`에 두고,
+웹 계층에서 HTML 또는 JSON 404 응답으로 바꿉니다. `shared/web`의 어드바이스는 기능별 웹
+진입점을 연결하는 역할이며, 비즈니스 서비스에서는 참조하지 않습니다.
+
+`config/security/KraftUserDetails`는 JDBC 세션에 직렬화된 클래스 이름과의 호환성을 위해 기존
+패키지를 유지합니다. 클래스 이동만으로도 기존 로그인 세션을 읽지 못할 수 있으므로 주의합니다.
+
+| 소스 경로 | 용도 |
+| --- | --- |
+| `src/main/java`, `src/main/resources` | 운영 애플리케이션과 템플릿·정적 자산 |
+| `src/test/java`, `src/test/resources` | JUnit 단위·통합·MariaDB 테스트 |
+| `src/e2e/java`, `src/e2e/resources` | 브라우저 테스트 서버의 시드·메일 기록기·설정 |
+| `e2e` | Playwright 시나리오와 시각 회귀 기준 이미지 |
+| `src/vue`, `src/styles` | Vue·SCSS 원본 |
+| `types` | 브라우저 전역 타입 선언 |
+
+정적 JS는 `src/main/resources/static/js/app`에서 직접 제공하고, Vue·SCSS는 빌드한 파일도
+커밋합니다. 따라서 운영 Gradle 빌드는 Node.js 없이 실행할 수 있습니다. CSS·Vue 산출물,
+Gradle Wrapper, 의존성 잠금 파일, 시각 회귀 기준 이미지는 재현 가능한 빌드·테스트에 필요합니다.
+
 ## 실행
 
 Java 25와 Docker Desktop(Linux 컨테이너)이 필요합니다. 프로젝트 루트에서 진행합니다.
@@ -48,6 +88,9 @@ IntelliJ IDEA에서는 `com.kraft.KraftApplication`의 `Working directory`를 `$
 
 `local`은 Hibernate `update`와 멱등 세션 SQL을 사용해 재기동 후에도 기존 데이터를 유지합니다.
 운영 배포는 `prod`의 Flyway + `validate` 경로를 별도로 사용합니다.
+로컬 세션 초기화도 `db/migration/V3__spring_session.sql`을 직접 재사용합니다. V3 주석에 남은
+과거의 별도 세션 SQL 경로는 더 이상 사용하지 않습니다. 적용된 마이그레이션의 체크섬을 유지하기
+위해 과거 SQL 파일과 주석은 수정하지 않습니다.
 
 빈 DB에서의 마이그레이션 적용은 `MariaDbMigrationTest`가, **이미 데이터가 있는 기존 DB의
 전환**은 `MariaDbUpgradeRehearsalTest`가 각각 실제 MariaDB로 검증합니다. 후자는 `local`이
@@ -117,6 +160,25 @@ docker compose up -d --wait
 ```powershell
 .\gradlew.bat test
 ```
+
+운영 실행 JAR은 `bootJar`, 브라우저 테스트용 실행 JAR은 `bootE2eJar`로 만듭니다.
+운영 JAR에는 E2E 시드·메일 조회 API·H2가 포함되지 않습니다.
+
+```powershell
+.\gradlew.bat bootJar bootE2eJar
+npm ci
+npm run lint
+npm run check:css
+npm run check:vue
+npx playwright install chromium
+npx playwright test --project=chromium
+```
+
+Vue·SCSS 원본을 수정했다면 먼저 `npm run build:vue` / `npm run build:css`로 생성 파일을
+갱신하고 함께 커밋합니다. `check:*`는 재빌드한 생성 파일과 Git에 기록된 파일의 차이를 검사하므로
+의도한 변경도 커밋 전에는 차이로 표시됩니다. 자산을 변경한 뒤 브라우저 테스트를 실행할 때는
+`bootE2eJar`도 다시 빌드합니다. Playwright는 `build/libs/kraft-0.0.1-SNAPSHOT-e2e.jar`를
+매 실행마다 새로 띄우며, 8081 포트가 이미 사용 중이면 실패합니다.
 
 대부분의 테스트는 `test` 프로파일의 H2 인메모리 DB를 사용하며 Docker MariaDB나 `.env`가
 필요하지 않습니다.

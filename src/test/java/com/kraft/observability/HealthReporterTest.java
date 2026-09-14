@@ -1,14 +1,14 @@
 package com.kraft.observability;
 
+import com.kraft.user.domain.Role;
+import com.kraft.user.domain.User;
+import com.kraft.user.domain.UserRepository;
+import com.kraft.user.mail.OutboxMailRepository;
+import com.kraft.user.mail.OutboxMailStore;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import com.kraft.domain.user.OutboxMailRepository;
-import com.kraft.domain.user.Role;
-import com.kraft.domain.user.User;
-import com.kraft.domain.user.UserRepository;
-import com.kraft.service.user.OutboxMailStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

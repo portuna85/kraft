@@ -1,0 +1,49 @@
+# Playwright E2E 전용 프로파일.
+#
+# E2E는 Docker(MariaDB)도 SMTP도 없이 떠야 하므로 H2 인메모리와 가짜 메일 발송기를 쓴다.
+# --spring.profiles.active=e2e 로 명시할 때만 활성화되며, 이 프로파일에서만 존재하는 빈들은
+# 전부 @Profile("e2e")로 잠가 두었다(E2eDataInitializer, RecordingEmailSender, E2eMailController).
+#
+# 왜 기존 test 프로파일을 재사용하지 않는가: src/test/resources/application-test.yml은 테스트
+# 런타임 클래스패스에만 있어 java -jar 로 띄운 JAR에서는 보이지 않는다.
+#
+# 이 설정과 시드·가짜 메일 빈은 bootE2eJar에만 들어간다. 운영 bootJar에는 포함되지 않는다.
+server:
+  # 개발 중 띄워 둔 bootRun(기본 8080)과 부딪히지 않게 한 칸 옆으로 둔다.
+  port: 8081
+
+spring:
+  datasource:
+    # DB_CLOSE_DELAY=-1: 마지막 커넥션이 닫혀도 JVM이 살아 있는 동안 DB를 유지한다.
+    url: jdbc:h2:mem:kraft-e2e;MODE=MariaDB;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+  session:
+    jdbc:
+      # H2용 세션 스키마를 Spring Session이 알아서 잡는다(local의 MariaDB 전용 지정과 무관).
+      initialize-schema: always
+
+  thymeleaf:
+    cache: false
+
+logging:
+  level:
+    org.hibernate.SQL: warn
+
+app:
+  base-url: http://localhost:8081
+  upload:
+    dir: build/e2e-uploads
+    # 주기 정리 작업이 테스트 도중 업로드 파일을 치우면 검증이 흔들린다.
+    cleanup-enabled: false
+  verification:
+    purge-enabled: false
+  security:
+    email-encryption-key: e2e-only-key-not-a-secret

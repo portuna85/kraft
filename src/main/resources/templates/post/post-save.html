@@ -33,7 +33,7 @@
                     <!--/* 공지(NOTICE)는 관리자만 쓸 수 있다. 옵션을 감추는 것은 안내일 뿐이고,
                            실제 경계는 서버의 CategoryPolicy가 잡는다. */-->
                     <select class="form-select" id="category">
-                        <option th:each="c : ${T(com.kraft.domain.post.Category).values()}"
+                        <option th:each="c : ${T(com.kraft.post.domain.Category).values()}"
                                 th:if="${c.name() != 'NOTICE'
                                         or #authorization.expression('hasRole(''ADMIN'')')}"
                                 th:value="${c}" th:text="${c.title}" th:selected="${c.name() == 'FREE'}"></option>

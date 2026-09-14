@@ -3,15 +3,11 @@ import { computed, nextTick, reactive, ref } from 'vue';
 import { api, messageOf } from '@core/http.js';
 import { API } from '@core/constants.js';
 import * as flash from '@ui/flash.js';
+import { showToast } from '@ui/toast.js';
 import { useImageUpload } from './useImageUpload.js';
 
 /**
- * 게시글 읽기/편집 화면 전체(추천 버튼 제외).
- *
- * 추천(#btn-like)은 상태가 단순(불리언+카운트)해 여기로 옮기지 않았다. post-like.js가 계속
- * 그 버튼을 직접 제어하므로, 이 컴포넌트가 재렌더될 때 그 버튼의 DOM을 건드리지 않도록
- * v-once로 한 번만 그린다 — 시각 회귀 테스트(#post-view 스냅샷)가 요구하는 배치 순서를
- * 유지하면서도 post-like.js의 DOM 조작과 충돌하지 않는 방법이다.
+ * 게시글 읽기·편집·추천 상태를 관리한다. 추천은 서버가 반환한 상태만 반영한다.
  */
 const props = defineProps({
     post: { type: Object, required: true },
@@ -29,12 +25,31 @@ const draft = reactive({ ...original });
 const version = ref(props.post.version);
 const progressText = ref(null);
 const saving = ref(false);
+const liked = ref(props.post.likedByMe);
+const likeCount = ref(props.post.likeCount);
+const liking = ref(false);
 
 const picture = useImageUpload({ initialUrl: props.post.picture });
 
 const titleInput = ref(null);
 const editButton = ref(null);
 const fileInput = ref(null);
+
+async function setLike() {
+    if (liking.value) {
+        return;
+    }
+    liking.value = true;
+    try {
+        const result = await api.put(`${API.POSTS}/${props.post.id}/like`, { liked: !liked.value });
+        liked.value = result.liked;
+        likeCount.value = result.likeCount;
+    } catch (error) {
+        showToast(messageOf(error), 'danger');
+    } finally {
+        liking.value = false;
+    }
+}
 
 // 과거에 분류 필드가 여기서 빠져 있던 적이 있다(F12 회귀). 필드를 하나씩 나열하는 대신
 // original/draft의 키를 순회해서, 필드가 늘어나도 비교에서 빠지는 일이 구조적으로 없게 한다.
@@ -160,17 +175,18 @@ async function onSubmit() {
 
     <div
       v-if="authenticated"
-      v-once
       class="btn-group-gap post-actions"
     >
       <button
         id="btn-like"
         type="button"
         class="btn btn-outline-primary"
-        :class="{ 'is-active': post.likedByMe }"
-        :aria-pressed="post.likedByMe"
+        :class="{ 'is-active': liked }"
+        :aria-pressed="liked"
+        :disabled="liking"
+        @click="setLike"
       >
-        추천 <span id="like-count">{{ post.likeCount }}</span>
+        추천 <span id="like-count">{{ likeCount }}</span>
       </button>
     </div>
     <p

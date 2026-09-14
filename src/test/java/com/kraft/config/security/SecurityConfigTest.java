@@ -1,8 +1,8 @@
 package com.kraft.config.security;
 
-import com.kraft.domain.user.Role;
-import com.kraft.domain.user.User;
-import com.kraft.domain.user.UserRepository;
+import com.kraft.user.domain.Role;
+import com.kraft.user.domain.User;
+import com.kraft.user.domain.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

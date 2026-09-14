@@ -1,3 +1,5 @@
+import org.springframework.boot.gradle.tasks.bundling.BootJar
+
 plugins {
     java
     id("org.springframework.boot") version "4.1.1"
@@ -18,8 +20,18 @@ repositories {
     mavenCentral()
 }
 
+// 브라우저 테스트용 서버 코드는 운영 클래스패스와 JAR에 포함하지 않는다.
+val e2e = sourceSets.create("e2e") {
+    compileClasspath += sourceSets.main.get().output
+    runtimeClasspath += sourceSets.main.get().output
+}
+
+configurations[e2e.implementationConfigurationName].extendsFrom(configurations.implementation.get())
+configurations[e2e.compileOnlyConfigurationName].extendsFrom(configurations.compileOnly.get())
+configurations[e2e.annotationProcessorConfigurationName].extendsFrom(configurations.annotationProcessor.get())
+configurations[e2e.runtimeOnlyConfigurationName].extendsFrom(configurations.runtimeOnly.get())
+
 dependencies {
-    implementation("org.springframework.boot:spring-boot-h2console")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
     implementation("org.springframework.boot:spring-boot-starter-validation")
@@ -32,8 +44,9 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-mail")
     implementation("org.springframework.boot:spring-boot-flyway")
     implementation("org.flywaydb:flyway-mysql")
-    runtimeOnly("com.h2database:h2")
     runtimeOnly("org.mariadb.jdbc:mariadb-java-client")
+    testRuntimeOnly("com.h2database:h2")
+    add(e2e.runtimeOnlyConfigurationName, "com.h2database:h2")
     testImplementation("org.springframework.boot:spring-boot-starter-security-test")
     testImplementation("org.springframework.boot:spring-boot-starter-thymeleaf-test")
     testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
@@ -47,6 +60,20 @@ dependencies {
     testCompileOnly("org.projectlombok:lombok")
     testAnnotationProcessor("org.projectlombok:lombok")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.register<BootJar>("bootE2eJar") {
+    group = "build"
+    description = "Builds the browser-test server with E2E fixtures and H2."
+    archiveClassifier.set("e2e")
+    mainClass.set("com.kraft.KraftApplication")
+    targetJavaVersion.set(tasks.named<BootJar>("bootJar").flatMap { it.targetJavaVersion })
+    classpath(e2e.runtimeClasspath)
+}
+
+// 이 프로젝트는 실행형 애플리케이션이므로 별도의 일반 라이브러리 JAR은 만들지 않는다.
+tasks.jar {
+    enabled = false
 }
 
 tasks.withType<Test> {

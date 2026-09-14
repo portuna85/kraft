@@ -79,7 +79,7 @@ export function useImageUpload({ initialUrl = null } = {}) {
 
         flash.hide();
         // 새 파일을 고르면 기존 이미지는 교체 대상이므로, 전에 눌러 둔 "삭제"는 무시한다
-        // (파일 우선 규칙 — image-upload.js의 onFileAccepted와 같다).
+        // (파일 우선 규칙).
         removedExisting.value = false;
         file.value = selectedFile;
         previewUrl.value = URL.createObjectURL(selectedFile);

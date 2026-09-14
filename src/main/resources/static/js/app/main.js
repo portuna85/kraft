@@ -3,7 +3,6 @@ import * as siteNav from './features/site-nav.js';
 import * as account from './features/account.js';
 import * as signup from './features/signup.js';
 import * as postForm from './features/post-form.js';
-import * as postLike from './features/post-like.js';
 import * as deleteConfirm from './features/delete-confirm.js';
 
 /**
@@ -22,5 +21,4 @@ siteNav.init();
 account.init();
 signup.init();
 postForm.init();
-postLike.init();
 deleteConfirm.init();

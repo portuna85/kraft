@@ -7,13 +7,13 @@ const BASE_URL = `http://127.0.0.1:${PORT}`;
  * Kraft의 브라우저 검증 설정.
  *
  * 앱은 e2e 프로파일(H2 인메모리 + 가짜 메일 발송기)로 띄운다 — Docker도 SMTP도 필요 없다.
- * 자세한 이유는 src/main/resources/application-e2e.yml 주석 참고.
+ * 설정과 시드 코드는 src/e2e에 있고 운영 JAR에는 포함되지 않는다.
  *
  * bootRun이 아니라 미리 만든 JAR을 실행하는 이유:
  *  - gradlew / gradlew.bat 분기가 필요 없어 OS를 가리지 않는다
- *  - CI가 이미 만드는 산출물과 같은 것을 검증한다
+ *  - 운영 앱 클래스에 E2E 전용 시드·메일 기록기·H2만 더한 JAR을 검증한다
  *  - Playwright가 프로세스를 깔끔하게 종료할 수 있다(Gradle 데몬은 그렇지 않다)
- * 실행 전 ./gradlew bootJar 로 JAR을 만들어 두어야 한다.
+ * 실행 전 ./gradlew bootE2eJar 로 JAR을 만들어 두어야 한다.
  */
 export default defineConfig({
     testDir: './e2e',
@@ -58,15 +58,13 @@ export default defineConfig({
     ],
 
     webServer: {
-        command: 'java -jar build/libs/kraft-0.0.1-SNAPSHOT.jar --spring.profiles.active=e2e',
+        command: 'java -jar build/libs/kraft-0.0.1-SNAPSHOT-e2e.jar --spring.profiles.active=e2e',
         // /login은 permitAll이면서 Thymeleaf 렌더링과 CSRF 메타 생성을 모두 거친다.
         // "포트가 열렸다"가 아니라 "실제로 페이지를 준다"를 기다리게 된다.
         // (actuator는 커밋 1080614에서 의도적으로 제거했으므로 쓰지 않는다.)
         url: `${BASE_URL}/login`,
-        // 로컬에서는 JVM을 매번 다시 띄우지 않는다. 다만 이미 떠 있는 앱은 **예전 JAR**일 수
-        // 있다 — 코드를 고친 뒤에는 그 프로세스를 끄고 bootJar를 다시 만들어야 새 코드가 검증된다.
-        // (끄지 않으면 Windows에서는 JAR 파일이 잠겨 bootJar 자체가 멈추기도 한다.)
-        reuseExistingServer: !process.env.CI,
+        // 매 실행마다 새 JAR과 깨끗한 시드 DB로 시작해 이전 서버의 코드·데이터가 섞이지 않게 한다.
+        reuseExistingServer: false,
         timeout: 120_000,
         stdout: 'pipe',
         stderr: 'pipe',

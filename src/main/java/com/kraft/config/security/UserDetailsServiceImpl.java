@@ -1,9 +1,9 @@
 package com.kraft.config.security;
 
-import com.kraft.domain.user.EmailMasker;
-import com.kraft.domain.user.EmailHasher;
-import com.kraft.domain.user.User;
-import com.kraft.domain.user.UserRepository;
+import com.kraft.user.domain.EmailHasher;
+import com.kraft.user.domain.EmailMasker;
+import com.kraft.user.domain.User;
+import com.kraft.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;

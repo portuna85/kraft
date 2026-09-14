@@ -32,10 +32,6 @@ spring:
     jdbc:
       initialize-schema: never
 
-  h2:
-    console:
-      enabled: false
-
 # HTTP 포트를 열지 않는다. 운영 중인 앱을 내리지 않고 실행하더라도 포트가 부딪히지 않는다.
 # (다만 이 도구는 앱을 내린 상태에서 돌리는 것을 전제로 한다 — README 절차 참고.)
 server:

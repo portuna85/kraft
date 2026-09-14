@@ -1,7 +1,7 @@
 package com.kraft.observability;
 
-import com.kraft.domain.user.OutboxMailRepository;
-import com.kraft.domain.user.OutboxMailStatus;
+import com.kraft.user.mail.OutboxMailRepository;
+import com.kraft.user.mail.OutboxMailStatus;
 import com.zaxxer.hikari.HikariDataSource;
 import com.zaxxer.hikari.HikariPoolMXBean;
 import lombok.extern.slf4j.Slf4j;

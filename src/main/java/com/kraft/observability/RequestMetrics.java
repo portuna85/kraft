@@ -53,11 +53,6 @@ public class RequestMetrics {
      */
     public record Snapshot(long requests, long errors, long serverErrors, long avgMillis, long maxMillis) {
 
-        /** 표본이 적으면 비율이 요동친다(2건 중 1건 실패 = 50%). 임계 판정에서 제외하기 위한 것. */
-        public boolean hasEnoughSamples(int minimum) {
-            return requests >= minimum;
-        }
-
         public double errorRate() {
             return requests == 0 ? 0 : (double) errors / requests;
         }

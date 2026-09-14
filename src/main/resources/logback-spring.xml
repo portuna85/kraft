@@ -11,7 +11,7 @@
                           logging.level.org.hibernate.SQL로 각 application-*.yml에서 켠다).
     - kraft-security.log : org.springframework.security. kraft.log에도 그대로 섞여 남고(둘 다
                           보고 싶을 때가 있어서), 이 파일에는 그 로그만 따로도 모인다.
-    - kraft-email.log  : com.kraft.service.user(이메일 인증 발급·재발송, 실제 SMTP 발송)만 따로
+    - kraft-email.log  : com.kraft.user.service와 com.kraft.user.mail(인증 발급·재발송·SMTP)만 따로
                           모은다 — 이메일 발송 문제를 조사할 때 다른 로그에 섞이지 않게 하기 위해서다.
 
     - kraft-metrics.log : com.kraft.observability(주기 상태 점검) 전용. additivity="false"라
@@ -134,7 +134,11 @@
         <appender-ref ref="SECURITY_FILE"/>
     </logger>
 
-    <logger name="com.kraft.service.user" additivity="true">
+    <logger name="com.kraft.user.service" additivity="true">
+        <appender-ref ref="EMAIL_FILE"/>
+    </logger>
+
+    <logger name="com.kraft.user.mail" additivity="true">
         <appender-ref ref="EMAIL_FILE"/>
     </logger>
 

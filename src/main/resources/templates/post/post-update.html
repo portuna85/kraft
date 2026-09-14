@@ -1,8 +1,8 @@
 <!DOCTYPE HTML>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <!--/*@thymesVar id="pageTitle" type="java.lang.String"*/-->
-<!--/*@thymesVar id="post" type="com.kraft.web.dto.post.PostViewDto"*/-->
-<!--/*@thymesVar id="comments" type="java.util.List<com.kraft.web.dto.comment.CommentViewDto>"*/-->
+<!--/*@thymesVar id="post" type="com.kraft.post.dto.PostViewDto"*/-->
+<!--/*@thymesVar id="comments" type="java.util.List<com.kraft.comment.dto.CommentViewDto>"*/-->
 <!--/*@thymesVar id="_csrf" type="org.springframework.security.web.csrf.CsrfToken"*/-->
 <head th:replace="~{layout/header :: header}"></head>
 <body>
@@ -14,14 +14,12 @@
     <main id="main" class="kraft-main kraft-main--narrow">
         <div th:replace="~{layout/footer :: flash}"></div>
 
-        <!-- post-like.js·delete-confirm.js가 직접 참조하는 게시글 id. Vue 마운트 지점 바깥에
-             둬서 두 스크립트가 계속 그대로 동작한다. -->
+        <!-- 공통 삭제 모달(delete-confirm.js)이 참조하는 게시글 id. -->
         <input type="hidden" id="id" th:value="${post.id}">
 
         <!-- 게시글 읽기/편집은 Vue 아일랜드(src/vue/post-edit)로 렌더링된다. canManagePost·
              분류 선택지는 서버만 판정할 수 있어(공개 REST 응답에는 없는 화면 전용 값) 초기
-             상태를 JSON으로 그대로 내려준다. #btn-like는 이 컴포넌트가 v-once로 한 번만
-             그리고, 이후 상태 변경은 계속 post-like.js가 직접 DOM을 다룬다. -->
+             상태를 JSON으로 그대로 내려준다. 추천 버튼의 상태와 요청도 Vue가 관리한다. -->
         <script type="application/json" id="post-initial-data" th:utext="${postEditInitialJson}"></script>
         <div id="post-app"></div>
         <script type="module" src="/js/vue-dist/post-edit.js"></script>

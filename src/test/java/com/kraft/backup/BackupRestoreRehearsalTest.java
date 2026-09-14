@@ -1,16 +1,16 @@
 package com.kraft.backup;
 
 import com.kraft.KraftApplication;
-import com.kraft.domain.post.Category;
-import com.kraft.domain.post.PostRepository;
-import com.kraft.domain.user.EmailHasher;
-import com.kraft.domain.user.Role;
-import com.kraft.domain.user.User;
-import com.kraft.domain.user.UserRepository;
-import com.kraft.service.post.PostImageService;
-import com.kraft.service.post.PostService;
+import com.kraft.post.domain.Category;
+import com.kraft.post.domain.PostRepository;
+import com.kraft.post.dto.PostSaveRequestDto;
+import com.kraft.post.service.PostImageService;
+import com.kraft.post.service.PostService;
 import com.kraft.support.TestImages;
-import com.kraft.web.dto.post.PostSaveRequestDto;
+import com.kraft.user.domain.EmailHasher;
+import com.kraft.user.domain.Role;
+import com.kraft.user.domain.User;
+import com.kraft.user.domain.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.builder.SpringApplicationBuilder;

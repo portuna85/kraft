@@ -45,8 +45,8 @@ out/
 ### Docker / 민감정보 ###
 .env
 
-# 프런트엔드 검증 도구(Playwright·ESLint). 애플리케이션 번들과 무관하며,
-# Gradle 빌드는 이것들 없이도 그대로 돈다.
+# 프런트엔드 빌드·검증 도구의 설치 파일과 테스트 결과.
+# CSS·Vue 생성 자산은 별도로 커밋하므로 Gradle 빌드는 Node.js 없이 실행된다.
 node_modules/
 /playwright-report/
 /test-results/

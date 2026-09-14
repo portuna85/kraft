@@ -27,6 +27,12 @@ test('추천을 눌렀다 다시 누르면 원래대로 돌아온다', async ({ 
     await expect(count).toHaveText('1');
     await expect(button).toHaveAttribute('aria-pressed', 'true');
 
+    // 편집 모드 전환으로 컴포넌트가 다시 렌더링돼도 추천 상태가 유지된다.
+    await page.locator('#btn-edit').click();
+    await page.locator('#btn-cancel-edit').click();
+    await expect(count).toHaveText('1');
+    await expect(button).toHaveAttribute('aria-pressed', 'true');
+
     await button.click();
     await expect(count).toHaveText('0');
     await expect(button).toHaveAttribute('aria-pressed', 'false');

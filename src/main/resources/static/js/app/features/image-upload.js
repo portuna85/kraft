@@ -19,9 +19,6 @@ export function createImageUploadField({
     previewImageId,
     previewNameId,
     clearButtonId,
-    // 아래 둘은 편집 화면에만 있다. 등록 화면은 "기존 이미지"라는 상태 자체가 없다.
-    onFileAccepted,
-    onCleared,
 }) {
     const input = byId(inputId);
 
@@ -46,7 +43,6 @@ export function createImageUploadField({
         uploadedForFile = null;
         revokePreview();
         setHidden(byId(previewId), true);
-        onCleared?.();
     }
 
     function onChange() {
@@ -78,7 +74,6 @@ export function createImageUploadField({
         }
 
         flash.hide();
-        onFileAccepted?.();
 
         previewUrl = URL.createObjectURL(file);
         byId(previewImageId).src = previewUrl;
@@ -95,7 +90,6 @@ export function createImageUploadField({
 
     return {
         hasFile: () => Boolean(currentFile()),
-        clear,
         revokePreview,
 
         /**

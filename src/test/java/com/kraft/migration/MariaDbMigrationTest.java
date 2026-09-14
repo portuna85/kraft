@@ -1,12 +1,12 @@
 package com.kraft.migration;
 
-import com.kraft.domain.post.Category;
-import com.kraft.domain.post.PostRepository;
-import com.kraft.domain.user.Role;
-import com.kraft.domain.user.User;
-import com.kraft.domain.user.UserRepository;
-import com.kraft.service.post.PostService;
-import com.kraft.web.dto.post.PostSaveRequestDto;
+import com.kraft.post.domain.Category;
+import com.kraft.post.domain.PostRepository;
+import com.kraft.post.dto.PostSaveRequestDto;
+import com.kraft.post.service.PostService;
+import com.kraft.user.domain.Role;
+import com.kraft.user.domain.User;
+import com.kraft.user.domain.UserRepository;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,7 +14,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -33,8 +35,11 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.hamcrest.Matchers.containsString;
 
 /**
  * 운영과 같은 MariaDB에서 Flyway 마이그레이션 전체를 실제로 실행해 검증한다.
@@ -65,8 +70,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.flyway.baseline-on-migrate=false",
         "spring.jpa.hibernate.ddl-auto=validate",
         // 세션 테이블도 V3이 만든다. Spring Session이 따로 만들지 않게 한다.
-        "spring.session.jdbc.initialize-schema=never",
-        "spring.h2.console.enabled=false"
+        "spring.session.jdbc.initialize-schema=never"
 })
 @AutoConfigureMockMvc
 class MariaDbMigrationTest {
@@ -130,7 +134,7 @@ class MariaDbMigrationTest {
     }
 
     @Test
-    @DisplayName("V3이 만든 세션 테이블에 실제 로그인 세션이 저장된다")
+    @DisplayName("V3 세션 SQL을 반복 실행해도 저장된 로그인 세션이 유지된다")
     void loginSessionIsPersistedInSessionTable() throws Exception {
         userRepository.save(User.builder()
                 .name("migration-tester")
@@ -153,6 +157,14 @@ class MariaDbMigrationTest {
                 "SELECT COUNT(*) FROM SPRING_SESSION WHERE PRINCIPAL_NAME = ?",
                 Long.class, "migration@example.com");
         assertThat(sessions).isEqualTo(1L);
+
+        // local 재기동도 Flyway V3의 멱등 SQL을 사용한다. 기존 세션과 속성을 보존해야 한다.
+        var schema = new ResourceDatabasePopulator(new ClassPathResource("db/migration/V3__spring_session.sql"));
+        schema.execute(jdbcTemplate.getDataSource());
+        schema.execute(jdbcTemplate.getDataSource());
+        mockMvc.perform(get("/").cookie(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("migration-tester")));
     }
 
     @Test

@@ -16,10 +16,6 @@ spring:
       ddl-auto: create-drop
     show-sql: true
 
-  h2:
-    console:
-      enabled: true
-
   session:
     jdbc:
       initialize-schema: always

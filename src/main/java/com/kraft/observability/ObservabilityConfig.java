@@ -1,6 +1,6 @@
 package com.kraft.observability;
 
-import com.kraft.domain.user.OutboxMailRepository;
+import com.kraft.user.mail.OutboxMailRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
