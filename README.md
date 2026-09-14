@@ -49,9 +49,9 @@ IntelliJ IDEA에서는 `com.kraft.KraftApplication`의 `Working directory`를 `$
 `local`은 Hibernate `update`와 멱등 세션 SQL을 사용해 재기동 후에도 기존 데이터를 유지합니다.
 운영 배포는 `prod`의 Flyway + `validate` 경로를 별도로 사용합니다.
 
-빈 DB에서의 V1~V6 적용은 `MariaDbMigrationTest`가 실제 MariaDB로 검증합니다. 다만 **이미
-데이터가 있는 기존 DB의 전환은 자동 검증 대상이 아니므로**, 배포 전 같은 설정으로 1회
-리허설해야 합니다.
+빈 DB에서의 마이그레이션 적용은 `MariaDbMigrationTest`가, **이미 데이터가 있는 기존 DB의
+전환**은 `MariaDbUpgradeRehearsalTest`가 각각 실제 MariaDB로 검증합니다. 후자는 `local`이
+`ddl-auto: update`로 만든 스키마에 운영 설정을 적용하는 경로를 그대로 리허설합니다.
 
 `V5__unique_user_name.sql`은 `users.name`에 유니크 제약을 추가하므로, **기존 DB에 중복
 닉네임이 있으면 마이그레이션이 실패합니다.** 적용 전에 확인하고 정리합니다.
@@ -60,9 +60,22 @@ IntelliJ IDEA에서는 `com.kraft.KraftApplication`의 `Working directory`를 `$
 SELECT name, COUNT(*) FROM users GROUP BY name HAVING COUNT(*) > 1;
 ```
 
-기존 개발 DB에 `prod`를 바로 적용하면 V2의 중복 컬럼 오류가 발생할 수 있습니다.
-대상 DB에 `flyway_schema_history`와 `posts.category`가 있는지 먼저 확인해 실제 상태에 맞는
-`spring.flyway.baseline-version`을 정하고, 배포 전 같은 설정으로 1회 리허설합니다.
+**기존 개발 DB에 `prod`를 바로 적용하면 실패합니다.** `application-prod.yml`의
+`baseline-version: "1"`은 Flyway를 처음 도입하는 빈 DB 기준이라, 이미 `posts.category`가
+있는 DB에서는 V2가 `Duplicate column name 'category'`로 멈춥니다.
+
+이미 현재 엔티티로 만들어진 DB라면 **디스크의 최신 마이그레이션 버전으로 baseline** 합니다
+(지금은 V7). 그러면 마이그레이션을 하나도 실행하지 않고 "여기까지 적용됨"만 기록하며,
+이어지는 `ddl-auto: validate`가 스키마와 엔티티가 맞는지 확인해 줍니다.
+
+```powershell
+.\gradlew.bat bootRun --args="--spring.profiles.active=prod --spring.flyway.baseline-version=7"
+```
+
+이 네 단계(기존 DB 재현 → 잘못된 baseline이 실패 → 올바른 baseline → validate 통과)는
+`MariaDbUpgradeRehearsalTest`가 실제 MariaDB에서 그대로 검증하므로, 손으로 리허설할 필요가
+없습니다. 다만 **운영 DB가 현재 엔티티보다 오래된 스키마라면** baseline 값이 달라지므로,
+`flyway_schema_history`와 실제 컬럼을 먼저 확인합니다.
 
 ## 입력 길이 정책
 
@@ -108,12 +121,17 @@ docker compose up -d --wait
 대부분의 테스트는 `test` 프로파일의 H2 인메모리 DB를 사용하며 Docker MariaDB나 `.env`가
 필요하지 않습니다.
 
-예외는 `MariaDbMigrationTest` 하나입니다. 이 테스트는 Testcontainers로 실제 MariaDB를 띄워
-`db/migration`의 V1~V6을 순서대로 실행하고, `ddl-auto: validate`로 "마이그레이션이 만든 스키마와
-엔티티 매핑이 일치하는지"를 확인합니다. H2는 Hibernate가 엔티티로 스키마를 직접 만들기 때문에
-**마이그레이션 SQL을 한 줄도 실행하지 않습니다** — 그래서 이 검증이 따로 필요합니다.
+예외는 `com.kraft.migration`의 두 클래스입니다. Testcontainers로 실제 MariaDB를 띄웁니다.
 
-Docker가 없으면 이 클래스만 건너뛰므로 `gradlew test`는 그대로 통과합니다. 다만 그때는
+- `MariaDbMigrationTest` — **빈 DB**에서 `db/migration`의 모든 마이그레이션을 순서대로 실행하고,
+  `ddl-auto: validate`로 "마이그레이션이 만든 스키마와 엔티티 매핑이 일치하는지"를 확인합니다.
+- `MariaDbUpgradeRehearsalTest` — **이미 데이터가 있는 기존 DB**를 운영 설정으로 넘기는 절차를
+  리허설합니다. 위 "환경변수와 데이터 보존"의 baseline 안내가 여기서 검증됩니다.
+
+H2는 Hibernate가 엔티티로 스키마를 직접 만들기 때문에 **마이그레이션 SQL을 한 줄도 실행하지
+않습니다** — 그래서 이 검증이 따로 필요합니다.
+
+Docker가 없으면 이 클래스들만 건너뛰므로 `gradlew test`는 그대로 통과합니다. 다만 그때는
 마이그레이션이 검증되지 않은 것이므로, **운영 배포 전에는 Docker를 켠 상태로 한 번 돌려야
 합니다.** CI는 Docker가 있는 환경에서 항상 실행합니다.
 
@@ -135,9 +153,34 @@ Compress-Archive -Path uploads -DestinationPath uploads-backup.zip
 복구 후에는 로그인, 이미지가 보이는 글 열기, 새 글 작성까지 실제로 해봐야 세 가지가 맞물렸는지
 확인됩니다. DB만 되돌리면 `post_images` 행은 있는데 파일이 없는 상태가 될 수 있습니다.
 
-`EMAIL_ENCRYPTION_KEY`를 바꾸려면 기존 이메일을 옛 키로 복호화해 새 키로 다시 암호화하는
-절차가 필요합니다. 키만 교체하면 기존 계정의 이메일을 읽을 수 없게 되고, 로그인 조회에 쓰는
-`email_hash`는 키를 쓰지 않으므로 로그인은 되는데 이메일만 깨진 상태가 됩니다.
+### 이메일 암호화 키 교체
+
+`EMAIL_ENCRYPTION_KEY`를 **키만 갈아 끼우면 안 됩니다.** 기존 계정의 이메일을 읽을 수 없게
+되는데, 로그인 조회에 쓰는 `email_hash`는 키를 쓰지 않으므로 **로그인은 계속 되고 이메일만
+깨진** 상태가 되어 한참 뒤에야 발견됩니다.
+
+저장된 이메일을 옛 키로 복호화해 새 키로 다시 암호화하는 전용 실행이 있습니다. 앱을 내린
+상태에서 한 번 돌리고 종료합니다.
+
+```powershell
+# 1. 앱을 내리고 DB를 먼저 백업합니다(위 명령). 이 단계를 건너뛰지 않습니다.
+$env:EMAIL_ENCRYPTION_KEY = "<새 키>"
+$env:EMAIL_ENCRYPTION_KEY_OLD = "<지금 쓰는 키>"
+java -jar build\libs\kraft-0.0.1-SNAPSHOT.jar --spring.profiles.active=rekey
+
+# 2. 끝나면 .env의 EMAIL_ENCRYPTION_KEY를 새 키로 바꾸고 평소대로 기동합니다.
+# 3. 로그인과 인증 메일 재발송까지 실제로 해봅니다.
+```
+
+종료 코드 0이면 성공입니다. `rekey` 프로파일은 스키마도 건드리지 않고 포트도 열지 않으며,
+메일·정리·관측 주기 작업을 모두 끕니다.
+
+행마다 **평문의 SHA-512가 그 행의 `email_hash`와 일치하는지 확인한 뒤에** 씁니다. 옛 키가
+틀렸거나 값이 어긋나면 그 자리에서 멈추고 `userId`를 알립니다 — 나머지를 조용히 덮어쓰지
+않습니다. 중간에 중단되어도 **다시 돌리면 남은 것만** 처리하므로 재실행이 안전합니다.
+이메일 주소는 로그에 남기지 않습니다.
+
+검증은 `EmailRekeyServiceTest`가 실제 DB 행으로 합니다.
 
 ## 문제 확인
 

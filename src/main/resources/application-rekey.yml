@@ -1,0 +1,56 @@
+# 이메일 암호화 키 교체 전용 프로파일. --spring.profiles.active=rekey 로만 활성화된다.
+#
+#   java -jar kraft.jar --spring.profiles.active=rekey
+#
+# EMAIL_ENCRYPTION_KEY(새 키)와 EMAIL_ENCRYPTION_KEY_OLD(옛 키)를 함께 지정해야 하며, 둘이
+# 같으면 EmailRekeyService가 아무것도 하지 않고 실패한다. 저장된 모든 이메일을 다시 쓰는
+# 작업이므로 README "백업·복구"의 절차대로 DB 백업을 먼저 받는다.
+#
+# 한 번 수행하고 종료 코드를 남기며 내려간다(EmailRekeyRunner). 서비스로 남지 않는다.
+spring:
+  # 호스트에서 직접 실행하므로 local과 같은 방식으로 .env를 읽는다. OS 환경변수가 우선한다.
+  config:
+    import: "optional:file:./.env[.properties]"
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.mariadb.jdbc.Driver
+
+  jpa:
+    hibernate:
+      # 스키마를 건드리지 않는다. 이 도구가 바꾸는 것은 users.email의 값뿐이다.
+      ddl-auto: validate
+    show-sql: false
+
+  # 마이그레이션은 평소 기동이 할 일이다. 키 교체와 스키마 변경을 한 실행에 섞지 않는다.
+  flyway:
+    enabled: false
+
+  session:
+    jdbc:
+      initialize-schema: never
+
+  h2:
+    console:
+      enabled: false
+
+# HTTP 포트를 열지 않는다. 운영 중인 앱을 내리지 않고 실행하더라도 포트가 부딪히지 않는다.
+# (다만 이 도구는 앱을 내린 상태에서 돌리는 것을 전제로 한다 — README 절차 참고.)
+server:
+  port: -1
+
+app:
+  security:
+    email-encryption-key: ${EMAIL_ENCRYPTION_KEY}
+    # 지금 DB에 저장된 암호문을 만든 키. 이 프로파일에서만 쓴다.
+    old-email-encryption-key: ${EMAIL_ENCRYPTION_KEY_OLD:}
+
+  # 데이터를 통째로 다시 쓰는 동안 주기 작업이 끼어들 이유가 없다. 전부 끈다.
+  mail:
+    enabled: false
+  upload:
+    cleanup-enabled: false
+  metrics:
+    enabled: false

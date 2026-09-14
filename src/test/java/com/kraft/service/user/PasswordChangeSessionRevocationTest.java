@@ -3,6 +3,8 @@ package com.kraft.service.user;
 import com.kraft.domain.post.PostRepository;
 import com.kraft.domain.user.Role;
 import com.kraft.domain.user.User;
+import com.kraft.domain.user.EmailVerificationTokenRepository;
+import com.kraft.domain.user.OutboxMailRepository;
 import com.kraft.domain.user.UserRepository;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,6 +52,12 @@ class PasswordChangeSessionRevocationTest {
     private PostRepository postRepository;
 
     @Autowired
+    private OutboxMailRepository outboxMailRepository;
+
+    @Autowired
+    private EmailVerificationTokenRepository tokenRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -58,7 +66,11 @@ class PasswordChangeSessionRevocationTest {
     @BeforeEach
     void setUp() {
         sessionRepository.findByPrincipalName(EMAIL).keySet().forEach(sessionRepository::deleteById);
+        // users를 참조하는 것들을 먼저 지운다. 하나라도 빠뜨리면 FK 위반으로 깨지는데,
+        // 그 시점이 테스트 실행 순서에 좌우되어 관계없는 변경에서 갑자기 드러난다.
         postRepository.deleteAll();
+        outboxMailRepository.deleteAll();
+        tokenRepository.deleteAll();
         userRepository.deleteAll();
         userRepository.save(User.builder()
                 .name("tester")
