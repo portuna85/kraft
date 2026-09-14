@@ -1,5 +1,6 @@
 package com.kraft.service.post;
 
+import com.kraft.domain.user.EmailMasker;
 import com.kraft.domain.comment.CommentRepository;
 import com.kraft.domain.post.Category;
 import com.kraft.domain.post.Post;
@@ -237,7 +238,7 @@ public class PostService {
 
     private User findUser(String email) {
         return userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + email));
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
     }
 
     private Long currentUserId(Authentication authentication) {

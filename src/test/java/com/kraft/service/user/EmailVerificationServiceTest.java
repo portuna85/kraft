@@ -1,5 +1,8 @@
 package com.kraft.service.user;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.kraft.domain.user.EmailHasher;
 import com.kraft.domain.user.EmailVerificationToken;
 import com.kraft.domain.user.EmailVerificationTokenRepository;
@@ -13,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
@@ -110,6 +114,33 @@ class EmailVerificationServiceTest {
         emailVerificationService.sendVerificationEmailSafely("nobody@example.com");
 
         verify(tokenRepository, never()).save(any());
+    }
+
+    /**
+     * 이 경로가 이메일이 로그에 남을 수 있는 거의 유일한 자리다. 주소를 그대로 남기면
+     * 암호화해 저장한 값이 로그 파일에는 평문으로 쌓인다(개선 보고서 "로그에 남는 이메일 최소화").
+     * 로그는 DB보다 다루기 쉽고 오래 남으며 종종 그대로 복사되어 나간다.
+     */
+    @Test
+    @DisplayName("sendVerificationEmailSafely: 실패를 로그로 남기되 주소는 가린다")
+    void sendVerificationEmailSafely_masksTheAddressInTheLog() {
+        given(userRepository.findByEmailHash(anyString())).willReturn(Optional.empty());
+
+        ListAppender<ILoggingEvent> logs = new ListAppender<>();
+        logs.start();
+        Logger logger = (Logger) LoggerFactory.getLogger(EmailVerificationService.class);
+        logger.addAppender(logs);
+        try {
+            emailVerificationService.sendVerificationEmailSafely("identifiable.person@example.com");
+        } finally {
+            logger.detachAppender(logs);
+        }
+
+        assertThat(logs.list).singleElement().satisfies(event -> assertThat(event.getFormattedMessage())
+                .as("실패 자체는 남아야 조사할 수 있다").contains("대기열에 넣지 못했습니다")
+                .as("그러나 누구인지는 남기지 않는다").doesNotContain("identifiable.person")
+                .as("도메인은 남긴다 — 특정 메일 서버만 실패하는지 보려면 필요하다")
+                .contains("@example.com"));
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.kraft.service.comment;
 
+import com.kraft.domain.user.EmailMasker;
 import com.kraft.domain.comment.Comment;
 import com.kraft.domain.comment.CommentRepository;
 import com.kraft.domain.post.Post;
@@ -35,7 +36,7 @@ public class CommentService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new PostNotFoundException(postId));
         User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + email));
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
         WriteAccessPolicy.requireVerified(user);
         return commentRepository.save(requestDto.toEntity(post, user)).getId();
     }

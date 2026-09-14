@@ -125,14 +125,14 @@ class UserApiControllerTest {
     @DisplayName("이메일이 중복이면 400 ProblemDetail을 반환한다")
     void signUp_whenEmailAlreadyExists_returns400BadRequest() throws Exception {
         given(userService.signUp(any(), any(), any()))
-                .willThrow(new IllegalArgumentException("이미 가입된 이메일입니다. email=dup@example.com"));
+                .willThrow(new IllegalArgumentException("이미 가입된 이메일입니다."));
 
         mockMvc.perform(post("/api/v1/users")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"tester\",\"email\":\"dup@example.com\",\"password\":\"Password123!\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("이미 가입된 이메일입니다. email=dup@example.com"));
+                .andExpect(jsonPath("$.detail").value("이미 가입된 이메일입니다."));
     }
 
     @Test

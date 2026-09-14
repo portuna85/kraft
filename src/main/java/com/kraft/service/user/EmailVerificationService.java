@@ -1,5 +1,6 @@
 package com.kraft.service.user;
 
+import com.kraft.domain.user.EmailMasker;
 import com.kraft.domain.user.EmailHasher;
 import com.kraft.domain.user.EmailVerificationToken;
 import com.kraft.domain.user.EmailVerificationTokenRepository;
@@ -55,7 +56,7 @@ public class EmailVerificationService {
     @Transactional
     public void sendVerificationEmail(String email) {
         User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + email));
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
 
         String token = UUID.randomUUID().toString();
         tokenRepository.save(EmailVerificationToken.builder()
@@ -90,7 +91,7 @@ public class EmailVerificationService {
         try {
             sendVerificationEmail(email);
         } catch (Exception e) {
-            log.warn("인증 메일을 대기열에 넣지 못했습니다. email={}", email, e);
+            log.warn("인증 메일을 대기열에 넣지 못했습니다. email={}", EmailMasker.mask(email), e);
         }
     }
 
@@ -125,7 +126,7 @@ public class EmailVerificationService {
     @Transactional
     public void resend(String email) {
         User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + email));
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
 
         if (user.getRole() != Role.GUEST) {
             throw new IllegalArgumentException("이미 인증된 계정입니다.");

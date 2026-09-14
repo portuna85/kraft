@@ -1,5 +1,6 @@
 package com.kraft.config.security;
 
+import com.kraft.domain.user.EmailMasker;
 import com.kraft.domain.user.EmailHasher;
 import com.kraft.domain.user.User;
 import com.kraft.domain.user.UserRepository;
@@ -21,7 +22,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
-                .orElseThrow(() -> new UsernameNotFoundException("존재하지 않는 회원입니다. email=" + email));
+                .orElseThrow(() -> new UsernameNotFoundException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
 
         // username은 이메일 그대로 둔다(서비스 계층이 authentication.getName()으로 회원을 찾는다).
         // 화면 표시용 닉네임은 displayName으로 따로 싣는다.
