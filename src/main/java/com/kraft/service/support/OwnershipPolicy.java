@@ -25,8 +25,7 @@ public final class OwnershipPolicy {
      * 소유자를 알 수 없으면 false다. 예외를 던지지 않으므로 조회 경로에서 안전하게 쓸 수 있다.
      */
     public static boolean canManage(Authentication authentication, User owner) {
-        if (authentication == null || !authentication.isAuthenticated()
-                || authentication instanceof AnonymousAuthenticationToken) {
+        if (!isAuthenticated(authentication)) {
             return false;
         }
 
@@ -35,6 +34,15 @@ public final class OwnershipPolicy {
         boolean isOwner = owner != null && owner.getEmail().equals(authentication.getName());
 
         return isAdmin || isOwner;
+    }
+
+    /**
+     * Thymeleaf의 {@code sec:authorize="isAuthenticated()"}와 같은 판정. 화면을 서버가
+     * 렌더링하지 않는 곳(Vue 아일랜드에 내려줄 초기 상태 등)에서도 같은 규칙을 쓰기 위해 뺐다.
+     */
+    public static boolean isAuthenticated(Authentication authentication) {
+        return authentication != null && authentication.isAuthenticated()
+                && !(authentication instanceof AnonymousAuthenticationToken);
     }
 
     public static void validateOwner(Authentication authentication, User owner, Long entityId) {

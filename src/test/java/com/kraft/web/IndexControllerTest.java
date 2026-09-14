@@ -202,31 +202,34 @@ class IndexControllerTest {
     }
 
     @Test
-    @DisplayName("GET /posts/update/{id} 는 편집 충돌 감지용 버전을 히든 필드로 내려준다")
+    @DisplayName("GET /posts/update/{id} 는 편집 충돌 감지용 버전을 Vue 초기 상태(JSON)로 내려준다")
     void postsUpdate_rendersVersionForConflictDetection() throws Exception {
         given(postService.findByIdForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new PostViewDto(1L, "제목", "내용", null, "작성자", true, Category.FREE, 0L, 0L, false, 7L));
         given(commentService.findByPostIdForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(List.of());
 
+        // 게시글 편집은 Vue 아일랜드(src/vue/post-edit)로 렌더링된다. 버전은 #post-initial-data
+        // 스크립트의 JSON에 담겨 내려가고, 저장 요청이 그대로 돌려보내 서버가 충돌을 판별한다.
         mockMvc.perform(get("/posts/update/1").with(user("tester@example.com").roles("USER")))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("id=\"post-version\"")))
-                .andExpect(content().string(containsString("value=\"7\"")));
+                .andExpect(content().string(containsString("id=\"post-initial-data\"")))
+                .andExpect(content().string(containsString("\"version\":7")));
     }
 
     @Test
-    @DisplayName("F12: 편집 취소가 분류를 되돌릴 수 있도록 원본 분류를 히든 필드로 내려준다")
+    @DisplayName("F12: 편집 취소가 분류를 되돌릴 수 있도록 원본 분류를 Vue 초기 상태(JSON)로 내려준다")
     void postsUpdate_rendersOriginalCategoryForCancel() throws Exception {
         given(postService.findByIdForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new PostViewDto(1L, "제목", "내용", null, "작성자", true, Category.QNA, 0L, 0L, false, 0L));
         given(commentService.findByPostIdForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(List.of());
 
-        // 이 필드가 없어서 cancelEdit()이 분류만 복원하지 못했다 — 변경 감지에서도 빠져 있었다.
+        // 이 값이 없어서 cancelEdit()이 분류만 복원하지 못했다 — 변경 감지에서도 빠져 있었다
+        // (지금은 Vue의 original/draft 키 순회 비교가 이 회귀를 구조적으로 막는다).
         mockMvc.perform(get("/posts/update/1").with(user("tester@example.com").roles("USER")))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("id=\"original-category\"")))
-                .andExpect(content().string(containsString("value=\"QNA\"")));
+                .andExpect(content().string(containsString("id=\"post-initial-data\"")))
+                .andExpect(content().string(containsString("\"category\":\"QNA\"")));
     }
 }

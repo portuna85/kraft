@@ -34,6 +34,7 @@ export default defineConfig({
                 // 화면별 마운트 진입점을 여기 추가한다. 각 페이지는 필요한 번들만 로드한다
                 // (main.js처럼 전역으로 싣지 않는다).
                 comments: resolve(__dirname, 'comments/mount.js'),
+                'post-edit': resolve(__dirname, 'post-edit/mount.js'),
             },
             output: {
                 entryFileNames: '[name].js',

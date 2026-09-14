@@ -3,8 +3,12 @@ package com.kraft.web;
 import com.kraft.domain.post.Category;
 import com.kraft.service.comment.CommentService;
 import com.kraft.service.post.PostService;
+import com.kraft.service.support.CategoryPolicy;
+import com.kraft.service.support.OwnershipPolicy;
 import com.kraft.service.user.EmailVerificationService;
 import com.kraft.web.dto.comment.CommentViewDto;
+import com.kraft.web.dto.post.CategoryOptionDto;
+import com.kraft.web.dto.post.PostEditBootstrapDto;
 import com.kraft.web.dto.post.PostViewDto;
 import com.kraft.web.dto.post.PostsPageResponseDto;
 import com.kraft.web.support.PageWindow;
@@ -69,6 +73,18 @@ public class IndexController {
         // REST 응답에는 없는 화면 전용 필드), 초기 렌더에서 그대로 JSON으로 내려 이후 목록
         // 갱신은 클라이언트가 이 값을 들고 낙관적으로 처리하게 한다.
         model.addAttribute("commentsJson", objectMapper.writeValueAsString(comments));
+
+        // 게시글 읽기·편집 영역도 Vue 아일랜드(src/vue/post-edit)로 렌더링된다. 분류 선택지는
+        // post-update.html이 예전에 th:each/th:if로 걸러내던 것과 같은 규칙(CategoryPolicy)을
+        // 그대로 써서, "관리자가 아니면 NOTICE 숨김·이미 공지인 글은 유지" 동작이 갈라지지 않게 한다.
+        List<CategoryOptionDto> categoryOptions = CategoryPolicy.availableCategoriesFor(authentication, post.category())
+                .stream()
+                .map(c -> new CategoryOptionDto(c.name(), c.getTitle()))
+                .toList();
+        boolean authenticated = OwnershipPolicy.isAuthenticated(authentication);
+        model.addAttribute("postEditInitialJson",
+                objectMapper.writeValueAsString(new PostEditBootstrapDto(post, categoryOptions, authenticated)));
+
         model.addAttribute("pageTitle", post.title());
         return "post/post-update";
     }
