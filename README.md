@@ -121,19 +121,21 @@ docker compose up -d --wait
 대부분의 테스트는 `test` 프로파일의 H2 인메모리 DB를 사용하며 Docker MariaDB나 `.env`가
 필요하지 않습니다.
 
-예외는 `com.kraft.migration`의 두 클래스입니다. Testcontainers로 실제 MariaDB를 띄웁니다.
+예외는 아래 세 클래스입니다. Testcontainers로 실제 MariaDB를 띄웁니다.
 
 - `MariaDbMigrationTest` — **빈 DB**에서 `db/migration`의 모든 마이그레이션을 순서대로 실행하고,
   `ddl-auto: validate`로 "마이그레이션이 만든 스키마와 엔티티 매핑이 일치하는지"를 확인합니다.
 - `MariaDbUpgradeRehearsalTest` — **이미 데이터가 있는 기존 DB**를 운영 설정으로 넘기는 절차를
   리허설합니다. 위 "환경변수와 데이터 보존"의 baseline 안내가 여기서 검증됩니다.
+- `BackupRestoreRehearsalTest` — 아래 "백업·복구" 절차를 그대로 밟습니다. 덤프를 뜨고, DB와
+  업로드 파일을 지우고, 되돌린 뒤, 앱이 정상 기동해 글·이미지·이메일이 살아 있는지 봅니다.
 
-H2는 Hibernate가 엔티티로 스키마를 직접 만들기 때문에 **마이그레이션 SQL을 한 줄도 실행하지
-않습니다** — 그래서 이 검증이 따로 필요합니다.
+앞의 두 클래스가 따로 필요한 이유는 H2 때문입니다. H2는 Hibernate가 엔티티로 스키마를 직접
+만들기 때문에 **마이그레이션 SQL을 한 줄도 실행하지 않습니다.**
 
 Docker가 없으면 이 클래스들만 건너뛰므로 `gradlew test`는 그대로 통과합니다. 다만 그때는
-마이그레이션이 검증되지 않은 것이므로, **운영 배포 전에는 Docker를 켠 상태로 한 번 돌려야
-합니다.** CI는 Docker가 있는 환경에서 항상 실행합니다.
+마이그레이션도 복구 절차도 검증되지 않은 것이므로, **운영 배포 전에는 Docker를 켠 상태로 한 번
+돌려야 합니다.** CI는 Docker가 있는 환경에서 항상 실행합니다.
 
 ## 백업·복구
 
@@ -150,8 +152,30 @@ docker compose exec mariadb mariadb-dump -u root -p"$env:MARIADB_ROOT_PASSWORD" 
 Compress-Archive -Path uploads -DestinationPath uploads-backup.zip
 ```
 
+### 복구
+
+앱을 내린 상태에서 **세 가지를 같은 시점의 것으로** 되돌립니다. 순서는 상관없지만 하나라도
+빠지면 아래 표처럼 어긋납니다.
+
+```powershell
+# 1. DB
+Get-Content backup.sql | docker compose exec -T mariadb mariadb -u root -p"$env:MARIADB_ROOT_PASSWORD" kraft
+
+# 2. 업로드 파일
+Expand-Archive -Path uploads-backup.zip -DestinationPath . -Force
+
+# 3. .env의 EMAIL_ENCRYPTION_KEY를 백업 시점의 값으로 되돌린 뒤 기동
+.\gradlew.bat bootRun
+```
+
+| 빠뜨린 것 | 겉보기 | 실제 상태 |
+| --- | --- | --- |
+| 업로드 파일 | **앱은 오류를 내지 않는다** | `post_images` 행은 있는데 파일이 없어 이미지만 깨져 보인다 |
+| 암호화 키 | DB 복구는 성공한 것으로 보인다 | 그 회원을 **읽어 올 수조차 없다** — 복호화가 엔티티 생성 시점에 일어난다 |
+
 복구 후에는 로그인, 이미지가 보이는 글 열기, 새 글 작성까지 실제로 해봐야 세 가지가 맞물렸는지
-확인됩니다. DB만 되돌리면 `post_images` 행은 있는데 파일이 없는 상태가 될 수 있습니다.
+확인됩니다. 이 절차와 위 두 가지 실패 양상은 `BackupRestoreRehearsalTest`가 실제 MariaDB로
+검증하므로, 절차 자체가 낡아 못 쓰게 되는 일은 없습니다.
 
 ### 이메일 암호화 키 교체
 
