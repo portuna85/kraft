@@ -48,6 +48,18 @@ export function set(key) {
     }
 }
 
+/**
+ * 이동 없이 그 자리에서 성공 메시지를 바로 보여준다. `set()`+`consume()`은 페이지 이동이
+ * 끼어 있는 흐름(등록·수정 후 목록으로 돌아가는 등)을 위한 것이고, 이동이 없는 화면(댓글
+ * Vue 아일랜드처럼 그 자리에서 상태만 갱신하는 곳)은 sessionStorage를 거칠 이유가 없다.
+ */
+export function showNow(key) {
+    const entry = MESSAGES[key];
+    if (entry) {
+        render(entry.text, entry.type === 'danger');
+    }
+}
+
 /** 예약된 메시지가 있으면 표시하고 지운다. 각 페이지 로드 시 한 번 호출한다. */
 export function consume() {
     let key = null;

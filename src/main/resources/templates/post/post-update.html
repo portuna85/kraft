@@ -115,51 +115,12 @@
             </div>
         </form>
 
-        <section class="comments" aria-labelledby="comments-heading">
-            <h2 id="comments-heading" class="comments__heading">
-                댓글 <span th:text="${#lists.size(comments)}">0</span>개
-            </h2>
-
-            <p class="comments__empty" th:if="${#lists.isEmpty(comments)}">첫 댓글을 남겨 보세요.</p>
-
-            <ul class="comment-list" id="comment-list" th:unless="${#lists.isEmpty(comments)}">
-                <li class="comment-list__item" th:each="c : ${comments}" th:attr="data-comment-id=${c.id}">
-                    <div class="comment-view">
-                        <div class="comment-list__head">
-                            <strong th:text="${c.author}">작성자</strong>
-                            <small class="text-muted"
-                                   th:text="${c.createdAt != null} ? ${#temporals.format(c.createdAt, 'yyyy.MM.dd HH:mm')} : ''">2026.01.01 00:00</small>
-                        </div>
-                        <p class="comment-list__content" th:text="${c.content}">댓글 내용</p>
-                        <div class="btn-group-gap comment-actions" th:if="${c.canManage}">
-                            <button type="button" class="btn btn-sm btn-outline-secondary btn-comment-edit">수정</button>
-                            <button type="button" class="btn btn-sm btn-outline-danger btn-comment-delete"
-                                    data-target-kind="comment">삭제</button>
-                        </div>
-                    </div>
-                    <form class="comment-edit-form" hidden>
-                        <div class="mb-3">
-                            <label class="visually-hidden">댓글 내용</label>
-                            <textarea class="form-control comment-edit__textarea" maxlength="1000" th:text="${c.content}"></textarea>
-                        </div>
-                        <div class="btn-group-gap">
-                            <button type="button" class="btn btn-sm btn-secondary btn-comment-cancel">취소</button>
-                            <button type="submit" class="btn btn-sm btn-primary btn-comment-save">저장</button>
-                        </div>
-                    </form>
-                </li>
-            </ul>
-
-            <div sec:authorize="isAuthenticated()" class="mb-3 comment-form">
-                <input type="hidden" id="comment-post-id" th:value="${post.id}">
-                <label for="comment-content">댓글 작성</label>
-                <textarea class="form-control" id="comment-content" placeholder="댓글을 입력하세요" maxlength="1000"></textarea>
-                <button type="button" class="btn btn-primary mt-2" id="btn-comment-save">댓글 등록</button>
-            </div>
-            <p sec:authorize="isAnonymous()" class="comments__login-hint">
-                <a href="/login">로그인 후 댓글을 작성할 수 있습니다.</a>
-            </p>
-        </section>
+        <!-- 댓글은 Vue 아일랜드(src/vue/comments)로 렌더링된다. canManage는 서버만 판정할 수
+             있어(공개 REST 응답에는 없는 화면 전용 필드) 초기 목록을 JSON으로 그대로 내려준다. -->
+        <script type="application/json" id="comments-initial-data" th:utext="${commentsJson}"></script>
+        <section id="comments-app" class="comments" aria-labelledby="comments-heading"
+                 th:attr="data-post-id=${post.id},data-authenticated=${#authorization.expression('isAuthenticated()')}"></section>
+        <script type="module" src="/js/vue-dist/comments.js"></script>
     </main>
 </div>
 

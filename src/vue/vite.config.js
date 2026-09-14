@@ -22,6 +22,7 @@ export default defineConfig({
     resolve: {
         alias: {
             '@core': resolve(__dirname, '../main/resources/static/js/app/core'),
+            '@ui': resolve(__dirname, '../main/resources/static/js/app/ui'),
         },
     },
     build: {

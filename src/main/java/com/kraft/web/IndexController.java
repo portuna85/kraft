@@ -4,6 +4,7 @@ import com.kraft.domain.post.Category;
 import com.kraft.service.comment.CommentService;
 import com.kraft.service.post.PostService;
 import com.kraft.service.user.EmailVerificationService;
+import com.kraft.web.dto.comment.CommentViewDto;
 import com.kraft.web.dto.post.PostViewDto;
 import com.kraft.web.dto.post.PostsPageResponseDto;
 import com.kraft.web.support.PageWindow;
@@ -16,6 +17,9 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
+import tools.jackson.databind.ObjectMapper;
+
+import java.util.List;
 
 @RequiredArgsConstructor
 @Controller
@@ -24,6 +28,7 @@ public class IndexController {
     private final PostService postService;
     private final CommentService commentService;
     private final EmailVerificationService emailVerificationService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/")
     public String index(@PageableDefault(size = 10) Pageable pageable,
@@ -57,8 +62,13 @@ public class IndexController {
     @GetMapping("/posts/update/{id}")
     public String postsUpdate(@PathVariable Long id, Authentication authentication, Model model) {
         PostViewDto post = postService.findByIdForView(id, authentication);
+        List<CommentViewDto> comments = commentService.findByPostIdForView(id, authentication);
         model.addAttribute("post", post);
-        model.addAttribute("comments", commentService.findByPostIdForView(id, authentication));
+        model.addAttribute("comments", comments);
+        // 댓글 영역은 Vue 아일랜드로 렌더링된다. canManage는 서버만 판정할 수 있으므로(공개
+        // REST 응답에는 없는 화면 전용 필드), 초기 렌더에서 그대로 JSON으로 내려 이후 목록
+        // 갱신은 클라이언트가 이 값을 들고 낙관적으로 처리하게 한다.
+        model.addAttribute("commentsJson", objectMapper.writeValueAsString(comments));
         model.addAttribute("pageTitle", post.title());
         return "post/post-update";
     }
