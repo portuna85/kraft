@@ -12,6 +12,7 @@
   "include": [
     "types/**/*",
     "src/main/resources/static/js/**/*",
-    "e2e/**/*"
+    "e2e/**/*",
+    "src/vue/**/*.js"
   ]
 }

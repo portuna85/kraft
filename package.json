@@ -5,22 +5,29 @@
   "type": "module",
   "description": "Kraft의 브라우저 검증(Playwright)과 정적 검사(ESLint). 애플리케이션 번들과는 무관하며, Gradle 빌드는 이 패키지 없이도 그대로 돈다.",
   "scripts": {
-    "lint": "eslint src/main/resources/static/js e2e && npm run typecheck",
+    "lint": "eslint src/main/resources/static/js e2e src/vue && npm run typecheck",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "typecheck": "tsc --noEmit -p jsconfig.json",
     "build:css": "npm run build:css:bootstrap && npm run build:css:app",
     "check:css": "npm run build:css && git diff --exit-code --stat -- src/main/resources/static/css",
     "build:css:bootstrap": "sass --load-path=node_modules/bootstrap/scss --style=compressed --no-source-map --quiet-deps src/styles/bootstrap-custom.scss src/main/resources/static/css/bootstrap.custom.css",
-    "build:css:app": "sass --style=compressed --no-source-map --quiet-deps src/styles/style.scss src/main/resources/static/css/style.css"
+    "build:css:app": "sass --style=compressed --no-source-map --quiet-deps src/styles/style.scss src/main/resources/static/css/style.css",
+    "build:vue": "vite build --config src/vue/vite.config.js",
+    "check:vue": "npm run build:vue && git diff --exit-code --stat -- src/main/resources/static/js/vue-dist"
   },
   "devDependencies": {
     "@playwright/test": "1.56.0",
     "@types/bootstrap": "^5.2.11",
+    "@vitejs/plugin-vue": "^6.0.9",
     "bootstrap": "^5.3.8",
     "eslint": "^9.37.0",
+    "eslint-plugin-vue": "^10.11.0",
     "globals": "^16.5.0",
     "sass": "^1.104.1",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0",
+    "vue": "^3.5.42",
+    "vue-eslint-parser": "^10.4.1"
   }
 }
