@@ -57,7 +57,7 @@
     border: 1px solid rgba(255, 255, 255, 0.4);
     border-radius: var(--kraft-radius-control);
     color: #ffffff;
-    font-size: 0.9rem;
+    font-size: $fs-sm;
 }
 
 /* 768px 이상에서는 버튼들이 헤더 안에 가로로 다 들어가므로 토글 버튼을 숨긴다. 이 규칙은
@@ -147,7 +147,7 @@
     align-items: center;
     padding: var(--kraft-space-2) var(--kraft-space-3);
     color: rgba(255, 255, 255, 0.85);
-    font-size: 0.9rem;
+    font-size: $fs-sm;
     word-break: break-all;
 }
 

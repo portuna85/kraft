@@ -1,33 +1,31 @@
 /* ==========================================================================
    게시글 읽기 / 편집
    ========================================================================== */
+// 목록의 .post-list__category(1px 8px, $fs-2xs)와 같은 배지였는데 여기만 2px 10px,
+// 0.75rem으로 살짝 더 컸다. 밀도를 올리는 방향과 반대라 작은 쪽으로 맞춘다(_board.scss 참고).
 .post-category {
     display: inline-block;
-    padding: 2px 10px;
+    padding: 1px 8px;
     border-radius: 999px;
     background-color: var(--kraft-accent-bg);
     color: var(--kraft-accent-text);
-    font-size: 0.75rem;
+    font-size: $fs-2xs;
     font-weight: 600;
     margin-bottom: var(--kraft-space-2);
 }
 
+// 넓은 화면(>=lg) 크기는 _board.scss의 .page-title·.board-head__title과 같은 블록에서
+// 함께 정의한다(세 제목이 같은 992px 규칙을 반복하고 있었다).
 .post-title {
-    font-size: 1.5rem;
+    font-size: $fs-heading;
     font-weight: 700;
     margin-bottom: var(--kraft-space-2);
     overflow-wrap: anywhere;
 }
 
-@include from($bp-lg) {
-    .post-title {
-        font-size: 1.75rem;
-    }
-}
-
 .post-byline {
     color: var(--kraft-text-muted);
-    font-size: 0.9rem;
+    font-size: $fs-sm;
     margin-bottom: var(--kraft-space-4);
 }
 

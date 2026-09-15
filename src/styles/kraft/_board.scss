@@ -3,14 +3,8 @@
    ========================================================================== */
 .page-title {
     font-weight: 700;
-    font-size: 1.5rem;
+    font-size: $fs-heading;
     margin-bottom: var(--kraft-space-4);
-}
-
-@include from($bp-lg) {
-    .page-title {
-        font-size: 1.75rem;
-    }
 }
 
 .board-head {
@@ -23,19 +17,24 @@
 
 .board-head__title {
     font-weight: 700;
-    font-size: 1.5rem;
+    font-size: $fs-heading;
     margin: 0 0 var(--kraft-space-1);
 }
 
+// 페이지·게시판·게시글 제목(.post-title은 _post.scss) 세 곳이 각자 같은 992px 블록을
+// 반복하고 있었다. 셀렉터를 한데 모아 한 번만 선언한다 — 파일은 나뉘어 있어도 컴파일
+// 결과는 이전과 동일하다(build:css diff 없음).
 @include from($bp-lg) {
-    .board-head__title {
-        font-size: 1.75rem;
+    .page-title,
+    .board-head__title,
+    .post-title {
+        font-size: $fs-heading-lg;
     }
 }
 
 .board-head__count {
     color: var(--kraft-text-muted);
-    font-size: 0.9rem;
+    font-size: $fs-sm;
     margin: 0;
 }
 
@@ -101,7 +100,7 @@
     flex-wrap: wrap;
     gap: var(--kraft-space-1) var(--kraft-space-3);
     color: var(--kraft-text-muted);
-    font-size: 0.8rem;
+    font-size: $fs-xs;
     // 본문(line-height:1.6, _base.scss)을 그대로 물려받으면 0.8rem × 1.6 = 20.48px로
     // 소수점 줄 높이가 된다. .post-list__item이 flex-column(<768px)이나 grid(≥768px)로
     // 이 요소를 여러 형제와 함께 쌓을 때, 소수점이 누적되다 실행마다 다른 지점에서
@@ -116,7 +115,7 @@
 
 .post-list__no {
     color: var(--kraft-text-muted);
-    font-size: 0.8rem;
+    font-size: $fs-xs;
     // .post-list__meta와 같은 이유로 정수 배수 줄 높이를 쓴다.
     line-height: 1.25;
     // 자릿수가 바뀌어도 숫자 폭이 흔들리지 않게 한다 — 좁은 열(≥768px)에서 자릿수가
@@ -134,7 +133,7 @@
     border-radius: 999px;
     background-color: var(--kraft-accent-bg);
     color: var(--kraft-accent-text);
-    font-size: 0.7rem;
+    font-size: $fs-2xs;
     font-weight: 600;
     margin-right: var(--kraft-space-2);
     vertical-align: middle;
@@ -143,7 +142,7 @@
 .post-list__views,
 .post-list__comments {
     color: var(--kraft-text-muted);
-    font-size: 0.8rem;
+    font-size: $fs-xs;
     // .post-list__meta와 같은 이유로 정수 배수 줄 높이를 쓴다.
     line-height: 1.25;
     font-variant-numeric: tabular-nums;
@@ -173,7 +172,7 @@
 }
 
 .popular-posts__title {
-    font-size: 0.95rem;
+    font-size: $fs-md;
     font-weight: 700;
     margin-bottom: var(--kraft-space-2);
 }
@@ -208,7 +207,7 @@
 
 .popular-posts__views {
     color: var(--kraft-text-muted);
-    font-size: 0.8rem;
+    font-size: $fs-xs;
     flex-shrink: 0;
 }
 
@@ -234,7 +233,7 @@
         padding: var(--kraft-space-2) var(--kraft-space-4);
         background-color: var(--kraft-surface-subtle);
         color: var(--kraft-text-muted);
-        font-size: 0.8rem;
+        font-size: $fs-xs;
         font-weight: 600;
         border-bottom: 1px solid var(--kraft-border);
     }
@@ -248,7 +247,7 @@
     }
 
     .post-list__title {
-        font-size: 0.9375rem;
+        font-size: $fs-md;
         // 표 형태에서는 한 줄로 충분하다. 2줄까지 허용하던 모바일 카드와 달리, 여기서는
         // 다음 줄이 다음 행과 헷갈리지 않아야 한다.
         -webkit-line-clamp: 1;
@@ -266,7 +265,7 @@
 
     .post-list__author,
     .post-list__date {
-        font-size: 0.8rem;
+        font-size: $fs-xs;
         color: var(--kraft-text-muted);
         overflow-wrap: anywhere;
     }

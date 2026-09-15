@@ -20,6 +20,17 @@ $bp-xl: 1200px;
     }
 }
 
+// 글자 크기 스케일. 리터럴로 흩어져 있던 .7/.75/.8/.9/.92/.95rem 중 배지 두 벌을 작은 쪽으로
+// 합치고(.75→.7) 한 곳뿐이던 .92·.95rem은 가장 가까운 값으로 흡수했다(값 자체는 바뀌지만
+// 0.02rem·0.0125rem 차이라 눈에 보이는 변화는 없다) — 이 커밋의 요점은 위 브레이크포인트와
+// 같다: 이름 붙은 값 하나를 바꾸면 그 값을 쓰는 곳 전체가 같이 움직인다는 것.
+$fs-2xs: 0.7rem; // 배지(분류), 표 형태 목록의 가장 작은 텍스트
+$fs-xs: 0.8rem; // 목록 메타 정보(글 번호·조회수·댓글수·작성자·날짜)
+$fs-sm: 0.9rem; // 보조 텍스트(폼 라벨, 작성 정보, 안내 문구)
+$fs-md: 0.9375rem; // 표 형태 목록 제목처럼 본문보다 살짝 작게 눌러야 하는 자리
+$fs-heading: 1.5rem; // 페이지·게시판·게시글 제목(좁은 화면)
+$fs-heading-lg: 1.75rem; // 같은 제목들의 넓은 화면(>=lg) 크기
+
 :root {
     --kraft-primary: #4f46e5;
     --kraft-primary-dark: #4338ca;
@@ -35,7 +46,6 @@ $bp-xl: 1200px;
     --kraft-control-border: #768397;
     --kraft-accent-text: #80601e;
     --kraft-accent-bg: #fff7e0;
-    --kraft-success: #166534;
     --kraft-danger: #b42318;
     --kraft-danger-dark: #8c1c14;
 
@@ -48,5 +58,4 @@ $bp-xl: 1200px;
     --kraft-space-4: 16px;
     --kraft-space-6: 24px;
     --kraft-space-8: 32px;
-    --kraft-space-12: 48px;
 }

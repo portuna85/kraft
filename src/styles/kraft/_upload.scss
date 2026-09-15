@@ -33,12 +33,12 @@
 .picture-preview__name {
     margin: 0;
     overflow-wrap: anywhere;
-    font-size: 0.9rem;
+    font-size: $fs-sm;
     color: var(--kraft-text-muted);
 }
 
 .form-progress {
     margin-top: var(--kraft-space-3);
     color: var(--kraft-text-muted);
-    font-size: 0.9rem;
+    font-size: $fs-sm;
 }
