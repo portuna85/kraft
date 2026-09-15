@@ -18,6 +18,30 @@ test.describe('비밀번호 변경', () => {
         await expect(page.locator('#change-password-error')).toBeVisible();
         await expect(modal).toBeVisible();
     });
+
+    test('모달에서도 Enter로 제출되고, 빈 입력은 브라우저 검증이 먼저 막는다', async ({ page }) => {
+        let requested = false;
+        page.on('request', (request) => {
+            if (request.method() === 'PUT' && request.url().endsWith('/api/v1/users/me/password')) {
+                requested = true;
+            }
+        });
+
+        await page.goto('/');
+        await page.getByRole('button', { name: '비밀번호 변경' }).click();
+        await expect(page.locator('#changePasswordModal')).toBeVisible();
+
+        // 예전에는 "변경하기"가 type=button이라 Enter가 아무 일도 하지 않았다.
+        await page.locator('#currentPassword').press('Enter');
+        expect(requested, 'required가 제출 자체를 막는다').toBe(false);
+
+        await page.locator('#currentPassword').fill('WrongPass1!');
+        await page.locator('#newPassword').fill('Another1!pass');
+        await page.locator('#newPassword').press('Enter');
+
+        await expect(page.locator('#change-password-error')).toBeVisible();
+        expect(requested, 'Enter가 실제로 폼을 제출했다').toBe(true);
+    });
 });
 
 test.describe('비밀번호 변경 성공', () => {

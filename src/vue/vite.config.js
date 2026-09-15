@@ -36,6 +36,7 @@ export default defineConfig({
                 comments: resolve(__dirname, 'comments/mount.js'),
                 'post-edit': resolve(__dirname, 'post-edit/mount.js'),
                 'post-save': resolve(__dirname, 'post-save/mount.js'),
+                signup: resolve(__dirname, 'signup/mount.js'),
             },
             output: {
                 entryFileNames: '[name].js',

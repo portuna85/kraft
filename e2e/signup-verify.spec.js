@@ -26,6 +26,32 @@ test('비밀번호 확인이 다르면 필드 옆에서 알려주고 요청을 �
     expect(requested, '서버까지 갈 필요가 없다').toBe(false);
 });
 
+test('Enter로도 제출되고, 필수 입력이 비어 있으면 브라우저 검증이 먼저 막는다', async ({ page }) => {
+    let requested = false;
+    page.on('request', (request) => {
+        if (request.method() === 'POST' && request.url().endsWith('/api/v1/users')) {
+            requested = true;
+        }
+    });
+
+    await page.goto('/signup');
+
+    // 예전에는 "가입하기"가 type=button이라 Enter가 아무 일도 하지 않았고 required도 없었다.
+    await page.locator('#name').press('Enter');
+    await expect(page).toHaveURL(/\/signup$/);
+    expect(requested, 'required가 제출 자체를 막는다').toBe(false);
+
+    // 필수 입력을 채우면 Enter가 실제로 폼을 제출한다 — 확인란 불일치까지 도달하는 것으로 안다.
+    await page.locator('#name').fill('엔터');
+    await page.locator('#email').fill(newEmail());
+    await page.locator('#password').fill(PASSWORD);
+    await page.locator('#passwordConfirm').fill(`${PASSWORD}xx`);
+    await page.locator('#passwordConfirm').press('Enter');
+
+    await expect(page.locator('#passwordConfirm-error')).toBeVisible();
+    expect(requested, '불일치는 서버까지 갈 필요가 없다').toBe(false);
+});
+
 test('이미 가입된 이메일이면 서버 메시지를 그대로 보여준다', async ({ page }) => {
     await page.goto('/signup');
     await page.locator('#name').fill(uniqueTitle('중복'));

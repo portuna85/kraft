@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <!--/*@thymesVar id="pageTitle" type="java.lang.String"*/-->
 <head th:replace="~{layout/header :: header}"></head>
 <body>
@@ -11,33 +11,12 @@
     <main id="main" class="kraft-main kraft-main--account">
         <h1 class="page-title">회원가입</h1>
         <div th:replace="~{layout/footer :: flash}"></div>
+
+        <!--/* 가입 폼은 Vue 아일랜드(src/vue/signup)가 그린다. 서버가 내려줄 초기 상태는 없고,
+               제출은 REST API로만 오간다. */-->
         <div class="card-kraft">
-            <form id="signup-form">
-                <div class="mb-3">
-                    <label for="name">이름</label>
-                    <input type="text" class="form-control" id="name" placeholder="이름을 입력하세요" maxlength="50">
-                </div>
-                <div class="mb-3">
-                    <label for="email">이메일</label>
-                    <input type="email" class="form-control" id="email" placeholder="이메일을 입력하세요" maxlength="100"
-                           autocomplete="email">
-                </div>
-                <div class="mb-3">
-                    <label for="password">비밀번호 (8자 이상, 대문자·소문자·특수문자 포함)</label>
-                    <input type="password" class="form-control" id="password" placeholder="비밀번호를 입력하세요"
-                           autocomplete="new-password">
-                </div>
-                <div class="mb-3">
-                    <label for="passwordConfirm">비밀번호 확인</label>
-                    <input type="password" class="form-control" id="passwordConfirm" placeholder="비밀번호를 다시 입력하세요"
-                           autocomplete="new-password" aria-describedby="passwordConfirm-error">
-                    <div class="invalid-feedback" id="passwordConfirm-error"></div>
-                </div>
-            </form>
-            <div class="btn-group-gap">
-                <a href="/" role="button" class="btn btn-secondary">취소</a>
-                <button type="button" class="btn btn-primary" id="btn-signup">가입하기</button>
-            </div>
+            <div id="signup-app"></div>
+            <script type="module" src="/js/vue-dist/signup.js"></script>
         </div>
     </main>
 </div>

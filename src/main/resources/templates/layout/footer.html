@@ -65,23 +65,26 @@
                 </div>
                 <div class="modal-body">
                     <div id="change-password-error" class="flash flash--danger" role="alert" hidden></div>
+                    <!--/* 진짜 submit이라 Enter로도 제출되고 required·minlength가 먼저 걸린다.
+                           제출 버튼은 모달 푸터에 있어 form 속성으로 이 폼과 연결한다. */-->
                     <form id="change-password-form">
                         <div class="mb-3">
                             <label for="currentPassword">현재 비밀번호</label>
                             <input type="password" class="form-control" id="currentPassword"
-                                   autocomplete="current-password">
+                                   autocomplete="current-password" required>
                         </div>
                         <div class="mb-3">
                             <label for="newPassword">새 비밀번호 (8자 이상, 대문자·소문자·특수문자 포함)</label>
                             <input type="password" class="form-control" id="newPassword"
-                                   autocomplete="new-password">
+                                   autocomplete="new-password" minlength="8" required>
                         </div>
                     </form>
                     <p class="text-muted mb-0">변경하면 자동으로 로그아웃되고 로그인 화면으로 이동합니다.</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                    <button type="button" class="btn btn-primary" id="btn-change-password">변경하기</button>
+                    <button type="submit" form="change-password-form" class="btn btn-primary"
+                            id="btn-change-password">변경하기</button>
                 </div>
             </div>
         </div>

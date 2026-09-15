@@ -1,7 +1,6 @@
 import * as flash from './ui/flash.js';
 import * as siteNav from './features/site-nav.js';
 import * as account from './features/account.js';
-import * as signup from './features/signup.js';
 import * as deleteConfirm from './features/delete-confirm.js';
 
 /**
@@ -18,5 +17,4 @@ flash.consume();
 
 siteNav.init();
 account.init();
-signup.init();
 deleteConfirm.init();

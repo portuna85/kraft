@@ -29,6 +29,9 @@ function initLogout() {
 /**
  * 비밀번호 변경 모달. 별도 화면이 없어졌으므로 어느 화면에서든 헤더의 "비밀번호 변경"으로 열린다.
  *
+ * 폼의 submit에 건다 — 예전처럼 버튼 click에만 걸면 Enter로 제출할 수 없고 required·minlength도
+ * 걸리지 않는다(개선 보고서 사용성 항목). 제출 버튼은 모달 푸터에 있어 form 속성으로 연결된다.
+ *
  * 오류는 화면 이동이 없으니 배너가 아니라 모달 안에서 보여준다(모달이 #flash를 덮는다).
  * 성공하면 로그인 화면으로 보낸다 — 로그아웃을 여기서 하지 않는 이유는 서버가 변경을 커밋한 뒤
  * 이 계정의 모든 세션을 이미 폐기했기 때문이다(UserService.changePassword). 예전처럼 JS가
@@ -40,11 +43,15 @@ function initChangePassword() {
         return;
     }
 
-    on(byId('btn-change-password'), 'click', changePassword);
+    const form = byId('change-password-form');
+    on(form, 'submit', (event) => {
+        event.preventDefault();
+        changePassword();
+    });
 
     // Bootstrap 5가 쏘는 실제 DOM 이벤트라 addEventListener로 그대로 받는다.
     on(element, 'show.bs.modal', () => {
-        byId('change-password-form').reset();
+        form.reset();
         hideModalError();
     });
     on(element, 'shown.bs.modal', () => byId('currentPassword').focus());
