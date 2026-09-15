@@ -42,35 +42,3 @@
     color: var(--kraft-text-muted);
     font-size: 0.9rem;
 }
-
-.btn-primary {
-    background-color: var(--kraft-primary);
-    border-color: var(--kraft-primary);
-}
-
-.btn-primary:hover {
-    background-color: var(--kraft-primary-dark);
-    border-color: var(--kraft-primary-dark);
-}
-
-.btn-outline-primary {
-    color: var(--kraft-primary);
-    border-color: var(--kraft-primary);
-}
-
-.btn-outline-danger,
-.btn-danger {
-    color: var(--kraft-danger);
-}
-
-.btn-danger {
-    background-color: var(--kraft-danger);
-    border-color: var(--kraft-danger);
-    color: #ffffff;
-}
-
-.btn-group-gap {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--kraft-space-2);
-}

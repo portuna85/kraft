@@ -1,0 +1,147 @@
+/* ==========================================================================
+   버튼
+
+   예전에는 색이 _upload.scss(글쓰기 업로드 파일)에 있었고, 그마저도 base·hover만
+   평문 background-color로 덮어써서 :active·:disabled·포커스 링은 Bootstrap 기본 파랑
+   (#0d6efd)으로 되돌아갔다 — 저장 중 비활성화되는 버튼 7곳에서 실제로 보이는 문제였다.
+   Bootstrap의 --bs-btn-* 변수를 변형마다 한 벌로 덮어 base/hover/active/disabled/포커스가
+   전부 같은 색을 쓰게 한다. Sass 변수($primary 등)를 덮지 않는 이유는 그러면
+   bootstrap.custom.css 72KB가 통째로 재생성되어 리뷰 불가능한 diff가 되고, 링크·입력
+   포커스·알림 색까지 함께 움직이기 때문이다.
+
+   클래스 이름은 하나도 바꾸지 않는다 — #btn-save, .btn-comment-edit, .btn-report-resolve,
+   .btn-lift-suspension 등이 E2E 선택자다.
+   ========================================================================== */
+.btn {
+    // Bootstrap .btn은 display:inline-block이라 min-height만 주면 박스는 커져도 글자는
+    // 위쪽에 붙는다(_forms.scss가 전에 그렇게 두고 있었다 — .btn-sm 12곳에서 라벨이 약 15px
+    // 위로 치우쳤다). flex로 바꿔 높이는 그대로 두고 글자만 수직 중앙으로 내린다.
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+
+    // Bootstrap 기본 포커스는 색이 있는 box-shadow 링이다. 전역 :focus-visible(_base.scss)이
+    // 이미 같은 팔레트 색으로 outline을 그리므로, 여기서는 그 하나만 남기고 box-shadow 링은
+    // 끈다 — 켜 두면 버튼에서만 두 겹(파랑 그림자 + 보라 outline)이 겹쳐 보였다.
+    --bs-btn-focus-box-shadow: none;
+}
+
+// "sm"인데 lg와 같은 44px여서 밀도를 해치던 것을 목록 안 보조 동작에 맞는 높이로 낮춘다.
+// 댓글 수정·삭제·신고, 관리자 처리 버튼이 여기 해당한다. 인접 간격은 .btn-group-gap이 지킨다.
+.btn-sm {
+    min-height: 36px;
+}
+
+.btn-primary {
+    --bs-btn-color: #ffffff;
+    --bs-btn-bg: var(--kraft-primary);
+    --bs-btn-border-color: var(--kraft-primary);
+    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-bg: var(--kraft-primary-dark);
+    --bs-btn-hover-border-color: var(--kraft-primary-dark);
+    --bs-btn-active-color: #ffffff;
+    --bs-btn-active-bg: var(--kraft-primary-dark);
+    --bs-btn-active-border-color: var(--kraft-primary-dark);
+    --bs-btn-disabled-color: #ffffff;
+    --bs-btn-disabled-bg: var(--kraft-primary);
+    --bs-btn-disabled-border-color: var(--kraft-primary);
+}
+
+// 가장 많이 쓰는 조합(화면 곳곳의 "취소" 버튼, 12곳)인데 지금까지 커스텀이 하나도 없어서
+// Bootstrap 기본 회색(#6c757d) 그대로였다. 여기서 처음 팔레트에 편입한다.
+.btn-secondary {
+    --bs-btn-color: #ffffff;
+    --bs-btn-bg: var(--kraft-secondary);
+    --bs-btn-border-color: var(--kraft-secondary);
+    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-bg: var(--kraft-secondary-dark);
+    --bs-btn-hover-border-color: var(--kraft-secondary-dark);
+    --bs-btn-active-color: #ffffff;
+    --bs-btn-active-bg: var(--kraft-secondary-dark);
+    --bs-btn-active-border-color: var(--kraft-secondary-dark);
+    --bs-btn-disabled-color: #ffffff;
+    --bs-btn-disabled-bg: var(--kraft-secondary);
+    --bs-btn-disabled-border-color: var(--kraft-secondary);
+}
+
+.btn-danger {
+    --bs-btn-color: #ffffff;
+    --bs-btn-bg: var(--kraft-danger);
+    --bs-btn-border-color: var(--kraft-danger);
+    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-bg: var(--kraft-danger-dark);
+    --bs-btn-hover-border-color: var(--kraft-danger-dark);
+    --bs-btn-active-color: #ffffff;
+    --bs-btn-active-bg: var(--kraft-danger-dark);
+    --bs-btn-active-border-color: var(--kraft-danger-dark);
+    --bs-btn-disabled-color: #ffffff;
+    --bs-btn-disabled-bg: var(--kraft-danger);
+    --bs-btn-disabled-border-color: var(--kraft-danger);
+}
+
+.btn-outline-primary {
+    --bs-btn-color: var(--kraft-primary);
+    --bs-btn-border-color: var(--kraft-primary);
+    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-bg: var(--kraft-primary);
+    --bs-btn-hover-border-color: var(--kraft-primary);
+    --bs-btn-active-color: #ffffff;
+    --bs-btn-active-bg: var(--kraft-primary);
+    --bs-btn-active-border-color: var(--kraft-primary);
+    --bs-btn-disabled-color: var(--kraft-primary);
+    --bs-btn-disabled-border-color: var(--kraft-primary);
+}
+
+.btn-outline-secondary {
+    --bs-btn-color: var(--kraft-secondary);
+    --bs-btn-border-color: var(--kraft-secondary);
+    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-bg: var(--kraft-secondary);
+    --bs-btn-hover-border-color: var(--kraft-secondary);
+    --bs-btn-active-color: #ffffff;
+    --bs-btn-active-bg: var(--kraft-secondary);
+    --bs-btn-active-border-color: var(--kraft-secondary);
+    --bs-btn-disabled-color: var(--kraft-secondary);
+    --bs-btn-disabled-border-color: var(--kraft-secondary);
+}
+
+.btn-outline-danger {
+    --bs-btn-color: var(--kraft-danger);
+    --bs-btn-border-color: var(--kraft-danger);
+    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-bg: var(--kraft-danger);
+    --bs-btn-hover-border-color: var(--kraft-danger);
+    --bs-btn-active-color: #ffffff;
+    --bs-btn-active-bg: var(--kraft-danger);
+    --bs-btn-active-border-color: var(--kraft-danger);
+    --bs-btn-disabled-color: var(--kraft-danger);
+    --bs-btn-disabled-border-color: var(--kraft-danger);
+}
+
+// 추천(좋아요) 버튼의 눌린 상태. #post.scss에 있던 것을 옮겼다 — 버튼 색은 전부 여기 모은다.
+#btn-like.is-active {
+    background-color: var(--kraft-primary);
+    color: #ffffff;
+    border-color: var(--kraft-primary);
+}
+
+// 버튼 여러 개를 나란히 둘 때 쓰는 간격. _upload.scss(글쓰기 파일)에 있던 것을 옮겼다 —
+// "취소"·"등록" 같은 조합은 글쓰기 화면 밖(신고·탈퇴·댓글 등)에서도 15곳 넘게 쓰인다.
+.btn-group-gap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--kraft-space-2);
+}
+
+// 모달·토스트의 닫기 버튼. 아이콘 크기(1em)는 그대로 두고 클릭 가능 영역만 44px에 가깝게
+// 넓힌다 — 아이콘 자체를 키우면 모달 헤더 레이아웃이 밀린다.
+.btn-close {
+    position: relative;
+}
+
+.btn-close::after {
+    content: "";
+    position: absolute;
+    inset: -10px;
+}

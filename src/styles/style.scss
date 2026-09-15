@@ -13,7 +13,8 @@
 @import "kraft/shell";     // 본문 셸 그리드와 오른쪽 안내 영역
 @import "kraft/board";     // 목록 화면: 제목 영역, 글 목록, 검색, 인기글, 빈 상태
 @import "kraft/pager";     // 페이지 이동 위젯(Bootstrap pagination을 쓰지 않는다)
-@import "kraft/forms";     // 카드, 폼 라벨·컨트롤, 버튼 색 (Bootstrap 위에 덧입히는 부분)
+@import "kraft/forms";     // 카드, 폼 라벨·컨트롤 (Bootstrap 위에 덧입히는 부분)
+@import "kraft/buttons";   // 버튼 색·높이·상태 (Bootstrap --bs-btn-* 변수를 덮는다)
 @import "kraft/upload";    // 선택한 이미지 미리보기와 업로드·저장 진행 상태
 @import "kraft/post";      // 게시글 읽기·편집 화면
 @import "kraft/comments";  // 댓글 목록과 인라인 편집
