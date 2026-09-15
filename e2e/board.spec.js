@@ -17,3 +17,26 @@ test('검색 결과가 없으면 게시판이 빈 것처럼 안내하지 않는�
     await expect(page).toHaveURL('/');
     await expect(page.locator('.post-list__item').first()).toBeVisible();
 });
+
+/**
+ * 992~1199px 구간은 픽셀 기준 이미지 대신 규칙으로 고정한다. 이 폭에서 오른쪽 안내
+ * (.kraft-aside)가 본문 아래로 떨어지면 폭이 남는데도 한 줄만 쓰는 셈이 된다 — 2열 전환을
+ * 1200px에서 992px로 낮춘 것이 바로 이 구간을 겨냥한 것이다.
+ *
+ * 픽셀 비교로 고정하지 않는 이유는 pager 위젯과 같다(위 테스트 참고) — 구체적인 값보다
+ * "안내가 본문과 같은 줄에서 시작하는가"라는 규칙 자체가 중요하다.
+ */
+test('992~1199px에서는 안내가 본문 옆에 남고 아래로 떨어지지 않는다', async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 900 });
+    await page.goto('/');
+
+    const main = page.locator('.kraft-main');
+    const aside = page.locator('.kraft-aside');
+    await expect(aside).toBeVisible();
+
+    const [mainBox, asideBox] = await Promise.all([main.boundingBox(), aside.boundingBox()]);
+    // 같은 줄에서 시작해야 나란히 놓인 것이다. 아래로 떨어졌다면 y가 본문의 아래쪽으로 밀린다.
+    expect(Math.abs(mainBox.y - asideBox.y)).toBeLessThan(2);
+    // 안내가 본문의 오른쪽에 있어야 한다(왼쪽 열이 아니라 두 번째 열).
+    expect(asideBox.x).toBeGreaterThan(mainBox.x);
+});

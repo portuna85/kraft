@@ -35,6 +35,64 @@ test.describe('공통 레이아웃', () => {
     });
 });
 
+/**
+ * 목록 한 줄의 생김새를 폭별로 고정한다. 지금까지 기준 이미지는 전부 1280px(넓은 화면)
+ * 기준이라, 768px 안팎(표 형태로 바뀌면서 열이 가장 좁아지는 구간)과 390px(세로 카드로
+ * 접히는 구간)의 회귀는 아무도 지켜주지 않았다 — 실제로 이번에 그 구간의 열 폭을 고쳤다.
+ *
+ * 시드 게시글("다른 사람의 글")로 검색해 한 줄만 본다. 다른 스펙이 만드는 글과 섞이면
+ * 실행 순서에 따라 매번 다른 줄이 나온다.
+ */
+test.describe('목록 반응형', () => {
+    test.use({ storageState: storageStateFor('user') });
+
+    async function openSeedPostRow(page) {
+        await page.goto(`/?q=${encodeURIComponent('다른 사람의 글')}`);
+        const row = page.locator('.post-list__item').first();
+        await expect(row).toBeVisible();
+        return row;
+    }
+
+    // 여기는 기준 이미지를 쓰지 않는다(pager 위젯과 같은 이유 — 위 '빈 상태와 페이지 이동'
+    // 참고). 이 카드는 한글 제목·닉네임을 포함하고 있어, 시스템에 설치된 한글 폰트가 실행
+    // 환경마다 다른 지표(metric)로 대체될 수 있다 — 실측으로 이 스펙만 단독으로 돌리면
+    // 항상 통과하는데 다른 스펙을 잔뜩 앞세운 뒤에 돌리면 높이가 정확히 1px 흔들렸다(폰트
+    // 대체가 아닌 진짜 CSS 문제였다면 홀로 돌려도 재현됐어야 한다). 그래서 픽셀 대신 규칙을
+    // 그대로 확인한다: 세로로 쌓이는가, 2줄까지만 보이는가.
+    test('390px - 세로 카드로 접힌다', async ({ page }) => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        const row = await openSeedPostRow(page);
+
+        // <768px에서는 헤더 행이 숨고 각 항목이 세로로 쌓인다.
+        await expect(page.locator('.post-list__head')).toBeHidden();
+        const itemBox = await row.boundingBox();
+        const titleBox = await row.locator('.post-list__title').boundingBox();
+        const metaBox = await row.locator('.post-list__meta').boundingBox();
+        // 제목이 카드 폭 전체를 쓰고(그리드로 좁아지지 않고), 메타 정보는 제목 아래에 있다.
+        expect(titleBox.width).toBeGreaterThan(itemBox.width * 0.8);
+        expect(metaBox.y).toBeGreaterThan(titleBox.y);
+
+        // 제목은 2줄까지만 보인다 — line-clamp가 걸려 있어야 짧은 카드 높이가 유지된다.
+        const lineClamp = await row.locator('.post-list__title').evaluate(
+            (el) => getComputedStyle(el).webkitLineClamp,
+        );
+        expect(lineClamp).toBe('2');
+    });
+
+    test('768px - 표 형태로 바뀌는 가장 좁은 구간', async ({ page }) => {
+        await page.setViewportSize({ width: 768, height: 900 });
+        const row = await openSeedPostRow(page);
+        await expect(row).toHaveScreenshot('post-list-row-768.png', {
+            ...PIXEL_TOLERANCE,
+            mask: [
+                row.locator('.post-list__no'),
+                row.locator('.post-list__date'),
+                row.locator('.post-list__views'),
+            ],
+        });
+    });
+});
+
 test.describe('게시글 상세', () => {
     test.use({ storageState: storageStateFor('user') });
 

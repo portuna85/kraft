@@ -77,6 +77,11 @@
 .post-list__title {
     font-weight: 500;
     font-size: 1rem;
+    // 본문의 line-height:1.6(_base.scss)을 그대로 물려받으면 1rem × 1.6 = 25.6px로 소수점
+    // 줄 높이가 된다. .post-list__item이 <768px에서 flex-column으로 이 제목·메타 정보를
+    // 쌓을 때, 형제 요소들의 소수점 줄 높이가 함께 누적되어 행 전체 높이가 실행마다 1px
+    // 흔들리는 원인이었다(.post-list__meta 주석 참고). 정수로 떨어지는 배수를 쓴다.
+    line-height: 1.25;
     color: var(--kraft-text);
     text-decoration: none;
     display: -webkit-box;
@@ -96,7 +101,13 @@
     flex-wrap: wrap;
     gap: var(--kraft-space-1) var(--kraft-space-3);
     color: var(--kraft-text-muted);
-    font-size: 0.85rem;
+    font-size: 0.8rem;
+    // 본문(line-height:1.6, _base.scss)을 그대로 물려받으면 0.8rem × 1.6 = 20.48px로
+    // 소수점 줄 높이가 된다. .post-list__item이 flex-column(<768px)이나 grid(≥768px)로
+    // 이 요소를 여러 형제와 함께 쌓을 때, 소수점이 누적되다 실행마다 다른 지점에서
+    // 반올림되어 행 전체 높이가 1px 흔들리는 것을 실제로 겪었다(Chromium의 서브픽셀
+    // 레이아웃 반올림). 정수 픽셀로 떨어지는 배수를 써서 애초에 소수점이 생기지 않게 한다.
+    line-height: 1.25;
 }
 
 .post-list__author {
@@ -106,6 +117,11 @@
 .post-list__no {
     color: var(--kraft-text-muted);
     font-size: 0.8rem;
+    // .post-list__meta와 같은 이유로 정수 배수 줄 높이를 쓴다.
+    line-height: 1.25;
+    // 자릿수가 바뀌어도 숫자 폭이 흔들리지 않게 한다 — 좁은 열(≥768px)에서 자릿수가
+    // 늘어날 때마다 옆 칸과의 정렬이 어긋나 보이는 것을 막는다.
+    font-variant-numeric: tabular-nums;
 }
 
 .post-list__no-label {
@@ -127,7 +143,10 @@
 .post-list__views,
 .post-list__comments {
     color: var(--kraft-text-muted);
-    font-size: 0.85rem;
+    font-size: 0.8rem;
+    // .post-list__meta와 같은 이유로 정수 배수 줄 높이를 쓴다.
+    line-height: 1.25;
+    font-variant-numeric: tabular-nums;
 }
 
 .board-search {
@@ -193,12 +212,26 @@
     flex-shrink: 0;
 }
 
+// 768px부터는 표 형태다. 열 폭은 --post-list-cols 하나로 선언해 head·item(아래 두 선택자)이
+// 함께 참조한다 — 예전에는 같은 6열 값이 이 두 곳에 그대로 두 번 적혀 있었다.
+//
+// 768~991px 구간은 992px 이상보다 좁게 잡는다. 이전 값(64/120/144/56/56, gap 12px)은 고정
+// 폭만 460px를 선점해 이 구간에서 제목이 쓸 수 있는 폭이 276px밖에 남지 않았다 — 인벤 참고로
+// 조밀한 목록을 만들려던 것과 반대로, 오히려 가장 좁은 화면에서 제목이 가장 눌리는 역설이었다.
 @include from($bp-md) {
-    .post-list__head {
+    .post-list {
+        --post-list-cols: 44px minmax(0, 1fr) 88px 104px 40px 40px;
+    }
+
+    .post-list__head,
+    .post-list__item {
         display: grid;
-        grid-template-columns: 64px minmax(0, 1fr) 120px 144px 56px 56px;
-        gap: var(--kraft-space-3);
-        padding: var(--kraft-space-3) var(--kraft-space-4);
+        grid-template-columns: var(--post-list-cols);
+        gap: var(--kraft-space-2);
+    }
+
+    .post-list__head {
+        padding: var(--kraft-space-2) var(--kraft-space-4);
         background-color: var(--kraft-surface-subtle);
         color: var(--kraft-text-muted);
         font-size: 0.8rem;
@@ -207,25 +240,52 @@
     }
 
     .post-list__item {
-        display: grid;
-        grid-template-columns: 64px minmax(0, 1fr) 120px 144px 56px 56px;
-        gap: var(--kraft-space-3);
         align-items: center;
+        // 좌우 여백(16px)은 위 기본 규칙(.post-list__item)의 padding 단축 속성에서 그대로
+        // 물려받는다. 세로만 8px로 줄여 표 형태의 밀도를 올린다 — 인벤 같은 목록형 게시판이
+        // 한 화면에 더 많은 글을 보여주는 방식이다.
+        padding-block: var(--kraft-space-2);
     }
 
     .post-list__title {
-        font-size: 0.95rem;
+        font-size: 0.9375rem;
+        // 표 형태에서는 한 줄로 충분하다. 2줄까지 허용하던 모바일 카드와 달리, 여기서는
+        // 다음 줄이 다음 행과 헷갈리지 않아야 한다.
+        -webkit-line-clamp: 1;
     }
 
+    // 6열 grid에 래퍼 없이 author·date를 나란히 두려면 이 span이 grid 아이템이 되어야 한다.
+    // display:contents는 일부 스크린리더에서 요소를 접근성 트리에서 제외하는 것으로 알려져
+    // 있지만, 이 span 자체는 의미(role)를 갖지 않는 순수 레이아웃 래퍼라 트리에서 빠져도
+    // 안의 텍스트(작성자·날짜)는 그대로 읽힌다 — 실제 정보 손실은 없다. 래퍼를 없애 버리면
+    // 이 span이 <768px에서 맡는 역할(작성자·날짜를 한 줄로 묶는 flex 행, 아래 기본 규칙)이
+    // 함께 사라지므로 유지한다.
     .post-list__meta {
         display: contents;
     }
 
     .post-list__author,
     .post-list__date {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         color: var(--kraft-text-muted);
         overflow-wrap: anywhere;
+    }
+
+    .post-list__date {
+        // 104px 열 안에서 "2026.01.01 00:00"이 두 줄로 접히면 행 높이가 옆 칸과 어긋난다.
+        white-space: nowrap;
+    }
+}
+
+// 992px 이상은 폭이 넉넉하므로 원래 열 폭(64/120/144/56/56)을 그대로 쓴다.
+@include from($bp-lg) {
+    .post-list {
+        --post-list-cols: 64px minmax(0, 1fr) 120px 144px 56px 56px;
+    }
+
+    .post-list__head,
+    .post-list__item {
+        gap: var(--kraft-space-3);
     }
 }
 
