@@ -63,19 +63,6 @@ export function delegate(type, selector, handler, root = document) {
 }
 
 /**
- * hidden 속성 토글. 대상이 없으면 넘어간다.
- *
- * @param {HTMLElement | null} target
- * @param {boolean} hidden
- */
-export function setHidden(target, hidden) {
-    if (!target) {
-        return;
-    }
-    target.hidden = hidden;
-}
-
-/**
  * 버튼을 눌린 상태로 잠그고 보조기기에도 알린다.
  *
  * @param {HTMLButtonElement | HTMLElement | null} target

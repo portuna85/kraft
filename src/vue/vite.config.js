@@ -35,6 +35,7 @@ export default defineConfig({
                 // (main.js처럼 전역으로 싣지 않는다).
                 comments: resolve(__dirname, 'comments/mount.js'),
                 'post-edit': resolve(__dirname, 'post-edit/mount.js'),
+                'post-save': resolve(__dirname, 'post-save/mount.js'),
             },
             output: {
                 entryFileNames: '[name].js',

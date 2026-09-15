@@ -5,11 +5,14 @@ import { formatFileSize } from '@core/dom.js';
 import * as flash from '@ui/flash.js';
 
 /**
- * 게시글 편집 화면의 이미지 첨부 상태.
+ * 게시글 등록·편집 화면이 함께 쓰는 이미지 첨부 상태.
  *
- * 등록 화면(post-form.js)은 이번 이주 대상이 아니라 static/js/app/features/image-upload.js를
- * 그대로 쓴다. 이 composable은 편집 화면 전용으로 새로 짰다 — DOM ref 기반 팩토리와 Vue
- * 반응형은 인터페이스가 달라 얇게 감싸는 것보다 새로 쓰는 편이 더 단순했다.
+ * 예전에는 등록 화면이 static/js/app/features/image-upload.js(DOM ref 기반 팩토리)를, 편집
+ * 화면이 이 composable을 써서 같은 규칙이 두 벌로 있었다. 등록 화면도 Vue 아일랜드가 되면서
+ * 그쪽을 지우고 여기 하나로 모았다.
+ *
+ * 기존 이미지(initialUrl)는 편집 화면에만 있다. 등록 화면은 인자 없이 호출하며 그때
+ * showExistingPreview는 항상 false다.
  *
  * 검증 상수(UPLOAD/UPLOAD_MESSAGES)는 core/constants.js에서 그대로 가져온다. 서버의
  * UploadPolicySyncTest가 이 상수들의 형태를 정규식으로 파싱해 서버 정책과 동기화하므로,

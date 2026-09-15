@@ -22,59 +22,14 @@
                 메일이 오지 않았다면 헤더의 “인증 메일 재발송”으로 다시 받을 수 있습니다.</p>
         </div>
 
+        <!--/* 등록 폼은 Vue 아일랜드(src/vue/post-save)가 그린다. 고를 수 있는 분류와 보여줄
+               닉네임은 서버만 판정할 수 있어(공지는 관리자 전용, 로그인 아이디는 이메일)
+               초기 상태를 JSON으로 그대로 내려준다. 폼을 보여줄지 자체는 여기 sec:authorize가
+               정하므로, 권한이 없으면 마운트 지점도 스크립트도 렌더링되지 않는다. */-->
         <div class="card-kraft" sec:authorize="isAuthenticated() and !hasRole('GUEST')">
-            <form id="post-save-form">
-                <div class="mb-3">
-                    <label for="title">제목</label>
-                    <input type="text" class="form-control" id="title" placeholder="제목을 입력하세요" maxlength="255" required>
-                </div>
-                <div class="mb-3">
-                    <label for="category">분류</label>
-                    <!--/* 공지(NOTICE)는 관리자만 쓸 수 있다. 옵션을 감추는 것은 안내일 뿐이고,
-                           실제 경계는 서버의 CategoryPolicy가 잡는다. */-->
-                    <select class="form-select" id="category">
-                        <option th:each="c : ${T(com.kraft.post.domain.Category).values()}"
-                                th:if="${c.name() != 'NOTICE'
-                                        or #authorization.expression('hasRole(''ADMIN'')')}"
-                                th:value="${c}" th:text="${c.title}" th:selected="${c.name() == 'FREE'}"></option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label for="author">작성자</label>
-                    <!-- 닉네임을 보여준다. 옛 세션 대비 물러서기는 layout/navbar 주석 참고. -->
-                    <input type="text" class="form-control" id="author" readonly
-                           th:with="principal=${#authentication.principal}"
-                           th:value="${principal instanceof T(com.kraft.config.security.KraftUserDetails)}
-                                     ? ${principal.displayName} : ${#authentication.name}">
-                    <small class="form-text text-muted">작성자는 로그인 계정으로 자동 지정됩니다.</small>
-                </div>
-                <div class="mb-3">
-                    <label for="content">내용</label>
-                    <textarea class="form-control post-edit__textarea" id="content" placeholder="내용을 입력하세요"
-                              maxlength="10000" required></textarea>
-                </div>
-                <div class="mb-3">
-                    <label for="picture">사진</label>
-                    <input type="file" class="form-control" id="picture" accept="image/jpeg,image/png,image/gif,image/webp">
-                    <small class="form-text text-muted">JPG, JPEG, PNG, GIF, WEBP · 최대 5MB · 1개</small>
-                </div>
-
-                <!-- 선택한 파일의 이름·크기·로컬 미리보기. 파일이 없으면 JS가 hidden을 유지한다. -->
-                <div class="picture-preview" id="picture-preview" hidden>
-                    <img class="picture-preview__image" id="picture-preview-image" alt="선택한 이미지 미리보기">
-                    <div class="picture-preview__meta">
-                        <p class="picture-preview__name" id="picture-preview-name"></p>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-picture-clear">선택 해제</button>
-                    </div>
-                </div>
-
-                <!-- 업로드→저장 진행 상태. 평소에는 비어 있고 JS가 텍스트를 채우는 순간에만 보인다. -->
-                <p class="form-progress" id="post-save-progress" aria-live="polite" hidden></p>
-            </form>
-            <div class="btn-group-gap">
-                <a href="/" role="button" class="btn btn-secondary">취소</a>
-                <button type="submit" form="post-save-form" class="btn btn-primary" id="btn-save">등록</button>
-            </div>
+            <script type="application/json" id="post-save-initial-data" th:utext="${postSaveInitialJson}"></script>
+            <div id="post-save-app"></div>
+            <script type="module" src="/js/vue-dist/post-save.js"></script>
         </div>
 
         <div class="card-kraft" sec:authorize="isAnonymous()">

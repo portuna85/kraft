@@ -4,7 +4,7 @@ import { api, messageOf } from '@core/http.js';
 import { API } from '@core/constants.js';
 import * as flash from '@ui/flash.js';
 import { showToast } from '@ui/toast.js';
-import { useImageUpload } from './useImageUpload.js';
+import { useImageUpload } from '../shared/useImageUpload.js';
 
 /**
  * 게시글 읽기·편집·추천 상태를 관리한다. 추천은 서버가 반환한 상태만 반영한다.

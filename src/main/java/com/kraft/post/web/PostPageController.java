@@ -2,9 +2,11 @@ package com.kraft.post.web;
 
 import com.kraft.comment.dto.CommentViewDto;
 import com.kraft.comment.service.CommentService;
+import com.kraft.config.security.KraftUserDetails;
 import com.kraft.post.domain.Category;
 import com.kraft.post.dto.CategoryOptionDto;
 import com.kraft.post.dto.PostEditBootstrapDto;
+import com.kraft.post.dto.PostSaveBootstrapDto;
 import com.kraft.post.dto.PostsPageResponseDto;
 import com.kraft.post.dto.PostViewDto;
 import com.kraft.post.service.CategoryPolicy;
@@ -49,10 +51,38 @@ public class PostPageController {
         return "index";
     }
 
+    /**
+     * 게시글 등록 화면. 폼은 Vue 아일랜드(src/vue/post-save)가 그리므로, 서버만 판정할 수 있는
+     * 값(고를 수 있는 분류, 보여줄 닉네임)을 초기 상태로 한 번 내려준다.
+     * <p>
+     * 새 글의 분류 기본값은 {@link Category#FREE}라 {@code current}로 그대로 넘긴다 —
+     * 편집 화면과 같은 {@link CategoryPolicy} 규칙을 쓰므로 "관리자가 아니면 공지 없음"이
+     * 두 화면에서 갈라지지 않는다.
+     */
     @GetMapping("/posts/save")
-    public String postsSave(Model model) {
+    public String postsSave(Authentication authentication, Model model) {
+        List<CategoryOptionDto> categoryOptions = CategoryPolicy.availableCategoriesFor(authentication, Category.FREE)
+                .stream()
+                .map(c -> new CategoryOptionDto(c.name(), c.getTitle()))
+                .toList();
+        model.addAttribute("postSaveInitialJson",
+                objectMapper.writeValueAsString(new PostSaveBootstrapDto(categoryOptions, displayNameOf(authentication))));
         model.addAttribute("pageTitle", "글쓰기");
         return "post/post-save";
+    }
+
+    /**
+     * 화면에 보여줄 이름. 로그인 아이디는 이메일이므로 닉네임을 들고 다니는 principal이면
+     * 그쪽을 쓴다(옛 세션에는 없을 수 있어 이름으로 물러선다 — layout/navbar와 같은 규칙).
+     */
+    private static String displayNameOf(Authentication authentication) {
+        if (authentication == null) {
+            return "";
+        }
+        if (authentication.getPrincipal() instanceof KraftUserDetails details) {
+            return details.getDisplayName();
+        }
+        return authentication.getName();
     }
 
     /**

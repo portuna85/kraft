@@ -144,11 +144,15 @@ class PostPageControllerTest {
     @Test
     @DisplayName("GET /posts/save 는 일반 사용자에게 공지(NOTICE) 분류 옵션을 보여주지 않는다")
     void postsSave_hidesNoticeOptionFromNonAdmin() throws Exception {
+        // 등록 폼은 Vue 아일랜드(src/vue/post-save)로 렌더링된다. 고를 수 있는 분류는
+        // #post-save-initial-data 스크립트의 JSON으로 내려가며, 실제 경계는 저장 요청에서
+        // CategoryPolicy가 다시 잡는다.
         mockMvc.perform(get("/posts/save").with(user("tester@example.com").roles("USER")))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("value=\"FREE\"")))
-                .andExpect(content().string(containsString("value=\"QNA\"")))
-                .andExpect(content().string(not(containsString("value=\"NOTICE\""))));
+                .andExpect(content().string(containsString("id=\"post-save-initial-data\"")))
+                .andExpect(content().string(containsString("\"value\":\"FREE\"")))
+                .andExpect(content().string(containsString("\"value\":\"QNA\"")))
+                .andExpect(content().string(not(containsString("\"value\":\"NOTICE\""))));
     }
 
     @Test
@@ -156,7 +160,18 @@ class PostPageControllerTest {
     void postsSave_showsNoticeOptionToAdmin() throws Exception {
         mockMvc.perform(get("/posts/save").with(user("admin@example.com").roles("ADMIN")))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("value=\"NOTICE\"")));
+                .andExpect(content().string(containsString("\"value\":\"NOTICE\"")));
+    }
+
+    @Test
+    @DisplayName("GET /posts/save 는 로그인하지 않은 방문자에게 등록 폼 아일랜드를 렌더링하지 않는다")
+    void postsSave_doesNotMountFormForAnonymous() throws Exception {
+        // 폼을 보여줄지는 템플릿의 sec:authorize가 정한다. 마운트 지점이 없으면 mount.js도
+        // 조용히 아무 일도 하지 않지만, 애초에 번들을 싣지도 않는다.
+        mockMvc.perform(get("/posts/save"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("id=\"post-save-app\""))))
+                .andExpect(content().string(containsString("로그인 후 게시글을 작성할 수 있습니다.")));
     }
 
     @Test
