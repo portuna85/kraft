@@ -137,6 +137,76 @@ SELECT name, COUNT(*) FROM users GROUP BY name HAVING COUNT(*) > 1;
 100자가 실질 상한이고, 그보다 긴 주소는 가입 시점에 거부합니다 — 예전에는 101~218자 주소로
 가입은 되는데 로그인이 안 되는 계정이 만들어졌습니다.
 
+## API 계약
+
+화면(Vue 아일랜드)이 쓰는 REST API입니다. 경로는 모두 `/api/v1` 아래에 있고, 응답은
+JSON입니다. 이 표는 `SecurityConfig`·컨트롤러·`ApiExceptionHandler`의 현재 동작을 옮긴
+것이며, 별도의 공개 API 클라이언트를 상정한 규격은 아닙니다.
+
+### 인증과 CSRF
+
+로그인은 폼 로그인(`POST /login`)이고, 이후에는 `SESSION` 쿠키로 인증합니다(세션은 DB에
+저장되어 앱을 재시작해도 유지됩니다). 토큰 발급 엔드포인트는 없습니다.
+
+GET이 아닌 요청에는 CSRF 토큰이 필요합니다. 화면은 `layout/header`가 심은
+`<meta name="_csrf">`·`<meta name="_csrf_header">`를 읽어 헤더로 실어 보냅니다
+(`static/js/app/core/http.js`). 토큰 없이 보내면 403입니다.
+
+**세션이 끊긴 뒤의 변경 요청은 401도 리다이렉트도 아닌 403입니다.** CSRF 토큰이 세션에
+저장되므로, 세션이 사라지면 대조할 곳이 없어 `CsrfFilter`가 인증 진입점보다 먼저 거절합니다.
+화면은 이 403을 "다시 로그인해 주세요"로 안내합니다(`e2e/session-expired.spec.js`).
+
+권한은 세 단계입니다.
+
+| 단계 | 의미 | 해당 |
+| --- | --- | --- |
+| 누구나 | 로그인 불필요 | 게시글·댓글 **조회**, 회원가입 |
+| 로그인 | 세션 필요 | 추천, 비밀번호 변경, 인증 메일 재발송 |
+| 이메일 인증 완료 | `GUEST`는 거부(`WriteAccessPolicy`) | 글·댓글 작성·수정, 이미지 업로드 |
+
+수정·삭제는 여기에 더해 **작성자 본인 또는 관리자**여야 합니다(`OwnershipPolicy`).
+공지(`NOTICE`) 분류는 관리자만 쓸 수 있습니다(`CategoryPolicy`).
+
+### 엔드포인트
+
+| 메서드 | 경로 | 권한 | 요청 | 성공 응답 |
+| --- | --- | --- | --- | --- |
+| GET | `/api/v1/posts` | 누구나 | `page`, `size`, `q`, `category` | 200 · 페이지(`content`, `page`, `totalElements`, `totalPages`, `first`, `last`) |
+| GET | `/api/v1/posts/{id}` | 누구나 | — | 200 · 게시글(`id`, `title`, `content`, `picture`, `author`, `category`, `viewCount`) |
+| POST | `/api/v1/posts` | 인증 완료 | `title`, `content`, `picture`, `category` | 200 · 생성된 id |
+| PUT | `/api/v1/posts/{id}` | 본인·관리자 | 위 + `version` | 200 · id |
+| DELETE | `/api/v1/posts/{id}` | 본인·관리자 | — | 200 · id |
+| PUT | `/api/v1/posts/{id}/like` | 로그인 | `liked` | 200 · `liked`, `likeCount` |
+| POST | `/api/v1/posts/images` | 인증 완료 | `multipart/form-data`의 `file` | 200 · `url` |
+| GET | `/api/v1/posts/{postId}/comments` | 누구나 | — | 200 · 댓글 목록 |
+| POST | `/api/v1/posts/{postId}/comments` | 인증 완료 | `content` | 200 · 생성된 id |
+| PUT | `/api/v1/comments/{id}` | 본인·관리자 | `content` | 200 · id |
+| DELETE | `/api/v1/comments/{id}` | 본인·관리자 | — | 200 · id |
+| POST | `/api/v1/users` | 누구나 | `name`, `email`, `password` | 200 · 생성된 id |
+| PUT | `/api/v1/users/me/password` | 로그인 | `currentPassword`, `newPassword` | 204 (이 계정의 모든 세션이 폐기됩니다) |
+| POST | `/api/v1/users/me/verify-email/resend` | 로그인 | — | 204 |
+
+`PUT /api/v1/posts/{id}`의 `version`은 편집을 시작할 때 화면이 받아간 값을 그대로 돌려보내는
+것입니다. 그 사이 다른 곳에서 저장됐으면 409로 거절합니다 — 예전에는 나중 저장이 먼저 저장을
+말없이 덮어썼습니다. 입력 길이 제한은 위 "입력 길이 정책"을 따릅니다.
+
+`liked`는 토글이 아니라 **원하는 최종 상태**입니다. 같은 값을 여러 번 보내도 결과가 같습니다.
+
+### 오류 형식
+
+오류는 RFC 9457 `application/problem+json`으로 나가며 `status`와 `detail`을 담습니다.
+`detail`은 사용자에게 그대로 보여줄 수 있는 한국어 문장이고, 500만은 내부 사정을 감춘
+고정 문구입니다(원인은 서버 로그에 남습니다).
+
+| 상태 | 언제 |
+| ---: | --- |
+| 400 | 입력 검증 실패, 읽을 수 없는 JSON, 경로 변수 형식 오류, 서비스의 검증 실패(중복 가입 등) |
+| 403 | 본인·관리자가 아님, 이메일 인증 전 작성·업로드 시도, CSRF 토큰이 없거나 맞지 않음 |
+| 404 | 없는 게시글 |
+| 409 | 편집 충돌(`version` 불일치), 유니크 제약 위반(같은 이름 동시 가입 등) |
+| 413 | 업로드가 수신 한도를 넘음 |
+| 500 | 그 밖의 처리되지 못한 예외 |
+
 ## 중지·재시작
 
 ```powershell
