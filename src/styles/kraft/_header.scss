@@ -20,14 +20,14 @@
     flex-wrap: wrap;
 }
 
-@media (min-width: 768px) {
+@include from($bp-md) {
     .kraft-topbar__inner {
         padding-left: var(--kraft-space-6);
         padding-right: var(--kraft-space-6);
     }
 }
 
-@media (min-width: 992px) {
+@include from($bp-lg) {
     .kraft-topbar__inner {
         min-height: 64px;
     }
@@ -64,7 +64,7 @@
    반드시 위 기본 .kraft-nav-toggle 선언 "다음"에 와야 한다 — 동일 특이도에서는 소스 순서가
    이기므로, 앞서 두면 미디어 쿼리가 기본 선언에 덮여써져 넓은 화면에서도 버튼이 계속 보이는
    회귀가 생긴다. */
-@media (min-width: 768px) {
+@include from($bp-md) {
     .kraft-nav-toggle {
         display: none;
     }
@@ -151,7 +151,7 @@
     word-break: break-all;
 }
 
-@media (min-width: 768px) {
+@include from($bp-md) {
     /* 토글이 숨는 구간이므로 닫힘 상태(hidden)를 무시하고 항상 펼쳐 보인다. */
     .kraft-actions[hidden] {
         display: flex !important;

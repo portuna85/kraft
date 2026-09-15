@@ -57,7 +57,7 @@
     font-size: 0.9rem;
 }
 
-@media (min-width: 768px) {
+@include from($bp-md) {
     .pager__numbers {
         display: inline-flex;
     }

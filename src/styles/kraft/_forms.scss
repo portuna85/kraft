@@ -43,7 +43,7 @@ textarea.form-control {
     min-height: 240px;
 }
 
-@media (min-width: 992px) {
+@include from($bp-lg) {
     .post-edit__textarea {
         min-height: 360px;
     }

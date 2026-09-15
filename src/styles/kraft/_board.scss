@@ -7,7 +7,7 @@
     margin-bottom: var(--kraft-space-4);
 }
 
-@media (min-width: 992px) {
+@include from($bp-lg) {
     .page-title {
         font-size: 1.75rem;
     }
@@ -27,7 +27,7 @@
     margin: 0 0 var(--kraft-space-1);
 }
 
-@media (min-width: 992px) {
+@include from($bp-lg) {
     .board-head__title {
         font-size: 1.75rem;
     }
@@ -193,7 +193,7 @@
     flex-shrink: 0;
 }
 
-@media (min-width: 768px) {
+@include from($bp-md) {
     .post-list__head {
         display: grid;
         grid-template-columns: 64px minmax(0, 1fr) 120px 144px 56px 56px;

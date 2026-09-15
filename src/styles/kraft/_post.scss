@@ -19,7 +19,7 @@
     overflow-wrap: anywhere;
 }
 
-@media (min-width: 992px) {
+@include from($bp-lg) {
     .post-title {
         font-size: 1.75rem;
     }
