@@ -1,0 +1,61 @@
+<!DOCTYPE HTML>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<!--/*@thymesVar id="pageTitle" type="java.lang.String"*/-->
+<!--/*@thymesVar id="users" type="java.util.List<com.kraft.user.dto.SuspendedUserDto>"*/-->
+<!--/*@thymesVar id="pageWindow" type="com.kraft.shared.web.PageWindow"*/-->
+<!--/*@thymesVar id="suspendedCount" type="java.lang.Long"*/-->
+<head th:replace="~{layout/header :: header}"></head>
+<body>
+
+<a class="skip-link" href="#main">본문 바로가기</a>
+<div th:replace="~{layout/navbar :: topbar}"></div>
+
+<div class="kraft-shell">
+    <main id="main" class="kraft-main">
+        <div th:replace="~{layout/footer :: flash}"></div>
+
+        <div class="board-head">
+            <div class="board-head__text">
+                <h1 class="board-head__title">정지 회원</h1>
+                <p class="board-head__count">정지 중 <strong th:text="${suspendedCount}">0</strong>명</p>
+            </div>
+        </div>
+        <p class="board-head__desc">기간이 지나면 저절로 풀립니다. 잘못 건 정지는 여기서 바로 풀 수 있습니다.
+            <a href="/admin/reports">신고 처리로 돌아가기</a></p>
+
+        <ul class="report-list" th:if="${!#lists.isEmpty(users)}">
+            <li class="report-list__item" th:each="user : ${users}" th:attr="data-user-id=${user.id}">
+                <div class="report-list__head">
+                    <strong th:text="${user.name}">닉네임</strong>
+                    <span class="text-muted"
+                          th:text="${#temporals.format(user.suspendedUntil, 'yyyy.MM.dd HH:mm')} + '까지'">기한</span>
+                </div>
+                <p class="report-list__detail" th:if="${user.suspensionReason != null}"
+                   th:text="${user.suspensionReason}">사유</p>
+                <div class="btn-group-gap">
+                    <button type="button" class="btn btn-sm btn-outline-secondary btn-lift-suspension">정지 해제</button>
+                </div>
+            </li>
+        </ul>
+
+        <div class="empty-state" th:if="${#lists.isEmpty(users)}">
+            <p class="empty-state__text">정지 중인 회원이 없습니다.</p>
+        </div>
+
+        <nav class="pager" th:if="${pageWindow.totalPages > 1}" aria-label="정지 회원 목록 페이지 이동">
+            <a class="pager__step" th:if="${pageWindow.hasPrev}"
+               th:href="@{/admin/users(page=${pageWindow.prev})}">이전</a>
+            <span class="pager__step is-disabled" th:unless="${pageWindow.hasPrev}" aria-hidden="true">이전</span>
+            <span class="pager__status">
+                <span th:text="${pageWindow.displayPage}">1</span> / <span th:text="${pageWindow.totalPages}">1</span>
+            </span>
+            <a class="pager__step" th:if="${pageWindow.hasNext}"
+               th:href="@{/admin/users(page=${pageWindow.next})}">다음</a>
+            <span class="pager__step is-disabled" th:unless="${pageWindow.hasNext}" aria-hidden="true">다음</span>
+        </nav>
+    </main>
+</div>
+
+<div th:replace="~{layout/footer :: footer}"></div>
+</body>
+</html>

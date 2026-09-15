@@ -20,7 +20,7 @@
                 <p class="board-head__count">처리 대기 <strong th:text="${pendingCount}">0</strong>건</p>
             </div>
         </div>
-        <p class="board-head__desc">오래된 신고부터 보여줍니다. “삭제”는 대상 글·댓글을 지우고,
+        <p class="board-head__desc"><a href="/admin/users">정지 중인 회원 보기</a> · 오래된 신고부터 보여줍니다. “삭제”는 대상 글·댓글을 지우고,
             “반려”는 대상을 그대로 둔 채 이 신고만 닫습니다. 같은 대상에 쌓인 다른 신고도 함께 정리됩니다.</p>
 
         <ul class="report-list" th:if="${!#lists.isEmpty(reports)}">

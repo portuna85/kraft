@@ -6,8 +6,9 @@ test.use({ storageState: { cookies: [], origins: [] } });
 
 /** 가입 → 메일 인증 → 로그인까지. 글을 쓰려면 인증을 마쳐야 한다. */
 async function signUpVerifiedAndLogin(page, request, email) {
+    const name = uniqueTitle('정지').slice(0, 20);
     await page.goto('/signup');
-    await page.locator('#name').fill(uniqueTitle('정지').slice(0, 20));
+    await page.locator('#name').fill(name);
     await page.locator('#email').fill(email);
     await page.locator('#password').fill(PASSWORD);
     await page.locator('#passwordConfirm').fill(PASSWORD);
@@ -20,13 +21,14 @@ async function signUpVerifiedAndLogin(page, request, email) {
     await page.goto(mail.text.match(/https?:\/\/\S+/)[0]);
 
     await login(page, email); // 권한은 다시 로그인해야 반영된다.
+    return name;
 }
 
 test('신고를 정지와 함께 처리하면 그 사람은 글을 쓸 수 없고 이유를 본다', async ({ page, request, browser }) => {
     const email = `${uniqueTitle('bad').toLowerCase()}@e2e.test`;
     const title = uniqueTitle('정지대상글');
 
-    await signUpVerifiedAndLogin(page, request, email);
+    const name = await signUpVerifiedAndLogin(page, request, email);
     await page.goto('/posts/save');
     await page.locator('#title').fill(title);
     await page.locator('#content').fill('신고와 정지 시나리오용 본문입니다.');
@@ -63,4 +65,19 @@ test('신고를 정지와 함께 처리하면 그 사람은 글을 쓸 수 없�
     await page.locator('.post-list__title').first().click();
     await expect(page.locator('.comments__login-hint')).toContainText('이용이 제한된 계정입니다');
     await expect(page.locator('#comment-content')).toHaveCount(0);
+
+    // 관리자가 기간 전에 풀면 곧바로 다시 쓸 수 있다. 정지는 사람의 판단이라 되돌릴 길이 있어야 한다.
+    const adminAgain = await (await browser.newContext()).newPage();
+    await login(adminAgain, ACCOUNTS.admin.email);
+    await adminAgain.goto('/admin/users');
+    const userRow = adminAgain.locator('.report-list__item').filter({ hasText: name });
+    await expect(userRow).toContainText('욕설·비방');
+    await userRow.locator('.btn-lift-suspension').click();
+    await expect(adminAgain.locator('#app-toast')).toContainText('정지를 해제했습니다');
+    // 푼 줄은 새로고침 없이 목록에서 빠진다.
+    await expect(adminAgain.locator('.report-list__item').filter({ hasText: name })).toHaveCount(0);
+    await adminAgain.close();
+
+    await page.goto('/posts/save');
+    await expect(page.locator('#post-save-app')).toBeVisible();
 });
