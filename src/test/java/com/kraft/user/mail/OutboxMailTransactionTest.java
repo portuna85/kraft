@@ -64,6 +64,9 @@ class OutboxMailTransactionTest {
 
     private User user;
 
+    /** application.yml의 app.mail.max-attempts와 같은 값. 여기서 포기한다. */
+    private static final int MAX_ATTEMPTS = 5;
+
     @BeforeEach
     void setUp() {
         outboxMailRepository.deleteAll();
@@ -141,6 +144,43 @@ class OutboxMailTransactionTest {
 
         outboxMailWorker.drain();
         assertThat(outboxMailRepository.findAll().get(0).getAttempts()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("재시도 기회를 다 쓰면 FAILED로 끝나고 더는 집히지 않는다")
+    void exhaustedRetriesEndAsFailed() {
+        // 계속 실패하는 메일이 영원히 대기열을 돌면, 주기 작업이 매번 그 행부터 집어 뒤에 쌓인
+        // 정상 메일을 늦춘다. 그래서 정해진 횟수에서 포기하고 사람이 볼 상태로 남긴다.
+        willThrow(new RuntimeException("주소가 존재하지 않습니다"))
+                .given(emailSender).send(anyString(), anyString(), anyString());
+
+        queueOne();
+        for (int i = 0; i < MAX_ATTEMPTS; i++) {
+            outboxMailWorker.drain();
+        }
+
+        OutboxMail givenUp = outboxMailRepository.findAll().get(0);
+        assertThat(givenUp.getStatus()).isEqualTo(OutboxMailStatus.FAILED);
+        assertThat(givenUp.getAttempts()).isEqualTo(MAX_ATTEMPTS);
+        assertThat(givenUp.getLastError()).contains("존재하지 않습니다");
+
+        // 더 돌려도 PENDING이 아니므로 집히지 않는다 — 시도 횟수가 그대로다.
+        assertThat(outboxMailStore.claimBatch(10)).isEmpty();
+        outboxMailWorker.drain();
+        assertThat(outboxMailRepository.findAll().get(0).getAttempts()).isEqualTo(MAX_ATTEMPTS);
+    }
+
+    @Test
+    @DisplayName("오류 메시지가 아주 길어도 저장 한도(500자) 안으로 잘라 남긴다")
+    void longErrorMessageIsTruncated() {
+        willThrow(new RuntimeException("긴오류".repeat(300)))
+                .given(emailSender).send(anyString(), anyString(), anyString());
+
+        queueOne();
+        outboxMailWorker.drain();
+
+        // 컬럼은 500자다. 자르지 않으면 실패를 기록하려다 그 기록이 또 실패한다.
+        assertThat(outboxMailRepository.findAll().get(0).getLastError()).hasSize(500);
     }
 
     @Test
