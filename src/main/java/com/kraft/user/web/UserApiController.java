@@ -4,6 +4,7 @@ import com.kraft.user.dto.ChangePasswordRequestDto;
 import com.kraft.user.dto.PasswordResetConfirmDto;
 import com.kraft.user.dto.PasswordResetRequestDto;
 import com.kraft.user.dto.SignUpRequestDto;
+import com.kraft.user.dto.WithdrawRequestDto;
 import com.kraft.user.service.EmailVerificationService;
 import com.kraft.user.service.PasswordResetService;
 import com.kraft.user.service.UserService;
@@ -11,6 +12,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -35,6 +37,17 @@ public class UserApiController {
     public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequestDto requestDto,
                                                 Authentication authentication) {
         userService.changePassword(authentication.getName(), requestDto.currentPassword(), requestDto.newPassword());
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * 회원 탈퇴. 글과 댓글은 남고 작성자만 익명이 된다({@code UserService.withdraw}).
+     * 성공하면 이 계정의 모든 세션이 폐기된다.
+     */
+    @DeleteMapping("/api/v1/users/me")
+    public ResponseEntity<Void> withdraw(@Valid @RequestBody WithdrawRequestDto requestDto,
+                                          Authentication authentication) {
+        userService.withdraw(authentication.getName(), requestDto.currentPassword());
         return ResponseEntity.noContent().build();
     }
 

@@ -57,6 +57,10 @@
             <button sec:authorize="isAuthenticated()" type="button" class="kraft-actions__link kraft-actions__link--button"
                     data-bs-toggle="modal" data-bs-target="#changePasswordModal">비밀번호 변경</button>
 
+            <button sec:authorize="isAuthenticated()" type="button" id="btn-withdraw"
+                    class="kraft-actions__link kraft-actions__link--button"
+                    data-bs-toggle="modal" data-bs-target="#withdrawModal">회원 탈퇴</button>
+
             <button sec:authorize="isAuthenticated()" type="button" id="btn-logout"
                     class="kraft-actions__link kraft-actions__link--button">로그아웃</button>
         </nav>

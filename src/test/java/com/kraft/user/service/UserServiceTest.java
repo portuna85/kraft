@@ -1,9 +1,12 @@
 package com.kraft.user.service;
 
 import com.kraft.user.domain.EmailHasher;
+import com.kraft.user.domain.EmailVerificationTokenRepository;
+import com.kraft.user.domain.PasswordResetTokenRepository;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
+import com.kraft.user.mail.OutboxMailRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,11 +42,21 @@ class UserServiceTest {
     @Mock
     private SessionRevoker sessionRevoker;
 
+    @Mock
+    private EmailVerificationTokenRepository emailVerificationTokenRepository;
+
+    @Mock
+    private PasswordResetTokenRepository passwordResetTokenRepository;
+
+    @Mock
+    private OutboxMailRepository outboxMailRepository;
+
     private UserService userService;
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(userRepository, passwordEncoder, sessionRevoker);
+        userService = new UserService(userRepository, passwordEncoder, sessionRevoker,
+                emailVerificationTokenRepository, passwordResetTokenRepository, outboxMailRepository);
     }
 
     @Test
@@ -132,6 +145,51 @@ class UserServiceTest {
         assertThatThrownBy(() -> userService.changePassword("nobody@example.com", "raw", "newRawPassword"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("존재하지 않는 회원");
+    }
+
+    @Test
+    @DisplayName("withdraw: 이름·이메일·비밀번호를 지우고 남은 링크와 보낼 메일도 함께 치운다")
+    void withdraw_anonymizesAccountAndClearsPendingArtifacts() {
+        User user = User.builder().name("탈퇴할사람").email("bye@example.com").password("oldEncoded")
+                .role(Role.USER).build();
+        ReflectionTestUtils.setField(user, "id", 7L);
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("bye@example.com")))
+                .willReturn(Optional.of(user));
+        given(passwordEncoder.matches("rawPassword", "oldEncoded")).willReturn(true);
+        given(passwordEncoder.encode(any())).willReturn("unusableEncoded");
+
+        userService.withdraw("bye@example.com", "rawPassword");
+
+        // 남는 것은 "이 글을 누군가 썼다"는 연결뿐이다.
+        assertThat(user.isWithdrawn()).isTrue();
+        assertThat(user.getName()).isEqualTo("탈퇴한 사용자7");
+        assertThat(user.getEmail()).isEqualTo("withdrawn-7@kraft.invalid");
+        assertThat(user.getPassword()).isEqualTo("unusableEncoded");
+
+        // 탈퇴 후에도 옛 링크로 무언가 할 수 있는 길이 남으면 안 된다.
+        verify(emailVerificationTokenRepository).deleteByUserId(7L);
+        verify(passwordResetTokenRepository).deleteByUserId(7L);
+        verify(outboxMailRepository).deleteByUserId(7L);
+    }
+
+    @Test
+    @DisplayName("withdraw: 현재 비밀번호가 틀리면 아무것도 지우지 않는다")
+    void withdraw_whenPasswordDoesNotMatch_changesNothing() {
+        User user = User.builder().name("탈퇴할사람").email("bye@example.com").password("oldEncoded")
+                .role(Role.USER).build();
+        ReflectionTestUtils.setField(user, "id", 7L);
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("bye@example.com")))
+                .willReturn(Optional.of(user));
+        given(passwordEncoder.matches("wrongRaw", "oldEncoded")).willReturn(false);
+
+        assertThatThrownBy(() -> userService.withdraw("bye@example.com", "wrongRaw"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("현재 비밀번호가 일치하지 않습니다");
+
+        // 되돌릴 수 없는 작업이므로, 확인에 실패하면 한 줄도 건드리지 않아야 한다.
+        assertThat(user.isWithdrawn()).isFalse();
+        assertThat(user.getName()).isEqualTo("탈퇴할사람");
+        verify(outboxMailRepository, never()).deleteByUserId(any());
     }
 
     @Test

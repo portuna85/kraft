@@ -3,13 +3,18 @@ package com.kraft.user.service;
 import com.kraft.shared.transaction.AfterCommit;
 import com.kraft.user.domain.EmailHasher;
 import com.kraft.user.domain.EmailMasker;
+import com.kraft.user.domain.EmailVerificationTokenRepository;
+import com.kraft.user.domain.PasswordResetTokenRepository;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
+import com.kraft.user.mail.OutboxMailRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @RequiredArgsConstructor
 @Service
@@ -19,6 +24,9 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final SessionRevoker sessionRevoker;
+    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final OutboxMailRepository outboxMailRepository;
 
     @Transactional
     public Long signUp(String name, String email, String rawPassword) {
@@ -76,6 +84,41 @@ public class UserService {
 
         user.changePassword(passwordEncoder.encode(newPassword));
         String email = user.getEmail();
+        AfterCommit.run(() -> sessionRevoker.revokeAll(email));
+    }
+
+    /**
+     * 회원 탈퇴. 글과 댓글은 남기고 그 사람을 가리키는 값만 지운다 — 남의 댓글이 달린 글이나
+     * 대화의 맥락까지 함께 사라지지 않게 하려는 것이다(V9 주석 참고). 화면에는 익명 이름으로
+     * 보인다.
+     * <p>
+     * 비밀번호를 한 번 더 확인하는 이유는 되돌릴 수 없는 작업이기 때문이다. 자리를 비운 사이
+     * 남이 눌러 계정을 없애는 일도 이 확인이 막는다.
+     * <p>
+     * 이메일이 익명 주소로 바뀌므로 원래 주소로 다시 가입할 수 있다. 보낼 예정이던 메일과
+     * 남아 있던 링크들은 함께 지운다 — 없는 계정으로 가는 메일이고, 지우지 않으면 탈퇴 후에도
+     * 옛 링크로 무언가 할 수 있는 길이 남는다.
+     */
+    @Transactional
+    public void withdraw(String email, String currentPassword) {
+        User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
+
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
+        }
+
+        Long userId = user.getId();
+        emailVerificationTokenRepository.deleteByUserId(userId);
+        passwordResetTokenRepository.deleteByUserId(userId);
+        outboxMailRepository.deleteByUserId(userId);
+
+        user.withdraw(
+                "withdrawn-" + userId + "@kraft.invalid",
+                "탈퇴한 사용자" + userId,
+                // 아무도 맞힐 수 없는 값. 익명 주소를 알아내도 로그인할 수 없다.
+                passwordEncoder.encode(UUID.randomUUID().toString()));
+
         AfterCommit.run(() -> sessionRevoker.revokeAll(email));
     }
 

@@ -108,11 +108,11 @@ SELECT name, COUNT(*) FROM users GROUP BY name HAVING COUNT(*) > 1;
 있는 DB에서는 V2가 `Duplicate column name 'category'`로 멈춥니다.
 
 이미 현재 엔티티로 만들어진 DB라면 **디스크의 최신 마이그레이션 버전으로 baseline** 합니다
-(지금은 V8). 그러면 마이그레이션을 하나도 실행하지 않고 "여기까지 적용됨"만 기록하며,
+(지금은 V9). 그러면 마이그레이션을 하나도 실행하지 않고 "여기까지 적용됨"만 기록하며,
 이어지는 `ddl-auto: validate`가 스키마와 엔티티가 맞는지 확인해 줍니다.
 
 ```powershell
-.\gradlew.bat bootRun --args="--spring.profiles.active=prod --spring.flyway.baseline-version=8"
+.\gradlew.bat bootRun --args="--spring.profiles.active=prod --spring.flyway.baseline-version=9"
 ```
 
 이 네 단계(기존 DB 재현 → 잘못된 baseline이 실패 → 올바른 baseline → validate 통과)는
@@ -161,7 +161,7 @@ GET이 아닌 요청에는 CSRF 토큰이 필요합니다. 화면은 `layout/hea
 | 단계 | 의미 | 해당 |
 | --- | --- | --- |
 | 누구나 | 로그인 불필요 | 게시글·댓글 **조회**, 회원가입 |
-| 로그인 | 세션 필요 | 추천, 비밀번호 변경, 인증 메일 재발송 |
+| 로그인 | 세션 필요 | 추천, 비밀번호 변경, 인증 메일 재발송, 회원 탈퇴 |
 | 이메일 인증 완료 | `GUEST`는 거부(`WriteAccessPolicy`) | 글·댓글 작성·수정, 이미지 업로드 |
 
 수정·삭제는 여기에 더해 **작성자 본인 또는 관리자**여야 합니다(`OwnershipPolicy`).
@@ -183,6 +183,7 @@ GET이 아닌 요청에는 CSRF 토큰이 필요합니다. 화면은 `layout/hea
 | PUT | `/api/v1/comments/{id}` | 본인·관리자 | `content` | 200 · id |
 | DELETE | `/api/v1/comments/{id}` | 본인·관리자 | — | 200 · id |
 | POST | `/api/v1/users` | 누구나 | `name`, `email`, `password` | 200 · 생성된 id |
+| DELETE | `/api/v1/users/me` | 로그인 | `currentPassword` | 204 (탈퇴. 모든 세션이 폐기됩니다) |
 | POST | `/api/v1/users/password-reset` | 누구나 | `email` | 204 (가입 여부와 무관하게 항상 같다) |
 | POST | `/api/v1/users/password-reset/confirm` | 누구나(토큰 필요) | `token`, `newPassword` | 204 (이 계정의 모든 세션이 폐기됩니다) |
 | PUT | `/api/v1/users/me/password` | 로그인 | `currentPassword`, `newPassword` | 204 (이 계정의 모든 세션이 폐기됩니다) |
@@ -193,6 +194,19 @@ GET이 아닌 요청에는 CSRF 토큰이 필요합니다. 화면은 `layout/hea
 말없이 덮어썼습니다. 입력 길이 제한은 위 "입력 길이 정책"을 따릅니다.
 
 `liked`는 토글이 아니라 **원하는 최종 상태**입니다. 같은 값을 여러 번 보내도 결과가 같습니다.
+
+### 회원 탈퇴
+
+계정 메뉴의 "회원 탈퇴"에서 현재 비밀번호를 확인한 뒤 진행합니다. 되돌릴 수 없습니다.
+
+**행을 지우지 않고 개인정보만 지웁니다.** `posts.user_id`·`comments.user_id`가 NOT NULL이라
+회원을 지우려면 그 사람의 글과 댓글을 모두 지워야 하는데, 그러면 남의 댓글이 달린 글이나
+대화의 맥락까지 함께 사라집니다. 글은 남기고 작성자만 `탈퇴한 사용자{id}`로 바꿉니다.
+
+탈퇴 시점에 이름·이메일·비밀번호는 쓸 수 없는 값으로 덮어쓰고(`users.withdrawn_at` 기록),
+남아 있던 인증·재설정 링크와 보낼 예정이던 메일도 지웁니다. 이메일이 바뀌므로 `email_hash`도
+함께 바뀌어 **같은 주소로 다시 가입할 수 있습니다** — 탈퇴가 그 주소를 영영 잠그면 안 됩니다.
+탈퇴한 계정은 로그인 조회 단계에서 없는 계정으로 취급합니다(`UserDetailsServiceImpl`).
 
 ### 비밀번호 찾기
 

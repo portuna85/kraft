@@ -12,6 +12,7 @@ export function init() {
     initLogout();
     initChangePassword();
     initResendVerification();
+    initWithdraw();
 }
 
 function initLogout() {
@@ -83,6 +84,61 @@ async function changePassword() {
         window.location.href = '/login';
     } catch (error) {
         showModalError(messageOf(error));
+        setBusy(button, false);
+    }
+}
+
+/**
+ * 회원 탈퇴 모달. 되돌릴 수 없는 작업이라 비밀번호를 한 번 더 받는다.
+ *
+ * 비밀번호 변경과 같은 자리에서 같은 규칙을 쓴다 — 오류는 화면 이동이 없으니 모달 안에서
+ * 보여주고(모달이 #flash를 덮는다), 성공하면 서버가 이미 세션을 폐기했으므로 로그인 화면으로
+ * 보낸다. 탈퇴 안내는 그 화면에서 flash로 한 번 보인다.
+ */
+function initWithdraw() {
+    const element = byId('withdrawModal');
+    if (!element) {
+        return;
+    }
+
+    const form = byId('withdraw-form');
+    on(form, 'submit', (event) => {
+        event.preventDefault();
+        withdraw();
+    });
+
+    on(element, 'show.bs.modal', () => {
+        form.reset();
+        hideWithdrawError();
+    });
+    on(element, 'shown.bs.modal', () => byId('withdrawPassword').focus());
+}
+
+function showWithdrawError(message) {
+    const box = byId('withdraw-error');
+    setText(box, message);
+    box.hidden = false;
+}
+
+function hideWithdrawError() {
+    const box = byId('withdraw-error');
+    setText(box, '');
+    box.hidden = true;
+}
+
+async function withdraw() {
+    const button = byId('btn-confirm-withdraw');
+    setBusy(button, true);
+    hideWithdrawError();
+
+    try {
+        await api.del('/api/v1/users/me', {
+            currentPassword: valueOf(byId('withdrawPassword')),
+        });
+        flash.set('ACCOUNT_WITHDRAWN');
+        window.location.href = '/login';
+    } catch (error) {
+        showWithdrawError(messageOf(error));
         setBusy(button, false);
     }
 }

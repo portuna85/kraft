@@ -34,6 +34,7 @@ public class SessionRevoker {
     public void revokeAll(String principalName) {
         Set<String> sessionIds = sessionRepository.findByPrincipalName(principalName).keySet();
         sessionIds.forEach(sessionRepository::deleteById);
-        log.info("비밀번호 변경으로 세션 {}개를 폐기했습니다.", sessionIds.size());
+        // 비밀번호 변경·재설정·탈퇴가 모두 이 경로를 쓴다. 사유는 부른 쪽이 로그로 남긴다.
+        log.info("계정의 기존 세션 {}개를 폐기했습니다.", sessionIds.size());
     }
 }

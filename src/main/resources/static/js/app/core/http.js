@@ -115,7 +115,9 @@ export const api = {
     get: (url) => request(url),
     post: (url, json) => request(url, { method: 'POST', json }),
     put: (url, json) => request(url, { method: 'PUT', json }),
-    del: (url) => request(url, { method: 'DELETE' }),
+    // 본문 있는 DELETE는 드물지만 표준이 금지하지 않는다. 회원 탈퇴가 현재 비밀번호를 함께
+    // 보낸다 — 되돌릴 수 없는 작업이라 서버가 한 번 더 확인한다.
+    del: (url, json) => request(url, { method: 'DELETE', json }),
     /** multipart 업로드. 헤더를 받지 않는 별도 메서드로 두어 Content-Type 실수를 막는다. */
     upload: (url, formData) => request(url, { method: 'POST', formData }),
 };

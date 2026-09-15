@@ -21,6 +21,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -327,5 +328,71 @@ class UserApiControllerTest {
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(passwordResetService);
+    }
+
+    @Test
+    @DisplayName("DELETE /api/v1/users/me 는 인증+CSRF+현재 비밀번호면 204를 반환한다")
+    void withdraw_whenAuthenticatedWithCsrf_returns204NoContent() throws Exception {
+        mockMvc.perform(delete("/api/v1/users/me")
+                        .with(user("tester@example.com"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"Password123!\"}"))
+                .andExpect(status().isNoContent());
+
+        verify(userService).withdraw("tester@example.com", "Password123!");
+    }
+
+    @Test
+    @DisplayName("DELETE /api/v1/users/me 는 미인증이면 로그인 페이지로 리다이렉트되고 서비스는 호출되지 않는다")
+    void withdraw_whenNotAuthenticated_redirectsToLogin() throws Exception {
+        mockMvc.perform(delete("/api/v1/users/me")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"Password123!\"}"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login"));
+
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("DELETE /api/v1/users/me 는 CSRF 토큰이 없으면 403")
+    void withdraw_withoutCsrfToken_returns403Forbidden() throws Exception {
+        mockMvc.perform(delete("/api/v1/users/me")
+                        .with(user("tester@example.com"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"Password123!\"}"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("DELETE /api/v1/users/me 는 현재 비밀번호가 틀리면 400 ProblemDetail을 반환한다")
+    void withdraw_whenPasswordDoesNotMatch_returns400BadRequest() throws Exception {
+        willThrow(new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다."))
+                .given(userService).withdraw("tester@example.com", "WrongPass1!");
+
+        mockMvc.perform(delete("/api/v1/users/me")
+                        .with(user("tester@example.com"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"WrongPass1!\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("현재 비밀번호가 일치하지 않습니다."));
+    }
+
+    @Test
+    @DisplayName("DELETE /api/v1/users/me 는 비밀번호가 비어 있으면 400이고 서비스는 호출되지 않는다")
+    void withdraw_withBlankPassword_returns400BadRequest() throws Exception {
+        mockMvc.perform(delete("/api/v1/users/me")
+                        .with(user("tester@example.com"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"\"}"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(userService);
     }
 }
