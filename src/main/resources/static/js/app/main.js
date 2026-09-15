@@ -1,9 +1,5 @@
 import * as flash from './ui/flash.js';
 import * as siteNav from './features/site-nav.js';
-import * as account from './features/account.js';
-import * as deleteConfirm from './features/delete-confirm.js';
-import * as reportDialog from './features/report-dialog.js';
-import * as adminReports from './features/admin-reports.js';
 
 /**
  * 진입점.
@@ -11,14 +7,47 @@ import * as adminReports from './features/admin-reports.js';
  * `<script type="module">`은 기본이 defer라 문서 파싱이 끝난 뒤에 실행된다. 그래서 예전의
  * `$(function () { ... })` 같은 준비 대기가 필요 없다.
  *
- * 이 파일은 layout/footer를 통해 **모든 페이지**에 실린다. 따라서 각 기능의 init()은 자기
- * 화면이 아닐 때도 호출된다 — 모든 init()이 필요한 요소가 없으면 조용히 돌아가야 하고,
- * 하나라도 던지면 그 뒤에 등록될 기능이 전부 죽는다. core/dom.js의 헬퍼들이 그 규칙을 지킨다.
+ * 이 파일은 layout/footer를 통해 **모든 페이지**에 실린다. 헤더(siteNav)는 모든 화면에
+ * 있으므로 정적으로 불러오지만, 나머지 기능은 대상 DOM이 있는 페이지에서만 동적으로
+ * 불러온다 — 예전에는 6개 기능(계정 모달·삭제 확인·신고·관리자 처리)을 무조건 전부
+ * import해서, 예를 들어 /login 화면이 실제로 쓰는 것의 3배가 넘는 코드를 받고 있었다.
+ *
+ * 대상 DOM 판정은 각 화면이 서버에서 렌더링한 요소 또는 같은 페이지의 Vue 아일랜드가
+ * 마운트하며 그린 요소를 본다. Vue 아일랜드는 이 스크립트보다 문서 앞쪽의
+ * `<script type="module">`이라 모듈 그래프 실행 순서상 항상 먼저 실행되고 마운트를
+ * 마친다(module script는 defer 의미이면서 문서 순서를 지킨다) — 그래서 여기서 querySelector로
+ * 확인하는 시점에는 이미 렌더링이 끝나 있다.
  */
 flash.consume();
-
 siteNav.init();
-account.init();
-deleteConfirm.init();
-reportDialog.init();
-adminReports.init();
+
+/**
+ * `selector`에 맞는 요소가 있을 때만 `modulePath`를 불러와 `init()`을 부른다.
+ *
+ * 실패하면 콘솔에 남긴다 — 조용히 삼키면 "버튼은 보이는데 눌러도 반응이 없다"는 원인 불명
+ * 버그가 된다. E2E 픽스처가 콘솔 오류를 실패로 잡으므로(fixtures.js) 회귀가 여기서 드러난다.
+ */
+async function loadIf(selector, modulePath) {
+    if (!document.querySelector(selector)) {
+        return;
+    }
+    try {
+        const feature = await import(modulePath);
+        feature.init();
+    } catch (error) {
+        console.error(`기능을 불러오지 못했습니다: ${modulePath}`, error);
+    }
+}
+
+// 계정 모달(로그아웃·비밀번호 변경·탈퇴·인증 메일 재발송)은 헤더에서 시작하고 로그인
+// 상태에 따라 sec:authorize가 걸러낸 것만 렌더링된다.
+loadIf('#btn-logout, #changePasswordModal, #withdrawModal, #resendVerificationModal', './features/account.js');
+
+// 게시글·댓글 공용 삭제 확인 모달. 트리거 버튼은 Vue 아일랜드(post-edit·comments)가 그린다.
+loadIf('[data-target-kind]', './features/delete-confirm.js');
+
+// 게시글·댓글 공용 신고 모달. 트리거 버튼도 마찬가지로 Vue 아일랜드가 그린다.
+loadIf('[data-report-kind]', './features/report-dialog.js');
+
+// 관리자 신고·정지 회원 처리 버튼. 목록이 비어 있으면 .report-list 자체가 렌더링되지 않는다.
+loadIf('.report-list', './features/admin-reports.js');

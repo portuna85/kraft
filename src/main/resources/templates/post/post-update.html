@@ -22,6 +22,9 @@
              상태를 JSON으로 그대로 내려준다. 추천 버튼의 상태와 요청도 Vue가 관리한다. -->
         <script type="application/json" id="post-initial-data" th:utext="${postEditInitialJson}"></script>
         <div id="post-app"></div>
+        <!-- post-edit.js·comments.js가 함께 쓰는 공유 청크(Vue 런타임 포함, 67KB)를 미리
+             받아 둔다 — 두 스크립트가 같은 청크를 가리키므로 여기서 한 번만 선언한다. -->
+        <link rel="modulepreload" href="/js/vue-dist/chunks/flash.js" />
         <script type="module" src="/js/vue-dist/post-edit.js"></script>
 
         <!-- 댓글은 Vue 아일랜드(src/vue/comments)로 렌더링된다. canManage는 서버만 판정할 수

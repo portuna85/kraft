@@ -16,6 +16,9 @@
                제출은 REST API로만 오간다. */-->
         <div class="card-kraft">
             <div id="signup-app"></div>
+            <!-- signup.js가 정적으로 import하는 공유 청크(Vue 런타임 포함, 67KB)를 미리
+                 받아 둔다 — 이 화면은 자기 코드(2.5KB)보다 이 청크가 훨씬 크다. -->
+            <link rel="modulepreload" href="/js/vue-dist/chunks/flash.js" />
             <script type="module" src="/js/vue-dist/signup.js"></script>
         </div>
     </main>
