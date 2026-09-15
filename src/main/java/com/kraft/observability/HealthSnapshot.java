@@ -14,6 +14,7 @@ import java.util.List;
  * @param diskFreeBytes 업로드 디렉터리 쪽 여유 공간
  * @param mailPending   발송 대기 중인 메일
  * @param mailFailed    재시도를 모두 소진한 메일
+ * @param reportsPending 관리자가 아직 처리하지 않은 신고
  */
 public record HealthSnapshot(
         long requests,
@@ -26,7 +27,8 @@ public record HealthSnapshot(
         int poolPending,
         long diskFreeBytes,
         long mailPending,
-        long mailFailed) {
+        long mailFailed,
+        long reportsPending) {
 
     public double errorRate() {
         return requests == 0 ? 0 : (double) errors / requests;
@@ -71,14 +73,20 @@ public record HealthSnapshot(
         if (mailFailed > limits.mailFailed()) {
             found.add("발송 포기 메일 %d통 (기준 %d통)".formatted(mailFailed, limits.mailFailed()));
         }
+        // 다른 항목과 성격이 다르다. 앱은 멀쩡한데 사람이 보고 있지 않다는 뜻이고, 그동안
+        // 신고된 글은 그대로 보인다.
+        if (reportsPending > limits.reportsPending()) {
+            found.add("미처리 신고 %d건 (기준 %d건)".formatted(reportsPending, limits.reportsPending()));
+        }
         return found;
     }
 
     /** 주기마다 남기는 한 줄. 넘긴 항목이 없어도 이 줄은 남아 평소 수치를 알 수 있게 한다. */
     public String summary() {
         return ("요청=%d 오류=%d(%.1f%%) 5xx=%d 평균=%dms 최대=%dms "
-                + "DB풀=%d/%d 대기=%d 디스크여유=%dMB 메일대기=%d 메일실패=%d")
+                + "DB풀=%d/%d 대기=%d 디스크여유=%dMB 메일대기=%d 메일실패=%d 미처리신고=%d")
                 .formatted(requests, errors, errorRate() * 100, serverErrors, avgMillis, maxMillis,
-                        poolActive, poolTotal, poolPending, diskFreeBytes / 1048576, mailPending, mailFailed);
+                        poolActive, poolTotal, poolPending, diskFreeBytes / 1048576, mailPending, mailFailed,
+                        reportsPending);
     }
 }

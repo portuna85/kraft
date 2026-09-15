@@ -1,5 +1,7 @@
 package com.kraft.observability;
 
+import com.kraft.report.domain.ReportRepository;
+import com.kraft.report.domain.ReportStatus;
 import com.kraft.user.mail.OutboxMailRepository;
 import com.kraft.user.mail.OutboxMailStatus;
 import com.zaxxer.hikari.HikariDataSource;
@@ -24,13 +26,15 @@ import java.util.List;
  *
  * <h3>수집하는 것</h3>
  * HTTP 오류율·응답 지연({@link RequestMetrics}), DB 커넥션 풀, 업로드 디스크 여유,
- * 메일 대기열. 전부 "이게 막히면 사용자가 곧바로 겪는" 것들이다.
+ * 메일 대기열, 미처리 신고. 앞의 것들은 "막히면 사용자가 곧바로 겪는" 것이고, 마지막 하나는
+ * 앱이 아니라 사람이 멈춘 신호다 — 신고가 쌓이는 동안 문제가 된 글은 그대로 보인다.
  */
 @Slf4j
 public class HealthReporter {
 
     private final RequestMetrics requestMetrics;
     private final OutboxMailRepository outboxMailRepository;
+    private final ReportRepository reportRepository;
     private final DataSource dataSource;
     private final Path uploadDir;
 
@@ -61,12 +65,18 @@ public class HealthReporter {
     @Value("${app.metrics.mail-failed:0}")
     private long mailFailed;
 
+    /** 신고는 사람이 처리한다. 하루치가 쌓이도록 아무도 보지 않았다면 그것이 알릴 일이다. */
+    @Value("${app.metrics.reports-pending:20}")
+    private long reportsPending;
+
     public HealthReporter(RequestMetrics requestMetrics,
                           OutboxMailRepository outboxMailRepository,
+                          ReportRepository reportRepository,
                           DataSource dataSource,
                           String uploadDir) {
         this.requestMetrics = requestMetrics;
         this.outboxMailRepository = outboxMailRepository;
+        this.reportRepository = reportRepository;
         this.dataSource = dataSource;
         this.uploadDir = Path.of(uploadDir).toAbsolutePath();
     }
@@ -98,7 +108,7 @@ public class HealthReporter {
 
     HealthThresholds thresholds() {
         return new HealthThresholds(minRequests, errorRate, serverErrors, avgMillis,
-                poolUsage, diskFreeBytes, mailPending, mailFailed);
+                poolUsage, diskFreeBytes, mailPending, mailFailed, reportsPending);
     }
 
     HealthSnapshot collect() {
@@ -112,7 +122,8 @@ public class HealthReporter {
                 pool == null ? 0 : pool.getThreadsAwaitingConnection(),
                 usableSpace(),
                 outboxMailRepository.countByStatus(OutboxMailStatus.PENDING),
-                outboxMailRepository.countByStatus(OutboxMailStatus.FAILED));
+                outboxMailRepository.countByStatus(OutboxMailStatus.FAILED),
+                reportRepository.countByStatus(ReportStatus.PENDING));
     }
 
     private HikariPoolMXBean pool() {

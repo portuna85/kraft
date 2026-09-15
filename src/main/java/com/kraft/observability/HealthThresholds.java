@@ -14,6 +14,9 @@ package com.kraft.observability;
  * @param mailPending      아직 보내지 못한 메일 수 상한. 주기 작업이 도는데도 줄지 않으면 SMTP가
  *                         죽어 있는 것이다.
  * @param mailFailed       재시도를 모두 소진한 메일 수 상한. 이건 사람이 봐야 낫는다.
+ * @param reportsPending   처리하지 않은 신고 수 상한. 이것은 앱이 아니라 <b>사람이 멈춘</b>
+ *                         신호다 — 기계가 대신 처리할 수 없으므로, 쌓이고 있다는 사실 자체를
+ *                         알려 주는 것이 전부다.
  */
 public record HealthThresholds(
         int minRequests,
@@ -23,5 +26,6 @@ public record HealthThresholds(
         double poolUsage,
         long diskFreeBytes,
         long mailPending,
-        long mailFailed) {
+        long mailFailed,
+        long reportsPending) {
 }
