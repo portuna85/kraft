@@ -93,6 +93,7 @@ onUnmounted(() => window.removeEventListener('kraft:comment-deleted', onExternal
       v-for="comment in comments"
       :key="comment.id"
       :comment="comment"
+      :authenticated="authenticated"
       @updated="onUpdated"
     />
   </ul>

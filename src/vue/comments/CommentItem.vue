@@ -10,6 +10,8 @@ import { showToast } from '@ui/toast.js';
  */
 const props = defineProps({
     comment: { type: Object, required: true },
+    // 신고 버튼은 로그인한 사람에게만 보인다. 목록이 이 값을 그대로 내려준다.
+    authenticated: { type: Boolean, required: true },
 });
 
 const emit = defineEmits(['updated']);
@@ -83,6 +85,20 @@ function formatDate(iso) {
           data-target-kind="comment"
         >
           삭제
+        </button>
+      </div>
+
+      <!-- 신고는 남의 댓글에만 보인다. 자기 댓글은 서버도 거절한다(직접 지우면 된다). -->
+      <div
+        v-else-if="authenticated"
+        class="btn-group-gap comment-actions"
+      >
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-secondary btn-comment-report"
+          data-report-kind="comment"
+        >
+          신고
         </button>
       </div>
     </div>

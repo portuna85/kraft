@@ -57,6 +57,10 @@
             <button sec:authorize="isAuthenticated()" type="button" class="kraft-actions__link kraft-actions__link--button"
                     data-bs-toggle="modal" data-bs-target="#changePasswordModal">비밀번호 변경</button>
 
+            <a sec:authorize="hasRole('ADMIN')" href="/admin/reports" class="kraft-actions__link"
+               th:classappend="${currentPath == '/admin/reports'} ? 'is-current'"
+               th:attr="aria-current=${currentPath == '/admin/reports'} ? 'page' : null">신고 처리</a>
+
             <button sec:authorize="isAuthenticated()" type="button" id="btn-withdraw"
                     class="kraft-actions__link kraft-actions__link--button"
                     data-bs-toggle="modal" data-bs-target="#withdrawModal">회원 탈퇴</button>

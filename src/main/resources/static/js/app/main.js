@@ -2,6 +2,8 @@ import * as flash from './ui/flash.js';
 import * as siteNav from './features/site-nav.js';
 import * as account from './features/account.js';
 import * as deleteConfirm from './features/delete-confirm.js';
+import * as reportDialog from './features/report-dialog.js';
+import * as adminReports from './features/admin-reports.js';
 
 /**
  * 진입점.
@@ -18,3 +20,5 @@ flash.consume();
 siteNav.init();
 account.init();
 deleteConfirm.init();
+reportDialog.init();
+adminReports.init();

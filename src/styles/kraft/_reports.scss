@@ -1,0 +1,44 @@
+/* ==========================================================================
+   신고 처리(관리자 화면)
+
+   목록 한 줄이 "무엇을 · 왜 · 누가 · 언제"를 한눈에 보여줘야 관리자가 건마다 상세로
+   들어가지 않는다. 댓글 목록과 같은 카드 모양을 쓴다.
+   ========================================================================== */
+.report-list {
+    list-style: none;
+    margin: 0 0 var(--kraft-space-4);
+    padding: 0;
+}
+
+.report-list__item {
+    border: 1px solid var(--kraft-border);
+    border-radius: var(--kraft-radius);
+    padding: var(--kraft-space-4);
+    margin-bottom: var(--kraft-space-2);
+}
+
+.report-list__item:last-child {
+    margin-bottom: 0;
+}
+
+.report-list__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--kraft-space-2);
+    margin-bottom: var(--kraft-space-2);
+}
+
+.report-list__target {
+    overflow-wrap: anywhere;
+    margin-bottom: var(--kraft-space-1);
+}
+
+/* 신고자가 적은 내용은 그대로 보여주되, 본문과 구분되게 한 단 들여 쓴다. */
+.report-list__detail {
+    border-left: 3px solid var(--kraft-border);
+    padding-left: var(--kraft-space-3);
+    color: var(--kraft-text-muted);
+    overflow-wrap: anywhere;
+    margin-bottom: var(--kraft-space-2);
+}

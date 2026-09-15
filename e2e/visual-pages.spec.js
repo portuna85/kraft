@@ -103,12 +103,18 @@ test.describe('빈 상태와 페이지 이동', () => {
     test('페이지 이동 위젯', async ({ page }) => {
         await page.goto('/');
         const pager = page.locator('.pager');
-        // 글이 한 페이지에 다 들어가면 위젯이 없을 수 있다. 있을 때만 비교한다.
-        if (await pager.count()) {
-            await expect(pager).toHaveScreenshot('pager.png', {
-                ...PIXEL_TOLERANCE,
-                mask: [page.locator('.pager__status')],
-            });
+        // 글이 한 페이지에 다 들어가면 위젯이 없을 수 있다. 있을 때만 확인한다.
+        if (!(await pager.count())) {
+            return;
         }
+
+        // 여기는 기준 이미지를 쓰지 않는다. 위젯의 너비가 번호 링크 개수에 따라 달라지고,
+        // 그 개수는 앞선 스펙이 글을 몇 개 만들었는지에 달려 있다(인메모리 DB를 모두 공유한다).
+        // 가려도 자리 크기는 그대로라 비교가 실행 순서에 묶인다 — 실제로 신고 스펙이 글을
+        // 더 만들자 깨졌다. 대신 첫 페이지에서 지켜야 할 규칙을 그대로 확인한다.
+        await expect(pager.locator('.pager__step.is-disabled')).toHaveText('이전');
+        await expect(pager.locator('a.pager__step')).toHaveText('다음');
+        await expect(pager.locator('.pager__page.is-current')).toHaveText('1');
+        await expect(pager.locator('.pager__status')).toContainText('/');
     });
 });

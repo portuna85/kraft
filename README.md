@@ -12,6 +12,7 @@ Java 코드는 기능을 먼저 구분하고, 각 기능 안에서 책임별로 
 | --- | --- |
 | `post/{domain,service,dto,web}` | 게시글·검색·추천·이미지와 게시판 화면 |
 | `comment/{domain,service,dto,web}` | 댓글과 댓글 API |
+| `report/{domain,service,dto,web}` | 신고 접수와 관리자 처리 화면 |
 | `user/{domain,service,dto,web}` | 회원가입·비밀번호·인증과 회원 화면 |
 | `user/mail` | 발송 인터페이스·SMTP 구현·메일 대기열·발송 작업자 |
 | `shared/domain` | 공통 감사 필드와 본문 길이 정책 |
@@ -108,11 +109,11 @@ SELECT name, COUNT(*) FROM users GROUP BY name HAVING COUNT(*) > 1;
 있는 DB에서는 V2가 `Duplicate column name 'category'`로 멈춥니다.
 
 이미 현재 엔티티로 만들어진 DB라면 **디스크의 최신 마이그레이션 버전으로 baseline** 합니다
-(지금은 V9). 그러면 마이그레이션을 하나도 실행하지 않고 "여기까지 적용됨"만 기록하며,
+(지금은 V10). 그러면 마이그레이션을 하나도 실행하지 않고 "여기까지 적용됨"만 기록하며,
 이어지는 `ddl-auto: validate`가 스키마와 엔티티가 맞는지 확인해 줍니다.
 
 ```powershell
-.\gradlew.bat bootRun --args="--spring.profiles.active=prod --spring.flyway.baseline-version=9"
+.\gradlew.bat bootRun --args="--spring.profiles.active=prod --spring.flyway.baseline-version=10"
 ```
 
 이 네 단계(기존 DB 재현 → 잘못된 baseline이 실패 → 올바른 baseline → validate 통과)는
@@ -163,6 +164,7 @@ GET이 아닌 요청에는 CSRF 토큰이 필요합니다. 화면은 `layout/hea
 | 누구나 | 로그인 불필요 | 게시글·댓글 **조회**, 회원가입 |
 | 로그인 | 세션 필요 | 추천, 비밀번호 변경, 인증 메일 재발송, 회원 탈퇴 |
 | 이메일 인증 완료 | `GUEST`는 거부(`WriteAccessPolicy`) | 글·댓글 작성·수정, 이미지 업로드 |
+| 관리자 | `ROLE_ADMIN`만 통과 | 신고 처리 화면(`/admin/**`)과 처리 API(`/api/v1/admin/**`) |
 
 수정·삭제는 여기에 더해 **작성자 본인 또는 관리자**여야 합니다(`OwnershipPolicy`).
 공지(`NOTICE`) 분류는 관리자만 쓸 수 있습니다(`CategoryPolicy`).
@@ -182,6 +184,9 @@ GET이 아닌 요청에는 CSRF 토큰이 필요합니다. 화면은 `layout/hea
 | POST | `/api/v1/posts/{postId}/comments` | 인증 완료 | `content` | 200 · 생성된 id |
 | PUT | `/api/v1/comments/{id}` | 본인·관리자 | `content` | 200 · id |
 | DELETE | `/api/v1/comments/{id}` | 본인·관리자 | — | 200 · id |
+| POST | `/api/v1/reports` | 로그인 | `targetType`, `targetId`, `reason`, `detail` | 200 · 생성된 id |
+| POST | `/api/v1/admin/reports/{id}/resolve` | 관리자 | — | 204 (대상 삭제) |
+| POST | `/api/v1/admin/reports/{id}/reject` | 관리자 | — | 204 (대상 유지) |
 | POST | `/api/v1/users` | 누구나 | `name`, `email`, `password` | 200 · 생성된 id |
 | DELETE | `/api/v1/users/me` | 로그인 | `currentPassword` | 204 (탈퇴. 모든 세션이 폐기됩니다) |
 | POST | `/api/v1/users/password-reset` | 누구나 | `email` | 204 (가입 여부와 무관하게 항상 같다) |
@@ -194,6 +199,23 @@ GET이 아닌 요청에는 CSRF 토큰이 필요합니다. 화면은 `layout/hea
 말없이 덮어썼습니다. 입력 길이 제한은 위 "입력 길이 정책"을 따릅니다.
 
 `liked`는 토글이 아니라 **원하는 최종 상태**입니다. 같은 값을 여러 번 보내도 결과가 같습니다.
+
+### 신고와 처리
+
+글·댓글의 "신고" 버튼에서 사유를 골라 접수하고, 관리자가 `/admin/reports`에서 처리합니다.
+자기 글은 신고할 수 없고(직접 지우면 됩니다), 같은 대상을 두 번 신고할 수도 없습니다
+(`UK_REPORT_REPORTER_TARGET`).
+
+관리자의 선택은 둘입니다. **삭제**는 대상 글·댓글을 지우고 신고를 닫으며, **반려**는 대상을
+그대로 둔 채 신고만 닫습니다. 처리한 신고도 행으로 남습니다 — 같은 대상이 반복해서
+신고되는지, 관리자가 무엇을 언제 지웠는지가 남아야 나중에 설명할 수 있습니다.
+
+삭제는 기존 삭제 경로(`PostService`/`CommentService`)를 그대로 부릅니다. 그쪽이 이미 소유권
+검사·이미지 정리 예약·커밋 후 파일 정리를 맡고 있어, 저장소를 직접 지우면 그 뒷정리가 빠집니다.
+한 대상에 신고가 여러 건 쌓여 있으면 하나를 처리할 때 나머지도 함께 정리합니다.
+
+신고 대상은 FK가 아니라 `target_type + target_id`로 가리킵니다(대상이 앞으로 늘 수 있습니다).
+그래서 **대상이 이미 사라진 신고**가 있을 수 있고, 화면은 그것을 정상으로 다룹니다.
 
 ### 회원 탈퇴
 

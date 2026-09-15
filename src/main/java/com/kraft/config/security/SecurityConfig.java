@@ -32,6 +32,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/users/password-reset", "/api/v1/users/password-reset/confirm")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/posts/**").permitAll()
+                        // 신고 처리는 관리자만 한다. 화면(/admin/**)과 API(/api/v1/admin/**)를
+                        // 같은 규칙으로 막아, 화면을 감추는 것으로 끝내지 않는다.
+                        .requestMatchers("/admin/**", "/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/**").authenticated()
                         .anyRequest().permitAll()
                 )

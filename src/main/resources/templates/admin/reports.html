@@ -1,0 +1,76 @@
+<!DOCTYPE HTML>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<!--/*@thymesVar id="pageTitle" type="java.lang.String"*/-->
+<!--/*@thymesVar id="reports" type="java.util.List<com.kraft.report.dto.ReportViewDto>"*/-->
+<!--/*@thymesVar id="pageWindow" type="com.kraft.shared.web.PageWindow"*/-->
+<!--/*@thymesVar id="pendingCount" type="java.lang.Long"*/-->
+<head th:replace="~{layout/header :: header}"></head>
+<body>
+
+<a class="skip-link" href="#main">본문 바로가기</a>
+<div th:replace="~{layout/navbar :: topbar}"></div>
+
+<div class="kraft-shell">
+    <main id="main" class="kraft-main">
+        <div th:replace="~{layout/footer :: flash}"></div>
+
+        <div class="board-head">
+            <div class="board-head__text">
+                <h1 class="board-head__title">신고 처리</h1>
+                <p class="board-head__count">처리 대기 <strong th:text="${pendingCount}">0</strong>건</p>
+            </div>
+        </div>
+        <p class="board-head__desc">오래된 신고부터 보여줍니다. “삭제”는 대상 글·댓글을 지우고,
+            “반려”는 대상을 그대로 둔 채 이 신고만 닫습니다. 같은 대상에 쌓인 다른 신고도 함께 정리됩니다.</p>
+
+        <ul class="report-list" th:if="${!#lists.isEmpty(reports)}">
+            <li class="report-list__item" th:each="report : ${reports}" th:attr="data-report-id=${report.id},data-target-key=${report.targetType + ':' + report.targetId}">
+                <div class="report-list__head">
+                    <span class="post-category" th:text="${report.targetTypeTitle}">게시글</span>
+                    <span th:text="${report.reasonTitle}">사유</span>
+                    <span class="text-muted" th:text="${#temporals.format(report.createdAt, 'yyyy.MM.dd HH:mm')}">시각</span>
+                </div>
+
+                <!--/* 대상이 이미 지워졌을 수 있다. 그때는 무엇을 신고했는지만 남는다. */-->
+                <p class="report-list__target" th:if="${report.targetPreview != null}">
+                    <a th:if="${report.targetType == 'POST'}"
+                       th:href="@{'/posts/update/' + ${report.targetId}}" th:text="${report.targetPreview}">내용</a>
+                    <span th:unless="${report.targetType == 'POST'}" th:text="${report.targetPreview}">내용</span>
+                    <span class="text-muted" th:text="'· ' + ${report.targetAuthor}">· 작성자</span>
+                </p>
+                <p class="report-list__target text-muted" th:if="${report.targetPreview == null}">
+                    대상이 이미 삭제되었습니다.
+                </p>
+
+                <p class="report-list__detail" th:if="${report.detail != null and !report.detail.isBlank()}"
+                   th:text="${report.detail}">신고자가 적은 사정</p>
+                <p class="text-muted" th:text="'신고자 ' + ${report.reporter}">신고자</p>
+
+                <div class="btn-group-gap">
+                    <button type="button" class="btn btn-sm btn-outline-danger btn-report-resolve">삭제</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary btn-report-reject">반려</button>
+                </div>
+            </li>
+        </ul>
+
+        <div class="empty-state" th:if="${#lists.isEmpty(reports)}">
+            <p class="empty-state__text">처리할 신고가 없습니다.</p>
+        </div>
+
+        <nav class="pager" th:if="${pageWindow.totalPages > 1}" aria-label="신고 목록 페이지 이동">
+            <a class="pager__step" th:if="${pageWindow.hasPrev}"
+               th:href="@{/admin/reports(page=${pageWindow.prev})}">이전</a>
+            <span class="pager__step is-disabled" th:unless="${pageWindow.hasPrev}" aria-hidden="true">이전</span>
+            <span class="pager__status">
+                <span th:text="${pageWindow.displayPage}">1</span> / <span th:text="${pageWindow.totalPages}">1</span>
+            </span>
+            <a class="pager__step" th:if="${pageWindow.hasNext}"
+               th:href="@{/admin/reports(page=${pageWindow.next})}">다음</a>
+            <span class="pager__step is-disabled" th:unless="${pageWindow.hasNext}" aria-hidden="true">다음</span>
+        </nav>
+    </main>
+</div>
+
+<div th:replace="~{layout/footer :: footer}"></div>
+</body>
+</html>

@@ -37,4 +37,5 @@ export const API = {
     POSTS: '/api/v1/posts',
     POST_IMAGES: '/api/v1/posts/images',
     COMMENTS: '/api/v1/comments',
+    REPORTS: '/api/v1/reports',
 };
