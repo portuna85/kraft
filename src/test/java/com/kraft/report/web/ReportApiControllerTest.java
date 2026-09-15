@@ -122,7 +122,19 @@ class ReportApiControllerTest {
                         .with(csrf()))
                 .andExpect(status().isNoContent());
 
-        verify(reportService).resolve(eq(5L), any(Authentication.class));
+        verify(reportService).resolve(eq(5L), any(Authentication.class), eq(0));
+    }
+
+    @Test
+    @DisplayName("관리자는 처리하면서 작성자를 정지할 수 있다 — 지우기만 해서는 반복을 못 막는다")
+    void resolveWithSuspendDays_passesTheDurationThrough() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/reports/5/resolve")
+                        .param("suspendDays", "7")
+                        .with(user("admin@example.com").roles("ADMIN"))
+                        .with(csrf()))
+                .andExpect(status().isNoContent());
+
+        verify(reportService).resolve(eq(5L), any(Authentication.class), eq(7));
     }
 
     @Test

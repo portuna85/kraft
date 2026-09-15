@@ -24,6 +24,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 /**
@@ -96,21 +97,46 @@ public class ReportService {
         return reportRepository.countByStatus(ReportStatus.PENDING);
     }
 
-    /**
-     * 신고를 받아들여 대상을 지운다. 대상이 이미 없으면 지우는 단계만 건너뛰고 기록은 남긴다 —
-     * 관리자가 다른 경로로 먼저 지웠을 수 있다.
-     */
+    /** 대상만 지우고 작성자는 건드리지 않는다. */
     @Transactional
     public void resolve(Long id, Authentication authentication) {
+        resolve(id, authentication, 0);
+    }
+
+    /**
+     * 신고를 받아들여 대상을 지우고, 필요하면 작성자를 그만큼 정지한다.
+     * <p>
+     * 지우기만 해서는 반복하는 사람을 막지 못한다 — 같은 사람이 곧바로 다시 쓸 수 있기 때문이다.
+     * 정지는 작성만 막고 읽기·로그인은 그대로 둔다. 기간이 지나면 저절로 풀린다.
+     * <p>
+     * 작성자를 <b>지우기 전에</b> 찾아 둔다. 대상을 먼저 지우면 누구를 정지해야 할지 알 수 없다.
+     * 대상이 이미 없으면 지우는 단계만 건너뛰고 기록은 남긴다 — 관리자가 다른 경로로 먼저
+     * 지웠을 수 있다.
+     *
+     * @param suspendDays 0이면 정지하지 않는다
+     */
+    @Transactional
+    public void resolve(Long id, Authentication authentication, int suspendDays) {
         Report report = findPendingReport(id);
         User admin = findUser(authentication.getName());
+        Optional<User> targetAuthor = targetAuthorOf(report.getTargetType(), report.getTargetId());
 
         deleteTarget(report, authentication);
+        if (suspendDays > 0) {
+            targetAuthor.ifPresent(author -> suspend(author, report, suspendDays));
+        }
         report.resolve(admin);
         resolveOthersOnSameTarget(report, admin);
 
-        log.info("신고를 처리했습니다(대상 삭제). reportId={}, targetType={}, targetId={}",
+        log.info("신고를 처리했습니다(대상 삭제{}). reportId={}, targetType={}, targetId={}",
+                suspendDays > 0 ? ", 작성자 " + suspendDays + "일 정지" : "",
                 report.getId(), report.getTargetType(), report.getTargetId());
+    }
+
+    private void suspend(User author, Report report, int days) {
+        author.suspendUntil(LocalDateTime.now().plusDays(days),
+                "%s 신고 처리(%d일)".formatted(report.getReason().getTitle(), days));
+        log.info("작성자를 정지했습니다. userId={}, days={}, reportId={}", author.getId(), days, report.getId());
     }
 
     /** 문제가 없다고 판단한다. 대상은 그대로 두고 이 신고만 닫는다. */

@@ -18,6 +18,8 @@ const props = defineProps({
     // 이메일 인증까지 끝난 회원만 댓글을 쓸 수 있다(WriteAccessPolicy). 로그인만 한 GUEST에게
     // 입력창을 보여주면 다 쓰고 등록을 눌러야 거절 사유를 알게 되므로, 글쓰기 화면처럼 먼저 알린다.
     canWrite: { type: Boolean, required: true },
+    // 쓸 수 없는 이유. 서버가 작성 경로와 같은 규칙으로 만든 문장을 그대로 보여준다.
+    writeBlockReason: { type: String, default: '' },
     initialComments: { type: Array, required: true },
 });
 
@@ -126,7 +128,7 @@ onUnmounted(() => window.removeEventListener('kraft:comment-deleted', onExternal
     v-else-if="authenticated"
     class="comments__login-hint"
   >
-    이메일 인증을 완료해야 댓글을 쓸 수 있습니다. 가입할 때 받은 인증 메일의 링크를 눌러 주세요.
+    {{ writeBlockReason || '지금은 댓글을 쓸 수 없습니다.' }}
   </p>
   <p
     v-else

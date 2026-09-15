@@ -1,5 +1,6 @@
 package com.kraft.user.service;
 
+import com.kraft.shared.security.WriteAccessPolicy;
 import com.kraft.shared.transaction.AfterCommit;
 import com.kraft.user.domain.EmailHasher;
 import com.kraft.user.domain.EmailMasker;
@@ -14,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @RequiredArgsConstructor
@@ -120,6 +122,18 @@ public class UserService {
                 passwordEncoder.encode(UUID.randomUUID().toString()));
 
         AfterCommit.run(() -> sessionRevoker.revokeAll(email));
+    }
+
+    /**
+     * 지금 글을 쓸 수 없는 이유. 쓸 수 있으면 빈 값이다.
+     * <p>
+     * 화면이 "폼을 보여줄지"를 정할 때 쓴다. 서버가 거절할 것을 화면이 미리 같은 규칙으로
+     * 판단해야, 다 쓰고 나서야 이유를 알게 되는 흐름이 생기지 않는다. 판정 자체는 작성
+     * 경로와 같은 {@link WriteAccessPolicy}가 하므로 두 경로가 갈라지지 않는다.
+     */
+    public Optional<String> writeBlockReason(String email) {
+        return userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
+                .flatMap(WriteAccessPolicy::blockReason);
     }
 
     @Transactional

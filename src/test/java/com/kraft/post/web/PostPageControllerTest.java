@@ -7,6 +7,7 @@ import com.kraft.post.domain.PostNotFoundException;
 import com.kraft.post.dto.PostsPageResponseDto;
 import com.kraft.post.dto.PostViewDto;
 import com.kraft.post.service.PostService;
+import com.kraft.user.service.UserService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,6 +55,10 @@ class PostPageControllerTest {
 
     @MockitoBean
     private CommentService commentService;
+
+    /** 화면이 "글을 쓸 수 있는 사람인가"를 물어보는 곳. 기본 모킹은 빈 값(=쓸 수 있음)이다. */
+    @MockitoBean
+    private UserService userService;
 
     @Test
     @DisplayName("GET / 는 목록을 모델에 담아 index 뷰를 렌더링한다")

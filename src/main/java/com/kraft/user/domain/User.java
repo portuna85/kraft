@@ -59,6 +59,19 @@ public class User extends BaseEntity {
     @Column(name = "withdrawn_at")
     private LocalDateTime withdrawnAt;
 
+    /**
+     * 정지가 풀리는 시각. null이거나 이미 지났으면 정지 중이 아니다.
+     * <p>
+     * 기간을 시각으로 두고 매번 현재 시각과 비교한다 — 해제 배치가 필요 없고, 배치가 멈춰서
+     * 정지가 안 풀리는 일도 없다.
+     */
+    @Column(name = "suspended_until")
+    private LocalDateTime suspendedUntil;
+
+    /** 정지 사유. 정지된 사람에게 그대로 보여준다. */
+    @Column(name = "suspension_reason", length = 200)
+    private String suspensionReason;
+
     @Builder
     public User(String name, String email, String password, Role role) {
         this.name = name;
@@ -97,6 +110,22 @@ public class User extends BaseEntity {
 
     public boolean isWithdrawn() {
         return withdrawnAt != null;
+    }
+
+    /** 이 시각까지 글·댓글을 쓸 수 없게 한다. 읽기와 로그인은 그대로 둔다. */
+    public void suspendUntil(LocalDateTime until, String reason) {
+        this.suspendedUntil = until;
+        this.suspensionReason = reason;
+    }
+
+    /** 기간이 남았는지 지금 판정한다. 만료된 정지는 아무것도 하지 않아도 저절로 풀린다. */
+    public boolean isSuspended() {
+        return suspendedUntil != null && LocalDateTime.now().isBefore(suspendedUntil);
+    }
+
+    /** 관리자가 기간을 다 채우기 전에 푼다. 사유는 기록에서 지우지 않는다. */
+    public void liftSuspension() {
+        this.suspendedUntil = null;
     }
 
     @PrePersist

@@ -109,11 +109,11 @@ SELECT name, COUNT(*) FROM users GROUP BY name HAVING COUNT(*) > 1;
 있는 DB에서는 V2가 `Duplicate column name 'category'`로 멈춥니다.
 
 이미 현재 엔티티로 만들어진 DB라면 **디스크의 최신 마이그레이션 버전으로 baseline** 합니다
-(지금은 V10). 그러면 마이그레이션을 하나도 실행하지 않고 "여기까지 적용됨"만 기록하며,
+(지금은 V11). 그러면 마이그레이션을 하나도 실행하지 않고 "여기까지 적용됨"만 기록하며,
 이어지는 `ddl-auto: validate`가 스키마와 엔티티가 맞는지 확인해 줍니다.
 
 ```powershell
-.\gradlew.bat bootRun --args="--spring.profiles.active=prod --spring.flyway.baseline-version=10"
+.\gradlew.bat bootRun --args="--spring.profiles.active=prod --spring.flyway.baseline-version=11"
 ```
 
 이 네 단계(기존 DB 재현 → 잘못된 baseline이 실패 → 올바른 baseline → validate 통과)는
@@ -163,7 +163,7 @@ GET이 아닌 요청에는 CSRF 토큰이 필요합니다. 화면은 `layout/hea
 | --- | --- | --- |
 | 누구나 | 로그인 불필요 | 게시글·댓글 **조회**, 회원가입 |
 | 로그인 | 세션 필요 | 추천, 비밀번호 변경, 인증 메일 재발송, 회원 탈퇴 |
-| 이메일 인증 완료 | `GUEST`는 거부(`WriteAccessPolicy`) | 글·댓글 작성·수정, 이미지 업로드 |
+| 이메일 인증 완료 | `GUEST`와 **정지 중인 계정**은 거부(`WriteAccessPolicy`) | 글·댓글 작성·수정, 이미지 업로드 |
 | 관리자 | `ROLE_ADMIN`만 통과 | 신고 처리 화면(`/admin/**`)과 처리 API(`/api/v1/admin/**`) |
 
 수정·삭제는 여기에 더해 **작성자 본인 또는 관리자**여야 합니다(`OwnershipPolicy`).
@@ -185,7 +185,7 @@ GET이 아닌 요청에는 CSRF 토큰이 필요합니다. 화면은 `layout/hea
 | PUT | `/api/v1/comments/{id}` | 본인·관리자 | `content` | 200 · id |
 | DELETE | `/api/v1/comments/{id}` | 본인·관리자 | — | 200 · id |
 | POST | `/api/v1/reports` | 로그인 | `targetType`, `targetId`, `reason`, `detail` | 200 · 생성된 id |
-| POST | `/api/v1/admin/reports/{id}/resolve` | 관리자 | — | 204 (대상 삭제) |
+| POST | `/api/v1/admin/reports/{id}/resolve` | 관리자 | `suspendDays`(선택) | 204 (대상 삭제, 0보다 크면 작성자 정지) |
 | POST | `/api/v1/admin/reports/{id}/reject` | 관리자 | — | 204 (대상 유지) |
 | POST | `/api/v1/users` | 누구나 | `name`, `email`, `password` | 200 · 생성된 id |
 | DELETE | `/api/v1/users/me` | 로그인 | `currentPassword` | 204 (탈퇴. 모든 세션이 폐기됩니다) |
@@ -206,8 +206,17 @@ GET이 아닌 요청에는 CSRF 토큰이 필요합니다. 화면은 `layout/hea
 자기 글은 신고할 수 없고(직접 지우면 됩니다), 같은 대상을 두 번 신고할 수도 없습니다
 (`UK_REPORT_REPORTER_TARGET`).
 
-관리자의 선택은 둘입니다. **삭제**는 대상 글·댓글을 지우고 신고를 닫으며, **반려**는 대상을
-그대로 둔 채 신고만 닫습니다. 처리한 신고도 행으로 남습니다 — 같은 대상이 반복해서
+관리자의 선택은 셋입니다. **삭제**는 대상 글·댓글을 지우고 신고를 닫고, **삭제 + 7일 정지**는
+거기에 더해 작성자의 작성 권한을 그 기간 동안 막으며, **반려**는 대상을 그대로 둔 채 신고만
+닫습니다.
+
+정지는 **작성만** 막습니다. 읽기와 로그인은 그대로 두는데, 정지된 사람도 자기 상태와 사유를
+볼 수 있어야 하고 그러려면 들어올 수는 있어야 하기 때문입니다. 글쓰기 화면과 댓글 입력창은
+폼 대신 "언제까지, 왜"를 보여줍니다 — 작성 경로와 같은 `WriteAccessPolicy`가 그 문장을
+만들므로 화면과 서버의 판단이 갈라지지 않습니다.
+
+기간은 `users.suspended_until`에 시각으로 저장하고 매번 현재 시각과 비교합니다. 해제 배치가
+없으므로 **배치가 멈춰서 정지가 안 풀리는 일도 없습니다.** 처리한 신고도 행으로 남습니다 — 같은 대상이 반복해서
 신고되는지, 관리자가 무엇을 언제 지웠는지가 남아야 나중에 설명할 수 있습니다.
 
 삭제는 기존 삭제 경로(`PostService`/`CommentService`)를 그대로 부릅니다. 그쪽이 이미 소유권

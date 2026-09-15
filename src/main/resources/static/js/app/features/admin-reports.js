@@ -15,10 +15,11 @@ export function init() {
     }
 
     delegate('click', '.btn-report-resolve', (trigger) => handle(trigger, 'resolve'));
+    delegate('click', '.btn-report-suspend', (trigger) => handle(trigger, 'resolve', Number(trigger.dataset.suspendDays)));
     delegate('click', '.btn-report-reject', (trigger) => handle(trigger, 'reject'));
 }
 
-async function handle(trigger, action) {
+async function handle(trigger, action, suspendDays = 0) {
     const item = trigger.closest('.report-list__item');
     const id = item?.dataset.reportId;
     if (!id || trigger.disabled) {
@@ -27,13 +28,23 @@ async function handle(trigger, action) {
 
     trigger.disabled = true;
     try {
-        await api.post(`/api/v1/admin/reports/${id}/${action}`);
-        showToast(action === 'resolve' ? '대상을 삭제하고 신고를 처리했습니다.' : '신고를 반려했습니다.', 'success');
+        const query = suspendDays > 0 ? `?suspendDays=${suspendDays}` : '';
+        await api.post(`/api/v1/admin/reports/${id}/${action}${query}`);
+        showToast(resultMessage(action, suspendDays), 'success');
         removeHandled(item, action);
     } catch (error) {
         showToast(messageOf(error), 'danger');
         trigger.disabled = false;
     }
+}
+
+function resultMessage(action, suspendDays) {
+    if (action === 'reject') {
+        return '신고를 반려했습니다.';
+    }
+    return suspendDays > 0
+        ? `대상을 삭제하고 작성자를 ${suspendDays}일 정지했습니다.`
+        : '대상을 삭제하고 신고를 처리했습니다.';
 }
 
 function removeHandled(item, action) {

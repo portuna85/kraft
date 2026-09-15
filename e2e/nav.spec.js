@@ -67,7 +67,8 @@ test.describe('미인증 안내', () => {
         await page.goto('/');
         await page.locator('.post-list__title').first().click();
 
-        await expect(page.getByText('이메일 인증을 완료해야 댓글을 쓸 수 있습니다.')).toBeVisible();
+        // 글쓰기와 댓글이 같은 규칙(WriteAccessPolicy)을 쓰므로 안내 문장도 하나다.
+        await expect(page.locator('.comments__login-hint')).toContainText('이메일 인증을 완료해야');
         await expect(page.locator('#comment-content')).toHaveCount(0);
     });
 });

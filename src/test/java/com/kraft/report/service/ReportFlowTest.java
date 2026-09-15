@@ -9,6 +9,7 @@ import com.kraft.report.domain.ReportStatus;
 import com.kraft.report.domain.ReportTargetType;
 import com.kraft.report.dto.ReportSaveRequestDto;
 import com.kraft.report.dto.ReportViewDto;
+import com.kraft.shared.security.WriteAccessPolicy;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
@@ -21,6 +22,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.util.List;
@@ -157,6 +159,33 @@ class ReportFlowTest {
 
         // 이미 지운 글이 목록에 남아 있으면 관리자가 같은 판단을 반복하게 된다.
         assertThat(reportService.countPending()).isZero();
+    }
+
+    @Test
+    @DisplayName("정지와 함께 처리하면 작성자는 기간 동안 글을 쓸 수 없다")
+    void resolvingWithSuspensionBlocksTheAuthorFromWriting() {
+        reportThePost(reporter, ReportReason.ABUSE);
+        Long reportId = reportRepository.findAll().get(0).getId();
+
+        reportService.resolve(reportId, authOf(admin), 7);
+
+        User suspended = userRepository.findById(author.getId()).orElseThrow();
+        assertThat(suspended.isSuspended()).isTrue();
+        assertThat(suspended.getSuspensionReason()).contains("욕설·비방").contains("7일");
+        // 지우기만 해서는 반복하는 사람을 막지 못한다. 실제로 작성이 거절되는지까지 본다.
+        assertThatThrownBy(() -> WriteAccessPolicy.requireVerified(suspended))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("이용이 제한된 계정");
+    }
+
+    @Test
+    @DisplayName("정지 없이 처리하면 작성자는 계속 글을 쓸 수 있다")
+    void resolvingWithoutSuspensionLeavesTheAuthorAlone() {
+        reportThePost(reporter, ReportReason.SPAM);
+
+        reportService.resolve(reportRepository.findAll().get(0).getId(), authOf(admin));
+
+        assertThat(userRepository.findById(author.getId()).orElseThrow().isSuspended()).isFalse();
     }
 
     @Test

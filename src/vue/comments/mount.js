@@ -19,6 +19,8 @@ if (mountPoint) {
         postId: mountPoint.dataset.postId,
         authenticated: mountPoint.dataset.authenticated === 'true',
         canWrite: mountPoint.dataset.canWrite === 'true',
+        // 쓸 수 없을 때 그 이유(이메일 미인증·이용 제한). 서버가 작성 경로와 같은 규칙으로 만든다.
+        writeBlockReason: mountPoint.dataset.writeBlockReason ?? '',
         initialComments,
     }).mount(mountPoint);
 }

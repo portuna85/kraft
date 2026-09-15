@@ -30,7 +30,7 @@
         <section id="comments-app" class="comments" aria-labelledby="comments-heading"
                  th:attr="data-post-id=${post.id},
                           data-authenticated=${#authorization.expression('isAuthenticated()')},
-                          data-can-write=${#authorization.expression('isAuthenticated() and !hasRole(''GUEST'')')}"></section>
+                          data-can-write=${canWriteComment},data-write-block-reason=${writeBlockReason}"></section>
         <script type="module" src="/js/vue-dist/comments.js"></script>
     </main>
 </div>

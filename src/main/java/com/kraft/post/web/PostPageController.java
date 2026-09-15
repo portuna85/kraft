@@ -13,6 +13,7 @@ import com.kraft.post.service.CategoryPolicy;
 import com.kraft.post.service.PostService;
 import com.kraft.shared.security.OwnershipPolicy;
 import com.kraft.shared.web.PageWindow;
+import com.kraft.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -33,6 +34,7 @@ public class PostPageController {
     private final PostService postService;
     private final CommentService commentService;
     private final ObjectMapper objectMapper;
+    private final UserService userService;
 
     @GetMapping("/")
     public String index(@PageableDefault(size = 10) Pageable pageable,
@@ -61,6 +63,10 @@ public class PostPageController {
      */
     @GetMapping("/posts/save")
     public String postsSave(Authentication authentication, Model model) {
+        // 서버가 거절할 이유(이메일 미인증·정지)를 화면이 미리 같은 규칙으로 판단한다. 다 쓰고
+        // 등록을 눌러야 이유를 알게 되는 흐름을 만들지 않으려는 것이다.
+        model.addAttribute("writeBlockReason", writeBlockReasonOf(authentication));
+
         List<CategoryOptionDto> categoryOptions = CategoryPolicy.availableCategoriesFor(authentication, Category.FREE)
                 .stream()
                 .map(c -> new CategoryOptionDto(c.name(), c.getTitle()))
@@ -69,6 +75,14 @@ public class PostPageController {
                 objectMapper.writeValueAsString(new PostSaveBootstrapDto(categoryOptions, displayNameOf(authentication))));
         model.addAttribute("pageTitle", "글쓰기");
         return "post/post-save";
+    }
+
+    /** 로그인하지 않았으면 null(그 경우의 안내는 템플릿의 익명 분기가 맡는다). */
+    private String writeBlockReasonOf(Authentication authentication) {
+        if (!OwnershipPolicy.isAuthenticated(authentication)) {
+            return null;
+        }
+        return userService.writeBlockReason(authentication.getName()).orElse(null);
     }
 
     /**
@@ -112,6 +126,10 @@ public class PostPageController {
         boolean authenticated = OwnershipPolicy.isAuthenticated(authentication);
         model.addAttribute("postEditInitialJson",
                 objectMapper.writeValueAsString(new PostEditBootstrapDto(post, categoryOptions, authenticated)));
+
+        // 댓글 아일랜드가 "입력창을 보여줄지"를 정하는 값. 글쓰기 화면과 같은 규칙을 쓴다.
+        model.addAttribute("canWriteComment", authenticated && writeBlockReasonOf(authentication) == null);
+        model.addAttribute("writeBlockReason", writeBlockReasonOf(authentication));
 
         model.addAttribute("pageTitle", post.title());
         return "post/post-update";
