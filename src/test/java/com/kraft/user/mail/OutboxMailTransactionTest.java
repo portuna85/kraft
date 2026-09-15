@@ -83,7 +83,7 @@ class OutboxMailTransactionTest {
 
     /** 발송 흐름만 보고 싶을 때 쓴다. 비동기 발송이 함께 돌지 않는다. */
     private void queueOne() {
-        outboxMailStore.enqueue(user, UUID.randomUUID().toString());
+        outboxMailStore.enqueue(user, UUID.randomUUID().toString(), OutboxMailKind.VERIFY_EMAIL);
     }
 
     /**

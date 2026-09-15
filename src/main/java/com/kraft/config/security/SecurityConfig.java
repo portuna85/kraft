@@ -27,6 +27,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/css/**", "/js/**", "/images/**").permitAll()
                         .requestMatchers("/api/v1/users").permitAll()
+                        // 비밀번호를 잊은 사람은 로그인할 수 없다. 이 두 경로만 열어 두고,
+                        // 실제 경계는 메일로 보낸 1회용 토큰이 잡는다(PasswordResetService).
+                        .requestMatchers("/api/v1/users/password-reset", "/api/v1/users/password-reset/confirm")
+                        .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/posts/**").permitAll()
                         .requestMatchers("/api/v1/**").authenticated()
                         .anyRequest().permitAll()

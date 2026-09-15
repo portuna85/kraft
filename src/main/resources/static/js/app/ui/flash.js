@@ -34,6 +34,7 @@ const MESSAGES = {
     COMMENT_DELETED: { text: '댓글이 삭제되었습니다.', type: 'success' },
     SIGNUP_DONE: { text: '가입이 완료되었습니다. 이메일 인증 안내를 확인해 주세요.', type: 'success' },
     PASSWORD_CHANGED: { text: '비밀번호가 변경되었습니다. 다시 로그인해 주세요.', type: 'success' },
+    PASSWORD_RESET: { text: '새 비밀번호로 변경되었습니다. 다시 로그인해 주세요.', type: 'success' },
 };
 
 /** 이동 후 목적 화면에서 한 번 보여줄 메시지를 예약한다. */

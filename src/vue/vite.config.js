@@ -37,6 +37,8 @@ export default defineConfig({
                 'post-edit': resolve(__dirname, 'post-edit/mount.js'),
                 'post-save': resolve(__dirname, 'post-save/mount.js'),
                 signup: resolve(__dirname, 'signup/mount.js'),
+                'forgot-password': resolve(__dirname, 'forgot-password/mount.js'),
+                'password-reset': resolve(__dirname, 'password-reset/mount.js'),
             },
             output: {
                 entryFileNames: '[name].js',

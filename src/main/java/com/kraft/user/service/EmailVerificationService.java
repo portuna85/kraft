@@ -8,6 +8,7 @@ import com.kraft.user.domain.EmailVerificationTokenRepository;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
+import com.kraft.user.mail.OutboxMailKind;
 import com.kraft.user.mail.OutboxMailStore;
 import com.kraft.user.mail.OutboxMailWorker;
 import lombok.RequiredArgsConstructor;
@@ -68,7 +69,7 @@ public class EmailVerificationService {
                 .build());
 
         // 토큰과 대기열 행은 같은 트랜잭션에서 함께 커밋된다. 한쪽만 남는 일이 없어야 한다.
-        outboxMailStore.enqueue(user, token);
+        outboxMailStore.enqueue(user, token, OutboxMailKind.VERIFY_EMAIL);
 
         // 커밋이 끝난 뒤 다른 스레드에서 보낸다. 사용자가 주기 작업을 기다리지 않아도 된다.
         AfterCommit.run(outboxMailWorker::drainAsync);
@@ -141,7 +142,7 @@ public class EmailVerificationService {
 
     private void requireResendAllowed(Long userId) {
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime earliestNext = outboxMailStore.lastQueuedAt(userId)
+        LocalDateTime earliestNext = outboxMailStore.lastQueuedAt(userId, OutboxMailKind.VERIFY_EMAIL)
                 .map(last -> last.plus(RESEND_COOLDOWN))
                 .orElse(LocalDateTime.MIN);
 

@@ -79,7 +79,7 @@ public class OutboxMailWorker {
 
     private void send(OutboxMailStore.PendingMail mail) {
         try {
-            emailSender.send(mail.to(), subject(), body(mail.token()));
+            emailSender.send(mail.to(), subject(mail.kind()), body(mail.kind(), mail.token()));
             store.markSent(mail.id());
         } catch (Exception e) {
             // 한 통이 실패해도 나머지는 계속 보낸다. 원인은 행에 남겨 다음 차례에 다시 시도한다.
@@ -88,13 +88,26 @@ public class OutboxMailWorker {
         }
     }
 
-    private String subject() {
-        return "[kraft] 이메일 인증을 완료해 주세요";
+    private String subject(OutboxMailKind kind) {
+        return switch (kind) {
+            case VERIFY_EMAIL -> "[kraft] 이메일 인증을 완료해 주세요";
+            case PASSWORD_RESET -> "[kraft] 비밀번호 재설정 링크입니다";
+        };
     }
 
-    private String body(String token) {
-        return "아래 링크를 클릭해 이메일 인증을 완료해 주세요:\n"
-                + baseUrl + "/users/verify?token=" + token
-                + "\n\n이 링크는 24시간 동안 유효합니다.";
+    /**
+     * 본문은 링크 하나와 유효 시간이 전부다. 누가 요청했는지·어떤 계정인지는 적지 않는다 —
+     * 메일이 잘못 배달되어도 그 자체로는 알려주는 것이 없어야 한다.
+     */
+    private String body(OutboxMailKind kind, String token) {
+        return switch (kind) {
+            case VERIFY_EMAIL -> "아래 링크를 클릭해 이메일 인증을 완료해 주세요:\n"
+                    + baseUrl + "/users/verify?token=" + token
+                    + "\n\n이 링크는 24시간 동안 유효합니다.";
+            case PASSWORD_RESET -> "아래 링크에서 새 비밀번호를 정해 주세요:\n"
+                    + baseUrl + "/users/password-reset?token=" + token
+                    + "\n\n이 링크는 30분 동안 한 번만 사용할 수 있습니다."
+                    + "\n요청한 적이 없다면 이 메일을 무시하세요. 비밀번호는 그대로입니다.";
+        };
     }
 }

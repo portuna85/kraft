@@ -2,6 +2,7 @@ package com.kraft.user.web;
 
 import com.kraft.config.security.SecurityConfig;
 import com.kraft.user.service.EmailVerificationService;
+import com.kraft.user.service.PasswordResetService;
 import com.kraft.user.service.UserService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -45,6 +46,9 @@ class UserApiControllerTest {
 
     @MockitoBean
     private EmailVerificationService emailVerificationService;
+
+    @MockitoBean
+    private PasswordResetService passwordResetService;
 
     @Test
     @DisplayName("회원가입은 인증 없이(CSRF 토큰만 있으면) 가능하다")
@@ -250,5 +254,78 @@ class UserApiControllerTest {
                         .with(csrf()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("이미 인증된 계정입니다."));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/users/password-reset 은 로그인 없이(CSRF 토큰만 있으면) 호출할 수 있다")
+    void requestPasswordReset_isAccessibleWithoutAuthentication() throws Exception {
+        mockMvc.perform(post("/api/v1/users/password-reset")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"tester@example.com\"}"))
+                .andExpect(status().isNoContent());
+
+        verify(passwordResetService).request("tester@example.com");
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/users/password-reset 은 가입 여부와 무관하게 204다 — 응답으로 계정 존재를 알 수 없어야 한다")
+    void requestPasswordReset_returnsSameResponseRegardlessOfAccount() throws Exception {
+        mockMvc.perform(post("/api/v1/users/password-reset")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"nobody@example.com\"}"))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/users/password-reset 은 이메일 형식이 아니면 400이고 서비스는 호출되지 않는다")
+    void requestPasswordReset_withMalformedEmail_returns400BadRequest() throws Exception {
+        mockMvc.perform(post("/api/v1/users/password-reset")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"not-an-email\"}"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(passwordResetService);
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/users/password-reset/confirm 은 토큰과 새 비밀번호로 204를 반환한다")
+    void confirmPasswordReset_withValidBody_returns204NoContent() throws Exception {
+        mockMvc.perform(post("/api/v1/users/password-reset/confirm")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"token-1\",\"newPassword\":\"NewPass1!\"}"))
+                .andExpect(status().isNoContent());
+
+        verify(passwordResetService).reset("token-1", "NewPass1!");
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/users/password-reset/confirm 은 만료·잘못된 링크면 400 ProblemDetail을 반환한다")
+    void confirmPasswordReset_withExpiredToken_returns400BadRequest() throws Exception {
+        willThrow(new IllegalArgumentException("재설정 링크가 만료되었습니다. 다시 요청해 주세요."))
+                .given(passwordResetService).reset("expired", "NewPass1!");
+
+        mockMvc.perform(post("/api/v1/users/password-reset/confirm")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"expired\",\"newPassword\":\"NewPass1!\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("재설정 링크가 만료되었습니다. 다시 요청해 주세요."));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/users/password-reset/confirm 은 새 비밀번호가 규칙에 맞지 않으면 400이고 서비스는 호출되지 않는다")
+    void confirmPasswordReset_withWeakPassword_returns400BadRequest() throws Exception {
+        mockMvc.perform(post("/api/v1/users/password-reset/confirm")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"token-1\",\"newPassword\":\"alllowercase1\"}"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(passwordResetService);
     }
 }

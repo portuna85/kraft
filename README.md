@@ -108,11 +108,11 @@ SELECT name, COUNT(*) FROM users GROUP BY name HAVING COUNT(*) > 1;
 있는 DB에서는 V2가 `Duplicate column name 'category'`로 멈춥니다.
 
 이미 현재 엔티티로 만들어진 DB라면 **디스크의 최신 마이그레이션 버전으로 baseline** 합니다
-(지금은 V7). 그러면 마이그레이션을 하나도 실행하지 않고 "여기까지 적용됨"만 기록하며,
+(지금은 V8). 그러면 마이그레이션을 하나도 실행하지 않고 "여기까지 적용됨"만 기록하며,
 이어지는 `ddl-auto: validate`가 스키마와 엔티티가 맞는지 확인해 줍니다.
 
 ```powershell
-.\gradlew.bat bootRun --args="--spring.profiles.active=prod --spring.flyway.baseline-version=7"
+.\gradlew.bat bootRun --args="--spring.profiles.active=prod --spring.flyway.baseline-version=8"
 ```
 
 이 네 단계(기존 DB 재현 → 잘못된 baseline이 실패 → 올바른 baseline → validate 통과)는
@@ -183,6 +183,8 @@ GET이 아닌 요청에는 CSRF 토큰이 필요합니다. 화면은 `layout/hea
 | PUT | `/api/v1/comments/{id}` | 본인·관리자 | `content` | 200 · id |
 | DELETE | `/api/v1/comments/{id}` | 본인·관리자 | — | 200 · id |
 | POST | `/api/v1/users` | 누구나 | `name`, `email`, `password` | 200 · 생성된 id |
+| POST | `/api/v1/users/password-reset` | 누구나 | `email` | 204 (가입 여부와 무관하게 항상 같다) |
+| POST | `/api/v1/users/password-reset/confirm` | 누구나(토큰 필요) | `token`, `newPassword` | 204 (이 계정의 모든 세션이 폐기됩니다) |
 | PUT | `/api/v1/users/me/password` | 로그인 | `currentPassword`, `newPassword` | 204 (이 계정의 모든 세션이 폐기됩니다) |
 | POST | `/api/v1/users/me/verify-email/resend` | 로그인 | — | 204 |
 
@@ -191,6 +193,26 @@ GET이 아닌 요청에는 CSRF 토큰이 필요합니다. 화면은 `layout/hea
 말없이 덮어썼습니다. 입력 길이 제한은 위 "입력 길이 정책"을 따릅니다.
 
 `liked`는 토글이 아니라 **원하는 최종 상태**입니다. 같은 값을 여러 번 보내도 결과가 같습니다.
+
+### 비밀번호 찾기
+
+로그인해야 비밀번호를 바꿀 수 있는데 잊은 사람은 로그인할 수 없으므로, 메일로 보낸 1회용
+링크가 그 고리를 끊습니다. 로그인 화면의 "비밀번호를 잊으셨나요?"에서 시작합니다.
+
+1. `/forgot-password`에서 주소를 넣으면 `POST /api/v1/users/password-reset`이 나갑니다.
+2. 서버는 가입된 주소일 때만 30분짜리 토큰을 만들어 메일 대기열에 넣습니다. 옛 링크는 이때
+   무효가 되므로 메일함에 살아 있는 링크는 항상 하나입니다.
+3. 메일의 링크(`/users/password-reset?token=...`)에서 새 비밀번호를 정하면
+   `POST /api/v1/users/password-reset/confirm`이 나갑니다. 토큰은 쓰는 즉시 지워지고,
+   그 계정의 **모든 기기 세션이 폐기**됩니다.
+
+**요청 단계는 어떤 경우에도 똑같이 204입니다.** 가입하지 않은 주소든, 1분 안에 다시 요청해
+제한에 걸렸든 결과가 같습니다 — 응답이 갈리면 그것만으로 가입 여부를 확인하는 도구가 됩니다.
+화면도 늘 "가입된 주소라면 재설정 링크를 보냈습니다"라고만 안내합니다. 반대로 링크를 이미 받은
+사람에게는 확인 단계에서 만료·무효 사유를 분명히 알려줍니다.
+
+요청 제한(60초)은 **메일 종류별로** 겁니다. 가입 직후 인증 메일을 받은 사람이 곧바로 비밀번호를
+잊어도 재설정 요청이 막히지 않아야 하기 때문입니다.
 
 ### 오류 형식
 

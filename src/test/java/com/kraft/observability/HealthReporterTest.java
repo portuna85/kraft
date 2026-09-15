@@ -3,6 +3,7 @@ package com.kraft.observability;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
+import com.kraft.user.mail.OutboxMailKind;
 import com.kraft.user.mail.OutboxMailRepository;
 import com.kraft.user.mail.OutboxMailStore;
 import ch.qos.logback.classic.Level;
@@ -122,7 +123,7 @@ class HealthReporterTest {
                 .password("encoded")
                 .role(Role.GUEST)
                 .build());
-        outboxMailStore.enqueue(user, UUID.randomUUID().toString());
+        outboxMailStore.enqueue(user, UUID.randomUUID().toString(), OutboxMailKind.VERIFY_EMAIL);
 
         HealthSnapshot snapshot = healthReporter.collect();
 

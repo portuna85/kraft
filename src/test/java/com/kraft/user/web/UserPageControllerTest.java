@@ -51,6 +51,26 @@ class UserPageControllerTest {
     }
 
     @Test
+    @DisplayName("GET /forgot-password 는 로그인 없이도 비밀번호 찾기 화면을 보여준다")
+    void forgotPassword_isAccessibleWithoutAuthentication() throws Exception {
+        // 비밀번호를 잊은 사람은 로그인할 수 없다. 이 화면이 인증을 요구하면 기능 자체가 닫힌다.
+        mockMvc.perform(get("/forgot-password"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("user/forgot-password"));
+    }
+
+    @Test
+    @DisplayName("GET /users/password-reset 은 토큰을 검사하지 않고 화면에 그대로 넘긴다")
+    void passwordReset_passesTokenToViewWithoutConsumingIt() throws Exception {
+        // 화면을 여는 것만으로 토큰이 소모되면 메일 미리보기·링크 검사기가 대신 눌러 버린다.
+        // 판정은 새 비밀번호와 함께 오는 저장 요청에서 한 번만 한다.
+        mockMvc.perform(get("/users/password-reset").param("token", "some-token"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("user/password-reset"))
+                .andExpect(model().attribute("resetToken", "some-token"));
+    }
+
+    @Test
     @DisplayName("GET /users/verify 는 토큰이 유효하면 success=true로 렌더링한다")
     void verifyEmail_whenTokenValid_rendersSuccess() throws Exception {
         mockMvc.perform(get("/users/verify").param("token", "valid-token"))

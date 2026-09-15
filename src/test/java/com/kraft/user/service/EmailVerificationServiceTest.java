@@ -6,6 +6,7 @@ import com.kraft.user.domain.EmailVerificationTokenRepository;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
+import com.kraft.user.mail.OutboxMailKind;
 import com.kraft.user.mail.OutboxMailStore;
 import com.kraft.user.mail.OutboxMailWorker;
 import ch.qos.logback.classic.Logger;
@@ -86,7 +87,7 @@ class EmailVerificationServiceTest {
                 .hasMessageContaining("존재하지 않는 회원입니다");
 
         verify(tokenRepository, never()).save(any());
-        verify(outboxMailStore, never()).enqueue(any(), anyString());
+        verify(outboxMailStore, never()).enqueue(any(), anyString(), any());
     }
 
     @Test
@@ -105,7 +106,7 @@ class EmailVerificationServiceTest {
         assertThat(savedToken.getExpiresAt()).isAfter(LocalDateTime.now());
 
         // SMTP는 여기서 부르지 않는다. 같은 트랜잭션에서 대기열에 같은 토큰이 들어가야 한다.
-        verify(outboxMailStore).enqueue(user, savedToken.getToken());
+        verify(outboxMailStore).enqueue(user, savedToken.getToken(), OutboxMailKind.VERIFY_EMAIL);
     }
 
     @Test
@@ -207,7 +208,7 @@ class EmailVerificationServiceTest {
                 .hasMessageContaining("존재하지 않는 회원입니다");
 
         verify(tokenRepository, never()).deleteByUserId(any());
-        verify(outboxMailStore, never()).enqueue(any(), anyString());
+        verify(outboxMailStore, never()).enqueue(any(), anyString(), any());
     }
 
     @Test
@@ -222,7 +223,7 @@ class EmailVerificationServiceTest {
                 .hasMessageContaining("이미 인증된 계정입니다");
 
         verify(tokenRepository, never()).deleteByUserId(any());
-        verify(outboxMailStore, never()).enqueue(any(), anyString());
+        verify(outboxMailStore, never()).enqueue(any(), anyString(), any());
     }
 
     @Test
@@ -235,6 +236,6 @@ class EmailVerificationServiceTest {
 
         verify(tokenRepository).deleteByUserId(1L);
         verify(tokenRepository).save(any(EmailVerificationToken.class));
-        verify(outboxMailStore).enqueue(org.mockito.ArgumentMatchers.eq(user), anyString());
+        verify(outboxMailStore).enqueue(org.mockito.ArgumentMatchers.eq(user), anyString(), any());
     }
 }

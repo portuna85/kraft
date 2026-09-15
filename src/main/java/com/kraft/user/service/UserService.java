@@ -61,6 +61,24 @@ public class UserService {
         AfterCommit.run(() -> sessionRevoker.revokeAll(email));
     }
 
+    /**
+     * 현재 비밀번호를 묻지 않고 새 비밀번호를 정한다. 메일로 받은 1회용 토큰을 이미 검증한
+     * {@link PasswordResetService}만 부른다 — 이 메서드에 인증 경로가 하나 더 생기면 그 토큰
+     * 검사를 건너뛰는 길이 생기므로, 호출자는 여기 하나로 유지한다.
+     * <p>
+     * 세션을 모두 폐기하는 것은 비밀번호 변경과 같다. 비밀번호를 잊었다는 것은 이미 남이
+     * 쓰고 있을 수 있다는 뜻이기도 하다.
+     */
+    @Transactional
+    public void resetPassword(Long userId, String newPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. id=" + userId));
+
+        user.changePassword(passwordEncoder.encode(newPassword));
+        String email = user.getEmail();
+        AfterCommit.run(() -> sessionRevoker.revokeAll(email));
+    }
+
     @Transactional
     public void promoteToUser(Long userId) {
         User user = userRepository.findById(userId)

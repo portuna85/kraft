@@ -44,6 +44,11 @@ public class OutboxMail extends BaseEntity {
     @Column(nullable = false, length = 100)
     private String token;
 
+    /** 무엇을 보내려던 행인지. 제목·본문은 보낼 때 이 값으로 만든다. */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private OutboxMailKind kind;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private OutboxMailStatus status;
@@ -58,9 +63,10 @@ public class OutboxMail extends BaseEntity {
     private LocalDateTime sentAt;
 
     @Builder
-    public OutboxMail(User user, String token) {
+    public OutboxMail(User user, String token, OutboxMailKind kind) {
         this.user = user;
         this.token = token;
+        this.kind = kind;
         this.status = OutboxMailStatus.PENDING;
         this.attempts = 0;
     }

@@ -36,8 +36,8 @@ public class OutboxMailStore {
      * 그 반대가 되면 안 된다.
      */
     @Transactional
-    public void enqueue(User user, String token) {
-        outboxMailRepository.save(OutboxMail.builder().user(user).token(token).build());
+    public void enqueue(User user, String token, OutboxMailKind kind) {
+        outboxMailRepository.save(OutboxMail.builder().user(user).token(token).kind(kind).build());
     }
 
     /**
@@ -60,7 +60,7 @@ public class OutboxMailStore {
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     public Optional<PendingMail> load(Long id) {
         return outboxMailRepository.findById(id)
-                .map(mail -> new PendingMail(mail.getId(), mail.getUser().getEmail(), mail.getToken()));
+                .map(mail -> new PendingMail(mail.getId(), mail.getUser().getEmail(), mail.getToken(), mail.getKind()));
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -85,13 +85,13 @@ public class OutboxMailStore {
         return stuck.size();
     }
 
-    /** 이 회원에게 마지막으로 메일을 만든 시각. 재발송 요청 제한에 쓴다. */
+    /** 이 회원에게 이 종류의 메일을 마지막으로 만든 시각. 요청 제한에 쓴다. */
     @Transactional(readOnly = true)
-    public Optional<LocalDateTime> lastQueuedAt(Long userId) {
-        return outboxMailRepository.findFirstByUserIdOrderByIdDesc(userId).map(OutboxMail::getCreatedAt);
+    public Optional<LocalDateTime> lastQueuedAt(Long userId, OutboxMailKind kind) {
+        return outboxMailRepository.findFirstByUserIdAndKindOrderByIdDesc(userId, kind).map(OutboxMail::getCreatedAt);
     }
 
     /** 발송에 필요한 값만 담은 꾸러미. 엔티티를 트랜잭션 밖으로 들고 나가지 않으려는 것이다. */
-    public record PendingMail(Long id, String to, String token) {
+    public record PendingMail(Long id, String to, String token, OutboxMailKind kind) {
     }
 }

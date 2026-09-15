@@ -1,6 +1,7 @@
 package com.kraft.user.service;
 
 import com.kraft.user.domain.EmailVerificationTokenRepository;
+import com.kraft.user.domain.PasswordResetTokenRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
 /**
- * 만료된 이메일 인증 토큰을 지운다.
+ * 만료된 이메일 인증 토큰과 비밀번호 재설정 토큰을 지운다.
  * <p>
  * 별도 빈으로 뺀 이유는 <b>트랜잭션 경계 때문</b>이다. 예전에는 {@code verify()}가 만료 토큰을
  * 지운 직후 {@code IllegalArgumentException}을 던졌는데, 쓰기 트랜잭션에서 런타임 예외가
@@ -29,6 +30,7 @@ import java.time.LocalDateTime;
 public class ExpiredTokenPurger {
 
     private final EmailVerificationTokenRepository tokenRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
 
     @Value("${app.verification.purge-enabled:true}")
     private boolean enabled;
@@ -39,6 +41,16 @@ public class ExpiredTokenPurger {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void purge(Long tokenId) {
         tokenRepository.deleteById(tokenId);
+    }
+
+    /**
+     * 비밀번호 재설정 토큰 하나를 자기 트랜잭션에서 지운다. 만료된 링크를 눌렀을 때 호출하는데,
+     * 그 뒤에 "만료되었습니다" 예외가 이어지므로 같은 트랜잭션에서 지우면 F08과 똑같이 삭제가
+     * 함께 롤백된다.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void purgePasswordResetToken(Long tokenId) {
+        passwordResetTokenRepository.deleteById(tokenId);
     }
 
     /**
@@ -54,9 +66,17 @@ public class ExpiredTokenPurger {
             return;
         }
 
-        int deleted = tokenRepository.deleteByExpiresAtBefore(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+
+        int deleted = tokenRepository.deleteByExpiresAtBefore(now);
         if (deleted > 0) {
             log.info("만료된 이메일 인증 토큰 {}개를 정리했습니다.", deleted);
+        }
+
+        // 재설정 링크도 아무도 누르지 않으면 그대로 남는다. 30분짜리라 더 빨리 쌓인다.
+        int deletedResets = passwordResetTokenRepository.deleteByExpiresAtBefore(now);
+        if (deletedResets > 0) {
+            log.info("만료된 비밀번호 재설정 토큰 {}개를 정리했습니다.", deletedResets);
         }
     }
 }
