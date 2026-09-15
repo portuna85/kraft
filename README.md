@@ -161,6 +161,12 @@ docker compose up -d --wait
 .\gradlew.bat test
 ```
 
+`test`가 끝나면 JaCoCo 커버리지 리포트가 함께 만들어집니다
+(`build/reports/jacoco/test/html/index.html`). 실패시킬 문턱값은 두지 않았습니다 — 이 저장소의
+안전망은 수치가 아니라 실제 DB·브라우저까지 밟는 검증이고, JaCoCo는 별도 프로세스로 도는
+브라우저 테스트의 실행을 세지 못합니다. 리포트는 "어디가 비어 있는지"를 보는 용도입니다.
+DTO(`com.kraft.**.dto`)는 동작이 없는 생성 코드라 분모에서 제외합니다.
+
 운영 실행 JAR은 `bootJar`, 브라우저 테스트용 실행 JAR은 `bootE2eJar`로 만듭니다.
 운영 JAR에는 E2E 시드·메일 조회 API·H2가 포함되지 않습니다.
 

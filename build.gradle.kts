@@ -2,6 +2,7 @@ import org.springframework.boot.gradle.tasks.bundling.BootJar
 
 plugins {
     java
+    jacoco
     id("org.springframework.boot") version "4.1.1"
     id("io.spring.dependency-management") version "1.1.7"
 }
@@ -85,4 +86,36 @@ tasks.withType<Test> {
     // 실제 데이터소스 설정을 그대로 쓰므로 이 프로파일이 없으면 Docker가 떠 있어야만 통과한다.
     systemProperty("spring.profiles.active", "test")
     systemProperty("logging.file.path", layout.buildDirectory.dir("test-logs").get().asFile.absolutePath)
+}
+
+/**
+ * 커버리지 리포트.
+ *
+ * 개선 보고서가 "테스트 166개 통과"를 커버리지로 읽지 말라고 경고했던 지점이다 — 수치를 볼
+ * 도구가 없어 어디가 비었는지 말할 수 없었다. 이제 test를 돌리면 리포트가 함께 나온다.
+ *
+ * 문턱값(jacocoTestCoverageVerification)은 걸지 않는다. 이 저장소의 실제 안전망은 단위
+ * 테스트 수치가 아니라 실제 DB·브라우저까지 밟는 검증(Testcontainers, Playwright)이고,
+ * JaCoCo는 그 밖에서 도는 E2E의 실행을 세지 못한다. 숫자를 맞추려고 의미 없는 테스트를
+ * 늘리는 대신, 리포트를 보고 빈 곳을 사람이 판단한다.
+ */
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        html.required.set(true)
+        // CI가 기계적으로 읽을 수 있는 형식도 남긴다(리포트를 사람이 열지 않아도 되도록).
+        xml.required.set(true)
+    }
+    classDirectories.setFrom(files(classDirectories.files.map {
+        fileTree(it) {
+            // 동작이 없는 생성 코드는 분모에서 뺀다. record DTO의 접근자·equals·hashCode가
+            // 대표적이며, 이것들이 섞이면 수치가 실제 검증 범위를 과장한다.
+            exclude("com/kraft/**/dto/**")
+        }
+    }))
+}
+
+// 리포트를 따로 기억해서 돌릴 필요가 없게 한다. test가 끝나면 항상 갱신된다.
+tasks.test {
+    finalizedBy(tasks.jacocoTestReport)
 }
