@@ -15,6 +15,9 @@ import CommentItem from './CommentItem.vue';
 const props = defineProps({
     postId: { type: String, required: true },
     authenticated: { type: Boolean, required: true },
+    // 이메일 인증까지 끝난 회원만 댓글을 쓸 수 있다(WriteAccessPolicy). 로그인만 한 GUEST에게
+    // 입력창을 보여주면 다 쓰고 등록을 눌러야 거절 사유를 알게 되므로, 글쓰기 화면처럼 먼저 알린다.
+    canWrite: { type: Boolean, required: true },
     initialComments: { type: Array, required: true },
 });
 
@@ -94,9 +97,11 @@ onUnmounted(() => window.removeEventListener('kraft:comment-deleted', onExternal
     />
   </ul>
 
-  <div
-    v-if="authenticated"
+  <!-- 빈 댓글은 required가 먼저 막는다. Enter는 줄바꿈이어야 하므로 제출 단축키로 쓰지 않는다. -->
+  <form
+    v-if="canWrite"
     class="mb-3 comment-form"
+    @submit.prevent="save"
   >
     <label for="comment-content">댓글 작성</label>
     <textarea
@@ -105,17 +110,23 @@ onUnmounted(() => window.removeEventListener('kraft:comment-deleted', onExternal
       class="form-control"
       placeholder="댓글을 입력하세요"
       maxlength="1000"
+      required
     />
     <button
       id="btn-comment-save"
-      type="button"
+      type="submit"
       class="btn btn-primary mt-2"
       :disabled="saving"
-      @click="save"
     >
       댓글 등록
     </button>
-  </div>
+  </form>
+  <p
+    v-else-if="authenticated"
+    class="comments__login-hint"
+  >
+    이메일 인증을 완료해야 댓글을 쓸 수 있습니다. 가입할 때 받은 인증 메일의 링크를 눌러 주세요.
+  </p>
   <p
     v-else
     class="comments__login-hint"

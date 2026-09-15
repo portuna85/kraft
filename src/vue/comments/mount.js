@@ -18,6 +18,7 @@ if (mountPoint) {
     createApp(CommentsApp, {
         postId: mountPoint.dataset.postId,
         authenticated: mountPoint.dataset.authenticated === 'true',
+        canWrite: mountPoint.dataset.canWrite === 'true',
         initialComments,
     }).mount(mountPoint);
 }

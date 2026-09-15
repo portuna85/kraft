@@ -74,8 +74,19 @@
             </li>
         </ul>
 
-        <!-- 빈 상태: 게시글이 하나도 없는 경우와, 요청한 페이지만 비어 있는 경우를 구분한다. -->
-        <div class="empty-state" th:if="${#lists.isEmpty(posts) and postsPage.totalElements == 0}">
+        <!--/* 빈 상태는 세 가지를 구분한다: 검색·분류로 걸러서 남은 것이 없는 경우, 게시판에
+               글이 하나도 없는 경우, 요청한 페이지만 비어 있는 경우. 예전에는 앞의 두 가지가
+               같은 문구("아직 게시글이 없습니다")를 써서, 검색이 빗나갔을 뿐인데 게시판이 텅
+               빈 것처럼 읽혔다. totalElements는 필터를 적용한 뒤의 수라 둘을 구분하지 못한다. */-->
+        <div class="empty-state"
+             th:if="${#lists.isEmpty(posts) and postsPage.totalElements == 0
+                      and (!#strings.isEmpty(q) or category != null)}">
+            <p class="empty-state__text">검색 조건에 맞는 게시글이 없습니다.</p>
+            <a href="/" class="btn btn-outline-primary">전체 게시글 보기</a>
+        </div>
+        <div class="empty-state"
+             th:if="${#lists.isEmpty(posts) and postsPage.totalElements == 0
+                      and #strings.isEmpty(q) and category == null}">
             <!-- 글쓰기·로그인 버튼은 헤더 오른쪽에만 둔다. 여기서는 안내 문구만 남긴다. -->
             <p class="empty-state__text" sec:authorize="isAuthenticated()">아직 게시글이 없습니다. 헤더의 글쓰기로 첫 글을 남겨 보세요.</p>
             <p class="empty-state__text" sec:authorize="isAnonymous()">아직 게시글이 없습니다. 헤더의 로그인 후 글을 쓸 수 있습니다.</p>

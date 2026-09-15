@@ -12,6 +12,22 @@ async function openOwnPost(page) {
     await openPostByTitle(page, title);
 }
 
+test('빈 댓글은 브라우저 검증이 막고 요청 자체가 나가지 않는다', async ({ page }) => {
+    await openOwnPost(page);
+
+    let requested = false;
+    page.on('request', (request) => {
+        if (request.method() === 'POST' && /\/api\/v1\/posts\/\d+\/comments$/.test(request.url())) {
+            requested = true;
+        }
+    });
+
+    await page.locator('#btn-comment-save').click();
+
+    expect(requested, 'required가 제출 자체를 막는다').toBe(false);
+    await expect(page.locator('.comment-list__content')).toHaveCount(0);
+});
+
 test('댓글을 등록하면 목록에 나타난다', async ({ page }) => {
     await openOwnPost(page);
 

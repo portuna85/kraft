@@ -61,4 +61,13 @@ test.describe('미인증 안내', () => {
         await expect(page.getByText('이메일 인증을 완료해야 글을 쓸 수 있습니다.')).toBeVisible();
         await expect(page.locator('#post-save-form')).toHaveCount(0);
     });
+
+    test('GUEST에게는 댓글 입력창 대신 인증 안내가 보인다', async ({ page }) => {
+        // 시드 게시글이면 무엇이든 된다 — 댓글 영역의 안내만 본다.
+        await page.goto('/');
+        await page.locator('.post-list__title').first().click();
+
+        await expect(page.getByText('이메일 인증을 완료해야 댓글을 쓸 수 있습니다.')).toBeVisible();
+        await expect(page.locator('#comment-content')).toHaveCount(0);
+    });
 });

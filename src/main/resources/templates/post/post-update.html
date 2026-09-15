@@ -28,7 +28,9 @@
              있어(공개 REST 응답에는 없는 화면 전용 필드) 초기 목록을 JSON으로 그대로 내려준다. -->
         <script type="application/json" id="comments-initial-data" th:utext="${commentsJson}"></script>
         <section id="comments-app" class="comments" aria-labelledby="comments-heading"
-                 th:attr="data-post-id=${post.id},data-authenticated=${#authorization.expression('isAuthenticated()')}"></section>
+                 th:attr="data-post-id=${post.id},
+                          data-authenticated=${#authorization.expression('isAuthenticated()')},
+                          data-can-write=${#authorization.expression('isAuthenticated() and !hasRole(''GUEST'')')}"></section>
         <script type="module" src="/js/vue-dist/comments.js"></script>
     </main>
 </div>
