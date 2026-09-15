@@ -1,3 +1,12 @@
+# 정적 자원(CSS·JS)을 gzip으로 압축해 보낸다. 텍스트 계열만 대상으로 하고(이미지·폰트는
+# 이미 압축된 형식이라 다시 압축해도 줄지 않는다), 너무 작은 응답은 압축 오버헤드가 더
+# 크므로 1KB 미만은 그대로 보낸다.
+server:
+  compression:
+    enabled: true
+    mime-types: text/html,text/css,text/javascript,application/javascript,application/json,image/svg+xml
+    min-response-size: 1024
+
 spring:
   application:
     name: kraft
@@ -17,6 +26,20 @@ spring:
 
   session:
     store-type: jdbc
+
+  web:
+    resources:
+      cache:
+        # 정적 자원의 재검증 캐시. no-store를 걷어낸 것은 SecurityConfig의
+        # staticResourceChain이다 — 여기서는 조건부 요청(If-Modified-Since)이
+        # 통하도록 Last-Modified를 남기고, max-age는 0으로 두어 매번 서버에 물어는
+        # 보되(왕복은 남는다) 내용이 같으면 304만 받게 한다. 파일명에 해시가 없어서
+        # (Vue 산출물이 리뷰 가능한 diff를 위해 의도적으로 고정 이름을 쓴다) 여기서
+        # 곧바로 장기 캐시를 걸면 배포 후에도 낡은 파일을 계속 쓰게 될 위험이 있다.
+        use-last-modified: true
+        cachecontrol:
+          max-age: 0
+          must-revalidate: true
 
   # 모든 프로파일(local 포함, 2026-09-11부터)이 실제 SMTP로 인증 메일을 보낸다(SmtpEmailSender).
   # 값에 기본값을 둔 이유: spring.mail.host는 @ConditionalOnProperty로 JavaMailSender 자동

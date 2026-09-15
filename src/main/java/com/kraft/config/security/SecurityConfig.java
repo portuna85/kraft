@@ -3,9 +3,12 @@ package com.kraft.config.security;
 import com.kraft.shared.web.SafeRedirect;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -21,11 +24,42 @@ public class SecurityConfig {
         return PasswordEncoderFactories.createDelegatingPasswordEncoder();
     }
 
+    /**
+     * 정적 자원(CSS·JS·업로드 이미지) 전용 체인. 아래 {@link #filterChain}보다 먼저 매칭되도록
+     * {@code @Order(0)}을 준다({@code securityMatcher}로 좁혀 둔 체인이 항상 먼저 검사되어야
+     * 원래 체인의 catch-all에 걸리지 않는다).
+     * <p>
+     * 이 체인이 있는 이유는 캐싱이다. 기본 {@code HeadersConfigurer}는 모든 응답에
+     * {@code Cache-Control: no-cache, no-store, max-age=0, must-revalidate}를 붙이는데, 이건
+     * 로그인 상태가 섞여 나오는 페이지 응답에는 맞지만 CSS·JS·업로드 이미지처럼 사용자와 무관한
+     * 정적 파일에는 맞지 않는다. 정적 리소스 핸들러가 세팅한 {@code Cache-Control}
+     * (application.yml의 {@code spring.web.resources.cache.*})을 이 라이터가 덮어써 버려서
+     * 브라우저가 매 페이지 이동마다 같은 파일을 다시 받고 있었다.
+     * <p>
+     * {@code web.ignoring()}으로 아예 필터 체인 밖에 두지 않는 이유는, 그러면
+     * {@code X-Content-Type-Options}·{@code X-Frame-Options} 같은 나머지 보안 헤더까지 함께
+     * 사라지기 때문이다. 여기서는 캐시 헤더 라이터만 끈다.
+     */
     @Bean
+    @Order(0)
+    public SecurityFilterChain staticResourceChain(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher("/css/**", "/js/**", "/images/**")
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .csrf(csrf -> csrf.disable())
+                .headers(headers -> headers.cacheControl(HeadersConfigurer.CacheControlConfig::disable));
+
+        return http.build();
+    }
+
+    @Bean
+    @Order(1)
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/css/**", "/js/**", "/images/**").permitAll()
+                        // 정적 자원(/css, /js, /images)은 위 staticResourceChain이 먼저 처리한다.
+                        .requestMatchers("/").permitAll()
                         .requestMatchers("/api/v1/users").permitAll()
                         // 비밀번호를 잊은 사람은 로그인할 수 없다. 이 두 경로만 열어 두고,
                         // 실제 경계는 메일로 보낸 1회용 토큰이 잡는다(PasswordResetService).

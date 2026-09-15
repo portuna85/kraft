@@ -3,6 +3,7 @@ package com.kraft.config;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.CacheControl;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -10,6 +11,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.TimeUnit;
 
 /**
  * {@code app.upload.dir}에 저장된 게시글 업로드 이미지를 {@code /images/**}로 서빙한다.
@@ -34,6 +36,11 @@ public class WebConfig implements WebMvcConfigurer {
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         String location = Path.of(uploadDir).toAbsolutePath().normalize().toUri().toString();
         registry.addResourceHandler("/images/**")
-                .addResourceLocations(location);
+                .addResourceLocations(location)
+                // 업로드 파일명은 PostImageService가 매번 새 UUID로 짓는다(교체할 파일도 새
+                // 이름을 받는다) — 같은 URL이 다른 내용으로 바뀌는 일이 없으므로 길게 캐시해도
+                // 안전하다. SecurityConfig의 staticResourceChain이 no-store를 붙이지 않아야
+                // 이 값이 실제로 응답에 남는다.
+                .setCacheControl(CacheControl.maxAge(365, TimeUnit.DAYS).cachePublic());
     }
 }
