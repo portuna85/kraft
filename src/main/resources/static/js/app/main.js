@@ -44,7 +44,13 @@ async function loadIf(selector, modulePath) {
 loadIf('#btn-logout, #changePasswordModal, #withdrawModal, #resendVerificationModal', './features/account.js');
 
 // 게시글·댓글 공용 삭제 확인 모달. 트리거 버튼은 Vue 아일랜드(post-edit·comments)가 그린다.
-loadIf('[data-target-kind]', './features/delete-confirm.js');
+// 댓글 목록은 위임 클릭 핸들러라 나중에 추가되는 항목도 그대로 잡지만, 로드 자체는
+// 최초 DOM 스냅숏으로 한 번만 판단한다. 남의 글이라 '[data-target-kind="post"]'가 없고
+// 기존 댓글도 없으면 이 셀렉터만으로는 아무것도 찾지 못해 모듈이 로드되지 않았고, 그 상태에서
+// 방금 쓴 첫 댓글의 삭제 버튼은 위임 핸들러가 없어 눌러도 반응이 없었다(개선 보고서
+// "저장 중 댓글 변경과 동적 삭제 모듈 누락"). '#comments-heading'은 댓글이 0개여도, 남의
+// 글이어도 댓글 영역이 있는 페이지라면 항상 최초 DOM에 존재하므로 이 경우를 메운다.
+loadIf('[data-target-kind], #comments-heading', './features/delete-confirm.js');
 
 // 게시글·댓글 공용 신고 모달. 트리거 버튼도 마찬가지로 Vue 아일랜드가 그린다.
 loadIf('[data-report-kind]', './features/report-dialog.js');

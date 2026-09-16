@@ -78,6 +78,73 @@ test('댓글 수정을 취소하면 읽기 상태로 돌아간다', async ({ pag
  * 삭제 확인 모달은 게시글과 댓글이 함께 쓴다. 모달이 닫히면 원래 눌렀던 버튼으로 포커스를
  * 되돌리는데, 이것이 깨지면 키보드 사용자가 목록 맨 위로 튕긴다.
  */
+/**
+ * 취소 버튼을 저장 요청이 끝나기 전에 누를 수 있으면, 화면은 취소로 보이는데 나중에
+ * 도착한 응답이 그 내용을 되돌려 놓는 경쟁이 생긴다(개선 보고서 "저장 중 댓글 변경과
+ * 동적 삭제 모듈 누락").
+ */
+test('댓글 저장 중에는 취소할 수 없고, 응답이 오면 저장한 내용이 반영된다', async ({ page }) => {
+    await openOwnPost(page);
+    await page.locator('#comment-content').fill('원본 댓글');
+    await page.locator('#btn-comment-save').click();
+    await expect(page.locator('.comment-list__content')).toContainText('원본 댓글');
+
+    await page.locator('.btn-comment-edit').first().click();
+    const editForm = page.locator('.comment-edit-form').first();
+    await editForm.locator('textarea').fill('저장 시도 중인 내용');
+
+    let releaseSave;
+    const gate = new Promise((resolve) => {
+        releaseSave = resolve;
+    });
+    await page.route(/\/api\/v1\/comments\/\d+$/, async (route) => {
+        await gate;
+        await route.continue();
+    });
+
+    await editForm.getByRole('button', { name: '저장' }).click();
+
+    // 저장 요청이 진행 중인 동안 취소 버튼·입력창이 비활성화되어야 한다.
+    await expect(page.locator('.btn-comment-cancel').first()).toBeDisabled();
+    await expect(editForm.locator('textarea')).toBeDisabled();
+
+    releaseSave();
+    await expect(page.locator('#flash')).toContainText('댓글이 수정되었습니다.');
+    await expect(page.locator('.comment-list__content')).toContainText('저장 시도 중인 내용');
+});
+
+/**
+ * 남의 글에 처음 남기는 댓글은 최초 DOM에 게시글 삭제 버튼도, 기존 댓글도 없다. 삭제 확인
+ * 모달 모듈이 그 최초 상태만 보고 로드 여부를 정하면, 방금 낙관적으로 추가된 이 댓글의
+ * 삭제 버튼은 위임 핸들러가 없어 눌러도 반응이 없었다.
+ */
+test('남의 글에 처음 남긴 댓글도 곧바로 지울 수 있다', async ({ page, browser }) => {
+    await openOwnPost(page);
+    const postUrl = page.url();
+
+    const otherContext = await browser.newContext({ storageState: storageStateFor('other') });
+    const otherPage = await otherContext.newPage();
+    try {
+        await otherPage.goto(postUrl);
+        // 남의 글이므로 게시글 삭제 버튼은 없다 — 이 시나리오가 재현하려는 전제 조건이다.
+        await expect(otherPage.locator('#btn-delete-post')).toHaveCount(0);
+
+        await otherPage.locator('#comment-content').fill('처음 남기는 댓글입니다.');
+        await otherPage.locator('#btn-comment-save').click();
+        await expect(otherPage.locator('.comment-list__content')).toContainText('처음 남기는 댓글입니다.');
+
+        await otherPage.locator('.btn-comment-delete').first().click();
+        const modal = otherPage.locator('#confirmDeleteModal');
+        await expect(modal).toBeVisible();
+        await otherPage.locator('#btn-confirm-delete').click();
+
+        await expect(otherPage.locator('#flash')).toContainText('댓글이 삭제되었습니다.');
+        await expect(otherPage.locator('.comment-list__content')).toHaveCount(0);
+    } finally {
+        await otherContext.close();
+    }
+});
+
 test('댓글 삭제: 취소하면 그대로, 확인하면 지워진다', async ({ page }) => {
     await openOwnPost(page);
     await page.locator('#comment-content').fill('지울 댓글');

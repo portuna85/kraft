@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * {@code post_images} 대장을 다루는 서비스. 파일 자체를 읽고 쓰는 일은 {@link PostImageService}가
@@ -29,10 +30,26 @@ public class PostImageRegistry {
     private final PostImageRepository postImageRepository;
 
     /**
-     * 업로드 직후 대장에 올린다. 이 시점에는 아직 어떤 게시글에도 속하지 않으므로 ORPHAN이다.
+     * 업로드 파일을 검사하고 대장에 올린다. 이 시점에는 아직 어떤 게시글에도 속하지 않으므로
+     * ORPHAN이다.
+     * <p>
+     * 예전에는 용량 검사({@code validateQuota})와 등록({@code register})이 서로 다른 트랜잭션
+     * 호출로 나뉘어 있어, 같은 계정의 동시 업로드 두 건이 모두 검사를 통과한 뒤 각자 등록될 수
+     * 있었다(개선 보고서 "업로드 용량 검사 경쟁"). 지금은 같은 트랜잭션 안에서 계정의 기존 행을
+     * 먼저 잠그고 그 안에서 검사·등록까지 끝낸다 — {@link PostImageRepository#lockAllByOwnerId}의
+     * 문서에 알려진 한계(첫 업로드 동시 경쟁)를 남겨 두었다.
      */
     @Transactional
-    public void register(String url, User owner, long sizeBytes) {
+    public void validateQuotaAndRegister(String url, User owner, long sizeBytes) {
+        postImageRepository.lockAllByOwnerId(owner.getId());
+
+        long used = postImageRepository.sumSizeBytesByOwnerId(owner.getId());
+        if (used + sizeBytes > MAX_BYTES_PER_USER) {
+            throw new IllegalArgumentException(
+                    "이미지 저장 공간을 모두 사용했습니다(계정당 " + MAX_BYTES_PER_USER / (1024 * 1024)
+                            + "MB). 쓰지 않는 이미지가 있는 게시글을 정리한 뒤 다시 시도해 주세요.");
+        }
+
         String fileName = PostImageService.fileNameOf(url);
         if (fileName == null) {
             return;
@@ -42,20 +59,6 @@ public class PostImageRegistry {
                 .owner(owner)
                 .sizeBytes(sizeBytes)
                 .build());
-    }
-
-    /**
-     * 계정별 누적 저장량을 확인한다. 파일 하나당 5MB 제한만으로는 반복 업로드로 디스크를
-     * 채우는 것을 막을 수 없다(개선 보고서 F06). 업로드 <b>전에</b> 검사해, 한도를 넘으면
-     * 파일을 디스크에 쓰기 전에 거절한다.
-     */
-    public void validateQuota(User owner, long incomingBytes) {
-        long used = postImageRepository.sumSizeBytesByOwnerId(owner.getId());
-        if (used + incomingBytes > MAX_BYTES_PER_USER) {
-            throw new IllegalArgumentException(
-                    "이미지 저장 공간을 모두 사용했습니다(계정당 " + MAX_BYTES_PER_USER / (1024 * 1024)
-                            + "MB). 쓰지 않는 이미지가 있는 게시글을 정리한 뒤 다시 시도해 주세요.");
-        }
     }
 
     /**
@@ -91,27 +94,34 @@ public class PostImageRegistry {
     }
 
     /**
-     * 이미지 하나의 삭제를 예약한다. 실제 파일은 건드리지 않으므로, 이 트랜잭션이 롤백되면
-     * 예약도 함께 사라지고 파일은 그대로 남는다(F05).
+     * 이미지 하나의 삭제를 예약하고 그 이미지의 id를 돌려준다. 실제 파일은 건드리지 않으므로,
+     * 이 트랜잭션이 롤백되면 예약도 함께 사라지고 파일은 그대로 남는다.
+     * 돌려준 id는 커밋 직후 정리 작업을 <b>이 이미지로만</b> 좁히는 데 쓴다 — 전체 삭제
+     * 대기열을 매번 훑지 않기 위해서다.
      */
     @Transactional
-    public void markForDeletion(String url) {
+    public Optional<Long> markForDeletion(String url) {
         String fileName = PostImageService.fileNameOf(url);
         if (fileName == null) {
-            return;
+            return Optional.empty();
         }
-        postImageRepository.findByFileName(fileName).ifPresent(PostImage::markForDeletion);
+        return postImageRepository.findByFileName(fileName)
+                .map(image -> {
+                    image.markForDeletion();
+                    return image.getId();
+                });
     }
 
     /**
-     * 게시글에 붙은 이미지 전부의 삭제를 예약한다. 게시글 삭제 직전에 부른다 —
-     * {@code post_id}를 비우는 UPDATE가 게시글 DELETE보다 먼저 DB에 도달해야 FK 제약에
-     * 걸리지 않으므로, 표시 후 곧바로 flush한다.
+     * 게시글에 붙은 이미지 전부의 삭제를 예약하고 그 id 목록을 돌려준다. 게시글 삭제 직전에
+     * 부른다 — {@code post_id}를 비우는 UPDATE가 게시글 DELETE보다 먼저 DB에 도달해야 FK
+     * 제약에 걸리지 않으므로, 표시 후 곧바로 flush한다.
      */
     @Transactional
-    public void markPostImagesForDeletion(Long postId) {
+    public List<Long> markPostImagesForDeletion(Long postId) {
         List<PostImage> images = postImageRepository.findAllByPostId(postId);
         images.forEach(PostImage::markForDeletion);
         postImageRepository.flush();
+        return images.stream().map(PostImage::getId).toList();
     }
 }

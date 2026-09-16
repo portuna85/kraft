@@ -41,9 +41,15 @@ public class CommentService {
         return commentRepository.save(requestDto.toEntity(post, user)).getId();
     }
 
+    /**
+     * 정지된 계정도 이 경로로 자신의 기존 댓글을 계속 바꿀 수 있었다 — 작성만 작성 정책을
+     * 검사하고 수정은 소유권만 봤기 때문이다. 삭제는 의도적으로 그대로 둔다 — 정지된
+     * 사용자도 자신의 댓글을 지우는 것까지 막지는 않는다.
+     */
     @Transactional
     public Long update(Long id, CommentUpdateRequestDto requestDto, Authentication authentication) {
         Comment comment = findComment(id);
+        WriteAccessPolicy.requireVerified(findUser(authentication.getName()));
         OwnershipPolicy.validateOwner(authentication, comment.getUser(), id);
         comment.update(requestDto.content());
         return id;
@@ -76,5 +82,10 @@ public class CommentService {
     private Comment findComment(Long id) {
         return commentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 댓글이 없습니다. id=" + id));
+    }
+
+    private User findUser(String email) {
+        return userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
     }
 }

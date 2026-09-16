@@ -146,6 +146,7 @@ async function onSubmit() {
         type="file"
         class="form-control"
         accept="image/jpeg,image/png,image/gif,image/webp"
+        :disabled="saving || picture.uploading.value"
         @change="onFileChange"
       >
       <small class="form-text text-muted">JPG, JPEG, PNG, GIF, WEBP · 최대 5MB · 1개</small>
@@ -174,6 +175,7 @@ async function onSubmit() {
           id="btn-picture-clear"
           type="button"
           class="btn btn-sm btn-outline-secondary"
+          :disabled="saving || picture.uploading.value"
           @click="clearPicture"
         >
           선택 해제

@@ -17,6 +17,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.access.AccessDeniedException;
@@ -25,6 +27,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.IOException;
@@ -63,6 +66,9 @@ class PostImageLifecycleTest {
     private PostImageRepository postImageRepository;
 
     @Autowired
+    private PostImageRegistry postImageRegistry;
+
+    @Autowired
     private PostRepository postRepository;
 
     @Autowired
@@ -80,18 +86,28 @@ class PostImageLifecycleTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    /**
+     * 겹친 트랜잭션을 만들기 위한 별도 템플릿. 기본 전파(REQUIRED)로는 바깥 트랜잭션에
+     * 참여해 같은 영속성 컨텍스트를 쓰므로 "다른 트랜잭션이 먼저 커밋했다"를 재현할 수 없다.
+     */
+    private TransactionTemplate requiresNew;
+
     private Authentication alice;
     private Authentication bob;
+    private User aliceUser;
 
     @BeforeEach
     void setUp() {
+        requiresNew = new TransactionTemplate(transactionTemplate.getTransactionManager());
+        requiresNew.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+
         postImageRepository.deleteAll();
         commentRepository.deleteAll();
         postLikeRepository.deleteAll();
         postRepository.deleteAll();
         userRepository.deleteAll();
 
-        saveUser("alice", "alice@example.com", Role.USER);
+        aliceUser = saveUser("alice", "alice@example.com", Role.USER);
         saveUser("bob", "bob@example.com", Role.USER);
         saveUser("guest", "guest@example.com", Role.GUEST);
 
@@ -170,8 +186,8 @@ class PostImageLifecycleTest {
     }
 
     @Test
-    @DisplayName("F06: 계정별 저장량 한도를 넘으면 파일을 쓰기 전에 거부한다")
-    void uploadImage_overQuota_isRejectedBeforeWritingFile() {
+    @DisplayName("F05/F06: 계정별 저장량 한도를 넘으면 대장 등록을 거부하고, 이미 쓴 파일도 곧바로 지운다")
+    void uploadImage_overQuota_leavesNoOrphanFile() {
         postService.uploadImage(imageFile(), alice);
         // 이미 한도를 다 쓴 상태로 만든다.
         jdbcTemplate.update("UPDATE post_images SET size_bytes = ? WHERE owner_id = "
@@ -179,11 +195,13 @@ class PostImageLifecycleTest {
         // 업로드 디렉터리는 이 클래스의 테스트들이 함께 쓰므로 절대 개수가 아니라 증감을 본다.
         int filesBefore = uploadedFileCount();
 
+        // 용량 검사와 등록이 한 트랜잭션에서 원자적으로 일어나므로, 파일은 검사보다 먼저
+        // 디스크에 쓰이지만 등록이 실패하면 곧바로 보상 삭제된다 — 대장 없는 파일이 남지
+        // 않는다(개선 보고서 "파일 저장 성공 후 DB 롤백 시 대장 없는 파일").
         assertThatThrownBy(() -> postService.uploadImage(imageFile(), alice))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("저장 공간을 모두 사용했습니다");
 
-        // 거부된 업로드는 디스크에도 대장에도 흔적을 남기지 않는다.
         assertThat(postImageRepository.count()).isEqualTo(1);
         assertThat(uploadedFileCount()).isEqualTo(filesBefore);
     }
@@ -282,8 +300,73 @@ class PostImageLifecycleTest {
         assertThat(fileOf(fresh)).exists();
     }
 
-    private void saveUser(String name, String email, Role role) {
-        userRepository.save(User.builder().name(name).email(email).password("encoded").role(role).build());
+    @Test
+    @DisplayName("F03/F04: 같은 이미지를 서로 다른 두 게시글에 거의 동시에 붙이면 나중에 커밋한 쪽이 충돌로 실패한다")
+    void attach_concurrentAttachToDifferentPosts_conflictsOnOptimisticLock() {
+        String url = postService.uploadImage(imageFile(), alice);
+        Long postAId = postService.save(alice, new PostSaveRequestDto("A", "내용", null, null));
+        Long postBId = postService.save(alice, new PostSaveRequestDto("B", "내용", null, null));
+
+        assertThatThrownBy(() -> transactionTemplate.executeWithoutResult(outer -> {
+            // 바깥 트랜잭션이 이미지를 읽어(version=0) postA에 붙인다. 아직 커밋 전이다.
+            postImageRegistry.attach(url, aliceUser, postRepository.findById(postAId).orElseThrow());
+
+            // 그 사이 독립된 트랜잭션이 같은 이미지를 postB에 붙이고 먼저 커밋한다.
+            requiresNew.executeWithoutResult(inner ->
+                    postImageRegistry.attach(url, aliceUser, postRepository.findById(postBId).orElseThrow()));
+
+            // 바깥 트랜잭션이 이제야 커밋을 시도한다 — 손에 쥔 버전이 이미 낡았으므로 실패해야
+            // 한다. 예전에는 잠금이 없어 이 시나리오가 조용히 성공하고 postA가 이겼다.
+        })).isInstanceOf(OptimisticLockingFailureException.class);
+
+        assertThat(imageStatusOf(url)).isEqualTo(PostImageStatus.ATTACHED);
+        assertThat(postRepository.findById(postBId).orElseThrow().getPicture()).isNull();
+    }
+
+    @Test
+    @DisplayName("F05: 같은 계정의 동시 업로드는 용량 검사·등록이 직렬화되어 겹치지 않는다")
+    void validateQuotaAndRegister_concurrentUploadsForSameOwner_areSerialized() {
+        // 기존 행이 하나 있어야 잠글 대상이 생긴다 — 첫 업로드 동시 경쟁까지는 이 방식으로
+        // 막지 못한다는 한계가 PostImageRepository.lockAllByOwnerId 문서에 남아 있다.
+        postService.uploadImage(imageFile(), alice);
+
+        assertThatThrownBy(() -> transactionTemplate.executeWithoutResult(outer -> {
+            postImageRegistry.validateQuotaAndRegister(
+                    "/images/" + java.util.UUID.randomUUID() + ".png", aliceUser, 1024);
+
+            // 바깥 트랜잭션이 아직 커밋 전이라 방금 잠근 행은 잠긴 채다. 독립된 트랜잭션이
+            // 같은 계정의 용량을 다시 확인하려 하면 NOWAIT이라 기다리지 않고 즉시 실패한다.
+            requiresNew.executeWithoutResult(inner -> postImageRegistry.validateQuotaAndRegister(
+                    "/images/" + java.util.UUID.randomUUID() + ".png", aliceUser, 1024));
+        })).isInstanceOf(PessimisticLockingFailureException.class);
+    }
+
+    @Test
+    @DisplayName("F06: 커밋 후 정리는 이번 요청이 표시한 이미지만 치우고 다른 삭제 대기 이미지는 건드리지 않는다")
+    void update_cleanUpAfterCommit_touchesOnlyThisRequestsImage() {
+        String oldUrl = postService.uploadImage(imageFile(), alice);
+        Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", oldUrl, null));
+        String newUrl = postService.uploadImage(imageFile(), alice);
+
+        // 이 요청과 무관하게 이미 삭제 대기 중인 이미지가 있다고 가정한다 — 시스템 전체의
+        // 밀린 삭제 대기열을 흉내 낸다.
+        String unrelatedUrl = postService.uploadImage(imageFile(), alice);
+        jdbcTemplate.update("UPDATE post_images SET status = 'PENDING_DELETE' WHERE file_name = ?",
+                fileNameOf(unrelatedUrl));
+
+        postService.update(postId, new PostUpdateRequestDto("제목", "내용", newUrl, null, null), alice);
+
+        // 이번 요청이 표시한 것만 곧바로 지워진다.
+        assertThat(fileOf(oldUrl)).doesNotExist();
+        assertThat(postImageRepository.findByFileName(fileNameOf(oldUrl))).isEmpty();
+
+        // 무관한 삭제 대기 이미지는 예약 작업이 돌기 전까지 그대로 남는다.
+        assertThat(fileOf(unrelatedUrl)).exists();
+        assertThat(imageStatusOf(unrelatedUrl)).isEqualTo(PostImageStatus.PENDING_DELETE);
+    }
+
+    private User saveUser(String name, String email, Role role) {
+        return userRepository.save(User.builder().name(name).email(email).password("encoded").role(role).build());
     }
 
     private static Authentication authOf(String email, Role role) {

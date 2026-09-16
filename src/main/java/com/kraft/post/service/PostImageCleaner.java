@@ -68,6 +68,20 @@ public class PostImageCleaner {
         return deleteAll(postImageRepository.findAllByStatus(PostImageStatus.PENDING_DELETE));
     }
 
+    /**
+     * 지정한 이미지 id만 정리한다. {@code PostService}가 게시글 저장·삭제 직후 자신이 방금
+     * 삭제 예약한 이미지만 넘긴다 — 그 요청과 무관한 나머지 삭제 대기열까지 매번 훑으면
+     * 응답 시간이 그때그때 쌓인 적체량에 좌우된다. 시스템 전체의 밀린 대기열은 예약 작업인
+     * {@link #cleanPendingDeletions()}가 전담한다.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public int cleanPendingDeletionsFor(List<Long> imageIds) {
+        if (imageIds.isEmpty()) {
+            return 0;
+        }
+        return deleteAll(postImageRepository.findAllByIdInAndStatus(imageIds, PostImageStatus.PENDING_DELETE));
+    }
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int cleanExpiredOrphans() {
         LocalDateTime threshold = LocalDateTime.now().minus(ORPHAN_TTL);

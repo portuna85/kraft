@@ -3,7 +3,6 @@ package com.kraft.user.mail;
 import com.kraft.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,15 +40,22 @@ public class OutboxMailStore {
     }
 
     /**
-     * 보낼 것들을 집어 SENDING으로 바꾸고 id를 돌려준다. 상태를 먼저 바꾸는 덕분에 주기 작업과
-     * 방금 가입한 요청이 동시에 돌아도 같은 메일을 두 번 보내지 않는다.
+     * 보낼 것들을 집어 SENDING으로 바꾸고 id를 돌려준다.
+     * <p>
+     * 예전에는 평범한 SELECT 후 엔티티 상태만 바꿨는데, 그 사이에는 아무 잠금도 없어 예약
+     * 실행과 {@code drainAsync}가 동시에 돌면 둘 다 같은 PENDING 행을 집어 중복 발송할 수
+     * 있었다. 지금은 {@code SELECT ... FOR UPDATE SKIP LOCKED}로 행을 먼저 잠그고, 그 잠금이
+     * 유지되는 같은 트랜잭션 안에서 곧바로 UPDATE로 SENDING을 확정한다. 두 번째 선점 시도는
+     * 이미 잠긴 행을 건너뛰므로 겹치는 id를 돌려받지 않는다.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public List<Long> claimBatch(int batchSize) {
-        List<OutboxMail> claimed =
-                outboxMailRepository.findByStatusOrderByIdAsc(OutboxMailStatus.PENDING, Limit.of(batchSize));
-        claimed.forEach(OutboxMail::markSending);
-        return claimed.stream().map(OutboxMail::getId).toList();
+        List<Long> ids = outboxMailRepository.selectPendingIdsForUpdateSkipLocked(batchSize);
+        if (ids.isEmpty()) {
+            return ids;
+        }
+        outboxMailRepository.markSendingByIds(ids, LocalDateTime.now());
+        return ids;
     }
 
     /**
@@ -89,6 +95,13 @@ public class OutboxMailStore {
     @Transactional(readOnly = true)
     public Optional<LocalDateTime> lastQueuedAt(Long userId, OutboxMailKind kind) {
         return outboxMailRepository.findFirstByUserIdAndKindOrderByIdDesc(userId, kind).map(OutboxMail::getCreatedAt);
+    }
+
+    /** 보관 기한이 지난 SENT/FAILED 행을 지운다. 지운 행 수를 돌려준다. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public long deleteOldTerminal(LocalDateTime threshold) {
+        return outboxMailRepository.deleteByStatusInAndUpdatedAtBefore(
+                List.of(OutboxMailStatus.SENT, OutboxMailStatus.FAILED), threshold);
     }
 
     /** 발송에 필요한 값만 담은 꾸러미. 엔티티를 트랜잭션 밖으로 들고 나가지 않으려는 것이다. */

@@ -19,6 +19,7 @@ BACKUP_DIR="$APP_DIR/backups"
 JAR="$APP_DIR/kraft.jar"
 INCOMING="$APP_DIR/kraft.jar.incoming"
 PREVIOUS="$APP_DIR/kraft.jar.prev"
+LOCK_FILE="$APP_DIR/deploy.lock"
 LOG=/opt/kraft/deploy.log
 HEALTH_URL=http://127.0.0.1:8080/
 
@@ -31,6 +32,16 @@ fail() {
     rm -f "$INCOMING"
     exit 1
 }
+
+# GitHub Actions의 concurrency 설정이 그 워크플로 안에서의 동시 실행은 막아 주지만, 이
+# 스크립트 자체를 다른 경로(수동 SSH 재접속 등)로 동시에 두 번 부르는 것까지는 막지 못한다.
+# 같은 $INCOMING·$JAR 경로에 두 배포가 동시에 쓰면 서로의 파일을 밟는다. 잠금을 얻지
+# 못하면(-n, 기다리지 않고 즉시 실패) 뒤의 배포를 안전하게 포기시킨다.
+exec 200>"$LOCK_FILE"
+if ! flock -n 200; then
+    log "다른 배포가 이미 진행 중이다. 이번 요청은 그대로 종료한다"
+    exit 1
+fi
 
 # 클라이언트가 보낸 문자열(커밋 SHA)은 **절대 실행하지 않는다.** 로그에 남길 용도로만
 # 쓰며, 안전한 문자만 남기고 길이도 자른다.
@@ -72,7 +83,11 @@ if (cd "$APP_DIR" && docker compose --env-file .env exec -T mariadb \
     ls -1t "$BACKUP_DIR"/pre-deploy-*.sql 2>/dev/null | tail -n +11 | xargs -r rm -f
 else
     rm -f "$BACKUP_DIR/pre-deploy-$STAMP.sql"
-    log "경고: DB 스냅샷 실패. 마이그레이션이 포함된 배포라면 되돌릴 수단이 없다"
+    # 예전에는 경고만 남기고 jar 교체·재시작을 그대로 진행했다 — 마이그레이션이 포함된
+    # 배포에서 스키마가 바뀌었는데 되돌릴 백업이 없는 상태로 넘어갈 수 있었다. 백업 없는
+    # 배포보다는 배포 자체를 멈추는 쪽이 안전하다. jar는 아직 교체 전이므로 여기서 멈춰도
+    # 운영에는 영향이 없다 — 기존 jar가 계속 돈다.
+    fail "DB 스냅샷 실패. 마이그레이션이 포함된 배포라면 되돌릴 수단이 없으므로 jar 교체 전에 멈춘다"
 fi
 
 # 4. 교체 (이전 jar는 롤백용으로 남긴다)

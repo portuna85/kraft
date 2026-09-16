@@ -110,4 +110,27 @@ class PostImageCleanerTest {
         assertThat(postImageCleaner.cleanPendingDeletions()).isZero();
         then(postImageService).should(never()).deleteIfExists(anyString());
     }
+
+    @Test
+    @DisplayName("id를 지정하면 그 이미지만 조회·삭제하고 전체 대기열은 건드리지 않는다")
+    void cleanPendingDeletionsFor_touchesOnlySpecifiedIds() {
+        given(postImageRepository.findAllByIdInAndStatus(List.of(7L), PostImageStatus.PENDING_DELETE))
+                .willReturn(List.of(image("scoped.png")));
+
+        int deleted = postImageCleaner.cleanPendingDeletionsFor(List.of(7L));
+
+        assertThat(deleted).isEqualTo(1);
+        then(postImageService).should().deleteIfExists("/images/scoped.png");
+        then(postImageRepository).should(never()).findAllByStatus(any());
+    }
+
+    @Test
+    @DisplayName("id 목록이 비어 있으면 아무것도 조회하지 않는다")
+    void cleanPendingDeletionsFor_whenIdsEmpty_touchesNothing() {
+        int deleted = postImageCleaner.cleanPendingDeletionsFor(List.of());
+
+        assertThat(deleted).isZero();
+        then(postImageRepository).shouldHaveNoInteractions();
+        then(postImageService).shouldHaveNoInteractions();
+    }
 }

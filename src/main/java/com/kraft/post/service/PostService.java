@@ -52,16 +52,24 @@ public class PostService {
     /**
      * 이미지를 저장하고 업로더를 대장에 기록한다. 업로드 권한을 글쓰기 권한과 같게 맞춘다 —
      * 예전에는 이메일 미인증(GUEST)도 업로드 API를 쓸 수 있었다(개선 보고서 F06).
+     * <p>
+     * 대장 등록(용량 검사 포함)이 실패하면 방금 디스크에 쓴 파일을 곧바로 지운다 — 예전에는
+     * 파일 저장과 DB 등록이 원자적이지 않아, DB 쪽이 실패하면 대장 없는 파일이 디스크에 남고
+     * {@link PostImageCleaner}는 DB에 등록된 파일만 찾으므로 그 파일을 영영 발견하지 못했다
+     * (개선 보고서 "파일 저장 성공 후 DB 롤백 시 대장 없는 파일").
      */
     @Transactional
     public String uploadImage(MultipartFile file, Authentication authentication) {
         User user = findUser(authentication.getName());
         WriteAccessPolicy.requireVerified(user);
 
-        postImageRegistry.validateQuota(user, file.getSize());
-
         String url = postImageService.store(file);
-        postImageRegistry.register(url, user, file.getSize());
+        try {
+            postImageRegistry.validateQuotaAndRegister(url, user, file.getSize());
+        } catch (RuntimeException e) {
+            postImageService.deleteIfExists(url);
+            throw e;
+        }
         return url;
     }
 
@@ -80,10 +88,16 @@ public class PostService {
      * 게시글을 수정한다. 이미지 교체가 있으면 <b>새 이미지의 소유권을 먼저 검사</b>하고, 기존
      * 이미지는 파일을 바로 지우는 대신 삭제 예약만 남긴다 — 이 트랜잭션이 실패해 롤백되면
      * 예약도 함께 사라져 기존 이미지가 그대로 보존된다(개선 보고서 F05).
+     * <p>
+     * 정지된 계정도 이 경로로 자신의 기존 글을 계속 바꿀 수 있었다 — 생성·업로드만 작성
+     * 정책을 검사하고 수정은 소유권만 봤기 때문이다. 삭제는 의도적으로 그대로 둔다 —
+     * 정지된 사용자도 자신의 글을 지우는 것까지 막지는 않는다.
      */
     @Transactional
     public Long update(Long id, PostUpdateRequestDto requestDto, Authentication authentication) {
         Post post = findPost(id);
+        User actor = findUser(authentication.getName());
+        WriteAccessPolicy.requireVerified(actor);
         validateOwner(post, authentication);
         validateVersion(post, requestDto.version());
         CategoryPolicy.requireCanUse(authentication, requestDto.category());
@@ -93,14 +107,14 @@ public class PostService {
         boolean pictureChanged = oldPicture == null ? newPicture != null : !oldPicture.equals(newPicture);
 
         if (pictureChanged && newPicture != null) {
-            postImageRegistry.attach(newPicture, findUser(authentication.getName()), post);
+            postImageRegistry.attach(newPicture, actor, post);
         }
 
         post.update(requestDto.title(), requestDto.content(), newPicture, requestDto.category());
 
         if (pictureChanged && oldPicture != null) {
-            postImageRegistry.markForDeletion(oldPicture);
-            cleanUpAfterCommit();
+            Long deletedImageId = postImageRegistry.markForDeletion(oldPicture).orElse(null);
+            cleanUpAfterCommit(deletedImageId == null ? List.of() : List.of(deletedImageId));
         }
         return id;
     }
@@ -111,13 +125,13 @@ public class PostService {
         validateOwner(post, authentication);
 
         // 삭제 예약이 post_id를 비워야 FK 제약(FK_POST_IMAGES_POST)이 게시글 삭제를 막지 않는다.
-        postImageRegistry.markPostImagesForDeletion(id);
+        List<Long> deletedImageIds = postImageRegistry.markPostImagesForDeletion(id);
         // 댓글·추천이 남아 있으면 FK 제약 위반으로 삭제가 실패하므로 먼저 지운다.
         commentRepository.deleteAllByPostId(id);
         postLikeRepository.deleteAllByPostId(id);
         postRepository.delete(post);
 
-        cleanUpAfterCommit();
+        cleanUpAfterCommit(deletedImageIds);
     }
 
     public PostResponseDto findById(Long id) {
@@ -216,9 +230,17 @@ public class PostService {
     /**
      * 삭제가 예약된 이미지 파일을 커밋 직후 곧바로 치운다. 실패하거나 그 직후 프로세스가
      * 죽더라도 예약은 DB에 남아 {@link PostImageCleaner}의 주기 작업이 다시 시도한다.
+     * <p>
+     * 이번 요청이 방금 표시한 이미지 id만 넘긴다 — 예전에는 인자 없이
+     * {@code cleanPendingDeletions()} 전체를 불러 시스템 전체의 삭제 대기열을 요청마다
+     * 훑었다. 게시글 한 건 저장·삭제의 응답이 그때그때 쌓인 적체량에 좌우되던 문제라
+     * 전체 스윕은 {@link PostImageCleaner}의 예약 작업에만 맡긴다.
      */
-    private void cleanUpAfterCommit() {
-        AfterCommit.run(postImageCleaner::cleanPendingDeletions);
+    private void cleanUpAfterCommit(List<Long> imageIds) {
+        if (imageIds.isEmpty()) {
+            return;
+        }
+        AfterCommit.run(() -> postImageCleaner.cleanPendingDeletionsFor(imageIds));
     }
 
     /**

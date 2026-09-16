@@ -143,6 +143,7 @@ class PostServiceTest {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("owner@example.com"))).willReturn(Optional.of(owner));
 
         Long id = postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용", null, null, null),
                 authOf("owner@example.com", Role.USER));
@@ -178,6 +179,7 @@ class PostServiceTest {
         Post post = postOf(owner, 100L);
         ReflectionTestUtils.setField(post, "picture", "/images/same.png");
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("owner@example.com"))).willReturn(Optional.of(owner));
 
         postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용", "/images/same.png", null, null),
                 authOf("owner@example.com", Role.USER));
@@ -191,10 +193,28 @@ class PostServiceTest {
     void update_whenNotAuthor_throwsAccessDeniedExceptionAndDoesNotModify() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
+        User intruder = userWithEmail("intruder@example.com", 2L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("intruder@example.com"))).willReturn(Optional.of(intruder));
 
         assertThatThrownBy(() -> postService.update(100L, new PostUpdateRequestDto("해킹", "해킹", null, null, null),
                 authOf("intruder@example.com", Role.USER)))
+                .isInstanceOf(AccessDeniedException.class);
+
+        assertThat(post.getTitle()).isEqualTo("원래 제목");
+    }
+
+    @Test
+    @DisplayName("update: 정지된 작성자는 자신의 글도 수정할 수 없다")
+    void update_whenAuthorIsSuspended_throwsAccessDeniedExceptionAndDoesNotModify() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        owner.suspendUntil(java.time.LocalDateTime.now().plusDays(1), "규정 위반");
+        Post post = postOf(owner, 100L);
+        given(postRepository.findById(100L)).willReturn(Optional.of(post));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("owner@example.com"))).willReturn(Optional.of(owner));
+
+        assertThatThrownBy(() -> postService.update(100L, new PostUpdateRequestDto("수정 시도", "내용", null, null, null),
+                authOf("owner@example.com", Role.USER)))
                 .isInstanceOf(AccessDeniedException.class);
 
         assertThat(post.getTitle()).isEqualTo("원래 제목");
@@ -205,7 +225,9 @@ class PostServiceTest {
     void update_whenAdmin_updatesEvenIfNotAuthor() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
+        User admin = userWithEmail("admin@example.com", 2L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("admin@example.com"))).willReturn(Optional.of(admin));
 
         postService.update(100L, new PostUpdateRequestDto("관리자 수정", "관리자 수정", null, null, null),
                 authOf("admin@example.com", Role.ADMIN));
@@ -218,7 +240,9 @@ class PostServiceTest {
     void update_whenPostHasNoAuthor_throwsAccessDeniedExceptionForNonAdmin() {
         Post post = Post.builder().title("고아 게시글").content("c").user(null).build();
         ReflectionTestUtils.setField(post, "id", 200L);
+        User someone = userWithEmail("someone@example.com", 3L);
         given(postRepository.findById(200L)).willReturn(Optional.of(post));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("someone@example.com"))).willReturn(Optional.of(someone));
 
         assertThatThrownBy(() -> postService.update(200L, new PostUpdateRequestDto("x", "y", null, null, null),
                 authOf("someone@example.com", Role.USER)))
@@ -255,12 +279,13 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("delete: 게시글에 붙은 이미지의 삭제를 예약하고, 커밋 후 정리를 맡긴다")
+    @DisplayName("delete: 게시글에 붙은 이미지의 삭제를 예약하고, 커밋 후 그 이미지만 정리한다")
     void delete_whenPostHasImage_schedulesImageDeletionAndTriggersCleanup() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
         ReflectionTestUtils.setField(post, "picture", "/images/old.png");
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
+        given(postImageRegistry.markPostImagesForDeletion(100L)).willReturn(List.of(55L));
 
         postService.delete(100L, authOf("owner@example.com", Role.USER));
 
@@ -268,8 +293,9 @@ class PostServiceTest {
         var inOrder = org.mockito.Mockito.inOrder(postImageRegistry, postRepository);
         inOrder.verify(postImageRegistry).markPostImagesForDeletion(100L);
         inOrder.verify(postRepository).delete(post);
-        // 트랜잭션 밖에서 호출했으므로 AfterCommit이 즉시 실행된다.
-        verify(postImageCleaner).cleanPendingDeletions();
+        // 트랜잭션 밖에서 호출했으므로 AfterCommit이 즉시 실행된다. 이번 요청이 표시한
+        // id만 넘긴다 — 시스템 전체의 삭제 대기열을 매번 훑지 않는다.
+        verify(postImageCleaner).cleanPendingDeletionsFor(List.of(55L));
         verify(postImageService, never()).deleteIfExists(any());
     }
 
@@ -485,6 +511,7 @@ class PostServiceTest {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("owner@example.com"))).willReturn(Optional.of(owner));
 
         assertThatThrownBy(() -> postService.update(100L,
                 new PostUpdateRequestDto("제목", "내용", null, Category.NOTICE, null),
@@ -501,6 +528,7 @@ class PostServiceTest {
         Post post = postOf(owner, 100L);
         ReflectionTestUtils.setField(post, "version", 3L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("owner@example.com"))).willReturn(Optional.of(owner));
 
         assertThatThrownBy(() -> postService.update(100L,
                 new PostUpdateRequestDto("나중 저장", "내용", null, null, 1L),
@@ -517,6 +545,7 @@ class PostServiceTest {
         Post post = postOf(owner, 100L);
         ReflectionTestUtils.setField(post, "version", 3L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("owner@example.com"))).willReturn(Optional.of(owner));
 
         postService.update(100L, new PostUpdateRequestDto("수정됨", "내용", null, null, null),
                 authOf("owner@example.com", Role.USER));

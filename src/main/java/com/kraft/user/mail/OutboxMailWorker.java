@@ -31,7 +31,8 @@ import java.util.List;
  *
  * <h3>언제 도는가</h3>
  * 가입·재발송 직후 {@code @Async}로 한 번(사용자가 오래 기다리지 않게), 그리고 주기적으로 한 번
- * (앱이 내려갔거나 그때 실패한 것을 위해). 둘이 동시에 돌아도 1번의 상태 변경이 중복 발송을 막는다.
+ * (앱이 내려갔거나 그때 실패한 것을 위해). 둘이 동시에 돌아도 {@code claimBatch}의 행 잠금
+ * ({@code FOR UPDATE SKIP LOCKED}) 덕분에 같은 메일을 두 번 집지 않는다.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -54,6 +55,10 @@ public class OutboxMailWorker {
     @Value("${app.mail.stuck-after-ms:300000}")
     private long stuckAfterMs;
 
+    /** 종료 상태(SENT/FAILED) 행을 이 기간이 지나면 지운다. */
+    @Value("${app.mail.retention-days:30}")
+    private int retentionDays;
+
     /** 가입·재발송 직후 곧바로 한 번 돌린다. 호출한 요청의 트랜잭션·스레드와 분리된다. */
     @Async
     public void drainAsync() {
@@ -63,17 +68,37 @@ public class OutboxMailWorker {
     @Scheduled(initialDelayString = "${app.mail.drain-initial-delay-ms:30000}",
             fixedDelayString = "${app.mail.drain-interval-ms:60000}")
     public void drainScheduled() {
+        drain();
+    }
+
+    /**
+     * {@code enabled} 검사와 정체 재처리를 예약 실행에서만 하던 것을 여기로 옮겼다.
+     * 예전에는 {@code app.mail.enabled=false}로 꺼도 가입 직후 {@code drainAsync}가 그대로
+     * 발송을 진행했다 — 공유 진입점에서 한 번만 검사하면 두 경로 모두 같은 규칙을 따른다.
+     */
+    public void drain() {
         if (!enabled) {
             return;
         }
         store.requeueStuck(LocalDateTime.now().minus(Duration.ofMillis(stuckAfterMs)));
-        drain();
-    }
-
-    public void drain() {
         List<Long> ids = store.claimBatch(batchSize);
         for (Long id : ids) {
             store.load(id).ifPresent(this::send);
+        }
+    }
+
+    /**
+     * 종료된 지 오래된 SENT/FAILED 행을 지운다. 발송 자체와는 다른 관심사이므로
+     * {@code enabled} 플래그와 무관하게 항상 돈다 — 발송을 끄더라도 이력 정리는 계속되어야
+     * 테이블이 무한정 자라지 않는다.
+     */
+    @Scheduled(initialDelayString = "${app.mail.retention-initial-delay-ms:60000}",
+            fixedDelayString = "${app.mail.retention-interval-ms:86400000}")
+    public void cleanupOldTerminal() {
+        LocalDateTime threshold = LocalDateTime.now().minus(Duration.ofDays(retentionDays));
+        long removed = store.deleteOldTerminal(threshold);
+        if (removed > 0) {
+            log.info("보관 기한이 지난 아웃박스 메일 {}건을 정리했습니다.", removed);
         }
     }
 

@@ -27,6 +27,7 @@ export function useImageUpload({ initialUrl = null } = {}) {
     const previewUrl = ref(null);
     const removedExisting = ref(false);
     const uploadedUrl = ref(null);
+    const uploading = ref(false);
     let uploadedForFile = null;
 
     const hasFile = computed(() => file.value !== null);
@@ -91,6 +92,13 @@ export function useImageUpload({ initialUrl = null } = {}) {
     /**
      * 선택한 파일이 있으면 업로드해 URL을 돌려준다. 파일이 없으면 null. 같은 파일을 이미
      * 올렸다면 다시 올리지 않고 기억해 둔 URL을 쓴다(저장 실패 후 재시도 시 중복 업로드 방지).
+     * <p>
+     * 업로드 시작 시점의 파일을 {@code fileAtStart}로 고정해 둔다 — {@code await} 도중 사용자가
+     * 파일을 바꾸거나 선택을 해제하면 그 사이 {@code file.value}가 달라지는데, 응답이 온 뒤
+     * 그 달라진 값을 기준으로 캐시를 쓰면 A의 응답이 B의 URL로 잘못 기억되거나 이미 취소된
+     * 파일의 URL이 화면에 반영될 수 있었다(개선 보고서 "업로드 중 파일 교체로 URL 캐시가
+     * 다른 파일에 연결될 수 있다"). 응답이 왔을 때 선택이 이미 바뀌었으면 캐시에 쓰지 않고
+     * 그 응답을 버린다.
      */
     async function resolveUrl() {
         if (!file.value) {
@@ -100,12 +108,27 @@ export function useImageUpload({ initialUrl = null } = {}) {
             return uploadedUrl.value;
         }
 
+        const fileAtStart = file.value;
         const formData = new FormData();
-        formData.append('file', file.value);
-        const response = await api.upload(API.POST_IMAGES, formData);
+        formData.append('file', fileAtStart);
+
+        uploading.value = true;
+        let response;
+        try {
+            response = await api.upload(API.POST_IMAGES, formData);
+        } finally {
+            uploading.value = false;
+        }
+
+        if (file.value !== fileAtStart) {
+            // 응답을 기다리는 동안 선택이 바뀌었다. 이 응답은 이제 화면의 선택과 무관하므로
+            // 캐시에 반영하지 않는다 — 호출한 쪽은 다음 resolveUrl() 호출에서 현재 선택
+            // 기준으로 다시 업로드하게 된다.
+            return null;
+        }
 
         uploadedUrl.value = response.url;
-        uploadedForFile = file.value;
+        uploadedForFile = fileAtStart;
         return uploadedUrl.value;
     }
 
@@ -118,6 +141,7 @@ export function useImageUpload({ initialUrl = null } = {}) {
         showExistingPreview,
         fileLabel,
         removedExisting,
+        uploading,
         onFileSelected,
         clear,
         removeExisting,

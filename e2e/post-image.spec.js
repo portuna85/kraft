@@ -68,6 +68,37 @@ test('아이폰 HEIC는 이유를 설명하며 막는다', async ({ page }) => {
     await expect(page.locator('#flash')).toContainText('HEIC');
 });
 
+/**
+ * 업로드 응답을 기다리는 동안 파일 입력·선택 해제를 다시 누를 수 있으면, 그 사이 사용자가
+ * 파일을 바꾸거나 지운 뒤 늦게 도착한 응답이 엉뚱한 파일의 URL로 캐시를 덮어쓸 수 있다
+ * (개선 보고서 "업로드 중 파일 교체로 URL 캐시가 다른 파일에 연결될 수 있다"). 입력을
+ * 잠그면 그 경쟁 자체가 UI에서 일어나지 않는다.
+ */
+test('업로드 응답을 기다리는 동안에는 사진 입력과 선택 해제를 다시 누를 수 없다', async ({ page }) => {
+    const title = uniqueTitle('업로드중');
+
+    let releaseUpload;
+    const gate = new Promise((resolve) => {
+        releaseUpload = resolve;
+    });
+    await page.route('**/api/v1/posts/images', async (route) => {
+        await gate;
+        await route.continue();
+    });
+
+    await page.goto('/posts/save');
+    await page.locator('#title').fill(title);
+    await page.locator('#content').fill('업로드 중 잠금 테스트');
+    await page.locator('#picture').setInputFiles(pngFile());
+    await page.locator('#btn-save').click();
+
+    await expect(page.locator('#picture')).toBeDisabled();
+    await expect(page.locator('#btn-picture-clear')).toBeDisabled();
+
+    releaseUpload();
+    await page.waitForURL('/');
+});
+
 test('이미지를 붙여 글을 등록하면 상세에 그 이미지가 보인다', async ({ page }) => {
     const title = uniqueTitle('이미지');
 

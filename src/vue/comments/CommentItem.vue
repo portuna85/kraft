@@ -26,6 +26,12 @@ function startEdit() {
 }
 
 function cancelEdit() {
+    // 저장 요청이 진행 중일 때 취소하면 폼은 사라지지만 응답은 그대로 도착해, 이미 취소한
+    // 내용으로 되돌아온다(개선 보고서 "저장 중 댓글 변경과 동적 삭제 모듈 누락"). 버튼은
+    // saving일 때 비활성화되지만, 방어적으로 여기서도 막는다.
+    if (saving.value) {
+        return;
+    }
     editing.value = false;
 }
 
@@ -113,12 +119,14 @@ function formatDate(iso) {
           v-model="draftContent"
           class="form-control comment-edit__textarea"
           maxlength="1000"
+          :disabled="saving"
         />
       </div>
       <div class="btn-group-gap">
         <button
           type="button"
           class="btn btn-sm btn-secondary btn-comment-cancel"
+          :disabled="saving"
           @click="cancelEdit"
         >
           취소

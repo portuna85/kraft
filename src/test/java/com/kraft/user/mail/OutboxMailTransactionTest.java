@@ -10,12 +10,18 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
@@ -58,6 +64,19 @@ class OutboxMailTransactionTest {
     @Autowired
     private EmailVerificationTokenRepository tokenRepository;
 
+    @Autowired
+    private TransactionTemplate transactionTemplate;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    /**
+     * 겹친 트랜잭션을 만들기 위한 별도 템플릿. 기본 전파(REQUIRED)로는 바깥 트랜잭션에
+     * 참여해 같은 커넥션·잠금을 공유하므로 "다른 트랜잭션이 아직 커밋 전이라 행이 잠겨 있다"를
+     * 재현할 수 없다.
+     */
+    private TransactionTemplate requiresNew;
+
     /** 진짜 SMTP 대신 대역을 쓴다. 발송 시점의 트랜잭션 상태를 들여다보기 위해서다. */
     @MockitoBean
     private EmailSender emailSender;
@@ -69,6 +88,9 @@ class OutboxMailTransactionTest {
 
     @BeforeEach
     void setUp() {
+        requiresNew = new TransactionTemplate(transactionTemplate.getTransactionManager());
+        requiresNew.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+
         outboxMailRepository.deleteAll();
         tokenRepository.deleteAll();
 
@@ -222,6 +244,81 @@ class OutboxMailTransactionTest {
 
         assertThat(outboxMailRepository.findAll()).singleElement()
                 .satisfies(mail -> assertThat(mail.getSentAt()).isNotNull());
+    }
+
+    @Test
+    @DisplayName("F01: 커밋 전인 선점은 다른 선점 시도가 같은 행을 집지 못하게 막는다")
+    void claimBatch_holdsRowLockUntilCommit_soConcurrentClaimSkipsLockedRows() {
+        for (int i = 0; i < 3; i++) {
+            queueOne();
+        }
+
+        List<Long> outerIds = requiresNew.execute(status -> {
+            List<Long> claimed = outboxMailStore.claimBatch(3);
+
+            // 바깥 트랜잭션이 아직 커밋 전이라 방금 집은 행은 잠긴 채다. 이 시점에 독립된
+            // 트랜잭션이 같은 대상을 다시 선점하려 하면 SKIP LOCKED가 그 행들을 건너뛰어
+            // 빈 목록을 돌려줘야 한다 — 예전 SELECT-then-UPDATE 방식이라면 잠금이 없어
+            // 같은 행을 다시 집었을 것이다.
+            List<Long> innerIds = requiresNew.execute(inner -> outboxMailStore.claimBatch(3));
+
+            assertThat(innerIds).as("잠긴 행은 건너뛰어야 한다").isEmpty();
+            return claimed;
+        });
+
+        assertThat(outerIds).hasSize(3);
+        assertThat(outboxMailRepository.findAll())
+                .allMatch(mail -> mail.getStatus() == OutboxMailStatus.SENDING);
+    }
+
+    @Test
+    @DisplayName("F08: enabled=false면 drain이 아무 것도 집지 않는다")
+    void whenDisabled_drainDoesNothing() {
+        queueOne();
+        ReflectionTestUtils.setField(outboxMailWorker, "enabled", false);
+        try {
+            outboxMailWorker.drain();
+        } finally {
+            ReflectionTestUtils.setField(outboxMailWorker, "enabled", true);
+        }
+
+        assertThat(outboxMailRepository.findAll().get(0).getStatus()).isEqualTo(OutboxMailStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("F08: 보관 기한이 지난 SENT/FAILED만 정리하고 PENDING·최근 건은 남긴다")
+    void deleteOldTerminal_removesOnlyStaleTerminalMails() {
+        queueOne(); // PENDING, 최근
+        Long staleSentId = enqueueAndMarkSent();
+        Long freshSentId = enqueueAndMarkSent();
+
+        backdateUpdatedAt(staleSentId, LocalDateTime.now().minusDays(40));
+
+        long removed = outboxMailStore.deleteOldTerminal(LocalDateTime.now().minusDays(30));
+
+        assertThat(removed).isEqualTo(1);
+        Set<Long> remainingIds = new HashSet<>();
+        outboxMailRepository.findAll().forEach(mail -> remainingIds.add(mail.getId()));
+        assertThat(remainingIds).doesNotContain(staleSentId);
+        assertThat(remainingIds).contains(freshSentId);
+        assertThat(outboxMailRepository.count()).isEqualTo(2);
+    }
+
+    private Long enqueueAndMarkSent() {
+        outboxMailStore.enqueue(user, UUID.randomUUID().toString(), OutboxMailKind.VERIFY_EMAIL);
+        Long id = outboxMailRepository.findAll().stream()
+                .filter(mail -> mail.getStatus() == OutboxMailStatus.PENDING)
+                .findFirst().orElseThrow().getId();
+        outboxMailStore.markSent(id);
+        return id;
+    }
+
+    /**
+     * updatedAt은 {@code @LastModifiedDate} 감사 필드라 엔티티를 통해서는 "지금"만 넣을 수
+     * 있다. 오래전에 종료된 것처럼 만들려고 JDBC로 직접 갱신한다.
+     */
+    private void backdateUpdatedAt(Long id, LocalDateTime updatedAt) {
+        jdbcTemplate.update("UPDATE outbox_mails SET updated_at = ? WHERE id = ?", updatedAt, id);
     }
 
     /** 조건이 참이 될 때까지 짧게 기다린다. 비동기 경로라 즉시 참이 아닐 수 있다. */

@@ -56,6 +56,15 @@ public class PostImage extends BaseEntity {
     @Column(name = "size_bytes", nullable = false)
     private long sizeBytes;
 
+    /**
+     * 동시 첨부 경쟁을 막는다. 예전에는 조회 후 상태만 바꾸는 방식이라, 같은 미연결 이미지를
+     * 서로 다른 두 게시글이 동시에 붙이면 둘 다 검사를 통과해 마지막에 쓴 쪽이 조용히 이겼다.
+     * 낙관적 잠금이 있으면 나중에 flush되는 쪽이 {@code OptimisticLockingFailureException}으로
+     * 실패한다.
+     */
+    @Version
+    private long version;
+
     @Builder
     public PostImage(String fileName, User owner, long sizeBytes) {
         this.fileName = fileName;

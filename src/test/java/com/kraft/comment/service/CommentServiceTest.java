@@ -139,6 +139,7 @@ class CommentServiceTest {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("owner@example.com"))).willReturn(Optional.of(owner));
 
         Long id = commentService.update(100L, new CommentUpdateRequestDto("수정된 댓글"),
                 authOf("owner@example.com", Role.USER));
@@ -152,7 +153,9 @@ class CommentServiceTest {
     void update_whenNotAuthor_throwsAccessDeniedExceptionAndDoesNotModify() {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
+        User intruder = userWithEmail("intruder@example.com", 2L);
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("intruder@example.com"))).willReturn(Optional.of(intruder));
 
         assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("해킹"),
                 authOf("intruder@example.com", Role.USER)))
@@ -166,12 +169,30 @@ class CommentServiceTest {
     void update_whenAdmin_updatesContentEvenIfNotAuthor() {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
+        User admin = userWithEmail("admin@example.com", 2L);
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("admin@example.com"))).willReturn(Optional.of(admin));
 
         commentService.update(100L, new CommentUpdateRequestDto("관리자 수정"),
                 authOf("admin@example.com", Role.ADMIN));
 
         assertThat(comment.getContent()).isEqualTo("관리자 수정");
+    }
+
+    @Test
+    @DisplayName("update: 정지된 작성자는 자신의 댓글도 수정할 수 없다")
+    void update_whenAuthorIsSuspended_throwsAccessDeniedExceptionAndDoesNotModify() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        owner.suspendUntil(java.time.LocalDateTime.now().plusDays(1), "규정 위반");
+        Comment comment = commentOf(owner, 100L);
+        given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("owner@example.com"))).willReturn(Optional.of(owner));
+
+        assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("수정 시도"),
+                authOf("owner@example.com", Role.USER)))
+                .isInstanceOf(AccessDeniedException.class);
+
+        assertThat(comment.getContent()).isEqualTo("원래 댓글");
     }
 
     @Test
