@@ -45,10 +45,15 @@ SIZE=$(stat -c%s "$INCOMING")
 log "수신 완료: ${SIZE} 바이트"
 
 # 2. 검증. 여기서 걸러내지 못하면 깨진 파일로 운영을 재시작하게 된다.
+#    unzip -l 출력을 grep -q로 바로 파이프하지 않는다 — grep -q는 첫 매치에서 즉시
+#    종료하는데, 목록이 아직 남은 unzip이 닫힌 파이프에 쓰다 SIGPIPE로 죽으면(종료코드
+#    141) set -o pipefail이 이를 파이프 전체의 실패로 본다. grep이 실제로는 찾았어도
+#    실패 처리되는 것을 실제로 겪었다 — 출력을 변수로 먼저 다 받고 순수 bash 패턴
+#    매칭으로 검사해 파이프 자체를 없앤다.
 [ "$SIZE" -gt 1000000 ] || fail "받은 파일이 너무 작다(${SIZE} 바이트). jar가 아니다"
 [ "$(head -c2 "$INCOMING")" = "PK" ] || fail "ZIP 시그니처가 없다. jar가 아니다"
-unzip -l "$INCOMING" > /dev/null 2>&1 || fail "압축이 깨졌다"
-unzip -l "$INCOMING" 2>/dev/null | grep -q 'BOOT-INF/' || fail "Spring Boot 실행 jar가 아니다"
+UNZIP_LISTING=$(unzip -l "$INCOMING" 2>/dev/null) || fail "압축이 깨졌다"
+[[ "$UNZIP_LISTING" == *"BOOT-INF/"* ]] || fail "Spring Boot 실행 jar가 아니다"
 log "검증 통과"
 
 # 3. DB 스냅샷.
