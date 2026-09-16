@@ -73,3 +73,21 @@ export async function login(page, email, password = PASSWORD) {
     await page.getByRole('button', { name: '로그인' }).click();
     await page.waitForURL((url) => !url.pathname.startsWith('/login'));
 }
+
+/**
+ * 768px 미만에서는 계정 메뉴(로그인·비밀번호 변경·회원 탈퇴·로그아웃 등)가 "메뉴" 토글
+ * 뒤에 `hidden`으로 접혀 있다(layout/navbar.html, site-nav.js). 그 안의 버튼·링크를
+ * 누르기 전에 이 함수를 불러야 한다 — 768px 이상에서는 토글 자체가 숨어 있으므로
+ * `isVisible()`이 false라 아무 일도 하지 않는다(그 화면에서는 메뉴가 항상 펼쳐져 있다).
+ */
+export async function openAccountMenu(page) {
+    const toggle = page.locator('#btn-nav-toggle');
+    if (!(await toggle.isVisible())) {
+        return; // 768px 이상에서는 토글 자체가 숨어 있다 — 메뉴가 항상 펼쳐져 있다.
+    }
+    // 이미 열려 있으면 다시 누르지 않는다 — site-nav.js의 토글은 현재 상태를 뒤집으므로,
+    // 열린 채로 한 번 더 부르면 오히려 닫혀 버린다.
+    if (await page.locator('#site-nav').isHidden()) {
+        await toggle.click();
+    }
+}

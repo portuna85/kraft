@@ -1,4 +1,4 @@
-import { test, expect, storageStateFor } from './fixtures.js';
+import { test, expect, storageStateFor, openAccountMenu } from './fixtures.js';
 
 /**
  * 시각 회귀 기준선.
@@ -54,6 +54,7 @@ test.describe('로그인 후 화면', () => {
 
     test('비밀번호 변경 모달', async ({ page }) => {
         await page.goto('/');
+        await openAccountMenu(page);
         await page.getByRole('button', { name: '비밀번호 변경' }).click();
         const modal = page.locator('#changePasswordModal');
         await expect(modal).toBeVisible();

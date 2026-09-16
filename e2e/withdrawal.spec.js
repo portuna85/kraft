@@ -1,4 +1,4 @@
-import { test, expect, PASSWORD, login, uniqueTitle } from './fixtures.js';
+import { test, expect, PASSWORD, login, openAccountMenu, uniqueTitle } from './fixtures.js';
 
 // 계정을 실제로 없애므로 시드 계정을 쓰지 않는다. 매번 이 스펙 전용 계정을 만든다.
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -16,6 +16,7 @@ async function signUpAndLogin(page, email) {
 
 async function openWithdrawModal(page) {
     await page.goto('/');
+    await openAccountMenu(page);
     await page.locator('#btn-withdraw').click();
     await expect(page.locator('#withdrawModal')).toBeVisible();
 }
@@ -64,6 +65,7 @@ test('비밀번호가 틀리면 모달 안에서 알려주고 계정은 그대�
     // 계정이 살아 있어야 한다 — 다시 로그인해 확인한다.
     await page.goto('/');
     await login(page, email);
+    await openAccountMenu(page);
     await expect(page.locator('.kraft-actions__name')).toBeVisible();
 });
 

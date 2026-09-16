@@ -1,4 +1,4 @@
-import { test, expect, PASSWORD, login, uniqueTitle } from './fixtures.js';
+import { test, expect, PASSWORD, login, openAccountMenu, uniqueTitle } from './fixtures.js';
 
 // 비밀번호를 잊은 사람의 흐름이므로 로그인 상태 없이 돈다.
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -62,6 +62,7 @@ test('메일 링크로 새 비밀번호를 정하고 그 비밀번호로 로그�
 
     // 새 비밀번호로는 들어간다.
     await login(page, email, newPassword);
+    await openAccountMenu(page);
     await expect(page.locator('.kraft-actions__name')).toBeVisible();
 
     // 링크는 1회용이다. 메일함에 남은 같은 링크를 다시 열어도 통하지 않는다.

@@ -1,10 +1,11 @@
-import { test, expect, ACCOUNTS, PASSWORD, storageStateFor, login, uniqueTitle } from './fixtures.js';
+import { test, expect, ACCOUNTS, PASSWORD, storageStateFor, login, openAccountMenu, uniqueTitle } from './fixtures.js';
 
 test.describe('비밀번호 변경', () => {
     test.use({ storageState: storageStateFor('other') });
 
     test('현재 비밀번호가 틀리면 모달 안에서 알려준다', async ({ page }) => {
         await page.goto('/');
+        await openAccountMenu(page);
         await page.getByRole('button', { name: '비밀번호 변경' }).click();
 
         const modal = page.locator('#changePasswordModal');
@@ -28,6 +29,7 @@ test.describe('비밀번호 변경', () => {
         });
 
         await page.goto('/');
+        await openAccountMenu(page);
         await page.getByRole('button', { name: '비밀번호 변경' }).click();
         await expect(page.locator('#changePasswordModal')).toBeVisible();
 
@@ -53,6 +55,7 @@ test.describe('비밀번호 변경 성공', () => {
         const newPassword = `New${uniqueTitle('p').slice(-6)}!aA1`;
 
         await login(page, ACCOUNTS.admin.email);
+        await openAccountMenu(page);
         await page.getByRole('button', { name: '비밀번호 변경' }).click();
         await page.locator('#currentPassword').fill(PASSWORD);
         await page.locator('#newPassword').fill(newPassword);
@@ -63,6 +66,7 @@ test.describe('비밀번호 변경 성공', () => {
 
         // 새 비밀번호로만 들어갈 수 있다.
         await login(page, ACCOUNTS.admin.email, newPassword);
+        await openAccountMenu(page);
         await expect(page.locator('.kraft-actions__name')).toContainText(ACCOUNTS.admin.name);
 
         // 다음 실행을 위해 되돌린다.
@@ -99,6 +103,7 @@ test.describe('비밀번호 앞뒤 공백', () => {
         await login(page, email, paddedPassword);
 
         const newPassword = `New${uniqueTitle('p').slice(-6)}!aA1`;
+        await openAccountMenu(page);
         await page.getByRole('button', { name: '비밀번호 변경' }).click();
         await page.locator('#currentPassword').fill(paddedPassword);
         await page.locator('#newPassword').fill(newPassword);
@@ -107,6 +112,7 @@ test.describe('비밀번호 앞뒤 공백', () => {
         await page.waitForURL(/\/login/);
         await expect(page.locator('#flash')).toContainText('비밀번호가 변경되었습니다');
         await login(page, email, newPassword);
+        await openAccountMenu(page);
         await expect(page.locator('.kraft-actions__name')).toContainText('공백테스트');
     });
 });
@@ -116,6 +122,7 @@ test.describe('인증 메일 재발송', () => {
 
     test('미인증 계정은 재발송을 요청할 수 있다', async ({ page }) => {
         await page.goto('/');
+        await openAccountMenu(page);
         await page.locator('#btn-resend-verification').click();
 
         const modal = page.locator('#resendVerificationModal');

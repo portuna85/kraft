@@ -1,4 +1,4 @@
-import { test, expect, ACCOUNTS, storageStateFor } from './fixtures.js';
+import { test, expect, ACCOUNTS, storageStateFor, openAccountMenu } from './fixtures.js';
 
 test.describe('모바일 헤더 메뉴', () => {
     test.use({ storageState: storageStateFor('user'), viewport: { width: 390, height: 844 } });
@@ -42,6 +42,7 @@ test.describe('로그인 복귀', () => {
     test('검색 중이던 화면에서 로그인하면 검색어까지 유지된다', async ({ page }) => {
         await page.goto('/?q=%EA%B3%B5%EC%A7%80');
 
+        await openAccountMenu(page);
         await page.getByRole('link', { name: '로그인' }).click();
         await page.locator('#username').fill('user@e2e.test');
         await page.locator('#password').fill('E2e!pass1');
