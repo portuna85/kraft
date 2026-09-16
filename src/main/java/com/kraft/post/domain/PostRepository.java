@@ -15,6 +15,10 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      * 목록 검색·분류 조회. {@code keyword}는 제목 OR 본문에 대소문자 구분 없이 포함되면
      * 매치되고, {@code category}와 함께 지정하면 AND로 좁혀진다. 두 조건 모두 null이면
      * {@link #findAllDesc}과 동일하게 전체 목록을 최신순으로 반환한다.
+     * <p>
+     * 후속 과제: 목록 화면은 제목·작성자·날짜·분류·조회수만 쓰는데 여기서는 {@code content}
+     * TEXT 컬럼을 포함한 전체 엔티티를 가져온다(개선 보고서 "게시판 목록의 불필요한 열과
+     * 집계"). projection으로 좁히면 전송량을 줄일 수 있지만, 이번 범위에서는 다루지 않는다.
      */
     @Query(value = "SELECT p FROM Post p JOIN FETCH p.user "
             + "WHERE (:category IS NULL OR p.category = :category) "
@@ -31,6 +35,13 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     @Query("SELECT p FROM Post p JOIN FETCH p.user ORDER BY p.viewCount DESC, p.id DESC")
     List<Post> findTopByViewCountDesc(Pageable pageable);
+
+    /**
+     * 여러 id를 한 번에 조회한다(N+1 방지). 신고 목록이 페이지 안의 게시글 대상들을 한 번에
+     * 묶어 조회할 때 쓴다(개선 보고서 "신고 목록의 대상별 조회").
+     */
+    @Query("SELECT p FROM Post p JOIN FETCH p.user WHERE p.id IN :ids")
+    List<Post> findAllByIdInWithUser(@Param("ids") List<Long> ids);
 
     /**
      * 조회수만 원자적으로 1 늘린다. 엔티티를 읽어 필드를 바꾸고 변경 감지에 맡기면 Hibernate가

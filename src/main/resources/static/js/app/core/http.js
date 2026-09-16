@@ -17,6 +17,12 @@ const FORBIDDEN =
     '권한이 없거나 세션·보안 토큰이 만료되었습니다. 새로고침 후 다시 시도하거나 다시 로그인해 주세요.';
 const NETWORK = '네트워크 오류가 발생했습니다. 다시 시도해 주세요.';
 const GENERIC = '오류가 발생했습니다.';
+const PARSE_FAILED = '서버 응답을 해석할 수 없습니다. 다시 시도해 주세요.';
+const TIMEOUT = '요청 시간이 초과되었습니다. 다시 시도해 주세요.';
+
+/** 대부분의 요청에 쓰는 기본 타임아웃. 업로드는 더 오래 걸릴 수 있어 따로 넉넉히 둔다. */
+const DEFAULT_TIMEOUT_MS = 15_000;
+const UPLOAD_TIMEOUT_MS = 60_000;
 
 /**
  * 사용자에게 그대로 보여줄 수 있는 한국어 메시지를 담은 오류.
@@ -52,7 +58,18 @@ async function parse(response) {
     const contentType = response.headers.get('content-type') ?? '';
     const text = await response.text();
     const isJson = contentType.includes('json');
-    const body = isJson && text ? JSON.parse(text) : null;
+    // Content-Type이 JSON이라고 해도 본문이 실제로 유효한 JSON이라는 보장은 없다(끊긴 응답,
+    // 프록시가 끼워 넣은 오류 페이지 등). 이전에는 이 JSON.parse가 그대로 던져 ApiError로
+    // 분류되지 못한 채 호출부까지 원시 SyntaxError로 새어 나갔다(개선 보고서 "프런트엔드
+    // 오류 분류와 타입 검사 범위").
+    let body = null;
+    if (isJson && text) {
+        try {
+            body = JSON.parse(text);
+        } catch {
+            throw new ApiError(PARSE_FAILED, { status: response.status, kind: 'parse' });
+        }
+    }
 
     if (response.ok) {
         // 3a. 본문 없는 200. 비밀번호 변경·인증메일 재발송이 ResponseEntity<Void>라 여기 온다.
@@ -81,7 +98,7 @@ async function parse(response) {
     throw new ApiError(GENERIC, { status: response.status });
 }
 
-async function request(url, { method = 'GET', json, formData } = {}) {
+async function request(url, { method = 'GET', json, formData, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
     const headers = { Accept: 'application/json' };
     let body;
 
@@ -94,6 +111,12 @@ async function request(url, { method = 'GET', json, formData } = {}) {
         body = formData;
     }
 
+    // 예전에는 타임아웃이 아예 없어 응답이 오지 않는 요청이 화면에서 영원히 멈췄다(개선
+    // 보고서 "프런트엔드 오류 분류와 타입 검사 범위"). AbortController로 일정 시간 뒤 요청을
+    // 스스로 취소한다.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
     let response;
     try {
         response = await fetch(url, {
@@ -102,10 +125,16 @@ async function request(url, { method = 'GET', json, formData } = {}) {
             body,
             credentials: 'same-origin',
             redirect: 'follow',
+            signal: controller.signal,
         });
-    } catch {
+    } catch (error) {
+        if (error?.name === 'AbortError') {
+            throw new ApiError(TIMEOUT, { status: 0, kind: 'timeout' });
+        }
         // fetch 자체가 거부되는 것은 네트워크 단절이다(상태 코드가 없다).
         throw new ApiError(NETWORK, { status: 0, kind: 'network' });
+    } finally {
+        clearTimeout(timer);
     }
 
     return parse(response);
@@ -118,8 +147,11 @@ export const api = {
     // 본문 있는 DELETE는 드물지만 표준이 금지하지 않는다. 회원 탈퇴가 현재 비밀번호를 함께
     // 보낸다 — 되돌릴 수 없는 작업이라 서버가 한 번 더 확인한다.
     del: (url, json) => request(url, { method: 'DELETE', json }),
-    /** multipart 업로드. 헤더를 받지 않는 별도 메서드로 두어 Content-Type 실수를 막는다. */
-    upload: (url, formData) => request(url, { method: 'POST', formData }),
+    /**
+     * multipart 업로드. 헤더를 받지 않는 별도 메서드로 두어 Content-Type 실수를 막는다.
+     * 이미지 업로드는 느린 회선에서 기본 타임아웃보다 오래 걸릴 수 있어 더 넉넉히 잡는다.
+     */
+    upload: (url, formData) => request(url, { method: 'POST', formData, timeoutMs: UPLOAD_TIMEOUT_MS }),
 };
 
 /**

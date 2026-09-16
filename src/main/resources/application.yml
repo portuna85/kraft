@@ -17,6 +17,13 @@ spring:
   jpa:
     open-in-view: false
 
+  data:
+    web:
+      pageable:
+        # 클라이언트가 size= 파라미터로 임의의 큰 페이지를 요청하지 못하게 상한을 둔다
+        # (개선 보고서 "검색과 깊은 페이지의 비용"). 기존 테스트의 최대 사용값(50)과 같다.
+        max-page-size: 50
+
   flyway:
     # local(Docker MariaDB, ddl-auto: update)과 test(H2, create-drop)는 Hibernate가 엔티티
     # 매핑으로 스키마를 직접 만들므로 Flyway를 끈다. 운영(application-prod.yml)에서만

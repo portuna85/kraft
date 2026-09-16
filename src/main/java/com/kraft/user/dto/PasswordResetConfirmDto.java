@@ -15,7 +15,7 @@ public record PasswordResetConfirmDto(
         String token,
 
         @NotBlank(message = "새 비밀번호는 필수입니다.")
-        @Size(min = 8, message = "새 비밀번호는 8자 이상이어야 합니다.")
+        @Size(min = 8, max = 72, message = "새 비밀번호는 8자 이상 72자 이하여야 합니다.")
         @Pattern(
                 regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*[^a-zA-Z0-9]).*$",
                 message = "새 비밀번호는 대문자, 소문자, 특수문자를 각각 1자 이상 포함해야 합니다."

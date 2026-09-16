@@ -85,6 +85,22 @@ class HealthSnapshotTest {
     }
 
     @Test
+    @DisplayName("디스크가 진짜로 가득 찼으면(0바이트) '측정 불가'로 오인하지 않고 남긴다")
+    void diskCompletelyFullIsReported() {
+        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 0L, 0, 0, 0);
+
+        assertThat(snapshot.breaches(LIMITS)).anyMatch(line -> line.startsWith("디스크 여유"));
+    }
+
+    @Test
+    @DisplayName("디스크 측정이 실패했으면(-1) 경보하지 않는다")
+    void diskMeasurementUnavailableIsNotReported() {
+        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, -1L, 0, 0, 0);
+
+        assertThat(snapshot.breaches(LIMITS)).isEmpty();
+    }
+
+    @Test
     @DisplayName("메일이 나가지 않고 쌓이면 대기와 포기를 구분해 남긴다")
     void mailBacklogIsReported() {
         HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 50, 3, 0);

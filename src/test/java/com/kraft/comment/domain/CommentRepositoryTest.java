@@ -100,6 +100,11 @@ class CommentRepositoryTest {
     void deletePost_succeedsWithoutForeignKeyViolation_whenCommentsDeletedFirst() {
         commentRepository.save(Comment.builder().content("댓글").post(post).user(user).build());
         em.flush();
+        // 벌크 JPQL DELETE는 영속성 컨텍스트(1차 캐시)를 갱신하지 않는다 — DB에서는 이미 지워진
+        // Comment를 세션이 여전히 "관리 중"으로 들고 있으면, 뒤이은 post 삭제 flush에서
+        // Hibernate가 그 엔티티의 연관관계를 다시 점검하다 엉뚱한 오류를 낸다. 비워서 실제
+        // 운영 코드(PostService.delete)처럼 남겨 둔 엔티티 없이 진행한다.
+        em.clear();
 
         commentRepository.deleteAllByPostId(post.getId());
         postRepository.delete(post);

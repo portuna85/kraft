@@ -11,6 +11,7 @@ import com.kraft.report.domain.ReportRepository;
 import com.kraft.report.domain.ReportStatus;
 import com.kraft.report.domain.ReportTargetType;
 import com.kraft.report.dto.ReportSaveRequestDto;
+import com.kraft.report.dto.ReportViewDto;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
@@ -21,6 +22,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -28,6 +32,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -247,6 +252,68 @@ class ReportServiceTest {
                 .hasMessageContaining("이미 처리된 신고");
 
         verify(postService, never()).delete(anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("findPending: 대상 종류별로 배치 조회해 미리보기·작성자를 채우고, 삭제된 대상은 null로 남긴다")
+    void findPending_batchFetchesTargetsByTypeAndFillsPreviewAndAuthor() {
+        User postAuthor = userWithId(2L, "post-author@example.com");
+        User commentAuthor = userWithId(3L, "comment-author@example.com");
+
+        Report postReport = Report.builder()
+                .reporter(userWithId(1L, REPORTER_EMAIL))
+                .targetType(ReportTargetType.POST).targetId(10L).reason(ReportReason.SPAM).build();
+        ReflectionTestUtils.setField(postReport, "id", 100L);
+        Report commentReport = Report.builder()
+                .reporter(userWithId(1L, REPORTER_EMAIL))
+                .targetType(ReportTargetType.COMMENT).targetId(20L).reason(ReportReason.ABUSE).build();
+        ReflectionTestUtils.setField(commentReport, "id", 101L);
+        Report missingTargetReport = Report.builder()
+                .reporter(userWithId(1L, REPORTER_EMAIL))
+                .targetType(ReportTargetType.POST).targetId(999L).reason(ReportReason.OTHER).build();
+        ReflectionTestUtils.setField(missingTargetReport, "id", 102L);
+
+        Post post = postBy(postAuthor);
+        ReflectionTestUtils.setField(post, "id", 10L);
+        Comment comment = Comment.builder().content("문제가 되는 댓글").post(post).user(commentAuthor).build();
+        ReflectionTestUtils.setField(comment, "id", 20L);
+
+        PageRequest pageable = PageRequest.of(0, 10);
+        given(reportRepository.findByStatusOrderByIdAsc(ReportStatus.PENDING, pageable))
+                .willReturn(new PageImpl<>(List.of(postReport, commentReport, missingTargetReport), pageable, 3));
+        // missingTargetReport(999L)는 이미 지워진 대상이라 배치 조회 결과에 포함되지 않는다.
+        given(postRepository.findAllByIdInWithUser(List.of(10L, 999L))).willReturn(List.of(post));
+        given(commentRepository.findAllByIdInWithUser(List.of(20L))).willReturn(List.of(comment));
+
+        Page<ReportViewDto> result = reportService.findPending(pageable);
+
+        ReportViewDto postView = result.getContent().stream()
+                .filter(v -> v.id().equals(100L)).findFirst().orElseThrow();
+        assertThat(postView.targetPreview()).isEqualTo("제목");
+        assertThat(postView.targetAuthor()).isEqualTo(postAuthor.getName());
+
+        ReportViewDto commentView = result.getContent().stream()
+                .filter(v -> v.id().equals(101L)).findFirst().orElseThrow();
+        assertThat(commentView.targetPreview()).isEqualTo("문제가 되는 댓글");
+        assertThat(commentView.targetAuthor()).isEqualTo(commentAuthor.getName());
+
+        ReportViewDto missingView = result.getContent().stream()
+                .filter(v -> v.id().equals(102L)).findFirst().orElseThrow();
+        assertThat(missingView.targetPreview()).isNull();
+        assertThat(missingView.targetAuthor()).isNull();
+    }
+
+    @Test
+    @DisplayName("findPending: 대기 목록이 비어 있으면 대상 배치 조회 자체를 하지 않는다")
+    void findPending_whenPageIsEmpty_skipsBatchFetch() {
+        PageRequest pageable = PageRequest.of(0, 10);
+        given(reportRepository.findByStatusOrderByIdAsc(ReportStatus.PENDING, pageable))
+                .willReturn(new PageImpl<>(List.of(), pageable, 0));
+
+        reportService.findPending(pageable);
+
+        verify(postRepository, never()).findAllByIdInWithUser(any());
+        verify(commentRepository, never()).findAllByIdInWithUser(any());
     }
 
     @Test

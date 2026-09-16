@@ -11,7 +11,10 @@ import java.util.List;
  * @param poolActive    지금 쓰고 있는 DB 커넥션 수
  * @param poolTotal     풀 크기. 알 수 없으면 0
  * @param poolPending   커넥션을 기다리는 스레드 수
- * @param diskFreeBytes 업로드 디렉터리 쪽 여유 공간
+ * @param diskFreeBytes 업로드 디렉터리 쪽 여유 공간. {@code -1}은 측정 자체가 불가능했다는
+ *                      뜻이고, {@code 0}은 실제로 디스크가 가득 찼다는 뜻이다 — 둘을 같은 값으로
+ *                      두면 가장 위험한 "진짜 0바이트" 상태가 "측정 불가"로 오인되어 경보 대상에서
+ *                      빠진다
  * @param mailPending   발송 대기 중인 메일
  * @param mailFailed    재시도를 모두 소진한 메일
  * @param reportsPending 관리자가 아직 처리하지 않은 신고
@@ -63,7 +66,7 @@ public record HealthSnapshot(
             found.add("DB 커넥션 %d/%d 사용 중, 대기 %d (기준 %.0f%%)"
                     .formatted(poolActive, poolTotal, poolPending, limits.poolUsage() * 100));
         }
-        if (diskFreeBytes > 0 && diskFreeBytes < limits.diskFreeBytes()) {
+        if (diskFreeBytes >= 0 && diskFreeBytes < limits.diskFreeBytes()) {
             found.add("디스크 여유 %dMB (기준 %dMB)"
                     .formatted(diskFreeBytes / 1048576, limits.diskFreeBytes() / 1048576));
         }

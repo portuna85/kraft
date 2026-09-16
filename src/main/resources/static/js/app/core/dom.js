@@ -87,6 +87,18 @@ export function setBusy(target, busy) {
 export const valueOf = (target) => ('value' in (target || {}) ? /** @type {HTMLInputElement} */ (target).value.trim() : '');
 
 /**
+ * 값을 trim 없이 그대로 읽는다. 비밀번호 전용이다 — 앞뒤 공백도 사용자가 실제로 입력한
+ * 값의 일부이므로, 회원가입(SignupApp.vue)이 원문을 그대로 보내는 정책과 다른 진입점이
+ * 어긋나면 안 된다. 예전에는 이 파일의 비밀번호 필드도 {@link valueOf}로 읽어 trim됐는데,
+ * 그 값으로 만든 계정을 나중에 같은(공백 포함) 비밀번호로 "현재 비밀번호" 확인을 하면
+ * 서버가 일치하지 않는다고 거절했다(개선 보고서 "비밀번호 공백 처리 불일치와 길이 정책").
+ *
+ * @param {HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | Element | null} target
+ * @returns {string}
+ */
+export const rawValueOf = (target) => ('value' in (target || {}) ? /** @type {HTMLInputElement} */ (target).value : '');
+
+/**
  * @param {Element | null} target
  * @param {string | number | null | undefined} text
  */

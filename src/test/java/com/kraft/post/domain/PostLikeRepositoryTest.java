@@ -98,6 +98,9 @@ class PostLikeRepositoryTest {
     void deletePost_succeedsWithoutForeignKeyViolation_whenLikesDeletedFirst() {
         postLikeRepository.save(PostLike.builder().post(post).user(liker).build());
         em.flush();
+        // 벌크 JPQL DELETE는 영속성 컨텍스트를 갱신하지 않는다 — 이미 지워진 PostLike를 세션이
+        // 계속 "관리 중"으로 들고 있으면 뒤이은 post 삭제 flush에서 연관관계 점검이 꼬인다.
+        em.clear();
 
         postLikeRepository.deleteAllByPostId(post.getId());
         postRepository.delete(post);

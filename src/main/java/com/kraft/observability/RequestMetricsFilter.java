@@ -31,6 +31,15 @@ public class RequestMetricsFilter extends OncePerRequestFilter {
                 || path.equals("/favicon.ico");
     }
 
+    /**
+     * 알려진 한계: 아래 요청 밖으로 던져진 예외가 있으면 {@code response.getStatus()}는 이
+     * {@code finally}가 도는 시점의 값을 읽는다. 서블릿 컨테이너가 예외를 실제 5xx 응답으로
+     * 바꾸는 처리(스프링의 예외 → 상태 변환, {@code /error} 재디스패치 등)가 이 필터 바깥,
+     * 더 나중에 일어날 수 있어 그 최종 상태를 여기서는 확정적으로 알 수 없다(개선 보고서
+     * "관측값의 경계와 의미"). 정확히 맞추려면 상태를 추정하는 임시방편을 넣기보다 서블릿
+     * 컨테이너·Spring MVC의 예외 처리 순서 자체를 다시 설계해야 하므로, 이번에는 한계로만
+     * 남겨 둔다.
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {

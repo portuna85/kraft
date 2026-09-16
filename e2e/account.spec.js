@@ -74,6 +74,43 @@ test.describe('비밀번호 변경 성공', () => {
     });
 });
 
+test.describe('비밀번호 앞뒤 공백', () => {
+    // 가입부터 시작하므로 로그인 상태 없이 돈다.
+    test.use({ storageState: { cookies: [], origins: [] } });
+
+    /**
+     * 예전에는 회원가입·재설정은 비밀번호 원문을 그대로 보내는데, 비밀번호 변경·탈퇴 모달만
+     * dom.js의 trim하는 valueOf()로 값을 읽었다. 그래서 앞뒤 공백을 포함해 가입한 비밀번호를
+     * "현재 비밀번호"로 그대로 입력해도 trim된 값과 비교되어 거절됐다(개선 보고서 "비밀번호
+     * 공백 처리 불일치와 길이 정책"). 이제는 어디서도 trim하지 않아야 한다.
+     */
+    test('공백을 포함해 가입한 비밀번호를 그대로 입력해도 비밀번호 변경이 통과한다', async ({ page }) => {
+        const email = `${uniqueTitle('space').toLowerCase()}@e2e.test`;
+        const paddedPassword = `  ${PASSWORD}  `;
+
+        await page.goto('/signup');
+        await page.locator('#name').fill('공백테스트');
+        await page.locator('#email').fill(email);
+        await page.locator('#password').fill(paddedPassword);
+        await page.locator('#passwordConfirm').fill(paddedPassword);
+        await page.locator('#btn-signup').click();
+        await page.waitForURL(/\/login/);
+
+        await login(page, email, paddedPassword);
+
+        const newPassword = `New${uniqueTitle('p').slice(-6)}!aA1`;
+        await page.getByRole('button', { name: '비밀번호 변경' }).click();
+        await page.locator('#currentPassword').fill(paddedPassword);
+        await page.locator('#newPassword').fill(newPassword);
+        await page.locator('#btn-change-password').click();
+
+        await page.waitForURL(/\/login/);
+        await expect(page.locator('#flash')).toContainText('비밀번호가 변경되었습니다');
+        await login(page, email, newPassword);
+        await expect(page.locator('.kraft-actions__name')).toContainText('공백테스트');
+    });
+});
+
 test.describe('인증 메일 재발송', () => {
     test.use({ storageState: storageStateFor('guest') });
 

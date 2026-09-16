@@ -25,7 +25,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * 신고 접수와 처리.
@@ -87,10 +91,33 @@ public class ReportService {
         return saved.getId();
     }
 
-    /** 관리자 화면의 대기 목록. 오래된 신고부터 본다. */
+    /**
+     * 관리자 화면의 대기 목록. 오래된 신고부터 본다.
+     * <p>
+     * 예전에는 행마다 대상(게시글/댓글)을 따로 조회했다(개선 보고서 "신고 목록의 대상별
+     * 조회") — 페이지 하나(최대 20건)에 최대 20번의 추가 조회가 났다. 페이지를 가져온 뒤
+     * 대상 종류별로 id를 모아 한 번씩만 배치 조회하고, 그 결과를 메모리에서 매핑한다.
+     */
     public Page<ReportViewDto> findPending(Pageable pageable) {
-        return reportRepository.findByStatusOrderByIdAsc(ReportStatus.PENDING, pageable)
-                .map(this::toView);
+        Page<Report> page = reportRepository.findByStatusOrderByIdAsc(ReportStatus.PENDING, pageable);
+
+        List<Long> postIds = page.getContent().stream()
+                .filter(r -> r.getTargetType() == ReportTargetType.POST)
+                .map(Report::getTargetId)
+                .toList();
+        List<Long> commentIds = page.getContent().stream()
+                .filter(r -> r.getTargetType() == ReportTargetType.COMMENT)
+                .map(Report::getTargetId)
+                .toList();
+
+        Map<Long, Post> posts = postIds.isEmpty() ? Map.of()
+                : postRepository.findAllByIdInWithUser(postIds).stream()
+                        .collect(Collectors.toMap(Post::getId, Function.identity()));
+        Map<Long, Comment> comments = commentIds.isEmpty() ? Map.of()
+                : commentRepository.findAllByIdInWithUser(commentIds).stream()
+                        .collect(Collectors.toMap(Comment::getId, Function.identity()));
+
+        return page.map(report -> toView(report, posts, comments));
     }
 
     public long countPending() {
@@ -184,18 +211,22 @@ public class ReportService {
         return commentRepository.findById(targetId).map(Comment::getUser);
     }
 
-    private ReportViewDto toView(Report report) {
+    private ReportViewDto toView(Report report, Map<Long, Post> posts, Map<Long, Comment> comments) {
         String preview = null;
         String author = null;
 
         if (report.getTargetType() == ReportTargetType.POST) {
-            Optional<Post> post = postRepository.findById(report.getTargetId());
-            preview = post.map(p -> shorten(p.getTitle())).orElse(null);
-            author = post.map(p -> p.getUser().getName()).orElse(null);
+            Post post = posts.get(report.getTargetId());
+            if (post != null) {
+                preview = shorten(post.getTitle());
+                author = post.getUser().getName();
+            }
         } else {
-            Optional<Comment> comment = commentRepository.findById(report.getTargetId());
-            preview = comment.map(c -> shorten(c.getContent())).orElse(null);
-            author = comment.map(c -> c.getUser().getName()).orElse(null);
+            Comment comment = comments.get(report.getTargetId());
+            if (comment != null) {
+                preview = shorten(comment.getContent());
+                author = comment.getUser().getName();
+            }
         }
 
         return new ReportViewDto(

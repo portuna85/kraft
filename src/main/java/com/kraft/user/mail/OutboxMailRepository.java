@@ -51,9 +51,17 @@ public interface OutboxMailRepository extends JpaRepository<OutboxMail, Long> {
     /** 상태 보고에 쓴다 — 대기·실패가 쌓이면 메일이 안 나가고 있다는 뜻이다. */
     long countByStatus(OutboxMailStatus status);
 
-    /** 탈퇴할 때 쓴다 — 없는 계정으로 갈 메일을 대기열에 남겨 둘 이유가 없다. */
-    void deleteByUserId(Long userId);
+    /**
+     * 탈퇴할 때 쓴다 — 없는 계정으로 갈 메일을 대기열에 남겨 둘 이유가 없다. 파생 삭제 대신
+     * 한 문장으로 지운다(개선 보고서 "파생 delete 메서드의 엔티티별 삭제").
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM OutboxMail o WHERE o.user.id = :userId")
+    void deleteByUserId(@Param("userId") Long userId);
 
     /** 보관 기한이 지난 종료 상태(SENT/FAILED) 행을 정리한다. PENDING/SENDING은 대상이 아니다. */
-    long deleteByStatusInAndUpdatedAtBefore(List<OutboxMailStatus> statuses, LocalDateTime threshold);
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM OutboxMail o WHERE o.status IN :statuses AND o.updatedAt < :threshold")
+    long deleteByStatusInAndUpdatedAtBefore(@Param("statuses") List<OutboxMailStatus> statuses,
+                                             @Param("threshold") LocalDateTime threshold);
 }

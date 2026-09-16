@@ -71,8 +71,8 @@ public class PostPageController {
                 .stream()
                 .map(c -> new CategoryOptionDto(c.name(), c.getTitle()))
                 .toList();
-        model.addAttribute("postSaveInitialJson",
-                objectMapper.writeValueAsString(new PostSaveBootstrapDto(categoryOptions, displayNameOf(authentication))));
+        model.addAttribute("postSaveInitialJson", JsonHtmlEmbedding.escapeForHtmlScript(
+                objectMapper.writeValueAsString(new PostSaveBootstrapDto(categoryOptions, displayNameOf(authentication)))));
         model.addAttribute("pageTitle", "글쓰기");
         return "post/post-save";
     }
@@ -114,7 +114,7 @@ public class PostPageController {
         // 댓글 영역은 Vue 아일랜드로 렌더링된다. canManage는 서버만 판정할 수 있으므로(공개
         // REST 응답에는 없는 화면 전용 필드), 초기 렌더에서 그대로 JSON으로 내려 이후 목록
         // 갱신은 클라이언트가 이 값을 들고 낙관적으로 처리하게 한다.
-        model.addAttribute("commentsJson", objectMapper.writeValueAsString(comments));
+        model.addAttribute("commentsJson", JsonHtmlEmbedding.escapeForHtmlScript(objectMapper.writeValueAsString(comments)));
 
         // 게시글 읽기·편집 영역도 Vue 아일랜드(src/vue/post-edit)로 렌더링된다. 분류 선택지는
         // post-update.html이 예전에 th:each/th:if로 걸러내던 것과 같은 규칙(CategoryPolicy)을
@@ -124,12 +124,14 @@ public class PostPageController {
                 .map(c -> new CategoryOptionDto(c.name(), c.getTitle()))
                 .toList();
         boolean authenticated = OwnershipPolicy.isAuthenticated(authentication);
-        model.addAttribute("postEditInitialJson",
-                objectMapper.writeValueAsString(new PostEditBootstrapDto(post, categoryOptions, authenticated)));
+        model.addAttribute("postEditInitialJson", JsonHtmlEmbedding.escapeForHtmlScript(
+                objectMapper.writeValueAsString(new PostEditBootstrapDto(post, categoryOptions, authenticated))));
 
         // 댓글 아일랜드가 "입력창을 보여줄지"를 정하는 값. 글쓰기 화면과 같은 규칙을 쓴다.
-        model.addAttribute("canWriteComment", authenticated && writeBlockReasonOf(authentication) == null);
-        model.addAttribute("writeBlockReason", writeBlockReasonOf(authentication));
+        // 한 번만 조회해 두 속성에 함께 쓴다 — 예전에는 같은 조회를 두 번 했다.
+        String writeBlockReason = writeBlockReasonOf(authentication);
+        model.addAttribute("canWriteComment", authenticated && writeBlockReason == null);
+        model.addAttribute("writeBlockReason", writeBlockReason);
 
         model.addAttribute("pageTitle", post.title());
         return "post/post-update";

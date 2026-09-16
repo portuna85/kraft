@@ -1,4 +1,4 @@
-import { byId, on, setBusy, setText, valueOf } from '../core/dom.js';
+import { byId, on, rawValueOf, setBusy, setText } from '../core/dom.js';
 import { api, messageOf } from '../core/http.js';
 import { modal } from '../core/bootstrap-ui.js';
 import { showToast } from '../ui/toast.js';
@@ -77,8 +77,8 @@ async function changePassword() {
 
     try {
         await api.put('/api/v1/users/me/password', {
-            currentPassword: valueOf(byId('currentPassword')),
-            newPassword: valueOf(byId('newPassword')),
+            currentPassword: rawValueOf(byId('currentPassword')),
+            newPassword: rawValueOf(byId('newPassword')),
         });
         flash.set('PASSWORD_CHANGED');
         window.location.href = '/login';
@@ -133,7 +133,7 @@ async function withdraw() {
 
     try {
         await api.del('/api/v1/users/me', {
-            currentPassword: valueOf(byId('withdrawPassword')),
+            currentPassword: rawValueOf(byId('withdrawPassword')),
         });
         flash.set('ACCOUNT_WITHDRAWN');
         window.location.href = '/login';

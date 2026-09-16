@@ -1,5 +1,6 @@
 package com.kraft.post.web;
 
+import com.kraft.comment.dto.CommentViewDto;
 import com.kraft.comment.service.CommentService;
 import com.kraft.config.security.SecurityConfig;
 import com.kraft.post.domain.Category;
@@ -209,5 +210,20 @@ class PostPageControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("id=\"post-initial-data\"")))
                 .andExpect(content().string(containsString("\"category\":\"QNA\"")));
+    }
+
+    @Test
+    @DisplayName("제목·댓글에 </script>가 있어도 script 태그를 탈출하지 못한다 (저장형 XSS 방지)")
+    void postsUpdate_escapesScriptClosingSequenceInEmbeddedJson() throws Exception {
+        String payload = "</script><script>alert(1)</script>";
+        given(postService.findByIdForView(eq(1L), nullable(Authentication.class)))
+                .willReturn(new PostViewDto(1L, payload, "내용", null, "작성자", true, Category.FREE, 0L, 0L, false, 0L));
+        given(commentService.findByPostIdForView(eq(1L), nullable(Authentication.class)))
+                .willReturn(List.of(new CommentViewDto(2L, 1L, payload, "댓글작성자", null, true)));
+
+        mockMvc.perform(get("/posts/update/1").with(user("tester@example.com").roles("USER")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("</script><script>alert"))))
+                .andExpect(content().string(containsString("\\u003c/script\\u003e")));
     }
 }

@@ -8,10 +8,15 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.io.ByteArrayInputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -71,6 +76,62 @@ class PostImageServiceTest {
 
         assertThat(url).endsWith(".jpg");
         assertThat(Files.exists(uploadDir.resolve(url.substring("/images/".length())))).isTrue();
+    }
+
+    @Test
+    @DisplayName("store: 픽셀 수 검증에 쓴 원본 입력 스트림도 닫는다 (스트림 누수 방지)")
+    void store_closesEveryOpenedInputStream() {
+        CloseTrackingMultipartFile file =
+                new CloseTrackingMultipartFile("file", "photo.png", "image/png", TestImages.pngBytes(1, 1));
+
+        postImageService.store(file);
+
+        assertThat(file.allStreamsClosed()).as("getInputStream()으로 연 스트림은 모두 닫혀야 한다").isTrue();
+        assertThat(file.openedStreamCount()).as("실제로 스트림을 열긴 했는지(검증이 스킵되지 않았는지)").isGreaterThan(0);
+    }
+
+    /** {@code getInputStream()}이 돌려준 스트림마다 {@code close()} 호출 여부를 기록한다. */
+    private static class CloseTrackingMultipartFile extends MockMultipartFile {
+
+        private final List<TrackingInputStream> opened = new ArrayList<>();
+
+        CloseTrackingMultipartFile(String name, String originalFilename, String contentType, byte[] content) {
+            super(name, originalFilename, contentType, content);
+        }
+
+        @Override
+        public InputStream getInputStream() throws IOException {
+            TrackingInputStream stream = new TrackingInputStream(new ByteArrayInputStream(getBytes()));
+            opened.add(stream);
+            return stream;
+        }
+
+        boolean allStreamsClosed() {
+            return opened.stream().allMatch(TrackingInputStream::isClosed);
+        }
+
+        int openedStreamCount() {
+            return opened.size();
+        }
+    }
+
+    private static class TrackingInputStream extends FilterInputStream {
+
+        private boolean closed;
+
+        TrackingInputStream(InputStream in) {
+            super(in);
+        }
+
+        @Override
+        public void close() throws IOException {
+            closed = true;
+            super.close();
+        }
+
+        boolean isClosed() {
+            return closed;
+        }
     }
 
     @Test

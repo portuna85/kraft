@@ -138,6 +138,13 @@ public class HealthReporter {
     /**
      * 업로드 디렉터리가 있는 파일시스템의 여유 공간. 디렉터리가 아직 없으면 존재하는 상위로
      * 거슬러 올라간다 — 첫 업로드 전에는 만들어지지 않기 때문이다.
+     * <p>
+     * 측정 자체가 불가능하면(존재하는 상위 경로를 하나도 못 찾음) {@code -1}을 돌려준다. 예전엔
+     * 이 경우도 0을 돌려줬는데, 0은 "디스크가 실제로 가득 찼다"는 것과 구분이 안 됐다
+     * (개선 보고서 "관측값의 경계와 의미") — {@link HealthSnapshot}의 판정이 {@code > 0}이라
+     * 정작 가장 위험한 진짜 0바이트 상태를 조용히 건너뛰었다. {@code File.getUsableSpace()}
+     * 자체도 JDK 차원에서 "0바이트"와 "조회 실패"를 구분하지 않는다는 잔여 한계는 남는다 —
+     * 이 메서드가 할 수 있는 것은 최소한 "상위 경로를 못 찾은" 경우만이라도 구분하는 것이다.
      */
     private long usableSpace() {
         for (Path path = uploadDir; path != null; path = path.getParent()) {
@@ -145,6 +152,6 @@ public class HealthReporter {
                 return path.toFile().getUsableSpace();
             }
         }
-        return 0;
+        return -1;
     }
 }

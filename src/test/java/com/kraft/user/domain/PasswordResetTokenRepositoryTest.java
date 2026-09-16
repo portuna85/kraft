@@ -14,19 +14,19 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * {@link EmailVerificationTokenRepository} 통합 테스트. 감사 필드가 없는 엔티티라
- * {@code JpaConfig}(EnableJpaAuditing) import는 불필요하다({@code CommentRepositoryTest}와 달리).
- * {@code User}를 저장하므로 {@link EmailAttributeConverter}는 import해야 한다.
+ * {@link PasswordResetTokenRepository} 통합 테스트. {@code deleteByUserId}·
+ * {@code deleteByExpiresAtBefore}를 파생 삭제에서 벌크 JPQL DELETE로 바꿨으므로
+ * (개선 보고서 "파생 delete 메서드의 엔티티별 삭제") 그 동작을 직접 검증한다.
  */
 @DataJpaTest
 @Import(EmailAttributeConverter.class)
-class EmailVerificationTokenRepositoryTest {
+class PasswordResetTokenRepositoryTest {
 
     @Autowired
     private TestEntityManager em;
 
     @Autowired
-    private EmailVerificationTokenRepository tokenRepository;
+    private PasswordResetTokenRepository tokenRepository;
 
     @Autowired
     private UserRepository userRepository;
@@ -36,21 +36,21 @@ class EmailVerificationTokenRepositoryTest {
     @BeforeEach
     void setUp() {
         user = userRepository.save(
-                User.builder().name("tester").email("tester@example.com").password("pw").role(Role.GUEST).build());
+                User.builder().name("tester").email("tester@example.com").password("pw").role(Role.USER).build());
     }
 
     @Test
     @DisplayName("findByToken: 존재하는 토큰이면 회원 정보와 함께 조회된다")
     void findByToken_whenTokenExists_returnsTokenWithUser() {
-        EmailVerificationToken saved = tokenRepository.save(EmailVerificationToken.builder()
+        PasswordResetToken saved = tokenRepository.save(PasswordResetToken.builder()
                 .token("token-abc")
                 .user(user)
-                .expiresAt(LocalDateTime.now().plusHours(24))
+                .expiresAt(LocalDateTime.now().plusMinutes(30))
                 .build());
         em.flush();
         em.clear();
 
-        Optional<EmailVerificationToken> found = tokenRepository.findByToken("token-abc");
+        Optional<PasswordResetToken> found = tokenRepository.findByToken("token-abc");
 
         assertThat(found).isPresent();
         assertThat(found.get().getId()).isEqualTo(saved.getId());
@@ -58,22 +58,14 @@ class EmailVerificationTokenRepositoryTest {
     }
 
     @Test
-    @DisplayName("findByToken: 존재하지 않는 토큰이면 빈 Optional을 반환한다")
-    void findByToken_whenTokenDoesNotExist_returnsEmptyOptional() {
-        Optional<EmailVerificationToken> found = tokenRepository.findByToken("no-such-token");
-
-        assertThat(found).isEmpty();
-    }
-
-    @Test
     @DisplayName("deleteByUserId: 이 회원의 토큰만 지우고 다른 회원 것은 남긴다")
     void deleteByUserId_deletesOnlyTokensOfGivenUser() {
         User other = userRepository.save(
-                User.builder().name("other").email("other@example.com").password("pw").role(Role.GUEST).build());
-        tokenRepository.save(EmailVerificationToken.builder()
-                .token("mine").user(user).expiresAt(LocalDateTime.now().plusHours(1)).build());
-        tokenRepository.save(EmailVerificationToken.builder()
-                .token("others").user(other).expiresAt(LocalDateTime.now().plusHours(1)).build());
+                User.builder().name("other").email("other@example.com").password("pw").role(Role.USER).build());
+        tokenRepository.save(PasswordResetToken.builder()
+                .token("mine").user(user).expiresAt(LocalDateTime.now().plusMinutes(30)).build());
+        tokenRepository.save(PasswordResetToken.builder()
+                .token("others").user(other).expiresAt(LocalDateTime.now().plusMinutes(30)).build());
         em.flush();
 
         tokenRepository.deleteByUserId(user.getId());
@@ -85,10 +77,10 @@ class EmailVerificationTokenRepositoryTest {
     @Test
     @DisplayName("deleteByExpiresAtBefore: 만료된 토큰만 지우고 지운 개수를 돌려준다")
     void deleteByExpiresAtBefore_deletesOnlyExpiredTokensAndReturnsCount() {
-        tokenRepository.save(EmailVerificationToken.builder()
+        tokenRepository.save(PasswordResetToken.builder()
                 .token("expired").user(user).expiresAt(LocalDateTime.now().minusMinutes(1)).build());
-        tokenRepository.save(EmailVerificationToken.builder()
-                .token("valid").user(user).expiresAt(LocalDateTime.now().plusHours(1)).build());
+        tokenRepository.save(PasswordResetToken.builder()
+                .token("valid").user(user).expiresAt(LocalDateTime.now().plusMinutes(30)).build());
         em.flush();
 
         int deleted = tokenRepository.deleteByExpiresAtBefore(LocalDateTime.now());

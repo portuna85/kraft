@@ -357,17 +357,31 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("findPopular: 조회수 상위 N개를 댓글 수와 함께 반환한다")
-    void findPopular_returnsTopPostsWithCommentCounts() {
+    @DisplayName("findAllDesc: 100자를 넘는 검색어는 100자로 잘라 리포지토리에 전달한다")
+    void findAllDesc_truncatesKeywordLongerThan100Characters() {
+        Pageable pageable = PageRequest.of(0, 10);
+        String tooLong = "가".repeat(150);
+        String truncated = "가".repeat(100);
+        Page<Post> page = new PageImpl<>(List.of(), pageable, 0);
+        given(postRepository.search(truncated, null, pageable)).willReturn(page);
+
+        postService.findAllDesc(pageable, tooLong, null);
+
+        verify(postRepository).search(truncated, null, pageable);
+    }
+
+    @Test
+    @DisplayName("findPopular: 조회수 상위 N개를 반환한다 (댓글 수는 화면에 쓰이지 않아 집계하지 않는다)")
+    void findPopular_returnsTopPostsWithoutCommentCountAggregation() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 1L);
         given(postRepository.findTopByViewCountDesc(PageRequest.of(0, 5))).willReturn(List.of(post));
-        given(commentRepository.countByPostIdIn(List.of(1L))).willReturn(Map.of(1L, 2L));
 
         List<PostsListResponseDto> result = postService.findPopular(5);
 
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).commentCount()).isEqualTo(2L);
+        assertThat(result.get(0).commentCount()).isZero();
+        verify(commentRepository, never()).countByPostIdIn(any());
     }
 
     @Test

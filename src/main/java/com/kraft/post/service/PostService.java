@@ -49,6 +49,9 @@ public class PostService {
     private final PostImageCleaner postImageCleaner;
     private final PostLikeWriter postLikeWriter;
 
+    /** 검색어 상한. 지나치게 긴 검색어까지 그대로 LIKE 조건에 실을 이유가 없다(개선 보고서 "검색과 깊은 페이지의 비용"). */
+    private static final int MAX_KEYWORD_LENGTH = 100;
+
     /**
      * 이미지를 저장하고 업로더를 대장에 기록한다. 업로드 권한을 글쓰기 권한과 같게 맞춘다 —
      * 예전에는 이메일 미인증(GUEST)도 업로드 API를 쓸 수 있었다(개선 보고서 F06).
@@ -179,13 +182,15 @@ public class PostService {
 
     /**
      * 조회수 기준 상위 {@code limit}개(인기글). 목록 화면 상단의 별도 섹션에 쓰인다.
+     * <p>
+     * 인기글 템플릿은 제목·조회수만 보여주고 댓글 수는 쓰지 않는다(index.html 확인). 예전에는
+     * 여기서도 목록과 같은 댓글 수 집계 쿼리를 돌렸다(개선 보고서 "게시판 목록의 불필요한 열과
+     * 집계") — 화면에 쓰이지 않는 값을 매번 계산한 것이다.
      */
     public List<PostsListResponseDto> findPopular(int limit) {
         List<Post> posts = postRepository.findTopByViewCountDesc(PageRequest.of(0, limit));
-        Map<Long, Long> commentCounts = commentRepository.countByPostIdIn(
-                posts.stream().map(Post::getId).toList());
         return posts.stream()
-                .map(post -> new PostsListResponseDto(post, commentCounts.getOrDefault(post.getId(), 0L)))
+                .map(post -> new PostsListResponseDto(post, 0L))
                 .toList();
     }
 
@@ -254,7 +259,11 @@ public class PostService {
     }
 
     private String normalize(String keyword) {
-        return (keyword == null || keyword.isBlank()) ? null : keyword.trim();
+        if (keyword == null || keyword.isBlank()) {
+            return null;
+        }
+        String trimmed = keyword.trim();
+        return trimmed.length() > MAX_KEYWORD_LENGTH ? trimmed.substring(0, MAX_KEYWORD_LENGTH) : trimmed;
     }
 
     private User findUser(String email) {

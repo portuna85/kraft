@@ -186,9 +186,16 @@ public class PostImageService {
     /**
      * 디코딩하지 않고 헤더에서 크기만 읽어 픽셀 수를 제한한다. 전체를 {@code ImageIO.read()}로
      * 펼치면 그 자체가 메모리를 먹으므로, 리더에게 폭·높이만 물어본다.
+     * <p>
+     * 원본 {@code InputStream}을 {@code ImageInputStream}과 별도로 try-with-resources에 넣는다
+     * — {@code ImageIO.createImageInputStream()}이 돌려주는 래퍼(보통
+     * {@code MemoryCacheImageInputStream})의 {@code close()}는 자기 내부 버퍼만 닫고 감싼
+     * 원본 스트림은 닫지 않는다. 예전에는 원본 스트림을 변수 없이 바로 넘겨 그 스트림이 누수됐다
+     * (개선 보고서 "이미지 입력 스트림 소유권").
      */
     private void validatePixelCount(MultipartFile file) {
-        try (ImageInputStream input = ImageIO.createImageInputStream(file.getInputStream())) {
+        try (InputStream in = file.getInputStream();
+             ImageInputStream input = ImageIO.createImageInputStream(in)) {
             if (input == null) {
                 return;
             }
