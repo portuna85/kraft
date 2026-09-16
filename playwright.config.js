@@ -60,14 +60,23 @@ export default defineConfig({
             use: { ...devices['Desktop Chrome'], channel: 'chromium' },
             dependencies: ['setup'],
         },
-        {
-            // 주의: Playwright의 WebKit은 최신 빌드라 이 프로젝트가 기준으로 삼는
-            // Safari 15의 API 공백(requestSubmit 등)은 잡아내지 못한다. 레이아웃·동작
-            // 차이를 보는 용도이며, 지원 범위 보증은 코드 리뷰가 책임진다.
+        /*
+         * mobile-webkit: Playwright의 WebKit은 최신 빌드라 이 프로젝트가 기준으로 삼는
+         * Safari 15의 API 공백(requestSubmit 등)은 잡아내지 못한다. 레이아웃·동작 차이를 보는
+         * 로컬 전용 도구이며, 지원 범위 보증은 코드 리뷰가 책임진다.
+         *
+         * CI에서는 아예 등록하지 않는다. 계정·탈퇴 같은 모달 흐름에서 실제 Safari와 달리
+         * 요소가 "visible"로 안정화되지 않는 알려진 불안정성이 있고, 이것이 실패해도 코드
+         * 결함이 아니라 이 WebKit 빌드의 한계라는 사실을 매번 사람이 다시 판단해야 했다.
+         * .github/workflows/build.yml도 `--project=chromium`으로 이미 이렇게 돌지만, 그
+         * 플래그 하나에만 의존하지 않도록 여기서도 명시한다 — CI=1로 로컬에서 전체 프로젝트를
+         * 돌려도(`npx playwright test`) 같은 결과가 나와야 한다.
+         */
+        ...(process.env.CI ? [] : [{
             name: 'mobile-webkit',
             use: { ...devices['iPhone 13'] },
             dependencies: ['setup'],
-        },
+        }]),
     ],
 
     webServer: {
