@@ -134,6 +134,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test, e2e]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # 이 잡 전체의 상한. SSH·curl 각각에 타임아웃을 둬도, 네트워크가 응답 없이 그냥
+    # 걸려 있는 경우(예: 방화벽이 SYN을 조용히 버림)까지는 개별 타임아웃이 못 잡을 수
+    # 있다 — deploy-production 동시성 그룹을 다음 배포가 영영 기다리게 두지 않는다.
+    timeout-minutes: 10
     concurrency:
       group: deploy-production
       cancel-in-progress: false
@@ -168,11 +172,13 @@ jobs:
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
         run: |
-          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes \
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o ConnectTimeout=10 \
             "$DEPLOY_USER@$DEPLOY_HOST" "${{ github.sha }}" \
             < kraft-0.0.1-SNAPSHOT.jar
 
       # 서버 안(localhost)에서는 deploy-apply.sh가 이미 헬스체크를 했다. 여기서는
       # 바깥에서 실제로 도메인이 응답하는지 — nginx·TLS·DNS까지 포함해 — 한 번 더 본다.
+      # --connect-timeout·--max-time이 없으면 DNS·TLS가 응답 없이 걸릴 때 이 스텝이
+      # 잡 전체 timeout-minutes가 끝날 때까지 그냥 멈춰 있는다.
       - name: Smoke test
-        run: curl -fsS -o /dev/null https://kraft.io.kr/
+        run: curl -fsS -o /dev/null --connect-timeout 5 --max-time 15 https://kraft.io.kr/

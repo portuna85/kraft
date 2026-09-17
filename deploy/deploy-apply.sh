@@ -71,6 +71,10 @@ MAX_JAR_SIZE=524288000  # 500MB
 [ "$(head -c2 "$INCOMING")" = "PK" ] || fail "ZIP 시그니처가 없다. jar가 아니다"
 UNZIP_LISTING=$(unzip -l "$INCOMING" 2>/dev/null) || fail "압축이 깨졌다"
 [[ "$UNZIP_LISTING" == *"BOOT-INF/"* ]] || fail "Spring Boot 실행 jar가 아니다"
+# unzip -l은 중앙 디렉터리 목차만 읽는다 — 항목 이름은 멀쩡해 보여도 각 파일의 압축 데이터
+# 자체가 전송 중 깨졌을 수 있다(개선 보고서 "배포 스크립트의 검증·재시도 공백"). -t는 모든
+# 항목을 실제로 풀어 CRC를 대조하므로 그런 손상까지 여기서 걸러낸다.
+unzip -t "$INCOMING" >/dev/null 2>&1 || fail "CRC 무결성 검사 실패 — 항목이 손상되었다"
 log "검증 통과"
 
 # 3. DB 스냅샷.
@@ -103,20 +107,35 @@ fi
 mv "$INCOMING" "$JAR"
 log "jar 교체 완료"
 
+# 헬스체크 대기 루프. 롤백 뒤 복구를 확인할 때도 같은 기준으로 다시 쓴다 — 롤백이라고
+# 기준을 낮추면 "복구됐다고 기록했지만 실제로는 응답하지 않는 jar"를 성공으로 잘못 남긴다.
+# 2초 × 30회, 즉 이 루프 자체는 최대 60초를 쓴다.
+wait_for_health() {
+    local start
+    start=$(date +%s)
+    for _ in $(seq 1 30); do
+        sleep 2
+        if curl -fsS -o /dev/null --max-time 3 "$HEALTH_URL" 2>/dev/null; then
+            log "헬스체크 통과 (경과 $(( $(date +%s) - start ))초)"
+            return 0
+        fi
+    done
+    log "헬스체크 실패 (경과 $(( $(date +%s) - start ))초, 응답 없음)"
+    return 1
+}
+
 # 5. 재시작 (sudoers에서 이 명령 하나만 비밀번호 없이 허용되어 있다).
 #    set -e 아래에서 이 명령 자체가 실패하면(예: sudoers 설정 문제) 바로 스크립트가
 #    죽어 7번 롤백까지 못 가게 된다. if로 감싸 실패도 "재시작 실패"로 처리되게 한다.
 healthy=0
 if sudo /usr/bin/systemctl restart kraft; then
     log "재시작 요청됨. 기동을 기다린다"
-    # 6. 헬스체크. 최대 60초(2초 × 30회) 기다린다.
-    for _ in $(seq 1 30); do
-        sleep 2
-        if curl -fsS -o /dev/null --max-time 3 "$HEALTH_URL" 2>/dev/null; then
-            healthy=1
-            break
-        fi
-    done
+    # 6. 헬스체크. 실제 최악 대기는 이 루프의 60초뿐 아니라 재시작 요청·jar 언패킹·JVM
+    #    기동 자체에 걸리는 시간까지 더해진다 — "최대 60초"라고만 적으면 그 앞뒤 시간을
+    #    빠뜨려 실제 관찰되는 지연과 로그상 숫자가 어긋난다.
+    if wait_for_health; then
+        healthy=1
+    fi
 else
     log "systemctl restart 자체가 실패했다(sudoers 설정을 확인할 것)"
 fi
@@ -127,12 +146,20 @@ if [ "$healthy" = 1 ]; then
 fi
 
 # 7. 롤백. jar만 되돌아간다는 점을 분명히 남긴다.
-log "헬스체크 실패(60초). 이전 jar로 되돌린다"
+log "헬스체크 실패. 이전 jar로 되돌린다"
 if [ -f "$PREVIOUS" ]; then
     mv "$PREVIOUS" "$JAR"
     sudo /usr/bin/systemctl restart kraft
-    log "롤백 완료 — 다만 **DB 마이그레이션은 되돌아가지 않았다.**"
-    log "스키마를 바꾸는 배포였다면 backups/pre-deploy-$STAMP.sql 로 사람이 판단해 복구해야 한다"
+    # 예전에는 여기서 재시작 명령만 내리고 곧바로 "롤백 완료"로 기록했다 — 복원한 jar도
+    # 응답하지 않으면(예: 그 jar 자체가 이미 문제였거나 인프라 장애) 실제로는 서비스가
+    # 죽어 있는데 로그만 "완료"라고 거짓으로 안심시키는 셈이었다. 같은 헬스체크로 복원도
+    # 검증한다.
+    if wait_for_health; then
+        log "롤백 완료 — 다만 **DB 마이그레이션은 되돌아가지 않았다.**"
+        log "스키마를 바꾸는 배포였다면 backups/pre-deploy-$STAMP.sql 로 사람이 판단해 복구해야 한다"
+    else
+        log "롤백 실패 — 복원한 이전 jar도 응답하지 않는다. journalctl -u kraft -n 50 으로 원인을 확인할 것"
+    fi
 else
     log "되돌릴 이전 jar가 없다. journalctl -u kraft -n 50 으로 원인을 확인할 것"
 fi
