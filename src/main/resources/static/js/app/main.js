@@ -50,10 +50,14 @@ loadIf('#btn-logout, #changePasswordModal, #withdrawModal, #resendVerificationMo
 // 방금 쓴 첫 댓글의 삭제 버튼은 위임 핸들러가 없어 눌러도 반응이 없었다(개선 보고서
 // "저장 중 댓글 변경과 동적 삭제 모듈 누락"). '#comments-heading'은 댓글이 0개여도, 남의
 // 글이어도 댓글 영역이 있는 페이지라면 항상 최초 DOM에 존재하므로 이 경우를 메운다.
-loadIf('[data-target-kind], #comments-heading', './features/delete-confirm.js');
+// '#post-app, #comments-app'은 그 Vue 아일랜드가 마운트하는 자리 자체라, Vue 청크 로드가
+// 늦어져 트리거 버튼이 아직 그려지기 전이어도(개선 보고서 "동적 DOM과 기능 초기화 시점")
+// post-update.html이 서버에서 항상 먼저 렌더링하므로 이 셀렉터만은 확실히 존재한다(F06).
+loadIf('[data-target-kind], #comments-heading, #post-app, #comments-app', './features/delete-confirm.js');
 
-// 게시글·댓글 공용 신고 모달. 트리거 버튼도 마찬가지로 Vue 아일랜드가 그린다.
-loadIf('[data-report-kind]', './features/report-dialog.js');
+// 게시글·댓글 공용 신고 모달. 트리거 버튼도 마찬가지로 Vue 아일랜드가 그리므로 같은 이유로
+// 안정된 마운트 지점도 함께 본다(F06).
+loadIf('[data-report-kind], #post-app, #comments-app', './features/report-dialog.js');
 
 // 관리자 신고·정지 회원 처리 버튼. 목록이 비어 있으면 .report-list 자체가 렌더링되지 않는다.
 loadIf('.report-list', './features/admin-reports.js');
