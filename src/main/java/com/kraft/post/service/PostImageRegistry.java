@@ -5,6 +5,7 @@ import com.kraft.post.domain.PostImage;
 import com.kraft.post.domain.PostImageRepository;
 import com.kraft.post.domain.PostImageStatus;
 import com.kraft.user.domain.User;
+import com.kraft.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ public class PostImageRegistry {
     static final long MAX_BYTES_PER_USER = 50L * 1024 * 1024;
 
     private final PostImageRepository postImageRepository;
+    private final UserRepository userRepository;
 
     /**
      * 업로드 파일을 검사하고 대장에 올린다. 이 시점에는 아직 어떤 게시글에도 속하지 않으므로
@@ -36,13 +38,16 @@ public class PostImageRegistry {
      * <p>
      * 예전에는 용량 검사({@code validateQuota})와 등록({@code register})이 서로 다른 트랜잭션
      * 호출로 나뉘어 있어, 같은 계정의 동시 업로드 두 건이 모두 검사를 통과한 뒤 각자 등록될 수
-     * 있었다(개선 보고서 "업로드 용량 검사 경쟁"). 지금은 같은 트랜잭션 안에서 계정의 기존 행을
-     * 먼저 잠그고 그 안에서 검사·등록까지 끝낸다 — {@link PostImageRepository#lockAllByOwnerId}의
-     * 문서에 알려진 한계(첫 업로드 동시 경쟁)를 남겨 두었다.
+     * 있었다(개선 보고서 "업로드 용량 검사 경쟁"). 지금은 같은 트랜잭션 안에서 계정 행 자체를
+     * 먼저 잠그고(B07이 추가한 {@link UserRepository#findByIdForUpdate}) 그 안에서 검사·등록까지
+     * 끝낸다(B03). 이전에는 이 계정의 기존 {@code PostImage} 행을 전부 잠갔는데, 이미지가 없는
+     * 계정은 잠글 행이 없어 첫 업로드 두 건이 경쟁을 통과할 수 있었고, 이미지가 많은 계정은 매
+     * 업로드마다 그 행 전체를 잠그는 비용을 치렀다. User 행은 항상 존재하므로 두 문제 모두
+     * 사라진다.
      */
     @Transactional
     public void validateQuotaAndRegister(String url, User owner, long sizeBytes) {
-        postImageRepository.lockAllByOwnerId(owner.getId());
+        userRepository.findByIdForUpdate(owner.getId());
 
         long used = postImageRepository.sumSizeBytesByOwnerId(owner.getId());
         if (used + sizeBytes > MAX_BYTES_PER_USER) {

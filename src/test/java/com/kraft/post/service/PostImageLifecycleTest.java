@@ -18,7 +18,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.OptimisticLockingFailureException;
-import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.access.AccessDeniedException;
@@ -34,6 +33,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -323,22 +323,63 @@ class PostImageLifecycleTest {
         assertThat(postRepository.findById(postBId).orElseThrow().getPicture()).isNull();
     }
 
+    /**
+     * B03: {@code validateQuotaAndRegister}가 이제 계정의 {@code PostImage} 행이 아니라 User
+     * 행 자체를 잠근다(B07의 {@code findByIdForUpdate}, NOWAIT 없이 블로킹). 그래서 더는 같은
+     * 스레드에서 바깥 트랜잭션이 커밋되지 않은 채 안쪽 트랜잭션을 동기 호출하는 방식(다른 테스트의
+     * 낙관적 잠금 검증 패턴)을 쓸 수 없다 — 안쪽이 바깥의 잠금을 기다리며 그대로 멈춘다(자기
+     * 교착). 실제로 동시에 도는 두 스레드로 검증한다.
+     */
     @Test
-    @DisplayName("F05: 같은 계정의 동시 업로드는 용량 검사·등록이 직렬화되어 겹치지 않는다")
-    void validateQuotaAndRegister_concurrentUploadsForSameOwner_areSerialized() {
-        // 기존 행이 하나 있어야 잠글 대상이 생긴다 — 첫 업로드 동시 경쟁까지는 이 방식으로
-        // 막지 못한다는 한계가 PostImageRepository.lockAllByOwnerId 문서에 남아 있다.
+    @DisplayName("B03: 같은 계정의 동시 업로드는 용량 검사·등록이 직렬화되어 한도를 넘지 않는다")
+    void validateQuotaAndRegister_concurrentUploadsForSameOwner_areSerialized() throws InterruptedException {
+        // 기존 행이 하나 있는 계정에서도 직렬화되는지 확인한다.
         postService.uploadImage(imageFile(), alice);
+        assertConcurrentRegistrationsAreSerialized();
+    }
 
-        assertThatThrownBy(() -> transactionTemplate.executeWithoutResult(outer -> {
-            postImageRegistry.validateQuotaAndRegister(
-                    "/images/" + java.util.UUID.randomUUID() + ".png", aliceUser, 1024);
+    /**
+     * B03: 예전에는 잠글 기존 {@code PostImage} 행이 없으면(첫 업로드) 동시 경쟁을 막지 못했다.
+     * User 행은 항상 존재하므로 이미지가 하나도 없는 계정의 첫 업로드 두 건도 직렬화되어야 한다.
+     */
+    @Test
+    @DisplayName("B03: 이미지가 하나도 없는 계정의 첫 업로드 두 건도 직렬화된다")
+    void validateQuotaAndRegister_firstUploadsForOwnerWithNoImages_areSerialized() throws InterruptedException {
+        assertConcurrentRegistrationsAreSerialized();
+    }
 
-            // 바깥 트랜잭션이 아직 커밋 전이라 방금 잠근 행은 잠긴 채다. 독립된 트랜잭션이
-            // 같은 계정의 용량을 다시 확인하려 하면 NOWAIT이라 기다리지 않고 즉시 실패한다.
-            requiresNew.executeWithoutResult(inner -> postImageRegistry.validateQuotaAndRegister(
-                    "/images/" + java.util.UUID.randomUUID() + ".png", aliceUser, 1024));
-        })).isInstanceOf(PessimisticLockingFailureException.class);
+    private void assertConcurrentRegistrationsAreSerialized() throws InterruptedException {
+        // 두 번 다 등록되면 한도(50MiB)를 넘는 크기로 골라, 직렬화가 깨지면(둘 다 같은 used=0을
+        // 보고 통과) 검증이 실제로 실패하게 만든다.
+        long eachSize = PostImageRegistry.MAX_BYTES_PER_USER / 2 + 1024;
+        List<Boolean> results = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+        java.util.concurrent.CountDownLatch ready = new java.util.concurrent.CountDownLatch(2);
+        Runnable attempt = () -> {
+            ready.countDown();
+            try {
+                ready.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+            try {
+                postImageRegistry.validateQuotaAndRegister(
+                        "/images/" + java.util.UUID.randomUUID() + ".png", aliceUser, eachSize);
+                results.add(true);
+            } catch (IllegalArgumentException e) {
+                results.add(false);
+            }
+        };
+        Thread t1 = new Thread(attempt);
+        Thread t2 = new Thread(attempt);
+        t1.start();
+        t2.start();
+        t1.join();
+        t2.join();
+
+        // 직렬화되었다면 두 번째 호출이 첫 번째가 커밋한 사용량을 보고 한도 초과로 거부된다.
+        assertThat(results).containsExactlyInAnyOrder(true, false);
     }
 
     @Test
