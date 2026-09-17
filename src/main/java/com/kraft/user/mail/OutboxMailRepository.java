@@ -38,6 +38,15 @@ public interface OutboxMailRepository extends JpaRepository<OutboxMail, Long> {
                           @Param("ownerToken") String ownerToken);
 
     /**
+     * 지금도 이 {@code ownerToken}이 소유한 SENDING 행일 때만 값을 꺼낸다(B05). 정체
+     * 재큐잉이 소유권을 비운 뒤에는 원래 워커가 이 id로 조회해도 빈 값을 받는다.
+     */
+    Optional<OutboxMail> findByIdAndOwnerTokenAndStatus(Long id, String ownerToken, OutboxMailStatus status);
+
+    /** 지금도 이 {@code ownerToken}이 소유한 행일 때만 값을 꺼낸다(B05). markSent/markFailed가 쓴다. */
+    Optional<OutboxMail> findByIdAndOwnerToken(Long id, String ownerToken);
+
+    /**
      * 요청 제한에 쓴다 — 이 회원에게 이 종류의 메일을 마지막으로 만든 것이 언제인지 본다.
      * <p>
      * 종류를 함께 보는 것이 중요하다. 종류를 가리지 않으면 가입 직후 인증 메일을 받은 사람이

@@ -115,6 +115,15 @@ public class OutboxMail extends BaseEntity {
         this.nextAttemptAt = null;
     }
 
+    /**
+     * 정체 재큐잉 전용(B05). 이전 소유자가 뒤늦게 markSent/markFailed를 불러도 소유권 표시가
+     * 이미 비어 있으므로(더는 그 워커의 ownerToken과 같지 않으므로) 그 결과가 새 소유자의
+     * 처리를 덮지 않는다.
+     */
+    public void releaseOwnership() {
+        this.ownerToken = null;
+    }
+
     private long backoffMinutes() {
         return Math.min(60, 1L << Math.min(attempts, 6));
     }

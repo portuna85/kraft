@@ -253,6 +253,50 @@ class OutboxMailTransactionTest {
         assertThat(outboxMailRepository.findAll()).allMatch(mail -> mail.getStatus() == OutboxMailStatus.SENT);
     }
 
+    @Test
+    @DisplayName("B04: drain 두 번이 겹쳐도 전체 동시 발송 수는 max-concurrent-sends를 넘지 않는다")
+    void concurrentDrainCalls_shareTheSameConcurrencyLimit() throws InterruptedException {
+        int perBatch = 8;
+        int maxConcurrent = (int) ReflectionTestUtils.getField(outboxMailWorker, "maxConcurrentSends");
+        java.util.concurrent.atomic.AtomicInteger current = new java.util.concurrent.atomic.AtomicInteger(0);
+        java.util.concurrent.atomic.AtomicInteger observedMax = new java.util.concurrent.atomic.AtomicInteger(0);
+        willAnswer(invocation -> {
+            int now = current.incrementAndGet();
+            observedMax.updateAndGet(prev -> Math.max(prev, now));
+            Thread.sleep(50);
+            current.decrementAndGet();
+            return null;
+        }).given(emailSender).send(anyString(), anyString(), anyString());
+
+        for (int i = 0; i < perBatch * 2; i++) {
+            queueOne();
+        }
+        ReflectionTestUtils.setField(outboxMailWorker, "batchSize", perBatch);
+
+        // 가입 직후의 drainAsync와 예약 실행 drainScheduled가 겹쳐 도는 상황을 흉내 낸다.
+        // 서로 다른 메일을 집으므로 claimBatch의 행 잠금은 둘을 막지 못한다 — 동시 발송 총량을
+        // 막는 것은 두 호출이 공유하는 Semaphore여야 한다.
+        java.util.concurrent.CountDownLatch startTogether = new java.util.concurrent.CountDownLatch(2);
+        Runnable drainAfterBothReady = () -> {
+            startTogether.countDown();
+            try {
+                startTogether.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            outboxMailWorker.drain();
+        };
+        Thread t1 = new Thread(drainAfterBothReady);
+        Thread t2 = new Thread(drainAfterBothReady);
+        t1.start();
+        t2.start();
+        t1.join();
+        t2.join();
+
+        assertThat(observedMax.get()).isLessThanOrEqualTo(maxConcurrent);
+        assertThat(outboxMailRepository.findAll()).allMatch(mail -> mail.getStatus() == OutboxMailStatus.SENT);
+    }
+
     /** next_attempt_at은 markFailed()가 지금 시각 기준으로 계산하므로, 지난 것처럼 만들려면 직접 당긴다. */
     private void backdateNextAttempt(Long id, LocalDateTime nextAttemptAt) {
         jdbcTemplate.update("UPDATE outbox_mails SET next_attempt_at = ? WHERE id = ?", nextAttemptAt, id);
@@ -269,6 +313,53 @@ class OutboxMailTransactionTest {
 
         // 컬럼은 500자다. 자르지 않으면 실패를 기록하려다 그 기록이 또 실패한다.
         assertThat(outboxMailRepository.findAll().get(0).getLastError()).hasSize(500);
+    }
+
+    @Test
+    @DisplayName("B05: 발송 직전 토큰이 만료되었지만 아직 purge되지 않았으면 보내지 않고 FAILED로 남긴다")
+    void skipsSendWhenTokenExpiredButNotYetPurged() {
+        queueOne();
+        Long tokenId = tokenRepository.findAll().get(0).getId();
+        jdbcTemplate.update("UPDATE email_verification_tokens SET expires_at = ? WHERE id = ?",
+                LocalDateTime.now().minusMinutes(1), tokenId);
+
+        outboxMailWorker.drain();
+
+        OutboxMail mail = outboxMailRepository.findAll().get(0);
+        assertThat(mail.getStatus()).isEqualTo(OutboxMailStatus.FAILED);
+        assertThat(mail.getLastError()).contains("만료");
+        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.never())
+                .send(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("B05: 정체로 재큐잉되어 소유권이 넘어간 뒤에는, 원래 워커의 뒤늦은 발송 결과가 새 소유자의 처리를 덮지 않는다")
+    void staleOwnerCannotOverwriteResultAfterRequeue() {
+        queueOne();
+        List<Long> claimedByOldOwner = outboxMailStore.claimBatch(10, "old-owner");
+        assertThat(claimedByOldOwner).hasSize(1);
+        Long id = claimedByOldOwner.get(0);
+
+        // old-owner가 멈춘 사이 정체 재큐잉이 돌아 소유권을 비우고 PENDING으로 되돌린다.
+        int requeued = outboxMailStore.requeueStuck(LocalDateTime.now().plusMinutes(1));
+        assertThat(requeued).isEqualTo(1);
+        // 재큐잉도 markFailed와 같은 backoff를 매기므로, 바로 다시 집히도록 시각을 당겨둔다.
+        backdateNextAttempt(id, LocalDateTime.now().minusSeconds(1));
+
+        // new-owner가 새로 이 메일을 집어 성공으로 마무리한다.
+        List<Long> claimedByNewOwner = outboxMailStore.claimBatch(10, "new-owner");
+        assertThat(claimedByNewOwner).containsExactly(id);
+        outboxMailStore.markSent(id, "new-owner");
+        assertThat(outboxMailRepository.findById(id).orElseThrow().getStatus())
+                .isEqualTo(OutboxMailStatus.SENT);
+
+        // old-owner가 뒤늦게 살아나 자신이 원래 집었던 결과를 보고하려 한다 — 이미 소유권이
+        // 없으므로(new-owner) 이 호출은 아무 효과가 없어야 한다.
+        outboxMailStore.markFailed(id, "old-owner가 뒤늦게 실패로 덮으려 함", "old-owner");
+
+        assertThat(outboxMailRepository.findById(id).orElseThrow().getStatus())
+                .as("이미 재선점된 메일의 상태를 옛 소유자가 덮으면 안 된다")
+                .isEqualTo(OutboxMailStatus.SENT);
     }
 
     @Test
@@ -375,7 +466,7 @@ class OutboxMailTransactionTest {
         Long id = outboxMailRepository.findAll().stream()
                 .filter(mail -> mail.getStatus() == OutboxMailStatus.PENDING)
                 .findFirst().orElseThrow().getId();
-        outboxMailStore.markSent(id);
+        outboxMailStore.markSent(id, null);
         return id;
     }
 

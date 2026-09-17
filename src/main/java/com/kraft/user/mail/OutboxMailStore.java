@@ -70,47 +70,69 @@ public class OutboxMailStore {
      * 트랜잭션이 다시 열린다.
      * <p>
      * 발송 직전 토큰이 여전히 유효한지도 함께 확인한다. 탈퇴·재발급으로 토큰 테이블의 행이
-     * 이미 지워졌다면 이 아웃박스 행은 더 이상 보낼 이유가 없는 옛 링크다 — 재시도하지 않고
-     * 즉시 FAILED로 남긴다(개선 보고서 "메일 임대·재시도·실행량 제한").
+     * 이미 지워졌거나 만료되었다면 이 아웃박스 행은 더 이상 보낼 이유가 없는 옛 링크다 —
+     * 재시도하지 않고 즉시 FAILED로 남긴다(개선 보고서 "메일 임대·재시도·실행량 제한").
+     * <p>
+     * {@code ownerToken}이 지금도 이 행의 소유자와 같을 때만 값을 꺼낸다(B05). 정체
+     * 재큐잉({@link #requeueStuck})이 이 행을 다른 워커에게 넘긴 뒤에도 원래 워커가 뒤늦게
+     * 이 메서드를 부를 수 있는데, 그때는 소유권이 이미 없으므로 빈 값을 돌려주어 늦게 도착한
+     * 결과가 새 소유자의 처리를 밀어내지 못하게 한다.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public Optional<PendingMail> load(Long id) {
-        return outboxMailRepository.findById(id).flatMap(mail -> {
-            if (!isTokenStillValid(mail)) {
-                mail.markStale("토큰이 재발급되어 더 이상 유효하지 않습니다.");
-                log.info("옛 토큰의 아웃박스 메일을 건너뛰었습니다. outboxMailId={}", mail.getId());
-                return Optional.empty();
-            }
-            return Optional.of(new PendingMail(mail.getId(), mail.getUser().getEmail(), mail.getToken(), mail.getKind()));
-        });
+    public Optional<PendingMail> load(Long id, String ownerToken) {
+        return outboxMailRepository.findByIdAndOwnerTokenAndStatus(id, ownerToken, OutboxMailStatus.SENDING)
+                .flatMap(mail -> {
+                    if (!isTokenStillValid(mail)) {
+                        mail.markStale("토큰이 재발급되었거나 만료되어 더 이상 유효하지 않습니다.");
+                        log.info("옛 토큰의 아웃박스 메일을 건너뛰었습니다. outboxMailId={}", mail.getId());
+                        return Optional.empty();
+                    }
+                    return Optional.of(new PendingMail(
+                            mail.getId(), mail.getUser().getEmail(), mail.getToken(), mail.getKind(), ownerToken));
+                });
     }
 
     private boolean isTokenStillValid(OutboxMail mail) {
         return switch (mail.getKind()) {
-            case VERIFY_EMAIL -> emailVerificationTokenRepository.findByToken(mail.getToken()).isPresent();
-            case PASSWORD_RESET -> passwordResetTokenRepository.findByToken(mail.getToken()).isPresent();
+            case VERIFY_EMAIL -> emailVerificationTokenRepository.findByToken(mail.getToken())
+                    .filter(token -> !token.isExpired()).isPresent();
+            case PASSWORD_RESET -> passwordResetTokenRepository.findByToken(mail.getToken())
+                    .filter(token -> !token.isExpired()).isPresent();
         };
     }
 
+    /** {@code ownerToken}이 지금도 같을 때만 반영한다(B05) — 재선점된 행의 결과를 덮지 않는다. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markSent(Long id) {
-        outboxMailRepository.findById(id).ifPresent(OutboxMail::markSent);
+    public void markSent(Long id, String ownerToken) {
+        outboxMailRepository.findByIdAndOwnerToken(id, ownerToken).ifPresentOrElse(
+                OutboxMail::markSent,
+                () -> log.info("이미 다른 워커가 재선점한 메일이라 발송 성공을 반영하지 않습니다. outboxMailId={}", id));
     }
 
+    /** {@code ownerToken}이 지금도 같을 때만 반영한다(B05) — 재선점된 행의 결과를 덮지 않는다. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markFailed(Long id, String error) {
-        outboxMailRepository.findById(id).ifPresent(mail -> mail.markFailed(error, maxAttempts));
+    public void markFailed(Long id, String error, String ownerToken) {
+        outboxMailRepository.findByIdAndOwnerToken(id, ownerToken).ifPresentOrElse(
+                mail -> mail.markFailed(error, maxAttempts),
+                () -> log.info("이미 다른 워커가 재선점한 메일이라 발송 실패를 반영하지 않습니다. outboxMailId={}", id));
     }
 
     /**
      * 발송 도중 프로세스가 죽으면 그 메일은 SENDING인 채로 남아 아무도 다시 집지 않는다.
      * 오래된 것은 PENDING으로 되돌려 재시도 대상에 넣는다.
+     * <p>
+     * 소유권 표시({@code ownerToken})도 함께 비운다(B05) — 원래 워커가 프로세스만 멈췄을 뿐
+     * 뒤늦게 살아나 {@code markSent}/{@code markFailed}를 호출할 수 있는데, 그때는 이미
+     * 이전 소유자가 아니므로 그 결과가 새로 이 메일을 집은 워커의 처리를 덮으면 안 된다.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int requeueStuck(LocalDateTime threshold) {
         List<OutboxMail> stuck =
                 outboxMailRepository.findByStatusAndUpdatedAtBefore(OutboxMailStatus.SENDING, threshold);
-        stuck.forEach(mail -> mail.markFailed("발송 도중 중단되어 다시 대기열에 넣었습니다.", maxAttempts));
+        stuck.forEach(mail -> {
+            mail.markFailed("발송 도중 중단되어 다시 대기열에 넣었습니다.", maxAttempts);
+            mail.releaseOwnership();
+        });
         return stuck.size();
     }
 
@@ -128,6 +150,6 @@ public class OutboxMailStore {
     }
 
     /** 발송에 필요한 값만 담은 꾸러미. 엔티티를 트랜잭션 밖으로 들고 나가지 않으려는 것이다. */
-    public record PendingMail(Long id, String to, String token, OutboxMailKind kind) {
+    public record PendingMail(Long id, String to, String token, OutboxMailKind kind, String ownerToken) {
     }
 }

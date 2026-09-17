@@ -1,5 +1,6 @@
 package com.kraft.user.mail;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -80,6 +81,20 @@ public class OutboxMailWorker {
     @Value("${app.mail.max-concurrent-sends:5}")
     private int maxConcurrentSends;
 
+    /**
+     * {@code drain()} 호출마다 새로 만들지 않고 이 인스턴스가 사는 동안 하나를 공유한다(B04).
+     * 예전에는 배치마다 새 Semaphore를 만들어, 가입 직후의 {@code drainAsync}와 예약 실행
+     * {@code drainScheduled}가 겹치면 각자 5개씩 동시에 보내 프로세스 전체의 동시 발송 수가
+     * {@code maxConcurrentSends}를 넘을 수 있었다. claimBatch의 행 잠금은 같은 메일을 두 번
+     * 집지 않게 할 뿐, 서로 다른 메일을 처리하는 두 drain 호출의 총 동시성은 막지 못한다.
+     */
+    private Semaphore sendPermits;
+
+    @PostConstruct
+    void initSendPermits() {
+        this.sendPermits = new Semaphore(maxConcurrentSends);
+    }
+
     /** 가입·재발송 직후 곧바로 한 번 돌린다. 호출한 요청의 트랜잭션·스레드와 분리된다. */
     @Async
     public void drainAsync() {
@@ -110,10 +125,9 @@ public class OutboxMailWorker {
         if (ids.isEmpty()) {
             return;
         }
-        Semaphore permits = new Semaphore(maxConcurrentSends);
         try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
             List<Future<?>> futures = ids.stream()
-                    .<Future<?>>map(id -> executor.submit(() -> sendWithPermit(id, permits)))
+                    .<Future<?>>map(id -> executor.submit(() -> sendWithPermit(id, sendPermits)))
                     .toList();
             for (Future<?> future : futures) {
                 future.get();
@@ -129,7 +143,7 @@ public class OutboxMailWorker {
         try {
             permits.acquire();
             try {
-                store.load(id).ifPresent(this::send);
+                store.load(id, ownerToken).ifPresent(this::send);
             } finally {
                 permits.release();
             }
@@ -156,11 +170,11 @@ public class OutboxMailWorker {
     private void send(OutboxMailStore.PendingMail mail) {
         try {
             emailSender.send(mail.to(), subject(mail.kind()), body(mail.kind(), mail.token()));
-            store.markSent(mail.id());
+            store.markSent(mail.id(), mail.ownerToken());
         } catch (Exception e) {
             // 한 통이 실패해도 나머지는 계속 보낸다. 원인은 행에 남겨 다음 차례에 다시 시도한다.
             log.warn("메일 발송에 실패했습니다. outboxMailId={}", mail.id(), e);
-            store.markFailed(mail.id(), e.getMessage());
+            store.markFailed(mail.id(), e.getMessage(), mail.ownerToken());
         }
     }
 
