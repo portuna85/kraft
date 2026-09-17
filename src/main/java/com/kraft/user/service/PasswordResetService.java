@@ -66,6 +66,10 @@ public class PasswordResetService {
             log.info("가입되지 않은 주소로 비밀번호 재설정을 요청했습니다. email={}", EmailMasker.mask(email));
             return;
         }
+        // 쿨다운 검사와 재발급을 계정 단위로 직렬화한다(B07) — 그래야 두 동시 요청이 같은
+        // "마지막 발송 시각"을 동시에 읽고 둘 다 쿨다운을 통과하는 경쟁이 없어진다.
+        userRepository.findByIdForUpdate(user.getId());
+
         if (requestedTooRecently(user.getId())) {
             log.info("비밀번호 재설정 요청이 너무 잦아 보내지 않았습니다. userId={}", user.getId());
             return;
@@ -89,6 +93,10 @@ public class PasswordResetService {
     /**
      * 링크의 토큰으로 새 비밀번호를 정한다. 여기서는 반대로 <b>실패 이유를 분명히</b> 알려준다 —
      * 이미 링크를 받은 사람에게 "만료됐는지 잘못된 링크인지"를 감추면 다시 시도할 길이 없다.
+     * <p>
+     * 소비(삭제)를 비밀번호 변경보다 먼저, 그리고 <b>조건부로</b> 한다(B07). 같은 토큰이 동시에
+     * 두 번 들어오면 {@code deleteByIdAndToken}의 DB 행 잠금이 정확히 하나만 성공시킨다 —
+     * 이긴 쪽만 비밀번호를 바꿔, 두 요청 모두 성공한 것처럼 보이는 경쟁을 막는다.
      */
     @Transactional
     public void reset(String token, String newPassword) {
@@ -102,8 +110,10 @@ public class PasswordResetService {
             throw new IllegalArgumentException("재설정 링크가 만료되었습니다. 다시 요청해 주세요.");
         }
 
-        // 쓴 토큰은 지운다. 메일함에 남은 링크를 두 번째로 눌러도 아무 일이 없어야 한다.
-        tokenRepository.delete(resetToken);
+        int consumed = tokenRepository.deleteByIdAndToken(resetToken.getId(), token);
+        if (consumed == 0) {
+            throw new IllegalArgumentException("이미 사용되었거나 유효하지 않은 재설정 링크입니다. 다시 요청해 주세요.");
+        }
         userService.resetPassword(resetToken.getUser().getId(), newPassword);
     }
 

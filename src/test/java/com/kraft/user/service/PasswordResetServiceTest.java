@@ -147,13 +147,36 @@ class PasswordResetServiceTest {
                 .user(user)
                 .expiresAt(LocalDateTime.now().plusMinutes(10))
                 .build();
+        ReflectionTestUtils.setField(token, "id", 99L);
         given(tokenRepository.findByToken("valid-token")).willReturn(Optional.of(token));
+        given(tokenRepository.deleteByIdAndToken(99L, "valid-token")).willReturn(1);
 
         passwordResetService.reset("valid-token", "NewPass1!");
 
-        verify(userService).resetPassword(7L, "NewPass1!");
         // 메일함에 남은 링크를 두 번째로 눌러도 아무 일이 없어야 한다.
-        verify(tokenRepository).delete(token);
+        verify(tokenRepository).deleteByIdAndToken(99L, "valid-token");
+        verify(userService).resetPassword(7L, "NewPass1!");
+    }
+
+    @Test
+    @DisplayName("reset: 동시에 소비되어 이미 지워진 토큰이면 비밀번호를 바꾸지 않고 다시 요청하라고 알려준다")
+    void reset_whenTokenAlreadyConsumedConcurrently_throwsAndDoesNotChangePassword() {
+        User user = userWithId(7L, "user@example.com");
+        PasswordResetToken token = PasswordResetToken.builder()
+                .token("valid-token")
+                .user(user)
+                .expiresAt(LocalDateTime.now().plusMinutes(10))
+                .build();
+        ReflectionTestUtils.setField(token, "id", 99L);
+        given(tokenRepository.findByToken("valid-token")).willReturn(Optional.of(token));
+        // 다른 요청이 먼저 소비해 이미 지워졌다 — 조건부 삭제가 0행을 돌려준다.
+        given(tokenRepository.deleteByIdAndToken(99L, "valid-token")).willReturn(0);
+
+        assertThatThrownBy(() -> passwordResetService.reset("valid-token", "NewPass1!"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("이미 사용되었거나");
+
+        verify(userService, never()).resetPassword(anyLong(), anyString());
     }
 
     @Test

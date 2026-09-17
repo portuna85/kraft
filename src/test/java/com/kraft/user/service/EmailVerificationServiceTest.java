@@ -190,12 +190,35 @@ class EmailVerificationServiceTest {
                 .user(user)
                 .expiresAt(LocalDateTime.now().plusHours(1))
                 .build();
+        ReflectionTestUtils.setField(validToken, "id", 7L);
         given(tokenRepository.findByToken("valid-token")).willReturn(Optional.of(validToken));
+        given(tokenRepository.deleteByIdAndToken(7L, "valid-token")).willReturn(1);
 
         emailVerificationService.verify("valid-token");
 
+        verify(tokenRepository).deleteByIdAndToken(7L, "valid-token");
         verify(userService, times(1)).promoteToUser(1L);
-        verify(tokenRepository).delete(validToken);
+    }
+
+    @Test
+    @DisplayName("verify: 동시에 소비되어 이미 지워진 토큰이면 승격하지 않고 IllegalArgumentException")
+    void verify_whenTokenAlreadyConsumedConcurrently_throwsAndDoesNotPromote() {
+        User user = userWithId(1L, "tester@example.com");
+        EmailVerificationToken validToken = EmailVerificationToken.builder()
+                .token("valid-token")
+                .user(user)
+                .expiresAt(LocalDateTime.now().plusHours(1))
+                .build();
+        ReflectionTestUtils.setField(validToken, "id", 7L);
+        given(tokenRepository.findByToken("valid-token")).willReturn(Optional.of(validToken));
+        // 다른 요청이 먼저 소비해 이미 지워졌다 — 조건부 삭제가 0행을 돌려준다.
+        given(tokenRepository.deleteByIdAndToken(7L, "valid-token")).willReturn(0);
+
+        assertThatThrownBy(() -> emailVerificationService.verify("valid-token"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("이미 사용되었거나");
+
+        verify(userService, never()).promoteToUser(any());
     }
 
     @Test

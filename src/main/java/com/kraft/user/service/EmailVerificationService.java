@@ -102,6 +102,10 @@ public class EmailVerificationService {
      * 만료된 토큰은 {@link ExpiredTokenPurger}가 <b>별도 트랜잭션에서</b> 지운다. 여기서 바로
      * {@code tokenRepository.delete()}를 부르면, 이어지는 예외가 이 쓰기 트랜잭션을 롤백시키면서
      * 삭제까지 되돌려 만료 토큰이 그대로 남았다(개선 보고서 F08).
+     * <p>
+     * 소비(삭제)를 승격보다 먼저, 그리고 <b>조건부로</b> 한다(B07). 같은 토큰이 동시에 두 번
+     * 들어오면 {@code deleteByIdAndToken}의 DB 행 잠금이 정확히 하나만 성공시킨다 — 이긴
+     * 쪽만 승격을 실행해, 두 요청 모두 성공한 것처럼 보이는 경쟁을 막는다.
      */
     @Transactional
     public void verify(String token) {
@@ -113,8 +117,11 @@ public class EmailVerificationService {
             throw new IllegalArgumentException("인증 링크가 만료되었습니다. 다시 요청해 주세요.");
         }
 
+        int consumed = tokenRepository.deleteByIdAndToken(verificationToken.getId(), token);
+        if (consumed == 0) {
+            throw new IllegalArgumentException("이미 사용되었거나 유효하지 않은 인증 링크입니다.");
+        }
         userService.promoteToUser(verificationToken.getUser().getId());
-        tokenRepository.delete(verificationToken);
     }
 
     /**
@@ -130,6 +137,10 @@ public class EmailVerificationService {
     public void resend(String email) {
         User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
+
+        // 쿨다운 검사와 재발급을 계정 단위로 직렬화한다(B07) — 그래야 두 동시 요청이 같은
+        // "마지막 발송 시각"을 동시에 읽고 둘 다 쿨다운을 통과하는 경쟁이 없어진다.
+        userRepository.findByIdForUpdate(user.getId());
 
         if (user.getRole() != Role.GUEST) {
             throw new IllegalArgumentException("이미 인증된 계정입니다.");

@@ -72,6 +72,13 @@ public class User extends BaseEntity {
     @Column(name = "suspension_reason", length = 200)
     private String suspensionReason;
 
+    /**
+     * 비밀번호 변경·정지·탈퇴가 같은 행을 동시에 바꿀 때 나중에 flush되는 쪽이 앞선 변경을
+     * 조용히 덮어쓰지 않도록 한다(B07). {@code PostImage.version}과 같은 목적이다.
+     */
+    @Version
+    private long version;
+
     @Builder
     public User(String name, String email, String password, Role role) {
         this.name = name;

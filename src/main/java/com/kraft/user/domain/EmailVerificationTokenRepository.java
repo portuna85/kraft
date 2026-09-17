@@ -24,4 +24,14 @@ public interface EmailVerificationTokenRepository extends JpaRepository<EmailVer
     @Modifying(flushAutomatically = true)
     @Query("DELETE FROM EmailVerificationToken t WHERE t.expiresAt < :threshold")
     int deleteByExpiresAtBefore(@Param("threshold") LocalDateTime threshold);
+
+    /**
+     * 조건부 1회 소비(B07). 같은 토큰을 동시에 두 요청이 들고 오면, DB의 DELETE 행 잠금이
+     * 둘 중 하나만 성공시킨다 — 나중 트랜잭션은 이미 지워진 행을 찾지 못해 0을 돌려받는다.
+     * 이 반환값으로 "실제로 내가 소비했는가"를 확인한 뒤에만 뒤이은 부수효과(승격)를 실행해야
+     * 동시 소비가 둘 다 성공한 것처럼 보이지 않는다.
+     */
+    @Modifying
+    @Query("DELETE FROM EmailVerificationToken t WHERE t.id = :id AND t.token = :token")
+    int deleteByIdAndToken(@Param("id") Long id, @Param("token") String token);
 }

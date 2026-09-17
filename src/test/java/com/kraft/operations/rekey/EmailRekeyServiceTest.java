@@ -53,8 +53,8 @@ class EmailRekeyServiceTest {
     /** 옛 키로 암호화된 행을 만든다. 엔티티로 저장하면 컨텍스트의 키가 쓰이므로 직접 넣는다. */
     private long givenUserEncryptedWithOldKey(String email) {
         String name = "rekey-" + UUID.randomUUID().toString().substring(0, 8);
-        jdbcTemplate.update("INSERT INTO users (name, email, email_hash, password, role, created_at, updated_at) "
-                        + "VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
+        jdbcTemplate.update("INSERT INTO users (name, email, email_hash, password, role, version, created_at, updated_at) "
+                        + "VALUES (?, ?, ?, ?, ?, 0, NOW(), NOW())",
                 name,
                 EmailEncryption.encryptor(OLD_KEY).encrypt(email),
                 EmailHasher.sha512Hex(email),
