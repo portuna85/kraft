@@ -91,4 +91,62 @@ class RequestMetricsConcurrencyTest {
         assertThat(snapshot.requests()).isEqualTo((long) writerThreads * recordsPerThread);
         assertThat(snapshot.errors()).isZero();
     }
+
+    /**
+     * O04: HealthReporter.collect()가 주기마다 drain()으로 비우므로, "동시 기록이 도는 동안
+     * 여러 번 드레인한 스냅숏을 모두 더한 값"이 "그동안 실제로 기록을 시도한 건수"와 거의
+     * 같아야 관측치를 믿을 수 있다 — 위쪽 테스트들은 개별 스냅숏의 내부 일관성
+     * (errors&lt;=requests)만 보고, 드레인 여러 번에 걸쳐 건수 자체가 새거나 겹치지 않는지는
+     * 보지 않았다.
+     * <p>
+     * 정확히 같지는 않다 — {@link RequestMetrics} 클래스 주석의 "남아 있는 허용 오차"에 적은
+     * 대로, record()가 counters.get()으로 묶음을 읽은 직후 drain()이 그 묶음을 떼어 가면 그
+     * 한 건은 조용히 사라진다. 여기서 직접 이 손실 폭을 측정해 두 가지를 함께 고정한다:
+     * 합계가 실제 기록 수를 <b>넘는 일은 없어야 하고</b>(그러면 이중 집계다 — 있어서는 안
+     * 된다), 손실은 표본 대비 아주 작은 비율 안에 머물러야 한다(그러지 않으면 더는 "드문"
+     * 손실이 아니라 관측치를 믿을 수 없다).
+     */
+    @Test
+    @DisplayName("record가 도는 동안 여러 번 드레인해도 합계는 실제로 기록한 건수와 거의 같고 절대 넘지 않는다")
+    void sumOfMultipleDrains_isCloseToTotalRecordedCount() throws InterruptedException {
+        RequestMetrics metrics = new RequestMetrics();
+        int writerThreads = 8;
+        int recordsPerThread = 5_000;
+        long expectedTotal = (long) writerThreads * recordsPerThread;
+
+        ExecutorService writers = Executors.newFixedThreadPool(writerThreads);
+        List<RequestMetrics.Snapshot> drained = new ArrayList<>();
+        CountDownLatch finished = new CountDownLatch(writerThreads);
+
+        for (int i = 0; i < writerThreads; i++) {
+            writers.submit(() -> {
+                try {
+                    for (int j = 0; j < recordsPerThread; j++) {
+                        metrics.record(200, 1);
+                    }
+                } finally {
+                    finished.countDown();
+                }
+            });
+        }
+
+        while (finished.getCount() > 0) {
+            drained.add(metrics.drain());
+            Thread.sleep(1);
+        }
+        writers.shutdown();
+        assertThat(writers.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+        drained.add(metrics.drain());
+
+        long summedRequests = drained.stream().mapToLong(RequestMetrics.Snapshot::requests).sum();
+        assertThat(summedRequests)
+                .as("이중 집계는 설계상 있을 수 없다 — 늘 정확히 하나의 묶음에만 더해진다")
+                .isLessThanOrEqualTo(expectedTotal);
+        // 넉넉히 0.1%까지 허용한다. 실제로 관측된 손실은 이보다 훨씬 작다(수만 건 중 한 자릿수).
+        long maxTolerableLoss = expectedTotal / 1000;
+        assertThat(expectedTotal - summedRequests)
+                .as("손실이 %d건을 넘으면 더는 '드문' 손실이 아니다(기록 %d건 중 %d건 손실)",
+                        maxTolerableLoss, expectedTotal, expectedTotal - summedRequests)
+                .isLessThanOrEqualTo(maxTolerableLoss);
+    }
 }

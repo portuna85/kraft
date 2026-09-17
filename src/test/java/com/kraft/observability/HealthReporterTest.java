@@ -153,15 +153,45 @@ class HealthReporterTest {
     }
 
     /**
-     * 관측이 서비스를 막으면 안 되지만, 조용히 멈추면 "지표가 없는데 아무도 모르는" 상태가 된다.
-     * 수집이 깨졌다는 사실 자체가 남아야 한다.
+     * O04: drain()이 이미 비워 버린 HTTP 스냅숏을, 그 뒤에 도는 DB 집계 조회 하나의 실패로
+     * 통째로 잃던 문제를 고친다. 이제 DB 집계는 항목별로 감싸져 있어, 실패한 항목만
+     * diskFreeBytes와 같은 "-1=측정 불가"로 남고 HTTP 스냅숏은 그대로 보고된다.
      */
     @Test
-    @DisplayName("점검이 실패하면 서비스를 막지 않되 실패를 남긴다")
-    void collectionFailureIsLogged() {
+    @DisplayName("DB 집계 하나가 실패해도 이미 확보한 HTTP 스냅숏은 그대로 보고된다")
+    void dbAggregationFailureDoesNotLoseTheHttpSnapshot() throws Exception {
+        mockMvc.perform(get("/api/v1/users/me")); // HTTP 스냅숏에 요청 하나를 남긴다.
+
         OutboxMailRepository failing = mock(OutboxMailRepository.class);
         given(failing.countByStatus(any())).willThrow(new RuntimeException("DB가 응답하지 않습니다"));
         HealthReporter broken = new HealthReporter(requestMetrics, failing, reportRepository, null, "uploads/images");
+        ReflectionTestUtils.setField(broken, "enabled", true);
+
+        assertThatCode(broken::report).doesNotThrowAnyException();
+
+        // 집계 실패 경고 한 줄 + 실제 보고 한 줄, 최소 둘은 남아야 한다 — 실패했다는 사실 자체가
+        // 사라지면 안 된다.
+        assertThat(logs.list).hasSizeGreaterThanOrEqualTo(2);
+        ILoggingEvent reportEvent = logs.list.get(logs.list.size() - 1);
+        assertThat(reportEvent.getFormattedMessage())
+                .as("HTTP 스냅숏은 DB 집계 실패와 무관하게 그대로 보고에 남아야 한다")
+                .contains("요청=1")
+                .as("실패한 항목은 diskFreeBytes와 같은 관례로 -1(측정 불가)로 남는다")
+                .contains("메일대기=-1");
+    }
+
+    /**
+     * 관측이 서비스를 막으면 안 되지만, 조용히 멈추면 "지표가 없는데 아무도 모르는" 상태가 된다.
+     * DB 집계 실패는 이제 collect() 안에서 흡수되므로, 바깥 report()의 방어가 실제로 남아
+     * 쓰이는 경우는 그보다 더 근본적인 실패(예: RequestMetrics 자체의 결함)뿐이다 — 그런
+     * 상황까지 서비스를 막지 않고 실패 자체를 남기는지 확인한다.
+     */
+    @Test
+    @DisplayName("collect() 바깥의 예기치 못한 실패도 서비스를 막지 않되 실패를 남긴다")
+    void unexpectedFailureOutsideCollectIsLogged() {
+        RequestMetrics failingMetrics = mock(RequestMetrics.class);
+        given(failingMetrics.drain()).willThrow(new RuntimeException("지표 수집기 자체가 깨졌습니다"));
+        HealthReporter broken = new HealthReporter(failingMetrics, outboxMailRepository, reportRepository, null, "uploads/images");
         ReflectionTestUtils.setField(broken, "enabled", true);
 
         assertThatCode(broken::report).doesNotThrowAnyException();

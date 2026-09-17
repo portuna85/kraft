@@ -15,9 +15,10 @@ import java.util.List;
  *                      뜻이고, {@code 0}은 실제로 디스크가 가득 찼다는 뜻이다 — 둘을 같은 값으로
  *                      두면 가장 위험한 "진짜 0바이트" 상태가 "측정 불가"로 오인되어 경보 대상에서
  *                      빠진다
- * @param mailPending   발송 대기 중인 메일
- * @param mailFailed    재시도를 모두 소진한 메일
- * @param reportsPending 관리자가 아직 처리하지 않은 신고
+ * @param mailPending   발송 대기 중인 메일. {@code -1}은 diskFreeBytes와 같은 뜻으로, 이번
+ *                      주기의 DB 집계 조회 자체가 실패해 측정하지 못했다는 것이다
+ * @param mailFailed    재시도를 모두 소진한 메일. {@code -1}의 뜻은 mailPending과 같다
+ * @param reportsPending 관리자가 아직 처리하지 않은 신고. {@code -1}의 뜻은 mailPending과 같다
  */
 public record HealthSnapshot(
         long requests,
@@ -70,15 +71,15 @@ public record HealthSnapshot(
             found.add("디스크 여유 %dMB (기준 %dMB)"
                     .formatted(diskFreeBytes / 1048576, limits.diskFreeBytes() / 1048576));
         }
-        if (mailPending > limits.mailPending()) {
+        if (mailPending >= 0 && mailPending > limits.mailPending()) {
             found.add("발송 대기 메일 %d통 (기준 %d통)".formatted(mailPending, limits.mailPending()));
         }
-        if (mailFailed > limits.mailFailed()) {
+        if (mailFailed >= 0 && mailFailed > limits.mailFailed()) {
             found.add("발송 포기 메일 %d통 (기준 %d통)".formatted(mailFailed, limits.mailFailed()));
         }
         // 다른 항목과 성격이 다르다. 앱은 멀쩡한데 사람이 보고 있지 않다는 뜻이고, 그동안
         // 신고된 글은 그대로 보인다.
-        if (reportsPending > limits.reportsPending()) {
+        if (reportsPending >= 0 && reportsPending > limits.reportsPending()) {
             found.add("미처리 신고 %d건 (기준 %d건)".formatted(reportsPending, limits.reportsPending()));
         }
         return found;

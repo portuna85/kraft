@@ -21,6 +21,15 @@ import java.util.concurrent.atomic.LongAdder;
  * ({@link Counters})으로 만들고 {@link AtomicReference}로 통째로 교체하면, {@code drain()}이
  * "이 시점까지의 전체 묶음"을 원자적으로 떼어 갈 수 있다. {@code record()}는 그 순간 잡은
  * 묶음의 LongAdder에 그대로 더하므로 여전히 잠금이 없다.
+ * <p>
+ * <b>남아 있는 허용 오차(O04)</b>: {@code record()}가 {@code counters.get()}으로 묶음을 읽은
+ * 직후, 그 필드에 더하기 전에 {@code drain()}의 {@code getAndSet()}이 끼어들어 같은 묶음을
+ * 이미 떼어 가 합계까지 낼 수 있다. 이 경우 그 한 건의 기록은 방금 떼어진(더는 아무도 다시
+ * 읽지 않는) 옛 묶음에 더해지므로 그 주기의 집계에서 조용히 사라진다. 잠금을 쓰지 않는
+ * 대가로 받아들인 트레이드오프이며, 표본 수만 건 중 한 자릿수 손실 수준으로 드물고(측정치는
+ * {@code RequestMetricsConcurrencyTest} 참고) 관측 목적(추세·임계 판정)에는 지장이 없다.
+ * 반대 방향, 즉 한 기록이 두 번 잡히는 경우는 없다 — 늘 정확히 하나의 묶음에만 더해지기
+ * 때문이다.
  */
 public class RequestMetrics {
 

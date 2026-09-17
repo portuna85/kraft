@@ -112,6 +112,13 @@ public class HealthReporter {
     }
 
     HealthSnapshot collect() {
+        // drain()은 부르는 순간 다음 주기를 위해 RequestMetrics를 비운다 — 이 시점 이후로
+        // 무엇이 실패하든 이 HTTP 스냅숏은 이미 확보되어 있어야 한다. 예전에는 DB 집계
+        // 조회를 이 메서드 안에서 예외 없이 그대로 불러, 그 조회 하나가 실패하면(DB 순단 등)
+        // collect() 전체가 예외로 끝나 report()의 catch까지 올라가고, 이미 드레인해 비워
+        // 버린 HTTP 스냅숏은 어디에도 기록되지 못한 채 통째로 사라졌다(개선 보고서 "관측
+        // 수집 실패 시 스냅숏 유실"). DB 집계 각각을 개별로 감싸, 실패한 필드만 diskFreeBytes와
+        // 같은 "-1=측정 불가" 관례로 표시하고 HTTP 스냅숏은 그대로 남긴다.
         RequestMetrics.Snapshot http = requestMetrics.drain();
         HikariPoolMXBean pool = pool();
 
@@ -121,9 +128,19 @@ public class HealthReporter {
                 pool == null ? 0 : poolSize(),
                 pool == null ? 0 : pool.getThreadsAwaitingConnection(),
                 usableSpace(),
-                outboxMailRepository.countByStatus(OutboxMailStatus.PENDING),
-                outboxMailRepository.countByStatus(OutboxMailStatus.FAILED),
-                reportRepository.countByStatus(ReportStatus.PENDING));
+                safeCount("발송 대기 메일 수", () -> outboxMailRepository.countByStatus(OutboxMailStatus.PENDING)),
+                safeCount("발송 포기 메일 수", () -> outboxMailRepository.countByStatus(OutboxMailStatus.FAILED)),
+                safeCount("미처리 신고 수", () -> reportRepository.countByStatus(ReportStatus.PENDING)));
+    }
+
+    /** @return 정상 조회 값. 실패하면 경고를 남기고 diskFreeBytes와 같은 관례로 -1을 돌려준다. */
+    private long safeCount(String what, java.util.function.LongSupplier query) {
+        try {
+            return query.getAsLong();
+        } catch (Exception e) {
+            log.warn("{} 집계에 실패했습니다 — 이번 주기는 측정 불가(-1)로 남긴다.", what, e);
+            return -1;
+        }
     }
 
     private HikariPoolMXBean pool() {
