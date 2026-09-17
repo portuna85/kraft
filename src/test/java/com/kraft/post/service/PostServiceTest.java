@@ -443,7 +443,7 @@ class PostServiceTest {
         assertThat(result.liked()).isTrue();
         assertThat(result.likeCount()).isEqualTo(1L);
         verify(postLikeWriter).insert(post, user);
-        verify(postLikeRepository, never()).deleteByPostIdAndUserId(any(), any());
+        verify(postLikeWriter, never()).delete(any(), any());
     }
 
     @Test
@@ -458,7 +458,7 @@ class PostServiceTest {
         var result = postService.setLike(100L, false, authOf("liker@example.com", Role.USER));
 
         assertThat(result.liked()).isFalse();
-        verify(postLikeRepository).deleteByPostIdAndUserId(100L, 2L);
+        verify(postLikeWriter).delete(100L, 2L);
         verify(postLikeWriter, never()).insert(any(), any());
     }
 

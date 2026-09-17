@@ -90,4 +90,29 @@ class PostLikeCountFreshnessTest {
         assertThat(result).isNotNull();
         assertThat(result.likeCount()).isEqualTo(1L);
     }
+
+    /**
+     * B09 회귀: {@code PostLikeWriter.delete}를 REQUIRES_NEW로 만들기 전에는, setLike를 감싼
+     * 바깥 트랜잭션 안에서 직접 지웠다 — 그 트랜잭션이 아직 커밋 전인 상태에서
+     * {@code countByPostId}(REQUIRES_NEW, 별도 트랜잭션)가 그 삭제를 보지 못해, 추천을
+     * 취소해도 응답의 likeCount가 그대로 1로 남았다. E2E("추천을 눌렀다 다시 누르면
+     * 원래대로 돌아온다")가 실제로 이 순서로 실패해 드러났다.
+     */
+    @Test
+    @DisplayName("B09 회귀: 추천을 취소하면 최종 추천 수는 그 삭제를 즉시 반영한다")
+    void setLike_toFalse_reflectsTheDeleteImmediately() {
+        Long postId = post.getId();
+        postService.setLike(postId, true, liker);
+
+        PostLikeResponseDto result = transactionTemplate.execute(status -> {
+            postRepository.findById(postId);
+            return postService.setLike(postId, false, liker);
+        });
+
+        assertThat(result).isNotNull();
+        assertThat(result.liked()).isFalse();
+        assertThat(result.likeCount())
+                .as("삭제가 REQUIRES_NEW로 먼저 커밋되어야 뒤이은 REQUIRES_NEW count 조회가 그 결과를 본다")
+                .isZero();
+    }
 }

@@ -224,7 +224,10 @@ public class PostService {
         if (liked) {
             addLikeIfAbsent(post, user);
         } else {
-            postLikeRepository.deleteByPostIdAndUserId(id, user.getId());
+            // REQUIRES_NEW로 지운다(B09 회귀 수정) — 이 메서드(바깥 트랜잭션) 안에서 그냥
+            // 지우면, 아직 커밋 전인 상태에서 뒤이은 countByPostId(REQUIRES_NEW)가 별도
+            // 트랜잭션이라 이 DELETE를 보지 못해 추천 취소 뒤에도 개수가 그대로 남았다.
+            postLikeWriter.delete(id, user.getId());
         }
 
         // postLikeWriter.countByPostId도 새 트랜잭션에서 읽는다(B09) — 이 메서드의 트랜잭션이

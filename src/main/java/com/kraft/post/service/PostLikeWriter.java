@@ -47,9 +47,24 @@ public class PostLikeWriter {
     }
 
     /**
-     * 추천 수를 새 트랜잭션에서 읽는다. {@link #insert}는 REQUIRES_NEW로 별도 커밋되므로,
-     * 호출한 쪽의(더 먼저 시작된) 트랜잭션이 REPEATABLE READ 스냅샷을 이미 잡아 두었다면 방금
-     * 커밋된 추천을 못 볼 수 있다(B09). 이 메서드는 항상 새 스냅샷에서 읽어 최신 값을 보장한다.
+     * 추천을 지운다. {@link #insert}와 같은 이유로 REQUIRES_NEW다 — 호출한 쪽(바깥) 트랜잭션
+     * 안에서 지우면, 그 트랜잭션이 아직 커밋 전인 상태에서 {@link #countByPostId}가 별도
+     * 트랜잭션(REQUIRES_NEW)으로 개수를 읽을 때 이 DELETE를 <b>보지 못한다</b> — 서로 다른
+     * 트랜잭션·커넥션이라 커밋되지 않은 변경은 원천적으로 보이지 않는다. 실제로 이 문제로
+     * "추천을 눌렀다 다시 누르면" 흐름에서 추천 취소 뒤에도 개수가 그대로 남는 회귀가 있었다.
+     * INSERT처럼 여기서 먼저 커밋해 두면, 뒤이어 도는 {@code countByPostId}가 항상 그 결과를
+     * 볼 수 있다.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void delete(Long postId, Long userId) {
+        postLikeRepository.deleteByPostIdAndUserId(postId, userId);
+    }
+
+    /**
+     * 추천 수를 새 트랜잭션에서 읽는다. {@link #insert}·{@link #delete}는 REQUIRES_NEW로
+     * 별도 커밋되므로, 호출한 쪽의(더 먼저 시작된) 트랜잭션이 REPEATABLE READ 스냅샷을 이미
+     * 잡아 두었다면 방금 커밋된 변경을 못 볼 수 있다(B09). 이 메서드는 항상 새 스냅샷에서
+     * 읽어 최신 값을 보장한다.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     public long countByPostId(Long postId) {
