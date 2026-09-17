@@ -29,7 +29,15 @@ import java.time.LocalDateTime;
 @Getter
 @Entity
 @NoArgsConstructor
-@Table(name = "outbox_mails")
+@Table(name = "outbox_mails", indexes = {
+        // 엔티티에 선언이 없어 ddl-auto: update로 만든 기존 DB에는 이 인덱스들이 생기지
+        // 않았다(개선 보고서 O01).
+        @Index(name = "IX_OUTBOX_MAILS_STATUS_ID", columnList = "status, id"), // V7
+        @Index(name = "IX_OUTBOX_MAILS_STATUS_UPDATED", columnList = "status, updated_at"), // V7
+        @Index(name = "IX_OUTBOX_MAILS_USER", columnList = "user_id, id"), // V7
+        @Index(name = "IX_OUTBOX_MAILS_USER_KIND", columnList = "user_id, kind, id"), // V14
+        @Index(name = "IX_OUTBOX_MAILS_STATUS_NEXT_ATTEMPT", columnList = "status, next_attempt_at"), // V15
+})
 public class OutboxMail extends BaseEntity {
 
     @Id

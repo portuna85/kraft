@@ -14,7 +14,11 @@ import java.time.LocalDateTime;
 @Getter
 @Entity
 @NoArgsConstructor
-@Table(name = "email_verification_tokens")
+@Table(name = "email_verification_tokens", indexes = {
+        // V6__image_quota_and_search_indexes.sql. 엔티티에 선언이 없어 ddl-auto: update로
+        // 만든 기존 DB에는 이 인덱스가 생기지 않았다(개선 보고서 O01).
+        @Index(name = "IX_EVT_EXPIRES_AT", columnList = "expires_at"),
+})
 public class EmailVerificationToken {
 
     @Id

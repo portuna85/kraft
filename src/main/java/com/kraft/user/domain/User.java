@@ -22,6 +22,10 @@ import java.time.LocalDateTime;
 @Table(name = "users", uniqueConstraints = {
         @UniqueConstraint(name = "UK_USER_EMAIL_HASH", columnNames = "email_hash"),
         @UniqueConstraint(name = "UK_USER_NAME", columnNames = "name")
+}, indexes = {
+        // V11__user_suspension.sql. 엔티티에 선언이 없어 ddl-auto: update로 만든 기존 DB에는
+        // 이 인덱스가 생기지 않았다(개선 보고서 O01).
+        @Index(name = "IX_USERS_SUSPENDED_UNTIL", columnList = "suspended_until"),
 })
 public class User extends BaseEntity {
 

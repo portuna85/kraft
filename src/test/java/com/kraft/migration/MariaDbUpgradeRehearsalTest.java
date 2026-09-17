@@ -110,6 +110,42 @@ class MariaDbUpgradeRehearsalTest {
     }
 
     /**
+     * O01: {@code ddl-auto: validate}가 통과한다고 해서(위 세 테스트) 기존 DB에 마이그레이션의
+     * 모든 인덱스가 있다는 뜻은 아니다 — Hibernate의 스키마 검증은 테이블·컬럼·타입만 보고
+     * <b>인덱스는 보지 않는다</b>. V6/V11/V13/V14/V15가 raw SQL로만 추가한 인덱스는 예전에
+     * 엔티티에 선언이 없어, {@code ddl-auto: update}로 만든 "기존 DB"(이 테스트가 흉내 내는
+     * 대상)에는 애초에 생기지 않았다. baseline은 상태만 기록할 뿐 누락된 DDL을 보충하지 않으므로,
+     * 그런 DB를 그대로 baseline해 운영에 올리면 검색·정리 성능이 떨어지는 인덱스 없는 테이블로
+     * 계속 남는다.
+     * <p>
+     * 지금은 엔티티에도 같은 인덱스를 {@code @Table(indexes=...)}로 선언해 두었으므로(개선
+     * 작업), {@code ddl-auto: update}만으로 만든 DB에도 이 인덱스들이 전부 있어야 한다 — 그래야
+     * "기존 DB를 baseline만 하고 끝내도 된다"는 전제가 실제로 성립한다.
+     */
+    @Test
+    @DisplayName("O01: ddl-auto:update로 만든 기존 DB에도 raw SQL 마이그레이션이 선언한 인덱스가 전부 있다")
+    void existingDevDatabaseHasAllIndexesThatRawMigrationsDeclare() {
+        String url = existingDevDatabase();
+        JdbcTemplate jdbc = jdbc(url);
+
+        Map<String, List<String>> expectedIndexesByTable = Map.of(
+                "users", List.of("IX_USERS_SUSPENDED_UNTIL"),
+                "posts", List.of("IX_POSTS_CATEGORY_ID", "IX_POSTS_VIEW_COUNT"),
+                "comments", List.of("IX_COMMENTS_POST"),
+                "post_images", List.of("IX_POST_IMAGES_OWNER"),
+                "email_verification_tokens", List.of("IX_EVT_EXPIRES_AT"),
+                "password_reset_tokens", List.of("IX_PASSWORD_RESET_TOKENS_EXPIRES_AT"),
+                "outbox_mails", List.of(
+                        "IX_OUTBOX_MAILS_STATUS_ID", "IX_OUTBOX_MAILS_STATUS_UPDATED", "IX_OUTBOX_MAILS_USER",
+                        "IX_OUTBOX_MAILS_USER_KIND", "IX_OUTBOX_MAILS_STATUS_NEXT_ATTEMPT"));
+
+        expectedIndexesByTable.forEach((table, indexNames) -> indexNames.forEach(indexName ->
+                assertThat(indexExists(jdbc, table, indexName))
+                        .as("%s.%s", table, indexName)
+                        .isTrue()));
+    }
+
+    /**
      * 한 번 전환한 DB는 그 뒤로 평범하게 재기동된다. Flyway가 이미 baseline된 DB에서 아무것도
      * 다시 실행하지 않아야 한다 — 재기동마다 스키마를 건드리면 그것이 곧 사고다.
      */
@@ -220,6 +256,14 @@ class MariaDbUpgradeRehearsalTest {
         } catch (IOException e) {
             throw new IllegalStateException("마이그레이션 목록을 읽지 못했습니다.", e);
         }
+    }
+
+    private static boolean indexExists(JdbcTemplate jdbc, String table, String indexName) {
+        Long count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.STATISTICS "
+                        + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?",
+                Long.class, table, indexName);
+        return count != null && count > 0;
     }
 
     private static Long historyCount(String url) {

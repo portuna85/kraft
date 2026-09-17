@@ -14,7 +14,12 @@ import lombok.NoArgsConstructor;
 @Getter
 @Entity
 @NoArgsConstructor
-@Table(name = "posts")
+@Table(name = "posts", indexes = {
+        // V6__image_quota_and_search_indexes.sql. 엔티티에 선언이 없어 ddl-auto: update로
+        // 만든 기존 DB에는 이 인덱스들이 생기지 않았다(개선 보고서 O01).
+        @Index(name = "IX_POSTS_CATEGORY_ID", columnList = "category, id"),
+        @Index(name = "IX_POSTS_VIEW_COUNT", columnList = "view_count DESC, id DESC"),
+})
 public class Post extends BaseEntity {
 
     @Id

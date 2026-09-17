@@ -24,7 +24,12 @@ import lombok.NoArgsConstructor;
 @Entity
 @NoArgsConstructor
 @Table(name = "post_images",
-        uniqueConstraints = @UniqueConstraint(name = "UK_POST_IMAGE_FILE_NAME", columnNames = "file_name"))
+        uniqueConstraints = @UniqueConstraint(name = "UK_POST_IMAGE_FILE_NAME", columnNames = "file_name"),
+        indexes = {
+                // V6__image_quota_and_search_indexes.sql. 엔티티에 선언이 없어 ddl-auto: update로
+                // 만든 기존 DB에는 이 인덱스가 생기지 않았다(개선 보고서 O01).
+                @Index(name = "IX_POST_IMAGES_OWNER", columnList = "owner_id"),
+        })
 public class PostImage extends BaseEntity {
 
     @Id

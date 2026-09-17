@@ -14,7 +14,11 @@ import lombok.NoArgsConstructor;
 @Getter
 @Entity
 @NoArgsConstructor
-@Table(name = "comments")
+@Table(name = "comments", indexes = {
+        // V6__image_quota_and_search_indexes.sql. 엔티티에 선언이 없어 ddl-auto: update로
+        // 만든 기존 DB에는 이 인덱스가 생기지 않았다(개선 보고서 O01).
+        @Index(name = "IX_COMMENTS_POST", columnList = "post_id"),
+})
 public class Comment extends BaseEntity {
 
     @Id

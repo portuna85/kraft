@@ -20,7 +20,12 @@ import java.time.LocalDateTime;
 @Entity
 @NoArgsConstructor
 @Table(name = "password_reset_tokens",
-        uniqueConstraints = @UniqueConstraint(name = "UK_PASSWORD_RESET_TOKEN", columnNames = "token"))
+        uniqueConstraints = @UniqueConstraint(name = "UK_PASSWORD_RESET_TOKEN", columnNames = "token"),
+        indexes = {
+                // V13__password_reset_tokens_expires_at_index.sql. 엔티티에 선언이 없어
+                // ddl-auto: update로 만든 기존 DB에는 이 인덱스가 생기지 않았다(개선 보고서 O01).
+                @Index(name = "IX_PASSWORD_RESET_TOKENS_EXPIRES_AT", columnList = "expires_at"),
+        })
 public class PasswordResetToken {
 
     @Id
