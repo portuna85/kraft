@@ -254,6 +254,7 @@ async function onSubmit() {
         class="form-control"
         maxlength="255"
         required
+        :disabled="saving"
       >
     </div>
     <div class="mb-3">
@@ -262,6 +263,7 @@ async function onSubmit() {
         id="edit-category"
         v-model="draft.category"
         class="form-select"
+        :disabled="saving"
       >
         <option
           v-for="option in categoryOptions"
@@ -280,6 +282,7 @@ async function onSubmit() {
         class="form-control post-edit__textarea"
         maxlength="10000"
         required
+        :disabled="saving"
       />
     </div>
     <div class="mb-3">
@@ -368,6 +371,7 @@ async function onSubmit() {
         id="btn-cancel-edit"
         type="button"
         class="btn btn-secondary"
+        :disabled="saving"
         @click="cancelEdit"
       >
         취소
