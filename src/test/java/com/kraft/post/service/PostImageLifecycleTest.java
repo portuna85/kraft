@@ -365,6 +365,46 @@ class PostImageLifecycleTest {
         assertThat(imageStatusOf(unrelatedUrl)).isEqualTo(PostImageStatus.PENDING_DELETE);
     }
 
+    @Test
+    @DisplayName("B01: 삭제가 예약된 이미지는 다시 연결할 수 없다")
+    void attach_toImageMarkedForDeletion_isRejected() {
+        String url = postService.uploadImage(imageFile(), alice);
+        Long postId = postService.save(alice, new PostSaveRequestDto("원본", "내용", null, null));
+        jdbcTemplate.update("UPDATE post_images SET status = 'PENDING_DELETE', post_id = NULL WHERE file_name = ?",
+                fileNameOf(url));
+
+        assertThatThrownBy(() -> postImageRegistry.attach(url, aliceUser, postRepository.findById(postId).orElseThrow()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("삭제 예정");
+
+        assertThat(imageStatusOf(url)).isEqualTo(PostImageStatus.PENDING_DELETE);
+    }
+
+    @Test
+    @DisplayName("B01: 정리 작업이 대상을 고른 뒤 다른 트랜잭션이 먼저 연결하면 파일을 지우지 않고 건너뛴다")
+    void cleanExpiredOrphans_skipsImageAttachedBetweenSelectAndClaim() {
+        String url = postService.uploadImage(imageFile(), alice);
+        backdate(url, LocalDateTime.now().minusHours(25));
+        Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", null, null));
+        Long imageId = postImageRepository.findByFileName(fileNameOf(url)).orElseThrow().getId();
+        LocalDateTime threshold = LocalDateTime.now().minus(PostImageCleaner.ORPHAN_TTL);
+
+        // 정리 작업이 만료된 ORPHAN 대상을 조회한 시점을 흉내 낸다 — 아직 파일을 지우기 전
+        // 조건부 선점(claim)을 하지 않았다. 그 사이 다른 트랜잭션이 먼저 이 이미지를 게시글에
+        // 연결하고 커밋한다.
+        requiresNew.executeWithoutResult(inner ->
+                postImageRegistry.attach(url, aliceUser, postRepository.findById(postId).orElseThrow()));
+
+        // 정리 작업이 이제야 파일을 지우기 전 조건부 선점을 시도한다 — 이미 ATTACHED로 바뀌어
+        // ORPHAN 조건에 맞지 않으므로 0행이어야 하고, 파일을 지우면 안 된다.
+        int claimed = transactionTemplate.execute(status ->
+                postImageRepository.claimExpiredOrphanForDeletion(imageId, threshold));
+
+        assertThat(claimed).isZero();
+        assertThat(fileOf(url)).exists();
+        assertThat(imageStatusOf(url)).isEqualTo(PostImageStatus.ATTACHED);
+    }
+
     private User saveUser(String name, String email, Role role) {
         return userRepository.save(User.builder().name(name).email(email).password("encoded").role(role).build());
     }

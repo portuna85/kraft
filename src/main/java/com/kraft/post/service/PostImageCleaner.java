@@ -82,24 +82,44 @@ public class PostImageCleaner {
         return deleteAll(postImageRepository.findAllByIdInAndStatus(imageIds, PostImageStatus.PENDING_DELETE));
     }
 
+    /**
+     * ORPHAN 조회와 실제 파일 삭제 사이에 다른 트랜잭션이 같은 이미지를 게시글에 연결(ATTACHED로
+     * 전이)할 수 있다(B01). 파일을 지우기 전에 {@link PostImageRepository#claimExpiredOrphanForDeletion}로
+     * "지금도 여전히 ORPHAN인가"를 원자적으로 다시 확인해, 그 사이 연결된 이미지는 건드리지 않고
+     * 건너뛴다.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int cleanExpiredOrphans() {
         LocalDateTime threshold = LocalDateTime.now().minus(ORPHAN_TTL);
-        return deleteAll(postImageRepository.findAllByStatusAndCreatedAtBefore(PostImageStatus.ORPHAN, threshold));
+        List<PostImage> candidates = postImageRepository.findAllByStatusAndCreatedAtBefore(PostImageStatus.ORPHAN, threshold);
+        int deleted = 0;
+        for (PostImage image : candidates) {
+            if (postImageRepository.claimExpiredOrphanForDeletion(image.getId(), threshold) == 0) {
+                // 조회 이후 다른 트랜잭션이 먼저 연결했다 — 파일을 지우면 안 된다.
+                continue;
+            }
+            deleted += deleteOne(image) ? 1 : 0;
+        }
+        return deleted;
     }
 
     private int deleteAll(List<PostImage> images) {
         int deleted = 0;
         for (PostImage image : images) {
-            try {
-                postImageService.deleteIfExists(PostImageService.PUBLIC_PREFIX + image.getFileName());
-                postImageRepository.delete(image);
-                deleted++;
-            } catch (RuntimeException e) {
-                // 행을 남겨 다음 주기에 재시도한다. 한 파일의 실패가 나머지 정리를 막지 않게 한다.
-                log.warn("이미지 파일 정리에 실패했습니다. 다음 주기에 다시 시도합니다. fileName={}", image.getFileName(), e);
-            }
+            deleted += deleteOne(image) ? 1 : 0;
         }
         return deleted;
+    }
+
+    private boolean deleteOne(PostImage image) {
+        try {
+            postImageService.deleteIfExists(PostImageService.PUBLIC_PREFIX + image.getFileName());
+            postImageRepository.delete(image);
+            return true;
+        } catch (RuntimeException e) {
+            // 행을 남겨 다음 주기에 재시도한다. 한 파일의 실패가 나머지 정리를 막지 않게 한다.
+            log.warn("이미지 파일 정리에 실패했습니다. 다음 주기에 다시 시도합니다. fileName={}", image.getFileName(), e);
+            return false;
+        }
     }
 }

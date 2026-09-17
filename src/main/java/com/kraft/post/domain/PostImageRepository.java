@@ -4,6 +4,7 @@ import jakarta.persistence.LockModeType;
 import jakarta.persistence.QueryHint;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
@@ -46,4 +47,16 @@ public interface PostImageRepository extends JpaRepository<PostImage, Long> {
     @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "0"))
     @Query("SELECT i FROM PostImage i WHERE i.owner.id = :ownerId")
     List<PostImage> lockAllByOwnerId(@Param("ownerId") Long ownerId);
+
+    /**
+     * 만료된 ORPHAN 이미지를 파일 삭제 전에 조건부로 선점한다(B01). 정리 작업이 대상을 조회한
+     * 뒤에도 다른 트랜잭션이 그 사이 게시글에 연결(ATTACHED로 전이)했을 수 있으므로, 파일을
+     * 실제로 지우기 전에 "지금도 여전히 ORPHAN인가"를 이 원자적 UPDATE로 다시 확인한다.
+     * 반환값이 0이면 이미 상태가 바뀐 것이므로 그 이미지는 건드리지 않고 건너뛴다.
+     */
+    @Modifying
+    @Query("UPDATE PostImage p SET p.status = com.kraft.post.domain.PostImageStatus.PENDING_DELETE "
+            + "WHERE p.id = :id AND p.status = com.kraft.post.domain.PostImageStatus.ORPHAN "
+            + "AND p.createdAt < :threshold")
+    int claimExpiredOrphanForDeletion(@Param("id") Long id, @Param("threshold") LocalDateTime threshold);
 }

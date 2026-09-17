@@ -3,6 +3,7 @@ package com.kraft.post.service;
 import com.kraft.post.domain.Post;
 import com.kraft.post.domain.PostImage;
 import com.kraft.post.domain.PostImageRepository;
+import com.kraft.post.domain.PostImageStatus;
 import com.kraft.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
@@ -88,6 +89,12 @@ public class PostImageRegistry {
         }
         if (image.isAttachedToOtherThan(post)) {
             throw new IllegalArgumentException("이미 다른 게시글에서 사용 중인 이미지입니다. 이미지를 다시 올려 주세요.");
+        }
+        // 삭제가 예약된 이미지는 정리 작업이 파일을 지우는 도중일 수 있다(B01). 상태만으로
+        // 막아 두면, 정리 작업이 파일 삭제 전 조건부로 선점한 뒤에는 이 이미지를 다시 연결할
+        // 방법이 아예 없어져 정리와 연결 사이의 경쟁이 성립하지 않는다.
+        if (image.getStatus() == PostImageStatus.PENDING_DELETE) {
+            throw new IllegalArgumentException("삭제 예정인 이미지입니다. 이미지를 다시 올려 주세요.");
         }
 
         image.attachTo(post);

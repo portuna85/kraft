@@ -75,12 +75,27 @@ class PostImageCleanerTest {
                 .willReturn(List.of(image("pending.png")));
         given(postImageRepository.findAllByStatusAndCreatedAtBefore(eq(PostImageStatus.ORPHAN), any(LocalDateTime.class)))
                 .willReturn(List.of(image("orphan.png")));
+        given(postImageRepository.claimExpiredOrphanForDeletion(eq(1L), any(LocalDateTime.class))).willReturn(1);
 
         postImageCleaner.clean();
 
         then(postImageService).should().deleteIfExists("/images/pending.png");
         then(postImageService).should().deleteIfExists("/images/orphan.png");
         then(postImageRepository).should(org.mockito.Mockito.times(2)).delete(any(PostImage.class));
+    }
+
+    @Test
+    @DisplayName("B01: 파일을 지우기 전 조건부 선점이 0행이면(그 사이 연결됨) 파일을 건드리지 않는다")
+    void cleanExpiredOrphans_whenClaimFails_skipsFile() {
+        given(postImageRepository.findAllByStatusAndCreatedAtBefore(eq(PostImageStatus.ORPHAN), any(LocalDateTime.class)))
+                .willReturn(List.of(image("attached-in-between.png")));
+        given(postImageRepository.claimExpiredOrphanForDeletion(eq(1L), any(LocalDateTime.class))).willReturn(0);
+
+        int deleted = postImageCleaner.cleanExpiredOrphans();
+
+        assertThat(deleted).isZero();
+        then(postImageService).should(never()).deleteIfExists(anyString());
+        then(postImageRepository).should(never()).delete(any(PostImage.class));
     }
 
     @Test
