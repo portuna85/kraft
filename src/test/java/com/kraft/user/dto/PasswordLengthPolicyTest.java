@@ -9,8 +9,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 새 비밀번호에 최대 길이(72자)를 추가한 것을 검증한다(개선 보고서 "비밀번호 공백 처리
- * 불일치와 길이 정책"). BCrypt는 72바이트를 넘는 입력을 조용히 잘라 버리므로, 검증 없이
- * 그보다 긴 비밀번호를 받으면 "저장한 값"과 "사용자가 입력한 값"이 갈린다.
+ * 불일치와 길이 정책"). 이 검증은 문자 수만 본다 — 실제로 설치된 인코더는 72
+ * <b>바이트</b> 기준이라, 한글·이모지 등 멀티바이트 문자가 섞이면 이 검증을 통과한 72자
+ * 입력도 실제 가입 시점에는 인코더가 거절할 수 있다(조용한 절단이 아니라 예외로 거절함 —
+ * {@code PasswordMultibyteBoundaryTest} 참고). 이 불일치는 개선 보고서 B12로 남겨두고
+ * 이번 검증에서는 고치지 않는다.
  */
 @SpringBootTest
 class PasswordLengthPolicyTest {
