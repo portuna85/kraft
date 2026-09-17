@@ -85,9 +85,14 @@ log "검증 통과"
 #    backup.sh가 맡는다).
 STAMP=$(date +%Y%m%d-%H%M%S)
 mkdir -p "$BACKUP_DIR"
+# docker-compose.yml의 MARIADB_DATABASE를 그대로 읽는다 — 예전에는 db 이름을 "kraft"로
+# 고정해 두어, .env에서 실제 설정을 바꾸면(개선 보고서 "배포 스크립트의 하드코딩된 값")
+# 이 스냅샷이 조용히 엉뚱한(또는 존재하지 않는) db를 대상으로 실패하거나 빈 덤프를 남겼다.
+DB_NAME=$(grep '^MARIADB_DATABASE=' "$APP_DIR/.env" | cut -d= -f2-)
+[ -n "$DB_NAME" ] || fail ".env에 MARIADB_DATABASE가 없다"
 if (cd "$APP_DIR" && docker compose --env-file .env exec -T mariadb \
         mariadb-dump -u root -p"$(grep '^MARIADB_ROOT_PASSWORD=' .env | cut -d= -f2-)" \
-        --single-transaction kraft) > "$BACKUP_DIR/pre-deploy-$STAMP.sql" 2>>"$LOG"; then
+        --single-transaction "$DB_NAME") > "$BACKUP_DIR/pre-deploy-$STAMP.sql" 2>>"$LOG"; then
     log "배포 전 DB 스냅샷: backups/pre-deploy-$STAMP.sql"
     # 최근 10개만 남긴다.
     ls -1t "$BACKUP_DIR"/pre-deploy-*.sql 2>/dev/null | tail -n +11 | xargs -r rm -f
