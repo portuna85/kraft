@@ -30,3 +30,25 @@ logging:
 app:
   security:
     email-encryption-key: local-dev-only-email-key-do-not-use-in-prod
+
+  # O06: 전체 스위트가 도는 동안(수십~백여 초) 예약 작업이 우연히 끼어들어 다른 테스트가 만든
+  # 데이터를 건드리지 않게, 모든 주기 작업의 최초 실행을 스위트 실행 시간보다 훨씬 뒤로
+  # 미룬다. enabled 스위치(app.mail.enabled 등)는 건드리지 않는다 — OutboxMailWorker.drain()·
+  # ExpiredTokenPurger.purgeExpired()처럼 그 스위치를 "예약 실행"뿐 아니라 테스트가 직접
+  # 호출하는 메서드 안에서도 검사하는 워커가 있어(F08 테스트 등), 여기서 기본값을 false로
+  # 바꾸면 그 테스트들이 깨진다 — 실제로 겪었다. 초기 지연만 미루면 그 직접 호출 경로는
+  # 전혀 건드리지 않으면서 "예약 실행이 스위트 도중 우연히 끼어드는 것"만 막을 수 있다.
+  mail:
+    drain-initial-delay-ms: 3600000
+    retention-initial-delay-ms: 3600000
+  verification:
+    purge-initial-delay-ms: 3600000
+    sweep-initial-delay-ms: 3600000
+  upload:
+    cleanup-initial-delay-ms: 3600000
+    reconcile-initial-delay-ms: 3600000
+  metrics:
+    initial-delay-ms: 3600000
+  session-revocation:
+    drain-initial-delay-ms: 3600000
+    retention-initial-delay-ms: 3600000

@@ -3,8 +3,9 @@
 # 대부분의 테스트는 test 프로파일(H2 인메모리)로 돌기 때문에 .env가 필요 없다
 # (build.gradle.kts의 Test 태스크 참고).
 #
-# MariaDB 마이그레이션·기존 DB 전환·백업 복구 테스트는 Testcontainers를 사용한다.
-# ubuntu-latest에는 Docker가 있으므로 세 테스트 클래스도 실행된다.
+# MariaDB 마이그레이션·기존 DB 전환·백업 복구·추천 최신성 테스트는 Testcontainers를 사용한다.
+# ubuntu-latest에는 Docker가 있으므로 이 네 테스트 클래스도 실행된다 — Docker가 조용히
+# 빠지는 CI 환경 회귀를 "Verify Docker-gated tests actually ran" 스텝이 잡는다(O06).
 #
 # deploy 잡은 test 잡이 만든 jar를 그대로 서버로 보낸다(다시 빌드하지 않는다) — 테스트를
 # 통과한 바이트와 운영에 올라가는 바이트가 같은 것임을 보장하기 위해서다. 배포 절차와
@@ -33,6 +34,42 @@ jobs:
 
       - name: Test and build jar
         run: ./gradlew test bootJar --no-daemon --console=plain
+
+      # @Testcontainers(disabledWithoutDocker = true) 클래스는 Docker가 없으면 "실패"가 아니라
+      # 전부 skipped로 조용히 통과한다 — CI 이미지에서 Docker가 빠지거나 데몬이 죽어 있어도
+      # 빌드가 그대로 초록으로 끝나 아무도 모른다. 각 클래스의 JUnit XML을 열어 skipped 건수가
+      # 전체 건수와 같은지(=한 건도 실행되지 않음) 확인해, 그런 회귀를 여기서 실패로 잡는다.
+      - name: Verify Docker-gated tests actually ran
+        run: |
+          classes="
+          com.kraft.migration.MariaDbMigrationTest
+          com.kraft.migration.MariaDbUpgradeRehearsalTest
+          com.kraft.backup.BackupRestoreRehearsalTest
+          com.kraft.post.service.PostLikeCountFreshnessTest
+          "
+          failed=0
+          for cls in $classes; do
+            file="build/test-results/test/TEST-${cls}.xml"
+            if [ ! -f "$file" ]; then
+              echo "::error::$file 이 없습니다 — $cls 결과가 전혀 수집되지 않았다"
+              failed=1
+              continue
+            fi
+            tests=$(grep -o 'tests="[0-9]*"' "$file" | head -1 | grep -o '[0-9]*')
+            skipped=$(grep -o 'skipped="[0-9]*"' "$file" | head -1 | grep -o '[0-9]*')
+            if [ -z "$tests" ] || [ "$tests" -eq 0 ]; then
+              echo "::error::$cls 에 테스트 케이스가 0건이다"
+              failed=1
+            elif [ "$skipped" = "$tests" ]; then
+              echo "::error::$cls 의 테스트 ${tests}건이 전부 skipped다 — Docker가 없어 조용히 건너뛰었을 수 있다"
+              failed=1
+            else
+              echo "$cls: ${tests}건 중 ${skipped}건 skip — 실제로 실행됨"
+            fi
+          done
+          if [ "$failed" -eq 1 ]; then
+            exit 1
+          fi
 
       # 실패했을 때 어떤 테스트가 왜 깨졌는지 확인할 수 있도록 리포트를 남긴다.
       # 커버리지 리포트도 함께 올린다(test가 끝나면 자동으로 만들어진다). 문턱값은 두지
