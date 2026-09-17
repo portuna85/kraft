@@ -1,6 +1,7 @@
 package com.kraft.user.mail;
 
 import com.kraft.user.domain.User;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -56,9 +57,10 @@ public interface OutboxMailRepository extends JpaRepository<OutboxMail, Long> {
 
     /**
      * SENDING인 채로 오래 남은 것을 다시 집을 수 있게 한다. 발송 도중 프로세스가 죽으면
-     * 그 메일은 영영 PENDING으로 돌아오지 못한다.
+     * 그 메일은 영영 PENDING으로 돌아오지 못한다. 적체 전체가 아니라 {@code pageable}만큼만
+     * 가져온다(B10) — 호출하는 쪽({@code OutboxMailStore.requeueStuck})이 여러 번 나눠 부른다.
      */
-    List<OutboxMail> findByStatusAndUpdatedAtBefore(OutboxMailStatus status, LocalDateTime threshold);
+    List<OutboxMail> findByStatusAndUpdatedAtBefore(OutboxMailStatus status, LocalDateTime threshold, Pageable pageable);
 
     /** 상태 보고에 쓴다 — 대기·실패가 쌓이면 메일이 안 나가고 있다는 뜻이다. */
     long countByStatus(OutboxMailStatus status);

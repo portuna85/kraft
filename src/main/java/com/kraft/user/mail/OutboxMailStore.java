@@ -6,6 +6,7 @@ import com.kraft.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +35,16 @@ public class OutboxMailStore {
 
     @Value("${app.mail.max-attempts:5}")
     private int maxAttempts;
+
+    /**
+     * requeueStuck이 한 번에 조회·처리하는 최대 개수(B10). 적체 전체를 한 트랜잭션에 다 로딩하면
+     * 그만큼 heap·잠금 시간이 늘어난다. 테스트가 배치 경계를 직접 확인할 수 있도록 패키지
+     * 가시성으로 둔다.
+     */
+    static final int REQUEUE_BATCH_SIZE = 200;
+
+    /** 한 호출 안에서 최대 이만큼의 배치만 돈다 — 남은 적체는 다음 주기가 이어받는다. */
+    private static final int MAX_REQUEUE_BATCHES = 25;
 
     /**
      * 보낼 메일을 대기열에 넣는다. <b>호출한 쪽의 트랜잭션에 참여한다</b>(REQUIRES_NEW가 아니다) —
@@ -127,13 +138,23 @@ public class OutboxMailStore {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int requeueStuck(LocalDateTime threshold) {
-        List<OutboxMail> stuck =
-                outboxMailRepository.findByStatusAndUpdatedAtBefore(OutboxMailStatus.SENDING, threshold);
-        stuck.forEach(mail -> {
-            mail.markFailed("발송 도중 중단되어 다시 대기열에 넣었습니다.", maxAttempts);
-            mail.releaseOwnership();
-        });
-        return stuck.size();
+        int total = 0;
+        for (int batch = 0; batch < MAX_REQUEUE_BATCHES; batch++) {
+            List<OutboxMail> stuck = outboxMailRepository.findByStatusAndUpdatedAtBefore(
+                    OutboxMailStatus.SENDING, threshold, PageRequest.of(0, REQUEUE_BATCH_SIZE));
+            if (stuck.isEmpty()) {
+                break;
+            }
+            stuck.forEach(mail -> {
+                mail.markFailed("발송 도중 중단되어 다시 대기열에 넣었습니다.", maxAttempts);
+                mail.releaseOwnership();
+            });
+            total += stuck.size();
+            if (stuck.size() < REQUEUE_BATCH_SIZE) {
+                break;
+            }
+        }
+        return total;
     }
 
     /** 이 회원에게 이 종류의 메일을 마지막으로 만든 시각. 요청 제한에 쓴다. */

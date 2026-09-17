@@ -1,5 +1,6 @@
 package com.kraft.post.domain;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -17,11 +18,17 @@ public interface PostImageRepository extends JpaRepository<PostImage, Long> {
 
     List<PostImage> findAllByPostId(Long postId);
 
-    List<PostImage> findAllByStatus(PostImageStatus status);
-
     List<PostImage> findAllByIdInAndStatus(List<Long> ids, PostImageStatus status);
 
-    List<PostImage> findAllByStatusAndCreatedAtBefore(PostImageStatus status, LocalDateTime threshold);
+    /**
+     * 대상 전체가 아니라 {@code pageable}만큼만 가져온다(B10). 정리 대상이 대량으로 쌓이면
+     * 예전에는 한 트랜잭션이 전부 로딩해 그만큼 heap·잠금 시간이 늘었다 — 호출하는 쪽
+     * ({@code PostImageCleaner})이 여러 번 나눠 부른다.
+     */
+    List<PostImage> findAllByStatus(PostImageStatus status, Pageable pageable);
+
+    /** {@link #findAllByStatus(PostImageStatus, Pageable)}와 같은 이유로 배치 크기를 받는다(B10). */
+    List<PostImage> findAllByStatusAndCreatedAtBefore(PostImageStatus status, LocalDateTime threshold, Pageable pageable);
 
     /**
      * 한 계정이 현재 차지하고 있는 저장량(바이트). 삭제 예약된 파일은 곧 사라지므로 제외한다.

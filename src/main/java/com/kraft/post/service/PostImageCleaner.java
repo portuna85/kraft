@@ -6,6 +6,7 @@ import com.kraft.post.domain.PostImageStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -36,6 +37,20 @@ public class PostImageCleaner {
     /** 게시글에 연결되지 않은 업로드를 이 시간이 지나면 버린다. */
     static final Duration ORPHAN_TTL = Duration.ofHours(24);
 
+    /**
+     * 한 번에 조회·처리하는 최대 개수(B10). 대상이 이보다 많으면 여러 번 나눠 부른다 — 전체를
+     * 한 트랜잭션에 다 로딩하면 적체가 많을수록 그 주기의 heap·잠금 시간이 함께 늘어난다.
+     * 테스트가 배치 경계를 직접 확인할 수 있도록 패키지 가시성으로 둔다.
+     */
+    static final int CLEANUP_BATCH_SIZE = 200;
+
+    /**
+     * 한 주기 안에서 최대 이만큼의 배치만 돈다. 계속 실패하는 행이 있으면(파일 삭제 실패 등)
+     * 그 행이 다음 배치 조회에도 다시 걸려 무한 반복할 수 있으므로 상한을 둔다 — 남은 적체는
+     * 다음 주기가 이어받는다.
+     */
+    private static final int MAX_BATCHES_PER_CYCLE = 25;
+
     private final PostImageRepository postImageRepository;
     private final PostImageService postImageService;
 
@@ -65,7 +80,19 @@ public class PostImageCleaner {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int cleanPendingDeletions() {
-        return deleteAll(postImageRepository.findAllByStatus(PostImageStatus.PENDING_DELETE));
+        int total = 0;
+        for (int batch = 0; batch < MAX_BATCHES_PER_CYCLE; batch++) {
+            List<PostImage> page = postImageRepository.findAllByStatus(
+                    PostImageStatus.PENDING_DELETE, PageRequest.of(0, CLEANUP_BATCH_SIZE));
+            if (page.isEmpty()) {
+                break;
+            }
+            total += deleteAll(page);
+            if (page.size() < CLEANUP_BATCH_SIZE) {
+                break;
+            }
+        }
+        return total;
     }
 
     /**
@@ -91,16 +118,25 @@ public class PostImageCleaner {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int cleanExpiredOrphans() {
         LocalDateTime threshold = LocalDateTime.now().minus(ORPHAN_TTL);
-        List<PostImage> candidates = postImageRepository.findAllByStatusAndCreatedAtBefore(PostImageStatus.ORPHAN, threshold);
-        int deleted = 0;
-        for (PostImage image : candidates) {
-            if (postImageRepository.claimExpiredOrphanForDeletion(image.getId(), threshold) == 0) {
-                // 조회 이후 다른 트랜잭션이 먼저 연결했다 — 파일을 지우면 안 된다.
-                continue;
+        int total = 0;
+        for (int batch = 0; batch < MAX_BATCHES_PER_CYCLE; batch++) {
+            List<PostImage> page = postImageRepository.findAllByStatusAndCreatedAtBefore(
+                    PostImageStatus.ORPHAN, threshold, PageRequest.of(0, CLEANUP_BATCH_SIZE));
+            if (page.isEmpty()) {
+                break;
             }
-            deleted += deleteOne(image) ? 1 : 0;
+            for (PostImage image : page) {
+                if (postImageRepository.claimExpiredOrphanForDeletion(image.getId(), threshold) == 0) {
+                    // 조회 이후 다른 트랜잭션이 먼저 연결했다 — 파일을 지우면 안 된다.
+                    continue;
+                }
+                total += deleteOne(image) ? 1 : 0;
+            }
+            if (page.size() < CLEANUP_BATCH_SIZE) {
+                break;
+            }
         }
-        return deleted;
+        return total;
     }
 
     private int deleteAll(List<PostImage> images) {

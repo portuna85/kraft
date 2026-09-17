@@ -10,6 +10,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
@@ -71,9 +72,10 @@ class PostImageCleanerTest {
     @Test
     @DisplayName("주기 실행은 삭제 예약분과 만료된 미연결 업로드를 모두 치운다")
     void clean_removesPendingDeletionsAndExpiredOrphans() {
-        given(postImageRepository.findAllByStatus(PostImageStatus.PENDING_DELETE))
+        given(postImageRepository.findAllByStatus(eq(PostImageStatus.PENDING_DELETE), any(Pageable.class)))
                 .willReturn(List.of(image("pending.png")));
-        given(postImageRepository.findAllByStatusAndCreatedAtBefore(eq(PostImageStatus.ORPHAN), any(LocalDateTime.class)))
+        given(postImageRepository.findAllByStatusAndCreatedAtBefore(
+                eq(PostImageStatus.ORPHAN), any(LocalDateTime.class), any(Pageable.class)))
                 .willReturn(List.of(image("orphan.png")));
         given(postImageRepository.claimExpiredOrphanForDeletion(eq(1L), any(LocalDateTime.class))).willReturn(1);
 
@@ -87,7 +89,8 @@ class PostImageCleanerTest {
     @Test
     @DisplayName("B01: 파일을 지우기 전 조건부 선점이 0행이면(그 사이 연결됨) 파일을 건드리지 않는다")
     void cleanExpiredOrphans_whenClaimFails_skipsFile() {
-        given(postImageRepository.findAllByStatusAndCreatedAtBefore(eq(PostImageStatus.ORPHAN), any(LocalDateTime.class)))
+        given(postImageRepository.findAllByStatusAndCreatedAtBefore(
+                eq(PostImageStatus.ORPHAN), any(LocalDateTime.class), any(Pageable.class)))
                 .willReturn(List.of(image("attached-in-between.png")));
         given(postImageRepository.claimExpiredOrphanForDeletion(eq(1L), any(LocalDateTime.class))).willReturn(0);
 
@@ -103,7 +106,7 @@ class PostImageCleanerTest {
     void cleanPendingDeletions_whenOneFileFails_keepsItsRowAndContinues() {
         PostImage failing = image("locked.png");
         PostImage succeeding = image("fine.png");
-        given(postImageRepository.findAllByStatus(PostImageStatus.PENDING_DELETE))
+        given(postImageRepository.findAllByStatus(eq(PostImageStatus.PENDING_DELETE), any(Pageable.class)))
                 .willReturn(List.of(failing, succeeding));
         willThrow(new IllegalArgumentException("이미지 삭제에 실패했습니다."))
                 .given(postImageService).deleteIfExists("/images/locked.png");
@@ -118,9 +121,27 @@ class PostImageCleanerTest {
     }
 
     @Test
+    @DisplayName("B10: 대상이 한 배치를 꽉 채우면 다음 배치를 이어서 조회한다")
+    void cleanPendingDeletions_whenBacklogFillsABatch_continuesToNextBatch() {
+        List<PostImage> fullBatch = java.util.stream.IntStream.range(0, PostImageCleaner.CLEANUP_BATCH_SIZE)
+                .mapToObj(i -> image("full-" + i + ".png"))
+                .toList();
+        List<PostImage> secondBatch = List.of(image("leftover.png"));
+        given(postImageRepository.findAllByStatus(eq(PostImageStatus.PENDING_DELETE), any(Pageable.class)))
+                .willReturn(fullBatch, secondBatch);
+
+        int deleted = postImageCleaner.cleanPendingDeletions();
+
+        assertThat(deleted).isEqualTo(PostImageCleaner.CLEANUP_BATCH_SIZE + 1);
+        then(postImageRepository).should(org.mockito.Mockito.times(2))
+                .findAllByStatus(eq(PostImageStatus.PENDING_DELETE), any(Pageable.class));
+    }
+
+    @Test
     @DisplayName("치울 것이 없으면 파일 삭제를 한 번도 시도하지 않는다")
     void cleanPendingDeletions_whenNothingReserved_touchesNoFile() {
-        given(postImageRepository.findAllByStatus(PostImageStatus.PENDING_DELETE)).willReturn(List.of());
+        given(postImageRepository.findAllByStatus(eq(PostImageStatus.PENDING_DELETE), any(Pageable.class)))
+                .willReturn(List.of());
 
         assertThat(postImageCleaner.cleanPendingDeletions()).isZero();
         then(postImageService).should(never()).deleteIfExists(anyString());
@@ -136,7 +157,7 @@ class PostImageCleanerTest {
 
         assertThat(deleted).isEqualTo(1);
         then(postImageService).should().deleteIfExists("/images/scoped.png");
-        then(postImageRepository).should(never()).findAllByStatus(any());
+        then(postImageRepository).should(never()).findAllByStatus(any(), any());
     }
 
     @Test

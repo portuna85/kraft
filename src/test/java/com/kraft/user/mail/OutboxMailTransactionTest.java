@@ -390,6 +390,23 @@ class OutboxMailTransactionTest {
     }
 
     @Test
+    @DisplayName("B10: 정체된 메일이 한 배치를 꽉 채우면 다음 배치를 이어서 처리한다")
+    void requeueStuck_whenBacklogFillsABatch_continuesToNextBatch() {
+        int batchSize = (int) ReflectionTestUtils.getField(OutboxMailStore.class, "REQUEUE_BATCH_SIZE");
+        int total = batchSize + 1;
+        for (int i = 0; i < total; i++) {
+            queueOne();
+        }
+        assertThat(outboxMailStore.claimBatch(total, "test-owner")).hasSize(total);
+
+        int requeued = outboxMailStore.requeueStuck(LocalDateTime.now().plusMinutes(1));
+
+        assertThat(requeued).isEqualTo(total);
+        assertThat(outboxMailRepository.findAll())
+                .allMatch(mail -> mail.getStatus() == OutboxMailStatus.PENDING);
+    }
+
+    @Test
     @DisplayName("재발송을 연달아 요청하면 거부하고 얼마나 기다려야 하는지 알려준다")
     void resendIsRateLimited() {
         String email = user.getEmail();
