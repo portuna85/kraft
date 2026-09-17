@@ -92,7 +92,7 @@ class HealthReporterTest {
     @Test
     @DisplayName("정상일 때는 INFO로 평소 수치를 남긴다")
     void healthyStateIsLoggedAtInfo() {
-        healthReporter.report(new HealthSnapshot(100, 1, 0, 90, 300, 1, 10, 0, 50_000_000_000L, 0, 0, 0));
+        healthReporter.report(new HealthSnapshot(100, 1, 0, 90, 300, 1, 10, 0, 50_000_000_000L, 0, 0, 0, 0));
 
         ILoggingEvent event = onlyEvent();
         assertThat(event.getLevel()).isEqualTo(Level.INFO);
@@ -106,7 +106,7 @@ class HealthReporterTest {
     @Test
     @DisplayName("기준을 넘기면 ERROR로 올려 무엇이 넘었는지 함께 남긴다")
     void breachIsEscalatedToError() {
-        healthReporter.report(new HealthSnapshot(100, 40, 3, 90, 300, 1, 10, 0, 50_000_000_000L, 0, 0, 0));
+        healthReporter.report(new HealthSnapshot(100, 40, 3, 90, 300, 1, 10, 0, 50_000_000_000L, 0, 0, 0, 0));
 
         ILoggingEvent event = onlyEvent();
         assertThat(event.getLevel()).as("ERROR라야 kraft-error.log에 모인다").isEqualTo(Level.ERROR);
@@ -227,5 +227,28 @@ class HealthReporterTest {
         assertThat(limits.errorRate()).isEqualTo(0.1);
         assertThat(limits.serverErrors()).isZero();
         assertThat(List.of(limits.avgMillis(), limits.diskFreeBytes())).doesNotContain(0L);
+        assertThat(limits.slowRequests()).isEqualTo(5);
+    }
+
+    /**
+     * O05: 평균 응답이 기준 안이어도, 그 평균에 묻힌 소수의 느린 요청이 있으면 따로 잡아야
+     * 한다 — RequestMetrics의 slowThresholdMillis(테스트 설정 기준 3000ms)를 넘는 요청 수가
+     * HealthSnapshot까지 그대로 전달되고, 기준을 넘기면 breaches에 올라오는지 본다.
+     */
+    @Test
+    @DisplayName("평균은 정상이어도 느린 요청이 기준을 넘으면 이상으로 잡는다")
+    void slowRequestsBreachDespiteNormalAverage() {
+        for (int i = 0; i < 10; i++) {
+            requestMetrics.record(200, 10); // 대부분 빠른 요청.
+        }
+        for (int i = 0; i < 6; i++) {
+            requestMetrics.record(200, 5000); // 기본 임계(3000ms)를 넘는 느린 요청.
+        }
+
+        HealthSnapshot snapshot = healthReporter.collect();
+
+        assertThat(snapshot.slowRequests()).isEqualTo(6);
+        assertThat(snapshot.breaches(healthReporter.thresholds()))
+                .anyMatch(line -> line.startsWith("느린 요청"));
     }
 }

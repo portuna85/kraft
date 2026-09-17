@@ -23,8 +23,8 @@ import javax.sql.DataSource;
 public class ObservabilityConfig {
 
     @Bean
-    public RequestMetrics requestMetrics() {
-        return new RequestMetrics();
+    public RequestMetrics requestMetrics(@Value("${app.metrics.slow-request-ms:3000}") long slowThresholdMillis) {
+        return new RequestMetrics(slowThresholdMillis);
     }
 
     /**

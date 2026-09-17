@@ -69,6 +69,10 @@ public class HealthReporter {
     @Value("${app.metrics.reports-pending:20}")
     private long reportsPending;
 
+    /** 평균이 정상이어도 이만큼 넘게 느린 요청이 있으면 알린다(O05). */
+    @Value("${app.metrics.slow-requests:5}")
+    private long slowRequests;
+
     public HealthReporter(RequestMetrics requestMetrics,
                           OutboxMailRepository outboxMailRepository,
                           ReportRepository reportRepository,
@@ -108,7 +112,7 @@ public class HealthReporter {
 
     HealthThresholds thresholds() {
         return new HealthThresholds(minRequests, errorRate, serverErrors, avgMillis,
-                poolUsage, diskFreeBytes, mailPending, mailFailed, reportsPending);
+                poolUsage, diskFreeBytes, mailPending, mailFailed, reportsPending, slowRequests);
     }
 
     HealthSnapshot collect() {
@@ -130,7 +134,8 @@ public class HealthReporter {
                 usableSpace(),
                 safeCount("발송 대기 메일 수", () -> outboxMailRepository.countByStatus(OutboxMailStatus.PENDING)),
                 safeCount("발송 포기 메일 수", () -> outboxMailRepository.countByStatus(OutboxMailStatus.FAILED)),
-                safeCount("미처리 신고 수", () -> reportRepository.countByStatus(ReportStatus.PENDING)));
+                safeCount("미처리 신고 수", () -> reportRepository.countByStatus(ReportStatus.PENDING)),
+                http.slowRequests());
     }
 
     /** @return 정상 조회 값. 실패하면 경고를 남기고 diskFreeBytes와 같은 관례로 -1을 돌려준다. */

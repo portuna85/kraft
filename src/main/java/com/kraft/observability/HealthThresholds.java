@@ -17,6 +17,8 @@ package com.kraft.observability;
  * @param reportsPending   처리하지 않은 신고 수 상한. 이것은 앱이 아니라 <b>사람이 멈춘</b>
  *                         신호다 — 기계가 대신 처리할 수 없으므로, 쌓이고 있다는 사실 자체를
  *                         알려 주는 것이 전부다.
+ * @param slowRequests     고정 임계값(ms)을 넘은 요청 수 상한(O05). 평균이 정상 범위여도 이
+ *                         값이 늘면 일부 요청만 유독 느려지고 있다는 뜻이다.
  */
 public record HealthThresholds(
         int minRequests,
@@ -27,5 +29,6 @@ public record HealthThresholds(
         long diskFreeBytes,
         long mailPending,
         long mailFailed,
-        long reportsPending) {
+        long reportsPending,
+        long slowRequests) {
 }

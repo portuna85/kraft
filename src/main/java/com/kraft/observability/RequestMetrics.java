@@ -33,11 +33,27 @@ import java.util.concurrent.atomic.LongAdder;
  */
 public class RequestMetrics {
 
+    /** 평균·최댓값만으로는 소수의 느린 요청이 나머지 표본에 묻힌다(O05). 이 절대 ms를 넘는
+     * 요청은 몇 건인지 따로 센다 — 퍼센타일 전체를 계산하는 무거운 방식 대신, 기존 스타일과
+     * 일관된 카운터 하나만 더한다. */
+    private static final long DEFAULT_SLOW_THRESHOLD_MILLIS = 3000;
+
+    private final long slowThresholdMillis;
+
+    public RequestMetrics() {
+        this(DEFAULT_SLOW_THRESHOLD_MILLIS);
+    }
+
+    public RequestMetrics(long slowThresholdMillis) {
+        this.slowThresholdMillis = slowThresholdMillis;
+    }
+
     private record Counters(LongAdder count, LongAdder errors, LongAdder serverErrors,
-                             LongAdder totalMillis, AtomicLong maxMillis) {
+                             LongAdder totalMillis, AtomicLong maxMillis, LongAdder slowRequests) {
 
         static Counters fresh() {
-            return new Counters(new LongAdder(), new LongAdder(), new LongAdder(), new LongAdder(), new AtomicLong());
+            return new Counters(new LongAdder(), new LongAdder(), new LongAdder(), new LongAdder(),
+                    new AtomicLong(), new LongAdder());
         }
     }
 
@@ -48,6 +64,10 @@ public class RequestMetrics {
         c.count().increment();
         c.totalMillis().add(millis);
         c.maxMillis().accumulateAndGet(millis, Math::max);
+
+        if (millis >= slowThresholdMillis) {
+            c.slowRequests().increment();
+        }
 
         if (status >= 500) {
             c.serverErrors().increment();
@@ -66,8 +86,9 @@ public class RequestMetrics {
         long server = c.serverErrors().sum();
         long sum = c.totalMillis().sum();
         long max = c.maxMillis().get();
+        long slow = c.slowRequests().sum();
 
-        return new Snapshot(requests, failed, server, requests == 0 ? 0 : sum / requests, max);
+        return new Snapshot(requests, failed, server, requests == 0 ? 0 : sum / requests, max, slow);
     }
 
     /**
@@ -76,8 +97,11 @@ public class RequestMetrics {
      * @param serverErrors 5xx만 — 사용자 잘못이 아닌 것
      * @param avgMillis    평균 응답 시간
      * @param maxMillis    가장 오래 걸린 요청
+     * @param slowRequests {@link #slowThresholdMillis}(기본 3000ms)를 넘은 요청 수. 평균은
+     *                     소수의 느린 요청을 다수의 빠른 요청이 묻어 버릴 수 있어 따로 센다.
      */
-    public record Snapshot(long requests, long errors, long serverErrors, long avgMillis, long maxMillis) {
+    public record Snapshot(long requests, long errors, long serverErrors, long avgMillis, long maxMillis,
+                            long slowRequests) {
 
         public double errorRate() {
             return requests == 0 ? 0 : (double) errors / requests;
