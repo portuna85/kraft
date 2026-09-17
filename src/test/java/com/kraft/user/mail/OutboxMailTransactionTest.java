@@ -1,5 +1,6 @@
 package com.kraft.user.mail;
 
+import com.kraft.user.domain.EmailVerificationToken;
 import com.kraft.user.domain.EmailVerificationTokenRepository;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
@@ -103,9 +104,19 @@ class OutboxMailTransactionTest {
                 .build());
     }
 
-    /** 발송 흐름만 보고 싶을 때 쓴다. 비동기 발송이 함께 돌지 않는다. */
+    /**
+     * 발송 흐름만 보고 싶을 때 쓴다. 비동기 발송이 함께 돌지 않는다.
+     * <p>
+     * 실제 운영에서는 {@code EmailVerificationService}가 토큰 저장과 아웃박스 등록을 같은
+     * 트랜잭션에서 함께 한다. {@code load()}가 발송 직전 토큰이 유효한지 확인하므로(F08),
+     * 이 헬퍼도 짝이 되는 토큰 행을 함께 만들어야 "토큰이 유효하지 않다"는 이유로 발송이
+     * 조용히 건너뛰어지는 것을 막을 수 있다.
+     */
     private void queueOne() {
-        outboxMailStore.enqueue(user, UUID.randomUUID().toString(), OutboxMailKind.VERIFY_EMAIL);
+        String token = UUID.randomUUID().toString();
+        tokenRepository.save(EmailVerificationToken.builder()
+                .token(token).user(user).expiresAt(LocalDateTime.now().plusHours(24)).build());
+        outboxMailStore.enqueue(user, token, OutboxMailKind.VERIFY_EMAIL);
     }
 
     /**
@@ -150,8 +161,8 @@ class OutboxMailTransactionTest {
     }
 
     @Test
-    @DisplayName("발송이 실패하면 원인을 남기고 다음 차례에 다시 시도한다")
-    void failedSendIsRetried() {
+    @DisplayName("F08: 발송이 실패하면 원인을 남기고, 다음 재시도 시각(backoff) 전에는 다시 집지 않는다")
+    void failedSendIsRetriedOnlyAfterBackoff() {
         willThrow(new RuntimeException("메일 서버가 응답하지 않습니다"))
                 .given(emailSender).send(anyString(), anyString(), anyString());
 
@@ -159,11 +170,18 @@ class OutboxMailTransactionTest {
         outboxMailWorker.drain();
 
         OutboxMail failed = outboxMailRepository.findAll().get(0);
-        // 아직 기회가 남았으므로 PENDING으로 돌아가 다음 차례를 기다린다.
+        // 아직 기회가 남았으므로 PENDING으로 돌아가지만, 다음 시도 시각이 미래로 미뤄진다.
         assertThat(failed.getStatus()).isEqualTo(OutboxMailStatus.PENDING);
         assertThat(failed.getAttempts()).isEqualTo(1);
         assertThat(failed.getLastError()).contains("응답하지 않습니다");
+        assertThat(failed.getNextAttemptAt()).isAfter(LocalDateTime.now());
 
+        // 재시도 시각이 되기 전이므로 곧바로 다시 돌려도 집히지 않는다.
+        outboxMailWorker.drain();
+        assertThat(outboxMailRepository.findAll().get(0).getAttempts()).isEqualTo(1);
+
+        // 재시도 시각이 지난 것처럼 시각을 당겨두면 다음 차례에 다시 집는다.
+        backdateNextAttempt(failed.getId(), LocalDateTime.now().minusSeconds(1));
         outboxMailWorker.drain();
         assertThat(outboxMailRepository.findAll().get(0).getAttempts()).isEqualTo(2);
     }
@@ -177,7 +195,10 @@ class OutboxMailTransactionTest {
                 .given(emailSender).send(anyString(), anyString(), anyString());
 
         queueOne();
+        Long id = outboxMailRepository.findAll().get(0).getId();
         for (int i = 0; i < MAX_ATTEMPTS; i++) {
+            // backoff 때문에 곧바로 재시도되지 않으므로, 매 차례 재시도 시각이 지난 것처럼 당겨둔다.
+            backdateNextAttempt(id, LocalDateTime.now().minusSeconds(1));
             outboxMailWorker.drain();
         }
 
@@ -187,9 +208,54 @@ class OutboxMailTransactionTest {
         assertThat(givenUp.getLastError()).contains("존재하지 않습니다");
 
         // 더 돌려도 PENDING이 아니므로 집히지 않는다 — 시도 횟수가 그대로다.
-        assertThat(outboxMailStore.claimBatch(10)).isEmpty();
+        assertThat(outboxMailStore.claimBatch(10, "test-owner")).isEmpty();
         outboxMailWorker.drain();
         assertThat(outboxMailRepository.findAll().get(0).getAttempts()).isEqualTo(MAX_ATTEMPTS);
+    }
+
+    @Test
+    @DisplayName("F08: 발송 직전 인증 토큰이 재발급으로 사라졌으면 보내지 않고 즉시 FAILED로 남긴다")
+    void skipsSendWhenTokenNoLongerValid() {
+        queueOne();
+        tokenRepository.deleteAll();
+
+        outboxMailWorker.drain();
+
+        OutboxMail mail = outboxMailRepository.findAll().get(0);
+        assertThat(mail.getStatus()).isEqualTo(OutboxMailStatus.FAILED);
+        assertThat(mail.getLastError()).contains("유효하지 않습니다");
+        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.never())
+                .send(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("F08: 한 배치의 동시 발송 수는 max-concurrent-sends를 넘지 않는다")
+    void drain_limitsConcurrentSendsToConfiguredMaximum() throws InterruptedException {
+        int total = 12;
+        int maxConcurrent = (int) ReflectionTestUtils.getField(outboxMailWorker, "maxConcurrentSends");
+        java.util.concurrent.atomic.AtomicInteger current = new java.util.concurrent.atomic.AtomicInteger(0);
+        java.util.concurrent.atomic.AtomicInteger observedMax = new java.util.concurrent.atomic.AtomicInteger(0);
+        willAnswer(invocation -> {
+            int now = current.incrementAndGet();
+            observedMax.updateAndGet(prev -> Math.max(prev, now));
+            Thread.sleep(20);
+            current.decrementAndGet();
+            return null;
+        }).given(emailSender).send(anyString(), anyString(), anyString());
+
+        for (int i = 0; i < total; i++) {
+            queueOne();
+        }
+        ReflectionTestUtils.setField(outboxMailWorker, "batchSize", total);
+        outboxMailWorker.drain();
+
+        assertThat(observedMax.get()).isLessThanOrEqualTo(maxConcurrent);
+        assertThat(outboxMailRepository.findAll()).allMatch(mail -> mail.getStatus() == OutboxMailStatus.SENT);
+    }
+
+    /** next_attempt_at은 markFailed()가 지금 시각 기준으로 계산하므로, 지난 것처럼 만들려면 직접 당긴다. */
+    private void backdateNextAttempt(Long id, LocalDateTime nextAttemptAt) {
+        jdbcTemplate.update("UPDATE outbox_mails SET next_attempt_at = ? WHERE id = ?", nextAttemptAt, id);
     }
 
     @Test
@@ -209,7 +275,7 @@ class OutboxMailTransactionTest {
     @DisplayName("발송 도중 중단되어 SENDING으로 남은 메일은 다시 대기열로 돌아온다")
     void stuckMailIsRequeued() {
         queueOne();
-        assertThat(outboxMailStore.claimBatch(10)).hasSize(1);
+        assertThat(outboxMailStore.claimBatch(10, "test-owner")).hasSize(1);
         assertThat(outboxMailRepository.findAll().get(0).getStatus()).isEqualTo(OutboxMailStatus.SENDING);
 
         // 프로세스가 여기서 죽었다면 이 행은 영영 아무도 집지 않는다.
@@ -254,13 +320,13 @@ class OutboxMailTransactionTest {
         }
 
         List<Long> outerIds = requiresNew.execute(status -> {
-            List<Long> claimed = outboxMailStore.claimBatch(3);
+            List<Long> claimed = outboxMailStore.claimBatch(3, "outer-owner");
 
             // 바깥 트랜잭션이 아직 커밋 전이라 방금 집은 행은 잠긴 채다. 이 시점에 독립된
             // 트랜잭션이 같은 대상을 다시 선점하려 하면 SKIP LOCKED가 그 행들을 건너뛰어
             // 빈 목록을 돌려줘야 한다 — 예전 SELECT-then-UPDATE 방식이라면 잠금이 없어
             // 같은 행을 다시 집었을 것이다.
-            List<Long> innerIds = requiresNew.execute(inner -> outboxMailStore.claimBatch(3));
+            List<Long> innerIds = requiresNew.execute(inner -> outboxMailStore.claimBatch(3, "inner-owner"));
 
             assertThat(innerIds).as("잠긴 행은 건너뛰어야 한다").isEmpty();
             return claimed;

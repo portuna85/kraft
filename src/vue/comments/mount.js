@@ -11,8 +11,11 @@ import CommentsApp from './CommentsApp.vue';
 const mountPoint = document.getElementById('comments-app');
 
 if (mountPoint) {
-    const initialComments = JSON.parse(
-        document.getElementById('comments-initial-data')?.textContent || '[]',
+    // 서버는 CommentPageDto({ comments, totalCount, hasMore })를 내려준다 — 최초 페이지는
+    // 최대 PAGE_SIZE개만 담고, 전체 개수와 다음 페이지 존재 여부를 함께 실어 "더 보기"가
+    // 이어받게 한다(개선 보고서 "댓글 전체 로딩").
+    const initialPage = JSON.parse(
+        document.getElementById('comments-initial-data')?.textContent || '{"comments":[],"totalCount":0,"hasMore":false}',
     );
 
     createApp(CommentsApp, {
@@ -21,6 +24,8 @@ if (mountPoint) {
         canWrite: mountPoint.dataset.canWrite === 'true',
         // 쓸 수 없을 때 그 이유(이메일 미인증·이용 제한). 서버가 작성 경로와 같은 규칙으로 만든다.
         writeBlockReason: mountPoint.dataset.writeBlockReason ?? '',
-        initialComments,
+        initialComments: initialPage.comments,
+        initialTotalCount: initialPage.totalCount,
+        initialHasMore: initialPage.hasMore,
     }).mount(mountPoint);
 }

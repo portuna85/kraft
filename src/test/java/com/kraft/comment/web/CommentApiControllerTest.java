@@ -1,5 +1,6 @@
 package com.kraft.comment.web;
 
+import com.kraft.comment.dto.CommentPageDto;
 import com.kraft.comment.dto.CommentResponseDto;
 import com.kraft.comment.dto.CommentUpdateRequestDto;
 import com.kraft.comment.service.CommentService;
@@ -58,6 +59,18 @@ class CommentApiControllerTest {
         mockMvc.perform(get("/api/v1/posts/1/comments"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].content").value("댓글"));
+    }
+
+    @Test
+    @DisplayName("F13: GET .../comments/page 는 인증 없이도 afterId 커서를 그대로 서비스에 전달한다")
+    void pageComments_isAccessibleWithoutAuthenticationAndPassesAfterIdCursor() throws Exception {
+        given(commentService.findNextPageForView(eq(1L), eq(20L), any()))
+                .willReturn(new CommentPageDto(List.of(), 30, true));
+
+        mockMvc.perform(get("/api/v1/posts/1/comments/page").param("afterId", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(30))
+                .andExpect(jsonPath("$.hasMore").value(true));
     }
 
     @Test

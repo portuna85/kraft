@@ -2,6 +2,7 @@ package com.kraft.comment.service;
 
 import com.kraft.comment.domain.Comment;
 import com.kraft.comment.domain.CommentRepository;
+import com.kraft.comment.dto.CommentPageDto;
 import com.kraft.comment.dto.CommentResponseDto;
 import com.kraft.comment.dto.CommentSaveRequestDto;
 import com.kraft.comment.dto.CommentUpdateRequestDto;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -25,6 +27,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -232,5 +235,35 @@ class CommentServiceTest {
         assertThat(result).hasSize(1);
         assertThat(result.get(0).content()).isEqualTo("원래 댓글");
         assertThat(result.get(0).author()).isEqualTo("tester");
+    }
+
+    @Test
+    @DisplayName("F13: findInitialPageForView는 21개 중 20개만 반환하고 hasMore=true, totalCount는 별도로 담는다")
+    void findInitialPageForView_capsAtPageSizeAndReportsHasMore() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        List<Comment> twentyOne = IntStream.rangeClosed(1, 21)
+                .mapToObj(i -> commentOf(owner, (long) i))
+                .toList();
+        given(commentRepository.findPageByPostIdAsc(1L, null, PageRequest.of(0, 21))).willReturn(twentyOne);
+        given(commentRepository.countByPostId(1L)).willReturn(30L);
+
+        CommentPageDto result = commentService.findInitialPageForView(1L, authOf("owner@example.com", Role.USER));
+
+        assertThat(result.comments()).hasSize(20);
+        assertThat(result.hasMore()).isTrue();
+        assertThat(result.totalCount()).isEqualTo(30L);
+    }
+
+    @Test
+    @DisplayName("F13: findNextPageForView는 afterId 커서를 그대로 리포지토리에 전달한다")
+    void findNextPageForView_passesAfterIdCursorToRepository() {
+        given(commentRepository.findPageByPostIdAsc(1L, 20L, PageRequest.of(0, 21))).willReturn(List.of());
+        given(commentRepository.countByPostId(1L)).willReturn(20L);
+
+        CommentPageDto result = commentService.findNextPageForView(1L, 20L, authOf("owner@example.com", Role.USER));
+
+        assertThat(result.comments()).isEmpty();
+        assertThat(result.hasMore()).isFalse();
+        verify(commentRepository).findPageByPostIdAsc(1L, 20L, PageRequest.of(0, 21));
     }
 }

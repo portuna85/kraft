@@ -33,8 +33,8 @@ public class SuspensionService {
     public Page<SuspendedUserDto> findSuspended(Pageable pageable) {
         return userRepository
                 .findBySuspendedUntilAfterOrderBySuspendedUntilAsc(LocalDateTime.now(), pageable)
-                .map(user -> new SuspendedUserDto(
-                        user.getId(), user.getName(), user.getSuspendedUntil(), user.getSuspensionReason()));
+                .map(row -> new SuspendedUserDto(
+                        row.getId(), row.getName(), row.getSuspendedUntil(), row.getSuspensionReason()));
     }
 
     /**

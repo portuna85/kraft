@@ -1,3 +1,4 @@
+// @ts-check
 import { qs } from './dom.js';
 
 /**
@@ -9,8 +10,8 @@ import { qs } from './dom.js';
  */
 
 // 모듈 본문은 한 번만 실행되므로 메타 태그도 한 번만 읽는다.
-const CSRF_TOKEN = qs('meta[name="_csrf"]')?.content;
-const CSRF_HEADER = qs('meta[name="_csrf_header"]')?.content;
+const CSRF_TOKEN = /** @type {HTMLMetaElement | null} */ (qs('meta[name="_csrf"]'))?.content;
+const CSRF_HEADER = /** @type {HTMLMetaElement | null} */ (qs('meta[name="_csrf_header"]'))?.content;
 
 const LOGIN_REQUIRED = '로그인이 필요합니다. 다시 로그인해 주세요.';
 const FORBIDDEN =
@@ -29,6 +30,10 @@ const UPLOAD_TIMEOUT_MS = 60_000;
  * 호출부는 `catch (error) { show(error.message) }`로 쓴다.
  */
 export class ApiError extends Error {
+    /**
+     * @param {string} message
+     * @param {{status?: number, kind?: string, body?: unknown}} [options]
+     */
     constructor(message, { status = 0, kind = 'http', body = null } = {}) {
         super(message);
         this.name = 'ApiError';
@@ -38,12 +43,16 @@ export class ApiError extends Error {
     }
 }
 
+/** @returns {Record<string, string>} */
 function csrfHeaders() {
-    return CSRF_HEADER ? { [CSRF_HEADER]: CSRF_TOKEN } : {};
+    return CSRF_HEADER && CSRF_TOKEN ? { [CSRF_HEADER]: CSRF_TOKEN } : {};
 }
 
 /**
  * 응답을 해석한다. **순서가 곧 정확성**이라 아래 차례를 바꾸면 안 된다.
+ *
+ * @param {Response} response
+ * @returns {Promise<any>}
  */
 async function parse(response) {
     // 1. 세션이 끊겨 로그인 페이지로 흘러간 경우. fetch가 리다이렉트를 따라가므로 최종 응답은
@@ -98,7 +107,21 @@ async function parse(response) {
     throw new ApiError(GENERIC, { status: response.status });
 }
 
+/**
+ * @typedef {Object} RequestOptions
+ * @property {string} [method]
+ * @property {unknown} [json]
+ * @property {FormData} [formData]
+ * @property {number} [timeoutMs]
+ */
+
+/**
+ * @param {string} url
+ * @param {RequestOptions} [options]
+ * @returns {Promise<any>}
+ */
 async function request(url, { method = 'GET', json, formData, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
+    /** @type {Record<string, string>} */
     const headers = { Accept: 'application/json' };
     let body;
 
@@ -128,7 +151,7 @@ async function request(url, { method = 'GET', json, formData, timeoutMs = DEFAUL
             signal: controller.signal,
         });
     } catch (error) {
-        if (error?.name === 'AbortError') {
+        if (/** @type {any} */ (error)?.name === 'AbortError') {
             throw new ApiError(TIMEOUT, { status: 0, kind: 'timeout' });
         }
         // fetch 자체가 거부되는 것은 네트워크 단절이다(상태 코드가 없다).
@@ -141,15 +164,31 @@ async function request(url, { method = 'GET', json, formData, timeoutMs = DEFAUL
 }
 
 export const api = {
+    /** @param {string} url */
     get: (url) => request(url),
+    /**
+     * @param {string} url
+     * @param {unknown} [json]
+     */
     post: (url, json) => request(url, { method: 'POST', json }),
+    /**
+     * @param {string} url
+     * @param {unknown} [json]
+     */
     put: (url, json) => request(url, { method: 'PUT', json }),
     // 본문 있는 DELETE는 드물지만 표준이 금지하지 않는다. 회원 탈퇴가 현재 비밀번호를 함께
     // 보낸다 — 되돌릴 수 없는 작업이라 서버가 한 번 더 확인한다.
+    /**
+     * @param {string} url
+     * @param {unknown} [json]
+     */
     del: (url, json) => request(url, { method: 'DELETE', json }),
     /**
      * multipart 업로드. 헤더를 받지 않는 별도 메서드로 두어 Content-Type 실수를 막는다.
      * 이미지 업로드는 느린 회선에서 기본 타임아웃보다 오래 걸릴 수 있어 더 넉넉히 잡는다.
+     *
+     * @param {string} url
+     * @param {FormData} formData
      */
     upload: (url, formData) => request(url, { method: 'POST', formData, timeoutMs: UPLOAD_TIMEOUT_MS }),
 };

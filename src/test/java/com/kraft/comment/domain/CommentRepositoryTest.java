@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
 import java.util.Map;
@@ -140,6 +141,34 @@ class CommentRepositoryTest {
     @DisplayName("countByPostIdIn: 빈 목록이면 쿼리 없이 빈 맵을 반환한다")
     void countByPostIdIn_returnsEmptyMap_whenPostIdsEmpty() {
         assertThat(commentRepository.countByPostIdIn(List.of())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("F13: findPageByPostIdAsc: afterId가 null이면 처음부터 id 오름차순으로 pageable 개수만큼 반환한다")
+    void findPageByPostIdAsc_withNullAfterId_returnsFromBeginning() {
+        Comment first = commentRepository.save(Comment.builder().content("1").post(post).user(user).build());
+        Comment second = commentRepository.save(Comment.builder().content("2").post(post).user(user).build());
+        commentRepository.save(Comment.builder().content("3").post(post).user(user).build());
+        em.flush();
+        em.clear();
+
+        List<Comment> page = commentRepository.findPageByPostIdAsc(post.getId(), null, PageRequest.of(0, 2));
+
+        assertThat(page).extracting(Comment::getId).containsExactly(first.getId(), second.getId());
+    }
+
+    @Test
+    @DisplayName("F13: findPageByPostIdAsc: afterId 이후 댓글만 id 오름차순으로 반환한다")
+    void findPageByPostIdAsc_withAfterId_returnsOnlyLaterComments() {
+        Comment first = commentRepository.save(Comment.builder().content("1").post(post).user(user).build());
+        Comment second = commentRepository.save(Comment.builder().content("2").post(post).user(user).build());
+        Comment third = commentRepository.save(Comment.builder().content("3").post(post).user(user).build());
+        em.flush();
+        em.clear();
+
+        List<Comment> page = commentRepository.findPageByPostIdAsc(post.getId(), first.getId(), PageRequest.of(0, 10));
+
+        assertThat(page).extracting(Comment::getId).containsExactly(second.getId(), third.getId());
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.kraft.post.domain;
 
 import com.kraft.config.JpaConfig;
+import com.kraft.post.dto.PostRowDto;
 import com.kraft.user.domain.EmailAttributeConverter;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
@@ -13,6 +14,8 @@ import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -44,21 +47,34 @@ class PostRepositoryTest {
     }
 
     @Test
-    @DisplayName("search: 검색어·분류가 없으면 ID 내림차순으로, JOIN FETCH로 작성자가 함께 조회된다")
-    void search_withoutFilters_returnsPostsDescWithAuthorJoinFetched() {
+    @DisplayName("search: 검색어·분류가 없으면 ID 내림차순으로, 작성자 이름이 함께 조회된다")
+    void search_withoutFilters_returnsPostsDescWithAuthorName() {
         Post first = postRepository.save(Post.builder().title("첫 글").content("c1").user(user).build());
         Post second = postRepository.save(Post.builder().title("둘째 글").content("c2").user(user).build());
         em.flush();
         em.clear();
 
-        Page<Post> page = postRepository.search(null, null, PageRequest.of(0, 10));
+        Page<PostRowDto> page = postRepository.search(null, null, PageRequest.of(0, 10));
 
-        assertThat(page.getContent()).extracting(Post::getId)
+        assertThat(page.getContent()).extracting(PostRowDto::id)
                 .containsExactly(second.getId(), first.getId());
         assertThat(page.getTotalElements()).isEqualTo(2);
-        // em.clear() 이후이므로 LAZY 프록시라면 여기서 LazyInitializationException이 나야 정상이지만,
-        // JOIN FETCH로 이미 초기화되어 있어 예외 없이 접근 가능해야 한다.
-        assertThat(page.getContent().get(0).getUser().getName()).isEqualTo("tester");
+        assertThat(page.getContent().get(0).author()).isEqualTo("tester");
+    }
+
+    @Test
+    @DisplayName("search: F11 · content 컬럼을 SELECT 결과에 싣지 않는다")
+    void search_doesNotSelectContentColumn() {
+        postRepository.save(Post.builder().title("제목").content("본문").user(user).build());
+        em.flush();
+        em.clear();
+
+        Page<PostRowDto> page = postRepository.search(null, null, PageRequest.of(0, 10));
+
+        // PostRowDto에는 content 필드 자체가 없다 — 컴파일 시점에 이미 응답에 본문이 없음을
+        // 보장하며, 이 테스트는 그 계약이 유지되는지 회귀로 지킨다.
+        assertThat(page.getContent()).hasSize(1);
+        assertThat(page.getContent().get(0).title()).isEqualTo("제목");
     }
 
     @Test
@@ -70,8 +86,8 @@ class PostRepositoryTest {
         em.flush();
         em.clear();
 
-        Page<Post> firstPage = postRepository.search(null, null, PageRequest.of(0, 10));
-        Page<Post> secondPage = postRepository.search(null, null, PageRequest.of(1, 10));
+        Page<PostRowDto> firstPage = postRepository.search(null, null, PageRequest.of(0, 10));
+        Page<PostRowDto> secondPage = postRepository.search(null, null, PageRequest.of(1, 10));
 
         assertThat(firstPage.getContent()).hasSize(10);
         assertThat(firstPage.getTotalElements()).isEqualTo(15);
@@ -92,9 +108,9 @@ class PostRepositoryTest {
         em.flush();
         em.clear();
 
-        Page<Post> page = postRepository.search("kraft", null, PageRequest.of(0, 10));
+        Page<PostRowDto> page = postRepository.search("kraft", null, PageRequest.of(0, 10));
 
-        assertThat(page.getContent()).extracting(Post::getId)
+        assertThat(page.getContent()).extracting(PostRowDto::id)
                 .containsExactlyInAnyOrder(titleMatch.getId(), contentMatch.getId());
     }
 
@@ -106,9 +122,9 @@ class PostRepositoryTest {
         em.flush();
         em.clear();
 
-        Page<Post> page = postRepository.search(null, Category.NOTICE, PageRequest.of(0, 10));
+        Page<PostRowDto> page = postRepository.search(null, Category.NOTICE, PageRequest.of(0, 10));
 
-        assertThat(page.getContent()).extracting(Post::getId).containsExactly(notice.getId());
+        assertThat(page.getContent()).extracting(PostRowDto::id).containsExactly(notice.getId());
     }
 
     @Test
@@ -123,9 +139,9 @@ class PostRepositoryTest {
         em.flush();
         em.clear();
 
-        var top2 = postRepository.findTopByViewCountDesc(PageRequest.of(0, 2));
+        List<PostRowDto> top2 = postRepository.findTopByViewCountDesc(PageRequest.of(0, 2));
 
-        assertThat(top2).extracting(Post::getId).containsExactly(high.getId(), mid.getId());
+        assertThat(top2).extracting(PostRowDto::id).containsExactly(high.getId(), mid.getId());
         assertThat(low.getViewCount()).isZero();
     }
 

@@ -62,6 +62,16 @@ public class OutboxMail extends BaseEntity {
 
     private LocalDateTime sentAt;
 
+    /**
+     * 다음 재시도가 가능한 시각(지수 백오프). null이면 즉시 재시도 대상이다 — 아직 한 번도
+     * 실패하지 않은 새 메일이 이 상태다.
+     */
+    private LocalDateTime nextAttemptAt;
+
+    /** 어느 워커 인스턴스가 선점했는지. 운영 로그 추적용이며 발송 로직은 이 값을 보지 않는다. */
+    @Column(length = 36)
+    private String ownerToken;
+
     @Builder
     public OutboxMail(User user, String token, OutboxMailKind kind) {
         this.user = user;
@@ -75,20 +85,37 @@ public class OutboxMail extends BaseEntity {
     public void markSending() {
         this.status = OutboxMailStatus.SENDING;
         this.attempts += 1;
+        this.nextAttemptAt = null;
     }
 
     public void markSent() {
         this.status = OutboxMailStatus.SENT;
         this.sentAt = LocalDateTime.now();
         this.lastError = null;
+        this.nextAttemptAt = null;
     }
 
     /**
      * 실패를 기록한다. 남은 기회가 있으면 다시 PENDING으로 돌려 다음 차례에 집게 하고,
-     * 다 썼으면 FAILED로 끝낸다.
+     * 다 썼으면 FAILED로 끝낸다. PENDING으로 돌아갈 때는 {@code 2^attempts}분(최대 60분)
+     * 뒤로 다음 시도 시각을 미뤄, 계속 실패하는 메일이 매 주기 배치 자리를 차지하지 않게 한다.
      */
     public void markFailed(String error, int maxAttempts) {
         this.status = attempts >= maxAttempts ? OutboxMailStatus.FAILED : OutboxMailStatus.PENDING;
         this.lastError = error == null ? null : error.substring(0, Math.min(error.length(), 500));
+        this.nextAttemptAt = this.status == OutboxMailStatus.PENDING
+                ? LocalDateTime.now().plusMinutes(backoffMinutes())
+                : null;
+    }
+
+    /** 발송 직전 토큰이 재발급되어 더는 유효하지 않을 때 즉시 종료한다. 재시도 대상이 아니다. */
+    public void markStale(String reason) {
+        this.status = OutboxMailStatus.FAILED;
+        this.lastError = reason;
+        this.nextAttemptAt = null;
+    }
+
+    private long backoffMinutes() {
+        return Math.min(60, 1L << Math.min(attempts, 6));
     }
 }

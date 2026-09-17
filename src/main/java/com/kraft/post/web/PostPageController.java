@@ -1,6 +1,6 @@
 package com.kraft.post.web;
 
-import com.kraft.comment.dto.CommentViewDto;
+import com.kraft.comment.dto.CommentPageDto;
 import com.kraft.comment.service.CommentService;
 import com.kraft.config.security.KraftUserDetails;
 import com.kraft.post.domain.Category;
@@ -41,7 +41,7 @@ public class PostPageController {
                          @RequestParam(required = false) String q,
                          @RequestParam(required = false) Category category,
                          Model model) {
-        PostsPageResponseDto postsPage = postService.findAllDesc(pageable, q, category);
+        PostsPageResponseDto postsPage = postService.findAllDesc(PostSortPolicy.sanitize(pageable), q, category);
         model.addAttribute("posts", postsPage.content());
         model.addAttribute("postsPage", postsPage);
         model.addAttribute("pageWindow", PageWindow.of(postsPage.page(), postsPage.totalPages()));
@@ -108,13 +108,16 @@ public class PostPageController {
     @GetMapping("/posts/update/{id}")
     public String postsUpdate(@PathVariable Long id, Authentication authentication, Model model) {
         PostViewDto post = postService.findByIdForView(id, authentication);
-        List<CommentViewDto> comments = commentService.findByPostIdForView(id, authentication);
+        CommentPageDto commentPage = commentService.findInitialPageForView(id, authentication);
         model.addAttribute("post", post);
-        model.addAttribute("comments", comments);
+        model.addAttribute("comments", commentPage.comments());
         // 댓글 영역은 Vue 아일랜드로 렌더링된다. canManage는 서버만 판정할 수 있으므로(공개
         // REST 응답에는 없는 화면 전용 필드), 초기 렌더에서 그대로 JSON으로 내려 이후 목록
-        // 갱신은 클라이언트가 이 값을 들고 낙관적으로 처리하게 한다.
-        model.addAttribute("commentsJson", JsonHtmlEmbedding.escapeForHtmlScript(objectMapper.writeValueAsString(comments)));
+        // 갱신은 클라이언트가 이 값을 들고 낙관적으로 처리하게 한다. 최초 페이지는 최대
+        // PAGE_SIZE개만 담고, 전체 개수·다음 페이지 존재 여부를 함께 내려 "더 보기"가
+        // 이어받게 한다(개선 보고서 "댓글 전체 로딩").
+        model.addAttribute("commentsJson",
+                JsonHtmlEmbedding.escapeForHtmlScript(objectMapper.writeValueAsString(commentPage)));
 
         // 게시글 읽기·편집 영역도 Vue 아일랜드(src/vue/post-edit)로 렌더링된다. 분류 선택지는
         // post-update.html이 예전에 th:each/th:if로 걸러내던 것과 같은 규칙(CategoryPolicy)을

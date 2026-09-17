@@ -50,6 +50,7 @@ public class PostApiController {
     public PostsPageResponseDto findAll(@PageableDefault(size = 10) Pageable pageable,
                                          @RequestParam(required = false) String q,
                                          @RequestParam(required = false) Category category) {
+        PostSortPolicy.validate(pageable.getSort());
         return postService.findAllDesc(pageable, q, category);
     }
 

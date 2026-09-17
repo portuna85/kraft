@@ -1,5 +1,6 @@
 package com.kraft.post.domain;
 
+import com.kraft.post.dto.PostRowDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,11 +17,14 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      * 매치되고, {@code category}와 함께 지정하면 AND로 좁혀진다. 두 조건 모두 null이면
      * {@link #findAllDesc}과 동일하게 전체 목록을 최신순으로 반환한다.
      * <p>
-     * 후속 과제: 목록 화면은 제목·작성자·날짜·분류·조회수만 쓰는데 여기서는 {@code content}
-     * TEXT 컬럼을 포함한 전체 엔티티를 가져온다(개선 보고서 "게시판 목록의 불필요한 열과
-     * 집계"). projection으로 좁히면 전송량을 줄일 수 있지만, 이번 범위에서는 다루지 않는다.
+     * 목록 화면은 제목·작성자·날짜·분류·조회수만 쓰므로 {@link PostRowDto}로 직접 SELECT해
+     * {@code content}(TEXT) 컬럼과 작성자 엔티티 전체를 결과에 싣지 않는다(개선 보고서
+     * "게시판 목록의 불필요한 열과 집계"). {@code content}는 WHERE 절 매칭에는 여전히
+     * 쓰이지만 SELECT 목록에는 없다.
      */
-    @Query(value = "SELECT p FROM Post p JOIN FETCH p.user "
+    @Query(value = "SELECT new com.kraft.post.dto.PostRowDto("
+            + "p.id, p.title, u.name, p.updatedAt, p.category, p.viewCount) "
+            + "FROM Post p JOIN p.user u "
             + "WHERE (:category IS NULL OR p.category = :category) "
             + "AND (:keyword IS NULL "
             + "     OR LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%')) "
@@ -31,10 +35,12 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                     + "AND (:keyword IS NULL "
                     + "     OR LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%')) "
                     + "     OR LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-    Page<Post> search(@Param("keyword") String keyword, @Param("category") Category category, Pageable pageable);
+    Page<PostRowDto> search(@Param("keyword") String keyword, @Param("category") Category category, Pageable pageable);
 
-    @Query("SELECT p FROM Post p JOIN FETCH p.user ORDER BY p.viewCount DESC, p.id DESC")
-    List<Post> findTopByViewCountDesc(Pageable pageable);
+    @Query("SELECT new com.kraft.post.dto.PostRowDto("
+            + "p.id, p.title, u.name, p.updatedAt, p.category, p.viewCount) "
+            + "FROM Post p JOIN p.user u ORDER BY p.viewCount DESC, p.id DESC")
+    List<PostRowDto> findTopByViewCountDesc(Pageable pageable);
 
     /**
      * 여러 id를 한 번에 조회한다(N+1 방지). 신고 목록이 페이지 안의 게시글 대상들을 한 번에

@@ -107,8 +107,9 @@ test.describe('게시글 상세', () => {
 
         await expect(page.locator('#post-view')).toHaveScreenshot('post-view.png', {
             ...PIXEL_TOLERANCE,
-            // 글 번호와 조회수는 실행마다 다르다.
-            mask: [page.locator('.post-byline')],
+            // 글 번호와 조회수는 실행마다 다르다. 제목도 uniqueTitle의 타임스탬프가 들어가
+            // 실행마다 달라지므로 함께 가린다(개선 보고서 "시각 기준과 현재 화면의 불일치").
+            mask: [page.locator('.post-byline'), page.locator('#post-title-text')],
         });
     });
 

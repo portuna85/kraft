@@ -5,6 +5,7 @@ import com.kraft.post.domain.Category;
 import com.kraft.post.domain.Post;
 import com.kraft.post.domain.PostLikeRepository;
 import com.kraft.post.domain.PostRepository;
+import com.kraft.post.dto.PostRowDto;
 import com.kraft.post.dto.PostSaveRequestDto;
 import com.kraft.post.dto.PostsListResponseDto;
 import com.kraft.post.dto.PostsPageResponseDto;
@@ -90,6 +91,11 @@ class PostServiceTest {
         Post post = Post.builder().title("원래 제목").content("원래 내용").user(owner).build();
         ReflectionTestUtils.setField(post, "id", id);
         return post;
+    }
+
+    /** search/findTopByViewCountDesc가 반환하는 projection. postOf와 같은 표시값을 쓴다. */
+    private static PostRowDto rowOf(User owner, Long id) {
+        return new PostRowDto(id, "원래 제목", owner.getName(), null, null, 0L);
     }
 
     private static Authentication authOf(String email, Role role) {
@@ -313,9 +319,9 @@ class PostServiceTest {
     @DisplayName("findAllDesc: Repository의 Page를 PostsPageResponseDto로 그대로 변환한다")
     void findAllDesc_convertsPageToDto() {
         User owner = userWithEmail("owner@example.com", 1L);
-        Post post = postOf(owner, 1L);
+        PostRowDto row = rowOf(owner, 1L);
         Pageable pageable = PageRequest.of(0, 10);
-        Page<Post> page = new PageImpl<>(List.of(post), pageable, 1);
+        Page<PostRowDto> page = new PageImpl<>(List.of(row), pageable, 1);
         given(postRepository.search(null, null, pageable)).willReturn(page);
 
         PostsPageResponseDto result = postService.findAllDesc(pageable);
@@ -333,9 +339,9 @@ class PostServiceTest {
     @DisplayName("findAllDesc(keyword, category): 검색어·분류를 리포지토리에 그대로 전달하고 댓글 수를 함께 담는다")
     void findAllDesc_passesKeywordAndCategoryAndIncludesCommentCounts() {
         User owner = userWithEmail("owner@example.com", 1L);
-        Post post = postOf(owner, 1L);
+        PostRowDto row = rowOf(owner, 1L);
         Pageable pageable = PageRequest.of(0, 10);
-        Page<Post> page = new PageImpl<>(List.of(post), pageable, 1);
+        Page<PostRowDto> page = new PageImpl<>(List.of(row), pageable, 1);
         given(postRepository.search("공지", Category.NOTICE, pageable)).willReturn(page);
         given(commentRepository.countByPostIdIn(List.of(1L))).willReturn(Map.of(1L, 3L));
 
@@ -348,7 +354,7 @@ class PostServiceTest {
     @DisplayName("findAllDesc: 검색어가 공백뿐이면 null로 정규화해 리포지토리에 전달한다")
     void findAllDesc_normalizesBlankKeywordToNull() {
         Pageable pageable = PageRequest.of(0, 10);
-        Page<Post> page = new PageImpl<>(List.of(), pageable, 0);
+        Page<PostRowDto> page = new PageImpl<>(List.of(), pageable, 0);
         given(postRepository.search(null, null, pageable)).willReturn(page);
 
         postService.findAllDesc(pageable, "   ", null);
@@ -362,7 +368,7 @@ class PostServiceTest {
         Pageable pageable = PageRequest.of(0, 10);
         String tooLong = "가".repeat(150);
         String truncated = "가".repeat(100);
-        Page<Post> page = new PageImpl<>(List.of(), pageable, 0);
+        Page<PostRowDto> page = new PageImpl<>(List.of(), pageable, 0);
         given(postRepository.search(truncated, null, pageable)).willReturn(page);
 
         postService.findAllDesc(pageable, tooLong, null);
@@ -374,8 +380,8 @@ class PostServiceTest {
     @DisplayName("findPopular: 조회수 상위 N개를 반환한다 (댓글 수는 화면에 쓰이지 않아 집계하지 않는다)")
     void findPopular_returnsTopPostsWithoutCommentCountAggregation() {
         User owner = userWithEmail("owner@example.com", 1L);
-        Post post = postOf(owner, 1L);
-        given(postRepository.findTopByViewCountDesc(PageRequest.of(0, 5))).willReturn(List.of(post));
+        PostRowDto row = rowOf(owner, 1L);
+        given(postRepository.findTopByViewCountDesc(PageRequest.of(0, 5))).willReturn(List.of(row));
 
         List<PostsListResponseDto> result = postService.findPopular(5);
 

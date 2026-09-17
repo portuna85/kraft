@@ -13,13 +13,14 @@ import java.util.Optional;
 public interface OutboxMailRepository extends JpaRepository<OutboxMail, Long> {
 
     /**
-     * PENDING 중 가장 오래된 것부터 최대 {@code limit}개를 행 잠금으로 선점한다.
-     * {@code SKIP LOCKED} 덕분에 동시에 도는 다른 선점(예약 실행 vs {@code drainAsync})이
-     * 이미 잠근 행은 건너뛰고 그 다음 행을 집는다 — 같은 행을 두 번 반환하지 않는다.
-     * 이 락은 호출한 트랜잭션이 커밋할 때까지 유지되므로, 뒤이은 상태 변경(UPDATE)까지
-     * 같은 트랜잭션 안에서 끝내야 한다.
+     * PENDING 중 가장 오래된 것부터, 재시도 대기(backoff) 중이 아닌 것만 최대 {@code limit}개를
+     * 행 잠금으로 선점한다. {@code SKIP LOCKED} 덕분에 동시에 도는 다른 선점(예약 실행 vs
+     * {@code drainAsync})이 이미 잠근 행은 건너뛰고 그 다음 행을 집는다 — 같은 행을 두 번
+     * 반환하지 않는다. 이 락은 호출한 트랜잭션이 커밋할 때까지 유지되므로, 뒤이은 상태
+     * 변경(UPDATE)까지 같은 트랜잭션 안에서 끝내야 한다.
      */
     @Query(value = "SELECT id FROM outbox_mails WHERE status = 'PENDING' "
+            + "AND (next_attempt_at IS NULL OR next_attempt_at <= CURRENT_TIMESTAMP) "
             + "ORDER BY id ASC LIMIT :limit FOR UPDATE SKIP LOCKED", nativeQuery = true)
     List<Long> selectPendingIdsForUpdateSkipLocked(@Param("limit") int limit);
 
@@ -27,12 +28,14 @@ public interface OutboxMailRepository extends JpaRepository<OutboxMail, Long> {
      * {@code updatedAt}을 직접 넘기는 것은 {@code @LastModifiedDate}가 엔티티 생명주기
      * 이벤트(PrePersist/PreUpdate)에서만 동작하고 벌크 JPQL UPDATE에는 관여하지 않기
      * 때문이다. {@code requeueStuck}이 이 값을 기준으로 정체 여부를 판단하므로 반드시
-     * 함께 갱신해야 한다.
+     * 함께 갱신해야 한다. {@code ownerToken}은 어느 워커 인스턴스가 집었는지 운영 로그로
+     * 추적하기 위함이며 발송 로직은 이 값을 보지 않는다.
      */
     @Modifying
     @Query("UPDATE OutboxMail o SET o.status = com.kraft.user.mail.OutboxMailStatus.SENDING, "
-            + "o.attempts = o.attempts + 1, o.updatedAt = :now WHERE o.id IN :ids")
-    int markSendingByIds(@Param("ids") List<Long> ids, @Param("now") LocalDateTime now);
+            + "o.attempts = o.attempts + 1, o.updatedAt = :now, o.ownerToken = :ownerToken WHERE o.id IN :ids")
+    int markSendingByIds(@Param("ids") List<Long> ids, @Param("now") LocalDateTime now,
+                          @Param("ownerToken") String ownerToken);
 
     /**
      * 요청 제한에 쓴다 — 이 회원에게 이 종류의 메일을 마지막으로 만든 것이 언제인지 본다.

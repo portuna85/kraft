@@ -108,6 +108,13 @@ app:
     drain-interval-ms: 60000
     # 이 시간 넘게 "발송 중"이면 도중에 중단된 것으로 보고 대기열로 되돌린다.
     stuck-after-ms: 300000
+    # 한 배치 안에서 동시에 SMTP로 보내는 최대 개수(개선 보고서 "메일 임대·재시도·실행량 제한").
+    max-concurrent-sends: 5
+    # 종료 상태(SENT/FAILED) 행의 보관 기한과 정리 주기. 코드 기본값(30일)과 같은 값을
+    # 명시적으로 적어, 실제 운영값이 무엇인지 이 파일만 보고 알 수 있게 한다.
+    retention-days: 30
+    retention-initial-delay-ms: 60000
+    retention-interval-ms: 86400000
 
   metrics:
     # 앱이 스스로 상태를 점검해 logs/kraft-metrics.log에 한 줄씩 남긴다. 기준을 넘기면 ERROR로

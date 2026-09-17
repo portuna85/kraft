@@ -1,5 +1,6 @@
 package com.kraft.comment.domain;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -13,6 +14,16 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     @Query("SELECT c FROM Comment c JOIN FETCH c.user WHERE c.post.id = :postId ORDER BY c.id ASC")
     List<Comment> findAllByPostIdAsc(@Param("postId") Long postId);
+
+    /**
+     * id 커서 기반 페이지 조회. {@code afterId}가 null이면 가장 오래된 댓글부터, 있으면 그
+     * id보다 큰(= 더 나중에 쓰인) 댓글부터 오름차순으로 최대 {@code pageable.getPageSize()}개를
+     * 반환한다. 상세 화면의 댓글 전체 로딩을 대체한다(개선 보고서 "댓글 전체 로딩").
+     */
+    @Query("SELECT c FROM Comment c JOIN FETCH c.user WHERE c.post.id = :postId "
+            + "AND (:afterId IS NULL OR c.id > :afterId) ORDER BY c.id ASC")
+    List<Comment> findPageByPostIdAsc(@Param("postId") Long postId, @Param("afterId") Long afterId,
+                                       Pageable pageable);
 
     /**
      * 파생 삭제(개별 조회 후 건별 DELETE)가 아니라 한 문장으로 지운다. 연관 캐스케이드·

@@ -85,6 +85,25 @@ class PostApiControllerTest {
     }
 
     @Test
+    @DisplayName("F12: GET /api/v1/posts?sort=content,desc 는 허용되지 않는 정렬이라 400을 반환한다")
+    void listPosts_withDisallowedSort_returns400BadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/posts").param("sort", "content,desc"))
+                .andExpect(status().isBadRequest());
+
+        verify(postService, never()).findAllDesc(any(Pageable.class), any(), any());
+    }
+
+    @Test
+    @DisplayName("F12: GET /api/v1/posts?sort=viewCount,desc 는 허용된 정렬이라 그대로 처리된다")
+    void listPosts_withAllowedSort_isProcessed() throws Exception {
+        given(postService.findAllDesc(any(Pageable.class), any(), any()))
+                .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
+
+        mockMvc.perform(get("/api/v1/posts").param("sort", "viewCount,desc"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     @DisplayName("PUT /api/v1/posts/{id}/like 는 CSRF 토큰이 있어도 미인증이면 로그인 페이지로 리다이렉트된다")
     void toggleLike_whenUnauthenticated_redirectsToLoginPage() throws Exception {
         mockMvc.perform(put("/api/v1/posts/1/like").with(csrf()))

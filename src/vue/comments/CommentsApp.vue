@@ -21,11 +21,39 @@ const props = defineProps({
     // 쓸 수 없는 이유. 서버가 작성 경로와 같은 규칙으로 만든 문장을 그대로 보여준다.
     writeBlockReason: { type: String, default: '' },
     initialComments: { type: Array, required: true },
+    // 로드된 배열 길이와는 별개로, 전체 댓글 수를 항상 정확히 보여주기 위한 값이다.
+    initialTotalCount: { type: Number, required: true },
+    initialHasMore: { type: Boolean, required: true },
 });
 
 const comments = reactive([...props.initialComments]);
+const totalCount = ref(props.initialTotalCount);
+const hasMore = ref(props.initialHasMore);
+const loadingMore = ref(false);
+// 삭제로 배열에서 항목이 빠져도 "다음 페이지"의 기준은 항상 마지막으로 받아 온 댓글의 id여야
+// 한다 — comments 배열 자체에서 매번 다시 구하면 삭제 직후 잘못된 커서를 보낼 수 있다.
+const lastLoadedId = ref(props.initialComments.at(-1)?.id ?? null);
 const newContent = ref('');
 const saving = ref(false);
+
+async function loadMore() {
+    loadingMore.value = true;
+    try {
+        const page = await api.get(
+            `${API.POSTS}/${props.postId}/comments/page?afterId=${lastLoadedId.value}`,
+        );
+        comments.push(...page.comments);
+        totalCount.value = page.totalCount;
+        hasMore.value = page.hasMore;
+        if (page.comments.length > 0) {
+            lastLoadedId.value = page.comments.at(-1).id;
+        }
+    } catch (error) {
+        showToast(messageOf(error), 'danger');
+    } finally {
+        loadingMore.value = false;
+    }
+}
 
 async function save() {
     saving.value = true;
@@ -42,6 +70,9 @@ async function save() {
             createdAt: new Date().toISOString(),
             canManage: true,
         });
+        // lastLoadedId는 건드리지 않는다 — 아직 안 불러온 더 오래된 댓글이 있다면(hasMore),
+        // 새 댓글의 id로 커서를 앞당기면 "더 보기"가 그 구간을 건너뛰게 된다.
+        totalCount.value += 1;
         newContent.value = '';
         flash.showNow('COMMENT_SAVED');
     } catch (error) {
@@ -64,6 +95,7 @@ function onExternalDelete(event) {
     const index = comments.findIndex((c) => String(c.id) === String(event.detail.id));
     if (index !== -1) {
         comments.splice(index, 1);
+        totalCount.value -= 1;
     }
 }
 
@@ -76,7 +108,7 @@ onUnmounted(() => window.removeEventListener('kraft:comment-deleted', onExternal
     id="comments-heading"
     class="comments__heading"
   >
-    댓글 {{ comments.length }}개
+    댓글 {{ totalCount }}개
   </h2>
 
   <p
@@ -99,6 +131,17 @@ onUnmounted(() => window.removeEventListener('kraft:comment-deleted', onExternal
       @updated="onUpdated"
     />
   </ul>
+
+  <button
+    v-if="hasMore"
+    id="btn-comments-load-more"
+    type="button"
+    class="btn btn-outline-secondary btn-sm mb-3"
+    :disabled="loadingMore"
+    @click="loadMore"
+  >
+    댓글 더 보기
+  </button>
 
   <!-- 빈 댓글은 required가 먼저 막는다. Enter는 줄바꿈이어야 하므로 제출 단축키로 쓰지 않는다. -->
   <form

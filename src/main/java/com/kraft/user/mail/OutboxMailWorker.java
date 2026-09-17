@@ -10,6 +10,11 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 
 /**
  * 아웃박스에 쌓인 메일을 실제로 보낸다.
@@ -42,12 +47,20 @@ public class OutboxMailWorker {
     private final OutboxMailStore store;
     private final EmailSender emailSender;
 
+    /** 이 인스턴스가 집은 메일임을 운영 로그에서 구분하기 위한 값. 발송 로직은 보지 않는다. */
+    private final String ownerToken = UUID.randomUUID().toString();
+
     @Value("${app.base-url}")
     private String baseUrl;
 
     @Value("${app.mail.batch-size:20}")
     private int batchSize;
 
+    /**
+     * {@code false}면 예약 실행뿐 아니라 가입·재발송 직후의 {@code drainAsync}도 함께
+     * 막는다 — "전체 발송 중지" 스위치다({@link #drain} 참고). 예약만 멈추고 즉시 발송은
+     * 유지하고 싶다면 이 플래그가 아니라 {@code app.mail.drain-interval-ms}를 크게 둔다.
+     */
     @Value("${app.mail.enabled:true}")
     private boolean enabled;
 
@@ -58,6 +71,14 @@ public class OutboxMailWorker {
     /** 종료 상태(SENT/FAILED) 행을 이 기간이 지나면 지운다. */
     @Value("${app.mail.retention-days:30}")
     private int retentionDays;
+
+    /**
+     * 한 배치 안에서 동시에 SMTP로 보내는 최대 개수. 예전에는 배치 전체를 순차로 보내
+     * 사실상 동시성이 1이었다 — 느린 메일 서버 하나가 뒤 순서 메일의 임대 시간을 모두
+     * 잡아먹었다(개선 보고서 "메일 임대·재시도·실행량 제한").
+     */
+    @Value("${app.mail.max-concurrent-sends:5}")
+    private int maxConcurrentSends;
 
     /** 가입·재발송 직후 곧바로 한 번 돌린다. 호출한 요청의 트랜잭션·스레드와 분리된다. */
     @Async
@@ -75,15 +96,45 @@ public class OutboxMailWorker {
      * {@code enabled} 검사와 정체 재처리를 예약 실행에서만 하던 것을 여기로 옮겼다.
      * 예전에는 {@code app.mail.enabled=false}로 꺼도 가입 직후 {@code drainAsync}가 그대로
      * 발송을 진행했다 — 공유 진입점에서 한 번만 검사하면 두 경로 모두 같은 규칙을 따른다.
+     * <p>
+     * 배치 안의 발송은 {@code maxConcurrentSends}로 제한한 가상 스레드로 동시에 실행한다.
+     * 각 발송은 서로 다른 메일이라 순서를 지킬 이유가 없고, 이 메서드는 배치 전체가 끝날
+     * 때까지 기다린 뒤 반환한다(호출자가 "이번 배치는 끝났다"고 가정할 수 있어야 한다).
      */
     public void drain() {
         if (!enabled) {
             return;
         }
         store.requeueStuck(LocalDateTime.now().minus(Duration.ofMillis(stuckAfterMs)));
-        List<Long> ids = store.claimBatch(batchSize);
-        for (Long id : ids) {
-            store.load(id).ifPresent(this::send);
+        List<Long> ids = store.claimBatch(batchSize, ownerToken);
+        if (ids.isEmpty()) {
+            return;
+        }
+        Semaphore permits = new Semaphore(maxConcurrentSends);
+        try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<Future<?>> futures = ids.stream()
+                    .<Future<?>>map(id -> executor.submit(() -> sendWithPermit(id, permits)))
+                    .toList();
+            for (Future<?> future : futures) {
+                future.get();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (Exception e) {
+            log.warn("메일 배치 발송 중 예외가 발생했습니다.", e);
+        }
+    }
+
+    private void sendWithPermit(Long id, Semaphore permits) {
+        try {
+            permits.acquire();
+            try {
+                store.load(id).ifPresent(this::send);
+            } finally {
+                permits.release();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 

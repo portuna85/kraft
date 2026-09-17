@@ -1,5 +1,6 @@
 package com.kraft.post.web;
 
+import com.kraft.comment.dto.CommentPageDto;
 import com.kraft.comment.dto.CommentViewDto;
 import com.kraft.comment.service.CommentService;
 import com.kraft.config.security.SecurityConfig;
@@ -113,6 +114,18 @@ class PostPageControllerTest {
     }
 
     @Test
+    @DisplayName("F12: GET /?sort=content,desc 는 허용되지 않는 정렬을 무시하고 기본 정렬로 렌더링한다")
+    void index_withDisallowedSort_ignoresSortAndRendersWithDefault() throws Exception {
+        given(postService.findAllDesc(any(Pageable.class), any(), any()))
+                .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
+        given(postService.findPopular(5)).willReturn(List.of());
+
+        mockMvc.perform(get("/").param("sort", "content,desc"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("index"));
+    }
+
+    @Test
     @DisplayName("GET /posts/save 는 인증 없이도 등록 화면을 보여준다")
     void postsSave_isAccessibleWithoutAuthentication() throws Exception {
         mockMvc.perform(get("/posts/save"))
@@ -125,8 +138,8 @@ class PostPageControllerTest {
     void postsUpdate_rendersUpdateViewWithPostAndComments() throws Exception {
         given(postService.findByIdForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new PostViewDto(1L, "제목", "내용", null, "작성자", false, Category.FREE, 0L, 0L, false, 0L));
-        given(commentService.findByPostIdForView(eq(1L), nullable(Authentication.class)))
-                .willReturn(List.of());
+        given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
+                .willReturn(new CommentPageDto(List.of(), 0, false));
 
         mockMvc.perform(get("/posts/update/1"))
                 .andExpect(status().isOk())
@@ -185,8 +198,8 @@ class PostPageControllerTest {
     void postsUpdate_rendersVersionForConflictDetection() throws Exception {
         given(postService.findByIdForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new PostViewDto(1L, "제목", "내용", null, "작성자", true, Category.FREE, 0L, 0L, false, 7L));
-        given(commentService.findByPostIdForView(eq(1L), nullable(Authentication.class)))
-                .willReturn(List.of());
+        given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
+                .willReturn(new CommentPageDto(List.of(), 0, false));
 
         // 게시글 편집은 Vue 아일랜드(src/vue/post-edit)로 렌더링된다. 버전은 #post-initial-data
         // 스크립트의 JSON에 담겨 내려가고, 저장 요청이 그대로 돌려보내 서버가 충돌을 판별한다.
@@ -201,8 +214,8 @@ class PostPageControllerTest {
     void postsUpdate_rendersOriginalCategoryForCancel() throws Exception {
         given(postService.findByIdForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new PostViewDto(1L, "제목", "내용", null, "작성자", true, Category.QNA, 0L, 0L, false, 0L));
-        given(commentService.findByPostIdForView(eq(1L), nullable(Authentication.class)))
-                .willReturn(List.of());
+        given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
+                .willReturn(new CommentPageDto(List.of(), 0, false));
 
         // 이 값이 없어서 cancelEdit()이 분류만 복원하지 못했다 — 변경 감지에서도 빠져 있었다
         // (지금은 Vue의 original/draft 키 순회 비교가 이 회귀를 구조적으로 막는다).
@@ -218,8 +231,9 @@ class PostPageControllerTest {
         String payload = "</script><script>alert(1)</script>";
         given(postService.findByIdForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new PostViewDto(1L, payload, "내용", null, "작성자", true, Category.FREE, 0L, 0L, false, 0L));
-        given(commentService.findByPostIdForView(eq(1L), nullable(Authentication.class)))
-                .willReturn(List.of(new CommentViewDto(2L, 1L, payload, "댓글작성자", null, true)));
+        given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
+                .willReturn(new CommentPageDto(
+                        List.of(new CommentViewDto(2L, 1L, payload, "댓글작성자", null, true)), 1, false));
 
         mockMvc.perform(get("/posts/update/1").with(user("tester@example.com").roles("USER")))
                 .andExpect(status().isOk())

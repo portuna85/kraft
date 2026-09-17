@@ -6,7 +6,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -97,5 +100,27 @@ class UserRepositoryTest {
         User saved = userRepository.save(user("id-check@example.com"));
 
         assertThat(saved.getId()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("F25: findBySuspendedUntilAfterOrderBySuspendedUntilAsc는 projection 필드만 채워 반환한다")
+    void findBySuspendedUntilAfter_returnsSuspendedUserProjection() {
+        User suspended = user("정지자", "suspended@example.com");
+        suspended.suspendUntil(LocalDateTime.now().plusDays(3), "도배");
+        userRepository.saveAndFlush(suspended);
+
+        User expired = user("해제자", "expired@example.com");
+        expired.suspendUntil(LocalDateTime.now().minusDays(1), "지난 정지");
+        userRepository.saveAndFlush(expired);
+
+        Page<UserRepository.SuspendedUserProjection> page = userRepository
+                .findBySuspendedUntilAfterOrderBySuspendedUntilAsc(LocalDateTime.now(), PageRequest.of(0, 10));
+
+        assertThat(page.getContent()).hasSize(1);
+        UserRepository.SuspendedUserProjection row = page.getContent().get(0);
+        assertThat(row.getId()).isEqualTo(suspended.getId());
+        assertThat(row.getName()).isEqualTo("정지자");
+        assertThat(row.getSuspensionReason()).isEqualTo("도배");
+        assertThat(row.getSuspendedUntil()).isAfter(LocalDateTime.now());
     }
 }

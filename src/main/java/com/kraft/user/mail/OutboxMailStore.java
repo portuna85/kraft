@@ -1,7 +1,10 @@
 package com.kraft.user.mail;
 
+import com.kraft.user.domain.EmailVerificationTokenRepository;
+import com.kraft.user.domain.PasswordResetTokenRepository;
 import com.kraft.user.domain.User;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -20,11 +23,14 @@ import java.util.Optional;
  * {@code REQUIRES_NEW}로 연다. 작업자({@code OutboxMailWorker})가 큰 트랜잭션 하나로 감싸면
  * 분리한 의미가 없어진다.
  */
+@Slf4j
 @RequiredArgsConstructor
 @Component
 public class OutboxMailStore {
 
     private final OutboxMailRepository outboxMailRepository;
+    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
 
     @Value("${app.mail.max-attempts:5}")
     private int maxAttempts;
@@ -49,12 +55,12 @@ public class OutboxMailStore {
      * 이미 잠긴 행을 건너뛰므로 겹치는 id를 돌려받지 않는다.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public List<Long> claimBatch(int batchSize) {
+    public List<Long> claimBatch(int batchSize, String ownerToken) {
         List<Long> ids = outboxMailRepository.selectPendingIdsForUpdateSkipLocked(batchSize);
         if (ids.isEmpty()) {
             return ids;
         }
-        outboxMailRepository.markSendingByIds(ids, LocalDateTime.now());
+        outboxMailRepository.markSendingByIds(ids, LocalDateTime.now(), ownerToken);
         return ids;
     }
 
@@ -62,11 +68,28 @@ public class OutboxMailStore {
      * 보내는 데 필요한 값만 평범한 문자열로 꺼낸다. 여기서 꺼내 두어야 SMTP를 부를 때
      * 영속성 컨텍스트도 커넥션도 필요 없다 — 지연 로딩된 회원 이메일을 그 시점에 읽으면
      * 트랜잭션이 다시 열린다.
+     * <p>
+     * 발송 직전 토큰이 여전히 유효한지도 함께 확인한다. 탈퇴·재발급으로 토큰 테이블의 행이
+     * 이미 지워졌다면 이 아웃박스 행은 더 이상 보낼 이유가 없는 옛 링크다 — 재시도하지 않고
+     * 즉시 FAILED로 남긴다(개선 보고서 "메일 임대·재시도·실행량 제한").
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Optional<PendingMail> load(Long id) {
-        return outboxMailRepository.findById(id)
-                .map(mail -> new PendingMail(mail.getId(), mail.getUser().getEmail(), mail.getToken(), mail.getKind()));
+        return outboxMailRepository.findById(id).flatMap(mail -> {
+            if (!isTokenStillValid(mail)) {
+                mail.markStale("토큰이 재발급되어 더 이상 유효하지 않습니다.");
+                log.info("옛 토큰의 아웃박스 메일을 건너뛰었습니다. outboxMailId={}", mail.getId());
+                return Optional.empty();
+            }
+            return Optional.of(new PendingMail(mail.getId(), mail.getUser().getEmail(), mail.getToken(), mail.getKind()));
+        });
+    }
+
+    private boolean isTokenStillValid(OutboxMail mail) {
+        return switch (mail.getKind()) {
+            case VERIFY_EMAIL -> emailVerificationTokenRepository.findByToken(mail.getToken()).isPresent();
+            case PASSWORD_RESET -> passwordResetTokenRepository.findByToken(mail.getToken()).isPresent();
+        };
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)

@@ -8,6 +8,7 @@ import com.kraft.post.domain.PostNotFoundException;
 import com.kraft.post.domain.PostRepository;
 import com.kraft.post.dto.PostLikeResponseDto;
 import com.kraft.post.dto.PostResponseDto;
+import com.kraft.post.dto.PostRowDto;
 import com.kraft.post.dto.PostSaveRequestDto;
 import com.kraft.post.dto.PostsListResponseDto;
 import com.kraft.post.dto.PostsPageResponseDto;
@@ -172,11 +173,11 @@ public class PostService {
      * ID로 한 번에 묶어 조회한다(N+1 방지).
      */
     public PostsPageResponseDto findAllDesc(Pageable pageable, String keyword, Category category) {
-        Page<Post> page = postRepository.search(normalize(keyword), category, pageable);
+        Page<PostRowDto> page = postRepository.search(normalize(keyword), category, pageable);
         Map<Long, Long> commentCounts = commentRepository.countByPostIdIn(
-                page.getContent().stream().map(Post::getId).toList());
-        Page<PostsListResponseDto> mapped = page.map(post ->
-                new PostsListResponseDto(post, commentCounts.getOrDefault(post.getId(), 0L)));
+                page.getContent().stream().map(PostRowDto::id).toList());
+        Page<PostsListResponseDto> mapped = page.map(row ->
+                new PostsListResponseDto(row, commentCounts.getOrDefault(row.id(), 0L)));
         return new PostsPageResponseDto(mapped);
     }
 
@@ -188,9 +189,9 @@ public class PostService {
      * 집계") — 화면에 쓰이지 않는 값을 매번 계산한 것이다.
      */
     public List<PostsListResponseDto> findPopular(int limit) {
-        List<Post> posts = postRepository.findTopByViewCountDesc(PageRequest.of(0, limit));
-        return posts.stream()
-                .map(post -> new PostsListResponseDto(post, 0L))
+        List<PostRowDto> rows = postRepository.findTopByViewCountDesc(PageRequest.of(0, limit));
+        return rows.stream()
+                .map(row -> new PostsListResponseDto(row, 0L))
                 .toList();
     }
 
