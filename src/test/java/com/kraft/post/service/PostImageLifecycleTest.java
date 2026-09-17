@@ -366,6 +366,25 @@ class PostImageLifecycleTest {
     }
 
     @Test
+    @DisplayName("B02: 등록까지 끝난 뒤 트랜잭션이 커밋되지 않으면 저장한 파일도 함께 없어진다")
+    void uploadImage_whenTransactionDoesNotCommit_deletesTheStoredFile() {
+        var urlRef = new java.util.concurrent.atomic.AtomicReference<String>();
+
+        // uploadImage() 안에서는 파일 저장·대장 등록 모두 정상 끝난다. 그런데도 바깥
+        // 트랜잭션이 커밋되지 않으면(여기서는 강제 rollback-only로 흉내 낸다), 대장 행은 DB
+        // 롤백으로 자연히 사라지지만 이미 디스크에 쓴 파일은 그렇지 않다 — OnRollback으로
+        // 등록한 보상이 이것까지 지워야 한다.
+        transactionTemplate.executeWithoutResult(status -> {
+            urlRef.set(postService.uploadImage(imageFile(), alice));
+            status.setRollbackOnly();
+        });
+
+        String url = urlRef.get();
+        assertThat(fileOf(url)).doesNotExist();
+        assertThat(postImageRepository.findByFileName(fileNameOf(url))).isEmpty();
+    }
+
+    @Test
     @DisplayName("B01: 삭제가 예약된 이미지는 다시 연결할 수 없다")
     void attach_toImageMarkedForDeletion_isRejected() {
         String url = postService.uploadImage(imageFile(), alice);

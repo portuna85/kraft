@@ -17,6 +17,8 @@ public interface PostImageRepository extends JpaRepository<PostImage, Long> {
 
     Optional<PostImage> findByFileName(String fileName);
 
+    boolean existsByFileName(String fileName);
+
     List<PostImage> findAllByPostId(Long postId);
 
     List<PostImage> findAllByStatus(PostImageStatus status);

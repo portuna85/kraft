@@ -149,6 +149,12 @@ app:
     cleanup-enabled: true
     cleanup-initial-delay-ms: 600000
     cleanup-interval-ms: 3600000
+    # 디스크-대장 대조(OrphanFileReconciler). 파일 저장은 됐는데 대장 등록·최종 커밋이
+    # 실패해 대장 없는 파일이 남는 경우의 최후 수단이다(개선 보고서 "파일 저장 성공 후
+    # 최종 커밋 실패 시 대장 없는 파일"). cleanup보다 드물게 돌아도 충분하다.
+    reconcile-enabled: true
+    reconcile-initial-delay-ms: 1800000
+    reconcile-interval-ms: 3600000
   # 이메일 인증 링크를 만들 때 붙일 기본 URL. 운영에서는 실제 배포 도메인으로 덮어써야 한다
   # (application-prod.yml 참고).
   base-url: http://localhost:8080

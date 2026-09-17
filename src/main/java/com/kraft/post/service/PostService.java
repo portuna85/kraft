@@ -17,6 +17,7 @@ import com.kraft.post.dto.PostViewDto;
 import com.kraft.shared.security.OwnershipPolicy;
 import com.kraft.shared.security.WriteAccessPolicy;
 import com.kraft.shared.transaction.AfterCommit;
+import com.kraft.shared.transaction.OnRollback;
 import com.kraft.user.domain.EmailHasher;
 import com.kraft.user.domain.EmailMasker;
 import com.kraft.user.domain.User;
@@ -61,6 +62,12 @@ public class PostService {
      * 파일 저장과 DB 등록이 원자적이지 않아, DB 쪽이 실패하면 대장 없는 파일이 디스크에 남고
      * {@link PostImageCleaner}는 DB에 등록된 파일만 찾으므로 그 파일을 영영 발견하지 못했다
      * (개선 보고서 "파일 저장 성공 후 DB 롤백 시 대장 없는 파일").
+     * <p>
+     * 등록이 이 메서드 안에서는 성공해도, 반환 이후 바깥 트랜잭션의 <b>최종 커밋 자체</b>가
+     * 실패할 수 있다(개선 보고서 "파일 저장 성공 후 최종 커밋 실패 시 대장 없는 파일") — 그
+     * 실패는 메서드 안의 {@code catch}로 잡을 수 없으므로, 트랜잭션이 커밋 이외로 끝나면
+     * 파일을 지우는 보상을 {@link OnRollback}으로 등록해 둔다. 그래도 놓치는 경우(커밋 직후
+     * 프로세스 종료 등)의 최후 수단은 별도의 주기적 디스크-대장 대조가 맡는다.
      */
     @Transactional
     public String uploadImage(MultipartFile file, Authentication authentication) {
@@ -74,6 +81,7 @@ public class PostService {
             postImageService.deleteIfExists(url);
             throw e;
         }
+        OnRollback.run(() -> postImageService.deleteIfExists(url));
         return url;
     }
 
