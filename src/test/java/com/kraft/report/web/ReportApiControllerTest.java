@@ -138,6 +138,20 @@ class ReportApiControllerTest {
     }
 
     @Test
+    @DisplayName("B11: 다른 관리자가 먼저 처리해 버전이 충돌하면 409로 안내한다")
+    void resolve_whenOptimisticLockConflicts_returns409Conflict() throws Exception {
+        willThrow(new org.springframework.orm.ObjectOptimisticLockingFailureException(
+                com.kraft.report.domain.Report.class, 5L))
+                .given(reportService).resolve(eq(5L), any(Authentication.class), eq(0));
+
+        mockMvc.perform(post("/api/v1/admin/reports/5/resolve")
+                        .with(user("admin@example.com").roles("ADMIN"))
+                        .with(csrf()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("이미 처리된 신고입니다. 새로고침 후 다시 확인해 주세요."));
+    }
+
+    @Test
     @DisplayName("관리자는 신고를 반려할 수 있다")
     void reject_whenAdmin_returns204NoContent() throws Exception {
         mockMvc.perform(post("/api/v1/admin/reports/5/reject")

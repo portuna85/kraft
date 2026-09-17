@@ -4,8 +4,12 @@ import com.kraft.report.dto.ReportSaveRequestDto;
 import com.kraft.report.service.ReportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -43,5 +47,18 @@ public class ReportApiController {
     public ResponseEntity<Void> reject(@PathVariable Long id, Authentication authentication) {
         reportService.reject(id, authentication);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * B11: 두 관리자가 같은 신고를 동시에 resolve/reject하면(Report.version) 나중에 커밋하는
+     * 쪽이 이 예외를 받는다. 이 실패는 트랜잭션 커밋 시점(서비스 메서드가 이미 반환한 뒤)에
+     * 나므로 {@code ReportService} 안의 catch로는 잡을 수 없고, 호출한 쪽인 여기서 잡아야
+     * 한다. 이 컨트롤러 안의 핸들러가 {@code ApiExceptionHandler}의 같은 예외 타입 핸들러
+     * (게시글 편집 충돌 문구)보다 우선 적용된다.
+     */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ProblemDetail handleConcurrentReportHandling(OptimisticLockingFailureException e) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
+                "이미 처리된 신고입니다. 새로고침 후 다시 확인해 주세요.");
     }
 }

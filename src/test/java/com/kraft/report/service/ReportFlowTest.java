@@ -202,6 +202,69 @@ class ReportFlowTest {
         assertThat(reportService.countPending()).isZero();
     }
 
+    /**
+     * B11: 두 관리자가 같은 신고를 동시에 처리하면 Report.version 낙관적 잠금이 나중 커밋을
+     * 충돌로 표면화해야 한다. 이 실패는 트랜잭션 커밋 시점(서비스 메서드가 반환한 뒤)에 나므로
+     * 같은 스레드의 중첩 트랜잭션 호출로는 재현할 수 없다(B03/B07과 같은 이유) — 실제 스레드로
+     * 검증한다.
+     */
+    @Test
+    @DisplayName("B11: 같은 신고를 두 관리자가 동시에 resolve/reject하면 한쪽만 성공한다")
+    void resolveAndReject_concurrentlyOnSameReport_onlyOneSucceeds() throws InterruptedException {
+        reportThePost(reporter, ReportReason.ABUSE);
+        Long reportId = reportRepository.findAll().get(0).getId();
+        User otherAdmin = saveUser("admin2", Role.ADMIN);
+
+        List<Boolean> results = new java.util.concurrent.CopyOnWriteArrayList<>();
+        java.util.concurrent.CountDownLatch ready = new java.util.concurrent.CountDownLatch(2);
+        Runnable resolveAttempt = () -> {
+            ready.countDown();
+            awaitQuietly(ready);
+            try {
+                reportService.resolve(reportId, authOf(admin));
+                results.add(true);
+            } catch (org.springframework.dao.OptimisticLockingFailureException | IllegalArgumentException e) {
+                results.add(false);
+            }
+        };
+        Runnable rejectAttempt = () -> {
+            ready.countDown();
+            awaitQuietly(ready);
+            try {
+                reportService.reject(reportId, authOf(otherAdmin));
+                results.add(true);
+            } catch (org.springframework.dao.OptimisticLockingFailureException | IllegalArgumentException e) {
+                results.add(false);
+            }
+        };
+        Thread t1 = new Thread(resolveAttempt);
+        Thread t2 = new Thread(rejectAttempt);
+        t1.start();
+        t2.start();
+        t1.join();
+        t2.join();
+
+        assertThat(results).containsExactlyInAnyOrder(true, false);
+        // 대상은 이긴 쪽의 처리 결과와 일관되어야 한다 — resolve가 이겼으면 지워지고, reject가
+        // 이겼으면 남아 있다. 둘 다 절반씩 실행됐다는 증거가 없어야 한다(예: 정지가 반쯤 적용).
+        Report finalState = reportRepository.findById(reportId).orElseThrow();
+        boolean postExists = postRepository.findById(post.getId()).isPresent();
+        if (finalState.getStatus() == ReportStatus.RESOLVED) {
+            assertThat(postExists).isFalse();
+        } else {
+            assertThat(finalState.getStatus()).isEqualTo(ReportStatus.REJECTED);
+            assertThat(postExists).isTrue();
+        }
+    }
+
+    private static void awaitQuietly(java.util.concurrent.CountDownLatch latch) {
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
     @Test
     @DisplayName("대상이 이미 지워진 신고도 목록에 남고, 미리보기는 비어 있다")
     void reportForDeletedTargetStillListsWithoutPreview() {

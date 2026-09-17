@@ -57,6 +57,13 @@ public class Report extends BaseEntity {
     @Column(name = "handled_at")
     private LocalDateTime handledAt;
 
+    /**
+     * 두 관리자가 같은 신고를 동시에 resolve/reject할 때 나중에 flush되는 쪽이 앞선 처리를
+     * 조용히 덮어쓰지 않도록 한다(B11). {@code User.version}과 같은 목적이다.
+     */
+    @Version
+    private long version;
+
     @Builder
     public Report(User reporter, ReportTargetType targetType, Long targetId, ReportReason reason, String detail) {
         this.reporter = reporter;
