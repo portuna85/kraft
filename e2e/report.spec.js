@@ -82,13 +82,53 @@ test.describe('관리자 처리', () => {
         await expect(row).toBeVisible();
 
         await row.locator('.btn-report-resolve').click();
-        await expect(adminPage.locator('#app-toast')).toContainText('대상을 삭제하고');
-        // 새로고침 없이 그 줄만 사라진다.
+        // 처리에 성공하면 현재 페이지를 다시 불러온다(F05) — 로컬에서 줄만 지우면 "처리 대기"
+        // 카운트·페이지 수가 서버 상태와 어긋날 수 있다. 재요청·재조회가 끝날 때까지
+        // toHaveCount가 재시도하며 기다린다.
         await expect(adminPage.locator('.report-list__item').filter({ hasText: title })).toHaveCount(0);
 
         // 글도 실제로 사라졌다.
         await adminPage.goto(`/?q=${encodeURIComponent(title)}`);
         await expect(adminPage.locator('.post-list__item').filter({ hasText: title })).toHaveCount(0);
+        await adminPage.close();
+    });
+
+    test('F05: 처리 요청이 도는 동안 같은 줄의 다른 처리 버튼도 비활성 상태다', async ({ browser }) => {
+        const title = uniqueTitle('이중클릭방지');
+
+        const authorPage = await (await browser.newContext({ storageState: storageStateFor('user') })).newPage();
+        await writePost(authorPage, title);
+        await authorPage.close();
+
+        const reporterPage = await (await browser.newContext({ storageState: storageStateFor('other') })).newPage();
+        await openPostByTitle(reporterPage, title);
+        await reportOpenPost(reporterPage, 'SPAM', '이중 클릭 방지 확인용');
+        await expect(reporterPage.locator('#app-toast')).toContainText('신고가 접수되었습니다');
+        await reporterPage.close();
+
+        const adminPage = await (await browser.newContext()).newPage();
+        await login(adminPage, ACCOUNTS.admin.email);
+        await adminPage.goto('/admin/reports');
+        const row = adminPage.locator('.report-list__item').filter({ hasText: title });
+
+        let releaseResponse;
+        const held = new Promise((resolve) => {
+            releaseResponse = resolve;
+        });
+        await adminPage.route('**/api/v1/admin/reports/*/resolve*', async (route) => {
+            await held;
+            await route.continue();
+        });
+
+        await row.locator('.btn-report-resolve').click();
+
+        // 삭제 요청이 도는 동안 같은 줄의 반려 버튼도 잠겨야 한다 — 그렇지 않으면 삭제와
+        // 반려를 동시에 눌러 서로 다른 처리가 겹치는 경쟁이 생긴다.
+        await expect(row.locator('.btn-report-resolve')).toBeDisabled();
+        await expect(row.locator('.btn-report-reject')).toBeDisabled();
+
+        releaseResponse();
+        await expect(adminPage.locator('.report-list__item').filter({ hasText: title })).toHaveCount(0);
         await adminPage.close();
     });
 

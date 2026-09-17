@@ -52,7 +52,8 @@ test('신고를 정지와 함께 처리하면 그 사람은 글을 쓸 수 없�
     await adminPage.goto('/admin/reports');
     const row = adminPage.locator('.report-list__item').filter({ hasText: title });
     await row.locator('.btn-report-suspend').click();
-    await expect(adminPage.locator('#app-toast')).toContainText('7일 정지');
+    // 처리에 성공하면 현재 페이지를 다시 불러온다(F05) — 그 줄이 목록에서 빠지는 것으로 확인한다.
+    await expect(adminPage.locator('.report-list__item').filter({ hasText: title })).toHaveCount(0);
     await adminPage.close();
 
     // 정지된 사람은 글쓰기 폼 대신 이유를 본다. 읽기와 로그인은 그대로다.
@@ -73,8 +74,7 @@ test('신고를 정지와 함께 처리하면 그 사람은 글을 쓸 수 없�
     const userRow = adminAgain.locator('.report-list__item').filter({ hasText: name });
     await expect(userRow).toContainText('욕설·비방');
     await userRow.locator('.btn-lift-suspension').click();
-    await expect(adminAgain.locator('#app-toast')).toContainText('정지를 해제했습니다');
-    // 푼 줄은 새로고침 없이 목록에서 빠진다.
+    // 처리에 성공하면 현재 페이지를 다시 불러온다(F05). 푼 줄이 목록에서 빠지는 것으로 확인한다.
     await expect(adminAgain.locator('.report-list__item').filter({ hasText: name })).toHaveCount(0);
     await adminAgain.close();
 
