@@ -116,6 +116,20 @@ app:
     retention-initial-delay-ms: 60000
     retention-interval-ms: 86400000
 
+  session-revocation:
+    # 비밀번호 변경·재설정·탈퇴 커밋 직후 세션 폐기를 영속 태스크로 남긴다(B06). 대부분은
+    # 커밋 직후 빠른 경로에서 바로 끝나고, 실패하거나 그 직후 프로세스가 죽은 것만 이 주기
+    # 작업이 다시 집는다. outbox_mails와 같은 claim/재시도 구조를 그대로 쓴다.
+    max-attempts: 5
+    batch-size: 20
+    drain-initial-delay-ms: 60000
+    drain-interval-ms: 120000
+    # 이 시간 넘게 "처리 중"이면 도중에 중단된 것으로 보고 대기열로 되돌린다.
+    stuck-after-ms: 300000
+    retention-days: 30
+    retention-initial-delay-ms: 120000
+    retention-interval-ms: 86400000
+
   metrics:
     # 앱이 스스로 상태를 점검해 logs/kraft-metrics.log에 한 줄씩 남긴다. 기준을 넘기면 ERROR로
     # 올려 logs/kraft-error.log에도 남는다. 외부 수집기나 상태 확인 엔드포인트에 의존하지 않는다

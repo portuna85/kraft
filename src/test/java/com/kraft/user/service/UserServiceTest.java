@@ -7,6 +7,8 @@ import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
 import com.kraft.user.mail.OutboxMailRepository;
+import com.kraft.user.session.SessionRevocationStore;
+import com.kraft.user.session.SessionRevocationWorker;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,7 +42,10 @@ class UserServiceTest {
     private PasswordEncoder passwordEncoder;
 
     @Mock
-    private SessionRevoker sessionRevoker;
+    private SessionRevocationStore sessionRevocationStore;
+
+    @Mock
+    private SessionRevocationWorker sessionRevocationWorker;
 
     @Mock
     private EmailVerificationTokenRepository emailVerificationTokenRepository;
@@ -55,7 +60,7 @@ class UserServiceTest {
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(userRepository, passwordEncoder, sessionRevoker,
+        userService = new UserService(userRepository, passwordEncoder, sessionRevocationStore, sessionRevocationWorker,
                 emailVerificationTokenRepository, passwordResetTokenRepository, outboxMailRepository);
     }
 

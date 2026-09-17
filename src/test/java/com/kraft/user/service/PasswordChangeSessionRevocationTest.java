@@ -6,6 +6,7 @@ import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
 import com.kraft.user.mail.OutboxMailRepository;
+import com.kraft.user.session.SessionRevocationTaskRepository;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -58,6 +59,9 @@ class PasswordChangeSessionRevocationTest {
     private EmailVerificationTokenRepository tokenRepository;
 
     @Autowired
+    private SessionRevocationTaskRepository sessionRevocationTaskRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -71,6 +75,7 @@ class PasswordChangeSessionRevocationTest {
         postRepository.deleteAll();
         outboxMailRepository.deleteAll();
         tokenRepository.deleteAll();
+        sessionRevocationTaskRepository.deleteAll();
         userRepository.deleteAll();
         userRepository.save(User.builder()
                 .name("tester")

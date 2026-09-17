@@ -10,6 +10,8 @@ import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
 import com.kraft.user.mail.OutboxMailRepository;
+import com.kraft.user.session.SessionRevocationStore;
+import com.kraft.user.session.SessionRevocationWorker;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -25,7 +27,8 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final SessionRevoker sessionRevoker;
+    private final SessionRevocationStore sessionRevocationStore;
+    private final SessionRevocationWorker sessionRevocationWorker;
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final OutboxMailRepository outboxMailRepository;
@@ -53,10 +56,10 @@ public class UserService {
      * 회원정보 변경은 비밀번호 변경만 가능하다는 기획 의도(User.java 클래스 주석)에 따라,
      * 반드시 현재 비밀번호를 확인한 뒤에만 새 비밀번호로 바꾼다.
      * <p>
-     * 변경이 <b>커밋된 뒤</b> 이 계정의 모든 세션을 서버에서 폐기한다({@link SessionRevoker}).
-     * 브라우저 JS의 후속 로그아웃에 맡기던 예전 방식은 API 직접 호출이나 후속 요청 실패에
-     * 무력했고 다른 기기의 세션도 남겼다(개선 보고서 F04). 커밋 이후로 미루는 이유는,
-     * 변경이 롤백되면 세션도 그대로 유지되어야 하기 때문이다.
+     * 변경이 <b>커밋된 뒤</b> 이 계정의 모든 세션을 서버에서 폐기하도록 영속 태스크를 남긴다
+     * ({@link #revokeSessionsAfterCommit}). 브라우저 JS의 후속 로그아웃에 맡기던 예전 방식은
+     * API 직접 호출이나 후속 요청 실패에 무력했고 다른 기기의 세션도 남겼다(개선 보고서 F04).
+     * 커밋 이후로 미루는 이유는, 변경이 롤백되면 세션도 그대로 유지되어야 하기 때문이다.
      */
     @Transactional
     public void changePassword(String email, String currentPassword, String newPassword) {
@@ -68,7 +71,7 @@ public class UserService {
         }
 
         user.changePassword(passwordEncoder.encode(newPassword));
-        AfterCommit.run(() -> sessionRevoker.revokeAll(email));
+        revokeSessionsAfterCommit(user, email);
     }
 
     /**
@@ -85,8 +88,7 @@ public class UserService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. id=" + userId));
 
         user.changePassword(passwordEncoder.encode(newPassword));
-        String email = user.getEmail();
-        AfterCommit.run(() -> sessionRevoker.revokeAll(email));
+        revokeSessionsAfterCommit(user, user.getEmail());
     }
 
     /**
@@ -121,7 +123,9 @@ public class UserService {
                 // 아무도 맞힐 수 없는 값. 익명 주소를 알아내도 로그인할 수 없다.
                 passwordEncoder.encode(UUID.randomUUID().toString()));
 
-        AfterCommit.run(() -> sessionRevoker.revokeAll(email));
+        // 여기서 넘기는 email은 위에서 파라미터로 받은 탈퇴 전 주소다. user.withdraw() 이후
+        // user.getEmail()을 쓰면 이미 익명 주소를 태스크에 남기게 된다.
+        revokeSessionsAfterCommit(user, email);
     }
 
     /**
@@ -141,5 +145,17 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. id=" + userId));
         user.promoteToUser();
+    }
+
+    /**
+     * 세션 폐기를 영속 태스크로 남기고(같은 트랜잭션에서 커밋), 커밋 직후 곧바로 한 번 처리를
+     * 시도한다(B06). 예전에는 {@code AfterCommit}에서 즉시 폐기만 시도하고 실패하면 그냥
+     * 로그로만 남겼다 — 세션 저장소 장애나 그 직후 프로세스 종료로 폐기가 유실되면 복구할
+     * 방법이 없었다. 태스크가 DB에 남아 있으므로 실패해도 {@link SessionRevocationWorker}의
+     * 주기 작업이 최종적으로 완수한다.
+     */
+    private void revokeSessionsAfterCommit(User user, String email) {
+        Long taskId = sessionRevocationStore.enqueue(user, email);
+        AfterCommit.run(() -> sessionRevocationWorker.attemptNow(taskId));
     }
 }
