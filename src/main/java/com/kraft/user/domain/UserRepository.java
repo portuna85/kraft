@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -47,4 +48,16 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /** 관리자 화면의 "정지 중인 회원". 곧 풀리는 순서로 본다. */
     Page<SuspendedUserProjection> findBySuspendedUntilAfterOrderBySuspendedUntilAsc(
             LocalDateTime now, Pageable pageable);
+
+    /**
+     * B08의 최후 수단이 쓴다. 가입 직후 인증 메일 대기열 등록이(토큰 저장 실패, 최종 커밋 실패
+     * 등으로) 한 번도 성공하지 못한 GUEST 계정을 찾는다. 유예시간을 두는 이유는, 가입 트랜잭션이
+     * 아직 진행 중이거나 방금 커밋된 계정까지 대상으로 삼으면 안 되기 때문이다.
+     */
+    @Query("SELECT u FROM User u WHERE u.role = com.kraft.user.domain.Role.GUEST "
+            + "AND u.createdAt < :threshold "
+            + "AND NOT EXISTS (SELECT 1 FROM EmailVerificationToken t WHERE t.user = u) "
+            + "AND NOT EXISTS (SELECT 1 FROM OutboxMail m WHERE m.user = u "
+            + "AND m.kind = com.kraft.user.mail.OutboxMailKind.VERIFY_EMAIL)")
+    List<User> findGuestsMissingVerificationMail(@Param("threshold") LocalDateTime threshold, Pageable pageable);
 }

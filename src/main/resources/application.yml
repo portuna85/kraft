@@ -116,6 +116,20 @@ app:
     retention-initial-delay-ms: 60000
     retention-interval-ms: 86400000
 
+  verification:
+    # 만료된 인증 토큰을 지우는 주기(ExpiredTokenPurger). 코드 기본값과 같은 값을
+    # 명시적으로 적어 둔다.
+    purge-enabled: true
+    purge-initial-delay-ms: 900000
+    purge-interval-ms: 86400000
+    # 가입 직후 인증 메일 대기열 등록의 최종 커밋이 실패해 메일이 한 번도 큐에 들어가지
+    # 못한 GUEST 계정을 찾아 복구하는 최후 수단(B08, GuestVerificationSweeper). 가입 직후
+    # 진행 중인 트랜잭션을 건드리지 않도록 유예시간을 둔다.
+    sweep-grace-minutes: 10
+    sweep-batch-size: 50
+    sweep-initial-delay-ms: 600000
+    sweep-interval-ms: 1800000
+
   session-revocation:
     # 비밀번호 변경·재설정·탈퇴 커밋 직후 세션 폐기를 영속 태스크로 남긴다(B06). 대부분은
     # 커밋 직후 빠른 경로에서 바로 끝나고, 실패하거나 그 직후 프로세스가 죽은 것만 이 주기
