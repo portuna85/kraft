@@ -49,8 +49,18 @@ public class EmailRekeyRunner implements ApplicationRunner {
     private int rekey() {
         try {
             EmailRekeyService.Result result = emailRekeyService.rekeyAll(oldKey, newKey);
-            log.info("이제 EMAIL_ENCRYPTION_KEY를 새 키로 바꾼 뒤 평소대로 기동하세요. 대상 {}건.",
-                    result.total());
+            log.info("이메일 키 교체 완료. 대상 {}건. 전체 검증을 시작합니다.", result.total());
+
+            EmailRekeyService.VerifyResult verifyResult = emailRekeyService.verifyAll(newKey);
+            if (!verifyResult.allVerified()) {
+                log.error("이메일 키 교체 검증에서 불일치를 발견했습니다 — 일치 {}건, 불일치 {}건. "
+                                + "DB는 백업 시점으로 되돌리고 원인을 확인하세요.",
+                        verifyResult.verified(), verifyResult.mismatched());
+                return 1;
+            }
+
+            log.info("검증 완료 — {}건 모두 일치합니다. 이제 EMAIL_ENCRYPTION_KEY를 새 키로 바꾼 뒤 평소대로 기동하세요.",
+                    verifyResult.verified());
             return 0;
         } catch (Exception e) {
             // 주소는 남기지 않는다. 어디서 멈췄는지는 예외 메시지의 userId로 충분하다.

@@ -108,7 +108,14 @@ public class EmailRekeyService {
 
     /** @return 이 행을 실제로 변환했으면 true, 이미 새 키로 되어 있어 건너뛰었으면 false */
     private boolean rekeyRow(long id, String cipher, String emailHash, TextEncryptor from, TextEncryptor to) {
-        if (decryptOrNull(to, cipher) != null) {
+        String alreadyNew = decryptOrNull(to, cipher);
+        if (alreadyNew != null) {
+            // 이미 새 키로 읽히는 행도 email_hash와 대조한다 — 그렇지 않으면 우연히 새 키로도
+            // "복호화만" 성공하고 내용은 다른 행(예: 수동 복구 과정의 실수)을 조용히 건너뛰게 된다.
+            if (!EmailHasher.sha512Hex(alreadyNew).equals(emailHash)) {
+                throw new IllegalStateException(
+                        "이미 새 키로 읽히지만 email_hash와 일치하지 않는 행이 있습니다. userId=" + id);
+            }
             return false;
         }
 
@@ -125,6 +132,44 @@ public class EmailRekeyService {
 
         jdbcTemplate.update("UPDATE users SET email = ? WHERE id = ?", to.encrypt(plain), id);
         return true;
+    }
+
+    /**
+     * {@link #rekeyAll}이 끝난 뒤 전체 행을 새 키로 다시 훑어 검증한다. rekeyAll 안의 대조는
+     * "이번에 건드린 행"만 보증하므로, 실행 도중 다른 경로(수동 SQL 등)로 email이 바뀌었거나
+     * 새 키로도 우연히 복호화는 되지만 내용이 어긋나는 행이 있는지는 별도로 확인해야 한다.
+     *
+     * @param newKey rekeyAll에서 쓴 것과 같은 새 키
+     */
+    public VerifyResult verifyAll(String newKey) {
+        TextEncryptor to = EmailEncryption.encryptor(newKey);
+
+        int verified = 0;
+        int mismatched = 0;
+        long lastId = 0;
+
+        while (true) {
+            List<Map<String, Object>> rows = nextBatch(lastId);
+            if (rows.isEmpty()) {
+                break;
+            }
+            for (Map<String, Object> row : rows) {
+                long id = ((Number) row.get("id")).longValue();
+                lastId = id;
+
+                String plain = decryptOrNull(to, (String) row.get("email"));
+                boolean ok = plain != null && EmailHasher.sha512Hex(plain).equals(row.get("email_hash"));
+                if (ok) {
+                    verified++;
+                } else {
+                    mismatched++;
+                    log.warn("이메일 키 교체 검증 실패 — 새 키로 email_hash와 일치하지 않습니다. userId={}", id);
+                }
+            }
+        }
+
+        log.info("이메일 키 교체 검증 완료 — 일치 {}건, 불일치 {}건", verified, mismatched);
+        return new VerifyResult(verified, mismatched);
     }
 
     /** 복호화 실패는 이 도구에서 <b>정상적인 판정 수단</b>이므로 예외로 다루지 않는다. */
@@ -144,6 +189,17 @@ public class EmailRekeyService {
 
         public int total() {
             return converted + alreadyDone;
+        }
+    }
+
+    /**
+     * @param verified   새 키로 복호화한 값이 email_hash와 일치한 행
+     * @param mismatched 새 키로 복호화되지 않거나 해시가 어긋난 행
+     */
+    public record VerifyResult(int verified, int mismatched) {
+
+        public boolean allVerified() {
+            return mismatched == 0;
         }
     }
 }
