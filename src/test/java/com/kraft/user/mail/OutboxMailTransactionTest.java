@@ -293,8 +293,21 @@ class OutboxMailTransactionTest {
         t1.join();
         t2.join();
 
+        // H2는 (status, id) 인덱스가 있으면 FOR UPDATE SKIP LOCKED + LIMIT를 MariaDB와 다르게
+        // 처리해, 잠긴 행을 건너뛰고 나머지를 마저 채우지 않고 그 배치에서 그냥 적게 반환할 때가
+        // 있다(H2 전용 구현 특성). 운영 DB(MariaDB)는 이 문제가 없지만, 이 테스트는 "동시 발송
+        // 총량이 한도를 넘지 않는가"만 보면 되므로, 실제 예약 작업처럼 남은 메일을 다음 주기가
+        // 마저 집는 것까지 흉내 내 최종적으로 전부 SENT가 되는지 확인한다.
+        for (int attempt = 0; attempt < 5 && hasPendingMails(); attempt++) {
+            outboxMailWorker.drain();
+        }
+
         assertThat(observedMax.get()).isLessThanOrEqualTo(maxConcurrent);
         assertThat(outboxMailRepository.findAll()).allMatch(mail -> mail.getStatus() == OutboxMailStatus.SENT);
+    }
+
+    private boolean hasPendingMails() {
+        return outboxMailRepository.findAll().stream().anyMatch(mail -> mail.getStatus() == OutboxMailStatus.PENDING);
     }
 
     /** next_attempt_at은 markFailed()가 지금 시각 기준으로 계산하므로, 지난 것처럼 만들려면 직접 당긴다. */
