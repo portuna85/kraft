@@ -227,9 +227,18 @@ public class PostService {
             postLikeRepository.deleteByPostIdAndUserId(id, user.getId());
         }
 
-        return new PostLikeResponseDto(liked, postLikeRepository.countByPostId(id));
+        // postLikeWriter.countByPostId도 새 트랜잭션에서 읽는다(B09) — 이 메서드의 트랜잭션이
+        // 이미 잡아 둔 REPEATABLE READ 스냅샷은 REQUIRES_NEW로 방금 커밋된 추천을 못 볼 수 있다.
+        return new PostLikeResponseDto(liked, postLikeWriter.countByPostId(id));
     }
 
+    /**
+     * 검사와 INSERT 사이에 같은 추천이 들어와 유니크 제약에 걸리면 원하던 최종 상태와
+     * 같으므로 그대로 둔다. 그 외의 원인(부모 게시글이 막 삭제된 경우의 FK 위반 등)은
+     * "이미 추천됨"으로 위장하지 않고 다시 던진다(B09) — {@code PostLikeWriter.insert}
+     * 자체는 아무것도 삼키지 않으므로(REQUIRES_NEW 트랜잭션 경계 안에서 삼키면
+     * {@code UnexpectedRollbackException}이 난다), 그 경계 밖인 여기서 판단한다.
+     */
     private void addLikeIfAbsent(Post post, User user) {
         if (postLikeRepository.existsByPostIdAndUserId(post.getId(), user.getId())) {
             return;
@@ -237,7 +246,9 @@ public class PostService {
         try {
             postLikeWriter.insert(post, user);
         } catch (DataIntegrityViolationException e) {
-            // 검사와 INSERT 사이에 같은 추천이 들어왔다. 원하던 최종 상태와 같으므로 그대로 둔다.
+            if (!postLikeWriter.isDuplicateLikeConstraint(e)) {
+                throw e;
+            }
         }
     }
 

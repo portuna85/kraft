@@ -15,8 +15,15 @@ import lombok.NoArgsConstructor;
 @Entity
 @NoArgsConstructor
 @Table(name = "post_likes",
-        uniqueConstraints = @UniqueConstraint(name = "UK_POST_LIKE_POST_USER", columnNames = {"post_id", "user_id"}))
+        uniqueConstraints = @UniqueConstraint(name = PostLike.UK_POST_LIKE_POST_USER, columnNames = {"post_id", "user_id"}))
 public class PostLike extends BaseEntity {
+
+    /**
+     * 중복 추천 검사에 쓴다({@link com.kraft.post.service.PostLikeWriter}). 같은 문자열을
+     * 어노테이션과 코드에서 각자 따로 적으면, 제약 이름이 바뀌었을 때 한쪽만 고쳐 조용히
+     * 어긋날 수 있다.
+     */
+    public static final String UK_POST_LIKE_POST_USER = "UK_POST_LIKE_POST_USER";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

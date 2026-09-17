@@ -436,7 +436,7 @@ class PostServiceTest {
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("liker@example.com"))).willReturn(Optional.of(user));
         given(postLikeRepository.existsByPostIdAndUserId(100L, 2L)).willReturn(false);
-        given(postLikeRepository.countByPostId(100L)).willReturn(1L);
+        given(postLikeWriter.countByPostId(100L)).willReturn(1L);
 
         var result = postService.setLike(100L, true, authOf("liker@example.com", Role.USER));
 
@@ -453,7 +453,7 @@ class PostServiceTest {
         Post post = postOf(user, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("liker@example.com"))).willReturn(Optional.of(user));
-        given(postLikeRepository.countByPostId(100L)).willReturn(0L);
+        given(postLikeWriter.countByPostId(100L)).willReturn(0L);
 
         var result = postService.setLike(100L, false, authOf("liker@example.com", Role.USER));
 
@@ -470,7 +470,7 @@ class PostServiceTest {
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("liker@example.com"))).willReturn(Optional.of(user));
         given(postLikeRepository.existsByPostIdAndUserId(100L, 2L)).willReturn(true);
-        given(postLikeRepository.countByPostId(100L)).willReturn(1L);
+        given(postLikeWriter.countByPostId(100L)).willReturn(1L);
 
         var result = postService.setLike(100L, true, authOf("liker@example.com", Role.USER));
 
@@ -478,22 +478,43 @@ class PostServiceTest {
         verify(postLikeWriter, never()).insert(any(), any());
     }
 
+    /**
+     * B09: 무엇이 "중복이라 흡수해도 되는 예외"인지는 {@code PostLikeWriter.isDuplicateLikeConstraint}가
+     * 실제 제약 이름을 보고 판단한다(PostLikeWriterTest가 실제 DB로 검증). PostService는 그
+     * 판정 결과를 그대로 따를 뿐이므로, 여기서는 판정이 false일 때 예외가 삼켜지지 않고
+     * 전파되는지만 확인한다 — FK 위반을 "이미 추천됨"으로 위장하지 않는다는 뜻이다.
+     */
     @Test
-    @DisplayName("setLike(true): 검사와 INSERT 사이에 같은 추천이 들어와도 성공으로 처리한다")
+    @DisplayName("B09: 중복 제약이 아닌 실패는 PostService가 그대로 전파한다")
+    void setLike_whenInsertFailsForNonDuplicateReason_propagatesException() {
+        User user = userWithEmail("liker@example.com", 2L);
+        Post post = postOf(user, 100L);
+        given(postRepository.findById(100L)).willReturn(Optional.of(post));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("liker@example.com"))).willReturn(Optional.of(user));
+        given(postLikeRepository.existsByPostIdAndUserId(100L, 2L)).willReturn(false);
+        DataIntegrityViolationException fkViolation = new DataIntegrityViolationException("FK_POST_LIKES_POST");
+        org.mockito.BDDMockito.willThrow(fkViolation).given(postLikeWriter).insert(post, user);
+        given(postLikeWriter.isDuplicateLikeConstraint(fkViolation)).willReturn(false);
+
+        assertThatThrownBy(() -> postService.setLike(100L, true, authOf("liker@example.com", Role.USER)))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("B09: 검사와 INSERT 사이에 같은 추천이 들어와도(유니크 제약 위반) 성공으로 처리한다")
     void setLike_whenConcurrentInsertWins_treatsAsSuccess() {
         User user = userWithEmail("liker@example.com", 2L);
         Post post = postOf(user, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("liker@example.com"))).willReturn(Optional.of(user));
         given(postLikeRepository.existsByPostIdAndUserId(100L, 2L)).willReturn(false);
-        given(postLikeRepository.countByPostId(100L)).willReturn(1L);
-        // 다른 요청이 먼저 저장해 유니크 제약에 걸린 상황.
-        org.mockito.BDDMockito.willThrow(new DataIntegrityViolationException("UK_POST_LIKE_POST_USER"))
-                .given(postLikeWriter).insert(post, user);
+        given(postLikeWriter.countByPostId(100L)).willReturn(1L);
+        DataIntegrityViolationException duplicate = new DataIntegrityViolationException("UK_POST_LIKE_POST_USER");
+        org.mockito.BDDMockito.willThrow(duplicate).given(postLikeWriter).insert(post, user);
+        given(postLikeWriter.isDuplicateLikeConstraint(duplicate)).willReturn(true);
 
         var result = postService.setLike(100L, true, authOf("liker@example.com", Role.USER));
 
-        // 원하던 최종 상태와 같으므로 오류가 아니다.
         assertThat(result.liked()).isTrue();
         assertThat(result.likeCount()).isEqualTo(1L);
     }
