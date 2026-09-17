@@ -12,6 +12,15 @@ async function openOwnPost(page) {
     await openPostByTitle(page, title);
 }
 
+/** 서버 페이지네이션(PAGE_SIZE=20)을 실제로 넘기기 위해 댓글을 순차로 만든다. */
+async function seedComments(page, count) {
+    for (let i = 1; i <= count; i += 1) {
+        await page.locator('#comment-content').fill(`시드 댓글 ${i}`);
+        await page.locator('#btn-comment-save').click();
+        await expect(page.locator('#flash')).toContainText('댓글이 등록되었습니다.');
+    }
+}
+
 test('빈 댓글은 브라우저 검증이 막고 요청 자체가 나가지 않는다', async ({ page }) => {
     await openOwnPost(page);
 
@@ -143,6 +152,90 @@ test('남의 글에 처음 남긴 댓글도 곧바로 지울 수 있다', async 
     } finally {
         await otherContext.close();
     }
+});
+
+/**
+ * 새 댓글을 낙관적으로 더한 뒤 "더 보기"로 다음 페이지를 받으면, 방금 더한 댓글이 서버
+ * 페이지에도 다시 포함될 수 있다. id 기준 병합이 없으면 같은 댓글이 두 번 보인다(개선 보고서
+ * F01).
+ */
+test('새 댓글 등록 후 더 보기를 눌러도 중복 없이 합쳐진다', async ({ page }) => {
+    test.slow();
+    await openOwnPost(page);
+    await seedComments(page, 21);
+
+    await page.reload();
+    await expect(page.locator('.comment-list__content')).toHaveCount(20);
+    await expect(page.locator('#btn-comments-load-more')).toBeVisible();
+
+    await page.locator('#comment-content').fill('페이지 사이에 새로 단 댓글');
+    await page.locator('#btn-comment-save').click();
+    await expect(page.locator('.comment-list__content')).toHaveCount(21);
+    await expect(page.locator('.comment-list__content').last()).toContainText('페이지 사이에 새로 단 댓글');
+
+    await page.locator('#btn-comments-load-more').click();
+
+    // 서버의 마지막 페이지에는 방금 단 댓글(22번째)도 다시 포함되지만, id 기준 병합이
+    // 중복을 걸러내야 한다.
+    await expect(page.locator('.comment-list__content')).toHaveCount(22);
+    await expect(page.locator('#comments-heading')).toContainText('댓글 22개');
+});
+
+/**
+ * 저장 요청이 진행되는 동안 새 댓글 입력창을 잠가 두지 않으면, 응답이 온 뒤 화면에 붙는
+ * 내용이 실제로 보낸 값과 달라질 수 있다(개선 보고서 F02).
+ */
+test('새 댓글 저장 중에는 입력창이 잠기고, 응답이 오면 보낸 내용이 반영된다', async ({ page }) => {
+    await openOwnPost(page);
+
+    let releaseSave;
+    const gate = new Promise((resolve) => {
+        releaseSave = resolve;
+    });
+    await page.route(/\/api\/v1\/posts\/\d+\/comments$/, async (route) => {
+        if (route.request().method() !== 'POST') {
+            await route.continue();
+            return;
+        }
+        await gate;
+        await route.continue();
+    });
+
+    await page.locator('#comment-content').fill('저장 중 내용');
+    await page.locator('#btn-comment-save').click();
+
+    await expect(page.locator('#comment-content')).toBeDisabled();
+    await expect(page.locator('#btn-comment-save')).toBeDisabled();
+
+    releaseSave();
+    await expect(page.locator('#flash')).toContainText('댓글이 등록되었습니다.');
+    await expect(page.locator('.comment-list__content')).toContainText('저장 중 내용');
+    await expect(page.locator('#comment-content')).toHaveValue('');
+});
+
+/**
+ * http.js의 타임아웃은 fetch가 헤더를 받은 뒤 본문을 다 읽을 때까지도 적용되어야 한다.
+ * Playwright의 route.fulfill/continue는 부분 스트리밍 응답을 만들 수 없으므로(본문은 항상
+ * 한 번에 완성된 값이어야 한다), 헤더만 즉시 보내고 본문을 끝내지 않는 e2e 전용 엔드포인트
+ * (/e2e/slow-body)로 같은 출처(origin) 안에서 리다이렉트해 재현한다(개선 보고서 F03).
+ */
+test('더 보기 응답의 헤더만 오고 본문이 멈추면 타임아웃으로 처리된다', async ({ page }) => {
+    test.slow();
+    await openOwnPost(page);
+    await seedComments(page, 21);
+    await page.reload();
+    await expect(page.locator('#btn-comments-load-more')).toBeVisible();
+
+    await page.route(/\/api\/v1\/posts\/\d+\/comments\/page/, (route) =>
+        route.continue({ url: new URL('/e2e/slow-body', route.request().url()).toString() }),
+    );
+
+    await page.locator('#btn-comments-load-more').click();
+
+    await expect(page.locator('#app-toast-body')).toContainText('요청 시간이 초과되었습니다', {
+        timeout: 20_000,
+    });
+    await expect(page.locator('#btn-comments-load-more')).toBeEnabled();
 });
 
 test('댓글 삭제: 취소하면 그대로, 확인하면 지워진다', async ({ page }) => {

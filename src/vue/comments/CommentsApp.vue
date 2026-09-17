@@ -36,13 +36,27 @@ const lastLoadedId = ref(props.initialComments.at(-1)?.id ?? null);
 const newContent = ref('');
 const saving = ref(false);
 
+// 로컬에서 낙관적으로 추가한 새 댓글과 "더 보기"로 받아 온 서버 페이지가 겹칠 수 있다
+// (같은 댓글이 새 등록 응답과 다음 페이지 응답 양쪽에 나타남). id 기준으로 중복을 걸러내고
+// 항상 오름차순을 유지해, 이미 들어와 있는 항목을 다시 push하지 않는다.
+function mergeComments(newItems) {
+    const existingIds = new Set(comments.map((c) => String(c.id)));
+    for (const item of newItems) {
+        if (!existingIds.has(String(item.id))) {
+            comments.push(item);
+            existingIds.add(String(item.id));
+        }
+    }
+    comments.sort((a, b) => Number(a.id) - Number(b.id));
+}
+
 async function loadMore() {
     loadingMore.value = true;
     try {
         const page = await api.get(
             `${API.POSTS}/${props.postId}/comments/page?afterId=${lastLoadedId.value}`,
         );
-        comments.push(...page.comments);
+        mergeComments(page.comments);
         totalCount.value = page.totalCount;
         hasMore.value = page.hasMore;
         if (page.comments.length > 0) {
@@ -56,24 +70,29 @@ async function loadMore() {
 }
 
 async function save() {
+    // 요청이 진행되는 동안 입력창을 막아 두므로(:disabled="saving"), 응답이 올 때까지
+    // content는 바뀌지 않는다 — 서버에 보낸 값과 화면에 표시하는 값을 같은 스냅샷으로 고정한다.
+    const content = newContent.value;
     saving.value = true;
     try {
         const id = await api.post(`${API.POSTS}/${props.postId}/comments`, {
-            content: newContent.value,
+            content,
         });
         // 응답은 id뿐이다. 방금 내가 쓴 댓글이므로 관리 가능하고, 작성자 표시는 화면에 이미
         // 렌더링된 로그인 사용자 닉네임(navbar의 #user)을 그대로 쓴다.
-        comments.push({
+        mergeComments([{
             id,
-            content: newContent.value,
+            content,
             author: document.getElementById('user')?.textContent ?? '',
             createdAt: new Date().toISOString(),
             canManage: true,
-        });
+        }]);
         // lastLoadedId는 건드리지 않는다 — 아직 안 불러온 더 오래된 댓글이 있다면(hasMore),
         // 새 댓글의 id로 커서를 앞당기면 "더 보기"가 그 구간을 건너뛰게 된다.
         totalCount.value += 1;
-        newContent.value = '';
+        if (newContent.value === content) {
+            newContent.value = '';
+        }
         flash.showNow('COMMENT_SAVED');
     } catch (error) {
         showToast(messageOf(error), 'danger');
@@ -157,6 +176,7 @@ onUnmounted(() => window.removeEventListener('kraft:comment-deleted', onExternal
       placeholder="댓글을 입력하세요"
       maxlength="1000"
       required
+      :disabled="saving"
     />
     <button
       id="btn-comment-save"
