@@ -11,13 +11,15 @@ import vuePlugin from 'eslint-plugin-vue';
  */
 export default [
     {
-        // vue-dist는 Vite가 만든 산출물(사람이 손대지 않음)이라 검사 대상에서 뺀다.
+        // vue-dist는 Vite가 만든 산출물, vendor는 그대로 복사해 온 외부 라이브러리라
+        // (개선 보고서 F08) 둘 다 사람이 손대지 않는다 — 검사 대상에서 뺀다.
         ignores: [
             'node_modules/**',
             'build/**',
             'playwright-report/**',
             'test-results/**',
             'src/main/resources/static/js/vue-dist/**',
+            'src/main/resources/static/js/vendor/**',
         ],
     },
 
