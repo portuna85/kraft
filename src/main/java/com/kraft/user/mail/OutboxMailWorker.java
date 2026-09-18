@@ -1,5 +1,6 @@
 package com.kraft.user.mail;
 
+import com.kraft.user.domain.EmailMasker;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -173,9 +174,25 @@ public class OutboxMailWorker {
             store.markSent(mail.id(), mail.ownerToken());
         } catch (Exception e) {
             // 한 통이 실패해도 나머지는 계속 보낸다. 원인은 행에 남겨 다음 차례에 다시 시도한다.
-            log.warn("메일 발송에 실패했습니다. outboxMailId={}", mail.id(), e);
-            store.markFailed(mail.id(), e.getMessage(), mail.ownerToken());
+            //
+            // 실제 SMTP 실패 메시지는 종종 수신자 주소를 그대로 담는다(예:
+            // "Failed messages: ...: user@example.com: 550 ...") — 여기서 알고 있는 수신자
+            // 주소(mail.to())만 정확히 가려서 로그·lastError 어느 쪽에도 원문이 남지 않게 한다
+            // (O07). 메시지의 나머지 진단 정보(도메인·오류 코드 등)는 그대로 둔다.
+            String maskedMessage = maskRecipient(e.getMessage(), mail.to());
+            // e를 그대로 로거에 넘기지 않는다 — SLF4J가 예외 자체의(가려지지 않은) 메시지를
+            // 스택 트레이스 첫 줄에 그대로 찍는다. 대신 예외 타입 + 가린 메시지만 남긴다.
+            log.warn("메일 발송에 실패했습니다. outboxMailId={}, exceptionType={}, detail={}",
+                    mail.id(), e.getClass().getSimpleName(), maskedMessage);
+            store.markFailed(mail.id(), maskedMessage, mail.ownerToken());
         }
+    }
+
+    private static String maskRecipient(String message, String recipient) {
+        if (message == null) {
+            return null;
+        }
+        return message.replace(recipient, EmailMasker.mask(recipient));
     }
 
     private String subject(OutboxMailKind kind) {

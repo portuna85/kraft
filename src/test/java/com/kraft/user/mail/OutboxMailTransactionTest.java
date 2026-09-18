@@ -1,14 +1,19 @@
 package com.kraft.user.mail;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.kraft.user.domain.EmailVerificationToken;
 import com.kraft.user.domain.EmailVerificationTokenRepository;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
 import com.kraft.user.service.EmailVerificationService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -184,6 +189,43 @@ class OutboxMailTransactionTest {
         backdateNextAttempt(failed.getId(), LocalDateTime.now().minusSeconds(1));
         outboxMailWorker.drain();
         assertThat(outboxMailRepository.findAll().get(0).getAttempts()).isEqualTo(2);
+    }
+
+    /**
+     * O07: 실제 SMTP 실패(MailSendException 등)는 종종 수신자 주소를 메시지 안에 그대로
+     * 담는다("Failed messages: ...: user@example.com: 550 ..." 꼴). {@code OutboxMailWorker.send}는
+     * 그 메시지를 그대로 {@code log.warn(..., e)}에 넘기고 {@code lastError}에도 그대로 저장했다 —
+     * 다른 곳(GuestVerificationSweeper 등)은 이미 EmailMasker로 가리는데 여기만 빠져 있었다.
+     * 로그·DB 어느 쪽에도 원문 주소가 남지 않는지 실제로 예외를 던져서 확인한다.
+     */
+    @Test
+    @DisplayName("O07: 발송 실패 메시지에 수신자 주소가 그대로 있어도 로그·lastError에는 가려서 남는다")
+    void failureMessageContainingRecipientAddress_isMaskedInLogAndLastError() {
+        String rawEmail = user.getEmail();
+        willThrow(new RuntimeException("Failed messages: " + rawEmail + ": 550 mailbox not found"))
+                .given(emailSender).send(anyString(), anyString(), anyString());
+
+        ListAppender<ILoggingEvent> logs = new ListAppender<>();
+        logs.start();
+        Logger workerLogger = (Logger) LoggerFactory.getLogger(OutboxMailWorker.class);
+        workerLogger.addAppender(logs);
+        try {
+            queueOne();
+            outboxMailWorker.drain();
+        } finally {
+            workerLogger.detachAppender(logs);
+        }
+
+        OutboxMail failed = outboxMailRepository.findAll().get(0);
+        assertThat(failed.getLastError())
+                .as("lastError에 원문 이메일이 그대로 남으면 안 된다")
+                .doesNotContain(rawEmail)
+                .contains("mailbox not found");
+        assertThat(logs.list)
+                .as("경고 로그 어디에도 원문 이메일이 그대로 남으면 안 된다")
+                .noneMatch(event -> event.getFormattedMessage().contains(rawEmail)
+                        || (event.getThrowableProxy() != null
+                                && event.getThrowableProxy().getMessage().contains(rawEmail)));
     }
 
     @Test
