@@ -50,3 +50,7 @@ app:
     cleanup-enabled: false
   metrics:
     enabled: false
+  # GuestVerificationSweeper는 User 엔티티를 읽으면서 email을 즉시 복호화한다(O07) — 아직
+  # 옛 키로 남은 GUEST 행이 섞이면 rekeyAll이 미처 돌기 전에 복호화 실패로 멈출 수 있다.
+  verification:
+    sweep-enabled: false

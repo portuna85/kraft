@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -49,6 +50,9 @@ class GuestVerificationSweeperTest {
         tokenRepository.deleteAll();
         outboxMailRepository.deleteAll();
         userRepository.deleteAll();
+        // sweeper는 싱글턴 빈이라 O07 테스트가 enabled를 꺼 둔 채로 남기면 실행 순서에 따라
+        // 다른 테스트까지 영향을 받는다 — 매번 켜진 상태로 시작한다(PostImageCleanerTest와 같은 관례).
+        ReflectionTestUtils.setField(sweeper, "enabled", true);
     }
 
     @Test
@@ -88,6 +92,22 @@ class GuestVerificationSweeperTest {
 
         assertThat(tokenRepository.count()).isEqualTo(tokenCountBefore);
         assertThat(outboxMailRepository.count()).isEqualTo(mailCountBefore);
+    }
+
+    /**
+     * O07: rekey 프로파일이 이 스위치를 끈다 — 아직 옛 키로 남은 GUEST 행이 섞이면 email
+     * 복호화가 엔티티 로딩 시점에 실패하므로, 키 교체 중에는 아예 조회 자체가 돌면 안 된다.
+     */
+    @Test
+    @DisplayName("O07: 스위치를 끄면 저장소를 건드리지 않고 그대로 돌아간다")
+    void sweep_whenDisabled_doesNothing() {
+        User stale = saveGuest(LocalDateTime.now().minusMinutes(20));
+        ReflectionTestUtils.setField(sweeper, "enabled", false);
+
+        sweeper.sweep();
+
+        assertThat(tokenRepository.findAll()).noneMatch(t -> t.getUser().getId().equals(stale.getId()));
+        assertThat(outboxMailRepository.findAll()).noneMatch(m -> m.getUser().getId().equals(stale.getId()));
     }
 
     private User saveGuest(LocalDateTime createdAt) {

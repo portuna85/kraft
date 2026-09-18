@@ -34,6 +34,16 @@ public class GuestVerificationSweeper {
     private final UserRepository userRepository;
     private final EmailVerificationService emailVerificationService;
 
+    /**
+     * rekey(이메일 키 교체) 중에는 꺼야 한다(O07) — 이 스윕이 {@code User} 엔티티를 읽는
+     * 순간 JPA의 {@code EmailAttributeConverter}가 현재 설정된 키로 {@code email}을 즉시
+     * 복호화하는데, {@code rekeyAll}이 아직 변환하지 못한(옛 키로 남은) GUEST 행이 조회
+     * 결과에 섞이면 그 행을 엔티티로 매핑하는 순간 복호화가 실패한다
+     * ({@code BackupRestoreRehearsalTest}가 같은 종류의 실패를 이미 실증했다).
+     */
+    @Value("${app.verification.sweep-enabled:true}")
+    private boolean enabled;
+
     @Value("${app.verification.sweep-grace-minutes:10}")
     private int graceMinutes;
 
@@ -43,6 +53,9 @@ public class GuestVerificationSweeper {
     @Scheduled(initialDelayString = "${app.verification.sweep-initial-delay-ms:600000}",
             fixedDelayString = "${app.verification.sweep-interval-ms:1800000}")
     public void sweep() {
+        if (!enabled) {
+            return;
+        }
         LocalDateTime threshold = LocalDateTime.now().minus(Duration.ofMinutes(graceMinutes));
         List<User> missing = userRepository.findGuestsMissingVerificationMail(threshold, PageRequest.of(0, batchSize));
         for (User user : missing) {
