@@ -74,9 +74,9 @@
                                    autocomplete="current-password" required>
                         </div>
                         <div class="mb-3">
-                            <label for="newPassword">새 비밀번호 (8자 이상, 대문자·소문자·특수문자 포함)</label>
+                            <label for="newPassword">새 비밀번호 (8자 이상 72자 이하, 대문자·소문자·특수문자 포함)</label>
                             <input type="password" class="form-control" id="newPassword"
-                                   autocomplete="new-password" minlength="8" required>
+                                   autocomplete="new-password" minlength="8" maxlength="72" required>
                         </div>
                     </form>
                     <p class="text-muted mb-0">변경하면 자동으로 로그아웃되고 로그인 화면으로 이동합니다.</p>

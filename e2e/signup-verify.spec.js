@@ -26,6 +26,18 @@ test('비밀번호 확인이 다르면 필드 옆에서 알려주고 요청을 �
     expect(requested, '서버까지 갈 필요가 없다').toBe(false);
 });
 
+/**
+ * F09: 서버 DTO(SignUpRequestDto)가 72자를 상한으로 두는데, 입력에 maxlength가 없으면
+ * 73자를 그대로 서버까지 보내 그때야 거절당했다. maxlength="72"가 실제로 입력 단계에서
+ * 자르는지 확인한다.
+ */
+test('비밀번호는 72자를 넘겨 입력해도 72자로 잘린다', async ({ page }) => {
+    await page.goto('/signup');
+    await page.locator('#password').fill('a'.repeat(73));
+
+    await expect(page.locator('#password')).toHaveValue('a'.repeat(72));
+});
+
 test('Enter로도 제출되고, 필수 입력이 비어 있으면 브라우저 검증이 먼저 막는다', async ({ page }) => {
     let requested = false;
     page.on('request', (request) => {

@@ -86,7 +86,7 @@ async function onSubmit() {
       >
     </div>
     <div class="mb-3">
-      <label for="password">비밀번호 (8자 이상, 대문자·소문자·특수문자 포함)</label>
+      <label for="password">비밀번호 (8자 이상 72자 이하, 대문자·소문자·특수문자 포함)</label>
       <input
         id="password"
         v-model="form.password"
@@ -95,6 +95,7 @@ async function onSubmit() {
         placeholder="비밀번호를 입력하세요"
         autocomplete="new-password"
         minlength="8"
+        maxlength="72"
         required
       >
     </div>

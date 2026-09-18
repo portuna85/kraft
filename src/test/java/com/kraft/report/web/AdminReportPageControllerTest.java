@@ -25,6 +25,7 @@ import static org.mockito.BDDMockito.given;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
@@ -79,6 +80,21 @@ class AdminReportPageControllerTest {
         mockMvc.perform(get("/admin/reports").with(user("admin@example.com").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("대상이 이미 삭제되었습니다")));
+    }
+
+    /**
+     * F09: NavModelAdvice가 PostPage·UserPage로만 한정돼 있던 탓에 관리자 화면에서는
+     * currentPath가 모델에 없었다 — "신고 처리" 내비게이션이 그 화면에 있을 때도 현재 위치로
+     * 표시되지 않고, 같은 모델 속성을 쓰는 로그인 링크의 복귀 주소도 비어 있었다.
+     */
+    @Test
+    @DisplayName("신고 처리 화면에도 현재 경로가 전달된다")
+    void reports_includesNavigationModel() throws Exception {
+        given(reportService.findPending(any(Pageable.class))).willReturn(pageOf());
+
+        mockMvc.perform(get("/admin/reports").with(user("admin@example.com").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("currentPath", "/admin/reports"));
     }
 
     @Test

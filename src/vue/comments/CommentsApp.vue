@@ -126,6 +126,7 @@ onUnmounted(() => window.removeEventListener('kraft:comment-deleted', onExternal
   <h2
     id="comments-heading"
     class="comments__heading"
+    tabindex="-1"
   >
     댓글 {{ totalCount }}개
   </h2>

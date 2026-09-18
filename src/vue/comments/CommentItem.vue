@@ -114,8 +114,12 @@ function formatDate(iso) {
       @submit.prevent="save"
     >
       <div class="mb-3">
-        <label class="visually-hidden">댓글 내용</label>
+        <label
+          class="visually-hidden"
+          :for="`comment-edit-${comment.id}`"
+        >댓글 내용</label>
         <textarea
+          :id="`comment-edit-${comment.id}`"
           v-model="draftContent"
           class="form-control comment-edit__textarea"
           maxlength="1000"

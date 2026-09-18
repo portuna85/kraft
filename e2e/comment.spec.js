@@ -262,4 +262,47 @@ test('댓글 삭제: 취소하면 그대로, 확인하면 지워진다', async (
 
     await expect(page.locator('#flash')).toContainText('댓글이 삭제되었습니다.');
     await expect(page.locator('.comment-list__content')).toHaveCount(0);
+
+    // F09: 삭제 성공 경로는 모달이 닫히기 전에 그 댓글의 삭제 버튼(trigger)이 이미 DOM에서
+    // 사라진다 — 사라진 요소에 focus()는 조용히 무시되어 포커스가 body로 떨어졌었다. 댓글
+    // 영역 제목으로 옮겨가는지 확인한다.
+    await expect(page.locator('#comments-heading')).toBeFocused();
+});
+
+/**
+ * F09: 서버가 내려주는 기존 댓글의 createdAt은 오프셋 없는 LocalDateTime 문자열이고,
+ * CommentsApp.vue가 새로 단 댓글에 낙관적으로 채우는 값은 new Date().toISOString()(UTC,
+ * 'Z' 포함)이다. CommentItem.vue의 formatDate()는 new Date(iso)로 파싱한 뒤 브라우저 로컬
+ * 시간대로 표시하는데, 오프셋 없는 문자열은 브라우저가 "자신의 로컬 시간대"로 해석한다 —
+ * 서버가 실제로 그 문자열을 만든 시간대와 브라우저 시간대가 다르면, 같은 댓글이라도 방금 단
+ * 직후(클라이언트 값)와 새로고침 후(서버 값)의 표시 시각이 달라질 수 있다.
+ * <p>
+ * 문서 지시대로 이 동작을 "고치지" 않고 실제로 벌어지는지만 기록한다(임의 UTC 전환 없음).
+ * 서버 프로세스의 시간대와 크게 다른 시간대(태평양 Kiritimati, UTC+14)로 브라우저만
+ * 강제해, 우연히 같은 시간대라 이 격차가 가려지지 않게 한다.
+ */
+test('F09(검증): 서버 시간대와 다른 브라우저에서는 새로 단 댓글과 새로고침 후 같은 댓글의 표시 시각이 다르다', async ({ browser }) => {
+    const context = await browser.newContext({
+        storageState: storageStateFor('user'),
+        timezoneId: 'Pacific/Kiritimati', // UTC+14 — 서버 프로세스의 실제 시간대와 겹칠 일이 없다.
+    });
+    const page = await context.newPage();
+    await openOwnPost(page);
+
+    await page.locator('#comment-content').fill('시간대 검증용 댓글');
+    await page.locator('#btn-comment-save').click();
+    await expect(page.locator('#flash')).toContainText('댓글이 등록되었습니다.');
+
+    const timestamp = page.locator('.comment-list__item .text-muted').first();
+    const justPosted = await timestamp.textContent();
+
+    await page.reload();
+    const afterReload = await timestamp.textContent();
+
+    // 실제로 격차가 있다는 사실 자체가 이 테스트의 결론이다 — 서버가 만든 오프셋 없는 문자열을
+    // 브라우저가 자신의(서버와 다른) 로컬 시간대로 잘못 해석하기 때문이다.
+    expect(justPosted, '같은 댓글인데 새로고침 전후 표시 시각이 달라진다(F09, 임의 수정 없이 기록만)')
+        .not.toBe(afterReload);
+
+    await context.close();
 });

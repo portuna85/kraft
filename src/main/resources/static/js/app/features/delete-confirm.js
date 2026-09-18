@@ -27,7 +27,15 @@ export function init() {
 
     on(byId('confirmDeleteModal'), 'hidden.bs.modal', () => {
         // 모달을 닫으면 원래 눌렀던 버튼으로 돌아가야 키보드 사용자가 위치를 잃지 않는다.
-        pending?.trigger?.focus();
+        // 댓글 삭제 성공 경로는 모달이 완전히 닫히기 전에 kraft:comment-deleted 이벤트로
+        // 그 댓글이 목록에서 이미 지워져, 이 시점에는 trigger가 DOM에 없다(F09) — 사라진
+        // 요소에 focus()는 조용히 무시되어 포커스가 body로 떨어진다. 트리거가 아직 있으면
+        // 그대로 돌아가고, 없으면(삭제 성공) 늘 존재하는 댓글 영역 제목으로 옮긴다.
+        if (pending?.trigger && document.contains(pending.trigger)) {
+            pending.trigger.focus();
+        } else {
+            byId('comments-heading')?.focus();
+        }
         pending = null;
     });
 
