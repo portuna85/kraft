@@ -47,17 +47,26 @@
     text-decoration: none;
 }
 
+// PlayForum 비교(문서 6.1): 모바일 전체 메뉴 버튼은 헤더의 다른 요소와 구분되는 강조
+// 배경을 써서 "탐색 진입점"임을 바로 알아보게 한다. 어두운 헤더(--kraft-header)와 달리
+// 밝은 --kraft-primary라 흰 글자·막대(.kraft-nav-toggle__bars)와 여전히 대비가 충분하다.
 .kraft-nav-toggle {
     display: flex;
     align-items: center;
     gap: var(--kraft-space-2);
     min-height: 44px;
     padding: 0 var(--kraft-space-3);
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.4);
+    background-color: var(--kraft-primary);
+    border: 1px solid var(--kraft-primary);
     border-radius: var(--kraft-radius-control);
     color: #ffffff;
     font-size: $fs-sm;
+}
+
+.kraft-nav-toggle:hover,
+.kraft-nav-toggle:focus {
+    background-color: var(--kraft-primary-dark);
+    border-color: var(--kraft-primary-dark);
 }
 
 /* 768px 이상에서는 버튼들이 헤더 안에 가로로 다 들어가므로 토글 버튼을 숨긴다. 이 규칙은
