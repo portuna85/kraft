@@ -51,6 +51,14 @@
     min-height: 80px;
 }
 
+// 답글(2단계 댓글)은 그 부모 카드 안에서 들여써서 종속 관계를 보여준다. 새 색상·간격
+// 체계는 만들지 않는다 — 기존 .comment-list의 여백만 왼쪽에 더한다.
+.comment-list__replies {
+    margin-top: var(--kraft-space-2);
+    margin-bottom: 0;
+    margin-left: var(--kraft-space-6);
+}
+
 .comments__login-hint {
     color: var(--kraft-text-muted);
 }

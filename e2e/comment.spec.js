@@ -281,6 +281,50 @@ test('댓글 삭제: 취소하면 그대로, 확인하면 지워진다', async (
  * 서버 프로세스의 시간대와 크게 다른 시간대(태평양 Kiritimati, UTC+14)로 브라우저만
  * 강제해, 우연히 같은 시간대라 이 격차가 가려지지 않게 한다.
  */
+test('2단계 댓글: 답글을 달면 최상위 댓글 아래 중첩되어 보이고, 답글 자신에는 답글 버튼이 없다', async ({ page }) => {
+    await openOwnPost(page);
+    await page.locator('#comment-content').fill('최상위 댓글입니다.');
+    await page.locator('#btn-comment-save').click();
+    await expect(page.locator('#flash')).toContainText('댓글이 등록되었습니다.');
+
+    const topLevelItem = page.locator('.comment-list > .comment-list__item').first();
+    await topLevelItem.locator('.btn-comment-reply').click();
+    await topLevelItem.locator('.comment-reply-form textarea').fill('첫 답글입니다.');
+    await topLevelItem.locator('.btn-comment-reply-save').click();
+
+    await expect(page.locator('#flash')).toContainText('댓글이 등록되었습니다.');
+
+    const replyItem = topLevelItem.locator('.comment-list__replies .comment-list__item');
+    await expect(replyItem).toHaveCount(1);
+    await expect(replyItem.locator('.comment-list__content')).toContainText('첫 답글입니다.');
+
+    // 3단계(답글의 답글) 금지: 답글 자신에는 "답글" 버튼 자체가 없어야 한다.
+    await expect(replyItem.locator('.btn-comment-reply')).toHaveCount(0);
+});
+
+test('2단계 댓글: 최상위 댓글을 지우면 그 답글도 함께 사라진다', async ({ page }) => {
+    await openOwnPost(page);
+    await page.locator('#comment-content').fill('삭제될 최상위 댓글입니다.');
+    await page.locator('#btn-comment-save').click();
+    await expect(page.locator('#flash')).toContainText('댓글이 등록되었습니다.');
+
+    const topLevelItem = page.locator('.comment-list > .comment-list__item').first();
+    await topLevelItem.locator('.btn-comment-reply').click();
+    await topLevelItem.locator('.comment-reply-form textarea').fill('함께 지워질 답글입니다.');
+    await topLevelItem.locator('.btn-comment-reply-save').click();
+    await expect(page.locator('#flash')).toContainText('댓글이 등록되었습니다.');
+    await expect(topLevelItem.locator('.comment-list__replies .comment-list__item')).toHaveCount(1);
+
+    // :scope >로 이 댓글 자신의 삭제 버튼만 골라야 한다 — 중첩된 답글도 같은 클래스의
+    // 삭제 버튼을 갖고 있어 단순 후손 선택자로는 둘 다 걸린다.
+    await topLevelItem.locator(':scope > .comment-view .btn-comment-delete').click();
+    await expect(page.locator('#confirmDeleteModal')).toBeVisible();
+    await page.locator('#btn-confirm-delete').click();
+
+    await expect(page.locator('#flash')).toContainText('댓글이 삭제되었습니다.');
+    await expect(page.locator('.comment-list__content')).toHaveCount(0);
+});
+
 test('F09(검증): 서버 시간대와 다른 브라우저에서는 새로 단 댓글과 새로고침 후 같은 댓글의 표시 시각이 다르다', async ({ browser }) => {
     const context = await browser.newContext({
         storageState: storageStateFor('user'),

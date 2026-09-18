@@ -86,6 +86,7 @@ async function save() {
             author: document.getElementById('user')?.textContent ?? '',
             createdAt: new Date().toISOString(),
             canManage: true,
+            replies: [],
         }]);
         // lastLoadedId는 건드리지 않는다 — 아직 안 불러온 더 오래된 댓글이 있다면(hasMore),
         // 새 댓글의 id로 커서를 앞당기면 "더 보기"가 그 구간을 건너뛰게 된다.
@@ -101,20 +102,64 @@ async function save() {
     }
 }
 
+/** id가 최상위 댓글이든 답글이든 상관없이 찾아 돌려준다(2단계 댓글). */
+function findCommentById(id) {
+    for (const comment of comments) {
+        if (String(comment.id) === String(id)) {
+            return comment;
+        }
+        const reply = comment.replies?.find((r) => String(r.id) === String(id));
+        if (reply) {
+            return reply;
+        }
+    }
+    return null;
+}
+
 function onUpdated({ id, content }) {
-    const target = comments.find((c) => String(c.id) === String(id));
+    const target = findCommentById(id);
     if (target) {
         target.content = content;
     }
     flash.showNow('COMMENT_UPDATED');
 }
 
+/** 답글 등록 성공 시 그 부모의 replies에 붙인다(CommentItem이 emit). */
+function onReplied({ parentId, reply }) {
+    const parent = comments.find((c) => String(c.id) === String(parentId));
+    if (parent) {
+        if (!parent.replies) {
+            parent.replies = [];
+        }
+        parent.replies.push(reply);
+    }
+    totalCount.value += 1;
+    flash.showNow('COMMENT_SAVED');
+}
+
 // 삭제는 게시글과 공유하는 모달(delete-confirm.js)이 처리하고, 끝나면 이 이벤트로 알려온다.
 function onExternalDelete(event) {
-    const index = comments.findIndex((c) => String(c.id) === String(event.detail.id));
-    if (index !== -1) {
-        comments.splice(index, 1);
-        totalCount.value -= 1;
+    const id = event.detail.id;
+
+    // 최상위 댓글이면 그 답글까지 통째로 사라진다 — 백엔드가 ON DELETE CASCADE로 답글을
+    // 함께 지우므로, 화면의 전체 개수(totalCount)도 답글 수까지 함께 빼야 서버 상태와
+    // 어긋나지 않는다.
+    const topIndex = comments.findIndex((c) => String(c.id) === String(id));
+    if (topIndex !== -1) {
+        const removed = 1 + (comments[topIndex].replies?.length ?? 0);
+        comments.splice(topIndex, 1);
+        totalCount.value -= removed;
+        return;
+    }
+
+    // 답글이면 그 부모의 replies에서만 지운다.
+    for (const comment of comments) {
+        const replyIndex = comment.replies?.findIndex((r) => String(r.id) === String(id)) ?? -1;
+        if (replyIndex !== -1) {
+            comment.replies.splice(replyIndex, 1);
+            totalCount.value -= 1;
+            return;
+        }
     }
 }
 
@@ -148,7 +193,10 @@ onUnmounted(() => window.removeEventListener('kraft:comment-deleted', onExternal
       :key="comment.id"
       :comment="comment"
       :authenticated="authenticated"
+      :can-write="canWrite"
+      :post-id="postId"
       @updated="onUpdated"
+      @replied="onReplied"
     />
   </ul>
 

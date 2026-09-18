@@ -108,7 +108,7 @@ class ContentLengthBoundaryTest {
         Long postId = postService.save(author, new PostSaveRequestDto("제목", "내용", null, null));
         String content = WORST_CASE_CHAR.repeat(ContentPolicy.COMMENT_CONTENT_MAX_LENGTH);
 
-        Long id = commentService.save(postId, author.getName(), new CommentSaveRequestDto(content));
+        Long id = commentService.save(postId, author.getName(), new CommentSaveRequestDto(content, null));
 
         assertThat(commentRepository.findById(id).orElseThrow().getContent()).isEqualTo(content);
     }
@@ -119,7 +119,7 @@ class ContentLengthBoundaryTest {
         var tooLongPost = new PostSaveRequestDto(
                 "제목", WORST_CASE_CHAR.repeat(ContentPolicy.POST_CONTENT_MAX_LENGTH + 1), null, null);
         var tooLongComment = new CommentSaveRequestDto(
-                WORST_CASE_CHAR.repeat(ContentPolicy.COMMENT_CONTENT_MAX_LENGTH + 1));
+                WORST_CASE_CHAR.repeat(ContentPolicy.COMMENT_CONTENT_MAX_LENGTH + 1), null);
 
         assertThat(validator.validate(tooLongPost))
                 .extracting(v -> v.getMessage())
@@ -135,7 +135,7 @@ class ContentLengthBoundaryTest {
         var post = new PostSaveRequestDto(
                 "제목", WORST_CASE_CHAR.repeat(ContentPolicy.POST_CONTENT_MAX_LENGTH), null, null);
         var comment = new CommentSaveRequestDto(
-                WORST_CASE_CHAR.repeat(ContentPolicy.COMMENT_CONTENT_MAX_LENGTH));
+                WORST_CASE_CHAR.repeat(ContentPolicy.COMMENT_CONTENT_MAX_LENGTH), null);
 
         assertThat(validator.validate(post)).isEmpty();
         assertThat(validator.validate(comment)).isEmpty();

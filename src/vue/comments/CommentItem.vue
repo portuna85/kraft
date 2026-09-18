@@ -7,18 +7,71 @@ import { showToast } from '@ui/toast.js';
 /**
  * 댓글 한 건의 읽기뷰/인라인 수정폼. 삭제 버튼은 여기서 처리하지 않는다 — 게시글과 댓글이
  * 함께 쓰는 공용 삭제 모달(delete-confirm.js)이 document 위임으로 이 버튼을 그대로 집어간다.
+ * <p>
+ * 답글(2단계 댓글) 자신을 그릴 때도 같은 컴포넌트를 재사용한다({@code isReply=true}) — "답글"
+ * 버튼만 숨겨 3단계(답글의 답글)를 UI 단에서도 막는다. 서버가 최종 판정자다
+ * (CommentService.save의 resolveParent).
  */
 const props = defineProps({
     comment: { type: Object, required: true },
     // 신고 버튼은 로그인한 사람에게만 보인다. 목록이 이 값을 그대로 내려준다.
     authenticated: { type: Boolean, required: true },
+    // 답글 자신이면 true — "답글" 버튼과 중첩 답글 목록을 그리지 않는다.
+    isReply: { type: Boolean, default: false },
+    // 이메일 인증까지 끝난 회원만 답글을 쓸 수 있다 — CommentsApp의 새 댓글 폼과 같은 정책.
+    canWrite: { type: Boolean, default: false },
+    postId: { type: String, required: true },
 });
 
-const emit = defineEmits(['updated']);
+const emit = defineEmits(['updated', 'replied']);
 
 const editing = ref(false);
 const draftContent = ref(props.comment.content);
 const saving = ref(false);
+
+const replying = ref(false);
+const replyContent = ref('');
+const replySaving = ref(false);
+
+function startReply() {
+    replyContent.value = '';
+    replying.value = true;
+}
+
+function cancelReply() {
+    if (replySaving.value) {
+        return;
+    }
+    replying.value = false;
+}
+
+async function saveReply() {
+    const content = replyContent.value;
+    replySaving.value = true;
+    try {
+        const id = await api.post(`${API.POSTS}/${props.postId}/comments`, {
+            content,
+            parentId: props.comment.id,
+        });
+        emit('replied', {
+            parentId: props.comment.id,
+            reply: {
+                id,
+                parentId: props.comment.id,
+                content,
+                author: document.getElementById('user')?.textContent ?? '',
+                createdAt: new Date().toISOString(),
+                canManage: true,
+                replies: [],
+            },
+        });
+        replying.value = false;
+    } catch (error) {
+        showToast(messageOf(error), 'danger');
+    } finally {
+        replySaving.value = false;
+    }
+}
 
 function startEdit() {
     draftContent.value = props.comment.content;
@@ -92,6 +145,16 @@ function formatDate(iso) {
         >
           삭제
         </button>
+        <!-- 답글은 최상위 댓글에만 보인다 — isReply면 이 버튼 자체를 그리지 않아 3단계(답글의
+             답글)를 UI 단에서도 막는다. 최종 판정은 서버가 한다(CommentService.resolveParent). -->
+        <button
+          v-if="!isReply && canWrite"
+          type="button"
+          class="btn btn-sm btn-outline-secondary btn-comment-reply"
+          @click="startReply"
+        >
+          답글
+        </button>
       </div>
 
       <!-- 신고는 남의 댓글에만 보인다. 자기 댓글은 서버도 거절한다(직접 지우면 된다). -->
@@ -106,8 +169,56 @@ function formatDate(iso) {
         >
           신고
         </button>
+        <button
+          v-if="!isReply && canWrite"
+          type="button"
+          class="btn btn-sm btn-outline-secondary btn-comment-reply"
+          @click="startReply"
+        >
+          답글
+        </button>
       </div>
     </div>
+
+    <form
+      v-if="!isReply"
+      v-show="replying"
+      class="comment-reply-form"
+      @submit.prevent="saveReply"
+    >
+      <div class="mb-3">
+        <label
+          class="visually-hidden"
+          :for="`comment-reply-${comment.id}`"
+        >답글 내용</label>
+        <textarea
+          :id="`comment-reply-${comment.id}`"
+          v-model="replyContent"
+          class="form-control comment-edit__textarea"
+          placeholder="답글을 입력하세요"
+          maxlength="1000"
+          required
+          :disabled="replySaving"
+        />
+      </div>
+      <div class="btn-group-gap">
+        <button
+          type="button"
+          class="btn btn-sm btn-secondary btn-comment-reply-cancel"
+          :disabled="replySaving"
+          @click="cancelReply"
+        >
+          취소
+        </button>
+        <button
+          type="submit"
+          class="btn btn-sm btn-primary btn-comment-reply-save"
+          :disabled="replySaving"
+        >
+          답글 등록
+        </button>
+      </div>
+    </form>
     <form
       v-show="editing"
       class="comment-edit-form"
@@ -144,5 +255,23 @@ function formatDate(iso) {
         </button>
       </div>
     </form>
+
+    <!-- 답글 목록. 2단계뿐이므로 재귀는 여기서 끝난다 — isReply=true로 넘겨 답글 자신에게는
+         "답글" 버튼도, 또 다른 중첩 목록도 그려지지 않는다. -->
+    <ul
+      v-if="!isReply && comment.replies && comment.replies.length > 0"
+      class="comment-list comment-list__replies"
+    >
+      <CommentItem
+        v-for="reply in comment.replies"
+        :key="reply.id"
+        :comment="reply"
+        :authenticated="authenticated"
+        :is-reply="true"
+        :can-write="canWrite"
+        :post-id="postId"
+        @updated="emit('updated', $event)"
+      />
+    </ul>
   </li>
 </template>

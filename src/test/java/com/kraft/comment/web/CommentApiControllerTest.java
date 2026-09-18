@@ -54,7 +54,7 @@ class CommentApiControllerTest {
     @DisplayName("GET /api/v1/posts/{postId}/comments 는 인증 없이도 호출할 수 있다")
     void listComments_isAccessibleWithoutAuthentication() throws Exception {
         given(commentService.findByPostId(1L))
-                .willReturn(List.of(new CommentResponseDto(1L, 1L, "댓글", "tester", LocalDateTime.now())));
+                .willReturn(List.of(new CommentResponseDto(1L, 1L, null, "댓글", "tester", LocalDateTime.now())));
 
         mockMvc.perform(get("/api/v1/posts/1/comments"))
                 .andExpect(status().isOk())
@@ -119,6 +119,41 @@ class CommentApiControllerTest {
                 .andExpect(jsonPath("$.detail").value("content: 내용은 필수입니다."));
 
         verify(commentService, never()).save(any(), any(), any());
+    }
+
+    /** 2단계 댓글: parentId가 body에 실려 서비스로 그대로 전달되는지 본다(JSON 계약). */
+    @Test
+    @DisplayName("POST .../comments 는 parentId가 있으면 답글로 저장하고 그대로 서비스에 전달한다")
+    void saveComment_withParentId_savesAsReply() throws Exception {
+        given(commentService.save(eq(1L), eq("tester@example.com"), any())).willReturn(20L);
+
+        mockMvc.perform(post("/api/v1/posts/1/comments")
+                        .with(user("tester@example.com"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\":\"답글 내용\",\"parentId\":10}"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("20"));
+    }
+
+    /**
+     * 2단계 댓글: 답글에 다시 답글을 달면(3단계) 서비스가 {@code IllegalArgumentException}을
+     * 던지고, {@code ApiExceptionHandler}가 이를 그대로 400 ProblemDetail로 바꾼다 — 새
+     * 예외 핸들러가 필요 없다는 것까지 함께 확인한다.
+     */
+    @Test
+    @DisplayName("POST .../comments 는 답글에 답글을 달려는 요청을 400으로 거절한다")
+    void saveComment_replyToAReply_returns400BadRequest() throws Exception {
+        given(commentService.save(eq(1L), eq("tester@example.com"), any()))
+                .willThrow(new IllegalArgumentException("답글에는 답글을 달 수 없습니다."));
+
+        mockMvc.perform(post("/api/v1/posts/1/comments")
+                        .with(user("tester@example.com"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\":\"답글의 답글\",\"parentId\":20}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("답글에는 답글을 달 수 없습니다."));
     }
 
     @Test

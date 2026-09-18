@@ -23,6 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
@@ -46,7 +48,26 @@ public class CommentService {
         User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
         WriteAccessPolicy.requireVerified(user);
-        return commentRepository.save(requestDto.toEntity(post, user)).getId();
+        Comment parent = resolveParent(postId, requestDto.parentId());
+        return commentRepository.save(requestDto.toEntity(post, user, parent)).getId();
+    }
+
+    /**
+     * 2단계까지만 허용한다 — 답글 자신에게는 답글을 달 수 없다. parentId가 가리키는 댓글이
+     * 다른 게시글 소속이면(URL을 조작해 다른 글의 댓글 id를 보낸 경우) 함께 거절한다.
+     */
+    private Comment resolveParent(Long postId, Long parentId) {
+        if (parentId == null) {
+            return null;
+        }
+        Comment parent = findComment(parentId);
+        if (!parent.getPost().getId().equals(postId)) {
+            throw new IllegalArgumentException("다른 게시글의 댓글에는 답글을 달 수 없습니다.");
+        }
+        if (parent.getParent() != null) {
+            throw new IllegalArgumentException("답글에는 답글을 달 수 없습니다.");
+        }
+        return parent;
     }
 
     /**
@@ -67,6 +88,10 @@ public class CommentService {
     public void delete(Long id, Authentication authentication) {
         Comment comment = findComment(id);
         OwnershipPolicy.validateOwner(authentication, comment.getUser(), id);
+        // 최상위 댓글이면 그 답글을 먼저 지운다 — DB에 cascade를 걸지 않았으므로(Comment.parent
+        // 주석 참고) 그대로 두면 FK 위반이 난다. 답글 자신을 지울 때는 이 호출이 0건을 지우고
+        // 끝난다(3단계 금지라 답글에는 답글이 없다).
+        commentRepository.deleteAllByParentId(id);
         commentRepository.delete(comment);
     }
 
@@ -98,9 +123,21 @@ public class CommentService {
         List<Comment> fetched = commentRepository.findPageByPostIdAsc(postId, afterId, PageRequest.of(0, PAGE_SIZE + 1));
         boolean hasMore = fetched.size() > PAGE_SIZE;
         List<Comment> page = hasMore ? fetched.subList(0, PAGE_SIZE) : fetched;
+
+        // 이 페이지에 실린 최상위 댓글들의 답글을 한 번에 배치로 가져와 부모 id별로 묶는다
+        // (2단계 댓글, N+1 방지) — 답글 자체는 페이지네이션하지 않는다.
+        List<Long> topLevelIds = page.stream().map(Comment::getId).toList();
+        Map<Long, List<CommentViewDto>> repliesByParentId = topLevelIds.isEmpty()
+                ? Map.of()
+                : commentRepository.findRepliesByParentIdIn(topLevelIds).stream()
+                        .map(reply -> new CommentViewDto(reply,
+                                OwnershipPolicy.canManage(authentication, reply.getUser())))
+                        .collect(Collectors.groupingBy(CommentViewDto::parentId));
+
         List<CommentViewDto> views = page.stream()
                 .map(comment -> new CommentViewDto(comment,
-                        OwnershipPolicy.canManage(authentication, comment.getUser())))
+                        OwnershipPolicy.canManage(authentication, comment.getUser()))
+                        .withReplies(repliesByParentId.getOrDefault(comment.getId(), List.of())))
                 .toList();
         long totalCount = commentRepository.countByPostId(postId);
         return new CommentPageDto(views, totalCount, hasMore);

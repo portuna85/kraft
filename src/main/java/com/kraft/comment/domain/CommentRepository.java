@@ -19,11 +19,24 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
      * id 커서 기반 페이지 조회. {@code afterId}가 null이면 가장 오래된 댓글부터, 있으면 그
      * id보다 큰(= 더 나중에 쓰인) 댓글부터 오름차순으로 최대 {@code pageable.getPageSize()}개를
      * 반환한다. 상세 화면의 댓글 전체 로딩을 대체한다(개선 보고서 "댓글 전체 로딩").
+     * <p>
+     * 최상위 댓글({@code parent IS NULL})만 커서 페이지네이션한다 — 답글은 이 페이지에 실린
+     * 최상위 댓글들을 대상으로 {@link #findRepliesByParentIdIn}이 별도로, 페이지네이션 없이
+     * 한 번에 가져온다(2단계 댓글).
      */
-    @Query("SELECT c FROM Comment c JOIN FETCH c.user WHERE c.post.id = :postId "
+    @Query("SELECT c FROM Comment c JOIN FETCH c.user WHERE c.post.id = :postId AND c.parent IS NULL "
             + "AND (:afterId IS NULL OR c.id > :afterId) ORDER BY c.id ASC")
     List<Comment> findPageByPostIdAsc(@Param("postId") Long postId, @Param("afterId") Long afterId,
                                        Pageable pageable);
+
+    /**
+     * 한 페이지에 실린 최상위 댓글들의 답글을 한 번에 배치로 가져온다(N+1 방지,
+     * {@link #findAllByIdInWithUser}와 같은 관례). 답글 자체는 페이지네이션하지 않는다 —
+     * 이 게시판 규모에서 한 댓글에 달리는 답글 수가 페이지네이션이 필요할 만큼 많지 않다.
+     */
+    @Query("SELECT c FROM Comment c JOIN FETCH c.user WHERE c.parent.id IN :parentIds "
+            + "ORDER BY c.parent.id ASC, c.id ASC")
+    List<Comment> findRepliesByParentIdIn(@Param("parentIds") List<Long> parentIds);
 
     /**
      * 파생 삭제(개별 조회 후 건별 DELETE)가 아니라 한 문장으로 지운다. 연관 캐스케이드·
@@ -36,6 +49,17 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     @Modifying(flushAutomatically = true)
     @Query("DELETE FROM Comment c WHERE c.post.id = :postId")
     void deleteAllByPostId(@Param("postId") Long postId);
+
+    /**
+     * 최상위 댓글을 지우기 전에 그 답글을 먼저 지운다(2단계 댓글, {@code CommentService.delete()}).
+     * DB에 {@code ON DELETE CASCADE}를 걸지 않은 이유는 {@link Comment}의 {@code parent} 필드
+     * 주석 참고 — {@code deleteAllByPostId}와 같은 이유로 애플리케이션 계층에서 명시적으로
+     * 처리한다. 답글에는 답글이 없으므로(3단계 금지) 이 메서드를 답글 자신에 호출해도
+     * 안전하게 0건을 지운다.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM Comment c WHERE c.parent.id = :parentId")
+    void deleteAllByParentId(@Param("parentId") Long parentId);
 
     long countByPostId(Long postId);
 

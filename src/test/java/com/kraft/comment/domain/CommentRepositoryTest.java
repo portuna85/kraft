@@ -171,6 +171,64 @@ class CommentRepositoryTest {
         assertThat(page).extracting(Comment::getId).containsExactly(second.getId(), third.getId());
     }
 
+    /**
+     * 2단계 댓글: DB에 cascade를 걸지 않았으므로(Comment.parent 주석 참고) 최상위 댓글을
+     * 지우기 전에 답글을 먼저 이 메서드로 지워야 한다. 다른 부모의 답글은 건드리지 않는다.
+     */
+    @Test
+    @DisplayName("2단계: deleteAllByParentId는 그 부모의 답글만 지우고 다른 부모의 답글은 남긴다")
+    void deleteAllByParentId_deletesOnlyRepliesOfGivenParent() {
+        Comment parentA = commentRepository.save(Comment.builder().content("부모A").post(post).user(user).build());
+        Comment parentB = commentRepository.save(Comment.builder().content("부모B").post(post).user(user).build());
+        commentRepository.save(Comment.builder().content("A의 답글").post(post).user(user).parent(parentA).build());
+        Comment replyB = commentRepository.save(
+                Comment.builder().content("B의 답글").post(post).user(user).parent(parentB).build());
+        em.flush();
+        em.clear();
+
+        commentRepository.deleteAllByParentId(parentA.getId());
+        em.flush();
+
+        assertThat(commentRepository.findRepliesByParentIdIn(List.of(parentA.getId()))).isEmpty();
+        assertThat(commentRepository.findById(replyB.getId())).isPresent();
+    }
+
+    /** 2단계 댓글: 최상위 댓글만 커서 페이지네이션 대상이어야 한다 — 답글이 섞여 나오면 안 된다. */
+    @Test
+    @DisplayName("2단계: findPageByPostIdAsc는 답글을 건너뛰고 최상위 댓글만 반환한다")
+    void findPageByPostIdAsc_skipsReplies() {
+        Comment topLevel = commentRepository.save(Comment.builder().content("최상위").post(post).user(user).build());
+        commentRepository.save(Comment.builder().content("답글").post(post).user(user).parent(topLevel).build());
+        em.flush();
+        em.clear();
+
+        List<Comment> page = commentRepository.findPageByPostIdAsc(post.getId(), null, PageRequest.of(0, 10));
+
+        assertThat(page).extracting(Comment::getId).containsExactly(topLevel.getId());
+    }
+
+    @Test
+    @DisplayName("2단계: findRepliesByParentIdIn은 여러 부모의 답글을 부모별·id 오름차순으로 함께 가져온다")
+    void findRepliesByParentIdIn_returnsRepliesGroupedByParentInOrder() {
+        Comment parentA = commentRepository.save(Comment.builder().content("부모A").post(post).user(user).build());
+        Comment parentB = commentRepository.save(Comment.builder().content("부모B").post(post).user(user).build());
+        Comment replyA1 = commentRepository.save(
+                Comment.builder().content("A-1").post(post).user(user).parent(parentA).build());
+        Comment replyB1 = commentRepository.save(
+                Comment.builder().content("B-1").post(post).user(user).parent(parentB).build());
+        Comment replyA2 = commentRepository.save(
+                Comment.builder().content("A-2").post(post).user(user).parent(parentA).build());
+        em.flush();
+        em.clear();
+
+        List<Comment> replies = commentRepository.findRepliesByParentIdIn(List.of(parentA.getId(), parentB.getId()));
+
+        assertThat(replies).extracting(Comment::getId)
+                .containsExactly(replyA1.getId(), replyA2.getId(), replyB1.getId());
+        assertThat(replies.get(0).getUser().getName())
+                .as("JOIN FETCH로 작성자가 함께 와야 지연로딩 예외가 없다").isEqualTo("tester");
+    }
+
     @Test
     @DisplayName("저장하면 BaseEntity의 createdAt이 자동으로 채워진다 (JpaConfig의 @EnableJpaAuditing)")
     void save_automaticallyPopulatesCreatedAtAuditField() {
