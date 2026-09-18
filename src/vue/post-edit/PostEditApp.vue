@@ -35,6 +35,49 @@ const titleInput = ref(null);
 const editButton = ref(null);
 const fileInput = ref(null);
 
+// 글자크기 조절: 3단계(작게/보통/크게), 세션을 넘어 유지하도록 localStorage에 기억한다.
+// localStorage 접근이 막힌 환경(프라이빗 모드 등)에서도 화면은 기본값으로 그대로 동작해야
+// 하므로 읽기·쓰기 모두 조용히 실패를 삼킨다.
+const FONT_SCALE_STORAGE_KEY = 'kraft:post-font-scale';
+const FONT_SCALES = ['0.875rem', '1rem', '1.125rem'];
+const DEFAULT_FONT_SCALE_INDEX = 1;
+
+function readStoredFontScaleIndex() {
+    try {
+        const raw = window.localStorage.getItem(FONT_SCALE_STORAGE_KEY);
+        if (raw === null) {
+            return DEFAULT_FONT_SCALE_INDEX;
+        }
+        const stored = Number(raw);
+        return Number.isInteger(stored) && stored >= 0 && stored < FONT_SCALES.length
+            ? stored
+            : DEFAULT_FONT_SCALE_INDEX;
+    } catch {
+        return DEFAULT_FONT_SCALE_INDEX;
+    }
+}
+
+const fontScaleIndex = ref(readStoredFontScaleIndex());
+const postBodyStyle = computed(() => ({ '--kraft-post-font-size': FONT_SCALES[fontScaleIndex.value] }));
+
+function setFontScaleIndex(index) {
+    fontScaleIndex.value = index;
+    try {
+        window.localStorage.setItem(FONT_SCALE_STORAGE_KEY, String(index));
+    } catch {
+        // 저장 실패는 이번 열람에서만 크기가 적용되는 정도로 넘어간다.
+    }
+}
+
+async function shareLink() {
+    try {
+        await navigator.clipboard.writeText(window.location.href);
+        showToast('링크를 복사했습니다.', 'success');
+    } catch {
+        showToast('링크 복사에 실패했습니다. 주소창의 URL을 직접 복사해 주세요.', 'danger');
+    }
+}
+
 async function setLike() {
     if (liking.value) {
         return;
@@ -157,8 +200,27 @@ async function onSubmit() {
     </p>
 
     <div
+      class="post-font-controls"
+      role="group"
+      aria-label="글자 크기 조절"
+    >
+      <button
+        v-for="(label, index) in ['가-', '가', '가+']"
+        :key="label"
+        type="button"
+        class="btn btn-sm btn-outline-secondary post-font-controls__btn"
+        :class="{ 'is-active': fontScaleIndex === index }"
+        :aria-pressed="fontScaleIndex === index"
+        @click="setFontScaleIndex(index)"
+      >
+        {{ label }}
+      </button>
+    </div>
+
+    <div
       id="post-content-text"
       class="post-body"
+      :style="postBodyStyle"
     >
       {{ post.content }}
     </div>
@@ -171,6 +233,17 @@ async function onSubmit() {
         :src="post.picture"
         alt="게시글 첨부 이미지"
       >
+    </div>
+
+    <div class="btn-group-gap post-actions">
+      <button
+        id="btn-share"
+        type="button"
+        class="btn btn-sm btn-outline-secondary"
+        @click="shareLink"
+      >
+        공유
+      </button>
     </div>
 
     <div

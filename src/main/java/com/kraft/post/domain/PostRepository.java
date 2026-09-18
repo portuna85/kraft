@@ -61,4 +61,14 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Post p SET p.viewCount = p.viewCount + 1 WHERE p.id = :id")
     int increaseViewCount(@Param("id") Long id);
+
+    /**
+     * 상세 화면 하단의 관련 게시글. 같은 분류에서 현재 글을 제외하고 최신순으로 뽑는다.
+     */
+    @Query("SELECT new com.kraft.post.dto.PostRowDto("
+            + "p.id, p.title, u.name, p.updatedAt, p.category, p.viewCount) "
+            + "FROM Post p JOIN p.user u "
+            + "WHERE p.category = :category AND p.id <> :excludeId "
+            + "ORDER BY p.id DESC")
+    List<PostRowDto> findRelated(@Param("category") Category category, @Param("excludeId") Long excludeId, Pageable pageable);
 }

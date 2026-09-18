@@ -204,6 +204,13 @@ public class PostService {
     }
 
     /**
+     * 상세 화면 하단의 관련 게시글(같은 분류, 현재 글 제외, 최신순 최대 {@code limit}개).
+     */
+    public List<PostRowDto> findRelated(Category category, Long excludeId, int limit) {
+        return postRepository.findRelated(category, excludeId, PageRequest.of(0, limit));
+    }
+
+    /**
      * 게시글 추천을 <b>원하는 상태로 맞춘다</b>. 이 엔드포인트는 항상 인증된 사용자만
      * 호출할 수 있으므로(SecurityConfig의 {@code /api/v1/**} authenticated() 규칙) 익명
      * 처리를 따로 두지 않는다.

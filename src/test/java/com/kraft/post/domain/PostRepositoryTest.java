@@ -146,6 +146,36 @@ class PostRepositoryTest {
     }
 
     @Test
+    @DisplayName("findRelated: 같은 분류에서 현재 글을 제외하고 ID 내림차순으로 limit만큼 반환한다")
+    void findRelated_returnsSameCategoryPostsExcludingCurrentOrderedByIdDesc() {
+        Post current = postRepository.save(Post.builder().title("현재 글").content("c").user(user).category(Category.FREE).build());
+        Post older = postRepository.save(Post.builder().title("같은 분류 옛 글").content("c").user(user).category(Category.FREE).build());
+        Post newer = postRepository.save(Post.builder().title("같은 분류 새 글").content("c").user(user).category(Category.FREE).build());
+        postRepository.save(Post.builder().title("다른 분류").content("c").user(user).category(Category.QNA).build());
+        em.flush();
+        em.clear();
+
+        List<PostRowDto> related = postRepository.findRelated(Category.FREE, current.getId(), PageRequest.of(0, 5));
+
+        assertThat(related).extracting(PostRowDto::id).containsExactly(newer.getId(), older.getId());
+    }
+
+    @Test
+    @DisplayName("findRelated: limit만큼만 반환한다")
+    void findRelated_limitsResultSize() {
+        Post current = postRepository.save(Post.builder().title("현재 글").content("c").user(user).category(Category.FREE).build());
+        for (int i = 1; i <= 5; i++) {
+            postRepository.save(Post.builder().title("글 " + i).content("c").user(user).category(Category.FREE).build());
+        }
+        em.flush();
+        em.clear();
+
+        List<PostRowDto> related = postRepository.findRelated(Category.FREE, current.getId(), PageRequest.of(0, 2));
+
+        assertThat(related).hasSize(2);
+    }
+
+    @Test
     @DisplayName("저장하면 BaseEntity의 createdAt/updatedAt이 자동으로 채워진다 (JpaConfig의 @EnableJpaAuditing)")
     void save_automaticallyPopulatesAuditFields() {
         Post saved = postRepository.save(Post.builder().title("t").content("c").user(user).build());

@@ -127,6 +127,7 @@ public class PostPageController {
         CommentPageDto commentPage = commentService.findInitialPageForView(id, authentication);
         model.addAttribute("post", post);
         model.addAttribute("comments", commentPage.comments());
+        model.addAttribute("relatedPosts", postService.findRelated(post.category(), id, 5));
         // 댓글 영역은 Vue 아일랜드로 렌더링된다. canManage는 서버만 판정할 수 있으므로(공개
         // REST 응답에는 없는 화면 전용 필드), 초기 렌더에서 그대로 JSON으로 내려 이후 목록
         // 갱신은 클라이언트가 이 값을 들고 낙관적으로 처리하게 한다. 최초 페이지는 최대

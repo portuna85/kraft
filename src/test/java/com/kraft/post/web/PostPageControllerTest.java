@@ -164,7 +164,21 @@ class PostPageControllerTest {
         mockMvc.perform(get("/posts/update/1"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("post/post-update"))
-                .andExpect(model().attributeExists("post", "comments"));
+                .andExpect(model().attributeExists("post", "comments", "relatedPosts"));
+    }
+
+    @Test
+    @DisplayName("GET /posts/update/{id} 는 관련 게시글 조회를 조회한 글의 분류·id로 위임한다")
+    void postsUpdate_delegatesRelatedPostsLookupToPostCategoryAndId() throws Exception {
+        given(postService.findByIdForView(eq(1L), nullable(Authentication.class)))
+                .willReturn(new PostViewDto(1L, "제목", "내용", null, "작성자", false, Category.QNA, 0L, 0L, false, 0L));
+        given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
+                .willReturn(new CommentPageDto(List.of(), 0, false));
+
+        mockMvc.perform(get("/posts/update/1"))
+                .andExpect(status().isOk());
+
+        org.mockito.BDDMockito.then(postService).should().findRelated(Category.QNA, 1L, 5);
     }
 
     @Test

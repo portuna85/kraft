@@ -391,6 +391,18 @@ class PostServiceTest {
     }
 
     @Test
+    @DisplayName("findRelated: 분류·제외할 id·limit을 그대로 리포지토리에 넘긴다")
+    void findRelated_delegatesToRepositoryWithCategoryExcludeIdAndLimit() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        PostRowDto row = rowOf(owner, 2L);
+        given(postRepository.findRelated(Category.FREE, 1L, PageRequest.of(0, 5))).willReturn(List.of(row));
+
+        List<PostRowDto> result = postService.findRelated(Category.FREE, 1L, 5);
+
+        assertThat(result).containsExactly(row);
+    }
+
+    @Test
     @DisplayName("findByIdForView: 조회수는 엔티티를 건드리지 않고 원자적 UPDATE로 올리고, 추천 정보를 함께 담는다")
     void findByIdForView_increasesViewCountAtomicallyAndIncludesLikeInformation() {
         User owner = userWithEmail("owner@example.com", 1L);
