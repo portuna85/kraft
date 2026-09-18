@@ -31,6 +31,7 @@ import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
@@ -88,7 +89,7 @@ class PostPageControllerTest {
     }
 
     @Test
-    @DisplayName("[회귀 방지] GET /?page=999 (범위 초과) 도 500이 아니라 정상 렌더링된다")
+    @DisplayName("[회귀 방지] GET /?page=999 (범위 초과, 글이 하나도 없음) 도 500이 아니라 정상 렌더링된다")
     void index_withOutOfRangePage_rendersSuccessfullyWithoutServerError() throws Exception {
         given(postService.findAllDesc(any(Pageable.class), any(), any()))
                 .willReturn(new PostsPageResponseDto(List.of(), 999, 10, 0, 0, true, true));
@@ -97,6 +98,25 @@ class PostPageControllerTest {
         mockMvc.perform(get("/").param("page", "999"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("index"));
+    }
+
+    /**
+     * F09: PageWindow는 표시용 페이지 번호를 [0, totalPages-1]로 보정하지만, 실제 조회는
+     * 요청받은 원래 page 그대로 돈다 — 글이 있는데도 범위를 넘는 page를 요청하면(예: 처리 중
+     * 다른 글이 지워져 페이지 수가 줄어든 경우) 빈 목록과, 그중 어느 것도 "현재"로 표시되지
+     * 않는 페이지네이션이 동시에 보였다. 검색어·분류를 유지한 채 유효한 마지막 페이지로
+     * 보내는지 확인한다.
+     */
+    @Test
+    @DisplayName("F09: 글은 있지만 범위를 넘는 page를 요청하면 유효한 마지막 페이지로 보낸다")
+    void index_withOutOfRangePageButPostsExist_redirectsToLastValidPage() throws Exception {
+        given(postService.findAllDesc(any(Pageable.class), eq("키워드"), eq(Category.NOTICE)))
+                .willReturn(new PostsPageResponseDto(List.of(), 5, 10, 42, 5, false, true));
+
+        mockMvc.perform(get("/").param("page", "5").param("q", "키워드").param("category", "NOTICE"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location",
+                        containsString("page=4")));
     }
 
     @Test

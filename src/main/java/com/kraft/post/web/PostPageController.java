@@ -23,9 +23,11 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.util.UriComponentsBuilder;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
+import java.util.Optional;
 
 @RequiredArgsConstructor
 @Controller
@@ -42,6 +44,20 @@ public class PostPageController {
                          @RequestParam(required = false) Category category,
                          Model model) {
         PostsPageResponseDto postsPage = postService.findAllDesc(PostSortPolicy.sanitize(pageable), q, category);
+
+        // PageWindow는 표시용 페이지 번호를 [0, totalPages-1]로 보정하지만, 위 조회는 요청받은
+        // 원래 page 그대로 돌았다 — 범위를 넘는 page(예: ?page=999)는 빈 목록을 돌려주면서
+        // 페이지네이션 링크는 보정된(마지막) 페이지를 가리켜, 그중 어느 것도 "현재"로 표시되지
+        // 않는 채 빈 화면만 보였다(F09). 검색어·분류는 유지한 채 유효한 마지막 페이지로 보낸다.
+        if (postsPage.totalPages() > 0 && pageable.getPageNumber() >= postsPage.totalPages()) {
+            return "redirect:" + UriComponentsBuilder.fromPath("/")
+                    .queryParam("page", postsPage.totalPages() - 1)
+                    .queryParamIfPresent("q", Optional.ofNullable(q).filter(s -> !s.isBlank()))
+                    .queryParamIfPresent("category", Optional.ofNullable(category))
+                    .build()
+                    .toUriString();
+        }
+
         model.addAttribute("posts", postsPage.content());
         model.addAttribute("postsPage", postsPage);
         model.addAttribute("pageWindow", PageWindow.of(postsPage.page(), postsPage.totalPages()));
