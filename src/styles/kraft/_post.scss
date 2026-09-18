@@ -41,6 +41,11 @@
     font-size: var(--kraft-post-font-size, 1rem);
     line-height: 1.75;
     margin-bottom: var(--kraft-space-4);
+    // PlayForum 비교(문서 5.2): 부모(.kraft-main--narrow, 960px) 폭을 그대로 쓰면 한 줄에
+    // 너무 많은 글자가 실린다. ch는 글자크기(가-/가+)에 비례해 같이 늘고 줄어든다.
+    // 제목·바이라인은 카드가 아닌 일반 텍스트 흐름이라 그대로 960px를 쓴다 — 카드형
+    // 본문 영역만 좁아지는 것은 의도된 차이다.
+    max-width: 70ch;
 }
 
 // 글자크기 조절 버튼 묶음. 본문 바로 위, 좁은 버튼 3개.
