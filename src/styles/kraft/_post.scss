@@ -49,11 +49,15 @@
 }
 
 // 글자크기 조절 버튼 묶음. 본문 바로 위, 좁은 버튼 3개.
+// PlayForum 비교(문서 4.2): 제목 영역(분류·제목·바이라인·이 버튼들) 아래 구분선을 둬 본문
+// 진입점을 나타낸다. .board-search·.popular-posts와 같은 --kraft-border 토큰을 재사용한다.
 .post-font-controls {
     display: flex;
     align-items: center;
     gap: var(--kraft-space-1);
-    margin-bottom: var(--kraft-space-2);
+    padding-bottom: var(--kraft-space-4);
+    margin-bottom: var(--kraft-space-4);
+    border-bottom: 1px solid var(--kraft-border);
 }
 
 .post-font-controls__btn {
