@@ -9,10 +9,13 @@ import java.time.LocalDateTime;
 public interface RecommendationHistoryStateRepository extends JpaRepository<RecommendationHistoryState, Integer> {
 
     /**
-     * 검증 기준 메타데이터만 갱신한다. {@code version}은 절대 이 쿼리로 건드리지 않는다 —
-     * V20 트리거가 {@code recommendation_winning_draws}의 DML로만 증가시키는 값이라, 엔티티를
-     * 로드해 통째로 저장(save)하면 트리거가 이미 올려둔 값을 메모리에 캐시된 옛 값으로
-     * 덮어써 버릴 수 있다(HIST-04/05). 그래서 필요한 컬럼만 직접 UPDATE한다.
+     * 검증 기준 메타데이터를 갱신하고 {@code version}도 함께 올린다. V20 트리거는
+     * {@code recommendation_winning_draws}의 DML에만 걸려 있어, 회차 데이터 변경 없이
+     * 검증 기준·출처만 재확인하는 갱신(예: 동일 이력 재검증)은 트리거만으로는 버전이 오르지
+     * 않는다. 이 쿼리 자체가 {@code version}을 올려 HIST-04/05("메타데이터 변경도 버전 증가
+     * 대상")를 만족시킨다. 엔티티를 로드해 통째로 저장(save)하지 않고 필요한 컬럼만 직접
+     * UPDATE하는 이유는 동시 갱신 시 메모리에 캐시된 옛 값으로 다른 트랜잭션의 변경을
+     * 덮어쓰지 않기 위함이다.
      * <p>
      * {@code flushAutomatically = true}가 반드시 있어야 한다 — 이 쿼리는 JPQL을 거치지 않고
      * 즉시 실행되는 벌크 UPDATE라, 같은 트랜잭션에서 먼저 반영한 {@code WinningDraw}의
@@ -24,7 +27,8 @@ public interface RecommendationHistoryStateRepository extends JpaRepository<Reco
     @Query("UPDATE RecommendationHistoryState s "
             + "SET s.verifiedThroughRound = :verifiedThroughRound, "
             + "s.sourceReference = :sourceReference, "
-            + "s.verifiedAt = :verifiedAt "
+            + "s.verifiedAt = :verifiedAt, "
+            + "s.version = s.version + 1 "
             + "WHERE s.id = 1")
     void updateVerificationMetadata(Integer verifiedThroughRound, String sourceReference, LocalDateTime verifiedAt);
 }

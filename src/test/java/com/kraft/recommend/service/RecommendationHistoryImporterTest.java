@@ -119,6 +119,21 @@ class RecommendationHistoryImporterTest {
     }
 
     @Test
+    @DisplayName("회차 데이터 변경 없이 동일 이력을 재검증해도 버전이 오른다")
+    void reimportingIdenticalHistory_stillBumpsVersion() {
+        List<ImportedDraw> draws = List.of(new ImportedDraw(1, List.of(1, 2, 3, 4, 5, 6)));
+
+        importer.importHistory(draws, 1, "src-v1");
+        long versionAfterFirstImport = stateRepository.findById(1).orElseThrow().getVersion();
+
+        importer.importHistory(draws, 1, "src-v2");
+
+        RecommendationHistoryState state = stateRepository.findById(1).orElseThrow();
+        assertThat(state.getVersion()).isGreaterThan(versionAfterFirstImport);
+        assertThat(state.getSourceReference()).isEqualTo("src-v2");
+    }
+
+    @Test
     @DisplayName("큰 배치 중 한 회차라도 규칙을 어기면 배치 전체를 반영하지 않는다")
     void batchWithOneBadRound_rejectsWholeBatch() {
         List<ImportedDraw> draws = List.of(

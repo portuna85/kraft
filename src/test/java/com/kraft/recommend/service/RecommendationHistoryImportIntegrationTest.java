@@ -55,16 +55,17 @@ class RecommendationHistoryImportIntegrationTest {
         assertThat(afterImport.isReady()).isTrue();
         assertThat(afterImport.roundCount()).isEqualTo(2);
         assertThat(afterImport.verifiedThroughRound()).isEqualTo(2);
-        // 트리거가 두 번(회차 2건 INSERT) 증가시켰으므로 빈 이력(0)에서 2가 되어 있어야 한다.
-        assertThat(afterImport.version()).isEqualTo(2L);
+        // 트리거가 두 번(회차 2건 INSERT) 증가시키고, 메타데이터 갱신 자체도 한 번 더 올린다
+        // (HIST-04/05 — updateVerificationMetadata가 항상 version을 +1 한다).
+        assertThat(afterImport.version()).isEqualTo(3L);
 
         importer.importHistory(List.of(new ImportedDraw(1, List.of(2, 3, 4, 5, 6, 7))), 2, "integration-test-v2");
 
         var afterCorrection = provider.currentReadySnapshot();
         assertThat(afterCorrection.isReady()).isTrue();
         assertThat(afterCorrection.roundCount()).isEqualTo(2);
-        // 정정 1건(UPDATE)만큼 또 올라가야 한다.
-        assertThat(afterCorrection.version()).isEqualTo(3L);
+        // 정정 1건(UPDATE) + 메타데이터 갱신 1회만큼 또 올라가야 한다.
+        assertThat(afterCorrection.version()).isEqualTo(5L);
         assertThat(afterCorrection.version()).isGreaterThan(afterImport.version());
     }
 }
