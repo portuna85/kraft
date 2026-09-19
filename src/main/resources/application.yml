@@ -192,6 +192,14 @@ app:
     # 등록되지 않아 404가 되고, navbar의 '번호 추천' 링크도 함께 사라진다(운영 준비 — 이미
     # 배포된 기능을 끄는 스위치이지 옵트인이 아니므로 기본값은 true).
     enabled: true
+    auto-fetch:
+      # 매주 토 21:30·22:00, 일 06:00·07:00(KST)에 동행복권에서 최신 회차를 받아온다
+      # (RecommendationAutoFetchScheduler). 끄면 이력 갱신은 recommend-backfill 프로파일로만
+      # 가능하다 — /recommend·API 자체는 이 스위치와 무관하게 계속 동작한다.
+      enabled: true
+    dhlottery:
+      connect-timeout-ms: 5000
+      read-timeout-ms: 10000
     rate-limit:
       # IP당 분당 요청 한도(02문서 6절 초기 검토값). 실측 트래픽에 맞춰 재배포 없이 조정한다.
       requests-per-minute: 30

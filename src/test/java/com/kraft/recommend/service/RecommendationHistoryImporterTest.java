@@ -134,6 +134,42 @@ class RecommendationHistoryImporterTest {
     }
 
     @Test
+    @DisplayName("dry-run은 유효한 입력의 신규/정정 예정 건수만 계산하고 아무것도 쓰지 않는다")
+    void dryRunValidate_validInput_reportsCountsWithoutWriting() {
+        em.persistAndFlush(WinningDraw.builder()
+                .roundNo(1).numbers(List.of(1, 2, 3, 4, 5, 6)).updatedAt(LocalDateTime.now()).build());
+
+        List<ImportedDraw> draws = List.of(
+                new ImportedDraw(1, List.of(2, 3, 4, 5, 6, 7)), // 기존 회차 -> 정정 예정
+                new ImportedDraw(2, List.of(7, 8, 9, 10, 11, 12))); // 신규 회차 -> 신규 예정
+
+        RecommendationHistoryImporter.DryRunResult result = importer.dryRunValidate(draws, 2);
+
+        assertThat(result.wouldInsert()).isEqualTo(1);
+        assertThat(result.wouldUpdate()).isEqualTo(1);
+        assertThat(result.verifiedThroughRound()).isEqualTo(2);
+
+        // 아무것도 쓰지 않았다: 회차 1은 원래 번호 그대로, 새 회차 2는 저장되지 않았다.
+        assertThat(winningDrawRepository.count()).isEqualTo(1);
+        assertThat(winningDrawRepository.findById(1).orElseThrow().numbers())
+                .isEqualTo(List.of(1, 2, 3, 4, 5, 6));
+        assertThat(stateRepository.findById(1).orElseThrow().getVersion()).isZero();
+    }
+
+    @Test
+    @DisplayName("dry-run도 회차 누락 등 기존 검증 실패를 동일하게 거부한다")
+    void dryRunValidate_missingRound_rejectedSameAsImport() {
+        List<ImportedDraw> draws = List.of(
+                new ImportedDraw(1, List.of(1, 2, 3, 4, 5, 6)),
+                new ImportedDraw(3, List.of(7, 8, 9, 10, 11, 12))); // 2회 누락
+
+        assertThatThrownBy(() -> importer.dryRunValidate(draws, 3))
+                .isInstanceOf(RecommendationImportException.class)
+                .hasFieldOrPropertyWithValue("reason", "MISSING_ROUND");
+        assertThat(winningDrawRepository.count()).isZero();
+    }
+
+    @Test
     @DisplayName("큰 배치 중 한 회차라도 규칙을 어기면 배치 전체를 반영하지 않는다")
     void batchWithOneBadRound_rejectsWholeBatch() {
         List<ImportedDraw> draws = List.of(

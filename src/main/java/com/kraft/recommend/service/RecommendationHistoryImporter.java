@@ -65,6 +65,28 @@ public class RecommendationHistoryImporter {
         return new Result(inserted, updated, verifiedThroughRound);
     }
 
+    /**
+     * {@link #importHistory}와 같은 형식·중복·범위·연속성 검증을 수행하지만 아무것도 쓰지
+     * 않는다. 운영자가 실제 반영 전에 CSV를 미리 확인할 수 있게 한다(운영 절차 문서 참고).
+     * 검증 실패 시 {@link #importHistory}와 동일한 {@link RecommendationImportException}을 던진다.
+     */
+    @Transactional(readOnly = true)
+    public DryRunResult dryRunValidate(List<ImportedDraw> draws, int verifiedThroughRound) {
+        List<ValidatedDraw> validated = validate(draws, verifiedThroughRound);
+
+        int wouldInsert = 0;
+        int wouldUpdate = 0;
+        for (ValidatedDraw draw : validated) {
+            if (winningDrawRepository.existsById(draw.roundNo())) {
+                wouldUpdate++;
+            } else {
+                wouldInsert++;
+            }
+        }
+
+        return new DryRunResult(wouldInsert, wouldUpdate, verifiedThroughRound);
+    }
+
     private List<ValidatedDraw> validate(List<ImportedDraw> draws, int verifiedThroughRound) {
         if (verifiedThroughRound <= 0) {
             throw new RecommendationImportException("INVALID_VERIFIED_THROUGH_ROUND",
@@ -108,5 +130,8 @@ public class RecommendationHistoryImporter {
     }
 
     public record Result(int inserted, int updated, int verifiedThroughRound) {
+    }
+
+    public record DryRunResult(int wouldInsert, int wouldUpdate, int verifiedThroughRound) {
     }
 }
