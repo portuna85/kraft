@@ -1,0 +1,29 @@
+<!DOCTYPE HTML>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<!--/*@thymesVar id="pageTitle" type="java.lang.String"*/-->
+<head th:replace="~{layout/header :: header}"></head>
+<body>
+
+<a class="skip-link" href="#main">본문 바로가기</a>
+<div th:replace="~{layout/navbar :: topbar}"></div>
+
+<div class="kraft-shell">
+    <main id="main" class="kraft-main kraft-main--recommend">
+        <h1 class="page-title">번호 추천</h1>
+        <div th:replace="~{layout/footer :: flash}"></div>
+
+        <!--/* 생성 폼·결과는 전부 Vue 아일랜드(src/vue/recommend)가 그린다. 서버가 내려줄 초기
+               상태는 없다 — 생성은 사용자가 버튼을 눌렀을 때만 REST API로 요청한다. */-->
+        <div class="card-kraft">
+            <div id="recommend-app"></div>
+            <noscript>
+                <p class="recommend__noscript">번호 추천 기능을 사용하려면 자바스크립트가 필요합니다.</p>
+            </noscript>
+            <script type="module" src="/js/vue-dist/recommend.js"></script>
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{layout/footer :: footer}"></div>
+</body>
+</html>

@@ -1,6 +1,9 @@
 package com.kraft.shared.web;
 
 import com.kraft.post.domain.PostNotFoundException;
+import com.kraft.recommend.domain.RecommendationGenerationLimitException;
+import com.kraft.recommend.domain.RecommendationHistoryNotReadyException;
+import com.kraft.recommend.domain.RecommendationValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -51,6 +54,42 @@ public class ApiExceptionHandler {
     @ExceptionHandler(PostNotFoundException.class)
     public ProblemDetail handleNotFound(PostNotFoundException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
+    }
+
+    /**
+     * 번호 추천 요청 검증·실현 가능성 실패(400). {@link RecommendationValidationException}이
+     * {@link IllegalArgumentException}을 상속하는 탓에 {@link #handleIllegalArgument}도 잡을 수
+     * 있지만, 더 구체적인 타입의 핸들러가 우선한다 — {@code code} 확장 속성을 추가하기 위한
+     * 전용 핸들러다(이 코드베이스에서 {@code ProblemDetail}에 {@code code}를 붙이는 첫 사례).
+     */
+    @ExceptionHandler(RecommendationValidationException.class)
+    public ProblemDetail handleRecommendationValidation(RecommendationValidationException e) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
+        problem.setProperty("code", e.getCode());
+        return problem;
+    }
+
+    /**
+     * 검증된 당첨 이력이 준비되지 않았거나(비어 있음·누락·미검증) 생성 도중 버전이 바뀐
+     * 경우(503, HIST-03/HIST-04). 이력 미준비는 추천 API만 실패시키고 게시판 전체 기동에는
+     * 영향을 주지 않는다.
+     */
+    @ExceptionHandler(RecommendationHistoryNotReadyException.class)
+    public ProblemDetail handleRecommendationHistoryNotReady(RecommendationHistoryNotReadyException e) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
+        problem.setProperty("code", RecommendationHistoryNotReadyException.CODE);
+        return problem;
+    }
+
+    /**
+     * 수학적으로는 가능하지만 반복 상한 안에 요청 개수를 채우지 못한 경우(503). 수학적으로
+     * 불가능한 경우({@code INSUFFICIENT_UNIQUE_COMBINATIONS})와 원인을 구분한다(03문서 6절).
+     */
+    @ExceptionHandler(RecommendationGenerationLimitException.class)
+    public ProblemDetail handleRecommendationGenerationLimit(RecommendationGenerationLimitException e) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
+        problem.setProperty("code", RecommendationGenerationLimitException.CODE);
+        return problem;
     }
 
     /**

@@ -66,6 +66,11 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/users/password-reset", "/api/v1/users/password-reset/confirm")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/posts/**").permitAll()
+                        // 번호 추천 생성은 비저장·공개 기능이라 로그인 여부와 무관하게 동일하게
+                        // 동작한다(02문서 7절). 이 경로 하나만 열고 /api/v1/numbers/** 전체를
+                        // 미리 공개하지 않는다. permitAll은 CSRF 비활성화가 아니다 — 세션·폼
+                        // 로그인·CSRF 정책은 그대로 유지된다.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/numbers/recommend").permitAll()
                         // 신고 처리는 관리자만 한다. 화면(/admin/**)과 API(/api/v1/admin/**)를
                         // 같은 규칙으로 막아, 화면을 감추는 것으로 끝내지 않는다.
                         .requestMatchers("/admin/**", "/api/v1/admin/**").hasRole("ADMIN")

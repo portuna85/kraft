@@ -187,6 +187,15 @@ app:
     reconcile-enabled: true
     reconcile-initial-delay-ms: 1800000
     reconcile-interval-ms: 3600000
+  recommend:
+    # 기능 전체 스위치. 끄면 /recommend·POST /api/v1/numbers/recommend가 컨트롤러 빈 자체가
+    # 등록되지 않아 404가 되고, navbar의 '번호 추천' 링크도 함께 사라진다(운영 준비 — 이미
+    # 배포된 기능을 끄는 스위치이지 옵트인이 아니므로 기본값은 true).
+    enabled: true
+    rate-limit:
+      # IP당 분당 요청 한도(02문서 6절 초기 검토값). 실측 트래픽에 맞춰 재배포 없이 조정한다.
+      requests-per-minute: 30
+
   # 이메일 인증 링크를 만들 때 붙일 기본 URL. 운영에서는 실제 배포 도메인으로 덮어써야 한다
   # (application-prod.yml 참고).
   base-url: http://localhost:8080
