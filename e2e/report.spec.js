@@ -47,6 +47,76 @@ test.describe('신고 접수', () => {
         await reporterPage.close();
     });
 
+    /**
+     * F10: 댓글 A 신고가 진행 중일 때 모달을 닫고 댓글 B를 새로 열면, A의 늦은 응답이 지금
+     * 열려 있는 B의 신고 대화상자를 사용자 모르게 닫아버리면 안 된다(delete-confirm.js와
+     * 같은 구조를 report-dialog.js도 공유한다).
+     */
+    test('신고 A의 늦은 응답이 지금 열려 있는 B의 신고 대화상자를 건드리지 않는다', async ({ browser }) => {
+        const title = uniqueTitle('신고경쟁');
+
+        const authorPage = await (await browser.newContext({ storageState: storageStateFor('user') })).newPage();
+        await writePost(authorPage, title);
+        await authorPage.close();
+
+        const commenterPage = await (await browser.newContext({ storageState: storageStateFor('other') })).newPage();
+        await openPostByTitle(commenterPage, title);
+        await commenterPage.locator('#comment-content').fill('신고당할 댓글 A');
+        await commenterPage.locator('#btn-comment-save').click();
+        await commenterPage.locator('#comment-content').fill('신고당할 댓글 B');
+        await commenterPage.locator('#btn-comment-save').click();
+        await expect(commenterPage.locator('.comment-list__content')).toHaveCount(2);
+        await commenterPage.close();
+
+        // 작성자 본인은 신고할 수 없으므로, 글 작성자(user)가 other의 댓글을 신고한다.
+        const reporterPage = await (await browser.newContext({ storageState: storageStateFor('user') })).newPage();
+        await openPostByTitle(reporterPage, title);
+        const commentA = reporterPage.locator('.comment-list__item').filter({ hasText: '신고당할 댓글 A' });
+        const commentB = reporterPage.locator('.comment-list__item').filter({ hasText: '신고당할 댓글 B' });
+
+        let releaseA;
+        const gateA = new Promise((resolve) => {
+            releaseA = resolve;
+        });
+        let releaseB;
+        const gateB = new Promise((resolve) => {
+            releaseB = resolve;
+        });
+        let reportCount = 0;
+        await reporterPage.route('**/api/v1/reports', async (route) => {
+            reportCount += 1;
+            await (reportCount === 1 ? gateA : gateB);
+            await route.continue();
+        });
+
+        // A를 연다 → 신고(응답은 gateA가 잡아 둔다) → 곧바로 취소로 닫는다.
+        await commentA.locator('.btn-comment-report').click();
+        const modal = reporterPage.locator('#reportModal');
+        await expect(modal).toBeVisible();
+        await reporterPage.locator('#report-reason').selectOption('SPAM');
+        await reporterPage.locator('#btn-confirm-report').click();
+        await expect(reporterPage.locator('#btn-confirm-report')).toBeDisabled();
+        await modal.getByRole('button', { name: '취소' }).click();
+        await expect(modal).toBeHidden();
+
+        // B를 새로 연다 — A가 아직 진행 중이어도 확인 버튼이 잠겨 있으면 안 된다.
+        await commentB.locator('.btn-comment-report').click();
+        await expect(modal).toBeVisible();
+        await expect(reporterPage.locator('#btn-confirm-report')).toBeEnabled();
+        await reporterPage.locator('#report-reason').selectOption('SPAM');
+        await reporterPage.locator('#btn-confirm-report').click();
+        await expect(reporterPage.locator('#btn-confirm-report')).toBeDisabled();
+
+        // A의 늦은 응답 — B의 확인이 아직 끝나지 않은 이 대화상자를 건드리면 안 된다.
+        releaseA();
+        await expect(reporterPage.locator('#app-toast-body')).toContainText('신고가 접수되었습니다');
+        await expect(modal).toBeVisible();
+        await expect(reporterPage.locator('#btn-confirm-report')).toBeDisabled();
+
+        releaseB();
+        await expect(modal).toBeHidden();
+    });
+
     test('자기 글에는 신고 버튼이 보이지 않는다', async ({ page }) => {
         // 자기 글은 직접 지우면 되므로 서버도 거절한다. 버튼부터 보이지 않는 편이 낫다.
         const title = uniqueTitle('내글');

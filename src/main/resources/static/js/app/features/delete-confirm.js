@@ -11,6 +11,13 @@ import * as flash from '../ui/flash.js';
  *
  * 댓글 목록은 다시 그려질 수 있어 버튼에 직접 걸지 않고 document 위임을 쓴다.
  */
+// 모달을 열 때마다 올린다. 확인 버튼을 누른 시점의 값을 스냅샷 떠 두면, 그 요청이 끝났을 때
+// 사용자가 이미 모달을 닫고 다른 대상을 열었는지(세대가 바뀌었는지) 구분할 수 있다 — 실제
+// 삭제 자체는 kind/id를 따로 스냅샷 떠 두므로 항상 맞는 대상에 실행되지만, "지금 화면에 보이는
+// 모달을 닫아도 되는가"는 이 세대로만 판단해야 한다(개선 보고서 F10). open()이 module 스코프
+// 함수라 pending과 달리 init() 밖에 둔다.
+let generation = 0;
+
 export function init() {
     let pending = null; // { kind: 'post' | 'comment', id, trigger }
 
@@ -46,11 +53,12 @@ export function init() {
         }
 
         const { kind, id } = pending;
+        const openedAt = generation;
         button.disabled = true;
 
         try {
             await api.del(kind === 'post' ? `${API.POSTS}/${id}` : `${API.COMMENTS}/${id}`);
-            modal('#confirmDeleteModal').hide();
+            // 서버 반영은 이미 끝났다 — 안내와 목록 갱신은 세대와 무관하게 항상 수행한다.
             if (kind === 'post') {
                 flash.set('POST_DELETED');
                 window.location.href = '/';
@@ -60,17 +68,33 @@ export function init() {
                 flash.showNow('COMMENT_DELETED');
                 window.dispatchEvent(new CustomEvent('kraft:comment-deleted', { detail: { id } }));
             }
+            // 모달을 닫는 것은 "지금 화면" 얘기다 — 그사이 사용자가 닫고 다른 대상을 열었다면
+            // (세대가 바뀌었다면) 그 새 대화상자를 건드리지 않는다.
+            if (openedAt === generation) {
+                modal('#confirmDeleteModal').hide();
+            }
         } catch (error) {
-            modal('#confirmDeleteModal').hide();
             // 되돌아갈 폼이 없는 배경 동작이라 토스트로 알린다(ui/flash.js의 규칙 참고).
             showToast(messageOf(error), 'danger');
+            if (openedAt === generation) {
+                modal('#confirmDeleteModal').hide();
+            }
         } finally {
-            button.disabled = false;
+            // 이 버튼은 세대가 바뀌면 open()이 곧바로 다시 활성화한다(다른 대상은 곧바로
+            // 확인할 수 있어야 한다) — 낡은 세대의 완료가 그 뒤 새로 시작된 요청의 disabled를
+            // 도로 풀어버리면 안 된다.
+            if (openedAt === generation) {
+                button.disabled = false;
+            }
         }
     });
 }
 
 function open(kind) {
+    generation += 1;
+    // 이전 대상의 요청이 아직 진행 중이더라도, 서로 다른 대상이면 동시에 처리해도 무방하다 —
+    // 새로 연 대화상자는 그 요청과 독립적으로 곧바로 확인할 수 있어야 한다.
+    byId('btn-confirm-delete').disabled = false;
     const isPost = kind === 'post';
     setText(byId('confirmDeleteModalLabel'), isPost ? '게시글 삭제' : '댓글 삭제');
     setText(byId('confirmDeleteMessage'), isPost ? '이 게시글을 삭제하시겠습니까?' : '이 댓글을 삭제하시겠습니까?');

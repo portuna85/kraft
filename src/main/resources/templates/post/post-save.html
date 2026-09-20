@@ -34,7 +34,7 @@
                  받아 둔다. 이게 없으면 브라우저가 post-save.js를 내려받아 파싱한 뒤에야 이
                  import를 발견해 청크를 요청하므로 왕복이 하나 더 든다. -->
             <link rel="modulepreload" href="/js/vue-dist/chunks/runtime.js" />
-            <script type="module" src="/js/vue-dist/post-save.js"></script>
+            <script type="module" src="/js/vue-dist/post-save.js" onerror="kraftVueMountFailed('post-save-app')"></script>
         </div>
 
         <div class="card-kraft" sec:authorize="isAnonymous()">

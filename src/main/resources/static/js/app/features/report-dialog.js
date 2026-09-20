@@ -13,6 +13,11 @@ import { showToast } from '../ui/toast.js';
  * 결과는 토스트로 알린다. 신고는 화면을 떠나지 않는 배경 동작이고, 사용자가 이어서 고칠 폼도
  * 없다(ui/flash.js의 규칙 참고).
  */
+// delete-confirm.js와 같은 이유(개선 보고서 F10) — 요청이 끝났을 때 화면에 보이는 모달을
+// 닫아도 되는지는 이 세대로만 판단한다. open()이 module 스코프 함수라 pending과 달리 init()
+// 밖에 둔다.
+let generation = 0;
+
 export function init() {
     let pending = null; // { targetType: 'POST' | 'COMMENT', targetId, trigger }
 
@@ -39,6 +44,7 @@ export function init() {
         }
 
         const button = byId('btn-confirm-report');
+        const openedAt = generation;
         button.disabled = true;
         try {
             await api.post(API.REPORTS, {
@@ -47,19 +53,29 @@ export function init() {
                 reason: valueOf(byId('report-reason')),
                 detail: valueOf(byId('report-detail')),
             });
-            modal('#reportModal').hide();
             showToast('신고가 접수되었습니다. 관리자가 확인합니다.', 'success');
+            if (openedAt === generation) {
+                modal('#reportModal').hide();
+            }
         } catch (error) {
             // 이미 신고한 대상·자기 글처럼 사용자가 알아야 할 이유가 서버 문구에 들어 있다.
-            modal('#reportModal').hide();
             showToast(messageOf(error), 'danger');
+            if (openedAt === generation) {
+                modal('#reportModal').hide();
+            }
         } finally {
-            button.disabled = false;
+            // delete-confirm.js와 같은 이유 — 낡은 세대의 완료가 새로 시작된 요청의 disabled를
+            // 도로 풀어버리면 안 된다.
+            if (openedAt === generation) {
+                button.disabled = false;
+            }
         }
     });
 }
 
 function open(targetTitle) {
+    generation += 1;
+    byId('btn-confirm-report').disabled = false;
     byId('report-form').reset();
     setText(byId('reportModalLabel'), `${targetTitle} 신고`);
     setText(byId('report-target-hint'), `이 ${targetTitle}을(를) 신고합니다. 관리자가 확인한 뒤 처리합니다.`);

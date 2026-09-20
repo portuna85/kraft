@@ -44,6 +44,48 @@ test.describe('비밀번호 변경', () => {
         await expect(page.locator('#change-password-error')).toBeVisible();
         expect(requested, 'Enter가 실제로 폼을 제출했다').toBe(true);
     });
+
+    /**
+     * F10: 요청이 진행 중일 때 모달을 닫고 다시 열면 폼이 reset된다. 그 늦은 응답(실패)이
+     * 도착했을 때, 이미 새로 연(비어 있는) 폼 위에 낡은 오류를 덮어씌우면 안 된다 — 사용자는
+     * 이 시도를 아직 한 번도 제출하지 않았다.
+     */
+    test('재열기 후에는 이전 시도의 늦은 실패 응답이 새 폼에 나타나지 않는다', async ({ page }) => {
+        let releaseFirst;
+        const gate = new Promise((resolve) => {
+            releaseFirst = resolve;
+        });
+        await page.route('**/api/v1/users/me/password', async (route) => {
+            await gate;
+            await route.fulfill({ status: 400, contentType: 'application/json', body: '{"detail":"현재 비밀번호가 올바르지 않습니다."}' });
+        });
+
+        await page.goto('/');
+        await openAccountMenu(page);
+        await page.getByRole('button', { name: '비밀번호 변경' }).click();
+        const modal = page.locator('#changePasswordModal');
+        await expect(modal).toBeVisible();
+
+        await page.locator('#currentPassword').fill('WrongPass1!');
+        await page.locator('#newPassword').fill('Another1!pass');
+        await page.locator('#btn-change-password').click();
+
+        // 요청이 진행 중인 동안 모달을 닫는다(응답은 아직 gate에 잡혀 있다).
+        await modal.getByRole('button', { name: '취소' }).click();
+        await expect(modal).toBeHidden();
+
+        // 다시 연다 — 폼이 reset되어 있어야 하고, 아직 실패 안내가 없어야 한다.
+        await page.getByRole('button', { name: '비밀번호 변경' }).click();
+        await expect(modal).toBeVisible();
+        await expect(page.locator('#currentPassword')).toHaveValue('');
+        await expect(page.locator('#change-password-error')).toBeHidden();
+
+        // 이제야 이전 시도의 실패 응답이 도착한다 — 지금 보이는(비어 있는) 폼에 나타나면 안 된다.
+        releaseFirst();
+        await page.waitForTimeout(300);
+        await expect(page.locator('#change-password-error')).toBeHidden();
+        await expect(modal).toBeVisible();
+    });
 });
 
 test.describe('비밀번호 변경 성공', () => {

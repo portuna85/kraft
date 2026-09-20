@@ -60,7 +60,9 @@ function transitiveChunkDeps(graph, entryFile) {
 }
 
 const PRELOAD_RE = /<link rel="modulepreload" href="\/js\/vue-dist\/(chunks\/[\w.-]+\.js)"/g;
-const SCRIPT_RE = /<script type="module" src="\/js\/vue-dist\/([\w.-]+\.js)">/g;
+// onerror="kraftVueMountFailed('...')"(F12)처럼 다른 속성이 뒤에 더 붙을 수 있어 태그가
+// src="..." 바로 뒤에서 끝난다고 가정하지 않는다.
+const SCRIPT_RE = /<script type="module" src="\/js\/vue-dist\/([\w.-]+\.js)"[^>]*>/g;
 
 const result = await build({
     configFile: join(repoRoot, 'src/vue/vite.config.js'),

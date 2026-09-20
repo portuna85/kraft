@@ -270,6 +270,80 @@ test('댓글 삭제: 취소하면 그대로, 확인하면 지워진다', async (
 });
 
 /**
+ * F10: 댓글 A의 삭제 요청이 진행 중일 때 모달을 닫고 댓글 B를 새로 연다. 두 가지를 확인한다 —
+ * ①B의 확인 버튼이 A의 disabled 상태에 갇혀 있으면 안 된다(서로 다른 대상이므로 동시에
+ * 진행해도 무방하다). ②A의 응답이, 지금 화면에 떠 있는 B의(아직 확인하지 않은) 대화상자를
+ * 사용자 모르게 닫아버리면 안 된다 — 실제 삭제 자체는 세대와 무관하게 반영되어야 한다.
+ */
+test('삭제 A의 늦은 응답이 지금 열려 있는 B의 확인 대화상자를 건드리지 않는다', async ({ page }) => {
+    await openOwnPost(page);
+    await page.locator('#comment-content').fill('먼저 지울 댓글 A');
+    await page.locator('#btn-comment-save').click();
+    await page.locator('#comment-content').fill('나중에 지울 댓글 B');
+    await page.locator('#btn-comment-save').click();
+    await expect(page.locator('.comment-list__content')).toHaveCount(2);
+
+    const commentA = page.locator('.comment-list__item').filter({ hasText: '먼저 지울 댓글 A' });
+    const commentB = page.locator('.comment-list__item').filter({ hasText: '나중에 지울 댓글 B' });
+    const idA = await commentA.getAttribute('data-comment-id');
+    const idB = await commentB.getAttribute('data-comment-id');
+
+    let releaseA;
+    const gateA = new Promise((resolve) => {
+        releaseA = resolve;
+    });
+    let releaseB;
+    const gateB = new Promise((resolve) => {
+        releaseB = resolve;
+    });
+    await page.route(`**/api/v1/comments/${idA}`, async (route) => {
+        if (route.request().method() !== 'DELETE') {
+            await route.continue();
+            return;
+        }
+        await gateA;
+        await route.continue();
+    });
+    await page.route(`**/api/v1/comments/${idB}`, async (route) => {
+        if (route.request().method() !== 'DELETE') {
+            await route.continue();
+            return;
+        }
+        await gateB;
+        await route.continue();
+    });
+
+    // A를 연다 → 확인(응답은 gateA가 잡아 둔다) → 곧바로 취소로 닫는다.
+    await commentA.locator('.btn-comment-delete').click();
+    const modal = page.locator('#confirmDeleteModal');
+    await expect(modal).toBeVisible();
+    await page.locator('#btn-confirm-delete').click();
+    await expect(page.locator('#btn-confirm-delete')).toBeDisabled();
+    await page.locator('#btn-cancel-delete').click();
+    await expect(modal).toBeHidden();
+
+    // B를 새로 연다 — A가 아직 진행 중이어도 확인 버튼이 잠겨 있으면 안 된다.
+    await commentB.locator('.btn-comment-delete').click();
+    await expect(modal).toBeVisible();
+    await expect(page.locator('#btn-confirm-delete')).toBeEnabled();
+    await page.locator('#btn-confirm-delete').click();
+    await expect(page.locator('#btn-confirm-delete')).toBeDisabled();
+
+    // A의 늦은 응답이 지금 도착한다 — 실제로 지워지긴 해야 하지만, B의 확인이 아직 끝나지
+    // 않은 이 대화상자를 사용자 모르게 닫아서는 안 된다.
+    releaseA();
+    await expect(commentA).toHaveCount(0);
+    await expect(modal).toBeVisible();
+    await expect(page.locator('#btn-confirm-delete')).toBeDisabled();
+
+    releaseB();
+    await expect(page.locator('#flash')).toContainText('댓글이 삭제되었습니다.');
+    await expect(modal).toBeHidden();
+    await expect(commentB).toHaveCount(0);
+    await expect(page.locator('#comments-heading')).toBeFocused();
+});
+
+/**
  * F09: 서버가 내려주는 기존 댓글의 createdAt은 오프셋 없는 LocalDateTime 문자열이고,
  * CommentsApp.vue가 새로 단 댓글에 낙관적으로 채우는 값은 new Date().toISOString()(UTC,
  * 'Z' 포함)이다. CommentItem.vue의 formatDate()는 new Date(iso)로 파싱한 뒤 브라우저 로컬
@@ -475,4 +549,30 @@ test('답글 취소·등록 후 포커스가 답글 버튼으로 돌아온다', 
     await expect(page.locator('.comment-list__replies')).toContainText('포커스 확인용 답글');
     await expect(replyForm).toBeHidden();
     await expect(replyButton).toBeFocused();
+});
+
+/**
+ * F11: 각 최상위 댓글은 열림 여부와 무관하게 수정·답글 폼을 항상 DOM에 유지했다(v-show).
+ * 최상위 댓글 3개짜리 fixture에서 새 댓글 입력까지 textarea 7개가 나온 것이 이 때문이다.
+ * v-if로 바꿔 닫혀 있을 때는 아예 마운트하지 않는지 확인한다.
+ */
+test('닫힌 댓글 폼은 DOM에 없다가 열었을 때만 생긴다', async ({ page }) => {
+    await openOwnPost(page);
+    await seedComments(page, 3);
+    await expect(page.locator('.comment-list__content')).toHaveCount(3);
+
+    // 수정·답글 폼이 공유하는 클래스. 닫힌 상태에서는 하나도 없어야 한다(새 댓글 입력창은
+    // 이 클래스를 쓰지 않으므로 포함되지 않는다).
+    const formTextareas = page.locator('.comment-edit__textarea');
+    await expect(formTextareas).toHaveCount(0);
+
+    await page.locator('.btn-comment-edit').first().click();
+    await expect(formTextareas).toHaveCount(1);
+    await page.locator('.btn-comment-cancel').first().click();
+    await expect(formTextareas).toHaveCount(0);
+
+    await page.locator('.btn-comment-reply').first().click();
+    await expect(formTextareas).toHaveCount(1);
+    await page.locator('.btn-comment-reply-cancel').first().click();
+    await expect(formTextareas).toHaveCount(0);
 });

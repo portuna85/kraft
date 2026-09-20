@@ -8,9 +8,26 @@ import PostEditApp from './PostEditApp.vue';
 const mountPoint = document.getElementById('post-app');
 
 if (mountPoint) {
-    const { post, categoryOptions, authenticated } = JSON.parse(
-        document.getElementById('post-initial-data')?.textContent || '{}',
-    );
+    // JSON이 없거나 깨졌거나 모양이 다르면(개선 보고서 F12) {}로 넘어가지만, PostEditApp은
+    // 곧바로 post.title·categoryOptions[0]을 참조하므로 그건 안전한 기본 상태가 아니다 —
+    // 여기서 먼저 걸러 최소 안내로 대체한다.
+    let initial = null;
+    try {
+        const parsed = JSON.parse(document.getElementById('post-initial-data')?.textContent || 'null');
+        if (parsed?.post && typeof parsed.post.title === 'string' && Array.isArray(parsed.categoryOptions)) {
+            initial = parsed;
+        }
+    } catch {
+        initial = null;
+    }
 
-    createApp(PostEditApp, { post, categoryOptions, authenticated }).mount(mountPoint);
+    if (initial) {
+        createApp(PostEditApp, {
+            post: initial.post,
+            categoryOptions: initial.categoryOptions,
+            authenticated: initial.authenticated,
+        }).mount(mountPoint);
+    } else {
+        window.kraftVueMountFailed?.(mountPoint.id);
+    }
 }

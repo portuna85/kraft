@@ -19,5 +19,32 @@
          영향을 받지 않는다. -->
     <link rel="stylesheet" href="/css/bootstrap.custom.css" />
     <link rel="stylesheet" href="/css/style.css" />
+
+    <!--
+      Vue 아일랜드가 뜨지 못했을 때(초기 부트스트랩 JSON이 깨졌거나, 진입 스크립트·공유 청크
+      자체가 404 등으로 못 왔을 때) 마운트 지점에 남기는 최소 안내(개선 보고서 F12).
+      두 경로가 같은 함수 하나로 모인다:
+        - 초기 JSON 검증 실패는 각 mount.js가 직접 부른다.
+        - 모듈 스크립트 로드 실패는 <script type="module">에 붙인 onerror="kraftVueMountFailed('id')"가
+          부른다. 표준상 모듈 그래프(정적으로 import하는 공유 청크 포함) 전체의 로드 실패가
+          그 <script> 엘리먼트의 error 이벤트로 올라온다.
+      일반 <script>로 둔다 — 이 함수는 모듈이 아예 못 왔을 때도 실행되어야 하므로 번들·트랜스파일에
+      기대지 않고 그대로 실행 가능한 구식 문법만 쓴다.
+    -->
+    <script>
+        window.kraftVueMountFailed = function (mountPointId) {
+            var el = document.getElementById(mountPointId);
+            if (!el || el.dataset.mountFailureShown) {
+                return;
+            }
+            el.dataset.mountFailureShown = 'true';
+            el.textContent = '';
+            var p = document.createElement('p');
+            p.className = 'flash flash--danger';
+            p.setAttribute('role', 'alert');
+            p.textContent = '이 화면을 불러오지 못했습니다. 새로고침해 주세요.';
+            el.appendChild(p);
+        };
+    </script>
 </head>
 </html>

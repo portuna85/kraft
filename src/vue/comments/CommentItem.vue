@@ -208,9 +208,11 @@ function formatDate(iso) {
       </div>
     </div>
 
+    <!-- 열렸을 때만 마운트한다(v-show가 아니라 v-if) — 답글 폼은 열림 여부와 무관하게 항상
+         DOM에 있었다(개선 보고서 F11). draftContent/replyContent는 컴포넌트 setup 스코프의
+         ref라 폼이 사라져도 값 자체는 남는다. -->
     <form
-      v-if="!isReply"
-      v-show="replying"
+      v-if="!isReply && replying"
       class="comment-reply-form"
       @submit.prevent="saveReply"
     >
@@ -248,8 +250,10 @@ function formatDate(iso) {
         </button>
       </div>
     </form>
+    <!-- 같은 이유(F11). canManage가 아닌 사람은 애초에 editing을 true로 만들 경로가 없지만
+         (수정 버튼 자체가 canManage일 때만 그려진다), 방어적으로 조건에 함께 넣는다. -->
     <form
-      v-show="editing"
+      v-if="editing && comment.canManage"
       class="comment-edit-form"
       @submit.prevent="save"
     >

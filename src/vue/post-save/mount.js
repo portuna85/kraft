@@ -8,9 +8,20 @@ import PostSaveApp from './PostSaveApp.vue';
 const mountPoint = document.getElementById('post-save-app');
 
 if (mountPoint) {
-    const { categoryOptions, author } = JSON.parse(
-        document.getElementById('post-save-initial-data')?.textContent || '{}',
-    );
+    // 같은 이유(F12) — PostSaveApp이 곧바로 categoryOptions[0]을 참조한다.
+    let initial = null;
+    try {
+        const parsed = JSON.parse(document.getElementById('post-save-initial-data')?.textContent || 'null');
+        if (parsed && Array.isArray(parsed.categoryOptions) && typeof parsed.author === 'string') {
+            initial = parsed;
+        }
+    } catch {
+        initial = null;
+    }
 
-    createApp(PostSaveApp, { categoryOptions, author }).mount(mountPoint);
+    if (initial) {
+        createApp(PostSaveApp, { categoryOptions: initial.categoryOptions, author: initial.author }).mount(mountPoint);
+    } else {
+        window.kraftVueMountFailed?.(mountPoint.id);
+    }
 }
