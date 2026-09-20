@@ -19,6 +19,18 @@ test('검색 결과가 없으면 게시판이 빈 것처럼 안내하지 않는�
 });
 
 /**
+ * F09: 목록의 열 제목은 aria-hidden(그리드 레이아웃용 시각적 헤더)이고 조회수·댓글수는
+ * 숫자만 렌더링돼, 그 숫자가 무엇을 뜻하는지 스크린리더가 읽어줄 텍스트가 없었다.
+ */
+test('조회수·댓글수 옆에 스크린리더용 이름표가 붙는다', async ({ page }) => {
+    await page.goto('/');
+
+    const item = page.locator('.post-list__item').first();
+    await expect(item.locator('.post-list__views')).toContainText(/조회\s*\d+/);
+    await expect(item.locator('.post-list__comments')).toContainText(/댓글\s*\d+/);
+});
+
+/**
  * 992~1199px 구간은 픽셀 기준 이미지 대신 규칙으로 고정한다. 이 폭에서 오른쪽 안내
  * (.kraft-aside)가 본문 아래로 떨어지면 폭이 남는데도 한 줄만 쓰는 셈이 된다 — 2열 전환을
  * 1200px에서 992px로 낮춘 것이 바로 이 구간을 겨냥한 것이다.

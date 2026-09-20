@@ -1,8 +1,14 @@
+// @ts-check
 import { computed, onUnmounted, ref } from 'vue';
 import { api } from '@core/http.js';
 import { API, UPLOAD, UPLOAD_MESSAGES } from '@core/constants.js';
 import { formatFileSize } from '@core/dom.js';
 import * as flash from '@ui/flash.js';
+
+/**
+ * @typedef {Object} UploadResponse
+ * @property {string} url
+ */
 
 /**
  * 게시글 등록·편집 화면이 함께 쓰는 이미지 첨부 상태.
@@ -22,12 +28,17 @@ import * as flash from '@ui/flash.js';
  * (image-upload.js·post-edit.js 참고). 여기서는 hasFile·removedExisting 두 ref의 조합으로
  * showExistingPreview가 파생되어 상태 자체가 코드로 드러난다.
  */
+/** @param {{ initialUrl?: string|null }} [options] */
 export function useImageUpload({ initialUrl = null } = {}) {
+    /** @type {import('vue').Ref<File|null>} */
     const file = ref(null);
+    /** @type {import('vue').Ref<string|null>} */
     const previewUrl = ref(null);
     const removedExisting = ref(false);
+    /** @type {import('vue').Ref<string|null>} */
     const uploadedUrl = ref(null);
     const uploading = ref(false);
+    /** @type {File|null} */
     let uploadedForFile = null;
 
     const hasFile = computed(() => file.value !== null);
@@ -53,7 +64,10 @@ export function useImageUpload({ initialUrl = null } = {}) {
         removedExisting.value = true;
     }
 
-    /** 파일 입력의 change 이벤트에서 선택된 File(또는 선택 해제 시 null)을 넘겨받는다. */
+    /**
+     * 파일 입력의 change 이벤트에서 선택된 File(또는 선택 해제 시 null)을 넘겨받는다.
+     * @param {File|null} selectedFile
+     */
     function onFileSelected(selectedFile) {
         uploadedUrl.value = null;
         uploadedForFile = null;
@@ -113,6 +127,7 @@ export function useImageUpload({ initialUrl = null } = {}) {
         formData.append('file', fileAtStart);
 
         uploading.value = true;
+        /** @type {UploadResponse} */
         let response;
         try {
             response = await api.upload(API.POST_IMAGES, formData);

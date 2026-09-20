@@ -7,7 +7,11 @@
     "allowJs": true,
     "types": [
       "bootstrap"
-    ]
+    ],
+    "paths": {
+      "@core/*": ["./src/main/resources/static/js/app/core/*"],
+      "@ui/*": ["./src/main/resources/static/js/app/ui/*"]
+    }
   },
   "include": [
     "types/**/*",

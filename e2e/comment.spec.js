@@ -420,3 +420,59 @@ test('더 보기 응답이 지연되는 동안 등록한 답글의 개수가 되
     await expect(page.locator('#btn-comments-load-more')).toBeHidden();
     await expect(page.locator('#comments-heading')).toContainText('댓글 22개');
 });
+
+/**
+ * F09: 수정 취소·저장 성공 모두 폼을 닫지만, 그 순간까지 포커스를 갖고 있던 입력창·저장
+ * 버튼은 v-show로 숨겨진다. 트리거였던 "수정" 버튼으로 포커스를 되돌리지 않으면 숨겨진
+ * 요소가 활성 요소로 남는다.
+ */
+test('댓글 수정 취소·저장 후 포커스가 수정 버튼으로 돌아온다', async ({ page }) => {
+    await openOwnPost(page);
+    await page.locator('#comment-content').fill('포커스 검증용 댓글');
+    await page.locator('#btn-comment-save').click();
+    await expect(page.locator('.comment-list__content')).toContainText('포커스 검증용 댓글');
+
+    const editButton = page.locator('.btn-comment-edit').first();
+    await editButton.focus();
+    await page.keyboard.press('Enter');
+    const editForm = page.locator('.comment-edit-form').first();
+    await expect(editForm).toBeVisible();
+    await expect(editForm.locator('textarea')).toBeFocused();
+
+    await page.locator('.btn-comment-cancel').first().click();
+    await expect(editForm).toBeHidden();
+    await expect(editButton).toBeFocused();
+
+    await editButton.click();
+    await editForm.locator('textarea').fill('수정 후 포커스 확인');
+    await editForm.getByRole('button', { name: '저장' }).click();
+    await expect(page.locator('#flash')).toContainText('댓글이 수정되었습니다.');
+    await expect(editForm).toBeHidden();
+    await expect(editButton).toBeFocused();
+});
+
+/** F09: 답글도 같은 규칙 — 답글 버튼에서 시작해 취소·등록 후 그 버튼으로 돌아온다. */
+test('답글 취소·등록 후 포커스가 답글 버튼으로 돌아온다', async ({ page }) => {
+    await openOwnPost(page);
+    await page.locator('#comment-content').fill('답글 포커스 검증용 댓글');
+    await page.locator('#btn-comment-save').click();
+    await expect(page.locator('.comment-list__content')).toContainText('답글 포커스 검증용 댓글');
+
+    const replyButton = page.locator('.btn-comment-reply').first();
+    await replyButton.focus();
+    await page.keyboard.press('Enter');
+    const replyForm = page.locator('.comment-reply-form').first();
+    await expect(replyForm).toBeVisible();
+    await expect(replyForm.locator('textarea')).toBeFocused();
+
+    await page.locator('.btn-comment-reply-cancel').first().click();
+    await expect(replyForm).toBeHidden();
+    await expect(replyButton).toBeFocused();
+
+    await replyButton.click();
+    await replyForm.locator('textarea').fill('포커스 확인용 답글');
+    await replyForm.getByRole('button', { name: '답글 등록' }).click();
+    await expect(page.locator('.comment-list__replies')).toContainText('포커스 확인용 답글');
+    await expect(replyForm).toBeHidden();
+    await expect(replyButton).toBeFocused();
+});

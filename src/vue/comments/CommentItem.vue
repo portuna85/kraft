@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import { api, messageOf } from '@core/http.js';
 import { API } from '@core/constants.js';
 import { showToast } from '@ui/toast.js';
@@ -28,21 +28,36 @@ const emit = defineEmits(['updated', 'replied']);
 const editing = ref(false);
 const draftContent = ref(props.comment.content);
 const saving = ref(false);
+const editTextarea = ref(null);
+const editButton = ref(null);
 
 const replying = ref(false);
 const replyContent = ref('');
 const replySaving = ref(false);
+const replyTextarea = ref(null);
+const replyButton = ref(null);
 
-function startReply() {
+async function startReply() {
     replyContent.value = '';
     replying.value = true;
+    await nextTick();
+    replyTextarea.value?.focus();
 }
 
-function cancelReply() {
+// 취소·저장 성공 모두 폼을 닫는다 — 게시글 편집처럼 그 트리거 버튼으로 포커스를 되돌리지
+// 않으면, 방금까지 포커스를 갖고 있던 입력창·저장 버튼이 v-show로 숨겨진 채 여전히 활성
+// 요소로 남는다(개선 보고서 F09).
+async function returnFocusToReplyButton() {
+    await nextTick();
+    replyButton.value?.focus();
+}
+
+async function cancelReply() {
     if (replySaving.value) {
         return;
     }
     replying.value = false;
+    await returnFocusToReplyButton();
 }
 
 async function saveReply() {
@@ -66,6 +81,7 @@ async function saveReply() {
             },
         });
         replying.value = false;
+        await returnFocusToReplyButton();
     } catch (error) {
         showToast(messageOf(error), 'danger');
     } finally {
@@ -73,12 +89,19 @@ async function saveReply() {
     }
 }
 
-function startEdit() {
+async function startEdit() {
     draftContent.value = props.comment.content;
     editing.value = true;
+    await nextTick();
+    editTextarea.value?.focus();
 }
 
-function cancelEdit() {
+async function returnFocusToEditButton() {
+    await nextTick();
+    editButton.value?.focus();
+}
+
+async function cancelEdit() {
     // 저장 요청이 진행 중일 때 취소하면 폼은 사라지지만 응답은 그대로 도착해, 이미 취소한
     // 내용으로 되돌아온다(개선 보고서 "저장 중 댓글 변경과 동적 삭제 모듈 누락"). 버튼은
     // saving일 때 비활성화되지만, 방어적으로 여기서도 막는다.
@@ -86,6 +109,7 @@ function cancelEdit() {
         return;
     }
     editing.value = false;
+    await returnFocusToEditButton();
 }
 
 async function save() {
@@ -94,6 +118,7 @@ async function save() {
         await api.put(`${API.COMMENTS}/${props.comment.id}`, { content: draftContent.value });
         emit('updated', { id: props.comment.id, content: draftContent.value });
         editing.value = false;
+        await returnFocusToEditButton();
     } catch (error) {
         showToast(messageOf(error), 'danger');
     } finally {
@@ -132,6 +157,7 @@ function formatDate(iso) {
         class="btn-group-gap comment-actions"
       >
         <button
+          ref="editButton"
           type="button"
           class="btn btn-sm btn-outline-secondary btn-comment-edit"
           @click="startEdit"
@@ -149,6 +175,7 @@ function formatDate(iso) {
              답글)를 UI 단에서도 막는다. 최종 판정은 서버가 한다(CommentService.resolveParent). -->
         <button
           v-if="!isReply && canWrite"
+          ref="replyButton"
           type="button"
           class="btn btn-sm btn-outline-secondary btn-comment-reply"
           @click="startReply"
@@ -171,6 +198,7 @@ function formatDate(iso) {
         </button>
         <button
           v-if="!isReply && canWrite"
+          ref="replyButton"
           type="button"
           class="btn btn-sm btn-outline-secondary btn-comment-reply"
           @click="startReply"
@@ -193,6 +221,7 @@ function formatDate(iso) {
         >답글 내용</label>
         <textarea
           :id="`comment-reply-${comment.id}`"
+          ref="replyTextarea"
           v-model="replyContent"
           class="form-control comment-edit__textarea"
           placeholder="답글을 입력하세요"
@@ -231,6 +260,7 @@ function formatDate(iso) {
         >댓글 내용</label>
         <textarea
           :id="`comment-edit-${comment.id}`"
+          ref="editTextarea"
           v-model="draftContent"
           class="form-control comment-edit__textarea"
           maxlength="1000"

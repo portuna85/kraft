@@ -1,6 +1,31 @@
+// @ts-check
 import { computed, reactive, ref } from 'vue';
 import { api, messageOf } from '@core/http.js';
 import { API } from '@core/constants.js';
+
+/**
+ * @typedef {Object} RecommendationItem
+ * @property {number} position
+ * @property {number[]} numbers
+ * @property {number|null} score
+ * @property {string[]} explanationCodes
+ */
+/**
+ * @typedef {Object} RecommendationResponse
+ * @property {string} strategy
+ * @property {string} algorithmVersion
+ * @property {number} historyThroughRound
+ * @property {boolean} historicalExclusionApplied
+ * @property {string} exclusionPolicyVersion
+ * @property {RecommendationItem[]} items
+ */
+/**
+ * @typedef {Object} RecommendationConditions
+ * @property {string} strategy
+ * @property {number} count
+ * @property {number[]} locked
+ * @property {number[]} excluded
+ */
 
 export const STRATEGIES = [
     {
@@ -20,6 +45,7 @@ export const STRATEGIES = [
     },
 ];
 
+/** @type {Record<string, string>} */
 const EXPLANATION_LABELS = {
     ODD_EVEN_BALANCED: '홀짝 균형',
     LOW_HIGH_BALANCED: '저고 균형',
@@ -28,6 +54,10 @@ const EXPLANATION_LABELS = {
     DECADE_SPREAD: '구간 분산',
 };
 
+/**
+ * @param {string} code
+ * @returns {string}
+ */
 export function explanationLabel(code) {
     return EXPLANATION_LABELS[code] ?? code;
 }
@@ -52,8 +82,11 @@ export function useRecommendation() {
     const selectionMode = ref('locked'); // 'locked' | 'excluded'
 
     const status = ref('idle'); // idle | generating | ready | history-not-ready | error
+    /** @type {import('vue').Ref<RecommendationResponse|null>} */
     const result = ref(null);
+    /** @type {import('vue').Ref<string|null>} */
     const errorMessage = ref(null);
+    /** @type {import('vue').Ref<RecommendationConditions|null>} */
     const lastConditions = ref(null);
     const liveAnnouncement = ref('');
 
@@ -77,6 +110,7 @@ export function useRecommendation() {
 
     const canSubmit = computed(() => status.value !== 'generating' && clientValidationError.value === null);
 
+    /** @returns {RecommendationConditions} */
     function currentConditions() {
         return {
             strategy: strategy.value,
@@ -103,7 +137,10 @@ export function useRecommendation() {
         );
     });
 
-    /** 한 번호는 고정·제외·미선택 중 하나만 가진다. 현재 모드에서 다시 누르면 선택을 해제한다. */
+    /**
+     * 한 번호는 고정·제외·미선택 중 하나만 가진다. 현재 모드에서 다시 누르면 선택을 해제한다.
+     * @param {number} n
+     */
     function toggleNumber(n) {
         if (selectionMode.value === 'locked') {
             if (lockedNumbers.has(n)) {
@@ -122,12 +159,17 @@ export function useRecommendation() {
         }
     }
 
+    /** @param {number} n */
     function stateOf(n) {
         if (lockedNumbers.has(n)) return 'locked';
         if (excludedNumbers.has(n)) return 'excluded';
         return 'unselected';
     }
 
+    /**
+     * @param {unknown} error
+     * @returns {string}
+     */
     function errorMessageFor(error) {
         // ProblemDetail의 detail은 이미 한국어 사용자 문구다(ApiExceptionHandler). 본문이 없는
         // 403(CSRF·세션 만료)은 http.js가 고정 안내 문구를 채워 준다.
@@ -147,6 +189,7 @@ export function useRecommendation() {
         const conditions = currentConditions();
 
         try {
+            /** @type {RecommendationResponse} */
             const response = await api.post(API.NUMBERS_RECOMMEND, {
                 strategy: conditions.strategy,
                 count: conditions.count,
@@ -167,7 +210,9 @@ export function useRecommendation() {
                 return;
             }
 
-            if (error?.body?.code === 'RECOMMENDATION_HISTORY_NOT_READY') {
+            /** @type {{ body?: { code?: string } }} */
+            const apiError = error ?? {};
+            if (apiError.body?.code === 'RECOMMENDATION_HISTORY_NOT_READY') {
                 status.value = 'history-not-ready';
                 errorMessage.value = null;
                 liveAnnouncement.value = '추천 이력이 아직 준비되지 않았습니다.';

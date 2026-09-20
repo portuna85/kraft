@@ -70,8 +70,12 @@
                           th:text="${post.modifiedDate != null}
                                    ? ${#temporals.format(post.modifiedDate, 'yyyy.MM.dd HH:mm')} : ''">2026.01.01 00:00</span>
                 </span>
-                <span class="post-list__views" th:text="${post.viewCount}">0</span>
-                <span class="post-list__comments" th:text="${post.commentCount}">0</span>
+                <span class="post-list__views">
+                    <span class="visually-hidden">조회 </span><span th:text="${post.viewCount}">0</span>
+                </span>
+                <span class="post-list__comments">
+                    <span class="visually-hidden">댓글 </span><span th:text="${post.commentCount}">0</span>
+                </span>
             </li>
         </ul>
 

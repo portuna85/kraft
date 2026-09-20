@@ -103,9 +103,28 @@ export default [
     {
         files: ['src/vue/**/*.vue'],
         languageOptions: {
-            globals: { ...globals.browser },
+            globals: {
+                ...globals.browser,
+                // <script setup> 컴파일러 매크로. 실제 함수가 아니라 컴파일 타임에 사라지는
+                // 문법이라 import 없이 쓰지만, no-undef 입장에서는 선언되지 않은 전역이다.
+                defineProps: 'readonly',
+                defineEmits: 'readonly',
+                defineExpose: 'readonly',
+                defineOptions: 'readonly',
+                defineSlots: 'readonly',
+                defineModel: 'readonly',
+                withDefaults: 'readonly',
+            },
         },
         rules: {
+            // eslint-plugin-vue의 flat/recommended는 vue/* 규칙만 준다 — <script> 안의 순수 JS
+            // 로직(미정의 변수, 미사용 변수)은 core 규칙이 없으면 검사되지 않는다. .js 블록과
+            // 같은 규칙 세트를 맞춘다(개선 보고서 F08).
+            ...js.configs.recommended.rules,
+            'no-var': 'error',
+            'prefer-const': 'error',
+            eqeqeq: ['error', 'smart'],
+            'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
             // 컴포넌트가 하나뿐인 마운트 대상(App.vue류)까지 다단어 이름을 강제할 필요는 없다.
             'vue/multi-word-component-names': 'off',
         },

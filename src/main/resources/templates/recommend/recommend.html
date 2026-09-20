@@ -31,8 +31,9 @@
                     aria-hidden="true">+</li>
                 <li th:if="${latestRoundBonusNumber != null}"
                     class="recommend__latest-ball recommend__latest-ball--bonus"
-                    th:classappend="${T(com.kraft.recommend.domain.LottoBallColor).cssClass(latestRoundBonusNumber)}"
-                    th:text="${latestRoundBonusNumber}"></li>
+                    th:classappend="${T(com.kraft.recommend.domain.LottoBallColor).cssClass(latestRoundBonusNumber)}">
+                    <span class="visually-hidden">보너스 </span><span th:text="${latestRoundBonusNumber}"></span>
+                </li>
             </ul>
 
             <dl th:if="${latestRoundFirstPrizeAmount != null}" class="recommend__latest-prize">

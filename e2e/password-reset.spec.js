@@ -83,6 +83,21 @@ test('가입되지 않은 주소도 같은 안내를 보여준다 — 응답으�
     await expect(page.locator('#forgot-password-done')).toContainText('가입된 주소라면 재설정 링크를 보냈습니다.');
 });
 
+/**
+ * F09: 완료 안내가 폼을 대체하지만 명시적인 상태 알림이나 포커스 이동이 없어, 스크린리더
+ * 사용자가 요청이 끝났다는 사실을 놓칠 수 있었다.
+ */
+test('링크 요청 후 완료 안내로 포커스가 옮겨가고 상태로 알려진다', async ({ page }) => {
+    await page.goto('/forgot-password');
+
+    await page.locator('#email').fill('nobody-here@e2e.test');
+    await page.locator('#btn-forgot-password').click();
+
+    const done = page.locator('#forgot-password-done');
+    await expect(done).toHaveAttribute('role', 'status');
+    await expect(done.locator('p').first()).toBeFocused();
+});
+
 test('만료되거나 없는 링크는 다시 요청하라고 알려준다', async ({ page }) => {
     await page.goto('/users/password-reset?token=this-token-does-not-exist');
 

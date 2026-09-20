@@ -14,7 +14,8 @@
     "build:css:bootstrap": "sass --load-path=node_modules/bootstrap/scss --style=compressed --no-source-map --quiet-deps src/styles/bootstrap-custom.scss src/main/resources/static/css/bootstrap.custom.css",
     "build:css:app": "sass --style=compressed --no-source-map --quiet-deps src/styles/style.scss src/main/resources/static/css/style.css",
     "build:vue": "vite build --config src/vue/vite.config.js",
-    "check:vue": "npm run build:vue && git diff --exit-code --stat -- src/main/resources/static/js/vue-dist"
+    "check:vue": "npm run build:vue && git diff --exit-code --stat -- src/main/resources/static/js/vue-dist",
+    "check:preload": "node scripts/check-preload.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

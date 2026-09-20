@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import { api, messageOf } from '@core/http.js';
 import * as flash from '@ui/flash.js';
 
@@ -15,12 +15,18 @@ import * as flash from '@ui/flash.js';
 const email = ref('');
 const sending = ref(false);
 const sent = ref(false);
+const doneHeading = ref(null);
 
 async function onSubmit() {
     sending.value = true;
     try {
         await api.post('/api/v1/users/password-reset', { email: email.value });
         sent.value = true;
+        // 폼이 사라지고 완료 안내로 바뀐다 — role="status"만으로는 스크린리더가 그 순간
+        // 읽어주지 않을 수 있어(개선 보고서 F09), 게시글 추천/추천 결과와 같은 패턴으로
+        // 안내 문단에 포커스를 옮긴다.
+        await nextTick();
+        doneHeading.value?.focus();
     } catch (error) {
         flash.showError(messageOf(error));
     } finally {
@@ -33,8 +39,14 @@ async function onSubmit() {
   <div
     v-if="sent"
     id="forgot-password-done"
+    role="status"
   >
-    <p>가입된 주소라면 재설정 링크를 보냈습니다. 메일함을 확인해 주세요.</p>
+    <p
+      ref="doneHeading"
+      tabindex="-1"
+    >
+      가입된 주소라면 재설정 링크를 보냈습니다. 메일함을 확인해 주세요.
+    </p>
     <p class="text-muted">
       링크는 30분 동안 한 번만 사용할 수 있습니다. 메일이 오지 않았다면 주소를 다시 확인해 주세요.
     </p>

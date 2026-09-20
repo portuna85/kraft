@@ -45,6 +45,18 @@ export default defineConfig({
                 entryFileNames: '[name].js',
                 chunkFileNames: 'chunks/[name].js',
                 assetFileNames: '[name][extname]',
+                // 모든 화면이 공유하는 Vue 런타임 + core/http.js를 "runtime"이라는 고정 이름의
+                // 청크로 명시적으로 묶는다. Rollup의 자동 청크 분리에 맡기면 이 공유 청크의
+                // 이름이 모듈 그래프가 바뀔 때마다 달라질 수 있는데(예: 지금은 http.js로
+                // 불린다), 템플릿의 modulepreload가 그 이름을 하드코딩하고 있어 이름이
+                // 바뀌면 조용히 어긋난다(개선 보고서 F07). 이름을 고정해 그 경로 자체를
+                // 없애고, scripts/check-preload.mjs가 그래도 어긋나면 빌드를 실패시킨다.
+                manualChunks(id) {
+                    if (id.includes('/node_modules/vue/') || id.includes('/node_modules/@vue/') || id.endsWith('/core/http.js')) {
+                        return 'runtime';
+                    }
+                    return undefined;
+                },
             },
         },
     },
