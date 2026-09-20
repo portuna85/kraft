@@ -12,8 +12,9 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 /**
- * {@link DhLotteryClient}가 성공/아직 추첨 전/신뢰할 수 없는 응답(봇 차단 HTML 등)을
- * 올바르게 구분하는지 확인한다. 실제 네트워크를 쓰지 않고 {@link MockRestServiceServer}로
+ * {@link DhLotteryClient}가 성공/아직 추첨 전/신뢰할 수 없는 응답(홈페이지로 리다이렉트되는
+ * 등)을 올바르게 구분하는지, 그리고 한 번 받은 배치를 캐시해 같은 배치에 속한 회차는 다시
+ * 요청하지 않는지 확인한다. 실제 네트워크를 쓰지 않고 {@link MockRestServiceServer}로
  * 응답을 흉내낸다.
  */
 class DhLotteryClientTest {
@@ -27,15 +28,15 @@ class DhLotteryClientTest {
     }
 
     @Test
-    @DisplayName("성공 응답이면 검증된 번호 6개를 담은 Success를 반환한다")
+    @DisplayName("성공 응답이면 요청한 회차의 검증된 번호 6개를 담은 Success를 반환한다")
     void success_returnsValidatedDraw() {
         MockRestServiceServer[] serverOut = new MockRestServiceServer[1];
         DhLotteryClient client = newClient(serverOut);
-        serverOut[0].expect(requestTo(BASE_URL + "/common.do?method=getLottoNumber&drwNo=1241"))
+        serverOut[0].expect(requestTo(BASE_URL + "/lt645/selectPstLt645InfoNew.do?srchDir=center&srchLtEpsd=1241"))
                 .andRespond(withSuccess("""
-                        {"returnValue":"success","drwNo":1241,
-                         "drwtNo1":7,"drwtNo2":13,"drwtNo3":16,"drwtNo4":23,"drwtNo5":24,"drwtNo6":43,
-                         "bnusNo":9}
+                        {"resultCode":null,"resultMessage":null,"data":{"list":[
+                          {"ltEpsd":1241,"tm1WnNo":7,"tm2WnNo":13,"tm3WnNo":16,"tm4WnNo":23,"tm5WnNo":24,"tm6WnNo":43,"bnsWnNo":9}
+                        ]}}
                         """, MediaType.APPLICATION_JSON));
 
         DhLotteryClient.FetchOutcome outcome = client.fetchRound(1241);
@@ -47,12 +48,37 @@ class DhLotteryClientTest {
     }
 
     @Test
-    @DisplayName("returnValue가 success가 아니면 NotYetDrawn을 반환한다")
-    void notYetDrawn_whenReturnValueIsNotSuccess() {
+    @DisplayName("배치에 여러 회차가 함께 오면 캐시해 두고, 같은 배치에 속한 다른 회차는 다시 요청하지 않는다")
+    void success_cachesRestOfBatch() {
         MockRestServiceServer[] serverOut = new MockRestServiceServer[1];
         DhLotteryClient client = newClient(serverOut);
-        serverOut[0].expect(requestTo(BASE_URL + "/common.do?method=getLottoNumber&drwNo=9999"))
-                .andRespond(withSuccess("{\"returnValue\":\"fail\"}", MediaType.APPLICATION_JSON));
+        serverOut[0].expect(requestTo(BASE_URL + "/lt645/selectPstLt645InfoNew.do?srchDir=center&srchLtEpsd=1239"))
+                .andRespond(withSuccess("""
+                        {"resultCode":null,"resultMessage":null,"data":{"list":[
+                          {"ltEpsd":1240,"tm1WnNo":11,"tm2WnNo":13,"tm3WnNo":19,"tm4WnNo":20,"tm5WnNo":31,"tm6WnNo":44,"bnsWnNo":27},
+                          {"ltEpsd":1239,"tm1WnNo":11,"tm2WnNo":13,"tm3WnNo":22,"tm4WnNo":32,"tm5WnNo":33,"tm6WnNo":36,"bnsWnNo":8}
+                        ]}}
+                        """, MediaType.APPLICATION_JSON));
+
+        DhLotteryClient.FetchOutcome first = client.fetchRound(1239);
+        DhLotteryClient.FetchOutcome second = client.fetchRound(1240);
+
+        serverOut[0].verify();
+        assertThat(((DhLotteryClient.FetchOutcome.Success) first).draw().roundNo()).isEqualTo(1239);
+        assertThat(((DhLotteryClient.FetchOutcome.Success) second).draw().roundNo()).isEqualTo(1240);
+    }
+
+    @Test
+    @DisplayName("응답 목록에 요청한 회차가 없으면 NotYetDrawn을 반환한다")
+    void notYetDrawn_whenRequestedRoundMissingFromList() {
+        MockRestServiceServer[] serverOut = new MockRestServiceServer[1];
+        DhLotteryClient client = newClient(serverOut);
+        serverOut[0].expect(requestTo(BASE_URL + "/lt645/selectPstLt645InfoNew.do?srchDir=center&srchLtEpsd=9999"))
+                .andRespond(withSuccess("""
+                        {"resultCode":null,"resultMessage":null,"data":{"list":[
+                          {"ltEpsd":1242,"tm1WnNo":2,"tm2WnNo":4,"tm3WnNo":10,"tm4WnNo":16,"tm5WnNo":31,"tm6WnNo":41,"bnsWnNo":9}
+                        ]}}
+                        """, MediaType.APPLICATION_JSON));
 
         DhLotteryClient.FetchOutcome outcome = client.fetchRound(9999);
 
@@ -60,12 +86,12 @@ class DhLotteryClientTest {
     }
 
     @Test
-    @DisplayName("JSON이 아닌 응답(봇 차단 대기실 HTML 등)은 NotYetDrawn이 아니라 Unavailable로 분류한다")
+    @DisplayName("JSON이 아닌 응답(홈페이지로 리다이렉트되는 HTML 등)은 NotYetDrawn이 아니라 Unavailable로 분류한다")
     void unavailable_whenResponseIsNotJson() {
         MockRestServiceServer[] serverOut = new MockRestServiceServer[1];
         DhLotteryClient client = newClient(serverOut);
-        serverOut[0].expect(requestTo(BASE_URL + "/common.do?method=getLottoNumber&drwNo=1241"))
-                .andRespond(withSuccess("<html><body>서비스 접근 대기 중입니다</body></html>", MediaType.TEXT_HTML));
+        serverOut[0].expect(requestTo(BASE_URL + "/lt645/selectPstLt645InfoNew.do?srchDir=center&srchLtEpsd=1241"))
+                .andRespond(withSuccess("<html><body>The document has been moved.</body></html>", MediaType.TEXT_HTML));
 
         DhLotteryClient.FetchOutcome outcome = client.fetchRound(1241);
 
@@ -77,7 +103,7 @@ class DhLotteryClientTest {
     void unavailable_onHttpError() {
         MockRestServiceServer[] serverOut = new MockRestServiceServer[1];
         DhLotteryClient client = newClient(serverOut);
-        serverOut[0].expect(requestTo(BASE_URL + "/common.do?method=getLottoNumber&drwNo=1241"))
+        serverOut[0].expect(requestTo(BASE_URL + "/lt645/selectPstLt645InfoNew.do?srchDir=center&srchLtEpsd=1241"))
                 .andRespond(withServerError());
 
         DhLotteryClient.FetchOutcome outcome = client.fetchRound(1241);
@@ -90,10 +116,11 @@ class DhLotteryClientTest {
     void unavailable_whenNumbersAreInvalid() {
         MockRestServiceServer[] serverOut = new MockRestServiceServer[1];
         DhLotteryClient client = newClient(serverOut);
-        serverOut[0].expect(requestTo(BASE_URL + "/common.do?method=getLottoNumber&drwNo=1241"))
+        serverOut[0].expect(requestTo(BASE_URL + "/lt645/selectPstLt645InfoNew.do?srchDir=center&srchLtEpsd=1241"))
                 .andRespond(withSuccess("""
-                        {"returnValue":"success","drwNo":1241,
-                         "drwtNo1":0,"drwtNo2":13,"drwtNo3":16,"drwtNo4":23,"drwtNo5":24,"drwtNo6":43}
+                        {"resultCode":null,"resultMessage":null,"data":{"list":[
+                          {"ltEpsd":1241,"tm1WnNo":0,"tm2WnNo":13,"tm3WnNo":16,"tm4WnNo":23,"tm5WnNo":24,"tm6WnNo":43,"bnsWnNo":9}
+                        ]}}
                         """, MediaType.APPLICATION_JSON));
 
         DhLotteryClient.FetchOutcome outcome = client.fetchRound(1241);

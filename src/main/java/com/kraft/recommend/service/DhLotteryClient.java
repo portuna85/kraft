@@ -12,14 +12,26 @@ import org.springframework.web.client.RestClientException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 동행복권의 비공식·내부용 회차 조회 주소 하나만 알고 있는 얇은 클라이언트. 공식 문서화된
- * API가 아니다 — 응답 형식이 예고 없이 바뀌거나, 자동화된 접근이 차단될 수 있다(실제로 이
- * 기능을 설계하며 {@code drwNo=1241}을 요청했을 때 JSON 대신 봇 차단 대기실 HTML을 받은
- * 사례가 있다). 그래서 이 클래스는 "성공"과 "실패"를 예외가 아니라 {@link FetchOutcome}로
- * 명시적으로 구분해, 호출자가 실패 종류(아직 추첨 전 vs 신뢰할 수 없는 응답)를 혼동하지
- * 않게 한다.
+ * API가 아니다 — 응답 형식이 예고 없이 바뀔 수 있다(실제로 예전에 쓰던
+ * {@code common.do?method=getLottoNumber}는 어느 시점부터 요청과 무관하게 홈페이지로
+ * 302 리다이렉트만 돌려주게 되었다 — curl과 실제 브라우저 세션 모두에서 재현 확인).
+ * 지금은 로또6/45 추첨결과 화면(신규 SPA)이 내부적으로 쓰는
+ * {@code lt645/selectPstLt645InfoNew.do}를 대신 쓴다.
+ * <p>
+ * 이 주소는 회차 하나가 아니라 요청한 회차를 포함한 최근 10개 회차를 한 번에 돌려준다
+ * (범위를 벗어나면 1회차 쪽으로 잘림). 그래서 {@link #fetchRound(int)}는 매번 새로 HTTP
+ * 요청을 보내는 대신, 마지막으로 받은 배치를 {@code cache}에 담아 두고 이미 받아 온 회차는
+ * 캐시에서 바로 돌려준다 — 백필처럼 회차를 순차로 조회할 때 실제 요청 수를 최대 1/10로
+ * 줄이기 위함이다. 새 배치를 받으면 이전 캐시는 버린다(이 클래스가 필요한 건 "다음에 조회할
+ * 회차"뿐이라 전체 이력을 누적해 들고 있을 이유가 없다).
+ * <p>
+ * 그래도 "성공"과 "실패"는 예외가 아니라 {@link FetchOutcome}로 명시적으로 구분해, 호출자가
+ * 실패 종류(아직 추첨 전 vs 신뢰할 수 없는 응답)를 혼동하지 않게 한다.
  * <p>
  * DB·트랜잭션을 전혀 모른다 — 회차 하나를 조회하는 것만 담당하며,
  * {@link RecommendationAutoFetchScheduler}와 백필 러너가 함께 재사용한다.
@@ -29,9 +41,10 @@ import java.util.List;
 public class DhLotteryClient {
 
     private static final String BASE_URL = "https://www.dhlottery.co.kr";
-    private static final String PATH = "/common.do?method=getLottoNumber&drwNo={drwNo}";
+    private static final String PATH = "/lt645/selectPstLt645InfoNew.do?srchDir=center&srchLtEpsd={drwNo}";
 
     private final RestClient restClient;
+    private final Map<Integer, ImportedDraw> cache = new ConcurrentHashMap<>();
 
     @Autowired
     public DhLotteryClient(
@@ -61,48 +74,73 @@ public class DhLotteryClient {
      * try/catch 없이 세 가지 결과만 분기하면 되게 하기 위함이다.
      */
     public FetchOutcome fetchRound(int drwNo) {
-        DhLotteryResponse response;
+        ImportedDraw cached = cache.get(drwNo);
+        if (cached != null) {
+            return new FetchOutcome.Success(cached);
+        }
+
+        DhLotteryBatchResponse response;
         try {
             response = restClient.get()
                     .uri(PATH, drwNo)
                     .retrieve()
-                    .body(DhLotteryResponse.class);
+                    .body(DhLotteryBatchResponse.class);
         } catch (RestClientException e) {
             log.warn("동행복권 회차 {} 조회 실패(전송 오류): {}", drwNo, e.getMessage());
             return new FetchOutcome.Unavailable("HTTP_ERROR: " + e.getMessage());
         } catch (Exception e) {
-            // 봇 차단 대기실처럼 JSON이 아닌 응답(HTML 등)이 오면 메시지 컨버터가 여기서 실패한다.
+            // 홈페이지로 리다이렉트되는 등 JSON이 아닌 응답(HTML 등)이 오면 메시지 컨버터가
+            // 여기서 실패한다.
             log.warn("동행복권 회차 {} 조회 실패(응답을 JSON으로 해석할 수 없음): {}", drwNo, e.getMessage());
             return new FetchOutcome.Unavailable("UNPARSEABLE_RESPONSE: " + e.getMessage());
         }
 
-        if (response == null || !"success".equals(response.returnValue())) {
+        List<DhLotteryDrawItem> items = response == null || response.data() == null
+                ? List.of()
+                : response.data().list();
+        if (items == null) {
+            items = List.of();
+        }
+
+        cache.clear();
+        boolean requestedRoundExists = false;
+        for (DhLotteryDrawItem item : items) {
+            if (item.ltEpsd() == drwNo) {
+                requestedRoundExists = true;
+            }
+            List<Integer> numbers = new ArrayList<>(List.of(
+                    item.tm1WnNo(), item.tm2WnNo(), item.tm3WnNo(),
+                    item.tm4WnNo(), item.tm5WnNo(), item.tm6WnNo()));
+            try {
+                LottoNumbers.of(numbers);
+                cache.put(item.ltEpsd(), new ImportedDraw(item.ltEpsd(), numbers));
+            } catch (RuntimeException e) {
+                log.warn("동행복권 회차 {} 응답의 번호가 유효하지 않음: {}", item.ltEpsd(), e.getMessage());
+            }
+        }
+
+        if (!requestedRoundExists) {
             return new FetchOutcome.NotYetDrawn();
         }
-        if (!Integer.valueOf(drwNo).equals(response.drwNo())) {
-            log.warn("동행복권 회차 {} 조회 응답의 회차가 일치하지 않음: {}", drwNo, response.drwNo());
-            return new FetchOutcome.Unavailable("ROUND_MISMATCH: requested=" + drwNo + " got=" + response.drwNo());
+        ImportedDraw draw = cache.get(drwNo);
+        if (draw == null) {
+            return new FetchOutcome.Unavailable("INVALID_NUMBERS: round=" + drwNo);
         }
-
-        List<Integer> numbers = new ArrayList<>(List.of(
-                response.drwtNo1(), response.drwtNo2(), response.drwtNo3(),
-                response.drwtNo4(), response.drwtNo5(), response.drwtNo6()));
-        try {
-            LottoNumbers.of(numbers);
-        } catch (RuntimeException e) {
-            log.warn("동행복권 회차 {} 응답의 번호가 유효하지 않음: {}", drwNo, e.getMessage());
-            return new FetchOutcome.Unavailable("INVALID_NUMBERS: " + e.getMessage());
-        }
-
-        return new FetchOutcome.Success(new ImportedDraw(drwNo, numbers));
+        return new FetchOutcome.Success(draw);
     }
 
-    /** {@code returnValue}가 "success"가 아닌 나머지 필드는 신뢰하지 않는다. */
-    record DhLotteryResponse(
-            String returnValue,
-            Integer drwNo,
-            Integer drwtNo1, Integer drwtNo2, Integer drwtNo3,
-            Integer drwtNo4, Integer drwtNo5, Integer drwtNo6) {
+    /** {@code data.list}만 쓴다 — {@code resultCode}·{@code resultMessage}는 성공 시 비어 있다. */
+    record DhLotteryBatchResponse(String resultCode, String resultMessage, DhLotteryBatchData data) {
+    }
+
+    record DhLotteryBatchData(List<DhLotteryDrawItem> list) {
+    }
+
+    /** 당첨금 등 나머지 필드는 이 기능에 필요 없어 매핑하지 않는다(알 수 없는 필드는 무시됨). */
+    record DhLotteryDrawItem(
+            int ltEpsd,
+            Integer tm1WnNo, Integer tm2WnNo, Integer tm3WnNo,
+            Integer tm4WnNo, Integer tm5WnNo, Integer tm6WnNo) {
     }
 
     public sealed interface FetchOutcome {
