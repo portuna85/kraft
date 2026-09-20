@@ -87,7 +87,10 @@ export function useRecommendation() {
     }
 
     const isStale = computed(() => {
-        if (status.value !== 'ready' || !lastConditions.value) {
+        // status가 아니라 "표시 중인 result가 현재 조건과 다른가"만 본다 — 조건을 바꾸고
+        // 재시도했다가 generating/error/history-not-ready로 빠져도 이전 result는 화면에 남아
+        // 있으므로, 이 상태들에서도 조건 변경 안내를 계속 보여줘야 한다(개선 보고서 F02).
+        if (!lastConditions.value || !result.value) {
             return false;
         }
         const current = currentConditions();

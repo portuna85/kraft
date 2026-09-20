@@ -350,3 +350,73 @@ test('F09(검증): 서버 시간대와 다른 브라우저에서는 새로 단 �
 
     await context.close();
 });
+
+/**
+ * F01: "더 보기" 응답이 지연되는 동안 새 댓글을 등록해 totalCount를 로컬에서 22로 올려도,
+ * 늦게 도착한 페이지 응답의 totalCount(21)로 되돌아가면 안 된다. mutationSeq가 이 되돌림을
+ * 막는다(useRecommendation과 같은 종류의 "응답 순서 뒤집기" 재현).
+ */
+test('더 보기 응답이 지연되는 동안 등록한 댓글의 개수가 되돌아가지 않는다', async ({ page }) => {
+    test.slow();
+    await openOwnPost(page);
+    await seedComments(page, 21);
+    await page.reload();
+    await expect(page.locator('.comment-list__content')).toHaveCount(20);
+    await expect(page.locator('#btn-comments-load-more')).toBeVisible();
+
+    let releasePage;
+    const gate = new Promise((resolve) => {
+        releasePage = resolve;
+    });
+    await page.route(/\/api\/v1\/posts\/\d+\/comments\/page/, async (route) => {
+        await gate;
+        await route.continue();
+    });
+
+    await page.locator('#btn-comments-load-more').click();
+
+    await page.locator('#comment-content').fill('더 보기 진행 중에 단 댓글');
+    await page.locator('#btn-comment-save').click();
+    await expect(page.locator('.comment-list__content')).toHaveCount(21);
+    await expect(page.locator('#comments-heading')).toContainText('댓글 22개');
+
+    releasePage();
+    await expect(page.locator('#btn-comments-load-more')).toBeHidden();
+    // 더 보기 응답의 totalCount(21)가 방금 로컬에서 올린 22를 덮어쓰면 안 된다.
+    await expect(page.locator('#comments-heading')).toContainText('댓글 22개');
+    await expect(page.locator('.comment-list__content')).toHaveCount(22);
+});
+
+/**
+ * F01: 같은 경쟁을 답글 등록으로 재현한다 — 답글도 totalCount를 증감하므로 같은 mutationSeq
+ * 가드를 거친다.
+ */
+test('더 보기 응답이 지연되는 동안 등록한 답글의 개수가 되돌아가지 않는다', async ({ page }) => {
+    test.slow();
+    await openOwnPost(page);
+    await seedComments(page, 21);
+    await page.reload();
+    await expect(page.locator('.comment-list__content')).toHaveCount(20);
+
+    let releasePage;
+    const gate = new Promise((resolve) => {
+        releasePage = resolve;
+    });
+    await page.route(/\/api\/v1\/posts\/\d+\/comments\/page/, async (route) => {
+        await gate;
+        await route.continue();
+    });
+
+    await page.locator('#btn-comments-load-more').click();
+
+    await page.locator('.btn-comment-reply').first().click();
+    const replyForm = page.locator('.comment-reply-form').first();
+    await expect(replyForm).toBeVisible();
+    await replyForm.locator('textarea').fill('더 보기 진행 중에 단 답글');
+    await replyForm.getByRole('button', { name: '답글 등록' }).click();
+    await expect(page.locator('#comments-heading')).toContainText('댓글 22개');
+
+    releasePage();
+    await expect(page.locator('#btn-comments-load-more')).toBeHidden();
+    await expect(page.locator('#comments-heading')).toContainText('댓글 22개');
+});

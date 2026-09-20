@@ -36,15 +36,24 @@ const lastLoadedId = ref(props.initialComments.at(-1)?.id ?? null);
 const newContent = ref('');
 const saving = ref(false);
 
+// 등록·답글·삭제처럼 totalCount를 로컬에서 증감시키는 동작이 있을 때마다 올린다. loadMore()가
+// 응답을 받은 시점에 이 값이 요청 시작 때와 다르면, 그 사이 등록/답글/삭제가 있었다는 뜻이므로
+// 이미 정확한 로컬 totalCount를 낡은 page.totalCount로 덮어쓰지 않는다(개선 보고서 F01).
+const mutationSeq = ref(0);
+// 삭제된 최상위 댓글 id. 삭제 요청과 겹쳐 진행 중이던 "더 보기" 응답에 그 댓글이 다시
+// 들어있어도 되살아나지 않게 막는다.
+const deletedIds = reactive(new Set());
+
 // 로컬에서 낙관적으로 추가한 새 댓글과 "더 보기"로 받아 온 서버 페이지가 겹칠 수 있다
 // (같은 댓글이 새 등록 응답과 다음 페이지 응답 양쪽에 나타남). id 기준으로 중복을 걸러내고
 // 항상 오름차순을 유지해, 이미 들어와 있는 항목을 다시 push하지 않는다.
 function mergeComments(newItems) {
     const existingIds = new Set(comments.map((c) => String(c.id)));
     for (const item of newItems) {
-        if (!existingIds.has(String(item.id))) {
+        const id = String(item.id);
+        if (!existingIds.has(id) && !deletedIds.has(id)) {
             comments.push(item);
-            existingIds.add(String(item.id));
+            existingIds.add(id);
         }
     }
     comments.sort((a, b) => Number(a.id) - Number(b.id));
@@ -52,12 +61,17 @@ function mergeComments(newItems) {
 
 async function loadMore() {
     loadingMore.value = true;
+    const seqAtStart = mutationSeq.value;
     try {
         const page = await api.get(
             `${API.POSTS}/${props.postId}/comments/page?afterId=${lastLoadedId.value}`,
         );
         mergeComments(page.comments);
-        totalCount.value = page.totalCount;
+        // 요청이 진행되는 동안 등록/답글/삭제가 없었을 때만 이 응답의 totalCount를 믿는다.
+        // 그사이 변경이 있었다면 로컬에서 이미 정확히 증감된 값을 유지한다.
+        if (mutationSeq.value === seqAtStart) {
+            totalCount.value = page.totalCount;
+        }
         hasMore.value = page.hasMore;
         if (page.comments.length > 0) {
             lastLoadedId.value = page.comments.at(-1).id;
@@ -91,6 +105,7 @@ async function save() {
         // lastLoadedId는 건드리지 않는다 — 아직 안 불러온 더 오래된 댓글이 있다면(hasMore),
         // 새 댓글의 id로 커서를 앞당기면 "더 보기"가 그 구간을 건너뛰게 된다.
         totalCount.value += 1;
+        mutationSeq.value += 1;
         if (newContent.value === content) {
             newContent.value = '';
         }
@@ -134,6 +149,7 @@ function onReplied({ parentId, reply }) {
         parent.replies.push(reply);
     }
     totalCount.value += 1;
+    mutationSeq.value += 1;
     flash.showNow('COMMENT_SAVED');
 }
 
@@ -148,7 +164,9 @@ function onExternalDelete(event) {
     if (topIndex !== -1) {
         const removed = 1 + (comments[topIndex].replies?.length ?? 0);
         comments.splice(topIndex, 1);
+        deletedIds.add(String(id));
         totalCount.value -= removed;
+        mutationSeq.value += 1;
         return;
     }
 
@@ -158,6 +176,7 @@ function onExternalDelete(event) {
         if (replyIndex !== -1) {
             comment.replies.splice(replyIndex, 1);
             totalCount.value -= 1;
+            mutationSeq.value += 1;
             return;
         }
     }

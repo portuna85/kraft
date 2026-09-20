@@ -43,7 +43,15 @@ function clearPicture() {
 }
 
 async function onSubmit() {
+    if (saving.value) {
+        return;
+    }
     saving.value = true;
+
+    // 업로드를 기다리는 동안 입력을 잠그지만(:disabled="saving"), 편집 화면과 동일하게 제출
+    // 시점 값을 한 번 더 스냅샷으로 고정해 둔다 — 최종 요청은 항상 이 스냅샷을 쓴다(개선
+    // 보고서 F03).
+    const snapshot = { title: draft.title, content: draft.content, category: draft.category };
 
     let pictureUrl = null;
     try {
@@ -61,10 +69,10 @@ async function onSubmit() {
     progressText.value = '게시글 등록 중…';
     try {
         await api.post(API.POSTS, {
-            title: draft.title,
-            content: draft.content,
+            title: snapshot.title,
+            content: snapshot.content,
             picture: pictureUrl,
-            category: draft.category,
+            category: snapshot.category,
         });
         picture.revokePreview();
         flash.set('POST_SAVED');
@@ -96,6 +104,7 @@ async function onSubmit() {
         placeholder="제목을 입력하세요"
         maxlength="255"
         required
+        :disabled="saving"
       >
     </div>
     <div class="mb-3">
@@ -104,6 +113,7 @@ async function onSubmit() {
         id="category"
         v-model="draft.category"
         class="form-select"
+        :disabled="saving"
       >
         <option
           v-for="option in categoryOptions"
@@ -136,6 +146,7 @@ async function onSubmit() {
         placeholder="내용을 입력하세요"
         maxlength="10000"
         required
+        :disabled="saving"
       />
     </div>
     <div class="mb-3">
