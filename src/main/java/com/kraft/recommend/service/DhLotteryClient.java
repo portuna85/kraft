@@ -1,5 +1,6 @@
 package com.kraft.recommend.service;
 
+import com.kraft.recommend.domain.DrawDetails;
 import com.kraft.recommend.domain.LottoNumbers;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +11,8 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -113,7 +116,7 @@ public class DhLotteryClient {
                     item.tm4WnNo(), item.tm5WnNo(), item.tm6WnNo()));
             try {
                 LottoNumbers.of(numbers);
-                cache.put(item.ltEpsd(), new ImportedDraw(item.ltEpsd(), numbers));
+                cache.put(item.ltEpsd(), new ImportedDraw(item.ltEpsd(), numbers, buildDetails(item)));
             } catch (RuntimeException e) {
                 log.warn("동행복권 회차 {} 응답의 번호가 유효하지 않음: {}", item.ltEpsd(), e.getMessage());
             }
@@ -129,6 +132,28 @@ public class DhLotteryClient {
         return new FetchOutcome.Success(draw);
     }
 
+    /**
+     * 화면 표시용 부가 정보({@link DrawDetails})를 만든다. 개별 필드가 이상해도(범위 밖
+     * 보너스 번호, 해석 안 되는 날짜) 그 필드만 null로 남기고 나머지는 살린다 — 부가 정보
+     * 하나가 깨졌다고 본번호 6개 이력 반영까지 막을 이유가 없다.
+     */
+    private DrawDetails buildDetails(DhLotteryDrawItem item) {
+        Integer bonus = item.bnsWnNo();
+        if (bonus != null && (bonus < LottoNumbers.MIN || bonus > LottoNumbers.MAX)) {
+            log.warn("동행복권 회차 {} 보너스 번호가 범위를 벗어남: {}", item.ltEpsd(), bonus);
+            bonus = null;
+        }
+        LocalDate drawDate = null;
+        if (item.ltRflYmd() != null) {
+            try {
+                drawDate = LocalDate.parse(item.ltRflYmd(), DateTimeFormatter.BASIC_ISO_DATE);
+            } catch (RuntimeException e) {
+                log.warn("동행복권 회차 {} 추첨일 형식을 해석할 수 없음: {}", item.ltEpsd(), item.ltRflYmd());
+            }
+        }
+        return new DrawDetails(bonus, drawDate, item.rnk1WnNope(), item.rnk1WnAmt());
+    }
+
     /** {@code data.list}만 쓴다 — {@code resultCode}·{@code resultMessage}는 성공 시 비어 있다. */
     record DhLotteryBatchResponse(String resultCode, String resultMessage, DhLotteryBatchData data) {
     }
@@ -136,11 +161,17 @@ public class DhLotteryClient {
     record DhLotteryBatchData(List<DhLotteryDrawItem> list) {
     }
 
-    /** 당첨금 등 나머지 필드는 이 기능에 필요 없어 매핑하지 않는다(알 수 없는 필드는 무시됨). */
+    /**
+     * 당첨자 인원수 이상의 등수별 상세(2등 이하, 누적 판매액 등)는 이 기능에 필요 없어 매핑하지
+     * 않는다(알 수 없는 필드는 무시됨). {@code bnsWnNo}(보너스 번호)·{@code ltRflYmd}(추첨일,
+     * yyyyMMdd)·{@code rnk1WnNope}(1등 당첨자 수)·{@code rnk1WnAmt}(1등 1인당 당첨금)는
+     * 화면 표시 전용 부가 정보({@link DrawDetails})로만 쓰인다.
+     */
     record DhLotteryDrawItem(
             int ltEpsd,
             Integer tm1WnNo, Integer tm2WnNo, Integer tm3WnNo,
-            Integer tm4WnNo, Integer tm5WnNo, Integer tm6WnNo) {
+            Integer tm4WnNo, Integer tm5WnNo, Integer tm6WnNo,
+            Integer bnsWnNo, String ltRflYmd, Integer rnk1WnNope, Long rnk1WnAmt) {
     }
 
     public sealed interface FetchOutcome {

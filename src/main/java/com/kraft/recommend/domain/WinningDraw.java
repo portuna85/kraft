@@ -13,13 +13,19 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.domain.Persistable;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 검증된 당첨 회차의 본번호 6개(V20__recommendation_history.sql). 보너스 번호·등수·당첨금은
- * 저장하지 않는다 — 본번호 6개 완전 일치 제외(HIST-01)에만 쓰인다. 동일 조합이 여러 회차에
- * 나올 수 있으므로 번호 조합에는 UNIQUE 제약을 두지 않는다.
+ * 검증된 당첨 회차의 본번호 6개(V20__recommendation_history.sql). 이력 제외 판정(HIST-01,
+ * {@link #mask()})은 본번호 6개만 쓴다 — 동일 조합이 여러 회차에 나올 수 있으므로 번호 조합에는
+ * UNIQUE 제약을 두지 않는다.
+ * <p>
+ * 보너스 번호·추첨일·1등 당첨자 수·1등 1인당 당첨금(V21__recommendation_winning_draw_details.sql)은
+ * 번호 추천 화면이 최신 회차를 보여줄 때만 쓰는 순수 표시용 부가 정보다 — HIST-01 판정에는
+ * 전혀 관여하지 않으며, 없어도(과거에 반영된 회차처럼 전부 null이어도) 추천 기능은 그대로
+ * 동작한다.
  * <p>
  * {@code round_no}가 자동 생성이 아니라 수동 할당 ID라서 {@link Persistable}을 구현한다 —
  * 그렇지 않으면 Spring Data JPA의 기본 {@code isNew()} 판정(ID가 null이 아니면 "기존 행")이
@@ -54,6 +60,15 @@ public class WinningDraw implements Persistable<Integer> {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    @Column(name = "bonus_no")
+    private Integer bonusNo;
+    @Column(name = "draw_date")
+    private LocalDate drawDate;
+    @Column(name = "first_prize_winner_count")
+    private Integer firstPrizeWinnerCount;
+    @Column(name = "first_prize_amount")
+    private Long firstPrizeAmount;
 
     @Builder
     public WinningDraw(Integer roundNo, List<Integer> numbers, LocalDateTime updatedAt) {
@@ -111,5 +126,20 @@ public class WinningDraw implements Persistable<Integer> {
         this.n5 = numbers.get(4);
         this.n6 = numbers.get(5);
         this.updatedAt = updatedAt;
+    }
+
+    /**
+     * 화면 표시 전용 부가 정보를 반영한다(HIST-01 판정과 무관). {@code details}가 null이면
+     * 아무것도 하지 않는다 — 부가 정보를 못 받아온 반영(details 없는 {@code ImportedDraw})이
+     * 이미 알고 있던 부가 정보를 조용히 지우지 않게 하기 위함이다.
+     */
+    public void applyDetails(DrawDetails details) {
+        if (details == null) {
+            return;
+        }
+        this.bonusNo = details.bonusNo();
+        this.drawDate = details.drawDate();
+        this.firstPrizeWinnerCount = details.firstPrizeWinnerCount();
+        this.firstPrizeAmount = details.firstPrizeAmount();
     }
 }

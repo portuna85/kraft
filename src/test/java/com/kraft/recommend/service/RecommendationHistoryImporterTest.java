@@ -1,5 +1,6 @@
 package com.kraft.recommend.service;
 
+import com.kraft.recommend.domain.DrawDetails;
 import com.kraft.recommend.domain.RecommendationHistoryState;
 import com.kraft.recommend.domain.RecommendationHistoryStateRepository;
 import com.kraft.recommend.domain.RecommendationImportException;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -167,6 +169,35 @@ class RecommendationHistoryImporterTest {
                 .isInstanceOf(RecommendationImportException.class)
                 .hasFieldOrPropertyWithValue("reason", "MISSING_ROUND");
         assertThat(winningDrawRepository.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("신규 반영 시 부가 정보(보너스·추첨일·1등 당첨금)도 함께 저장된다")
+    void newRound_alsoStoresDetails() {
+        DrawDetails details = new DrawDetails(9, LocalDate.of(2026, 9, 12), 18, 1_628_391_980L);
+
+        importer.importHistory(List.of(new ImportedDraw(1, List.of(1, 2, 3, 4, 5, 6), details)), 1, "src");
+
+        WinningDraw saved = winningDrawRepository.findById(1).orElseThrow();
+        assertThat(saved.getBonusNo()).isEqualTo(9);
+        assertThat(saved.getDrawDate()).isEqualTo(LocalDate.of(2026, 9, 12));
+        assertThat(saved.getFirstPrizeWinnerCount()).isEqualTo(18);
+        assertThat(saved.getFirstPrizeAmount()).isEqualTo(1_628_391_980L);
+    }
+
+    @Test
+    @DisplayName("부가 정보 없는 재반영은 이미 저장된 부가 정보를 지우지 않는다")
+    void reimportWithoutDetails_keepsExistingDetails() {
+        DrawDetails details = new DrawDetails(9, LocalDate.of(2026, 9, 12), 18, 1_628_391_980L);
+        importer.importHistory(List.of(new ImportedDraw(1, List.of(1, 2, 3, 4, 5, 6), details)), 1, "src-v1");
+
+        // 2-인자 생성자 -> details == null (부가 정보를 못 받아온 반영을 흉내낸다).
+        importer.importHistory(List.of(new ImportedDraw(1, List.of(1, 2, 3, 4, 5, 6))), 1, "src-v2");
+
+        WinningDraw saved = winningDrawRepository.findById(1).orElseThrow();
+        assertThat(saved.getBonusNo()).isEqualTo(9);
+        assertThat(saved.getDrawDate()).isEqualTo(LocalDate.of(2026, 9, 12));
+        assertThat(saved.getFirstPrizeAmount()).isEqualTo(1_628_391_980L);
     }
 
     @Test

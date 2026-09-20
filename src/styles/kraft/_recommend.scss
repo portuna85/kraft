@@ -39,6 +39,65 @@
     font-size: $fs-sm;
 }
 
+.recommend__latest-date {
+    font-size: $fs-xs;
+    color: var(--kraft-text-muted);
+    margin: calc(-1 * var(--kraft-space-1)) 0 var(--kraft-space-2);
+}
+
+// 동행복권 공식 배색(1~10 노랑·11~20 파랑·21~30 빨강·31~40 회색·41~45 초록) 근사값 +
+// 그라데이션. 노랑·초록은 흰 글씨 대비가 약해 글자색을 따로 어둡게 둔다.
+.recommend__latest-ball--yellow {
+    background: linear-gradient(135deg, #fbc400, #e0a800);
+}
+
+.recommend__latest-ball--blue {
+    background: linear-gradient(135deg, #69c8f2, #3fa9dc);
+    color: #0b3d54;
+}
+
+.recommend__latest-ball--red {
+    background: linear-gradient(135deg, #ff7272, #e94b4b);
+}
+
+.recommend__latest-ball--gray {
+    background: linear-gradient(135deg, #aaaaaa, #888888);
+}
+
+.recommend__latest-ball--green {
+    background: linear-gradient(135deg, #b0d840, #8fc31f);
+    color: #2c3d05;
+}
+
+.recommend__latest-ball-plus {
+    display: flex;
+    align-items: center;
+    font-weight: 700;
+    color: var(--kraft-text-muted);
+    padding: 0 var(--kraft-space-1);
+}
+
+.recommend__latest-ball--bonus {
+    box-shadow: 0 0 0 2px var(--kraft-surface), 0 0 0 3px var(--kraft-text-muted);
+}
+
+.recommend__latest-prize {
+    margin: var(--kraft-space-3) 0 0;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--kraft-space-1) var(--kraft-space-3);
+    font-size: $fs-sm;
+}
+
+.recommend__latest-prize dt {
+    color: var(--kraft-text-muted);
+}
+
+.recommend__latest-prize dd {
+    margin: 0;
+    font-weight: 700;
+}
+
 .recommend__disclaimer {
     color: var(--kraft-text-muted);
     font-size: $fs-sm;

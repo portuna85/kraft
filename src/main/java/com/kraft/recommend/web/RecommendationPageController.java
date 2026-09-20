@@ -1,5 +1,6 @@
 package com.kraft.recommend.web;
 
+import com.kraft.recommend.domain.LottoPrizeTax;
 import com.kraft.recommend.domain.WinningDraw;
 import com.kraft.recommend.domain.WinningDrawRepository;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,19 @@ public class RecommendationPageController {
         winningDrawRepository.findTopByOrderByRoundNoDesc().ifPresent(draw -> {
             model.addAttribute("latestRoundNo", draw.getRoundNo());
             model.addAttribute("latestRoundNumbers", draw.numbers());
+            if (draw.getDrawDate() != null) {
+                model.addAttribute("latestRoundDrawDate", draw.getDrawDate());
+            }
+            if (draw.getBonusNo() != null) {
+                model.addAttribute("latestRoundBonusNumber", draw.getBonusNo());
+            }
+            if (draw.getFirstPrizeAmount() != null) {
+                model.addAttribute("latestRoundFirstPrizeAmount", draw.getFirstPrizeAmount());
+                model.addAttribute("latestRoundTakeHomeAmount", LottoPrizeTax.afterTax(draw.getFirstPrizeAmount()));
+            }
+            if (draw.getFirstPrizeWinnerCount() != null) {
+                model.addAttribute("latestRoundFirstPrizeWinnerCount", draw.getFirstPrizeWinnerCount());
+            }
         });
         return "recommend/recommend";
     }

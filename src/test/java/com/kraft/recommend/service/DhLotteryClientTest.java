@@ -1,10 +1,13 @@
 package com.kraft.recommend.service;
 
+import com.kraft.recommend.domain.DrawDetails;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
+
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -28,14 +31,15 @@ class DhLotteryClientTest {
     }
 
     @Test
-    @DisplayName("성공 응답이면 요청한 회차의 검증된 번호 6개를 담은 Success를 반환한다")
+    @DisplayName("성공 응답이면 요청한 회차의 검증된 번호 6개와 부가 정보를 담은 Success를 반환한다")
     void success_returnsValidatedDraw() {
         MockRestServiceServer[] serverOut = new MockRestServiceServer[1];
         DhLotteryClient client = newClient(serverOut);
         serverOut[0].expect(requestTo(BASE_URL + "/lt645/selectPstLt645InfoNew.do?srchDir=center&srchLtEpsd=1241"))
                 .andRespond(withSuccess("""
                         {"resultCode":null,"resultMessage":null,"data":{"list":[
-                          {"ltEpsd":1241,"tm1WnNo":7,"tm2WnNo":13,"tm3WnNo":16,"tm4WnNo":23,"tm5WnNo":24,"tm6WnNo":43,"bnsWnNo":9}
+                          {"ltEpsd":1241,"tm1WnNo":7,"tm2WnNo":13,"tm3WnNo":16,"tm4WnNo":23,"tm5WnNo":24,"tm6WnNo":43,
+                           "bnsWnNo":9,"ltRflYmd":"20260912","rnk1WnNope":18,"rnk1WnAmt":1628391980}
                         ]}}
                         """, MediaType.APPLICATION_JSON));
 
@@ -45,6 +49,53 @@ class DhLotteryClientTest {
         ImportedDraw draw = ((DhLotteryClient.FetchOutcome.Success) outcome).draw();
         assertThat(draw.roundNo()).isEqualTo(1241);
         assertThat(draw.numbers()).containsExactlyInAnyOrder(7, 13, 16, 23, 24, 43);
+        DrawDetails details = draw.details();
+        assertThat(details.bonusNo()).isEqualTo(9);
+        assertThat(details.drawDate()).isEqualTo(LocalDate.of(2026, 9, 12));
+        assertThat(details.firstPrizeWinnerCount()).isEqualTo(18);
+        assertThat(details.firstPrizeAmount()).isEqualTo(1_628_391_980L);
+    }
+
+    @Test
+    @DisplayName("추첨일 형식이 이상해도 본번호 6개는 그대로 성공하고 추첨일만 null이 된다")
+    void success_withUnparseableDate_nullsOnlyDate() {
+        MockRestServiceServer[] serverOut = new MockRestServiceServer[1];
+        DhLotteryClient client = newClient(serverOut);
+        serverOut[0].expect(requestTo(BASE_URL + "/lt645/selectPstLt645InfoNew.do?srchDir=center&srchLtEpsd=1241"))
+                .andRespond(withSuccess("""
+                        {"resultCode":null,"resultMessage":null,"data":{"list":[
+                          {"ltEpsd":1241,"tm1WnNo":7,"tm2WnNo":13,"tm3WnNo":16,"tm4WnNo":23,"tm5WnNo":24,"tm6WnNo":43,
+                           "bnsWnNo":9,"ltRflYmd":"오늘","rnk1WnNope":18,"rnk1WnAmt":1628391980}
+                        ]}}
+                        """, MediaType.APPLICATION_JSON));
+
+        DhLotteryClient.FetchOutcome outcome = client.fetchRound(1241);
+
+        assertThat(outcome).isInstanceOf(DhLotteryClient.FetchOutcome.Success.class);
+        DrawDetails details = ((DhLotteryClient.FetchOutcome.Success) outcome).draw().details();
+        assertThat(details.drawDate()).isNull();
+        assertThat(details.bonusNo()).isEqualTo(9);
+    }
+
+    @Test
+    @DisplayName("보너스 번호가 범위를 벗어나도 본번호 6개는 그대로 성공하고 보너스 번호만 null이 된다")
+    void success_withOutOfRangeBonus_nullsOnlyBonus() {
+        MockRestServiceServer[] serverOut = new MockRestServiceServer[1];
+        DhLotteryClient client = newClient(serverOut);
+        serverOut[0].expect(requestTo(BASE_URL + "/lt645/selectPstLt645InfoNew.do?srchDir=center&srchLtEpsd=1241"))
+                .andRespond(withSuccess("""
+                        {"resultCode":null,"resultMessage":null,"data":{"list":[
+                          {"ltEpsd":1241,"tm1WnNo":7,"tm2WnNo":13,"tm3WnNo":16,"tm4WnNo":23,"tm5WnNo":24,"tm6WnNo":43,
+                           "bnsWnNo":99,"ltRflYmd":"20260912","rnk1WnNope":18,"rnk1WnAmt":1628391980}
+                        ]}}
+                        """, MediaType.APPLICATION_JSON));
+
+        DhLotteryClient.FetchOutcome outcome = client.fetchRound(1241);
+
+        assertThat(outcome).isInstanceOf(DhLotteryClient.FetchOutcome.Success.class);
+        DrawDetails details = ((DhLotteryClient.FetchOutcome.Success) outcome).draw().details();
+        assertThat(details.bonusNo()).isNull();
+        assertThat(details.drawDate()).isEqualTo(LocalDate.of(2026, 9, 12));
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.kraft.recommend.service;
 
+import com.kraft.recommend.domain.DrawDetails;
 import com.kraft.recommend.domain.LottoNumbers;
 import com.kraft.recommend.domain.RecommendationHistoryStateRepository;
 import com.kraft.recommend.domain.RecommendationImportException;
@@ -49,13 +50,16 @@ public class RecommendationHistoryImporter {
                 // 관리되는 인스턴스를 직접 바꾼다 — 새 인스턴스로 save()(merge)하면 변경이
                 // 조용히 유실될 수 있다(WinningDraw.replaceNumbers 주석 참고).
                 existing.replaceNumbers(draw.numbers(), now);
+                existing.applyDetails(draw.details());
                 updated++;
             } else {
-                winningDrawRepository.save(WinningDraw.builder()
+                WinningDraw fresh = WinningDraw.builder()
                         .roundNo(draw.roundNo())
                         .numbers(draw.numbers())
                         .updatedAt(now)
-                        .build());
+                        .build();
+                fresh.applyDetails(draw.details());
+                winningDrawRepository.save(fresh);
                 inserted++;
             }
         }
@@ -111,7 +115,7 @@ public class RecommendationHistoryImporter {
                 throw new RecommendationImportException("INVALID_NUMBERS",
                         "회차 " + draw.roundNo() + "의 번호가 올바르지 않습니다: " + e.getMessage());
             }
-            validated.add(new ValidatedDraw(draw.roundNo(), numbers.numbers()));
+            validated.add(new ValidatedDraw(draw.roundNo(), numbers.numbers(), draw.details()));
         }
 
         for (int round = 1; round <= verifiedThroughRound; round++) {
@@ -126,7 +130,7 @@ public class RecommendationHistoryImporter {
         return validated;
     }
 
-    private record ValidatedDraw(int roundNo, List<Integer> numbers) {
+    private record ValidatedDraw(int roundNo, List<Integer> numbers, DrawDetails details) {
     }
 
     public record Result(int inserted, int updated, int verifiedThroughRound) {
