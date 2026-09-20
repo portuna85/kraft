@@ -27,6 +27,25 @@ test('비밀번호 확인이 다르면 필드 옆에서 알려주고 요청을 �
 });
 
 /**
+ * F13: 확인란을 고쳐 다시 일치시켜도 재제출 전까지 오류가 남아, 이미 해결된 문제처럼 보이지
+ * 않았다.
+ */
+test('비밀번호 확인을 고쳐 다시 일치시키면 재제출 전에도 오류가 사라진다', async ({ page }) => {
+    await page.goto('/signup');
+    await page.locator('#name').fill('불일치해소');
+    await page.locator('#email').fill(newEmail());
+    await page.locator('#password').fill(PASSWORD);
+    await page.locator('#passwordConfirm').fill(`${PASSWORD}xx`);
+    await page.locator('#btn-signup').click();
+    await expect(page.locator('#passwordConfirm-error')).toBeVisible();
+
+    await page.locator('#passwordConfirm').fill(PASSWORD);
+
+    await expect(page.locator('#passwordConfirm-error')).toBeEmpty();
+    await expect(page.locator('#passwordConfirm')).not.toHaveAttribute('aria-invalid');
+});
+
+/**
  * F09: 서버 DTO(SignUpRequestDto)가 72자를 상한으로 두는데, 입력에 maxlength가 없으면
  * 73자를 그대로 서버까지 보내 그때야 거절당했다. maxlength="72"가 실제로 입력 단계에서
  * 자르는지 확인한다.

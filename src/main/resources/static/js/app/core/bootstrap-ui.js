@@ -18,7 +18,8 @@ const NOOP_HANDLE = Object.freeze({
  * Bootstrap 5는 jQuery 플러그인($el.modal('show') 같은 형태)을 제공하지 않으므로 클래스 API를
  * 쓰되, 같은 요소에 인스턴스가 중복 생성되지 않도록 getOrCreateInstance로 감싼다.
  *
- * CDN이 막히거나 SRI 해시가 어긋나면 `window.bootstrap`이 없다. 그때 예외를 던지면 모달과
+ * Bootstrap JS는 이 서버가 직접 제공하지만(layout/footer.html, 개선 보고서 F08) 그 요청 자체가
+ * 실패하거나 늦게 도착할 수는 있다. 그때 `window.bootstrap`이 없는 채로 예외를 던지면 모달과
  * 무관한 기능(댓글·추천)까지 함께 죽으므로, 아무 일도 하지 않는 손잡이를 돌려주고 경고만 남긴다.
  *
  * 'show.bs.modal' 같은 이벤트는 요소에서 발생하는 실제 DOM 이벤트라 addEventListener로 그대로

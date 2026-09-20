@@ -268,6 +268,7 @@ function formatDate(iso) {
           v-model="draftContent"
           class="form-control comment-edit__textarea"
           maxlength="1000"
+          required
           :disabled="saving"
         />
       </div>

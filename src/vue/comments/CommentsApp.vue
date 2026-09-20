@@ -8,9 +8,10 @@ import CommentItem from './CommentItem.vue';
 
 /**
  * 댓글 목록 전체. 서버가 최초 렌더링 시 canManage까지 계산해 내려준 목록(initialComments)을
- * 그대로 초기 상태로 쓰고, 이후 생성·수정·삭제는 서버를 다시 조회하지 않고 로컬 상태만
- * 갱신한다(낙관적 갱신) — 새로고침하면 서버가 다시 정확한 canManage를 계산해 주므로 정합성
- * 문제는 없다.
+ * 그대로 초기 상태로 쓰고, 이후 생성·수정·삭제는 각 요청의 응답을 받은 뒤에야 로컬 상태를
+ * 채운다 — 응답 전에 미리 반영하는 낙관적 갱신이 아니라, 성공이 확인된 결과로 다시 조회하지
+ * 않고 그 자리에서 패치하는 것이다(개선 보고서 F14, 용어 정정). 새로고침하면 서버가 다시
+ * 정확한 canManage를 계산해 주므로 정합성 문제는 없다.
  */
 const props = defineProps({
     postId: { type: String, required: true },
@@ -32,7 +33,9 @@ const hasMore = ref(props.initialHasMore);
 const loadingMore = ref(false);
 // 삭제로 배열에서 항목이 빠져도 "다음 페이지"의 기준은 항상 마지막으로 받아 온 댓글의 id여야
 // 한다 — comments 배열 자체에서 매번 다시 구하면 삭제 직후 잘못된 커서를 보낼 수 있다.
-const lastLoadedId = ref(props.initialComments.at(-1)?.id ?? null);
+// Array.prototype.at()은 iOS 15.4부터 지원된다 — 이 프로젝트의 지원 하한(iOS 15)과 어긋나므로
+// (개선 보고서 F14) 인덱스로 직접 접근한다.
+const lastLoadedId = ref(props.initialComments[props.initialComments.length - 1]?.id ?? null);
 const newContent = ref('');
 const saving = ref(false);
 
@@ -44,7 +47,7 @@ const mutationSeq = ref(0);
 // 들어있어도 되살아나지 않게 막는다.
 const deletedIds = reactive(new Set());
 
-// 로컬에서 낙관적으로 추가한 새 댓글과 "더 보기"로 받아 온 서버 페이지가 겹칠 수 있다
+// 등록 응답을 받은 뒤 로컬에 추가한 새 댓글과 "더 보기"로 받아 온 서버 페이지가 겹칠 수 있다
 // (같은 댓글이 새 등록 응답과 다음 페이지 응답 양쪽에 나타남). id 기준으로 중복을 걸러내고
 // 항상 오름차순을 유지해, 이미 들어와 있는 항목을 다시 push하지 않는다.
 function mergeComments(newItems) {
@@ -74,7 +77,7 @@ async function loadMore() {
         }
         hasMore.value = page.hasMore;
         if (page.comments.length > 0) {
-            lastLoadedId.value = page.comments.at(-1).id;
+            lastLoadedId.value = page.comments[page.comments.length - 1].id;
         }
     } catch (error) {
         showToast(messageOf(error), 'danger');

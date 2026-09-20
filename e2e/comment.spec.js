@@ -68,6 +68,34 @@ test('댓글을 인라인으로 수정할 수 있다 (위임 핸들러)', async 
     await expect(page.locator('.comment-list__content')).toContainText('수정 후 댓글');
 });
 
+/**
+ * F13: 등록·답글에는 required가 있는데 수정 textarea에만 빠져 있어, 내용을 지우고 저장하면
+ * 빈 수정 요청이 그대로 서버로 나갔다.
+ */
+test('댓글 수정에서 내용을 비우고 저장하면 브라우저 검증이 막는다', async ({ page }) => {
+    await openOwnPost(page);
+    await page.locator('#comment-content').fill('비우면 안 되는 댓글');
+    await page.locator('#btn-comment-save').click();
+    await expect(page.locator('.comment-list__content')).toContainText('비우면 안 되는 댓글');
+
+    await page.locator('.btn-comment-edit').first().click();
+    const editForm = page.locator('.comment-edit-form').first();
+    await expect(editForm).toBeVisible();
+
+    let requested = false;
+    page.on('request', (request) => {
+        if (request.method() === 'PUT' && /\/api\/v1\/comments\/\d+$/.test(request.url())) {
+            requested = true;
+        }
+    });
+
+    await editForm.locator('textarea').fill('');
+    await editForm.getByRole('button', { name: '저장' }).click();
+
+    expect(requested, 'required가 제출 자체를 막는다').toBe(false);
+    await expect(editForm).toBeVisible();
+});
+
 test('댓글 수정을 취소하면 읽기 상태로 돌아간다', async ({ page }) => {
     await openOwnPost(page);
     await page.locator('#comment-content').fill('취소할 댓글');

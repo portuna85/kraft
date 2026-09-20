@@ -37,8 +37,8 @@
                            ? ${principal.displayName} : ${#authentication.name}"></span>
 
             <!-- 번호 추천은 로그인 여부와 무관하게 동일하게 동작하는 공개 기능이라
-                 sec:authorize로 가리지 않는다(02문서 1절). app.recommend.enabled로 기능을
-                 끄면(운영 준비) 컨트롤러가 404가 되므로 링크도 함께 감춘다. -->
+                 sec:authorize로 가리지 않는다. app.recommend.enabled로 기능을 끄면(운영 준비)
+                 컨트롤러가 404가 되므로 링크도 함께 감춘다. -->
             <a th:if="${@environment.getProperty('app.recommend.enabled', 'true')} == 'true'"
                href="/recommend" class="kraft-actions__link"
                th:classappend="${currentPath == '/recommend'} ? 'is-current'"

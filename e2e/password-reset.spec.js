@@ -98,6 +98,32 @@ test('링크 요청 후 완료 안내로 포커스가 옮겨가고 상태로 알
     await expect(done.locator('p').first()).toBeFocused();
 });
 
+/**
+ * F13: 이 화면은 성공해도 페이지 이동이 없다 — 실패 후 재시도해 성공하면, 이전 시도가 남긴
+ * #flash 오류 배너가 완료 안내와 함께 남아 있었다.
+ */
+test('실패 후 재시도에 성공하면 이전 오류 배너가 완료 안내와 함께 남지 않는다', async ({ page }) => {
+    let requestCount = 0;
+    await page.route('**/api/v1/users/password-reset', async (route) => {
+        requestCount += 1;
+        if (requestCount === 1) {
+            await route.fulfill({ status: 500, contentType: 'application/json', body: '{"detail":"일시적인 오류"}' });
+            return;
+        }
+        await route.fulfill({ status: 204 });
+    });
+
+    await page.goto('/forgot-password');
+    await page.locator('#email').fill('nobody-here@e2e.test');
+    await page.locator('#btn-forgot-password').click();
+    await expect(page.locator('#flash')).toContainText('일시적인 오류');
+
+    await page.locator('#btn-forgot-password').click();
+
+    await expect(page.locator('#forgot-password-done')).toContainText('가입된 주소라면 재설정 링크를 보냈습니다.');
+    await expect(page.locator('#flash')).toBeHidden();
+});
+
 test('만료되거나 없는 링크는 다시 요청하라고 알려준다', async ({ page }) => {
     await page.goto('/users/password-reset?token=this-token-does-not-exist');
 
@@ -106,4 +132,21 @@ test('만료되거나 없는 링크는 다시 요청하라고 알려준다', asy
     await page.locator('#btn-password-reset').click();
 
     await expect(page.locator('#flash')).toContainText('다시 요청해 주세요');
+});
+
+/**
+ * F13: SignupApp.vue와 같은 문제 — 확인란을 고쳐 다시 일치시켜도 재제출 전까지 오류가 남았다.
+ */
+test('비밀번호 확인을 고쳐 다시 일치시키면 재제출 전에도 오류가 사라진다', async ({ page }) => {
+    await page.goto('/users/password-reset?token=this-token-does-not-exist');
+
+    await page.locator('#newPassword').fill('Another1!pass');
+    await page.locator('#newPasswordConfirm').fill('Different1!pass');
+    await page.locator('#btn-password-reset').click();
+    await expect(page.locator('#newPasswordConfirm-error')).toBeVisible();
+
+    await page.locator('#newPasswordConfirm').fill('Another1!pass');
+
+    await expect(page.locator('#newPasswordConfirm-error')).toBeEmpty();
+    await expect(page.locator('#newPasswordConfirm')).not.toHaveAttribute('aria-invalid');
 });

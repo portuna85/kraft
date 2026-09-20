@@ -6,8 +6,8 @@ import { STRATEGIES, explanationLabel, useRecommendation } from './useRecommenda
  * 번호 추천 화면.
  *
  * 진입 시 자동 생성은 하지 않는다 — 사용자가 "번호 추천 생성" 버튼을 눌렀을 때만 서버에
- * 요청한다(03문서 3절: "자동 생성 금지"). 상태·검증·응답 순서 관리는 useRecommendation이
- * 담당하고, 이 컴포넌트는 화면 표시와 포커스 이동만 맡는다.
+ * 요청한다. 상태·검증·응답 순서 관리는 useRecommendation이 담당하고, 이 컴포넌트는 화면
+ * 표시와 포커스 이동만 맡는다.
  */
 const {
     strategy,
@@ -30,8 +30,8 @@ const {
 const numbers = Array.from({ length: 45 }, (_, i) => i + 1);
 const resultHeading = ref(null);
 
-// 성공 응답이 오면 결과 제목으로 포커스를 옮긴다(03문서 8절) — 스크린리더 사용자가 생성 버튼
-// 다음에 이어질 결과를 놓치지 않게 한다.
+// 성공 응답이 오면 결과 제목으로 포커스를 옮긴다 — 스크린리더 사용자가 생성 버튼 다음에
+// 이어질 결과를 놓치지 않게 한다.
 watch(status, async (next) => {
     if (next === 'ready') {
         await nextTick();

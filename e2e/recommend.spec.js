@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures.js';
 
 /**
- * 번호 추천 화면(02문서 8절, 03문서 3절). 이 저장소의 e2e 프로파일은 Flyway를 돌리지 않고
+ * 번호 추천 화면. 이 저장소의 e2e 프로파일은 Flyway를 돌리지 않고
  * 엔티티로 스키마만 만들므로(application-e2e.yml, ddl-auto: create-drop)
  * recommendation_history_state 시드 행이 없다 — 서버는 항상 503
  * RECOMMENDATION_HISTORY_NOT_READY로 응답한다(RecommendationHistoryProvider). 실제 성공

@@ -22,6 +22,9 @@ async function onSubmit() {
     try {
         await api.post('/api/v1/users/password-reset', { email: email.value });
         sent.value = true;
+        // 이 화면은 성공해도 페이지 이동이 없다 — 실패 후 재시도해 성공하면, 이전 시도가
+        // 남긴 #flash 오류 배너가 지워지지 않은 채 완료 안내와 함께 남는다(개선 보고서 F13).
+        flash.hide();
         // 폼이 사라지고 완료 안내로 바뀐다 — role="status"만으로는 스크린리더가 그 순간
         // 읽어주지 않을 수 있어(개선 보고서 F09), 게시글 추천/추천 결과와 같은 패턴으로
         // 안내 문단에 포커스를 옮긴다.

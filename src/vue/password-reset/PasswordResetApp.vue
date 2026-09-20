@@ -1,5 +1,5 @@
 <script setup>
-import { nextTick, reactive, ref } from 'vue';
+import { nextTick, reactive, ref, watch } from 'vue';
 import { api, messageOf } from '@core/http.js';
 import * as flash from '@ui/flash.js';
 
@@ -21,6 +21,13 @@ const confirmError = ref('');
 const saving = ref(false);
 
 const confirmInput = ref(null);
+
+// SignupApp.vue와 같은 이유(개선 보고서 F13) — 값이 다시 같아지는 순간 바로 지운다.
+watch([() => form.newPassword, () => form.confirm], () => {
+    if (confirmError.value && form.newPassword === form.confirm) {
+        confirmError.value = '';
+    }
+});
 
 async function onSubmit() {
     confirmError.value = '';
