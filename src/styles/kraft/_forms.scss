@@ -41,12 +41,15 @@ textarea.form-control {
     resize: vertical;
 }
 
-.post-edit__textarea {
+// textarea.form-control(요소+클래스)이 .post-edit__textarea(클래스 하나)보다 명시도가 높아
+// 이 규칙이 늘 이겨 버렸다 — 240/360px 의도가 적용되지 않고 항상 120px이었다(개선 보고서
+// F04). 변형 선택자에 요소·기본 클래스를 함께 명시해 명시도를 올려서 이기게 한다.
+textarea.form-control.post-edit__textarea {
     min-height: 240px;
 }
 
 @include from($bp-lg) {
-    .post-edit__textarea {
+    textarea.form-control.post-edit__textarea {
         min-height: 360px;
     }
 }

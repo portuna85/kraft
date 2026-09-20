@@ -47,7 +47,8 @@
     margin-bottom: var(--kraft-space-2);
 }
 
-.comment-edit__textarea {
+// 같은 명시도 문제(F04) — textarea.form-control을 확실히 이기도록 요소·기본 클래스를 함께 쓴다.
+textarea.form-control.comment-edit__textarea {
     min-height: 80px;
 }
 

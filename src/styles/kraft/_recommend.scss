@@ -8,7 +8,10 @@
 }
 
 .recommend__latest {
-    margin-bottom: var(--kraft-space-5);
+    // --kraft-space-5는 정의되어 있지 않아(_tokens.scss) fallback 없이 무시되고 여백이 0px이
+    // 됐다(개선 보고서 F06). 최신 회차 카드와 아래 생성 폼을 가르는 큰 단락 경계이므로,
+    // 같은 역할로 쓰이는 .recommend__field의 필드셋 간 여백과 같은 --kraft-space-6을 쓴다.
+    margin-bottom: var(--kraft-space-6);
 }
 
 .recommend__latest-heading {

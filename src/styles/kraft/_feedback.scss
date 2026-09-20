@@ -20,6 +20,11 @@
     top: 1rem;
     right: 1rem;
     z-index: 1080;
+    // 컨테이너에 폭 제약이 없으면 shrink-to-fit으로 자식(.toast, width: 350px)에 맞춰져
+    // Bootstrap의 max-width: 100%가 실제로는 아무것도 제한하지 못했다 — 320px 화면에서
+    // 토스트가 화면 밖으로 잘렸다(개선 보고서 F05). 뷰포트 기준 최대 폭을 줘서 100%의
+    // 기준점 자체를 좁힌다.
+    max-width: calc(100vw - 2rem);
     pointer-events: none;
 }
 
