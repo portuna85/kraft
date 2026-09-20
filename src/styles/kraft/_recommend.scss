@@ -7,6 +7,38 @@
     width: 100%;
 }
 
+.recommend__latest {
+    margin-bottom: var(--kraft-space-5);
+}
+
+.recommend__latest-heading {
+    font-size: $fs-sm;
+    color: var(--kraft-text-muted);
+    margin-bottom: var(--kraft-space-2);
+}
+
+.recommend__latest-balls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--kraft-space-2);
+    padding-left: 0;
+    list-style: none;
+}
+
+.recommend__latest-ball {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 var(--kraft-space-2);
+    border-radius: 999px;
+    background-color: var(--kraft-primary);
+    color: #fff;
+    font-weight: 700;
+    font-size: $fs-sm;
+}
+
 .recommend__disclaimer {
     color: var(--kraft-text-muted);
     font-size: $fs-sm;

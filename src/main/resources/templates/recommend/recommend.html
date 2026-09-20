@@ -1,6 +1,8 @@
 <!DOCTYPE HTML>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <!--/*@thymesVar id="pageTitle" type="java.lang.String"*/-->
+<!--/*@thymesVar id="latestRoundNo" type="java.lang.Integer"*/-->
+<!--/*@thymesVar id="latestRoundNumbers" type="java.util.List"*/-->
 <head th:replace="~{layout/header :: header}"></head>
 <body>
 
@@ -11,6 +13,15 @@
     <main id="main" class="kraft-main kraft-main--recommend">
         <h1 class="page-title">번호 추천</h1>
         <div th:replace="~{layout/footer :: flash}"></div>
+
+        <!--/* 최신 회차 당첨번호는 서버가 직접 렌더링한다(RecommendationPageController) — 다음
+               추첨 전까지 바뀌지 않는 정적 정보라 Vue·API 왕복이 필요 없다. */-->
+        <section th:if="${latestRoundNo != null}" class="recommend__latest" aria-label="최신 회차 당첨번호">
+            <p class="recommend__latest-heading">최신 <strong th:text="${latestRoundNo}"></strong>회 당첨번호</p>
+            <ul class="recommend__latest-balls">
+                <li th:each="n : ${latestRoundNumbers}" class="recommend__latest-ball" th:text="${n}"></li>
+            </ul>
+        </section>
 
         <!--/* 생성 폼·결과는 전부 Vue 아일랜드(src/vue/recommend)가 그린다. 서버가 내려줄 초기
                상태는 없다 — 생성은 사용자가 버튼을 눌렀을 때만 REST API로 요청한다. */-->
