@@ -12,9 +12,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
@@ -44,9 +45,9 @@ class OrphanFileReconcilerTest {
         Path recentlyOrphaned = createFile("recently-orphaned.png", Instant.now());
         Path registered = createFile("registered.png", Instant.now().minus(OrphanFileReconciler.GRACE_PERIOD.plusMinutes(1)));
 
-        given(postImageRepository.existsByFileName(eq("orphaned.png"))).willReturn(false);
-        given(postImageRepository.existsByFileName(eq("recently-orphaned.png"))).willReturn(false);
-        given(postImageRepository.existsByFileName(eq("registered.png"))).willReturn(true);
+        // B11: 파일마다 existsByFileName을 따로 묻지 않고 청크 단위로 findFileNamesIn을 한 번
+        // 부른다 — 대장에 있는 파일명만 돌려준다(대상에 없는 orphaned.png는 빠진다).
+        given(postImageRepository.findFileNamesIn(anyList())).willReturn(List.of("registered.png"));
 
         int deleted = reconciler.reconcileNow(Instant.now().minus(OrphanFileReconciler.GRACE_PERIOD));
 

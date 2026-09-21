@@ -118,9 +118,12 @@ public class RecommendationHistoryImporter {
             validated.add(new ValidatedDraw(draw.roundNo(), numbers.numbers(), draw.details()));
         }
 
+        // 회차마다 existsById를 부르는 대신 구간 전체를 한 번에 조회한다(B11) — 왕복 수가
+        // verifiedThroughRound에 비례해 늘어나지 않는다.
+        Set<Integer> existingRounds = new HashSet<>(winningDrawRepository.findRoundNosBetween(1, verifiedThroughRound));
         for (int round = 1; round <= verifiedThroughRound; round++) {
             boolean inInput = seenRounds.contains(round);
-            boolean inDb = winningDrawRepository.existsById(round);
+            boolean inDb = existingRounds.contains(round);
             if (!inInput && !inDb) {
                 throw new RecommendationImportException("MISSING_ROUND",
                         "1.." + verifiedThroughRound + " 구간에 누락된 회차가 있습니다: " + round);

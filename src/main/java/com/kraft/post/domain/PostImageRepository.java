@@ -16,6 +16,14 @@ public interface PostImageRepository extends JpaRepository<PostImage, Long> {
 
     boolean existsByFileName(String fileName);
 
+    /**
+     * 후보 파일명 중 실제로 대장에 있는 것만 돌려준다(B11). {@code OrphanFileReconciler}가
+     * 예전에는 디렉터리의 파일마다 {@code existsByFileName}을 따로 불러, 파일 수만큼 쿼리가
+     * 늘었다. 청크 단위로 이 메서드를 한 번씩만 불러 왕복 수를 줄인다.
+     */
+    @Query("SELECT p.fileName FROM PostImage p WHERE p.fileName IN :fileNames")
+    List<String> findFileNamesIn(@Param("fileNames") List<String> fileNames);
+
     List<PostImage> findAllByPostId(Long postId);
 
     List<PostImage> findAllByIdInAndStatus(List<Long> ids, PostImageStatus status);

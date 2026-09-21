@@ -12,6 +12,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -32,6 +35,9 @@ import java.util.stream.Stream;
 public class OrphanFileReconciler {
 
     static final Duration GRACE_PERIOD = Duration.ofHours(1);
+
+    /** 대장 존재 여부를 한 번에 묻는 청크 크기(B11). 파일마다 따로 조회하지 않는다. */
+    private static final int EXISTS_CHECK_CHUNK_SIZE = 500;
 
     private final PostImageRepository postImageRepository;
 
@@ -57,16 +63,30 @@ public class OrphanFileReconciler {
             return 0;
         }
 
+        List<Path> candidates;
         try (Stream<Path> files = Files.list(dir)) {
-            return (int) files.filter(Files::isRegularFile)
+            candidates = files.filter(Files::isRegularFile)
                     .filter(path -> isOlderThan(path, threshold))
-                    .filter(path -> !postImageRepository.existsByFileName(path.getFileName().toString()))
-                    .filter(this::deleteQuietly)
-                    .count();
+                    .toList();
         } catch (IOException e) {
             log.warn("업로드 디렉터리를 읽지 못해 이번 주기의 대조를 건너뜁니다.", e);
             return 0;
         }
+
+        int deleted = 0;
+        for (int start = 0; start < candidates.size(); start += EXISTS_CHECK_CHUNK_SIZE) {
+            List<Path> chunk = candidates.subList(start, Math.min(start + EXISTS_CHECK_CHUNK_SIZE, candidates.size()));
+            List<String> chunkFileNames = chunk.stream().map(path -> path.getFileName().toString()).toList();
+            // 청크 전체를 한 번에 물어 대장에 있는 파일명 집합을 구한다(B11) — 파일마다 따로
+            // existsByFileName을 부르지 않는다.
+            Set<String> knownFileNames = new HashSet<>(postImageRepository.findFileNamesIn(chunkFileNames));
+            for (Path path : chunk) {
+                if (!knownFileNames.contains(path.getFileName().toString()) && deleteQuietly(path)) {
+                    deleted++;
+                }
+            }
+        }
+        return deleted;
     }
 
     private boolean isOlderThan(Path path, Instant threshold) {

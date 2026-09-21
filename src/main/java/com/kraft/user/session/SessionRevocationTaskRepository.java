@@ -1,5 +1,6 @@
 package com.kraft.user.session;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -41,8 +42,13 @@ public interface SessionRevocationTaskRepository extends JpaRepository<SessionRe
     Optional<SessionRevocationTask> findByIdAndOwnerTokenAndStatus(
             Long id, String ownerToken, SessionRevocationTaskStatus status);
 
-    /** 처리 도중 프로세스가 죽으면 PROCESSING인 채로 오래 남는다. requeueStuck이 이 목록을 집는다. */
-    List<SessionRevocationTask> findByStatusAndUpdatedAtBefore(SessionRevocationTaskStatus status, LocalDateTime threshold);
+    /**
+     * 처리 도중 프로세스가 죽으면 PROCESSING인 채로 오래 남는다. requeueStuck이 이 목록을
+     * 배치로 나눠 집는다(B11) — {@code OutboxMailRepository.findByStatusAndUpdatedAtBefore}와
+     * 같은 이유로 {@code Pageable}을 받는다. 대량 적체 시 전체를 한 번에 로딩하지 않는다.
+     */
+    List<SessionRevocationTask> findByStatusAndUpdatedAtBefore(
+            SessionRevocationTaskStatus status, LocalDateTime threshold, Pageable pageable);
 
     /** 보관 기한이 지난 종료 상태(DONE/FAILED) 행을 지운다. */
     @Modifying(flushAutomatically = true)
