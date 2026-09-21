@@ -5,6 +5,7 @@ import com.kraft.shared.transaction.AfterCommit;
 import com.kraft.user.domain.EmailHasher;
 import com.kraft.user.domain.EmailMasker;
 import com.kraft.user.domain.EmailVerificationTokenRepository;
+import com.kraft.user.domain.PasswordBytePolicy;
 import com.kraft.user.domain.PasswordResetTokenRepository;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
@@ -42,6 +43,8 @@ public class UserService {
             throw new IllegalArgumentException("이미 가입된 이메일입니다.");
         }
 
+        PasswordBytePolicy.validate(rawPassword);
+
         User user = User.builder()
                 .name(name)
                 .email(email)
@@ -69,6 +72,7 @@ public class UserService {
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
             throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
         }
+        PasswordBytePolicy.validate(newPassword);
 
         user.changePassword(passwordEncoder.encode(newPassword));
         revokeSessionsAfterCommit(user, email);
@@ -86,6 +90,7 @@ public class UserService {
     public void resetPassword(Long userId, String newPassword) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. id=" + userId));
+        PasswordBytePolicy.validate(newPassword);
 
         user.changePassword(passwordEncoder.encode(newPassword));
         revokeSessionsAfterCommit(user, user.getEmail());
