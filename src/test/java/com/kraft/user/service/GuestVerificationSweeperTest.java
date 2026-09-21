@@ -95,6 +95,24 @@ class GuestVerificationSweeperTest {
     }
 
     /**
+     * B16: withdraw()는 role을 바꾸지 않으므로, 탈퇴한 GUEST도 유예시간·토큰/아웃박스 없음
+     * 조건만으로는 걸러지지 않을 뻔했다. withdrawnAt IS NULL 조건이 없으면 sweeper가 탈퇴
+     * 계정의 placeholder 이메일로 인증 메일을 다시 큐에 넣을 수 있었다.
+     */
+    @Test
+    @DisplayName("B16: 탈퇴한 GUEST는 유예시간이 지나도 다시 건드리지 않는다")
+    void sweep_ignoresWithdrawnGuests() {
+        User withdrawn = saveGuest(LocalDateTime.now().minusMinutes(20));
+        withdrawn.withdraw("withdrawn-" + withdrawn.getId() + "@kraft.invalid", "탈퇴한 사용자", "encoded");
+        userRepository.save(withdrawn);
+
+        sweeper.sweep();
+
+        assertThat(tokenRepository.findAll()).noneMatch(t -> t.getUser().getId().equals(withdrawn.getId()));
+        assertThat(outboxMailRepository.findAll()).noneMatch(m -> m.getUser().getId().equals(withdrawn.getId()));
+    }
+
+    /**
      * O07: rekey 프로파일이 이 스위치를 끈다 — 아직 옛 키로 남은 GUEST 행이 섞이면 email
      * 복호화가 엔티티 로딩 시점에 실패하므로, 키 교체 중에는 아예 조회 자체가 돌면 안 된다.
      */

@@ -61,6 +61,13 @@ public class EmailVerificationService {
         User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
 
+        // 탈퇴 계정은 조회 조건에서도 걸러야 하지만(UserRepository.findGuestsMissingVerificationMail
+        // 참고, B16), 이 메서드 자체도 거부한다 — 호출 경로가 늘어도 같은 규칙이 적용되게 한다.
+        // withdraw()는 role을 바꾸지 않으므로 탈퇴한 GUEST도 이 검사 없이는 통과했을 것이다.
+        if (user.isWithdrawn()) {
+            throw new IllegalArgumentException("탈퇴한 회원입니다. email=" + EmailMasker.mask(email));
+        }
+
         String token = UUID.randomUUID().toString();
         tokenRepository.save(EmailVerificationToken.builder()
                 .token(token)

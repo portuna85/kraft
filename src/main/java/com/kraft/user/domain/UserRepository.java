@@ -53,9 +53,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * B08의 최후 수단이 쓴다. 가입 직후 인증 메일 대기열 등록이(토큰 저장 실패, 최종 커밋 실패
      * 등으로) 한 번도 성공하지 못한 GUEST 계정을 찾는다. 유예시간을 두는 이유는, 가입 트랜잭션이
      * 아직 진행 중이거나 방금 커밋된 계정까지 대상으로 삼으면 안 되기 때문이다.
+     * <p>
+     * {@code withdrawnAt IS NULL}로 탈퇴 계정을 제외한다(B16) — {@code User.withdraw()}는
+     * role을 바꾸지 않으므로 탈퇴한 GUEST도 이 조건에 그대로 걸린다. 탈퇴는 인증 토큰·outbox
+     * 행을 지우므로(대상 조건의 NOT EXISTS를 통과), 탈퇴 후에도 인증 메일이 없다는 이유로
+     * sweeper가 placeholder 이메일(users.email)로 다시 발송을 시도할 수 있었다.
      */
     @Query("SELECT u FROM User u WHERE u.role = com.kraft.user.domain.Role.GUEST "
             + "AND u.createdAt < :threshold "
+            + "AND u.withdrawnAt IS NULL "
             + "AND NOT EXISTS (SELECT 1 FROM EmailVerificationToken t WHERE t.user = u) "
             + "AND NOT EXISTS (SELECT 1 FROM OutboxMail m WHERE m.user = u "
             + "AND m.kind = com.kraft.user.mail.OutboxMailKind.VERIFY_EMAIL)")

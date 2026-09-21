@@ -109,6 +109,26 @@ class EmailVerificationServiceTest {
         verify(outboxMailStore).enqueue(user, savedToken.getToken(), OutboxMailKind.VERIFY_EMAIL);
     }
 
+    /**
+     * B16: withdraw()는 role을 바꾸지 않으므로, 탈퇴한 계정도 findByEmailHash로는 여전히
+     * 조회된다. 이 메서드 자체가 탈퇴 여부를 거부해야, 조회 조건(UserRepository.
+     * findGuestsMissingVerificationMail)의 필터링에만 기대지 않는다.
+     */
+    @Test
+    @DisplayName("B16: sendVerificationEmail: 탈퇴한 계정이면 IllegalArgumentException")
+    void sendVerificationEmail_whenUserWithdrawn_throwsIllegalArgumentException() {
+        User user = userWithId(1L, "withdrawn@example.com");
+        user.withdraw("withdrawn-1@kraft.invalid", "탈퇴한 사용자", "encoded");
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("withdrawn@example.com"))).willReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> emailVerificationService.sendVerificationEmail("withdrawn@example.com"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("탈퇴한 회원입니다");
+
+        verify(tokenRepository, never()).save(any());
+        verify(outboxMailStore, never()).enqueue(any(), anyString(), any());
+    }
+
     @Test
     @DisplayName("sendVerificationEmailSafely: 내부에서 예외가 발생해도 전파되지 않는다")
     void sendVerificationEmailSafely_absorbsInternalException() {
