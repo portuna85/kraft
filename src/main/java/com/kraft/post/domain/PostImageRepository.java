@@ -31,6 +31,18 @@ public interface PostImageRepository extends JpaRepository<PostImage, Long> {
     List<PostImage> findAllByStatusAndCreatedAtBefore(PostImageStatus status, LocalDateTime threshold, Pageable pageable);
 
     /**
+     * id 커서 방식 배치 조회(B06). {@link #findAllByStatus}를 매 배치마다 같은 페이지(0)로
+     * 다시 부르면, 계속 실패해 상태가 그대로인 행이 항상 맨 앞에 걸려 뒤쪽의 정상 행이 한
+     * 주기(최대 25배치) 동안 전혀 처리되지 못할 수 있다. id가 이전 배치의 마지막 id보다 큰
+     * 것만 가져와 실패한 행을 지나쳐 진행한다.
+     */
+    List<PostImage> findAllByStatusAndIdGreaterThanOrderByIdAsc(PostImageStatus status, Long id, Pageable pageable);
+
+    /** {@link #findAllByStatusAndIdGreaterThanOrderByIdAsc}와 같은 이유로 ORPHAN 정리에도 커서를 쓴다(B06). */
+    List<PostImage> findAllByStatusAndCreatedAtBeforeAndIdGreaterThanOrderByIdAsc(
+            PostImageStatus status, LocalDateTime threshold, Long id, Pageable pageable);
+
+    /**
      * 한 계정이 현재 차지하고 있는 저장량(바이트). 삭제 예약된 파일은 곧 사라지므로 제외한다.
      */
     @Query("SELECT COALESCE(SUM(i.sizeBytes), 0) FROM PostImage i "

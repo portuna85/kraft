@@ -465,6 +465,32 @@ class PostImageLifecycleTest {
         assertThat(imageStatusOf(url)).isEqualTo(PostImageStatus.ATTACHED);
     }
 
+    /**
+     * B06: {@code clean()}의 self-invocation 문제(같은 객체 안에서 부르면 REQUIRES_NEW가
+     * 프록시를 거치지 않아 무효화되던 것)를 고치면서, 배치 조회도 id 커서로 바꿨다(추가
+     * 발견 사항) — 실패한 행이 항상 같은 페이지 맨 앞에 걸려 뒤쪽 정상 행을 굶기지 않게
+     * 하기 위해서다. 한 배치(200건)를 넘는 실제 대기열을 실제 DB로 처리해, 두 번째 배치까지
+     * 이어서 정상적으로 커밋되는지 확인한다.
+     */
+    @Test
+    @DisplayName("B06: 한 배치를 넘는 삭제 대기열도 다음 배치로 이어서 전부 처리한다")
+    void cleanPendingDeletions_processesMoreThanOneBatch() {
+        int total = PostImageCleaner.CLEANUP_BATCH_SIZE + 5;
+        for (int i = 0; i < total; i++) {
+            jdbcTemplate.update(
+                    "INSERT INTO post_images (file_name, owner_id, status, size_bytes, version, created_at, updated_at) "
+                            + "VALUES (?, ?, 'PENDING_DELETE', 1, 0, NOW(), NOW())",
+                    "batch-cursor-" + i + ".png", aliceUser.getId());
+        }
+
+        int deleted = postImageCleaner.cleanPendingDeletions();
+
+        assertThat(deleted).isEqualTo(total);
+        Integer remaining = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM post_images WHERE file_name LIKE 'batch-cursor-%'", Integer.class);
+        assertThat(remaining).isZero();
+    }
+
     private User saveUser(String name, String email, Role role) {
         return userRepository.save(User.builder().name(name).email(email).password("encoded").role(role).build());
     }
