@@ -14,7 +14,6 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
-    show-sql: true
 
   session:
     jdbc:
@@ -25,6 +24,8 @@ spring:
 
 logging:
   level:
+    # O06: spring.jpa.show-sql는 System.out에 별도로 SQL을 찍는다 — 이 로거와 함께 켜 두면
+    # 같은 SQL이 두 번 출력돼 테스트 로그를 읽기 어렵게 하고 I/O 비용만 는다. 로거 하나로 합쳤다.
     org.hibernate.SQL: debug
 
 app:
