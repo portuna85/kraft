@@ -13,6 +13,14 @@ import { fileURLToPath } from 'node:url';
  * 각 템플릿이 실제로 preload해야 하는 것은 그 페이지의 진입 스크립트가 의존하는 청크 중 가장
  * 무거운 것이다. vite.config.js가 그 청크를 "runtime"으로 고정해 두지만, 이 스크립트는 이름이
  * 아니라 실제 크기로 판단해 이름이 다시 바뀌어도 계속 유효하다.
+ *
+ * F01: 처음에는 preload 링크가 하나도 없는 페이지를 그냥 건너뛰었다 — Vue 진입 스크립트가
+ * 있는데 preload가 아예 없는 페이지(예: recommend.html)는 "누락됨"으로 잡히지 않고 조용히
+ * 통과했다. 이제 Vue 진입 스크립트가 있는 모든 페이지를 대상으로, preload가 없거나 가장
+ * 무거운 청크를 가리키지 않으면 실패시킨다. 청크 크기도 문자열 길이(UTF-16 코드 유닛 수)가
+ * 아니라 실제 전송 바이트 수(UTF-8)로 비교한다 — 멀티바이트 문자가 섞인 코드에서는 둘이
+ * 다르다. 태그 속성 순서에도 덜 의존하도록, 태그 전체를 먼저 찾은 뒤 그 안에서 속성을 따로
+ * 찾는다(따옴표 형태까지 완전히 구조 기반으로 만드는 것은 별도 HTML 파서가 필요해 범위 밖).
  */
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, '..');
@@ -31,12 +39,12 @@ function listHtmlFiles(dir) {
     return out;
 }
 
-/** 출력 청크 파일명 -> { imports: Set<파일명>, size: number(코드 바이트) }. */
+/** 출력 청크 파일명 -> { imports: Set<파일명>, size: number(전송 바이트 수, UTF-8) }. */
 function buildGraph(bundle) {
     const graph = new Map();
     for (const chunk of Object.values(bundle)) {
         if (chunk.type === 'chunk') {
-            graph.set(chunk.fileName, { imports: new Set(chunk.imports ?? []), size: chunk.code.length });
+            graph.set(chunk.fileName, { imports: new Set(chunk.imports ?? []), size: Buffer.byteLength(chunk.code, 'utf8') });
         }
     }
     return graph;
@@ -59,10 +67,41 @@ function transitiveChunkDeps(graph, entryFile) {
     return seen;
 }
 
-const PRELOAD_RE = /<link rel="modulepreload" href="\/js\/vue-dist\/(chunks\/[\w.-]+\.js)"/g;
-// onerror="kraftVueMountFailed('...')"(F12)처럼 다른 속성이 뒤에 더 붙을 수 있어 태그가
-// src="..." 바로 뒤에서 끝난다고 가정하지 않는다.
-const SCRIPT_RE = /<script type="module" src="\/js\/vue-dist\/([\w.-]+\.js)"[^>]*>/g;
+// 태그 전체를 먼저 찾고, 그 안에서 rel/href·type/src를 속성 순서와 무관하게 따로 찾는다.
+const LINK_TAG_RE = /<link\b[^>]*>/g;
+const SCRIPT_TAG_RE = /<script\b[^>]*>/g;
+const REL_MODULEPRELOAD_RE = /\brel\s*=\s*"modulepreload"/;
+const TYPE_MODULE_RE = /\btype\s*=\s*"module"/;
+const HREF_RE = /\bhref\s*=\s*"\/js\/vue-dist\/(chunks\/[\w.-]+\.js)"/;
+const SRC_RE = /\bsrc\s*=\s*"\/js\/vue-dist\/([\w.-]+\.js)"/;
+
+function findPreloadedChunks(html) {
+    const found = new Set();
+    for (const [tag] of html.matchAll(LINK_TAG_RE)) {
+        if (!REL_MODULEPRELOAD_RE.test(tag)) {
+            continue;
+        }
+        const hrefMatch = tag.match(HREF_RE);
+        if (hrefMatch) {
+            found.add(hrefMatch[1]);
+        }
+    }
+    return found;
+}
+
+function findVueEntries(html) {
+    const found = [];
+    for (const [tag] of html.matchAll(SCRIPT_TAG_RE)) {
+        if (!TYPE_MODULE_RE.test(tag)) {
+            continue;
+        }
+        const srcMatch = tag.match(SRC_RE);
+        if (srcMatch) {
+            found.push(srcMatch[1]);
+        }
+    }
+    return found;
+}
 
 const result = await build({
     configFile: join(repoRoot, 'src/vue/vite.config.js'),
@@ -76,17 +115,12 @@ let failed = false;
 
 for (const file of listHtmlFiles(templatesDir)) {
     const html = readFileSync(file, 'utf8');
-    const preloads = new Set([...html.matchAll(PRELOAD_RE)].map((m) => m[1]));
-    if (preloads.size === 0) {
-        continue;
-    }
-
-    const entries = [...html.matchAll(SCRIPT_RE)].map((m) => m[1]);
+    const entries = findVueEntries(html);
     if (entries.length === 0) {
-        console.error(`${file}: modulepreload은 있지만 Vue 진입 스크립트를 찾지 못했다.`);
-        failed = true;
+        // Vue 진입 스크립트가 아예 없는 페이지는 preload할 것도 없다.
         continue;
     }
+    const preloads = findPreloadedChunks(html);
 
     for (const preload of preloads) {
         if (!graph.has(preload)) {
@@ -96,7 +130,8 @@ for (const file of listHtmlFiles(templatesDir)) {
     }
 
     // 이 페이지의 진입 스크립트들이 의존하는 모든 청크 중 가장 무거운 것을 구한다 — 그것이
-    // preload할 가치가 있는 청크다. 실제로 preload되어 있는지 확인한다.
+    // preload할 가치가 있는 청크다. 실제로 preload되어 있는지 확인한다(preload가 하나도
+    // 없는 페이지도 여기 포함된다 — F01).
     const allDeps = new Set();
     for (const entry of entries) {
         for (const dep of transitiveChunkDeps(graph, entry)) {
@@ -108,8 +143,9 @@ for (const file of listHtmlFiles(templatesDir)) {
     }
     const heaviest = [...allDeps].sort((a, b) => graph.get(b).size - graph.get(a).size)[0];
     if (!preloads.has(heaviest)) {
+        const preloadList = preloads.size > 0 ? [...preloads].join(', ') : '(없음)';
         console.error(
-            `${file}: ${[...preloads].join(', ')}를 preload하지만, 이 페이지가 실제로 의존하는 `
+            `${file}: ${preloadList}를 preload하지만, 이 페이지가 실제로 의존하는 `
             + `가장 무거운 청크는 ${heaviest}(${graph.get(heaviest).size}B)다.`,
         );
         failed = true;

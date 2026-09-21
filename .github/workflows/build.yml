@@ -136,6 +136,12 @@ jobs:
       - name: Check generated Vue is up to date
         run: npm run check:vue
 
+      # 템플릿의 modulepreload가 실제로 그 페이지의 가장 무거운 의존 청크를 가리키는지
+      # 본다(F01) — 잘못되면 검사 명령 자체는 계속 성공해서, CI에 연결해 두지 않으면
+      # 새 페이지가 이 누락을 그대로 들고 병합될 수 있다.
+      - name: Check modulepreload references
+        run: npm run check:preload
+
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 

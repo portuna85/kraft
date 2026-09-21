@@ -55,6 +55,10 @@
             <noscript>
                 <p class="recommend__noscript">번호 추천 기능을 사용하려면 자바스크립트가 필요합니다.</p>
             </noscript>
+            <!-- recommend.js가 정적으로 import하는 공유 청크(Vue 런타임 포함)를 미리 받아
+                 둔다. F01: 이 링크가 없었는데도 check-preload.mjs가 "preload가 아예 없는
+                 페이지"는 검사하지 않고 건너뛰어 놓쳤다. -->
+            <link rel="modulepreload" href="/js/vue-dist/chunks/runtime.js" />
             <script type="module" src="/js/vue-dist/recommend.js" onerror="kraftVueMountFailed('recommend-app')"></script>
         </div>
     </main>

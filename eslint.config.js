@@ -47,9 +47,9 @@ export default [
         },
     },
 
-    // Playwright 설정·스펙(Node에서 돈다).
+    // Playwright 설정·스펙과 빌드 검사 스크립트(둘 다 Node에서 돈다, F03).
     {
-        files: ['e2e/**/*.js', 'playwright.config.js', 'eslint.config.js'],
+        files: ['e2e/**/*.js', 'playwright.config.js', 'eslint.config.js', 'scripts/**/*.mjs'],
         ...js.configs.recommended,
         languageOptions: {
             ecmaVersion: 2022,
