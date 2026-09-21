@@ -50,8 +50,14 @@
 
 // 동행복권 공식 배색(1~10 노랑·11~20 파랑·21~30 빨강·31~40 회색·41~45 초록) 근사값 +
 // 그라데이션. 노랑·초록은 흰 글씨 대비가 약해 글자색을 따로 어둡게 둔다.
+//
+// F05: 이 규칙에 color 지정이 빠져 있어 위 설명과 달리 기본값(흰색, .recommend__latest-ball)
+// 그대로 쓰이고 있었다 — 흰 숫자 대 #fbc400/#e0a800 배경의 WCAG 대비가 약 1.6~2.1:1로
+// 4.5:1(본문 텍스트 AA 기준) 근처에도 못 미친다. 초록(.recommend__latest-ball--green)과
+// 같은 방식으로 어두운 글자색을 지정해 실제로 약 7:1(밝은 쪽 배경 기준)을 만든다.
 .recommend__latest-ball--yellow {
     background: linear-gradient(135deg, #fbc400, #e0a800);
+    color: #4a3800;
 }
 
 .recommend__latest-ball--blue {
