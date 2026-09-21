@@ -19,6 +19,13 @@ package com.kraft.observability;
  *                         알려 주는 것이 전부다.
  * @param slowRequests     고정 임계값(ms)을 넘은 요청 수 상한(O05). 평균이 정상 범위여도 이
  *                         값이 늘면 일부 요청만 유독 느려지고 있다는 뜻이다.
+ * @param sessionRevocationFailed 재시도를 모두 소진한 세션 폐기 태스크 수 상한(O03). 이건
+ *                         사람이 봐야 낫는다 — mailFailed와 같은 성격이다.
+ * @param imageDeleteBacklog 삭제 예약됐지만 아직 못 지운 이미지 파일 수 상한(O03). 정리
+ *                         주기가 막혔거나 계속 실패하고 있다는 신호다.
+ * @param recommendationHistoryStaleHours 추천 이력 검증 기준이 갱신되지 않은 채 지날 수
+ *                         있는 최대 시간(O03). 자동 수집이 꺼져 있거나 매주 실패하고 있다는
+ *                         신호다.
  */
 public record HealthThresholds(
         int minRequests,
@@ -30,5 +37,8 @@ public record HealthThresholds(
         long mailPending,
         long mailFailed,
         long reportsPending,
-        long slowRequests) {
+        long slowRequests,
+        long sessionRevocationFailed,
+        long imageDeleteBacklog,
+        long recommendationHistoryStaleHours) {
 }

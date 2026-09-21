@@ -22,6 +22,13 @@ import java.util.List;
  * @param slowRequests  고정 임계값(RequestMetrics의 slowThresholdMillis, 기본 3000ms)을 넘은
  *                      요청 수(O05). 평균·최댓값만으로는 소수의 느린 요청이 다수의 빠른 요청에
  *                      묻힌다 — 이 값은 그 소수를 직접 센다.
+ * @param sessionRevocationFailed 재시도를 모두 소진해 사람이 봐야 하는 세션 폐기 태스크
+ *                      수(O03). {@code -1}의 뜻은 mailPending과 같다.
+ * @param imageDeleteBacklog 삭제 예약됐지만 아직 실제로 지우지 못한 이미지 파일 수(O03).
+ *                      {@code -1}의 뜻은 mailPending과 같다.
+ * @param recommendationHistoryAgeHours 추천 이력 검증 기준(verifiedAt)이 마지막으로 갱신된
+ *                      지 지난 시간(O03). 상태 행이 없거나 한 번도 검증되지 않았으면
+ *                      {@code -1}(측정 불가 취급 — 새 설치에서 오탐을 막는다).
  */
 public record HealthSnapshot(
         long requests,
@@ -36,7 +43,10 @@ public record HealthSnapshot(
         long mailPending,
         long mailFailed,
         long reportsPending,
-        long slowRequests) {
+        long slowRequests,
+        long sessionRevocationFailed,
+        long imageDeleteBacklog,
+        long recommendationHistoryAgeHours) {
 
     public double errorRate() {
         return requests == 0 ? 0 : (double) errors / requests;
@@ -89,15 +99,26 @@ public record HealthSnapshot(
         if (slowRequests > limits.slowRequests()) {
             found.add("느린 요청 %d건 (기준 %d건, 최대 %dms)".formatted(slowRequests, limits.slowRequests(), maxMillis));
         }
+        if (sessionRevocationFailed >= 0 && sessionRevocationFailed > limits.sessionRevocationFailed()) {
+            found.add("세션 폐기 실패 %d건 (기준 %d건)".formatted(sessionRevocationFailed, limits.sessionRevocationFailed()));
+        }
+        if (imageDeleteBacklog >= 0 && imageDeleteBacklog > limits.imageDeleteBacklog()) {
+            found.add("이미지 삭제 backlog %d건 (기준 %d건)".formatted(imageDeleteBacklog, limits.imageDeleteBacklog()));
+        }
+        if (recommendationHistoryAgeHours >= 0 && recommendationHistoryAgeHours > limits.recommendationHistoryStaleHours()) {
+            found.add("추천 이력 검증 기준이 %d시간째 갱신되지 않음 (기준 %d시간)"
+                    .formatted(recommendationHistoryAgeHours, limits.recommendationHistoryStaleHours()));
+        }
         return found;
     }
 
     /** 주기마다 남기는 한 줄. 넘긴 항목이 없어도 이 줄은 남아 평소 수치를 알 수 있게 한다. */
     public String summary() {
         return ("요청=%d 오류=%d(%.1f%%) 5xx=%d 평균=%dms 최대=%dms 느린요청=%d "
-                + "DB풀=%d/%d 대기=%d 디스크여유=%dMB 메일대기=%d 메일실패=%d 미처리신고=%d")
+                + "DB풀=%d/%d 대기=%d 디스크여유=%dMB 메일대기=%d 메일실패=%d 미처리신고=%d "
+                + "세션폐기실패=%d 이미지삭제backlog=%d 추천이력나이=%d시간")
                 .formatted(requests, errors, errorRate() * 100, serverErrors, avgMillis, maxMillis, slowRequests,
                         poolActive, poolTotal, poolPending, diskFreeBytes / 1048576, mailPending, mailFailed,
-                        reportsPending);
+                        reportsPending, sessionRevocationFailed, imageDeleteBacklog, recommendationHistoryAgeHours);
     }
 }

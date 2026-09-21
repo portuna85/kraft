@@ -1,7 +1,10 @@
 package com.kraft.observability;
 
+import com.kraft.post.domain.PostImageRepository;
+import com.kraft.recommend.domain.RecommendationHistoryStateRepository;
 import com.kraft.report.domain.ReportRepository;
 import com.kraft.user.mail.OutboxMailRepository;
+import com.kraft.user.session.SessionRevocationTaskRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -44,8 +47,13 @@ public class ObservabilityConfig {
     public HealthReporter healthReporter(RequestMetrics metrics,
                                          OutboxMailRepository outboxMailRepository,
                                          ReportRepository reportRepository,
+                                         SessionRevocationTaskRepository sessionRevocationTaskRepository,
+                                         PostImageRepository postImageRepository,
+                                         RecommendationHistoryStateRepository recommendationHistoryStateRepository,
                                          DataSource dataSource,
                                          @Value("${app.upload.dir}") String uploadDir) {
-        return new HealthReporter(metrics, outboxMailRepository, reportRepository, dataSource, uploadDir);
+        return new HealthReporter(metrics, outboxMailRepository, reportRepository,
+                sessionRevocationTaskRepository, postImageRepository, recommendationHistoryStateRepository,
+                dataSource, uploadDir);
     }
 }

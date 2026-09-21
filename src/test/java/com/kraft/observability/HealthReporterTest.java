@@ -1,5 +1,7 @@
 package com.kraft.observability;
 
+import com.kraft.post.domain.PostImageRepository;
+import com.kraft.recommend.domain.RecommendationHistoryStateRepository;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
@@ -7,6 +9,7 @@ import com.kraft.user.mail.OutboxMailKind;
 import com.kraft.report.domain.ReportRepository;
 import com.kraft.user.mail.OutboxMailRepository;
 import com.kraft.user.mail.OutboxMailStore;
+import com.kraft.user.session.SessionRevocationTaskRepository;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
@@ -62,6 +65,15 @@ class HealthReporterTest {
     private UserRepository userRepository;
 
     @Autowired
+    private SessionRevocationTaskRepository sessionRevocationTaskRepository;
+
+    @Autowired
+    private PostImageRepository postImageRepository;
+
+    @Autowired
+    private RecommendationHistoryStateRepository recommendationHistoryStateRepository;
+
+    @Autowired
     private MockMvc mockMvc;
 
     private ListAppender<ILoggingEvent> logs;
@@ -92,7 +104,7 @@ class HealthReporterTest {
     @Test
     @DisplayName("정상일 때는 INFO로 평소 수치를 남긴다")
     void healthyStateIsLoggedAtInfo() {
-        healthReporter.report(new HealthSnapshot(100, 1, 0, 90, 300, 1, 10, 0, 50_000_000_000L, 0, 0, 0, 0));
+        healthReporter.report(new HealthSnapshot(100, 1, 0, 90, 300, 1, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0));
 
         ILoggingEvent event = onlyEvent();
         assertThat(event.getLevel()).isEqualTo(Level.INFO);
@@ -106,7 +118,7 @@ class HealthReporterTest {
     @Test
     @DisplayName("기준을 넘기면 ERROR로 올려 무엇이 넘었는지 함께 남긴다")
     void breachIsEscalatedToError() {
-        healthReporter.report(new HealthSnapshot(100, 40, 3, 90, 300, 1, 10, 0, 50_000_000_000L, 0, 0, 0, 0));
+        healthReporter.report(new HealthSnapshot(100, 40, 3, 90, 300, 1, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0));
 
         ILoggingEvent event = onlyEvent();
         assertThat(event.getLevel()).as("ERROR라야 kraft-error.log에 모인다").isEqualTo(Level.ERROR);
@@ -164,7 +176,7 @@ class HealthReporterTest {
 
         OutboxMailRepository failing = mock(OutboxMailRepository.class);
         given(failing.countByStatus(any())).willThrow(new RuntimeException("DB가 응답하지 않습니다"));
-        HealthReporter broken = new HealthReporter(requestMetrics, failing, reportRepository, null, "uploads/images");
+        HealthReporter broken = new HealthReporter(requestMetrics, failing, reportRepository, sessionRevocationTaskRepository, postImageRepository, recommendationHistoryStateRepository, null, "uploads/images");
         ReflectionTestUtils.setField(broken, "enabled", true);
 
         assertThatCode(broken::report).doesNotThrowAnyException();
@@ -191,7 +203,7 @@ class HealthReporterTest {
     void unexpectedFailureOutsideCollectIsLogged() {
         RequestMetrics failingMetrics = mock(RequestMetrics.class);
         given(failingMetrics.drain()).willThrow(new RuntimeException("지표 수집기 자체가 깨졌습니다"));
-        HealthReporter broken = new HealthReporter(failingMetrics, outboxMailRepository, reportRepository, null, "uploads/images");
+        HealthReporter broken = new HealthReporter(failingMetrics, outboxMailRepository, reportRepository, sessionRevocationTaskRepository, postImageRepository, recommendationHistoryStateRepository, null, "uploads/images");
         ReflectionTestUtils.setField(broken, "enabled", true);
 
         assertThatCode(broken::report).doesNotThrowAnyException();
@@ -208,7 +220,7 @@ class HealthReporterTest {
     @Test
     @DisplayName("커넥션 풀 정보를 읽을 수 없으면 그 항목만 빼고 보고한다")
     void unknownPoolIsSkippedRatherThanFailing() {
-        HealthReporter noPool = new HealthReporter(requestMetrics, outboxMailRepository, reportRepository, null, "uploads/images");
+        HealthReporter noPool = new HealthReporter(requestMetrics, outboxMailRepository, reportRepository, sessionRevocationTaskRepository, postImageRepository, recommendationHistoryStateRepository, null, "uploads/images");
 
         HealthSnapshot snapshot = noPool.collect();
 

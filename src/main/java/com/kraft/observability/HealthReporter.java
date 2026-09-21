@@ -1,9 +1,15 @@
 package com.kraft.observability;
 
+import com.kraft.post.domain.PostImageRepository;
+import com.kraft.post.domain.PostImageStatus;
+import com.kraft.recommend.domain.RecommendationHistoryState;
+import com.kraft.recommend.domain.RecommendationHistoryStateRepository;
 import com.kraft.report.domain.ReportRepository;
 import com.kraft.report.domain.ReportStatus;
 import com.kraft.user.mail.OutboxMailRepository;
 import com.kraft.user.mail.OutboxMailStatus;
+import com.kraft.user.session.SessionRevocationTaskRepository;
+import com.kraft.user.session.SessionRevocationTaskStatus;
 import com.zaxxer.hikari.HikariDataSource;
 import com.zaxxer.hikari.HikariPoolMXBean;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +18,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 
 import javax.sql.DataSource;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -28,6 +36,10 @@ import java.util.List;
  * HTTP 오류율·응답 지연({@link RequestMetrics}), DB 커넥션 풀, 업로드 디스크 여유,
  * 메일 대기열, 미처리 신고. 앞의 것들은 "막히면 사용자가 곧바로 겪는" 것이고, 마지막 하나는
  * 앱이 아니라 사람이 멈춘 신호다 — 신고가 쌓이는 동안 문제가 된 글은 그대로 보인다.
+ * <p>
+ * 세션 폐기 실패 건수·이미지 삭제 backlog·추천 이력 최신성도 같은 이유로 담는다(O03) —
+ * 셋 다 주기 작업이 있지만 그 작업 자체가 막히거나 계속 실패해도 기존 지표에는 드러나지
+ * 않았다.
  */
 @Slf4j
 public class HealthReporter {
@@ -35,6 +47,9 @@ public class HealthReporter {
     private final RequestMetrics requestMetrics;
     private final OutboxMailRepository outboxMailRepository;
     private final ReportRepository reportRepository;
+    private final SessionRevocationTaskRepository sessionRevocationTaskRepository;
+    private final PostImageRepository postImageRepository;
+    private final RecommendationHistoryStateRepository recommendationHistoryStateRepository;
     private final DataSource dataSource;
     private final Path uploadDir;
 
@@ -73,14 +88,36 @@ public class HealthReporter {
     @Value("${app.metrics.slow-requests:5}")
     private long slowRequests;
 
+    /** 재시도를 모두 소진해 사람이 봐야 하는 세션 폐기 태스크 수 상한(O03). */
+    @Value("${app.metrics.session-revocation-failed:0}")
+    private long sessionRevocationFailed;
+
+    /** 삭제 예약됐지만 아직 실제로 지우지 못한 이미지 파일 수 상한(O03). */
+    @Value("${app.metrics.image-delete-backlog:200}")
+    private long imageDeleteBacklog;
+
+    /**
+     * 추천 이력 검증 기준(verifiedAt)이 이만큼(시간) 지나면 알린다(O03). 매주 토요일 밤
+     * 자동 수집이 실패하거나 꺼져 있으면 이 값이 계속 커진다. 기본값(200시간 ≈ 8.3일)은
+     * 주 1회 수집이 한 번 밀려도 곧바로 울리지 않을 만큼의 여유다 — 실측 후 조정 대상이다.
+     */
+    @Value("${app.metrics.recommendation-history-stale-hours:200}")
+    private long recommendationHistoryStaleHours;
+
     public HealthReporter(RequestMetrics requestMetrics,
                           OutboxMailRepository outboxMailRepository,
                           ReportRepository reportRepository,
+                          SessionRevocationTaskRepository sessionRevocationTaskRepository,
+                          PostImageRepository postImageRepository,
+                          RecommendationHistoryStateRepository recommendationHistoryStateRepository,
                           DataSource dataSource,
                           String uploadDir) {
         this.requestMetrics = requestMetrics;
         this.outboxMailRepository = outboxMailRepository;
         this.reportRepository = reportRepository;
+        this.sessionRevocationTaskRepository = sessionRevocationTaskRepository;
+        this.postImageRepository = postImageRepository;
+        this.recommendationHistoryStateRepository = recommendationHistoryStateRepository;
         this.dataSource = dataSource;
         this.uploadDir = Path.of(uploadDir).toAbsolutePath();
     }
@@ -112,7 +149,8 @@ public class HealthReporter {
 
     HealthThresholds thresholds() {
         return new HealthThresholds(minRequests, errorRate, serverErrors, avgMillis,
-                poolUsage, diskFreeBytes, mailPending, mailFailed, reportsPending, slowRequests);
+                poolUsage, diskFreeBytes, mailPending, mailFailed, reportsPending, slowRequests,
+                sessionRevocationFailed, imageDeleteBacklog, recommendationHistoryStaleHours);
     }
 
     HealthSnapshot collect() {
@@ -135,7 +173,26 @@ public class HealthReporter {
                 safeCount("발송 대기 메일 수", () -> outboxMailRepository.countByStatus(OutboxMailStatus.PENDING)),
                 safeCount("발송 포기 메일 수", () -> outboxMailRepository.countByStatus(OutboxMailStatus.FAILED)),
                 safeCount("미처리 신고 수", () -> reportRepository.countByStatus(ReportStatus.PENDING)),
-                http.slowRequests());
+                http.slowRequests(),
+                safeCount("세션 폐기 실패 수", () -> sessionRevocationTaskRepository.countByStatus(SessionRevocationTaskStatus.FAILED)),
+                safeCount("이미지 삭제 backlog", () -> postImageRepository.countByStatus(PostImageStatus.PENDING_DELETE)),
+                recommendationHistoryAgeHours());
+    }
+
+    /**
+     * 추천 이력 검증 기준이 마지막으로 갱신된 지 몇 시간 지났는지. 상태 행이 없거나
+     * (V20 미적용) verifiedAt이 아직 한 번도 채워지지 않았으면 diskFreeBytes와 같은 관례로
+     * -1(측정 불가)을 돌려준다.
+     */
+    private long recommendationHistoryAgeHours() {
+        return safeCount("추천 이력 검증 기준 시각", () -> {
+            RecommendationHistoryState state = recommendationHistoryStateRepository.findById(1).orElse(null);
+            LocalDateTime verifiedAt = state == null ? null : state.getVerifiedAt();
+            if (verifiedAt == null) {
+                return -1L;
+            }
+            return Duration.between(verifiedAt, LocalDateTime.now()).toHours();
+        });
     }
 
     /** @return 정상 조회 값. 실패하면 경고를 남기고 diskFreeBytes와 같은 관례로 -1을 돌려준다. */

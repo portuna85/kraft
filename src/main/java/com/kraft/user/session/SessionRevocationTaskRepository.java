@@ -50,6 +50,9 @@ public interface SessionRevocationTaskRepository extends JpaRepository<SessionRe
     List<SessionRevocationTask> findByStatusAndUpdatedAtBefore(
             SessionRevocationTaskStatus status, LocalDateTime threshold, Pageable pageable);
 
+    /** 관측용 집계(O03) — 재시도를 모두 소진해 사람이 봐야 하는 태스크 수. */
+    long countByStatus(SessionRevocationTaskStatus status);
+
     /** 보관 기한이 지난 종료 상태(DONE/FAILED) 행을 지운다. */
     @Modifying(flushAutomatically = true)
     @Query("DELETE FROM SessionRevocationTask t WHERE t.status IN :statuses AND t.updatedAt < :threshold")

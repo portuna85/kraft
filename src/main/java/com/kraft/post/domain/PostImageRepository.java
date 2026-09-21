@@ -16,6 +16,9 @@ public interface PostImageRepository extends JpaRepository<PostImage, Long> {
 
     boolean existsByFileName(String fileName);
 
+    /** 관측용 집계(O03) — 삭제 예약됐지만 아직 실제로 지우지 못한 파일 수(정리 주기의 backlog). */
+    long countByStatus(PostImageStatus status);
+
     /**
      * 후보 파일명 중 실제로 대장에 있는 것만 돌려준다(B11). {@code OrphanFileReconciler}가
      * 예전에는 디렉터리의 파일마다 {@code existsByFileName}을 따로 불러, 파일 수만큼 쿼리가
