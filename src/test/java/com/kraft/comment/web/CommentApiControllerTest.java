@@ -1,7 +1,6 @@
 package com.kraft.comment.web;
 
 import com.kraft.comment.dto.CommentPageDto;
-import com.kraft.comment.dto.CommentResponseDto;
 import com.kraft.comment.dto.CommentUpdateRequestDto;
 import com.kraft.comment.service.CommentService;
 import com.kraft.config.security.SecurityConfig;
@@ -16,7 +15,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -49,17 +47,6 @@ class CommentApiControllerTest {
 
     @MockitoBean
     private CommentService commentService;
-
-    @Test
-    @DisplayName("GET /api/v1/posts/{postId}/comments 는 인증 없이도 호출할 수 있다")
-    void listComments_isAccessibleWithoutAuthentication() throws Exception {
-        given(commentService.findByPostId(1L))
-                .willReturn(List.of(new CommentResponseDto(1L, 1L, null, "댓글", "tester", LocalDateTime.now())));
-
-        mockMvc.perform(get("/api/v1/posts/1/comments"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].content").value("댓글"));
-    }
 
     @Test
     @DisplayName("F13: GET .../comments/page 는 인증 없이도 afterId 커서를 그대로 서비스에 전달한다")

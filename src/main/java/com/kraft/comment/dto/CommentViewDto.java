@@ -5,8 +5,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 댓글 <b>화면 전용</b> 응답. 공개 REST 응답({@link CommentResponseDto})에는 권한 필드를
- * 추가하지 않고, 화면에만 댓글별 {@code canManage}를 내려 관리 버튼 노출을 서버 판정에 맞춘다.
+ * 댓글 <b>화면 전용</b> 응답. 커서 페이지 API가 이 형태로만 응답하며, 화면에만 댓글별
+ * {@code canManage}를 내려 관리 버튼 노출을 서버 판정에 맞춘다.
  * <p>
  * {@code parentId}가 null이면 최상위 댓글이고, {@code replies}에 그 답글 목록이 실린다.
  * 답글 자신은 2단계까지만 허용하므로 {@code replies}가 항상 빈 리스트다.

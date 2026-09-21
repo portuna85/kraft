@@ -3,7 +3,6 @@ package com.kraft.comment.service;
 import com.kraft.comment.domain.Comment;
 import com.kraft.comment.domain.CommentRepository;
 import com.kraft.comment.dto.CommentPageDto;
-import com.kraft.comment.dto.CommentResponseDto;
 import com.kraft.comment.dto.CommentSaveRequestDto;
 import com.kraft.comment.dto.CommentUpdateRequestDto;
 import com.kraft.post.domain.Post;
@@ -32,6 +31,7 @@ import java.util.stream.IntStream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -209,7 +209,7 @@ class CommentServiceTest {
         Comment topLevel = commentOf(owner, 100L);
         Comment reply = replyOf(owner, 200L, topLevel);
         given(commentRepository.findPageByPostIdAsc(1L, null, PageRequest.of(0, 21))).willReturn(List.of(topLevel));
-        given(commentRepository.findRepliesByParentIdIn(List.of(100L))).willReturn(List.of(reply));
+        given(commentRepository.findRepliesByParentIdIn(eq(List.of(100L)), any(PageRequest.class))).willReturn(List.of(reply));
         given(commentRepository.countByPostId(1L)).willReturn(2L);
 
         CommentPageDto result = commentService.findInitialPageForView(1L, authOf("owner@example.com", Role.USER));
@@ -312,20 +312,6 @@ class CommentServiceTest {
         var inOrder = org.mockito.Mockito.inOrder(commentRepository);
         inOrder.verify(commentRepository).deleteAllByParentId(100L);
         inOrder.verify(commentRepository).delete(comment);
-    }
-
-    @Test
-    @DisplayName("findByPostId: Repository 결과를 CommentResponseDto 리스트로 변환한다")
-    void findByPostId_convertsRepositoryResultToResponseDtoList() {
-        User owner = userWithEmail("owner@example.com", 1L);
-        Comment comment = commentOf(owner, 100L);
-        given(commentRepository.findAllByPostIdAsc(1L)).willReturn(List.of(comment));
-
-        List<CommentResponseDto> result = commentService.findByPostId(1L);
-
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).content()).isEqualTo("원래 댓글");
-        assertThat(result.get(0).author()).isEqualTo("tester");
     }
 
     @Test

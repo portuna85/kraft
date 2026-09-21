@@ -3,7 +3,6 @@ package com.kraft.comment.service;
 import com.kraft.comment.domain.Comment;
 import com.kraft.comment.domain.CommentRepository;
 import com.kraft.comment.dto.CommentPageDto;
-import com.kraft.comment.dto.CommentResponseDto;
 import com.kraft.comment.dto.CommentSaveRequestDto;
 import com.kraft.comment.dto.CommentUpdateRequestDto;
 import com.kraft.comment.dto.CommentViewDto;
@@ -36,6 +35,13 @@ public class CommentService {
      * (개선 보고서 "댓글 전체 로딩").
      */
     private static final int PAGE_SIZE = 20;
+
+    /**
+     * 한 페이지(최상위 댓글 최대 {@link #PAGE_SIZE}개)에 실리는 답글 총량 상한(B08). 한 댓글에
+     * 답글이 비정상적으로 많이 달려도 이 페이지 응답 크기가 무한정 늘어나지 않는다 — 정상적인
+     * 사용 규모에서는 이 상한에 걸릴 일이 없다.
+     */
+    private static final int MAX_REPLIES_PER_PAGE = 500;
 
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
@@ -95,12 +101,6 @@ public class CommentService {
         commentRepository.delete(comment);
     }
 
-    public List<CommentResponseDto> findByPostId(Long postId) {
-        return commentRepository.findAllByPostIdAsc(postId).stream()
-                .map(CommentResponseDto::new)
-                .toList();
-    }
-
     /**
      * 상세 화면 최초 진입 시 첫 페이지(최대 {@link #PAGE_SIZE}개)만 내려준다. 나머지는
      * {@link #findNextPageForView}로 "더 보기"가 이어 받는다.
@@ -125,11 +125,12 @@ public class CommentService {
         List<Comment> page = hasMore ? fetched.subList(0, PAGE_SIZE) : fetched;
 
         // 이 페이지에 실린 최상위 댓글들의 답글을 한 번에 배치로 가져와 부모 id별로 묶는다
-        // (2단계 댓글, N+1 방지) — 답글 자체는 페이지네이션하지 않는다.
+        // (2단계 댓글, N+1 방지). 부모별로 나눠 제한하지는 않고 이 페이지 전체 합산에 상한을
+        // 둔다(B08, MAX_REPLIES_PER_PAGE).
         List<Long> topLevelIds = page.stream().map(Comment::getId).toList();
         Map<Long, List<CommentViewDto>> repliesByParentId = topLevelIds.isEmpty()
                 ? Map.of()
-                : commentRepository.findRepliesByParentIdIn(topLevelIds).stream()
+                : commentRepository.findRepliesByParentIdIn(topLevelIds, PageRequest.of(0, MAX_REPLIES_PER_PAGE)).stream()
                         .map(reply -> new CommentViewDto(reply,
                                 OwnershipPolicy.canManage(authentication, reply.getUser())))
                         .collect(Collectors.groupingBy(CommentViewDto::parentId));

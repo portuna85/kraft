@@ -12,17 +12,14 @@ import java.util.stream.Collectors;
 
 public interface CommentRepository extends JpaRepository<Comment, Long> {
 
-    @Query("SELECT c FROM Comment c JOIN FETCH c.user WHERE c.post.id = :postId ORDER BY c.id ASC")
-    List<Comment> findAllByPostIdAsc(@Param("postId") Long postId);
-
     /**
      * id 커서 기반 페이지 조회. {@code afterId}가 null이면 가장 오래된 댓글부터, 있으면 그
      * id보다 큰(= 더 나중에 쓰인) 댓글부터 오름차순으로 최대 {@code pageable.getPageSize()}개를
      * 반환한다. 상세 화면의 댓글 전체 로딩을 대체한다(개선 보고서 "댓글 전체 로딩").
      * <p>
      * 최상위 댓글({@code parent IS NULL})만 커서 페이지네이션한다 — 답글은 이 페이지에 실린
-     * 최상위 댓글들을 대상으로 {@link #findRepliesByParentIdIn}이 별도로, 페이지네이션 없이
-     * 한 번에 가져온다(2단계 댓글).
+     * 최상위 댓글들을 대상으로 {@link #findRepliesByParentIdIn}이 별도로, 부모별 커서 없이
+     * 한 번에(전체 상한만 두고) 가져온다(2단계 댓글).
      */
     @Query("SELECT c FROM Comment c JOIN FETCH c.user WHERE c.post.id = :postId AND c.parent IS NULL "
             + "AND (:afterId IS NULL OR c.id > :afterId) ORDER BY c.id ASC")
@@ -31,12 +28,14 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     /**
      * 한 페이지에 실린 최상위 댓글들의 답글을 한 번에 배치로 가져온다(N+1 방지,
-     * {@link #findAllByIdInWithUser}와 같은 관례). 답글 자체는 페이지네이션하지 않는다 —
-     * 이 게시판 규모에서 한 댓글에 달리는 답글 수가 페이지네이션이 필요할 만큼 많지 않다.
+     * {@link #findAllByIdInWithUser}와 같은 관례). 부모별로 나눠 페이지네이션하지는 않는다 —
+     * 이 게시판 규모에서 한 댓글에 달리는 답글 수가 그 정도로 많지는 않다. 다만 {@code pageable}로
+     * 이 페이지 전체(여러 부모 합산)에서 가져오는 답글 총량에 상한을 둔다(B08) — 악의적으로
+     * 한 댓글에 답글을 대량으로 단 경우에도 응답 크기가 무한정 늘어나지 않는다.
      */
     @Query("SELECT c FROM Comment c JOIN FETCH c.user WHERE c.parent.id IN :parentIds "
             + "ORDER BY c.parent.id ASC, c.id ASC")
-    List<Comment> findRepliesByParentIdIn(@Param("parentIds") List<Long> parentIds);
+    List<Comment> findRepliesByParentIdIn(@Param("parentIds") List<Long> parentIds, Pageable pageable);
 
     /**
      * 파생 삭제(개별 조회 후 건별 DELETE)가 아니라 한 문장으로 지운다. 연관 캐스케이드·

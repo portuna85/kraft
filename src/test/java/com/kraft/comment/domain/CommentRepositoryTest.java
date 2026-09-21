@@ -55,33 +55,6 @@ class CommentRepositoryTest {
     }
 
     @Test
-    @DisplayName("findAllByPostIdAsc: 해당 게시글의 댓글만 id 오름차순으로 조회하고, 다른 게시글 댓글은 제외한다")
-    void findAllByPostIdAsc_filtersByPostIdAndSortsAscending() {
-        Comment first = commentRepository.save(Comment.builder().content("첫 댓글").post(post).user(user).build());
-        Comment second = commentRepository.save(Comment.builder().content("둘째 댓글").post(post).user(user).build());
-        commentRepository.save(Comment.builder().content("다른 게시글 댓글").post(otherPost).user(user).build());
-        em.flush();
-        em.clear();
-
-        List<Comment> result = commentRepository.findAllByPostIdAsc(post.getId());
-
-        assertThat(result).extracting(Comment::getId)
-                .containsExactly(first.getId(), second.getId());
-    }
-
-    @Test
-    @DisplayName("findAllByPostIdAsc: JOIN FETCH로 작성자가 함께 조회되어 지연로딩 예외가 없다")
-    void findAllByPostIdAsc_fetchesAuthorEagerlyWithJoinFetch() {
-        commentRepository.save(Comment.builder().content("댓글").post(post).user(user).build());
-        em.flush();
-        em.clear();
-
-        List<Comment> result = commentRepository.findAllByPostIdAsc(post.getId());
-
-        assertThat(result.get(0).getUser().getName()).isEqualTo("tester");
-    }
-
-    @Test
     @DisplayName("deleteAllByPostId: 해당 게시글의 댓글만 삭제하고 다른 게시글 댓글은 남긴다")
     void deleteAllByPostId_deletesOnlyCommentsOfGivenPost() {
         commentRepository.save(Comment.builder().content("삭제될 댓글").post(post).user(user).build());
@@ -92,7 +65,7 @@ class CommentRepositoryTest {
         commentRepository.deleteAllByPostId(post.getId());
         em.flush();
 
-        assertThat(commentRepository.findAllByPostIdAsc(post.getId())).isEmpty();
+        assertThat(commentRepository.countByPostId(post.getId())).isZero();
         assertThat(commentRepository.findById(untouched.getId())).isPresent();
     }
 
@@ -189,7 +162,7 @@ class CommentRepositoryTest {
         commentRepository.deleteAllByParentId(parentA.getId());
         em.flush();
 
-        assertThat(commentRepository.findRepliesByParentIdIn(List.of(parentA.getId()))).isEmpty();
+        assertThat(commentRepository.findRepliesByParentIdIn(List.of(parentA.getId()), PageRequest.of(0, 500))).isEmpty();
         assertThat(commentRepository.findById(replyB.getId())).isPresent();
     }
 
@@ -221,12 +194,29 @@ class CommentRepositoryTest {
         em.flush();
         em.clear();
 
-        List<Comment> replies = commentRepository.findRepliesByParentIdIn(List.of(parentA.getId(), parentB.getId()));
+        List<Comment> replies = commentRepository.findRepliesByParentIdIn(
+                List.of(parentA.getId(), parentB.getId()), PageRequest.of(0, 500));
 
         assertThat(replies).extracting(Comment::getId)
                 .containsExactly(replyA1.getId(), replyA2.getId(), replyB1.getId());
         assertThat(replies.get(0).getUser().getName())
                 .as("JOIN FETCH로 작성자가 함께 와야 지연로딩 예외가 없다").isEqualTo("tester");
+    }
+
+    /** B08: 답글 총량에 상한을 두므로, 실제 답글 수가 더 많아도 pageable 크기만큼만 온다. */
+    @Test
+    @DisplayName("B08: findRepliesByParentIdIn은 pageable 크기를 넘는 답글은 잘라낸다")
+    void findRepliesByParentIdIn_capsResultsToPageableSize() {
+        Comment parent = commentRepository.save(Comment.builder().content("부모").post(post).user(user).build());
+        for (int i = 0; i < 5; i++) {
+            commentRepository.save(Comment.builder().content("답글" + i).post(post).user(user).parent(parent).build());
+        }
+        em.flush();
+        em.clear();
+
+        List<Comment> replies = commentRepository.findRepliesByParentIdIn(List.of(parent.getId()), PageRequest.of(0, 3));
+
+        assertThat(replies).hasSize(3);
     }
 
     @Test
