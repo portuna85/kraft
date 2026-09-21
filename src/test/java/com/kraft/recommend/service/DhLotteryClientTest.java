@@ -178,4 +178,30 @@ class DhLotteryClientTest {
 
         assertThat(outcome).isInstanceOf(DhLotteryClient.FetchOutcome.Unavailable.class);
     }
+
+    /**
+     * B04: 번호 필드는 nullable Integer다. null 필드가 있는 행 하나 때문에 fetchRound 전체가
+     * (예외를 던지지 않는다는 계약을 어기고) NPE로 죽지 않고, 그 행만 건너뛰어야 한다.
+     */
+    @Test
+    @DisplayName("번호 필드가 null인 행이 있어도 예외 없이 Unavailable로 분류하고, 같은 배치의 다른 회차는 그대로 쓸 수 있다")
+    void unavailable_whenANumberFieldIsNull_doesNotThrowAndKeepsOtherRoundsUsable() {
+        MockRestServiceServer[] serverOut = new MockRestServiceServer[1];
+        DhLotteryClient client = newClient(serverOut);
+        serverOut[0].expect(requestTo(BASE_URL + "/lt645/selectPstLt645InfoNew.do?srchDir=center&srchLtEpsd=1241"))
+                .andRespond(withSuccess("""
+                        {"resultCode":null,"resultMessage":null,"data":{"list":[
+                          {"ltEpsd":1241,"tm1WnNo":null,"tm2WnNo":13,"tm3WnNo":16,"tm4WnNo":23,"tm5WnNo":24,"tm6WnNo":43,"bnsWnNo":9},
+                          {"ltEpsd":1242,"tm1WnNo":2,"tm2WnNo":4,"tm3WnNo":10,"tm4WnNo":16,"tm5WnNo":31,"tm6WnNo":41,"bnsWnNo":9}
+                        ]}}
+                        """, MediaType.APPLICATION_JSON));
+
+        DhLotteryClient.FetchOutcome outcome = client.fetchRound(1241);
+
+        assertThat(outcome).isInstanceOf(DhLotteryClient.FetchOutcome.Unavailable.class);
+
+        DhLotteryClient.FetchOutcome otherRound = client.fetchRound(1242);
+        assertThat(otherRound).isInstanceOf(DhLotteryClient.FetchOutcome.Success.class);
+        assertThat(((DhLotteryClient.FetchOutcome.Success) otherRound).draw().roundNo()).isEqualTo(1242);
+    }
 }

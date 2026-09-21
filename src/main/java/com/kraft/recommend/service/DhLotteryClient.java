@@ -111,10 +111,14 @@ public class DhLotteryClient {
             if (item.ltEpsd() == drwNo) {
                 requestedRoundExists = true;
             }
-            List<Integer> numbers = new ArrayList<>(List.of(
-                    item.tm1WnNo(), item.tm2WnNo(), item.tm3WnNo(),
-                    item.tm4WnNo(), item.tm5WnNo(), item.tm6WnNo()));
             try {
+                // 번호 필드는 nullable Integer다(B04) — List.of는 null 원소에서 즉시
+                // NullPointerException을 던지므로, 그 검사도 다른 행을 오염시키지 않도록 이
+                // try 안에서 함께 잡는다. 바깥에 있으면 이 메서드의 "예외를 던지지 않는다"는
+                // 계약이 깨지고 배치 전체 처리가 중단된다.
+                List<Integer> numbers = new ArrayList<>(List.of(
+                        item.tm1WnNo(), item.tm2WnNo(), item.tm3WnNo(),
+                        item.tm4WnNo(), item.tm5WnNo(), item.tm6WnNo()));
                 LottoNumbers.of(numbers);
                 cache.put(item.ltEpsd(), new ImportedDraw(item.ltEpsd(), numbers, buildDetails(item)));
             } catch (RuntimeException e) {
