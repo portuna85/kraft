@@ -34,6 +34,12 @@ public class PostImageService {
     /** 시그니처 판별에 필요한 앞부분 길이(WEBP의 "WEBP" 표시가 8~12바이트에 있다). */
     private static final int SIGNATURE_HEADER_LENGTH = 12;
 
+    /**
+     * WEBP 치수를 컨테이너 헤더에서 직접 읽는 데 필요한 길이(F04). VP8X 확장 헤더의 캔버스
+     * 높이가 29바이트째에서 끝난다 — 가장 긴 경우를 기준으로 여유 있게 잡는다.
+     */
+    private static final int WEBP_DIMENSION_HEADER_LENGTH = 30;
+
     /** 압축을 풀었을 때의 픽셀 수 상한(약 50메가픽셀). 파일은 작지만 펼치면 거대한 이미지를 막는다. */
     private static final long MAX_PIXELS = 50_000_000L;
 
@@ -156,9 +162,10 @@ public class PostImageService {
      * (개선 보고서 F06). 두 단계로 막는다:
      * <ol>
      * <li>매직 바이트(파일 시그니처)가 확장자와 맞는지 — 이름만 바꾼 파일을 걸러낸다.</li>
-     * <li>{@link ImageIO}로 실제 크기를 읽어 픽셀 수 상한을 넘는지 — 파일은 작지만 압축을 풀면
-     * 거대한 이미지(decompression bomb)를 걸러낸다. WEBP는 JDK 기본 ImageIO에 디코더가 없어
-     * 이 단계를 건너뛴다(시그니처 검사는 그대로 적용된다).</li>
+     * <li>실제 크기를 읽어 픽셀 수 상한을 넘는지 — 파일은 작지만 압축을 풀면 거대한
+     * 이미지(decompression bomb)를 걸러낸다. JPG/PNG/GIF는 {@link ImageIO}가, WEBP는
+     * JDK 기본 ImageIO에 디코더가 없어 컨테이너 헤더를 직접 읽는
+     * {@link #validateWebpPixelCount}가 담당한다(F04).</li>
      * </ol>
      */
     private void validateRealImage(MultipartFile file, String extension) {
@@ -167,7 +174,7 @@ public class PostImageService {
             throw new IllegalArgumentException(
                     "이미지 파일이 아니거나 확장자와 실제 형식이 다릅니다: " + extension);
         }
-        validatePixelCount(file);
+        validatePixelCount(file, extension);
     }
 
     private boolean matchesSignature(byte[] header, String extension) {
@@ -192,8 +199,17 @@ public class PostImageService {
      * {@code MemoryCacheImageInputStream})의 {@code close()}는 자기 내부 버퍼만 닫고 감싼
      * 원본 스트림은 닫지 않는다. 예전에는 원본 스트림을 변수 없이 바로 넘겨 그 스트림이 누수됐다
      * (개선 보고서 "이미지 입력 스트림 소유권").
+     * <p>
+     * WEBP는 표준 JDK ImageIO에 디코더가 없어({@code readers.hasNext()}가 false) 이 경로를
+     * 타지 않는다 — {@link #validateWebpPixelCount}가 컨테이너 헤더를 직접 읽어 같은 상한을
+     * 적용한다(F04). 예전에는 여기서 그냥 건너뛰어, WEBP는 시그니처만 맞으면 픽셀 수 제한
+     * 없이 올라갔다.
      */
-    private void validatePixelCount(MultipartFile file) {
+    private void validatePixelCount(MultipartFile file, String extension) {
+        if ("webp".equals(extension)) {
+            validateWebpPixelCount(file);
+            return;
+        }
         try (InputStream in = file.getInputStream();
              ImageInputStream input = ImageIO.createImageInputStream(in)) {
             if (input == null) {
@@ -201,7 +217,6 @@ public class PostImageService {
             }
             Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
             if (!readers.hasNext()) {
-                // WEBP처럼 JDK에 디코더가 없는 형식. 시그니처 검사는 이미 통과했다.
                 return;
             }
 
@@ -219,6 +234,74 @@ public class PostImageService {
         } catch (IOException e) {
             throw new IllegalArgumentException("이미지 파일을 읽을 수 없습니다.", e);
         }
+    }
+
+    /**
+     * WEBP 컨테이너 헤더에서 캔버스 치수를 직접 읽어 픽셀 수 상한을 적용한다(F04). 세 가지
+     * 하위 형식(단순 손실 VP8, 무손실 VP8L, 확장 VP8X)의 헤더 배치는 WebP 컨테이너
+     * 명세(RIFF/WEBP 청크 구조)에 고정되어 있어 전체를 디코딩하지 않고도 폭·높이만 뽑을 수
+     * 있다. 어떤 하위 형식인지도, 치수도 읽을 수 없으면(손상되었거나 알 수 없는 변형) 안전한
+     * 쪽으로 거절한다 — 조용히 통과시키지 않는다.
+     */
+    private void validateWebpPixelCount(MultipartFile file) {
+        byte[] h = readHeader(file, WEBP_DIMENSION_HEADER_LENGTH);
+        long[] dimensions = webpDimensions(h);
+        if (dimensions == null) {
+            throw new IllegalArgumentException("WEBP 이미지의 크기 정보를 읽을 수 없습니다.");
+        }
+        long pixels = dimensions[0] * dimensions[1];
+        if (pixels > MAX_PIXELS) {
+            throw new IllegalArgumentException(
+                    "이미지 크기가 너무 큽니다. 가로×세로 " + MAX_PIXELS / 1_000_000 + "메가픽셀 이하만 올릴 수 있습니다.");
+        }
+    }
+
+    /**
+     * @return {@code [width, height]} 또는 헤더가 너무 짧거나 알려진 하위 형식이 아니면 null.
+     *         RIFF 헤더(0~11)는 이미 시그니처 검사가 확인했다고 가정하고 12바이트부터 읽는다.
+     */
+    private long[] webpDimensions(byte[] h) {
+        if (h.length < 20) {
+            return null;
+        }
+        String subFormat = new String(h, 12, 4, StandardCharsets.US_ASCII);
+        return switch (subFormat) {
+            case "VP8X" -> {
+                if (h.length < 30) {
+                    yield null;
+                }
+                // 24비트 리틀엔디언, "minus 1" 인코딩(실제 값은 이 필드 + 1).
+                long width = (u(h[24]) | (u(h[25]) << 8) | (u(h[26]) << 16)) + 1;
+                long height = (u(h[27]) | (u(h[28]) << 8) | (u(h[29]) << 16)) + 1;
+                yield new long[] { width, height };
+            }
+            case "VP8 " -> {
+                // 단순 손실 압축: 프레임 태그(3) + 시작 코드 0x9d012a(3) 다음에 14비트
+                // 폭·높이가 각각 16비트 리틀엔디언에 담긴다(위 2비트는 스케일 값이라 버린다).
+                if (h.length < 30) {
+                    yield null;
+                }
+                long width = (u(h[26]) | (u(h[27]) << 8)) & 0x3FFF;
+                long height = (u(h[28]) | (u(h[29]) << 8)) & 0x3FFF;
+                yield new long[] { width, height };
+            }
+            case "VP8L" -> {
+                // 무손실: 시그니처 바이트(0x2F) 다음 4바이트에 14비트 폭·높이(각 -1 인코딩)가
+                // 리틀엔디언 32비트 값으로 packed 되어 있다.
+                if (h.length < 25 || (h[20] & 0xFF) != 0x2F) {
+                    yield null;
+                }
+                long packed = u(h[21]) | (u(h[22]) << 8) | (u(h[23]) << 16) | (u(h[24]) << 24);
+                long width = (packed & 0x3FFF) + 1;
+                long height = ((packed >> 14) & 0x3FFF) + 1;
+                yield new long[] { width, height };
+            }
+            default -> null;
+        };
+    }
+
+    private static long u(byte b) {
+        return b & 0xFFL;
     }
 
     private byte[] readHeader(MultipartFile file, int length) {
