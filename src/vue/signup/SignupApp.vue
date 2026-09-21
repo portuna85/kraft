@@ -1,7 +1,9 @@
 <script setup>
-import { nextTick, reactive, ref, watch } from 'vue';
+import { reactive, ref } from 'vue';
 import { api, messageOf } from '@core/http.js';
+import { PASSWORD } from '@core/constants.js';
 import * as flash from '@ui/flash.js';
+import { usePasswordConfirm } from '../shared/usePasswordConfirm.js';
 
 /**
  * 회원가입 폼.
@@ -24,29 +26,17 @@ const form = reactive({
     password: '',
     passwordConfirm: '',
 });
-const confirmError = ref('');
 const saving = ref(false);
 
-const confirmInput = ref(null);
-
-// 확인란을 고쳐 다시 일치시켜도 재제출 전까지 오류가 남아 있었다(개선 보고서 F13) — 값이
-// 다시 같아지는 순간 바로 지운다.
-watch([() => form.password, () => form.passwordConfirm], () => {
-    if (confirmError.value && form.password === form.passwordConfirm) {
-        confirmError.value = '';
-    }
-});
+const { confirmError, confirmInput, validateMatch } =
+    usePasswordConfirm(() => form.password, () => form.passwordConfirm);
 
 async function onSubmit() {
     if (saving.value) {
         return;
     }
-    confirmError.value = '';
 
-    if (form.password !== form.passwordConfirm) {
-        confirmError.value = '비밀번호가 일치하지 않습니다.';
-        await nextTick();
-        confirmInput.value?.focus();
+    if (!(await validateMatch())) {
         return;
     }
 
@@ -100,7 +90,7 @@ async function onSubmit() {
       >
     </div>
     <div class="mb-3">
-      <label for="password">비밀번호 (8자 이상 72자 이하, 대문자·소문자·특수문자 포함)</label>
+      <label for="password">비밀번호 ({{ PASSWORD.HINT }})</label>
       <input
         id="password"
         v-model="form.password"
@@ -108,8 +98,8 @@ async function onSubmit() {
         class="form-control"
         placeholder="비밀번호를 입력하세요"
         autocomplete="new-password"
-        minlength="8"
-        maxlength="72"
+        :minlength="PASSWORD.MIN_LENGTH"
+        :maxlength="PASSWORD.MAX_LENGTH"
         required
       >
     </div>

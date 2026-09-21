@@ -40,3 +40,15 @@ export const API = {
     REPORTS: '/api/v1/reports',
     NUMBERS_RECOMMEND: '/api/v1/numbers/recommend',
 };
+
+/**
+ * 가입·비밀번호 변경·재설정 세 DTO(SignUpRequestDto, ChangePasswordRequestDto,
+ * PasswordResetConfirmDto)가 공통으로 쓰는 @Size(min=8, max=72)와 맞춘 값이다(F05). 여기서는
+ * 왕복을 줄이는 편의일 뿐이고, 실제 바이트 기준 판정은 서버의 PasswordBytePolicy가 최종
+ * 결정한다 — 문자 수 72와 UTF-8 바이트 수 72는 다르다(한글 1자=3바이트).
+ */
+export const PASSWORD = {
+    MIN_LENGTH: 8,
+    MAX_LENGTH: 72,
+    HINT: '8자 이상 72자 이하, 대문자·소문자·특수문자 포함',
+};
