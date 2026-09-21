@@ -8,15 +8,16 @@
 # 실행 전: 루트 .env를 준비하고 docker compose up -d --wait mariadb 로 DB를 띄운 뒤,
 # 프로젝트 루트에서 ./gradlew bootRun을 실행한다. local만 .env를 자동으로 읽으며,
 # 같은 이름의 OS 환경변수가 있으면 그 값이 우선한다(README.md 참고).
-# ddl-auto: update를 써서 docker 볼륨의 데이터를 기동 사이에 유지한다. 계정·게시글을 만들어
-# 두고 앱을 다시 띄워도 그대로 남는다(create-drop은 매 기동마다 전체 drop·재생성이라 매번
-# 비워졌다). 어느 쪽이든 운영에는 쓰면 안 된다 — 운영은 prod 프로파일 + Flyway + validate다.
 #
-# update의 한계: 컬럼·테이블 추가는 반영하지만 삭제·타입 변경·제약 변경은 반영하지 않는다.
-# 엔티티에서 필드를 지우거나 타입을 바꿨다면 데이터를 백업하고 명시적인 SQL로 변경한다.
-# (운영 스키마의 정합성은 이 설정이 아니라 db/migration의 Flyway 마이그레이션이 책임진다.
-#  마이그레이션을 새로 추가했다면 운영과 같은 경로 — Flyway + validate + 세션 스키마 미초기화 —
-#  로 배포 전에 한 번 리허설할 것. README.md "환경변수와 데이터 보존" 참고.)
+# 로컬도 운영과 같은 Flyway + validate 경로를 쓴다(B05). 예전에는 ddl-auto: update였는데,
+# 이는 컬럼·테이블 추가만 반영하고 삭제·타입 변경·제약 변경·데이터 삽입·트리거 생성은 전혀
+# 하지 못한다 — V20이 만드는 recommendation_history_state 시드 행과 버전 갱신 트리거는 순수
+# SQL 구성물이라 Hibernate 스키마 생성으로는 만들 수 없고, 그 결과 새 로컬 DB에서는
+# RecommendationHistoryImporter가 HISTORY_STATE_MISSING으로 즉시 실패했다.
+#
+# 스키마를 바꾸려면 이제 엔티티만 고치는 것으로 끝나지 않는다 — db/migration에 새 V파일을
+# 추가해야 한다(운영과 동일한 워크플로). docker 볼륨은 기동 사이에 유지되므로 계정·게시글은
+# 그대로 남는다.
 spring:
   config:
     import: "optional:file:./.env[.properties]"
@@ -29,14 +30,17 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
+
+  flyway:
+    enabled: true
 
   session:
     jdbc:
-      initialize-schema: always
-      # 운영 Flyway V3의 멱등 SQL을 재사용한다. 별도 세션 스키마 사본을 유지하지 않는다.
-      schema: classpath:db/migration/V3__spring_session.sql
+      # Flyway가 V3__spring_session.sql을 포함해 전체 스키마를 관리하므로 애플리케이션이
+      # 즉석에서 세션 테이블을 만들 필요가 없다(운영과 동일).
+      initialize-schema: never
 
   thymeleaf:
     cache: false

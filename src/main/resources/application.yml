@@ -25,10 +25,12 @@ spring:
         max-page-size: 50
 
   flyway:
-    # local(Docker MariaDB, ddl-auto: update)과 test(H2, create-drop)는 Hibernate가 엔티티
-    # 매핑으로 스키마를 직접 만들므로 Flyway를 끈다. 운영(application-prod.yml)에서만
-    # 명시적으로 켠다 — 두 스키마 관리자가 같은 DB를 동시에 건드리면 예측하기 어려워지기
-    # 때문이다(예전 local은 create-drop이라 Flyway가 만든 테이블을 Hibernate가 다시 지웠다).
+    # 기본값은 끔이다. test(H2, create-drop)는 Hibernate가 엔티티 매핑으로 스키마를 직접
+    # 만들므로 여기서 끈 채로 둔다 — 두 스키마 관리자가 같은 DB를 동시에 건드리면 예측하기
+    # 어려워지기 때문이다(예전 local은 create-drop이라 Flyway가 만든 테이블을 Hibernate가
+    # 다시 지웠다). local(Docker MariaDB)과 운영(application-prod.yml)은 각자
+    # spring.flyway.enabled: true로 이 기본값을 덮어써 Flyway + validate 경로를 쓴다(B05) —
+    # 두 환경 모두 같은 DB 엔진이라 스키마 관리 방식도 동일해야 한다.
     enabled: false
 
   session:
