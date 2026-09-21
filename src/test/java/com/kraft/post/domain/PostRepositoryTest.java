@@ -14,6 +14,7 @@ import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.util.List;
 
@@ -46,15 +47,22 @@ class PostRepositoryTest {
                 User.builder().name("tester").email("tester@example.com").password("pw").role(Role.USER).build());
     }
 
+    /**
+     * B10: search 자체는 고정 ORDER BY를 두지 않고 pageable의 Sort에 정렬을 전적으로
+     * 맡긴다 — 실제 정렬 보정({@code PostSortPolicy.effectiveSort})은
+     * {@code PostService.findAllDesc}가 담당하므로, 이 리포지토리 테스트는 그 서비스가
+     * 넘기는 것과 같은 형태(id 내림차순 Sort)를 직접 전달한다.
+     */
     @Test
-    @DisplayName("search: 검색어·분류가 없으면 ID 내림차순으로, 작성자 이름이 함께 조회된다")
-    void search_withoutFilters_returnsPostsDescWithAuthorName() {
+    @DisplayName("search: id 내림차순 Sort를 주면 그 순서로, 작성자 이름이 함께 조회된다")
+    void search_withIdDescSort_returnsPostsDescWithAuthorName() {
         Post first = postRepository.save(Post.builder().title("첫 글").content("c1").user(user).build());
         Post second = postRepository.save(Post.builder().title("둘째 글").content("c2").user(user).build());
         em.flush();
         em.clear();
 
-        Page<PostRowDto> page = postRepository.search(null, null, PageRequest.of(0, 10));
+        Page<PostRowDto> page = postRepository.search(null, null,
+                PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "id")));
 
         assertThat(page.getContent()).extracting(PostRowDto::id)
                 .containsExactly(second.getId(), first.getId());
@@ -97,6 +105,30 @@ class PostRepositoryTest {
 
         assertThat(secondPage.getContent()).hasSize(5);
         assertThat(secondPage.isLast()).isTrue();
+    }
+
+    /**
+     * B10: viewCount 정렬 + id 동점 처리를 실제 DB로 확인한다. 예전에는 리포지토리의 고정
+     * {@code ORDER BY p.id DESC}가 먼저라 이 Sort가 반환 순서에 전혀 반영되지 않았다.
+     */
+    @Test
+    @DisplayName("search: viewCount 내림차순 Sort를 주면 조회수 순서로 반환한다")
+    void search_withViewCountSort_ordersByViewCountDesc() {
+        Post low = postRepository.save(Post.builder().title("낮음").content("c").user(user).build());
+        Post high = postRepository.save(Post.builder().title("높음").content("c").user(user).build());
+        Post mid = postRepository.save(Post.builder().title("중간").content("c").user(user).build());
+        high.increaseViewCount();
+        high.increaseViewCount();
+        mid.increaseViewCount();
+        em.flush();
+        em.clear();
+
+        Page<PostRowDto> page = postRepository.search(null, null,
+                PageRequest.of(0, 10, com.kraft.post.web.PostSortPolicy.effectiveSort(
+                        Sort.by(Sort.Direction.DESC, "viewCount"))));
+
+        assertThat(page.getContent()).extracting(PostRowDto::id)
+                .containsExactly(high.getId(), mid.getId(), low.getId());
     }
 
     @Test

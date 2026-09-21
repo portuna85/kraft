@@ -14,6 +14,7 @@ import com.kraft.post.dto.PostsListResponseDto;
 import com.kraft.post.dto.PostsPageResponseDto;
 import com.kraft.post.dto.PostUpdateRequestDto;
 import com.kraft.post.dto.PostViewDto;
+import com.kraft.post.web.PostSortPolicy;
 import com.kraft.shared.security.OwnershipPolicy;
 import com.kraft.shared.security.WriteAccessPolicy;
 import com.kraft.shared.transaction.AfterCommit;
@@ -180,9 +181,16 @@ public class PostService {
      * 검색어·분류로 목록을 좁힌다. 두 조건 모두 없으면 전체 목록을 최신순으로 반환한다.
      * 목록에 필요한 댓글 수는 게시글마다 따로 조회하지 않고, 이 페이지에 담긴 게시글
      * ID로 한 번에 묶어 조회한다(N+1 방지).
+     * <p>
+     * 정렬은 여기서 {@code PostSortPolicy.effectiveSort}로 보정한다(B10) — 호출자
+     * (SSR/REST 두 컨트롤러)가 이미 허용 목록으로 걸러 둔 Sort를, id 동점 처리를 포함한
+     * 실제 정렬로 바꿔 리포지토리에 넘긴다. 두 컨트롤러가 각자 이 변환을 반복하지 않도록
+     * 여기 한 곳에만 둔다.
      */
     public PostsPageResponseDto findAllDesc(Pageable pageable, String keyword, Category category) {
-        Page<PostRowDto> page = postRepository.search(normalize(keyword), category, pageable);
+        Pageable effective = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
+                PostSortPolicy.effectiveSort(pageable.getSort()));
+        Page<PostRowDto> page = postRepository.search(normalize(keyword), category, effective);
         Map<Long, Long> commentCounts = commentRepository.countByPostIdIn(
                 page.getContent().stream().map(PostRowDto::id).toList());
         Page<PostsListResponseDto> mapped = page.map(row ->

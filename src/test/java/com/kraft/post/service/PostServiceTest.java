@@ -25,6 +25,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -315,6 +316,11 @@ class PostServiceTest {
                 .hasMessageContaining("id=999");
     }
 
+    /** 정렬 없는 요청은 서비스가 id 내림차순 Sort를 채운 뒤 리포지토리로 넘긴다(B10). */
+    private static Pageable idDescOf(Pageable requested) {
+        return PageRequest.of(requested.getPageNumber(), requested.getPageSize(), Sort.by(Sort.Direction.DESC, "id"));
+    }
+
     @Test
     @DisplayName("findAllDesc: Repository의 Page를 PostsPageResponseDto로 그대로 변환한다")
     void findAllDesc_convertsPageToDto() {
@@ -322,7 +328,7 @@ class PostServiceTest {
         PostRowDto row = rowOf(owner, 1L);
         Pageable pageable = PageRequest.of(0, 10);
         Page<PostRowDto> page = new PageImpl<>(List.of(row), pageable, 1);
-        given(postRepository.search(null, null, pageable)).willReturn(page);
+        given(postRepository.search(null, null, idDescOf(pageable))).willReturn(page);
 
         PostsPageResponseDto result = postService.findAllDesc(pageable);
 
@@ -342,7 +348,7 @@ class PostServiceTest {
         PostRowDto row = rowOf(owner, 1L);
         Pageable pageable = PageRequest.of(0, 10);
         Page<PostRowDto> page = new PageImpl<>(List.of(row), pageable, 1);
-        given(postRepository.search("공지", Category.NOTICE, pageable)).willReturn(page);
+        given(postRepository.search("공지", Category.NOTICE, idDescOf(pageable))).willReturn(page);
         given(commentRepository.countByPostIdIn(List.of(1L))).willReturn(Map.of(1L, 3L));
 
         PostsPageResponseDto result = postService.findAllDesc(pageable, "공지", Category.NOTICE);
@@ -355,11 +361,11 @@ class PostServiceTest {
     void findAllDesc_normalizesBlankKeywordToNull() {
         Pageable pageable = PageRequest.of(0, 10);
         Page<PostRowDto> page = new PageImpl<>(List.of(), pageable, 0);
-        given(postRepository.search(null, null, pageable)).willReturn(page);
+        given(postRepository.search(null, null, idDescOf(pageable))).willReturn(page);
 
         postService.findAllDesc(pageable, "   ", null);
 
-        verify(postRepository).search(null, null, pageable);
+        verify(postRepository).search(null, null, idDescOf(pageable));
     }
 
     @Test
@@ -369,11 +375,30 @@ class PostServiceTest {
         String tooLong = "가".repeat(150);
         String truncated = "가".repeat(100);
         Page<PostRowDto> page = new PageImpl<>(List.of(), pageable, 0);
-        given(postRepository.search(truncated, null, pageable)).willReturn(page);
+        given(postRepository.search(truncated, null, idDescOf(pageable))).willReturn(page);
 
         postService.findAllDesc(pageable, tooLong, null);
 
-        verify(postRepository).search(truncated, null, pageable);
+        verify(postRepository).search(truncated, null, idDescOf(pageable));
+    }
+
+    /**
+     * B10: viewCount·updatedAt 정렬을 요청하면 그 컬럼이 주 정렬로 리포지토리에 전달되고,
+     * id 내림차순이 동점 처리로 끝에 붙어야 한다 — 예전에는 리포지토리 JPQL의 고정
+     * ORDER BY p.id DESC가 항상 먼저라 이 정렬이 반환 순서에 전혀 반영되지 않았다.
+     */
+    @Test
+    @DisplayName("findAllDesc: viewCount 정렬 요청은 id 내림차순 동점 처리를 덧붙여 리포지토리에 전달된다")
+    void findAllDesc_withViewCountSort_appendsIdTieBreaker() {
+        Pageable requested = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "viewCount"));
+        Pageable expectedEffective = PageRequest.of(0, 10,
+                Sort.by(Sort.Direction.DESC, "viewCount").and(Sort.by(Sort.Direction.DESC, "id")));
+        Page<PostRowDto> page = new PageImpl<>(List.of(), expectedEffective, 0);
+        given(postRepository.search(null, null, expectedEffective)).willReturn(page);
+
+        postService.findAllDesc(requested);
+
+        verify(postRepository).search(null, null, expectedEffective);
     }
 
     @Test

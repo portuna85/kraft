@@ -21,6 +21,13 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      * {@code content}(TEXT) 컬럼과 작성자 엔티티 전체를 결과에 싣지 않는다(개선 보고서
      * "게시판 목록의 불필요한 열과 집계"). {@code content}는 WHERE 절 매칭에는 여전히
      * 쓰이지만 SELECT 목록에는 없다.
+     * <p>
+     * 정렬은 고정 ORDER BY 없이 {@code pageable}에 전적으로 맡긴다(B10) — 여기에 고정
+     * {@code ORDER BY p.id DESC}를 두면 Spring Data가 pageable의 Sort를 그 뒤에 덧붙일
+     * 뿐이라, id가 고유한 이상 요청한 정렬(viewCount·updatedAt)이 실제 반환 순서에
+     * 반영되지 않는다. 호출자({@code PostService.findAllDesc})가
+     * {@code PostSortPolicy.effectiveSort}로 만든 Sort를 담은 pageable을 넘겨야
+     * 정렬이 보장된다 — 정렬이 없는 pageable을 그대로 넘기면 순서가 정의되지 않는다.
      */
     @Query(value = "SELECT new com.kraft.post.dto.PostRowDto("
             + "p.id, p.title, u.name, p.updatedAt, p.category, p.viewCount) "
@@ -28,8 +35,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             + "WHERE (:category IS NULL OR p.category = :category) "
             + "AND (:keyword IS NULL "
             + "     OR LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%')) "
-            + "     OR LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%'))) "
-            + "ORDER BY p.id DESC",
+            + "     OR LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')))",
             countQuery = "SELECT COUNT(p) FROM Post p "
                     + "WHERE (:category IS NULL OR p.category = :category) "
                     + "AND (:keyword IS NULL "
