@@ -150,6 +150,18 @@ jobs:
       - name: Check modulepreload references
         run: npm run check:preload
 
+      # 커밋된 vendor/bootstrap.min.js가 package-lock.json이 고정한 버전과 어긋나지 않는지
+      # 본다(F06) — 별도 npm 패키지가 아니라 직접 복사해 둔 파일이라, 버전을 올려도
+      # 이 파일만 조용히 뒤처질 수 있다.
+      - name: Check vendor asset version
+        run: npm run check:vendor
+
+      # lockfile이 있다는 것만으로 알려진 취약점이 없다고 판정하지 않는다(F06). high/critical만
+      # 실패시킨다 — low/moderate까지 막으면 관련 없는 푸시가 새로 공개된 취약점 때문에 갑자기
+      # 막힐 수 있어, 급한 것만 걸러 사람이 보게 한다.
+      - name: Audit npm dependencies
+        run: npm run audit:check
+
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 

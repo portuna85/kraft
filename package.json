@@ -15,7 +15,9 @@
     "build:css:app": "sass --style=compressed --no-source-map --quiet-deps src/styles/style.scss src/main/resources/static/css/style.css",
     "build:vue": "vite build --config src/vue/vite.config.js",
     "check:vue": "npm run build:vue && git diff --exit-code --stat -- src/main/resources/static/js/vue-dist",
-    "check:preload": "node scripts/check-preload.mjs"
+    "check:preload": "node scripts/check-preload.mjs",
+    "check:vendor": "node scripts/check-vendor.mjs",
+    "audit:check": "npm audit --audit-level=high"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
