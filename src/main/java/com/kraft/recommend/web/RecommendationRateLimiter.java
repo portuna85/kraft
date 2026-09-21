@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 
 /**
@@ -43,21 +44,40 @@ public class RecommendationRateLimiter {
     private final LongAdder allowed = new LongAdder();
     private final LongAdder rejected = new LongAdder();
 
+    /**
+     * map 전체를 훑는 비상 청소({@link #evictExpired})가 요청량에 비례해 반복 실행되지 않도록
+     * 최소 이 간격을 둔다(B13). {@code windows.size() > 10_000}인 동안에는 그 뒤에 오는 모든
+     * 요청이 매번 O(n) 스캔을 유발할 수 있었다 — 쿨다운으로 한 번에 한 스레드만 실제로 훑게
+     * 한다.
+     */
+    private static final long EMERGENCY_EVICT_COOLDOWN_MILLIS = 1_000L;
+    private final AtomicLong lastEmergencyEvictAt = new AtomicLong(0);
+
     public boolean tryAcquire(String clientKey) {
         long now = Instant.now().toEpochMilli();
-        Window window = windows.compute(clientKey, (key, existing) -> {
+
+        // compute()의 재매핑 함수는 키별로 원자적이므로, "이 호출이 실제로 만든 값"을 그
+        // 안에서 직접 담아 나온다(B13) — 바깥에서 공유 AtomicInteger를 따로 다시 읽으면, 그
+        // 사이 다른 요청이 같은 키를 또 증가시켜 이 호출이 만든 값보다 큰 수를 보게 되고,
+        // 한도 안에서 들어온 요청도 거절될 수 있었다.
+        int[] countAfterThisCall = new int[1];
+        windows.compute(clientKey, (key, existing) -> {
             if (existing == null || now - existing.windowStartMillis() >= WINDOW_MILLIS) {
+                countAfterThisCall[0] = 1;
                 return new Window(now, new AtomicInteger(1));
             }
-            existing.count().incrementAndGet();
+            countAfterThisCall[0] = existing.count().incrementAndGet();
             return existing;
         });
 
         if (windows.size() > 10_000) {
-            evictExpired(now);
+            long last = lastEmergencyEvictAt.get();
+            if (now - last >= EMERGENCY_EVICT_COOLDOWN_MILLIS && lastEmergencyEvictAt.compareAndSet(last, now)) {
+                evictExpired(now);
+            }
         }
 
-        boolean withinLimit = window.count().get() <= limitPerWindow;
+        boolean withinLimit = countAfterThisCall[0] <= limitPerWindow;
         if (withinLimit) {
             allowed.increment();
         } else {
