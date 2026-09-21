@@ -44,6 +44,12 @@ export function init() {
         }
 
         const button = byId('btn-confirm-report');
+        // 버튼 disabled는 일반 클릭 재진입은 막지만, 이 핸들러 자체는 그 상태를 확인하지
+        // 않았다 — form.requestSubmit()처럼 버튼을 거치지 않는 제출 경로나 동일 이벤트
+        // 루프 안의 연속 호출까지는 막지 못한다(F02). 함수 초입에서 직접 확인한다.
+        if (button.disabled) {
+            return;
+        }
         const openedAt = generation;
         button.disabled = true;
         try {

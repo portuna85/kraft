@@ -139,7 +139,14 @@ function clearPicture() {
 }
 
 async function onSubmit() {
+    if (saving.value) {
+        return;
+    }
     saving.value = true;
+
+    // 업로드를 기다리는 동안 입력을 잠그지만(:disabled="saving"), PostSaveApp과 동일하게
+    // 제출 시점 값을 한 번 더 스냅샷으로 고정해 둔다 — 최종 요청은 항상 이 스냅샷을 쓴다(F02).
+    const snapshot = { title: draft.title, content: draft.content, category: draft.category, version: version.value };
 
     let pictureUrl;
     try {
@@ -161,12 +168,12 @@ async function onSubmit() {
     progressText.value = '게시글 저장 중…';
     try {
         await api.put(`${API.POSTS}/${props.post.id}`, {
-            title: draft.title,
-            content: draft.content,
+            title: snapshot.title,
+            content: snapshot.content,
             picture: pictureUrl,
-            category: draft.category,
+            category: snapshot.category,
             // 편집을 시작할 때 받아간 버전. 그 사이 다른 곳에서 저장됐으면 서버가 409로 거절한다.
-            version: version.value,
+            version: snapshot.version,
         });
         picture.revokePreview();
         flash.set('POST_UPDATED');

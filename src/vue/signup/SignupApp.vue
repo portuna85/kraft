@@ -38,6 +38,9 @@ watch([() => form.password, () => form.passwordConfirm], () => {
 });
 
 async function onSubmit() {
+    if (saving.value) {
+        return;
+    }
     confirmError.value = '';
 
     if (form.password !== form.passwordConfirm) {
@@ -48,11 +51,14 @@ async function onSubmit() {
     }
 
     saving.value = true;
+    // 버튼이 비활성화되는 동안에도 입력란 자체는 잠그지 않으므로, 응답을 기다리는 사이
+    // 사용자가 값을 고치더라도 이번 요청은 제출 시점 스냅샷을 그대로 쓴다(F02).
+    const snapshot = { name: form.name, email: form.email, password: form.password };
     try {
         await api.post('/api/v1/users', {
-            name: form.name,
-            email: form.email,
-            password: form.password,
+            name: snapshot.name,
+            email: snapshot.email,
+            password: snapshot.password,
         });
         flash.set('SIGNUP_DONE');
         window.location.href = '/login';

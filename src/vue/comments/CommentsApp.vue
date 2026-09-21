@@ -63,6 +63,9 @@ function mergeComments(newItems) {
 }
 
 async function loadMore() {
+    if (loadingMore.value) {
+        return;
+    }
     loadingMore.value = true;
     const seqAtStart = mutationSeq.value;
     try {
@@ -87,6 +90,9 @@ async function loadMore() {
 }
 
 async function save() {
+    if (saving.value) {
+        return;
+    }
     // 요청이 진행되는 동안 입력창을 막아 두므로(:disabled="saving"), 응답이 올 때까지
     // content는 바뀌지 않는다 — 서버에 보낸 값과 화면에 표시하는 값을 같은 스냅샷으로 고정한다.
     const content = newContent.value;
@@ -134,10 +140,16 @@ function findCommentById(id) {
     return null;
 }
 
-function onUpdated({ id, content }) {
+function onUpdated({ id, content, version }) {
     const target = findCommentById(id);
     if (target) {
         target.content = content;
+        // 성공한 저장이 올린 새 버전을 반영해 둔다(B12/F02) — 그렇지 않으면 같은 댓글을
+        // 새로고침 없이 다시 수정할 때 이미 반영된 자신의 편집을 낡은 버전으로 오인해
+        // 불필요한 409가 난다.
+        if (version !== undefined) {
+            target.version = version;
+        }
     }
     flash.showNow('COMMENT_UPDATED');
 }

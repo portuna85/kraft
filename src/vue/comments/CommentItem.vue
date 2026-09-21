@@ -61,6 +61,9 @@ async function cancelReply() {
 }
 
 async function saveReply() {
+    if (replySaving.value) {
+        return;
+    }
     const content = replyContent.value;
     replySaving.value = true;
     try {
@@ -113,10 +116,30 @@ async function cancelEdit() {
 }
 
 async function save() {
+    if (saving.value) {
+        return;
+    }
+    // 요청에 실제로 보낸 값과 updated 이벤트에 담는 값이 갈리지 않도록, 시작 시점에 한 번만
+    // 읽어 둔다(F02) — 예전에는 요청 본문은 이 시점의 draftContent를, emit은 await가 끝난
+    // 뒤의 draftContent를 따로 읽었다. textarea가 saving 중 비활성화돼 일반 입력으로는 그
+    // 사이 값이 바뀌지 않지만, 프로그램에 의한 변경까지 막는 방어적 조치다.
+    const content = draftContent.value;
+    const requestVersion = props.comment.version;
     saving.value = true;
     try {
-        await api.put(`${API.COMMENTS}/${props.comment.id}`, { content: draftContent.value });
-        emit('updated', { id: props.comment.id, content: draftContent.value });
+        await api.put(`${API.COMMENTS}/${props.comment.id}`, {
+            content,
+            // 편집을 시작할 때 받아간 버전. 그 사이 다른 곳에서 저장됐으면 서버가 409로
+            // 거절한다(B12). 버전을 모르는 댓글(방금 로컬에서 만든 답글 등)은 undefined라
+            // JSON에서 생략되고, 서버는 그 경우 검사를 건너뛴다.
+            version: requestVersion,
+        });
+        // 응답은 id뿐이라 새 버전을 직접 담아 주지 않는다 — 성공했다는 것 자체가 버전이
+        // 정확히 1 올랐다는 뜻이므로 여기서 계산해 둔다. 그렇지 않으면 새로고침 전까지
+        // 같은 댓글을 다시 수정할 때 이미 반영된 자신의 편집을 낡은 버전으로 오인해
+        // 불필요한 409를 만든다.
+        const newVersion = typeof requestVersion === 'number' ? requestVersion + 1 : undefined;
+        emit('updated', { id: props.comment.id, content, version: newVersion });
         editing.value = false;
         await returnFocusToEditButton();
     } catch (error) {

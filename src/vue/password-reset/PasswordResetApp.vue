@@ -30,6 +30,9 @@ watch([() => form.newPassword, () => form.confirm], () => {
 });
 
 async function onSubmit() {
+    if (saving.value) {
+        return;
+    }
     confirmError.value = '';
 
     if (form.newPassword !== form.confirm) {
@@ -40,10 +43,11 @@ async function onSubmit() {
     }
 
     saving.value = true;
+    const snapshot = { newPassword: form.newPassword };
     try {
         await api.post('/api/v1/users/password-reset/confirm', {
             token: props.token,
-            newPassword: form.newPassword,
+            newPassword: snapshot.newPassword,
         });
         // 재설정은 이 계정의 모든 세션을 폐기한다. 새 비밀번호로 다시 들어오면 된다.
         flash.set('PASSWORD_RESET');
