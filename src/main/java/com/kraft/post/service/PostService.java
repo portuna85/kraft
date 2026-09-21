@@ -31,6 +31,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -222,8 +223,18 @@ public class PostService {
      * 지금은 호출하는 쪽이 원하는 최종 상태를 지정하므로 <b>몇 번을 보내도 결과가 같다</b>.
      * 경쟁에서 밀려 INSERT가 제약에 걸리는 경우도 결국 원하던 상태("추천됨")와 같으므로
      * 성공으로 처리한다.
+     * <p>
+     * 이 메서드 자체는 아무것도 쓰지 않는다 — 실제 쓰기(insert/delete)와 최신 개수 조회는
+     * {@link PostLikeWriter}가 전부 REQUIRES_NEW로 독립 수행한다(B09). 그런데도 이 메서드가
+     * (클래스 기본값인 readOnly 트랜잭션이라도) 자신의 트랜잭션을 열면, findPost·findUser가
+     * 커넥션 하나를 쥔 채로 그 REQUIRES_NEW 호출들이 <b>추가</b> 커넥션을 요구한다 — 동시
+     * 좋아요 요청이 몰리면 요청 하나가 커넥션을 최대 2개씩 동시에 물고 있는 셈이라 풀 압박이
+     * 커진다. {@code NOT_SUPPORTED}로 이 메서드 자신의 트랜잭션을 열지 않으면, findPost·
+     * findUser는 각자 리포지토리 기본 트랜잭션으로 짧게 커넥션을 빌렸다 곧바로 돌려주고,
+     * REQUIRES_NEW 호출들도 그때그때 자기 커넥션만 쓴다 — 어느 시점에도 한 요청이 커넥션
+     * 두 개를 동시에 쥐지 않는다.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public PostLikeResponseDto setLike(Long id, boolean liked, Authentication authentication) {
         Post post = findPost(id);
         User user = findUser(authentication.getName());
