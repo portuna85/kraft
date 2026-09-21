@@ -19,7 +19,12 @@ public record CommentViewDto(
         String author,
         LocalDateTime createdAt,
         boolean canManage,
-        List<CommentViewDto> replies
+        List<CommentViewDto> replies,
+        /**
+         * 편집 충돌 감지에 쓰는 낙관적 잠금 버전(B12). 저장 요청의 {@code version}에 이 값을
+         * 그대로 실어 보내면, 그 사이 다른 저장이 있었을 때 서버가 409로 거절한다.
+         */
+        Long version
 ) {
 
     /** 최상위 댓글 생성용. 답글은 아직 채우지 않은 상태로 만들고, 서비스가 나중에 채운다. */
@@ -36,12 +41,13 @@ public record CommentViewDto(
                 entity.getUser() != null ? entity.getUser().getName() : null,
                 entity.getCreatedAt(),
                 canManage,
-                replies
+                replies,
+                entity.getVersion()
         );
     }
 
     /** 답글 목록을 채운 새 인스턴스를 돌려준다. record는 불변이라 필드 하나만 바꿔 복제한다. */
     public CommentViewDto withReplies(List<CommentViewDto> newReplies) {
-        return new CommentViewDto(id, postId, parentId, content, author, createdAt, canManage, newReplies);
+        return new CommentViewDto(id, postId, parentId, content, author, createdAt, canManage, newReplies, version);
     }
 }

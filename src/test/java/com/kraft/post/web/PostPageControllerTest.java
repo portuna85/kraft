@@ -267,7 +267,7 @@ class PostPageControllerTest {
                 .willReturn(new PostViewDto(1L, payload, "내용", null, "작성자", true, Category.FREE, 0L, 0L, false, 0L));
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(
-                        List.of(new CommentViewDto(2L, 1L, null, payload, "댓글작성자", null, true, List.of())), 1, false));
+                        List.of(new CommentViewDto(2L, 1L, null, payload, "댓글작성자", null, true, List.of(), 0L)), 1, false));
 
         mockMvc.perform(get("/posts/update/1").with(user("tester@example.com").roles("USER")))
                 .andExpect(status().isOk())

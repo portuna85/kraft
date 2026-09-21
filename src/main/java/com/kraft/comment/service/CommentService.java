@@ -17,6 +17,7 @@ import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -86,8 +87,21 @@ public class CommentService {
         Comment comment = findComment(id);
         WriteAccessPolicy.requireVerified(findUser(authentication.getName()));
         OwnershipPolicy.validateOwner(authentication, comment.getUser(), id);
+        validateVersion(comment, requestDto.version());
         comment.update(requestDto.content());
         return id;
+    }
+
+    /**
+     * 화면이 받아간 버전과 지금 DB의 버전이 다르면, 그 사이 다른 곳에서 저장이 일어난 것이다
+     * (B12). {@code PostService.validateVersion}과 같은 계약 — 버전을 보내지 않는 요청은
+     * 기존처럼 그대로 저장한다. {@link ObjectOptimisticLockingFailureException}은
+     * {@code ApiExceptionHandler}가 이미 409로 변환한다(Post 편집 충돌과 같은 경로).
+     */
+    private void validateVersion(Comment comment, Long expectedVersion) {
+        if (expectedVersion != null && !expectedVersion.equals(comment.getVersion())) {
+            throw new ObjectOptimisticLockingFailureException(Comment.class, comment.getId());
+        }
     }
 
     @Transactional

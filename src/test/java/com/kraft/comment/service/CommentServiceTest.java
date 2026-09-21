@@ -228,11 +228,51 @@ class CommentServiceTest {
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("owner@example.com"))).willReturn(Optional.of(owner));
 
-        Long id = commentService.update(100L, new CommentUpdateRequestDto("수정된 댓글"),
+        Long id = commentService.update(100L, new CommentUpdateRequestDto("수정된 댓글", null),
                 authOf("owner@example.com", Role.USER));
 
         assertThat(id).isEqualTo(100L);
         assertThat(comment.getContent()).isEqualTo("수정된 댓글");
+    }
+
+    /**
+     * B12: 화면이 받아간 버전과 지금 버전이 같으면 저장을 허용한다 — PostService.validateVersion과
+     * 같은 계약.
+     */
+    @Test
+    @DisplayName("B12: 받아간 버전과 현재 버전이 같으면 저장을 허용한다")
+    void update_whenVersionMatches_updatesContent() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Comment comment = commentOf(owner, 100L);
+        ReflectionTestUtils.setField(comment, "version", 5L);
+        given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("owner@example.com"))).willReturn(Optional.of(owner));
+
+        commentService.update(100L, new CommentUpdateRequestDto("수정된 댓글", 5L),
+                authOf("owner@example.com", Role.USER));
+
+        assertThat(comment.getContent()).isEqualTo("수정된 댓글");
+    }
+
+    /**
+     * B12: 화면이 받아간 버전이 지금 버전과 다르면(그 사이 다른 곳에서 먼저 저장됨)
+     * ObjectOptimisticLockingFailureException을 던지고 내용은 바뀌지 않는다 —
+     * ApiExceptionHandler가 이를 409로 변환한다.
+     */
+    @Test
+    @DisplayName("B12: 받아간 버전이 현재 버전과 다르면 충돌로 거절하고 내용은 바뀌지 않는다")
+    void update_whenVersionMismatches_throwsOptimisticLockingFailureAndDoesNotModify() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Comment comment = commentOf(owner, 100L);
+        ReflectionTestUtils.setField(comment, "version", 5L);
+        given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("owner@example.com"))).willReturn(Optional.of(owner));
+
+        assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("수정된 댓글", 4L),
+                authOf("owner@example.com", Role.USER)))
+                .isInstanceOf(org.springframework.orm.ObjectOptimisticLockingFailureException.class);
+
+        assertThat(comment.getContent()).isEqualTo("원래 댓글");
     }
 
     @Test
@@ -244,7 +284,7 @@ class CommentServiceTest {
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("intruder@example.com"))).willReturn(Optional.of(intruder));
 
-        assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("해킹"),
+        assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("해킹", null),
                 authOf("intruder@example.com", Role.USER)))
                 .isInstanceOf(AccessDeniedException.class);
 
@@ -260,7 +300,7 @@ class CommentServiceTest {
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("admin@example.com"))).willReturn(Optional.of(admin));
 
-        commentService.update(100L, new CommentUpdateRequestDto("관리자 수정"),
+        commentService.update(100L, new CommentUpdateRequestDto("관리자 수정", null),
                 authOf("admin@example.com", Role.ADMIN));
 
         assertThat(comment.getContent()).isEqualTo("관리자 수정");
@@ -275,7 +315,7 @@ class CommentServiceTest {
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("owner@example.com"))).willReturn(Optional.of(owner));
 
-        assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("수정 시도"),
+        assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("수정 시도", null),
                 authOf("owner@example.com", Role.USER)))
                 .isInstanceOf(AccessDeniedException.class);
 

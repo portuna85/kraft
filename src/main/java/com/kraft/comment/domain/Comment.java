@@ -48,6 +48,15 @@ public class Comment extends BaseEntity {
     @JoinColumn(name = "parent_id")
     private Comment parent;
 
+    /**
+     * 동시 편집 충돌을 감지한다(B12). 두 탭이 같은 댓글을 각각 편집해 저장하면, 이 필드가
+     * 없던 예전에는 나중에 flush되는 쪽이 앞선 내용을 조용히 덮어썼다. {@code Post.version}과
+     * 같은 방식이다 — 클라이언트가 받아간 시점의 버전과 다르면 저장을 거부한다
+     * ({@code CommentService.update} 참고).
+     */
+    @Version
+    private Long version;
+
     @Builder
     public Comment(String content, Post post, User user, Comment parent) {
         this.content = content;
