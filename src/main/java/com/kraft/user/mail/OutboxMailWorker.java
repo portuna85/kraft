@@ -91,8 +91,22 @@ public class OutboxMailWorker {
      */
     private Semaphore sendPermits;
 
+    /**
+     * O05: {@code maxConcurrentSends=0}이면 {@link Semaphore}가 영원히 획득되지 않아 모든
+     * 배치가 조용히 멈춘다(예외도, 로그도 없다) — 발송이 끊긴 원인을 찾기 훨씬 어렵다.
+     * {@code batchSize}는 {@code claimBatch}의 SQL {@code LIMIT}에 그대로 들어가므로 음수는
+     * DB 드라이버 예외로 이어진다. 둘 다 기동 시점에 막아 실행 중 조용히 멈추거나 늦게
+     * 터지지 않게 한다.
+     */
     @PostConstruct
     void initSendPermits() {
+        if (maxConcurrentSends < 1) {
+            throw new IllegalStateException(
+                    "app.mail.max-concurrent-sends는 1 이상이어야 합니다: " + maxConcurrentSends);
+        }
+        if (batchSize < 1) {
+            throw new IllegalStateException("app.mail.batch-size는 1 이상이어야 합니다: " + batchSize);
+        }
         this.sendPermits = new Semaphore(maxConcurrentSends);
     }
 

@@ -220,6 +220,26 @@ class ReportServiceTest {
     }
 
     @Test
+    @DisplayName("resolve: 음수 정지 기간은 조용히 건너뛰지 않고 거절한다(O05)")
+    void resolve_withNegativeSuspendDays_isRejected() {
+        assertThatThrownBy(() -> reportService.resolve(5L, authOf("admin@example.com"), -1))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("정지 기간");
+
+        verify(reportRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("resolve: 지나치게 큰 정지 기간은 거절한다(O05)")
+    void resolve_withExcessiveSuspendDays_isRejected() {
+        assertThatThrownBy(() -> reportService.resolve(5L, authOf("admin@example.com"), 3651))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("정지 기간");
+
+        verify(reportRepository, never()).findById(any());
+    }
+
+    @Test
     @DisplayName("reject: 대상을 건드리지 않고 신고만 닫는다")
     void reject_keepsTargetAndClosesReport() {
         User admin = userWithId(9L, "admin@example.com");

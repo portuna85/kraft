@@ -52,6 +52,9 @@ public class ReportService {
     /** 관리자 목록에 보여줄 대상 내용의 길이. 판단에 필요한 만큼만 보여준다. */
     private static final int PREVIEW_LENGTH = 80;
 
+    /** O05: 이보다 큰 정지 기간은 날짜·DB 범위 오류로 이어질 수 있어 입력 단계에서 막는다. */
+    private static final int MAX_SUSPEND_DAYS = 3650;
+
     private final ReportRepository reportRepository;
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
@@ -140,10 +143,16 @@ public class ReportService {
      * 대상이 이미 없으면 지우는 단계만 건너뛰고 기록은 남긴다 — 관리자가 다른 경로로 먼저
      * 지웠을 수 있다.
      *
-     * @param suspendDays 0이면 정지하지 않는다
+     * @param suspendDays 0이면 정지하지 않는다. 음수이거나 {@link #MAX_SUSPEND_DAYS}를
+     *                    넘으면 거절한다(O05) — 음수를 조용히 건너뛰면 관리자가 잘못된 입력을
+     *                    성공으로 오해하고, 지나치게 큰 값은 날짜 계산에서 예상 밖의 결과를 낸다.
      */
     @Transactional
     public void resolve(Long id, Authentication authentication, int suspendDays) {
+        if (suspendDays < 0 || suspendDays > MAX_SUSPEND_DAYS) {
+            throw new IllegalArgumentException(
+                    "정지 기간은 0에서 %d일 사이여야 합니다: %d".formatted(MAX_SUSPEND_DAYS, suspendDays));
+        }
         Report report = findPendingReport(id);
         User admin = findUser(authentication.getName());
         Optional<User> targetAuthor = targetAuthorOf(report.getTargetType(), report.getTargetId());
