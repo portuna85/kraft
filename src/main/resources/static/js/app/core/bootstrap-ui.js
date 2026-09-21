@@ -6,8 +6,13 @@ import { qs } from './dom.js';
  * @property {() => void} hide
  */
 
-/** @type {BootstrapUiHandle} */
-const NOOP_HANDLE = Object.freeze({
+/**
+ * `modal()`/`toast()`가 Bootstrap을 불러오지 못했을 때 돌려주는 값. 호출부가 이 참조와
+ * 비교하면(===) 화면에 아무것도 뜨지 않았다는 것을 알 수 있다 — 중요한 오류라면 flash 같은
+ * Bootstrap JS 비의존 수단으로 대신 알려야 한다(F05, ui/toast.js 참고).
+ * @type {BootstrapUiHandle}
+ */
+export const NOOP_HANDLE = Object.freeze({
     show() {},
     hide() {},
 });

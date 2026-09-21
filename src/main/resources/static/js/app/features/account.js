@@ -170,6 +170,11 @@ async function withdraw(openedAt) {
 /**
  * 인증 메일 재발송 모달. 버튼을 누르는 즉시 메일이 나가던 것을 한 번 확인받도록 바꿨다 —
  * 재발송은 이전 토큰을 무효로 만들기 때문이다.
+ * <p>
+ * changePassword·withdraw와 달리 generation 가드를 두지 않는다(F05 검토 결과). 그 둘의
+ * generation은 "모달을 닫고 다시 열었는데 이전 시도의 오류가 새 폼 위에 남는 것"을 막는데,
+ * 이 모달은 입력 필드가 없고 오류를 모달 안이 아니라 전역 토스트로만 보여줘 다시 열어도
+ * 남을 "이전 폼 상태" 자체가 없다. setBusy(false)만 재진입을 허용하면 충분하다.
  */
 function initResendVerification() {
     const button = byId('btn-confirm-resend');
