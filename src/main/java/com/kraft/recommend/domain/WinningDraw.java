@@ -132,12 +132,38 @@ public class WinningDraw implements Persistable<Integer> {
      * 화면 표시 전용 부가 정보를 반영한다(HIST-01 판정과 무관). {@code details}가 null이면
      * 아무것도 하지 않는다 — 부가 정보를 못 받아온 반영(details 없는 {@code ImportedDraw})이
      * 이미 알고 있던 부가 정보를 조용히 지우지 않게 하기 위함이다.
+     * <p>
+     * {@code DhLotteryClient}는 자동 수집 경로에서 범위를 벗어난 보너스 번호를 이미
+     * null로 거른다({@code buildDetails} 참고) — 그러나 운영자가 직접 넣는 수동/CSV 반영
+     * 경로는 그 방어를 거치지 않는다. 필드 각각은 여전히 null(과거 자료 호환)을 허용하되,
+     * 값이 있으면 최소한의 정합성(범위·중복·음수)을 여기서도 확인한다(B14) — DB CHECK
+     * 제약 추가는 운영 마이그레이션 검토가 필요해 이번 범위에 포함하지 않는다.
      */
     public void applyDetails(DrawDetails details) {
         if (details == null) {
             return;
         }
-        this.bonusNo = details.bonusNo();
+        Integer bonus = details.bonusNo();
+        if (bonus != null) {
+            if (bonus < LottoNumbers.MIN || bonus > LottoNumbers.MAX) {
+                throw new IllegalArgumentException(
+                        "보너스 번호가 범위를 벗어났습니다: round=" + roundNo + ", bonusNo=" + bonus);
+            }
+            if (numbers().contains(bonus)) {
+                throw new IllegalArgumentException(
+                        "보너스 번호가 본번호와 중복됩니다: round=" + roundNo + ", bonusNo=" + bonus);
+            }
+        }
+        if (details.firstPrizeWinnerCount() != null && details.firstPrizeWinnerCount() < 0) {
+            throw new IllegalArgumentException(
+                    "1등 당첨자 수는 음수일 수 없습니다: round=" + roundNo + ", count=" + details.firstPrizeWinnerCount());
+        }
+        if (details.firstPrizeAmount() != null && details.firstPrizeAmount() < 0) {
+            throw new IllegalArgumentException(
+                    "1등 당첨금은 음수일 수 없습니다: round=" + roundNo + ", amount=" + details.firstPrizeAmount());
+        }
+
+        this.bonusNo = bonus;
         this.drawDate = details.drawDate();
         this.firstPrizeWinnerCount = details.firstPrizeWinnerCount();
         this.firstPrizeAmount = details.firstPrizeAmount();

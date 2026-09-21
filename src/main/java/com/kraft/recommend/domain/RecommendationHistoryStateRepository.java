@@ -17,6 +17,13 @@ public interface RecommendationHistoryStateRepository extends JpaRepository<Reco
      * UPDATE하는 이유는 동시 갱신 시 메모리에 캐시된 옛 값으로 다른 트랜잭션의 변경을
      * 덮어쓰지 않기 위함이다.
      * <p>
+     * {@code WHERE}에 {@code :verifiedThroughRound >= s.verifiedThroughRound}를 둔다(B14) —
+     * 이게 없으면 오래 걸린 백필이 그 사이 더 앞서 나간 자동 수집의 검증 구간을 뒤로 되돌릴
+     * 수 있었다(예: 자동 수집이 이미 600회차까지 검증해 뒀는데, 그보다 먼저 시작된 500회차
+     * 기준 백필이 늦게 끝나며 검증 구간을 500으로 덮어씀). 검증 구간을 의도적으로 줄이는
+     * 것(정정)은 이 메서드의 책임이 아니다 — 별도 운영 명령으로 다룬다. 반환값(갱신된 행
+     * 수)이 0이면 이 되돌림 조건에 걸려 아무것도 바뀌지 않았다는 뜻이다.
+     * <p>
      * {@code flushAutomatically = true}가 반드시 있어야 한다 — 이 쿼리는 JPQL을 거치지 않고
      * 즉시 실행되는 벌크 UPDATE라, 같은 트랜잭션에서 먼저 반영한 {@code WinningDraw}의
      * INSERT/변경이 아직 플러시되지 않은 상태로 남아 있으면 뒤이은 {@code clearAutomatically}가
@@ -29,6 +36,6 @@ public interface RecommendationHistoryStateRepository extends JpaRepository<Reco
             + "s.sourceReference = :sourceReference, "
             + "s.verifiedAt = :verifiedAt, "
             + "s.version = s.version + 1 "
-            + "WHERE s.id = 1")
-    void updateVerificationMetadata(Integer verifiedThroughRound, String sourceReference, LocalDateTime verifiedAt);
+            + "WHERE s.id = 1 AND :verifiedThroughRound >= s.verifiedThroughRound")
+    int updateVerificationMetadata(Integer verifiedThroughRound, String sourceReference, LocalDateTime verifiedAt);
 }

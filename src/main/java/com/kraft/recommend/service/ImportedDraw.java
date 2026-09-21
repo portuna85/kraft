@@ -13,6 +13,11 @@ import java.util.List;
  */
 public record ImportedDraw(int roundNo, List<Integer> numbers, DrawDetails details) {
 
+    /** 호출부가 넘긴 뒤 원본 목록을 바꿔도 이 레코드는 영향받지 않게 한다(B14/P3). */
+    public ImportedDraw {
+        numbers = List.copyOf(numbers);
+    }
+
     public ImportedDraw(int roundNo, List<Integer> numbers) {
         this(roundNo, numbers, null);
     }

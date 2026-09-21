@@ -64,7 +64,18 @@ public class RecommendationHistoryImporter {
             }
         }
 
-        stateRepository.updateVerificationMetadata(verifiedThroughRound, sourceReference, now);
+        // 이 UPDATE는 검증 구간을 뒤로 되돌리는 값이면 0행을 갱신한다(B14) — 더 앞서 나간
+        // 다른 수입(예: 늦게 끝난 백필보다 먼저 완료된 자동 수집)의 검증 구간을 조용히
+        // 되돌리지 않는다. 여기서 멈추지 않으면 draws는 이미 반영됐는데 검증 구간만 뒤로
+        // 밀린 채 아무 일도 없었던 것처럼 보고될 수 있다.
+        int metadataUpdated = stateRepository.updateVerificationMetadata(verifiedThroughRound, sourceReference, now);
+        if (metadataUpdated == 0) {
+            throw new RecommendationImportException("VERIFICATION_REGRESSION",
+                    "요청한 verifiedThroughRound(" + verifiedThroughRound + ")가 이미 기록된 검증 구간보다 "
+                            + "앞서지 않습니다 — 더 나중에 검증된 이력이 이미 있습니다. 회차 데이터는 "
+                            + "반영됐지만(inserted=" + inserted + ", updated=" + updated + "), 검증 구간은 "
+                            + "바뀌지 않았습니다. 의도적으로 구간을 줄여야 한다면 별도 운영 절차를 따르세요.");
+        }
 
         return new Result(inserted, updated, verifiedThroughRound);
     }

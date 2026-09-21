@@ -14,4 +14,10 @@ public record NormalizedRecommendationRequest(
         Set<Integer> lockedNumbers,
         Set<Integer> excludedNumbers
 ) {
+
+    /** 생성 후 외부에서 집합을 바꿔 검증된 계약을 훼손하지 못하게 불변 집합으로 저장한다(B14/P3). */
+    public NormalizedRecommendationRequest {
+        lockedNumbers = Set.copyOf(lockedNumbers);
+        excludedNumbers = Set.copyOf(excludedNumbers);
+    }
 }

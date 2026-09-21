@@ -18,6 +18,16 @@ public record RecommendationHistorySnapshot(
 ) {
 
     /**
+     * {@code winningMasks}를 항상 불변 집합으로 저장한다(B14/P3). 이 스냅샷은
+     * {@code RecommendationHistoryProvider}가 {@code volatile} 참조로 여러 요청에 공유하므로,
+     * 호출부가 돌려받은 집합을 바꾸면 다른 요청까지 영향을 받을 수 있다 — 실제로 그런 변조가
+     * 확인된 것은 아니고, 경계에서 방어적으로 막아 둔다.
+     */
+    public RecommendationHistorySnapshot {
+        winningMasks = Set.copyOf(winningMasks);
+    }
+
+    /**
      * HIST-02/HIST-03: 1회부터 검증 기준 회차까지 누락 없이 이어져야 하고, 이력이 비어 있지
      * 않아야 한다. round_count는 DB에 실제로 존재하는 회차 수이며, verifiedThroughRound와
      * 일치해야 "누락 없음"을 뜻한다(연속성은 Importer가 반영 시점에 보장하고, 여기서는 그

@@ -63,6 +63,35 @@ class RecommendationHistoryImporterTest {
         assertThat(state.getSourceReference()).isEqualTo("test-source");
     }
 
+    /**
+     * B14: 더 앞서 나간 검증 구간(예: 자동 수집이 이미 5회차까지 검증)을, 그보다 늦게 끝난
+     * 백필(예: 3회차 기준으로 시작한 작업)이 조용히 되돌리면 안 된다. draws 반영 자체는
+     * 되더라도 검증 구간만은 지켜야 하므로 예외로 알린다.
+     */
+    @Test
+    @DisplayName("B14: 검증 구간을 이미 기록된 것보다 뒤로 되돌리려 하면 거부하고 검증 구간은 그대로 유지된다")
+    void verifiedThroughRoundRegression_rejectedAndStateUnchanged() {
+        importer.importHistory(List.of(
+                new ImportedDraw(1, List.of(1, 2, 3, 4, 5, 6)),
+                new ImportedDraw(2, List.of(7, 8, 9, 10, 11, 12)),
+                new ImportedDraw(3, List.of(13, 14, 15, 16, 17, 18)),
+                new ImportedDraw(4, List.of(19, 20, 21, 22, 23, 24)),
+                new ImportedDraw(5, List.of(25, 26, 27, 28, 29, 30))), 5, "auto-fetch");
+
+        List<ImportedDraw> lateBackfill = List.of(
+                new ImportedDraw(1, List.of(1, 2, 3, 4, 5, 6)),
+                new ImportedDraw(2, List.of(7, 8, 9, 10, 11, 12)),
+                new ImportedDraw(3, List.of(13, 14, 15, 16, 17, 18)));
+
+        assertThatThrownBy(() -> importer.importHistory(lateBackfill, 3, "late-backfill"))
+                .isInstanceOf(RecommendationImportException.class)
+                .hasFieldOrPropertyWithValue("reason", "VERIFICATION_REGRESSION");
+
+        RecommendationHistoryState state = stateRepository.findById(1).orElseThrow();
+        assertThat(state.getVerifiedThroughRound()).isEqualTo(5);
+        assertThat(state.getSourceReference()).isEqualTo("auto-fetch");
+    }
+
     @Test
     @DisplayName("입력에 같은 회차가 두 번 있으면 아무것도 쓰지 않고 거부한다")
     void duplicateRoundInInput_rejectedWithoutWriting() {

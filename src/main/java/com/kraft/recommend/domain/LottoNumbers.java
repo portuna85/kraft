@@ -1,6 +1,5 @@
 package com.kraft.recommend.domain;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -34,9 +33,14 @@ public final class LottoNumbers {
                 throw new IllegalArgumentException("번호는 1~45 범위여야 합니다: " + number);
             }
         }
-        return new LottoNumbers(new ArrayList<>(unique), LottoBitmask.maskOf(unique));
+        return new LottoNumbers(List.copyOf(unique), LottoBitmask.maskOf(unique));
     }
 
+    /**
+     * 항상 불변 목록을 돌려준다(B14/P3) — 호출부가 이 참조를 들고 있다가 나중에 바꾸면
+     * 번호와 {@link #mask}가 어긋날 수 있다. 실제로 그런 변조 경로가 확인된 것은 아니고,
+     * 경계에서 방어적으로 막아 둔다.
+     */
     public List<Integer> numbers() {
         return numbers;
     }
