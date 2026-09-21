@@ -98,7 +98,7 @@ public class RecommendationCandidateGenerator {
                 throw new RecommendationGenerationLimitException("요청 개수를 채우지 못했습니다(reduce_shared_winner_risk).");
             }
             attempts++;
-            LottoNumbers best = pickBestOfFifty(pool, request.lockedNumbers(), snapshot, random);
+            LottoNumbers best = pickBestOfFifty(pool, request.lockedNumbers(), snapshot, random, usedMasks);
             if (best != null && usedMasks.add(best.mask())) {
                 results.add(best);
             }
@@ -106,13 +106,21 @@ public class RecommendationCandidateGenerator {
         return results;
     }
 
+    /**
+     * 이미 결과에 포함된 조합({@code usedMasks})은 후보 비교에서 제외한다(B03). 좁은 조합
+     * 공간에서는 "50개 중 최고"가 매번 같은(이미 쓴) 조합으로 수렴할 수 있어, 이 필터가 없으면
+     * 호출부의 {@code usedMasks.add}가 계속 실패해 {@code collectionCap}만 소진하고
+     * {@link RecommendationGenerationLimitException}이 던져진다 — 실제로는 충분한 고유 조합이
+     * 남아 있는데도 그렇다.
+     */
     private LottoNumbers pickBestOfFifty(List<Integer> pool, Set<Integer> locked,
-                                          RecommendationHistorySnapshot snapshot, Random random) {
+                                          RecommendationHistorySnapshot snapshot, Random random,
+                                          Set<Long> usedMasks) {
         LottoNumbers best = null;
         int bestScore = Integer.MIN_VALUE;
         for (int i = 0; i < CHOICE_CANDIDATE_COMPARISON_CAP; i++) {
             LottoNumbers candidate = drawNonHistorical(pool, locked, snapshot, random);
-            if (candidate == null) {
+            if (candidate == null || usedMasks.contains(candidate.mask())) {
                 continue;
             }
             int score = CombinationScorer.score(candidate.numbers());

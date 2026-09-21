@@ -100,4 +100,30 @@ class RecommendationCandidateGeneratorTest {
         Set<Long> masks = new HashSet<>();
         results.forEach(combo -> assertThat(masks.add(combo.mask())).isTrue());
     }
+
+    /**
+     * B03: pickBestOfFifty가 usedMasks를 모른 채 "50개 중 최고"만 고르면, 좁은 조합 공간에서
+     * 이미 반환한 조합을 계속 최고로 재선택해 collectionCap을 소진하고 예외를 던질 수 있다 —
+     * verifyCombinationFeasibility가 이미 고유 조합이 충분함을 확인했음에도 그렇다. 고정
+     * {1,2,3,4,5}, 자유 번호는 {6,8}뿐인 채로 count=2를 요청하면 가능한 조합은 정확히 2개
+     * ({1..5,6}과 {1..5,8})뿐이다.
+     */
+    @Test
+    @DisplayName("B03: 자유 번호가 요청 개수만큼만 남은 좁은 공간에서도 예외 없이 고유 조합을 채운다")
+    void reduceSharedWinnerRisk_whenCombinationSpaceIsAsNarrowAsTheRequestCount_stillFillsWithoutThrowing() {
+        Set<Integer> locked = Set.of(1, 2, 3, 4, 5);
+        Set<Integer> excluded = IntStream.rangeClosed(7, 45)
+                .filter(n -> n != 8)
+                .boxed()
+                .collect(java.util.stream.Collectors.toCollection(HashSet::new));
+
+        NormalizedRecommendationRequest request = new NormalizedRecommendationRequest(
+                2, RecommendationStrategy.REDUCE_SHARED_WINNER_RISK, locked, excluded);
+
+        var results = generator.generateReduceSharedWinnerRisk(request, EMPTY_HISTORY);
+
+        assertThat(results).hasSize(2);
+        Set<Long> masks = new HashSet<>();
+        results.forEach(combo -> assertThat(masks.add(combo.mask())).isTrue());
+    }
 }
