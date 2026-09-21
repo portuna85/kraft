@@ -46,7 +46,7 @@ class EmailRekeyServiceTest {
     @BeforeEach
     void setUp() {
         List.of("comments", "post_likes", "post_images", "posts",
-                        "email_verification_tokens", "outbox_mails", "users")
+                        "email_verification_tokens", "outbox_mails", "session_revocation_tasks", "users")
                 .forEach(table -> jdbcTemplate.update("DELETE FROM " + table));
     }
 
@@ -69,6 +69,23 @@ class EmailRekeyServiceTest {
 
     private String storedHash(long id) {
         return jdbcTemplate.queryForObject("SELECT email_hash FROM users WHERE id = ?", String.class, id);
+    }
+
+    /** 옛 키로 암호화된 세션 폐기 태스크를 만든다. FK 때문에 users 행이 먼저 있어야 한다. */
+    private long givenSessionRevocationTaskEncryptedWithOldKey(long userId, String emailSnapshot) {
+        jdbcTemplate.update("INSERT INTO session_revocation_tasks "
+                        + "(user_id, email_snapshot, status, attempts, created_at, updated_at) "
+                        + "VALUES (?, ?, 'PENDING', 0, NOW(), NOW())",
+                userId,
+                EmailEncryption.encryptor(OLD_KEY).encrypt(emailSnapshot));
+        return jdbcTemplate.queryForObject(
+                "SELECT id FROM session_revocation_tasks WHERE user_id = ? ORDER BY id DESC LIMIT 1",
+                Long.class, userId);
+    }
+
+    private String storedSessionTaskCipher(long id) {
+        return jdbcTemplate.queryForObject(
+                "SELECT email_snapshot FROM session_revocation_tasks WHERE id = ?", String.class, id);
     }
 
     @Test
@@ -246,5 +263,68 @@ class EmailRekeyServiceTest {
 
         assertThat(result.mismatched()).isEqualTo(1);
         assertThat(result.allVerified()).isFalse();
+    }
+
+    /**
+     * B01: session_revocation_tasks.email_snapshot도 users.email과 같은 방식(AES)으로
+     * 암호화되어 있으므로 키 교체 대상이어야 한다.
+     */
+    @Test
+    @DisplayName("B01: 세션 폐기 태스크의 email_snapshot도 새 키로 다시 암호화한다")
+    void rewritesSessionRevocationTaskSnapshotWithTheNewKey() {
+        long userId = givenUserEncryptedWithOldKey("session-task-target@example.com");
+        long taskId = givenSessionRevocationTaskEncryptedWithOldKey(userId, "session-task-target@example.com");
+        String before = storedSessionTaskCipher(taskId);
+
+        EmailRekeyService.Result result = emailRekeyService.rekeyAll(OLD_KEY, NEW_KEY);
+
+        assertThat(result.sessionTasksConverted()).isEqualTo(1);
+        assertThat(storedSessionTaskCipher(taskId)).as("저장된 암호문 자체가 바뀌어야 한다").isNotEqualTo(before);
+        assertThat(EmailEncryption.encryptor(NEW_KEY).decrypt(storedSessionTaskCipher(taskId)))
+                .as("새 키로 원래 스냅샷 주소가 그대로 나와야 한다").isEqualTo("session-task-target@example.com");
+    }
+
+    @Test
+    @DisplayName("B01: 두 번 돌리면 세션 폐기 태스크도 이미 변환된 것으로 보고 건드리지 않는다")
+    void sessionRevocationTaskRerunIsSafe() {
+        long userId = givenUserEncryptedWithOldKey("session-task-rerun@example.com");
+        long taskId = givenSessionRevocationTaskEncryptedWithOldKey(userId, "session-task-rerun@example.com");
+        emailRekeyService.rekeyAll(OLD_KEY, NEW_KEY);
+        String afterFirst = storedSessionTaskCipher(taskId);
+
+        EmailRekeyService.Result second = emailRekeyService.rekeyAll(OLD_KEY, NEW_KEY);
+
+        assertThat(second.sessionTasksConverted()).isZero();
+        assertThat(second.sessionTasksAlreadyDone()).isEqualTo(1);
+        assertThat(storedSessionTaskCipher(taskId)).isEqualTo(afterFirst);
+    }
+
+    @Test
+    @DisplayName("B01: 세션 폐기 태스크가 어느 키로도 복호화되지 않으면 멈추고 그 id를 알린다")
+    void stopsOnASessionRevocationTaskThatNeitherKeyCanRead() {
+        long userId = givenUserEncryptedWithOldKey("session-task-unreadable@example.com");
+        long taskId = givenSessionRevocationTaskEncryptedWithOldKey(userId, "session-task-unreadable@example.com");
+        jdbcTemplate.update("UPDATE session_revocation_tasks SET email_snapshot = ? WHERE id = ?",
+                EmailEncryption.encryptor("some-third-key").encrypt("session-task-unreadable@example.com"), taskId);
+
+        assertThatThrownBy(() -> emailRekeyService.rekeyAll(OLD_KEY, NEW_KEY))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("taskId=" + taskId)
+                .as("로그·예외에 주소가 새어 나가면 안 된다")
+                .hasMessageNotContaining("session-task-unreadable@example.com");
+    }
+
+    @Test
+    @DisplayName("B01: 검증 패스는 세션 폐기 태스크가 새 키로 복호화되는지도 확인한다")
+    void verifyAllCoversSessionRevocationTasks() {
+        long userId = givenUserEncryptedWithOldKey("session-task-verify@example.com");
+        givenSessionRevocationTaskEncryptedWithOldKey(userId, "session-task-verify@example.com");
+        emailRekeyService.rekeyAll(OLD_KEY, NEW_KEY);
+
+        EmailRekeyService.VerifyResult result = emailRekeyService.verifyAll(NEW_KEY);
+
+        assertThat(result.sessionTasksVerified()).isEqualTo(1);
+        assertThat(result.sessionTasksMismatched()).isZero();
+        assertThat(result.allVerified()).isTrue();
     }
 }

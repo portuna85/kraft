@@ -84,7 +84,66 @@ public class EmailRekeyService {
         }
 
         log.info("이메일 키 교체 완료 — 변환 {}건, 이미 변환됨 {}건", converted, alreadyDone);
-        return new Result(converted, alreadyDone);
+
+        SessionTaskResult taskResult = rekeySessionRevocationTasks(from, to);
+        log.info("세션 폐기 태스크 키 교체 완료 — 변환 {}건, 이미 변환됨 {}건",
+                taskResult.converted(), taskResult.alreadyDone());
+
+        return new Result(converted, alreadyDone, taskResult.converted(), taskResult.alreadyDone());
+    }
+
+    /**
+     * {@code session_revocation_tasks.email_snapshot}도 {@code users.email}과 같은 방식(AES)으로
+     * 암호화되어 있지만, 대조할 {@code email_hash}가 없다(탈퇴 후 재가입 시 스냅샷이 현재 계정의
+     * 이메일과 달라질 수 있어 users의 email_hash와 비교할 수 없다). 그래서 여기서는 "새 키로
+     * 복호화 성공"만을 판정 근거로 삼는다 — AES-GCM은 인증 태그가 있어 틀린 키로는 복호화 자체가
+     * 실패하므로, 성공했다는 사실 자체가 무결성 증거다.
+     */
+    private SessionTaskResult rekeySessionRevocationTasks(TextEncryptor from, TextEncryptor to) {
+        int converted = 0;
+        int alreadyDone = 0;
+        long lastId = 0;
+
+        while (true) {
+            List<Map<String, Object>> rows = nextSessionTaskBatch(lastId);
+            if (rows.isEmpty()) {
+                break;
+            }
+            for (Map<String, Object> row : rows) {
+                long id = ((Number) row.get("id")).longValue();
+                lastId = id;
+
+                if (rekeySessionTaskRow(id, (String) row.get("email_snapshot"), from, to)) {
+                    converted++;
+                } else {
+                    alreadyDone++;
+                }
+            }
+        }
+
+        return new SessionTaskResult(converted, alreadyDone);
+    }
+
+    private List<Map<String, Object>> nextSessionTaskBatch(long lastId) {
+        return jdbcTemplate.queryForList(
+                "SELECT id, email_snapshot FROM session_revocation_tasks WHERE id > ? ORDER BY id LIMIT " + BATCH_SIZE,
+                lastId);
+    }
+
+    /** @return 이 행을 실제로 변환했으면 true, 이미 새 키로 되어 있어 건너뛰었으면 false */
+    private boolean rekeySessionTaskRow(long id, String cipher, TextEncryptor from, TextEncryptor to) {
+        if (decryptOrNull(to, cipher) != null) {
+            return false;
+        }
+
+        String plain = decryptOrNull(from, cipher);
+        if (plain == null) {
+            throw new IllegalStateException(
+                    "어느 키로도 복호화되지 않는 세션 폐기 태스크가 있습니다. 옛 키가 맞는지 확인하세요. taskId=" + id);
+        }
+
+        jdbcTemplate.update("UPDATE session_revocation_tasks SET email_snapshot = ? WHERE id = ?", to.encrypt(plain), id);
+        return true;
     }
 
     /**
@@ -169,7 +228,43 @@ public class EmailRekeyService {
         }
 
         log.info("이메일 키 교체 검증 완료 — 일치 {}건, 불일치 {}건", verified, mismatched);
-        return new VerifyResult(verified, mismatched);
+
+        SessionTaskVerifyResult taskResult = verifySessionRevocationTasks(to);
+        log.info("세션 폐기 태스크 키 교체 검증 완료 — 일치 {}건, 불일치 {}건",
+                taskResult.verified(), taskResult.mismatched());
+
+        return new VerifyResult(verified, mismatched, taskResult.verified(), taskResult.mismatched());
+    }
+
+    /**
+     * 대조할 {@code email_hash}가 없으므로(위 {@link #rekeySessionRevocationTasks} 참고),
+     * 새 키로 복호화가 성공하는지만 확인한다.
+     */
+    private SessionTaskVerifyResult verifySessionRevocationTasks(TextEncryptor to) {
+        int verified = 0;
+        int mismatched = 0;
+        long lastId = 0;
+
+        while (true) {
+            List<Map<String, Object>> rows = nextSessionTaskBatch(lastId);
+            if (rows.isEmpty()) {
+                break;
+            }
+            for (Map<String, Object> row : rows) {
+                long id = ((Number) row.get("id")).longValue();
+                lastId = id;
+
+                boolean ok = decryptOrNull(to, (String) row.get("email_snapshot")) != null;
+                if (ok) {
+                    verified++;
+                } else {
+                    mismatched++;
+                    log.warn("세션 폐기 태스크 키 교체 검증 실패 — 새 키로 복호화되지 않습니다. taskId={}", id);
+                }
+            }
+        }
+
+        return new SessionTaskVerifyResult(verified, mismatched);
     }
 
     /** 복호화 실패는 이 도구에서 <b>정상적인 판정 수단</b>이므로 예외로 다루지 않는다. */
@@ -182,24 +277,36 @@ public class EmailRekeyService {
     }
 
     /**
-     * @param converted   이번 실행에서 새 키로 다시 쓴 행
-     * @param alreadyDone 이미 새 키였던 행. 재실행이라면 여기에 쌓인다
+     * @param converted             이번 실행에서 새 키로 다시 쓴 users 행
+     * @param alreadyDone           이미 새 키였던 users 행. 재실행이라면 여기에 쌓인다
+     * @param sessionTasksConverted 이번 실행에서 새 키로 다시 쓴 session_revocation_tasks 행
+     * @param sessionTasksAlreadyDone 이미 새 키였던 session_revocation_tasks 행
      */
-    public record Result(int converted, int alreadyDone) {
+    public record Result(int converted, int alreadyDone, int sessionTasksConverted, int sessionTasksAlreadyDone) {
 
         public int total() {
             return converted + alreadyDone;
         }
     }
 
+    /** rekeySessionRevocationTasks 내부 결과 — Result로 합쳐지기 전의 중간 값. */
+    private record SessionTaskResult(int converted, int alreadyDone) {
+    }
+
     /**
-     * @param verified   새 키로 복호화한 값이 email_hash와 일치한 행
-     * @param mismatched 새 키로 복호화되지 않거나 해시가 어긋난 행
+     * @param verified                새 키로 복호화한 값이 email_hash와 일치한 users 행
+     * @param mismatched               새 키로 복호화되지 않거나 해시가 어긋난 users 행
+     * @param sessionTasksVerified     새 키로 복호화에 성공한 session_revocation_tasks 행
+     * @param sessionTasksMismatched   새 키로 복호화되지 않은 session_revocation_tasks 행
      */
-    public record VerifyResult(int verified, int mismatched) {
+    public record VerifyResult(int verified, int mismatched, int sessionTasksVerified, int sessionTasksMismatched) {
 
         public boolean allVerified() {
-            return mismatched == 0;
+            return mismatched == 0 && sessionTasksMismatched == 0;
         }
+    }
+
+    /** verifySessionRevocationTasks 내부 결과 — VerifyResult로 합쳐지기 전의 중간 값. */
+    private record SessionTaskVerifyResult(int verified, int mismatched) {
     }
 }
