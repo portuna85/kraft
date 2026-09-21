@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, reactive, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { api, messageOf } from '@core/http.js';
 import { API } from '@core/constants.js';
 import * as flash from '@ui/flash.js';
@@ -106,6 +106,26 @@ function categoryTitle(value) {
     return props.categoryOptions.find((option) => option.value === value)?.title ?? value;
 }
 
+/**
+ * 편집 중 브라우저 탭을 닫거나 다른 주소로 이동하면(뒤로 가기 포함) 입력한 내용이 그대로
+ * 사라진다(F05) — "취소" 버튼은 confirm()으로 막지만, 그 경로 밖의 이탈은 아무 안내도 없었다.
+ * 저장에 성공해 스스로 이동할 때는 이 확인을 띄우지 않는다({@code allowNavigation}).
+ */
+let allowNavigation = false;
+
+function warnBeforeUnload(event) {
+    if (!isDirty.value || allowNavigation) {
+        return;
+    }
+    // 커스텀 문구는 최신 브라우저가 대부분 무시하고 자체 문구를 보여주지만, preventDefault와
+    // returnValue 설정 둘 다 있어야 구형 엔진까지 포함해 확인창이 뜬다.
+    event.preventDefault();
+    event.returnValue = '';
+}
+
+onMounted(() => window.addEventListener('beforeunload', warnBeforeUnload));
+onUnmounted(() => window.removeEventListener('beforeunload', warnBeforeUnload));
+
 async function startEdit() {
     mode.value = 'edit';
     await nextTick();
@@ -177,6 +197,7 @@ async function onSubmit() {
         });
         picture.revokePreview();
         flash.set('POST_UPDATED');
+        allowNavigation = true;
         window.location.href = '/';
     } catch (error) {
         progressText.value = null;
