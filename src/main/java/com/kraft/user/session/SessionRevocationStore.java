@@ -67,7 +67,7 @@ public class SessionRevocationStore {
         taskRepository.findByIdAndOwnerTokenAndStatus(id, ownerToken, SessionRevocationTaskStatus.PROCESSING)
                 .ifPresentOrElse(task -> {
                     try {
-                        sessionRevoker.revokeAll(task.getEmailSnapshot());
+                        sessionRevoker.revokeAll(task.getEmailSnapshot(), task.getUser().getId());
                         task.markDone();
                     } catch (RuntimeException e) {
                         log.warn("세션 폐기 태스크 처리에 실패했습니다. taskId={}", id, e);

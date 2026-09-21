@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
@@ -61,7 +62,7 @@ class SessionRevocationWorkerTest {
     @DisplayName("첫 시도(빠른 경로)가 실패해도 태스크가 남아, 다음 주기 재시도에서 최종적으로 완료한다")
     void failedFastPathIsRetriedByScheduledDrainUntilItSucceeds() {
         willThrow(new RuntimeException("세션 저장소 장애"))
-                .given(sessionRevoker).revokeAll(user.getEmail());
+                .given(sessionRevoker).revokeAll(user.getEmail(), user.getId());
 
         Long taskId = store.enqueue(user, user.getEmail());
         worker.attemptNow(taskId);
@@ -77,13 +78,13 @@ class SessionRevocationWorkerTest {
 
         SessionRevocationTask done = taskRepository.findById(taskId).orElseThrow();
         assertThat(done.getStatus()).isEqualTo(SessionRevocationTaskStatus.DONE);
-        verify(sessionRevoker).revokeAll(user.getEmail());
+        verify(sessionRevoker).revokeAll(user.getEmail(), user.getId());
     }
 
     @Test
     @DisplayName("재시도 기회를 다 쓰면 FAILED로 끝나고 더는 집히지 않는다")
     void exhaustedRetriesEndAsFailed() {
-        willThrow(new RuntimeException("영구 장애")).given(sessionRevoker).revokeAll(anyString());
+        willThrow(new RuntimeException("영구 장애")).given(sessionRevoker).revokeAll(anyString(), any());
         int maxAttempts = (int) ReflectionTestUtils.getField(store, "maxAttempts");
 
         Long taskId = store.enqueue(user, user.getEmail());
@@ -136,6 +137,29 @@ class SessionRevocationWorkerTest {
 
         worker.attemptNow(taskId);
 
-        verify(sessionRevoker).revokeAll(email);
+        verify(sessionRevoker).revokeAll(email, user.getId());
+    }
+
+    /**
+     * O02: 이메일 키 교체(rekey) 창에서 이 워커가 옛 키로 암호화된 email_snapshot을 복호화
+     * 하려다 죽지 않도록, application-rekey.yml이 이 플래그를 끈다. OutboxMailWorker의
+     * whenDisabled_drainDoesNothing과 같은 패턴이다.
+     */
+    @Test
+    @DisplayName("O02: enabled가 false면 예약 실행과 attemptNow 모두 아무 것도 처리하지 않는다")
+    void whenDisabled_nothingIsProcessed() {
+        ReflectionTestUtils.setField(worker, "enabled", false);
+        try {
+            Long taskId = store.enqueue(user, user.getEmail());
+
+            worker.attemptNow(taskId);
+            worker.drainScheduled();
+
+            SessionRevocationTask task = taskRepository.findById(taskId).orElseThrow();
+            assertThat(task.getStatus()).isEqualTo(SessionRevocationTaskStatus.PENDING);
+            assertThat(task.getAttempts()).isZero();
+        } finally {
+            ReflectionTestUtils.setField(worker, "enabled", true);
+        }
     }
 }

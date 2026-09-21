@@ -1,6 +1,7 @@
 package com.kraft.config.security;
 
 import com.kraft.shared.web.SafeRedirect;
+import com.kraft.user.service.SessionRevoker;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -99,9 +100,16 @@ public class SecurityConfig {
      * 채워질 일이 없다 — 그래서 그 메커니즘 대신 이 파라미터 하나로 직접 "원래 위치"를 구현한다.
      * 값이 앱 내부 경로로 확정되지 않거나({@link SafeRedirect#internalPath}) 로그인 화면 자기
      * 자신을 가리키면 기본값 "/"로 이동한다.
+     * <p>
+     * 로그인 성공 시 회원 번호를 세션 속성으로 심는다(B02) — {@code SessionRevoker#revokeAll}이
+     * 탈퇴 후 같은 이메일로 재가입한 다른 계정의 세션과 구분하는 데 쓴다.
      */
     private AuthenticationSuccessHandler redirectAwareSuccessHandler() {
         return (request, response, authentication) -> {
+            if (authentication.getPrincipal() instanceof KraftUserDetails principal) {
+                request.getSession().setAttribute(SessionRevoker.USER_ID_SESSION_ATTRIBUTE, principal.getUserId());
+            }
+
             String target = SafeRedirect.internalPath(request.getParameter("redirect"), "/");
             if (target.startsWith("/login")) {
                 target = "/";

@@ -30,6 +30,15 @@ public class SessionRevocationWorker {
     /** 이 인스턴스가 집은 태스크임을 구분하기 위한 값. 처리 로직은 소유권 확인에만 쓴다. */
     private final String ownerToken = UUID.randomUUID().toString();
 
+    /**
+     * {@code false}면 예약 실행과 {@link #attemptNow}(커밋 직후 빠른 경로) 모두 막는다.
+     * 이메일 키 교체(rekey) 창에서 이 워커가 옛 키로 암호화된 {@code email_snapshot}을
+     * 새 키로 복호화하려다 죽는 사고를 막기 위해 도입했다(O02) — {@code application-rekey.yml}이
+     * 이 플래그를 끈다.
+     */
+    @Value("${app.session-revocation.enabled:true}")
+    private boolean enabled;
+
     @Value("${app.session-revocation.batch-size:20}")
     private int batchSize;
 
@@ -47,12 +56,18 @@ public class SessionRevocationWorker {
      * {@link #drainScheduled}가 이어받는다.
      */
     public void attemptNow(Long taskId) {
+        if (!enabled) {
+            return;
+        }
         store.claimSpecific(taskId, ownerToken).ifPresent(id -> store.processOne(id, ownerToken));
     }
 
     @Scheduled(initialDelayString = "${app.session-revocation.drain-initial-delay-ms:60000}",
             fixedDelayString = "${app.session-revocation.drain-interval-ms:120000}")
     public void drainScheduled() {
+        if (!enabled) {
+            return;
+        }
         store.requeueStuck(LocalDateTime.now().minus(Duration.ofMillis(stuckAfterMs)));
         List<Long> ids = store.claimBatch(batchSize, ownerToken);
         for (Long id : ids) {
@@ -61,7 +76,9 @@ public class SessionRevocationWorker {
     }
 
     /**
-     * 종료된 지 오래된 DONE/FAILED 행을 지운다. 처리 자체와는 다른 관심사이므로 항상 돈다.
+     * 종료된 지 오래된 DONE/FAILED 행을 지운다. 처리 자체와는 다른 관심사이므로
+     * {@code enabled} 플래그와 무관하게 항상 돈다 — 상태·시각 기준 bulk delete라 엔티티를
+     * 로드하지 않으므로 rekey 창에도 안전하다.
      */
     @Scheduled(initialDelayString = "${app.session-revocation.retention-initial-delay-ms:120000}",
             fixedDelayString = "${app.session-revocation.retention-interval-ms:86400000}")

@@ -21,6 +21,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -84,7 +85,7 @@ class PasswordChangeAfterCommitFailureTest {
     @Test
     @DisplayName("세션 폐기가 실패해도 이미 커밋된 비밀번호 변경은 성공 응답을 유지한다")
     void changePassword_whenSessionRevocationFails_stillReturnsSuccessAndPersistsChange() throws Exception {
-        willThrow(new RuntimeException("세션 저장소 장애")).given(sessionRevoker).revokeAll(anyString());
+        willThrow(new RuntimeException("세션 저장소 장애")).given(sessionRevoker).revokeAll(anyString(), any());
 
         Cookie session = login();
 

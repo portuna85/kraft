@@ -33,6 +33,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         // username은 이메일 그대로 둔다(서비스 계층이 authentication.getName()으로 회원을 찾는다).
         // 화면 표시용 닉네임은 displayName으로 따로 싣는다.
         return new KraftUserDetails(
+                user.getId(),
                 user.getEmail(),
                 user.getPassword(),
                 user.getName(),

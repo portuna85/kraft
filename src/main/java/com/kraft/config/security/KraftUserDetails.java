@@ -14,12 +14,23 @@ import java.util.Collection;
  */
 public class KraftUserDetails extends org.springframework.security.core.userdetails.User {
 
+    private final Long userId;
     private final String displayName;
 
-    public KraftUserDetails(String email, String password, String displayName,
+    /**
+     * @param userId 불변 회원 번호(B02). username(이메일)은 탈퇴 후 재사용될 수 있어 로그인
+     *               성공 시 이 값을 세션에 심어 {@code SessionRevoker}가 대상 계정을 구분한다
+     *               ({@code config.security.SecurityConfig#redirectAwareSuccessHandler} 참고).
+     */
+    public KraftUserDetails(Long userId, String email, String password, String displayName,
                             Collection<? extends GrantedAuthority> authorities) {
         super(email, password, authorities);
+        this.userId = userId;
         this.displayName = displayName;
+    }
+
+    public Long getUserId() {
+        return userId;
     }
 
     public String getDisplayName() {
