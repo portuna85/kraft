@@ -12,7 +12,7 @@
          이 폼을 제출한다(features/account.js).
          next 히든 필드는 없앴다 — 비밀번호 변경이 /login으로 직접 이동하도록 바뀌면서
          아무도 채우지 않게 됐고, 빈 값은 SecurityConfig에서 Referer 규칙으로 넘어간다. -->
-    <form id="logout-form" th:action="@{/logout}" method="post" style="display:none;">
+    <form id="logout-form" th:action="@{/logout}" method="post" hidden>
         <input type="hidden" th:name="${_csrf?.parameterName}" th:value="${_csrf?.token}" />
     </form>
 

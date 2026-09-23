@@ -17,6 +17,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import tools.jackson.databind.ObjectMapper;
 
 @Configuration
@@ -113,6 +114,38 @@ public class SecurityConfig {
                 )
                 .headers(headers -> headers
                         .frameOptions(frame -> frame.sameOrigin())
+                        // 이 앱은 전 화면이 자체 호스팅 CSS·JS만 쓴다(외부 CDN·폰트·인라인
+                        // 스크립트·인라인 스타일이 전혀 없다 — F08 이후로 jQuery·Bootstrap도
+                        // 직접 서빙한다) — 그래서 'self' 하나로 거의 모든 지시어를 막을 수
+                        // 있다(개선 보고서 SEC-05). img-src에 data:와 blob:을 더한다 —
+                        // favicon이 data: URI이고, 이미지 첨부 미리보기(useImageUpload.js)가
+                        // 업로드 전 로컬 파일을 URL.createObjectURL로 만든 blob: URL로 보여준다
+                        // (E2E post-image.spec.js가 이 CSP 위반을 실제로 잡아냈다). frame-ancestors는
+                        // 위 frameOptions(SAMEORIGIN)의 CSP 버전으로, 오래된 브라우저를 위해
+                        // X-Frame-Options와 함께 둔다.
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(
+                                "default-src 'self'; "
+                                        + "script-src 'self'; "
+                                        + "style-src 'self'; "
+                                        + "img-src 'self' data: blob:; "
+                                        + "font-src 'self'; "
+                                        + "connect-src 'self'; "
+                                        + "form-action 'self'; "
+                                        + "frame-ancestors 'self'; "
+                                        + "base-uri 'self'; "
+                                        + "object-src 'none'"))
+                        .referrerPolicy(referrer -> referrer
+                                .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                        // TLS는 앞단 리버스 프록시가 종단한다. server.forward-headers-strategy를
+                        // 아직 설정하지 않아(운영 프록시 설정을 확인한 뒤 SEC-01과 함께 정할
+                        // 예정) request.isSecure()가 프록시를 못 거치면 항상 false일 수 있다 —
+                        // 기본 매처(isSecure)를 쓰면 그 경우 HSTS가 영영 안 붙는다. 이 헤더는
+                        // 평문 HTTP 응답에 실려도 브라우저가 무시하므로(사양상 보안 컨텍스트가
+                        // 아니면 적용하지 않는다), 항상 붙이는 쪽이 안전하다.
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .includeSubDomains(true)
+                                .maxAgeInSeconds(31536000)
+                                .requestMatcher(request -> true))
                 );
 
         return http.build();
