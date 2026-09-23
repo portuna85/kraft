@@ -22,12 +22,19 @@ on:
 permissions:
   contents: read
 
+# 같은 브랜치에 연달아 푸시하면 뒤 커밋이 앞 커밋의 실행을 대신한다 — CI 분(分)을 아끼고
+# 결과도 최신 커밋 것만 의미가 있다. main은 취소하지 않는다 — deploy 잡이 이미 시작됐을 수
+# 있고, main 커밋 하나하나의 test/e2e 결과를 전부 남겨야 배포 이력과 맞춰 볼 수 있다.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # 배포·백업 스크립트는 운영 서버에서만 돈다(수동 설치, CI가 배포하지 않는다) — 여기서는
       # 문법·흔한 실수만 정적으로 잡는다(개선 보고서 OPS-01). ubuntu-latest에 이미 설치되어
@@ -37,13 +44,13 @@ jobs:
         run: shellcheck -S warning deploy/*.sh
 
       - name: Set up JDK 25
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
         with:
           java-version: '25'
           distribution: temurin
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
 
       - name: Test and build jar
         run: ./gradlew test bootJar --no-daemon --console=plain
@@ -54,14 +61,11 @@ jobs:
       # 전체 건수와 같은지(=한 건도 실행되지 않음) 확인해, 그런 회귀를 여기서 실패로 잡는다.
       - name: Verify Docker-gated tests actually ran
         run: |
-          classes="
-          com.kraft.migration.MariaDbMigrationTest
-          com.kraft.migration.MariaDbUpgradeRehearsalTest
-          com.kraft.backup.BackupRestoreRehearsalTest
-          com.kraft.post.service.PostLikeCountFreshnessTest
-          com.kraft.post.service.PostDeleteWithRepliesMariaDbTest
-          com.kraft.recommend.service.RecommendationHistoryImportIntegrationTest
-          "
+          # 손으로 적은 목록이 하나라도 빠지면 그 클래스는 이 검증 밖에 남는다 — 소스에서
+          # 직접 찾아, @Testcontainers를 새로 쓴 클래스를 여기 추가하는 것을 잊어도 이 목록이
+          # 자동으로 따라간다.
+          classes=$(grep -rl '@Testcontainers' src/test/java --include='*.java' \
+            | sed 's#src/test/java/##; s#\.java$##; s#/#.#g')
           failed=0
           for cls in $classes; do
             file="build/test-results/test/TEST-${cls}.xml"
@@ -91,7 +95,7 @@ jobs:
       # 않았으므로 이 잡은 커버리지 때문에 실패하지 않는다 — 들여다볼 자료로만 남긴다.
       - name: Upload test report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: test-report
           path: |
@@ -101,38 +105,25 @@ jobs:
 
       # deploy 잡이 이 jar를 그대로 가져다 쓴다. 여기서 test와 같은 태스크 실행으로 만들어진
       # 바로 그 파일이라는 점이 중요하다 — deploy 잡에서 다시 빌드하면 "테스트한 것"과
-      # "배포한 것"이 이론상 달라질 수 있다.
+      # "배포한 것"이 이론상 달라질 수 있다. PR·다른 브랜치 푸시는 어차피 배포하지 않으므로
+      # (deploy 잡의 if 조건) 그때는 이 아티팩트를 만들 이유가 없다.
       - name: Upload production jar
-        uses: actions/upload-artifact@v4
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: production-jar
           path: build/libs/kraft-0.0.1-SNAPSHOT.jar
           retention-days: 7
 
-  # 브라우저 검증은 Node.js가 필요한 별도 잡에서 수행한다. test 잡의 산출물을 쓰지 않고
-  # bootE2eJar를 직접 새로 빌드하므로 test와는 기능적으로 독립적이다 — needs를 걸지 않고
-  # 병렬로 돌려 전체 workflow 시간을 줄인다(test 실패 시에도 e2e가 끝까지 도는 대신,
-  # public 저장소라 Actions 분당 과금 걱정 없이 대기 시간만 아낀다).
-  e2e:
+  # 정적 검사만 모아 Node 전용으로 돈다 — JDK·Gradle을 설정하지 않아 e2e보다 훨씬 빨리
+  # 끝난다. e2e와 독립적으로 병렬로 돌고, deploy는 이 잡도 통과해야 진행한다.
+  frontend-checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - name: Set up JDK 25
-        uses: actions/setup-java@v4
-        with:
-          java-version: '25'
-          distribution: temurin
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      # E2E 시드·메일 기록기·H2를 포함하는 전용 JAR. 운영 bootJar와 분리한다.
-      - name: Build E2E jar
-        run: ./gradlew bootE2eJar --no-daemon --console=plain
-
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '24'
           cache: npm
@@ -170,6 +161,46 @@ jobs:
       - name: Audit npm dependencies
         run: npm run audit:check
 
+  # 브라우저 검증은 Node.js가 필요한 별도 잡에서 수행한다. test 잡의 산출물을 쓰지 않고
+  # bootE2eJar를 직접 새로 빌드하므로 test와는 기능적으로 독립적이다 — needs를 걸지 않고
+  # 병렬로 돌려 전체 workflow 시간을 줄인다(test 실패 시에도 e2e가 끝까지 도는 대신,
+  # public 저장소라 Actions 분당 과금 걱정 없이 대기 시간만 아낀다). frontend-checks와도
+  # 독립적으로 병렬로 돈다 — 정적 검사 실패가 실제 브라우저 검증까지 막을 이유는 없다.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          java-version: '25'
+          distribution: temurin
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
+
+      # E2E 시드·메일 기록기·H2를 포함하는 전용 JAR. 운영 bootJar와 분리한다.
+      - name: Build E2E jar
+        run: ./gradlew bootE2eJar --no-daemon --console=plain
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+
+      # package.json의 @playwright/test 버전이 바뀔 때만 캐시를 새로 받는다 — 브라우저
+      # 바이너리는 버전마다 호환성이 갈려, 낡은 캐시를 재사용하면 안 된다.
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
@@ -178,7 +209,7 @@ jobs:
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: playwright-report
           path: playwright-report
@@ -187,13 +218,13 @@ jobs:
       # 실패했을 때 trace로 클릭 단위 재생이 가능하다.
       - name: Upload traces
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: playwright-traces
           path: test-results
           retention-days: 7
 
-  # main에 실제로 반영된 푸시가 test·e2e를 모두 통과했을 때만 운영에 배포한다.
+  # main에 실제로 반영된 푸시가 test·frontend-checks·e2e를 모두 통과했을 때만 운영에 배포한다.
   # PR이나 다른 브랜치 푸시에서는 절대 돌지 않는다(if 조건).
   #
   # 서드파티 SSH 액션(appleboy/ssh-action 등)을 쓰지 않는다. 공개 저장소에서 배포용
@@ -205,7 +236,7 @@ jobs:
   # 그대로 옮길 뿐이다.
   deploy:
     runs-on: ubuntu-latest
-    needs: [test, e2e]
+    needs: [test, frontend-checks, e2e]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     # 이 잡 전체의 상한. SSH·curl 각각에 타임아웃을 둬도, 네트워크가 응답 없이 그냥
     # 걸려 있는 경우(예: 방화벽이 SYN을 조용히 버림)까지는 개별 타임아웃이 못 잡을 수
@@ -218,8 +249,20 @@ jobs:
       name: production
       url: https://kraft.io.kr
     steps:
+      # main이 이 워크플로가 시작된 뒤에도 그대로인지 확인한다. force-push나 그 사이 또 다른
+      # 푸시로 origin/main이 이미 앞서 있으면, 낡은 커밋을 배포하는 대신 조용히 건너뛴다 —
+      # 뒤이은 푸시의 워크플로가 최신 커밋을 다시 배포할 것이다.
+      - name: Verify main hasn't moved since this run started
+        run: |
+          latest=$(git ls-remote https://github.com/${{ github.repository }} refs/heads/main | cut -f1)
+          if [ "$latest" != "${{ github.sha }}" ]; then
+            echo "::notice::main이 이미 $latest 로 앞서 있습니다(이 실행은 ${{ github.sha }}). 배포를 건너뜁니다."
+            echo "SKIP_DEPLOY=1" >> "$GITHUB_ENV"
+          fi
+
       - name: Download production jar
-        uses: actions/download-artifact@v4
+        if: env.SKIP_DEPLOY != '1'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: production-jar
 
@@ -229,6 +272,7 @@ jobs:
       # ssh 명령의 "${{ github.sha }}"는 실행되는 게 아니라 SSH_ORIGINAL_COMMAND로
       # 서버 스크립트에 전달되어 로그에만 남는다.
       - name: Configure SSH
+        if: env.SKIP_DEPLOY != '1'
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
@@ -241,6 +285,7 @@ jobs:
           chmod 600 ~/.ssh/known_hosts
 
       - name: Deploy jar to server
+        if: env.SKIP_DEPLOY != '1'
         env:
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
@@ -252,6 +297,10 @@ jobs:
       # 서버 안(localhost)에서는 deploy-apply.sh가 이미 헬스체크를 했다. 여기서는
       # 바깥에서 실제로 도메인이 응답하는지 — nginx·TLS·DNS까지 포함해 — 한 번 더 본다.
       # --connect-timeout·--max-time이 없으면 DNS·TLS가 응답 없이 걸릴 때 이 스텝이
-      # 잡 전체 timeout-minutes가 끝날 때까지 그냥 멈춰 있는다.
+      # 잡 전체 timeout-minutes가 끝날 때까지 그냥 멈춰 있는다. --retry로 배포 직후
+      # nginx·앱이 막 올라오는 찰나의 순간적인 미응답까지 실패로 잡지 않는다.
       - name: Smoke test
-        run: curl -fsS -o /dev/null --connect-timeout 5 --max-time 15 https://kraft.io.kr/
+        if: env.SKIP_DEPLOY != '1'
+        run: |
+          curl -fsS -o /dev/null --connect-timeout 5 --max-time 15 \
+            --retry 5 --retry-delay 3 --retry-all-errors https://kraft.io.kr/
