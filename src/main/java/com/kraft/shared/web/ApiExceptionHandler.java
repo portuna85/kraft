@@ -7,16 +7,21 @@ import com.kraft.recommend.domain.RecommendationValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.util.stream.Collectors;
 
@@ -30,10 +35,19 @@ import java.util.stream.Collectors;
  * {@code @ExceptionHandler} 메서드가 {@code ProblemDetail}을 반환하면 프레임워크가 상태 코드와
  * {@code Content-Type: application/problem+json}을 자동으로 설정하므로 별도 래퍼 클래스나
  * 신규 의존성이 필요 없다.
+ * <p>
+ * {@link ResponseEntityExceptionHandler}를 상속한다(개선 보고서 OBS-04) — 상속 전에는 전용
+ * 핸들러가 없는 표준 MVC 예외(필수 파라미터·멀티파트 파트 누락, 지원하지 않는 HTTP 메서드·
+ * 미디어 타입 등)가 죄다 {@link #handleUnexpected}(500)에 걸렸다. 클라이언트 잘못으로 인한
+ * 4xx 요청이 서버 오류로 집계되고 5xx 알림까지 울렸다. 이 부모 클래스는 그런 예외들을 이미
+ * 제 상태 코드의 {@code ProblemDetail}로 변환해 주므로, 아래에서 더 구체적인 메시지가 필요한
+ * {@link MethodArgumentNotValidException}·{@link HttpMessageNotReadableException}만 오버라이드
+ * 없이 이 클래스 자신의 {@code @ExceptionHandler}로 남겨 둔다 — 같은 타입에 더 가까운(subclass)
+ * 선언이 있으면 그쪽이 부모의 처리보다 우선 선택된다.
  */
 @Slf4j
 @RestControllerAdvice(annotations = RestController.class)
-public class ApiExceptionHandler {
+public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
     /**
      * 서비스 계층에서 "대상을 찾을 수 없음", "이미 존재함" 등의 검증 실패를 나타낼 때 사용하는
@@ -95,21 +109,33 @@ public class ApiExceptionHandler {
     /**
      * {@code @Valid @RequestBody} 검증 실패(예: 빈 제목)를 400으로 변환하고,
      * 필드별 오류 메시지를 하나의 문자열로 모아 반환한다.
+     * <p>
+     * {@code @ExceptionHandler}로 새로 선언하지 않고 부모의 같은 메서드를 오버라이드한다 —
+     * {@link ResponseEntityExceptionHandler}도 이 타입을 자신의 {@code handleException}
+     * 매핑에 이미 포함하고 있어서, 별도의 {@code @ExceptionHandler(MethodArgumentNotValidException.class)}
+     * 메서드를 하나 더 선언하면 한 예외 타입에 서로 다른 두 메서드가 매핑되어 스프링이
+     * "Ambiguous @ExceptionHandler"로 기동에 실패한다. 오버라이드는 이 한 슬롯을 그대로
+     * 대체하므로 충돌이 없다.
      */
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ProblemDetail handleValidation(MethodArgumentNotValidException e) {
-        String message = e.getBindingResult().getFieldErrors().stream()
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(
+            MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        String message = ex.getBindingResult().getFieldErrors().stream()
                 .map(fieldError -> fieldError.getField() + ": " + fieldError.getDefaultMessage())
                 .collect(Collectors.joining(", "));
-        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, message);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, message));
     }
 
     /**
      * 요청 본문이 JSON으로 파싱되지 않는 경우(형식 오류, 잘못된 인코딩 등) 400으로 변환한다.
+     * 위와 같은 이유로 새 {@code @ExceptionHandler}가 아니라 부모 메서드를 오버라이드한다.
      */
-    @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ProblemDetail handleMalformedJson(HttpMessageNotReadableException e) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "요청 본문을 읽을 수 없습니다.");
+    @Override
+    protected ResponseEntity<Object> handleHttpMessageNotReadable(
+            HttpMessageNotReadableException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "요청 본문을 읽을 수 없습니다."));
     }
 
     /**
@@ -177,10 +203,17 @@ public class ApiExceptionHandler {
      * 미루면, 예외가 정상적인 요청 처리 흐름 안에서 발생해 이 핸들러가 413 JSON 본문을
      * 온전히 내려줄 수 있다 — 재검증으로 확인 완료.</li>
      * </ol>
+     * {@link ResponseEntityExceptionHandler}를 상속한 뒤부터(OBS-04)는 이 타입도 부모의
+     * {@code handleException} 매핑에 이미 포함되어 있어, 새 {@code @ExceptionHandler}
+     * 메서드 대신 부모의 같은 메서드를 오버라이드한다 — 그렇지 않으면 기동 시점에
+     * "Ambiguous @ExceptionHandler"로 실패한다({@link #handleMethodArgumentNotValid}와 같은
+     * 이유).
      */
-    @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public ProblemDetail handleUploadTooLarge(MaxUploadSizeExceededException e) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.CONTENT_TOO_LARGE, "파일 크기는 5MB를 초과할 수 없습니다.");
+    @Override
+    protected ResponseEntity<Object> handleMaxUploadSizeExceededException(
+            MaxUploadSizeExceededException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE)
+                .body(ProblemDetail.forStatusAndDetail(HttpStatus.CONTENT_TOO_LARGE, "파일 크기는 5MB를 초과할 수 없습니다."));
     }
 
     /**
