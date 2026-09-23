@@ -14,13 +14,23 @@
 # 읽기 전용 덤프·복사뿐이고 서비스 상태는 건드리지 않는다.
 set -euo pipefail
 
+# 덤프·매니페스트에는 비밀번호 해시·암호화된 이메일·세션 데이터가 들어 있다. 기본 권한
+# (보통 0644)이면 같은 서버의 다른 로컬 계정도 읽을 수 있다(개선 보고서 OPS-01) — 이
+# 스크립트가 만드는 모든 파일·디렉터리를 소유자만 읽고 쓸 수 있게 강제한다.
+umask 077
+
 APP_DIR=/opt/kraft/app
 UPLOAD_DIR="$APP_DIR/uploads/images"
 BACKUP_DIR="$APP_DIR/backups/full"
 LOCK_FILE="$BACKUP_DIR/backup.lock"
 LOG=/opt/kraft/backup.log
-# 최근 며칠치만 남긴다. 매일 도는 작업이 무한히 쌓이면 디스크를 채운다.
+# 오래된 백업을 정리하는 두 기준(아래 "오래된 백업 정리" 참고). 매일 도는 작업이 무한히
+# 쌓이면 디스크를 채우지만, 날짜 기준만으로 지우면 며칠 연속 실패하다 한 번 성공했을 때
+# 그 사이의 모든 백업이 한꺼번에 지워질 수 있다(개선 보고서 OPS-02) — 그래서 나이와
+# 무관하게 최신 KEEP_MIN개는 항상 남기고, 그보다 오래된 것 중에서만 KEEP_DAYS를 넘긴
+# 것을 지운다.
 KEEP_DAYS=14
+KEEP_MIN=7
 # fail()이 mkdir 이전(예: .env 누락)에 불릴 수도 있으므로 미리 빈 값을 준다 — set -u에서
 # 정의되지 않은 변수를 참조하면 스크립트가 그 자리에서 다른 오류로 죽는다.
 TMP_DEST=""
@@ -34,6 +44,12 @@ fail() {
     rm -rf "$TMP_DEST"
     exit 1
 }
+
+# fail()을 거치지 않고 set -e로 곧바로 죽는 경로(예상하지 못한 명령 실패)에도 임시
+# 디렉터리를 남기지 않는다 — fail()의 rm -rf와 겹쳐도 이미 지워진 경로를 다시 지우는
+# 것뿐이라 안전하다. mv로 최종 경로에 옮긴 뒤에는 TMP_DEST 자체가 더 이상 존재하지 않으므로
+# 이 트랩이 완성된 백업을 건드리지 않는다.
+trap '[ -n "$TMP_DEST" ] && rm -rf "$TMP_DEST"' EXIT
 
 [ -f "$APP_DIR/.env" ] || fail "$APP_DIR/.env 를 찾을 수 없다"
 
@@ -58,13 +74,16 @@ mkdir -p "$TMP_DEST"
 
 log "───── 백업 시작 ($STAMP) ─────"
 
-# 1. DB 덤프. deploy-apply.sh의 3번과 같은 방식 — MARIADB_DATABASE를 .env에서 읽는다
-#    (하드코딩하면 .env에서 db 이름을 바꿨을 때 조용히 엉뚱한 db를 대상으로 하게 된다).
-DB_NAME=$(grep '^MARIADB_DATABASE=' "$APP_DIR/.env" | cut -d= -f2-)
-[ -n "$DB_NAME" ] || fail ".env에 MARIADB_DATABASE가 없다"
+# 1. DB 덤프. db 이름·root 비밀번호 모두 호스트 .env를 다시 grep하지 않고, 이미 컨테이너
+#    자신에게 주입되어 있는 환경변수(docker-compose.yml의 MARIADB_DATABASE·
+#    MARIADB_ROOT_PASSWORD)를 그대로 쓴다. 두 가지를 함께 얻는다 — (1) 비밀번호를 이
+#    스크립트의 -p 인자로 넘기지 않으므로 호스트·컨테이너 어느 쪽 ps에도 평문이 찍히지
+#    않는다(MYSQL_PWD는 해당 프로세스의 환경변수일 뿐 인자가 아니다. 개선 보고서 OPS-01).
+#    (2) .env를 grep|cut으로 다시 읽지 않으므로, 그 파이프가 set -o pipefail 아래에서
+#    실패해 조용히 스크립트가 죽는 경로 자체가 없다(개선 보고서 OPS-01).
 if ! (cd "$APP_DIR" && docker compose --env-file .env exec -T mariadb \
-        mariadb-dump -u root -p"$(grep '^MARIADB_ROOT_PASSWORD=' .env | cut -d= -f2-)" \
-        --single-transaction "$DB_NAME") > "$TMP_DEST/db.sql" 2>>"$LOG"; then
+        sh -c 'MYSQL_PWD="$MARIADB_ROOT_PASSWORD" exec mariadb-dump -uroot --single-transaction "$MARIADB_DATABASE"') \
+        > "$TMP_DEST/db.sql" 2>>"$LOG"; then
     fail "DB 덤프 실패"
 fi
 [ -s "$TMP_DEST/db.sql" ] || fail "덤프가 비어 있다"
@@ -117,6 +136,14 @@ mv "$TMP_DEST" "$DEST"
 
 log "───── 백업 완료: $DEST ─────"
 
-# 오래된 백업 정리.
-find "$BACKUP_DIR" -mindepth 1 -maxdepth 1 -type d -not -name '.tmp-*' -mtime "+$KEEP_DAYS" -print -exec rm -rf {} \; \
-    | while read -r removed; do log "오래된 백업 삭제: $removed"; done
+# 오래된 백업 정리. 디렉터리 이름이 타임스탬프(YYYYmmdd-HHMMSS)라 사전식 정렬이 곧
+# 시간순 정렬이다. 최신 KEEP_MIN개는 나이와 무관하게 건너뛰고, 그보다 오래된 것 중
+# KEEP_DAYS를 넘긴 것만 지운다 — 기본 ls는 .tmp-*(dotfile)를 나열하지 않으므로 진행 중인
+# 임시 디렉터리는 애초에 이 목록에 섞이지 않는다.
+ls -1 "$BACKUP_DIR" | sort -r | tail -n "+$((KEEP_MIN + 1))" | while read -r old; do
+    old_dir="$BACKUP_DIR/$old"
+    if find "$old_dir" -maxdepth 0 -mtime "+$KEEP_DAYS" 2>/dev/null | grep -q .; then
+        rm -rf "$old_dir"
+        log "오래된 백업 삭제: $old_dir"
+    fi
+done
