@@ -466,6 +466,41 @@ class PostImageLifecycleTest {
     }
 
     /**
+     * COR-06 회귀: 위 테스트와 반대 순서다. attach가 만료된 ORPHAN 이미지를 먼저 읽어 옛
+     * version을 쥔 채로, 그 사이 정리 작업의 <b>선점(claim)만</b> 먼저 커밋된다(파일은 아직
+     * 지우지 않는다 — 선점과 삭제가 서로 다른 트랜잭션인 것 자체가 COR-06의 요점이다).
+     * {@code claimExpiredOrphanForDeletion}이 version을 함께 올리지 않았다면, attach의
+     * UPDATE는 행이 여전히 존재하므로(아직 삭제 전) 그 버전 불일치를 못 보고 그대로 성공해
+     * "곧 지워질 이미지"를 게시글에 붙은 것처럼 남겼을 것이다.
+     */
+    @Test
+    @DisplayName("COR-06 회귀: attach가 만료된 이미지를 먼저 읽어 두어도, 그 사이 정리 작업의 선점이 먼저 커밋되면 충돌로 실패한다")
+    void attach_whenCleanupClaimsExpiredOrphanInBetween_conflictsOnOptimisticLock() {
+        String url = postService.uploadImage(imageFile(), alice);
+        backdate(url, LocalDateTime.now().minus(PostImageCleaner.ORPHAN_TTL).minusMinutes(1));
+        Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", null, null));
+        Long imageId = postImageRepository.findByFileName(fileNameOf(url)).orElseThrow().getId();
+        LocalDateTime threshold = LocalDateTime.now().minus(PostImageCleaner.ORPHAN_TTL);
+
+        assertThatThrownBy(() -> transactionTemplate.executeWithoutResult(outer -> {
+            // attach가 이 이미지를 먼저 읽어(version=0, 아직 ORPHAN) 붙인다. 아직 커밋 전이다.
+            postImageRegistry.attach(url, aliceUser, postRepository.findById(postId).orElseThrow());
+
+            // 그 사이 정리 작업의 선점 단계만 독립된 트랜잭션으로 먼저 커밋된다 — attach가
+            // 손에 쥔 version은 이제 낡았다. 파일은 아직 그대로다.
+            requiresNew.executeWithoutResult(inner ->
+                    postImageRepository.claimExpiredOrphanForDeletion(imageId, threshold));
+
+            // attach 쪽 바깥 트랜잭션이 이제야 커밋을 시도한다 — 실패해야 한다.
+        })).isInstanceOf(OptimisticLockingFailureException.class);
+
+        // 정리 작업은 선점만 했을 뿐 아직 파일을 지우지 않았다 — 이 실패는 오직 version
+        // 불일치 때문이어야 한다(행이 사라져서가 아니라).
+        assertThat(fileOf(url)).exists();
+        assertThat(imageStatusOf(url)).isEqualTo(PostImageStatus.PENDING_DELETE);
+    }
+
+    /**
      * B06: {@code clean()}의 self-invocation 문제(같은 객체 안에서 부르면 REQUIRES_NEW가
      * 프록시를 거치지 않아 무효화되던 것)를 고치면서, 배치 조회도 id 커서로 바꿨다(추가
      * 발견 사항) — 실패한 행이 항상 같은 페이지 맨 앞에 걸려 뒤쪽 정상 행을 굶기지 않게

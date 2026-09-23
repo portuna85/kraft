@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -74,28 +75,43 @@ class PostImageCleanupBatchRunner {
         return deleteAll(postImageRepository.findAllByIdInAndStatus(imageIds, PostImageStatus.PENDING_DELETE));
     }
 
+    /** 만료된 ORPHAN 한 배치의 선점 결과. {@code pageSize}의 의미는 {@link BatchResult}와 같다. */
+    record OrphanClaimResult(List<Long> claimedIds, long lastId, int pageSize) {
+
+        static OrphanClaimResult empty(long lastId) {
+            return new OrphanClaimResult(List.of(), lastId, 0);
+        }
+    }
+
     /**
      * ORPHAN 조회와 실제 파일 삭제 사이에 다른 트랜잭션이 같은 이미지를 게시글에 연결(ATTACHED로
-     * 전이)할 수 있다(B01). 파일을 지우기 전에 {@link PostImageRepository#claimExpiredOrphanForDeletion}로
-     * "지금도 여전히 ORPHAN인가"를 원자적으로 다시 확인해, 그 사이 연결된 이미지는 건드리지 않고
-     * 건너뛴다. id 커서를 쓰는 이유는 위 {@link #cleanPendingDeletionsBatch}와 같다(B06).
+     * 전이)할 수 있다(B01). {@link PostImageRepository#claimExpiredOrphanForDeletion}로 "지금도
+     * 여전히 ORPHAN인가"를 원자적으로 다시 확인해, 그 사이 연결된 이미지는 건드리지 않고 건너뛴다.
+     * id 커서를 쓰는 이유는 위 {@link #cleanPendingDeletionsBatch}와 같다(B06).
+     * <p>
+     * <b>여기서는 선점만 하고 파일은 지우지 않는다</b>(개선 보고서 COR-06). 예전에는 이 메서드
+     * 하나가 선점과 파일 삭제를 모두 한 트랜잭션(REQUIRES_NEW) 안에서 했다 — 배치 마지막에 그
+     * 트랜잭션의 커밋 자체가 실패하면, 이미 디스크에서 지운 파일(되돌릴 수 없다)의 선점만
+     * 통째로 ORPHAN으로 롤백되어 대장 없는 파일이 남았다. 이제 선점은 이 메서드가 짧게 커밋하고,
+     * 실제 파일·행 삭제는 호출하는 쪽({@link com.kraft.post.service.PostImageCleaner})이 이미
+     * 재시도 안전한(idempotent) {@link #cleanPendingDeletionsFor}에 맡긴다 — 그 단계가 실패해도
+     * 행은 PENDING_DELETE로 남아 다음 주기의 {@link #cleanPendingDeletionsBatch}가 이어받는다.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public BatchResult cleanExpiredOrphansBatch(long afterId, LocalDateTime threshold) {
+    public OrphanClaimResult claimExpiredOrphansBatch(long afterId, LocalDateTime threshold) {
         List<PostImage> page = postImageRepository.findAllByStatusAndCreatedAtBeforeAndIdGreaterThanOrderByIdAsc(
                 PostImageStatus.ORPHAN, threshold, afterId, PageRequest.of(0, PostImageCleaner.CLEANUP_BATCH_SIZE));
         if (page.isEmpty()) {
-            return BatchResult.empty(afterId);
+            return OrphanClaimResult.empty(afterId);
         }
-        int deleted = 0;
+        List<Long> claimedIds = new ArrayList<>();
         for (PostImage image : page) {
-            if (postImageRepository.claimExpiredOrphanForDeletion(image.getId(), threshold) == 0) {
-                // 조회 이후 다른 트랜잭션이 먼저 연결했다 — 파일을 지우면 안 된다.
-                continue;
+            if (postImageRepository.claimExpiredOrphanForDeletion(image.getId(), threshold) > 0) {
+                claimedIds.add(image.getId());
             }
-            deleted += deleteOne(image) ? 1 : 0;
+            // 0건이면 조회 이후 다른 트랜잭션이 먼저 연결했다는 뜻이다 — 건드리지 않는다.
         }
-        return new BatchResult(deleted, page.get(page.size() - 1).getId(), page.size());
+        return new OrphanClaimResult(claimedIds, page.get(page.size() - 1).getId(), page.size());
     }
 
     private int deleteAll(List<PostImage> images) {

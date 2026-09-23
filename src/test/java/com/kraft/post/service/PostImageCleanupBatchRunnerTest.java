@@ -50,17 +50,36 @@ class PostImageCleanupBatchRunnerTest {
     }
 
     @Test
-    @DisplayName("B01: 파일을 지우기 전 조건부 선점이 0행이면(그 사이 연결됨) 파일을 건드리지 않는다")
-    void cleanExpiredOrphansBatch_whenClaimFails_skipsFile() {
+    @DisplayName("B01: 조건부 선점이 0행이면(그 사이 연결됨) 그 id는 선점 결과에서 빠진다")
+    void claimExpiredOrphansBatch_whenClaimFails_excludesThatId() {
         given(postImageRepository.findAllByStatusAndCreatedAtBeforeAndIdGreaterThanOrderByIdAsc(
                 eq(PostImageStatus.ORPHAN), any(LocalDateTime.class), eq(0L), any(Pageable.class)))
                 .willReturn(List.of(image("attached-in-between.png", 1L)));
         given(postImageRepository.claimExpiredOrphanForDeletion(eq(1L), any(LocalDateTime.class))).willReturn(0);
 
-        PostImageCleanupBatchRunner.BatchResult result =
-                batchRunner.cleanExpiredOrphansBatch(0L, LocalDateTime.now());
+        PostImageCleanupBatchRunner.OrphanClaimResult result =
+                batchRunner.claimExpiredOrphansBatch(0L, LocalDateTime.now());
 
-        assertThat(result.deleted()).isZero();
+        assertThat(result.claimedIds()).isEmpty();
+        assertThat(result.pageSize()).isEqualTo(1);
+        assertThat(result.lastId()).isEqualTo(1L);
+        // COR-06: 이 메서드는 선점만 한다 — 파일·행 삭제는 이 메서드 책임이 아니다.
+        then(postImageService).should(never()).deleteIfExists(anyString());
+        then(postImageRepository).should(never()).delete(any(PostImage.class));
+    }
+
+    @Test
+    @DisplayName("COR-06: 선점에 성공한 id만 선점 결과에 담기고, 파일은 이 메서드에서 지우지 않는다")
+    void claimExpiredOrphansBatch_whenClaimSucceeds_returnsClaimedIdWithoutDeletingFile() {
+        given(postImageRepository.findAllByStatusAndCreatedAtBeforeAndIdGreaterThanOrderByIdAsc(
+                eq(PostImageStatus.ORPHAN), any(LocalDateTime.class), eq(0L), any(Pageable.class)))
+                .willReturn(List.of(image("expired.png", 1L)));
+        given(postImageRepository.claimExpiredOrphanForDeletion(eq(1L), any(LocalDateTime.class))).willReturn(1);
+
+        PostImageCleanupBatchRunner.OrphanClaimResult result =
+                batchRunner.claimExpiredOrphansBatch(0L, LocalDateTime.now());
+
+        assertThat(result.claimedIds()).containsExactly(1L);
         assertThat(result.pageSize()).isEqualTo(1);
         assertThat(result.lastId()).isEqualTo(1L);
         then(postImageService).should(never()).deleteIfExists(anyString());

@@ -106,19 +106,25 @@ public class PostImageCleaner {
     /**
      * 만료된 ORPHAN(업로드만 하고 글을 저장하지 않은 파일)을 전부(최대
      * {@link #MAX_BATCHES_PER_CYCLE}배치) 지운다.
+     * <p>
+     * 배치마다 선점({@code claimExpiredOrphansBatch})과 실제 삭제({@code cleanPendingDeletionsFor})를
+     * 서로 다른 트랜잭션으로 나눠 부른다(개선 보고서 COR-06) — 둘 다 이 클래스가 주입받은
+     * {@link PostImageCleanupBatchRunner}의 프록시를 거치는 외부 호출이라, 각자의
+     * {@code REQUIRES_NEW}가 실제로 독립된 트랜잭션을 연다. 선점이 먼저 커밋되므로, 뒤이은
+     * 삭제가 실패해도 그 행은 PENDING_DELETE로 남아 대장 없는 파일이 생기지 않는다.
      */
     public int cleanExpiredOrphans() {
         LocalDateTime threshold = LocalDateTime.now().minus(ORPHAN_TTL);
         int total = 0;
         long lastId = 0L;
         for (int batch = 0; batch < MAX_BATCHES_PER_CYCLE; batch++) {
-            PostImageCleanupBatchRunner.BatchResult result = batchRunner.cleanExpiredOrphansBatch(lastId, threshold);
-            if (result.pageSize() == 0) {
+            PostImageCleanupBatchRunner.OrphanClaimResult claimed = batchRunner.claimExpiredOrphansBatch(lastId, threshold);
+            if (claimed.pageSize() == 0) {
                 break;
             }
-            total += result.deleted();
-            lastId = result.lastId();
-            if (result.pageSize() < CLEANUP_BATCH_SIZE) {
+            lastId = claimed.lastId();
+            total += batchRunner.cleanPendingDeletionsFor(claimed.claimedIds());
+            if (claimed.pageSize() < CLEANUP_BATCH_SIZE) {
                 break;
             }
         }

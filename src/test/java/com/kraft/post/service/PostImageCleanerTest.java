@@ -54,14 +54,18 @@ class PostImageCleanerTest {
         given(batchRunner.cleanPendingDeletionsBatch(anyLong()))
                 .willReturn(new PostImageCleanupBatchRunner.BatchResult(1, 1L, 1))
                 .willReturn(PostImageCleanupBatchRunner.BatchResult.empty(1L));
-        given(batchRunner.cleanExpiredOrphansBatch(anyLong(), any(LocalDateTime.class)))
-                .willReturn(new PostImageCleanupBatchRunner.BatchResult(1, 1L, 1))
-                .willReturn(PostImageCleanupBatchRunner.BatchResult.empty(1L));
+        given(batchRunner.claimExpiredOrphansBatch(anyLong(), any(LocalDateTime.class)))
+                .willReturn(new PostImageCleanupBatchRunner.OrphanClaimResult(List.of(9L), 1L, 1))
+                .willReturn(PostImageCleanupBatchRunner.OrphanClaimResult.empty(1L));
+        given(batchRunner.cleanPendingDeletionsFor(List.of(9L))).willReturn(1);
 
         postImageCleaner.clean();
 
         then(batchRunner).should(org.mockito.Mockito.atLeastOnce()).cleanPendingDeletionsBatch(anyLong());
-        then(batchRunner).should(org.mockito.Mockito.atLeastOnce()).cleanExpiredOrphansBatch(anyLong(), any(LocalDateTime.class));
+        then(batchRunner).should(org.mockito.Mockito.atLeastOnce())
+                .claimExpiredOrphansBatch(anyLong(), any(LocalDateTime.class));
+        // COR-06: 선점된 id는 (선점과 별도 트랜잭션인) 실제 삭제로 넘겨져야 한다.
+        then(batchRunner).should().cleanPendingDeletionsFor(List.of(9L));
     }
 
     @Test

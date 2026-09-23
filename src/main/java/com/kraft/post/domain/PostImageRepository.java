@@ -65,9 +65,16 @@ public interface PostImageRepository extends JpaRepository<PostImage, Long> {
      * 뒤에도 다른 트랜잭션이 그 사이 게시글에 연결(ATTACHED로 전이)했을 수 있으므로, 파일을
      * 실제로 지우기 전에 "지금도 여전히 ORPHAN인가"를 이 원자적 UPDATE로 다시 확인한다.
      * 반환값이 0이면 이미 상태가 바뀐 것이므로 그 이미지는 건드리지 않고 건너뛴다.
+     * <p>
+     * {@code version}도 함께 올린다(개선 보고서 COR-06) — 이 UPDATE 이전에 이미 엔티티를 읽어
+     * 둔 attach 트랜잭션(예: {@code PostImageRegistry.attach}가 이 이미지를 findByFileName으로
+     * 이미 들고 있는 경우)이 있다면, 그 트랜잭션이 나중에 flush될 때 낙관적 잠금이 버전 불일치로
+     * 실패해야 한다. version을 그대로 두면 벌크 UPDATE가 영속성 컨텍스트를 갱신하지 않는다는
+     * JPA의 일반적 특성과 맞물려, attach가 이 선점을 전혀 모른 채 그대로 성공할 수 있었다.
      */
     @Modifying
-    @Query("UPDATE PostImage p SET p.status = com.kraft.post.domain.PostImageStatus.PENDING_DELETE "
+    @Query("UPDATE PostImage p SET p.status = com.kraft.post.domain.PostImageStatus.PENDING_DELETE, "
+            + "p.version = p.version + 1 "
             + "WHERE p.id = :id AND p.status = com.kraft.post.domain.PostImageStatus.ORPHAN "
             + "AND p.createdAt < :threshold")
     int claimExpiredOrphanForDeletion(@Param("id") Long id, @Param("threshold") LocalDateTime threshold);
