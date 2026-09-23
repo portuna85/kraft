@@ -18,7 +18,7 @@ public class CommentApiController {
     @PostMapping("/api/v1/posts/{postId}/comments")
     public Long save(@PathVariable Long postId, @Valid @RequestBody CommentSaveRequestDto requestDto,
                       Authentication authentication) {
-        return commentService.save(postId, authentication.getName(), requestDto);
+        return commentService.save(postId, authentication, requestDto);
     }
 
     /**

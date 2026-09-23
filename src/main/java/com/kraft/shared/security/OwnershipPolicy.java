@@ -1,5 +1,6 @@
 package com.kraft.shared.security;
 
+import com.kraft.config.security.KraftUserDetails;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import org.springframework.security.access.AccessDeniedException;
@@ -31,9 +32,26 @@ public final class OwnershipPolicy {
 
         boolean isAdmin = authentication.getAuthorities().stream()
                 .anyMatch(authority -> authority.getAuthority().equals(Role.ADMIN.getKey()));
-        boolean isOwner = owner != null && owner.getEmail().equals(authentication.getName());
+        boolean isOwner = owner != null && isSamePrincipal(authentication, owner);
 
         return isAdmin || isOwner;
+    }
+
+    /**
+     * 이메일이 아니라 불변 userId로 소유자를 판정한다(개선 보고서 COR-02). 탈퇴한 이메일은
+     * 재사용될 수 있다 — 세션 폐기가 지연된 옛 세션이 남아 있는 채로 같은 이메일로 새 계정이
+     * 가입하면, 이메일만 비교하는 판정은 그 옛 세션을 새 계정의 소유자로 착각한다.
+     * <p>
+     * principal이 {@link KraftUserDetails}가 아니면(단위 테스트가 이메일 문자열만으로
+     * {@code Authentication}을 만드는 경우가 많다) 예전처럼 이메일로 비교한다 — 실제 운영
+     * 로그인은 {@code UserDetailsServiceImpl}이 항상 KraftUserDetails를 principal로 만들므로
+     * 이 폴백을 타지 않는다.
+     */
+    private static boolean isSamePrincipal(Authentication authentication, User owner) {
+        if (authentication.getPrincipal() instanceof KraftUserDetails principal) {
+            return owner.getId() != null && owner.getId().equals(principal.getUserId());
+        }
+        return owner.getEmail().equals(authentication.getName());
     }
 
     /**

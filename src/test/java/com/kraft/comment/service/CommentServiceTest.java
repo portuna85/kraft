@@ -98,7 +98,7 @@ class CommentServiceTest {
         Comment saved = commentOf(user, 100L);
         given(commentRepository.save(any(Comment.class))).willReturn(saved);
 
-        Long id = commentService.save(1L, "tester@example.com", new CommentSaveRequestDto("댓글 내용", null));
+        Long id = commentService.save(1L, authOf("tester@example.com", Role.USER), new CommentSaveRequestDto("댓글 내용", null));
 
         assertThat(id).isEqualTo(100L);
     }
@@ -108,7 +108,7 @@ class CommentServiceTest {
     void save_whenPostNotFound_throwsIllegalArgumentException() {
         given(postRepository.findById(999L)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> commentService.save(999L, "tester@example.com", new CommentSaveRequestDto("내용", null)))
+        assertThatThrownBy(() -> commentService.save(999L, authOf("tester@example.com", Role.USER), new CommentSaveRequestDto("내용", null)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("해당 게시글이 없습니다");
 
@@ -123,7 +123,7 @@ class CommentServiceTest {
         given(postRepository.findById(1L)).willReturn(Optional.of(postOf(1L)));
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("guest@example.com"))).willReturn(Optional.of(guest));
 
-        assertThatThrownBy(() -> commentService.save(1L, "guest@example.com", new CommentSaveRequestDto("내용", null)))
+        assertThatThrownBy(() -> commentService.save(1L, authOf("guest@example.com", Role.GUEST), new CommentSaveRequestDto("내용", null)))
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(commentRepository, never()).save(any());
@@ -135,7 +135,7 @@ class CommentServiceTest {
         given(postRepository.findById(1L)).willReturn(Optional.of(postOf(1L)));
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> commentService.save(1L, "nobody@example.com", new CommentSaveRequestDto("내용", null)))
+        assertThatThrownBy(() -> commentService.save(1L, authOf("nobody@example.com", Role.USER), new CommentSaveRequestDto("내용", null)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("존재하지 않는 회원");
 
@@ -158,7 +158,7 @@ class CommentServiceTest {
         Comment savedReply = replyOf(author, 200L, parent);
         given(commentRepository.save(any(Comment.class))).willReturn(savedReply);
 
-        Long id = commentService.save(1L, "tester@example.com", new CommentSaveRequestDto("답글 내용", 100L));
+        Long id = commentService.save(1L, authOf("tester@example.com", Role.USER), new CommentSaveRequestDto("답글 내용", 100L));
 
         assertThat(id).isEqualTo(200L);
         var captor = org.mockito.ArgumentCaptor.forClass(Comment.class);
@@ -177,7 +177,7 @@ class CommentServiceTest {
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(author));
         given(commentRepository.findById(200L)).willReturn(Optional.of(existingReply));
 
-        assertThatThrownBy(() -> commentService.save(1L, "tester@example.com", new CommentSaveRequestDto("답글의 답글", 200L)))
+        assertThatThrownBy(() -> commentService.save(1L, authOf("tester@example.com", Role.USER), new CommentSaveRequestDto("답글의 답글", 200L)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("답글에는 답글을 달 수 없습니다");
 
@@ -194,7 +194,7 @@ class CommentServiceTest {
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(author));
         given(commentRepository.findById(300L)).willReturn(Optional.of(parentOnAnotherPost));
 
-        assertThatThrownBy(() -> commentService.save(1L, "tester@example.com", new CommentSaveRequestDto("답글", 300L)))
+        assertThatThrownBy(() -> commentService.save(1L, authOf("tester@example.com", Role.USER), new CommentSaveRequestDto("답글", 300L)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("다른 게시글의 댓글에는 답글을 달 수 없습니다");
 

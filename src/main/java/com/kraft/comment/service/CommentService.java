@@ -9,10 +9,9 @@ import com.kraft.comment.dto.CommentViewDto;
 import com.kraft.post.domain.Post;
 import com.kraft.post.domain.PostNotFoundException;
 import com.kraft.post.domain.PostRepository;
+import com.kraft.shared.security.CurrentUser;
 import com.kraft.shared.security.OwnershipPolicy;
 import com.kraft.shared.security.WriteAccessPolicy;
-import com.kraft.user.domain.EmailHasher;
-import com.kraft.user.domain.EmailMasker;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -49,11 +48,10 @@ public class CommentService {
     private final UserRepository userRepository;
 
     @Transactional
-    public Long save(Long postId, String email, CommentSaveRequestDto requestDto) {
+    public Long save(Long postId, Authentication authentication, CommentSaveRequestDto requestDto) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new PostNotFoundException(postId));
-        User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
+        User user = findUser(authentication);
         WriteAccessPolicy.requireVerified(user);
         Comment parent = resolveParent(postId, requestDto.parentId());
         return commentRepository.save(requestDto.toEntity(post, user, parent)).getId();
@@ -85,7 +83,7 @@ public class CommentService {
     @Transactional
     public Long update(Long id, CommentUpdateRequestDto requestDto, Authentication authentication) {
         Comment comment = findComment(id);
-        WriteAccessPolicy.requireVerified(findUser(authentication.getName()));
+        WriteAccessPolicy.requireVerified(findUser(authentication));
         OwnershipPolicy.validateOwner(authentication, comment.getUser(), id);
         validateVersion(comment, requestDto.version());
         comment.update(requestDto.content());
@@ -163,8 +161,7 @@ public class CommentService {
                 .orElseThrow(() -> new IllegalArgumentException("해당 댓글이 없습니다. id=" + id));
     }
 
-    private User findUser(String email) {
-        return userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
+    private User findUser(Authentication authentication) {
+        return CurrentUser.require(authentication, userRepository);
     }
 }

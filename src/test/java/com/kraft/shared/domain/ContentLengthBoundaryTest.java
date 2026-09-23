@@ -108,7 +108,7 @@ class ContentLengthBoundaryTest {
         Long postId = postService.save(author, new PostSaveRequestDto("제목", "내용", null, null));
         String content = WORST_CASE_CHAR.repeat(ContentPolicy.COMMENT_CONTENT_MAX_LENGTH);
 
-        Long id = commentService.save(postId, author.getName(), new CommentSaveRequestDto(content, null));
+        Long id = commentService.save(postId, author, new CommentSaveRequestDto(content, null));
 
         assertThat(commentRepository.findById(id).orElseThrow().getContent()).isEqualTo(content);
     }

@@ -83,7 +83,7 @@ class CommentApiControllerTest {
     @Test
     @DisplayName("POST .../comments 는 인증+CSRF+유효한 본문이면 200과 ID를 반환한다")
     void saveComment_whenAuthenticatedAndValid_returns200AndId() throws Exception {
-        given(commentService.save(eq(1L), eq("tester@example.com"), any())).willReturn(10L);
+        given(commentService.save(eq(1L), any(), any())).willReturn(10L);
 
         mockMvc.perform(post("/api/v1/posts/1/comments")
                         .with(user("tester@example.com"))
@@ -112,7 +112,7 @@ class CommentApiControllerTest {
     @Test
     @DisplayName("POST .../comments 는 parentId가 있으면 답글로 저장하고 그대로 서비스에 전달한다")
     void saveComment_withParentId_savesAsReply() throws Exception {
-        given(commentService.save(eq(1L), eq("tester@example.com"), any())).willReturn(20L);
+        given(commentService.save(eq(1L), any(), any())).willReturn(20L);
 
         mockMvc.perform(post("/api/v1/posts/1/comments")
                         .with(user("tester@example.com"))
@@ -131,7 +131,7 @@ class CommentApiControllerTest {
     @Test
     @DisplayName("POST .../comments 는 답글에 답글을 달려는 요청을 400으로 거절한다")
     void saveComment_replyToAReply_returns400BadRequest() throws Exception {
-        given(commentService.save(eq(1L), eq("tester@example.com"), any()))
+        given(commentService.save(eq(1L), any(), any()))
                 .willThrow(new IllegalArgumentException("답글에는 답글을 달 수 없습니다."));
 
         mockMvc.perform(post("/api/v1/posts/1/comments")

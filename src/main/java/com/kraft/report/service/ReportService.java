@@ -12,8 +12,7 @@ import com.kraft.report.domain.ReportStatus;
 import com.kraft.report.domain.ReportTargetType;
 import com.kraft.report.dto.ReportSaveRequestDto;
 import com.kraft.report.dto.ReportViewDto;
-import com.kraft.user.domain.EmailHasher;
-import com.kraft.user.domain.EmailMasker;
+import com.kraft.shared.security.CurrentUser;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -69,7 +68,7 @@ public class ReportService {
      */
     @Transactional
     public Long report(ReportSaveRequestDto requestDto, Authentication authentication) {
-        User reporter = findUser(authentication.getName());
+        User reporter = findUser(authentication);
         User targetAuthor = targetAuthorOf(requestDto.targetType(), requestDto.targetId())
                 .orElseThrow(() -> new IllegalArgumentException("이미 삭제되었거나 존재하지 않는 대상입니다."));
 
@@ -154,7 +153,7 @@ public class ReportService {
                     "정지 기간은 0에서 %d일 사이여야 합니다: %d".formatted(MAX_SUSPEND_DAYS, suspendDays));
         }
         Report report = findPendingReport(id);
-        User admin = findUser(authentication.getName());
+        User admin = findUser(authentication);
         Optional<User> targetAuthor = targetAuthorOf(report.getTargetType(), report.getTargetId());
 
         deleteTarget(report, authentication);
@@ -179,7 +178,7 @@ public class ReportService {
     @Transactional
     public void reject(Long id, Authentication authentication) {
         Report report = findPendingReport(id);
-        report.reject(findUser(authentication.getName()));
+        report.reject(findUser(authentication));
 
         log.info("신고를 반려했습니다. reportId={}", report.getId());
     }
@@ -258,8 +257,7 @@ public class ReportService {
         return text.length() <= PREVIEW_LENGTH ? text : text.substring(0, PREVIEW_LENGTH) + "…";
     }
 
-    private User findUser(String email) {
-        return userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
+    private User findUser(Authentication authentication) {
+        return CurrentUser.require(authentication, userRepository);
     }
 }

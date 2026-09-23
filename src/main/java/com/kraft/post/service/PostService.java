@@ -15,12 +15,11 @@ import com.kraft.post.dto.PostsPageResponseDto;
 import com.kraft.post.dto.PostUpdateRequestDto;
 import com.kraft.post.dto.PostViewDto;
 import com.kraft.post.web.PostSortPolicy;
+import com.kraft.shared.security.CurrentUser;
 import com.kraft.shared.security.OwnershipPolicy;
 import com.kraft.shared.security.WriteAccessPolicy;
 import com.kraft.shared.transaction.AfterCommit;
 import com.kraft.shared.transaction.OnRollback;
-import com.kraft.user.domain.EmailHasher;
-import com.kraft.user.domain.EmailMasker;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +28,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -73,7 +71,7 @@ public class PostService {
      */
     @Transactional
     public String uploadImage(MultipartFile file, Authentication authentication) {
-        User user = findUser(authentication.getName());
+        User user = findUser(authentication);
         WriteAccessPolicy.requireVerified(user);
 
         String url = postImageService.store(file);
@@ -89,7 +87,7 @@ public class PostService {
 
     @Transactional
     public Long save(Authentication authentication, PostSaveRequestDto requestDto) {
-        User user = findUser(authentication.getName());
+        User user = findUser(authentication);
         WriteAccessPolicy.requireVerified(user);
         CategoryPolicy.requireCanUse(authentication, requestDto.category());
 
@@ -110,7 +108,7 @@ public class PostService {
     @Transactional
     public Long update(Long id, PostUpdateRequestDto requestDto, Authentication authentication) {
         Post post = findPost(id);
-        User actor = findUser(authentication.getName());
+        User actor = findUser(authentication);
         WriteAccessPolicy.requireVerified(actor);
         validateOwner(post, authentication);
         validateVersion(post, requestDto.version());
@@ -248,7 +246,7 @@ public class PostService {
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public PostLikeResponseDto setLike(Long id, boolean liked, Authentication authentication) {
         Post post = findPost(id);
-        User user = findUser(authentication.getName());
+        User user = findUser(authentication);
 
         if (liked) {
             addLikeIfAbsent(post, user);
@@ -318,19 +316,12 @@ public class PostService {
         return trimmed.length() > MAX_KEYWORD_LENGTH ? trimmed.substring(0, MAX_KEYWORD_LENGTH) : trimmed;
     }
 
-    private User findUser(String email) {
-        return userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
+    private User findUser(Authentication authentication) {
+        return CurrentUser.require(authentication, userRepository);
     }
 
     private Long currentUserId(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()
-                || authentication instanceof AnonymousAuthenticationToken) {
-            return null;
-        }
-        return userRepository.findByEmailHash(EmailHasher.sha512Hex(authentication.getName()))
-                .map(User::getId)
-                .orElse(null);
+        return CurrentUser.userIdOrNull(authentication, userRepository);
     }
 
     private Post findPost(Long id) {
