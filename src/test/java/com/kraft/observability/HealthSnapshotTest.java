@@ -17,7 +17,7 @@ class HealthSnapshotTest {
             20, 0.1, 0, 1000, 0.8, 1_073_741_824L, 20, 0, 20, 5, 0, 200, 200);
 
     private static HealthSnapshot healthy() {
-        return new HealthSnapshot(100, 2, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0);
+        return new HealthSnapshot(100, 2, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0, true);
     }
 
     @Test
@@ -29,7 +29,7 @@ class HealthSnapshotTest {
     @Test
     @DisplayName("오류율이 기준을 넘으면 수치와 기준을 함께 남긴다")
     void highErrorRateIsReported() {
-        HealthSnapshot snapshot = new HealthSnapshot(100, 30, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0);
+        HealthSnapshot snapshot = new HealthSnapshot(100, 30, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0, true);
 
         assertThat(snapshot.breaches(LIMITS))
                 .singleElement(org.assertj.core.api.InstanceOfAssertFactories.STRING)
@@ -44,7 +44,7 @@ class HealthSnapshotTest {
     @Test
     @DisplayName("요청이 적으면 오류율이 높아도 경보하지 않는다")
     void errorRateNeedsEnoughSamples() {
-        HealthSnapshot snapshot = new HealthSnapshot(2, 1, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0);
+        HealthSnapshot snapshot = new HealthSnapshot(2, 1, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0, true);
 
         assertThat(snapshot.errorRate()).isEqualTo(0.5);
         assertThat(snapshot.breaches(LIMITS)).isEmpty();
@@ -54,7 +54,7 @@ class HealthSnapshotTest {
     @Test
     @DisplayName("5xx는 요청이 한 건뿐이어도 남긴다")
     void serverErrorIsReportedRegardlessOfSampleSize() {
-        HealthSnapshot snapshot = new HealthSnapshot(1, 1, 1, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0);
+        HealthSnapshot snapshot = new HealthSnapshot(1, 1, 1, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0, true);
 
         assertThat(snapshot.breaches(LIMITS)).anyMatch(line -> line.startsWith("5xx 1건"));
     }
@@ -62,7 +62,7 @@ class HealthSnapshotTest {
     @Test
     @DisplayName("응답이 느려지면 최대 지연도 함께 남긴다")
     void slowResponsesAreReported() {
-        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 2500, 9000, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0);
+        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 2500, 9000, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0, true);
 
         assertThat(snapshot.breaches(LIMITS)).anyMatch(line -> line.contains("2500ms") && line.contains("9000ms"));
     }
@@ -70,7 +70,7 @@ class HealthSnapshotTest {
     @Test
     @DisplayName("커넥션 풀이 차오르면 대기 스레드 수까지 남긴다")
     void poolPressureIsReported() {
-        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 9, 10, 3, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0);
+        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 9, 10, 3, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0, true);
 
         assertThat(snapshot.poolUsage()).isEqualTo(0.9);
         assertThat(snapshot.breaches(LIMITS)).anyMatch(line -> line.contains("9/10") && line.contains("대기 3"));
@@ -79,7 +79,7 @@ class HealthSnapshotTest {
     @Test
     @DisplayName("디스크 여유가 기준 아래로 내려가면 남긴다")
     void lowDiskIsReported() {
-        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 100_000_000L, 0, 0, 0, 0, 0, 0, 0);
+        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 100_000_000L, 0, 0, 0, 0, 0, 0, 0, true);
 
         assertThat(snapshot.breaches(LIMITS)).anyMatch(line -> line.startsWith("디스크 여유"));
     }
@@ -87,7 +87,7 @@ class HealthSnapshotTest {
     @Test
     @DisplayName("디스크가 진짜로 가득 찼으면(0바이트) '측정 불가'로 오인하지 않고 남긴다")
     void diskCompletelyFullIsReported() {
-        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 0L, 0, 0, 0, 0, 0, 0, 0);
+        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 0L, 0, 0, 0, 0, 0, 0, 0, true);
 
         assertThat(snapshot.breaches(LIMITS)).anyMatch(line -> line.startsWith("디스크 여유"));
     }
@@ -95,15 +95,24 @@ class HealthSnapshotTest {
     @Test
     @DisplayName("디스크 측정이 실패했으면(-1) 경보하지 않는다")
     void diskMeasurementUnavailableIsNotReported() {
-        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, -1L, 0, 0, 0, 0, 0, 0, 0);
+        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, -1L, 0, 0, 0, 0, 0, 0, 0, true);
 
         assertThat(snapshot.breaches(LIMITS)).isEmpty();
+    }
+
+    /** OBS-01: 정수 나눗셈이 -1/1048576을 0으로 내려 예전엔 "0MB"로 보였다 — 진짜 0바이트와 구분되지 않았다. */
+    @Test
+    @DisplayName("OBS-01: 디스크 측정이 실패했으면(-1) summary에 '측정불가'로 남는다")
+    void diskMeasurementUnavailableShowsAsUnmeasurableInSummary() {
+        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, -1L, 0, 0, 0, 0, 0, 0, 0, true);
+
+        assertThat(snapshot.summary()).contains("디스크여유=측정불가");
     }
 
     @Test
     @DisplayName("메일이 나가지 않고 쌓이면 대기와 포기를 구분해 남긴다")
     void mailBacklogIsReported() {
-        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 50, 3, 0, 0, 0, 0, 0);
+        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 50, 3, 0, 0, 0, 0, 0, true);
 
         assertThat(snapshot.breaches(LIMITS))
                 .anyMatch(line -> line.startsWith("발송 대기 메일 50통"))
@@ -117,7 +126,7 @@ class HealthSnapshotTest {
     @Test
     @DisplayName("미처리 신고가 쌓이면 남긴다 — 앱이 아니라 사람이 멈춘 신호다")
     void pendingReportBacklogIsReported() {
-        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 35, 0, 0, 0, 0);
+        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 35, 0, 0, 0, 0, true);
 
         assertThat(snapshot.breaches(LIMITS)).anyMatch(line -> line.startsWith("미처리 신고 35건"));
         assertThat(snapshot.summary()).contains("미처리신고=35");
@@ -129,7 +138,7 @@ class HealthSnapshotTest {
     @Test
     @DisplayName("O03: 세션 폐기 실패가 쌓이면 남긴다")
     void sessionRevocationFailedIsReported() {
-        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 3, 0, 0);
+        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 3, 0, 0, true);
 
         assertThat(snapshot.breaches(LIMITS)).anyMatch(line -> line.startsWith("세션 폐기 실패 3건"));
     }
@@ -138,7 +147,7 @@ class HealthSnapshotTest {
     @Test
     @DisplayName("O03: 이미지 삭제 backlog가 쌓이면 남긴다")
     void imageDeleteBacklogIsReported() {
-        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 250, 0);
+        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 250, 0, true);
 
         assertThat(snapshot.breaches(LIMITS)).anyMatch(line -> line.startsWith("이미지 삭제 backlog 250건"));
     }
@@ -147,25 +156,56 @@ class HealthSnapshotTest {
     @Test
     @DisplayName("O03: 추천 이력 검증 기준이 오래 갱신되지 않으면 남긴다")
     void recommendationHistoryStaleIsReported() {
-        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 300);
+        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 300, true);
 
         assertThat(snapshot.breaches(LIMITS)).anyMatch(line -> line.startsWith("추천 이력 검증 기준이 300시간째"));
     }
 
-    /** O03: 상태 행이 없거나 한 번도 검증되지 않았으면(-1) 새 설치에서 오탐하지 않는다. */
+    /**
+     * OBS-01: 상태 행이 없거나 한 번도 검증되지 않았으면(-1) 기능이 켜져 있는 한 "이력이
+     * 아직 준비되지 않음"을 남긴다 — 예전에는 이 -1을 조용히 건너뛰어, 자동 수집이 계속
+     * 실패해도 로그상 정상과 구분되지 않았다.
+     */
     @Test
-    @DisplayName("O03: 추천 이력 나이 측정이 실패했으면(-1) 경보하지 않는다")
-    void recommendationHistoryAgeUnavailableIsNotReported() {
-        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, -1);
+    @DisplayName("OBS-01: 추천 기능이 켜진 채 이력 나이가 -1이면 '추천 이력 미준비'를 남긴다")
+    void recommendationHistoryUnavailableWhileEnabledIsReported() {
+        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, -1, true);
+
+        assertThat(snapshot.breaches(LIMITS)).containsExactly("추천 이력 미준비");
+    }
+
+    /** O03/OBS-01: 기능이 꺼져 있으면 이력이 애초에 없는 게 정상이라 -1이어도 남기지 않는다. */
+    @Test
+    @DisplayName("O03: 추천 기능이 꺼져 있으면 이력 나이가 -1이어도 경보하지 않는다")
+    void recommendationHistoryUnavailableWhileDisabledIsNotReported() {
+        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, -1, false);
 
         assertThat(snapshot.breaches(LIMITS)).isEmpty();
+    }
+
+    /**
+     * OBS-01: 메일·신고·세션·이미지 집계가 DB 조회 실패로 -1이면, 예전처럼 조용히 건너뛰지
+     * 않고 각각 "측정 불가: <항목>"을 남긴다 — 관측 자체가 실패했다는 것도 알아야 할 상태다.
+     */
+    @Test
+    @DisplayName("OBS-01: 메일·신고·세션·이미지 집계가 실패하면(-1) 각각 측정 불가로 남긴다")
+    void dbAggregateMeasurementFailuresAreReportedIndividually() {
+        HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 50_000_000_000L,
+                -1, -1, -1, 0, -1, -1, 0, true);
+
+        assertThat(snapshot.breaches(LIMITS)).containsExactlyInAnyOrder(
+                "측정 불가: 발송 대기 메일 수",
+                "측정 불가: 발송 포기 메일 수",
+                "측정 불가: 미처리 신고 수",
+                "측정 불가: 세션 폐기 실패 수",
+                "측정 불가: 이미지 삭제 backlog");
     }
 
     /** 한 번에 여러 곳이 무너지는 게 실제 장애다. 로그 한 줄에 전부 적혀야 판단할 수 있다. */
     @Test
     @DisplayName("여러 항목이 동시에 무너지면 전부 한 줄에 담는다")
     void allBreachesAreCollected() {
-        HealthSnapshot snapshot = new HealthSnapshot(100, 50, 5, 3000, 9000, 10, 10, 7, 1_000_000L, 99, 9, 30, 0, 3, 250, 300);
+        HealthSnapshot snapshot = new HealthSnapshot(100, 50, 5, 3000, 9000, 10, 10, 7, 1_000_000L, 99, 9, 30, 0, 3, 250, 300, true);
 
         assertThat(snapshot.breaches(LIMITS)).hasSize(11);
     }
@@ -173,7 +213,7 @@ class HealthSnapshotTest {
     @Test
     @DisplayName("트래픽이 전혀 없는 주기는 0으로 나누지 않는다")
     void idlePeriodIsSafe() {
-        HealthSnapshot idle = new HealthSnapshot(0, 0, 0, 0, 0, 0, 0, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0);
+        HealthSnapshot idle = new HealthSnapshot(0, 0, 0, 0, 0, 0, 0, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0, true);
 
         assertThat(idle.errorRate()).isZero();
         assertThat(idle.poolUsage()).isZero();

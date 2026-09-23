@@ -104,7 +104,7 @@ class HealthReporterTest {
     @Test
     @DisplayName("정상일 때는 INFO로 평소 수치를 남긴다")
     void healthyStateIsLoggedAtInfo() {
-        healthReporter.report(new HealthSnapshot(100, 1, 0, 90, 300, 1, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0));
+        healthReporter.report(new HealthSnapshot(100, 1, 0, 90, 300, 1, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0, true));
 
         ILoggingEvent event = onlyEvent();
         assertThat(event.getLevel()).isEqualTo(Level.INFO);
@@ -118,7 +118,7 @@ class HealthReporterTest {
     @Test
     @DisplayName("기준을 넘기면 ERROR로 올려 무엇이 넘었는지 함께 남긴다")
     void breachIsEscalatedToError() {
-        healthReporter.report(new HealthSnapshot(100, 40, 3, 90, 300, 1, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0));
+        healthReporter.report(new HealthSnapshot(100, 40, 3, 90, 300, 1, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0, true));
 
         ILoggingEvent event = onlyEvent();
         assertThat(event.getLevel()).as("ERROR라야 kraft-error.log에 모인다").isEqualTo(Level.ERROR);

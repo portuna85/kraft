@@ -104,6 +104,15 @@ public class HealthReporter {
     @Value("${app.metrics.recommendation-history-stale-hours:200}")
     private long recommendationHistoryStaleHours;
 
+    /**
+     * recommendationHistoryAgeHours의 -1을 "측정 실패"와 "기능이 꺼져 있어 이력이 애초에
+     * 없음"으로 구분하는 데 쓴다(개선 보고서 OBS-01). {@code app.recommend.enabled}와 같은
+     * 프로퍼티를 읽는다 — {@code RecommendationApiController}·{@code RecommendationPageController}가
+     * 이 값으로 빈 등록 여부를 결정하는 것과 같다.
+     */
+    @Value("${app.recommend.enabled:true}")
+    private boolean recommendEnabled;
+
     public HealthReporter(RequestMetrics requestMetrics,
                           OutboxMailRepository outboxMailRepository,
                           ReportRepository reportRepository,
@@ -176,7 +185,8 @@ public class HealthReporter {
                 http.slowRequests(),
                 safeCount("세션 폐기 실패 수", () -> sessionRevocationTaskRepository.countByStatus(SessionRevocationTaskStatus.FAILED)),
                 safeCount("이미지 삭제 backlog", () -> postImageRepository.countByStatus(PostImageStatus.PENDING_DELETE)),
-                recommendationHistoryAgeHours());
+                recommendationHistoryAgeHours(),
+                recommendEnabled);
     }
 
     /**
