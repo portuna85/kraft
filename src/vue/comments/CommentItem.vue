@@ -23,7 +23,7 @@ const props = defineProps({
     postId: { type: String, required: true },
 });
 
-const emit = defineEmits(['updated', 'replied']);
+const emit = defineEmits(['updated', 'replied', 'moreRepliesLoaded']);
 
 const editing = ref(false);
 const draftContent = ref(props.comment.content);
@@ -139,6 +139,27 @@ async function save() {
         showToast(messageOf(error), 'danger');
     } finally {
         saving.value = false;
+    }
+}
+
+// 답글 더 보기(개선 보고서 COR-05). 최초 페이지는 부모 하나당 답글을 일부만(서버 상수
+// INITIAL_REPLIES_PER_PARENT) 내려준다 — comment.hasMoreReplies가 true면 이어서 부른다.
+const loadingMoreReplies = ref(false);
+
+async function loadMoreReplies() {
+    if (loadingMoreReplies.value) {
+        return;
+    }
+    const loaded = props.comment.replies ?? [];
+    const afterId = loaded.length > 0 ? loaded[loaded.length - 1].id : '';
+    loadingMoreReplies.value = true;
+    try {
+        const page = await api.get(`${API.COMMENTS}/${props.comment.id}/replies?afterId=${afterId}`);
+        emit('moreRepliesLoaded', { parentId: props.comment.id, replies: page.comments, hasMore: page.hasMore });
+    } catch (error) {
+        showToast(messageOf(error), 'danger');
+    } finally {
+        loadingMoreReplies.value = false;
     }
 }
 
@@ -324,5 +345,16 @@ function formatDate(iso) {
         @updated="emit('updated', $event)"
       />
     </ul>
+
+    <!-- 부모 하나당 답글을 일부만 내려받았을 때만 보인다(comment.hasMoreReplies, COR-05). -->
+    <button
+      v-if="!isReply && comment.hasMoreReplies"
+      type="button"
+      class="btn btn-sm btn-outline-secondary btn-comment-replies-load-more"
+      :disabled="loadingMoreReplies"
+      @click="loadMoreReplies"
+    >
+      답글 더 보기
+    </button>
   </li>
 </template>

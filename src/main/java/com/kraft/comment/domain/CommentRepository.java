@@ -27,15 +27,17 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
                                        Pageable pageable);
 
     /**
-     * 한 페이지에 실린 최상위 댓글들의 답글을 한 번에 배치로 가져온다(N+1 방지,
-     * {@link #findAllByIdInWithUser}와 같은 관례). 부모별로 나눠 페이지네이션하지는 않는다 —
-     * 이 게시판 규모에서 한 댓글에 달리는 답글 수가 그 정도로 많지는 않다. 다만 {@code pageable}로
-     * 이 페이지 전체(여러 부모 합산)에서 가져오는 답글 총량에 상한을 둔다(B08) — 악의적으로
-     * 한 댓글에 답글을 대량으로 단 경우에도 응답 크기가 무한정 늘어나지 않는다.
+     * 한 부모의 답글을 id 커서로 가져온다(개선 보고서 COR-05). 예전에는 페이지 전체(여러 부모
+     * 합산)에서 가져오는 답글 총량에만 상한을 뒀다(B08) — 한 부모에 답글이 상한을 넘거나, 그
+     * 상한을 다른 부모가 먼저 다 써 버리면 남은 답글에 새로고침으로도 영원히 도달할 수 없었다.
+     * 부모별로 커서를 따로 두면 그 상한 자체가 없어진다 — 대신 이 메서드를 처음 페이지 로드
+     * 때는 최상위 댓글 하나당 한 번씩 부르고({@code CommentService.pageForView}), "답글 더
+     * 보기"가 이어서 같은 메서드를 부른다.
      */
-    @Query("SELECT c FROM Comment c JOIN FETCH c.user WHERE c.parent.id IN :parentIds "
-            + "ORDER BY c.parent.id ASC, c.id ASC")
-    List<Comment> findRepliesByParentIdIn(@Param("parentIds") List<Long> parentIds, Pageable pageable);
+    @Query("SELECT c FROM Comment c JOIN FETCH c.user WHERE c.parent.id = :parentId "
+            + "AND (:afterId IS NULL OR c.id > :afterId) ORDER BY c.id ASC")
+    List<Comment> findRepliesByParentIdAsc(@Param("parentId") Long parentId, @Param("afterId") Long afterId,
+                                            Pageable pageable);
 
     /**
      * 게시글의 답글만 먼저 지운다. {@code deleteAllByPostId}를 부모·답글 구분 없이 한 문장으로
@@ -103,6 +105,29 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     interface PostCommentCount {
         Long getPostId();
+
+        Long getCount();
+    }
+
+    @Query("SELECT c.parent.id AS parentId, COUNT(c) AS count FROM Comment c "
+            + "WHERE c.parent.id IN :parentIds GROUP BY c.parent.id")
+    List<ParentReplyCount> countGroupedByParentIdIn(@Param("parentIds") List<Long> parentIds);
+
+    /**
+     * 화면이 처음 페이지를 그릴 때 각 최상위 댓글의 "답글 N개" 표시와 "더 보기" 노출 여부를
+     * 정하는 데 쓴다(개선 보고서 COR-05). 답글이 없는 부모는 결과에 행 자체가 없으므로
+     * 호출부에서 {@code getOrDefault(id, 0L)}로 다뤄야 한다.
+     */
+    default Map<Long, Long> countRepliesByParentIdIn(List<Long> parentIds) {
+        if (parentIds.isEmpty()) {
+            return Map.of();
+        }
+        return countGroupedByParentIdIn(parentIds).stream()
+                .collect(Collectors.toMap(ParentReplyCount::getParentId, ParentReplyCount::getCount));
+    }
+
+    interface ParentReplyCount {
+        Long getParentId();
 
         Long getCount();
     }

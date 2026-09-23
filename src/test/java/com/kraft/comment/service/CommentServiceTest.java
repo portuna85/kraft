@@ -26,6 +26,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.IntStream;
 
@@ -33,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -212,7 +214,8 @@ class CommentServiceTest {
         Comment topLevel = commentOf(owner, 100L);
         Comment reply = replyOf(owner, 200L, topLevel);
         given(commentRepository.findPageByPostIdAsc(1L, null, PageRequest.of(0, 21))).willReturn(List.of(topLevel));
-        given(commentRepository.findRepliesByParentIdIn(eq(List.of(100L)), any(PageRequest.class))).willReturn(List.of(reply));
+        given(commentRepository.countRepliesByParentIdIn(List.of(100L))).willReturn(Map.of(100L, 1L));
+        given(commentRepository.findRepliesByParentIdAsc(eq(100L), isNull(), any(PageRequest.class))).willReturn(List.of(reply));
         given(commentRepository.countByPostId(1L)).willReturn(2L);
 
         CommentPageDto result = commentService.findInitialPageForView(1L, authOf("owner@example.com", Role.USER));
@@ -221,6 +224,64 @@ class CommentServiceTest {
         assertThat(result.comments().get(0).replies()).hasSize(1);
         assertThat(result.comments().get(0).replies().get(0).id()).isEqualTo(200L);
         assertThat(result.comments().get(0).replies().get(0).parentId()).isEqualTo(100L);
+    }
+
+    /**
+     * COR-05 회귀: 예전에는 한 페이지 전체(여러 부모 합산)에서 가져오는 답글 총량에 500이라는
+     * 상한 하나를 뒀다 — 한 부모가 답글을 아주 많이 갖고 있으면 그 부모가 상한을 혼자 다 써서,
+     * 같은 페이지의 다른 부모는 새로고침을 해도 자신의 답글에 영영 도달하지 못했다. 지금은
+     * 부모마다 따로 조회하므로(부모별 최대 20개 + hasMoreReplies) 한 부모의 답글 수가 다른
+     * 부모의 조회에 영향을 주지 않는다.
+     */
+    @Test
+    @DisplayName("COR-05: 한 부모의 답글이 아주 많아도(옛 전역 상한을 혼자 넘는 규모) 다른 부모는 자신의 답글을 그대로 받는다")
+    void findInitialPageForView_fetchesRepliesPerParentIndependently() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Comment parentA = commentOf(owner, 100L);
+        Comment parentB = commentOf(owner, 101L);
+        Comment replyB = replyOf(owner, 201L, parentB);
+        given(commentRepository.findPageByPostIdAsc(1L, null, PageRequest.of(0, 21)))
+                .willReturn(List.of(parentA, parentB));
+        // A는 답글이 600개다 — 예전 전역 상한(500)을 혼자 넘는 규모.
+        given(commentRepository.countRepliesByParentIdIn(List.of(100L, 101L)))
+                .willReturn(Map.of(100L, 600L, 101L, 1L));
+        List<Comment> firstTwentyOfA = IntStream.range(0, 20)
+                .mapToObj(i -> replyOf(owner, 300L + i, parentA))
+                .toList();
+        given(commentRepository.findRepliesByParentIdAsc(eq(100L), isNull(), any(PageRequest.class)))
+                .willReturn(firstTwentyOfA);
+        given(commentRepository.findRepliesByParentIdAsc(eq(101L), isNull(), any(PageRequest.class)))
+                .willReturn(List.of(replyB));
+        given(commentRepository.countByPostId(1L)).willReturn(622L);
+
+        CommentPageDto result = commentService.findInitialPageForView(1L, authOf("owner@example.com", Role.USER));
+
+        CommentViewDto viewA = result.comments().get(0);
+        CommentViewDto viewB = result.comments().get(1);
+        assertThat(viewA.replyCount()).isEqualTo(600L);
+        assertThat(viewA.hasMoreReplies()).isTrue();
+        assertThat(viewA.replies()).hasSize(20);
+        // 핵심 주장: A가 답글을 아무리 많이 갖고 있어도 B는 자신의 답글(1개)을 그대로 받는다.
+        assertThat(viewB.replyCount()).isEqualTo(1L);
+        assertThat(viewB.hasMoreReplies()).isFalse();
+        assertThat(viewB.replies()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("COR-05: findRepliesPage는 afterId 이후의 답글을 페이지로 반환한다(답글 더 보기)")
+    void findRepliesPage_returnsNextPageOfReplies() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Comment parent = commentOf(owner, 100L);
+        Comment reply21 = replyOf(owner, 321L, parent);
+        given(commentRepository.findRepliesByParentIdAsc(eq(100L), eq(320L), any(PageRequest.class)))
+                .willReturn(List.of(reply21));
+        given(commentRepository.countRepliesByParentIdIn(List.of(100L))).willReturn(Map.of(100L, 21L));
+
+        CommentPageDto result = commentService.findRepliesPage(100L, 320L, authOf("owner@example.com", Role.USER));
+
+        assertThat(result.comments()).extracting(CommentViewDto::id).containsExactly(321L);
+        assertThat(result.totalCount()).isEqualTo(21L);
+        assertThat(result.hasMore()).isFalse();
     }
 
     @Test

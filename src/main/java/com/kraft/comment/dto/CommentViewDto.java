@@ -9,8 +9,12 @@ import java.util.List;
  * 댓글 <b>화면 전용</b> 응답. 커서 페이지 API가 이 형태로만 응답하며, 화면에만 댓글별
  * {@code canManage}를 내려 관리 버튼 노출을 서버 판정에 맞춘다.
  * <p>
- * {@code parentId}가 null이면 최상위 댓글이고, {@code replies}에 그 답글 목록이 실린다.
- * 답글 자신은 2단계까지만 허용하므로 {@code replies}가 항상 빈 리스트다.
+ * {@code parentId}가 null이면 최상위 댓글이고, {@code replies}에 처음 로드된 답글 일부가
+ * 실린다. {@code replyCount}는 그 부모의 실제 총 답글 수이고, {@code hasMoreReplies}가
+ * true면 {@code replies}에 다 담지 못한 답글이 더 있다는 뜻이다(개선 보고서 COR-05) — 화면은
+ * 이때 {@code GET /api/v1/comments/{parentId}/replies}로 이어서 받아 온다. 답글 자신은
+ * 2단계까지만 허용하므로 답글 항목의 {@code replies}·{@code replyCount}·{@code hasMoreReplies}는
+ * 항상 빈 값이다.
  */
 public record CommentViewDto(
         Long id,
@@ -30,6 +34,8 @@ public record CommentViewDto(
         OffsetDateTime createdAt,
         boolean canManage,
         List<CommentViewDto> replies,
+        long replyCount,
+        boolean hasMoreReplies,
         /**
          * 편집 충돌 감지에 쓰는 낙관적 잠금 버전(B12). 저장 요청의 {@code version}에 이 값을
          * 그대로 실어 보내면, 그 사이 다른 저장이 있었을 때 서버가 409로 거절한다.
@@ -37,12 +43,13 @@ public record CommentViewDto(
         Long version
 ) {
 
-    /** 최상위 댓글 생성용. 답글은 아직 채우지 않은 상태로 만들고, 서비스가 나중에 채운다. */
+    /** 최상위 댓글·답글 생성용(저장·수정 응답). 답글 목록은 비워 두고, 서비스가 나중에 채운다. */
     public CommentViewDto(Comment entity, boolean canManage) {
-        this(entity, canManage, List.of());
+        this(entity, canManage, List.of(), 0L, false);
     }
 
-    public CommentViewDto(Comment entity, boolean canManage, List<CommentViewDto> replies) {
+    public CommentViewDto(Comment entity, boolean canManage, List<CommentViewDto> replies,
+                           long replyCount, boolean hasMoreReplies) {
         this(
                 entity.getId(),
                 entity.getPost() != null ? entity.getPost().getId() : null,
@@ -54,12 +61,15 @@ public record CommentViewDto(
                         : null,
                 canManage,
                 replies,
+                replyCount,
+                hasMoreReplies,
                 entity.getVersion()
         );
     }
 
-    /** 답글 목록을 채운 새 인스턴스를 돌려준다. record는 불변이라 필드 하나만 바꿔 복제한다. */
-    public CommentViewDto withReplies(List<CommentViewDto> newReplies) {
-        return new CommentViewDto(id, postId, parentId, content, author, createdAt, canManage, newReplies, version);
+    /** 답글 목록·개수를 채운 새 인스턴스를 돌려준다. record는 불변이라 필드만 바꿔 복제한다. */
+    public CommentViewDto withReplies(List<CommentViewDto> newReplies, long newReplyCount, boolean newHasMoreReplies) {
+        return new CommentViewDto(id, postId, parentId, content, author, createdAt, canManage,
+                newReplies, newReplyCount, newHasMoreReplies, version);
     }
 }

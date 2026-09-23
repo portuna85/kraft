@@ -86,7 +86,7 @@ class CommentApiControllerTest {
     @DisplayName("POST .../comments 는 인증+CSRF+유효한 본문이면 200과 확정된 댓글(id·version 포함)을 반환한다")
     void saveComment_whenAuthenticatedAndValid_returns200AndId() throws Exception {
         given(commentService.save(eq(1L), any(), any())).willReturn(
-                new CommentViewDto(10L, 1L, null, "댓글 내용", "tester", OffsetDateTime.now(), true, List.of(), 0L));
+                new CommentViewDto(10L, 1L, null, "댓글 내용", "tester", OffsetDateTime.now(), true, List.of(), 0L, false, 0L));
 
         mockMvc.perform(post("/api/v1/posts/1/comments")
                         .with(user("tester@example.com"))
@@ -117,7 +117,7 @@ class CommentApiControllerTest {
     @DisplayName("POST .../comments 는 parentId가 있으면 답글로 저장하고 그대로 서비스에 전달한다")
     void saveComment_withParentId_savesAsReply() throws Exception {
         given(commentService.save(eq(1L), any(), any())).willReturn(
-                new CommentViewDto(20L, 1L, 10L, "답글 내용", "tester", OffsetDateTime.now(), true, List.of(), 0L));
+                new CommentViewDto(20L, 1L, 10L, "답글 내용", "tester", OffsetDateTime.now(), true, List.of(), 0L, false, 0L));
 
         mockMvc.perform(post("/api/v1/posts/1/comments")
                         .with(user("tester@example.com"))

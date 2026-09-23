@@ -23,7 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
@@ -37,11 +36,16 @@ public class CommentService {
     private static final int PAGE_SIZE = 20;
 
     /**
-     * 한 페이지(최상위 댓글 최대 {@link #PAGE_SIZE}개)에 실리는 답글 총량 상한(B08). 한 댓글에
-     * 답글이 비정상적으로 많이 달려도 이 페이지 응답 크기가 무한정 늘어나지 않는다 — 정상적인
-     * 사용 규모에서는 이 상한에 걸릴 일이 없다.
+     * 최초 페이지에서 최상위 댓글 하나당 함께 내려주는 답글 수(개선 보고서 COR-05). 예전에는
+     * 페이지 전체(여러 부모 합산)에서 가져오는 답글 총량에만 상한(500)을 뒀다 — 한 부모에
+     * 답글이 그 상한을 넘거나, 다른 부모가 그 상한을 먼저 다 쓰면 남은 답글에 새로고침으로도
+     * 영원히 도달할 수 없었다. 부모별로 이 개수만큼만 먼저 보여주고, 넘는 만큼은
+     * {@code hasMoreReplies}로 표시해 "답글 더 보기"({@link #findRepliesPage})가 이어받는다.
      */
-    private static final int MAX_REPLIES_PER_PAGE = 500;
+    private static final int INITIAL_REPLIES_PER_PARENT = 20;
+
+    /** "답글 더 보기" 한 번에 내려주는 개수. */
+    private static final int REPLIES_PAGE_SIZE = 50;
 
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
@@ -147,29 +151,56 @@ public class CommentService {
      * {@code PAGE_SIZE + 1}개를 가져와 {@code PAGE_SIZE}를 넘으면 마지막 한 개를 잘라내고
      * {@code hasMore=true}로 표시한다 — 별도의 COUNT 쿼리 없이 "다음이 있는지"를 판정한다.
      * 화면에 보여줄 전체 개수는 이와 별개로 {@code countByPostId}를 조회해 담는다.
+     * <p>
+     * 답글은 부모마다 최대 {@link #INITIAL_REPLIES_PER_PARENT}개만 함께 내려준다(개선 보고서
+     * COR-05). 부모 수만큼(최대 {@link #PAGE_SIZE}회) 별도 조회가 도는 대신, 어떤 부모의
+     * 답글도 영영 숨겨지지 않는다는 것을 보장한다 — 이 페이지의 최상위 댓글 수 자체가 이미
+     * {@code PAGE_SIZE}로 작게 제한되어 있어 그 반복 횟수도 함께 작다.
      */
     private CommentPageDto pageForView(Long postId, Long afterId, Authentication authentication) {
         List<Comment> fetched = commentRepository.findPageByPostIdAsc(postId, afterId, PageRequest.of(0, PAGE_SIZE + 1));
         boolean hasMore = fetched.size() > PAGE_SIZE;
         List<Comment> page = hasMore ? fetched.subList(0, PAGE_SIZE) : fetched;
 
-        // 이 페이지에 실린 최상위 댓글들의 답글을 한 번에 배치로 가져와 부모 id별로 묶는다
-        // (2단계 댓글, N+1 방지). 부모별로 나눠 제한하지는 않고 이 페이지 전체 합산에 상한을
-        // 둔다(B08, MAX_REPLIES_PER_PAGE).
         List<Long> topLevelIds = page.stream().map(Comment::getId).toList();
-        Map<Long, List<CommentViewDto>> repliesByParentId = topLevelIds.isEmpty()
-                ? Map.of()
-                : commentRepository.findRepliesByParentIdIn(topLevelIds, PageRequest.of(0, MAX_REPLIES_PER_PAGE)).stream()
-                        .map(reply -> new CommentViewDto(reply,
-                                OwnershipPolicy.canManage(authentication, reply.getUser())))
-                        .collect(Collectors.groupingBy(CommentViewDto::parentId));
+        Map<Long, Long> replyCounts = commentRepository.countRepliesByParentIdIn(topLevelIds);
 
         List<CommentViewDto> views = page.stream()
-                .map(comment -> new CommentViewDto(comment,
-                        OwnershipPolicy.canManage(authentication, comment.getUser()))
-                        .withReplies(repliesByParentId.getOrDefault(comment.getId(), List.of())))
+                .map(comment -> withInitialReplies(comment, authentication, replyCounts))
                 .toList();
         long totalCount = commentRepository.countByPostId(postId);
+        return new CommentPageDto(views, totalCount, hasMore);
+    }
+
+    private CommentViewDto withInitialReplies(Comment comment, Authentication authentication,
+                                               Map<Long, Long> replyCounts) {
+        long replyCount = replyCounts.getOrDefault(comment.getId(), 0L);
+        List<CommentViewDto> replies = replyCount == 0
+                ? List.of()
+                : commentRepository.findRepliesByParentIdAsc(comment.getId(), null,
+                                PageRequest.of(0, INITIAL_REPLIES_PER_PARENT)).stream()
+                        .map(reply -> new CommentViewDto(reply, OwnershipPolicy.canManage(authentication, reply.getUser())))
+                        .toList();
+        boolean hasMoreReplies = replyCount > replies.size();
+        return new CommentViewDto(comment, OwnershipPolicy.canManage(authentication, comment.getUser()))
+                .withReplies(replies, replyCount, hasMoreReplies);
+    }
+
+    /**
+     * "답글 더 보기"(개선 보고서 COR-05) — {@code afterId} 이후의 답글을 최대
+     * {@link #REPLIES_PAGE_SIZE}개 반환한다. 존재하지 않거나 답글이 없는 부모 id를 넘기면
+     * 빈 페이지를 돌려준다(읽기 전용 조회라 별도의 404로 구분하지 않는다).
+     */
+    public CommentPageDto findRepliesPage(Long parentId, Long afterId, Authentication authentication) {
+        List<Comment> fetched = commentRepository.findRepliesByParentIdAsc(
+                parentId, afterId, PageRequest.of(0, REPLIES_PAGE_SIZE + 1));
+        boolean hasMore = fetched.size() > REPLIES_PAGE_SIZE;
+        List<Comment> page = hasMore ? fetched.subList(0, REPLIES_PAGE_SIZE) : fetched;
+
+        List<CommentViewDto> views = page.stream()
+                .map(reply -> new CommentViewDto(reply, OwnershipPolicy.canManage(authentication, reply.getUser())))
+                .toList();
+        long totalCount = commentRepository.countRepliesByParentIdIn(List.of(parentId)).getOrDefault(parentId, 0L);
         return new CommentPageDto(views, totalCount, hasMore);
     }
 

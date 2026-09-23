@@ -183,7 +183,7 @@ class CommentRepositoryTest {
         commentRepository.deleteAllByParentId(parentA.getId());
         em.flush();
 
-        assertThat(commentRepository.findRepliesByParentIdIn(List.of(parentA.getId()), PageRequest.of(0, 500))).isEmpty();
+        assertThat(commentRepository.findRepliesByParentIdAsc(parentA.getId(), null, PageRequest.of(0, 500))).isEmpty();
         assertThat(commentRepository.findById(replyB.getId())).isPresent();
     }
 
@@ -202,32 +202,47 @@ class CommentRepositoryTest {
     }
 
     @Test
-    @DisplayName("2단계: findRepliesByParentIdIn은 여러 부모의 답글을 부모별·id 오름차순으로 함께 가져온다")
-    void findRepliesByParentIdIn_returnsRepliesGroupedByParentInOrder() {
+    @DisplayName("2단계: findRepliesByParentIdAsc는 한 부모의 답글을 id 오름차순으로 가져오고, 다른 부모의 답글은 섞이지 않는다")
+    void findRepliesByParentIdAsc_returnsOnlyThatParentsRepliesInOrder() {
         Comment parentA = commentRepository.save(Comment.builder().content("부모A").post(post).user(user).build());
         Comment parentB = commentRepository.save(Comment.builder().content("부모B").post(post).user(user).build());
         Comment replyA1 = commentRepository.save(
                 Comment.builder().content("A-1").post(post).user(user).parent(parentA).build());
-        Comment replyB1 = commentRepository.save(
-                Comment.builder().content("B-1").post(post).user(user).parent(parentB).build());
+        commentRepository.save(Comment.builder().content("B-1").post(post).user(user).parent(parentB).build());
         Comment replyA2 = commentRepository.save(
                 Comment.builder().content("A-2").post(post).user(user).parent(parentA).build());
         em.flush();
         em.clear();
 
-        List<Comment> replies = commentRepository.findRepliesByParentIdIn(
-                List.of(parentA.getId(), parentB.getId()), PageRequest.of(0, 500));
+        List<Comment> replies = commentRepository.findRepliesByParentIdAsc(parentA.getId(), null, PageRequest.of(0, 500));
 
-        assertThat(replies).extracting(Comment::getId)
-                .containsExactly(replyA1.getId(), replyA2.getId(), replyB1.getId());
+        assertThat(replies).extracting(Comment::getId).containsExactly(replyA1.getId(), replyA2.getId());
         assertThat(replies.get(0).getUser().getName())
                 .as("JOIN FETCH로 작성자가 함께 와야 지연로딩 예외가 없다").isEqualTo("tester");
     }
 
-    /** B08: 답글 총량에 상한을 두므로, 실제 답글 수가 더 많아도 pageable 크기만큼만 온다. */
+    /** COR-05: afterId 커서 이후의 답글만 가져온다 — "답글 더 보기"가 이 커서로 이어받는다. */
     @Test
-    @DisplayName("B08: findRepliesByParentIdIn은 pageable 크기를 넘는 답글은 잘라낸다")
-    void findRepliesByParentIdIn_capsResultsToPageableSize() {
+    @DisplayName("COR-05: findRepliesByParentIdAsc는 afterId보다 큰 답글만 가져온다")
+    void findRepliesByParentIdAsc_withAfterId_returnsOnlyLaterReplies() {
+        Comment parent = commentRepository.save(Comment.builder().content("부모").post(post).user(user).build());
+        Comment reply1 = commentRepository.save(
+                Comment.builder().content("답글1").post(post).user(user).parent(parent).build());
+        Comment reply2 = commentRepository.save(
+                Comment.builder().content("답글2").post(post).user(user).parent(parent).build());
+        em.flush();
+        em.clear();
+
+        List<Comment> replies = commentRepository.findRepliesByParentIdAsc(
+                parent.getId(), reply1.getId(), PageRequest.of(0, 500));
+
+        assertThat(replies).extracting(Comment::getId).containsExactly(reply2.getId());
+    }
+
+    /** 페이지 크기를 넘는 답글도 pageable로 잘라낼 수 있다 — "답글 더 보기"가 한 번에 내려주는 개수를 제한한다. */
+    @Test
+    @DisplayName("findRepliesByParentIdAsc는 pageable 크기를 넘는 답글은 잘라낸다")
+    void findRepliesByParentIdAsc_capsResultsToPageableSize() {
         Comment parent = commentRepository.save(Comment.builder().content("부모").post(post).user(user).build());
         for (int i = 0; i < 5; i++) {
             commentRepository.save(Comment.builder().content("답글" + i).post(post).user(user).parent(parent).build());
@@ -235,7 +250,7 @@ class CommentRepositoryTest {
         em.flush();
         em.clear();
 
-        List<Comment> replies = commentRepository.findRepliesByParentIdIn(List.of(parent.getId()), PageRequest.of(0, 3));
+        List<Comment> replies = commentRepository.findRepliesByParentIdAsc(parent.getId(), null, PageRequest.of(0, 3));
 
         assertThat(replies).hasSize(3);
     }

@@ -89,6 +89,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/users/password-reset", "/api/v1/users/password-reset/confirm")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/posts/**").permitAll()
+                        // 답글 더 보기(개선 보고서 COR-05)도 게시글 목록·상세 GET과 같은
+                        // 이유로 익명 열람을 허용한다 — 댓글 자체가 로그인 없이도 보이므로,
+                        // 그 뒤에 숨어 있던 답글만 로그인해야 볼 수 있으면 어색하다.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/comments/*/replies").permitAll()
                         // 번호 추천 생성은 비저장·공개 기능이라 로그인 여부와 무관하게 동일하게
                         // 동작한다(02문서 7절). 이 경로 하나만 열고 /api/v1/numbers/** 전체를
                         // 미리 공개하지 않는다. permitAll은 CSRF 비활성화가 아니다 — 세션·폼

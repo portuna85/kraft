@@ -392,6 +392,41 @@ test('2단계 댓글: 답글을 달면 최상위 댓글 아래 중첩되어 보�
     await expect(replyItem.locator('.btn-comment-reply')).toHaveCount(0);
 });
 
+/**
+ * COR-05 회귀: 서버는 최초 페이지에서 최상위 댓글 하나당 답글을 20개까지만 내려준다. 예전
+ * 전역 상한(페이지 전체 500개) 방식은 답글이 많은 부모가 그 상한을 혼자 다 쓰면 나머지가
+ * 영원히 숨겨졌다 — 지금은 부모별 상한이라 "답글 더 보기"로 항상 나머지에 도달할 수 있다.
+ */
+test('COR-05 회귀: 답글이 21개면 새로고침 후 20개만 보이고, 답글 더 보기로 나머지에 도달한다', async ({ page }) => {
+    test.slow();
+    await openOwnPost(page);
+    await page.locator('#comment-content').fill('답글이 많이 달릴 부모 댓글');
+    await page.locator('#btn-comment-save').click();
+    await expect(page.locator('#flash')).toContainText('댓글이 등록되었습니다.');
+
+    const topLevelItem = page.locator('.comment-list > .comment-list__item').first();
+    for (let i = 1; i <= 21; i += 1) {
+        await topLevelItem.locator('.btn-comment-reply').click();
+        await topLevelItem.locator('.comment-reply-form textarea').fill(`시드 답글 ${i}`);
+        await topLevelItem.locator('.btn-comment-reply-save').click();
+        await expect(page.locator('#flash')).toContainText('댓글이 등록되었습니다.');
+    }
+
+    // 로컬에 즉시 반영된 상태(등록 응답을 그대로 붙인 것)라 서버의 부모별 상한과 무관하게
+    // 21개 모두 보인다 — 상한은 서버가 처음 페이지를 그릴 때만 적용되므로 새로고침해야 한다.
+    await page.reload();
+    const reloadedTopLevelItem = page.locator('.comment-list > .comment-list__item').first();
+    const replies = reloadedTopLevelItem.locator('.comment-list__replies .comment-list__item');
+    await expect(replies).toHaveCount(20);
+    const loadMoreReplies = reloadedTopLevelItem.locator('.btn-comment-replies-load-more');
+    await expect(loadMoreReplies).toBeVisible();
+
+    await loadMoreReplies.click();
+
+    await expect(replies).toHaveCount(21);
+    await expect(loadMoreReplies).toHaveCount(0);
+});
+
 test('2단계 댓글: 최상위 댓글을 지우면 그 답글도 함께 사라진다', async ({ page }) => {
     await openOwnPost(page);
     await page.locator('#comment-content').fill('삭제될 최상위 댓글입니다.');

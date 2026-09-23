@@ -38,6 +38,18 @@ public class CommentApiController {
         return commentService.findNextPageForView(postId, afterId, authentication);
     }
 
+    /**
+     * "답글 더 보기"(개선 보고서 COR-05) — 최초 페이지·다른 부모가 답글 개수 상한을 먼저 써도
+     * 이 부모의 남은 답글에 항상 도달할 수 있어야 한다. 게시글 목록 GET과 같은 이유로 익명도
+     * 볼 수 있게 연다(SecurityConfig).
+     */
+    @GetMapping("/api/v1/comments/{parentId}/replies")
+    public CommentPageDto replies(@PathVariable Long parentId,
+                                   @RequestParam(required = false) Long afterId,
+                                   Authentication authentication) {
+        return commentService.findRepliesPage(parentId, afterId, authentication);
+    }
+
     @PutMapping("/api/v1/comments/{id}")
     public CommentViewDto update(@PathVariable Long id, @Valid @RequestBody CommentUpdateRequestDto requestDto,
                                   Authentication authentication) {
