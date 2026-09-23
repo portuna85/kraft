@@ -13,8 +13,12 @@
         <h1 class="page-title">로그인</h1>
         <div th:replace="~{layout/footer :: flash}"></div>
         <div class="card-kraft">
-            <div class="alert alert-danger" th:if="${param.error != null}">
+            <div class="alert alert-danger"
+                 th:if="${param.error != null and (param.error[0] == null or param.error[0] != 'throttled')}">
                 이메일 또는 비밀번호가 올바르지 않습니다.
+            </div>
+            <div class="alert alert-danger" th:if="${param.error != null and param.error[0] == 'throttled'}">
+                로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.
             </div>
             <div class="alert alert-success" th:if="${param.logout != null}">
                 로그아웃되었습니다.

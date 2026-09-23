@@ -39,6 +39,10 @@ logging:
 
 app:
   base-url: http://localhost:8081
+  # 여러 spec이 같은 IP(로컬 호스트)에서 로그인·가입을 반복하므로 꺼 둔다(개선 보고서 SEC-01).
+  auth:
+    rate-limit:
+      enabled: false
   upload:
     dir: build/e2e-uploads
     # 주기 정리 작업이 테스트 도중 업로드 파일을 치우면 검증이 흔들린다.

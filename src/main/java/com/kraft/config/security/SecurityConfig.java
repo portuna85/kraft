@@ -2,6 +2,7 @@ package com.kraft.config.security;
 
 import com.kraft.shared.web.SafeRedirect;
 import com.kraft.user.service.SessionRevoker;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -14,7 +15,9 @@ import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+import tools.jackson.databind.ObjectMapper;
 
 @Configuration
 @EnableWebSecurity
@@ -23,6 +26,23 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+    }
+
+    /**
+     * 로그인·가입·비밀번호 재설정·인증 메일 재발송의 요청 제한(개선 보고서 SEC-01). 별도 빈으로
+     * 두어 {@code @Scheduled}(허용/거부 집계 보고)가 Spring에 의해 실행되게 한다.
+     */
+    @Bean
+    public AuthRateLimitFilter authRateLimitFilter(
+            @Value("${app.auth.rate-limit.enabled:true}") boolean enabled,
+            @Value("${app.auth.rate-limit.login-per-minute:20}") int loginPerMinute,
+            @Value("${app.auth.rate-limit.login-account-per-minute:10}") int loginAccountPerMinute,
+            @Value("${app.auth.rate-limit.signup-per-minute:5}") int signupPerMinute,
+            @Value("${app.auth.rate-limit.password-reset-per-minute:5}") int passwordResetPerMinute,
+            @Value("${app.auth.rate-limit.resend-per-minute:5}") int resendPerMinute,
+            ObjectMapper objectMapper) {
+        return new AuthRateLimitFilter(enabled, loginPerMinute, loginAccountPerMinute, signupPerMinute,
+                passwordResetPerMinute, resendPerMinute, objectMapper);
     }
 
     /**
@@ -56,8 +76,10 @@ public class SecurityConfig {
 
     @Bean
     @Order(1)
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, AuthRateLimitFilter authRateLimitFilter)
+            throws Exception {
         http
+                .addFilterBefore(authRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         // 정적 자원(/css, /js, /images)은 위 staticResourceChain이 먼저 처리한다.
                         .requestMatchers("/").permitAll()

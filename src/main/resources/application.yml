@@ -208,6 +208,18 @@ app:
       # 허용/거부 집계를 로그로 남기는 주기 — 위 한도를 실측 근거로 조정할지 판단하는 데 쓴다.
       report-interval-ms: 600000
 
+  auth:
+    rate-limit:
+      # 로그인·가입·비밀번호 재설정·인증 메일 재발송에 적용하는 분당 요청 한도(개선 보고서
+      # SEC-01). 추천 제한기와 같은 초기 검토값이며, 실측 트래픽에 맞춰 재배포 없이 조정한다.
+      enabled: true
+      login-per-minute: 20
+      login-account-per-minute: 10
+      signup-per-minute: 5
+      password-reset-per-minute: 5
+      resend-per-minute: 5
+      report-interval-ms: 600000
+
   # 이메일 인증 링크를 만들 때 붙일 기본 URL. 운영에서는 실제 배포 도메인으로 덮어써야 한다
   # (application-prod.yml 참고).
   base-url: http://localhost:8080

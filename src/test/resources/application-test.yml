@@ -32,6 +32,13 @@ app:
   security:
     email-encryption-key: local-dev-only-email-key-do-not-use-in-prod
 
+  # 로그인·가입 등을 반복하는 MockMvc 테스트가 이 제한기 때문에 흔들리지 않도록 꺼 둔다
+  # (개선 보고서 SEC-01). 필터 자체를 검증하는 테스트는 @TestPropertySource로 개별적으로
+  # 다시 켠다(AuthRateLimitFilterTest).
+  auth:
+    rate-limit:
+      enabled: false
+
   # O06: 전체 스위트가 도는 동안(수십~백여 초) 예약 작업이 우연히 끼어들어 다른 테스트가 만든
   # 데이터를 건드리지 않게, 모든 주기 작업의 최초 실행을 스위트 실행 시간보다 훨씬 뒤로
   # 미룬다. enabled 스위치(app.mail.enabled 등)는 건드리지 않는다 — OutboxMailWorker.drain()·
