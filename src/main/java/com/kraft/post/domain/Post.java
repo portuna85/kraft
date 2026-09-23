@@ -45,7 +45,15 @@ public class Post extends BaseEntity {
     @Column(nullable = false, length = 20)
     private Category category;
 
-    @Column(name = "view_count", nullable = false)
+    /**
+     * {@code updatable = false} — Hibernate가 만드는 일반 UPDATE(예: {@link #update})에서
+     * 이 컬럼을 아예 빼도록 강제한다(개선 보고서 COR-04). 조회수는 오직
+     * {@code PostRepository.increaseViewCount}의 전용 원자적 UPDATE로만 바뀐다. 이 플래그가
+     * 없으면, 편집 화면이 옛 조회수를 들고 있는 동안 다른 트랜잭션이 조회수를 올려 커밋하고,
+     * 그 뒤 편집이 flush되는 순서에서 편집의 전체 컬럼 UPDATE가 그 증가분을 그대로 덮어쓸 수
+     * 있다 — {@code @Version}은 조회수 증가가 version을 바꾸지 않으므로 이 경우를 잡지 못한다.
+     */
+    @Column(name = "view_count", nullable = false, updatable = false)
     private long viewCount;
 
     /**
@@ -72,18 +80,5 @@ public class Post extends BaseEntity {
         this.content = content;
         this.picture = picture;
         this.category = category != null ? category : this.category;
-    }
-
-    /**
-     * <b>조회 경로에서는 쓰지 않는다.</b> 상세 화면의 조회수 증가는
-     * {@code PostRepository.increaseViewCount(id)}의 원자적 UPDATE로 처리한다 — 엔티티를 바꿔
-     * 변경 감지에 맡기면 Hibernate가 제목·본문·분류까지 함께 UPDATE에 실어, 그 사이 다른
-     * 트랜잭션이 저장한 내용을 열람만으로 되돌릴 수 있었다(개선 보고서 F02). 감사 필드
-     * {@code updatedAt}까지 갱신되어 목록의 최종수정일도 오염됐다(F11).
-     * <p>
-     * 테스트에서 조회수를 가진 게시글을 만들 때만 남겨둔다.
-     */
-    public void increaseViewCount() {
-        this.viewCount++;
     }
 }

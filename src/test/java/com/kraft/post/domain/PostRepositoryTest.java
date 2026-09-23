@@ -117,9 +117,11 @@ class PostRepositoryTest {
         Post low = postRepository.save(Post.builder().title("낮음").content("c").user(user).build());
         Post high = postRepository.save(Post.builder().title("높음").content("c").user(user).build());
         Post mid = postRepository.save(Post.builder().title("중간").content("c").user(user).build());
-        high.increaseViewCount();
-        high.increaseViewCount();
-        mid.increaseViewCount();
+        // view_count는 이제 엔티티 UPDATE에서 빠지므로(updatable=false, 개선 보고서 COR-04)
+        // 실제 운영 경로와 같은 전용 원자적 UPDATE로 조회수를 올린다.
+        postRepository.increaseViewCount(high.getId());
+        postRepository.increaseViewCount(high.getId());
+        postRepository.increaseViewCount(mid.getId());
         em.flush();
         em.clear();
 
@@ -165,9 +167,11 @@ class PostRepositoryTest {
         Post low = postRepository.save(Post.builder().title("낮음").content("c").user(user).build());
         Post high = postRepository.save(Post.builder().title("높음").content("c").user(user).build());
         Post mid = postRepository.save(Post.builder().title("중간").content("c").user(user).build());
-        high.increaseViewCount();
-        high.increaseViewCount();
-        mid.increaseViewCount();
+        // view_count는 이제 엔티티 UPDATE에서 빠지므로(updatable=false, 개선 보고서 COR-04)
+        // 실제 운영 경로와 같은 전용 원자적 UPDATE로 조회수를 올린다.
+        postRepository.increaseViewCount(high.getId());
+        postRepository.increaseViewCount(high.getId());
+        postRepository.increaseViewCount(mid.getId());
         em.flush();
         em.clear();
 

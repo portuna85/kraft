@@ -112,6 +112,39 @@ class PostViewCountIsolationTest {
         assertThat(result.getViewCount()).isEqualTo(1L);
     }
 
+    /**
+     * COR-04 회귀: 위 테스트와 반대 순서다. 편집이 게시글을 먼저 읽어 옛 조회수(0)를 쥔 채로,
+     * 그 사이 다른 트랜잭션이 조회수를 올리고 커밋한 뒤에야 편집이 flush된다.
+     * {@code Post.viewCount}에 {@code updatable = false}가 없다면, 편집의 전체 컬럼 UPDATE가
+     * 편집 시작 시점의 옛 조회수를 그대로 실어 방금 커밋된 증가를 되돌렸을 것이다.
+     */
+    @Test
+    @DisplayName("COR-04 회귀: 편집이 옛 조회수를 쥐고 있어도, 그 사이 커밋된 조회수 증가를 되돌리지 않는다")
+    void editHoldingStaleViewCount_doesNotRevertConcurrentViewIncrement() {
+        Long id = savePost("원래 제목", "원래 내용", Category.FREE);
+        // findByIdForView는 호출 자체가 조회수를 올리므로 쓰지 않는다 — version만 필요하다.
+        Long version = postRepository.findById(id).orElseThrow().getVersion();
+
+        transactionTemplate.executeWithoutResult(status -> {
+            // 편집 경로가 게시글을 먼저 읽어 옛 조회수(0)를 영속성 컨텍스트에 쥔다.
+            Post editing = postRepository.findById(id).orElseThrow();
+            assertThat(editing.getViewCount()).isZero();
+
+            // 그 사이 별도 트랜잭션이 조회수를 올리고 커밋한다.
+            requiresNew.executeWithoutResult(inner -> postService.findByIdForView(id, owner));
+
+            // 이제 편집이 저장된다. update()가 같은 영속성 컨텍스트의 위 "editing" 인스턴스를
+            // 그대로 재사용하므로(1차 캐시), 이 시점에도 그 인스턴스의 viewCount는 여전히 0이다.
+            postService.update(id, new PostUpdateRequestDto("새 제목", "새 내용", null, Category.QNA, version), owner);
+        });
+
+        Post result = postRepository.findById(id).orElseThrow();
+        assertThat(result.getTitle()).isEqualTo("새 제목");
+        assertThat(result.getContent()).isEqualTo("새 내용");
+        assertThat(result.getViewCount())
+                .as("편집이 그 사이 커밋된 조회수 증가를 되돌리면 안 된다").isEqualTo(1L);
+    }
+
     @Test
     @DisplayName("F11: 상세를 여러 번 열어도 최종수정일은 그대로다")
     void view_doesNotTouchUpdatedAt() {
