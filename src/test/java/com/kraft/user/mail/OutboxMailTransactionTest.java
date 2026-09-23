@@ -417,6 +417,30 @@ class OutboxMailTransactionTest {
                 .isEqualTo(OutboxMailStatus.SENT);
     }
 
+    /**
+     * COR-03 회귀: 예전에는 {@code OutboxMailWorker}가 인스턴스 생성 시점에 만든 토큰 하나를
+     * 모든 {@code drain()} 호출이 공유했다. 그러면 재큐잉으로 소유권이 비워진 행을 <b>같은
+     * 워커 인스턴스</b>가 다시 집었을 때 새 시도도 예전과 똑같은 토큰을 쓰게 되어,
+     * {@link #staleOwnerCannotOverwriteResultAfterRequeue}가 검증하는 "다른 소유자"라는
+     * 전제 자체가 실제 운영에서는 성립하지 않았다. 이제 {@code drain()}이 호출마다 새
+     * UUID를 만드는지 직접 확인한다.
+     */
+    @Test
+    @DisplayName("COR-03: drain()을 두 번 부르면 서로 다른 임대 토큰을 쓴다")
+    void drain_usesAFreshOwnerTokenOnEveryCall() {
+        queueOne();
+        outboxMailWorker.drain();
+        String firstToken = outboxMailRepository.findAll().get(0).getOwnerToken();
+        assertThat(firstToken).isNotBlank();
+
+        queueOne();
+        outboxMailWorker.drain();
+
+        Set<String> ownerTokens = new HashSet<>();
+        outboxMailRepository.findAll().forEach(mail -> ownerTokens.add(mail.getOwnerToken()));
+        assertThat(ownerTokens).as("호출마다 서로 다른 토큰을 써야 한다").hasSize(2);
+    }
+
     @Test
     @DisplayName("발송 도중 중단되어 SENDING으로 남은 메일은 다시 대기열로 돌아온다")
     void stuckMailIsRequeued() {
@@ -538,7 +562,13 @@ class OutboxMailTransactionTest {
         Long id = outboxMailRepository.findAll().stream()
                 .filter(mail -> mail.getStatus() == OutboxMailStatus.PENDING)
                 .findFirst().orElseThrow().getId();
-        outboxMailStore.markSent(id, null);
+        // markSent(개선 보고서 COR-03 이후)는 status=SENDING인 행만 반영한다. claimBatch를
+        // 쓰면 다른 PENDING 행(이 테스트의 "최근" 메일 등)까지 함께 집힐 수 있어, 이 id 하나만
+        // 직접 SENDING으로 표시해 둔다.
+        String ownerToken = UUID.randomUUID().toString();
+        transactionTemplate.executeWithoutResult(
+                status -> outboxMailRepository.markSendingByIds(List.of(id), LocalDateTime.now(), ownerToken));
+        outboxMailStore.markSent(id, ownerToken);
         return id;
     }
 

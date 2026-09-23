@@ -49,9 +49,6 @@ public class OutboxMailWorker {
     private final OutboxMailStore store;
     private final EmailSender emailSender;
 
-    /** 이 인스턴스가 집은 메일임을 운영 로그에서 구분하기 위한 값. 발송 로직은 보지 않는다. */
-    private final String ownerToken = UUID.randomUUID().toString();
-
     @Value("${app.base-url}")
     private String baseUrl;
 
@@ -130,19 +127,26 @@ public class OutboxMailWorker {
      * 배치 안의 발송은 {@code maxConcurrentSends}로 제한한 가상 스레드로 동시에 실행한다.
      * 각 발송은 서로 다른 메일이라 순서를 지킬 이유가 없고, 이 메서드는 배치 전체가 끝날
      * 때까지 기다린 뒤 반환한다(호출자가 "이번 배치는 끝났다"고 가정할 수 있어야 한다).
+     * <p>
+     * 임대 토큰은 호출마다 새로 만든다(개선 보고서 COR-03) — 예전에는 이 워커 인스턴스가
+     * 생성될 때 만든 토큰 하나를 모든 drain() 호출이 공유했다. 그러면 정체 재큐잉이 어떤 행의
+     * 소유권을 비운 뒤, 같은 워커 인스턴스가 곧바로 그 행을 다시 집으면 새 시도도 똑같은
+     * (예전과 동일한) 토큰을 쓰게 되어, 그사이 뒤늦게 도착한 이전 시도의 결과가 "지금도 내
+     * 토큰"으로 오인되어 새 시도를 덮어쓸 수 있었다. 매번 새 UUID를 쓰면 이 창이 사라진다.
      */
     public void drain() {
         if (!enabled) {
             return;
         }
         store.requeueStuck(LocalDateTime.now().minus(Duration.ofMillis(stuckAfterMs)));
+        String ownerToken = UUID.randomUUID().toString();
         List<Long> ids = store.claimBatch(batchSize, ownerToken);
         if (ids.isEmpty()) {
             return;
         }
         try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
             List<Future<?>> futures = ids.stream()
-                    .<Future<?>>map(id -> executor.submit(() -> sendWithPermit(id, sendPermits)))
+                    .<Future<?>>map(id -> executor.submit(() -> sendWithPermit(id, ownerToken, sendPermits)))
                     .toList();
             for (Future<?> future : futures) {
                 future.get();
@@ -154,7 +158,7 @@ public class OutboxMailWorker {
         }
     }
 
-    private void sendWithPermit(Long id, Semaphore permits) {
+    private void sendWithPermit(Long id, String ownerToken, Semaphore permits) {
         try {
             permits.acquire();
             try {

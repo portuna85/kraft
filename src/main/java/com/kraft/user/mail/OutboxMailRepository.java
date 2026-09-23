@@ -1,8 +1,10 @@
 package com.kraft.user.mail;
 
 import com.kraft.user.domain.User;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,10 +22,16 @@ public interface OutboxMailRepository extends JpaRepository<OutboxMail, Long> {
      * 반환하지 않는다. 이 락은 호출한 트랜잭션이 커밋할 때까지 유지되므로, 뒤이은 상태
      * 변경(UPDATE)까지 같은 트랜잭션 안에서 끝내야 한다.
      */
+    /**
+     * {@code now}는 자바에서 넘긴다(개선 보고서 COR-07) — 예전에는 DB의 {@code CURRENT_TIMESTAMP}를
+     * 썼는데, JVM과 DB의 시간대 설정이 다르면(운영 DB가 UTC인 경우 등) 백오프가 몇 시간씩
+     * 밀리거나 무시될 수 있었다. {@code nextAttemptAt}을 쓸 때도 자바 시각을 저장하므로
+     * ({@link OutboxMail#markFailed}), 비교도 같은 시계로 해야 앞뒤가 맞는다.
+     */
     @Query(value = "SELECT id FROM outbox_mails WHERE status = 'PENDING' "
-            + "AND (next_attempt_at IS NULL OR next_attempt_at <= CURRENT_TIMESTAMP) "
+            + "AND (next_attempt_at IS NULL OR next_attempt_at <= :now) "
             + "ORDER BY id ASC LIMIT :limit FOR UPDATE SKIP LOCKED", nativeQuery = true)
-    List<Long> selectPendingIdsForUpdateSkipLocked(@Param("limit") int limit);
+    List<Long> selectPendingIdsForUpdateSkipLocked(@Param("now") LocalDateTime now, @Param("limit") int limit);
 
     /**
      * {@code updatedAt}을 직접 넘기는 것은 {@code @LastModifiedDate}가 엔티티 생명주기
@@ -44,8 +52,19 @@ public interface OutboxMailRepository extends JpaRepository<OutboxMail, Long> {
      */
     Optional<OutboxMail> findByIdAndOwnerTokenAndStatus(Long id, String ownerToken, OutboxMailStatus status);
 
-    /** 지금도 이 {@code ownerToken}이 소유한 행일 때만 값을 꺼낸다(B05). markSent/markFailed가 쓴다. */
-    Optional<OutboxMail> findByIdAndOwnerToken(Long id, String ownerToken);
+    /**
+     * markSent/markFailed 전용(개선 보고서 COR-03). {@code ownerToken}뿐 아니라
+     * {@code status = SENDING}까지 함께 확인하고 비관적 쓰기 잠금을 잡는다 — 이 잠금이
+     * {@link #findByStatusAndUpdatedAtBefore}(requeueStuck 전용, 마찬가지로 잠근다)와 서로를
+     * 기다리게 해, 한 행을 "재큐잉하며 소유권을 비우는 것"과 "결과를 반영하는 것"이 동시에
+     * 반쯤 끝난 상태로 섞이지 않는다. {@code drain()}이 호출마다 새 ownerToken을 쓰므로, 같은
+     * 워커 인스턴스의 이전 시도가 재선점 이후의 새 시도와 우연히 같은 토큰을 공유할 일도 없다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT o FROM OutboxMail o WHERE o.id = :id AND o.ownerToken = :ownerToken "
+            + "AND o.status = com.kraft.user.mail.OutboxMailStatus.SENDING")
+    Optional<OutboxMail> findSendingByIdAndOwnerTokenForUpdate(@Param("id") Long id,
+                                                                @Param("ownerToken") String ownerToken);
 
     /**
      * 요청 제한에 쓴다 — 이 회원에게 이 종류의 메일을 마지막으로 만든 것이 언제인지 본다.
@@ -59,7 +78,12 @@ public interface OutboxMailRepository extends JpaRepository<OutboxMail, Long> {
      * SENDING인 채로 오래 남은 것을 다시 집을 수 있게 한다. 발송 도중 프로세스가 죽으면
      * 그 메일은 영영 PENDING으로 돌아오지 못한다. 적체 전체가 아니라 {@code pageable}만큼만
      * 가져온다(B10) — 호출하는 쪽({@code OutboxMailStore.requeueStuck})이 여러 번 나눠 부른다.
+     * <p>
+     * 비관적 쓰기 잠금을 잡아 {@link #findSendingByIdAndOwnerTokenForUpdate}(markSent/
+     * markFailed 전용)와 서로 배타적으로 돈다(개선 보고서 COR-03) — 마침 발송 결과를 반영하는
+     * 도중인 행을 재큐잉이 동시에 건드리지 않는다.
      */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<OutboxMail> findByStatusAndUpdatedAtBefore(OutboxMailStatus status, LocalDateTime threshold, Pageable pageable);
 
     /** 상태 보고에 쓴다 — 대기·실패가 쌓이면 메일이 안 나가고 있다는 뜻이다. */

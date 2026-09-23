@@ -67,11 +67,12 @@ public class OutboxMailStore {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public List<Long> claimBatch(int batchSize, String ownerToken) {
-        List<Long> ids = outboxMailRepository.selectPendingIdsForUpdateSkipLocked(batchSize);
+        LocalDateTime now = LocalDateTime.now();
+        List<Long> ids = outboxMailRepository.selectPendingIdsForUpdateSkipLocked(now, batchSize);
         if (ids.isEmpty()) {
             return ids;
         }
-        outboxMailRepository.markSendingByIds(ids, LocalDateTime.now(), ownerToken);
+        outboxMailRepository.markSendingByIds(ids, now, ownerToken);
         return ids;
     }
 
@@ -112,20 +113,26 @@ public class OutboxMailStore {
         };
     }
 
-    /** {@code ownerToken}이 지금도 같을 때만 반영한다(B05) — 재선점된 행의 결과를 덮지 않는다. */
+    /**
+     * {@code ownerToken}과 {@code status=SENDING}이 지금도 유지될 때만 반영한다(B05, 개선
+     * 보고서 COR-03) — 재선점되었거나 그 사이 재큐잉으로 상태가 바뀐 행의 결과를 덮지 않는다.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markSent(Long id, String ownerToken) {
-        outboxMailRepository.findByIdAndOwnerToken(id, ownerToken).ifPresentOrElse(
+        outboxMailRepository.findSendingByIdAndOwnerTokenForUpdate(id, ownerToken).ifPresentOrElse(
                 OutboxMail::markSent,
-                () -> log.info("이미 다른 워커가 재선점한 메일이라 발송 성공을 반영하지 않습니다. outboxMailId={}", id));
+                () -> log.info("이미 다른 워커가 재선점했거나 상태가 바뀐 메일이라 발송 성공을 반영하지 않습니다. outboxMailId={}", id));
     }
 
-    /** {@code ownerToken}이 지금도 같을 때만 반영한다(B05) — 재선점된 행의 결과를 덮지 않는다. */
+    /**
+     * {@code ownerToken}과 {@code status=SENDING}이 지금도 유지될 때만 반영한다(B05, 개선
+     * 보고서 COR-03) — 재선점되었거나 그 사이 재큐잉으로 상태가 바뀐 행의 결과를 덮지 않는다.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markFailed(Long id, String error, String ownerToken) {
-        outboxMailRepository.findByIdAndOwnerToken(id, ownerToken).ifPresentOrElse(
+        outboxMailRepository.findSendingByIdAndOwnerTokenForUpdate(id, ownerToken).ifPresentOrElse(
                 mail -> mail.markFailed(error, maxAttempts),
-                () -> log.info("이미 다른 워커가 재선점한 메일이라 발송 실패를 반영하지 않습니다. outboxMailId={}", id));
+                () -> log.info("이미 다른 워커가 재선점했거나 상태가 바뀐 메일이라 발송 실패를 반영하지 않습니다. outboxMailId={}", id));
     }
 
     /**
