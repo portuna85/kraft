@@ -74,8 +74,11 @@
                                    autocomplete="current-password" required>
                         </div>
                         <div class="mb-3">
-                            <label for="newPassword">새 비밀번호 (8자 이상 72자 이하, 대문자·소문자·특수문자 포함)</label>
-                            <input type="password" class="form-control" id="newPassword"
+                            <!--/* id="newPassword"가 아니다 — 비밀번호 재설정 페이지(PasswordResetApp.vue)에도
+                                   같은 id의 입력이 있어, 로그인한 사람이 재설정 링크를 열면 한 문서에 id가
+                                   중복될 수 있었다(개선 보고서 COR-10). 화면별로 구분한다. */-->
+                            <label for="changeNewPassword">새 비밀번호 (8자 이상 72자 이하, 대문자·소문자·특수문자 포함)</label>
+                            <input type="password" class="form-control" id="changeNewPassword"
                                    autocomplete="new-password" minlength="8" maxlength="72" required>
                         </div>
                     </form>

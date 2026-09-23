@@ -90,7 +90,7 @@ async function changePassword(openedAt) {
     try {
         await api.put('/api/v1/users/me/password', {
             currentPassword: rawValueOf(byId('currentPassword')),
-            newPassword: rawValueOf(byId('newPassword')),
+            newPassword: rawValueOf(byId('changeNewPassword')),
         });
         flash.set('PASSWORD_CHANGED');
         window.location.href = '/login';

@@ -12,7 +12,7 @@ test.describe('비밀번호 변경', () => {
         await expect(modal).toBeVisible();
 
         await page.locator('#currentPassword').fill('WrongPass1!');
-        await page.locator('#newPassword').fill('Another1!pass');
+        await page.locator('#changeNewPassword').fill('Another1!pass');
         await page.locator('#btn-change-password').click();
 
         // 화면 이동이 없으므로 flash가 아니라 모달 안에서 보여준다.
@@ -38,8 +38,8 @@ test.describe('비밀번호 변경', () => {
         expect(requested, 'required가 제출 자체를 막는다').toBe(false);
 
         await page.locator('#currentPassword').fill('WrongPass1!');
-        await page.locator('#newPassword').fill('Another1!pass');
-        await page.locator('#newPassword').press('Enter');
+        await page.locator('#changeNewPassword').fill('Another1!pass');
+        await page.locator('#changeNewPassword').press('Enter');
 
         await expect(page.locator('#change-password-error')).toBeVisible();
         expect(requested, 'Enter가 실제로 폼을 제출했다').toBe(true);
@@ -67,7 +67,7 @@ test.describe('비밀번호 변경', () => {
         await expect(modal).toBeVisible();
 
         await page.locator('#currentPassword').fill('WrongPass1!');
-        await page.locator('#newPassword').fill('Another1!pass');
+        await page.locator('#changeNewPassword').fill('Another1!pass');
         await page.locator('#btn-change-password').click();
 
         // 요청이 진행 중인 동안 모달을 닫는다(응답은 아직 gate에 잡혀 있다).
@@ -100,7 +100,7 @@ test.describe('비밀번호 변경 성공', () => {
         await openAccountMenu(page);
         await page.getByRole('button', { name: '비밀번호 변경' }).click();
         await page.locator('#currentPassword').fill(PASSWORD);
-        await page.locator('#newPassword').fill(newPassword);
+        await page.locator('#changeNewPassword').fill(newPassword);
         await page.locator('#btn-change-password').click();
 
         await page.waitForURL(/\/login/);
@@ -114,7 +114,7 @@ test.describe('비밀번호 변경 성공', () => {
         // 다음 실행을 위해 되돌린다.
         await page.getByRole('button', { name: '비밀번호 변경' }).click();
         await page.locator('#currentPassword').fill(newPassword);
-        await page.locator('#newPassword').fill(PASSWORD);
+        await page.locator('#changeNewPassword').fill(PASSWORD);
         await page.locator('#btn-change-password').click();
         await page.waitForURL(/\/login/);
     });
@@ -148,7 +148,7 @@ test.describe('비밀번호 앞뒤 공백', () => {
         await openAccountMenu(page);
         await page.getByRole('button', { name: '비밀번호 변경' }).click();
         await page.locator('#currentPassword').fill(paddedPassword);
-        await page.locator('#newPassword').fill(newPassword);
+        await page.locator('#changeNewPassword').fill(newPassword);
         await page.locator('#btn-change-password').click();
 
         await page.waitForURL(/\/login/);

@@ -65,12 +65,16 @@
     color: #0b3d54;
 }
 
+// 빨강·회색도 노랑과 같은 이유로 어두운 톤으로 바꿨다 — 원래 배경(#ff7272~#e94b4b,
+// #aaaaaa~#888888)은 밝은 쪽 대비가 각각 2.66:1·2.32:1로 흰 숫자와 거의 구별되지 않았다
+// (개선 보고서 FE-A1). 초록·노랑처럼 어두운 글자색을 쓰는 대신 배경 자체를 두 톤 모두
+// 4.5:1을 넘도록 낮췄다 — 숫자 배경마다 글자색을 따로 관리하지 않아도 된다.
 .recommend__latest-ball--red {
-    background: linear-gradient(135deg, #ff7272, #e94b4b);
+    background: linear-gradient(135deg, #c62828, #a61b1b);
 }
 
 .recommend__latest-ball--gray {
-    background: linear-gradient(135deg, #aaaaaa, #888888);
+    background: linear-gradient(135deg, #6b7280, #4b5563);
 }
 
 .recommend__latest-ball--green {
