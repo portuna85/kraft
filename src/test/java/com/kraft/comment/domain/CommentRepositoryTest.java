@@ -88,6 +88,27 @@ class CommentRepositoryTest {
     }
 
     @Test
+    @DisplayName("[회귀 방지] 답글이 있는 게시글은 답글을 먼저 지운 뒤에야 댓글 전체를 지울 수 있다")
+    void deletePost_withReplies_requiresDeletingRepliesBeforeAllComments() {
+        Comment parent = commentRepository.save(Comment.builder().content("부모").post(post).user(user).build());
+        commentRepository.save(Comment.builder().content("답글").post(post).user(user).parent(parent).build());
+        em.flush();
+        em.clear();
+
+        // PostService.delete()와 같은 순서 — 답글을 먼저 지우지 않고 deleteAllByPostId만
+        // 실행하면 H2에서는 통과하더라도, 실제 운영 DB(MariaDB/InnoDB)에서는 부모 행이 자신의
+        // 답글보다 먼저 삭제되며 FK_COMMENTS_PARENT 위반이 날 수 있다
+        // (PostDeleteWithRepliesMariaDbTest에서 실제 MariaDB로 확인).
+        commentRepository.deleteRepliesByPostId(post.getId());
+        commentRepository.deleteAllByPostId(post.getId());
+        postRepository.delete(post);
+        em.flush();
+
+        assertThat(postRepository.findById(post.getId())).isEmpty();
+        assertThat(commentRepository.countByPostId(post.getId())).isZero();
+    }
+
+    @Test
     @DisplayName("countByPostIdIn: 여러 게시글의 댓글 수를 postId → count 맵으로 한 번에 반환한다")
     void countByPostIdIn_returnsCommentCountMapByPostIds() {
         commentRepository.save(Comment.builder().content("댓글1").post(post).user(user).build());

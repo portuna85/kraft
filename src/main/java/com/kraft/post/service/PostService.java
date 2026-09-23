@@ -140,7 +140,10 @@ public class PostService {
 
         // 삭제 예약이 post_id를 비워야 FK 제약(FK_POST_IMAGES_POST)이 게시글 삭제를 막지 않는다.
         List<Long> deletedImageIds = postImageRegistry.markPostImagesForDeletion(id);
-        // 댓글·추천이 남아 있으면 FK 제약 위반으로 삭제가 실패하므로 먼저 지운다.
+        // 댓글·추천이 남아 있으면 FK 제약 위반으로 삭제가 실패하므로 먼저 지운다. 답글을 먼저
+        // 지우지 않으면 MariaDB에서 자기참조 FK(FK_COMMENTS_PARENT) 위반이 날 수 있다
+        // (CommentRepository.deleteRepliesByPostId 주석 참고).
+        commentRepository.deleteRepliesByPostId(id);
         commentRepository.deleteAllByPostId(id);
         postLikeRepository.deleteAllByPostId(id);
         postRepository.delete(post);

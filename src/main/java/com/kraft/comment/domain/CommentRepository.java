@@ -38,12 +38,27 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     List<Comment> findRepliesByParentIdIn(@Param("parentIds") List<Long> parentIds, Pageable pageable);
 
     /**
+     * 게시글의 답글만 먼저 지운다. {@code deleteAllByPostId}를 부모·답글 구분 없이 한 문장으로
+     * 실행하면, MariaDB(InnoDB)는 {@code FK_COMMENTS_PARENT}를 행 단위로 즉시 검사하기 때문에
+     * 삭제 순서에 따라 부모가 자신의 답글보다 먼저 지워져 FK 위반(1451)이 날 수 있다. H2는 문장
+     * 끝에서만 제약을 검사해 이 순서 문제를 재현하지 못한다(개선 보고서 "답글이 있는 게시글
+     * 삭제와 자기참조 FK", {@code PostDeleteWithRepliesMariaDbTest}). 그래서 게시글을 지울 때는
+     * 이 메서드로 답글을 먼저 비운 뒤 {@link #deleteAllByPostId}를 호출한다.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM Comment c WHERE c.post.id = :postId AND c.parent IS NOT NULL")
+    void deleteRepliesByPostId(@Param("postId") Long postId);
+
+    /**
      * 파생 삭제(개별 조회 후 건별 DELETE)가 아니라 한 문장으로 지운다. 연관 캐스케이드·
      * {@code @PreRemove} 리스너가 없는 엔티티라 벌크 삭제로 바꿔도 잃는 동작이 없다
      * (개선 보고서 "파생 delete 메서드의 엔티티별 삭제"). {@code clearAutomatically}는 일부러
      * 켜지 않는다 — 영속성 컨텍스트 전체를 비워서, 이 메서드를 호출하기 전에 같은 트랜잭션에서
      * 읽어 둔 다른 엔티티(예: {@code ReportService.resolve()}가 미리 들고 있던 {@code Report})가
      * 조용히 detach되어 이후의 변경이 반영되지 않는 사고가 실제로 있었다.
+     * <p>
+     * 호출 전 {@link #deleteRepliesByPostId}로 답글을 먼저 비워야 한다 — 이 메서드 혼자서는
+     * 부모·답글이 섞인 게시글에서 MariaDB FK 위반이 날 수 있다.
      */
     @Modifying(flushAutomatically = true)
     @Query("DELETE FROM Comment c WHERE c.post.id = :postId")

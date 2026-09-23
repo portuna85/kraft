@@ -52,6 +52,7 @@ jobs:
           com.kraft.migration.MariaDbUpgradeRehearsalTest
           com.kraft.backup.BackupRestoreRehearsalTest
           com.kraft.post.service.PostLikeCountFreshnessTest
+          com.kraft.post.service.PostDeleteWithRepliesMariaDbTest
           com.kraft.recommend.service.RecommendationHistoryImportIntegrationTest
           "
           failed=0
