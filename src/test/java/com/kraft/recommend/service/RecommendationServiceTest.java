@@ -23,6 +23,8 @@ import java.util.stream.IntStream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -50,7 +52,7 @@ class RecommendationServiceTest {
         given(requestValidator.validate(any())).willReturn(normalized);
         given(historyProvider.currentReadySnapshot()).willReturn(READY_SNAPSHOT);
         LottoNumbers combo = LottoNumbers.of(List.of(1, 2, 3, 4, 5, 6));
-        given(candidateGenerator.generateRandom(normalized, READY_SNAPSHOT)).willReturn(List.of(combo));
+        given(candidateGenerator.generateRandom(eq(normalized), eq(READY_SNAPSHOT), anyLong())).willReturn(List.of(combo));
 
         RecommendResponseDto response = service.recommend(new RecommendRequestDto(1, "random", null, null));
 

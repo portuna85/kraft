@@ -109,7 +109,7 @@ class B14DefensiveCopyIntegrationTest {
 
         RecommendationHistorySnapshot emptyHistory =
                 new RecommendationHistorySnapshot(Set.of(), 1, 1, 1, 1L, Instant.now());
-        List<LottoNumbers> generated = generator.generateRandom(request, emptyHistory);
+        List<LottoNumbers> generated = generator.generateRandom(request, emptyHistory, Long.MAX_VALUE);
 
         assertThat(generated).isNotEmpty();
         for (LottoNumbers combo : generated) {

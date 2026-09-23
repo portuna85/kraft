@@ -34,13 +34,13 @@ public class RecommendationService {
         NormalizedRecommendationRequest normalized = requestValidator.validate(request);
         RecommendationHistorySnapshot snapshot = historyProvider.currentReadySnapshot();
 
-        verifyCombinationFeasibility(normalized, snapshot);
+        long allowedPossible = verifyCombinationFeasibility(normalized, snapshot);
 
         List<RecommendationItemDto> items = switch (normalized.strategy()) {
-            case RANDOM -> assembleWithoutScore(candidateGenerator.generateRandom(normalized, snapshot));
-            case REDUCE_SHARED_WINNER_RISK ->
-                    assembleWithoutScore(candidateGenerator.generateReduceSharedWinnerRisk(normalized, snapshot));
-            case BALANCED -> assembleBalanced(candidateGenerator.generateBalanced(normalized, snapshot));
+            case RANDOM -> assembleWithoutScore(candidateGenerator.generateRandom(normalized, snapshot, allowedPossible));
+            case REDUCE_SHARED_WINNER_RISK -> assembleWithoutScore(
+                    candidateGenerator.generateReduceSharedWinnerRisk(normalized, snapshot, allowedPossible));
+            case BALANCED -> assembleBalanced(candidateGenerator.generateBalanced(normalized, snapshot, allowedPossible));
         };
 
         // HIST-04/05: 생성 도중 이력이 바뀌었으면(정정·삭제 포함) 결과를 버린다.
@@ -61,8 +61,13 @@ public class RecommendationService {
      * {@code C(45-E-L, 6-L)} - 고정 번호를 모두 포함하고 제외 번호를 포함하지 않는 과거 고유
      * 조합 수. 부족하면 {@code INSUFFICIENT_UNIQUE_COMBINATIONS}로 즉시 거절해 반복 상한
      * 소진(생성 한도 오류)과 원인을 구분한다.
+     * <p>
+     * 계산한 허용 가능 수를 그대로 돌려준다(개선 보고서 PERF-01) — 후보 생성기가 이 값으로
+     * 목표 표본 크기를 조합 공간 크기에 맞춰 줄이거나, 조합 공간 자체가 작으면 무작위 표본
+     * 추출 대신 전수 나열로 전환한다. 예전에는 이 계산이 여기서 버려져, 생성기가 가능한
+     * 조합보다 훨씬 큰 목표치를 향해 계속 무작위로 뽑으며 충돌만 반복하다 상한을 소진했다.
      */
-    private void verifyCombinationFeasibility(NormalizedRecommendationRequest request,
+    private long verifyCombinationFeasibility(NormalizedRecommendationRequest request,
                                                RecommendationHistorySnapshot snapshot) {
         int locked = request.lockedNumbers().size();
         int excluded = request.excludedNumbers().size();
@@ -83,6 +88,7 @@ public class RecommendationService {
                     "INSUFFICIENT_UNIQUE_COMBINATIONS",
                     "요청한 개수만큼 생성할 수 있는 고유 조합이 부족합니다.");
         }
+        return allowedPossible;
     }
 
     private List<RecommendationItemDto> assembleWithoutScore(List<LottoNumbers> combos) {

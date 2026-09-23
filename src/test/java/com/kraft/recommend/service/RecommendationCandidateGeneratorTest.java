@@ -45,7 +45,7 @@ class RecommendationCandidateGeneratorTest {
         NormalizedRecommendationRequest request = new NormalizedRecommendationRequest(
                 5, RecommendationStrategy.RANDOM, Set.of(1, 2), Set.of(3, 4, 5));
 
-        var results = generator.generateRandom(request, EMPTY_HISTORY);
+        var results = generator.generateRandom(request, EMPTY_HISTORY, Long.MAX_VALUE);
 
         assertThat(results).hasSize(5);
         Set<Long> masks = new HashSet<>();
@@ -70,7 +70,7 @@ class RecommendationCandidateGeneratorTest {
         NormalizedRecommendationRequest request = new NormalizedRecommendationRequest(
                 1, RecommendationStrategy.RANDOM, Set.of(), excluded);
 
-        assertThatThrownBy(() -> generator.generateRandom(request, historyWithOnlyCombo))
+        assertThatThrownBy(() -> generator.generateRandom(request, historyWithOnlyCombo, 0L))
                 .isInstanceOf(RecommendationGenerationLimitException.class);
     }
 
@@ -80,7 +80,7 @@ class RecommendationCandidateGeneratorTest {
         NormalizedRecommendationRequest request = new NormalizedRecommendationRequest(
                 5, RecommendationStrategy.BALANCED, Set.of(), Set.of());
 
-        var results = generator.generateBalanced(request, EMPTY_HISTORY);
+        var results = generator.generateBalanced(request, EMPTY_HISTORY, Long.MAX_VALUE);
 
         assertThat(results).hasSize(5);
         for (int i = 1; i < results.size(); i++) {
@@ -94,7 +94,7 @@ class RecommendationCandidateGeneratorTest {
         NormalizedRecommendationRequest request = new NormalizedRecommendationRequest(
                 3, RecommendationStrategy.REDUCE_SHARED_WINNER_RISK, Set.of(), Set.of());
 
-        var results = generator.generateReduceSharedWinnerRisk(request, EMPTY_HISTORY);
+        var results = generator.generateReduceSharedWinnerRisk(request, EMPTY_HISTORY, Long.MAX_VALUE);
 
         assertThat(results).hasSize(3);
         Set<Long> masks = new HashSet<>();
@@ -120,10 +120,70 @@ class RecommendationCandidateGeneratorTest {
         NormalizedRecommendationRequest request = new NormalizedRecommendationRequest(
                 2, RecommendationStrategy.REDUCE_SHARED_WINNER_RISK, locked, excluded);
 
-        var results = generator.generateReduceSharedWinnerRisk(request, EMPTY_HISTORY);
+        var results = generator.generateReduceSharedWinnerRisk(request, EMPTY_HISTORY, 2L);
 
         assertThat(results).hasSize(2);
         Set<Long> masks = new HashSet<>();
         results.forEach(combo -> assertThat(masks.add(combo.mask())).isTrue());
+    }
+
+    /**
+     * {@link Random#next(int)} 호출 횟수를 세어 실제로 소비한 난수 작업량을 측정한다.
+     * {@code randomSource.current()} 호출 횟수는 두 경로(전수 나열/뽑기-재시도) 모두 한 번뿐이라
+     * 경로를 구분하지 못한다 — 안쪽에서 {@link Collections#shuffle}이 얼마나 많은 원소를
+     * 섞는지를 봐야 한다.
+     */
+    private static final class CountingRandom extends Random {
+        private int nextCallCount = 0;
+
+        CountingRandom(long seed) {
+            super(seed);
+        }
+
+        @Override
+        protected int next(int bits) {
+            nextCallCount++;
+            return super.next(bits);
+        }
+    }
+
+    private static final class CountingRandomSource implements RecommendationRandomSource {
+        private final CountingRandom random;
+
+        CountingRandomSource(long seed) {
+            this.random = new CountingRandom(seed);
+        }
+
+        @Override
+        public Random current() {
+            return random;
+        }
+    }
+
+    /**
+     * PERF-01: 조합 공간에 유효한 후보가 단 하나뿐이면(고정 번호로 다 채워짐) 전수 나열
+     * 경로는 원소 1개짜리 목록을 섞으므로 난수 소비가 사실상 없다. 예전 뽑기-재시도 경로는
+     * 자유 번호 39개짜리 전체 풀을 매번 셔플했으므로(필요한 만큼만 자르기 전에 전체를 섞는
+     * {@code drawOne} 구현 때문에) 난수 호출이 그보다 훨씬 많았다 — 이 차이로 전수 나열
+     * 경로를 실제로 탔는지 확인한다.
+     */
+    @Test
+    @DisplayName("PERF-01: 유효한 조합이 단 하나뿐이면 전체 자유 번호 풀을 섞지 않고 전수 나열로 채운다")
+    void random_whenExactlyOneValidCombinationExists_enumeratesInsteadOfShufflingFullPool() {
+        Set<Integer> locked = Set.of(1, 2, 3, 4, 5, 6);
+        NormalizedRecommendationRequest request = new NormalizedRecommendationRequest(
+                1, RecommendationStrategy.RANDOM, locked, Set.of());
+
+        CountingRandomSource countingSource = new CountingRandomSource(7L);
+        RecommendationCandidateGenerator countingGenerator =
+                new RecommendationCandidateGenerator(countingSource);
+
+        var results = countingGenerator.generateRandom(request, EMPTY_HISTORY, 1L);
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).numbers()).containsExactlyInAnyOrder(1, 2, 3, 4, 5, 6);
+        // 원소 1개짜리 목록을 섞는 데는 난수가 필요 없다(스왑할 쌍이 없다). 예전 경로는 자유
+        // 번호 39개짜리 풀 전체를 섞어 최소 수십 번의 난수 호출이 있었을 것이다.
+        assertThat(countingSource.random.nextCallCount).isZero();
     }
 }
