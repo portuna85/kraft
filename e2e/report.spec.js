@@ -151,7 +151,10 @@ test.describe('관리자 처리', () => {
         const row = adminPage.locator('.report-list__item').filter({ hasText: title });
         await expect(row).toBeVisible();
 
+        // 삭제는 되돌릴 수 없어 확인 대화상자를 한 번 더 거친다(개선 보고서 SEC-05).
         await row.locator('.btn-report-resolve').click();
+        await expect(adminPage.locator('#confirmDeleteModal')).toBeVisible();
+        await adminPage.locator('#btn-confirm-delete').click();
         // 처리에 성공하면 현재 페이지를 다시 불러온다(F05) — 로컬에서 줄만 지우면 "처리 대기"
         // 카운트·페이지 수가 서버 상태와 어긋날 수 있다. 재요청·재조회가 끝날 때까지
         // toHaveCount가 재시도하며 기다린다.
@@ -160,6 +163,41 @@ test.describe('관리자 처리', () => {
         // 글도 실제로 사라졌다.
         await adminPage.goto(`/?q=${encodeURIComponent(title)}`);
         await expect(adminPage.locator('.post-list__item').filter({ hasText: title })).toHaveCount(0);
+        await adminPage.close();
+    });
+
+    test('신고 삭제 확인 대화상자에서 취소하면 요청이 가지 않고 목록도 그대로다', async ({ browser }) => {
+        const title = uniqueTitle('취소하면그대로');
+
+        const authorPage = await (await browser.newContext({ storageState: storageStateFor('user') })).newPage();
+        await writePost(authorPage, title);
+        await authorPage.close();
+
+        const reporterPage = await (await browser.newContext({ storageState: storageStateFor('other') })).newPage();
+        await openPostByTitle(reporterPage, title);
+        await reportOpenPost(reporterPage, 'SPAM', '취소 확인용');
+        await expect(reporterPage.locator('#app-toast')).toContainText('신고가 접수되었습니다');
+        await reporterPage.close();
+
+        const adminPage = await (await browser.newContext()).newPage();
+        await login(adminPage, ACCOUNTS.admin.email);
+        await adminPage.goto('/admin/reports');
+        const row = adminPage.locator('.report-list__item').filter({ hasText: title });
+
+        let requested = false;
+        await adminPage.route('**/api/v1/admin/reports/*/resolve*', async (route) => {
+            requested = true;
+            await route.continue();
+        });
+
+        await row.locator('.btn-report-resolve').click();
+        const modal = adminPage.locator('#confirmDeleteModal');
+        await expect(modal).toBeVisible();
+        await adminPage.locator('#btn-cancel-delete').click();
+        await expect(modal).toBeHidden();
+
+        expect(requested, '취소하면 삭제 요청 자체가 나가지 않아야 한다').toBe(false);
+        await expect(row).toBeVisible();
         await adminPage.close();
     });
 
@@ -191,6 +229,8 @@ test.describe('관리자 처리', () => {
         });
 
         await row.locator('.btn-report-resolve').click();
+        await expect(adminPage.locator('#confirmDeleteModal')).toBeVisible();
+        await adminPage.locator('#btn-confirm-delete').click();
 
         // 삭제 요청이 도는 동안 같은 줄의 반려 버튼도 잠겨야 한다 — 그렇지 않으면 삭제와
         // 반려를 동시에 눌러 서로 다른 처리가 겹치는 경쟁이 생긴다.

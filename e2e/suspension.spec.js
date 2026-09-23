@@ -51,7 +51,10 @@ test('신고를 정지와 함께 처리하면 그 사람은 글을 쓸 수 없�
     await login(adminPage, ACCOUNTS.admin.email);
     await adminPage.goto('/admin/reports');
     const row = adminPage.locator('.report-list__item').filter({ hasText: title });
+    // 삭제+정지는 되돌릴 수 없어 확인 대화상자를 한 번 더 거친다(개선 보고서 SEC-05).
     await row.locator('.btn-report-suspend').click();
+    await expect(adminPage.locator('#confirmDeleteModal')).toBeVisible();
+    await adminPage.locator('#btn-confirm-delete').click();
     // 처리에 성공하면 현재 페이지를 다시 불러온다(F05) — 그 줄이 목록에서 빠지는 것으로 확인한다.
     await expect(adminPage.locator('.report-list__item').filter({ hasText: title })).toHaveCount(0);
     await adminPage.close();

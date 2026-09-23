@@ -1,6 +1,7 @@
 import { delegate, qs } from '../core/dom.js';
 import { api, messageOf } from '../core/http.js';
 import { showToast } from '../ui/toast.js';
+import { confirmAction } from '../ui/confirm-dialog.js';
 
 /**
  * 관리자 화면의 처리 버튼들 — 신고 목록의 삭제·반려와 정지 회원 목록의 해제.
@@ -8,6 +9,10 @@ import { showToast } from '../ui/toast.js';
  * 처리에 성공하면 현재 페이지를 다시 불러온다. 로컬에서 줄만 지우면 "처리 대기" 카운트·
  * 페이지 수가 서버 상태와 어긋날 수 있다(F05) — post-edit/post-save가 성공 후
  * window.location.href로 전체 이동하는 것과 같은 관례다.
+ *
+ * 되돌릴 수 없는 삭제·삭제+정지는 첫 클릭에 바로 실행되지 않는다(개선 보고서 SEC-05·
+ * FE-C1) — confirmAction으로 한 번 더 확인한다. 반려·정지 해제는 되돌릴 수 있으므로(다시
+ * 신고하거나 다시 정지할 수 있음) 확인을 요구하지 않는다.
  */
 export function init() {
     if (!qs('.report-list')) {
@@ -15,8 +20,27 @@ export function init() {
     }
 
     delegate('click', '.btn-lift-suspension', liftSuspension);
-    delegate('click', '.btn-report-resolve', (trigger) => handle(trigger, 'resolve'));
-    delegate('click', '.btn-report-suspend', (trigger) => handle(trigger, 'resolve', Number(trigger.dataset.suspendDays)));
+    delegate('click', '.btn-report-resolve', async (trigger) => {
+        const confirmed = await confirmAction({
+            title: '게시글·댓글 삭제',
+            message: '이 신고 대상을 삭제하시겠습니까? 되돌릴 수 없습니다.',
+            confirmLabel: '삭제',
+        });
+        if (confirmed) {
+            handle(trigger, 'resolve');
+        }
+    });
+    delegate('click', '.btn-report-suspend', async (trigger) => {
+        const suspendDays = Number(trigger.dataset.suspendDays);
+        const confirmed = await confirmAction({
+            title: '삭제 + 정지',
+            message: `이 신고 대상을 삭제하고 작성자를 ${suspendDays}일 정지하시겠습니까? 되돌릴 수 없습니다.`,
+            confirmLabel: '삭제 + 정지',
+        });
+        if (confirmed) {
+            handle(trigger, 'resolve', suspendDays);
+        }
+    });
     delegate('click', '.btn-report-reject', (trigger) => handle(trigger, 'reject'));
 }
 
