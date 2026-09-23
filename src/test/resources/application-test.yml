@@ -6,7 +6,16 @@
 # main/resources/application-local.yml이 바뀌기 전의 원래 로컬(H2) 설정과 동일하다.
 spring:
   datasource:
-    url: jdbc:h2:mem:kraft;MODE=MariaDB
+    # 이름을 고정하지 않고 컨텍스트마다 새 무작위 DB를 쓴다(개선 보고서 TST-01) — 예전에는
+    # 모든 Spring 테스트 컨텍스트가 같은 이름(kraft)의 H2 DB 하나를 공유했다 — 서로 다른
+    # 컨텍스트(예: @DataJpaTest 슬라이스와 @SpringBootTest)가 같은 세션에서 같은 스키마를
+    # create-drop으로 만들고 지우기를 반복하며 겹쳐, 가끔 "Table USERS not found" 같은
+    # 무작위 실패로 이어졌다. DB_CLOSE_DELAY=-1은 컨텍스트가 캐시되어 재사용되는 동안 커넥션
+    # 풀이 일시적으로 커넥션을 전부 반납해도(예: HikariCP의 유휴 커넥션 정리) 그 순간 DB가
+    # 사라지지 않게 한다 — 이것이 없으면 컨텍스트는 살아 있는데 DB만 먼저 사라져 "Table not
+    # found"가 날 수 있다(H2 커넥션 풀 연동의 잘 알려진 함정). 같은 컨텍스트를 공유하는 여러
+    # 테스트 클래스가 서로 남긴 데이터는 GlobalH2CleanupExtension이 매 테스트 전에 정리한다.
+    url: jdbc:h2:mem:kraft-${random.uuid};MODE=MariaDB;DB_CLOSE_DELAY=-1
     driver-class-name: org.h2.Driver
     username: sa
     password:
