@@ -189,6 +189,9 @@ app:
     reconcile-enabled: true
     reconcile-initial-delay-ms: 1800000
     reconcile-interval-ms: 3600000
+    # 한 주기가 볼 파일 수의 상한(개선 보고서 PERF-06). 정리가 한동안 막혀 후보가 아주 많이
+    # 쌓여도, 상한을 넘는 나머지는 이번 주기에서 건드리지 않고 다음 주기로 미룬다.
+    reconcile-max-files-per-run: 50000
   recommend:
     # 기능 전체 스위치. 끄면 /recommend·POST /api/v1/numbers/recommend가 컨트롤러 빈 자체가
     # 등록되지 않아 404가 되고, navbar의 '번호 추천' 링크도 함께 사라진다(운영 준비 — 이미
