@@ -61,3 +61,9 @@ app:
     purge-enabled: false
   session-revocation:
     enabled: false
+  recommend:
+    # 동행복권 자동 수집도 이 창에서 돌 이유가 없다(개선 보고서 OBS-05) — users 테이블만
+    # 건드리는 작업이라 직접 위험하진 않지만, 한 실행에 무관한 스케줄러를 섞지 않는다는
+    # 원칙은 다른 항목들과 같다.
+    auto-fetch:
+      enabled: false

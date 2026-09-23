@@ -72,6 +72,15 @@ public class OutboxMailWorker {
     private int retentionDays;
 
     /**
+     * {@code cleanupOldTerminal}만의 별도 스위치(개선 보고서 OBS-05). {@code enabled}와 무관하게
+     * 항상 돌게 만든 것은 의도한 설계이지만({@link #cleanupOldTerminal} 참고), 그 사실이
+     * {@code app.mail.enabled: false}만 보고 "메일 관련 예약 작업을 전부 껐다"고 오해하기
+     * 쉽게 만든다. 정리만 따로 끄고 싶을 때(또는 그 반대로 검사할 때) 이 플래그를 쓴다.
+     */
+    @Value("${app.mail.retention-enabled:true}")
+    private boolean retentionEnabled = true;
+
+    /**
      * 한 배치 안에서 동시에 SMTP로 보내는 최대 개수. 예전에는 배치 전체를 순차로 보내
      * 사실상 동시성이 1이었다 — 느린 메일 서버 하나가 뒤 순서 메일의 임대 시간을 모두
      * 잡아먹었다(개선 보고서 "메일 임대·재시도·실행량 제한").
@@ -174,11 +183,14 @@ public class OutboxMailWorker {
     /**
      * 종료된 지 오래된 SENT/FAILED 행을 지운다. 발송 자체와는 다른 관심사이므로
      * {@code enabled} 플래그와 무관하게 항상 돈다 — 발송을 끄더라도 이력 정리는 계속되어야
-     * 테이블이 무한정 자라지 않는다.
+     * 테이블이 무한정 자라지 않는다. {@code retentionEnabled}로만 따로 끌 수 있다(OBS-05).
      */
     @Scheduled(initialDelayString = "${app.mail.retention-initial-delay-ms:60000}",
             fixedDelayString = "${app.mail.retention-interval-ms:86400000}")
     public void cleanupOldTerminal() {
+        if (!retentionEnabled) {
+            return;
+        }
         LocalDateTime threshold = LocalDateTime.now().minus(Duration.ofDays(retentionDays));
         long removed = store.deleteOldTerminal(threshold);
         if (removed > 0) {

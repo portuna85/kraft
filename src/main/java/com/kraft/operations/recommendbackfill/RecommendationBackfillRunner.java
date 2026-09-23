@@ -24,11 +24,13 @@ import java.util.List;
  * 상태에서 한 번, 또는 자동 수집이 한동안 실패해 공백이 생겼을 때 다시 쓴다.
  *
  * <pre>
- * java -jar kraft.jar --spring.profiles.active=recommend-backfill \
+ * java -jar kraft.jar --spring.profiles.active=prod,recommend-backfill \
  *   --app.recommend.backfill.up-to-round=1241 \
  *   --app.recommend.backfill.chunk-size=50 \
  *   --app.recommend.backfill.request-delay-ms=300
  * </pre>
+ * {@code prod}를 함께 켜야 데이터소스가 잡힌다 — {@code application-recommend-backfill.yml}은
+ * 이 실행 동안 다른 주기 작업을 끄는 것만 담당한다(개선 보고서 OBS-05).
  *
  * 동행복권의 회차 조회 주소는 비공식·내부용이라 중간에 봇 차단 등으로 막힐 수 있다. 그래서
  * 전체를 한 트랜잭션으로 묶지 않고 {@code chunk-size} 회차씩 끊어 커밋한다 — 막히더라도
@@ -73,6 +75,17 @@ public class RecommendationBackfillRunner implements ApplicationRunner {
 
     /** package-private: 테스트가 {@code System.exit}를 거치지 않고 종료 코드만 직접 확인한다. */
     int backfill() {
+        // 잘못된 인자로 몇 시간짜리 백필을 돌리다 뒤늦게 실패를 알아채는 일이 없게, 시작 전에
+        // 검사한다(개선 보고서 OBS-05).
+        if (chunkSize <= 0) {
+            log.error("chunk-size는 1 이상이어야 합니다. 입력값={}", chunkSize);
+            return 1;
+        }
+        if (requestDelayMs < 0) {
+            log.error("request-delay-ms는 0 이상이어야 합니다. 입력값={}", requestDelayMs);
+            return 1;
+        }
+
         int from = stateRepository.findById(1)
                 .map(state -> state.getVerifiedThroughRound() == null ? 0 : state.getVerifiedThroughRound())
                 .orElse(0) + 1;
@@ -108,7 +121,11 @@ public class RecommendationBackfillRunner implements ApplicationRunner {
                 return 1;
             }
 
-            sleep(requestDelayMs);
+            if (!sleep(requestDelayMs)) {
+                log.warn("대기 중 인터럽트를 받아 백필을 중단합니다. 회차 {}까지는 이미 반영되었습니다. "
+                                + "같은 명령으로 다시 실행하면 이어갑니다.", round);
+                return 1;
+            }
         }
 
         log.info("백필 완료. 회차 {}까지 반영했습니다.", upToRound);
@@ -146,14 +163,21 @@ public class RecommendationBackfillRunner implements ApplicationRunner {
         };
     }
 
-    private void sleep(long millis) {
+    /**
+     * @return 정상적으로 다 쉬었으면(또는 쉴 필요가 없었으면) true, 인터럽트로 중단됐으면 false.
+     * 예전에는 인터럽트를 받아도 플래그만 다시 세우고 반복문을 계속 돌았다 — 종료 신호(예:
+     * 배포 중 프로세스 강제 종료)를 받고도 다음 회차 요청을 계속 내보냈다(개선 보고서 OBS-05).
+     */
+    private boolean sleep(long millis) {
         if (millis <= 0) {
-            return;
+            return true;
         }
         try {
             Thread.sleep(millis);
+            return true;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            return false;
         }
     }
 }

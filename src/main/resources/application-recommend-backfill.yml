@@ -1,0 +1,28 @@
+# 추천 이력 백필 전용 프로파일. --spring.profiles.active=recommend-backfill 로만 활성화된다.
+# RecommendationBackfillRunner의 실행 방법은 그 클래스의 javadoc을 본다.
+#
+# 한 번 수행하고 종료 코드를 남기며 내려간다. 서비스로 남지 않는다(개선 보고서 OBS-05).
+server:
+  port: -1
+
+app:
+  # 백필이 도는 동안 다른 주기 작업이 끼어들 이유가 없다 — application-rekey.yml과 같은
+  # 원칙이다. 이 도구가 건드리는 것은 추천 이력 테이블뿐이지만, 무관한 스케줄러를 한 실행에
+  # 섞지 않는다.
+  mail:
+    enabled: false
+  upload:
+    cleanup-enabled: false
+    reconcile-enabled: false
+  metrics:
+    enabled: false
+  verification:
+    sweep-enabled: false
+    purge-enabled: false
+  session-revocation:
+    enabled: false
+  recommend:
+    # 이 실행 자체가 이력을 채우는 작업이다 — 매주 자동 수집 스케줄이 같은 테이블을 향해
+    # 동시에 돌면 서로의 진행 상황을 어지럽힐 수 있다.
+    auto-fetch:
+      enabled: false

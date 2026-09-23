@@ -60,3 +60,9 @@ app:
   session-revocation:
     drain-initial-delay-ms: 3600000
     retention-initial-delay-ms: 3600000
+  recommend:
+    # 이 스케줄러는 절대 시각(cron)으로 도는 탓에 위 initial-delay 요령을 쓸 수 없다 —
+    # 실행 시각과 우연히 겹치면 테스트 스위트 도중 외부 동행복권 사이트로 실제 요청을
+    # 보낸다(개선 보고서 OBS-05).
+    auto-fetch:
+      enabled: false

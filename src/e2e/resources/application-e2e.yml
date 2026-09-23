@@ -51,3 +51,9 @@ app:
     purge-enabled: false
   security:
     email-encryption-key: e2e-only-key-not-a-secret
+  recommend:
+    # 이 스케줄러는 절대 시각(cron)으로 도는 탓에 다른 주기 작업처럼 initial-delay로
+    # 미룰 수 없다 — 실행 시각과 우연히 겹치면 e2e 스위트 도중 외부 동행복권 사이트로
+    # 실제 요청을 보낸다(개선 보고서 OBS-05).
+    auto-fetch:
+      enabled: false

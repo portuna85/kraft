@@ -51,6 +51,15 @@ public class SessionRevocationWorker {
     private int retentionDays;
 
     /**
+     * {@code cleanupOldTerminal}만의 별도 스위치(개선 보고서 OBS-05). {@code enabled}와 무관하게
+     * 항상 돌게 만든 것은 의도한 설계이지만({@link #cleanupOldTerminal} 참고), 그 사실이
+     * {@code app.session-revocation.enabled: false}만 보고 "이 워커의 예약 작업을 전부 껐다"고
+     * 오해하기 쉽게 만든다. 정리만 따로 끄고 싶을 때 이 플래그를 쓴다.
+     */
+    @Value("${app.session-revocation.retention-enabled:true}")
+    private boolean retentionEnabled = true;
+
+    /**
      * 커밋 직후 곧바로 한 번 시도한다. 방금 만든 태스크 하나만 처리하므로 응답 지연은 세션
      * 폐기 자체(빠른 DB 작업)만큼만 늘어난다. 실패해도 태스크는 이미 커밋되어 있으므로
      * {@link #drainScheduled}가 이어받는다.
@@ -78,11 +87,15 @@ public class SessionRevocationWorker {
     /**
      * 종료된 지 오래된 DONE/FAILED 행을 지운다. 처리 자체와는 다른 관심사이므로
      * {@code enabled} 플래그와 무관하게 항상 돈다 — 상태·시각 기준 bulk delete라 엔티티를
-     * 로드하지 않으므로 rekey 창에도 안전하다.
+     * 로드하지 않으므로 rekey 창에도 안전하다. {@code retentionEnabled}로만 따로 끌 수
+     * 있다(OBS-05).
      */
     @Scheduled(initialDelayString = "${app.session-revocation.retention-initial-delay-ms:120000}",
             fixedDelayString = "${app.session-revocation.retention-interval-ms:86400000}")
     public void cleanupOldTerminal() {
+        if (!retentionEnabled) {
+            return;
+        }
         LocalDateTime threshold = LocalDateTime.now().minus(Duration.ofDays(retentionDays));
         long removed = store.deleteOldTerminal(threshold);
         if (removed > 0) {
