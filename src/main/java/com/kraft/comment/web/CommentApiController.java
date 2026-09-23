@@ -3,6 +3,7 @@ package com.kraft.comment.web;
 import com.kraft.comment.dto.CommentPageDto;
 import com.kraft.comment.dto.CommentSaveRequestDto;
 import com.kraft.comment.dto.CommentUpdateRequestDto;
+import com.kraft.comment.dto.CommentViewDto;
 import com.kraft.comment.service.CommentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,8 +17,8 @@ public class CommentApiController {
     private final CommentService commentService;
 
     @PostMapping("/api/v1/posts/{postId}/comments")
-    public Long save(@PathVariable Long postId, @Valid @RequestBody CommentSaveRequestDto requestDto,
-                      Authentication authentication) {
+    public CommentViewDto save(@PathVariable Long postId, @Valid @RequestBody CommentSaveRequestDto requestDto,
+                                Authentication authentication) {
         return commentService.save(postId, authentication, requestDto);
     }
 
@@ -38,8 +39,8 @@ public class CommentApiController {
     }
 
     @PutMapping("/api/v1/comments/{id}")
-    public Long update(@PathVariable Long id, @Valid @RequestBody CommentUpdateRequestDto requestDto,
-                        Authentication authentication) {
+    public CommentViewDto update(@PathVariable Long id, @Valid @RequestBody CommentUpdateRequestDto requestDto,
+                                  Authentication authentication) {
         return commentService.update(id, requestDto, authentication);
     }
 

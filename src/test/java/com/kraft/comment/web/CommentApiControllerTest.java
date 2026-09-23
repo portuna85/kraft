@@ -2,6 +2,7 @@ package com.kraft.comment.web;
 
 import com.kraft.comment.dto.CommentPageDto;
 import com.kraft.comment.dto.CommentUpdateRequestDto;
+import com.kraft.comment.dto.CommentViewDto;
 import com.kraft.comment.service.CommentService;
 import com.kraft.config.security.SecurityConfig;
 import org.junit.jupiter.api.DisplayName;
@@ -15,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -81,9 +83,10 @@ class CommentApiControllerTest {
     }
 
     @Test
-    @DisplayName("POST .../comments 는 인증+CSRF+유효한 본문이면 200과 ID를 반환한다")
+    @DisplayName("POST .../comments 는 인증+CSRF+유효한 본문이면 200과 확정된 댓글(id·version 포함)을 반환한다")
     void saveComment_whenAuthenticatedAndValid_returns200AndId() throws Exception {
-        given(commentService.save(eq(1L), any(), any())).willReturn(10L);
+        given(commentService.save(eq(1L), any(), any())).willReturn(
+                new CommentViewDto(10L, 1L, null, "댓글 내용", "tester", OffsetDateTime.now(), true, List.of(), 0L));
 
         mockMvc.perform(post("/api/v1/posts/1/comments")
                         .with(user("tester@example.com"))
@@ -91,7 +94,8 @@ class CommentApiControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"댓글 내용\"}"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("10"));
+                .andExpect(jsonPath("$.id").value(10))
+                .andExpect(jsonPath("$.version").value(0));
     }
 
     @Test
@@ -112,7 +116,8 @@ class CommentApiControllerTest {
     @Test
     @DisplayName("POST .../comments 는 parentId가 있으면 답글로 저장하고 그대로 서비스에 전달한다")
     void saveComment_withParentId_savesAsReply() throws Exception {
-        given(commentService.save(eq(1L), any(), any())).willReturn(20L);
+        given(commentService.save(eq(1L), any(), any())).willReturn(
+                new CommentViewDto(20L, 1L, 10L, "답글 내용", "tester", OffsetDateTime.now(), true, List.of(), 0L));
 
         mockMvc.perform(post("/api/v1/posts/1/comments")
                         .with(user("tester@example.com"))
@@ -120,7 +125,8 @@ class CommentApiControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"답글 내용\",\"parentId\":10}"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("20"));
+                .andExpect(jsonPath("$.id").value(20))
+                .andExpect(jsonPath("$.parentId").value(10));
     }
 
     /**

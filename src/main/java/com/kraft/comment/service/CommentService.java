@@ -47,14 +47,23 @@ public class CommentService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
 
+    /**
+     * 응답에 확정된 id·createdAt·version을 모두 실어 돌려준다(개선 보고서 COR-05·COR-08).
+     * 예전에는 id만 돌려줘서, 화면이 새 댓글을 {@code new Date().toISOString()}(UTC)과
+     * version 없이 직접 만들어 반영했다 — 그 버전 없는 댓글은 새로고침 전까지 낡은 화면 검사를
+     * 건너뛰었고, 시각도 서버가 나중에 돌려주는 값과 새로고침 전후로 다르게 보였다.
+     * {@code saveAndFlush}로 DB가 실제로 확정한 값(감사 필드의 createdAt 포함)을 그 자리에서
+     * 곧바로 읽는다.
+     */
     @Transactional
-    public Long save(Long postId, Authentication authentication, CommentSaveRequestDto requestDto) {
+    public CommentViewDto save(Long postId, Authentication authentication, CommentSaveRequestDto requestDto) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new PostNotFoundException(postId));
         User user = findUser(authentication);
         WriteAccessPolicy.requireVerified(user);
         Comment parent = resolveParent(postId, requestDto.parentId());
-        return commentRepository.save(requestDto.toEntity(post, user, parent)).getId();
+        Comment saved = commentRepository.saveAndFlush(requestDto.toEntity(post, user, parent));
+        return new CommentViewDto(saved, OwnershipPolicy.canManage(authentication, saved.getUser()));
     }
 
     /**
@@ -80,14 +89,22 @@ public class CommentService {
      * 검사하고 수정은 소유권만 봤기 때문이다. 삭제는 의도적으로 그대로 둔다 — 정지된
      * 사용자도 자신의 댓글을 지우는 것까지 막지는 않는다.
      */
+    /**
+     * 확정된 version을 응답에 실어 돌려준다(개선 보고서 COR-05) — 예전에는 id만 돌려줘서,
+     * 화면이 "받았던 version + 1"로 다음 버전을 추측했다. 내용이 실제로 바뀌지 않으면
+     * Hibernate가 UPDATE 자체를 내지 않아 버전이 그대로인데, 그 추측은 +1로 어긋나 바로 다음
+     * 정상 수정이 가짜 409를 받았다. flush로 실제 반영 여부와 무관하게 지금 DB가 들고 있는
+     * version을 그 자리에서 읽는다.
+     */
     @Transactional
-    public Long update(Long id, CommentUpdateRequestDto requestDto, Authentication authentication) {
+    public CommentViewDto update(Long id, CommentUpdateRequestDto requestDto, Authentication authentication) {
         Comment comment = findComment(id);
         WriteAccessPolicy.requireVerified(findUser(authentication));
         OwnershipPolicy.validateOwner(authentication, comment.getUser(), id);
         validateVersion(comment, requestDto.version());
         comment.update(requestDto.content());
-        return id;
+        commentRepository.flush();
+        return new CommentViewDto(comment, OwnershipPolicy.canManage(authentication, comment.getUser()));
     }
 
     /**

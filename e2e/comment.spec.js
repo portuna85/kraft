@@ -371,18 +371,6 @@ test('삭제 A의 늦은 응답이 지금 열려 있는 B의 확인 대화상자
     await expect(page.locator('#comments-heading')).toBeFocused();
 });
 
-/**
- * F09: 서버가 내려주는 기존 댓글의 createdAt은 오프셋 없는 LocalDateTime 문자열이고,
- * CommentsApp.vue가 새로 단 댓글에 낙관적으로 채우는 값은 new Date().toISOString()(UTC,
- * 'Z' 포함)이다. CommentItem.vue의 formatDate()는 new Date(iso)로 파싱한 뒤 브라우저 로컬
- * 시간대로 표시하는데, 오프셋 없는 문자열은 브라우저가 "자신의 로컬 시간대"로 해석한다 —
- * 서버가 실제로 그 문자열을 만든 시간대와 브라우저 시간대가 다르면, 같은 댓글이라도 방금 단
- * 직후(클라이언트 값)와 새로고침 후(서버 값)의 표시 시각이 달라질 수 있다.
- * <p>
- * 문서 지시대로 이 동작을 "고치지" 않고 실제로 벌어지는지만 기록한다(임의 UTC 전환 없음).
- * 서버 프로세스의 시간대와 크게 다른 시간대(태평양 Kiritimati, UTC+14)로 브라우저만
- * 강제해, 우연히 같은 시간대라 이 격차가 가려지지 않게 한다.
- */
 test('2단계 댓글: 답글을 달면 최상위 댓글 아래 중첩되어 보이고, 답글 자신에는 답글 버튼이 없다', async ({ page }) => {
     await openOwnPost(page);
     await page.locator('#comment-content').fill('최상위 댓글입니다.');
@@ -427,7 +415,22 @@ test('2단계 댓글: 최상위 댓글을 지우면 그 답글도 함께 사라�
     await expect(page.locator('.comment-list__content')).toHaveCount(0);
 });
 
-test('F09(검증): 서버 시간대와 다른 브라우저에서는 새로 단 댓글과 새로고침 후 같은 댓글의 표시 시각이 다르다', async ({ browser }) => {
+/**
+ * COR-08 회귀: 예전에는 서버가 내려주는 기존 댓글의 createdAt이 오프셋 없는 LocalDateTime
+ * 문자열이고, CommentsApp.vue가 새로 단 댓글에 낙관적으로 채우는 값은
+ * new Date().toISOString()(UTC, 'Z' 포함)이었다. CommentItem.vue의 formatDate()는
+ * new Date(iso)로 파싱한 뒤 브라우저 로컬 시간대로 표시하는데, 오프셋 없는 문자열은
+ * 브라우저가 "자신의 로컬 시간대"로 해석해 — 서버가 실제로 그 문자열을 만든 시간대와
+ * 브라우저 시간대가 다르면, 같은 댓글이라도 방금 단 직후(클라이언트 값)와 새로고침
+ * 후(서버 값)의 표시 시각이 달라졌다.
+ * <p>
+ * 지금은 두 값 모두 서버가 만든 오프셋 있는 CommentViewDto.createdAt에서 나온다(CurrentUser
+ * 아님, CommentService.save/update가 저장 직후 엔티티를 다시 읽어 응답에 싣는다) — 새로
+ * 단 댓글도 서버 응답을 그대로 반영하고, 직접 시각을 만들지 않는다. 서버 프로세스의
+ * 시간대와 크게 다른 시간대(태평양 Kiritimati, UTC+14)로 브라우저만 강제해도 두 표시가
+ * 같아야 한다.
+ */
+test('COR-08 회귀: 서버 시간대와 다른 브라우저에서도 새로 단 댓글과 새로고침 후 같은 댓글의 표시 시각이 같다', async ({ browser }) => {
     const context = await browser.newContext({
         storageState: storageStateFor('user'),
         timezoneId: 'Pacific/Kiritimati', // UTC+14 — 서버 프로세스의 실제 시간대와 겹칠 일이 없다.
@@ -445,10 +448,8 @@ test('F09(검증): 서버 시간대와 다른 브라우저에서는 새로 단 �
     await page.reload();
     const afterReload = await timestamp.textContent();
 
-    // 실제로 격차가 있다는 사실 자체가 이 테스트의 결론이다 — 서버가 만든 오프셋 없는 문자열을
-    // 브라우저가 자신의(서버와 다른) 로컬 시간대로 잘못 해석하기 때문이다.
-    expect(justPosted, '같은 댓글인데 새로고침 전후 표시 시각이 달라진다(F09, 임의 수정 없이 기록만)')
-        .not.toBe(afterReload);
+    expect(justPosted, '같은 댓글이면 새로고침 전후로 같은 시각을 보여줘야 한다(COR-08)')
+        .toBe(afterReload);
 
     await context.close();
 });

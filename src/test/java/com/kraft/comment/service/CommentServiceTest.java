@@ -5,6 +5,7 @@ import com.kraft.comment.domain.CommentRepository;
 import com.kraft.comment.dto.CommentPageDto;
 import com.kraft.comment.dto.CommentSaveRequestDto;
 import com.kraft.comment.dto.CommentUpdateRequestDto;
+import com.kraft.comment.dto.CommentViewDto;
 import com.kraft.post.domain.Post;
 import com.kraft.post.domain.PostRepository;
 import com.kraft.user.domain.EmailHasher;
@@ -96,11 +97,12 @@ class CommentServiceTest {
         given(postRepository.findById(1L)).willReturn(Optional.of(post));
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(user));
         Comment saved = commentOf(user, 100L);
-        given(commentRepository.save(any(Comment.class))).willReturn(saved);
+        given(commentRepository.saveAndFlush(any(Comment.class))).willReturn(saved);
 
-        Long id = commentService.save(1L, authOf("tester@example.com", Role.USER), new CommentSaveRequestDto("댓글 내용", null));
+        CommentViewDto result = commentService.save(1L, authOf("tester@example.com", Role.USER),
+                new CommentSaveRequestDto("댓글 내용", null));
 
-        assertThat(id).isEqualTo(100L);
+        assertThat(result.id()).isEqualTo(100L);
     }
 
     @Test
@@ -156,13 +158,14 @@ class CommentServiceTest {
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(author));
         given(commentRepository.findById(100L)).willReturn(Optional.of(parent));
         Comment savedReply = replyOf(author, 200L, parent);
-        given(commentRepository.save(any(Comment.class))).willReturn(savedReply);
+        given(commentRepository.saveAndFlush(any(Comment.class))).willReturn(savedReply);
 
-        Long id = commentService.save(1L, authOf("tester@example.com", Role.USER), new CommentSaveRequestDto("답글 내용", 100L));
+        CommentViewDto result = commentService.save(1L, authOf("tester@example.com", Role.USER),
+                new CommentSaveRequestDto("답글 내용", 100L));
 
-        assertThat(id).isEqualTo(200L);
+        assertThat(result.id()).isEqualTo(200L);
         var captor = org.mockito.ArgumentCaptor.forClass(Comment.class);
-        verify(commentRepository).save(captor.capture());
+        verify(commentRepository).saveAndFlush(captor.capture());
         assertThat(captor.getValue().getParent()).isSameAs(parent);
     }
 
@@ -228,10 +231,10 @@ class CommentServiceTest {
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("owner@example.com"))).willReturn(Optional.of(owner));
 
-        Long id = commentService.update(100L, new CommentUpdateRequestDto("수정된 댓글", null),
+        CommentViewDto result = commentService.update(100L, new CommentUpdateRequestDto("수정된 댓글", null),
                 authOf("owner@example.com", Role.USER));
 
-        assertThat(id).isEqualTo(100L);
+        assertThat(result.id()).isEqualTo(100L);
         assertThat(comment.getContent()).isEqualTo("수정된 댓글");
     }
 

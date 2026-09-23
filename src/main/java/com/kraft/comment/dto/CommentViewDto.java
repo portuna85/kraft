@@ -1,7 +1,8 @@
 package com.kraft.comment.dto;
 
 import com.kraft.comment.domain.Comment;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 /**
@@ -17,7 +18,16 @@ public record CommentViewDto(
         Long parentId,
         String content,
         String author,
-        LocalDateTime createdAt,
+        /**
+         * 서버 시간대의 오프셋을 실어 보낸다(개선 보고서 COR-08). {@code Comment.createdAt}은
+         * DB·서버 저장용 {@code LocalDateTime}이라 오프셋이 없다 — 그 값을 오프셋 없이 그대로
+         * JSON으로 내려보내면, 클라이언트의 {@code new Date(iso)}가 그 문자열을 "브라우저의"
+         * 로컬 시간으로 해석한다. 반면 화면이 새 댓글을 즉시 반영할 때 직접 만든
+         * {@code new Date().toISOString()}은 UTC다 — 같은 순간인데 새로고침 전후로 다르게
+         * 표시됐다. 서버 시간대로 명시적인 오프셋을 붙이면 클라이언트가 어느 경로로 값을
+         * 받든 같은 순간으로 해석한다.
+         */
+        OffsetDateTime createdAt,
         boolean canManage,
         List<CommentViewDto> replies,
         /**
@@ -39,7 +49,9 @@ public record CommentViewDto(
                 entity.getParent() != null ? entity.getParent().getId() : null,
                 entity.getContent(),
                 entity.getUser() != null ? entity.getUser().getName() : null,
-                entity.getCreatedAt(),
+                entity.getCreatedAt() != null
+                        ? entity.getCreatedAt().atZone(ZoneId.systemDefault()).toOffsetDateTime()
+                        : null,
                 canManage,
                 replies,
                 entity.getVersion()

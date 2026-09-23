@@ -67,21 +67,16 @@ async function saveReply() {
     const content = replyContent.value;
     replySaving.value = true;
     try {
-        const id = await api.post(`${API.POSTS}/${props.postId}/comments`, {
+        const saved = await api.post(`${API.POSTS}/${props.postId}/comments`, {
             content,
             parentId: props.comment.id,
         });
+        // 서버가 확정한 id·createdAt·version을 그대로 쓴다(개선 보고서 COR-05·COR-08) —
+        // 직접 만든 시각은 새로고침 전후로 다르게 보였고, version이 없으면 그 답글을
+        // 새로고침 전에 다시 수정할 때 서버 검사를 건너뛰었다.
         emit('replied', {
             parentId: props.comment.id,
-            reply: {
-                id,
-                parentId: props.comment.id,
-                content,
-                author: document.getElementById('user')?.textContent ?? '',
-                createdAt: new Date().toISOString(),
-                canManage: true,
-                replies: [],
-            },
+            reply: saved,
         });
         replying.value = false;
         await returnFocusToReplyButton();
@@ -127,19 +122,17 @@ async function save() {
     const requestVersion = props.comment.version;
     saving.value = true;
     try {
-        await api.put(`${API.COMMENTS}/${props.comment.id}`, {
+        const saved = await api.put(`${API.COMMENTS}/${props.comment.id}`, {
             content,
             // 편집을 시작할 때 받아간 버전. 그 사이 다른 곳에서 저장됐으면 서버가 409로
             // 거절한다(B12). 버전을 모르는 댓글(방금 로컬에서 만든 답글 등)은 undefined라
             // JSON에서 생략되고, 서버는 그 경우 검사를 건너뛴다.
             version: requestVersion,
         });
-        // 응답은 id뿐이라 새 버전을 직접 담아 주지 않는다 — 성공했다는 것 자체가 버전이
-        // 정확히 1 올랐다는 뜻이므로 여기서 계산해 둔다. 그렇지 않으면 새로고침 전까지
-        // 같은 댓글을 다시 수정할 때 이미 반영된 자신의 편집을 낡은 버전으로 오인해
-        // 불필요한 409를 만든다.
-        const newVersion = typeof requestVersion === 'number' ? requestVersion + 1 : undefined;
-        emit('updated', { id: props.comment.id, content, version: newVersion });
+        // 서버가 실제로 반영한 version을 그대로 쓴다(개선 보고서 COR-05) — 예전에는
+        // "성공했으니 +1"로 추측했는데, 내용이 실제로 바뀌지 않으면 DB의 버전이 그대로라
+        // 그 추측이 어긋나 다음 정상 수정이 가짜 409를 받았다.
+        emit('updated', { id: props.comment.id, content: saved.content, version: saved.version });
         editing.value = false;
         await returnFocusToEditButton();
     } catch (error) {

@@ -98,19 +98,14 @@ async function save() {
     const content = newContent.value;
     saving.value = true;
     try {
-        const id = await api.post(`${API.POSTS}/${props.postId}/comments`, {
+        const saved = await api.post(`${API.POSTS}/${props.postId}/comments`, {
             content,
         });
-        // 응답은 id뿐이다. 방금 내가 쓴 댓글이므로 관리 가능하고, 작성자 표시는 화면에 이미
-        // 렌더링된 로그인 사용자 닉네임(navbar의 #user)을 그대로 쓴다.
-        mergeComments([{
-            id,
-            content,
-            author: document.getElementById('user')?.textContent ?? '',
-            createdAt: new Date().toISOString(),
-            canManage: true,
-            replies: [],
-        }]);
+        // 서버가 확정한 id·author·createdAt·version을 그대로 쓴다(개선 보고서 COR-05·
+        // COR-08) — 예전에는 시각을 직접 만들어(new Date().toISOString(), UTC) 반영했는데,
+        // 새로고침 후 서버가 돌려주는 값과 표시가 달랐다. version이 없어 새로고침 전에 이
+        // 댓글을 바로 수정하면 낡은 화면 검사를 건너뛰는 문제도 있었다.
+        mergeComments([saved]);
         // lastLoadedId는 건드리지 않는다 — 아직 안 불러온 더 오래된 댓글이 있다면(hasMore),
         // 새 댓글의 id로 커서를 앞당기면 "더 보기"가 그 구간을 건너뛰게 된다.
         totalCount.value += 1;
@@ -172,9 +167,9 @@ function onReplied({ parentId, reply }) {
 function onExternalDelete(event) {
     const id = event.detail.id;
 
-    // 최상위 댓글이면 그 답글까지 통째로 사라진다 — 백엔드가 ON DELETE CASCADE로 답글을
-    // 함께 지우므로, 화면의 전체 개수(totalCount)도 답글 수까지 함께 빼야 서버 상태와
-    // 어긋나지 않는다.
+    // 최상위 댓글이면 그 답글까지 통째로 사라진다 — DB에 CASCADE를 걸지 않고 서비스가 답글을
+    // 먼저 명시적으로 지우므로(CommentService.delete), 화면의 전체 개수(totalCount)도 답글
+    // 수까지 함께 빼야 서버 상태와 어긋나지 않는다.
     const topIndex = comments.findIndex((c) => String(c.id) === String(id));
     if (topIndex !== -1) {
         const removed = 1 + (comments[topIndex].replies?.length ?? 0);
