@@ -19,6 +19,9 @@ import lombok.NoArgsConstructor;
         // 만든 기존 DB에는 이 인덱스가 생기지 않았다(개선 보고서 O01).
         @Index(name = "IX_COMMENTS_POST", columnList = "post_id"),
         @Index(name = "IX_COMMENTS_PARENT", columnList = "parent_id"),
+        // CommentRepository.findPageByPostIdAsc가 post_id = ? AND parent_id IS NULL을 id
+        // 순으로 훑는다(V23, 개선 보고서 PERF-05).
+        @Index(name = "IX_COMMENTS_POST_PARENT_ID", columnList = "post_id, parent_id, id"),
 })
 public class Comment extends BaseEntity {
 

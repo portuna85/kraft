@@ -25,6 +25,10 @@ import java.time.LocalDateTime;
                 // V13__password_reset_tokens_expires_at_index.sql. 엔티티에 선언이 없어
                 // ddl-auto: update로 만든 기존 DB에는 이 인덱스가 생기지 않았다(개선 보고서 O01).
                 @Index(name = "IX_PASSWORD_RESET_TOKENS_EXPIRES_AT", columnList = "expires_at"),
+                // V8__password_reset.sql. 엔티티에 선언이 없어 ddl-auto: update로 만든 기존
+                // DB에는 이 인덱스가 생기지 않았다(개선 보고서 O01). deleteByUserId(재발급 시
+                // 옛 링크 무효화)가 이 FK로 지운다.
+                @Index(name = "IX_PASSWORD_RESET_TOKENS_USER", columnList = "user_id"),
         })
 public class PasswordResetToken {
 

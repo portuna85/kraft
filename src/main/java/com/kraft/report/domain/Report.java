@@ -20,7 +20,16 @@ import java.time.LocalDateTime;
 @Entity
 @NoArgsConstructor
 @Table(name = "reports", uniqueConstraints = @UniqueConstraint(
-        name = "UK_REPORT_REPORTER_TARGET", columnNames = {"reporter_id", "target_type", "target_id"}))
+        name = "UK_REPORT_REPORTER_TARGET", columnNames = {"reporter_id", "target_type", "target_id"}),
+        indexes = {
+                // V10__reports.sql. 엔티티에 선언이 없어 ddl-auto: update로 만든 기존 DB에는
+                // 이 인덱스들이 생기지 않았다(개선 보고서 O01). 관리자 목록(findByStatusOrderByIdAsc,
+                // countByStatus)이 status로 걸러 id 순으로 훑는다.
+                @Index(name = "IX_REPORTS_STATUS_ID", columnList = "status, id"),
+                // findByTargetTypeAndTargetIdAndStatus가 대상 기준으로 훑는다.
+                // UK_REPORT_REPORTER_TARGET은 reporter_id가 맨 앞이라 이 조회에는 못 쓰인다.
+                @Index(name = "IX_REPORTS_TARGET", columnList = "target_type, target_id"),
+        })
 public class Report extends BaseEntity {
 
     @Id

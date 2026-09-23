@@ -34,7 +34,8 @@ import java.time.LocalDateTime;
         // 않았다(개선 보고서 O01).
         @Index(name = "IX_OUTBOX_MAILS_STATUS_ID", columnList = "status, id"), // V7
         @Index(name = "IX_OUTBOX_MAILS_STATUS_UPDATED", columnList = "status, updated_at"), // V7
-        @Index(name = "IX_OUTBOX_MAILS_USER", columnList = "user_id, id"), // V7
+        // V7의 IX_OUTBOX_MAILS_USER(user_id, id)는 V23에서 지웠다 — 아래 USER_KIND가 왼쪽
+        // 접두사로 이미 포함해 남는 쓰기 비용만 만들었다(개선 보고서 PERF-05).
         @Index(name = "IX_OUTBOX_MAILS_USER_KIND", columnList = "user_id, kind, id"), // V14
         @Index(name = "IX_OUTBOX_MAILS_STATUS_NEXT_ATTEMPT", columnList = "status, next_attempt_at"), // V15
 })

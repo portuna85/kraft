@@ -1,12 +1,25 @@
 package com.kraft.migration;
 
+import com.kraft.comment.domain.Comment;
 import com.kraft.post.domain.Category;
+import com.kraft.post.domain.Post;
+import com.kraft.post.domain.PostImage;
+import com.kraft.post.domain.PostLike;
 import com.kraft.post.domain.PostRepository;
 import com.kraft.post.dto.PostSaveRequestDto;
 import com.kraft.post.service.PostService;
+import com.kraft.recommend.domain.RecommendationHistoryState;
+import com.kraft.recommend.domain.WinningDraw;
+import com.kraft.report.domain.Report;
+import com.kraft.user.domain.EmailVerificationToken;
+import com.kraft.user.domain.PasswordResetToken;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
+import com.kraft.user.mail.OutboxMail;
+import com.kraft.user.session.SessionRevocationTask;
+import jakarta.persistence.Index;
+import jakarta.persistence.Table;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -190,6 +203,36 @@ class MariaDbMigrationTest {
         // 조회수 증가는 별도 UPDATE 한 문장이다(F02). 운영 DB에서도 같은 SQL이 도는지 본다.
         postService.findByIdForView(id, auth);
         assertThat(postRepository.findById(id).orElseThrow().getViewCount()).isEqualTo(1L);
+    }
+
+    /**
+     * 엔티티 {@code @Table(indexes = ...)}에 선언한 인덱스가 실제 DB에도 있는지 확인한다
+     * (개선 보고서 PERF-05). H2 + {@code ddl-auto: create-drop}으로 도는 다른 테스트는
+     * Hibernate가 엔티티 매핑으로 직접 인덱스까지 만들어 주므로, 마이그레이션 SQL에 같은
+     * 인덱스를 빠뜨려도 드러나지 않는다 — 이 클래스의 다른 테스트들처럼 실제 마이그레이션
+     * SQL로 만든 스키마를 봐야 잡을 수 있다.
+     */
+    @Test
+    @DisplayName("엔티티에 선언한 인덱스가 마이그레이션으로 만든 스키마에도 모두 있다")
+    void allDeclaredEntityIndexesExistInDatabase() {
+        List<Class<?>> entities = List.of(
+                Comment.class, Post.class, PostImage.class, PostLike.class,
+                RecommendationHistoryState.class, WinningDraw.class, Report.class,
+                EmailVerificationToken.class, PasswordResetToken.class, User.class,
+                OutboxMail.class, SessionRevocationTask.class);
+
+        for (Class<?> entityClass : entities) {
+            Table table = entityClass.getAnnotation(Table.class);
+            if (table == null) {
+                continue;
+            }
+            for (Index index : table.indexes()) {
+                assertThat(indexExists(table.name(), index.name()))
+                        .as("%s가 선언한 %s 인덱스가 %s 테이블에 있어야 한다",
+                                entityClass.getSimpleName(), index.name(), table.name())
+                        .isTrue();
+            }
+        }
     }
 
     /** {@code V3__spring_session.sql} → {@code "3"}. 파일 이름 순이 곧 적용 순서다. */
