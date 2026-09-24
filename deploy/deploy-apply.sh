@@ -26,7 +26,10 @@ INCOMING="$APP_DIR/kraft.jar.incoming"
 PREVIOUS="$APP_DIR/kraft.jar.prev"
 LOCK_FILE="$APP_DIR/deploy.lock"
 LOG=/opt/kraft/deploy.log
-HEALTH_URL=http://127.0.0.1:8080/
+# /healthz는 DB 조회·템플릿 렌더링 없이 애플리케이션 컨텍스트가 떴는지만 본다(개선 보고서
+# OPS-G5) — 예전에 썼던 GET /(게시글 목록 전체 렌더)보다 훨씬 가볍다. 이 루프가 재시작마다
+# 최대 30회 반복되므로 차이가 누적된다.
+HEALTH_URL=http://127.0.0.1:8080/healthz
 # 정상 jar보다 훨씬 넉넉한 수신 상한(아래 1번) — 손상되었거나 다른 목적의 대용량 전송이
 # 디스크를 무한정 채우지 않게 한다.
 MAX_JAR_SIZE=524288000  # 500MB
