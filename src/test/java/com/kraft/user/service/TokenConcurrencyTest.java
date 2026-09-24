@@ -1,5 +1,6 @@
 package com.kraft.user.service;
 
+import com.kraft.user.domain.EmailHasher;
 import com.kraft.user.domain.EmailVerificationToken;
 import com.kraft.user.domain.EmailVerificationTokenRepository;
 import com.kraft.user.domain.PasswordResetToken;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -75,7 +77,7 @@ class TokenConcurrencyTest {
 
         assertThat(results).containsExactlyInAnyOrder(true, false);
         assertThat(userRepository.findById(user.getId()).orElseThrow().getRole()).isEqualTo(Role.USER);
-        assertThat(emailTokenRepository.findByToken(token)).isEmpty();
+        assertThat(emailTokenRepository.findByTokenHash(EmailHasher.sha512Hex(token))).isEmpty();
     }
 
     @Test
@@ -89,7 +91,7 @@ class TokenConcurrencyTest {
                 () -> attemptReset(token, "OtherPass2!", results));
 
         assertThat(results).containsExactlyInAnyOrder(true, false);
-        assertThat(passwordResetTokenRepository.findByToken(token)).isEmpty();
+        assertThat(passwordResetTokenRepository.findByTokenHash(EmailHasher.sha512Hex(token))).isEmpty();
     }
 
     private void attemptVerify(String token, List<Boolean> results) {
@@ -117,14 +119,20 @@ class TokenConcurrencyTest {
         Thread t2 = new Thread(() -> awaitAndRun(ready, second));
         t1.start();
         t2.start();
-        t1.join();
-        t2.join();
+        t1.join(10_000);
+        t2.join(10_000);
+        // 타임아웃 안에 안 끝났으면(교착 등) 여기서 바로 드러낸다(OPS-B1).
+        if (t1.isAlive() || t2.isAlive()) {
+            throw new AssertionError("동시 실행 스레드가 타임아웃 안에 끝나지 않았습니다.");
+        }
     }
 
     private void awaitAndRun(CountDownLatch ready, Runnable action) {
         ready.countDown();
         try {
-            ready.await();
+            if (!ready.await(10, TimeUnit.SECONDS)) {
+                throw new AssertionError("두 스레드가 타임아웃 안에 준비되지 않았습니다.");
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return;
@@ -135,7 +143,7 @@ class TokenConcurrencyTest {
     private String saveEmailToken(LocalDateTime expiresAt) {
         String token = UUID.randomUUID().toString();
         emailTokenRepository.save(EmailVerificationToken.builder()
-                .token(token)
+                .tokenHash(EmailHasher.sha512Hex(token))
                 .user(user)
                 .expiresAt(expiresAt)
                 .build());
@@ -145,7 +153,7 @@ class TokenConcurrencyTest {
     private String savePasswordResetToken(LocalDateTime expiresAt) {
         String token = UUID.randomUUID().toString();
         passwordResetTokenRepository.save(PasswordResetToken.builder()
-                .token(token)
+                .tokenHash(EmailHasher.sha512Hex(token))
                 .user(user)
                 .expiresAt(expiresAt)
                 .build());

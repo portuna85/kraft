@@ -10,7 +10,7 @@ import java.util.Optional;
 
 public interface EmailVerificationTokenRepository extends JpaRepository<EmailVerificationToken, Long> {
 
-    Optional<EmailVerificationToken> findByToken(String token);
+    Optional<EmailVerificationToken> findByTokenHash(String tokenHash);
 
     /**
      * 파생 삭제 대신 한 문장으로 지운다(개선 보고서 "파생 delete 메서드의 엔티티별 삭제") —
@@ -32,6 +32,6 @@ public interface EmailVerificationTokenRepository extends JpaRepository<EmailVer
      * 동시 소비가 둘 다 성공한 것처럼 보이지 않는다.
      */
     @Modifying
-    @Query("DELETE FROM EmailVerificationToken t WHERE t.id = :id AND t.token = :token")
-    int deleteByIdAndToken(@Param("id") Long id, @Param("token") String token);
+    @Query("DELETE FROM EmailVerificationToken t WHERE t.id = :id AND t.tokenHash = :tokenHash")
+    int deleteByIdAndTokenHash(@Param("id") Long id, @Param("tokenHash") String tokenHash);
 }

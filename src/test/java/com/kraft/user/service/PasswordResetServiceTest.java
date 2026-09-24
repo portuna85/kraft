@@ -104,7 +104,11 @@ class PasswordResetServiceTest {
         assertThat(saved.getValue().getExpiresAt())
                 .isBetween(LocalDateTime.now().plusMinutes(29), LocalDateTime.now().plusMinutes(31));
 
-        verify(outboxMailStore).enqueue(eq(user), eq(saved.getValue().getToken()), eq(OutboxMailKind.PASSWORD_RESET));
+        // 대기열에는 평문 토큰이 실린다(발송 본문에 필요하다). 저장된 조회 테이블 행에는
+        // 그 해시만 있으므로(SEC-04), 둘을 직접 비교하는 대신 같은 값에서 나온 것인지 확인한다.
+        ArgumentCaptor<String> enqueuedToken = ArgumentCaptor.forClass(String.class);
+        verify(outboxMailStore).enqueue(eq(user), enqueuedToken.capture(), eq(OutboxMailKind.PASSWORD_RESET));
+        assertThat(EmailHasher.sha512Hex(enqueuedToken.getValue())).isEqualTo(saved.getValue().getTokenHash());
     }
 
     @Test
@@ -142,19 +146,20 @@ class PasswordResetServiceTest {
     @DisplayName("reset: 유효한 토큰이면 비밀번호를 바꾸고 그 토큰을 지운다(1회용)")
     void reset_withValidToken_changesPasswordAndConsumesToken() {
         User user = userWithId(7L, "user@example.com");
+        String tokenHash = EmailHasher.sha512Hex("valid-token");
         PasswordResetToken token = PasswordResetToken.builder()
-                .token("valid-token")
+                .tokenHash(tokenHash)
                 .user(user)
                 .expiresAt(LocalDateTime.now().plusMinutes(10))
                 .build();
         ReflectionTestUtils.setField(token, "id", 99L);
-        given(tokenRepository.findByToken("valid-token")).willReturn(Optional.of(token));
-        given(tokenRepository.deleteByIdAndToken(99L, "valid-token")).willReturn(1);
+        given(tokenRepository.findByTokenHash(tokenHash)).willReturn(Optional.of(token));
+        given(tokenRepository.deleteByIdAndTokenHash(99L, tokenHash)).willReturn(1);
 
         passwordResetService.reset("valid-token", "NewPass1!");
 
         // 메일함에 남은 링크를 두 번째로 눌러도 아무 일이 없어야 한다.
-        verify(tokenRepository).deleteByIdAndToken(99L, "valid-token");
+        verify(tokenRepository).deleteByIdAndTokenHash(99L, tokenHash);
         verify(userService).resetPassword(7L, "NewPass1!");
     }
 
@@ -162,15 +167,16 @@ class PasswordResetServiceTest {
     @DisplayName("reset: 동시에 소비되어 이미 지워진 토큰이면 비밀번호를 바꾸지 않고 다시 요청하라고 알려준다")
     void reset_whenTokenAlreadyConsumedConcurrently_throwsAndDoesNotChangePassword() {
         User user = userWithId(7L, "user@example.com");
+        String tokenHash = EmailHasher.sha512Hex("valid-token");
         PasswordResetToken token = PasswordResetToken.builder()
-                .token("valid-token")
+                .tokenHash(tokenHash)
                 .user(user)
                 .expiresAt(LocalDateTime.now().plusMinutes(10))
                 .build();
         ReflectionTestUtils.setField(token, "id", 99L);
-        given(tokenRepository.findByToken("valid-token")).willReturn(Optional.of(token));
+        given(tokenRepository.findByTokenHash(tokenHash)).willReturn(Optional.of(token));
         // 다른 요청이 먼저 소비해 이미 지워졌다 — 조건부 삭제가 0행을 돌려준다.
-        given(tokenRepository.deleteByIdAndToken(99L, "valid-token")).willReturn(0);
+        given(tokenRepository.deleteByIdAndTokenHash(99L, tokenHash)).willReturn(0);
 
         assertThatThrownBy(() -> passwordResetService.reset("valid-token", "NewPass1!"))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -182,7 +188,7 @@ class PasswordResetServiceTest {
     @Test
     @DisplayName("reset: 없는 토큰이면 다시 요청하라고 알려준다")
     void reset_withUnknownToken_isRejected() {
-        given(tokenRepository.findByToken("unknown")).willReturn(Optional.empty());
+        given(tokenRepository.findByTokenHash(EmailHasher.sha512Hex("unknown"))).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> passwordResetService.reset("unknown", "NewPass1!"))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -195,13 +201,14 @@ class PasswordResetServiceTest {
     @DisplayName("reset: 만료된 토큰은 거부하고, 삭제는 롤백되지 않도록 별도 트랜잭션에 맡긴다")
     void reset_withExpiredToken_isRejectedAndPurgedInItsOwnTransaction() {
         User user = userWithId(7L, "user@example.com");
+        String tokenHash = EmailHasher.sha512Hex("expired-token");
         PasswordResetToken expired = PasswordResetToken.builder()
-                .token("expired-token")
+                .tokenHash(tokenHash)
                 .user(user)
                 .expiresAt(LocalDateTime.now().minusMinutes(1))
                 .build();
         ReflectionTestUtils.setField(expired, "id", 42L);
-        given(tokenRepository.findByToken("expired-token")).willReturn(Optional.of(expired));
+        given(tokenRepository.findByTokenHash(tokenHash)).willReturn(Optional.of(expired));
 
         assertThatThrownBy(() -> passwordResetService.reset("expired-token", "NewPass1!"))
                 .isInstanceOf(IllegalArgumentException.class)

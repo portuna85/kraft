@@ -3,6 +3,7 @@ package com.kraft.user.mail;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.kraft.user.domain.EmailHasher;
 import com.kraft.user.domain.EmailVerificationToken;
 import com.kraft.user.domain.EmailVerificationTokenRepository;
 import com.kraft.user.domain.Role;
@@ -120,7 +121,7 @@ class OutboxMailTransactionTest {
     private void queueOne() {
         String token = UUID.randomUUID().toString();
         tokenRepository.save(EmailVerificationToken.builder()
-                .token(token).user(user).expiresAt(LocalDateTime.now().plusHours(24)).build());
+                .tokenHash(EmailHasher.sha512Hex(token)).user(user).expiresAt(LocalDateTime.now().plusHours(24)).build());
         outboxMailStore.enqueue(user, token, OutboxMailKind.VERIFY_EMAIL);
     }
 

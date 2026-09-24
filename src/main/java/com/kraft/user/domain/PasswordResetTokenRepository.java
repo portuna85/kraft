@@ -10,7 +10,7 @@ import java.util.Optional;
 
 public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetToken, Long> {
 
-    Optional<PasswordResetToken> findByToken(String token);
+    Optional<PasswordResetToken> findByTokenHash(String tokenHash);
 
     /**
      * 재발급할 때 이 회원의 옛 링크를 무효로 만든다. 파생 삭제 대신 한 문장으로 지운다
@@ -32,6 +32,6 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
      * 실행해야 동시 소비가 둘 다 성공한 것처럼 보이지 않는다.
      */
     @Modifying
-    @Query("DELETE FROM PasswordResetToken t WHERE t.id = :id AND t.token = :token")
-    int deleteByIdAndToken(@Param("id") Long id, @Param("token") String token);
+    @Query("DELETE FROM PasswordResetToken t WHERE t.id = :id AND t.tokenHash = :tokenHash")
+    int deleteByIdAndTokenHash(@Param("id") Long id, @Param("tokenHash") String tokenHash);
 }

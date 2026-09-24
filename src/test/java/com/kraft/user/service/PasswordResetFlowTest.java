@@ -1,5 +1,6 @@
 package com.kraft.user.service;
 
+import com.kraft.user.domain.EmailHasher;
 import com.kraft.user.domain.PasswordResetToken;
 import com.kraft.user.domain.PasswordResetTokenRepository;
 import com.kraft.user.domain.Role;
@@ -65,7 +66,7 @@ class PasswordResetFlowTest {
     private String saveToken(LocalDateTime expiresAt) {
         String token = UUID.randomUUID().toString();
         tokenRepository.save(PasswordResetToken.builder()
-                .token(token)
+                .tokenHash(EmailHasher.sha512Hex(token))
                 .user(user)
                 .expiresAt(expiresAt)
                 .build());
@@ -82,8 +83,10 @@ class PasswordResetFlowTest {
                 .singleElement()
                 .satisfies(mail -> {
                     assertThat(mail.getKind()).isEqualTo(OutboxMailKind.PASSWORD_RESET);
-                    // 대기열의 토큰과 저장된 토큰이 같아야 메일의 링크가 실제로 동작한다.
-                    assertThat(mail.getToken()).isEqualTo(tokenRepository.findAll().get(0).getToken());
+                    // 대기열의 평문 토큰을 해시한 값이 저장된 해시와 같아야 메일의 링크가
+                    // 실제로 동작한다(SEC-04로 저장 테이블에는 평문이 없다).
+                    assertThat(EmailHasher.sha512Hex(mail.getToken()))
+                            .isEqualTo(tokenRepository.findAll().get(0).getTokenHash());
                 });
     }
 
@@ -97,7 +100,7 @@ class PasswordResetFlowTest {
         User reloaded = userRepository.findById(user.getId()).orElseThrow();
         assertThat(passwordEncoder.matches("BrandNew1!", reloaded.getPassword())).isTrue();
         assertThat(passwordEncoder.matches("OldPass1!", reloaded.getPassword())).isFalse();
-        assertThat(tokenRepository.findByToken(token)).isEmpty();
+        assertThat(tokenRepository.findByTokenHash(EmailHasher.sha512Hex(token))).isEmpty();
     }
 
     @Test
@@ -110,7 +113,7 @@ class PasswordResetFlowTest {
                 .hasMessageContaining("만료");
 
         // 같은 트랜잭션에서 지웠다면 이 예외와 함께 삭제도 롤백되어 토큰이 남아 있었을 것이다.
-        assertThat(tokenRepository.findByToken(expired)).isEmpty();
+        assertThat(tokenRepository.findByTokenHash(EmailHasher.sha512Hex(expired))).isEmpty();
         User reloaded = userRepository.findById(user.getId()).orElseThrow();
         assertThat(passwordEncoder.matches("OldPass1!", reloaded.getPassword())).isTrue();
     }
@@ -122,7 +125,7 @@ class PasswordResetFlowTest {
 
         passwordResetService.request(user.getEmail());
 
-        assertThat(tokenRepository.findByToken(first)).isEmpty();
+        assertThat(tokenRepository.findByTokenHash(EmailHasher.sha512Hex(first))).isEmpty();
         assertThat(tokenRepository.findAll()).hasSize(1);
     }
 
@@ -134,7 +137,7 @@ class PasswordResetFlowTest {
 
         expiredTokenPurger.purgeExpired();
 
-        assertThat(tokenRepository.findByToken(expired)).isEmpty();
-        assertThat(tokenRepository.findByToken(valid)).isPresent();
+        assertThat(tokenRepository.findByTokenHash(EmailHasher.sha512Hex(expired))).isEmpty();
+        assertThat(tokenRepository.findByTokenHash(EmailHasher.sha512Hex(valid))).isPresent();
     }
 }

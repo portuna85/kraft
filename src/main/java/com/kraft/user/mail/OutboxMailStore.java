@@ -1,5 +1,6 @@
 package com.kraft.user.mail;
 
+import com.kraft.user.domain.EmailHasher;
 import com.kraft.user.domain.EmailVerificationTokenRepository;
 import com.kraft.user.domain.PasswordResetTokenRepository;
 import com.kraft.user.domain.User;
@@ -105,10 +106,13 @@ public class OutboxMailStore {
     }
 
     private boolean isTokenStillValid(OutboxMail mail) {
+        // outbox_mails.token은 평문이지만 조회 테이블은 해시만 들고 있다(SEC-04) — 같은
+        // 해시 함수로 변환해야 비교가 된다.
+        String tokenHash = EmailHasher.sha512Hex(mail.getToken());
         return switch (mail.getKind()) {
-            case VERIFY_EMAIL -> emailVerificationTokenRepository.findByToken(mail.getToken())
+            case VERIFY_EMAIL -> emailVerificationTokenRepository.findByTokenHash(tokenHash)
                     .filter(token -> !token.isExpired()).isPresent();
-            case PASSWORD_RESET -> passwordResetTokenRepository.findByToken(mail.getToken())
+            case PASSWORD_RESET -> passwordResetTokenRepository.findByTokenHash(tokenHash)
                     .filter(token -> !token.isExpired()).isPresent();
         };
     }

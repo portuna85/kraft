@@ -15,12 +15,16 @@ import java.time.LocalDateTime;
  * 일이 다른 쪽에 영향을 주면 안 되기 때문이다.
  * <p>
  * 이 토큰은 <b>쓰는 즉시 지운다</b>. 메일함에 남은 링크를 두 번째로 눌러도 아무 일이 없어야 한다.
+ * <p>
+ * 평문이 아니라 {@link EmailHasher#sha512Hex}로 구한 해시만 저장한다(개선 보고서 SEC-04) —
+ * {@link EmailVerificationToken}과 같은 이유다. 이 토큰은 특히 그 자체로 "새 비밀번호 설정"
+ * 권한이라 평문 유출의 위험이 더 크다.
  */
 @Getter
 @Entity
 @NoArgsConstructor
 @Table(name = "password_reset_tokens",
-        uniqueConstraints = @UniqueConstraint(name = "UK_PASSWORD_RESET_TOKEN", columnNames = "token"),
+        uniqueConstraints = @UniqueConstraint(name = "UK_PASSWORD_RESET_TOKEN_HASH", columnNames = "token_hash"),
         indexes = {
                 // V13__password_reset_tokens_expires_at_index.sql. 엔티티에 선언이 없어
                 // ddl-auto: update로 만든 기존 DB에는 이 인덱스가 생기지 않았다(개선 보고서 O01).
@@ -36,8 +40,8 @@ public class PasswordResetToken {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 100)
-    private String token;
+    @Column(name = "token_hash", nullable = false, unique = true, length = 128)
+    private String tokenHash;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
@@ -47,8 +51,8 @@ public class PasswordResetToken {
     private LocalDateTime expiresAt;
 
     @Builder
-    public PasswordResetToken(String token, User user, LocalDateTime expiresAt) {
-        this.token = token;
+    public PasswordResetToken(String tokenHash, User user, LocalDateTime expiresAt) {
+        this.tokenHash = tokenHash;
         this.user = user;
         this.expiresAt = expiresAt;
     }

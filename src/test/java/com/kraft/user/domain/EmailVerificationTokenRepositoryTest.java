@@ -40,17 +40,17 @@ class EmailVerificationTokenRepositoryTest {
     }
 
     @Test
-    @DisplayName("findByToken: 존재하는 토큰이면 회원 정보와 함께 조회된다")
-    void findByToken_whenTokenExists_returnsTokenWithUser() {
+    @DisplayName("findByTokenHash: 존재하는 토큰이면 회원 정보와 함께 조회된다")
+    void findByTokenHash_whenTokenExists_returnsTokenWithUser() {
         EmailVerificationToken saved = tokenRepository.save(EmailVerificationToken.builder()
-                .token("token-abc")
+                .tokenHash("token-abc")
                 .user(user)
                 .expiresAt(LocalDateTime.now().plusHours(24))
                 .build());
         em.flush();
         em.clear();
 
-        Optional<EmailVerificationToken> found = tokenRepository.findByToken("token-abc");
+        Optional<EmailVerificationToken> found = tokenRepository.findByTokenHash("token-abc");
 
         assertThat(found).isPresent();
         assertThat(found.get().getId()).isEqualTo(saved.getId());
@@ -58,9 +58,9 @@ class EmailVerificationTokenRepositoryTest {
     }
 
     @Test
-    @DisplayName("findByToken: 존재하지 않는 토큰이면 빈 Optional을 반환한다")
-    void findByToken_whenTokenDoesNotExist_returnsEmptyOptional() {
-        Optional<EmailVerificationToken> found = tokenRepository.findByToken("no-such-token");
+    @DisplayName("findByTokenHash: 존재하지 않는 토큰이면 빈 Optional을 반환한다")
+    void findByTokenHash_whenTokenDoesNotExist_returnsEmptyOptional() {
+        Optional<EmailVerificationToken> found = tokenRepository.findByTokenHash("no-such-token");
 
         assertThat(found).isEmpty();
     }
@@ -71,30 +71,30 @@ class EmailVerificationTokenRepositoryTest {
         User other = userRepository.save(
                 User.builder().name("other").email("other@example.com").password("pw").role(Role.GUEST).build());
         tokenRepository.save(EmailVerificationToken.builder()
-                .token("mine").user(user).expiresAt(LocalDateTime.now().plusHours(1)).build());
+                .tokenHash("mine").user(user).expiresAt(LocalDateTime.now().plusHours(1)).build());
         tokenRepository.save(EmailVerificationToken.builder()
-                .token("others").user(other).expiresAt(LocalDateTime.now().plusHours(1)).build());
+                .tokenHash("others").user(other).expiresAt(LocalDateTime.now().plusHours(1)).build());
         em.flush();
 
         tokenRepository.deleteByUserId(user.getId());
 
-        assertThat(tokenRepository.findByToken("mine")).isEmpty();
-        assertThat(tokenRepository.findByToken("others")).isPresent();
+        assertThat(tokenRepository.findByTokenHash("mine")).isEmpty();
+        assertThat(tokenRepository.findByTokenHash("others")).isPresent();
     }
 
     @Test
     @DisplayName("deleteByExpiresAtBefore: 만료된 토큰만 지우고 지운 개수를 돌려준다")
     void deleteByExpiresAtBefore_deletesOnlyExpiredTokensAndReturnsCount() {
         tokenRepository.save(EmailVerificationToken.builder()
-                .token("expired").user(user).expiresAt(LocalDateTime.now().minusMinutes(1)).build());
+                .tokenHash("expired").user(user).expiresAt(LocalDateTime.now().minusMinutes(1)).build());
         tokenRepository.save(EmailVerificationToken.builder()
-                .token("valid").user(user).expiresAt(LocalDateTime.now().plusHours(1)).build());
+                .tokenHash("valid").user(user).expiresAt(LocalDateTime.now().plusHours(1)).build());
         em.flush();
 
         int deleted = tokenRepository.deleteByExpiresAtBefore(LocalDateTime.now());
 
         assertThat(deleted).isEqualTo(1);
-        assertThat(tokenRepository.findByToken("expired")).isEmpty();
-        assertThat(tokenRepository.findByToken("valid")).isPresent();
+        assertThat(tokenRepository.findByTokenHash("expired")).isEmpty();
+        assertThat(tokenRepository.findByTokenHash("valid")).isPresent();
     }
 }

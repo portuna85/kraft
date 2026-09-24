@@ -40,17 +40,17 @@ class PasswordResetTokenRepositoryTest {
     }
 
     @Test
-    @DisplayName("findByToken: 존재하는 토큰이면 회원 정보와 함께 조회된다")
-    void findByToken_whenTokenExists_returnsTokenWithUser() {
+    @DisplayName("findByTokenHash: 존재하는 토큰이면 회원 정보와 함께 조회된다")
+    void findByTokenHash_whenTokenExists_returnsTokenWithUser() {
         PasswordResetToken saved = tokenRepository.save(PasswordResetToken.builder()
-                .token("token-abc")
+                .tokenHash("token-abc")
                 .user(user)
                 .expiresAt(LocalDateTime.now().plusMinutes(30))
                 .build());
         em.flush();
         em.clear();
 
-        Optional<PasswordResetToken> found = tokenRepository.findByToken("token-abc");
+        Optional<PasswordResetToken> found = tokenRepository.findByTokenHash("token-abc");
 
         assertThat(found).isPresent();
         assertThat(found.get().getId()).isEqualTo(saved.getId());
@@ -63,30 +63,30 @@ class PasswordResetTokenRepositoryTest {
         User other = userRepository.save(
                 User.builder().name("other").email("other@example.com").password("pw").role(Role.USER).build());
         tokenRepository.save(PasswordResetToken.builder()
-                .token("mine").user(user).expiresAt(LocalDateTime.now().plusMinutes(30)).build());
+                .tokenHash("mine").user(user).expiresAt(LocalDateTime.now().plusMinutes(30)).build());
         tokenRepository.save(PasswordResetToken.builder()
-                .token("others").user(other).expiresAt(LocalDateTime.now().plusMinutes(30)).build());
+                .tokenHash("others").user(other).expiresAt(LocalDateTime.now().plusMinutes(30)).build());
         em.flush();
 
         tokenRepository.deleteByUserId(user.getId());
 
-        assertThat(tokenRepository.findByToken("mine")).isEmpty();
-        assertThat(tokenRepository.findByToken("others")).isPresent();
+        assertThat(tokenRepository.findByTokenHash("mine")).isEmpty();
+        assertThat(tokenRepository.findByTokenHash("others")).isPresent();
     }
 
     @Test
     @DisplayName("deleteByExpiresAtBefore: 만료된 토큰만 지우고 지운 개수를 돌려준다")
     void deleteByExpiresAtBefore_deletesOnlyExpiredTokensAndReturnsCount() {
         tokenRepository.save(PasswordResetToken.builder()
-                .token("expired").user(user).expiresAt(LocalDateTime.now().minusMinutes(1)).build());
+                .tokenHash("expired").user(user).expiresAt(LocalDateTime.now().minusMinutes(1)).build());
         tokenRepository.save(PasswordResetToken.builder()
-                .token("valid").user(user).expiresAt(LocalDateTime.now().plusMinutes(30)).build());
+                .tokenHash("valid").user(user).expiresAt(LocalDateTime.now().plusMinutes(30)).build());
         em.flush();
 
         int deleted = tokenRepository.deleteByExpiresAtBefore(LocalDateTime.now());
 
         assertThat(deleted).isEqualTo(1);
-        assertThat(tokenRepository.findByToken("expired")).isEmpty();
-        assertThat(tokenRepository.findByToken("valid")).isPresent();
+        assertThat(tokenRepository.findByTokenHash("expired")).isEmpty();
+        assertThat(tokenRepository.findByTokenHash("valid")).isPresent();
     }
 }

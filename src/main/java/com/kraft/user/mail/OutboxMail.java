@@ -49,8 +49,14 @@ public class OutboxMail extends BaseEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    /** 본문에 실을 인증 토큰. 토큰 테이블의 행이 지워져도 이 값으로 링크를 만든다. */
-    @Column(nullable = false, length = 100)
+    /**
+     * 본문에 실을 인증 토큰. 토큰 테이블의 행이 지워져도 이 값으로 링크를 만든다. 발송이
+     * 끝나면(SENT/FAILED) {@code markSent}/{@code markFailed}/{@code markStale}이 비운다
+     * (개선 보고서 SEC-04) — 더는 필요 없는 평문을 이 테이블의 보관 기간(기본 30일,
+     * OutboxMailWorker.retentionDays) 동안 그대로 남겨 둘 이유가 없다. PENDING으로 돌아가
+     * 재시도할 때는(다음 시도에서 다시 필요하므로) 비우지 않는다.
+     */
+    @Column(length = 100)
     private String token;
 
     /** 무엇을 보내려던 행인지. 제목·본문은 보낼 때 이 값으로 만든다. */
@@ -102,6 +108,7 @@ public class OutboxMail extends BaseEntity {
         this.sentAt = LocalDateTime.now();
         this.lastError = null;
         this.nextAttemptAt = null;
+        this.token = null;
     }
 
     /**
@@ -115,6 +122,9 @@ public class OutboxMail extends BaseEntity {
         this.nextAttemptAt = this.status == OutboxMailStatus.PENDING
                 ? LocalDateTime.now().plusMinutes(backoffMinutes())
                 : null;
+        if (this.status == OutboxMailStatus.FAILED) {
+            this.token = null;
+        }
     }
 
     /** 발송 직전 토큰이 재발급되어 더는 유효하지 않을 때 즉시 종료한다. 재시도 대상이 아니다. */
@@ -122,6 +132,7 @@ public class OutboxMail extends BaseEntity {
         this.status = OutboxMailStatus.FAILED;
         this.lastError = reason;
         this.nextAttemptAt = null;
+        this.token = null;
     }
 
     /**

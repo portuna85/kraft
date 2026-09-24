@@ -1,5 +1,6 @@
 package com.kraft.user.service;
 
+import com.kraft.user.domain.EmailHasher;
 import com.kraft.user.domain.EmailVerificationToken;
 import com.kraft.user.domain.EmailVerificationTokenRepository;
 import com.kraft.user.domain.Role;
@@ -70,7 +71,7 @@ class ExpiredTokenPurgeTest {
                 .hasMessageContaining("만료되었습니다");
 
         // 예전에는 예외가 트랜잭션을 롤백시켜 이 토큰이 그대로 남아 있었다.
-        assertThat(tokenRepository.findByToken(token)).isEmpty();
+        assertThat(tokenRepository.findByTokenHash(EmailHasher.sha512Hex(token))).isEmpty();
         // 만료 검사 자체는 계속 동작하므로 권한이 올라가지도 않는다.
         assertThat(userRepository.findById(user.getId()).orElseThrow().getRole()).isEqualTo(Role.GUEST);
     }
@@ -83,7 +84,7 @@ class ExpiredTokenPurgeTest {
         emailVerificationService.verify(token);
 
         assertThat(userRepository.findById(user.getId()).orElseThrow().getRole()).isEqualTo(Role.USER);
-        assertThat(tokenRepository.findByToken(token)).isEmpty();
+        assertThat(tokenRepository.findByTokenHash(EmailHasher.sha512Hex(token))).isEmpty();
     }
 
     @Test
@@ -94,14 +95,14 @@ class ExpiredTokenPurgeTest {
 
         expiredTokenPurger.purgeExpired();
 
-        assertThat(tokenRepository.findByToken(expired)).isEmpty();
-        assertThat(tokenRepository.findByToken(valid)).isPresent();
+        assertThat(tokenRepository.findByTokenHash(EmailHasher.sha512Hex(expired))).isEmpty();
+        assertThat(tokenRepository.findByTokenHash(EmailHasher.sha512Hex(valid))).isPresent();
     }
 
     private String saveToken(LocalDateTime expiresAt) {
         String token = UUID.randomUUID().toString();
         tokenRepository.save(EmailVerificationToken.builder()
-                .token(token)
+                .tokenHash(EmailHasher.sha512Hex(token))
                 .user(user)
                 .expiresAt(expiresAt)
                 .build());
