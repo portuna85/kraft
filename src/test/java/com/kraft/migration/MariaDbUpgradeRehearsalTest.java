@@ -10,7 +10,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.testcontainers.containers.MariaDBContainer;
+import org.testcontainers.mariadb.MariaDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -52,7 +52,7 @@ class MariaDbUpgradeRehearsalTest {
 
     /** docker-compose.yml·MariaDbMigrationTest와 같은 버전을 쓴다. */
     @Container
-    static MariaDBContainer<?> mariadb = new MariaDBContainer<>("mariadb:11.7.2");
+    static MariaDBContainer mariadb = new MariaDBContainer("mariadb:11.7.2");
 
     @Test
     @DisplayName("기존 개발 DB에 baseline-version 1을 그대로 쓰면 중복 컬럼으로 실패한다")

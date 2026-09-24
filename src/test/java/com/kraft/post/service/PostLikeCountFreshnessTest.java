@@ -17,7 +17,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.containers.MariaDBContainer;
+import org.testcontainers.mariadb.MariaDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -33,12 +33,19 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 않는다"와 같은 이유). Docker가 없으면 건너뛴다.
  */
 @Testcontainers(disabledWithoutDocker = true)
-@SpringBootTest
+@SpringBootTest(properties = {
+        // 운영(prod)과 같은 스키마 경로로 실행한다(OPS-C1) — 이전에는 속성을 지정하지 않아
+        // test 프로파일 기본값(Flyway off, ddl-auto=create-drop)을 그대로 썼다.
+        "spring.flyway.enabled=true",
+        "spring.flyway.baseline-on-migrate=false",
+        "spring.jpa.hibernate.ddl-auto=validate",
+        "spring.session.jdbc.initialize-schema=never"
+})
 class PostLikeCountFreshnessTest {
 
     @Container
     @ServiceConnection
-    static MariaDBContainer<?> mariadb = new MariaDBContainer<>("mariadb:11.7.2");
+    static MariaDBContainer mariadb = new MariaDBContainer("mariadb:11.7.2");
 
     @Autowired
     private PostService postService;

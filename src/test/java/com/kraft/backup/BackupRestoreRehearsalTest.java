@@ -21,7 +21,7 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.testcontainers.containers.MariaDBContainer;
+import org.testcontainers.mariadb.MariaDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.MountableFile;
@@ -54,7 +54,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class BackupRestoreRehearsalTest {
 
     @Container
-    static MariaDBContainer<?> mariadb = new MariaDBContainer<>("mariadb:11.7.2");
+    static MariaDBContainer mariadb = new MariaDBContainer("mariadb:11.7.2");
 
     private static final String KEY = "backup-drill-key-1111";
 

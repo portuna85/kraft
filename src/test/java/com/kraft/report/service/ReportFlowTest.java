@@ -241,8 +241,12 @@ class ReportFlowTest {
         Thread t2 = new Thread(rejectAttempt);
         t1.start();
         t2.start();
-        t1.join();
-        t2.join();
+        t1.join(10_000);
+        t2.join(10_000);
+        // 타임아웃 안에 안 끝났으면(교착 등) 여기서 바로 드러낸다(OPS-B1) — join()이 스레드가
+        // 살아 있어도 조용히 반환하는 것과 달리, 이 단언은 그 상태를 테스트 실패로 만든다.
+        assertThat(t1.isAlive()).as("t1이 타임아웃 안에 끝나야 한다").isFalse();
+        assertThat(t2.isAlive()).as("t2가 타임아웃 안에 끝나야 한다").isFalse();
 
         assertThat(results).containsExactlyInAnyOrder(true, false);
         // 대상은 이긴 쪽의 처리 결과와 일관되어야 한다 — resolve가 이겼으면 지워지고, reject가
@@ -259,7 +263,7 @@ class ReportFlowTest {
 
     private static void awaitQuietly(java.util.concurrent.CountDownLatch latch) {
         try {
-            latch.await();
+            latch.await(10, java.util.concurrent.TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }

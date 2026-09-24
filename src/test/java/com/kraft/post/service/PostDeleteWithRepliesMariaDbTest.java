@@ -23,7 +23,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.testcontainers.containers.MariaDBContainer;
+import org.testcontainers.mariadb.MariaDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -39,12 +39,20 @@ import static org.assertj.core.api.Assertions.assertThatCode;
  * 신고 처리)로 지워 FK 위반이 나지 않는지 확인한다. Docker가 없으면 건너뛴다.
  */
 @Testcontainers(disabledWithoutDocker = true)
-@SpringBootTest
+@SpringBootTest(properties = {
+        // 운영(prod)과 같은 스키마 경로로 실행한다(OPS-C1) — 이전에는 속성을 지정하지 않아
+        // test 프로파일 기본값(Flyway off, ddl-auto=create-drop)을 그대로 썼다. 이 테스트가
+        // 잡으려는 FK 문제는 실제 마이그레이션이 만든 스키마(V19 등)에서만 의미가 있다.
+        "spring.flyway.enabled=true",
+        "spring.flyway.baseline-on-migrate=false",
+        "spring.jpa.hibernate.ddl-auto=validate",
+        "spring.session.jdbc.initialize-schema=never"
+})
 class PostDeleteWithRepliesMariaDbTest {
 
     @Container
     @ServiceConnection
-    static MariaDBContainer<?> mariadb = new MariaDBContainer<>("mariadb:11.7.2");
+    static MariaDBContainer mariadb = new MariaDBContainer("mariadb:11.7.2");
 
     @Autowired
     private PostService postService;

@@ -105,12 +105,13 @@ mkdir -p "$BACKUP_DIR"
 # 조용히 실패하는 경로도 없앤다.
 if (cd "$APP_DIR" && docker compose --env-file .env exec -T mariadb \
         sh -c 'MYSQL_PWD="$MARIADB_ROOT_PASSWORD" exec mariadb-dump -uroot --single-transaction "$MARIADB_DATABASE"') \
-        > "$BACKUP_DIR/pre-deploy-$STAMP.sql" 2>>"$LOG"; then
-    log "배포 전 DB 스냅샷: backups/pre-deploy-$STAMP.sql"
+        2>>"$LOG" | gzip > "$BACKUP_DIR/pre-deploy-$STAMP.sql.gz" \
+        && gzip -t "$BACKUP_DIR/pre-deploy-$STAMP.sql.gz"; then
+    log "배포 전 DB 스냅샷: backups/pre-deploy-$STAMP.sql.gz"
     # 최근 10개만 남긴다.
-    ls -1t "$BACKUP_DIR"/pre-deploy-*.sql 2>/dev/null | tail -n +11 | xargs -r rm -f
+    ls -1t "$BACKUP_DIR"/pre-deploy-*.sql.gz 2>/dev/null | tail -n +11 | xargs -r rm -f
 else
-    rm -f "$BACKUP_DIR/pre-deploy-$STAMP.sql"
+    rm -f "$BACKUP_DIR/pre-deploy-$STAMP.sql.gz"
     # 예전에는 경고만 남기고 jar 교체·재시작을 그대로 진행했다 — 마이그레이션이 포함된
     # 배포에서 스키마가 바뀌었는데 되돌릴 백업이 없는 상태로 넘어갈 수 있었다. 백업 없는
     # 배포보다는 배포 자체를 멈추는 쪽이 안전하다. jar는 아직 교체 전이므로 여기서 멈춰도

@@ -22,7 +22,10 @@ umask 077
 APP_DIR=/opt/kraft/app
 UPLOAD_DIR="$APP_DIR/uploads/images"
 BACKUP_DIR="$APP_DIR/backups/full"
-LOCK_FILE="$BACKUP_DIR/backup.lock"
+# BACKUP_DIR 밖에 둔다(OPS-G1) — 안에 두면 "오래된 백업 정리"의 ls -1 "$BACKUP_DIR" | sort -r
+# 목록에 이 파일도 걸려(파일명이 숫자보다 사전식으로 앞선다) KEEP_MIN개 중 하나를 락 파일이
+# 차지하게 되어, 실제로 보장되는 백업 개수가 하나 줄어든다.
+LOCK_FILE="$APP_DIR/backup.lock"
 LOG=/opt/kraft/backup.log
 # 오래된 백업을 정리하는 두 기준(아래 "오래된 백업 정리" 참고). 매일 도는 작업이 무한히
 # 쌓이면 디스크를 채우지만, 날짜 기준만으로 지우면 며칠 연속 실패하다 한 번 성공했을 때
@@ -83,11 +86,14 @@ log "───── 백업 시작 ($STAMP) ─────"
 #    실패해 조용히 스크립트가 죽는 경로 자체가 없다(개선 보고서 OPS-01).
 if ! (cd "$APP_DIR" && docker compose --env-file .env exec -T mariadb \
         sh -c 'MYSQL_PWD="$MARIADB_ROOT_PASSWORD" exec mariadb-dump -uroot --single-transaction "$MARIADB_DATABASE"') \
-        > "$TMP_DEST/db.sql" 2>>"$LOG"; then
+        2>>"$LOG" | gzip > "$TMP_DEST/db.sql.gz"; then
     fail "DB 덤프 실패"
 fi
-[ -s "$TMP_DEST/db.sql" ] || fail "덤프가 비어 있다"
-log "DB 덤프 완료: $(stat -c%s "$TMP_DEST/db.sql") 바이트"
+[ -s "$TMP_DEST/db.sql.gz" ] || fail "덤프가 비어 있다"
+# gzip 스트림이 중간에 잘리면(예: 덤프 도중 컨테이너 재시작) -s(비어 있지 않음) 검사는
+# 통과하지만 압축 무결성은 깨져 있다(OPS-G4) — 압축까지 마친 뒤 그 자체를 검증한다.
+gzip -t "$TMP_DEST/db.sql.gz" || fail "덤프 파일이 손상되었다(gzip 무결성 검사 실패) — 잘렸을 수 있다"
+log "DB 덤프 완료: $(stat -c%s "$TMP_DEST/db.sql.gz") 바이트(gzip)"
 
 # 2. 업로드 이미지. --single-transaction으로 DB 쪽은 일관된 스냅샷이지만, 이 tar는 별도
 #    시점에 파일시스템을 그대로 훑는다 — 그 사이(짧은 창)에 이미지가 새로 올라오거나
@@ -118,8 +124,8 @@ fi
 #    남긴다. 해시는 전송·보관 중 손상을 나중에 잡아낼 수 있게 한다.
 {
     echo "backup_timestamp=$(date -Is)"
-    echo "db_sql_bytes=$(stat -c%s "$TMP_DEST/db.sql")"
-    echo "db_sql_sha256=$(sha256sum "$TMP_DEST/db.sql" | cut -d' ' -f1)"
+    echo "db_sql_gz_bytes=$(stat -c%s "$TMP_DEST/db.sql.gz")"
+    echo "db_sql_gz_sha256=$(sha256sum "$TMP_DEST/db.sql.gz" | cut -d' ' -f1)"
     if [ -f "$TMP_DEST/uploads.tar.gz" ]; then
         echo "uploads_tar_bytes=$(stat -c%s "$TMP_DEST/uploads.tar.gz")"
         echo "uploads_tar_sha256=$(sha256sum "$TMP_DEST/uploads.tar.gz" | cut -d' ' -f1)"

@@ -1,0 +1,52 @@
+# 설치(최초 1회, 사람이 직접): 이 파일을 서버의 /etc/systemd/system/kraft.service로 복사하거나
+# 심볼릭 링크한 뒤 `sudo systemctl daemon-reload && sudo systemctl enable --now kraft`.
+# deploy-apply.sh는 배포마다 `systemctl restart kraft`만 하므로(설치는 하지 않는다) 유닛 파일
+# 자체를 바꿨다면 서버에서 다시 daemon-reload가 필요하다.
+[Unit]
+Description=Kraft (Spring Boot)
+# DB가 docker compose로 뜬다면 그 서비스가 먼저 올라와 있어야 한다. 실제 유닛 이름이
+# 다르면(docker.service 등) 이 줄을 서버 환경에 맞게 고친다.
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# 비루트로 실행한다(OPS-G6) — 이 계정이 배포 키가 쓰는 계정과 같을 필요는 없다.
+# deploy-apply.sh가 $APP_DIR 아래 파일을 이 계정 소유로 쓸 수 있어야 한다.
+User=kraft
+Group=kraft
+WorkingDirectory=/opt/kraft/app
+EnvironmentFile=/opt/kraft/app/.env
+
+# -XX:MaxRAMPercentage는 -Xmx를 고정 값으로 박아 두지 않아, 인스턴스 크기를 바꿔도 이
+# 유닛 파일을 다시 손대지 않아도 된다. 힙이 아니라도(메타스페이스·스레드 스택·다이렉트
+# 버퍼) OOM은 일어날 수 있으므로, 남는 몫을 50%로 넉넉히 둔다.
+# ExitOnOutOfMemoryError는 절반쯤 망가진 JVM이 애매하게 계속 도는 대신, systemd가 바로
+# 재시작하도록 깨끗하게 죽는다. HeapDumpPath는 그 직전 상태를 사후에 볼 수 있게 남긴다.
+ExecStart=/usr/bin/java \
+    -XX:MaxRAMPercentage=50.0 \
+    -XX:+ExitOnOutOfMemoryError \
+    -XX:+HeapDumpOnOutOfMemoryError \
+    -XX:HeapDumpPath=/opt/kraft/heapdumps \
+    -jar /opt/kraft/app/kraft.jar \
+    --spring.profiles.active=prod
+
+Restart=on-failure
+RestartSec=5
+
+# deploy-apply.sh의 헬스체크 대기(최악 약 150초)보다 넉넉하게 잡아, systemctl restart가
+# 이전 프로세스의 정상 종료를 충분히 기다리게 한다 — 짧으면 SIGKILL로 강제 종료되어
+# 진행 중이던 outbox 발송·이미지 정리 배치가 다음 커밋 없이 끊길 수 있다.
+TimeoutStopSec=30
+KillSignal=SIGTERM
+
+# 커널·마운트 네임스페이스 샌드박싱. 앱이 실제로 쓰는 쓰기 경로만 명시적으로 열어 둔다 —
+# 그 밖의 파일시스템은 ProtectSystem=strict로 읽기 전용이 된다.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/kraft/app/uploads /opt/kraft/app/backups /opt/kraft/heapdumps /opt/kraft/app/logs
+
+[Install]
+WantedBy=multi-user.target
