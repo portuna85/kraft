@@ -1,0 +1,18 @@
+# logrotate 설정(OPS-G2). deploy.log·backup.log는 append로만 자라고 자체적으로 회전하지
+# 않는다 — 애플리케이션 로그(logback-spring.xml)와 달리 이 두 파일은 쉘 스크립트가
+# `tee -a`/`>>`로 직접 쓰기 때문이다.
+#
+# 설치(최초 1회, 사람이 직접): 이 파일을 /etc/logrotate.d/kraft로 복사한다. 이후로는
+# 시스템의 logrotate(보통 cron.daily)가 알아서 돈다 — 별도 서비스 재시작이 필요 없다.
+#   sudo cp deploy/kraft-logrotate /etc/logrotate.d/kraft
+
+/opt/kraft/deploy.log /opt/kraft/backup.log {
+    weekly
+    rotate 12
+    compress
+    delaycompress
+    missingok
+    notifempty
+    # 두 로그 모두 umask 077로 쓰인다(스크립트 상단 참고) — 회전한 파일도 같은 권한을 유지한다.
+    create 0600 kraft kraft
+}

@@ -33,6 +33,13 @@ configurations[e2e.compileOnlyConfigurationName].extendsFrom(configurations.comp
 configurations[e2e.annotationProcessorConfigurationName].extendsFrom(configurations.annotationProcessor.get())
 configurations[e2e.runtimeOnlyConfigurationName].extendsFrom(configurations.runtimeOnly.get())
 
+// Mockito가 인라인 모킹에 쓰는 바이트코드 조작 에이전트를 테스트 실행 중에 동적으로(자기
+// 자신을) 붙인다 — JDK가 "A Java agent has been loaded dynamically … will be disallowed by
+// default in a future release"로 경고하는 경로다(OPS-A8, 향후 JDK에서는 실패로 바뀐다).
+// Mockito 공식 안내대로 별도 구성에서 mockito-core만 받아 -javaagent로 미리 붙여, 테스트가
+// 스스로 에이전트를 붙이지 않게 한다.
+val mockitoAgent = configurations.create("mockitoAgent")
+
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
@@ -43,6 +50,9 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-session-jdbc")
+    // 홈 화면 인기글처럼 요청마다 다시 계산할 필요가 없는 값을 짧게 캐시한다(BE-25).
+    implementation("org.springframework.boot:spring-boot-starter-cache")
+    implementation("com.github.ben-manes.caffeine:caffeine")
     implementation("org.springframework.boot:spring-boot-starter-mail")
     implementation("org.springframework.boot:spring-boot-flyway")
     implementation("org.flywaydb:flyway-mysql")
@@ -62,12 +72,22 @@ dependencies {
     testCompileOnly("org.projectlombok:lombok")
     testAnnotationProcessor("org.projectlombok:lombok")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    // Spring Boot의 의존성 관리 BOM이 버전을 관리하므로, 테스트 클래스패스에 이미 해석된
+    // mockito-core와 같은 버전이 받아진다.
+    mockitoAgent("org.mockito:mockito-core") { isTransitive = false }
+}
+
+// 두 산출물 모두 버전이 붙지 않는 고정 파일명을 쓴다(OPS-E3) — 예전에는 기본값
+// (kraft-0.0.1-SNAPSHOT(.jar|-e2e.jar))이 그대로 CI 워크플로·playwright.config.js에
+// 하드코딩되어 있어, 버전을 올리면(project.version) 세 곳을 함께 고쳐야 했다.
+tasks.named<BootJar>("bootJar") {
+    archiveFileName.set("kraft.jar")
 }
 
 tasks.register<BootJar>("bootE2eJar") {
     group = "build"
     description = "Builds the browser-test server with E2E fixtures and H2."
-    archiveClassifier.set("e2e")
+    archiveFileName.set("kraft-e2e.jar")
     mainClass.set("com.kraft.KraftApplication")
     targetJavaVersion.set(tasks.named<BootJar>("bootJar").flatMap { it.targetJavaVersion })
     classpath(e2e.runtimeClasspath)
@@ -110,6 +130,7 @@ tasks.withType<Test> {
     // 실제 데이터소스 설정을 그대로 쓰므로 이 프로파일이 없으면 Docker가 떠 있어야만 통과한다.
     systemProperty("spring.profiles.active", "test")
     systemProperty("logging.file.path", layout.buildDirectory.dir("test-logs").get().asFile.absolutePath)
+    jvmArgs("-javaagent:${mockitoAgent.asPath}")
 }
 
 /**

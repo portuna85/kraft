@@ -80,7 +80,7 @@ export default defineConfig({
     ],
 
     webServer: {
-        command: 'java -jar build/libs/kraft-0.0.1-SNAPSHOT-e2e.jar --spring.profiles.active=e2e',
+        command: 'java -jar build/libs/kraft-e2e.jar --spring.profiles.active=e2e',
         // /login은 permitAll이면서 Thymeleaf 렌더링과 CSRF 메타 생성을 모두 거친다.
         // "포트가 열렸다"가 아니라 "실제로 페이지를 준다"를 기다리게 된다.
         // (actuator는 커밋 1080614에서 의도적으로 제거했으므로 쓰지 않는다.)

@@ -169,8 +169,11 @@ fi
 log "헬스체크 실패. 이전 jar로 되돌린다"
 if [ -f "$PREVIOUS" ]; then
     # 실패한 jar를 그냥 지우지 않고 남겨 둔다 — 왜 헬스체크에 실패했는지 나중에 jar 자체를
-    # 들여다볼 수 있어야 한다(개선 보고서 OPS-01).
+    # 들여다볼 수 있어야 한다(개선 보고서 OPS-01). 다만 무한히 쌓이지는 않게, 배포 전
+    # 스냅샷과 같은 기준(최근 10개)으로 오래된 것부터 지운다(OPS-G2) — 실패 jar 하나가
+    # 수십MB라 방치하면 디스크를 채운다.
     mv "$JAR" "$APP_DIR/kraft.jar.failed-$STAMP"
+    ls -1t "$APP_DIR"/kraft.jar.failed-* 2>/dev/null | tail -n +11 | xargs -r rm -f
     mv "$PREVIOUS" "$JAR"
     # 예전에는 이 재시작 명령 자체가 실패해도(예: sudoers 설정 문제) set -e로 스크립트가
     # 곧바로 죽어, 아래 "롤백 실패" 로그조차 남기지 못했다. if로 감싸 어떤 경우든 원인을
