@@ -225,15 +225,20 @@ async function onSubmit() {
       aria-label="글자 크기 조절"
     >
       <button
-        v-for="(label, index) in ['가-', '가', '가+']"
-        :key="label"
+        v-for="(item, index) in [
+          { label: '가-', name: '글자 작게' },
+          { label: '가', name: '글자 보통' },
+          { label: '가+', name: '글자 크게' },
+        ]"
+        :key="item.label"
         type="button"
         class="btn btn-sm btn-outline-secondary post-font-controls__btn"
         :class="{ 'is-active': fontScaleIndex === index }"
         :aria-pressed="fontScaleIndex === index"
+        :aria-label="item.name"
         @click="setFontScaleIndex(index)"
       >
-        {{ label }}
+        {{ item.label }}
       </button>
     </div>
 

@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "Kraft의 CSS·Vue 빌드, 정적 검사와 브라우저 테스트. 생성 자산을 커밋하므로 Gradle 빌드는 Node.js 없이 실행할 수 있다.",
+  "engines": {
+    "node": ">=24"
+  },
   "browserslist": [
     "iOS >= 15",
     "last 2 Chrome versions",

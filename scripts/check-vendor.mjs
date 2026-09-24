@@ -41,4 +41,22 @@ if (vendorVersion !== installedVersion) {
     process.exit(1);
 }
 
-console.log(`vendor/bootstrap.min.js가 설치된 버전(${installedVersion})과 일치한다.`);
+// 버전 배너만 같고 본문이 달라도 여태 통과했다(개선 보고서 FE-24) — 누가 벤더 파일만 손으로
+// 고쳐도(또는 복사 절차를 건너뛰어도) 위 배너 비교로는 잡히지 않는다. sourceMappingURL 주석
+// 줄만 제외하고(이 파일은 소스맵을 커밋하지 않으므로 설치본에는 그 줄이 있다) 바이트 단위로
+// 비교한다.
+const stripSourceMap = (text) => text.replace(/\n\/\/# sourceMappingURL=.*\n?$/, '\n');
+
+const installedPath = join(repoRoot, 'node_modules/bootstrap/dist/js/bootstrap.min.js');
+const installedContent = stripSourceMap(readFileSync(installedPath, 'utf8'));
+const vendorContent = stripSourceMap(readFileSync(vendorPath, 'utf8'));
+
+if (installedContent !== vendorContent) {
+    console.error(
+        `${vendorPath}의 내용이 설치된 ${installedPath}와 다르다(버전 배너는 같다). `
+        + '이 스크립트 상단 주석의 절차대로 다시 복사한다.',
+    );
+    process.exit(1);
+}
+
+console.log(`vendor/bootstrap.min.js가 설치된 버전(${installedVersion})과 바이트까지 일치한다.`);
