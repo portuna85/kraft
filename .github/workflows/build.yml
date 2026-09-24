@@ -120,10 +120,17 @@ jobs:
   # 취약점을 아예 모르는 것과는 다른 문제다 — 이 제출은 PR을 만들지 않고 알림만 준다.
   # main 푸시에서만 돈다(그래프는 브랜치 하나만 추적하면 충분하고, PR은 fork에서 오면
   # 어차피 이 제출에 필요한 쓰기 권한이 없다).
+  #
+  # continue-on-error: 이 저장소는 "Dependency graph" 저장소 설정이 꺼져 있어(공개 저장소인데도
+  # GitHub REST API의 security_and_analysis에 이 항목 자체가 없어 API로는 켤 수 없다 — 반드시
+  # Settings → Security → Code security and analysis 화면에서 수동으로 켜야 한다) 이 잡이 항상
+  # "Dependency graph is disabled for this repository" 로 실패한다. 이 잡은 알림용 부가 기능일
+  # 뿐 test·e2e·deploy와 무관하므로, 설정을 켤 때까지 워크플로 전체를 빨갛게 만들지 않는다.
   dependency-graph:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    continue-on-error: true
     permissions:
       contents: write
     steps:
