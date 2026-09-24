@@ -155,18 +155,48 @@ public class ReportService {
         }
         Report report = findPendingReport(id);
         User admin = findUser(authentication);
+        // 한 번만 조회해 아래 삭제 여부 판정에도 재사용한다(BE-16) — 예전에는 여기와
+        // deleteTarget() 안에서 같은 대상을 각각 한 번씩, 총 두 번 조회했다.
         Optional<User> targetAuthor = targetAuthorOf(report.getTargetType(), report.getTargetId());
+        // 대상을 지우기 전에 그 아래 딸린 댓글 id를 먼저 기록해 둔다(BE-16) — 지운 뒤에는
+        // 조회할 수 없다. 게시글이면 그 댓글 전체, 최상위 댓글이면 그 답글이 함께 지워진다.
+        List<Long> cascadedCommentIds = cascadedCommentIdsFor(report);
 
-        deleteTarget(report, authentication);
+        if (targetAuthor.isPresent()) {
+            // 관리자 권한으로 기존 삭제 경로를 그대로 탄다(이미지 정리·소유권 검사 포함).
+            if (report.getTargetType() == ReportTargetType.POST) {
+                postService.delete(report.getTargetId(), authentication);
+            } else {
+                commentService.delete(report.getTargetId(), authentication);
+            }
+        }
         if (suspendDays > 0) {
             targetAuthor.ifPresent(author -> suspend(author, report, suspendDays));
         }
         report.resolve(admin);
         resolveOthersOnSameTarget(report, admin);
+        resolveCascadedReports(cascadedCommentIds, admin);
 
         log.info("신고를 처리했습니다(대상 삭제{}). reportId={}, targetType={}, targetId={}",
                 suspendDays > 0 ? ", 작성자 " + suspendDays + "일 정지" : "",
                 report.getId(), report.getTargetType(), report.getTargetId());
+    }
+
+    private List<Long> cascadedCommentIdsFor(Report report) {
+        if (report.getTargetType() == ReportTargetType.POST) {
+            return commentRepository.findIdsByPostId(report.getTargetId());
+        }
+        return commentRepository.findIdsByParentId(report.getTargetId());
+    }
+
+    /** 대상 삭제로 함께 사라진 댓글·답글에 걸린 대기 신고를 마저 닫는다(BE-16). */
+    private void resolveCascadedReports(List<Long> cascadedCommentIds, User admin) {
+        if (cascadedCommentIds.isEmpty()) {
+            return;
+        }
+        reportRepository.findByTargetTypeAndTargetIdInAndStatus(
+                        ReportTargetType.COMMENT, cascadedCommentIds, ReportStatus.PENDING)
+                .forEach(report -> report.resolve(admin));
     }
 
     private void suspend(User author, Report report, int days) {
@@ -182,18 +212,6 @@ public class ReportService {
         report.reject(findUser(authentication));
 
         log.info("신고를 반려했습니다. reportId={}", report.getId());
-    }
-
-    private void deleteTarget(Report report, Authentication authentication) {
-        if (targetAuthorOf(report.getTargetType(), report.getTargetId()).isEmpty()) {
-            return;
-        }
-        // 관리자 권한으로 기존 삭제 경로를 그대로 탄다(이미지 정리·소유권 검사 포함).
-        if (report.getTargetType() == ReportTargetType.POST) {
-            postService.delete(report.getTargetId(), authentication);
-        } else {
-            commentService.delete(report.getTargetId(), authentication);
-        }
     }
 
     private void resolveOthersOnSameTarget(Report handled, User admin) {

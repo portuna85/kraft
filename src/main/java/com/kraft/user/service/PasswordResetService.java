@@ -69,8 +69,10 @@ public class PasswordResetService {
             return;
         }
         // 쿨다운 검사와 재발급을 계정 단위로 직렬화한다(B07) — 그래야 두 동시 요청이 같은
-        // "마지막 발송 시각"을 동시에 읽고 둘 다 쿨다운을 통과하는 경쟁이 없어진다.
-        userRepository.findByIdForUpdate(user.getId());
+        // "마지막 발송 시각"을 동시에 읽고 둘 다 쿨다운을 통과하는 경쟁이 없어진다. 잠금
+        // 조회 결과를 실제로 쓴다(BE-15) — 지금은 id만 더 읽지만, 결과를 버리는 습관을
+        // 남겨 두면 나중에 다른 필드를 추가하는 사람이 같은 함정에 빠질 수 있다.
+        user = userRepository.findByIdForUpdate(user.getId()).orElse(user);
 
         if (requestedTooRecently(user.getId())) {
             log.info("비밀번호 재설정 요청이 너무 잦아 보내지 않았습니다. userId={}", user.getId());

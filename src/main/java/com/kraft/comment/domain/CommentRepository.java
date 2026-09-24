@@ -41,6 +41,22 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
                                             Pageable pageable);
 
     /**
+     * 게시글을 지우기 전에 그 아래 모든 댓글(최상위+답글) id를 미리 알아 둔다(BE-16,
+     * {@code ReportService}) — 삭제는 이 댓글들을 함께 지우는데(cascade), 지운 뒤에는 어떤
+     * 댓글이 있었는지 조회할 수 없다. 그 댓글들에 걸린 대기 신고를 함께 처리하려면 삭제
+     * 직전에 이 id 목록이 필요하다.
+     */
+    @Query("SELECT c.id FROM Comment c WHERE c.post.id = :postId")
+    List<Long> findIdsByPostId(@Param("postId") Long postId);
+
+    /**
+     * 최상위 댓글을 지우기 전에 그 답글 id를 미리 알아 둔다 — {@link #findIdsByPostId}와
+     * 같은 이유(BE-16). 답글 자신을 지울 때는(부모가 없으므로) 빈 목록이 나와 안전하다.
+     */
+    @Query("SELECT c.id FROM Comment c WHERE c.parent.id = :parentId")
+    List<Long> findIdsByParentId(@Param("parentId") Long parentId);
+
+    /**
      * 여러 부모의 "최초 답글"을 한 번에 가져온다(BE-08) — {@code CommentService.pageForView}가
      * 예전에는 최상위 댓글마다(최대 {@link #findRepliesByParentIdAsc}) 따로 호출해 페이지당
      * 최대 20회의 추가 쿼리를 냈다. MariaDB의 {@code ROW_NUMBER() OVER (PARTITION BY ...)}로

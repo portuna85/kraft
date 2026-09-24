@@ -150,9 +150,22 @@
         <appender-ref ref="ERROR_FILE"/>
     </logger>
 
-    <root level="INFO">
-        <appender-ref ref="CONSOLE"/>
-        <appender-ref ref="FILE"/>
-        <appender-ref ref="ERROR_FILE"/>
-    </root>
+    <!-- BE-28: prod는 systemd(deploy/kraft.service)로 뜨고 StandardOutput을 따로 지정하지
+         않으므로 journald가 stdout을 기본으로 수집한다. CONSOLE과 FILE(kraft.log)이 같은
+         내용을 두 곳(journal + 파일)에 중복해서 남기게 되므로, prod에서는 CONSOLE을 뺀다 —
+         파일 쪽(FILE·ERROR_FILE)이 이미 회전·보관 정책을 갖춘 원본이다. 다른 프로파일
+         (local·test)은 콘솔에서 바로 보는 편이 개발에 더 유용해 그대로 둔다. -->
+    <springProfile name="prod">
+        <root level="INFO">
+            <appender-ref ref="FILE"/>
+            <appender-ref ref="ERROR_FILE"/>
+        </root>
+    </springProfile>
+    <springProfile name="!prod">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+            <appender-ref ref="ERROR_FILE"/>
+        </root>
+    </springProfile>
 </configuration>

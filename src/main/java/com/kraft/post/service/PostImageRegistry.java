@@ -4,6 +4,7 @@ import com.kraft.post.domain.Post;
 import com.kraft.post.domain.PostImage;
 import com.kraft.post.domain.PostImageRepository;
 import com.kraft.post.domain.PostImageStatus;
+import com.kraft.shared.transaction.OnRollback;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ public class PostImageRegistry {
 
     private final PostImageRepository postImageRepository;
     private final UserRepository userRepository;
+    private final PostImageService postImageService;
 
     /**
      * 업로드 파일을 검사하고 대장에 올린다. 이 시점에는 아직 어떤 게시글에도 속하지 않으므로
@@ -65,6 +67,11 @@ public class PostImageRegistry {
                 .owner(owner)
                 .sizeBytes(sizeBytes)
                 .build());
+        // 이 메서드 안에서는 저장이 성공해도, 반환 이후 이 트랜잭션의 최종 커밋 자체가 실패할
+        // 수 있다(개선 보고서 "파일 저장 성공 후 최종 커밋 실패 시 대장 없는 파일") — 그 실패는
+        // 여기 catch로 잡을 수 없다. BE-23로 파일 쓰기가 이 트랜잭션 밖(PostService.uploadImage)
+        // 으로 옮겨가면서, 그 보상도 이 트랜잭션을 실제로 갖고 있는 여기로 함께 옮겼다.
+        OnRollback.run(() -> postImageService.deleteIfExists(url));
     }
 
     /**

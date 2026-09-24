@@ -35,7 +35,11 @@ logging:
   level:
     # O06: spring.jpa.show-sql는 System.out에 별도로 SQL을 찍는다 — 이 로거와 함께 켜 두면
     # 같은 SQL이 두 번 출력돼 테스트 로그를 읽기 어렵게 하고 I/O 비용만 는다. 로거 하나로 합쳤다.
-    org.hibernate.SQL: debug
+    # 기본은 warn으로 낮춰 둔다(OPS-A6) — debug로 항상 켜 두면 전체 테스트 로그에 SQL 수천
+    # 줄이 섞여 build/test-logs가 부풀고(실측 16MB) 정작 필요할 때 찾기도 어려웠다. 특정
+    # 클래스의 쿼리를 살펴봐야 하면 그 테스트에서만
+    # `@TestPropertySource(properties = "logging.level.org.hibernate.SQL=debug")`로 켠다.
+    org.hibernate.SQL: warn
 
 app:
   security:

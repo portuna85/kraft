@@ -125,13 +125,21 @@ public class OutboxMailWorker {
     @Scheduled(initialDelayString = "${app.mail.drain-initial-delay-ms:30000}",
             fixedDelayString = "${app.mail.drain-interval-ms:60000}")
     public void drainScheduled() {
+        if (!enabled) {
+            return;
+        }
+        // 정체 재처리는 예약 경로에서만 한다(BE-22) — 예전에는 drain() 안에 있어 가입·재발송
+        // 폭주 시 겹쳐 도는 drainAsync 호출마다 매번 잠금 스캔(requeueStuck)이 함께 돌았다.
+        // 정체 재처리는 "발송 도중 프로세스가 죽어 SENDING인 채 남은 것"을 되돌리는 안전망일
+        // 뿐이라 빈도가 중요하지 않다 — 예약 주기 한 번이면 충분하다.
+        store.requeueStuck(LocalDateTime.now().minus(Duration.ofMillis(stuckAfterMs)));
         drain();
     }
 
     /**
-     * {@code enabled} 검사와 정체 재처리를 예약 실행에서만 하던 것을 여기로 옮겼다.
-     * 예전에는 {@code app.mail.enabled=false}로 꺼도 가입 직후 {@code drainAsync}가 그대로
-     * 발송을 진행했다 — 공유 진입점에서 한 번만 검사하면 두 경로 모두 같은 규칙을 따른다.
+     * {@code enabled} 검사를 예약 실행에서만 하던 것을 여기로 옮겼다. 예전에는
+     * {@code app.mail.enabled=false}로 꺼도 가입 직후 {@code drainAsync}가 그대로 발송을
+     * 진행했다 — 공유 진입점에서 한 번만 검사하면 두 경로 모두 같은 규칙을 따른다.
      * <p>
      * 배치 안의 발송은 {@code maxConcurrentSends}로 제한한 가상 스레드로 동시에 실행한다.
      * 각 발송은 서로 다른 메일이라 순서를 지킬 이유가 없고, 이 메서드는 배치 전체가 끝날
@@ -142,12 +150,15 @@ public class OutboxMailWorker {
      * 소유권을 비운 뒤, 같은 워커 인스턴스가 곧바로 그 행을 다시 집으면 새 시도도 똑같은
      * (예전과 동일한) 토큰을 쓰게 되어, 그사이 뒤늦게 도착한 이전 시도의 결과가 "지금도 내
      * 토큰"으로 오인되어 새 시도를 덮어쓸 수 있었다. 매번 새 UUID를 쓰면 이 창이 사라진다.
+     * <p>
+     * 겹쳐 도는 drain() 호출 자체는 막지 않는다(가입 폭주 시 흔함) — {@link #sendPermits}가
+     * 이미 모든 drain 호출이 공유하는 총 동시성 상한이라, 겹쳐도 안전하고(B04) 서로 다른
+     * 메일을 나눠 처리해 오히려 전체 처리량에 도움이 된다.
      */
     public void drain() {
         if (!enabled) {
             return;
         }
-        store.requeueStuck(LocalDateTime.now().minus(Duration.ofMillis(stuckAfterMs)));
         String ownerToken = UUID.randomUUID().toString();
         List<Long> ids = store.claimBatch(batchSize, ownerToken);
         if (ids.isEmpty()) {

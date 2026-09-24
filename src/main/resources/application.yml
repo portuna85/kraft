@@ -25,6 +25,14 @@ spring:
   profiles:
     default: local
 
+  # 홈 화면 인기글(BE-25)처럼 요청마다 다시 계산할 필요가 없는 값을 짧게 캐시한다. maximumSize는
+  # 지금 쓰는 캐시 이름(popularPosts)이 하나뿐이라 작게 잡아도 충분하다 — 캐시가 늘어나면
+  # 그때 다시 본다. expireAfterWrite 45초는 "너무 낡은 인기글을 보여주지 않는다"와 "홈 화면
+  # 트래픽이 몰려도 DB를 매번 두드리지 않는다" 사이의 절충값이다.
+  cache:
+    caffeine:
+      spec: maximumSize=500,expireAfterWrite=45s
+
   jpa:
     open-in-view: false
     properties:
@@ -124,6 +132,16 @@ spring:
       # 리셋되고, ApiExceptionHandler가 413을 내려주기도 전에 클라이언트는 본문 없는 응답만
       # 받는다(로컬 실측으로 확인 — ApiExceptionHandler.handleUploadTooLarge() 주석 참고).
       resolve-lazily: true
+
+  task:
+    scheduling:
+      shutdown:
+        # 재배포 때 systemctl restart가 이미 진행 중인 예약 작업(outbox 발송, 이미지 정리
+        # 배치 등)을 SIGTERM으로 그대로 끊지 않고, 진행 중인 작업이 끝날 때까지 잠깐
+        # 기다리게 한다(BE-29). deploy/kraft.service의 TimeoutStopSec(30s)보다 짧게 잡아,
+        # 이 대기가 다 차기 전에 systemd의 강제 종료(SIGKILL)로 넘어가지 않게 한다.
+        await-termination: true
+        await-termination-period: 25s
 
   threads:
     virtual:
@@ -259,3 +277,11 @@ app:
   # 이메일 인증 링크를 만들 때 붙일 기본 URL. 운영에서는 실제 배포 도메인으로 덮어써야 한다
   # (application-prod.yml 참고).
   base-url: http://localhost:8080
+
+# 요청 상관관계 id를 로그 줄마다 남긴다(BE-28, RequestIdFilter). 전체 패턴을 새로 쓰는 대신
+# LOG_LEVEL_PATTERN만 이 값으로 바꿔치기한다 — logback-spring.xml의 모든 appender가 이미
+# ${FILE_LOG_PATTERN}을 통해 이 값을 참조하므로, 콘솔·파일 모두 한 곳만 바꾸면 함께 반영된다.
+# 요청과 무관한 로그(예약 작업 등)는 MDC가 비어 있어 대괄호 안이 빈 채로 찍힌다.
+logging:
+  pattern:
+    level: "%5p [%X{requestId:-}]"

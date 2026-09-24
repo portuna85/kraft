@@ -23,6 +23,7 @@ import com.kraft.shared.transaction.OnRollback;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -63,13 +64,40 @@ public class PostService {
      * {@link PostImageCleaner}는 DB에 등록된 파일만 찾으므로 그 파일을 영영 발견하지 못했다
      * (개선 보고서 "파일 저장 성공 후 DB 롤백 시 대장 없는 파일").
      * <p>
-     * 등록이 이 메서드 안에서는 성공해도, 반환 이후 바깥 트랜잭션의 <b>최종 커밋 자체</b>가
-     * 실패할 수 있다(개선 보고서 "파일 저장 성공 후 최종 커밋 실패 시 대장 없는 파일") — 그
-     * 실패는 메서드 안의 {@code catch}로 잡을 수 없으므로, 트랜잭션이 커밋 이외로 끝나면
-     * 파일을 지우는 보상을 {@link OnRollback}으로 등록해 둔다. 그래도 놓치는 경우(커밋 직후
-     * 프로세스 종료 등)의 최후 수단은 별도의 주기적 디스크-대장 대조가 맡는다.
+     * 등록이 {@link PostImageRegistry#validateQuotaAndRegister}(자신의 트랜잭션) 안에서는
+     * 성공해도, 반환 이후 <b>그 트랜잭션의 최종 커밋 자체</b>가 실패할 수 있다(개선 보고서
+     * "파일 저장 성공 후 최종 커밋 실패 시 대장 없는 파일") — 그 보상({@link OnRollback})은
+     * 실제로 그 트랜잭션을 여는 {@code validateQuotaAndRegister} 안에 등록되어 있다. 그래도
+     * 놓치는 경우(커밋 직후 프로세스 종료 등)의 최후 수단은 별도의 주기적 디스크-대장 대조가
+     * 맡는다.
+     * <p>
+     * 이 메서드는 {@code SUPPORTS}로 돈다(BE-23) — 파일 형식 검증(ImageIO 디코드 포함)과
+     * 디스크 쓰기({@code postImageService.store})는 DB를 전혀 쓰지 않는데, 평범한
+     * {@code @Transactional}로 감싸면 그 시간만큼 DB 커넥션이 아무 일도 안 하며 붙잡혀
+     * 있었다. 실제 DB 작업(쿼터 검사 + 등록)은 {@code validateQuotaAndRegister}가 맡는다.
+     * <p>
+     * {@code SUPPORTS}(readOnly=false 명시)를 고른 이유는 두 가지를 동시에 만족해야 하기
+     * 때문이다:
+     * <ol>
+     * <li>실제 호출 경로(REST 컨트롤러, 바깥 트랜잭션 없음)에서는 이 메서드가 트랜잭션을
+     * 새로 열지 않는다(SUPPORTS는 이미 트랜잭션이 있을 때만 참여하고, 없으면 트랜잭션
+     * 없이 그대로 실행한다) — 그래서 파일 I/O 동안 커넥션을 붙잡지 않는다는 목적이
+     * 그대로 유지된다.</li>
+     * <li>{@code PostImageLifecycleTest}의 "바깥 트랜잭션이 커밋되지 않으면 저장한 파일도
+     * 함께 없어진다"처럼, 이 메서드를 감싸는 바깥 트랜잭션이 <b>이미 있는</b> 상황에서는
+     * 그 트랜잭션에 그대로 참여해야 한다 — 그래야 그 안에서 부른
+     * {@code validateQuotaAndRegister}(REQUIRED)의 등록도 같은 트랜잭션에 묶이고,
+     * 바깥이 롤백되면 등록도 함께 롤백되며 {@code OnRollback} 보상도 제대로 걸린다.</li>
+     * </ol>
+     * {@code @Transactional}을 아예 생략하면(클래스 기본값 {@code readOnly = true}를 그대로
+     * 물려받아) 바깥 트랜잭션이 없을 때도 이 메서드가 읽기 전용 트랜잭션으로 실행되고,
+     * REQUIRED로 참여한 {@code validateQuotaAndRegister}의 쓰기(SELECT ... FOR UPDATE 포함)가
+     * MariaDB에서 "Cannot execute statement in a READ ONLY transaction"으로 실패했다
+     * (H2는 이 제약을 강제하지 않아 처음엔 못 잡았다 — BackupRestoreRehearsalTest에서 실제로
+     * 재현). 반대로 {@code NOT_SUPPORTED}를 쓰면 이번에는 바깥에 이미 트랜잭션이 있어도
+     * 무조건 중단시켜, 위 2번(바깥 트랜잭션과의 합류)이 깨진다 — 그래서 SUPPORTS가 맞다.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.SUPPORTS, readOnly = false)
     public String uploadImage(MultipartFile file, Authentication authentication) {
         User user = findUser(authentication);
         WriteAccessPolicy.requireVerified(user);
@@ -81,7 +109,6 @@ public class PostService {
             postImageService.deleteIfExists(url);
             throw e;
         }
-        OnRollback.run(() -> postImageService.deleteIfExists(url));
         return url;
     }
 
@@ -205,7 +232,12 @@ public class PostService {
      * 인기글 템플릿은 제목·조회수만 보여주고 댓글 수는 쓰지 않는다(index.html 확인). 예전에는
      * 여기서도 목록과 같은 댓글 수 집계 쿼리를 돌렸다(개선 보고서 "게시판 목록의 불필요한 열과
      * 집계") — 화면에 쓰이지 않는 값을 매번 계산한 것이다.
+     * <p>
+     * 홈 화면 진입마다 매번 다시 계산하지 않고 짧게 캐시한다(BE-25, TTL·크기는
+     * application.yml의 spring.cache.caffeine.spec). 새 글의 조회수가 인기글 순위에 반영되는
+     * 데 최대 캐시 유효시간만큼 지연이 생길 수 있지만, 실시간성이 중요한 값이 아니다.
      */
+    @Cacheable("popularPosts")
     public List<PostsListResponseDto> findPopular(int limit) {
         List<PostRowDto> rows = postRepository.findTopByViewCountDesc(PageRequest.of(0, limit));
         return rows.stream()

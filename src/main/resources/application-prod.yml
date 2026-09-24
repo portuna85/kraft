@@ -16,6 +16,10 @@ spring:
       # 대기 시간을 줄여 그런 정체를 30초가 아니라 5초 안에 실패로 드러낸다.
       maximum-pool-size: 20
       connection-timeout: 5000
+      # max-lifetime(기본 30분)이 운영 MariaDB의 wait_timeout보다 짧아야, 서버가 먼저 끊어
+      # 버린 죽은 커넥션을 Hikari가 살아있다고 믿고 내줬다가 실패하는 일이 없다(BE-29,
+      # [확인 필요]). 운영 DB에서 SHOW VARIABLES LIKE 'wait_timeout'으로 확인한 뒤, 그 값보다
+      # 충분히 짧게 이 항목을 명시하는 것을 권장한다 — 기본값(30분)이 이미 더 짧다면 변경 불필요.
 
   jpa:
     hibernate:

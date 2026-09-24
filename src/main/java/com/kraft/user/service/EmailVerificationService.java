@@ -15,6 +15,8 @@ import com.kraft.user.mail.OutboxMailStore;
 import com.kraft.user.mail.OutboxMailWorker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +47,21 @@ public class EmailVerificationService {
     private final OutboxMailStore outboxMailStore;
     private final OutboxMailWorker outboxMailWorker;
     private final ExpiredTokenPurger expiredTokenPurger;
+
+    /**
+     * 자기 자신의 프록시(BE-19). {@link #sendVerificationEmailSafely}가 self-invocation으로
+     * {@link #sendVerificationEmail}을 직접 부르면 그 메서드의 {@code @Transactional}이
+     * 적용되지 않고(프록시를 거치지 않으므로) 호출자의 트랜잭션(또는 무트랜잭션)을 그대로
+     * 쓴다 — 과거에는 둘 다 같은 트랜잭션을 썼는데, 안에서 DB 예외가 나면 그 트랜잭션이
+     * rollback-only로 표시되고, catch로 잡아도 메서드가 정상 반환하는 순간 커밋을 시도하다
+     * {@code UnexpectedRollbackException}이 던져져 회원가입 응답이 500이 됐다(계정 생성
+     * 자체는 이미 별도 트랜잭션으로 커밋되어 있었는데도). {@code self}를 거치면
+     * {@code sendVerificationEmail}이 독립된 새 트랜잭션을 열고, 그 트랜잭션만 rollback-only가
+     * 되므로 여기서 잡은 예외가 더 이상 밖으로 새지 않는다.
+     */
+    @Lazy
+    @Autowired
+    private EmailVerificationService self;
 
     /**
      * 인증 토큰을 만들고 메일을 <b>대기열에 넣는다.</b> 실제 발송은 이 트랜잭션이 커밋된 뒤
@@ -95,16 +112,17 @@ public class EmailVerificationService {
      * 이 메서드가 막아 주는 것이 이제 SMTP 오류는 아니다. 발송은 대기열에 들어간 뒤 별도 흐름에서
      * 일어나므로 여기까지 올라오지 않는다. 남은 것은 토큰·대기열 저장이 실패하는 경우다.
      * <p>
-     * {@code @Transactional}을 명시하는 이유는 그대로다. 이 메서드가 내부에서
-     * {@code sendVerificationEmail(email)}을 호출하는 것은 self-invocation이라 Spring 프록시를
-     * 거치지 않으므로, 그 메서드의 {@code @Transactional}(쓰기 가능)이 무시되고 클래스 레벨의
-     * {@code readOnly = true}가 적용된다. H2는 읽기 전용 트랜잭션에서도 INSERT를 관대하게
-     * 허용해 로컬에서는 드러나지 않았지만 MariaDB는 엄격히 거부한다(Docker 검증 중 실제로 재현).
+     * {@code @Transactional}을 붙이지 않는다(BE-19) — {@link #self}를 통해 부르는
+     * {@link #sendVerificationEmail}이 자신의 독립된 새 트랜잭션을 열게 하기 위해서다. 예전에는
+     * 이 메서드도 {@code @Transactional}이었는데, 내부에서 {@code sendVerificationEmail(email)}을
+     * self-invocation(프록시를 거치지 않는 직접 호출)으로 불러 같은 트랜잭션을 공유했다. 그
+     * 안에서 DB 예외가 나면 그 트랜잭션이 rollback-only로 표시되고, catch로 잡아도 이 메서드가
+     * 정상 반환하는 순간 커밋을 시도하다 {@code UnexpectedRollbackException}이 던져져 회원가입
+     * 응답이 500이 됐다(계정 생성 자체는 이미 별도 트랜잭션으로 커밋되어 있었는데도).
      */
-    @Transactional
     public void sendVerificationEmailSafely(String email) {
         try {
-            sendVerificationEmail(email);
+            self.sendVerificationEmail(email);
         } catch (Exception e) {
             log.warn("인증 메일을 대기열에 넣지 못했습니다. email={}", EmailMasker.mask(email), e);
         }
@@ -153,8 +171,12 @@ public class EmailVerificationService {
                 .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
 
         // 쿨다운 검사와 재발급을 계정 단위로 직렬화한다(B07) — 그래야 두 동시 요청이 같은
-        // "마지막 발송 시각"을 동시에 읽고 둘 다 쿨다운을 통과하는 경쟁이 없어진다.
-        userRepository.findByIdForUpdate(user.getId());
+        // "마지막 발송 시각"을 동시에 읽고 둘 다 쿨다운을 통과하는 경쟁이 없어진다. 잠금
+        // 조회 결과를 실제로 써야 한다(BE-15) — 영속성 컨텍스트가 이미 들고 있던 인스턴스를
+        // 그대로 반환하므로, 결과를 버리면 아래 getRole()이 잠금 전(다른 트랜잭션이 아직
+        // 커밋하지 않았을 수 있는) 상태를 볼 수 있다.
+        user = userRepository.findByIdForUpdate(user.getId()).orElseThrow(
+                () -> new NotFoundException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
 
         if (user.getRole() != Role.GUEST) {
             throw new IllegalArgumentException("이미 인증된 계정입니다.");

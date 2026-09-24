@@ -71,6 +71,10 @@ class EmailVerificationServiceTest {
     void setUp() {
         emailVerificationService = new EmailVerificationService(tokenRepository, userRepository, userService,
                 outboxMailStore, outboxMailWorker, expiredTokenPurger);
+        // 운영에서는 Spring이 self(BE-19, @Lazy @Autowired)를 프록시로 채운다. 순수 Mockito
+        // 단위 테스트에는 그 주입이 없으므로 자기 자신을 가리키게 해 NPE 대신 실제 로직을
+        // 태우게 한다 — 트랜잭션 경계 자체는 이 계층에서 검증 대상이 아니다.
+        ReflectionTestUtils.setField(emailVerificationService, "self", emailVerificationService);
     }
 
     private static User userWithId(Long id, String email) {
@@ -268,6 +272,8 @@ class EmailVerificationServiceTest {
         User verifiedUser = User.builder().name("tester").email("tester@example.com").password("encoded").role(Role.USER).build();
         ReflectionTestUtils.setField(verifiedUser, "id", 1L);
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(verifiedUser));
+        // resend는 쿨다운 검사를 계정 단위로 직렬화하려고 잠금 조회 결과를 실제로 쓴다(BE-15).
+        given(userRepository.findByIdForUpdate(1L)).willReturn(Optional.of(verifiedUser));
 
         assertThatThrownBy(() -> emailVerificationService.resend("tester@example.com"))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -282,6 +288,8 @@ class EmailVerificationServiceTest {
     void resend_whenUserIsGuest_deletesOldTokenAndResendsEmail() {
         User user = userWithId(1L, "tester@example.com");
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(user));
+        // resend는 쿨다운 검사를 계정 단위로 직렬화하려고 잠금 조회 결과를 실제로 쓴다(BE-15).
+        given(userRepository.findByIdForUpdate(1L)).willReturn(Optional.of(user));
 
         emailVerificationService.resend("tester@example.com");
 

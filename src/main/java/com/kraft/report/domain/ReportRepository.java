@@ -23,5 +23,13 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
     List<Report> findByTargetTypeAndTargetIdAndStatus(
             ReportTargetType targetType, Long targetId, ReportStatus status);
 
+    /**
+     * 게시글·최상위 댓글을 지우면 그 아래 댓글·답글도 함께 지워진다(cascade) — 그 자식들에
+     * 걸린 대기 신고도 같이 처리해야 한다(BE-16). 그렇지 않으면 대상이 이미 사라졌는데도
+     * PENDING으로 남아 {@code reports-pending} 알림만 부풀린다.
+     */
+    List<Report> findByTargetTypeAndTargetIdInAndStatus(
+            ReportTargetType targetType, List<Long> targetIds, ReportStatus status);
+
     long countByStatus(ReportStatus status);
 }

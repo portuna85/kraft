@@ -183,16 +183,33 @@ class BackupRestoreRehearsalTest {
         return new Seeded(email, seeded.postId, seeded.pictureUrl);
     }
 
-    /** README의 {@code mariadb-dump} 명령 그대로다. 운영자가 하듯 덤프 파일을 호스트로 꺼내 온다. */
+    /**
+     * deploy/backup.sh의 덤프 명령과 같은 모양(gzip 압축, OPS-G3/OPS-C4)으로 맞춘다.
+     * <p>
+     * 완전히 같지는 않다 — 운영은 {@code docker compose exec} 컨테이너 안에서 root 계정을
+     * {@code MYSQL_PWD}로 쓰는데, 이 테스트는 Testcontainers가 만든 앱 계정(-p 인자)을 그대로
+     * 쓴다(OPS-C4, [확인 필요]) — {@code MariaDBContainer}가 root 자격 증명을 별도로 노출하지
+     * 않아, 트리거 {@code DEFINER}·권한 차이까지 이 테스트가 검증하지는 못한다.
+     */
     private Path backupDatabase() {
         exec("mariadb-dump -u" + mariadb.getUsername() + " -p" + mariadb.getPassword()
-                + " --single-transaction " + mariadb.getDatabaseName() + " > /tmp/backup.sql");
+                + " --single-transaction " + mariadb.getDatabaseName() + " | gzip > /tmp/backup.sql.gz");
+
+        Path dumpGz = tempDir("dump").resolve("backup.sql.gz");
+        mariadb.copyFileFromContainer("/tmp/backup.sql.gz", dumpGz.toString());
+        assertThat(dumpGz).as("덤프가 비어 있으면 백업이 아니라 빈 파일을 보관해 온 것이다").isNotEmptyFile();
 
         Path dump = tempDir("dump").resolve("backup.sql");
-        mariadb.copyFileFromContainer("/tmp/backup.sql", dump.toString());
-
-        assertThat(dump).as("덤프가 비어 있으면 백업이 아니라 빈 파일을 보관해 온 것이다").isNotEmptyFile();
+        gunzip(dumpGz, dump);
         return dump;
+    }
+
+    private void gunzip(Path source, Path target) {
+        try (var in = new java.util.zip.GZIPInputStream(java.nio.file.Files.newInputStream(source))) {
+            java.nio.file.Files.copy(in, target);
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
     }
 
     /** 장애 상황을 만든다 — DB도 업로드 파일도 사라진다. */
