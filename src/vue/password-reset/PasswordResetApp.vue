@@ -100,7 +100,6 @@ async function onSubmit() {
     <div class="btn-group-gap">
       <a
         href="/login"
-        role="button"
         class="btn btn-secondary"
       >취소</a>
       <button

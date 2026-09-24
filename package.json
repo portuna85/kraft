@@ -4,6 +4,12 @@
   "private": true,
   "type": "module",
   "description": "Kraft의 CSS·Vue 빌드, 정적 검사와 브라우저 테스트. 생성 자산을 커밋하므로 Gradle 빌드는 Node.js 없이 실행할 수 있다.",
+  "browserslist": [
+    "iOS >= 15",
+    "last 2 Chrome versions",
+    "last 2 Firefox versions",
+    "last 2 Edge versions"
+  ],
   "scripts": {
     "lint": "eslint src/main/resources/static/js e2e src/vue scripts playwright.config.js eslint.config.js && npm run typecheck",
     "test:e2e": "playwright test",
@@ -26,6 +32,7 @@
     "@vitejs/plugin-vue": "^6.0.9",
     "bootstrap": "^5.3.8",
     "eslint": "^9.37.0",
+    "eslint-plugin-compat": "^7.0.2",
     "eslint-plugin-vue": "^10.11.0",
     "globals": "^16.5.0",
     "sass": "^1.104.1",

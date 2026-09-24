@@ -37,7 +37,7 @@
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
                 <input type="hidden" name="redirect" th:if="${param.redirect != null}" th:value="${param.redirect[0]}" />
                 <div class="btn-group-gap">
-                    <a href="/" role="button" class="btn btn-secondary">취소</a>
+                    <a href="/" class="btn btn-secondary">취소</a>
                     <button type="submit" class="btn btn-primary">로그인</button>
                 </div>
             </form>

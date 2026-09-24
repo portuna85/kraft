@@ -33,7 +33,16 @@ export function init() {
     });
 
     on(byId('reportModal'), 'hidden.bs.modal', () => {
-        pending?.trigger?.focus();
+        // 댓글 목록은 Vue가 다시 그리므로(delete-confirm.js와 같은 이유, F09), 모달이 열려
+        // 있는 동안 trigger가 이미 DOM에서 사라졌을 수 있다 — 사라진 요소에 focus()는 조용히
+        // 무시되어 포커스가 body로 떨어진다. 트리거가 아직 있으면 그대로 돌아가고, 없으면
+        // (댓글 신고만 해당 — 게시글 신고 버튼은 Vue가 다시 그리지 않아 사라지지 않는다)
+        // 댓글 영역 제목(tabindex="-1")으로 옮긴다.
+        if (pending?.trigger && document.contains(pending.trigger)) {
+            pending.trigger.focus();
+        } else {
+            byId('comments-heading')?.focus();
+        }
         pending = null;
     });
 

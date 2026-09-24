@@ -27,6 +27,10 @@ const props = defineProps({
     initialHasMore: { type: Boolean, required: true },
 });
 
+// 로그인 후 이 글로 돌아오게 한다(FE-16) — navbar의 로그인 링크와 같은 규칙이다
+// (NavModelAdvice.currentPath). 예전에는 href="/login"만 써서 로그인 뒤 홈으로 떨어졌다.
+const loginHref = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+
 const comments = reactive([...props.initialComments]);
 const totalCount = ref(props.initialTotalCount);
 const hasMore = ref(props.initialHasMore);
@@ -302,6 +306,6 @@ onUnmounted(() => window.removeEventListener('kraft:comment-deleted', onExternal
     v-else
     class="comments__login-hint"
   >
-    <a href="/login">로그인 후 댓글을 작성할 수 있습니다.</a>
+    <a :href="loginHref">로그인 후 댓글을 작성할 수 있습니다.</a>
   </p>
 </template>

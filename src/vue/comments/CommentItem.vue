@@ -184,7 +184,9 @@ function formatDate(iso) {
     >
       <div class="comment-list__head">
         <strong>{{ comment.author }}</strong>
-        <small class="text-muted">{{ formatDate(comment.createdAt) }}</small>
+        <small class="text-muted">
+          <time :datetime="comment.createdAt">{{ formatDate(comment.createdAt) }}</time>
+        </small>
       </div>
       <p class="comment-list__content">
         {{ comment.content }}
@@ -197,6 +199,7 @@ function formatDate(iso) {
           ref="editButton"
           type="button"
           class="btn btn-sm btn-outline-secondary btn-comment-edit"
+          :aria-label="`${comment.author}의 댓글 수정`"
           @click="startEdit"
         >
           수정
@@ -205,6 +208,7 @@ function formatDate(iso) {
           type="button"
           class="btn btn-sm btn-outline-danger btn-comment-delete"
           data-target-kind="comment"
+          :aria-label="`${comment.author}의 댓글 삭제`"
         >
           삭제
         </button>
@@ -215,6 +219,7 @@ function formatDate(iso) {
           ref="replyButton"
           type="button"
           class="btn btn-sm btn-outline-secondary btn-comment-reply"
+          :aria-label="`${comment.author}의 댓글에 답글 달기`"
           @click="startReply"
         >
           답글
@@ -230,6 +235,7 @@ function formatDate(iso) {
           type="button"
           class="btn btn-sm btn-outline-secondary btn-comment-report"
           data-report-kind="comment"
+          :aria-label="`${comment.author}의 댓글 신고`"
         >
           신고
         </button>
@@ -238,6 +244,7 @@ function formatDate(iso) {
           ref="replyButton"
           type="button"
           class="btn btn-sm btn-outline-secondary btn-comment-reply"
+          :aria-label="`${comment.author}의 댓글에 답글 달기`"
           @click="startReply"
         >
           답글

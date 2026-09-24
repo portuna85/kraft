@@ -32,7 +32,7 @@
             <input type="search" id="search-q" name="q" class="form-control board-search__input"
                    placeholder="제목·내용 검색" th:value="${q}">
             <label for="search-category" class="visually-hidden">분류</label>
-            <select id="search-category" name="category" class="form-control board-search__category"
+            <select id="search-category" name="category" class="form-select board-search__category"
                     th:classappend="${category != null} ? ' is-active' : ''">
                 <option value="" th:selected="${category == null}">전체 분류</option>
                 <option th:each="c : ${categories}" th:value="${c}" th:text="${c.title}"

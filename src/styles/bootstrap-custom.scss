@@ -11,12 +11,29 @@
 // 이 파일을 고치면 `npm run build:css`로 다시 만들어 커밋해야 한다. Gradle 빌드는 Node 없이
 // 돌아야 하므로 생성물을 저장소에 둔다(CI가 최신인지 검사한다).
 
+@use "sass:list";
 @use "sass:map";
 
 // ── 필수 배관 (CSS를 만들지 않는다) ───────────────────────────────────────────
 @import "functions";
+
+// 다크모드를 쓰지 않는다(FE-10) — [data-bs-theme=dark] 규칙 자체를 만들지 않게 한다.
+// variables 임포트보다 먼저 둬야 그 기본값(true)이 적용되기 전에 덮어쓴다.
+$enable-dark-mode: false;
+
 @import "variables";
-@import "variables-dark";
+
+// $theme-colors 8개 중 실제로 쓰는 4개만 남긴다(FE-09) — 버튼(.btn-primary/-secondary/-danger,
+// 각각의 outline)과 배경(.bg-success/-danger)이 쓰는 색뿐이다. maps.scss가 이 맵에서
+// $theme-colors-rgb 등을 파생시키므로 그 import보다 먼저 바꿔야 한다. info/warning/light/dark는
+// 템플릿·JS 어디에도 없다(2026-09-24 기준 grep으로 확인).
+$theme-colors: (
+    "primary": $primary,
+    "secondary": $secondary,
+    "success": $success,
+    "danger": $danger,
+);
+
 @import "maps";
 @import "mixins";
 @import "utilities";
@@ -28,9 +45,17 @@ $used-utilities: (
     "margin", "margin-top", "margin-end", "margin-bottom", "margin-start",
     "color", "background-color"
 );
+// margin 계열은 기본값이 반응형(responsive: true)이라 브레이크포인트마다(6개) 같은 규칙이
+// 복제된다(FE-08) — 실제 쓰는 값(mb-0/mb-1/mb-3/mt-2/mt-3/ms-2/me-auto)은 전부 브레이크포인트
+// 접두어가 없는 기본 형태뿐이다.
+$non-responsive-utilities: ("margin", "margin-top", "margin-end", "margin-bottom", "margin-start");
 $filtered: ();
 @each $key in $used-utilities {
-    $filtered: map.merge($filtered, ($key: map.get($utilities, $key)));
+    $utility: map.get($utilities, $key);
+    @if list.index($non-responsive-utilities, $key) {
+        $utility: map.merge($utility, (responsive: false));
+    }
+    $filtered: map.merge($filtered, ($key: $utility));
 }
 $utilities: $filtered;
 
@@ -43,7 +68,13 @@ $utilities: $filtered;
 @import "transitions";  // .fade — 모달·토스트의 페이드
 @import "buttons";      // .btn 계열
 @import "close";        // .btn-close — 모달·토스트 닫기
-@import "forms";        // .form-control, .form-select, .form-text, .invalid-feedback(.is-invalid)
+// forms 전체(@import "forms") 대신 실제로 쓰는 하위 조각만 개별 임포트한다(FE-10) —
+// form-check/form-range/floating-labels/input-group은 템플릿·Vue 어디에도 없다.
+@import "forms/labels";
+@import "forms/form-text";
+@import "forms/form-control";
+@import "forms/form-select";
+@import "forms/validation";  // .invalid-feedback, .is-invalid
 @import "alert";        // 로그인 화면의 성공·실패 안내
 @import "modal";        // .modal-backdrop, .modal-open 등 JS가 붙이는 클래스 포함
 @import "toasts";

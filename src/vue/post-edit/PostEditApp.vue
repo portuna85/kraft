@@ -16,6 +16,10 @@ const props = defineProps({
     authenticated: { type: Boolean, required: true },
 });
 
+// 로그인 후 이 글로 돌아오게 한다(FE-16) — navbar의 로그인 링크와 같은 규칙
+// (NavModelAdvice.currentPath)이다. 예전에는 href="/login"만 써서 로그인 뒤 홈으로 떨어졌다.
+const loginHref = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+
 const mode = ref('view'); // 'view' | 'edit'
 const original = reactive({
     title: props.post.title,
@@ -248,6 +252,8 @@ async function onSubmit() {
       <img
         :src="post.picture"
         alt="게시글 첨부 이미지"
+        loading="lazy"
+        decoding="async"
       >
     </div>
 
@@ -284,7 +290,7 @@ async function onSubmit() {
       class="post-actions"
     >
       추천 <span>{{ post.likeCount }}</span>개 ·
-      <a href="/login">로그인 후 추천할 수 있습니다.</a>
+      <a :href="loginHref">로그인 후 추천할 수 있습니다.</a>
     </p>
 
     <!-- 신고는 남의 글에만 보인다. 자기 글은 서버도 거절한다(직접 지우면 된다). -->
@@ -446,8 +452,11 @@ async function onSubmit() {
       </div>
     </div>
 
+    <!-- v-show(display:none) 대신 항상 렌더링한 채 텍스트만 바꾼다(FE-16) — 라이브 리전이
+         display:none 상태였다가 나타나는 것과 동시에 내용이 채워지면, 스크린 리더 구현에
+         따라 그 변화를 놓칠 수 있다. 비어 있을 때는 내용이 없어 화면에 거의 티가 나지
+         않는다. -->
     <p
-      v-show="progressText"
       id="post-update-progress"
       class="form-progress"
       aria-live="polite"

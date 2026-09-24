@@ -1,6 +1,7 @@
 import js from '@eslint/js';
 import globals from 'globals';
 import vuePlugin from 'eslint-plugin-vue';
+import compat from 'eslint-plugin-compat';
 
 /**
  * 정적 검사 설정.
@@ -45,6 +46,16 @@ export default [
             eqeqeq: ['error', 'smart'],
             'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
         },
+    },
+    // FE-21: 이 앱이 주장하는 지원 하한(iOS 15, package.json의 browserslist)을 순수 JS에도
+    // 강제한다. Vue 산출물은 vite.config.js의 target: 'ios15'가 esbuild 변환으로 이미 맞추지만,
+    // 이 폴더는 번들링 없이 그대로 서빙되므로 새 문법·런타임 API를 걸러 줄 도구가 없었다 —
+    // 지금까지는 코드 주석으로만 피해 왔다(CommentsApp.vue의 .at() 회피 등). languageOptions는
+    // 위 블록의 bootstrap 전역 선언과 합쳐지도록 여기서는 plugins·rules만 추가한다.
+    {
+        files: ['src/main/resources/static/js/**/*.js'],
+        plugins: { compat },
+        rules: { 'compat/compat': 'error' },
     },
 
     // Playwright 설정·스펙과 빌드 검사 스크립트(둘 다 Node에서 돈다, F03).
