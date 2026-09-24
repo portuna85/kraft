@@ -3,6 +3,7 @@ package com.kraft.config.security;
 import com.kraft.shared.web.SafeRedirect;
 import com.kraft.user.service.SessionRevoker;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -44,6 +45,23 @@ public class SecurityConfig {
             ObjectMapper objectMapper) {
         return new AuthRateLimitFilter(enabled, loginPerMinute, loginAccountPerMinute, signupPerMinute,
                 passwordResetPerMinute, resendPerMinute, objectMapper);
+    }
+
+    /**
+     * 일반 {@code Filter} 빈은 Spring Boot가 서블릿 컨테이너에도 자동 등록한다(기본
+     * urlPatterns {@code /*}) — 아래 {@link #filterChain}이 이미 이 필터를 보안 체인의 정확한
+     * 위치(UsernamePasswordAuthenticationFilter 앞)에 등록하므로, 서블릿 컨테이너 등록은
+     * 같은 요청을 한 번 더(순서 보장 없이) 태우기만 할 뿐이다(개선 보고서 BE-30).
+     * {@code OncePerRequestFilter}라 두 번째 실행은 조용히 no-op이지만, 의도치 않은 이중
+     * 등록 자체를 막는다.
+     */
+    @Bean
+    public FilterRegistrationBean<AuthRateLimitFilter> authRateLimitFilterRegistration(
+            AuthRateLimitFilter authRateLimitFilter) {
+        FilterRegistrationBean<AuthRateLimitFilter> registration =
+                new FilterRegistrationBean<>(authRateLimitFilter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     /**

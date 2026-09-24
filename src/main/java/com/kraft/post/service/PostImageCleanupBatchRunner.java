@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -104,13 +103,11 @@ class PostImageCleanupBatchRunner {
         if (page.isEmpty()) {
             return OrphanClaimResult.empty(afterId);
         }
-        List<Long> claimedIds = new ArrayList<>();
-        for (PostImage image : page) {
-            if (postImageRepository.claimExpiredOrphanForDeletion(image.getId(), threshold) > 0) {
-                claimedIds.add(image.getId());
-            }
-            // 0건이면 조회 이후 다른 트랜잭션이 먼저 연결했다는 뜻이다 — 건드리지 않는다.
-        }
+        // 건당 UPDATE 최대 200회 대신 한 번의 UPDATE로 배치 전체를 선점한다(개선 보고서 BE-24).
+        // 조건에서 빠진(그 사이 다른 트랜잭션이 연결한) id는 아래 재조회로 걸러진다.
+        List<Long> pageIds = page.stream().map(PostImage::getId).toList();
+        postImageRepository.claimExpiredOrphansForDeletion(pageIds, threshold);
+        List<Long> claimedIds = postImageRepository.findIdsByIdInAndStatus(pageIds, PostImageStatus.PENDING_DELETE);
         return new OrphanClaimResult(claimedIds, page.get(page.size() - 1).getId(), page.size());
     }
 

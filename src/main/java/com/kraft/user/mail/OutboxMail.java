@@ -37,7 +37,9 @@ import java.time.LocalDateTime;
         // V7의 IX_OUTBOX_MAILS_USER(user_id, id)는 V23에서 지웠다 — 아래 USER_KIND가 왼쪽
         // 접두사로 이미 포함해 남는 쓰기 비용만 만들었다(개선 보고서 PERF-05).
         @Index(name = "IX_OUTBOX_MAILS_USER_KIND", columnList = "user_id, kind, id"), // V14
-        @Index(name = "IX_OUTBOX_MAILS_STATUS_NEXT_ATTEMPT", columnList = "status, next_attempt_at"), // V15
+        // V15의 IX_OUTBOX_MAILS_STATUS_NEXT_ATTEMPT(status, next_attempt_at)는 V25에서
+        // 지웠다 — claim 쿼리는 next_attempt_at을 필터로만 쓰고 실제 정렬은 id라, 위의
+        // STATUS_ID(status, id)가 이미 이 쿼리를 커버한다(개선 보고서 BE-11).
 })
 public class OutboxMail extends BaseEntity {
 

@@ -55,7 +55,8 @@ class PostImageCleanupBatchRunnerTest {
         given(postImageRepository.findAllByStatusAndCreatedAtBeforeAndIdGreaterThanOrderByIdAsc(
                 eq(PostImageStatus.ORPHAN), any(LocalDateTime.class), eq(0L), any(Pageable.class)))
                 .willReturn(List.of(image("attached-in-between.png", 1L)));
-        given(postImageRepository.claimExpiredOrphanForDeletion(eq(1L), any(LocalDateTime.class))).willReturn(0);
+        given(postImageRepository.findIdsByIdInAndStatus(List.of(1L), PostImageStatus.PENDING_DELETE))
+                .willReturn(List.of());
 
         PostImageCleanupBatchRunner.OrphanClaimResult result =
                 batchRunner.claimExpiredOrphansBatch(0L, LocalDateTime.now());
@@ -74,7 +75,8 @@ class PostImageCleanupBatchRunnerTest {
         given(postImageRepository.findAllByStatusAndCreatedAtBeforeAndIdGreaterThanOrderByIdAsc(
                 eq(PostImageStatus.ORPHAN), any(LocalDateTime.class), eq(0L), any(Pageable.class)))
                 .willReturn(List.of(image("expired.png", 1L)));
-        given(postImageRepository.claimExpiredOrphanForDeletion(eq(1L), any(LocalDateTime.class))).willReturn(1);
+        given(postImageRepository.findIdsByIdInAndStatus(List.of(1L), PostImageStatus.PENDING_DELETE))
+                .willReturn(List.of(1L));
 
         PostImageCleanupBatchRunner.OrphanClaimResult result =
                 batchRunner.claimExpiredOrphansBatch(0L, LocalDateTime.now());

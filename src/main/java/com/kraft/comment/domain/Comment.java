@@ -15,9 +15,9 @@ import lombok.NoArgsConstructor;
 @Entity
 @NoArgsConstructor
 @Table(name = "comments", indexes = {
-        // V6__image_quota_and_search_indexes.sql. 엔티티에 선언이 없어 ddl-auto: update로
-        // 만든 기존 DB에는 이 인덱스가 생기지 않았다(개선 보고서 O01).
-        @Index(name = "IX_COMMENTS_POST", columnList = "post_id"),
+        // V6__image_quota_and_search_indexes.sql의 IX_COMMENTS_POST(post_id)는 V25에서
+        // 지웠다 — 아래 POST_PARENT_ID가 왼쪽 접두사로 post_id를 이미 포함해 남는 쓰기
+        // 비용만 만들었다(개선 보고서 BE-11).
         @Index(name = "IX_COMMENTS_PARENT", columnList = "parent_id"),
         // CommentRepository.findPageByPostIdAsc가 post_id = ? AND parent_id IS NULL을 id
         // 순으로 훑는다(V23, 개선 보고서 PERF-05).

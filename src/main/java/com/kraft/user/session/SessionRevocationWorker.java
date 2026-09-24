@@ -27,9 +27,6 @@ public class SessionRevocationWorker {
 
     private final SessionRevocationStore store;
 
-    /** 이 인스턴스가 집은 태스크임을 구분하기 위한 값. 처리 로직은 소유권 확인에만 쓴다. */
-    private final String ownerToken = UUID.randomUUID().toString();
-
     /**
      * {@code false}면 예약 실행과 {@link #attemptNow}(커밋 직후 빠른 경로) 모두 막는다.
      * 이메일 키 교체(rekey) 창에서 이 워커가 옛 키로 암호화된 {@code email_snapshot}을
@@ -68,11 +65,18 @@ public class SessionRevocationWorker {
      * 재설정·탈퇴 응답이 세션이 실제로 끊긴 뒤에 돌아온다는 것이 F04의 핵심 보장이다.
      * {@code claimSpecific}/{@code processOne}이 여는 {@code REQUIRES_NEW} 커넥션은 이
      * 메서드가 실행되는 짧은 시간만 추가로 물린다.
+     * <p>
+     * 소유 토큰은 호출마다 새로 만든다(개선 보고서 BE-20, {@code OutboxMailWorker.drain}과 같은
+     * COR-03 패턴) — 이 워커 인스턴스가 생성될 때 만든 토큰 하나를 모든 호출이 공유하면, 정체
+     * 재큐잉이 어떤 행의 소유권을 비운 뒤 같은 인스턴스가 곧바로 그 행을 다시 집을 때 새 시도도
+     * 똑같은 토큰을 쓰게 되어, 뒤늦게 도착한 이전 시도의 결과가 "지금도 내 토큰"으로 오인되어
+     * 새 시도를 덮어쓸 수 있었다.
      */
     public void attemptNow(Long taskId) {
         if (!enabled) {
             return;
         }
+        String ownerToken = UUID.randomUUID().toString();
         store.claimSpecific(taskId, ownerToken).ifPresent(id -> store.processOne(id, ownerToken));
     }
 
@@ -83,6 +87,7 @@ public class SessionRevocationWorker {
             return;
         }
         store.requeueStuck(LocalDateTime.now().minus(Duration.ofMillis(stuckAfterMs)));
+        String ownerToken = UUID.randomUUID().toString();
         List<Long> ids = store.claimBatch(batchSize, ownerToken);
         for (Long id : ids) {
             store.processOne(id, ownerToken);

@@ -26,9 +26,10 @@ import java.time.LocalDateTime;
         // V11__user_suspension.sql. 엔티티에 선언이 없어 ddl-auto: update로 만든 기존 DB에는
         // 이 인덱스가 생기지 않았다(개선 보고서 O01).
         @Index(name = "IX_USERS_SUSPENDED_UNTIL", columnList = "suspended_until"),
-        // V9__user_withdrawal.sql. 마찬가지로 엔티티에 선언이 없었다(개선 보고서 O01). 탈퇴
-        // 계정을 세는 운영 질의와 로그인 조회의 제외 조건이 함께 쓴다.
-        @Index(name = "IX_USERS_WITHDRAWN_AT", columnList = "withdrawn_at"),
+        // V9__user_withdrawal.sql의 IX_USERS_WITHDRAWN_AT(withdrawn_at)는 V25에서 지웠다 —
+        // withdrawnAt을 거르는 쿼리(UserRepository.findGuestsMissingVerificationMail)가 실제로는
+        // role=GUEST를 선두 조건으로 쓰는 IX_USERS_ROLE_CREATED_AT을 타고, 이 컬럼 단독으로
+        // 쓰는 쿼리는 없었다(개선 보고서 BE-11).
         // GuestVerificationSweeper가 role=GUEST AND created_at < 임계값으로 훑는다(V23, 개선
         // 보고서 PERF-05).
         @Index(name = "IX_USERS_ROLE_CREATED_AT", columnList = "role, created_at"),

@@ -78,4 +78,22 @@ public interface PostImageRepository extends JpaRepository<PostImage, Long> {
             + "WHERE p.id = :id AND p.status = com.kraft.post.domain.PostImageStatus.ORPHAN "
             + "AND p.createdAt < :threshold")
     int claimExpiredOrphanForDeletion(@Param("id") Long id, @Param("threshold") LocalDateTime threshold);
+
+    /**
+     * {@link #claimExpiredOrphanForDeletion}의 배치판(개선 보고서 BE-24) — 한 배치(최대
+     * {@code PostImageCleaner.CLEANUP_BATCH_SIZE}건)를 건당 UPDATE 대신 한 번의 UPDATE로
+     * 선점한다. 이 UPDATE만으로는 그 사이 다른 트랜잭션이 연결(ATTACHED로 전이)해 조건에서
+     * 빠진 id를 구분할 수 없으므로, 호출하는 쪽이 {@link #findIdsByIdInAndStatus}로 실제로
+     * PENDING_DELETE가 된 id만 다시 가려낸다.
+     */
+    @Modifying
+    @Query("UPDATE PostImage p SET p.status = com.kraft.post.domain.PostImageStatus.PENDING_DELETE, "
+            + "p.version = p.version + 1 "
+            + "WHERE p.id IN :ids AND p.status = com.kraft.post.domain.PostImageStatus.ORPHAN "
+            + "AND p.createdAt < :threshold")
+    int claimExpiredOrphansForDeletion(@Param("ids") List<Long> ids, @Param("threshold") LocalDateTime threshold);
+
+    /** 위 {@link #claimExpiredOrphansForDeletion} 실행 후, 실제로 선점에 성공한 id만 가려낸다. */
+    @Query("SELECT p.id FROM PostImage p WHERE p.id IN :ids AND p.status = :status")
+    List<Long> findIdsByIdInAndStatus(@Param("ids") List<Long> ids, @Param("status") PostImageStatus status);
 }

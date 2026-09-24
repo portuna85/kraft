@@ -8,6 +8,7 @@ import com.kraft.shared.exception.NotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -174,14 +175,22 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     /**
-     * 편집 충돌을 409로 변환한다. 화면이 편집을 시작할 때 받아간 게시글 버전과 저장 시점의
-     * DB 버전이 다르면(그 사이 다른 곳에서 저장됨) {@code PostService.update()}가 이 예외를
-     * 던진다. 예전에는 나중 저장이 먼저 저장을 말없이 덮어썼다.
+     * 편집 충돌을 409로 변환한다. 화면이 편집을 시작할 때 받아간 버전과 저장 시점의 DB 버전이
+     * 다르면(그 사이 다른 곳에서 저장됨) {@code PostService.update()}/{@code CommentService.update()}가
+     * 이 예외를 던진다. 예전에는 나중 저장이 먼저 저장을 말없이 덮어썼다.
+     * <p>
+     * 실제로 던져지는 것은 {@link ObjectOptimisticLockingFailureException}이라 어느 엔티티가
+     * 충돌했는지 {@code getPersistentClassName()}으로 알 수 있다(개선 보고서 BE-21) — 예전에는
+     * 이 이름을 무시하고 "글"로만 고정 안내해, 댓글 수정 충돌에도 "이미 수정된 글입니다"라고
+     * 잘못 안내했다.
      */
     @ExceptionHandler(OptimisticLockingFailureException.class)
     public ProblemDetail handleEditConflict(OptimisticLockingFailureException e) {
+        String className = e instanceof ObjectOptimisticLockingFailureException oe
+                ? oe.getPersistentClassName() : null;
+        String subject = className != null && className.endsWith(".Comment") ? "댓글" : "글";
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
-                "다른 곳에서 이미 수정된 글입니다. 새로고침 후 다시 시도해 주세요.");
+                "다른 곳에서 이미 수정된 " + subject + "입니다. 새로고침 후 다시 시도해 주세요.");
     }
 
     /**

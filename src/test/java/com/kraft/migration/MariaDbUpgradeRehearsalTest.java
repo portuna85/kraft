@@ -130,18 +130,20 @@ class MariaDbUpgradeRehearsalTest {
 
         // V23(PERF-05)이 엔티티에서 IX_OUTBOX_MAILS_USER 선언을 지웠으므로(IX_OUTBOX_MAILS_USER_KIND가
         // 왼쪽 접두사로 이미 포함) ddl-auto: update로 만든 이 DB에도 더는 생기지 않는다 — 그래서
-        // outbox_mails 기대 목록에서도 함께 뺐다.
+        // outbox_mails 기대 목록에서도 함께 뺐다. V25(BE-11)가 같은 이유로 IX_COMMENTS_POST(다른
+        // 인덱스가 왼쪽 접두사로 포함), IX_OUTBOX_MAILS_STATUS_NEXT_ATTEMPT(IX_OUTBOX_MAILS_STATUS_ID가
+        // claim 쿼리를 이미 커버), IX_USERS_WITHDRAWN_AT(단독으로 쓰는 쿼리가 없음)를 마저 지웠다.
         Map<String, List<String>> expectedIndexesByTable = Map.of(
-                "users", List.of("IX_USERS_SUSPENDED_UNTIL", "IX_USERS_WITHDRAWN_AT", "IX_USERS_ROLE_CREATED_AT"),
+                "users", List.of("IX_USERS_SUSPENDED_UNTIL", "IX_USERS_ROLE_CREATED_AT"),
                 "posts", List.of("IX_POSTS_CATEGORY_ID", "IX_POSTS_VIEW_COUNT"),
-                "comments", List.of("IX_COMMENTS_POST", "IX_COMMENTS_POST_PARENT_ID"),
+                "comments", List.of("IX_COMMENTS_POST_PARENT_ID"),
                 "post_images", List.of("IX_POST_IMAGES_OWNER", "IX_POST_IMAGES_STATUS_CREATED_AT_ID"),
                 "email_verification_tokens", List.of("IX_EVT_EXPIRES_AT"),
                 "password_reset_tokens", List.of("IX_PASSWORD_RESET_TOKENS_EXPIRES_AT", "IX_PASSWORD_RESET_TOKENS_USER"),
                 "reports", List.of("IX_REPORTS_STATUS_ID", "IX_REPORTS_TARGET"),
                 "outbox_mails", List.of(
                         "IX_OUTBOX_MAILS_STATUS_ID", "IX_OUTBOX_MAILS_STATUS_UPDATED",
-                        "IX_OUTBOX_MAILS_USER_KIND", "IX_OUTBOX_MAILS_STATUS_NEXT_ATTEMPT"));
+                        "IX_OUTBOX_MAILS_USER_KIND"));
 
         expectedIndexesByTable.forEach((table, indexNames) -> indexNames.forEach(indexName ->
                 assertThat(indexExists(jdbc, table, indexName))

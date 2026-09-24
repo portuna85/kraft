@@ -1,7 +1,9 @@
 package com.kraft.user.session;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -38,7 +40,15 @@ public interface SessionRevocationTaskRepository extends JpaRepository<SessionRe
     int markProcessingIfPending(@Param("id") Long id, @Param("now") LocalDateTime now,
                                  @Param("ownerToken") String ownerToken);
 
-    /** 지금도 이 {@code ownerToken}이 소유한 PROCESSING 행일 때만 값을 꺼낸다. */
+    /**
+     * 지금도 이 {@code ownerToken}이 소유한 PROCESSING 행일 때만 값을 꺼낸다.
+     * <p>
+     * 비관적 쓰기 잠금을 잡아 {@link #findByStatusAndUpdatedAtBefore}(requeueStuck 전용,
+     * 마찬가지로 잠근다)와 서로 배타적으로 돈다(개선 보고서 BE-20,
+     * {@code OutboxMailRepository.findSendingByIdAndOwnerTokenForUpdate}와 같은 COR-03 패턴) —
+     * 마침 처리 결과를 반영하는 도중인 행을 재큐잉이 동시에 건드리지 않는다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<SessionRevocationTask> findByIdAndOwnerTokenAndStatus(
             Long id, String ownerToken, SessionRevocationTaskStatus status);
 
@@ -46,7 +56,10 @@ public interface SessionRevocationTaskRepository extends JpaRepository<SessionRe
      * 처리 도중 프로세스가 죽으면 PROCESSING인 채로 오래 남는다. requeueStuck이 이 목록을
      * 배치로 나눠 집는다(B11) — {@code OutboxMailRepository.findByStatusAndUpdatedAtBefore}와
      * 같은 이유로 {@code Pageable}을 받는다. 대량 적체 시 전체를 한 번에 로딩하지 않는다.
+     * <p>
+     * 비관적 쓰기 잠금은 위 {@link #findByIdAndOwnerTokenAndStatus}(processOne 전용) 참고.
      */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<SessionRevocationTask> findByStatusAndUpdatedAtBefore(
             SessionRevocationTaskStatus status, LocalDateTime threshold, Pageable pageable);
 
