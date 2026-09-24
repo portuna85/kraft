@@ -63,6 +63,11 @@ public class SessionRevocationWorker {
      * 커밋 직후 곧바로 한 번 시도한다. 방금 만든 태스크 하나만 처리하므로 응답 지연은 세션
      * 폐기 자체(빠른 DB 작업)만큼만 늘어난다. 실패해도 태스크는 이미 커밋되어 있으므로
      * {@link #drainScheduled}가 이어받는다.
+     * <p>
+     * 동기로 유지한다(비동기 디스패치는 BE-09 검토 중 시도했다가 되돌렸다) — 비밀번호 변경·
+     * 재설정·탈퇴 응답이 세션이 실제로 끊긴 뒤에 돌아온다는 것이 F04의 핵심 보장이다.
+     * {@code claimSpecific}/{@code processOne}이 여는 {@code REQUIRES_NEW} 커넥션은 이
+     * 메서드가 실행되는 짧은 시간만 추가로 물린다.
      */
     public void attemptNow(Long taskId) {
         if (!enabled) {

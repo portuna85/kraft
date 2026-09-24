@@ -1,6 +1,7 @@
 package com.kraft.comment.service;
 
 import com.kraft.comment.domain.Comment;
+import com.kraft.shared.exception.NotFoundException;
 import com.kraft.comment.domain.CommentRepository;
 import com.kraft.comment.dto.CommentPageDto;
 import com.kraft.comment.dto.CommentSaveRequestDto;
@@ -134,13 +135,13 @@ class CommentServiceTest {
     }
 
     @Test
-    @DisplayName("save: 회원이 없으면 IllegalArgumentException")
+    @DisplayName("save: 회원이 없으면 NotFoundException")
     void save_whenUserNotFound_throwsIllegalArgumentException() {
         given(postRepository.findById(1L)).willReturn(Optional.of(postOf(1L)));
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> commentService.save(1L, authOf("nobody@example.com", Role.USER), new CommentSaveRequestDto("내용", null)))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("존재하지 않는 회원");
 
         verify(commentRepository, never()).save(any());
@@ -215,7 +216,8 @@ class CommentServiceTest {
         Comment reply = replyOf(owner, 200L, topLevel);
         given(commentRepository.findPageByPostIdAsc(1L, null, PageRequest.of(0, 21))).willReturn(List.of(topLevel));
         given(commentRepository.countRepliesByParentIdIn(List.of(100L))).willReturn(Map.of(100L, 1L));
-        given(commentRepository.findRepliesByParentIdAsc(eq(100L), isNull(), any(PageRequest.class))).willReturn(List.of(reply));
+        given(commentRepository.findInitialRepliesGroupedByParentIdIn(List.of(100L), 20))
+                .willReturn(Map.of(100L, List.of(reply)));
         given(commentRepository.countByPostId(1L)).willReturn(2L);
 
         CommentPageDto result = commentService.findInitialPageForView(1L, authOf("owner@example.com", Role.USER));
@@ -248,10 +250,8 @@ class CommentServiceTest {
         List<Comment> firstTwentyOfA = IntStream.range(0, 20)
                 .mapToObj(i -> replyOf(owner, 300L + i, parentA))
                 .toList();
-        given(commentRepository.findRepliesByParentIdAsc(eq(100L), isNull(), any(PageRequest.class)))
-                .willReturn(firstTwentyOfA);
-        given(commentRepository.findRepliesByParentIdAsc(eq(101L), isNull(), any(PageRequest.class)))
-                .willReturn(List.of(replyB));
+        given(commentRepository.findInitialRepliesGroupedByParentIdIn(List.of(100L, 101L), 20))
+                .willReturn(Map.of(100L, firstTwentyOfA, 101L, List.of(replyB)));
         given(commentRepository.countByPostId(1L)).willReturn(622L);
 
         CommentPageDto result = commentService.findInitialPageForView(1L, authOf("owner@example.com", Role.USER));

@@ -4,6 +4,8 @@ import com.kraft.shared.security.WriteAccessPolicy;
 import com.kraft.shared.transaction.AfterCommit;
 import com.kraft.user.domain.EmailHasher;
 import com.kraft.user.domain.EmailMasker;
+import com.kraft.user.domain.EmailPolicy;
+import com.kraft.shared.exception.NotFoundException;
 import com.kraft.user.domain.EmailVerificationTokenRepository;
 import com.kraft.user.domain.PasswordBytePolicy;
 import com.kraft.user.domain.PasswordResetTokenRepository;
@@ -36,6 +38,9 @@ public class UserService {
 
     @Transactional
     public Long signUp(String name, String email, String rawPassword) {
+        // 대소문자·앞뒤 공백만 다른 이메일이 별개 계정으로 가입되지 않도록 정규화부터
+        // 한다(BE-06) — 이후의 해시·저장이 전부 이 값을 쓴다.
+        email = EmailPolicy.normalize(email);
         if (userRepository.existsByName(name)) {
             throw new IllegalArgumentException("이미 사용중인 이름입니다. name=" + name);
         }
@@ -65,9 +70,10 @@ public class UserService {
      * 커밋 이후로 미루는 이유는, 변경이 롤백되면 세션도 그대로 유지되어야 하기 때문이다.
      */
     @Transactional
-    public void changePassword(String email, String currentPassword, String newPassword) {
+    public void changePassword(String rawEmail, String currentPassword, String newPassword) {
+        String email = EmailPolicy.normalize(rawEmail);
         User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
+                .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
 
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
             throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
@@ -89,7 +95,7 @@ public class UserService {
     @Transactional
     public void resetPassword(Long userId, String newPassword) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. id=" + userId));
+                .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. id=" + userId));
         PasswordBytePolicy.validate(newPassword);
 
         user.changePassword(passwordEncoder.encode(newPassword));
@@ -109,9 +115,10 @@ public class UserService {
      * 옛 링크로 무언가 할 수 있는 길이 남는다.
      */
     @Transactional
-    public void withdraw(String email, String currentPassword) {
+    public void withdraw(String rawEmail, String currentPassword) {
+        String email = EmailPolicy.normalize(rawEmail);
         User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
+                .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
 
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
             throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
@@ -141,14 +148,14 @@ public class UserService {
      * 경로와 같은 {@link WriteAccessPolicy}가 하므로 두 경로가 갈라지지 않는다.
      */
     public Optional<String> writeBlockReason(String email) {
-        return userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
+        return userRepository.findByEmailHash(EmailHasher.sha512Hex(EmailPolicy.normalize(email)))
                 .flatMap(WriteAccessPolicy::blockReason);
     }
 
     @Transactional
     public void promoteToUser(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. id=" + userId));
+                .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. id=" + userId));
         user.promoteToUser();
     }
 

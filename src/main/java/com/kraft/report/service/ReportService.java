@@ -12,6 +12,7 @@ import com.kraft.report.domain.ReportStatus;
 import com.kraft.report.domain.ReportTargetType;
 import com.kraft.report.dto.ReportSaveRequestDto;
 import com.kraft.report.dto.ReportViewDto;
+import com.kraft.shared.exception.NotFoundException;
 import com.kraft.shared.security.CurrentUser;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
@@ -70,7 +71,7 @@ public class ReportService {
     public Long report(ReportSaveRequestDto requestDto, Authentication authentication) {
         User reporter = findUser(authentication);
         User targetAuthor = targetAuthorOf(requestDto.targetType(), requestDto.targetId())
-                .orElseThrow(() -> new IllegalArgumentException("이미 삭제되었거나 존재하지 않는 대상입니다."));
+                .orElseThrow(() -> new NotFoundException("이미 삭제되었거나 존재하지 않는 대상입니다."));
 
         if (targetAuthor.getId().equals(reporter.getId())) {
             throw new IllegalArgumentException("자신이 쓴 글은 신고할 수 없습니다. 직접 삭제할 수 있습니다.");
@@ -205,7 +206,7 @@ public class ReportService {
 
     private Report findPendingReport(Long id) {
         Report report = reportRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 신고입니다. id=" + id));
+                .orElseThrow(() -> new NotFoundException("존재하지 않는 신고입니다. id=" + id));
         if (!report.isPending()) {
             throw new IllegalArgumentException("이미 처리된 신고입니다. id=" + id);
         }

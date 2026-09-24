@@ -105,7 +105,7 @@ class ReportServiceTest {
         assertThatThrownBy(() -> reportService.report(
                 new ReportSaveRequestDto(ReportTargetType.POST, 99L, ReportReason.SPAM, null),
                 authOf(REPORTER_EMAIL)))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(com.kraft.shared.exception.NotFoundException.class)
                 .hasMessageContaining("존재하지 않는 대상");
 
         verify(reportRepository, never()).save(any());

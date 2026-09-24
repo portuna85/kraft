@@ -4,6 +4,7 @@ import com.kraft.post.domain.PostNotFoundException;
 import com.kraft.recommend.domain.RecommendationGenerationLimitException;
 import com.kraft.recommend.domain.RecommendationHistoryNotReadyException;
 import com.kraft.recommend.domain.RecommendationValidationException;
+import com.kraft.shared.exception.NotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -67,6 +68,16 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
      */
     @ExceptionHandler(PostNotFoundException.class)
     public ProblemDetail handleNotFound(PostNotFoundException e) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
+    }
+
+    /**
+     * 게시글 외의 도메인(댓글·신고·회원 등)이 던지는 "대상 없음"을 404로 변환한다(BE-07).
+     * 새 도메인마다 {@link PostNotFoundException} 같은 전용 타입을 만드는 대신, 메시지만
+     * 다르고 뜻은 같은 이 경우들은 {@link NotFoundException} 하나로 묶는다.
+     */
+    @ExceptionHandler(NotFoundException.class)
+    public ProblemDetail handleNotFound(NotFoundException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
     }
 

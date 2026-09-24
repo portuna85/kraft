@@ -1,9 +1,14 @@
 package com.kraft.user.web;
 
 import com.kraft.config.security.SecurityConfig;
+import com.kraft.user.domain.EmailHasher;
+import com.kraft.user.domain.Role;
+import com.kraft.user.domain.User;
+import com.kraft.user.domain.UserRepository;
 import com.kraft.user.service.EmailVerificationService;
 import com.kraft.user.service.PasswordResetService;
 import com.kraft.user.service.UserService;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +16,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -50,6 +56,22 @@ class UserApiControllerTest {
 
     @MockitoBean
     private PasswordResetService passwordResetService;
+
+    @MockitoBean
+    private UserRepository userRepository;
+
+    /**
+     * 세션 principal은 이제 회원 id다(BE-04)— 이 테스트가 {@code with(user("tester@example.com"))}로
+     * 만드는 인증 객체는 {@code KraftUserDetails}가 아니라 일반 문자열 username이라, 컨트롤러가
+     * {@code CurrentUser.require}로 principal의 id 대신 이메일 폴백 경로를 타게 된다(단위
+     * 테스트가 흔히 쓰는 조합 — CurrentUser 자체의 문서화된 동작). 그 경로가 이메일로 사용자를
+     * 찾으므로, 인증이 필요한 엔드포인트를 호출하는 테스트는 이 스텁이 있어야 한다.
+     */
+    private void givenAuthenticatedUser(String email) {
+        User user = User.builder().name("tester").email(email).password("encoded").role(Role.USER).build();
+        ReflectionTestUtils.setField(user, "id", 1L);
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex(email))).willReturn(Optional.of(user));
+    }
 
     @Test
     @DisplayName("회원가입은 인증 없이(CSRF 토큰만 있으면) 가능하다")
@@ -170,6 +192,8 @@ class UserApiControllerTest {
     @Test
     @DisplayName("PUT /api/v1/users/me/password 는 인증+CSRF+유효한 본문이면 204를 반환한다")
     void changePassword_whenAuthenticatedAndValid_returns204NoContent() throws Exception {
+        givenAuthenticatedUser("tester@example.com");
+
         mockMvc.perform(put("/api/v1/users/me/password")
                         .with(user("tester@example.com"))
                         .with(csrf())
@@ -183,6 +207,7 @@ class UserApiControllerTest {
     @Test
     @DisplayName("PUT /api/v1/users/me/password 는 현재 비밀번호가 틀리면 400 ProblemDetail을 반환한다")
     void changePassword_whenCurrentPasswordMismatch_returns400BadRequest() throws Exception {
+        givenAuthenticatedUser("tester@example.com");
         // changePassword는 void 메서드라 BDDMockito.given이 아니라 willThrow(...).given(...) 형태로 스텁한다.
         willThrow(new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다."))
                 .given(userService).changePassword("tester@example.com", "wrong", "New12345!");
@@ -236,6 +261,8 @@ class UserApiControllerTest {
     @Test
     @DisplayName("POST /api/v1/users/me/verify-email/resend 는 인증+CSRF면 204를 반환한다")
     void resendVerificationEmail_whenAuthenticatedWithCsrf_returns204NoContent() throws Exception {
+        givenAuthenticatedUser("tester@example.com");
+
         mockMvc.perform(post("/api/v1/users/me/verify-email/resend")
                         .with(user("tester@example.com"))
                         .with(csrf()))
@@ -247,6 +274,7 @@ class UserApiControllerTest {
     @Test
     @DisplayName("POST /api/v1/users/me/verify-email/resend 는 이미 인증된 계정이면 400 ProblemDetail을 반환한다")
     void resendVerificationEmail_whenAlreadyVerified_returns400BadRequest() throws Exception {
+        givenAuthenticatedUser("tester@example.com");
         willThrow(new IllegalArgumentException("이미 인증된 계정입니다."))
                 .given(emailVerificationService).resend("tester@example.com");
 
@@ -333,6 +361,8 @@ class UserApiControllerTest {
     @Test
     @DisplayName("DELETE /api/v1/users/me 는 인증+CSRF+현재 비밀번호면 204를 반환한다")
     void withdraw_whenAuthenticatedWithCsrf_returns204NoContent() throws Exception {
+        givenAuthenticatedUser("tester@example.com");
+
         mockMvc.perform(delete("/api/v1/users/me")
                         .with(user("tester@example.com"))
                         .with(csrf())
@@ -371,6 +401,7 @@ class UserApiControllerTest {
     @Test
     @DisplayName("DELETE /api/v1/users/me 는 현재 비밀번호가 틀리면 400 ProblemDetail을 반환한다")
     void withdraw_whenPasswordDoesNotMatch_returns400BadRequest() throws Exception {
+        givenAuthenticatedUser("tester@example.com");
         willThrow(new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다."))
                 .given(userService).withdraw("tester@example.com", "WrongPass1!");
 

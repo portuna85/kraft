@@ -40,8 +40,11 @@ class PasswordChangeSessionRevocationTest {
 
     // 세션 테이블(SPRING_SESSION)은 테스트 클래스끼리 공유하는 H2에 있다. 다른 테스트가 남긴
     // 세션이 principal 이름으로 섞이지 않도록 이 클래스 전용 이메일을 쓰고, 매번 비우고 시작한다.
+    // principal 이름은 이제 회원 id다(BE-04) — userId는 setUp에서 계정을 만든 뒤에만 알 수
+    // 있으므로, 세션 정리는 매번 만든 계정의 id를 조회해서 한다.
     private static final String EMAIL = "password-change@example.com";
     private static final String PASSWORD = "Password123!";
+    private Long userId;
 
     @Autowired
     private MockMvc mockMvc;
@@ -69,7 +72,6 @@ class PasswordChangeSessionRevocationTest {
 
     @BeforeEach
     void setUp() {
-        sessionRepository.findByPrincipalName(EMAIL).keySet().forEach(sessionRepository::deleteById);
         // users를 참조하는 것들을 먼저 지운다. 하나라도 빠뜨리면 FK 위반으로 깨지는데,
         // 그 시점이 테스트 실행 순서에 좌우되어 관계없는 변경에서 갑자기 드러난다.
         postRepository.deleteAll();
@@ -77,12 +79,15 @@ class PasswordChangeSessionRevocationTest {
         tokenRepository.deleteAll();
         sessionRevocationTaskRepository.deleteAll();
         userRepository.deleteAll();
-        userRepository.save(User.builder()
+        userId = userRepository.save(User.builder()
                 .name("tester")
                 .email(EMAIL)
                 .password(passwordEncoder.encode(PASSWORD))
                 .role(Role.USER)
-                .build());
+                .build()).getId();
+        // 이전 실행에서 이 id가 재사용됐을 가능성은 없다(IDENTITY 증가) — 그래도 다른 테스트가
+        // 남긴 세션과 섞이지 않도록 비우고 시작한다.
+        sessionRepository.findByPrincipalName(String.valueOf(userId)).keySet().forEach(sessionRepository::deleteById);
     }
 
     @Test
@@ -108,7 +113,7 @@ class PasswordChangeSessionRevocationTest {
     void changePassword_revokesSessionsOnOtherDevices() throws Exception {
         Cookie phone = login();
         Cookie laptop = login();
-        assertThat(sessionRepository.findByPrincipalName(EMAIL)).hasSize(2);
+        assertThat(sessionRepository.findByPrincipalName(String.valueOf(userId))).hasSize(2);
 
         mockMvc.perform(put("/api/v1/users/me/password")
                         .cookie(laptop)
@@ -117,7 +122,7 @@ class PasswordChangeSessionRevocationTest {
                         .content("{\"currentPassword\":\"" + PASSWORD + "\",\"newPassword\":\"NewPassword123!\"}"))
                 .andExpect(status().isNoContent());
 
-        assertThat(sessionRepository.findByPrincipalName(EMAIL)).isEmpty();
+        assertThat(sessionRepository.findByPrincipalName(String.valueOf(userId))).isEmpty();
         assertThat(canWritePost(phone)).isFalse();
     }
 

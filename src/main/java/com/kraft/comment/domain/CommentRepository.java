@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -38,6 +39,40 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
             + "AND (:afterId IS NULL OR c.id > :afterId) ORDER BY c.id ASC")
     List<Comment> findRepliesByParentIdAsc(@Param("parentId") Long parentId, @Param("afterId") Long afterId,
                                             Pageable pageable);
+
+    /**
+     * 여러 부모의 "최초 답글"을 한 번에 가져온다(BE-08) — {@code CommentService.pageForView}가
+     * 예전에는 최상위 댓글마다(최대 {@link #findRepliesByParentIdAsc}) 따로 호출해 페이지당
+     * 최대 20회의 추가 쿼리를 냈다. MariaDB의 {@code ROW_NUMBER() OVER (PARTITION BY ...)}로
+     * 부모별 상위 {@code limitPerParent}개의 id만 한 번에 뽑고, 실제 엔티티(+user)는
+     * {@link #findAllByIdInWithUser}로 이어서 가져온다 — 네이티브 쿼리 결과를 곧장 엔티티로
+     * 매핑하지 않는 이유는 JOIN FETCH를 네이티브 쿼리에서 안전하게 표현하기 어렵기 때문이다.
+     */
+    @Query(value = "SELECT id FROM ("
+            + "SELECT id, ROW_NUMBER() OVER (PARTITION BY parent_id ORDER BY id ASC) AS rn "
+            + "FROM comments WHERE parent_id IN :parentIds"
+            + ") ranked WHERE rn <= :limitPerParent", nativeQuery = true)
+    List<Long> findTopReplyIdsPerParent(@Param("parentIds") List<Long> parentIds,
+                                         @Param("limitPerParent") int limitPerParent);
+
+    /**
+     * {@link #findTopReplyIdsPerParent} + {@link #findAllByIdInWithUser}를 묶어, 부모 id별
+     * 답글 목록(오름차순)을 한 번의 배치 조회로 돌려준다. {@code c.getParent().getId()}는
+     * 지연 로딩 프록시라도 식별자는 이미 알고 있어(추가 쿼리 없이) 그룹핑 키로 안전하게 쓸 수
+     * 있다. 답글이 없는 부모는 결과 맵에 키 자체가 없다.
+     */
+    default Map<Long, List<Comment>> findInitialRepliesGroupedByParentIdIn(List<Long> parentIds, int limitPerParent) {
+        if (parentIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> ids = findTopReplyIdsPerParent(parentIds, limitPerParent);
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        return findAllByIdInWithUser(ids).stream()
+                .sorted(Comparator.comparing(Comment::getId))
+                .collect(Collectors.groupingBy(c -> c.getParent().getId()));
+    }
 
     /**
      * 게시글의 답글만 먼저 지운다. {@code deleteAllByPostId}를 부모·답글 구분 없이 한 문장으로

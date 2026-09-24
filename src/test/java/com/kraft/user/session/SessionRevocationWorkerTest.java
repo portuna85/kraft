@@ -62,7 +62,7 @@ class SessionRevocationWorkerTest {
     @DisplayName("첫 시도(빠른 경로)가 실패해도 태스크가 남아, 다음 주기 재시도에서 최종적으로 완료한다")
     void failedFastPathIsRetriedByScheduledDrainUntilItSucceeds() {
         willThrow(new RuntimeException("세션 저장소 장애"))
-                .given(sessionRevoker).revokeAll(user.getEmail(), user.getId());
+                .given(sessionRevoker).revokeAll(String.valueOf(user.getId()), user.getId());
 
         Long taskId = store.enqueue(user, user.getEmail());
         worker.attemptNow(taskId);
@@ -78,7 +78,7 @@ class SessionRevocationWorkerTest {
 
         SessionRevocationTask done = taskRepository.findById(taskId).orElseThrow();
         assertThat(done.getStatus()).isEqualTo(SessionRevocationTaskStatus.DONE);
-        verify(sessionRevoker).revokeAll(user.getEmail(), user.getId());
+        verify(sessionRevoker).revokeAll(String.valueOf(user.getId()), user.getId());
     }
 
     @Test
@@ -118,14 +118,16 @@ class SessionRevocationWorkerTest {
     }
 
     @Test
-    @DisplayName("탈퇴 후 같은 이메일로 재가입한 새 계정이 있어도, 태스크는 스냅샷 당시의 이메일로만 폐기를 시도한다")
-    void staleTaskUsesTheSnapshottedEmailNotTheCurrentAccountEmail() {
+    @DisplayName("탈퇴 후 같은 이메일로 재가입한 새 계정이 있어도, 태스크는 원래 계정의 회원 번호로만 폐기를 시도한다")
+    void staleTaskUsesTheOriginalUserIdNotTheNewAccount() {
         String email = user.getEmail();
         Long taskId = store.enqueue(user, email);
 
         // 실제 탈퇴처럼 계정의 이메일을 먼저 익명 주소로 바꿔 커밋하고(원래 이메일 자리를
         // 비워야 email_hash 유니크 제약과 부딪히지 않는다), 그 뒤 같은 이메일로 새 계정이
-        // 재가입했다고 가정한다.
+        // 재가입했다고 가정한다. 세션 principal이 이제 회원 id라(BE-04) revokeAll은 애초에
+        // 이메일이 아니라 원래 계정의 불변 id로만 조회하므로, 재가입한 새 계정의 세션과
+        // 섞일 여지가 구조적으로 없다.
         user.withdraw("withdrawn-" + user.getId() + "@kraft.invalid", "탈퇴한 사용자", "encoded");
         userRepository.save(user);
         userRepository.save(User.builder()
@@ -137,7 +139,7 @@ class SessionRevocationWorkerTest {
 
         worker.attemptNow(taskId);
 
-        verify(sessionRevoker).revokeAll(email, user.getId());
+        verify(sessionRevoker).revokeAll(String.valueOf(user.getId()), user.getId());
     }
 
     /**

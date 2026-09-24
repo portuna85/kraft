@@ -26,6 +26,15 @@ public class FixedWindowRateLimiter {
      */
     private static final long EMERGENCY_EVICT_COOLDOWN_MILLIS = 1_000L;
 
+    /**
+     * 처음 보는 키가 이 수를 넘어서면 새 창을 만들지 않고 거절한다(BE-02). 만료 창 제거만으로는
+     * 막을 수 없는 경우가 있다 — 공격자가 한 창(windowMillis) 안에서 서로 다른 키(예: 계정
+     * 리미터의 임의 username)를 계속 만들어 보내면, 그 창이 끝나기 전까지는 어떤 항목도 만료되지
+     * 않아 evictExpired가 할 일이 없다. 상한을 두면 그런 경우에도 메모리가 이 수 이상으로 늘지
+     * 않는다 — 대가로 그 이후의 새 키는 (다른 공격자의 정상 요청이라도) 이번 창 동안 거절된다.
+     */
+    private static final int MAX_TRACKED_CLIENTS = 50_000;
+
     private final String name;
     private final int limitPerWindow;
     private final long windowMillis;
@@ -52,6 +61,14 @@ public class FixedWindowRateLimiter {
     public boolean tryAcquire(String clientKey) {
         long now = Instant.now().toEpochMilli();
 
+        if (!windows.containsKey(clientKey) && windows.size() >= MAX_TRACKED_CLIENTS) {
+            evictIfDue(now);
+            if (windows.size() >= MAX_TRACKED_CLIENTS) {
+                rejected.increment();
+                return false;
+            }
+        }
+
         // compute()의 재매핑 함수는 키별로 원자적이므로, "이 호출이 실제로 만든 값"을 그 안에서
         // 직접 담아 나온다 — 바깥에서 공유 AtomicInteger를 따로 다시 읽으면, 그 사이 다른 요청이
         // 같은 키를 또 증가시켜 이 호출이 만든 값보다 큰 수를 보게 되고, 한도 안에서 들어온
@@ -67,10 +84,7 @@ public class FixedWindowRateLimiter {
         });
 
         if (windows.size() > 10_000) {
-            long last = lastEmergencyEvictAt.get();
-            if (now - last >= EMERGENCY_EVICT_COOLDOWN_MILLIS && lastEmergencyEvictAt.compareAndSet(last, now)) {
-                evictExpired(now);
-            }
+            evictIfDue(now);
         }
 
         boolean withinLimit = countAfterThisCall[0] <= limitPerWindow;
@@ -101,6 +115,13 @@ public class FixedWindowRateLimiter {
      * 클라이언트 수를 확인할 수 있게 public으로 둔다. */
     public int trackedClientCount() {
         return windows.size();
+    }
+
+    private void evictIfDue(long now) {
+        long last = lastEmergencyEvictAt.get();
+        if (now - last >= EMERGENCY_EVICT_COOLDOWN_MILLIS && lastEmergencyEvictAt.compareAndSet(last, now)) {
+            evictExpired(now);
+        }
     }
 
     private void evictExpired(long now) {

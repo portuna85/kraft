@@ -2,6 +2,7 @@ package com.kraft.config.security;
 
 import com.kraft.user.domain.EmailHasher;
 import com.kraft.user.domain.EmailMasker;
+import com.kraft.user.domain.EmailPolicy;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     private final UserRepository userRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+    public UserDetails loadUserByUsername(String rawEmail) throws UsernameNotFoundException {
+        String email = EmailPolicy.normalize(rawEmail);
         User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
                 .orElseThrow(() -> new UsernameNotFoundException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
 
@@ -30,8 +32,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             throw new UsernameNotFoundException("탈퇴한 회원입니다. email=" + EmailMasker.mask(email));
         }
 
-        // username은 이메일 그대로 둔다(서비스 계층이 authentication.getName()으로 회원을 찾는다).
-        // 화면 표시용 닉네임은 displayName으로 따로 싣는다.
+        // username(=Authentication.getName())은 이제 회원 id다(BE-04) — 이메일은 principal의
+        // getEmail()로 필요한 곳에서만 꺼내 쓴다. 화면 표시용 닉네임은 displayName으로 싣는다.
         return new KraftUserDetails(
                 user.getId(),
                 user.getEmail(),

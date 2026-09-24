@@ -33,6 +33,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 이제 {@link EmailPolicy#MAX_LENGTH}(가장 좁은 경계)를 제품 정책으로 삼아 가입 시점에
  * 거부한다. 이 테스트는 "정책 상한 길이는 끝까지 동작하고, 한 자만 넘으면 가입 단계에서
  * 명확한 400"임을 확인한다.
+ * <p>
+ * BE-04부터 세션 principal(따라서 {@code PRINCIPAL_NAME})은 이메일이 아니라 회원 id의
+ * 문자열이다 — 그 컬럼의 100자 제한은 더 이상 이메일 길이에 직접 걸리지 않지만, 이미 정한
+ * 정책값({@code MAX_LENGTH})은 그대로 유지한다(변경하려면 별도 검토가 필요).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -78,9 +82,12 @@ class EmailLengthBoundaryTest {
 
         signUp(email).andExpect(status().isOk());
 
-        // 예전에는 여기(세션 저장)에서 PRINCIPAL_NAME 컬럼 제한에 걸렸다.
+        // 예전에는 여기(세션 저장)에서 PRINCIPAL_NAME 컬럼 제한에 걸렸다. 지금은 principal이
+        // 회원 id라(BE-04) 그 제한과 무관해졌지만, 로그인·세션 저장 자체가 여전히 끝까지
+        // 동작하는지는 계속 확인한다.
         Cookie session = login(email);
-        assertThat(sessionRepository.findByPrincipalName(email)).hasSize(1);
+        Long userId = userRepository.findByEmailHash(EmailHasher.sha512Hex(email)).orElseThrow().getId();
+        assertThat(sessionRepository.findByPrincipalName(String.valueOf(userId))).hasSize(1);
 
         mockMvc.perform(post("/api/v1/posts")
                         .cookie(session)

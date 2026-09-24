@@ -3,6 +3,7 @@ package com.kraft.user.service;
 import com.kraft.shared.transaction.AfterCommit;
 import com.kraft.user.domain.EmailHasher;
 import com.kraft.user.domain.EmailMasker;
+import com.kraft.user.domain.EmailPolicy;
 import com.kraft.user.domain.PasswordResetToken;
 import com.kraft.user.domain.PasswordResetTokenRepository;
 import com.kraft.user.domain.User;
@@ -60,6 +61,7 @@ public class PasswordResetService {
      */
     @Transactional
     public void request(String email) {
+        email = EmailPolicy.normalize(email);
         User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email)).orElse(null);
         if (user == null) {
             // 가입되지 않은 주소. 로그에도 존재 여부만 남기고 주소는 가린다.
@@ -78,9 +80,11 @@ public class PasswordResetService {
         // 옛 링크는 이 시점에 무효가 된다. 메일함에 여러 개가 살아 있지 않게 한다.
         tokenRepository.deleteByUserId(user.getId());
 
+        // 평문 token은 이 메서드를 벗어나지 않는다(SEC-04) — 조회 테이블에는 해시만 남고,
+        // 메일 본문 링크를 만들 유일한 평문 사본은 outbox_mails에 실려 발송될 때까지만 산다.
         String token = UUID.randomUUID().toString();
         tokenRepository.save(PasswordResetToken.builder()
-                .token(token)
+                .tokenHash(EmailHasher.sha512Hex(token))
                 .user(user)
                 .expiresAt(LocalDateTime.now().plus(TOKEN_TTL))
                 .build());
@@ -100,7 +104,8 @@ public class PasswordResetService {
      */
     @Transactional
     public void reset(String token, String newPassword) {
-        PasswordResetToken resetToken = tokenRepository.findByToken(token)
+        String tokenHash = EmailHasher.sha512Hex(token);
+        PasswordResetToken resetToken = tokenRepository.findByTokenHash(tokenHash)
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 재설정 링크입니다. 다시 요청해 주세요."));
 
         if (resetToken.isExpired()) {
@@ -110,7 +115,7 @@ public class PasswordResetService {
             throw new IllegalArgumentException("재설정 링크가 만료되었습니다. 다시 요청해 주세요.");
         }
 
-        int consumed = tokenRepository.deleteByIdAndToken(resetToken.getId(), token);
+        int consumed = tokenRepository.deleteByIdAndTokenHash(resetToken.getId(), tokenHash);
         if (consumed == 0) {
             throw new IllegalArgumentException("이미 사용되었거나 유효하지 않은 재설정 링크입니다. 다시 요청해 주세요.");
         }

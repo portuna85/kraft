@@ -72,9 +72,14 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         if (LOGIN_PATH.equals(path)) {
             boolean ipOk = loginIpLimiter.tryAcquire(ip);
             boolean accountOk = true;
-            String username = request.getParameter("username");
-            if (username != null && !username.isBlank()) {
-                accountOk = loginAccountLimiter.tryAcquire(username.trim().toLowerCase(Locale.ROOT));
+            // IP 제한에 이미 걸렸으면 계정 리미터는 건드리지 않는다(BE-02) — 그렇지 않으면
+            // 클라이언트가 매 요청 다른 username을 보내는 것만으로 계정 리미터의 맵을
+            // 무제한으로 키운 뒤 IP 창이 풀리는 순간 쌓아 둔 이름 중 아무거나로 재시도할 수 있다.
+            if (ipOk) {
+                String username = request.getParameter("username");
+                if (username != null && !username.isBlank()) {
+                    accountOk = loginAccountLimiter.tryAcquire(username.trim().toLowerCase(Locale.ROOT));
+                }
             }
             if (!ipOk || !accountOk) {
                 response.sendRedirect(request.getContextPath() + "/login?error=throttled");

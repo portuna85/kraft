@@ -1,5 +1,6 @@
 package com.kraft.user.service;
 
+import com.kraft.shared.exception.NotFoundException;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
@@ -110,7 +111,7 @@ class SuspensionServiceTest {
     @DisplayName("없는 회원을 풀려고 하면 그렇게 알려준다")
     void lift_whenUserNotFound_isRejected() {
         assertThatThrownBy(() -> suspensionService.lift(999_999L))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("존재하지 않는 회원");
     }
 }

@@ -9,6 +9,13 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.mariadb.jdbc.Driver
+    hikari:
+      # 기본값(풀 10, 대기 30초)은 after-commit 콜백이 커밋 스레드가 반납하기 전에 두 번째
+      # 커넥션을 잡는 경로(BE-09, AfterCommit 참고)와 가상 스레드(동시 요청에 플랫폼 스레드
+      # 상한이 없음)가 겹치면 버스트 시 전부가 서로를 기다리며 풀을 고갈시킬 수 있다.
+      # 대기 시간을 줄여 그런 정체를 30초가 아니라 5초 안에 실패로 드러낸다.
+      maximum-pool-size: 20
+      connection-timeout: 5000
 
   jpa:
     hibernate:
@@ -16,6 +23,22 @@ spring:
       # 않는다 — 스키마가 엔티티 매핑과 불일치하면 기동 자체가 실패한다(의도된 동작).
       ddl-auto: validate
     show-sql: false
+    properties:
+      hibernate:
+        session:
+          events:
+            log:
+              # 이 값(ms)보다 느린 쿼리만 로그로 남긴다 — 매 쿼리를 남기는 show-sql과 달리
+              # 운영에서 상시 켜 둘 수 있다.
+              LOG_QUERIES_SLOWER_THAN_MS: 200
+
+  servlet:
+    session:
+      cookie:
+        # server.forward-headers-strategy(BE-01)로 request.isSecure()가 프록시 뒤에서도
+        # 실제 프로토콜을 반영하게 됐으므로, 세션 쿠키에 Secure를 강제해도 로컬 개발
+        # (application.yml, HTTP)에는 영향이 없다.
+        secure: true
 
   flyway:
     enabled: true

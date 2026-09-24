@@ -1,5 +1,7 @@
 package com.kraft.user.web;
 
+import com.kraft.shared.security.CurrentUser;
+import com.kraft.user.domain.UserRepository;
 import com.kraft.user.dto.ChangePasswordRequestDto;
 import com.kraft.user.dto.PasswordResetConfirmDto;
 import com.kraft.user.dto.PasswordResetRequestDto;
@@ -25,6 +27,16 @@ public class UserApiController {
     private final UserService userService;
     private final EmailVerificationService emailVerificationService;
     private final PasswordResetService passwordResetService;
+    private final UserRepository userRepository;
+
+    /**
+     * 세션 principal({@code authentication.getName()})은 회원 id다(BE-04) — 이메일 기반
+     * 서비스 메서드(가입·인증·재설정 흐름과 시그니처를 맞춘)를 그대로 쓰기 위해, 여기서만
+     * id로 사용자를 찾아 이메일을 꺼낸다.
+     */
+    private String currentEmail(Authentication authentication) {
+        return CurrentUser.require(authentication, userRepository).getEmail();
+    }
 
     @PostMapping("/api/v1/users")
     public Long signUp(@Valid @RequestBody SignUpRequestDto requestDto) {
@@ -36,7 +48,7 @@ public class UserApiController {
     @PutMapping("/api/v1/users/me/password")
     public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequestDto requestDto,
                                                 Authentication authentication) {
-        userService.changePassword(authentication.getName(), requestDto.currentPassword(), requestDto.newPassword());
+        userService.changePassword(currentEmail(authentication), requestDto.currentPassword(), requestDto.newPassword());
         return ResponseEntity.noContent().build();
     }
 
@@ -47,7 +59,7 @@ public class UserApiController {
     @DeleteMapping("/api/v1/users/me")
     public ResponseEntity<Void> withdraw(@Valid @RequestBody WithdrawRequestDto requestDto,
                                           Authentication authentication) {
-        userService.withdraw(authentication.getName(), requestDto.currentPassword());
+        userService.withdraw(currentEmail(authentication), requestDto.currentPassword());
         return ResponseEntity.noContent().build();
     }
 
@@ -70,7 +82,7 @@ public class UserApiController {
 
     @PostMapping("/api/v1/users/me/verify-email/resend")
     public ResponseEntity<Void> resendVerificationEmail(Authentication authentication) {
-        emailVerificationService.resend(authentication.getName());
+        emailVerificationService.resend(currentEmail(authentication));
         return ResponseEntity.noContent().build();
     }
 }

@@ -1,7 +1,9 @@
 package com.kraft.user.domain;
 
+import java.util.Locale;
+
 /**
- * 지원하는 이메일 주소 길이 정책.
+ * 지원하는 이메일 주소 길이 정책과 정규화.
  * <p>
  * 이 값 하나에 세 군데의 경계가 걸려 있다. 예전에는 셋이 서로 달라서, 어디까지가 "가입 가능한
  * 이메일"인지가 입력 검증이 아니라 우연히 먼저 터지는 저장소에 의해 정해졌다:
@@ -23,6 +25,14 @@ package com.kraft.user.domain;
  * <p>
  * 참고: 전체 길이와 별개로 {@code @Email}이 local part를 64자, 도메인 라벨 하나를 63자로
  * 제한한다(RFC 5321). 이 상수는 그 위에 얹히는 <b>전체 길이</b> 제한이다.
+ * <p>
+ * {@link #normalize(String)}는 해시·비교 전에 항상 거쳐야 하는 정규화다(BE-06).
+ * {@code Foo@x.com}과 {@code foo@x.com}이 지금까지는 서로 다른 해시를 만들어 별개 계정으로
+ * 취급됐다 — 가입은 대소문자만 다른 중복 계정을 막지 못했고, 로그인은 가입 때와 대소문자가
+ * 다르면 실패했다. 가입·로그인·비밀번호 변경/재설정·인증 메일 재발송 등 이메일을 해시하거나
+ * 비교하는 모든 진입점이 이 메서드를 거쳐야 한다 — {@code User.hashEmail()}처럼 엔티티
+ * 생명주기 훅에서 이미 정규화된 값을 받는 경우는 예외다(그 훅 자체가 이미 정규화를 거친
+ * {@code email} 필드를 쓴다).
  */
 public final class EmailPolicy {
 
@@ -30,5 +40,12 @@ public final class EmailPolicy {
     public static final int MAX_LENGTH = 100;
 
     private EmailPolicy() {
+    }
+
+    public static String normalize(String email) {
+        if (email == null) {
+            return null;
+        }
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 }

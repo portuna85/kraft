@@ -98,7 +98,16 @@ public class PostPageController {
         if (!OwnershipPolicy.isAuthenticated(authentication)) {
             return null;
         }
-        return userService.writeBlockReason(authentication.getName()).orElse(null);
+        // authentication.getName()은 이제 회원 id다(BE-04) — UserService.writeBlockReason은
+        // 이메일 기반 시그니처를 유지하므로 principal에서 이메일을 꺼내 넘긴다.
+        return userService.writeBlockReason(emailOf(authentication)).orElse(null);
+    }
+
+    private static String emailOf(Authentication authentication) {
+        if (authentication.getPrincipal() instanceof KraftUserDetails details) {
+            return details.getEmail();
+        }
+        return authentication.getName();
     }
 
     /**

@@ -3,6 +3,8 @@ package com.kraft.user.service;
 import com.kraft.shared.transaction.AfterCommit;
 import com.kraft.user.domain.EmailHasher;
 import com.kraft.user.domain.EmailMasker;
+import com.kraft.shared.exception.NotFoundException;
+import com.kraft.user.domain.EmailPolicy;
 import com.kraft.user.domain.EmailVerificationToken;
 import com.kraft.user.domain.EmailVerificationTokenRepository;
 import com.kraft.user.domain.Role;
@@ -57,9 +59,10 @@ public class EmailVerificationService {
      * 잡혀 있다. 그래서 발송을 {@code @Async}로 다른 스레드에 넘겨 완전히 떼어 놓는다.
      */
     @Transactional
-    public void sendVerificationEmail(String email) {
+    public void sendVerificationEmail(String rawEmail) {
+        String email = EmailPolicy.normalize(rawEmail);
         User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
+                .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
 
         // 탈퇴 계정은 조회 조건에서도 걸러야 하지만(UserRepository.findGuestsMissingVerificationMail
         // 참고, B16), 이 메서드 자체도 거부한다 — 호출 경로가 늘어도 같은 규칙이 적용되게 한다.
@@ -68,9 +71,11 @@ public class EmailVerificationService {
             throw new IllegalArgumentException("탈퇴한 회원입니다. email=" + EmailMasker.mask(email));
         }
 
+        // 평문 token은 이 메서드를 벗어나지 않는다(SEC-04) — 조회 테이블에는 해시만 남고,
+        // 메일 본문 링크를 만들 유일한 평문 사본은 outbox_mails에 실려 발송될 때까지만 산다.
         String token = UUID.randomUUID().toString();
         tokenRepository.save(EmailVerificationToken.builder()
-                .token(token)
+                .tokenHash(EmailHasher.sha512Hex(token))
                 .user(user)
                 .expiresAt(LocalDateTime.now().plus(TOKEN_TTL))
                 .build());
@@ -116,7 +121,8 @@ public class EmailVerificationService {
      */
     @Transactional
     public void verify(String token) {
-        EmailVerificationToken verificationToken = tokenRepository.findByToken(token)
+        String tokenHash = EmailHasher.sha512Hex(token);
+        EmailVerificationToken verificationToken = tokenRepository.findByTokenHash(tokenHash)
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 인증 링크입니다."));
 
         if (verificationToken.isExpired()) {
@@ -124,7 +130,7 @@ public class EmailVerificationService {
             throw new IllegalArgumentException("인증 링크가 만료되었습니다. 다시 요청해 주세요.");
         }
 
-        int consumed = tokenRepository.deleteByIdAndToken(verificationToken.getId(), token);
+        int consumed = tokenRepository.deleteByIdAndTokenHash(verificationToken.getId(), tokenHash);
         if (consumed == 0) {
             throw new IllegalArgumentException("이미 사용되었거나 유효하지 않은 인증 링크입니다.");
         }
@@ -141,9 +147,10 @@ public class EmailVerificationService {
      * 마지막 하나만 동작하는 상황이 된다. 발송 비용보다 이 혼란이 더 문제다.
      */
     @Transactional
-    public void resend(String email) {
+    public void resend(String rawEmail) {
+        String email = EmailPolicy.normalize(rawEmail);
         User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
+                .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
 
         // 쿨다운 검사와 재발급을 계정 단위로 직렬화한다(B07) — 그래야 두 동시 요청이 같은
         // "마지막 발송 시각"을 동시에 읽고 둘 다 쿨다운을 통과하는 경쟁이 없어진다.

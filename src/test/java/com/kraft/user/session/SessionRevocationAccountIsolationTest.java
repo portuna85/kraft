@@ -28,9 +28,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 지워지지 않는지 <b>실제</b> 세션 저장소·로그인 흐름으로 검증한다. {@link SessionRevoker}를
  * 목으로 대체하지 않는다 — 세션 속성({@code KRAFT_USER_ID}) 기반 계정 구분 자체가 검증 대상이다.
  * <p>
- * {@link SessionRevocationWorkerTest#staleTaskUsesTheSnapshottedEmailNotTheCurrentAccountEmail}은
- * 태스크가 스냅샷 이메일을 쓴다는 것만 증명할 뿐, 실제 세션 저장소에서 다른 계정의 세션이
- * 안전한지는 증명하지 않는다 — 그 간극을 이 테스트가 메운다.
+ * {@link SessionRevocationWorkerTest#staleTaskUsesTheOriginalUserIdNotTheNewAccount}은
+ * 태스크가 원래 계정의 회원 번호로만 폐기를 시도한다는 것만 증명할 뿐, 실제 세션 저장소에서
+ * 다른 계정의 세션이 안전한지는 증명하지 않는다 — 그 간극을 이 테스트가 메운다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -126,15 +126,16 @@ class SessionRevocationAccountIsolationTest {
 
         // 옛 세션은 새 계정의 글을 수정·삭제할 수 없어야 한다(둘 다 같은 이메일이라도).
         // 수정은 PostService.update가 소유권을 보기 전에 작성자(옛 계정, 탈퇴 상태) 조회부터
-        // 막혀 400이다 — delete는 작성자 조회 없이 소유권만 보므로 403이다. 상태 코드는
-        // 다르지만 둘 다 실제로 거절된다는 점이 이 테스트의 핵심이다.
+        // 막혀 404다(CurrentUser.require가 NotFoundException을 던진다, BE-07) — delete는
+        // 작성자 조회 없이 소유권만 보므로 403이다. 상태 코드는 다르지만 둘 다 실제로
+        // 거절된다는 점이 이 테스트의 핵심이다.
         int updateStatus = mockMvc.perform(put("/api/v1/posts/" + postId)
                         .cookie(oldSession)
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"가로채기\",\"content\":\"가로채기 내용\"}"))
                 .andReturn().getResponse().getStatus();
-        assertThat(updateStatus).as("옛 세션은 새 계정의 글을 수정할 수 없어야 한다").isEqualTo(400);
+        assertThat(updateStatus).as("옛 세션은 새 계정의 글을 수정할 수 없어야 한다").isEqualTo(404);
 
         int deleteStatus = mockMvc.perform(delete("/api/v1/posts/" + postId)
                         .cookie(oldSession)

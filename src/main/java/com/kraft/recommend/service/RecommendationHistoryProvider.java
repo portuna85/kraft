@@ -39,7 +39,7 @@ public class RecommendationHistoryProvider {
      */
     @Transactional(readOnly = true)
     public RecommendationHistorySnapshot currentReadySnapshot() {
-        RecommendationHistorySnapshot snapshot = refresh();
+        RecommendationHistorySnapshot snapshot = snapshotForCurrentVersion();
         if (!snapshot.isReady()) {
             throw new RecommendationHistoryNotReadyException("검증된 당첨 이력이 준비되지 않았습니다.");
         }
@@ -58,11 +58,25 @@ public class RecommendationHistoryProvider {
         }
     }
 
-    private synchronized RecommendationHistorySnapshot refresh() {
+    /**
+     * 락 없이 버전만 먼저 비교한다(BE-10) — 캐시가 최신이면(대부분의 요청) 여기서 바로
+     * 끝나므로, 동시 요청들이 {@link #refresh}의 {@code synchronized}에서 서로를 기다리며
+     * 커넥션을 쥔 채 대기하지 않는다. 잠금은 실제로 다시 읽어야 할 때만 진입한다.
+     */
+    private RecommendationHistorySnapshot snapshotForCurrentVersion() {
         RecommendationHistoryState state = stateRepository.findById(STATE_ID).orElse(null);
         if (state == null) {
             return emptySnapshot();
         }
+        RecommendationHistorySnapshot current = cached;
+        if (current != null && current.version() == state.getVersion()) {
+            return current;
+        }
+        return refresh(state);
+    }
+
+    private synchronized RecommendationHistorySnapshot refresh(RecommendationHistoryState state) {
+        // 잠금을 기다리는 동안 다른 스레드가 이미 갱신했을 수 있어 다시 한번 확인한다.
         RecommendationHistorySnapshot current = cached;
         if (current != null && current.version() == state.getVersion()) {
             return current;

@@ -1,8 +1,10 @@
 package com.kraft.shared.security;
 
 import com.kraft.config.security.KraftUserDetails;
+import com.kraft.shared.exception.NotFoundException;
 import com.kraft.user.domain.EmailHasher;
 import com.kraft.user.domain.EmailMasker;
+import com.kraft.user.domain.EmailPolicy;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
 import org.springframework.security.core.Authentication;
@@ -49,30 +51,30 @@ public final class CurrentUser {
     }
 
     /**
-     * @throws IllegalArgumentException 계정을 찾지 못하면(탈퇴 등). 기존 findUser(email)들과
-     *                                   같은 메시지 형식을 유지한다.
+     * @throws NotFoundException 계정을 찾지 못하면(탈퇴 등, BE-07). 기존 findUser(email)들과
+     *                            같은 메시지 형식을 유지한다.
      */
     public static User require(Authentication authentication, UserRepository userRepository) {
         Optional<Long> id = userId(authentication);
         if (id.isPresent()) {
             User user = userRepository.findById(id.get())
-                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. userId=" + id.get()));
+                    .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. userId=" + id.get()));
             // userId는 로그인 시점에 세션에 고정된 값이라, 그 뒤 이 계정이 탈퇴해도 세션 자체는
             // (폐기가 지연되는 한) 계속 인증된 상태로 남는다. UserDetailsServiceImpl은 로그인
             // 시점에만 탈퇴 여부를 본다 — 여기서 한 번 더 걸러야 폐기가 끝나기 전까지 탈퇴한
             // 계정으로 새 글·댓글을 쓸 수 있는 창이 남지 않는다.
             if (user.isWithdrawn()) {
-                throw new IllegalArgumentException("존재하지 않는 회원입니다. userId=" + id.get());
+                throw new NotFoundException("존재하지 않는 회원입니다. userId=" + id.get());
             }
             return user;
         }
         String email = authentication.getName();
         return byEmail(email, userRepository)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new NotFoundException(
                         "존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
     }
 
     private static Optional<User> byEmail(String email, UserRepository userRepository) {
-        return userRepository.findByEmailHash(EmailHasher.sha512Hex(email));
+        return userRepository.findByEmailHash(EmailHasher.sha512Hex(EmailPolicy.normalize(email)));
     }
 }

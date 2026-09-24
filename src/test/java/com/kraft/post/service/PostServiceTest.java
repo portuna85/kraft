@@ -1,6 +1,7 @@
 package com.kraft.post.service;
 
 import com.kraft.comment.domain.CommentRepository;
+import com.kraft.shared.exception.NotFoundException;
 import com.kraft.post.domain.Category;
 import com.kraft.post.domain.Post;
 import com.kraft.post.domain.PostLikeRepository;
@@ -132,13 +133,13 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("save: 존재하지 않는 회원이면 IllegalArgumentException")
+    @DisplayName("save: 존재하지 않는 회원이면 NotFoundException")
     void save_whenUserNotFound_throwsIllegalArgumentException() {
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> postService.save(authOf("nobody@example.com", Role.USER),
                 new PostSaveRequestDto("제목", "내용", null, null)))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("존재하지 않는 회원");
 
         verify(postRepository, never()).save(any());

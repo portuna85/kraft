@@ -9,6 +9,7 @@ import com.kraft.comment.dto.CommentViewDto;
 import com.kraft.post.domain.Post;
 import com.kraft.post.domain.PostNotFoundException;
 import com.kraft.post.domain.PostRepository;
+import com.kraft.shared.exception.NotFoundException;
 import com.kraft.shared.security.CurrentUser;
 import com.kraft.shared.security.OwnershipPolicy;
 import com.kraft.shared.security.WriteAccessPolicy;
@@ -164,23 +165,25 @@ public class CommentService {
 
         List<Long> topLevelIds = page.stream().map(Comment::getId).toList();
         Map<Long, Long> replyCounts = commentRepository.countRepliesByParentIdIn(topLevelIds);
+        // 부모마다 따로 부르지 않고(BE-08) 이 페이지의 최상위 댓글 전체를 대상으로 한 번에
+        // 가져온다 — 최대 페이지당 20회이던 쿼리가 이 한 번으로 줄어든다.
+        Map<Long, List<Comment>> repliesByParent =
+                commentRepository.findInitialRepliesGroupedByParentIdIn(topLevelIds, INITIAL_REPLIES_PER_PARENT);
 
         List<CommentViewDto> views = page.stream()
-                .map(comment -> withInitialReplies(comment, authentication, replyCounts))
+                .map(comment -> withInitialReplies(comment, authentication, replyCounts, repliesByParent))
                 .toList();
         long totalCount = commentRepository.countByPostId(postId);
         return new CommentPageDto(views, totalCount, hasMore);
     }
 
     private CommentViewDto withInitialReplies(Comment comment, Authentication authentication,
-                                               Map<Long, Long> replyCounts) {
+                                               Map<Long, Long> replyCounts,
+                                               Map<Long, List<Comment>> repliesByParent) {
         long replyCount = replyCounts.getOrDefault(comment.getId(), 0L);
-        List<CommentViewDto> replies = replyCount == 0
-                ? List.of()
-                : commentRepository.findRepliesByParentIdAsc(comment.getId(), null,
-                                PageRequest.of(0, INITIAL_REPLIES_PER_PARENT)).stream()
-                        .map(reply -> new CommentViewDto(reply, OwnershipPolicy.canManage(authentication, reply.getUser())))
-                        .toList();
+        List<CommentViewDto> replies = repliesByParent.getOrDefault(comment.getId(), List.of()).stream()
+                .map(reply -> new CommentViewDto(reply, OwnershipPolicy.canManage(authentication, reply.getUser())))
+                .toList();
         boolean hasMoreReplies = replyCount > replies.size();
         return new CommentViewDto(comment, OwnershipPolicy.canManage(authentication, comment.getUser()))
                 .withReplies(replies, replyCount, hasMoreReplies);
@@ -206,7 +209,7 @@ public class CommentService {
 
     private Comment findComment(Long id) {
         return commentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("해당 댓글이 없습니다. id=" + id));
+                .orElseThrow(() -> new NotFoundException("해당 댓글이 없습니다. id=" + id));
     }
 
     private User findUser(Authentication authentication) {

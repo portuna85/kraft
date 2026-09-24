@@ -1,5 +1,6 @@
 package com.kraft.user.service;
 
+import com.kraft.shared.exception.NotFoundException;
 import com.kraft.user.domain.EmailHasher;
 import com.kraft.user.domain.EmailVerificationTokenRepository;
 import com.kraft.user.domain.PasswordResetTokenRepository;
@@ -143,12 +144,12 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("changePassword: 존재하지 않는 이메일이면 IllegalArgumentException")
+    @DisplayName("changePassword: 존재하지 않는 이메일이면 NotFoundException")
     void changePassword_whenUserNotFound_throwsIllegalArgumentException() {
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.changePassword("nobody@example.com", "raw", "newRawPassword"))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("존재하지 않는 회원");
     }
 
@@ -209,12 +210,12 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("promoteToUser: 존재하지 않는 회원 ID면 IllegalArgumentException")
+    @DisplayName("promoteToUser: 존재하지 않는 회원 ID면 NotFoundException")
     void promoteToUser_whenUserNotFound_throwsIllegalArgumentException() {
         given(userRepository.findById(999L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.promoteToUser(999L))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("id=999");
     }
 }

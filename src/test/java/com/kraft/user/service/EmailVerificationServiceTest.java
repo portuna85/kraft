@@ -1,5 +1,6 @@
 package com.kraft.user.service;
 
+import com.kraft.shared.exception.NotFoundException;
 import com.kraft.user.domain.EmailHasher;
 import com.kraft.user.domain.EmailVerificationToken;
 import com.kraft.user.domain.EmailVerificationTokenRepository;
@@ -29,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -78,12 +80,12 @@ class EmailVerificationServiceTest {
     }
 
     @Test
-    @DisplayName("sendVerificationEmail: 존재하지 않는 회원이면 IllegalArgumentException")
+    @DisplayName("sendVerificationEmail: 존재하지 않는 회원이면 NotFoundException")
     void sendVerificationEmail_whenUserNotFound_throwsIllegalArgumentException() {
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> emailVerificationService.sendVerificationEmail("nobody@example.com"))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("존재하지 않는 회원입니다");
 
         verify(tokenRepository, never()).save(any());
@@ -101,12 +103,15 @@ class EmailVerificationServiceTest {
         ArgumentCaptor<EmailVerificationToken> tokenCaptor = ArgumentCaptor.forClass(EmailVerificationToken.class);
         verify(tokenRepository).save(tokenCaptor.capture());
         EmailVerificationToken savedToken = tokenCaptor.getValue();
-        assertThat(savedToken.getToken()).isNotBlank();
+        assertThat(savedToken.getTokenHash()).isNotBlank();
         assertThat(savedToken.getUser()).isEqualTo(user);
         assertThat(savedToken.getExpiresAt()).isAfter(LocalDateTime.now());
 
-        // SMTP는 여기서 부르지 않는다. 같은 트랜잭션에서 대기열에 같은 토큰이 들어가야 한다.
-        verify(outboxMailStore).enqueue(user, savedToken.getToken(), OutboxMailKind.VERIFY_EMAIL);
+        // SMTP는 여기서 부르지 않는다. 같은 트랜잭션에서 대기열에 같은(평문) 토큰이 들어가야
+        // 하고, 그 해시가 저장된 조회 테이블 행의 해시와 같아야 한다(SEC-04).
+        ArgumentCaptor<String> enqueuedToken = ArgumentCaptor.forClass(String.class);
+        verify(outboxMailStore).enqueue(eq(user), enqueuedToken.capture(), eq(OutboxMailKind.VERIFY_EMAIL));
+        assertThat(EmailHasher.sha512Hex(enqueuedToken.getValue())).isEqualTo(savedToken.getTokenHash());
     }
 
     /**
@@ -169,7 +174,7 @@ class EmailVerificationServiceTest {
     @Test
     @DisplayName("verify: 존재하지 않는 토큰이면 IllegalArgumentException")
     void verify_whenTokenNotFound_throwsIllegalArgumentException() {
-        given(tokenRepository.findByToken("unknown")).willReturn(Optional.empty());
+        given(tokenRepository.findByTokenHash(EmailHasher.sha512Hex("unknown"))).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> emailVerificationService.verify("unknown"))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -182,13 +187,14 @@ class EmailVerificationServiceTest {
     @DisplayName("verify: 만료된 토큰이면 별도 트랜잭션에 삭제를 맡기고 IllegalArgumentException을 던진다")
     void verify_whenTokenExpired_delegatesDeletionToPurgerAndThrows() {
         User user = userWithId(1L, "tester@example.com");
+        String expiredTokenHash = EmailHasher.sha512Hex("expired-token");
         EmailVerificationToken expiredToken = EmailVerificationToken.builder()
-                .token("expired-token")
+                .tokenHash(expiredTokenHash)
                 .user(user)
                 .expiresAt(LocalDateTime.now().minusHours(1))
                 .build();
         ReflectionTestUtils.setField(expiredToken, "id", 42L);
-        given(tokenRepository.findByToken("expired-token")).willReturn(Optional.of(expiredToken));
+        given(tokenRepository.findByTokenHash(expiredTokenHash)).willReturn(Optional.of(expiredToken));
 
         assertThatThrownBy(() -> emailVerificationService.verify("expired-token"))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -205,18 +211,19 @@ class EmailVerificationServiceTest {
     @DisplayName("verify: 유효한 토큰이면 회원을 승격시키고 토큰을 삭제한다")
     void verify_whenTokenValid_promotesUserAndDeletesToken() {
         User user = userWithId(1L, "tester@example.com");
+        String validTokenHash = EmailHasher.sha512Hex("valid-token");
         EmailVerificationToken validToken = EmailVerificationToken.builder()
-                .token("valid-token")
+                .tokenHash(validTokenHash)
                 .user(user)
                 .expiresAt(LocalDateTime.now().plusHours(1))
                 .build();
         ReflectionTestUtils.setField(validToken, "id", 7L);
-        given(tokenRepository.findByToken("valid-token")).willReturn(Optional.of(validToken));
-        given(tokenRepository.deleteByIdAndToken(7L, "valid-token")).willReturn(1);
+        given(tokenRepository.findByTokenHash(validTokenHash)).willReturn(Optional.of(validToken));
+        given(tokenRepository.deleteByIdAndTokenHash(7L, validTokenHash)).willReturn(1);
 
         emailVerificationService.verify("valid-token");
 
-        verify(tokenRepository).deleteByIdAndToken(7L, "valid-token");
+        verify(tokenRepository).deleteByIdAndTokenHash(7L, validTokenHash);
         verify(userService, times(1)).promoteToUser(1L);
     }
 
@@ -224,15 +231,16 @@ class EmailVerificationServiceTest {
     @DisplayName("verify: 동시에 소비되어 이미 지워진 토큰이면 승격하지 않고 IllegalArgumentException")
     void verify_whenTokenAlreadyConsumedConcurrently_throwsAndDoesNotPromote() {
         User user = userWithId(1L, "tester@example.com");
+        String validTokenHash = EmailHasher.sha512Hex("valid-token");
         EmailVerificationToken validToken = EmailVerificationToken.builder()
-                .token("valid-token")
+                .tokenHash(validTokenHash)
                 .user(user)
                 .expiresAt(LocalDateTime.now().plusHours(1))
                 .build();
         ReflectionTestUtils.setField(validToken, "id", 7L);
-        given(tokenRepository.findByToken("valid-token")).willReturn(Optional.of(validToken));
+        given(tokenRepository.findByTokenHash(validTokenHash)).willReturn(Optional.of(validToken));
         // 다른 요청이 먼저 소비해 이미 지워졌다 — 조건부 삭제가 0행을 돌려준다.
-        given(tokenRepository.deleteByIdAndToken(7L, "valid-token")).willReturn(0);
+        given(tokenRepository.deleteByIdAndTokenHash(7L, validTokenHash)).willReturn(0);
 
         assertThatThrownBy(() -> emailVerificationService.verify("valid-token"))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -242,12 +250,12 @@ class EmailVerificationServiceTest {
     }
 
     @Test
-    @DisplayName("resend: 존재하지 않는 회원이면 IllegalArgumentException")
+    @DisplayName("resend: 존재하지 않는 회원이면 NotFoundException")
     void resend_whenUserNotFound_throwsIllegalArgumentException() {
         given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> emailVerificationService.resend("nobody@example.com"))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("존재하지 않는 회원입니다");
 
         verify(tokenRepository, never()).deleteByUserId(any());

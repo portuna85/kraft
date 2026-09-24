@@ -35,7 +35,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.MariaDBContainer;
+import org.testcontainers.mariadb.MariaDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -91,7 +91,7 @@ class MariaDbMigrationTest {
     /** docker-compose.yml과 같은 버전을 쓴다. 운영에서 쓰는 것과 다른 DB를 검증하면 의미가 없다. */
     @Container
     @ServiceConnection
-    static MariaDBContainer<?> mariadb = new MariaDBContainer<>("mariadb:11.7.2");
+    static MariaDBContainer mariadb = new MariaDBContainer("mariadb:11.7.2");
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -149,12 +149,12 @@ class MariaDbMigrationTest {
     @Test
     @DisplayName("V3 세션 SQL을 반복 실행해도 저장된 로그인 세션이 유지된다")
     void loginSessionIsPersistedInSessionTable() throws Exception {
-        userRepository.save(User.builder()
+        Long userId = userRepository.save(User.builder()
                 .name("migration-tester")
                 .email("migration@example.com")
                 .password(passwordEncoder.encode("Password123!"))
                 .role(Role.USER)
-                .build());
+                .build()).getId();
 
         Cookie session = mockMvc.perform(post("/login")
                         .param("username", "migration@example.com")
@@ -166,9 +166,10 @@ class MariaDbMigrationTest {
                 .getCookie("SESSION");
 
         assertThat(session).isNotNull();
+        // principal 이름은 이제 회원 id의 문자열이다(BE-04).
         Long sessions = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM SPRING_SESSION WHERE PRINCIPAL_NAME = ?",
-                Long.class, "migration@example.com");
+                Long.class, String.valueOf(userId));
         assertThat(sessions).isEqualTo(1L);
 
         // local 재기동도 Flyway V3의 멱등 SQL을 사용한다. 기존 세션과 속성을 보존해야 한다.
