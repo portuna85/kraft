@@ -21,6 +21,11 @@ import { fileURLToPath } from 'node:url';
  * 아니라 실제 전송 바이트 수(UTF-8)로 비교한다 — 멀티바이트 문자가 섞인 코드에서는 둘이
  * 다르다. 태그 속성 순서에도 덜 의존하도록, 태그 전체를 먼저 찾은 뒤 그 안에서 속성을 따로
  * 찾는다(따옴표 형태까지 완전히 구조 기반으로 만드는 것은 별도 HTML 파서가 필요해 범위 밖).
+ *
+ * FE-01: 템플릿이 정적 자원 장기 캐시를 위해 href="/js/..." 대신 th:href="@{/js/...}"를 쓰게
+ * 되면서, 이 스크립트도 렌더링 전 템플릿 소스에 그대로 남아 있는 th:href/th:src의 @{...}
+ * 안쪽 경로를 매칭한다 — 실제 버전 접두사는 응답 시점에 Spring이 붙이므로 템플릿 소스에는
+ * 나타나지 않는다.
  */
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, '..');
@@ -72,8 +77,8 @@ const LINK_TAG_RE = /<link\b[^>]*>/g;
 const SCRIPT_TAG_RE = /<script\b[^>]*>/g;
 const REL_MODULEPRELOAD_RE = /\brel\s*=\s*"modulepreload"/;
 const TYPE_MODULE_RE = /\btype\s*=\s*"module"/;
-const HREF_RE = /\bhref\s*=\s*"\/js\/vue-dist\/(chunks\/[\w.-]+\.js)"/;
-const SRC_RE = /\bsrc\s*=\s*"\/js\/vue-dist\/([\w.-]+\.js)"/;
+const HREF_RE = /\bth:href\s*=\s*"@\{\/js\/vue-dist\/(chunks\/[\w.-]+\.js)}"/;
+const SRC_RE = /\bth:src\s*=\s*"@\{\/js\/vue-dist\/([\w.-]+\.js)}"/;
 
 function findPreloadedChunks(html) {
     const found = new Set();

@@ -25,8 +25,8 @@
         <div id="post-app"></div>
         <!-- post-edit.js·comments.js가 함께 쓰는 공유 청크(Vue 런타임 포함, 67KB)를 미리
              받아 둔다 — 두 스크립트가 같은 청크를 가리키므로 여기서 한 번만 선언한다. -->
-        <link rel="modulepreload" href="/js/vue-dist/chunks/runtime.js" />
-        <script type="module" src="/js/vue-dist/post-edit.js" data-mount-fallback="post-app"></script>
+        <link rel="modulepreload" th:href="@{/js/vue-dist/chunks/runtime.js}" />
+        <script type="module" th:src="@{/js/vue-dist/post-edit.js}" data-mount-fallback="post-app"></script>
 
         <!-- 관련 게시글: 같은 분류에서 현재 글을 제외한 최신 글. 서버가 한 번에 계산해
              내려주며 Vue 상태와는 무관하므로 정적으로 렌더링한다. -->
@@ -47,7 +47,7 @@
                  th:attr="data-post-id=${post.id},
                           data-authenticated=${#authorization.expression('isAuthenticated()')},
                           data-can-write=${canWriteComment},data-write-block-reason=${writeBlockReason}"></section>
-        <script type="module" src="/js/vue-dist/comments.js" data-mount-fallback="comments-app"></script>
+        <script type="module" th:src="@{/js/vue-dist/comments.js}" data-mount-fallback="comments-app"></script>
     </main>
 </div>
 

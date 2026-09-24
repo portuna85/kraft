@@ -1,3 +1,4 @@
+import org.apache.tools.ant.filters.ReplaceTokens
 import org.springframework.boot.gradle.tasks.bundling.BootJar
 
 plugins {
@@ -75,6 +76,29 @@ tasks.register<BootJar>("bootE2eJar") {
 // 이 프로젝트는 실행형 애플리케이션이므로 별도의 일반 라이브러리 JAR은 만들지 않는다.
 tasks.jar {
     enabled = false
+}
+
+// 정적 자원의 고정 버전 문자열(FE-01). /js/**에 대한 Spring 리소스 체인의 FixedVersionStrategy가
+// 이 값을 URL 접두사로 쓴다 — 배포마다 커밋이 바뀌면 값도 바뀌므로 장기 캐시(immutable)를 걸어도
+// 새 배포의 자원이 항상 새 경로로 요청된다. git이 없는 환경(예: 소스 tarball 빌드)에서는
+// project.version으로 폴백한다. application.yml의 "@buildVersion@" 토큰만 치환하며(Ant 스타일),
+// Spring의 "${...}" 플레이스홀더 문법과 겹치지 않는다.
+val buildVersion: String = try {
+    providers.exec {
+        commandLine("git", "rev-parse", "--short", "HEAD")
+    }.standardOutput.asText.get().trim().ifBlank { version.toString() }
+} catch (e: Exception) {
+    version.toString()
+}
+
+tasks.processResources {
+    // Ant의 ReplaceTokens 필터는 설정 캐시가 직렬화할 수 없는 스크립트 객체 참조를 만든다
+    // (Gradle 9.7.1 실측 — "cannot serialize Gradle script object references"). 이 태스크
+    // 하나만 설정 캐시 대상에서 빼고, 나머지 태스크는 계속 캐시 혜택을 받는다.
+    notCompatibleWithConfigurationCache("ReplaceTokens 필터가 설정 캐시와 호환되지 않는다")
+    filesMatching("application.yml") {
+        filter(ReplaceTokens::class, "tokens" to mapOf("buildVersion" to buildVersion))
+    }
 }
 
 tasks.withType<Test> {

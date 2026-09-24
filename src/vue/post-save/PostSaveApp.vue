@@ -1,9 +1,10 @@
 <script setup>
-import { reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { api, messageOf } from '@core/http.js';
 import { API } from '@core/constants.js';
 import * as flash from '@ui/flash.js';
 import { useImageUpload } from '../shared/useImageUpload.js';
+import { useUnsavedGuard } from '../shared/useUnsavedGuard.js';
 
 /**
  * 게시글 등록 화면.
@@ -29,6 +30,14 @@ const saving = ref(false);
 
 const picture = useImageUpload();
 const fileInput = ref(null);
+
+// 새 글 작성에는 예전에 이탈 방지가 아예 없었다(FE-18) — 다 쓴 글을 실수로 새로고침하거나
+// 탭을 닫으면 아무 경고 없이 사라졌다. PostEditApp과 같은 규칙: 제목·내용·분류 중 하나라도
+// 비어 있지 않거나 사진을 선택했으면 "작성 중"으로 본다.
+const isDirty = computed(() =>
+    draft.title !== '' || draft.content !== '' || picture.hasFile.value,
+);
+const unsavedGuard = useUnsavedGuard(isDirty);
 
 function onFileChange(event) {
     picture.onFileSelected(event.target.files?.[0] ?? null);
@@ -76,6 +85,7 @@ async function onSubmit() {
         });
         picture.revokePreview();
         flash.set('POST_SAVED');
+        unsavedGuard.allowNavigation();
         window.location.href = '/';
     } catch (error) {
         progressText.value = null;

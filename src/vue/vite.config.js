@@ -25,6 +25,17 @@ export default defineConfig({
             '@ui': resolve(__dirname, '../main/resources/static/js/app/ui'),
         },
     },
+    // 모든 컴포넌트가 <script setup>만 쓰고 Options API(data()/methods/mixins 등)를 쓰지
+    // 않는다(FE-06) — 그런데 plugin-vue는 이 플래그가 없으면 __VUE_OPTIONS_API__ 기본값을
+    // true로 두어, 런타임 청크에 한 번도 안 쓰는 Options API 지원 코드가 그대로 번들된다.
+    // 프로덕션 개발자 도구 연결·하이드레이션 불일치 상세 정보도 함께 끈다(둘 다 운영 빌드에서
+    // 쓰지 않는다 — 서버가 HTML을 하이드레이션하지 않고 각 아일랜드를 처음부터 클라이언트에서
+    // 마운트한다).
+    define: {
+        __VUE_OPTIONS_API__: 'false',
+        __VUE_PROD_DEVTOOLS__: 'false',
+        __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'false',
+    },
     build: {
         outDir: resolve(__dirname, '../main/resources/static/js/vue-dist'),
         emptyOutDir: true,

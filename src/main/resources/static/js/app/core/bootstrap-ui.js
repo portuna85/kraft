@@ -63,9 +63,14 @@ export function modal(selectorOrElement) {
 
 /**
  * @param {string | Element | null} selectorOrElement
+ * @param {{autohide?: boolean, delay?: number} | undefined} [options] 매번 다른 옵션이
+ *   필요할 때만 넘긴다(FE-13, 오류 토스트는 자동으로 닫히지 않게). `getOrCreateInstance`는
+ *   같은 요소에 이미 인스턴스가 있으면 두 번째 인자를 무시하므로, options가 주어지면 기존
+ *   인스턴스를 버리고 새 옵션으로 다시 만든다 — `#app-toast`처럼 여러 화면이 공유하는 단일
+ *   요소가 메시지 종류에 따라 다른 동작을 해야 할 때 쓴다.
  * @returns {import('bootstrap').Toast | BootstrapUiHandle}
  */
-export function toast(selectorOrElement) {
+export function toast(selectorOrElement, options) {
     const element = typeof selectorOrElement === 'string'
         ? qs(selectorOrElement)
         : selectorOrElement;
@@ -76,6 +81,10 @@ export function toast(selectorOrElement) {
     if (!bs || !bs.Toast || typeof bs.Toast.getOrCreateInstance !== 'function') {
         console.warn(`Bootstrap을 불러오지 못해 Toast(${selectorOrElement})를 열 수 없습니다.`);
         return NOOP_HANDLE;
+    }
+    if (options) {
+        bs.Toast.getInstance(element)?.dispose();
+        return bs.Toast.getOrCreateInstance(element, options);
     }
     return bs.Toast.getOrCreateInstance(element);
 }

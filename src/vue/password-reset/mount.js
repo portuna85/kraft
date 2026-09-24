@@ -1,4 +1,4 @@
-import { createApp } from 'vue';
+import { mountIsland } from '../shared/mountIsland.js';
 import PasswordResetApp from './PasswordResetApp.vue';
 
 /**
@@ -6,7 +6,8 @@ import PasswordResetApp from './PasswordResetApp.vue';
  * 화면이 쿼리 문자열을 직접 파싱하지 않는다.
  */
 const mountPoint = document.getElementById('password-reset-app');
-
-if (mountPoint) {
-    createApp(PasswordResetApp, { token: mountPoint.dataset.token ?? '' }).mount(mountPoint);
-}
+mountIsland({
+    mountPoint,
+    component: PasswordResetApp,
+    props: { token: mountPoint?.dataset.token ?? '' },
+});

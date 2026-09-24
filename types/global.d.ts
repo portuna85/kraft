@@ -15,5 +15,11 @@ declare global {
 
     interface Window {
         bootstrap: typeof bootstrapNamespace;
+        /**
+         * mount-failure.js가 올려주는 전역. Vue 아일랜드가 마운트에 실패하면(JSON 파싱 실패,
+         * setup 중 예외 등) 마운트 지점 id를 넘겨 불러, 빈 화면 대신 최소 안내로 대체한다
+         * (개선 보고서 F12, src/vue/shared/mountIsland.js).
+         */
+        kraftVueMountFailed?: (mountPointId: string) => void;
     }
 }

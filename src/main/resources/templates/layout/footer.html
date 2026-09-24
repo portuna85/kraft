@@ -206,10 +206,12 @@
       crossorigin은 자체 호스팅에는 의미가 없어 뺐다. 버전을 올릴 때는 이 파일도 같이
       바꿔야 한다(package.json의 bootstrap 버전과 맞출 것).
     -->
-    <script src="/js/vendor/bootstrap.min.js"></script>
+    <script th:src="@{/js/vendor/bootstrap.min.js}"></script>
 
-    <!-- 앱 코드. ES 모듈이라 하위 파일들을 스스로 불러온다(/js/**는 이미 permitAll). -->
-    <script type="module" src="/js/app/main.js"></script>
+    <!-- 앱 코드. ES 모듈이라 하위 파일들을 스스로 불러온다(/js/**는 이미 permitAll). 진입점만
+         버전이 붙은 경로로 요청하면 된다 — 그 안의 상대 경로 import(예: ./ui/flash.js)는
+         브라우저가 이 응답의 실제 URL을 기준으로 풀어, 같은 버전 접두사를 자동으로 물려받는다. -->
+    <script type="module" th:src="@{/js/app/main.js}"></script>
 </div>
 </body>
 </html>

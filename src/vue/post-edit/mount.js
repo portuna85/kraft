@@ -1,4 +1,4 @@
-import { createApp } from 'vue';
+import { mountIsland, parsePageData } from '../shared/mountIsland.js';
 import PostEditApp from './PostEditApp.vue';
 
 /**
@@ -7,27 +7,22 @@ import PostEditApp from './PostEditApp.vue';
  */
 const mountPoint = document.getElementById('post-app');
 
-if (mountPoint) {
-    // JSON이 없거나 깨졌거나 모양이 다르면(개선 보고서 F12) {}로 넘어가지만, PostEditApp은
-    // 곧바로 post.title·categoryOptions[0]을 참조하므로 그건 안전한 기본 상태가 아니다 —
-    // 여기서 먼저 걸러 최소 안내로 대체한다.
-    let initial = null;
-    try {
-        const parsed = JSON.parse(document.getElementById('post-initial-data')?.textContent || 'null');
-        if (parsed?.post && typeof parsed.post.title === 'string' && Array.isArray(parsed.categoryOptions)) {
-            initial = parsed;
+mountIsland({
+    mountPoint,
+    component: PostEditApp,
+    props: () => {
+        // JSON이 없거나 깨졌거나 모양이 다르면(개선 보고서 F12) PostEditApp이 곧바로
+        // post.title·categoryOptions[0]을 참조하므로 그건 안전한 기본 상태가 아니다 — 여기서
+        // 먼저 걸러 props 자체를 만들지 않는다.
+        const initial = parsePageData('post-initial-data',
+            (parsed) => parsed?.post && typeof parsed.post.title === 'string' && Array.isArray(parsed.categoryOptions));
+        if (!initial) {
+            return null;
         }
-    } catch {
-        initial = null;
-    }
-
-    if (initial) {
-        createApp(PostEditApp, {
+        return {
             post: initial.post,
             categoryOptions: initial.categoryOptions,
             authenticated: initial.authenticated,
-        }).mount(mountPoint);
-    } else {
-        window.kraftVueMountFailed?.(mountPoint.id);
-    }
-}
+        };
+    },
+});

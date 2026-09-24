@@ -1,4 +1,4 @@
-import { createApp } from 'vue';
+import { mountIsland, parsePageData } from '../shared/mountIsland.js';
 import PostSaveApp from './PostSaveApp.vue';
 
 /**
@@ -7,21 +7,16 @@ import PostSaveApp from './PostSaveApp.vue';
  */
 const mountPoint = document.getElementById('post-save-app');
 
-if (mountPoint) {
-    // 같은 이유(F12) — PostSaveApp이 곧바로 categoryOptions[0]을 참조한다.
-    let initial = null;
-    try {
-        const parsed = JSON.parse(document.getElementById('post-save-initial-data')?.textContent || 'null');
-        if (parsed && Array.isArray(parsed.categoryOptions) && typeof parsed.author === 'string') {
-            initial = parsed;
+mountIsland({
+    mountPoint,
+    component: PostSaveApp,
+    props: () => {
+        // 같은 이유(F12) — PostSaveApp이 곧바로 categoryOptions[0]을 참조한다.
+        const initial = parsePageData('post-save-initial-data',
+            (parsed) => parsed && Array.isArray(parsed.categoryOptions) && typeof parsed.author === 'string');
+        if (!initial) {
+            return null;
         }
-    } catch {
-        initial = null;
-    }
-
-    if (initial) {
-        createApp(PostSaveApp, { categoryOptions: initial.categoryOptions, author: initial.author }).mount(mountPoint);
-    } else {
-        window.kraftVueMountFailed?.(mountPoint.id);
-    }
-}
+        return { categoryOptions: initial.categoryOptions, author: initial.author };
+    },
+});
