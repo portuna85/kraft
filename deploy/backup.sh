@@ -54,6 +54,24 @@ fail() {
 # 이 트랩이 완성된 백업을 건드리지 않는다.
 trap '[ -n "$TMP_DEST" ] && rm -rf "$TMP_DEST"' EXIT
 
+# .env의 EMAIL_ENCRYPTION_KEY 값을 되돌릴 수 없는 짧은 식별자로 바꾼다. 값은 printf(셸 내장)로만
+# 파이프에 흘려 ps에 드러나지 않는다. 항목이 없으면 백업 자체는 계속하고 "unknown"을 남긴다 —
+# 키 식별이 안 된다는 사실도 복구 때 알아야 할 정보다. grep이 못 찾아도 pipefail로 죽지 않게
+# || true로 받는다.
+key_fingerprint() {
+    local line value
+    line=$(grep -m1 -E '^(export[[:space:]]+)?EMAIL_ENCRYPTION_KEY=' "$APP_DIR/.env" || true)
+    if [ -z "$line" ]; then
+        echo unknown
+        return
+    fi
+    value=${line#*=}
+    value=${value%$'\r'}
+    value=${value#[\"\']}
+    value=${value%[\"\']}
+    printf '%s' "$value" | sha256sum | cut -c1-16
+}
+
 [ -f "$APP_DIR/.env" ] || fail "$APP_DIR/.env 를 찾을 수 없다"
 
 mkdir -p "$BACKUP_DIR"
@@ -113,10 +131,17 @@ fi
 # 3. 암호화 키는 이 백업에 복사하지 않는다. 키 자체를 평문으로 이곳저곳에 늘리면 유출
 #    표면만 넓어진다 — 대신 "지금 이 시점에 쓰인 키가 어디 있는지"만 기록해 둔다.
 #    복구할 때는 이 기록을 보고 그 시점의 키 보관소(비밀번호 관리자 등)에서 직접 가져온다.
+#
+#    "그 시점의 키"를 고를 근거로 키 식별자(지문)를 함께 남긴다(평가 보고서 2026-09-25 F05) —
+#    예전에는 안내 문장만 있어, 키를 회전한 뒤에는 보관소의 여러 키 중 어느 것이 이 백업에
+#    맞는지 복호화를 시도해 보기 전에는 알 수 없었다. 지문은 .env 값의 SHA-256 앞 16자리로,
+#    원문을 되돌릴 수 없다. 보관소의 후보 키로 같은 지문을 만들어 대조한다(deploy/RESTORE.md).
+KEY_FINGERPRINT=$(key_fingerprint)
 {
     echo "백업 시점: $(date -Is)"
     echo "EMAIL_ENCRYPTION_KEY는 이 백업에 포함하지 않는다."
-    echo "복구 시 이 시점에 운영 중이던 키를 별도 보관소에서 가져와야 한다."
+    echo "키 식별자(SHA-256 앞 16자리): $KEY_FINGERPRINT"
+    echo "복구 시 이 시점에 운영 중이던 키(위 식별자와 같은 것)를 별도 보관소에서 가져와야 한다."
     echo "DB·업로드·키 셋을 같은 시점(위 백업 시점)으로 맞출 것 — 하나만 최신본을 쓰면 복호화 실패."
 } > "$TMP_DEST/KEY-NOTICE.txt"
 
@@ -124,6 +149,7 @@ fi
 #    남긴다. 해시는 전송·보관 중 손상을 나중에 잡아낼 수 있게 한다.
 {
     echo "backup_timestamp=$(date -Is)"
+    echo "email_key_fingerprint=$KEY_FINGERPRINT"
     echo "db_sql_gz_bytes=$(stat -c%s "$TMP_DEST/db.sql.gz")"
     echo "db_sql_gz_sha256=$(sha256sum "$TMP_DEST/db.sql.gz" | cut -d' ' -f1)"
     if [ -f "$TMP_DEST/uploads.tar.gz" ]; then
