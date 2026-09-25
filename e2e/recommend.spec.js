@@ -58,6 +58,32 @@ test('생성 버튼을 누르면 정확히 한 번 요청하고 결과를 보여
     await expect(page.getByRole('heading', { name: '추천 결과' })).toBeFocused();
 });
 
+/**
+ * 문서 5.5: 처리 중 상태를 화면으로 보는 사용자에게도 알려야 한다. 예전에는 버튼 문구
+ * 변경만 있고 화면 낭독기 전용 안내(aria-live)만 있었다.
+ */
+test('생성 중에는 버튼 아래 안내가 보이고, 끝나면 사라진다', async ({ page }) => {
+    let releaseResponse;
+    const held = new Promise((resolve) => {
+        releaseResponse = resolve;
+    });
+    await page.route('**/api/v1/numbers/recommend', async (route) => {
+        await held;
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(SUCCESS_RESPONSE) });
+    });
+
+    await page.goto('/recommend');
+    await page.locator('#btn-recommend-generate').click();
+
+    const progress = page.locator('.form-progress');
+    await expect(progress).toBeVisible();
+    await expect(progress).toContainText('추천 번호를 생성하는 중입니다.');
+
+    releaseResponse();
+    await expect(page.getByRole('heading', { name: '추천 결과' })).toBeVisible();
+    await expect(progress).toHaveCount(0);
+});
+
 test('이력이 준비되지 않으면 안내 문구를 보여준다(이 저장소의 기본 e2e 상태)', async ({ page }) => {
     await page.goto('/recommend');
     await page.locator('#btn-recommend-generate').click();

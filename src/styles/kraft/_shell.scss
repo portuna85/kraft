@@ -53,9 +53,9 @@
     width: 100%;
 }
 
-// 로그인·가입·비밀번호 찾기 같은 좁은 계정 화면에서 제목 아래 한 줄로 화면의 목적을
-// 짧게 알려준다. .text-muted(Bootstrap 유틸리티)와 함께 쓴다.
-.kraft-main--account .page-lead {
+// 좁은 화면(계정·오류 화면 등)에서 제목 아래 한 줄로 화면의 목적을 짧게 알려준다.
+// .kraft-main--account 전용이 아니다 — .text-muted(Bootstrap 유틸리티)와 함께 쓴다.
+.page-lead {
     font-size: $fs-sm;
     margin-bottom: var(--kraft-space-4);
 }

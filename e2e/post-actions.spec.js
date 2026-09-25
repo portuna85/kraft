@@ -83,3 +83,25 @@ test('게시글 삭제: 취소하면 그대로, 확인하면 목록으로 돌아
     await page.waitForURL('/');
     await expect(page.locator('#flash')).toContainText('글이 삭제되었습니다.');
 });
+
+/**
+ * 문서 5.5: 찾을 수 없는 페이지는 상황 설명과 게시판 복귀 링크를 제공해야 한다.
+ * 예전에는 설명 문구만 있고 복귀 링크가 없었다.
+ */
+test('삭제된 글 주소로 들어가면 설명과 게시판 복귀 링크가 있는 404 화면이 뜬다', async ({ page }) => {
+    await createOwnPost(page, uniqueTitle('404용'));
+    const deletedPostUrl = page.url();
+
+    await page.locator('#btn-delete-post').click();
+    await page.locator('#btn-confirm-delete').click();
+    await page.waitForURL('/');
+
+    await page.goto(deletedPostUrl);
+    await expect(page.locator('.page-title')).toContainText('게시글을 찾을 수 없습니다');
+    await expect(page.locator('.page-lead')).toContainText('삭제되었거나 존재하지 않습니다');
+
+    const backLink = page.getByRole('link', { name: '게시판으로 돌아가기' });
+    await expect(backLink).toBeVisible();
+    await backLink.click();
+    await expect(page).toHaveURL('/');
+});

@@ -24,7 +24,8 @@
             “반려”는 대상을 그대로 둔 채 이 신고만 닫습니다. 같은 대상에 쌓인 다른 신고도 함께 정리됩니다.</p>
 
         <ul class="report-list" th:if="${!#lists.isEmpty(reports)}">
-            <li class="report-list__item" th:each="report : ${reports}" th:attr="data-report-id=${report.id},data-target-key=${report.targetType + ':' + report.targetId}">
+            <li class="report-list__item" th:each="report : ${reports}"
+                th:attr="data-report-id=${report.id},data-target-key=${report.targetType + ':' + report.targetId},data-target-name=${report.targetPreview}">
                 <div class="report-list__head">
                     <span class="post-category" th:text="${report.targetTypeTitle}">게시글</span>
                     <span th:text="${report.reasonTitle}">사유</span>

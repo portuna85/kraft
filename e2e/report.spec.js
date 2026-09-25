@@ -154,6 +154,8 @@ test.describe('관리자 처리', () => {
         // 삭제는 되돌릴 수 없어 확인 대화상자를 한 번 더 거친다(개선 보고서 SEC-05).
         await row.locator('.btn-report-resolve').click();
         await expect(adminPage.locator('#confirmDeleteModal')).toBeVisible();
+        // 삭제 확인 문구에 대상을 명시한다(문서 5.5) — 어느 글을 지우는지 모달 안에서 알 수 있다.
+        await expect(adminPage.locator('#confirmDeleteMessage')).toContainText(title);
         await adminPage.locator('#btn-confirm-delete').click();
         // 처리에 성공하면 현재 페이지를 다시 불러온다(F05) — 로컬에서 줄만 지우면 "처리 대기"
         // 카운트·페이지 수가 서버 상태와 어긋날 수 있다. 재요청·재조회가 끝날 때까지

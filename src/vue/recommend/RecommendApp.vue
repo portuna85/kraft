@@ -165,6 +165,14 @@ function numberLabel(n) {
     </form>
 
     <p
+      v-if="status === 'generating'"
+      class="form-progress"
+      aria-hidden="true"
+    >
+      추천 번호를 생성하는 중입니다.
+    </p>
+
+    <p
       class="visually-hidden"
       aria-live="polite"
     >

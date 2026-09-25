@@ -21,9 +21,13 @@ export function init() {
 
     delegate('click', '.btn-lift-suspension', liftSuspension);
     delegate('click', '.btn-report-resolve', async (trigger) => {
+        const { isPost, name } = targetOf(trigger);
         const confirmed = await confirmAction({
-            title: '게시글·댓글 삭제',
-            message: '이 신고 대상을 삭제하시겠습니까? 되돌릴 수 없습니다.',
+            title: isPost ? '게시글 삭제' : '댓글 삭제',
+            message: name
+                ? `${isPost ? '게시글' : '댓글'} "${name}"을(를) 삭제하시겠습니까? 되돌릴 수 없습니다.`
+                // 대상이 이미 삭제된 신고는 targetName이 없다 — 일반 문구로 물러선다.
+                : '이 신고 대상을 삭제하시겠습니까? 되돌릴 수 없습니다.',
             confirmLabel: '삭제',
         });
         if (confirmed) {
@@ -31,10 +35,13 @@ export function init() {
         }
     });
     delegate('click', '.btn-report-suspend', async (trigger) => {
+        const { isPost, name } = targetOf(trigger);
         const suspendDays = Number(trigger.dataset.suspendDays);
         const confirmed = await confirmAction({
             title: '삭제 + 정지',
-            message: `이 신고 대상을 삭제하고 작성자를 ${suspendDays}일 정지하시겠습니까? 되돌릴 수 없습니다.`,
+            message: name
+                ? `${isPost ? '게시글' : '댓글'} "${name}"을(를) 삭제하고 작성자를 ${suspendDays}일 정지하시겠습니까? 되돌릴 수 없습니다.`
+                : `이 신고 대상을 삭제하고 작성자를 ${suspendDays}일 정지하시겠습니까? 되돌릴 수 없습니다.`,
             confirmLabel: '삭제 + 정지',
         });
         if (confirmed) {
@@ -47,6 +54,21 @@ export function init() {
 /** 같은 줄의 나머지 처리 버튼도 함께 잠가, 요청이 도는 동안 이중 클릭(예: 삭제+반려 동시 클릭)을 막는다. */
 function rowButtons(item) {
     return item ? Array.from(item.querySelectorAll('button')) : [];
+}
+
+// 삭제 확인 문구에 대상을 명시한다(문서 5.5, delete-confirm.js와 같은 규칙). 제목·댓글
+// 내용이 길면 모달이 한눈에 안 들어오므로 자른다.
+function truncate(text, max) {
+    if (!text) {
+        return '';
+    }
+    return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
+function targetOf(trigger) {
+    const item = trigger.closest('.report-list__item');
+    const isPost = item?.dataset.targetKey?.startsWith('POST:') ?? false;
+    return { isPost, name: truncate(item?.dataset.targetName, isPost ? 40 : 30) };
 }
 
 function setRowDisabled(item, disabled) {
