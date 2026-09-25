@@ -83,6 +83,15 @@
     margin-bottom: var(--kraft-space-6);
 }
 
+// 추천 버튼의 선택 상태. Bootstrap의 .btn-outline-primary는 .is-active에 아무 의미도
+// 주지 않으므로(자체 활성 클래스는 .active), 이 규칙이 없으면 추천을 눌러도 시각적으로
+// "선택됨"이 보이지 않는다. .post-font-controls__btn.is-active와 같은 토큰 조합을 쓴다.
+#btn-like.is-active {
+    background-color: var(--kraft-accent-bg);
+    color: var(--kraft-accent-text);
+    border-color: var(--kraft-accent-text);
+}
+
 .post-edit {
     margin-bottom: var(--kraft-space-6);
 }

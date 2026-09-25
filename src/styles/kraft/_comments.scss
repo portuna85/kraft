@@ -63,3 +63,10 @@ textarea.form-control.comment-edit__textarea {
 .comments__login-hint {
     color: var(--kraft-text-muted);
 }
+
+// 더 보기 실패는 토스트로도 알리지만, 토스트는 지나가면 사라지므로 버튼 자리에 계속
+// 보이는 안내를 따로 둔다(comments__empty와 달리 실패임을 danger 색으로 구분한다).
+.comments__load-error {
+    color: var(--kraft-danger);
+    margin-bottom: var(--kraft-space-4);
+}

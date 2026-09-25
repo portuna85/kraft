@@ -210,6 +210,7 @@ function formatDate(iso) {
           type="button"
           class="btn btn-sm btn-outline-danger btn-comment-delete"
           data-target-kind="comment"
+          :data-target-name="comment.content"
           :aria-label="`${comment.author}의 댓글 삭제`"
         >
           삭제

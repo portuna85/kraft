@@ -266,6 +266,38 @@ test('더 보기 응답의 헤더만 오고 본문이 멈추면 타임아웃으�
     await expect(page.locator('#btn-comments-load-more')).toBeEnabled();
 });
 
+/**
+ * 더 보기 실패는 토스트로도 알리지만 토스트는 지나가면 사라진다. 버튼 자리에 계속 보이는
+ * 안내와 재시도 버튼을 함께 제공한다(문서 5.2).
+ */
+test('더 보기가 실패하면 인라인 재시도 안내가 남고, 다시 시도하면 이어서 불러온다', async ({ page }) => {
+    await openOwnPost(page);
+    await seedComments(page, 21);
+    await page.reload();
+    await expect(page.locator('#btn-comments-load-more')).toBeVisible();
+
+    let shouldFail = true;
+    await page.route(/\/api\/v1\/posts\/\d+\/comments\/page/, async (route) => {
+        if (shouldFail) {
+            shouldFail = false;
+            await route.fulfill({ status: 500, contentType: 'application/json', body: '{"detail":"일시적인 오류"}' });
+            return;
+        }
+        await route.continue();
+    });
+
+    await page.locator('#btn-comments-load-more').click();
+
+    const loadError = page.locator('.comments__load-error');
+    await expect(loadError).toBeVisible();
+    await expect(loadError).toContainText('댓글을 더 불러오지 못했습니다.');
+
+    await loadError.getByRole('button', { name: '다시 시도' }).click();
+
+    await expect(loadError).toHaveCount(0);
+    await expect(page.locator('.comment-list__item')).toHaveCount(21);
+});
+
 test('댓글 삭제: 취소하면 그대로, 확인하면 지워진다', async ({ page }) => {
     await openOwnPost(page);
     await page.locator('#comment-content').fill('지울 댓글');
@@ -276,6 +308,8 @@ test('댓글 삭제: 취소하면 그대로, 확인하면 지워진다', async (
     const modal = page.locator('#confirmDeleteModal');
     await expect(modal).toBeVisible();
     await expect(page.locator('#confirmDeleteModalLabel')).toContainText('댓글 삭제');
+    // 삭제 확인 문구에 대상을 명시한다(문서 5.2) — 어느 댓글을 지우는지 모달 안에서 알 수 있다.
+    await expect(page.locator('#confirmDeleteMessage')).toContainText('지울 댓글');
 
     await page.locator('#btn-cancel-delete').click();
     await expect(modal).toBeHidden();

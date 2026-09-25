@@ -331,6 +331,7 @@ async function onSubmit() {
         type="button"
         class="btn btn-outline-danger"
         data-target-kind="post"
+        :data-target-name="post.title"
       >
         삭제
       </button>

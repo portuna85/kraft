@@ -52,3 +52,26 @@ test('992~1199px에서는 안내가 본문 옆에 남고 아래로 떨어지지 
     // 안내가 본문의 오른쪽에 있어야 한다(왼쪽 열이 아니라 두 번째 열).
     expect(asideBox.x).toBeGreaterThan(mainBox.x);
 });
+
+/**
+ * 검색·분류 조건이 걸려 있다는 사실이 검색 폼만 봐서는 드러나지 않았다(분류 select의
+ * is-active 테두리만으로는 눈에 잘 띄지 않는다). 조건이 있을 때만 요약을 보여주고,
+ * 초기화하면 조건 없는 목록으로 돌아간다.
+ */
+test('검색 조건이 있으면 적용된 조건 요약이 보이고, 초기화하면 사라진다', async ({ page }) => {
+    await page.goto('/?q=zzz-nothing-matches-this-zzz');
+
+    const summary = page.locator('.board-filter-summary');
+    await expect(summary).toBeVisible();
+    await expect(summary).toContainText('zzz-nothing-matches-this-zzz');
+
+    await summary.getByRole('link', { name: '초기화' }).click();
+    await expect(page).toHaveURL('/');
+    await expect(page.locator('.board-filter-summary')).toHaveCount(0);
+});
+
+test('검색·분류 조건이 없으면 적용된 조건 요약이 보이지 않는다', async ({ page }) => {
+    await page.goto('/');
+
+    await expect(page.locator('.board-filter-summary')).toHaveCount(0);
+});

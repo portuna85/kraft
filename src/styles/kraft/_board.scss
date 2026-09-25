@@ -177,6 +177,34 @@
     border-color: var(--kraft-primary);
 }
 
+// 검색어·분류 조건이 적용된 채 목록을 보고 있다는 사실을 검색 폼 바로 아래에서 알려준다.
+// 둘 다 없으면 이 블록 자체를 렌더링하지 않는다(index.html의 th:if) — "전체 게시글"을
+// 중복해서 보여줄 필요가 없다.
+.board-filter-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--kraft-space-2);
+    padding: var(--kraft-space-2) var(--kraft-space-4);
+    border: 1px solid var(--kraft-border);
+    border-radius: var(--kraft-radius-control);
+    margin-bottom: var(--kraft-space-4);
+    font-size: $fs-sm;
+    color: var(--kraft-text-muted);
+}
+
+.board-filter-summary__chip {
+    background-color: var(--kraft-accent-bg);
+    color: var(--kraft-accent-text);
+    border-radius: 999px;
+    padding: 1px 8px;
+    font-weight: 600;
+}
+
+.board-filter-summary__reset {
+    margin-left: auto;
+}
+
 .popular-posts {
     background-color: var(--kraft-surface-subtle);
     border: 1px solid var(--kraft-border);

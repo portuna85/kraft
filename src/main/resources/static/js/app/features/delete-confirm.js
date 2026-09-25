@@ -23,13 +23,13 @@ export function init() {
 
     delegate('click', '[data-target-kind="post"]', (trigger) => {
         pending = { kind: 'post', id: valueOf(byId('id')), trigger };
-        open('post');
+        open('post', trigger.dataset.targetName);
     });
 
     delegate('click', '[data-target-kind="comment"]', (trigger) => {
         const item = trigger.closest('.comment-list__item');
         pending = { kind: 'comment', id: item?.dataset.commentId, trigger };
-        open('comment');
+        open('comment', trigger.dataset.targetName);
     });
 
     on(byId('confirmDeleteModal'), 'hidden.bs.modal', () => {
@@ -90,13 +90,25 @@ export function init() {
     });
 }
 
-function open(kind) {
+// 삭제 확인 문구에 대상을 명시한다(문서 5.2) — 제목·댓글 내용이 길면 모달이 한눈에 안
+// 들어오므로 자른다. 게시글 제목은 최대 255자, 댓글 내용은 최대 1000자라 그대로 넣으면
+// 문구가 지나치게 길어질 수 있다.
+function truncate(text, max) {
+    if (!text) {
+        return '';
+    }
+    return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
+function open(kind, targetName) {
     generation += 1;
     // 이전 대상의 요청이 아직 진행 중이더라도, 서로 다른 대상이면 동시에 처리해도 무방하다 —
     // 새로 연 대화상자는 그 요청과 독립적으로 곧바로 확인할 수 있어야 한다.
     byId('btn-confirm-delete').disabled = false;
     const isPost = kind === 'post';
+    const name = truncate(targetName, isPost ? 40 : 30);
     setText(byId('confirmDeleteModalLabel'), isPost ? '게시글 삭제' : '댓글 삭제');
-    setText(byId('confirmDeleteMessage'), isPost ? '이 게시글을 삭제하시겠습니까?' : '이 댓글을 삭제하시겠습니까?');
+    setText(byId('confirmDeleteMessage'),
+        isPost ? `게시글 "${name}"을(를) 삭제하시겠습니까?` : `댓글 "${name}"을(를) 삭제하시겠습니까?`);
     modal('#confirmDeleteModal').show();
 }

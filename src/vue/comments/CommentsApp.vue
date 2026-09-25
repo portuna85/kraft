@@ -37,6 +37,9 @@ comments.forEach(initReplyCursor);
 const totalCount = ref(props.initialTotalCount);
 const hasMore = ref(props.initialHasMore);
 const loadingMore = ref(false);
+// 토스트는 지나가고 나면 사라지므로, 더 보기 버튼이 화면 밖에 있었거나 토스트를 놓친
+// 사용자를 위해 버튼 자리에 계속 보이는 실패 상태를 따로 둔다(문서 5.2).
+const loadError = ref(false);
 // 삭제로 배열에서 항목이 빠져도 "다음 페이지"의 기준은 항상 마지막으로 받아 온 댓글의 id여야
 // 한다 — comments 배열 자체에서 매번 다시 구하면 삭제 직후 잘못된 커서를 보낼 수 있다.
 // Array.prototype.at()은 iOS 15.4부터 지원된다 — 이 프로젝트의 지원 하한(iOS 15)과 어긋나므로
@@ -74,6 +77,7 @@ async function loadMore() {
         return;
     }
     loadingMore.value = true;
+    loadError.value = false;
     const seqAtStart = mutationSeq.value;
     try {
         const page = await api.get(
@@ -91,6 +95,7 @@ async function loadMore() {
         }
     } catch (error) {
         showToast(messageOf(error), 'danger');
+        loadError.value = true;
     } finally {
         loadingMore.value = false;
     }
@@ -242,6 +247,20 @@ onUnmounted(() => window.removeEventListener('kraft:comment-deleted', onExternal
   >
     댓글 더 보기
   </button>
+  <p
+    v-if="loadError"
+    class="comments__load-error"
+    role="alert"
+  >
+    댓글을 더 불러오지 못했습니다.
+    <button
+      type="button"
+      class="btn btn-link btn-sm"
+      @click="loadMore"
+    >
+      다시 시도
+    </button>
+  </p>
 
   <!-- 빈 댓글은 required가 먼저 막는다. Enter는 줄바꿈이어야 하므로 제출 단축키로 쓰지 않는다. -->
   <form

@@ -41,6 +41,15 @@
             <button type="submit" class="btn btn-outline-primary">검색</button>
         </form>
 
+        <div class="board-filter-summary" th:if="${!#strings.isEmpty(q) or category != null}">
+            <span class="board-filter-summary__label">적용된 조건:</span>
+            <span class="board-filter-summary__chip" th:if="${!#strings.isEmpty(q)}">
+                검색 "<span th:text="${q}">검색어</span>"
+            </span>
+            <span class="board-filter-summary__chip" th:if="${category != null}" th:text="${category.title}">분류</span>
+            <a class="board-filter-summary__reset" href="/">초기화</a>
+        </div>
+
         <section class="popular-posts" th:if="${!#lists.isEmpty(popularPosts)}" aria-labelledby="popular-heading">
             <h2 id="popular-heading" class="popular-posts__title">인기글</h2>
             <ol class="popular-posts__list">

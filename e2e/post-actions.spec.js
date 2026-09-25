@@ -26,6 +26,7 @@ test('추천을 눌렀다 다시 누르면 원래대로 돌아온다', async ({ 
     await button.click();
     await expect(count).toHaveText('1');
     await expect(button).toHaveAttribute('aria-pressed', 'true');
+    await expect(button).toHaveClass(/is-active/);
 
     // 편집 모드 전환으로 컴포넌트가 다시 렌더링돼도 추천 상태가 유지된다.
     await page.locator('#btn-edit').click();
@@ -69,6 +70,8 @@ test('게시글 삭제: 취소하면 그대로, 확인하면 목록으로 돌아
     const modal = page.locator('#confirmDeleteModal');
     await expect(modal).toBeVisible();
     await expect(page.locator('#confirmDeleteModalLabel')).toContainText('게시글 삭제');
+    // 삭제 확인 문구에 대상을 명시한다(문서 5.2) — 어느 글을 지우는지 모달 안에서 알 수 있다.
+    await expect(page.locator('#confirmDeleteMessage')).toContainText(title);
 
     await page.locator('#btn-cancel-delete').click();
     await expect(modal).toBeHidden();
