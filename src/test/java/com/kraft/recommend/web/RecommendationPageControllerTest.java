@@ -48,7 +48,7 @@ class RecommendationPageControllerTest {
     }
 
     @Test
-    @DisplayName("부가 정보(추첨일·보너스·1등 당첨금)가 있으면 실수령액을 계산해 함께 담는다")
+    @DisplayName("부가 정보(추첨일·보너스·1등 당첨금)가 있으면 세후 예상 금액을 계산해 함께 담는다")
     void addsPrizeDetails_whenPresent() {
         WinningDraw latest = WinningDraw.builder()
                 .roundNo(1242)

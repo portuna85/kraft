@@ -6,8 +6,10 @@
 # 읽을 수 없거나, 글은 열리는데 이미지만 깨진 상태가 된다.
 #
 # 이 스크립트는 저장소에만 있다. 실행은 사람이 crontab에 등록해야 한다(예:
-#   0 3 * * * /opt/kraft/backup.sh >> /opt/kraft/backup.log 2>&1
-# ) — 이 파일은 그 등록을 대신하지 않는다.
+#   0 3 * * * /opt/kraft/backup.sh >/dev/null 2>>/opt/kraft/backup.log && /opt/kraft/verify-backup.sh >>/opt/kraft/backup.log 2>&1
+# ) — 이 파일은 그 등록을 대신하지 않는다. log()가 이미 tee로 backup.log에 쓰므로 표준
+# 출력까지 같은 파일로 보내면 모든 줄이 두 번 남는다 — 표준 출력은 버리고 오류만 붙인다.
+# 백업 직후 verify-backup.sh로 방금 만든 백업을 검증한다(deploy/RESTORE.md).
 #
 # deploy-apply.sh와 달리 forced command로 묶이지 않는다. 배포 키가 아니라
 # 운영자의 일반 접근(또는 cron)으로 돈다는 뜻이므로, 여기서 실행하는 것은
