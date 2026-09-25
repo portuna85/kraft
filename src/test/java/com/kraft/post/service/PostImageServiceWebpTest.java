@@ -4,155 +4,246 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * {@link PostImageService}의 WEBP 픽셀 수 검사(F04). 표준 JDK ImageIO에는 WEBP 디코더가
- * 없어({@code ImageIO.getImageReaders}가 빈 목록을 돌려줌) 일반 경로를 못 타므로, 컨테이너
- * 헤더를 직접 읽는 별도 경로를 검증한다.
+ * {@link PostImageService}의 WEBP 검증. JDK ImageIO에는 WEBP 디코더가 없어 컨테이너 구조를
+ * 직접 검사하는 경로({@link WebpStructure})를 탄다.
  * <p>
- * 세 하위 형식(VP8X 확장, VP8 단순 손실, VP8L 무손실) 모두 WebP 컨테이너 명세의 고정된
- * 바이트 배치를 손으로 만들어 확인한다 — 실제 인코더 없이도 명세와 대조해 정확성을 검증할
- * 수 있다.
+ * 허용 쪽은 <b>실제 인코더가 만든 파일</b>로 확인한다. {@code src/test/resources/images/webp/}의
+ * 파일은 Chromium canvas({@code toDataURL('image/webp')})가 인코딩한 손실·무손실·알파 이미지다.
+ * 여기서 이미지 청크만 떼어 단순 형식으로 다시 감싼 파일과, 같은 VP8 프레임 2개로 만든
+ * 애니메이션도 있다. 모두 Chromium {@code createImageBitmap}으로 64×48 디코딩을 확인한 뒤
+ * 넣었다(평가 보고서 2026-09-25 F06).
+ * <p>
+ * 거절 쪽은 명세의 바이트 배치를 손으로 만든다. 예전 검사는 앞 30바이트의 치수만 읽어, 이미지
+ * 데이터 없는 헤더만의 파일을 받아들였다.
  */
 class PostImageServiceWebpTest {
+
+    @TempDir
+    Path uploadDir;
 
     private PostImageService postImageService;
 
     @BeforeEach
-    void setUp(@TempDir Path tempDir) {
+    void setUp() {
         postImageService = new PostImageService();
-        ReflectionTestUtils.setField(postImageService, "uploadDir", tempDir.toString());
+        ReflectionTestUtils.setField(postImageService, "uploadDir", uploadDir.toString());
     }
 
-    private static byte[] le32(int v) {
-        return new byte[] { (byte) v, (byte) (v >> 8), (byte) (v >> 16), (byte) (v >> 24) };
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = { "lossy", "lossless", "alpha", "simple-lossy", "simple-lossless", "animated" })
+    @DisplayName("실제 인코더가 만든 WEBP(손실·무손실·알파·단순 형식·애니메이션)는 저장된다")
+    void realWebp_isAccepted(String name) {
+        String url = postImageService.store(webpFile(fixture(name)));
+
+        assertThat(url).endsWith(".webp");
+        assertThat(uploadDir.resolve(PostImageService.fileNameOf(url))).exists();
     }
 
-    private static byte[] riff(String subFourCC, byte[] payload) {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        out.writeBytes("RIFF".getBytes(StandardCharsets.US_ASCII));
-        out.writeBytes(le32(4 + 8 + payload.length)); // "WEBP" + 청크 헤더(8) + payload
-        out.writeBytes("WEBP".getBytes(StandardCharsets.US_ASCII));
-        out.writeBytes(subFourCC.getBytes(StandardCharsets.US_ASCII));
-        out.writeBytes(le32(payload.length));
-        out.writeBytes(payload);
-        return out.toByteArray();
+    @Test
+    @DisplayName("F06: 이미지 데이터 없이 30바이트 VP8X 헤더만 있는 파일은 거절한다")
+    void headerOnlyVp8x_isRejected() {
+        byte[] headerOnly = riff(chunk("VP8X", vp8xPayload(0, 100, 100)));
+
+        assertRejected(headerOnly, WebpStructure.INVALID_MESSAGE);
     }
 
-    /** VP8X 확장 헤더: flags(1)+reserved(3)+width-1(3, LE)+height-1(3, LE). */
-    private static byte[] vp8x(int width, int height) {
-        int w = width - 1;
-        int h = height - 1;
-        return riff("VP8X", new byte[] {
-                0, 0, 0, 0,
-                (byte) w, (byte) (w >> 8), (byte) (w >> 16),
-                (byte) h, (byte) (h >> 8), (byte) (h >> 16),
-        });
+    @Test
+    @DisplayName("F06: 파일 끝이 잘리면(RIFF 크기와 실제 길이 불일치) 거절한다")
+    void truncatedFile_isRejected() {
+        byte[] real = fixture("lossy");
+
+        assertRejected(Arrays.copyOf(real, real.length - 100), WebpStructure.INVALID_MESSAGE);
+        assertRejected(Arrays.copyOf(real, 15), WebpStructure.INVALID_MESSAGE);
     }
 
-    /** 단순 손실(VP8): 프레임 태그(3)+시작 코드 0x9d012a(3)+폭(2, LE, 14비트)+높이(2, LE, 14비트). */
-    private static byte[] vp8Lossy(int width, int height) {
-        int w = width & 0x3FFF;
-        int h = height & 0x3FFF;
-        return riff("VP8 ", new byte[] {
-                0, 0, 0,
-                (byte) 0x9d, 0x01, 0x2a,
-                (byte) w, (byte) (w >> 8),
-                (byte) h, (byte) (h >> 8),
-        });
+    @Test
+    @DisplayName("F06: RIFF 크기 필드가 실제보다 크거나, 뒤에 다른 데이터가 붙으면 거절한다")
+    void riffSizeMismatch_isRejected() {
+        byte[] real = fixture("simple-lossy");
+        byte[] trailing = Arrays.copyOf(real, real.length + 4);
+        byte[] oversizedField = real.clone();
+        writeLe32(oversizedField, 4, real.length);
+
+        assertRejected(trailing, WebpStructure.INVALID_MESSAGE);
+        assertRejected(oversizedField, WebpStructure.INVALID_MESSAGE);
     }
 
-    /** 무손실(VP8L): 시그니처 0x2F + packed 32비트 LE(폭-1 14비트, 높이-1 14비트, alpha 1비트, version 3비트). */
-    private static byte[] vp8Lossless(int width, int height) {
-        long packed = (long) (width - 1) | ((long) (height - 1) << 14);
-        return riff("VP8L", new byte[] {
-                0x2F,
-                (byte) packed, (byte) (packed >> 8), (byte) (packed >> 16), (byte) (packed >> 24),
-        });
+    @Test
+    @DisplayName("F06: VP8 청크의 첫 파티션이 청크 안에 없으면(헤더만 남은 프레임) 거절한다")
+    void vp8WithoutPartitionData_isRejected() {
+        assertRejected(riff(chunk("VP8 ", vp8Payload(100, 100, 500, 0))), WebpStructure.INVALID_MESSAGE);
+    }
+
+    @Test
+    @DisplayName("F06: VP8 시작 코드가 틀리거나 크기가 0이면 거절한다")
+    void vp8BadStartCodeOrZeroSize_isRejected() {
+        byte[] badStart = vp8Payload(100, 100, 4, 4);
+        badStart[3] = 0;
+
+        assertRejected(riff(chunk("VP8 ", badStart)), WebpStructure.INVALID_MESSAGE);
+        assertRejected(riff(chunk("VP8 ", vp8Payload(0, 100, 4, 4))), WebpStructure.INVALID_MESSAGE);
+    }
+
+    @Test
+    @DisplayName("F06: VP8L 헤더 5바이트뿐이고 비트스트림이 없으면 거절한다")
+    void vp8lHeaderOnly_isRejected() {
+        assertRejected(riff(chunk("VP8L", vp8lPayload(100, 100, 0))), WebpStructure.INVALID_MESSAGE);
+    }
+
+    @Test
+    @DisplayName("F06: VP8X 캔버스 크기가 실제 이미지 크기와 다르면 거절한다")
+    void vp8xCanvasMismatch_isRejected() {
+        byte[] file = riff(chunk("VP8X", vp8xPayload(0, 200, 200)), chunk("VP8L", vp8lPayload(100, 100, 16)));
+
+        assertRejected(file, WebpStructure.INVALID_MESSAGE);
+    }
+
+    @Test
+    @DisplayName("F06: 애니메이션 플래그가 있는데 프레임(ANMF)이 없으면 거절한다")
+    void animatedWithoutFrames_isRejected() {
+        byte[] file = riff(chunk("VP8X", vp8xPayload(0x02, 100, 100)), chunk("ANIM", new byte[6]));
+
+        assertRejected(file, WebpStructure.INVALID_MESSAGE);
+    }
+
+    @Test
+    @DisplayName("단순 형식의 첫 청크가 이미지가 아니면 거절한다")
+    void unknownFirstChunk_isRejected() {
+        assertRejected(riff(chunk("ANIM", new byte[] { 1, 2, 3, 4 })), WebpStructure.INVALID_MESSAGE);
+    }
+
+    @Test
+    @DisplayName("구조가 온전해도 픽셀 수 상한을 넘으면 거절한다(VP8·VP8L·VP8X)")
+    void exceedsPixelLimit_isRejected() {
+        assertRejected(riff(chunk("VP8 ", vp8Payload(10_000, 10_000, 4, 4))), "메가픽셀");
+        assertRejected(riff(chunk("VP8L", vp8lPayload(10_000, 10_000, 16))), "메가픽셀");
+        assertRejected(riff(chunk("VP8X", vp8xPayload(0, 10_000, 10_000)),
+                chunk("VP8L", vp8lPayload(10_000, 10_000, 16))), "메가픽셀");
+    }
+
+    @Test
+    @DisplayName("구조를 만족하는 합성 파일은 상한 이내면 통과한다(검사가 지나치게 엄격하지 않다)")
+    void structurallyValidSynthetic_isAccepted() {
+        String url = postImageService.store(webpFile(riff(chunk("VP8L", vp8lPayload(100, 100, 16)))));
+
+        assertThat(url).endsWith(".webp");
+    }
+
+    private void assertRejected(byte[] bytes, String message) {
+        assertThatThrownBy(() -> postImageService.store(webpFile(bytes)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining(message);
+        // 거절된 업로드는 디스크에 아무것도 남기지 않는다(검증이 저장보다 먼저다).
+        try (var files = Files.list(uploadDir)) {
+            assertThat(files).isEmpty();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    // ── 바이트 조립 ─────────────────────────────────────────────────────────────
+
+    private static byte[] fixture(String name) {
+        try (InputStream in = PostImageServiceWebpTest.class.getResourceAsStream("/images/webp/" + name + ".webp")) {
+            assertThat(in).as("fixture " + name).isNotNull();
+            return in.readAllBytes();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     private static MockMultipartFile webpFile(byte[] bytes) {
         return new MockMultipartFile("file", "photo.webp", "image/webp", bytes);
     }
 
-    @Test
-    @DisplayName("VP8X(확장) 헤더의 정상 크기는 통과한다")
-    void vp8x_withinLimit_succeeds() {
-        String url = postImageService.store(webpFile(vp8x(100, 100)));
-
-        assertThat(url).endsWith(".webp");
+    private static byte[] riff(byte[]... chunks) {
+        ByteArrayOutputStream body = new ByteArrayOutputStream();
+        body.writeBytes("WEBP".getBytes(StandardCharsets.US_ASCII));
+        for (byte[] c : chunks) {
+            body.writeBytes(c);
+        }
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        out.writeBytes("RIFF".getBytes(StandardCharsets.US_ASCII));
+        out.writeBytes(le32(body.size()));
+        out.writeBytes(body.toByteArray());
+        return out.toByteArray();
     }
 
-    @Test
-    @DisplayName("VP8X(확장) 헤더가 픽셀 수 상한을 넘으면 거절한다")
-    void vp8x_exceedsPixelLimit_throws() {
-        // 50,000,000픽셀 상한을 넘도록 10,000 x 10,000(1억 픽셀).
-        assertThatThrownBy(() -> postImageService.store(webpFile(vp8x(10_000, 10_000))))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("메가픽셀");
+    private static byte[] chunk(String fourCc, byte[] payload) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        out.writeBytes(fourCc.getBytes(StandardCharsets.US_ASCII));
+        out.writeBytes(le32(payload.length));
+        out.writeBytes(payload);
+        if (payload.length % 2 == 1) {
+            out.write(0);
+        }
+        return out.toByteArray();
     }
 
-    @Test
-    @DisplayName("VP8(단순 손실) 헤더의 정상 크기는 통과한다")
-    void vp8Lossy_withinLimit_succeeds() {
-        String url = postImageService.store(webpFile(vp8Lossy(100, 100)));
-
-        assertThat(url).endsWith(".webp");
+    /** VP8X: flags(1) + reserved(3) + 캔버스 폭-1(3) + 높이-1(3). */
+    private static byte[] vp8xPayload(int flags, int width, int height) {
+        return new byte[] {
+                (byte) flags, 0, 0, 0,
+                (byte) (width - 1), (byte) ((width - 1) >> 8), (byte) ((width - 1) >> 16),
+                (byte) (height - 1), (byte) ((height - 1) >> 8), (byte) ((height - 1) >> 16),
+        };
     }
 
-    @Test
-    @DisplayName("VP8(단순 손실) 헤더가 픽셀 수 상한을 넘으면 거절한다")
-    void vp8Lossy_exceedsPixelLimit_throws() {
-        assertThatThrownBy(() -> postImageService.store(webpFile(vp8Lossy(10_000, 10_000))))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("메가픽셀");
+    /**
+     * VP8 키 프레임: 프레임 태그(3, 첫 파티션 크기 19비트를 5비트 위치에) + 시작 코드 + 폭·높이
+     * + 실제로 붙이는 데이터(dataBytes).
+     */
+    private static byte[] vp8Payload(int width, int height, int firstPartitionSize, int dataBytes) {
+        int tag = firstPartitionSize << 5 | 0x10; // 키 프레임(bit0=0), show_frame=1
+        byte[] payload = new byte[10 + dataBytes];
+        payload[0] = (byte) tag;
+        payload[1] = (byte) (tag >> 8);
+        payload[2] = (byte) (tag >> 16);
+        payload[3] = (byte) 0x9D;
+        payload[4] = 0x01;
+        payload[5] = 0x2A;
+        payload[6] = (byte) width;
+        payload[7] = (byte) ((width >> 8) & 0x3F);
+        payload[8] = (byte) height;
+        payload[9] = (byte) ((height >> 8) & 0x3F);
+        return payload;
     }
 
-    @Test
-    @DisplayName("VP8L(무손실) 헤더의 정상 크기는 통과한다")
-    void vp8Lossless_withinLimit_succeeds() {
-        String url = postImageService.store(webpFile(vp8Lossless(100, 100)));
-
-        assertThat(url).endsWith(".webp");
+    /** VP8L: 시그니처 0x2F + packed(폭-1, 높이-1, alpha 0, version 0) + 비트스트림(dataBytes). */
+    private static byte[] vp8lPayload(int width, int height, int dataBytes) {
+        long packed = (long) (width - 1) | ((long) (height - 1) << 14);
+        byte[] payload = new byte[5 + dataBytes];
+        payload[0] = 0x2F;
+        payload[1] = (byte) packed;
+        payload[2] = (byte) (packed >> 8);
+        payload[3] = (byte) (packed >> 16);
+        payload[4] = (byte) (packed >> 24);
+        return payload;
     }
 
-    @Test
-    @DisplayName("VP8L(무손실) 헤더가 픽셀 수 상한을 넘으면 거절한다")
-    void vp8Lossless_exceedsPixelLimit_throws() {
-        assertThatThrownBy(() -> postImageService.store(webpFile(vp8Lossless(10_000, 10_000))))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("메가픽셀");
+    private static byte[] le32(int v) {
+        return new byte[] { (byte) v, (byte) (v >> 8), (byte) (v >> 16), (byte) (v >> 24) };
     }
 
-    @Test
-    @DisplayName("알 수 없는 WEBP 하위 형식은 크기를 확인할 수 없으므로 거절한다")
-    void unknownSubFormat_isRejected() {
-        MockMultipartFile file = webpFile(riff("ANIM", new byte[] { 1, 2, 3, 4 }));
-
-        assertThatThrownBy(() -> postImageService.store(file))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("크기 정보를 읽을 수 없습니다");
-    }
-
-    @Test
-    @DisplayName("헤더가 잘려 있어 치수를 읽을 수 없으면 거절한다")
-    void truncatedHeader_isRejected() {
-        byte[] full = vp8x(100, 100);
-        byte[] truncated = new byte[15]; // RIFF 헤더 + 청크 fourCC까지만, 치수 필드 전에 끊김
-        System.arraycopy(full, 0, truncated, 0, truncated.length);
-        MockMultipartFile file = webpFile(truncated);
-
-        assertThatThrownBy(() -> postImageService.store(file))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("크기 정보를 읽을 수 없습니다");
+    private static void writeLe32(byte[] target, int offset, int v) {
+        System.arraycopy(le32(v), 0, target, offset, 4);
     }
 }

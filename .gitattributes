@@ -2,3 +2,5 @@
 *.sh text eol=lf
 *.bat text eol=crlf
 *.jar binary
+*.webp binary
+*.png binary
