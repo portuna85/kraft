@@ -27,6 +27,11 @@ import * as flash from '@ui/flash.js';
  * "손대지 않음 / 새 파일 선택 / 기존 삭제"라는 세 상태는 예전엔 주석으로만 설명됐다
  * (image-upload.js·post-edit.js 참고). 여기서는 hasFile·removedExisting 두 ref의 조합으로
  * showExistingPreview가 파생되어 상태 자체가 코드로 드러난다.
+ *
+ * 업로드 재사용(재시도해도 이미 올린 파일을 다시 올리지 않는 캐시)은 resolveUrl()에
+ * 여기 한 번만 있다. PostSaveApp.vue·PostEditApp.vue의 onSubmit()이 진행 문구·재시도
+ * 안내 문구를 비슷하게 반복하는 것은 남아 있는 중복이지만, 그 둘은 POST/PUT과 버전
+ * 충돌 처리가 달라 억지로 합치지 않기로 했다(각 파일의 onSubmit 주석 참고).
  */
 /** @param {{ initialUrl?: string|null }} [options] */
 export function useImageUpload({ initialUrl = null } = {}) {

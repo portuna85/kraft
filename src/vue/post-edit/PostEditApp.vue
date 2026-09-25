@@ -150,6 +150,9 @@ function clearPicture() {
     }
 }
 
+// PostSaveApp.vue의 onSubmit과 진행 문구·재시도 안내 문구가 비슷하게 반복된다 — 의도적으로
+// 유지하는 이유는 그 파일의 같은 주석 참고(업로드 재사용은 useImageUpload.js에 이미 공유,
+// 여기 남은 차이는 PUT·버전 충돌 처리).
 async function onSubmit() {
     if (saving.value) {
         return;

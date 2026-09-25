@@ -86,6 +86,27 @@ test.describe('비밀번호 변경', () => {
         await expect(page.locator('#change-password-error')).toBeHidden();
         await expect(modal).toBeVisible();
     });
+
+    /**
+     * 문서 5.4: 모달의 열기·닫기·Escape·포커스 복귀를 검증한다. account.js는 이 모달에
+     * Escape나 hide 이벤트를 따로 걸지 않으므로(byId 바인딩뿐), Bootstrap 5 기본 동작이
+     * 그대로 살아 있는지 확인한다.
+     */
+    test('Escape로 닫히고 포커스가 트리거로 돌아온다', async ({ page }) => {
+        await page.goto('/');
+        await openAccountMenu(page);
+        const trigger = page.getByRole('button', { name: '비밀번호 변경' });
+        await trigger.click();
+        await expect(page.locator('#changePasswordModal')).toBeVisible();
+        // 페이드 전환이 끝나고 shown.bs.modal이 첫 입력으로 포커스를 옮길 때까지 기다린다 —
+        // 그 전에 Escape를 누르면 포커스가 아직 모달 바깥 트리거에 있어 Bootstrap의 keydown
+        // 리스너(모달 엘리먼트에 걸려 있다)까지 이벤트가 번지지(bubble) 않는다.
+        await expect(page.locator('#currentPassword')).toBeFocused();
+
+        await page.keyboard.press('Escape');
+        await expect(page.locator('#changePasswordModal')).toBeHidden();
+        await expect(trigger).toBeFocused();
+    });
 });
 
 test.describe('비밀번호 변경 성공', () => {
@@ -174,5 +195,22 @@ test.describe('인증 메일 재발송', () => {
 
         await expect(page.locator('#app-toast')).toContainText('인증 메일을 다시 보냈습니다');
         await expect(modal).toBeHidden();
+    });
+
+    test('Escape로 닫히고 포커스가 트리거로 돌아온다', async ({ page }) => {
+        await page.goto('/');
+        await openAccountMenu(page);
+        const trigger = page.locator('#btn-resend-verification');
+        const modal = page.locator('#resendVerificationModal');
+        await trigger.click();
+        await expect(modal).toBeVisible();
+        // 이 모달은 계정.js가 따로 포커스를 옮기지 않으므로, 전환이 끝나면 Bootstrap이 모달
+        // 컨테이너 자체에 포커스를 준다 — 그 전에 Escape를 누르면 이벤트가 아직 모달 바깥
+        // 트리거에서 발생해 Bootstrap의 keydown 리스너까지 번지지 않는다.
+        await expect(modal).toBeFocused();
+
+        await page.keyboard.press('Escape');
+        await expect(modal).toBeHidden();
+        await expect(trigger).toBeFocused();
     });
 });

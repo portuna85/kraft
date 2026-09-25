@@ -100,3 +100,27 @@ test('탈퇴해도 쓴 글은 목록에 남고 작성자만 익명으로 바뀐�
     await expect(row).toBeVisible();
     await expect(row.locator('.post-list__author')).toContainText('탈퇴한 사용자');
 });
+
+/**
+ * 문서 5.4: 모달의 열기·닫기·Escape·포커스 복귀를 검증한다. account.js는 이 모달에
+ * Escape나 hide 이벤트를 따로 걸지 않으므로(byId 바인딩뿐), Bootstrap 5 기본 동작이
+ * 그대로 살아 있는지 확인한다.
+ */
+test('회원 탈퇴 모달은 Escape로 닫히고 포커스가 트리거로 돌아온다', async ({ page }) => {
+    const email = `${uniqueTitle('esc').toLowerCase()}@e2e.test`;
+    await signUpAndLogin(page, email);
+
+    await page.goto('/');
+    await openAccountMenu(page);
+    const trigger = page.locator('#btn-withdraw');
+    await trigger.click();
+    await expect(page.locator('#withdrawModal')).toBeVisible();
+    // 페이드 전환이 끝나고 shown.bs.modal이 첫 입력으로 포커스를 옮길 때까지 기다린다 —
+    // 그 전에 Escape를 누르면 포커스가 아직 모달 바깥 트리거에 있어 Bootstrap의 keydown
+    // 리스너(모달 엘리먼트에 걸려 있다)까지 이벤트가 번지지(bubble) 않는다.
+    await expect(page.locator('#withdrawPassword')).toBeFocused();
+
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#withdrawModal')).toBeHidden();
+    await expect(trigger).toBeFocused();
+});

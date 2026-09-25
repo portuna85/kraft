@@ -46,7 +46,14 @@ export function init() {
         });
 
         on(document, 'keydown', (event) => {
-            if (event.key !== 'Escape') {
+            // 계정 메뉴 안에서 연 Bootstrap 모달(비밀번호 변경·회원 탈퇴·인증 메일 재발송)이
+            // 열려 있으면 그 모달의 Escape 처리가 우선이다 — 여기서 계정 메뉴까지 함께
+            // 닫으면, 모달이 트리거로 되돌리려는 포커스가 그 트리거를 담고 있던 계정 메뉴가
+            // 같이 닫히며 사라져 accountToggle로 덮어써진다. Bootstrap 모달의 keydown
+            // 리스너는 preventDefault()를 호출하지 않으므로(실측 확인) event.defaultPrevented로는
+            // 구분할 수 없다 — 대신 Bootstrap이 모달을 여는 동안 <body>에 붙이는 modal-open
+            // 클래스로 "지금 모달이 위에 떠 있는가"를 확인한다.
+            if (event.key !== 'Escape' || document.body.classList.contains('modal-open')) {
                 return;
             }
             if (account?.isOpen()) {
@@ -60,7 +67,7 @@ export function init() {
         });
     } else if (account) {
         on(document, 'keydown', (event) => {
-            if (event.key === 'Escape' && account.isOpen()) {
+            if (event.key === 'Escape' && !document.body.classList.contains('modal-open') && account.isOpen()) {
                 account.setOpen(false);
                 accountToggle.focus();
             }

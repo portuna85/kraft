@@ -13,6 +13,27 @@ export function init() {
     initChangePassword();
     initResendVerification();
     initWithdraw();
+    ['changePasswordModal', 'withdrawModal', 'resendVerificationModal'].forEach(bindFocusReturn);
+}
+
+// 세 계정 모달(비밀번호 변경·회원 탈퇴·인증 메일 재발송) 모두 열 때 누르고 있던 버튼으로
+// 돌아가야 키보드 사용자가 위치를 잃지 않는다(문서 5.4, confirm-dialog.js·delete-confirm.js와
+// 같은 규칙). Bootstrap 자체는 트리거로의 포커스 복귀를 해 주지 않으므로 각 모달에 직접 건다.
+function bindFocusReturn(elementId) {
+    const element = byId(elementId);
+    if (!element) {
+        return;
+    }
+    let trigger = null;
+    on(element, 'show.bs.modal', () => {
+        trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    });
+    on(element, 'hidden.bs.modal', () => {
+        if (trigger && document.contains(trigger)) {
+            trigger.focus();
+        }
+        trigger = null;
+    });
 }
 
 function initLogout() {

@@ -53,6 +53,13 @@
     width: 100%;
 }
 
+// 로그인·가입·비밀번호 찾기 같은 좁은 계정 화면에서 제목 아래 한 줄로 화면의 목적을
+// 짧게 알려준다. .text-muted(Bootstrap 유틸리티)와 함께 쓴다.
+.kraft-main--account .page-lead {
+    font-size: $fs-sm;
+    margin-bottom: var(--kraft-space-4);
+}
+
 .kraft-aside {
     background-color: var(--kraft-surface);
     border: 1px solid var(--kraft-border);

@@ -51,6 +51,12 @@ function clearPicture() {
     }
 }
 
+// PostEditApp.vue의 onSubmit과 진행 문구·재시도 안내 문구가 비슷하게 반복된다. 업로드
+// 재사용(재시도해도 같은 파일을 다시 올리지 않는 캐시)의 핵심 로직은 useImageUpload.js의
+// resolveUrl()에 이미 공유되어 있어, 여기 남은 것은 POST 요청 모양과 진행 문구 순서뿐이다.
+// PostEditApp은 PUT·버전 충돌 처리가 추가로 있어 모양이 달라, 억지로 하나로 합치면 서로
+// 다른 두 흐름을 무리하게 끼워 맞추게 된다(개선 보고서 검토, 2026-09-26) — 세 번째 호출부가
+// 생기거나 두 흐름이 더 벌어지기 전까지는 의도적으로 중복을 유지한다.
 async function onSubmit() {
     if (saving.value) {
         return;
@@ -117,6 +123,12 @@ async function onSubmit() {
         :disabled="saving"
       >
     </div>
+    <!-- 닉네임을 보여준다. 값은 서버가 principal에서 꺼내 내려준 것이고, 저장 요청에는
+         담지 않는다 — 작성자는 서버가 로그인 계정으로 정한다. 입력할 것이 없는 값이라
+         채울 단계(mb-3 입력 필드)가 아니라 제목 아래 안내문구로만 보여준다. -->
+    <p class="post-form__byline text-muted">
+      작성자: {{ author }} · 로그인 계정으로 자동 지정됩니다.
+    </p>
     <div class="mb-3">
       <label for="category">분류</label>
       <select
@@ -133,19 +145,6 @@ async function onSubmit() {
           {{ option.title }}
         </option>
       </select>
-    </div>
-    <div class="mb-3">
-      <label for="author">작성자</label>
-      <!-- 닉네임을 보여준다. 값은 서버가 principal에서 꺼내 내려준 것이고, 저장 요청에는
-           담지 않는다 — 작성자는 서버가 로그인 계정으로 정한다. -->
-      <input
-        id="author"
-        class="form-control"
-        type="text"
-        readonly
-        :value="author"
-      >
-      <small class="form-text text-muted">작성자는 로그인 계정으로 자동 지정됩니다.</small>
     </div>
     <div class="mb-3">
       <label for="content">내용</label>
