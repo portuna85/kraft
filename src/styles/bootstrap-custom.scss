@@ -21,6 +21,10 @@
 // variables 임포트보다 먼저 둬야 그 기본값(true)이 적용되기 전에 덮어쓴다.
 $enable-dark-mode: false;
 
+// Kraft 표면 반경 토큰(--kraft-radius-surface, 12px)과 맞춘다 — variables 임포트보다
+// 먼저 둬야 기본값(0.5rem)이 적용되기 전에 덮어쓴다.
+$modal-content-border-radius: 0.75rem;
+
 @import "variables";
 
 // $theme-colors 8개 중 실제로 쓰는 4개만 남긴다(FE-09) — 버튼(.btn-primary/-secondary/-danger,

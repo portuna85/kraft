@@ -36,8 +36,9 @@ $fs-heading-lg: 1.75rem; // 같은 제목들의 넓은 화면(>=lg) 크기
     --kraft-primary-dark: #4338ca;
     --kraft-secondary: #64748b;
     --kraft-secondary-dark: #475569;
-    --kraft-header: #192335;
-    --kraft-bg: #f3f4f6;
+    --kraft-header: #ffffff;
+    --kraft-header-border: #d5dae3;
+    --kraft-bg: #f8fafc;
     --kraft-surface: #ffffff;
     --kraft-surface-subtle: #f8fafc;
     --kraft-text: #1f2937;
@@ -50,7 +51,8 @@ $fs-heading-lg: 1.75rem; // 같은 제목들의 넓은 화면(>=lg) 크기
     --kraft-danger-dark: #8c1c14;
 
     --kraft-radius: 0.5rem;
-    --kraft-radius-control: 0.375rem;
+    --kraft-radius-control: 0.5rem;
+    --kraft-radius-surface: 0.75rem;
 
     --kraft-space-1: 4px;
     --kraft-space-2: 8px;
@@ -58,4 +60,5 @@ $fs-heading-lg: 1.75rem; // 같은 제목들의 넓은 화면(>=lg) 크기
     --kraft-space-4: 16px;
     --kraft-space-6: 24px;
     --kraft-space-8: 32px;
+    --kraft-space-12: 48px;
 }

@@ -27,12 +27,26 @@ test.describe('모바일 헤더 메뉴', () => {
 test.describe('넓은 화면', () => {
     test.use({ storageState: storageStateFor('user'), viewport: { width: 1280, height: 800 } });
 
-    test('토글 없이 계정 메뉴가 그대로 보인다', async ({ page }) => {
+    test('바깥 메뉴 토글 없이 닉네임이 보이고, 계정 펼침 메뉴를 열면 로그아웃이 보인다', async ({ page }) => {
         await page.goto('/');
 
         await expect(page.locator('#btn-nav-toggle')).toBeHidden();
         await expect(page.locator('.kraft-actions__name')).toContainText(ACCOUNTS.user.name);
+
+        const accountToggle = page.locator('#btn-account-toggle');
+        const accountMenu = page.locator('#account-menu');
+        await expect(accountMenu).toBeHidden();
+        await expect(accountToggle).toHaveAttribute('aria-expanded', 'false');
+
+        await accountToggle.click();
+        await expect(accountMenu).toBeVisible();
+        await expect(accountToggle).toHaveAttribute('aria-expanded', 'true');
         await expect(page.locator('#btn-logout')).toBeVisible();
+
+        await page.keyboard.press('Escape');
+        await expect(accountMenu).toBeHidden();
+        await expect(accountToggle).toHaveAttribute('aria-expanded', 'false');
+        await expect(accountToggle).toBeFocused();
     });
 });
 
