@@ -26,10 +26,11 @@ INCOMING="$APP_DIR/kraft.jar.incoming"
 PREVIOUS="$APP_DIR/kraft.jar.prev"
 LOCK_FILE="$APP_DIR/deploy.lock"
 LOG=/opt/kraft/deploy.log
-# /healthz는 DB 조회·템플릿 렌더링 없이 애플리케이션 컨텍스트가 떴는지만 본다(개선 보고서
-# OPS-G5) — 예전에 썼던 GET /(게시글 목록 전체 렌더)보다 훨씬 가볍다. 이 루프가 재시작마다
-# 최대 30회 반복되므로 차이가 누적된다.
-HEALTH_URL=http://127.0.0.1:8080/healthz
+# /readyz는 템플릿 렌더링 없이 컨텍스트 기동과 DB 커넥션 검증(제한 시간 2초)만 본다 — DB에
+# 붙지 못하면 503이다(평가 보고서 2026-09-25 F04). 예전에는 무조건 200인 /healthz를 써서, DB에
+# 연결하지 못하는 jar도 배포·롤백 성공으로 기록될 수 있었다. 예전에 썼던 GET /(게시글 목록
+# 전체 렌더)보다는 여전히 가볍다(OPS-G5) — 이 루프가 재시작마다 최대 30회 반복된다.
+HEALTH_URL=http://127.0.0.1:8080/readyz
 # 정상 jar보다 훨씬 넉넉한 수신 상한(아래 1번) — 손상되었거나 다른 목적의 대용량 전송이
 # 디스크를 무한정 채우지 않게 한다.
 MAX_JAR_SIZE=524288000  # 500MB
