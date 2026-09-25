@@ -2,34 +2,11 @@ import { mountIsland, parsePageData } from '../shared/mountIsland.js';
 import CommentsApp from './CommentsApp.vue';
 
 /**
- * 이 파일에는 // @ts-check를 켜지 않는다. CommentsApp.vue를 import하는 순간 tsc가
- * "Cannot find module './CommentsApp.vue'"로 막힌다(.vue 모듈 선언이 없다 — 실제로 켜서
- * 확인했다). .vue SFC 타입 검사는 vue-tsc 등 별도 도구가 필요한 비용 평가 대상이라 이번
- * 범위에서 제외한다(개선 보고서 F07). 아래 JSDoc @typedef는 // @ts-check 없이도 에디터
- * 자동완성에는 쓰이므로 문서화 목적으로 남겨 둔다.
- */
-
-/**
- * 서버 CommentViewDto와 필드를 맞춘다(src/main/java/com/kraft/comment/dto/CommentViewDto.java).
+ * 이 파일과 .vue 컴포넌트는 jsconfig의 tsc가 아니라 vue-tsc(tsconfig.vue.json, npm run
+ * typecheck:vue)가 검사한다 — tsc는 .vue import를 해석하지 못한다(평가 보고서 2026-09-25 F09).
+ * 서버 DTO 모양은 ../shared/types.js에 모아 두었다.
  *
- * @typedef {Object} CommentViewDto
- * @property {number} id
- * @property {number} postId
- * @property {string} content
- * @property {string} author
- * @property {string} createdAt
- * @property {boolean} canManage
- */
-
-/**
- * 서버 CommentPageDto와 필드를 맞춘다(src/main/java/com/kraft/comment/dto/CommentPageDto.java).
- * 댓글 목록 API(GET .../comments/page)와 이 페이지의 bootstrap JSON(#comments-initial-data)이
- * 공유하는 모양이다.
- *
- * @typedef {Object} CommentPageDto
- * @property {CommentViewDto[]} comments
- * @property {number} totalCount
- * @property {boolean} hasMore
+ * @typedef {import('../shared/types.js').CommentPageDto} CommentPageDto
  */
 
 /**
@@ -52,7 +29,8 @@ mountIsland({
         const initialPage = parsePageData('comments-initial-data',
             (parsed) => parsed && Array.isArray(parsed.comments)
                 && typeof parsed.totalCount === 'number' && typeof parsed.hasMore === 'boolean');
-        if (!initialPage) {
+        // mountPoint가 없으면 mountIsland가 이 함수를 부르지 않지만, 타입 검사가 그 사실을 모르므로 함께 본다.
+        if (!initialPage || !mountPoint) {
             return null;
         }
         return {

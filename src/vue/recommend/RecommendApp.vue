@@ -28,7 +28,7 @@ const {
 } = useRecommendation();
 
 const numbers = Array.from({ length: 45 }, (_, i) => i + 1);
-const resultHeading = ref(null);
+const resultHeading = ref(/** @type {HTMLElement | null} */ (null));
 
 // 성공 응답이 오면 결과 제목으로 포커스를 옮긴다 — 스크린리더 사용자가 생성 버튼 다음에
 // 이어질 결과를 놓치지 않게 한다.

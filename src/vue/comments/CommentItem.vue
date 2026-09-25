@@ -14,7 +14,7 @@ import { replyAfterId } from './commentState.js';
  * (CommentService.save의 resolveParent).
  */
 const props = defineProps({
-    comment: { type: Object, required: true },
+    comment: { type: /** @type {import('vue').PropType<import('../shared/types.js').CommentViewDto>} */ (Object), required: true },
     // 신고 버튼은 로그인한 사람에게만 보인다. 목록이 이 값을 그대로 내려준다.
     authenticated: { type: Boolean, required: true },
     // 답글 자신이면 true — "답글" 버튼과 중첩 답글 목록을 그리지 않는다.
@@ -29,14 +29,14 @@ const emit = defineEmits(['updated', 'replied', 'moreRepliesLoaded']);
 const editing = ref(false);
 const draftContent = ref(props.comment.content);
 const saving = ref(false);
-const editTextarea = ref(null);
-const editButton = ref(null);
+const editTextarea = ref(/** @type {HTMLTextAreaElement | null} */ (null));
+const editButton = ref(/** @type {HTMLButtonElement | null} */ (null));
 
 const replying = ref(false);
 const replyContent = ref('');
 const replySaving = ref(false);
-const replyTextarea = ref(null);
-const replyButton = ref(null);
+const replyTextarea = ref(/** @type {HTMLTextAreaElement | null} */ (null));
+const replyButton = ref(/** @type {HTMLButtonElement | null} */ (null));
 
 async function startReply() {
     replyContent.value = '';

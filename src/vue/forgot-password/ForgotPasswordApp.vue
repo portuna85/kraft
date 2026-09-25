@@ -15,7 +15,7 @@ import * as flash from '@ui/flash.js';
 const email = ref('');
 const sending = ref(false);
 const sent = ref(false);
-const doneHeading = ref(null);
+const doneHeading = ref(/** @type {HTMLElement | null} */ (null));
 
 async function onSubmit() {
     if (sending.value) {

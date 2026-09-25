@@ -11,8 +11,8 @@ import { useUnsavedGuard } from '../shared/useUnsavedGuard.js';
  * 게시글 읽기·편집·추천 상태를 관리한다. 추천은 서버가 반환한 상태만 반영한다.
  */
 const props = defineProps({
-    post: { type: Object, required: true },
-    categoryOptions: { type: Array, required: true },
+    post: { type: /** @type {import('vue').PropType<import('../shared/types.js').PostViewDto>} */ (Object), required: true },
+    categoryOptions: { type: /** @type {import('vue').PropType<import('../shared/types.js').CategoryOption[]>} */ (Array), required: true },
     authenticated: { type: Boolean, required: true },
 });
 
@@ -28,7 +28,7 @@ const original = reactive({
 });
 const draft = reactive({ ...original });
 const version = ref(props.post.version);
-const progressText = ref(null);
+const progressText = ref(/** @type {string | null} */ (null));
 const saving = ref(false);
 const liked = ref(props.post.likedByMe);
 const likeCount = ref(props.post.likeCount);
@@ -36,9 +36,9 @@ const liking = ref(false);
 
 const picture = useImageUpload({ initialUrl: props.post.picture });
 
-const titleInput = ref(null);
-const editButton = ref(null);
-const fileInput = ref(null);
+const titleInput = ref(/** @type {HTMLInputElement | null} */ (null));
+const editButton = ref(/** @type {HTMLButtonElement | null} */ (null));
+const fileInput = ref(/** @type {HTMLInputElement | null} */ (null));
 
 // 글자크기 조절: 3단계(작게/보통/크게), 세션을 넘어 유지하도록 localStorage에 기억한다.
 // localStorage 접근이 막힌 환경(프라이빗 모드 등)에서도 화면은 기본값으로 그대로 동작해야
@@ -407,7 +407,7 @@ async function onSubmit() {
     >
       <img
         class="picture-preview__image"
-        :src="post.picture"
+        :src="post.picture ?? undefined"
         alt="현재 첨부된 이미지"
       >
       <div class="picture-preview__meta">
@@ -435,7 +435,7 @@ async function onSubmit() {
       <img
         id="edit-picture-preview-image"
         class="picture-preview__image"
-        :src="picture.previewUrl.value"
+        :src="picture.previewUrl.value ?? undefined"
         alt="선택한 이미지 미리보기"
       >
       <div class="picture-preview__meta">

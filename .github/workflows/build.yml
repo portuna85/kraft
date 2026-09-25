@@ -158,8 +158,10 @@ jobs:
 
       - run: npm ci
 
-      # ESLint + tsc(jsconfig). tsc는 타입 검사가 아니라 IDE가 쓰는 타입 설정이 실제로
-      # 해석되는지 확인하는 용도다 — bootstrap 전역 선언이 깨지면 여기서 드러난다.
+      # ESLint + tsc(jsconfig) + vue-tsc(tsconfig.vue.json). tsc는 IDE가 쓰는 타입 설정이 실제로
+      # 해석되는지 확인하는 용도다 — bootstrap 전역 선언이 깨지면 여기서 드러난다. vue-tsc는 .vue
+      # 컴포넌트의 템플릿·props·서버 DTO(src/vue/shared/types.js) 계약을 검사한다(평가 보고서
+      # 2026-09-25 F09).
       - name: Lint and typecheck
         run: npm run lint
 

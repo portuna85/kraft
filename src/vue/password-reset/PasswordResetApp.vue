@@ -79,7 +79,7 @@ async function onSubmit() {
         type="password"
         class="form-control"
         :class="{ 'is-invalid': confirmError }"
-        :aria-invalid="confirmError ? 'true' : null"
+        :aria-invalid="confirmError ? 'true' : undefined"
         placeholder="새 비밀번호를 다시 입력하세요"
         autocomplete="new-password"
         aria-describedby="newPasswordConfirm-error"

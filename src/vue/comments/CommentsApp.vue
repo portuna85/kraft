@@ -22,7 +22,7 @@ const props = defineProps({
     canWrite: { type: Boolean, required: true },
     // 쓸 수 없는 이유. 서버가 작성 경로와 같은 규칙으로 만든 문장을 그대로 보여준다.
     writeBlockReason: { type: String, default: '' },
-    initialComments: { type: Array, required: true },
+    initialComments: { type: /** @type {import('vue').PropType<import('../shared/types.js').CommentViewDto[]>} */ (Array), required: true },
     // 로드된 배열 길이와는 별개로, 전체 댓글 수를 항상 정확히 보여주기 위한 값이다.
     initialTotalCount: { type: Number, required: true },
     initialHasMore: { type: Boolean, required: true },

@@ -16,7 +16,7 @@ import { useUnsavedGuard } from '../shared/useUnsavedGuard.js';
  * 거르지 않는 이유는 편집 화면과 같다 — 실제 경계는 저장 요청에서 서버가 잡는다.
  */
 const props = defineProps({
-    categoryOptions: { type: Array, required: true },
+    categoryOptions: { type: /** @type {import('vue').PropType<import('../shared/types.js').CategoryOption[]>} */ (Array), required: true },
     author: { type: String, required: true },
 });
 
@@ -25,11 +25,11 @@ const draft = reactive({
     content: '',
     category: props.categoryOptions[0]?.value ?? 'FREE',
 });
-const progressText = ref(null);
+const progressText = ref(/** @type {string | null} */ (null));
 const saving = ref(false);
 
 const picture = useImageUpload();
-const fileInput = ref(null);
+const fileInput = ref(/** @type {HTMLInputElement | null} */ (null));
 
 // 새 글 작성에는 예전에 이탈 방지가 아예 없었다(FE-18) — 다 쓴 글을 실수로 새로고침하거나
 // 탭을 닫으면 아무 경고 없이 사라졌다. PostEditApp과 같은 규칙: 제목·내용·분류 중 하나라도
@@ -182,7 +182,7 @@ async function onSubmit() {
       <img
         id="picture-preview-image"
         class="picture-preview__image"
-        :src="picture.previewUrl.value"
+        :src="picture.previewUrl.value ?? undefined"
         alt="선택한 이미지 미리보기"
       >
       <div class="picture-preview__meta">
