@@ -474,6 +474,30 @@ test('F02·F03 회귀: 새 답글을 쓴 뒤 답글 더 보기로 빠짐없이 �
     await expect(page.locator('#comments-heading')).toContainText('댓글 0개');
 });
 
+// 평가 보고서 2026-09-25 F11: 수정 요청은 version이 필수다. 방금 이 화면에서 단 답글도 등록
+// 응답의 version을 들고 있어, 새로고침 없이 곧바로 수정할 수 있어야 한다.
+test('F11: 방금 단 답글을 새로고침 없이 바로 수정할 수 있다(version 포함)', async ({ page }) => {
+    await openOwnPost(page);
+    await page.locator('#comment-content').fill('부모 댓글');
+    await page.locator('#btn-comment-save').click();
+    await expect(page.locator('#flash')).toContainText('댓글이 등록되었습니다.');
+
+    const parent = page.locator('.comment-list > .comment-list__item').first();
+    await parent.locator('.btn-comment-reply').click();
+    await parent.locator('.comment-reply-form textarea').fill('수정 전 답글');
+    await parent.locator('.btn-comment-reply-save').click();
+    await expect(page.locator('#flash')).toContainText('댓글이 등록되었습니다.');
+
+    const reply = parent.locator('.comment-list__replies .comment-list__item').first();
+    const putBody = page.waitForRequest((r) => r.method() === 'PUT' && /\/api\/v1\/comments\/\d+$/.test(r.url()));
+    await reply.locator('.btn-comment-edit').click();
+    await reply.locator('.comment-edit__textarea').fill('수정 후 답글');
+    await reply.locator('.btn-comment-save').click();
+
+    expect((await putBody).postDataJSON().version).toEqual(expect.any(Number));
+    await expect(reply.locator('.comment-list__content')).toHaveText('수정 후 답글');
+});
+
 test('2단계 댓글: 최상위 댓글을 지우면 그 답글도 함께 사라진다', async ({ page }) => {
     await openOwnPost(page);
     await page.locator('#comment-content').fill('삭제될 최상위 댓글입니다.');

@@ -237,7 +237,7 @@ class PostApiControllerTest {
                         .with(user("intruder@example.com"))
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"해킹\",\"content\":\"해킹\"}"))
+                        .content("{\"title\":\"해킹\",\"content\":\"해킹\",\"version\":0}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403));
     }
@@ -251,7 +251,7 @@ class PostApiControllerTest {
                         .with(user("tester@example.com"))
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"제목\",\"content\":\"내용\",\"picture\":\"/images/new.png\"}"))
+                        .content("{\"title\":\"제목\",\"content\":\"내용\",\"picture\":\"/images/new.png\",\"version\":0}"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("1"));
 
@@ -269,9 +269,23 @@ class PostApiControllerTest {
                         .with(user("tester@example.com"))
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"" + tooLongTitle + "\",\"content\":\"내용\"}"))
+                        .content("{\"title\":\"" + tooLongTitle + "\",\"content\":\"내용\",\"version\":0}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("title: 제목은 255자 이하로 입력하세요."));
+
+        verify(postService, never()).update(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("F11: PUT /api/v1/posts/{id} 에 version이 없으면 400이고 서비스는 호출되지 않는다")
+    void updatePost_withoutVersion_returns400() throws Exception {
+        mockMvc.perform(put("/api/v1/posts/1")
+                        .with(user("tester@example.com"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"제목\",\"content\":\"내용\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("version: ")));
 
         verify(postService, never()).update(any(), any(), any());
     }

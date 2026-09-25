@@ -126,8 +126,8 @@ async function save() {
         const saved = await api.put(`${API.COMMENTS}/${props.comment.id}`, {
             content,
             // 편집을 시작할 때 받아간 버전. 그 사이 다른 곳에서 저장됐으면 서버가 409로
-            // 거절한다(B12). 버전을 모르는 댓글(방금 로컬에서 만든 답글 등)은 undefined라
-            // JSON에서 생략되고, 서버는 그 경우 검사를 건너뛴다.
+            // 거절한다(B12). 서버는 버전을 필수로 받는다(F11) — 방금 이 화면에서 만든
+            // 댓글·답글도 등록 응답(CommentViewDto)의 version을 그대로 들고 있다.
             version: requestVersion,
         });
         // 서버가 실제로 반영한 version을 그대로 쓴다(개선 보고서 COR-05) — 예전에는

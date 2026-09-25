@@ -159,9 +159,23 @@ class CommentApiControllerTest {
                         .with(user("intruder@example.com"))
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"content\":\"해킹\"}"))
+                        .content("{\"content\":\"해킹\",\"version\":0}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403));
+    }
+
+    @Test
+    @DisplayName("F11: PUT /api/v1/comments/{id} 에 version이 없으면 400이고 서비스는 호출되지 않는다")
+    void updateComment_withoutVersion_returns400() throws Exception {
+        mockMvc.perform(put("/api/v1/comments/1")
+                        .with(user("tester@example.com"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\":\"수정\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("version: ")));
+
+        verify(commentService, never()).update(any(), any(), any());
     }
 
     @Test

@@ -133,7 +133,7 @@ class SessionRevocationAccountIsolationTest {
                         .cookie(oldSession)
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"가로채기\",\"content\":\"가로채기 내용\"}"))
+                        .content("{\"title\":\"가로채기\",\"content\":\"가로채기 내용\",\"version\":0}"))
                 .andReturn().getResponse().getStatus();
         assertThat(updateStatus).as("옛 세션은 새 계정의 글을 수정할 수 없어야 한다").isEqualTo(404);
 

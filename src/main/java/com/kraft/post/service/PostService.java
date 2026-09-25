@@ -332,7 +332,8 @@ public class PostService {
 
     /**
      * 화면이 받아간 버전과 지금 DB의 버전이 다르면, 그 사이 다른 곳에서 저장이 일어난 것이다.
-     * 버전을 보내지 않는 요청은 기존처럼 그대로 저장한다.
+     * API 요청은 DTO 검증이 버전을 필수로 받는다(F11). null은 API를 거치지 않는 내부 호출만
+     * 해당하며 그때는 검사하지 않는다.
      */
     private void validateVersion(Post post, Long expectedVersion) {
         if (expectedVersion != null && !expectedVersion.equals(post.getVersion())) {

@@ -114,8 +114,8 @@ public class CommentService {
 
     /**
      * 화면이 받아간 버전과 지금 DB의 버전이 다르면, 그 사이 다른 곳에서 저장이 일어난 것이다
-     * (B12). {@code PostService.validateVersion}과 같은 계약 — 버전을 보내지 않는 요청은
-     * 기존처럼 그대로 저장한다. {@link ObjectOptimisticLockingFailureException}은
+     * (B12). {@code PostService.validateVersion}과 같은 계약 — API 요청은 DTO 검증이 버전을
+     * 필수로 받고(F11), null은 API를 거치지 않는 내부 호출만 해당한다. {@link ObjectOptimisticLockingFailureException}은
      * {@code ApiExceptionHandler}가 이미 409로 변환한다(Post 편집 충돌과 같은 경로).
      */
     private void validateVersion(Comment comment, Long expectedVersion) {
