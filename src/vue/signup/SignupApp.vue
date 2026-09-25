@@ -65,16 +65,23 @@ async function onSubmit() {
     @submit.prevent="onSubmit"
   >
     <div class="mb-3">
-      <label for="name">이름</label>
+      <!-- 이 값은 게시글·댓글 작성자로 누구에게나 보인다(평가 보고서 2026-09-25 F07). 예전
+           라벨 "이름"은 실명을 넣으라는 뜻으로 읽힐 수 있었다. -->
+      <label for="name">공개 닉네임</label>
       <input
         id="name"
         v-model.trim="form.name"
         type="text"
         class="form-control"
-        placeholder="이름을 입력하세요"
+        placeholder="다른 사람에게 보일 닉네임"
         maxlength="50"
+        aria-describedby="name-help"
         required
       >
+      <small
+        id="name-help"
+        class="form-text text-muted"
+      >게시글·댓글 작성자로 모든 방문자에게 표시됩니다. 실명 대신 닉네임을 권장합니다. 탈퇴하면 '탈퇴한 사용자'로 바뀝니다.</small>
     </div>
     <div class="mb-3">
       <label for="email">이메일</label>
