@@ -24,11 +24,24 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 
 @RequiredArgsConstructor
 @Service
 @Transactional(readOnly = true)
 public class UserService {
+
+    /**
+     * 탈퇴한 계정의 대체 이름·이메일 공간(평가 보고서 2026-09-25 F10). 새 가입은 이 공간을 쓸 수
+     * 없다 — 예전에는 누군가 "탈퇴한 사용자123"이나 "withdrawn-123@kraft.invalid"로 먼저 가입해
+     * 두면 123번 회원의 탈퇴가 유일성 제약에 걸려 실패했다. {@code .invalid}는 실제로 존재할 수
+     * 없는 예약 최상위 도메인(RFC 2606)이라 정상 사용자가 막히지 않는다.
+     */
+    static final String WITHDRAWN_NAME_PREFIX = "탈퇴한 사용자";
+    static final String WITHDRAWN_EMAIL_DOMAIN = "@kraft.invalid";
+    /** 대체 이름·이메일이 이미 쓰이고 있을 때 접미사를 바꿔 다시 시도하는 횟수. */
+    private static final int REPLACEMENT_ATTEMPTS = 5;
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -43,6 +56,12 @@ public class UserService {
         // 대소문자·앞뒤 공백만 다른 이메일이 별개 계정으로 가입되지 않도록 정규화부터
         // 한다(BE-06) — 이후의 해시·저장이 전부 이 값을 쓴다.
         email = EmailPolicy.normalize(email);
+        if (name != null && name.strip().startsWith(WITHDRAWN_NAME_PREFIX)) {
+            throw new IllegalArgumentException("사용할 수 없는 이름입니다. '" + WITHDRAWN_NAME_PREFIX + "'로 시작하는 이름은 탈퇴한 계정 표시에 쓰입니다.");
+        }
+        if (email.endsWith(WITHDRAWN_EMAIL_DOMAIN)) {
+            throw new IllegalArgumentException("사용할 수 없는 이메일 주소입니다.");
+        }
         if (userRepository.existsByName(name)) {
             throw new IllegalArgumentException("이미 사용중인 이름입니다. name=" + name);
         }
@@ -132,14 +151,46 @@ public class UserService {
         outboxMailRepository.deleteByUserId(userId);
 
         user.withdraw(
-                "withdrawn-" + userId + "@kraft.invalid",
-                "탈퇴한 사용자" + userId,
+                replacementEmail(userId),
+                replacementName(userId),
                 // 아무도 맞힐 수 없는 값. 익명 주소를 알아내도 로그인할 수 없다.
                 passwordEncoder.encode(UUID.randomUUID().toString()));
 
         // 여기서 넘기는 email은 위에서 파라미터로 받은 탈퇴 전 주소다. user.withdraw() 이후
         // user.getEmail()을 쓰면 이미 익명 주소를 태스크에 남기게 된다.
         revokeSessionsAfterCommit(user, email);
+    }
+
+    /**
+     * 탈퇴 표시 이름. 기본은 "탈퇴한 사용자{id}"다. 예약어 제한이 생기기 전에 가입한 다른 계정이
+     * 그 이름을 이미 쓰고 있으면(F10) 짧은 무작위 접미사를 붙인다 — 새 가입만 막고 기존 충돌
+     * 데이터를 그대로 두면 그 회원은 영영 탈퇴할 수 없다.
+     */
+    private String replacementName(Long userId) {
+        String base = WITHDRAWN_NAME_PREFIX + userId;
+        return firstUnused(base, candidate -> userRepository.existsByName(candidate), suffix -> base + "-" + suffix);
+    }
+
+    /** 탈퇴 대체 이메일. 이름과 같은 이유로 충돌하면 접미사를 붙인다(F10). */
+    private String replacementEmail(Long userId) {
+        String local = "withdrawn-" + userId;
+        return firstUnused(local + WITHDRAWN_EMAIL_DOMAIN,
+                candidate -> userRepository.existsByEmailHash(EmailHasher.sha512Hex(candidate)),
+                suffix -> local + "-" + suffix + WITHDRAWN_EMAIL_DOMAIN);
+    }
+
+    private static String firstUnused(String base, Predicate<String> taken,
+                                      UnaryOperator<String> withSuffix) {
+        if (!taken.test(base)) {
+            return base;
+        }
+        for (int i = 0; i < REPLACEMENT_ATTEMPTS; i++) {
+            String candidate = withSuffix.apply(UUID.randomUUID().toString().substring(0, 8));
+            if (!taken.test(candidate)) {
+                return candidate;
+            }
+        }
+        throw new IllegalStateException("탈퇴 대체 식별자를 만들지 못했다. base=" + base);
     }
 
     /**
