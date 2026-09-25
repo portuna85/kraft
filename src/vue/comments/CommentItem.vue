@@ -3,6 +3,7 @@ import { nextTick, ref } from 'vue';
 import { api, messageOf } from '@core/http.js';
 import { API } from '@core/constants.js';
 import { showToast } from '@ui/toast.js';
+import { replyAfterId } from './commentState.js';
 
 /**
  * 댓글 한 건의 읽기뷰/인라인 수정폼. 삭제 버튼은 여기서 처리하지 않는다 — 게시글과 댓글이
@@ -150,8 +151,9 @@ async function loadMoreReplies() {
     if (loadingMoreReplies.value) {
         return;
     }
-    const loaded = props.comment.replies ?? [];
-    const afterId = loaded.length > 0 ? loaded[loaded.length - 1].id : '';
+    // 화면 배열의 마지막 id가 아니라 서버 페이지로 받은 마지막 답글 id를 쓴다 — 이 화면에서
+    // 새로 쓴 답글이 배열 끝에 있으면 그 사이 아직 받지 않은 답글을 건너뛴다(F02).
+    const afterId = replyAfterId(props.comment);
     loadingMoreReplies.value = true;
     try {
         const page = await api.get(`${API.COMMENTS}/${props.comment.id}/replies?afterId=${afterId}`);

@@ -427,6 +427,53 @@ test('COR-05 회귀: 답글이 21개면 새로고침 후 20개만 보이고, 답
     await expect(loadMoreReplies).toHaveCount(0);
 });
 
+/**
+ * 평가 보고서 2026-09-25 F02·F03 회귀: 답글 20개만 받은 상태에서 새 답글을 쓰면, 예전에는
+ * "답글 더 보기"가 화면 배열의 마지막 id(새 답글)를 커서로 보내 아직 받지 않은 21번째 답글을
+ * 건너뛰었다. 또 답글 삭제가 부모의 답글 수를 줄이지 않아, 이어서 부모를 지우면 개수가 음수가 됐다.
+ */
+test('F02·F03 회귀: 새 답글을 쓴 뒤 답글 더 보기로 빠짐없이 받고, 답글·부모 삭제 후 개수가 0이다', async ({ page }) => {
+    test.slow();
+    await openOwnPost(page);
+    await page.locator('#comment-content').fill('커서 회귀용 부모 댓글');
+    await page.locator('#btn-comment-save').click();
+    await expect(page.locator('#flash')).toContainText('댓글이 등록되었습니다.');
+
+    const topLevelItem = page.locator('.comment-list > .comment-list__item').first();
+    for (let i = 1; i <= 21; i += 1) {
+        await topLevelItem.locator('.btn-comment-reply').click();
+        await topLevelItem.locator('.comment-reply-form textarea').fill(`시드 답글 ${i}`);
+        await topLevelItem.locator('.btn-comment-reply-save').click();
+        await expect(page.locator('#flash')).toContainText('댓글이 등록되었습니다.');
+    }
+
+    await page.reload();
+    const parent = page.locator('.comment-list > .comment-list__item').first();
+    const replies = parent.locator('.comment-list__replies .comment-list__item');
+    await expect(replies).toHaveCount(20);
+
+    await parent.locator(':scope > .comment-view .btn-comment-reply').click();
+    await parent.locator('.comment-reply-form textarea').fill('새로 쓴 답글');
+    await parent.locator('.btn-comment-reply-save').click();
+    await expect(page.locator('#flash')).toContainText('댓글이 등록되었습니다.');
+    await expect(replies).toHaveCount(21);
+
+    await parent.locator('.btn-comment-replies-load-more').click();
+    await expect(replies).toHaveCount(22);
+    await expect(parent.locator('.comment-list__replies .comment-list__content', { hasText: /^\s*시드 답글 21\s*$/ })).toHaveCount(1);
+    await expect(parent.locator('.comment-list__replies .comment-list__content', { hasText: '새로 쓴 답글' })).toHaveCount(1);
+    await expect(page.locator('#comments-heading')).toContainText('댓글 23개');
+
+    await replies.first().locator('.btn-comment-delete').click();
+    await page.locator('#btn-confirm-delete').click();
+    await expect(page.locator('#flash')).toContainText('댓글이 삭제되었습니다.');
+    await expect(page.locator('#comments-heading')).toContainText('댓글 22개');
+
+    await parent.locator(':scope > .comment-view .btn-comment-delete').click();
+    await page.locator('#btn-confirm-delete').click();
+    await expect(page.locator('#comments-heading')).toContainText('댓글 0개');
+});
+
 test('2단계 댓글: 최상위 댓글을 지우면 그 답글도 함께 사라진다', async ({ page }) => {
     await openOwnPost(page);
     await page.locator('#comment-content').fill('삭제될 최상위 댓글입니다.');

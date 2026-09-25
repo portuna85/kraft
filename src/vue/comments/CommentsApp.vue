@@ -5,6 +5,7 @@ import { API } from '@core/constants.js';
 import { showToast } from '@ui/toast.js';
 import * as flash from '@ui/flash.js';
 import CommentItem from './CommentItem.vue';
+import { applyDelete, applyRepliesPage, applyReplyCreated, initReplyCursor } from './commentState.js';
 
 /**
  * 댓글 목록 전체. 서버가 최초 렌더링 시 canManage까지 계산해 내려준 목록(initialComments)을
@@ -32,6 +33,7 @@ const props = defineProps({
 const loginHref = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
 
 const comments = reactive([...props.initialComments]);
+comments.forEach(initReplyCursor);
 const totalCount = ref(props.initialTotalCount);
 const hasMore = ref(props.initialHasMore);
 const loadingMore = ref(false);
@@ -47,8 +49,8 @@ const saving = ref(false);
 // 응답을 받은 시점에 이 값이 요청 시작 때와 다르면, 그 사이 등록/답글/삭제가 있었다는 뜻이므로
 // 이미 정확한 로컬 totalCount를 낡은 page.totalCount로 덮어쓰지 않는다(개선 보고서 F01).
 const mutationSeq = ref(0);
-// 삭제된 최상위 댓글 id. 삭제 요청과 겹쳐 진행 중이던 "더 보기" 응답에 그 댓글이 다시
-// 들어있어도 되살아나지 않게 막는다.
+// 삭제된 댓글·답글 id. 삭제 요청과 겹쳐 진행 중이던 "더 보기"/"답글 더 보기" 응답에 그
+// 항목이 다시 들어있어도 되살아나지 않게 막고, 같은 삭제 알림이 두 번 와도 한 번만 센다.
 const deletedIds = reactive(new Set());
 
 // 등록 응답을 받은 뒤 로컬에 추가한 새 댓글과 "더 보기"로 받아 온 서버 페이지가 겹칠 수 있다
@@ -59,6 +61,7 @@ function mergeComments(newItems) {
     for (const item of newItems) {
         const id = String(item.id);
         if (!existingIds.has(id) && !deletedIds.has(id)) {
+            initReplyCursor(item);
             comments.push(item);
             existingIds.add(id);
         }
@@ -153,15 +156,14 @@ function onUpdated({ id, content, version }) {
     flash.showNow('COMMENT_UPDATED');
 }
 
-/** 답글 등록 성공 시 그 부모의 replies에 붙인다(CommentItem이 emit). */
+/**
+ * 답글 등록 성공 시 그 부모의 replies에 붙인다(CommentItem이 emit). 부모의 답글 커서는
+ * 움직이지 않는다 — 새 답글 id로 커서를 앞당기면 아직 받지 않은 답글을 건너뛴다(F02).
+ */
 function onReplied({ parentId, reply }) {
     const parent = comments.find((c) => String(c.id) === String(parentId));
-    if (parent) {
-        if (!parent.replies) {
-            parent.replies = [];
-        }
-        parent.replies.push(reply);
-        parent.replyCount = (parent.replyCount ?? 0) + 1;
+    if (parent && !applyReplyCreated(parent, reply)) {
+        return;
     }
     totalCount.value += 1;
     mutationSeq.value += 1;
@@ -169,56 +171,26 @@ function onReplied({ parentId, reply }) {
 }
 
 /**
- * 답글 더 보기 응답을 그 부모의 replies에 이어 붙인다(개선 보고서 COR-05, CommentItem이 emit).
- * id 기준으로 중복을 걸러낸다 — mergeComments와 같은 이유로, 같은 응답이 겹쳐 들어와도
- * 안전하다.
+ * 답글 더 보기 응답을 그 부모의 replies에 합친다(개선 보고서 COR-05, CommentItem이 emit).
+ * 중복·삭제된 답글을 거르고 부모의 답글 커서를 서버 페이지 기준으로 전진시킨다(F02).
  */
 function onMoreRepliesLoaded({ parentId, replies, hasMore }) {
     const parent = comments.find((c) => String(c.id) === String(parentId));
     if (!parent) {
         return;
     }
-    if (!parent.replies) {
-        parent.replies = [];
-    }
-    const existingIds = new Set(parent.replies.map((r) => String(r.id)));
-    for (const reply of replies) {
-        if (!existingIds.has(String(reply.id))) {
-            parent.replies.push(reply);
-            existingIds.add(String(reply.id));
-        }
-    }
-    parent.hasMoreReplies = hasMore;
+    applyRepliesPage(parent, replies, hasMore, deletedIds);
 }
 
 // 삭제는 게시글과 공유하는 모달(delete-confirm.js)이 처리하고, 끝나면 이 이벤트로 알려온다.
 function onExternalDelete(event) {
-    const id = event.detail.id;
-
     // 최상위 댓글이면 그 답글까지 통째로 사라진다 — DB에 CASCADE를 걸지 않고 서비스가 답글을
-    // 먼저 명시적으로 지우므로(CommentService.delete), 화면의 전체 개수(totalCount)도 답글
-    // 수까지 함께 빼야 서버 상태와 어긋나지 않는다. replyCount(서버가 내려준 실제 총 답글 수)를
-    // 쓴다 — replies.length는 "답글 더 보기" 전에는 일부만 로드된 개수라 실제보다 적을 수
-    // 있다(개선 보고서 COR-05).
-    const topIndex = comments.findIndex((c) => String(c.id) === String(id));
-    if (topIndex !== -1) {
-        const removed = 1 + (comments[topIndex].replyCount ?? comments[topIndex].replies?.length ?? 0);
-        comments.splice(topIndex, 1);
-        deletedIds.add(String(id));
+    // 먼저 명시적으로 지우므로(CommentService.delete), 전체 개수도 서버 기준 답글 수까지 함께
+    // 뺀다. 답글이면 부모의 replyCount도 함께 줄인다(F03). 규칙은 commentState.applyDelete.
+    const removed = applyDelete(comments, event.detail.id, deletedIds);
+    if (removed > 0) {
         totalCount.value -= removed;
         mutationSeq.value += 1;
-        return;
-    }
-
-    // 답글이면 그 부모의 replies에서만 지운다.
-    for (const comment of comments) {
-        const replyIndex = comment.replies?.findIndex((r) => String(r.id) === String(id)) ?? -1;
-        if (replyIndex !== -1) {
-            comment.replies.splice(replyIndex, 1);
-            totalCount.value -= 1;
-            mutationSeq.value += 1;
-            return;
-        }
     }
 }
 

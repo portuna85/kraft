@@ -163,6 +163,11 @@ jobs:
       - name: Lint and typecheck
         run: npm run lint
 
+      # 브라우저 없이 돌리는 순수 함수 단위 테스트(node --test). 댓글·답글 상태 규칙처럼 여러
+      # 동작이 겹치는 조합을 E2E보다 싸게 검사한다(평가 보고서 2026-09-25 F02·F03).
+      - name: Unit tests
+        run: npm run test:unit
+
       # 커밋된 bootstrap.custom.css가 SCSS 소스와 일치하는지 본다. 소스만 고치고 다시
       # 빌드하지 않으면 화면과 저장소가 어긋나므로, 여기서 잡는다.
       - name: Check generated CSS is up to date
