@@ -4,7 +4,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -18,17 +17,39 @@ import java.io.IOException;
  * <p>
  * 정적 자원은 세지 않는다. CSS·JS·이미지는 대부분 304로 끝나고 수가 압도적이라, 함께 세면
  * 실제 화면·API의 오류율이 묻혀 버린다 — 오류율을 보는 목적 자체가 사라진다.
+ * <p>
+ * 템플릿이 실제로 내보내는 JS 주소는 {@code /js/...}가 아니라 고정 버전이 앞에 붙은
+ * {@code /{버전}/js/...}다({@code spring.web.resources.chain.strategy.fixed}, FE-01). 예전에는
+ * 이 형태를 놓쳐 첫 방문의 JS 요청이 전부 앱 요청으로 섞였다(평가 보고서 2026-09-25 F12).
+ * 설정된 그 버전 하나만 인정한다 — 임의의 {@code /무엇/js/}를 빼면 앱 경로의 오류까지 지표에서
+ * 사라질 수 있다.
  */
-@RequiredArgsConstructor
 public class RequestMetricsFilter extends OncePerRequestFilter {
 
     private final RequestMetrics metrics;
+    /** {@code /{버전}/js/}. 고정 버전 전략을 쓰지 않으면 null. */
+    private final String versionedJsPrefix;
+
+    public RequestMetricsFilter(RequestMetrics metrics) {
+        this(metrics, null);
+    }
+
+    /**
+     * @param staticResourceVersion 정적 자원 고정 버전 문자열. 비어 있으면 버전 경로를 따로 보지 않는다.
+     */
+    public RequestMetricsFilter(RequestMetrics metrics, String staticResourceVersion) {
+        this.metrics = metrics;
+        this.versionedJsPrefix = staticResourceVersion == null || staticResourceVersion.isBlank()
+                ? null
+                : "/" + staticResourceVersion + "/js/";
+    }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getRequestURI();
+        String path = request.getRequestURI().substring(request.getContextPath().length());
         return path.startsWith("/css/") || path.startsWith("/js/") || path.startsWith("/images/")
-                || path.equals("/favicon.ico");
+                || path.equals("/favicon.ico")
+                || (versionedJsPrefix != null && path.startsWith(versionedJsPrefix));
     }
 
     /**

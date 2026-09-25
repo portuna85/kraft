@@ -39,9 +39,11 @@ public class ObservabilityConfig {
      * 지나가는 모든 로거가 상관관계 id를 이미 MDC에서 볼 수 있다.
      */
     @Bean
-    public FilterRegistrationBean<RequestMetricsFilter> requestMetricsFilter(RequestMetrics metrics) {
+    public FilterRegistrationBean<RequestMetricsFilter> requestMetricsFilter(
+            RequestMetrics metrics,
+            @Value("${spring.web.resources.chain.strategy.fixed.version:}") String staticResourceVersion) {
         FilterRegistrationBean<RequestMetricsFilter> registration =
-                new FilterRegistrationBean<>(new RequestMetricsFilter(metrics));
+                new FilterRegistrationBean<>(new RequestMetricsFilter(metrics, staticResourceVersion));
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
         return registration;
     }

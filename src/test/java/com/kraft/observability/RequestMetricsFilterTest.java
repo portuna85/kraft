@@ -54,6 +54,39 @@ class RequestMetricsFilterTest {
     }
 
     /**
+     * 평가 보고서 2026-09-25 F12: 템플릿이 실제로 내보내는 JS 주소는 고정 버전이 앞에 붙은
+     * {@code /{버전}/js/...}다. 설정된 그 버전만 정적 자원으로 보고, 모양만 비슷한 다른 경로의
+     * 앱 요청·오류는 계속 센다.
+     */
+    @Test
+    @DisplayName("F12: 설정된 버전이 붙은 JS는 세지 않고, 다른 접두어·앱 오류는 센다")
+    void versionedStaticResourcesAreNotCounted() throws Exception {
+        RequestMetrics versioned = new RequestMetrics();
+        RequestMetricsFilter versionedFilter = new RequestMetricsFilter(versioned, "428dd13");
+
+        for (String path : new String[] { "/428dd13/js/app/main.js", "/428dd13/js/vue-dist/chunks/runtime.js" }) {
+            versionedFilter.doFilter(new MockHttpServletRequest("GET", path), response(200), new MockFilterChain());
+        }
+        assertThat(versioned.drain().requests()).as("버전 JS").isZero();
+
+        versionedFilter.doFilter(new MockHttpServletRequest("GET", "/zzzzzzz/js/app/main.js"), response(404), new MockFilterChain());
+        versionedFilter.doFilter(new MockHttpServletRequest("GET", "/428dd13/api/js"), response(404), new MockFilterChain());
+        versionedFilter.doFilter(new MockHttpServletRequest("GET", "/api/v1/js"), response(403), new MockFilterChain());
+        versionedFilter.doFilter(new MockHttpServletRequest("GET", "/posts/1"), response(500), new MockFilterChain());
+
+        RequestMetrics.Snapshot snapshot = versioned.drain();
+        assertThat(snapshot.requests()).as("버전이 다르거나 JS가 아닌 경로·앱 요청").isEqualTo(4);
+        assertThat(snapshot.errors()).isEqualTo(4);
+        assertThat(snapshot.serverErrors()).isEqualTo(1);
+    }
+
+    private static MockHttpServletResponse response(int status) {
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        response.setStatus(status);
+        return response;
+    }
+
+    /**
      * 값을 읽어 가면 초기화한다. 누적으로 남기면 오래 켜져 있을수록 평균이 둔해져
      * "지금 느려졌는지"를 읽을 수 없다.
      */
