@@ -1,6 +1,10 @@
 <!DOCTYPE HTML>
 <html xmlns:th="http://www.thymeleaf.org">
 <!--/*@thymesVar id="pageTitle" type="java.lang.String"*/-->
+<!--/*@thymesVar id="pageDescription" type="java.lang.String"*/-->
+<!--/*@thymesVar id="canonicalPath" type="java.lang.String"*/-->
+<!--/*@thymesVar id="siteBaseUrl" type="java.lang.String"*/-->
+<!--/*@thymesVar id="ogType" type="java.lang.String"*/-->
 <!--/*@thymesVar id="_csrf" type="org.springframework.security.web.csrf.CsrfToken"*/-->
 <head th:fragment="header">
     <!-- 브라우저가 문자 인코딩을 추측 없이 즉시 확정하도록 head의 첫 자식으로 둔다(개선
@@ -9,6 +13,25 @@
     <meta charset="UTF-8" />
     <title th:text="${pageTitle != null && !#strings.isEmpty(pageTitle)} ? ${pageTitle} + ' · Kraft' : 'Kraft'">Kraft</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- 검색·링크 미리보기 메타데이터(평가 보고서 2026-09-25 F08). 설명은 화면이 준
+         pageDescription(게시글이면 본문 앞부분)을, 없으면 사이트 소개를 쓴다. canonical·og:url은
+         컨트롤러가 대표 경로(canonicalPath)를 정한 공개 화면에만 붙이고, 주소 앞부분은 요청의
+         Host가 아니라 설정된 대표 주소(siteBaseUrl, SeoModelAdvice)를 쓴다. 로그인·관리자 등
+         색인하지 않을 화면은 SecurityConfig가 X-Robots-Tag로 따로 막는다. -->
+    <th:block th:with="metaTitle=${pageTitle != null && !#strings.isEmpty(pageTitle)} ? ${pageTitle} : 'Kraft',
+                       metaDescription=${pageDescription != null && !#strings.isEmpty(pageDescription)} ? ${pageDescription} : '글과 댓글로 이야기를 나누는 커뮤니티 게시판 Kraft입니다. 로또 번호 추천도 제공합니다.'">
+        <meta name="description" th:content="${metaDescription}" />
+        <meta property="og:site_name" content="Kraft" />
+        <meta property="og:locale" content="ko_KR" />
+        <meta property="og:type" th:content="${ogType != null} ? ${ogType} : 'website'" />
+        <meta property="og:title" th:content="${metaTitle}" />
+        <meta property="og:description" th:content="${metaDescription}" />
+        <th:block th:if="${canonicalPath != null && siteBaseUrl != null}">
+            <link rel="canonical" th:href="${siteBaseUrl + canonicalPath}" />
+            <meta property="og:url" th:content="${siteBaseUrl + canonicalPath}" />
+        </th:block>
+    </th:block>
     <meta name="_csrf" th:content="${_csrf?.token}" />
     <meta name="_csrf_header" th:content="${_csrf?.headerName}" />
 

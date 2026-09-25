@@ -2,6 +2,7 @@ package com.kraft.config.security;
 
 import com.kraft.shared.web.SafeRedirect;
 import com.kraft.user.service.SessionRevoker;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -18,8 +19,12 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+import org.springframework.security.web.header.writers.DelegatingRequestMatcherHeaderWriter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
 import tools.jackson.databind.ObjectMapper;
+
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -164,9 +169,27 @@ public class SecurityConfig {
                                 .includeSubDomains(true)
                                 .maxAgeInSeconds(31536000)
                                 .requestMatcher(request -> true))
+                        // 검색 결과에 나올 이유가 없는 화면(로그인·가입·비밀번호·인증·관리자·
+                        // 글쓰기)과 API 응답은 색인하지 않게 한다(평가 보고서 2026-09-25 F08).
+                        // 템플릿 meta 대신 헤더로 붙이는 이유: 모델을 거치지 않는 응답(JSON·오류)
+                        // 에도 같은 규칙이 적용되고, 경로 목록이 이 한 곳에 모인다.
+                        .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(
+                                SecurityConfig::isNoindexPath,
+                                new StaticHeadersWriter("X-Robots-Tag", "noindex, nofollow")))
                 );
 
         return http.build();
+    }
+
+    /** 색인하지 않을 경로. "/users/"처럼 /로 끝나면 그 아래 전부, 아니면 그 경로와 그 하위. */
+    private static final List<String> NOINDEX_PREFIXES = List.of(
+            "/login", "/signup", "/forgot-password", "/users/", "/admin", "/posts/save", "/api/");
+
+    static boolean isNoindexPath(HttpServletRequest request) {
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+        return NOINDEX_PREFIXES.stream().anyMatch(prefix -> prefix.endsWith("/")
+                ? path.startsWith(prefix)
+                : path.equals(prefix) || path.startsWith(prefix + "/"));
     }
 
     /**

@@ -31,6 +31,9 @@ test('게시글 상세의 초기 JSON이 깨지면 빈 화면 대신 안내가 �
     await page.goto(postUrl);
 
     await expect(page.locator('#post-app .flash--danger')).toContainText('새로고침해 주세요');
+    // 서버가 먼저 그린 본문은 지우지 않는다 — 조작은 못 해도 글은 읽을 수 있다(F08).
+    await expect(page.locator('#post-app [data-ssr-content] .post-title')).toHaveText(title);
+    await expect(page.locator('#post-app [data-ssr-content] .post-body')).toHaveText('마운트 실패 재현용 본문');
 });
 
 /** 같은 문제, 댓글 쪽. 댓글 영역만 비어야 하고 나머지 화면(게시글 본문 등)은 멀쩡해야 한다. */

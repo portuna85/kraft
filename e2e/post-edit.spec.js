@@ -135,3 +135,31 @@ test('다른 사람의 글에는 수정·삭제 버튼이 보이지 않는다', 
     await expect(page.locator('#btn-edit')).toHaveCount(0);
     await expect(page.locator('#btn-delete-post')).toHaveCount(0);
 });
+
+/**
+ * 평가 보고서 2026-09-25 F08: 본문은 서버가 먼저 HTML로 그린다. JS 없이도 읽을 수 있어야 하고,
+ * Vue가 마운트한 뒤에는 그 내용을 교체해 제목·본문이 한 번만 보여야 하며, 편집도 그대로 된다.
+ */
+test('F08: JS 없이도 본문을 읽을 수 있고, 마운트 뒤에는 한 번만 보이며 편집이 된다', async ({ page, browser }) => {
+    const title = uniqueTitle('서버렌더');
+    await createOwnPost(page, title);
+    const postUrl = page.url();
+
+    const noJs = await browser.newContext({ storageState: storageStateFor('user'), javaScriptEnabled: false });
+    try {
+        const plain = await noJs.newPage();
+        await plain.goto(postUrl);
+        await expect(plain.locator('#post-app h1')).toHaveText(title);
+        await expect(plain.locator('#post-app .post-body')).toHaveText('편집 테스트용 본문입니다.');
+    } finally {
+        await noJs.close();
+    }
+
+    await expect(page.locator('#post-title-text')).toHaveText(title);
+    await expect(page.locator('[data-ssr-content]')).toHaveCount(0);
+    await expect(page.locator('#post-app h1')).toHaveCount(1);
+    await expect(page.getByText('편집 테스트용 본문입니다.', { exact: true })).toHaveCount(1);
+
+    await page.locator('#btn-edit').click();
+    await expect(page.locator('#edit-category')).toBeVisible();
+});

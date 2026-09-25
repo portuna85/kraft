@@ -66,6 +66,12 @@ public class PostPageController {
         model.addAttribute("category", category);
         model.addAttribute("categories", Category.values());
         model.addAttribute("pageTitle", "전체 게시글");
+        // 대표 경로(F08)는 검색하지 않은 첫 페이지에만 준다 — 분류만 고른 첫 페이지는 그 분류의
+        // 대표 목록이다. 검색 결과와 2쪽 이후는 대표 경로를 선언하지 않는다(첫 페이지로 모으면
+        // 검색 엔진이 그 목록의 나머지 글을 보지 않게 된다).
+        if ((q == null || q.isBlank()) && pageable.getPageNumber() == 0) {
+            model.addAttribute("canonicalPath", category == null ? "/" : "/?category=" + category.name());
+        }
         return "index";
     }
 
@@ -155,7 +161,27 @@ public class PostPageController {
         model.addAttribute("writeBlockReason", writeBlockReason);
 
         model.addAttribute("pageTitle", post.title());
+        // 검색·링크 미리보기용(F08). 대표 경로는 쿼리 없이 글 번호로만 정한다.
+        model.addAttribute("pageDescription", excerpt(post.content()));
+        model.addAttribute("canonicalPath", "/posts/update/" + post.id());
+        model.addAttribute("ogType", "article");
         return "post/post-update";
     }
+
+    /** meta description에 쓸 본문 앞부분. 공백·줄바꿈을 한 칸으로 줄이고 길면 자른다. */
+    static String excerpt(String content) {
+        if (content == null) {
+            return null;
+        }
+        String flat = content.strip().replaceAll("\\s+", " ");
+        if (flat.isEmpty()) {
+            return null;
+        }
+        return flat.length() <= DESCRIPTION_LENGTH
+                ? flat
+                : flat.substring(0, flat.offsetByCodePoints(0, flat.codePointCount(0, DESCRIPTION_LENGTH))) + "…";
+    }
+
+    private static final int DESCRIPTION_LENGTH = 150;
 
 }

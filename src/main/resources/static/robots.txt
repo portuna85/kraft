@@ -1,0 +1,7 @@
+# 색인 정책(평가 보고서 2026-09-25 F08). 공개 게시글·목록·번호 추천은 허용한다.
+# 로그인·가입·비밀번호·인증·글쓰기 화면은 응답 헤더 X-Robots-Tag: noindex로 색인에서 뺀다
+# (SecurityConfig#isNoindexPath) — 여기서 Disallow하면 로봇이 그 헤더를 볼 수 없어 오히려
+# 주소만 색인될 수 있으므로, 크롤링 자체가 불필요한 관리자 화면과 API만 막는다.
+User-agent: *
+Disallow: /admin
+Disallow: /api/

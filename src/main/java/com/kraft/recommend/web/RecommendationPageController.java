@@ -32,6 +32,10 @@ public class RecommendationPageController {
     @GetMapping("/recommend")
     public String recommend(Model model) {
         model.addAttribute("pageTitle", "번호 추천");
+        // 화면의 안내 문구와 같은 성격으로 쓴다 — 당첨 확률을 높인다고 읽히면 안 된다(F08).
+        model.addAttribute("pageDescription",
+                "고정·제외할 번호를 정해 로또 번호 조합을 추천받고 최근 회차 당첨 번호를 확인합니다. 당첨 확률을 높이는 기능은 아닙니다.");
+        model.addAttribute("canonicalPath", "/recommend");
         winningDrawRepository.findTopByOrderByRoundNoDesc().ifPresent(draw -> {
             model.addAttribute("latestRoundNo", draw.getRoundNo());
             model.addAttribute("latestRoundNumbers", draw.numbers());

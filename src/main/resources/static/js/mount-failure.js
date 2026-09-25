@@ -19,11 +19,18 @@ window.kraftVueMountFailed = function (mountPointId) {
         return;
     }
     el.dataset.mountFailureShown = 'true';
-    el.textContent = '';
     const p = document.createElement('p');
     p.className = 'flash flash--danger';
     p.setAttribute('role', 'alert');
     p.textContent = '이 화면을 불러오지 못했습니다. 새로고침해 주세요.';
+    // 서버가 먼저 그린 읽기 전용 내용(data-ssr-content, 예: 게시글 본문)은 남겨 두고 안내만
+    // 앞에 붙인다 — 수정·추천 같은 조작은 못 해도 글은 계속 읽을 수 있다(평가 보고서
+    // 2026-09-25 F08). 그런 내용이 없으면 예전처럼 비우고 안내만 보여준다.
+    if (el.querySelector('[data-ssr-content]')) {
+        el.insertBefore(p, el.firstChild);
+        return;
+    }
+    el.textContent = '';
     el.appendChild(p);
 };
 
