@@ -31,6 +31,7 @@ LOG=/opt/kraft/deploy.log
 # 연결하지 못하는 jar도 배포·롤백 성공으로 기록될 수 있었다. 예전에 썼던 GET /(게시글 목록
 # 전체 렌더)보다는 여전히 가볍다(OPS-G5) — 이 루프가 재시작마다 최대 30회 반복된다.
 HEALTH_URL=http://127.0.0.1:8080/readyz
+LIVENESS_URL=http://127.0.0.1:8080/healthz
 # 정상 jar보다 훨씬 넉넉한 수신 상한(아래 1번) — 손상되었거나 다른 목적의 대용량 전송이
 # 디스크를 무한정 채우지 않게 한다.
 MAX_JAR_SIZE=524288000  # 500MB
@@ -135,17 +136,26 @@ log "jar 교체 완료"
 # 최대 2초(sleep) + 3초(curl 타임아웃) = 5초 × 30회, 즉 이 루프 자체는 최악의 경우 약
 # 150초를 쓴다(응답이 즉시 오면 그 회차에서 바로 끝난다 — "최대 60초"라던 예전 계산은
 # curl 자체의 대기 시간을 빠뜨렸다).
+#
+# /readyz가 404면 readiness가 없던 버전의 jar다(F04 이전). 롤백으로 그 jar를 되살린 경우에만
+# 생기므로 그때는 예전 기준인 /healthz로 판정한다 — 그러지 않으면 정상 기동한 이전 jar를
+# "롤백 실패"로 잘못 기록한다. 503(DB 미준비)은 폴백하지 않는다.
 wait_for_health() {
-    local start
+    local start code
     start=$(date +%s)
     for _ in $(seq 1 30); do
         sleep 2
-        if curl -fsS -o /dev/null --max-time 3 "$HEALTH_URL" 2>/dev/null; then
+        code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 3 "$HEALTH_URL" 2>/dev/null) || true
+        if [ "$code" = 200 ]; then
             log "헬스체크 통과 (경과 $(( $(date +%s) - start ))초)"
             return 0
         fi
+        if [ "$code" = 404 ] && curl -fsS -o /dev/null --max-time 3 "$LIVENESS_URL" 2>/dev/null; then
+            log "헬스체크 통과 — readiness가 없는 이전 버전 jar라 liveness로 판정 (경과 $(( $(date +%s) - start ))초)"
+            return 0
+        fi
     done
-    log "헬스체크 실패 (경과 $(( $(date +%s) - start ))초, 응답 없음)"
+    log "헬스체크 실패 (경과 $(( $(date +%s) - start ))초, 마지막 응답 코드 ${code:-없음})"
     return 1
 }
 
