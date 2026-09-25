@@ -32,11 +32,11 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             throw new UsernameNotFoundException("탈퇴한 회원입니다. email=" + EmailMasker.mask(email));
         }
 
-        // username(=Authentication.getName())은 이제 회원 id다(BE-04) — 이메일은 principal의
-        // getEmail()로 필요한 곳에서만 꺼내 쓴다. 화면 표시용 닉네임은 displayName으로 싣는다.
+        // username(=Authentication.getName())은 이제 회원 id다(BE-04). 이메일은 principal에
+        // 싣지 않는다 — 세션 BLOB에 평문으로 직렬화되기 때문이다(F01). 필요한 곳은 CurrentUser로
+        // DB에서 읽는다. 화면 표시용 닉네임은 displayName으로 싣는다.
         return new KraftUserDetails(
                 user.getId(),
-                user.getEmail(),
                 user.getPassword(),
                 user.getName(),
                 List.of(new SimpleGrantedAuthority(user.getRoleKey()))

@@ -18,7 +18,7 @@ import java.util.Map;
  * <p>
  * 세션 저장소가 Spring Session JDBC({@code spring.session.store-type: jdbc})이므로
  * {@code JdbcIndexedSessionRepository}가 {@link FindByIndexNameSessionRepository}를 구현한다.
- * principal 이름은 로그인 식별자인 이메일이다.
+ * principal 이름은 불변 회원 번호(id)의 문자열이다(BE-04).
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -26,7 +26,7 @@ import java.util.Map;
 public class SessionRevoker {
 
     /**
-     * 로그인 성공 시 세션에 심어 두는 불변 회원 번호(B02). principal 이름(이메일)은 탈퇴 후
+     * 로그인 성공 시 세션에 심어 두는 불변 회원 번호(B02). 예전 principal 이름(이메일)은 탈퇴 후
      * 같은 주소로 재가입하면 재사용될 수 있어, 지연된 폐기 요청이 "그 이메일의 세션 전부"를
      * 지우면 재가입한 새 계정의 살아있는 세션까지 함께 지울 수 있다. {@code targetUserId}가
      * 주어지면 이 속성으로 대상 계정을 다시 한번 확인한다.

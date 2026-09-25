@@ -1,5 +1,6 @@
 package com.kraft.user.service;
 
+import com.kraft.shared.security.CurrentUser;
 import com.kraft.shared.security.WriteAccessPolicy;
 import com.kraft.shared.transaction.AfterCommit;
 import com.kraft.user.domain.EmailHasher;
@@ -16,6 +17,7 @@ import com.kraft.user.mail.OutboxMailRepository;
 import com.kraft.user.session.SessionRevocationStore;
 import com.kraft.user.session.SessionRevocationWorker;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -146,9 +148,13 @@ public class UserService {
      * 화면이 "폼을 보여줄지"를 정할 때 쓴다. 서버가 거절할 것을 화면이 미리 같은 규칙으로
      * 판단해야, 다 쓰고 나서야 이유를 알게 되는 흐름이 생기지 않는다. 판정 자체는 작성
      * 경로와 같은 {@link WriteAccessPolicy}가 하므로 두 경로가 갈라지지 않는다.
+     * <p>
+     * 회원은 principal의 불변 id로 찾는다({@link CurrentUser}) — principal은 이메일을 들고 있지
+     * 않다(평가 보고서 2026-09-25 F01). 미인증이거나 계정을 찾지 못하면 빈 값이다.
      */
-    public Optional<String> writeBlockReason(String email) {
-        return userRepository.findByEmailHash(EmailHasher.sha512Hex(EmailPolicy.normalize(email)))
+    public Optional<String> writeBlockReason(Authentication authentication) {
+        return Optional.ofNullable(CurrentUser.userIdOrNull(authentication, userRepository))
+                .flatMap(userRepository::findById)
                 .flatMap(WriteAccessPolicy::blockReason);
     }
 
