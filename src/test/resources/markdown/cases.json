@@ -1,0 +1,170 @@
+[
+  {
+    "name": "빈 문자열은 빈 배열이다",
+    "input": "",
+    "expected": []
+  },
+  {
+    "name": "공백과 빈 줄만 있으면 빈 배열이다",
+    "input": "   \n  \n",
+    "expected": []
+  },
+  {
+    "name": "평문 한 문단",
+    "input": "안녕하세요",
+    "expected": [{ "type": "p", "children": ["안녕하세요"] }]
+  },
+  {
+    "name": "빈 줄로 문단을 나눈다",
+    "input": "첫 문단\n\n둘째 문단",
+    "expected": [
+      { "type": "p", "children": ["첫 문단"] },
+      { "type": "p", "children": ["둘째 문단"] }
+    ]
+  },
+  {
+    "name": "문단 안의 줄바꿈은 br로 보존된다",
+    "input": "첫 줄\n둘째 줄",
+    "expected": [{ "type": "p", "children": ["첫 줄", { "type": "br" }, "둘째 줄"] }]
+  },
+  {
+    "name": "CRLF 줄바꿈도 LF와 같게 처리한다",
+    "input": "첫 줄\r\n둘째 줄",
+    "expected": [{ "type": "p", "children": ["첫 줄", { "type": "br" }, "둘째 줄"] }]
+  },
+  {
+    "name": "굵게",
+    "input": "**굵은 글자**입니다",
+    "expected": [
+      { "type": "p", "children": [{ "type": "strong", "children": ["굵은 글자"] }, "입니다"] }
+    ]
+  },
+  {
+    "name": "기울임",
+    "input": "*기울인 글자*입니다",
+    "expected": [
+      { "type": "p", "children": [{ "type": "em", "children": ["기울인 글자"] }, "입니다"] }
+    ]
+  },
+  {
+    "name": "코드",
+    "input": "`const x = 1`을 씁니다",
+    "expected": [
+      { "type": "p", "children": [{ "type": "code", "text": "const x = 1" }, "을 씁니다"] }
+    ]
+  },
+  {
+    "name": "굵게와 기울임을 함께 쓸 수 있다(중첩)",
+    "input": "**굵고 *기울인* 글자**",
+    "expected": [
+      {
+        "type": "p",
+        "children": [
+          {
+            "type": "strong",
+            "children": ["굵고 ", { "type": "em", "children": ["기울인"] }, " 글자"]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "굵게 안에 굵게를 겹치지 않고 코드와 링크가 섞여도 처리한다",
+    "input": "**굵게 `코드`와 [링크](https://kakao.com)**",
+    "expected": [
+      {
+        "type": "p",
+        "children": [
+          {
+            "type": "strong",
+            "children": [
+              "굵게 ",
+              { "type": "code", "text": "코드" },
+              "와 ",
+              { "type": "a", "href": "https://kakao.com", "children": ["링크"] }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "5*3*2 같은 숫자 곱셈 표기는 기울임으로 해석하지 않는다",
+    "input": "5*3*2=30",
+    "expected": [{ "type": "p", "children": ["5*3*2=30"] }]
+  },
+  {
+    "name": "안쪽 양끝이 공백이면 강조로 보지 않는다",
+    "input": "여기 * 공백 시작*과 *공백 끝 *가 있다",
+    "expected": [{ "type": "p", "children": ["여기 * 공백 시작*과 *공백 끝 *가 있다"] }]
+  },
+  {
+    "name": "닫는 기호가 없으면 글자 그대로 남는다",
+    "input": "**닫히지 않음",
+    "expected": [{ "type": "p", "children": ["**닫히지 않음"] }]
+  },
+  {
+    "name": "http/https 링크",
+    "input": "[카카오](https://kakao.com) 방문",
+    "expected": [
+      {
+        "type": "p",
+        "children": [
+          { "type": "a", "href": "https://kakao.com", "children": ["카카오"] },
+          " 방문"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "javascript 링크는 평문으로 남는다(XSS 방지)",
+    "input": "[클릭](javascript:alert(1))",
+    "expected": [{ "type": "p", "children": ["[클릭](javascript:alert(1))"] }]
+  },
+  {
+    "name": "data 링크도 평문으로 남는다",
+    "input": "[이미지](data:text/html,<script>alert(1)</script>)",
+    "expected": [
+      { "type": "p", "children": ["[이미지](data:text/html,<script>alert(1)</script>)"] }
+    ]
+  },
+  {
+    "name": "HTML 태그는 해석하지 않고 글자 그대로 남는다",
+    "input": "<script>alert(1)</script>",
+    "expected": [{ "type": "p", "children": ["<script>alert(1)</script>"] }]
+  },
+  {
+    "name": "본문에 닫는 script 태그가 있어도 파싱 자체는 평문으로 통과한다",
+    "input": "안내: </script> 이 글자는 그대로 보여야 합니다",
+    "expected": [{ "type": "p", "children": ["안내: </script> 이 글자는 그대로 보여야 합니다"] }]
+  },
+  {
+    "name": "글머리 목록",
+    "input": "- 첫째\n- 둘째",
+    "expected": [{ "type": "ul", "items": [["첫째"], ["둘째"]] }]
+  },
+  {
+    "name": "* 로 시작하는 글머리 목록",
+    "input": "* 첫째\n* 둘째",
+    "expected": [{ "type": "ul", "items": [["첫째"], ["둘째"]] }]
+  },
+  {
+    "name": "번호 목록",
+    "input": "1. 첫째\n2. 둘째",
+    "expected": [{ "type": "ol", "items": [["첫째"], ["둘째"]] }]
+  },
+  {
+    "name": "목록 항목 안의 인라인 서식도 해석된다",
+    "input": "- **중요**: 확인",
+    "expected": [
+      { "type": "ul", "items": [[{ "type": "strong", "children": ["중요"] }, ": 확인"]] }
+    ]
+  },
+  {
+    "name": "목록 줄이 섞여 있으면 목록으로 보지 않고 문단으로 남는다",
+    "input": "- 첫째\n둘째 줄은 목록이 아님",
+    "expected": [
+      { "type": "p", "children": ["- 첫째", { "type": "br" }, "둘째 줄은 목록이 아님"] }
+    ]
+  }
+]

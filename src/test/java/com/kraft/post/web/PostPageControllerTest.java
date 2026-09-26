@@ -22,6 +22,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
@@ -205,6 +206,54 @@ class PostPageControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("post/post-update"))
                 .andExpect(model().attributeExists("post", "comments", "relatedPosts"));
+    }
+
+    @Test
+    @DisplayName("GET /posts/update/{id} 는 본문을 마크다운으로 해석해 그린다(13단계, SSR)")
+    void postsUpdate_rendersMarkdownContentAsHtml() throws Exception {
+        given(postService.findByIdForView(eq(1L), nullable(Authentication.class)))
+                .willReturn(new PostViewDto(1L, "제목", "**굵게** 본문", null, "작성자", false, Category.FREE, 0L, 0L, false, 0L));
+        given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
+                .willReturn(new CommentPageDto(List.of(), 0, false));
+
+        String content = mockMvc.perform(get("/posts/update/1"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        // post-initial-data(Vue 하이드레이션용 원문 JSON)·meta description에는 원문 그대로
+        // "**굵게**"가 남는다(의도된 동작 — Vue가 그 JSON을 마크다운으로 다시 해석하고,
+        // 메타 설명은 검색엔진·링크 미리보기용 평문 발췌라 이번 범위 밖이다). 이 테스트가
+        // 보려는 것은 서버가 먼저 그리는 post-ssr 본문 하나뿐이므로 그 구간만 뽑아 확인한다.
+        String ssrBody = content.substring(content.indexOf("post-ssr"), content.indexOf("</article>"));
+        String normalizedBody = normalizedWhitespace(ssrBody);
+
+        // 템플릿 소스의 줄바꿈·들여쓰기가 th:text 주변에도 그대로 남아 "<strong>굵게</strong>"처럼
+        // 붙어 나오지 않는다(개행·공백이 낀 채로 렌더링됨) — 태그 인접 여부만 볼 때는
+        // 공백을 지우고 비교한다. 실제 브라우저에서는 인라인 요소 사이 공백이 시각적으로
+        // 문제되지 않는다.
+        assertThat(normalizedBody).contains("<strong>굵게</strong>");
+        // 저장 형식은 지금과 똑같은 평문이다 — 마크다운 문법 문자 자체는 본문에 남지 않는다.
+        assertThat(normalizedBody).doesNotContain("**굵게**");
+    }
+
+    @Test
+    @DisplayName("GET /posts/update/{id} 는 본문에 HTML 태그가 있어도 해석하지 않고 이스케이프해 보여준다")
+    void postsUpdate_escapesHtmlTagsInMarkdownContent() throws Exception {
+        given(postService.findByIdForView(eq(1L), nullable(Authentication.class)))
+                .willReturn(new PostViewDto(1L, "제목", "<script>alert(1)</script>", null, "작성자", false, Category.FREE, 0L, 0L, false, 0L));
+        given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
+                .willReturn(new CommentPageDto(List.of(), 0, false));
+
+        String content = mockMvc.perform(get("/posts/update/1"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(content).doesNotContain("<script>alert(1)</script>");
+        assertThat(content).contains("&lt;script&gt;");
+    }
+
+    private static String normalizedWhitespace(String html) {
+        return html.replaceAll("\\s+", "");
     }
 
     @Test

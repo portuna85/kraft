@@ -2,6 +2,7 @@
 <html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <!--/*@thymesVar id="pageTitle" type="java.lang.String"*/-->
 <!--/*@thymesVar id="post" type="com.kraft.post.dto.PostViewDto"*/-->
+<!--/*@thymesVar id="postBody" type="java.util.List<java.lang.Object>"*/-->
 <!--/*@thymesVar id="comments" type="java.util.List<com.kraft.comment.dto.CommentViewDto>"*/-->
 <!--/*@thymesVar id="relatedPosts" type="java.util.List<com.kraft.post.dto.PostRowDto>"*/-->
 <!--/*@thymesVar id="_csrf" type="org.springframework.security.web.csrf.CsrfToken"*/-->
@@ -35,7 +36,7 @@
                     <span th:text="${post.author}">작성자</span> · 글 번호 <span th:text="${post.id}">0</span>
                     · 조회 <span th:text="${post.viewCount}">0</span>
                 </p>
-                <div class="post-body" th:text="${post.content}">본문</div>
+                <div class="post-body post-body--md" th:insert="~{layout/markdown :: blocks(${postBody})}">본문</div>
                 <div class="post-image" th:if="${post.picture != null}">
                     <img th:src="${post.picture}" alt="게시글 첨부 이미지" loading="lazy" decoding="async">
                 </div>
