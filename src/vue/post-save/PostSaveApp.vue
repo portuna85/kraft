@@ -166,10 +166,14 @@ async function onSubmit() {
         type="file"
         class="form-control"
         accept="image/jpeg,image/png,image/gif,image/webp"
+        aria-describedby="picture-help"
         :disabled="saving || picture.uploading.value"
         @change="onFileChange"
       >
-      <small class="form-text text-muted">JPG, JPEG, PNG, GIF, WEBP · 최대 5MB · 1개</small>
+      <small
+        id="picture-help"
+        class="form-text text-muted"
+      >JPG, JPEG, PNG, GIF, WEBP · 최대 5MB · 1개</small>
     </div>
 
     <!-- 선택한 파일의 이름·크기·로컬 미리보기. -->
@@ -224,7 +228,7 @@ async function onSubmit() {
         class="btn btn-primary"
         :disabled="saving"
       >
-        등록
+        {{ saving ? '등록 중…' : '등록' }}
       </button>
     </div>
   </form>

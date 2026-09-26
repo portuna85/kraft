@@ -50,16 +50,6 @@
             <a class="board-filter-summary__reset" href="/">초기화</a>
         </div>
 
-        <section class="popular-posts" th:if="${!#lists.isEmpty(popularPosts)}" aria-labelledby="popular-heading">
-            <h2 id="popular-heading" class="popular-posts__title">인기글</h2>
-            <ol class="popular-posts__list">
-                <li class="popular-posts__item" th:each="p : ${popularPosts}">
-                    <a th:href="@{'/posts/update/' + ${p.id}}" th:text="${p.title}">제목</a>
-                    <span class="popular-posts__views" th:text="'조회 ' + ${p.viewCount}">조회 0</span>
-                </li>
-            </ol>
-        </section>
-
         <!-- 목록은 하나의 데이터로만 렌더링한다. 열 정렬은 넓은 화면에서 CSS Grid가 담당한다. -->
         <ul class="post-list" th:if="${!#lists.isEmpty(posts)}">
             <li class="post-list__head" aria-hidden="true">
@@ -136,7 +126,20 @@
         </nav>
     </main>
 
-    <aside class="kraft-aside" aria-label="이용 안내">
+    <!-- 인기글은 목록과 같은 줄의 보조 열에 둔다(992px 이상). DOM을 한 벌만 두기 위해 좁은
+         화면에서는 이 aside 전체가 목록·페이지 이동 아래로 내려간다 — 화면 순서와 키보드
+         순서가 같아지도록 CSS order로 끌어올리지 않는다. -->
+    <aside class="kraft-aside" aria-label="게시판 보조 정보">
+        <section class="popular-posts" th:if="${!#lists.isEmpty(popularPosts)}" aria-labelledby="popular-heading">
+            <h2 id="popular-heading" class="kraft-aside__title">인기글</h2>
+            <ol class="popular-posts__list">
+                <li class="popular-posts__item" th:each="p : ${popularPosts}">
+                    <a th:href="@{'/posts/update/' + ${p.id}}" th:text="${p.title}">제목</a>
+                    <span class="popular-posts__views" th:text="'조회 ' + ${p.viewCount}">조회 0</span>
+                </li>
+            </ol>
+        </section>
+
         <h2 class="kraft-aside__title">이용 안내</h2>
         <ul class="kraft-aside__list">
             <li>글 작성 시 이미지 한 개를 첨부할 수 있습니다.</li>

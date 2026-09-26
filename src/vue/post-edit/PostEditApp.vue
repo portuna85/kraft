@@ -397,10 +397,14 @@ async function onSubmit() {
         type="file"
         class="form-control"
         accept="image/jpeg,image/png,image/gif,image/webp"
+        aria-describedby="edit-picture-help"
         :disabled="saving || picture.uploading.value"
         @change="onFileChange"
       >
-      <small class="form-text text-muted">JPG, JPEG, PNG, GIF, WEBP · 최대 5MB · 1개. 새 파일을 선택하면 기존 이미지를 대체합니다.</small>
+      <small
+        id="edit-picture-help"
+        class="form-text text-muted"
+      >JPG, JPEG, PNG, GIF, WEBP · 최대 5MB · 1개. 새 파일을 선택하면 기존 이미지를 대체합니다.</small>
     </div>
 
     <!-- 기존 이미지(교체할 파일을 아직 선택하지 않았을 때만 표시). -->
@@ -489,7 +493,7 @@ async function onSubmit() {
         class="btn btn-primary"
         :disabled="saving"
       >
-        저장
+        {{ saving ? '저장 중…' : '저장' }}
       </button>
     </div>
   </form>
