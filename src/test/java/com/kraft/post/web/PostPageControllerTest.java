@@ -120,6 +120,17 @@ class PostPageControllerTest {
     }
 
     @Test
+    @DisplayName("9단계: 범위를 넘는 page를 정렬과 함께 요청해도 리다이렉트 URL이 sort를 유지한다")
+    void index_withOutOfRangePageAndSort_redirectKeepsSort() throws Exception {
+        given(postService.findAllDesc(any(Pageable.class), any(), any()))
+                .willReturn(new PostsPageResponseDto(List.of(), 5, 10, 42, 5, false, true));
+
+        mockMvc.perform(get("/").param("page", "5").param("sort", "viewCount,desc"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", containsString("sort=viewCount,desc")));
+    }
+
+    @Test
     @DisplayName("GET /?q=키워드&category=NOTICE 는 검색어·분류를 서비스에 그대로 전달한다")
     void index_passesSearchKeywordAndCategoryToService() throws Exception {
         given(postService.findAllDesc(any(Pageable.class), eq("키워드"), eq(Category.NOTICE)))
@@ -142,7 +153,36 @@ class PostPageControllerTest {
 
         mockMvc.perform(get("/").param("sort", "content,desc"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("index"));
+                .andExpect(view().name("index"))
+                // 허용되지 않는 정렬은 무시되므로 화면이 되돌려 쓸 currentSort도 비어 있어야
+                // 한다 — 검색 폼의 정렬 select가 "최신 등록순"으로 남고, 페이지 링크에도
+                // sort=content,desc가 실리지 않는다.
+                .andExpect(model().attribute("currentSort", org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
+    @DisplayName("9단계: GET /?sort=viewCount,desc 는 화면이 되돌려 쓸 currentSort를 모델에 담는다")
+    void index_withAllowedSort_setsCurrentSortModelAttribute() throws Exception {
+        given(postService.findAllDesc(any(Pageable.class), any(), any()))
+                .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
+        given(postService.findPopular(5)).willReturn(List.of());
+
+        mockMvc.perform(get("/").param("sort", "viewCount,desc"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("index"))
+                .andExpect(model().attribute("currentSort", "viewCount,desc"));
+    }
+
+    @Test
+    @DisplayName("9단계: 정렬을 지정하지 않으면 currentSort는 null이다(기본 최신순을 URL에 노출하지 않는다)")
+    void index_withoutSortParam_currentSortIsNull() throws Exception {
+        given(postService.findAllDesc(any(Pageable.class), any(), any()))
+                .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
+        given(postService.findPopular(5)).willReturn(List.of());
+
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("currentSort", org.hamcrest.Matchers.nullValue()));
     }
 
     @Test

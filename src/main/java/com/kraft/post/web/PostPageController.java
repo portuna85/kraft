@@ -16,6 +16,7 @@ import com.kraft.shared.web.PageWindow;
 import com.kraft.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -43,17 +44,23 @@ public class PostPageController {
                          @RequestParam(required = false) String q,
                          @RequestParam(required = false) Category category,
                          Model model) {
-        PostsPageResponseDto postsPage = postService.findAllDesc(PostSortPolicy.sanitize(pageable), q, category);
+        Pageable sanitized = PostSortPolicy.sanitize(pageable);
+        PostsPageResponseDto postsPage = postService.findAllDesc(sanitized, q, category);
+        // 화면(검색 폼·페이지 이동 링크)이 되돌려 붙일 수 있는 형태(예: "viewCount,desc").
+        // 허용되지 않는 정렬은 sanitize가 이미 비웠으므로 여기서는 항상 안전하다. 정렬을
+        // 지정하지 않았으면(기본 최신순) null이라 템플릿이 sort 파라미터 자체를 만들지 않는다.
+        String currentSort = currentSortParam(sanitized.getSort());
 
         // PageWindow는 표시용 페이지 번호를 [0, totalPages-1]로 보정하지만, 위 조회는 요청받은
         // 원래 page 그대로 돌았다 — 범위를 넘는 page(예: ?page=999)는 빈 목록을 돌려주면서
         // 페이지네이션 링크는 보정된(마지막) 페이지를 가리켜, 그중 어느 것도 "현재"로 표시되지
-        // 않는 채 빈 화면만 보였다(F09). 검색어·분류는 유지한 채 유효한 마지막 페이지로 보낸다.
+        // 않는 채 빈 화면만 보였다(F09). 검색어·분류·정렬은 유지한 채 유효한 마지막 페이지로 보낸다.
         if (postsPage.totalPages() > 0 && pageable.getPageNumber() >= postsPage.totalPages()) {
             return "redirect:" + UriComponentsBuilder.fromPath("/")
                     .queryParam("page", postsPage.totalPages() - 1)
                     .queryParamIfPresent("q", Optional.ofNullable(q).filter(s -> !s.isBlank()))
                     .queryParamIfPresent("category", Optional.ofNullable(category))
+                    .queryParamIfPresent("sort", Optional.ofNullable(currentSort))
                     .build()
                     .toUriString();
         }
@@ -64,6 +71,7 @@ public class PostPageController {
         model.addAttribute("popularPosts", postService.findPopular(5));
         model.addAttribute("q", q);
         model.addAttribute("category", category);
+        model.addAttribute("currentSort", currentSort);
         model.addAttribute("categories", Category.values());
         model.addAttribute("pageTitle", "전체 게시글");
         // 대표 경로(F08)는 검색하지 않은 첫 페이지에만 준다 — 분류만 고른 첫 페이지는 그 분류의
@@ -166,6 +174,24 @@ public class PostPageController {
         model.addAttribute("canonicalPath", "/posts/update/" + post.id());
         model.addAttribute("ogType", "article");
         return "post/post-update";
+    }
+
+    /**
+     * 목록 화면의 정렬 select·페이지 링크가 되돌려 쓸 수 있는 "property,direction" 문자열을
+     * 만든다. 정렬을 지정하지 않았으면(기본 최신순) null이다 — 화면은 이 값이 null이면
+     * sort 파라미터 자체를 URL에 넣지 않는다(기본값을 굳이 노출하지 않는다).
+     * <p>
+     * 정렬 속성이 둘 이상(예: updatedAt + id tie-breaker)일 수 있으나, 그 tie-breaker는
+     * {@link PostSortPolicy#effectiveSort}가 서비스 내부에서 덧붙이는 것이라 여기서 보는
+     * {@code sanitized.getSort()}(sanitize 직후, effectiveSort 이전)에는 사용자가 고른
+     * 단일 정렬만 있다.
+     */
+    private static String currentSortParam(Sort sort) {
+        if (sort.isUnsorted()) {
+            return null;
+        }
+        Sort.Order order = sort.iterator().next();
+        return order.getProperty() + "," + order.getDirection().name().toLowerCase();
     }
 
     /** meta description에 쓸 본문 앞부분. 공백·줄바꿈을 한 칸으로 줄이고 길면 자른다. */

@@ -8,6 +8,7 @@
 <!--/*@thymesVar id="categories" type="com.kraft.post.domain.Category[]"*/-->
 <!--/*@thymesVar id="category" type="com.kraft.post.domain.Category"*/-->
 <!--/*@thymesVar id="q" type="java.lang.String"*/-->
+<!--/*@thymesVar id="currentSort" type="java.lang.String"*/-->
 <head th:replace="~{layout/header :: header}"></head>
 <body>
 
@@ -38,15 +39,28 @@
                 <option th:each="c : ${categories}" th:value="${c}" th:text="${c.title}"
                         th:selected="${category == c}"></option>
             </select>
+            <label for="search-sort" class="visually-hidden">정렬</label>
+            <!-- 서버가 실제로 허용하는 정렬(PostSortPolicy.ALLOWED_PROPERTIES)만 선택지로 둔다 —
+                 §5.1 "서버가 제공하지 않는 정렬 옵션을 동작 가능한 필터처럼 추가하지 않는다"를
+                 지킨다. 댓글수·추천수는 Post 엔티티 컬럼이 아니라(별도 테이블 집계) 이번에는
+                 뺐다. -->
+            <select id="search-sort" name="sort" class="form-select board-search__sort"
+                    th:classappend="${currentSort != null} ? ' is-active' : ''">
+                <option value="" th:selected="${currentSort == null}">최신 등록순</option>
+                <option value="viewCount,desc" th:selected="${currentSort == 'viewCount,desc'}">조회순</option>
+                <option value="updatedAt,desc" th:selected="${currentSort == 'updatedAt,desc'}">최근 수정순</option>
+            </select>
             <button type="submit" class="btn btn-outline-primary">검색</button>
         </form>
 
-        <div class="board-filter-summary" th:if="${!#strings.isEmpty(q) or category != null}">
+        <div class="board-filter-summary" th:if="${!#strings.isEmpty(q) or category != null or currentSort != null}">
             <span class="board-filter-summary__label">적용된 조건:</span>
             <span class="board-filter-summary__chip" th:if="${!#strings.isEmpty(q)}">
                 검색 "<span th:text="${q}">검색어</span>"
             </span>
             <span class="board-filter-summary__chip" th:if="${category != null}" th:text="${category.title}">분류</span>
+            <span class="board-filter-summary__chip" th:if="${currentSort == 'viewCount,desc'}">조회순</span>
+            <span class="board-filter-summary__chip" th:if="${currentSort == 'updatedAt,desc'}">최근 수정순</span>
             <a class="board-filter-summary__reset" href="/">초기화</a>
         </div>
 
@@ -102,7 +116,7 @@
 
         <nav class="pager" th:if="${postsPage.totalPages > 1}" aria-label="게시글 목록 페이지 이동">
             <a class="pager__step" th:if="${pageWindow.hasPrev}"
-               th:href="@{/(page=${pageWindow.prev}, q=${q}, category=${category})}">이전</a>
+               th:href="@{/(page=${pageWindow.prev}, q=${q}, category=${category}, sort=${currentSort})}">이전</a>
             <span class="pager__step is-disabled" th:unless="${pageWindow.hasPrev}"
                   aria-hidden="true">이전</span>
 
@@ -113,14 +127,14 @@
             <span class="pager__numbers">
                 <th:block th:each="i : ${pageWindow.pages}">
                     <a class="pager__page" th:if="${i != postsPage.page}"
-                       th:href="@{/(page=${i}, q=${q}, category=${category})}" th:text="${i + 1}">1</a>
+                       th:href="@{/(page=${i}, q=${q}, category=${category}, sort=${currentSort})}" th:text="${i + 1}">1</a>
                     <span class="pager__page is-current" th:if="${i == postsPage.page}"
                           th:text="${i + 1}" aria-current="page">1</span>
                 </th:block>
             </span>
 
             <a class="pager__step" th:if="${pageWindow.hasNext}"
-               th:href="@{/(page=${pageWindow.next}, q=${q}, category=${category})}">다음</a>
+               th:href="@{/(page=${pageWindow.next}, q=${q}, category=${category}, sort=${currentSort})}">다음</a>
             <span class="pager__step is-disabled" th:unless="${pageWindow.hasNext}"
                   aria-hidden="true">다음</span>
         </nav>

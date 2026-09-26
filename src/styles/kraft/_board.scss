@@ -171,9 +171,14 @@
     flex: 0 1 160px;
 }
 
+.board-search__sort {
+    flex: 0 1 140px;
+}
+
 // PlayForum 비교(문서 4.3): 활성 필터를 강조색으로 표시한다. 헤더의
 // .kraft-actions__link.is-current, 페이지네이션의 .pager__page.is-current와 같은 관례.
-.board-search__category.is-active {
+.board-search__category.is-active,
+.board-search__sort.is-active {
     border-color: var(--kraft-primary);
 }
 

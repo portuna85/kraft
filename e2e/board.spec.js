@@ -75,3 +75,40 @@ test('검색·분류 조건이 없으면 적용된 조건 요약이 보이지 �
 
     await expect(page.locator('.board-filter-summary')).toHaveCount(0);
 });
+
+/**
+ * 9단계: 서버는 이미 id/viewCount/updatedAt 정렬을 지원한다(PostSortPolicy). 화면에서
+ * 조회순을 고르면 URL에 sort가 실리고, 조건 요약에 칩으로 보이고, 초기화하면 기본
+ * 정렬(최신 등록순)로 돌아간다.
+ */
+test('정렬을 조회순으로 바꾸면 URL에 반영되고 조건 요약에 칩으로 보인다', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('#search-sort')).toHaveValue('');
+
+    await page.locator('#search-sort').selectOption('viewCount,desc');
+    await page.getByRole('button', { name: '검색' }).click();
+
+    await expect(page).toHaveURL(/[?&]sort=viewCount%2Cdesc/);
+    await expect(page.locator('#search-sort')).toHaveClass(/is-active/);
+    const summary = page.locator('.board-filter-summary');
+    await expect(summary).toBeVisible();
+    await expect(summary).toContainText('조회순');
+
+    await summary.getByRole('link', { name: '초기화' }).click();
+    await expect(page).toHaveURL('/');
+    await expect(page.locator('#search-sort')).toHaveValue('');
+    await expect(page.locator('.board-filter-summary')).toHaveCount(0);
+});
+
+test('정렬을 고른 채 페이지를 이동해도 정렬이 유지된다', async ({ page }) => {
+    // size=1로 강제로 여러 페이지를 만든다 — 기본 크기(10)면 시드 글 수에 따라 페이지가
+    // 하나뿐일 수 있어 pager 자체가 렌더링되지 않는다.
+    await page.goto('/?sort=updatedAt,desc&page=0&size=1');
+
+    const nextLink = page.getByRole('link', { name: '다음' });
+    await expect(nextLink).toHaveAttribute('href', /sort=updatedAt,desc/);
+
+    await nextLink.click();
+    await expect(page).toHaveURL(/[?&]sort=updatedAt,desc/);
+    await expect(page.locator('#search-sort')).toHaveValue('updatedAt,desc');
+});
