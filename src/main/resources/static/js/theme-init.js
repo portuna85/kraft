@@ -31,7 +31,8 @@
     // Bootstrap은 $color-mode-type: data라 [data-bs-theme=dark] 속성 없이는 미디어 쿼리로
     // 자동 반응하지 않는다(bootstrap-custom.scss) — 지금 이 순간의 시스템 설정을 한 번 읽어
     // 반영해 둔다. 이후 시스템 설정이 바뀌면 theme-toggle.js의 matchMedia 리스너가 갱신한다
-    // (그 스크립트는 계정 메뉴 토글 버튼과 함께 모든 페이지에 로드된다).
+    // (그 스크립트는 navbar.html의 독립된 테마 토글 버튼과 함께 모든 페이지에 로드된다 —
+    // 계정 메뉴 안이 아니라 항상 보이는 버튼이다).
     const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     root.setAttribute('data-bs-theme', prefersDark ? 'dark' : 'light');
 })();

@@ -9,6 +9,7 @@ import { useUnsavedGuard } from '../shared/useUnsavedGuard.js';
 import { useDraftAutosave } from '../shared/useDraftAutosave.js';
 import MarkdownBody from '../shared/MarkdownBody.vue';
 import MarkdownToolbar from '../shared/MarkdownToolbar.vue';
+import DraftRestoreBanner from '../shared/DraftRestoreBanner.vue';
 
 /**
  * 게시글 읽기·편집·추천 상태를 관리한다. 추천은 서버가 반환한 상태만 반영한다.
@@ -141,6 +142,11 @@ function restoreDraft() {
             draft.category = stored.category;
         }
     });
+    titleInput.value?.focus();
+}
+
+function discardDraft() {
+    autosave.discard();
     titleInput.value?.focus();
 }
 
@@ -381,33 +387,11 @@ async function onSubmit() {
     @submit.prevent="onSubmit"
   >
     <!-- 자동 임시 저장된 초안이 있으면 물어보고 선택하게 한다(자동 복원 아님). -->
-    <div
-      v-if="autosave.available.value"
-      id="draft-restore-banner"
-      class="draft-banner"
-    >
-      <p class="draft-banner__text">
-        임시 저장된 내용이 있습니다. 사진 첨부는 복원되지 않아 다시 선택해야 합니다.
-      </p>
-      <div class="draft-banner__actions">
-        <button
-          id="btn-draft-restore"
-          type="button"
-          class="btn btn-sm btn-outline-primary"
-          @click="restoreDraft"
-        >
-          복원
-        </button>
-        <button
-          id="btn-draft-discard"
-          type="button"
-          class="btn btn-sm btn-outline-secondary"
-          @click="autosave.discard()"
-        >
-          새로 시작
-        </button>
-      </div>
-    </div>
+    <DraftRestoreBanner
+      :available="autosave.available.value"
+      @restore="restoreDraft"
+      @discard="discardDraft"
+    />
 
     <div class="mb-3">
       <label for="title">제목</label>

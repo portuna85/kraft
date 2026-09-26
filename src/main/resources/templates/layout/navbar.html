@@ -45,9 +45,10 @@
             <!-- 다크 모드 토글(11단계). 로그인 여부와 무관하게 항상 보인다 — 계정 메뉴
                  안에 넣지 않는 이유는 비로그인 방문자도 테마를 바꿀 수 있어야 하기 때문이다.
                  3단계(시스템→밝게→어둡게)를 순환하고, 보이는 글자 자체가 접근 가능한
-                 이름이라 별도 aria-label이 필요 없다. 초기 문구는 static/js/theme-init.js가
-                 이미 정해 둔 상태와 어긋나지 않도록 static/js/app/features/theme-toggle.js가
-                 마운트 시 다시 맞춘다. -->
+                 이름이라 별도 aria-label이 필요 없다. 아래 문구("테마: 시스템")는 자리
+                 표시자일 뿐이다 — theme-init.js는 화면 색만 정하고 이 버튼은 건드리지 않으므로,
+                 저장된 값이 밝게·어둡게였다면 static/js/app/features/theme-toggle.js가 마운트
+                 시 실제 문구로 바로잡는다(그 전까지 한 프레임 정도 실제와 다르게 보일 수 있다). -->
             <button type="button" id="btn-theme-toggle"
                     class="kraft-actions__link kraft-actions__link--button">테마: 시스템</button>
 

@@ -1,7 +1,7 @@
 // 마크다운 툴바 순수 로직 테스트(12단계). `npm run test:unit`.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { applyMarkup } from './markdownToolbar.js';
+import { applyMarkup, nextToolbarIndex } from './markdownToolbar.js';
 
 test('굵게: 선택한 글자를 **로 감싼다', () => {
     const result = applyMarkup('안녕 세상', 3, 5, 'bold'); // "세상" 선택
@@ -70,4 +70,23 @@ test('길이 제한 안에서는 정상 적용된다(경계값)', () => {
     const value = 'a'.repeat(9996);
     const result = applyMarkup(value, 0, 0, 'bold'); // 정확히 10,000자
     assert.equal(result.value.length, 10_000);
+});
+
+test('roving tabindex: 오른쪽 화살표는 다음 버튼으로, 끝에서는 처음으로 순환한다', () => {
+    assert.equal(nextToolbarIndex(0, 'ArrowRight', 6), 1);
+    assert.equal(nextToolbarIndex(5, 'ArrowRight', 6), 0);
+});
+
+test('roving tabindex: 왼쪽 화살표는 이전 버튼으로, 처음에서는 끝으로 순환한다', () => {
+    assert.equal(nextToolbarIndex(1, 'ArrowLeft', 6), 0);
+    assert.equal(nextToolbarIndex(0, 'ArrowLeft', 6), 5);
+});
+
+test('roving tabindex: Home·End는 양 끝으로 보낸다', () => {
+    assert.equal(nextToolbarIndex(3, 'Home', 6), 0);
+    assert.equal(nextToolbarIndex(3, 'End', 6), 5);
+});
+
+test('roving tabindex: 다른 키는 현재 위치를 유지한다', () => {
+    assert.equal(nextToolbarIndex(2, 'Enter', 6), 2);
 });

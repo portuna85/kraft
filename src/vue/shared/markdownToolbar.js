@@ -3,6 +3,33 @@
  * 선택 영역을 돌려준다 — DOM은 `MarkdownToolbar.vue`가 다룬다.
  */
 
+/**
+ * 서식 버튼 묶음의 roving tabindex 이동(13단계, WAI-ARIA 툴바 패턴). 좌우 화살표는
+ * 순환하고 Home/End는 양 끝으로 보낸다. 다른 키는 현재 인덱스를 그대로 돌려준다.
+ *
+ * @param {number} currentIndex
+ * @param {'ArrowLeft' | 'ArrowRight' | 'Home' | 'End' | string} key
+ * @param {number} count
+ * @returns {number}
+ */
+export function nextToolbarIndex(currentIndex, key, count) {
+    if (count <= 0) {
+        return currentIndex;
+    }
+    switch (key) {
+        case 'ArrowRight':
+            return (currentIndex + 1) % count;
+        case 'ArrowLeft':
+            return (currentIndex - 1 + count) % count;
+        case 'Home':
+            return 0;
+        case 'End':
+            return count - 1;
+        default:
+            return currentIndex;
+    }
+}
+
 // ContentPolicy.POST_CONTENT_MAX_LENGTH(서버)·textarea의 maxlength(PostSaveApp.vue·
 // PostEditApp.vue)와 맞춘 값이다. 세 곳 중 하나만 바뀌면 어긋난다.
 const MAX_LENGTH = 10_000;

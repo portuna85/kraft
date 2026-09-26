@@ -61,6 +61,12 @@ $fs-heading-lg: 1.75rem; // 같은 제목들의 넓은 화면(>=lg) 크기
     // 옅게 얹는 그림자 톤)을 다크에 그대로 쓰면 어두운 배경 위에 더 어두운 오버레이가 얹혀
     // 사실상 안 보인다 — 테마별로 톤을 뒤집는다(다크는 흰색 계열을 옅게).
     --kraft-hover-overlay: rgba(15, 23, 42, 0.04);
+    // 입력 포커스 글로·표면 그림자. 라이트 값(짙은 남색 그림자, 라이트 강조색 글로)을 다크에
+    // 그대로 쓰면 그림자는 어두운 표면에 묻히고, 글로는 다크 강조색(#818cf8) 테두리와 색이
+    // 어긋난다 — 테마별로 따로 둔다(13단계).
+    --kraft-focus-ring: rgba(79, 70, 229, 0.15);
+    --kraft-shadow-surface: 0 1px 3px rgba(15, 23, 42, 0.06);
+    --kraft-shadow-overlay: 0 8px 24px rgba(15, 23, 42, 0.12);
 
     --kraft-radius: 0.5rem;
     --kraft-radius-control: 0.5rem;
@@ -106,6 +112,9 @@ $fs-heading-lg: 1.75rem; // 같은 제목들의 넓은 화면(>=lg) 크기
     --kraft-on-danger: #111827;
     --kraft-danger-bg: #3a1614;
     --kraft-hover-overlay: rgba(255, 255, 255, 0.08);
+    --kraft-focus-ring: rgba(129, 140, 248, 0.3);
+    --kraft-shadow-surface: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --kraft-shadow-overlay: 0 8px 24px rgba(0, 0, 0, 0.5);
     // 네이티브 폼 컨트롤(select 팝업 등)·스크롤바가 다크 UI를 따르게 한다. 참고: 이 선언을
     // 빼도 소용없다 — Bootstrap이 [data-bs-theme=dark]에 자신의 color-scheme: dark를 이미
     // 내려서(bootstrap.custom.css) 어차피 걸린다. WebKit에서 이 선언이 네이티브 UI의 다크
