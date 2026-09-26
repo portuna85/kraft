@@ -216,4 +216,72 @@ test.describe('더 보기', () => {
         await button.click();
         await expect(page.locator('.post-list__item')).toHaveCount(11);
     });
+
+    /**
+     * 13단계: 더 보기로 실제 화면에 붙은 범위를 pager(번호·"다음"·상태 문구)에 반영한다.
+     * 예전에는 pager가 서버가 처음 그린 1페이지에 멈춰 있어, 더 보기를 여러 번 눌러도
+     * "다음"을 누르면 이미 화면에 있는 페이지로 되돌아갔다.
+     */
+    test('더 보기를 두 번 눌러 마지막 페이지까지 불러오면 pager가 그 범위를 반영한다', async ({ page }) => {
+        const prefix = uniqueTitle('페이저갱신');
+        await createPosts(page, 25, prefix); // 페이지 크기 10 → 총 3페이지(10·10·5)
+
+        await page.goto(`/?q=${encodeURIComponent(prefix)}`);
+        const pager = page.locator('nav.pager');
+        await expect(pager.locator('.pager__page[data-page="0"]')).toHaveAttribute('aria-current', 'page');
+
+        const button = page.locator('#btn-load-more');
+        await button.click(); // 2페이지(index 1)까지 붙음
+        await button.click(); // 3페이지(index 2, 마지막)까지 붙음
+
+        await expect(page.locator('.post-list__item')).toHaveCount(25);
+        await expect(button).toBeHidden();
+
+        // 좁은 화면용 문구(md 미만에서만 보이지만 DOM에는 항상 있다)가 범위로 바뀐다.
+        await expect(pager.locator('.pager__status')).toHaveText('1–3 / 3');
+
+        // 1·2·3페이지 번호 모두 "이미 붙은 범위"로 바뀌어 링크가 아니라 span이고, 마지막
+        // (3페이지)에만 aria-current가 남는다.
+        for (const dataPage of ['0', '1', '2']) {
+            const numberEl = pager.locator(`.pager__page[data-page="${dataPage}"]`);
+            await expect(numberEl).toHaveClass(/is-current/);
+            expect(await numberEl.evaluate((el) => el.tagName)).toBe('SPAN');
+        }
+        await expect(pager.locator('.pager__page[data-page="2"]')).toHaveAttribute('aria-current', 'page');
+        await expect(pager.locator('.pager__page[data-page="0"]')).not.toHaveAttribute('aria-current', 'page');
+
+        // "다음"은 더 불러올 페이지가 없으므로 "이전 없음"과 같은 비활성 모양이 된다.
+        const nextEl = pager.locator('[data-role="next"]');
+        await expect(nextEl).toHaveClass(/is-disabled/);
+        expect(await nextEl.evaluate((el) => el.tagName)).toBe('SPAN');
+    });
+
+    /**
+     * 정렬 기준(조회순 등)에 따라 목록 순서가 바뀔 수 있어, 이미 화면에 있는 글이 다음
+     * 페이지 응답에 다시 섞여 들어올 수 있다 — 중복 없이 걸러야 한다.
+     */
+    test('이미 붙은 글이 다음 페이지 응답에 다시 섞여 와도 중복으로 붙지 않는다', async ({ page }) => {
+        const prefix = uniqueTitle('중복방지');
+        await createPosts(page, 11, prefix);
+
+        await page.goto(`/?q=${encodeURIComponent(prefix)}`);
+        const firstRowId = await page.locator('.post-list__item').first().getAttribute('data-post-id');
+
+        await page.route(/\/api\/v1\/posts\?/, async (route) => {
+            const response = await route.fetch();
+            const body = await response.json();
+            // 이미 1페이지에 있던 글을 2페이지 응답 맨 앞에 다시 끼워 넣는다.
+            const duplicate = { ...body.content[0], id: Number(firstRowId) };
+            await route.fulfill({
+                response,
+                json: { ...body, content: [duplicate, ...body.content] },
+            });
+        });
+
+        await page.locator('#btn-load-more').click();
+
+        // 서버가 준 새 글 1개만 붙고, 끼워 넣은 중복은 걸러진다.
+        await expect(page.locator('.post-list__item')).toHaveCount(11);
+        await expect(page.locator(`.post-list__item[data-post-id="${firstRowId}"]`)).toHaveCount(1);
+    });
 });

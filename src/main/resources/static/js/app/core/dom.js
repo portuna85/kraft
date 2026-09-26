@@ -26,6 +26,14 @@ export const byId = (id) => /** @type {T | null} */ (document.getElementById(id)
 export const qs = (selector, root = document) => /** @type {T | null} */ (root.querySelector(selector));
 
 /**
+ * @template {Element} [T=Element]
+ * @param {string} selector
+ * @param {ParentNode} [root=document]
+ * @returns {T[]}
+ */
+export const qsa = (selector, root = document) => /** @type {T[]} */ (Array.from(root.querySelectorAll(selector)));
+
+/**
  * 요소가 있을 때만 이벤트를 건다.
  *
  * @template {Event} [E=Event]

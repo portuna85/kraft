@@ -69,7 +69,7 @@
             <li class="post-list__head" aria-hidden="true">
                 <span>번호</span><span>제목</span><span>작성자</span><span>최종수정일</span><span>조회</span><span>댓글</span>
             </li>
-            <li class="post-list__item" th:each="post : ${posts}">
+            <li class="post-list__item" th:each="post : ${posts}" th:attr="data-post-id=${post.id}">
                 <span class="post-list__no">
                     <span class="post-list__no-label">#</span><span th:text="${post.id}">1</span>
                 </span>
@@ -125,7 +125,11 @@
             <p id="load-more-status" class="board-load-more__status" aria-live="polite"></p>
         </div>
 
-        <nav class="pager" th:if="${postsPage.totalPages > 1}" aria-label="게시글 목록 페이지 이동">
+        <!-- 13단계: data-total-pages·data-role="next"·번호마다의 data-page는 "더 보기"가 이
+             pager를 갱신할 때 쓴다(static/js/app/features/load-more.js) — 더 보기 전에는
+             아무 의미가 없는, JS 전용 훅이다. -->
+        <nav class="pager" th:if="${postsPage.totalPages > 1}" aria-label="게시글 목록 페이지 이동"
+             th:attr="data-total-pages=${pageWindow.totalPages}">
             <a class="pager__step" th:if="${pageWindow.hasPrev}"
                th:href="@{/(page=${pageWindow.prev}, q=${q}, category=${category}, sort=${currentSort})}">이전</a>
             <span class="pager__step is-disabled" th:unless="${pageWindow.hasPrev}"
@@ -138,15 +142,16 @@
             <span class="pager__numbers">
                 <th:block th:each="i : ${pageWindow.pages}">
                     <a class="pager__page" th:if="${i != postsPage.page}"
-                       th:href="@{/(page=${i}, q=${q}, category=${category}, sort=${currentSort})}" th:text="${i + 1}">1</a>
+                       th:href="@{/(page=${i}, q=${q}, category=${category}, sort=${currentSort})}"
+                       th:text="${i + 1}" th:attr="data-page=${i}">1</a>
                     <span class="pager__page is-current" th:if="${i == postsPage.page}"
-                          th:text="${i + 1}" aria-current="page">1</span>
+                          th:text="${i + 1}" aria-current="page" th:attr="data-page=${i}">1</span>
                 </th:block>
             </span>
 
-            <a class="pager__step" th:if="${pageWindow.hasNext}"
+            <a class="pager__step" th:if="${pageWindow.hasNext}" data-role="next"
                th:href="@{/(page=${pageWindow.next}, q=${q}, category=${category}, sort=${currentSort})}">다음</a>
-            <span class="pager__step is-disabled" th:unless="${pageWindow.hasNext}"
+            <span class="pager__step is-disabled" th:unless="${pageWindow.hasNext}" data-role="next"
                   aria-hidden="true">다음</span>
         </nav>
     </main>
