@@ -1,11 +1,12 @@
 <script setup>
-import { computed, nextTick, reactive, ref } from 'vue';
+import { computed, nextTick, reactive, ref, watch } from 'vue';
 import { api, messageOf } from '@core/http.js';
 import { API } from '@core/constants.js';
 import * as flash from '@ui/flash.js';
 import { showToast } from '@ui/toast.js';
 import { useImageUpload } from '../shared/useImageUpload.js';
 import { useUnsavedGuard } from '../shared/useUnsavedGuard.js';
+import { useDraftAutosave } from '../shared/useDraftAutosave.js';
 
 /**
  * 게시글 읽기·편집·추천 상태를 관리한다. 추천은 서버가 반환한 상태만 반영한다.
@@ -118,8 +119,35 @@ function categoryTitle(value) {
  */
 const unsavedGuard = useUnsavedGuard(isDirty);
 
+// 자동 임시 저장(이탈 경고를 대체하지 않고 나란히 쓴다 — useDraftAutosave.js 참고). 사진은
+// 직렬화할 수 없어 제목·분류·내용만 담는다. 글마다 따로 기억하도록 키에 id를 넣는다.
+const autosave = useDraftAutosave(`kraft:draft:post-edit:${props.post.id}`, draft);
+
+// 편집 모드일 때만 저장한다 — 조회 모드에서는 draft가 항상 original과 같아 저장할 이유가
+// 없고, 마운트 시점에 곧바로 저장소를 건드리지도 않는다.
+watch(draft, () => {
+    if (mode.value === 'edit') {
+        autosave.schedule();
+    }
+}, { deep: true });
+
+function restoreDraft() {
+    autosave.restore((stored) => {
+        draft.title = stored.title ?? original.title;
+        draft.content = stored.content ?? original.content;
+        if (stored.category) {
+            draft.category = stored.category;
+        }
+    });
+    titleInput.value?.focus();
+}
+
 async function startEdit() {
     mode.value = 'edit';
+    // 서버 원본과 같은 초안은 되찾을 게 없으니 배너를 띄우지 않는다.
+    autosave.checkAvailable((stored) =>
+        stored.title === original.title && stored.content === original.content && stored.category === original.category,
+    );
     await nextTick();
     titleInput.value?.focus();
 }
@@ -134,6 +162,7 @@ async function cancelEdit() {
     clearPicture();
     picture.removedExisting.value = false;
     mode.value = 'view';
+    autosave.discard();
     await nextTick();
     editButton.value?.focus();
 }
@@ -193,6 +222,7 @@ async function onSubmit() {
         picture.revokePreview();
         flash.set('POST_UPDATED');
         unsavedGuard.allowNavigation();
+        autosave.discard();
         window.location.href = '/';
     } catch (error) {
         progressText.value = null;
@@ -348,6 +378,35 @@ async function onSubmit() {
     class="card-kraft post-edit"
     @submit.prevent="onSubmit"
   >
+    <!-- 자동 임시 저장된 초안이 있으면 물어보고 선택하게 한다(자동 복원 아님). -->
+    <div
+      v-if="autosave.available.value"
+      id="draft-restore-banner"
+      class="draft-banner"
+    >
+      <p class="draft-banner__text">
+        임시 저장된 내용이 있습니다. 사진 첨부는 복원되지 않아 다시 선택해야 합니다.
+      </p>
+      <div class="draft-banner__actions">
+        <button
+          id="btn-draft-restore"
+          type="button"
+          class="btn btn-sm btn-outline-primary"
+          @click="restoreDraft"
+        >
+          복원
+        </button>
+        <button
+          id="btn-draft-discard"
+          type="button"
+          class="btn btn-sm btn-outline-secondary"
+          @click="autosave.discard()"
+        >
+          새로 시작
+        </button>
+      </div>
+    </div>
+
     <div class="mb-3">
       <label for="title">제목</label>
       <input

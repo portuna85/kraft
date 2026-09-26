@@ -1,10 +1,11 @@
 <script setup>
-import { computed, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { api, messageOf } from '@core/http.js';
 import { API } from '@core/constants.js';
 import * as flash from '@ui/flash.js';
 import { useImageUpload } from '../shared/useImageUpload.js';
 import { useUnsavedGuard } from '../shared/useUnsavedGuard.js';
+import { useDraftAutosave } from '../shared/useDraftAutosave.js';
 
 /**
  * 게시글 등록 화면.
@@ -38,6 +39,29 @@ const isDirty = computed(() =>
     draft.title !== '' || draft.content !== '' || picture.hasFile.value,
 );
 const unsavedGuard = useUnsavedGuard(isDirty);
+
+// 자동 임시 저장(이탈 경고를 대체하지 않고 나란히 쓴다 — useDraftAutosave.js 참고). 사진은
+// 직렬화할 수 없어 제목·분류·내용만 담는다.
+const titleInput = ref(/** @type {HTMLInputElement | null} */ (null));
+const autosave = useDraftAutosave('kraft:draft:post-save', draft);
+
+onMounted(() => {
+    // 빈 초안(제목·내용 둘 다 없음)은 되찾을 게 없으니 배너를 띄우지 않는다.
+    autosave.checkAvailable((stored) => !stored.title && !stored.content);
+});
+
+watch(draft, () => autosave.schedule(), { deep: true });
+
+function restoreDraft() {
+    autosave.restore((stored) => {
+        draft.title = stored.title ?? '';
+        draft.content = stored.content ?? '';
+        if (stored.category) {
+            draft.category = stored.category;
+        }
+    });
+    titleInput.value?.focus();
+}
 
 function onFileChange(event) {
     picture.onFileSelected(event.target.files?.[0] ?? null);
@@ -92,6 +116,7 @@ async function onSubmit() {
         picture.revokePreview();
         flash.set('POST_SAVED');
         unsavedGuard.allowNavigation();
+        autosave.discard();
         window.location.href = '/';
     } catch (error) {
         progressText.value = null;
@@ -110,10 +135,40 @@ async function onSubmit() {
     id="post-save-form"
     @submit.prevent="onSubmit"
   >
+    <!-- 자동 임시 저장된 초안이 있으면 물어보고 선택하게 한다(자동 복원 아님). -->
+    <div
+      v-if="autosave.available.value"
+      id="draft-restore-banner"
+      class="draft-banner"
+    >
+      <p class="draft-banner__text">
+        임시 저장된 내용이 있습니다. 사진 첨부는 복원되지 않아 다시 선택해야 합니다.
+      </p>
+      <div class="draft-banner__actions">
+        <button
+          id="btn-draft-restore"
+          type="button"
+          class="btn btn-sm btn-outline-primary"
+          @click="restoreDraft"
+        >
+          복원
+        </button>
+        <button
+          id="btn-draft-discard"
+          type="button"
+          class="btn btn-sm btn-outline-secondary"
+          @click="autosave.discard()"
+        >
+          새로 시작
+        </button>
+      </div>
+    </div>
+
     <div class="mb-3">
       <label for="title">제목</label>
       <input
         id="title"
+        ref="titleInput"
         v-model="draft.title"
         type="text"
         class="form-control"

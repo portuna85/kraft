@@ -49,3 +49,31 @@
     color: var(--kraft-text-muted);
     font-size: $fs-sm;
 }
+
+// 자동 임시 저장 복원 배너. .picture-preview와 같은 표면(연한 배경 + 테두리)이지만, "행동이
+// 필요한 안내"라는 점을 구분하려고 왼쪽에 강조색 선을 하나 더 준다.
+.draft-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--kraft-space-3);
+    margin-bottom: var(--kraft-space-3);
+    padding: var(--kraft-space-3) var(--kraft-space-4);
+    border: 1px solid var(--kraft-border);
+    border-left: 3px solid var(--kraft-primary);
+    border-radius: var(--kraft-radius-control);
+    background-color: var(--kraft-surface-subtle);
+}
+
+.draft-banner__text {
+    margin: 0;
+    font-size: $fs-sm;
+    color: var(--kraft-text);
+}
+
+.draft-banner__actions {
+    display: flex;
+    gap: var(--kraft-space-2);
+    flex-shrink: 0;
+}
