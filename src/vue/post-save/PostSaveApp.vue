@@ -6,6 +6,7 @@ import * as flash from '@ui/flash.js';
 import { useImageUpload } from '../shared/useImageUpload.js';
 import { useUnsavedGuard } from '../shared/useUnsavedGuard.js';
 import { useDraftAutosave } from '../shared/useDraftAutosave.js';
+import MarkdownToolbar from '../shared/MarkdownToolbar.vue';
 
 /**
  * 게시글 등록 화면.
@@ -203,13 +204,11 @@ async function onSubmit() {
     </div>
     <div class="mb-3">
       <label for="content">내용</label>
-      <textarea
+      <MarkdownToolbar
         id="content"
         v-model="draft.content"
-        class="form-control post-edit__textarea"
         placeholder="내용을 입력하세요"
-        maxlength="10000"
-        required
+        :maxlength="10000"
         :disabled="saving"
       />
     </div>

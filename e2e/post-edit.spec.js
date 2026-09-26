@@ -158,7 +158,11 @@ test('F08: JS 없이도 본문을 읽을 수 있고, 마운트 뒤에는 한 번
     await expect(page.locator('#post-title-text')).toHaveText(title);
     await expect(page.locator('[data-ssr-content]')).toHaveCount(0);
     await expect(page.locator('#post-app h1')).toHaveCount(1);
-    await expect(page.getByText('편집 테스트용 본문입니다.', { exact: true })).toHaveCount(1);
+    // 마운트 뒤 읽기 화면에 정확히 한 번 보인다. page.getByText(...)로 페이지 전체를
+    // 뒤지지 않는 이유(12단계 이후): 편집 폼(MarkdownToolbar.vue의 textarea)이 같은
+    // 내용으로 미리 채워진 채 DOM에 항상 남아 있다(required 검증을 유지하려는 의도 —
+    // MarkdownToolbar.vue 주석 참고) — 그 자체는 정상이라 이 텍스트 검색과는 무관하다.
+    await expect(page.locator('#post-content-text')).toHaveText('편집 테스트용 본문입니다.');
 
     await page.locator('#btn-edit').click();
     await expect(page.locator('#edit-category')).toBeVisible();

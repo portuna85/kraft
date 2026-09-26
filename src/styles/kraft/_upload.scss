@@ -77,3 +77,54 @@
     gap: var(--kraft-space-2);
     flex-shrink: 0;
 }
+
+// 12단계(가벼운 마크다운) 툴바. textarea 위에 서식 버튼 + 작성/미리보기 전환을 얹는다.
+.markdown-toolbar__bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--kraft-space-1);
+    margin-bottom: var(--kraft-space-2);
+}
+
+.markdown-toolbar__btn.is-active {
+    background-color: var(--kraft-secondary);
+    color: var(--kraft-on-secondary);
+    border-color: var(--kraft-secondary);
+}
+
+// 서식 버튼과 작성/미리보기 전환 사이를 벌린다 — 서식 버튼은 왼쪽에 모으고 전환은
+// 오른쪽 끝에 붙인다.
+.markdown-toolbar__spacer {
+    flex: 1 1 auto;
+}
+
+// display:none 대신 화면에서만 지운다 — required 검증에서 빠지면 안 되는 이유는
+// MarkdownToolbar.vue의 주석 참고.
+.markdown-toolbar__textarea--hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.markdown-toolbar__preview {
+    min-height: 240px;
+}
+
+@include from($bp-lg) {
+    .markdown-toolbar__preview {
+        min-height: 360px;
+    }
+}
+
+.markdown-toolbar__hint {
+    margin: var(--kraft-space-2) 0 0;
+    color: var(--kraft-text-muted);
+    font-size: $fs-xs;
+}

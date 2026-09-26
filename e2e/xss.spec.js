@@ -39,3 +39,27 @@ test('제목·본문·댓글에 </script>가 있어도 스크립트가 실행되
     expect(await page.evaluate(() => window.__xssFired === true)).toBe(false);
     await expect(page.locator('#post-content-text')).toHaveText(payload);
 });
+
+/**
+ * 12단계(가벼운 마크다운): `[글자](주소)` 링크 문법은 http/https만 실제 링크로 만들고
+ * (markdown.js의 tryParseLink), 그 외 스킴은 평문으로 남긴다. `javascript:` 스킴으로 클릭
+ * 시 실행을 유도하는 경로가 막혀 있는지 확인한다.
+ */
+test('마크다운 링크 문법에 javascript: 스킴을 넣어도 평문으로만 보이고 링크가 되지 않는다', async ({ page }) => {
+    const title = uniqueTitle('마크다운XSS');
+    const payload = '[클릭](javascript:window.__xssFired = true)';
+
+    await page.goto('/posts/save');
+    await page.locator('#title').fill(title);
+    await page.locator('#content').fill(payload);
+    await page.locator('#btn-save').click();
+    await page.waitForURL('/');
+    await openPostByTitle(page, title);
+
+    await expect(page.locator('#post-content-text')).toHaveText(payload);
+    // 링크로 해석됐다면 <a href="javascript:...">가 실제 요소로 생겼을 것이다.
+    await expect(page.locator('#post-content-text a')).toHaveCount(0);
+
+    expect(await page.evaluate(() => window.__xssFired === true),
+        '평문으로 남아야 하므로 클릭하지 않아도, 애초에 href 자체가 없어야 한다').toBe(false);
+});

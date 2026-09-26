@@ -48,6 +48,39 @@
     max-width: 70ch;
 }
 
+// 12단계(가벼운 마크다운): 서식이 생긴 문단·목록·코드에 맞는 간격. white-space: pre-wrap을
+// 끈다 — 문단 안 줄바꿈은 이제 파서가 명시적으로 만든 <br>로만 나타나므로(markdown.js),
+// pre-wrap까지 같이 켜 두면 <br> 앞뒤의 원본 개행 문자가 줄바꿈을 두 번 만든다.
+.post-body--md {
+    white-space: normal;
+}
+
+.post-body--md p {
+    margin: 0 0 var(--kraft-space-4);
+}
+
+.post-body--md p:last-child {
+    margin-bottom: 0;
+}
+
+.post-body--md ul,
+.post-body--md ol {
+    margin: 0 0 var(--kraft-space-4);
+    padding-left: 1.4em;
+}
+
+.post-body--md li + li {
+    margin-top: var(--kraft-space-1);
+}
+
+.post-body--md code {
+    background-color: var(--kraft-surface-subtle);
+    border: 1px solid var(--kraft-border);
+    border-radius: var(--kraft-radius-control);
+    padding: 0.1em 0.4em;
+    font-size: 0.9em;
+}
+
 // 글자크기 조절 버튼 묶음. 본문 바로 위, 좁은 버튼 3개.
 // PlayForum 비교(문서 4.2): 제목 영역(분류·제목·바이라인·이 버튼들) 아래 구분선을 둬 본문
 // 진입점을 나타낸다. .board-search·.popular-posts와 같은 --kraft-border 토큰을 재사용한다.

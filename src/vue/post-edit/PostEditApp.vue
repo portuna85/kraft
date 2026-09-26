@@ -7,6 +7,8 @@ import { showToast } from '@ui/toast.js';
 import { useImageUpload } from '../shared/useImageUpload.js';
 import { useUnsavedGuard } from '../shared/useUnsavedGuard.js';
 import { useDraftAutosave } from '../shared/useDraftAutosave.js';
+import MarkdownBody from '../shared/MarkdownBody.vue';
+import MarkdownToolbar from '../shared/MarkdownToolbar.vue';
 
 /**
  * 게시글 읽기·편집·추천 상태를 관리한다. 추천은 서버가 반환한 상태만 반영한다.
@@ -277,10 +279,10 @@ async function onSubmit() {
 
     <div
       id="post-content-text"
-      class="post-body"
+      class="post-body post-body--md"
       :style="postBodyStyle"
     >
-      {{ post.content }}
+      <MarkdownBody :source="post.content" />
     </div>
 
     <div
@@ -439,12 +441,10 @@ async function onSubmit() {
     </div>
     <div class="mb-3">
       <label for="content">내용</label>
-      <textarea
+      <MarkdownToolbar
         id="content"
         v-model="draft.content"
-        class="form-control post-edit__textarea"
-        maxlength="10000"
-        required
+        :maxlength="10000"
         :disabled="saving"
       />
     </div>
