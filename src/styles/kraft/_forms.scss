@@ -15,7 +15,7 @@
 .modal-body form label,
 .comment-form label {
     font-weight: 600;
-    color: #374151;
+    color: var(--kraft-text);
     // 원래 0.92rem이었다 — 다른 곳에 쓰이지 않는 값이라 가장 가까운 스케일 토큰으로
     // 흡수한다(_tokens.scss 참고). 0.02rem 차이라 눈에 보이는 변화는 없다.
     font-size: $fs-sm;

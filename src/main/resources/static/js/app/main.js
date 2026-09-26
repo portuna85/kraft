@@ -65,3 +65,6 @@ loadIf('.report-list', './features/admin-reports.js');
 // 목록 "더 보기"(10단계). 마지막 페이지거나 글이 없으면 index.html이 버튼 자체를 렌더링하지
 // 않는다.
 loadIf('#btn-load-more', './features/load-more.js');
+
+// 다크 모드 토글(11단계). 모든 페이지의 헤더에 항상 있다.
+loadIf('#btn-theme-toggle', './features/theme-toggle.js');

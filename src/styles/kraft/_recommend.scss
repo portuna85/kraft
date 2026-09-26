@@ -37,7 +37,7 @@
     padding: 0 var(--kraft-space-2);
     border-radius: 999px;
     background-color: var(--kraft-primary);
-    color: #fff;
+    color: var(--kraft-on-primary);
     font-weight: 700;
     font-size: $fs-sm;
 }
@@ -178,7 +178,7 @@
 .recommend-number--locked {
     background-color: var(--kraft-primary);
     border-color: var(--kraft-primary-dark);
-    color: #fff;
+    color: var(--kraft-on-primary);
 }
 
 .recommend-number--excluded {
@@ -207,7 +207,7 @@
 }
 
 .recommend__error {
-    background-color: #fdecea;
+    background-color: var(--kraft-danger-bg);
     color: var(--kraft-danger-dark);
 }
 

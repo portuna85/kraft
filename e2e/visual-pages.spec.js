@@ -177,3 +177,43 @@ test.describe('빈 상태와 페이지 이동', () => {
         await expect(pager.locator('.pager__status')).toContainText('/');
     });
 });
+
+/**
+ * 11단계(다크 모드) 기준선. 라이트 스냅샷은 이 파일의 다른 테스트가 이미 지키고 있으니,
+ * 여기서는 다크 토큰이 실제로 화면 전체에 반영되는지만 목록·글쓰기 두 화면으로 확인한다.
+ * `colorScheme: 'dark'`는 시스템이 다크인 상태를 흉내 낸다 — 토글을 누르지 않아도
+ * theme-init.js가 Bootstrap 쪽(data-bs-theme)을 이미 맞춰 두고, Kraft 쪽은 CSS 미디어
+ * 쿼리가 따라간다.
+ */
+test.describe('다크 모드', () => {
+    test.use({ storageState: storageStateFor('user'), colorScheme: 'dark' });
+
+    test('게시판 목록', async ({ page }) => {
+        // 목록 전체가 아니라 시드 글 하나로 검색해 좁힌다 — visual.spec.js의 "목록 한 줄의
+        // 생김새"와 같은 이유다. 이 스펙 모음 전체가 하나의 인메모리 DB를 공유하므로, 검색
+        // 없이 '/'를 그대로 찍으면 다른 스펙이 먼저 만든 글의 개수에 따라 총 개수·행 수가
+        // 달라져 실행 순서에 따라 실패한다(실제로 전체 스위트에서 재현됨).
+        //
+        // 전체 페이지가 아니라 #main만 찍는다. 인기글(.kraft-aside 안)은 검색 조건과 무관하게
+        // 전체 게시글 기준 상위 5개라 다른 스펙이 만든 글이 섞이면 개수(최대 5개)·제목이
+        // 달라진다 — mask로는 못 막는다. 같은 그리드 행의 aside가 main보다 키가 크면
+        // align-items:start(_shell.scss)로 main이 늘어나진 않지만, 전체 문서 높이는 더 큰
+        // 쪽을 따라가 페이지 전체 스크린샷의 세로 크기 자체가 실행마다 달라진다. #main은
+        // 요소 자체의 실제 렌더 크기만 찍으므로(그리드 행 높이가 아니라) 이 영향을 받지 않는다.
+        await page.goto('/?q=%EB%8B%A4%EB%A5%B8%20%EC%82%AC%EB%9E%8C%EC%9D%98%20%EA%B8%80');
+        await expect(page.locator('html')).toHaveAttribute('data-bs-theme', 'dark');
+        await expect(page.locator('#main')).toHaveScreenshot('board-dark.png', {
+            ...PIXEL_TOLERANCE,
+            mask: [
+                page.locator('.post-list__no'),
+                page.locator('.post-list__date'),
+                page.locator('.post-list__views'),
+            ],
+        });
+    });
+
+    test('글쓰기 화면', async ({ page }) => {
+        await page.goto('/posts/save');
+        await expect(page).toHaveScreenshot('post-save-dark.png', PIXEL_TOLERANCE);
+    });
+});

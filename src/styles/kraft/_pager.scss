@@ -40,7 +40,7 @@
 .pager__page.is-current {
     background-color: var(--kraft-primary);
     border-color: var(--kraft-primary);
-    color: #ffffff;
+    color: var(--kraft-on-primary);
 }
 
 .pager__numbers {

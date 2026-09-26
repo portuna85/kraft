@@ -17,9 +17,12 @@
 // ── 필수 배관 (CSS를 만들지 않는다) ───────────────────────────────────────────
 @import "functions";
 
-// 다크모드를 쓰지 않는다(FE-10) — [data-bs-theme=dark] 규칙 자체를 만들지 않게 한다.
-// variables 임포트보다 먼저 둬야 그 기본값(true)이 적용되기 전에 덮어쓴다.
-$enable-dark-mode: false;
+// 11단계(다크 모드)에서 다시 켠다 — FE-10 당시엔 다크 모드 자체가 없어 꺼 뒀지만, 이제
+// [data-bs-theme=dark]가 필요하다(Kraft의 [data-theme=dark]/시스템 설정과 맞물려 JS가
+// html에 이 속성도 함께 건다 — theme-init.js·theme-toggle.js 참고). $color-mode-type의
+// 기본값(data)을 그대로 쓴다 — media-query 방식은 Kraft의 명시적 토글(밝게 고정)과
+// 충돌한다.
+$enable-dark-mode: true;
 
 // Kraft 표면 반경 토큰(--kraft-radius-surface, 12px)과 맞춘다 — variables 임포트보다
 // 먼저 둬야 기본값(0.5rem)이 적용되기 전에 덮어쓴다.

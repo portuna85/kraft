@@ -34,16 +34,16 @@
 }
 
 .btn-primary {
-    --bs-btn-color: #ffffff;
+    --bs-btn-color: var(--kraft-on-primary);
     --bs-btn-bg: var(--kraft-primary);
     --bs-btn-border-color: var(--kraft-primary);
-    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-color: var(--kraft-on-primary);
     --bs-btn-hover-bg: var(--kraft-primary-dark);
     --bs-btn-hover-border-color: var(--kraft-primary-dark);
-    --bs-btn-active-color: #ffffff;
+    --bs-btn-active-color: var(--kraft-on-primary);
     --bs-btn-active-bg: var(--kraft-primary-dark);
     --bs-btn-active-border-color: var(--kraft-primary-dark);
-    --bs-btn-disabled-color: #ffffff;
+    --bs-btn-disabled-color: var(--kraft-on-primary);
     --bs-btn-disabled-bg: var(--kraft-primary);
     --bs-btn-disabled-border-color: var(--kraft-primary);
 }
@@ -51,31 +51,31 @@
 // 가장 많이 쓰는 조합(화면 곳곳의 "취소" 버튼, 12곳)인데 지금까지 커스텀이 하나도 없어서
 // Bootstrap 기본 회색(#6c757d) 그대로였다. 여기서 처음 팔레트에 편입한다.
 .btn-secondary {
-    --bs-btn-color: #ffffff;
+    --bs-btn-color: var(--kraft-on-secondary);
     --bs-btn-bg: var(--kraft-secondary);
     --bs-btn-border-color: var(--kraft-secondary);
-    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-color: var(--kraft-on-secondary);
     --bs-btn-hover-bg: var(--kraft-secondary-dark);
     --bs-btn-hover-border-color: var(--kraft-secondary-dark);
-    --bs-btn-active-color: #ffffff;
+    --bs-btn-active-color: var(--kraft-on-secondary);
     --bs-btn-active-bg: var(--kraft-secondary-dark);
     --bs-btn-active-border-color: var(--kraft-secondary-dark);
-    --bs-btn-disabled-color: #ffffff;
+    --bs-btn-disabled-color: var(--kraft-on-secondary);
     --bs-btn-disabled-bg: var(--kraft-secondary);
     --bs-btn-disabled-border-color: var(--kraft-secondary);
 }
 
 .btn-danger {
-    --bs-btn-color: #ffffff;
+    --bs-btn-color: var(--kraft-on-danger);
     --bs-btn-bg: var(--kraft-danger);
     --bs-btn-border-color: var(--kraft-danger);
-    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-color: var(--kraft-on-danger);
     --bs-btn-hover-bg: var(--kraft-danger-dark);
     --bs-btn-hover-border-color: var(--kraft-danger-dark);
-    --bs-btn-active-color: #ffffff;
+    --bs-btn-active-color: var(--kraft-on-danger);
     --bs-btn-active-bg: var(--kraft-danger-dark);
     --bs-btn-active-border-color: var(--kraft-danger-dark);
-    --bs-btn-disabled-color: #ffffff;
+    --bs-btn-disabled-color: var(--kraft-on-danger);
     --bs-btn-disabled-bg: var(--kraft-danger);
     --bs-btn-disabled-border-color: var(--kraft-danger);
 }
@@ -83,10 +83,10 @@
 .btn-outline-primary {
     --bs-btn-color: var(--kraft-primary);
     --bs-btn-border-color: var(--kraft-primary);
-    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-color: var(--kraft-on-primary);
     --bs-btn-hover-bg: var(--kraft-primary);
     --bs-btn-hover-border-color: var(--kraft-primary);
-    --bs-btn-active-color: #ffffff;
+    --bs-btn-active-color: var(--kraft-on-primary);
     --bs-btn-active-bg: var(--kraft-primary);
     --bs-btn-active-border-color: var(--kraft-primary);
     --bs-btn-disabled-color: var(--kraft-primary);
@@ -96,10 +96,10 @@
 .btn-outline-secondary {
     --bs-btn-color: var(--kraft-secondary);
     --bs-btn-border-color: var(--kraft-secondary);
-    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-color: var(--kraft-on-secondary);
     --bs-btn-hover-bg: var(--kraft-secondary);
     --bs-btn-hover-border-color: var(--kraft-secondary);
-    --bs-btn-active-color: #ffffff;
+    --bs-btn-active-color: var(--kraft-on-secondary);
     --bs-btn-active-bg: var(--kraft-secondary);
     --bs-btn-active-border-color: var(--kraft-secondary);
     --bs-btn-disabled-color: var(--kraft-secondary);
@@ -109,10 +109,10 @@
 .btn-outline-danger {
     --bs-btn-color: var(--kraft-danger);
     --bs-btn-border-color: var(--kraft-danger);
-    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-color: var(--kraft-on-danger);
     --bs-btn-hover-bg: var(--kraft-danger);
     --bs-btn-hover-border-color: var(--kraft-danger);
-    --bs-btn-active-color: #ffffff;
+    --bs-btn-active-color: var(--kraft-on-danger);
     --bs-btn-active-bg: var(--kraft-danger);
     --bs-btn-active-border-color: var(--kraft-danger);
     --bs-btn-disabled-color: var(--kraft-danger);
@@ -122,7 +122,7 @@
 // 추천(좋아요) 버튼의 눌린 상태. #post.scss에 있던 것을 옮겼다 — 버튼 색은 전부 여기 모은다.
 #btn-like.is-active {
     background-color: var(--kraft-primary);
-    color: #ffffff;
+    color: var(--kraft-on-primary);
     border-color: var(--kraft-primary);
 }
 

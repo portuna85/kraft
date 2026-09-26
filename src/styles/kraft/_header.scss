@@ -59,7 +59,7 @@
     background-color: var(--kraft-primary);
     border: 1px solid var(--kraft-primary);
     border-radius: var(--kraft-radius-control);
-    color: #ffffff;
+    color: var(--kraft-on-primary);
     font-size: $fs-sm;
 }
 
@@ -86,7 +86,7 @@
     display: block;
     width: 18px;
     height: 2px;
-    background: #ffffff;
+    background: var(--kraft-on-primary);
 }
 
 .kraft-nav-toggle__bars {
@@ -142,14 +142,14 @@
 
 .kraft-actions__link:hover,
 .kraft-actions__link:focus {
-    background-color: rgba(15, 23, 42, 0.04);
+    background-color: var(--kraft-hover-overlay);
     color: var(--kraft-text);
     text-decoration: none;
 }
 
 .kraft-actions__link.is-current {
     background-color: var(--kraft-primary);
-    color: #ffffff;
+    color: var(--kraft-on-primary);
 }
 
 .kraft-actions__name {
