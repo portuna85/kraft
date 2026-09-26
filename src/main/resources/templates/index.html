@@ -114,6 +114,17 @@
             <a href="/" class="btn btn-outline-primary">첫 페이지로 이동</a>
         </div>
 
+        <!-- 10단계: "더 보기"는 기존 페이지 이동과 공존한다(점진적 향상) — JS가 없으면 버튼이
+             숨겨진 채로 남아 페이지 이동만 보인다. JSON API(/api/v1/posts)를 그대로 재사용해
+             새 API를 만들지 않는다(static/js/app/features/load-more.js). -->
+        <div class="board-load-more" th:if="${!#lists.isEmpty(posts) and !postsPage.last}">
+            <button type="button" id="btn-load-more" class="btn btn-outline-primary" hidden
+                    th:attr="data-next-page=${postsPage.page + 1}, data-q=${q}, data-category=${category}, data-sort=${currentSort}">
+                더 보기
+            </button>
+            <p id="load-more-status" class="board-load-more__status" aria-live="polite"></p>
+        </div>
+
         <nav class="pager" th:if="${postsPage.totalPages > 1}" aria-label="게시글 목록 페이지 이동">
             <a class="pager__step" th:if="${pageWindow.hasPrev}"
                th:href="@{/(page=${pageWindow.prev}, q=${q}, category=${category}, sort=${currentSort})}">이전</a>

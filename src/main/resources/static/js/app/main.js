@@ -61,3 +61,7 @@ loadIf('[data-report-kind], #post-app, #comments-app', './features/report-dialog
 
 // 관리자 신고·정지 회원 처리 버튼. 목록이 비어 있으면 .report-list 자체가 렌더링되지 않는다.
 loadIf('.report-list', './features/admin-reports.js');
+
+// 목록 "더 보기"(10단계). 마지막 페이지거나 글이 없으면 index.html이 버튼 자체를 렌더링하지
+// 않는다.
+loadIf('#btn-load-more', './features/load-more.js');

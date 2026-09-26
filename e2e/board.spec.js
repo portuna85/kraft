@@ -1,6 +1,30 @@
-import { test, expect, storageStateFor } from './fixtures.js';
+import { test, expect, storageStateFor, uniqueTitle } from './fixtures.js';
 
 test.use({ storageState: storageStateFor('user') });
+
+/**
+ * "더 보기"(10단계) 테스트가 쓸 만큼(기본 페이지 크기 10보다 많이) 검색으로 좁혀지는 글을
+ * API로 만든다. CSRF는 static 리소스 체인(/css, /js, /images)만 꺼져 있고 나머지(로그인
+ * 폼·이 API 포함)는 그대로 걸려 있다 — page.request는 폼을 거치지 않으므로 메타 태그의
+ * 토큰을 직접 읽어 헤더에 실어야 한다(core/http.js의 csrfHeaders()와 같은 방식).
+ */
+async function createPosts(page, count, titlePrefix) {
+    await page.goto('/');
+    const token = await page.locator('meta[name="_csrf"]').getAttribute('content');
+    const headerName = await page.locator('meta[name="_csrf_header"]').getAttribute('content');
+
+    for (let i = 0; i < count; i += 1) {
+        const response = await page.request.post('/api/v1/posts', {
+            headers: { [headerName]: token },
+            data: {
+                title: `${titlePrefix}-${i}`,
+                content: `더 보기 테스트용 본문 ${i}`,
+                category: 'FREE',
+            },
+        });
+        expect(response.ok(), `글 생성 요청이 성공해야 한다(${response.status()})`).toBe(true);
+    }
+}
 
 /**
  * 목록 화면의 빈 상태. 검색이 빗나간 것과 게시판이 비어 있는 것은 사용자가 할 일이 다르다
@@ -111,4 +135,85 @@ test('정렬을 고른 채 페이지를 이동해도 정렬이 유지된다', as
     await nextLink.click();
     await expect(page).toHaveURL(/[?&]sort=updatedAt,desc/);
     await expect(page.locator('#search-sort')).toHaveValue('updatedAt,desc');
+});
+
+/**
+ * 10단계: "더 보기"는 JSON API(/api/v1/posts, 새 API 아님)로 다음 페이지를 이어 붙인다.
+ * 페이지 이동(pager)과 공존하며, JS가 로드돼야 버튼이 보인다(index.html의 hidden 초기값).
+ */
+test.describe('더 보기', () => {
+    test('버튼을 누르면 다음 페이지를 이어 붙이고, 마지막이면 버튼이 사라진다', async ({ page }) => {
+        const prefix = uniqueTitle('더보기');
+        await createPosts(page, 11, prefix);
+
+        await page.goto(`/?q=${encodeURIComponent(prefix)}`);
+        await expect(page.locator('.post-list__item')).toHaveCount(10);
+
+        const button = page.locator('#btn-load-more');
+        await expect(button).toBeVisible();
+        await expect(button).toHaveText('더 보기');
+
+        await button.click();
+        await expect(page.locator('.post-list__item')).toHaveCount(11);
+        await expect(button).toBeHidden();
+        await expect(page.locator('#load-more-status')).toHaveText('마지막 글까지 모두 불러왔습니다.');
+
+        // 이어 붙인 새 글도 같은 모양(분류 배지 포함)으로 렌더링됐는지 확인한다.
+        const appended = page.locator('.post-list__item', { hasText: `${prefix}-10` });
+        await expect(appended.locator('.post-list__category')).toHaveText('자유');
+    });
+
+    test('버튼을 누르면 새로 붙은 첫 글의 제목으로 포커스가 이동한다', async ({ page }) => {
+        const prefix = uniqueTitle('포커스');
+        await createPosts(page, 11, prefix);
+
+        await page.goto(`/?q=${encodeURIComponent(prefix)}`);
+        await page.locator('#btn-load-more').click();
+
+        const focused = page.locator(':focus');
+        await expect(focused).toHaveClass(/post-list__title/);
+    });
+
+    test('정렬을 고른 채 더 보기를 누르면 요청에 정렬이 실린다', async ({ page }) => {
+        const prefix = uniqueTitle('정렬더보기');
+        await createPosts(page, 11, prefix);
+
+        await page.goto(`/?q=${encodeURIComponent(prefix)}&sort=viewCount,desc`);
+
+        const requestPromise = page.waitForRequest((req) =>
+            req.url().includes('/api/v1/posts') && req.url().includes('sort=viewCount'));
+        await page.locator('#btn-load-more').click();
+        const request = await requestPromise;
+        expect(request.url()).toContain(`q=${encodeURIComponent(prefix)}`);
+    });
+
+    test('불러오기에 실패하면 재시도 안내가 보이고 버튼을 다시 누를 수 있다', async ({ page }) => {
+        const prefix = uniqueTitle('실패');
+        await createPosts(page, 11, prefix);
+
+        await page.goto(`/?q=${encodeURIComponent(prefix)}`);
+
+        let requestCount = 0;
+        // Playwright의 문자열 glob 패턴에서 "?"는 "임의의 문자 한 개"를 뜻하는 특수문자라
+        // 실제 물음표(쿼리스트링 구분자)에 쓸 수 없다 — 정규식으로 지정한다.
+        await page.route(/\/api\/v1\/posts\?/, (route) => {
+            requestCount += 1;
+            if (requestCount === 1) {
+                return route.fulfill({ status: 500, contentType: 'application/json', body: '{}' });
+            }
+            return route.continue();
+        });
+
+        const button = page.locator('#btn-load-more');
+        await button.click();
+
+        const status = page.locator('#load-more-status');
+        await expect(status).toHaveClass(/is-error/);
+        await expect(status).toContainText('다시');
+        await expect(button).toBeEnabled();
+
+        // 버튼을 다시 누르면(같은 page 파라미터로 재시도) 성공한다.
+        await button.click();
+        await expect(page.locator('.post-list__item')).toHaveCount(11);
+    });
 });
