@@ -1,0 +1,45 @@
+<!DOCTYPE HTML>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<!--
+    Spring Boot의 DefaultErrorViewResolver가 상태 코드별 뷰(error/404 등)가 없을 때
+    시리즈 단위(error/4xx, error/5xx)로 이 템플릿을 고른다. BasicErrorController가 모델에
+    담는 status만 표시하고 message·trace·exception은 내부 정보라 화면에 내보내지 않는다
+    (13단계, 전역 오류 화면 — 지금까지는 게시글을 찾을 수 없을 때(ViewExceptionHandler →
+    error/not-found)만 안내 화면이 있었고, 403·잘못된 요청 등 나머지 4xx는 Spring 기본
+    whitelabel 페이지가 그대로 나가고 있었다). PostPageController가 던지는
+    PostNotFoundException은 여전히 error/not-found로 먼저 처리되므로 이 화면까지 오지
+    않는다.
+-->
+<!--/*@thymesVar id="status" type="java.lang.Integer"*/-->
+<head th:replace="~{layout/header :: header}"></head>
+<body>
+
+<a class="skip-link" href="#main">본문 바로가기</a>
+<div th:replace="~{layout/navbar :: topbar}"></div>
+
+<div class="kraft-shell">
+    <main id="main" class="kraft-main kraft-main--narrow">
+        <div class="card-kraft empty-state" th:switch="${status}">
+            <!-- HTML5의 <template> 태그를 쓰면 안 된다 — 그 내용은 브라우저가 처음부터
+                 비활성 DocumentFragment로 취급해 화면에 그리지 않는다. th:block은
+                 Thymeleaf 전용 태그라 처리 후 사라지고 내용만 남는다. -->
+            <th:block th:case="403">
+                <h1 class="page-title">접근 권한이 없습니다.</h1>
+                <p class="page-lead text-muted">이 화면을 볼 수 있는 권한이 없습니다.</p>
+            </th:block>
+            <th:block th:case="404">
+                <h1 class="page-title">페이지를 찾을 수 없습니다.</h1>
+                <p class="page-lead text-muted">요청한 주소가 삭제되었거나 존재하지 않습니다.</p>
+            </th:block>
+            <th:block th:case="*">
+                <h1 class="page-title">잘못된 요청입니다.</h1>
+                <p class="page-lead text-muted">요청을 처리할 수 없습니다. 주소나 입력 내용을 확인해 주세요.</p>
+            </th:block>
+            <a href="/" class="btn btn-outline-primary">게시판으로 돌아가기</a>
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{layout/footer :: footer}"></div>
+</body>
+</html>

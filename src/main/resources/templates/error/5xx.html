@@ -1,0 +1,25 @@
+<!DOCTYPE HTML>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<!--
+    error/4xx.html과 같은 이유(13단계, 전역 오류 화면)로 둔다. 500 등 서버 오류는 사용자
+    잘못이 아니므로 "다시 시도" 안내를 앞세우고, message·trace·exception은 내보내지 않는다.
+-->
+<head th:replace="~{layout/header :: header}"></head>
+<body>
+
+<a class="skip-link" href="#main">본문 바로가기</a>
+<div th:replace="~{layout/navbar :: topbar}"></div>
+
+<div class="kraft-shell">
+    <main id="main" class="kraft-main kraft-main--narrow">
+        <div class="card-kraft empty-state">
+            <h1 class="page-title">일시적인 오류가 발생했습니다.</h1>
+            <p class="page-lead text-muted">잠시 후 새로고침해 다시 시도해 주세요. 문제가 계속되면 나중에 다시 이용해 주세요.</p>
+            <a href="/" class="btn btn-outline-primary">게시판으로 돌아가기</a>
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{layout/footer :: footer}"></div>
+</body>
+</html>
