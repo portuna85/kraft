@@ -1,4 +1,4 @@
-import { test, expect, PASSWORD, login, uniqueTitle } from './fixtures.js';
+import { test, expect, PASSWORD, login, openAccountMenu, uniqueTitle } from './fixtures.js';
 
 // 가입부터 시작하므로 로그인 상태 없이 돈다.
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -139,11 +139,19 @@ test('가입하고 인증 링크를 열면 글을 쓸 수 있게 된다', async 
 
     const mail = await (await request.get(`/e2e/mails/latest?to=${encodeURIComponent(email)}`)).json();
     const verifyUrl = mail.text.match(/https?:\/\/\S+/)[0];
+
+    // GET은 확인 화면만 보여주고 토큰을 소비하지 않는다(전체 리뷰 2026-09-26 A-FE-04) — 메일
+    // 보안 스캐너가 이 링크를 대신 열어도 인증이 끝나지 않는다. 사용자가 버튼을 눌러야
+    // 실제로 소비된다.
     await page.goto(verifyUrl);
+    await page.locator('#btn-verify-confirm').click();
     await expect(page.getByText('이메일 인증이 완료되었습니다')).toBeVisible();
 
-    // 권한은 다시 로그인해야 반영된다(verify-result.html의 안내대로).
-    await login(page, email);
+    // 인증 성공이 지금 로그인된 세션의 권한도 즉시 갱신한다(전체 리뷰 2026-09-26 A-BE-08) —
+    // 다시 로그인하지 않아도 곧바로 글을 쓸 수 있고, GUEST 전용 메뉴(인증 메일 재발송)도
+    // 사라진다.
     await page.goto('/posts/save');
     await expect(page.locator('#post-save-form')).toBeVisible();
+    await openAccountMenu(page);
+    await expect(page.locator('#btn-resend-verification')).toHaveCount(0);
 });

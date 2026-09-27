@@ -225,10 +225,12 @@ class EmailVerificationServiceTest {
         given(tokenRepository.findByTokenHash(validTokenHash)).willReturn(Optional.of(validToken));
         given(tokenRepository.deleteByIdAndTokenHash(7L, validTokenHash)).willReturn(1);
 
-        emailVerificationService.verify("valid-token");
+        Long verifiedUserId = emailVerificationService.verify("valid-token");
 
         verify(tokenRepository).deleteByIdAndTokenHash(7L, validTokenHash);
         verify(userService, times(1)).promoteToUser(1L);
+        // 호출자(UserPageController)가 지금 요청의 세션 권한을 즉시 갱신할지 판단하는 데 쓴다.
+        assertThat(verifiedUserId).isEqualTo(1L);
     }
 
     @Test

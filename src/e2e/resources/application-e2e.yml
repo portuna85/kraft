@@ -38,7 +38,12 @@ logging:
     org.hibernate.SQL: warn
 
 app:
-  base-url: http://localhost:8081
+  # playwright.config.js의 baseURL과 호스트 문자열까지 정확히 맞춘다 — "localhost"와
+  # "127.0.0.1"은 같은 기기를 가리켜도 브라우저에는 다른 출처(origin)라, 메일 링크를 이
+  # 값으로 만들면 로그인 중인 브라우저의 세션 쿠키가 실리지 않는다. 이메일 인증 성공이
+  # "지금 로그인된 세션"의 권한을 즉시 갱신하는 흐름(전체 리뷰 2026-09-26 A-BE-08)이
+  # 실제로는 항상 "다른 세션"으로 오판하게 되어 e2e가 그 경로를 검증하지 못했다.
+  base-url: http://127.0.0.1:8081
   # 여러 spec이 같은 IP(로컬 호스트)에서 로그인·가입을 반복하므로 꺼 둔다(개선 보고서 SEC-01).
   auth:
     rate-limit:

@@ -78,8 +78,11 @@ test('탈퇴해도 쓴 글은 목록에 남고 작성자만 익명으로 바뀐�
     const mailUrl = `/e2e/mails/latest?to=${encodeURIComponent(email)}`;
     await expect.poll(async () => (await request.get(mailUrl)).status(), { timeout: 10_000 }).toBe(200);
     const mail = await (await request.get(mailUrl)).json();
+    // GET은 확인 화면만 보여주고 토큰을 소비하지 않는다(전체 리뷰 2026-09-26 A-FE-04) —
+    // 버튼을 눌러야 실제로 소비된다.
     await page.goto(mail.text.match(/https?:\/\/\S+/)[0]);
-    await login(page, email); // 권한은 다시 로그인해야 반영된다.
+    await page.locator('#btn-verify-confirm').click();
+    await login(page, email);
 
     await page.goto('/posts/save');
     await page.locator('#title').fill(title);

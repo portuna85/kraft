@@ -1,0 +1,31 @@
+<!DOCTYPE HTML>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<!--/*@thymesVar id="pageTitle" type="java.lang.String"*/-->
+<!--/*@thymesVar id="token" type="java.lang.String"*/-->
+<!--/*@thymesVar id="_csrf" type="org.springframework.security.web.csrf.CsrfToken"*/-->
+<head th:replace="~{layout/header :: header}"></head>
+<body>
+
+<a class="skip-link" href="#main">본문 바로가기</a>
+<div th:replace="~{layout/navbar :: topbar}"></div>
+
+<div class="kraft-shell">
+    <main id="main" class="kraft-main kraft-main--account">
+        <h1 class="page-title">이메일 인증</h1>
+        <div class="card-kraft">
+            <!-- GET은 토큰을 소비하지 않는다(전체 리뷰 2026-09-26 A-FE-04) — 메일 보안
+                 스캐너·미리보기가 이 화면을 대신 열어도 인증이 끝나지 않는다. 실제 소비는
+                 사용자가 이 버튼을 눌러야만 일어나는 POST에서 한 번만 한다. -->
+            <p>아래 버튼을 눌러 이메일 인증을 완료해 주세요.</p>
+            <form th:action="@{/users/verify}" method="post">
+                <input type="hidden" name="token" th:value="${token}" />
+                <input type="hidden" th:name="${_csrf?.parameterName}" th:value="${_csrf?.token}" />
+                <button id="btn-verify-confirm" type="submit" class="btn btn-primary">이메일 인증 완료하기</button>
+            </form>
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{layout/footer :: footer}"></div>
+</body>
+</html>

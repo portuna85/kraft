@@ -1,18 +1,31 @@
 package com.kraft.user.web;
 
+import com.kraft.config.security.KraftUserDetails;
 import com.kraft.config.security.SecurityConfig;
+import com.kraft.config.security.UserDetailsServiceImpl;
 import com.kraft.user.service.EmailVerificationService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
+
+import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
@@ -25,6 +38,9 @@ class UserPageControllerTest {
 
     @MockitoBean
     private EmailVerificationService emailVerificationService;
+
+    @MockitoBean
+    private UserDetailsServiceImpl userDetailsService;
 
     @Test
     @DisplayName("로그인 화면에도 현재 경로가 전달된다")
@@ -71,25 +87,57 @@ class UserPageControllerTest {
     }
 
     @Test
-    @DisplayName("GET /users/verify 는 토큰이 유효하면 success=true로 렌더링한다")
-    void verifyEmail_whenTokenValid_rendersSuccess() throws Exception {
-        mockMvc.perform(get("/users/verify").param("token", "valid-token"))
+    @DisplayName("GET /users/verify 는 토큰을 소비하지 않고 확인 화면만 보여준다(A-FE-04)")
+    void verifyEmailConfirm_doesNotConsumeToken() throws Exception {
+        mockMvc.perform(get("/users/verify").param("token", "some-token"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("user/verify-result"))
-                .andExpect(model().attribute("success", true));
+                .andExpect(view().name("user/verify-confirm"))
+                .andExpect(model().attribute("token", "some-token"));
+
+        verifyNoInteractions(emailVerificationService);
     }
 
     @Test
-    @DisplayName("GET /users/verify 는 토큰이 유효하지 않으면 success=false와 메시지를 담아 렌더링한다")
-    void verifyEmail_whenTokenInvalid_rendersFailureWithMessage() throws Exception {
+    @DisplayName("POST /users/verify 는 토큰이 유효하면 인증하고 성공 결과로 리다이렉트한다")
+    void verifyEmailSubmit_whenTokenValid_redirectsWithSuccess() throws Exception {
+        given(emailVerificationService.verify("valid-token")).willReturn(1L);
+
+        mockMvc.perform(post("/users/verify").param("token", "valid-token").with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/users/verify/result"))
+                .andExpect(flash().attribute("success", true));
+    }
+
+    @Test
+    @DisplayName("POST /users/verify 는 토큰이 유효하지 않으면 실패 메시지와 함께 리다이렉트한다")
+    void verifyEmailSubmit_whenTokenInvalid_redirectsWithFailureMessage() throws Exception {
         willThrow(new IllegalArgumentException("유효하지 않은 인증 링크입니다."))
                 .given(emailVerificationService).verify("invalid-token");
 
-        mockMvc.perform(get("/users/verify").param("token", "invalid-token"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("user/verify-result"))
-                .andExpect(model().attribute("success", false))
-                .andExpect(model().attribute("message", "유효하지 않은 인증 링크입니다."));
+        mockMvc.perform(post("/users/verify").param("token", "invalid-token").with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/users/verify/result"))
+                .andExpect(flash().attribute("success", false))
+                .andExpect(flash().attribute("message", "유효하지 않은 인증 링크입니다."));
+    }
+
+    /** A-BE-08: 지금 요청의 세션이 방금 승격된 바로 그 계정이면 권한을 즉시 갱신한다. */
+    @Test
+    @DisplayName("POST /users/verify 는 같은 계정으로 로그인한 세션의 권한을 즉시 갱신한다")
+    void verifyEmailSubmit_whenSameAccountLoggedIn_refreshesSessionAuthorities() throws Exception {
+        given(emailVerificationService.verify("valid-token")).willReturn(1L);
+        KraftUserDetails refreshed = new KraftUserDetails(1L, "encoded", "닉네임",
+                List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        given(userDetailsService.loadUserById(1L)).willReturn(refreshed);
+
+        KraftUserDetails guestPrincipal = new KraftUserDetails(1L, "encoded", "닉네임",
+                List.of(new SimpleGrantedAuthority("ROLE_GUEST")));
+
+        mockMvc.perform(post("/users/verify").param("token", "valid-token").with(csrf())
+                        .with(SecurityMockMvcRequestPostProcessors.user(guestPrincipal)))
+                .andExpect(status().is3xxRedirection());
+
+        verify(userDetailsService).loadUserById(1L);
     }
 
 }

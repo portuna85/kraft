@@ -136,9 +136,12 @@ public class EmailVerificationService {
      * 소비(삭제)를 승격보다 먼저, 그리고 <b>조건부로</b> 한다(B07). 같은 토큰이 동시에 두 번
      * 들어오면 {@code deleteByIdAndToken}의 DB 행 잠금이 정확히 하나만 성공시킨다 — 이긴
      * 쪽만 승격을 실행해, 두 요청 모두 성공한 것처럼 보이는 경쟁을 막는다.
+     *
+     * @return 승격된 회원의 id. 호출자({@code UserPageController})가 지금 요청의 세션이 같은
+     *         계정이면 권한을 즉시 갱신하는 데 쓴다(전체 리뷰 2026-09-26 A-BE-08).
      */
     @Transactional
-    public void verify(String token) {
+    public Long verify(String token) {
         String tokenHash = EmailHasher.sha512Hex(token);
         EmailVerificationToken verificationToken = tokenRepository.findByTokenHash(tokenHash)
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 인증 링크입니다."));
@@ -152,7 +155,9 @@ public class EmailVerificationService {
         if (consumed == 0) {
             throw new IllegalArgumentException("이미 사용되었거나 유효하지 않은 인증 링크입니다.");
         }
-        userService.promoteToUser(verificationToken.getUser().getId());
+        Long userId = verificationToken.getUser().getId();
+        userService.promoteToUser(userId);
+        return userId;
     }
 
     /**
