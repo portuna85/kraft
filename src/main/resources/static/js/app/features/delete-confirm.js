@@ -57,7 +57,7 @@ export function init() {
         button.disabled = true;
 
         try {
-            await api.del(kind === 'post' ? `${API.POSTS}/${id}` : `${API.COMMENTS}/${id}`);
+            const result = await api.del(kind === 'post' ? `${API.POSTS}/${id}` : `${API.COMMENTS}/${id}`);
             // 서버 반영은 이미 끝났다 — 안내와 목록 갱신은 세대와 무관하게 항상 수행한다.
             if (kind === 'post') {
                 flash.set('POST_DELETED');
@@ -65,8 +65,12 @@ export function init() {
             } else {
                 // 댓글 목록은 Vue 아일랜드(src/vue/comments)가 그리므로 새로고침하지 않는다.
                 // 이동이 없으니 showNow로 즉시 배너를 띄우고, 목록 갱신은 이벤트로 알린다.
+                // softDeleted면(답글이 남아 있어 행을 지우지 않음, A-BE-06) 목록에서 통째로
+                // 지우지 않고 "삭제된 댓글입니다"로 바꿔야 하므로 그 구분을 함께 실어 보낸다.
                 flash.showNow('COMMENT_DELETED');
-                window.dispatchEvent(new CustomEvent('kraft:comment-deleted', { detail: { id } }));
+                window.dispatchEvent(new CustomEvent('kraft:comment-deleted', {
+                    detail: { id, softDeleted: result?.softDeleted ?? false },
+                }));
             }
             // 모달을 닫는 것은 "지금 화면" 얘기다 — 그사이 사용자가 닫고 다른 대상을 열었다면
             // (세대가 바뀌었다면) 그 새 대화상자를 건드리지 않는다.

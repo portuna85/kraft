@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -56,11 +57,14 @@ class CommentServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
     private CommentService commentService;
 
     @BeforeEach
     void setUp() {
-        commentService = new CommentService(commentRepository, postRepository, userRepository);
+        commentService = new CommentService(commentRepository, postRepository, userRepository, eventPublisher);
     }
 
     private static User userWithEmail(String email, Long id) {
@@ -401,21 +405,80 @@ class CommentServiceTest {
     }
 
     /**
-     * 2단계 댓글: DB에 cascade를 걸지 않았으므로(Comment.parent 주석 참고) 최상위 댓글을
-     * 지우기 전에 그 답글을 먼저 명시적으로 지워야 FK 위반이 나지 않는다.
+     * 답글이 없으면(또는 답글 자신이면) 지금까지처럼 행 자체를 지운다. 2단계 댓글: DB에
+     * cascade를 걸지 않았으므로(Comment.parent 주석 참고) 최상위 댓글을 지우기 전에 그 답글을
+     * 먼저 명시적으로 지워야 FK 위반이 나지 않는다.
      */
     @Test
-    @DisplayName("delete: 작성자 본인이면 답글을 먼저 지우고 나서 자신을 삭제한다")
-    void delete_whenAuthor_deletesRepliesFirstThenSelf() {
+    @DisplayName("delete: 답글이 없으면 행 자체를 지우고 A-BE-01 이벤트를 발행한다")
+    void delete_whenNoReplies_hardDeletesAndPublishesEvent() {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
+        given(commentRepository.countRepliesByParentIdIn(List.of(100L))).willReturn(Map.of());
 
-        commentService.delete(100L, authOf("owner@example.com", Role.USER));
+        var result = commentService.delete(100L, authOf("owner@example.com", Role.USER));
 
         var inOrder = org.mockito.Mockito.inOrder(commentRepository);
         inOrder.verify(commentRepository).deleteAllByParentId(100L);
         inOrder.verify(commentRepository).delete(comment);
+        assertThat(result.softDeleted()).isFalse();
+        assertThat(result.id()).isEqualTo(100L);
+        verify(eventPublisher).publishEvent(new com.kraft.report.event.TargetDeletedEvent(
+                com.kraft.report.domain.ReportTargetType.COMMENT, List.of(100L)));
+    }
+
+    /**
+     * 답글이 있는 최상위 댓글을 지우면 남의 답글까지 함께 사라졌다(개선 보고서 A-BE-06). 행을
+     * 지우지 않고 내용만 비운다 — 실시간 조회가 여전히 가능하므로 A-BE-01 이벤트도 발행하지
+     * 않는다.
+     */
+    @Test
+    @DisplayName("delete: 답글이 있으면 행을 지우지 않고 소프트 삭제하며 이벤트를 발행하지 않는다")
+    void delete_whenHasReplies_softDeletesAndKeepsRow() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Comment comment = commentOf(owner, 100L);
+        given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
+        given(commentRepository.countRepliesByParentIdIn(List.of(100L))).willReturn(Map.of(100L, 2L));
+
+        var result = commentService.delete(100L, authOf("owner@example.com", Role.USER));
+
+        assertThat(result.softDeleted()).isTrue();
+        assertThat(comment.isDeleted()).isTrue();
+        assertThat(comment.getContent()).isEmpty();
+        verify(commentRepository, never()).delete(any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("delete: 이미 소프트 삭제된 댓글에 대한 재요청은 조용히 넘어간다")
+    void delete_whenAlreadyDeleted_isNoOp() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Comment comment = commentOf(owner, 100L);
+        comment.softDelete();
+        given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
+
+        var result = commentService.delete(100L, authOf("owner@example.com", Role.USER));
+
+        assertThat(result.softDeleted()).isTrue();
+        verify(commentRepository, never()).delete(any());
+        verify(commentRepository, never()).countRepliesByParentIdIn(any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("update: 삭제된 댓글은 수정할 수 없다")
+    void update_whenDeleted_isRejected() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Comment comment = commentOf(owner, 100L);
+        comment.softDelete();
+        given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
+        given(userRepository.findByEmailHash(any())).willReturn(Optional.of(owner));
+
+        assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("수정 시도", null),
+                authOf("owner@example.com", Role.USER)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("삭제된 댓글");
     }
 
     @Test

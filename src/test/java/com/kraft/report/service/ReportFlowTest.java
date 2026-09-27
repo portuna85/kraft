@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.access.AccessDeniedException;
@@ -50,6 +51,18 @@ class ReportFlowTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private com.kraft.post.service.PostService postService;
+
+    @Autowired
+    private com.kraft.comment.service.CommentService commentService;
+
+    @Autowired
+    private com.kraft.comment.domain.CommentRepository commentRepository;
 
     private User author;
     private User reporter;
@@ -145,6 +158,61 @@ class ReportFlowTest {
         assertThat(reportService.findPending(PageRequest.of(0, 20)).getContent()).isEmpty();
         assertThat(reportRepository.findById(reportId).orElseThrow().getStatus())
                 .isEqualTo(ReportStatus.RESOLVED);
+    }
+
+    /**
+     * A-BE-01: 관리자가 판단하기 전에 작성자 본인이 대상을 지우면(PostApiController 경로,
+     * 관리자의 ReportService.resolve()를 거치지 않음) 대기 중이던 신고가 자동으로
+     * TARGET_DELETED로 닫혀야 한다 — 그러지 않으면 "대상이 이미 삭제되었습니다"인 채로
+     * 영원히 PENDING에 남는다. PostService.delete가 발행하는 이벤트를
+     * {@code ReportService.onTargetDeleted}가 받아 처리하므로, 순수 Mockito 단위 테스트가
+     * 아니라 실제 트랜잭션·이벤트가 도는 이 통합 테스트로만 검증할 수 있다.
+     */
+    @Test
+    @DisplayName("A-BE-01: 작성자가 스스로 게시글을 지우면 대기 신고가 TARGET_DELETED로 닫힌다")
+    void selfDeletePost_closesPendingReportAsTargetDeleted() {
+        Long reportId = reportThePost(reporter, ReportReason.SPAM);
+
+        postService.delete(post.getId(), authOf(author));
+
+        Report report = reportRepository.findById(reportId).orElseThrow();
+        assertThat(report.getStatus()).isEqualTo(ReportStatus.TARGET_DELETED);
+        // 관리자가 처리한 게 아니므로 handledBy는 비어 있다 — RESOLVED와 구분되는 지점이다.
+        assertThat(report.getHandledBy()).isNull();
+    }
+
+    /** 같은 이유(A-BE-01), 댓글 자기 삭제 경로. 답글이 없어 하드 삭제되는 경우다. */
+    @Test
+    @DisplayName("A-BE-01: 작성자가 스스로 댓글을 지우면 대기 신고가 TARGET_DELETED로 닫힌다")
+    void selfDeleteComment_closesPendingReportAsTargetDeleted() {
+        com.kraft.comment.domain.Comment comment = commentRepository.save(
+                com.kraft.comment.domain.Comment.builder().content("문제의 댓글").post(post).user(author).build());
+        Long reportId = reportService.report(
+                new ReportSaveRequestDto(ReportTargetType.COMMENT, comment.getId(), ReportReason.ABUSE, null),
+                authOf(reporter));
+
+        commentService.delete(comment.getId(), authOf(author));
+
+        Report report = reportRepository.findById(reportId).orElseThrow();
+        assertThat(report.getStatus()).isEqualTo(ReportStatus.TARGET_DELETED);
+    }
+
+    /**
+     * 대비 확인: 관리자가 신고를 처리하며 지운 경우는 지금처럼 RESOLVED로 남아야 한다 —
+     * PostService.delete가 발행하는 이벤트가 이 경로를 TARGET_DELETED로 덮어쓰면 안 된다
+     * (resolvingDeletesTargetAndClearsPendingList가 이미 이 회귀를 잡지만, 여기서 한 번 더
+     * 명시적으로 남긴다).
+     */
+    @Test
+    @DisplayName("A-BE-01: 관리자가 처리한 삭제는 TARGET_DELETED가 아니라 RESOLVED로 남는다")
+    void adminResolvedDelete_staysResolvedNotTargetDeleted() {
+        Long reportId = reportThePost(reporter, ReportReason.SPAM);
+
+        reportService.resolve(reportId, authOf(admin));
+
+        Report report = reportRepository.findById(reportId).orElseThrow();
+        assertThat(report.getStatus()).isEqualTo(ReportStatus.RESOLVED);
+        assertThat(report.getHandledBy().getId()).isEqualTo(admin.getId());
     }
 
     @Test
@@ -269,10 +337,35 @@ class ReportFlowTest {
         }
     }
 
+    /**
+     * A-SEC-07: 접수 시점 스냅샷이 있으면 실시간 조회가 안 돼도(대상이 사라졌어도) 그
+     * 스냅샷으로 물러선다 — 관리자가 무엇이 문제였는지 판단할 유일한 근거다.
+     */
     @Test
-    @DisplayName("대상이 이미 지워진 신고도 목록에 남고, 미리보기는 비어 있다")
-    void reportForDeletedTargetStillListsWithoutPreview() {
+    @DisplayName("대상이 이미 지워진 신고는 접수 시점 스냅샷을 보여주고 targetDeleted=true다")
+    void reportForDeletedTargetFallsBackToSnapshot() {
         reportThePost(reporter, ReportReason.SEXUAL);
+        postRepository.delete(post);
+
+        List<ReportViewDto> pending = reportService.findPending(PageRequest.of(0, 20)).getContent();
+
+        assertThat(pending).singleElement().satisfies(view -> {
+            assertThat(view.targetPreview()).isEqualTo("신고당할 글");
+            assertThat(view.targetAuthor()).isEqualTo(author.getName());
+            assertThat(view.targetDeleted()).isTrue();
+        });
+    }
+
+    /** V27 이전에 접수돼 스냅샷이 없는 신고는(마이그레이션 이전 데이터) 지금처럼 빈 채로 남는다. */
+    @Test
+    @DisplayName("스냅샷이 없는 신고(마이그레이션 이전 데이터)는 대상이 지워지면 미리보기가 비어 있다")
+    void reportWithoutSnapshot_whenTargetDeleted_hasNoPreview() {
+        Long reportId = reportThePost(reporter, ReportReason.SEXUAL);
+        // V27 이전에 접수된 신고를 흉내 낸다 — 스냅샷 컬럼이 비어 있다.
+        jdbcTemplate.update(
+                "UPDATE reports SET target_author_id = NULL, target_title_snapshot = NULL, "
+                        + "target_content_snapshot = NULL WHERE id = ?",
+                reportId);
         postRepository.delete(post);
 
         List<ReportViewDto> pending = reportService.findPending(PageRequest.of(0, 20)).getContent();
@@ -280,6 +373,7 @@ class ReportFlowTest {
         assertThat(pending).singleElement().satisfies(view -> {
             assertThat(view.targetPreview()).isNull();
             assertThat(view.targetAuthor()).isNull();
+            assertThat(view.targetDeleted()).isFalse();
         });
     }
 }

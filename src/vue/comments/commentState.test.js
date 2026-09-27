@@ -1,7 +1,7 @@
 // 댓글·답글 로컬 상태 규칙의 조합 시나리오(평가 보고서 2026-09-25 F02·F03). `npm run test:unit`.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { applyDelete, applyRepliesPage, applyReplyCreated, initReplyCursor, replyAfterId } from './commentState.js';
+import { applyDelete, applyRepliesPage, applyReplyCreated, applySoftDelete, initReplyCursor, replyAfterId } from './commentState.js';
 
 const range = (from, to) => Array.from({ length: to - from + 1 }, (_, i) => ({ id: from + i }));
 const ids = (items) => items.map((r) => r.id);
@@ -106,4 +106,24 @@ test('초기 답글이 없는 부모는 처음부터 받는다', () => {
     const parent = { id: 1, replies: [], replyCount: 0, hasMoreReplies: false };
     initReplyCursor(parent);
     assert.equal(replyAfterId(parent), '');
+});
+
+test('A-BE-06: 답글이 있는 최상위 댓글의 소프트 삭제는 행·답글·개수를 그대로 두고 내용만 비운다', () => {
+    const { comments, parent } = initialState();
+
+    const applied = applySoftDelete(comments, 100);
+
+    assert.equal(applied, true);
+    assert.equal(parent.deleted, true);
+    assert.equal(parent.content, '');
+    // applyDelete와 달리 행·답글이 그대로 남는다.
+    assert.equal(comments.length, 1);
+    assert.equal(parent.replies.length, 20);
+    assert.equal(parent.replyCount, 25);
+});
+
+test('A-BE-06: 목록에 없는 id의 소프트 삭제는 아무 일도 하지 않는다', () => {
+    const { comments } = initialState();
+
+    assert.equal(applySoftDelete(comments, 999), false);
 });

@@ -75,12 +75,15 @@ class PostServiceTest {
     @Mock
     private PostLikeWriter postLikeWriter;
 
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     private PostService postService;
 
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
         postService = new PostService(postRepository, userRepository, commentRepository, postImageService,
-                postLikeRepository, postImageRegistry, postImageCleaner, postLikeWriter);
+                postLikeRepository, postImageRegistry, postImageCleaner, postLikeWriter, eventPublisher);
     }
 
     private static User userWithEmail(String email, Long id) {

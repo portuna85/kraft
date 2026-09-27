@@ -1,5 +1,6 @@
 package com.kraft.comment.web;
 
+import com.kraft.comment.dto.CommentDeleteResultDto;
 import com.kraft.comment.dto.CommentPageDto;
 import com.kraft.comment.dto.CommentSaveRequestDto;
 import com.kraft.comment.dto.CommentUpdateRequestDto;
@@ -57,8 +58,7 @@ public class CommentApiController {
     }
 
     @DeleteMapping("/api/v1/comments/{id}")
-    public Long delete(@PathVariable Long id, Authentication authentication) {
-        commentService.delete(id, authentication);
-        return id;
+    public CommentDeleteResultDto delete(@PathVariable Long id, Authentication authentication) {
+        return commentService.delete(id, authentication);
     }
 }

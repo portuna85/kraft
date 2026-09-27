@@ -193,6 +193,36 @@ class ReportServiceTest {
         org.assertj.core.api.Assertions.assertThat(report.getStatus()).isEqualTo(ReportStatus.RESOLVED);
     }
 
+    /**
+     * A-SEC-07: 대상이 이미 사라져 실시간 조회가 안 되면, 접수 시점 스냅샷의 작성자로
+     * 정지를 건다 — 그러지 않으면 "쓰고 → 신고되면 지우고 → 다시 쓰기"를 반복해도 제재할
+     * 수 없다.
+     */
+    @Test
+    @DisplayName("resolve: 대상이 사라졌어도 정지는 접수 시점 스냅샷의 작성자에게 건다")
+    void resolve_whenTargetGone_suspendsSnapshotAuthor() {
+        User admin = userWithId(9L, "admin@example.com");
+        User snapshotAuthor = userWithId(2L, "author@example.com");
+        Report report = Report.builder()
+                .reporter(userWithId(1L, REPORTER_EMAIL))
+                .targetType(ReportTargetType.COMMENT)
+                .targetId(77L)
+                .reason(ReportReason.ABUSE)
+                .targetAuthor(snapshotAuthor)
+                .targetContentSnapshot("문제의 댓글")
+                .build();
+        ReflectionTestUtils.setField(report, "id", 6L);
+        given(reportRepository.findById(6L)).willReturn(Optional.of(report));
+        given(userRepository.findByEmailHash(any())).willReturn(Optional.of(admin));
+        given(commentRepository.findById(77L)).willReturn(Optional.empty());
+        given(reportRepository.findByTargetTypeAndTargetIdAndStatus(
+                ReportTargetType.COMMENT, 77L, ReportStatus.PENDING)).willReturn(List.of(report));
+
+        reportService.resolve(6L, authOf("admin@example.com"), 7);
+
+        org.assertj.core.api.Assertions.assertThat(snapshotAuthor.isSuspended()).isTrue();
+    }
+
     @Test
     @DisplayName("resolve: 같은 대상에 쌓인 다른 대기 신고도 함께 처리한다")
     void resolve_alsoClosesOtherPendingReportsOnSameTarget() {
@@ -360,5 +390,55 @@ class ReportServiceTest {
 
         org.assertj.core.api.Assertions.assertThat(id).isEqualTo(3L);
         verify(reportRepository).save(any(Report.class));
+    }
+
+    /** A-SEC-07: 접수 시점의 작성자·제목·본문을 스냅샷으로 함께 저장한다. */
+    @Test
+    @DisplayName("report: 접수 시점의 작성자·제목·본문을 스냅샷으로 저장한다")
+    void report_savesTargetSnapshot() {
+        User reporter = userWithId(1L, REPORTER_EMAIL);
+        givenReporter(reporter);
+        User author = userWithId(2L, "author@example.com");
+        Post post = Post.builder().title("제목").content("내용".repeat(300)).user(author).build();
+        given(postRepository.findById(10L)).willReturn(Optional.of(post));
+        given(reportRepository.existsByReporterIdAndTargetTypeAndTargetId(1L, ReportTargetType.POST, 10L))
+                .willReturn(false);
+        given(reportRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+        reportService.report(
+                new ReportSaveRequestDto(ReportTargetType.POST, 10L, ReportReason.SPAM, null),
+                authOf(REPORTER_EMAIL));
+
+        org.mockito.ArgumentCaptor<Report> captor = org.mockito.ArgumentCaptor.forClass(Report.class);
+        verify(reportRepository).save(captor.capture());
+        Report saved = captor.getValue();
+        assertThat(saved.getTargetAuthor()).isSameAs(author);
+        assertThat(saved.getTargetTitleSnapshot()).isEqualTo("제목");
+        // 500자를 넘는 본문은 잘려서 저장된다(SNAPSHOT_LENGTH).
+        assertThat(saved.getTargetContentSnapshot()).hasSize(501).endsWith("…");
+    }
+
+    /** A-BE-01: PENDING인 것만 닫고, 이미 처리된 것은 건드리지 않는다(리포지토리 필터가 보장). */
+    @Test
+    @DisplayName("closeForDeletedTargets: 대기 중인 신고를 TARGET_DELETED로 닫는다")
+    void closeForDeletedTargets_closesPendingReports() {
+        Report pending = Report.builder()
+                .reporter(userWithId(1L, REPORTER_EMAIL))
+                .targetType(ReportTargetType.POST).targetId(10L).reason(ReportReason.SPAM).build();
+        given(reportRepository.findByTargetTypeAndTargetIdInAndStatus(
+                ReportTargetType.POST, List.of(10L), ReportStatus.PENDING))
+                .willReturn(List.of(pending));
+
+        reportService.closeForDeletedTargets(ReportTargetType.POST, List.of(10L));
+
+        assertThat(pending.getStatus()).isEqualTo(ReportStatus.TARGET_DELETED);
+    }
+
+    @Test
+    @DisplayName("closeForDeletedTargets: 대상 id가 비어 있으면 조회조차 하지 않는다")
+    void closeForDeletedTargets_withEmptyIds_skipsQuery() {
+        reportService.closeForDeletedTargets(ReportTargetType.POST, List.of());
+
+        verify(reportRepository, never()).findByTargetTypeAndTargetIdInAndStatus(any(), any(), any());
     }
 }

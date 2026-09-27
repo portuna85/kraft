@@ -503,9 +503,11 @@ test('F02·F03 회귀: 새 답글을 쓴 뒤 답글 더 보기로 빠짐없이 �
     await expect(page.locator('#flash')).toContainText('댓글이 삭제되었습니다.');
     await expect(page.locator('#comments-heading')).toContainText('댓글 22개');
 
+    // 부모에는 아직 답글 21개가 남아 있어 소프트 삭제된다(A-BE-06) — 행이 남으므로
+    // 개수는 줄지 않는다(하드 삭제였다면 22개가 통째로 빠져 0개가 됐을 것이다).
     await parent.locator(':scope > .comment-view .btn-comment-delete').click();
     await page.locator('#btn-confirm-delete').click();
-    await expect(page.locator('#comments-heading')).toContainText('댓글 0개');
+    await expect(page.locator('#comments-heading')).toContainText('댓글 22개');
 });
 
 // 평가 보고서 2026-09-25 F11: 수정 요청은 version이 필수다. 방금 이 화면에서 단 답글도 등록
@@ -532,7 +534,12 @@ test('F11: 방금 단 답글을 새로고침 없이 바로 수정할 수 있다(
     await expect(reply.locator('.comment-list__content')).toHaveText('수정 후 답글');
 });
 
-test('2단계 댓글: 최상위 댓글을 지우면 그 답글도 함께 사라진다', async ({ page }) => {
+/**
+ * 개선 보고서 A-BE-06: 예전에는 최상위 댓글을 지우면 그 답글까지 통째로 사라져, 최상위
+ * 댓글의 작성자 한 사람의 선택이 남이 쓴 답글까지 지웠다. 지금은 답글이 있으면 행을
+ * 지우지 않고 내용만 "삭제된 댓글입니다"로 바꾸며, 답글은 그대로 남는다.
+ */
+test('A-BE-06: 답글이 있는 최상위 댓글을 지우면 행은 남고 답글은 살아남는다', async ({ page }) => {
     await openOwnPost(page);
     await page.locator('#comment-content').fill('삭제될 최상위 댓글입니다.');
     await page.locator('#btn-comment-save').click();
@@ -540,7 +547,7 @@ test('2단계 댓글: 최상위 댓글을 지우면 그 답글도 함께 사라�
 
     const topLevelItem = page.locator('.comment-list > .comment-list__item').first();
     await topLevelItem.locator('.btn-comment-reply').click();
-    await topLevelItem.locator('.comment-reply-form textarea').fill('함께 지워질 답글입니다.');
+    await topLevelItem.locator('.comment-reply-form textarea').fill('살아남을 답글입니다.');
     await topLevelItem.locator('.btn-comment-reply-save').click();
     await expect(page.locator('#flash')).toContainText('댓글이 등록되었습니다.');
     await expect(topLevelItem.locator('.comment-list__replies .comment-list__item')).toHaveCount(1);
@@ -549,6 +556,26 @@ test('2단계 댓글: 최상위 댓글을 지우면 그 답글도 함께 사라�
     // 삭제 버튼을 갖고 있어 단순 후손 선택자로는 둘 다 걸린다.
     await topLevelItem.locator(':scope > .comment-view .btn-comment-delete').click();
     await expect(page.locator('#confirmDeleteModal')).toBeVisible();
+    await page.locator('#btn-confirm-delete').click();
+
+    await expect(page.locator('#flash')).toContainText('댓글이 삭제되었습니다.');
+    // 행은 지워지지 않고 내용만 바뀐다 — 수정·삭제·신고 버튼은 사라지고 답글은 그대로다.
+    await expect(topLevelItem.locator(':scope > .comment-view .comment-list__content'))
+        .toContainText('삭제된 댓글입니다');
+    await expect(topLevelItem.locator('.comment-list__replies .comment-list__item')).toHaveCount(1);
+    await expect(topLevelItem.locator(':scope > .comment-view .btn-comment-edit')).toHaveCount(0);
+    await expect(topLevelItem.locator(':scope > .comment-view .btn-comment-delete')).toHaveCount(0);
+});
+
+/** 답글이 없는 최상위 댓글은 지금까지처럼 행 자체가 사라진다. */
+test('A-BE-06: 답글이 없는 최상위 댓글을 지우면 지금처럼 행 자체가 사라진다', async ({ page }) => {
+    await openOwnPost(page);
+    await page.locator('#comment-content').fill('답글 없이 지워질 댓글입니다.');
+    await page.locator('#btn-comment-save').click();
+    await expect(page.locator('#flash')).toContainText('댓글이 등록되었습니다.');
+
+    const topLevelItem = page.locator('.comment-list > .comment-list__item').first();
+    await topLevelItem.locator(':scope > .comment-view .btn-comment-delete').click();
     await page.locator('#btn-confirm-delete').click();
 
     await expect(page.locator('#flash')).toContainText('댓글이 삭제되었습니다.');

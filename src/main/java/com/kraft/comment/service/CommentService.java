@@ -2,6 +2,7 @@ package com.kraft.comment.service;
 
 import com.kraft.comment.domain.Comment;
 import com.kraft.comment.domain.CommentRepository;
+import com.kraft.comment.dto.CommentDeleteResultDto;
 import com.kraft.comment.dto.CommentPageDto;
 import com.kraft.comment.dto.CommentSaveRequestDto;
 import com.kraft.comment.dto.CommentUpdateRequestDto;
@@ -9,6 +10,8 @@ import com.kraft.comment.dto.CommentViewDto;
 import com.kraft.post.domain.Post;
 import com.kraft.post.domain.PostNotFoundException;
 import com.kraft.post.domain.PostRepository;
+import com.kraft.report.domain.ReportTargetType;
+import com.kraft.report.event.TargetDeletedEvent;
 import com.kraft.shared.exception.NotFoundException;
 import com.kraft.shared.security.CurrentUser;
 import com.kraft.shared.security.OwnershipPolicy;
@@ -16,6 +19,7 @@ import com.kraft.shared.security.WriteAccessPolicy;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.Authentication;
@@ -51,6 +55,7 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 응답에 확정된 id·createdAt·version을 모두 실어 돌려준다(개선 보고서 COR-05·COR-08).
@@ -106,6 +111,9 @@ public class CommentService {
         Comment comment = findComment(id);
         WriteAccessPolicy.requireVerified(findUser(authentication));
         OwnershipPolicy.validateOwner(authentication, comment.getUser(), id);
+        if (comment.isDeleted()) {
+            throw new IllegalArgumentException("삭제된 댓글은 수정할 수 없습니다.");
+        }
         validateVersion(comment, requestDto.version());
         comment.update(requestDto.content());
         commentRepository.flush();
@@ -124,15 +132,42 @@ public class CommentService {
         }
     }
 
+    /**
+     * 답글이 있는 최상위 댓글을 지우면 남이 단 답글까지 함께 사라졌다(개선 보고서 A-BE-06).
+     * 답글이 있으면 행을 지우지 않고 소프트 삭제(내용을 비우고 {@code deletedAt}만 남김)해
+     * 답글을 그대로 둔다. 답글이 없으면(또는 답글 자신이면 — 3단계 금지라 답글에는 답글이
+     * 없다) 지금처럼 행 자체를 지운다.
+     * <p>
+     * 관리자가 신고를 처리하며 지우는 경로도 같은 규칙을 그대로 탄다 — 답글이 달린 신고
+     * 대상을 관리자가 지워도 남의 답글까지 함께 사라지면 안 되는 것은 같다.
+     */
     @Transactional
-    public void delete(Long id, Authentication authentication) {
+    public CommentDeleteResultDto delete(Long id, Authentication authentication) {
         Comment comment = findComment(id);
         OwnershipPolicy.validateOwner(authentication, comment.getUser(), id);
+        if (comment.isDeleted()) {
+            // 이미 삭제된 댓글에 대한 재요청(예: 관리자가 사용자보다 늦게 신고를 처리)은
+            // 조용히 넘어간다 — 화면은 어느 쪽이든 "삭제됨"으로 보여준다.
+            return new CommentDeleteResultDto(id, true);
+        }
+
+        long replyCount = commentRepository.countRepliesByParentIdIn(List.of(id)).getOrDefault(id, 0L);
+        if (replyCount > 0) {
+            comment.softDelete();
+            return new CommentDeleteResultDto(id, true);
+        }
+
         // 최상위 댓글이면 그 답글을 먼저 지운다 — DB에 cascade를 걸지 않았으므로(Comment.parent
         // 주석 참고) 그대로 두면 FK 위반이 난다. 답글 자신을 지울 때는 이 호출이 0건을 지우고
-        // 끝난다(3단계 금지라 답글에는 답글이 없다).
+        // 끝난다. 위에서 이미 답글 수를 셌으므로(replyCount == 0) 사실상 항상 0건이지만,
+        // 그 사이 다른 답글이 달렸을 극히 드문 경쟁까지 방어적으로 커버한다.
         commentRepository.deleteAllByParentId(id);
         commentRepository.delete(comment);
+        // 행이 실제로(하드) 지워졌을 때만 발행한다 — 소프트 삭제는 행이 그대로 남아 실시간
+        // 조회가 여전히 가능하므로 A-BE-01의 대상이 아니다. 관리자가 지운 경우는
+        // TargetDeletedEvent 문서 참고.
+        eventPublisher.publishEvent(new TargetDeletedEvent(ReportTargetType.COMMENT, List.of(id)));
+        return new CommentDeleteResultDto(id, false);
     }
 
     /**

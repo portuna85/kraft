@@ -15,6 +15,8 @@ import com.kraft.post.dto.PostsPageResponseDto;
 import com.kraft.post.dto.PostUpdateRequestDto;
 import com.kraft.post.dto.PostViewDto;
 import com.kraft.post.web.PostSortPolicy;
+import com.kraft.report.domain.ReportTargetType;
+import com.kraft.report.event.TargetDeletedEvent;
 import com.kraft.shared.security.CurrentUser;
 import com.kraft.shared.security.OwnershipPolicy;
 import com.kraft.shared.security.WriteAccessPolicy;
@@ -24,6 +26,7 @@ import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -51,6 +54,7 @@ public class PostService {
     private final PostImageRegistry postImageRegistry;
     private final PostImageCleaner postImageCleaner;
     private final PostLikeWriter postLikeWriter;
+    private final ApplicationEventPublisher eventPublisher;
 
     /** 검색어 상한. 지나치게 긴 검색어까지 그대로 LIKE 조건에 실을 이유가 없다(개선 보고서 "검색과 깊은 페이지의 비용"). */
     private static final int MAX_KEYWORD_LENGTH = 100;
@@ -163,6 +167,12 @@ public class PostService {
         Post post = findPost(id);
         validateOwner(post, authentication);
 
+        // 지우기 전에 그 아래 모든 댓글(최상위+답글) id를 알아 둔다(A-BE-01) — 게시글과 함께
+        // 사라지는 댓글에 걸린 대기 신고도 함께 닫아야 하는데, 지운 뒤에는 조회할 수 없다.
+        // 게시글 자체가 사라지므로 댓글은 답글 유무와 무관하게(A-BE-06의 소프트 삭제 규칙과
+        // 달리) 전부 하드 삭제된다 — 아래에서도 동일하게 처리한다.
+        List<Long> deletedCommentIds = commentRepository.findIdsByPostId(id);
+
         // 삭제 예약이 post_id를 비워야 FK 제약(FK_POST_IMAGES_POST)이 게시글 삭제를 막지 않는다.
         List<Long> deletedImageIds = postImageRegistry.markPostImagesForDeletion(id);
         // 댓글·추천이 남아 있으면 FK 제약 위반으로 삭제가 실패하므로 먼저 지운다. 답글을 먼저
@@ -172,6 +182,14 @@ public class PostService {
         commentRepository.deleteAllByPostId(id);
         postLikeRepository.deleteAllByPostId(id);
         postRepository.delete(post);
+
+        // 관리자가 신고를 처리하며 지운 경우는 이 이벤트가 아무 일도 하지 않는다 — 그 경로는
+        // ReportService.resolve()가 관련 신고를 이미 RESOLVED로 직접 처리해, 이 이벤트가
+        // 커밋 직전에 실행될 때는 더 이상 PENDING이 아니다(TargetDeletedEvent 문서 참고).
+        eventPublisher.publishEvent(new TargetDeletedEvent(ReportTargetType.POST, List.of(id)));
+        if (!deletedCommentIds.isEmpty()) {
+            eventPublisher.publishEvent(new TargetDeletedEvent(ReportTargetType.COMMENT, deletedCommentIds));
+        }
 
         cleanUpAfterCommit(deletedImageIds);
     }

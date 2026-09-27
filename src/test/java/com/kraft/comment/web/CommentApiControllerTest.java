@@ -1,5 +1,6 @@
 package com.kraft.comment.web;
 
+import com.kraft.comment.dto.CommentDeleteResultDto;
 import com.kraft.comment.dto.CommentPageDto;
 import com.kraft.comment.dto.CommentUpdateRequestDto;
 import com.kraft.comment.dto.CommentViewDto;
@@ -30,7 +31,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -86,7 +86,7 @@ class CommentApiControllerTest {
     @DisplayName("POST .../comments 는 인증+CSRF+유효한 본문이면 200과 확정된 댓글(id·version 포함)을 반환한다")
     void saveComment_whenAuthenticatedAndValid_returns200AndId() throws Exception {
         given(commentService.save(eq(1L), any(), any())).willReturn(
-                new CommentViewDto(10L, 1L, null, "댓글 내용", "tester", OffsetDateTime.now(), true, List.of(), 0L, false, 0L));
+                new CommentViewDto(10L, 1L, null, "댓글 내용", "tester", OffsetDateTime.now(), true, List.of(), 0L, false, 0L, false));
 
         mockMvc.perform(post("/api/v1/posts/1/comments")
                         .with(user("tester@example.com"))
@@ -117,7 +117,7 @@ class CommentApiControllerTest {
     @DisplayName("POST .../comments 는 parentId가 있으면 답글로 저장하고 그대로 서비스에 전달한다")
     void saveComment_withParentId_savesAsReply() throws Exception {
         given(commentService.save(eq(1L), any(), any())).willReturn(
-                new CommentViewDto(20L, 1L, 10L, "답글 내용", "tester", OffsetDateTime.now(), true, List.of(), 0L, false, 0L));
+                new CommentViewDto(20L, 1L, 10L, "답글 내용", "tester", OffsetDateTime.now(), true, List.of(), 0L, false, 0L, false));
 
         mockMvc.perform(post("/api/v1/posts/1/comments")
                         .with(user("tester@example.com"))
@@ -179,13 +179,16 @@ class CommentApiControllerTest {
     }
 
     @Test
-    @DisplayName("DELETE /api/v1/comments/{id} 는 인증된 사용자가 요청하면 ID를 반환한다")
-    void deleteComment_whenAuthenticated_returns200AndId() throws Exception {
+    @DisplayName("DELETE /api/v1/comments/{id} 는 인증된 사용자가 요청하면 id와 소프트 삭제 여부를 반환한다")
+    void deleteComment_whenAuthenticated_returns200AndResult() throws Exception {
+        given(commentService.delete(eq(1L), any())).willReturn(new CommentDeleteResultDto(1L, false));
+
         mockMvc.perform(delete("/api/v1/comments/1")
                         .with(user("tester@example.com"))
                         .with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(content().string("1"));
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.softDeleted").value(false));
 
         verify(commentService).delete(eq(1L), any(Authentication.class));
     }

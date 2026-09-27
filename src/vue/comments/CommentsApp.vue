@@ -5,7 +5,7 @@ import { API } from '@core/constants.js';
 import { showToast } from '@ui/toast.js';
 import * as flash from '@ui/flash.js';
 import CommentItem from './CommentItem.vue';
-import { applyDelete, applyRepliesPage, applyReplyCreated, initReplyCursor } from './commentState.js';
+import { applyDelete, applyRepliesPage, applyReplyCreated, applySoftDelete, initReplyCursor } from './commentState.js';
 
 /**
  * 댓글 목록 전체. 서버가 최초 렌더링 시 canManage까지 계산해 내려준 목록(initialComments)을
@@ -189,10 +189,17 @@ function onMoreRepliesLoaded({ parentId, replies, hasMore }) {
 
 // 삭제는 게시글과 공유하는 모달(delete-confirm.js)이 처리하고, 끝나면 이 이벤트로 알려온다.
 function onExternalDelete(event) {
+    const { id, softDeleted } = event.detail;
+    // 답글이 있는 최상위 댓글은 행을 지우지 않고 내용만 비운다(A-BE-06) — 목록에서 제거하지
+    // 않고 "삭제된 댓글입니다"로 바꿔 보여준다. 전체 개수는 바뀌지 않는다(행이 그대로 있다).
+    if (softDeleted) {
+        applySoftDelete(comments, id);
+        return;
+    }
     // 최상위 댓글이면 그 답글까지 통째로 사라진다 — DB에 CASCADE를 걸지 않고 서비스가 답글을
     // 먼저 명시적으로 지우므로(CommentService.delete), 전체 개수도 서버 기준 답글 수까지 함께
     // 뺀다. 답글이면 부모의 replyCount도 함께 줄인다(F03). 규칙은 commentState.applyDelete.
-    const removed = applyDelete(comments, event.detail.id, deletedIds);
+    const removed = applyDelete(comments, id, deletedIds);
     if (removed > 0) {
         totalCount.value -= removed;
         mutationSeq.value += 1;

@@ -12,6 +12,7 @@ import com.kraft.report.domain.ReportStatus;
 import com.kraft.report.domain.ReportTargetType;
 import com.kraft.report.dto.ReportSaveRequestDto;
 import com.kraft.report.dto.ReportViewDto;
+import com.kraft.report.event.TargetDeletedEvent;
 import com.kraft.shared.exception.NotFoundException;
 import com.kraft.shared.security.CurrentUser;
 import com.kraft.user.domain.User;
@@ -23,6 +24,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -52,6 +55,13 @@ public class ReportService {
     /** 관리자 목록에 보여줄 대상 내용의 길이. 판단에 필요한 만큼만 보여준다. */
     private static final int PREVIEW_LENGTH = 80;
 
+    /**
+     * 신고 접수 시점에 저장해 두는 스냅샷의 길이(A-SEC-07). 목록 미리보기(PREVIEW_LENGTH)보다
+     * 넉넉하다 — 이건 나중에 관리자가 판단할 유일한 근거로 남을 수 있어, 짧게 자르면 그 근거
+     * 자체가 부실해진다. {@code reports.target_content_snapshot} 컬럼 길이와 맞춘다.
+     */
+    private static final int SNAPSHOT_LENGTH = 500;
+
     /** O05: 이보다 큰 정지 기간은 날짜·DB 범위 오류로 이어질 수 있어 입력 단계에서 막는다. */
     private static final int MAX_SUSPEND_DAYS = 3650;
 
@@ -70,10 +80,10 @@ public class ReportService {
     @Transactional
     public Long report(ReportSaveRequestDto requestDto, Authentication authentication) {
         User reporter = findUser(authentication);
-        User targetAuthor = targetAuthorOf(requestDto.targetType(), requestDto.targetId())
+        TargetSnapshot snapshot = snapshotOf(requestDto.targetType(), requestDto.targetId())
                 .orElseThrow(() -> new NotFoundException("이미 삭제되었거나 존재하지 않는 대상입니다."));
 
-        if (targetAuthor.getId().equals(reporter.getId())) {
+        if (snapshot.author().getId().equals(reporter.getId())) {
             throw new IllegalArgumentException("자신이 쓴 글은 신고할 수 없습니다. 직접 삭제할 수 있습니다.");
         }
         if (reportRepository.existsByReporterIdAndTargetTypeAndTargetId(
@@ -81,12 +91,19 @@ public class ReportService {
             throw new IllegalArgumentException("이미 신고한 대상입니다. 관리자가 확인하고 있습니다.");
         }
 
+        // 접수 시점의 작성자·제목·본문을 함께 저장한다(A-SEC-07) — 작성자가 처리 전에 스스로
+        // 지우면 target_id로는 더 이상 아무것도 조회할 수 없다. 이 스냅샷이 그때 남는 유일한
+        // 근거다. resolve()는 실시간 조회가 가능하면 그쪽을 우선하고, 이 값은 fallback으로만
+        // 쓴다.
         Report saved = reportRepository.save(Report.builder()
                 .reporter(reporter)
                 .targetType(requestDto.targetType())
                 .targetId(requestDto.targetId())
                 .reason(requestDto.reason())
                 .detail(requestDto.detail())
+                .targetAuthor(snapshot.author())
+                .targetTitleSnapshot(snapshot.title())
+                .targetContentSnapshot(snapshot.content())
                 .build());
 
         log.info("신고가 접수되었습니다. reportId={}, targetType={}, targetId={}, reason={}",
@@ -171,7 +188,13 @@ public class ReportService {
             }
         }
         if (suspendDays > 0) {
-            targetAuthor.ifPresent(author -> suspend(author, report, suspendDays));
+            // 실시간 조회가 안 되면(작성자가 스스로 지웠음) 접수 시점 스냅샷의 작성자로
+            // 물러선다(A-SEC-07) — 그러지 않으면 "쓰고 → 신고되면 지우고 → 다시 쓰기"를
+            // 반복해도 제재할 수 없었다.
+            User authorForSuspension = targetAuthor.orElse(report.getTargetAuthor());
+            if (authorForSuspension != null) {
+                suspend(authorForSuspension, report, suspendDays);
+            }
         }
         report.resolve(admin);
         resolveOthersOnSameTarget(report, admin);
@@ -203,6 +226,38 @@ public class ReportService {
         author.suspendUntil(LocalDateTime.now().plusDays(days),
                 "%s 신고 처리(%d일)".formatted(report.getReason().getTitle(), days));
         log.info("작성자를 정지했습니다. userId={}, days={}, reportId={}", author.getId(), days, report.getId());
+    }
+
+    /**
+     * 관리자가 판단하기 전에 작성자 본인이 대상을 지워 사라진 신고를 닫는다(A-BE-01).
+     * {@code PostService.delete}·{@code CommentService.delete}가 실제로 행을 지웠을 때만
+     * {@link #onTargetDeleted}를 통해 호출된다 — 관리자가 신고를 처리하며 지운 경우는 이미
+     * {@link #resolve(Long, Authentication, int)}가 그 자리에서 관련 신고를 {@code RESOLVED}로
+     * 직접 처리하므로, 이 메서드가 실행되는 시점(커밋 직전)에는 더 이상 {@code PENDING}이
+     * 아니라 걸리지 않는다 — 그래서 admin 삭제와 본인 삭제가 서로 다른 상태로 남는다.
+     */
+    @Transactional
+    public void closeForDeletedTargets(ReportTargetType targetType, List<Long> targetIds) {
+        if (targetIds.isEmpty()) {
+            return;
+        }
+        List<Report> pending = reportRepository.findByTargetTypeAndTargetIdInAndStatus(
+                targetType, targetIds, ReportStatus.PENDING);
+        if (pending.isEmpty()) {
+            return;
+        }
+        pending.forEach(Report::closeAsTargetDeleted);
+        log.info("본인 삭제로 사라진 대상의 신고 {}건을 닫았습니다. targetType={}", pending.size(), targetType);
+    }
+
+    /**
+     * {@link TargetDeletedEvent}를 받는다. {@code BEFORE_COMMIT}이라 대상을 지운 트랜잭션과
+     * 같은 트랜잭션 안에서 함께 커밋되거나 함께 롤백된다 — 순환 의존을 피하려고 직접 호출
+     * 대신 이벤트로 받는 이유는 {@link TargetDeletedEvent}의 클래스 문서 참고.
+     */
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
+    public void onTargetDeleted(TargetDeletedEvent event) {
+        closeForDeletedTargets(event.targetType(), event.targetIds());
     }
 
     /** 문제가 없다고 판단한다. 대상은 그대로 두고 이 신고만 닫는다. */
@@ -238,22 +293,49 @@ public class ReportService {
         return commentRepository.findById(targetId).map(Comment::getUser);
     }
 
+    /** 신고 접수 시점에 저장할 스냅샷(A-SEC-07). 댓글은 제목이 없어 {@code title}이 항상 null이다. */
+    private record TargetSnapshot(User author, String title, String content) {
+    }
+
+    private Optional<TargetSnapshot> snapshotOf(ReportTargetType targetType, Long targetId) {
+        if (targetType == ReportTargetType.POST) {
+            return postRepository.findById(targetId)
+                    .map(post -> new TargetSnapshot(post.getUser(), post.getTitle(), shorten(post.getContent(), SNAPSHOT_LENGTH)));
+        }
+        return commentRepository.findById(targetId)
+                .map(comment -> new TargetSnapshot(comment.getUser(), null, shorten(comment.getContent(), SNAPSHOT_LENGTH)));
+    }
+
     private ReportViewDto toView(Report report, Map<Long, Post> posts, Map<Long, Comment> comments) {
         String preview = null;
         String author = null;
+        boolean targetExists;
 
         if (report.getTargetType() == ReportTargetType.POST) {
             Post post = posts.get(report.getTargetId());
+            targetExists = post != null;
             if (post != null) {
                 preview = shorten(post.getTitle());
                 author = post.getUser().getName();
             }
         } else {
             Comment comment = comments.get(report.getTargetId());
+            targetExists = comment != null;
             if (comment != null) {
                 preview = shorten(comment.getContent());
                 author = comment.getUser().getName();
             }
+        }
+
+        // 대상이 사라졌으면 접수 시점 스냅샷으로 물러선다(A-SEC-07) — 관리자가 무엇이
+        // 문제였는지 판단할 유일한 근거다. V27 이전에 접수된 신고는 스냅샷이 없어 그대로
+        // "대상이 이미 삭제되었습니다"로 남는다.
+        if (!targetExists && report.getTargetContentSnapshot() != null) {
+            String snapshotText = report.getTargetType() == ReportTargetType.POST
+                    ? report.getTargetTitleSnapshot()
+                    : report.getTargetContentSnapshot();
+            preview = shorten(snapshotText);
+            author = report.getTargetAuthor() != null ? report.getTargetAuthor().getName() : null;
         }
 
         return new ReportViewDto(
@@ -266,14 +348,19 @@ public class ReportService {
                 report.getReason().getTitle(),
                 report.getDetail(),
                 report.getReporter().getName(),
-                report.getCreatedAt());
+                report.getCreatedAt(),
+                !targetExists && preview != null);
     }
 
     private static String shorten(String text) {
+        return shorten(text, PREVIEW_LENGTH);
+    }
+
+    private static String shorten(String text, int maxLength) {
         if (text == null) {
             return null;
         }
-        return text.length() <= PREVIEW_LENGTH ? text : text.substring(0, PREVIEW_LENGTH) + "…";
+        return text.length() <= maxLength ? text : text.substring(0, maxLength) + "…";
     }
 
     private User findUser(Authentication authentication) {

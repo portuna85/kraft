@@ -32,12 +32,18 @@
                     <span class="text-muted" th:text="${#temporals.format(report.createdAt, 'yyyy.MM.dd HH:mm')}">시각</span>
                 </div>
 
-                <!--/* 대상이 이미 지워졌을 수 있다. 그때는 무엇을 신고했는지만 남는다. */-->
-                <p class="report-list__target" th:if="${report.targetPreview != null}">
+                <!--/* 대상이 이미 지워졌을 수 있다. 스냅샷이 있으면(A-SEC-07) 접수 시점 내용을
+                       보여주고, 링크는 만들지 않는다 — 눌러도 갈 곳이 없다. 스냅샷도 없으면
+                       (V27 이전 신고) 무엇을 신고했는지만 남는다. */-->
+                <p class="report-list__target" th:if="${report.targetPreview != null and !report.targetDeleted}">
                     <a th:if="${report.targetType == 'POST'}"
                        th:href="@{'/posts/update/' + ${report.targetId}}" th:text="${report.targetPreview}">내용</a>
                     <span th:unless="${report.targetType == 'POST'}" th:text="${report.targetPreview}">내용</span>
                     <span class="text-muted" th:text="'· ' + ${report.targetAuthor}">· 작성자</span>
+                </p>
+                <p class="report-list__target" th:if="${report.targetPreview != null and report.targetDeleted}">
+                    <span th:text="${report.targetPreview}">내용</span>
+                    <span class="text-muted" th:text="'· ' + ${report.targetAuthor} + ' · 삭제됨(신고 당시 내용)'">· 작성자 · 삭제됨</span>
                 </p>
                 <p class="report-list__target text-muted" th:if="${report.targetPreview == null}">
                     대상이 이미 삭제되었습니다.
@@ -49,8 +55,16 @@
 
                 <div class="btn-group-gap">
                     <button type="button" class="btn btn-sm btn-outline-danger btn-report-resolve">삭제</button>
-                    <button type="button" class="btn btn-sm btn-danger btn-report-suspend"
-                            data-suspend-days="7">삭제 + 7일 정지</button>
+                    <!--/* 기간을 고정(7일)으로 두지 않고 고를 수 있게 한다(개선 보고서 A-BE-16).
+                           API는 이미 suspendDays(0~3650)를 받으므로 화면만 넓힌다. */-->
+                    <label class="visually-hidden" th:for="'suspend-days-' + ${report.id}">정지 기간</label>
+                    <select th:id="'suspend-days-' + ${report.id}" class="form-select form-select-sm report-suspend-days">
+                        <option value="1">1일</option>
+                        <option value="3">3일</option>
+                        <option value="7" selected>7일</option>
+                        <option value="30">30일</option>
+                    </select>
+                    <button type="button" class="btn btn-sm btn-danger btn-report-suspend">삭제 + 정지</button>
                     <button type="button" class="btn btn-sm btn-outline-secondary btn-report-reject">반려</button>
                 </div>
             </li>

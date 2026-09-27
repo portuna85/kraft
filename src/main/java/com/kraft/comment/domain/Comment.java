@@ -8,6 +8,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 /**
  * 게시글에 달리는 댓글. 일반사용자는 작성/수정/삭제가 가능하고, 모든 사용자는 조회할 수 있다.
  */
@@ -60,6 +62,14 @@ public class Comment extends BaseEntity {
     @Version
     private Long version;
 
+    /**
+     * null이 아니면 소프트 삭제된 것이다(개선 보고서 A-BE-06) — 답글이 있는 최상위 댓글을
+     * 지우면 행을 그대로 두고 이 시각만 남긴다({@link #softDelete()}). 답글이 없으면(또는
+     * 답글 자신이면) 지금처럼 행 자체를 지우므로 이 필드를 거치지 않는다.
+     */
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @Builder
     public Comment(String content, Post post, User user, Comment parent) {
         this.content = content;
@@ -70,5 +80,18 @@ public class Comment extends BaseEntity {
 
     public void update(String content) {
         this.content = content;
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
+
+    /**
+     * 답글이 있어 행을 지울 수 없을 때 대신 부른다(A-BE-06). 내용을 비워 원문이 남지 않게
+     * 한다 — 신고에 걸려 있던 내용은 신고 접수 시점의 스냅샷(A-SEC-07)에 별도로 남는다.
+     */
+    public void softDelete() {
+        this.content = "";
+        this.deletedAt = LocalDateTime.now();
     }
 }

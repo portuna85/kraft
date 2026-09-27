@@ -183,6 +183,15 @@ app:
     sweep-initial-delay-ms: 600000
     sweep-interval-ms: 1800000
 
+  report:
+    # 처리 완료된 신고의 대상 스냅샷(A-SEC-07)을 이 기간이 지나면 비운다(ReportSnapshotPurger).
+    # 처리 중(PENDING)인 신고는 대상으로 삼지 않는다 — 코드 기본값과 같은 값을 명시적으로
+    # 적어 둔다.
+    snapshot-retention-days: 90
+    snapshot-purge-enabled: true
+    snapshot-purge-initial-delay-ms: 1800000
+    snapshot-purge-interval-ms: 86400000
+
   session-revocation:
     # 비밀번호 변경·재설정·탈퇴 커밋 직후 세션 폐기를 영속 태스크로 남긴다(B06). 대부분은
     # 커밋 직후 빠른 경로에서 바로 끝나고, 실패하거나 그 직후 프로세스가 죽은 것만 이 주기

@@ -190,11 +190,37 @@ function formatDate(iso) {
           <time :datetime="comment.createdAt">{{ formatDate(comment.createdAt) }}</time>
         </small>
       </div>
-      <p class="comment-list__content">
+      <!-- 답글이 있어 행은 남기고 내용만 비운 댓글이다(개선 보고서 A-BE-06). 수정·삭제·신고는
+           숨기고, 답글은 계속 달 수 있게 둔다(대화가 이어질 수 있어야 한다). -->
+      <p
+        v-if="comment.deleted"
+        class="comment-list__content comment-list__content--deleted text-muted"
+      >
+        삭제된 댓글입니다.
+      </p>
+      <p
+        v-else
+        class="comment-list__content"
+      >
         {{ comment.content }}
       </p>
       <div
-        v-if="comment.canManage"
+        v-if="comment.deleted"
+        class="btn-group-gap comment-actions"
+      >
+        <button
+          v-if="!isReply && canWrite"
+          ref="replyButton"
+          type="button"
+          class="btn btn-sm btn-outline-secondary btn-comment-reply"
+          :aria-label="`${comment.author}의 댓글에 답글 달기`"
+          @click="startReply"
+        >
+          답글
+        </button>
+      </div>
+      <div
+        v-else-if="comment.canManage"
         class="btn-group-gap comment-actions"
       >
         <button

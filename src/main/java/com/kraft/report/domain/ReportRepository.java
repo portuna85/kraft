@@ -4,7 +4,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface ReportRepository extends JpaRepository<Report, Long> {
@@ -32,4 +35,13 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
             ReportTargetType targetType, List<Long> targetIds, ReportStatus status);
 
     long countByStatus(ReportStatus status);
+
+    /**
+     * 처리 완료(대기 중이 아닌) 신고 중 스냅샷이 아직 남은 것을 보관기간 정리 작업이 훑는다
+     * (개선 보고서 A-SEC-07, {@code ReportSnapshotPurger}). 스냅샷이 이미 비어 있는 행은
+     * 매번 다시 훑지 않도록 {@code targetContentSnapshot IS NOT NULL}로 거른다.
+     */
+    @Query("SELECT r FROM Report r WHERE r.status <> com.kraft.report.domain.ReportStatus.PENDING "
+            + "AND r.targetContentSnapshot IS NOT NULL AND r.handledAt < :threshold")
+    List<Report> findHandledWithSnapshotOlderThan(@Param("threshold") LocalDateTime threshold);
 }

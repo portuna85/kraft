@@ -32,3 +32,6 @@ app:
     # 동시에 돌면 서로의 진행 상황을 어지럽힐 수 있다.
     auto-fetch:
       enabled: false
+  report:
+    # 무관한 스케줄러를 섞지 않는다는 이 파일의 원칙과 같다.
+    snapshot-purge-enabled: false

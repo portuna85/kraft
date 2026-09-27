@@ -61,7 +61,7 @@ class AdminReportPageControllerTest {
     void reports_whenAdmin_rendersPendingReports() throws Exception {
         given(reportService.findPending(any(Pageable.class))).willReturn(pageOf(new ReportViewDto(
                 1L, "POST", "게시글", 10L, "광고 같은 제목", "스패머",
-                "스팸·광고", "같은 글을 반복해 올립니다", "신고자", LocalDateTime.now())));
+                "스팸·광고", "같은 글을 반복해 올립니다", "신고자", LocalDateTime.now(), false)));
 
         mockMvc.perform(get("/admin/reports").with(user("admin@example.com").roles("ADMIN")))
                 .andExpect(status().isOk())
@@ -75,7 +75,7 @@ class AdminReportPageControllerTest {
     void reports_whenTargetIsGone_stillRenders() throws Exception {
         given(reportService.findPending(any(Pageable.class))).willReturn(pageOf(new ReportViewDto(
                 2L, "COMMENT", "댓글", 77L, null, null,
-                "욕설·비방", null, "신고자", LocalDateTime.now())));
+                "욕설·비방", null, "신고자", LocalDateTime.now(), false)));
 
         mockMvc.perform(get("/admin/reports").with(user("admin@example.com").roles("ADMIN")))
                 .andExpect(status().isOk())

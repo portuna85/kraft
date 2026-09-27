@@ -36,7 +36,9 @@ export function init() {
     });
     delegate('click', '.btn-report-suspend', async (trigger) => {
         const { isPost, name } = targetOf(trigger);
-        const suspendDays = Number(trigger.dataset.suspendDays);
+        // 기간은 같은 줄의 select에서 고른다(A-BE-16) — 더 이상 버튼에 고정돼 있지 않다.
+        const item = trigger.closest('.report-list__item');
+        const suspendDays = Number(item?.querySelector('.report-suspend-days')?.value ?? 7);
         const confirmed = await confirmAction({
             title: '삭제 + 정지',
             message: name

@@ -40,7 +40,13 @@ public record CommentViewDto(
          * 편집 충돌 감지에 쓰는 낙관적 잠금 버전(B12). 저장 요청의 {@code version}에 이 값을
          * 그대로 실어 보내면, 그 사이 다른 저장이 있었을 때 서버가 409로 거절한다.
          */
-        Long version
+        Long version,
+        /**
+         * 답글이 있어 행은 남기고 내용만 비운 것이다(개선 보고서 A-BE-06). true면
+         * {@code content}는 항상 빈 문자열이고, 화면은 "삭제된 댓글입니다"로 바꿔 보여주며
+         * 수정·삭제·신고 버튼을 숨긴다.
+         */
+        boolean deleted
 ) {
 
     /** 최상위 댓글·답글 생성용(저장·수정 응답). 답글 목록은 비워 두고, 서비스가 나중에 채운다. */
@@ -63,13 +69,14 @@ public record CommentViewDto(
                 replies,
                 replyCount,
                 hasMoreReplies,
-                entity.getVersion()
+                entity.getVersion(),
+                entity.isDeleted()
         );
     }
 
     /** 답글 목록·개수를 채운 새 인스턴스를 돌려준다. record는 불변이라 필드만 바꿔 복제한다. */
     public CommentViewDto withReplies(List<CommentViewDto> newReplies, long newReplyCount, boolean newHasMoreReplies) {
         return new CommentViewDto(id, postId, parentId, content, author, createdAt, canManage,
-                newReplies, newReplyCount, newHasMoreReplies, version);
+                newReplies, newReplyCount, newHasMoreReplies, version, deleted);
     }
 }

@@ -21,6 +21,8 @@
  * @property {number} replyCount 서버 기준 전체 답글 수
  * @property {boolean} hasMoreReplies
  * @property {number} version 수정 요청에 그대로 돌려보내는 낙관적 잠금 버전
+ * @property {boolean} deleted 답글이 있어 행은 남기고 내용만 비운 것이다(A-BE-06). true면
+ *   content는 항상 빈 문자열
  * @property {number | string | null} [replyCursor] 화면 전용: 서버 페이지로 마지막에 받은 답글 id(commentState.js)
  */
 

@@ -15,5 +15,13 @@ public enum ReportStatus {
     REJECTED,
 
     /** 신고를 받아들여 대상을 삭제했다. */
-    RESOLVED
+    RESOLVED,
+
+    /**
+     * 관리자가 판단하기 전에 작성자 본인이 대상을 스스로 지워 사라졌다(개선 보고서 A-BE-01).
+     * {@link #RESOLVED}와 구분하는 이유는 "관리자가 지웠다"와 "작성자가 스스로 지웠다"가
+     * 기록상 다른 사실이기 때문이다 — 후자는 신고 접수 시점의 스냅샷(target_*_snapshot)이
+     * 유일한 근거로 남는다.
+     */
+    TARGET_DELETED
 }

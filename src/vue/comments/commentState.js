@@ -20,6 +20,8 @@
  * @property {number} [replyCount]        서버 기준 이 부모의 전체 답글 수(로드 여부와 무관)
  * @property {boolean} [hasMoreReplies]   서버에 아직 받지 않은 답글이 있는지
  * @property {number|string|null} [replyCursor] 서버 페이지로 마지막에 받은 답글 id — "답글 더 보기"의 afterId
+ * @property {boolean} [deleted] 답글이 있어 행은 남기고 내용만 비운 것이다(A-BE-06)
+ * @property {string} [content] 댓글 내용 — applySoftDelete가 빈 문자열로 바꾼다
  */
 
 const byId = (/** @type {ReplyLike} */ a, /** @type {ReplyLike} */ b) => Number(a.id) - Number(b.id);
@@ -99,6 +101,29 @@ export function applyRepliesPage(parent, page, hasMore, deletedIds) {
         }
     }
     parent.hasMoreReplies = hasMore;
+}
+
+/**
+ * 답글이 있어 행을 지우지 않고 내용만 비운 최상위 댓글을 목록에 반영한다(개선 보고서 A-BE-06).
+ * 행은 그대로 두고 답글도 그대로 둔다 — {@link applyDelete}와 달리 아무것도 제거하지 않고
+ * 전체 개수도 바뀌지 않는다.
+ * <p>
+ * 최상위 댓글만 대상이다 — 답글 자신은 항상 하드 삭제되므로(서버 규칙, 3단계 금지라 답글에는
+ * 답글이 없다) 이 함수가 답글 배열까지 뒤질 필요가 없다.
+ *
+ * @param {ParentComment[]} comments 최상위 댓글 목록
+ * @param {number|string} id
+ * @returns {boolean} 목록에서 찾아 반영했으면 true
+ */
+export function applySoftDelete(comments, id) {
+    const key = String(id);
+    const target = comments.find((c) => String(c.id) === key);
+    if (!target) {
+        return false;
+    }
+    target.deleted = true;
+    target.content = '';
+    return true;
 }
 
 /**
