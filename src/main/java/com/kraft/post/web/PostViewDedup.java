@@ -9,6 +9,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.time.DateTimeException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -105,7 +106,11 @@ public class PostViewDedup {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> a, HashMap::new));
     }
 
-    /** 쿠키 값 형식: {@code postId:epochSeconds}를 쉼표로 이은 문자열. 형식이 이상하면 그 항목만 버린다. */
+    /**
+     * 쿠키 값 형식: {@code postId:epochSeconds}를 {@code |}로 이은 문자열.
+     * 쉼표는 Tomcat의 RFC 6265 쿠키 검증에서 거절되므로 응답에 쓰지 않는다.
+     * 기존 쉼표 형식도 읽고, 형식이나 시간 범위가 이상하면 그 항목만 버린다.
+     */
     private Map<Long, Instant> parseCookie(HttpServletRequest request) {
         Map<Long, Instant> viewed = new HashMap<>();
         Cookie[] cookies = request.getCookies();
@@ -116,14 +121,14 @@ public class PostViewDedup {
             if (!COOKIE_NAME.equals(cookie.getName()) || cookie.getValue() == null) {
                 continue;
             }
-            for (String entry : cookie.getValue().split(",")) {
+            for (String entry : cookie.getValue().split("[|,]")) {
                 String[] parts = entry.split(":", 2);
                 if (parts.length != 2) {
                     continue;
                 }
                 try {
                     viewed.put(Long.parseLong(parts[0]), Instant.ofEpochSecond(Long.parseLong(parts[1])));
-                } catch (NumberFormatException e) {
+                } catch (NumberFormatException | DateTimeException e) {
                     // 손상되거나 변조된 항목은 조용히 건너뛴다 — 쿠키는 클라이언트가 보낸 값이다.
                 }
             }
@@ -135,7 +140,7 @@ public class PostViewDedup {
         StringBuilder value = new StringBuilder();
         for (Map.Entry<Long, Instant> entry : viewed.entrySet()) {
             if (!value.isEmpty()) {
-                value.append(',');
+                value.append('|');
             }
             value.append(entry.getKey()).append(':').append(entry.getValue().getEpochSecond());
         }

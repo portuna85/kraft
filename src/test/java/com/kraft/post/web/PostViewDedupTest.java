@@ -1,6 +1,7 @@
 package com.kraft.post.web;
 
 import jakarta.servlet.http.Cookie;
+import org.apache.tomcat.util.http.Rfc6265CookieProcessor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -117,6 +118,31 @@ class PostViewDedupTest {
     @DisplayName("익명 사용자: 손상된 쿠키 값은 조용히 무시하고 새로 센다")
     void anonymousUser_malformedCookie_isIgnoredSafely() {
         request.setCookies(new Cookie("kraft_viewed", "not-a-valid-entry"));
+
+        assertThat(dedup.shouldCount(request, response, 1L, anonymous)).isTrue();
+    }
+
+    @Test
+    @DisplayName("익명 사용자가 여러 글을 열어도 실제 서버가 쿠키를 직렬화할 수 있다")
+    void anonymousUser_multiplePosts_producesValidCookie() {
+        dedup.shouldCount(request, response, 1L, anonymous);
+        request.setCookies(response.getCookie("kraft_viewed"));
+        response = new MockHttpServletResponse();
+
+        assertThat(dedup.shouldCount(request, response, 2L, anonymous)).isTrue();
+        Cookie cookie = response.getCookie("kraft_viewed");
+        assertThat(new Rfc6265CookieProcessor().generateHeader(cookie, request))
+                .contains("kraft_viewed=");
+
+        request.setCookies(cookie);
+        assertThat(dedup.shouldCount(request, new MockHttpServletResponse(), 1L, anonymous)).isFalse();
+        assertThat(dedup.shouldCount(request, new MockHttpServletResponse(), 2L, anonymous)).isFalse();
+    }
+
+    @Test
+    @DisplayName("쿠키의 시간이 Instant 범위를 벗어나면 해당 항목만 무시한다")
+    void anonymousUser_outOfRangeTimestamp_isIgnoredSafely() {
+        request.setCookies(new Cookie("kraft_viewed", "1:" + Long.MAX_VALUE));
 
         assertThat(dedup.shouldCount(request, response, 1L, anonymous)).isTrue();
     }
