@@ -14,6 +14,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -183,6 +184,29 @@ class SecurityConfigTest {
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/"));
+    }
+
+    @Test
+    @DisplayName("로그인 연속 실패 5번 뒤에는 비밀번호가 맞아도 잠겨서 실패한다(A-SEC-08)")
+    void login_afterFiveFailures_locksAccountEvenWithCorrectPassword() throws Exception {
+        for (int i = 0; i < LoginLockoutService.LOCK_THRESHOLD; i++) {
+            mockMvc.perform(post("/login")
+                            .param("username", "tester@example.com")
+                            .param("password", "wrong-password")
+                            .with(csrf()))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl("/login?error"));
+        }
+
+        mockMvc.perform(post("/login")
+                        .param("username", "tester@example.com")
+                        .param("password", "Password123!")
+                        .with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login?error"));
+
+        assertThat(userRepository.findAll()).singleElement()
+                .satisfies(reloaded -> assertThat(reloaded.isLocked()).isTrue());
     }
 
     @Test

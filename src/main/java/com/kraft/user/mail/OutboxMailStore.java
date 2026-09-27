@@ -106,6 +106,11 @@ public class OutboxMailStore {
     }
 
     private boolean isTokenStillValid(OutboxMail mail) {
+        // 토큰이 없는 종류(A-SEC-08의 로그인 시도 경고 등)는 재발급·만료라는 개념 자체가
+        // 없다 — 대기열에 들어간 이상 그대로 보낸다.
+        if (mail.getToken() == null) {
+            return true;
+        }
         // outbox_mails.token은 평문이지만 조회 테이블은 해시만 들고 있다(SEC-04) — 같은
         // 해시 함수로 변환해야 비교가 된다.
         String tokenHash = EmailHasher.sha512Hex(mail.getToken());
@@ -114,6 +119,7 @@ public class OutboxMailStore {
                     .filter(token -> !token.isExpired()).isPresent();
             case PASSWORD_RESET -> passwordResetTokenRepository.findByTokenHash(tokenHash)
                     .filter(token -> !token.isExpired()).isPresent();
+            case LOGIN_ATTEMPTS_WARNING -> true;
         };
     }
 

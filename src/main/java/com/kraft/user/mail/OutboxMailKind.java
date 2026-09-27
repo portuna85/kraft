@@ -10,6 +10,12 @@ package com.kraft.user.mail;
  */
 public enum OutboxMailKind {
 
+    /**
+     * 로그인 연속 실패가 임계를 넘었다는 알림(전체 리뷰 2026-09-26 A-SEC-08). 링크·토큰이
+     * 없다 — {@code OutboxMail.token}은 이 종류에서 항상 null이다.
+     */
+    LOGIN_ATTEMPTS_WARNING,
+
     /** 비밀번호 재설정 링크. 30분짜리 1회용이다. */
     PASSWORD_RESET,
 

@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 /**
@@ -84,6 +85,17 @@ public class User extends BaseEntity {
     private String suspensionReason;
 
     /**
+     * 로그인 연속 실패 횟수(A-SEC-08, V29). 성공하면 0으로 돌아간다. 정지({@link #suspendedUntil})와는
+     * 다른 축이다 — 정지는 글쓰기만 막고 로그인은 그대로 두지만, 이건 로그인 자체를 막는다.
+     */
+    @Column(name = "failed_login_attempts", nullable = false)
+    private int failedLoginAttempts;
+
+    /** 로그인이 잠기는 시각. null이거나 이미 지났으면 잠긴 게 아니다({@link #isSuspended}와 같은 패턴). */
+    @Column(name = "locked_until")
+    private LocalDateTime lockedUntil;
+
+    /**
      * 비밀번호 변경·정지·탈퇴가 같은 행을 동시에 바꿀 때 나중에 flush되는 쪽이 앞선 변경을
      * 조용히 덮어쓰지 않도록 한다(B07). {@code PostImage.version}과 같은 목적이다.
      */
@@ -144,6 +156,28 @@ public class User extends BaseEntity {
     /** 관리자가 기간을 다 채우기 전에 푼다. 사유는 기록에서 지우지 않는다. */
     public void liftSuspension() {
         this.suspendedUntil = null;
+    }
+
+    /** 로그인 실패 한 번을 누적하고, 누적된 값을 돌려준다(잠금 여부는 호출한 쪽이 판단한다). */
+    public int recordFailedLogin() {
+        this.failedLoginAttempts++;
+        return this.failedLoginAttempts;
+    }
+
+    /** 지금부터 {@code duration} 동안 로그인을 막는다. */
+    public void lockFor(Duration duration) {
+        this.lockedUntil = LocalDateTime.now().plus(duration);
+    }
+
+    /** 기간이 남았는지 지금 판정한다. 만료된 잠금은 아무것도 하지 않아도 저절로 풀린다. */
+    public boolean isLocked() {
+        return lockedUntil != null && LocalDateTime.now().isBefore(lockedUntil);
+    }
+
+    /** 로그인 성공 시 누적을 지운다. */
+    public void resetFailedLogins() {
+        this.failedLoginAttempts = 0;
+        this.lockedUntil = null;
     }
 
     @PrePersist

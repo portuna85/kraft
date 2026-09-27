@@ -36,7 +36,17 @@ public class KraftUserDetails extends org.springframework.security.core.userdeta
      */
     public KraftUserDetails(Long userId, String password, String displayName,
                             Collection<? extends GrantedAuthority> authorities) {
-        super(String.valueOf(userId), password, authorities);
+        this(userId, password, displayName, true, authorities);
+    }
+
+    /**
+     * @param accountNonLocked false면 비밀번호를 확인하기도 전에
+     *                          {@link org.springframework.security.authentication.LockedException}로
+     *                          거절된다(A-SEC-08, {@code LoginLockoutService}).
+     */
+    public KraftUserDetails(Long userId, String password, String displayName, boolean accountNonLocked,
+                            Collection<? extends GrantedAuthority> authorities) {
+        super(String.valueOf(userId), password, true, true, true, accountNonLocked, authorities);
         this.userId = userId;
         this.displayName = displayName;
     }

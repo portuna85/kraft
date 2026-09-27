@@ -240,6 +240,7 @@ public class OutboxMailWorker {
         return switch (kind) {
             case VERIFY_EMAIL -> "[kraft] 이메일 인증을 완료해 주세요";
             case PASSWORD_RESET -> "[kraft] 비밀번호 재설정 링크입니다";
+            case LOGIN_ATTEMPTS_WARNING -> "[kraft] 로그인 시도가 많았습니다";
         };
     }
 
@@ -256,6 +257,9 @@ public class OutboxMailWorker {
                     + baseUrl + "/users/password-reset?token=" + token
                     + "\n\n이 링크는 30분 동안 한 번만 사용할 수 있습니다."
                     + "\n요청한 적이 없다면 이 메일을 무시하세요. 비밀번호는 그대로입니다.";
+            case LOGIN_ATTEMPTS_WARNING -> "회원님 계정에 짧은 시간 동안 로그인 시도가 많았습니다."
+                    + "\n본인이 아니라면 비밀번호를 바꾸는 것을 권장합니다."
+                    + "\n\n반복된 실패가 이어지면 계정은 잠시 잠기며, 시간이 지나면 저절로 풀립니다.";
         };
     }
 }

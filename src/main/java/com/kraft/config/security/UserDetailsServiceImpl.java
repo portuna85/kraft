@@ -55,6 +55,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 user.getId(),
                 user.getPassword(),
                 user.getName(),
+                !user.isLocked(),
                 List.of(new SimpleGrantedAuthority(user.getRoleKey()))
         );
     }
