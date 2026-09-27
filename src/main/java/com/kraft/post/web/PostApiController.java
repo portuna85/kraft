@@ -66,12 +66,13 @@ public class PostApiController {
     public ResponseEntity<?> findAll(@PageableDefault(size = 10) Pageable pageable,
                                       @RequestParam(required = false) String q,
                                       @RequestParam(required = false) Category category,
+                                      @RequestParam(required = false) String scope,
                                       HttpServletRequest request) {
         if (q != null && !q.isBlank() && !rateLimiters.tryAcquireSearch(request.getRemoteAddr())) {
             return RateLimitResponses.tooManyRequests("SEARCH_RATE_LIMITED", 60);
         }
         PostSortPolicy.validate(pageable.getSort());
-        return ResponseEntity.ok(postService.findAllDesc(pageable, q, category));
+        return ResponseEntity.ok(postService.findAllDesc(pageable, q, category, SearchScope.isContent(scope)));
     }
 
     /**

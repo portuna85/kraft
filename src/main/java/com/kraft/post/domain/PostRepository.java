@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
@@ -34,6 +35,10 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      * 문자가 그대로 와일드카드로 해석되어({@code q=%}는 전체 목록과 같고 {@code q=_}는
      * 모든 글과 일치) 검색이 사실상 무력화된다. {@code ESCAPE '\'}가 그 이스케이프를
      * 실제로 해석하게 한다.
+     * <p>
+     * {@code searchContent}가 false면 제목만 본다(A-BE-02 2단계, 기본값). 본문(TEXT)까지
+     * 뒤지는 것은 선행 와일드카드 LIKE 전체 스캔 비용이 가장 큰 부분이라, 필요할 때만
+     * 켜게 한다({@code PostService.findAllDesc}가 기본값을 정한다).
      */
     @Query(value = "SELECT new com.kraft.post.dto.PostRowDto("
             + "p.id, p.title, u.name, p.updatedAt, p.category, p.viewCount) "
@@ -41,18 +46,25 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             + "WHERE (:category IS NULL OR p.category = :category) "
             + "AND (:keyword IS NULL "
             + "     OR LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\' "
-            + "     OR LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\')",
+            + "     OR (:searchContent = true AND LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\'))",
             countQuery = "SELECT COUNT(p) FROM Post p "
                     + "WHERE (:category IS NULL OR p.category = :category) "
                     + "AND (:keyword IS NULL "
                     + "     OR LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\' "
-                    + "     OR LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\')")
-    Page<PostRowDto> search(@Param("keyword") String keyword, @Param("category") Category category, Pageable pageable);
+                    + "     OR (:searchContent = true AND LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\'))")
+    Page<PostRowDto> search(@Param("keyword") String keyword, @Param("category") Category category,
+                             @Param("searchContent") boolean searchContent, Pageable pageable);
 
+    /**
+     * 인기글 후보를 최근 글로 좁힌다(전체 리뷰 2026-09-26 A-BE-10) — 누적 조회수만 보면
+     * 오래전에 조회수를 많이 쌓은 글이 자리를 영영 독점해, 새 글이 아무리 좋아도 인기글에
+     * 오를 수 없었다. {@code since} 이후 작성된 글 중 조회수 상위를 뽑는다.
+     */
     @Query("SELECT new com.kraft.post.dto.PostRowDto("
             + "p.id, p.title, u.name, p.updatedAt, p.category, p.viewCount) "
-            + "FROM Post p JOIN p.user u ORDER BY p.viewCount DESC, p.id DESC")
-    List<PostRowDto> findTopByViewCountDesc(Pageable pageable);
+            + "FROM Post p JOIN p.user u WHERE p.createdAt >= :since "
+            + "ORDER BY p.viewCount DESC, p.id DESC")
+    List<PostRowDto> findTopByViewCountDesc(@Param("since") LocalDateTime since, Pageable pageable);
 
     /**
      * 여러 id를 한 번에 조회한다(N+1 방지). 신고 목록이 페이지 안의 게시글 대상들을 한 번에

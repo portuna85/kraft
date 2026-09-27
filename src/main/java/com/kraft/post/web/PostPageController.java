@@ -50,6 +50,7 @@ public class PostPageController {
                          @RequestParam(required = false) String q,
                          HttpServletRequest request,
                          @RequestParam(required = false) Category category,
+                         @RequestParam(required = false) String scope,
                          Model model) {
         // 검색은 익명·무제한이라 선행 와일드카드 LIKE 전체 스캔을 검색 폼 연타만으로 반복시킬
         // 수 있었다(전체 리뷰 2026-09-26 A-SEC-06). q가 없는 일반 목록 열람은 걸지 않는다.
@@ -57,7 +58,8 @@ public class PostPageController {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.");
         }
         Pageable sanitized = PostSortPolicy.sanitize(pageable);
-        PostsPageResponseDto postsPage = postService.findAllDesc(sanitized, q, category);
+        boolean searchContent = SearchScope.isContent(scope);
+        PostsPageResponseDto postsPage = postService.findAllDesc(sanitized, q, category, searchContent);
         // 화면(검색 폼·페이지 이동 링크)이 되돌려 붙일 수 있는 형태(예: "viewCount,desc").
         // 허용되지 않는 정렬은 sanitize가 이미 비웠으므로 여기서는 항상 안전하다. 정렬을
         // 지정하지 않았으면(기본 최신순) null이라 템플릿이 sort 파라미터 자체를 만들지 않는다.
@@ -73,6 +75,7 @@ public class PostPageController {
                     .queryParamIfPresent("q", Optional.ofNullable(q).filter(s -> !s.isBlank()))
                     .queryParamIfPresent("category", Optional.ofNullable(category))
                     .queryParamIfPresent("sort", Optional.ofNullable(currentSort))
+                    .queryParamIfPresent("scope", Optional.ofNullable(scope).filter(SearchScope::isContent))
                     .build()
                     .toUriString();
         }
@@ -84,6 +87,7 @@ public class PostPageController {
         model.addAttribute("q", q);
         model.addAttribute("category", category);
         model.addAttribute("currentSort", currentSort);
+        model.addAttribute("searchContent", searchContent);
         model.addAttribute("categories", Category.values());
         model.addAttribute("pageTitle", "전체 게시글");
         // 대표 경로(F08)는 검색하지 않은 첫 페이지에만 준다 — 분류만 고른 첫 페이지는 그 분류의

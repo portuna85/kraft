@@ -29,6 +29,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -77,7 +78,7 @@ class PostApiControllerTest {
     @Test
     @DisplayName("GET /api/v1/posts 는 인증 없이도 호출할 수 있다")
     void listPosts_isAccessibleWithoutAuthentication() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), any(), any()))
+        given(postService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
 
         mockMvc.perform(get("/api/v1/posts"))
@@ -87,22 +88,34 @@ class PostApiControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/posts?q=...&category=... 는 검색어·분류를 서비스에 그대로 전달한다")
+    @DisplayName("GET /api/v1/posts?q=...&category=... 는 검색어·분류를 서비스에 그대로 전달하고, scope가 없으면 제목만(false) 검색한다")
     void listPosts_passesSearchKeywordAndCategoryToService() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), eq("공지"), eq(Category.NOTICE)))
+        given(postService.findAllDesc(any(Pageable.class), eq("공지"), eq(Category.NOTICE), eq(false)))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
 
         mockMvc.perform(get("/api/v1/posts").param("q", "공지").param("category", "NOTICE"))
                 .andExpect(status().isOk());
 
-        verify(postService).findAllDesc(any(Pageable.class), eq("공지"), eq(Category.NOTICE));
+        verify(postService).findAllDesc(any(Pageable.class), eq("공지"), eq(Category.NOTICE), eq(false));
+    }
+
+    @Test
+    @DisplayName("A-BE-02 2단계: GET /api/v1/posts?scope=all 은 제목+내용 검색(true)으로 전달한다")
+    void listPosts_withScopeAll_searchesContentToo() throws Exception {
+        given(postService.findAllDesc(any(Pageable.class), eq("공지"), any(), eq(true)))
+                .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
+
+        mockMvc.perform(get("/api/v1/posts").param("q", "공지").param("scope", "all"))
+                .andExpect(status().isOk());
+
+        verify(postService).findAllDesc(any(Pageable.class), eq("공지"), any(), eq(true));
     }
 
     /** A-SEC-06: q 없는 일반 목록 열람은 검색 제한기를 건드리지 않는다. */
     @Test
     @DisplayName("GET /api/v1/posts 는 q가 없으면 검색 속도 제한을 검사하지 않는다")
     void listPosts_withoutKeyword_skipsSearchRateLimit() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), any(), any()))
+        given(postService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
 
         mockMvc.perform(get("/api/v1/posts")).andExpect(status().isOk());
@@ -119,7 +132,7 @@ class PostApiControllerTest {
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.code").value("SEARCH_RATE_LIMITED"));
 
-        verify(postService, never()).findAllDesc(any(), any(), any());
+        verify(postService, never()).findAllDesc(any(), any(), any(), anyBoolean());
     }
 
     @Test
@@ -128,13 +141,13 @@ class PostApiControllerTest {
         mockMvc.perform(get("/api/v1/posts").param("sort", "content,desc"))
                 .andExpect(status().isBadRequest());
 
-        verify(postService, never()).findAllDesc(any(Pageable.class), any(), any());
+        verify(postService, never()).findAllDesc(any(Pageable.class), any(), any(), anyBoolean());
     }
 
     @Test
     @DisplayName("F12: GET /api/v1/posts?sort=viewCount,desc 는 허용된 정렬이라 그대로 처리된다")
     void listPosts_withAllowedSort_isProcessed() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), any(), any()))
+        given(postService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
 
         mockMvc.perform(get("/api/v1/posts").param("sort", "viewCount,desc"))

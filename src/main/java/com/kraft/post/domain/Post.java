@@ -19,6 +19,9 @@ import lombok.NoArgsConstructor;
         // 만든 기존 DB에는 이 인덱스들이 생기지 않았다(개선 보고서 O01).
         @Index(name = "IX_POSTS_CATEGORY_ID", columnList = "category, id"),
         @Index(name = "IX_POSTS_VIEW_COUNT", columnList = "view_count DESC, id DESC"),
+        // V31__posts_created_at_view_count_index.sql. 인기글이 "최근 글 중 조회수 상위"로
+        // 바뀌면서(A-BE-10) created_at 조건 + view_count 정렬을 함께 쓰는 쿼리가 생겼다.
+        @Index(name = "IX_POSTS_CREATED_AT_VIEW_COUNT", columnList = "created_at, view_count DESC, id DESC"),
 })
 public class Post extends BaseEntity {
 

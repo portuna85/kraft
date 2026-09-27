@@ -16,6 +16,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -61,7 +62,7 @@ class PostRepositoryTest {
         em.flush();
         em.clear();
 
-        Page<PostRowDto> page = postRepository.search(null, null,
+        Page<PostRowDto> page = postRepository.search(null, null, false,
                 PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "id")));
 
         assertThat(page.getContent()).extracting(PostRowDto::id)
@@ -77,7 +78,7 @@ class PostRepositoryTest {
         em.flush();
         em.clear();
 
-        Page<PostRowDto> page = postRepository.search(null, null, PageRequest.of(0, 10));
+        Page<PostRowDto> page = postRepository.search(null, null, false, PageRequest.of(0, 10));
 
         // PostRowDto에는 content 필드 자체가 없다 — 컴파일 시점에 이미 응답에 본문이 없음을
         // 보장하며, 이 테스트는 그 계약이 유지되는지 회귀로 지킨다.
@@ -94,8 +95,8 @@ class PostRepositoryTest {
         em.flush();
         em.clear();
 
-        Page<PostRowDto> firstPage = postRepository.search(null, null, PageRequest.of(0, 10));
-        Page<PostRowDto> secondPage = postRepository.search(null, null, PageRequest.of(1, 10));
+        Page<PostRowDto> firstPage = postRepository.search(null, null, false, PageRequest.of(0, 10));
+        Page<PostRowDto> secondPage = postRepository.search(null, null, false, PageRequest.of(1, 10));
 
         assertThat(firstPage.getContent()).hasSize(10);
         assertThat(firstPage.getTotalElements()).isEqualTo(15);
@@ -125,7 +126,7 @@ class PostRepositoryTest {
         em.flush();
         em.clear();
 
-        Page<PostRowDto> page = postRepository.search(null, null,
+        Page<PostRowDto> page = postRepository.search(null, null, false,
                 PageRequest.of(0, 10, com.kraft.post.web.PostSortPolicy.effectiveSort(
                         Sort.by(Sort.Direction.DESC, "viewCount"))));
 
@@ -142,10 +143,24 @@ class PostRepositoryTest {
         em.flush();
         em.clear();
 
-        Page<PostRowDto> page = postRepository.search("kraft", null, PageRequest.of(0, 10));
+        // searchContent=true(제목+내용, A-BE-02 2단계)일 때만 본문 매치도 포함한다.
+        Page<PostRowDto> page = postRepository.search("kraft", null, true, PageRequest.of(0, 10));
 
         assertThat(page.getContent()).extracting(PostRowDto::id)
                 .containsExactlyInAnyOrder(titleMatch.getId(), contentMatch.getId());
+    }
+
+    @Test
+    @DisplayName("search: A-BE-02 2단계 · searchContent=false(기본값)면 본문 매치는 제외하고 제목만 본다")
+    void search_withSearchContentFalse_matchesTitleOnly() {
+        Post titleMatch = postRepository.save(Post.builder().title("Kraft 소개").content("내용").user(user).build());
+        postRepository.save(Post.builder().title("공지").content("KRAFT 업데이트 안내").user(user).build());
+        em.flush();
+        em.clear();
+
+        Page<PostRowDto> page = postRepository.search("kraft", null, false, PageRequest.of(0, 10));
+
+        assertThat(page.getContent()).extracting(PostRowDto::id).containsExactly(titleMatch.getId());
     }
 
     /**
@@ -164,7 +179,7 @@ class PostRepositoryTest {
 
         // PostService.escapeLikeWildcards("100% ")와 같은 결과 — 실제 서비스 계층 없이
         // 리포지토리가 받는 값 그대로를 검증한다.
-        Page<PostRowDto> page = postRepository.search("100\\% ", null, PageRequest.of(0, 10));
+        Page<PostRowDto> page = postRepository.search("100\\% ", null, false, PageRequest.of(0, 10));
 
         assertThat(page.getContent()).extracting(PostRowDto::id)
                 .containsExactly(literalMatch.getId());
@@ -178,7 +193,7 @@ class PostRepositoryTest {
         em.flush();
         em.clear();
 
-        Page<PostRowDto> page = postRepository.search(null, Category.NOTICE, PageRequest.of(0, 10));
+        Page<PostRowDto> page = postRepository.search(null, Category.NOTICE, false, PageRequest.of(0, 10));
 
         assertThat(page.getContent()).extracting(PostRowDto::id).containsExactly(notice.getId());
     }
@@ -197,10 +212,34 @@ class PostRepositoryTest {
         em.flush();
         em.clear();
 
-        List<PostRowDto> top2 = postRepository.findTopByViewCountDesc(PageRequest.of(0, 2));
+        List<PostRowDto> top2 = postRepository.findTopByViewCountDesc(
+                LocalDateTime.now().minusDays(7), PageRequest.of(0, 2));
 
         assertThat(top2).extracting(PostRowDto::id).containsExactly(high.getId(), mid.getId());
         assertThat(low.getViewCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("findTopByViewCountDesc: since 이전에 작성된 글은 조회수가 높아도 제외한다(A-BE-10)")
+    void findTopByViewCountDesc_excludesPostsCreatedBeforeSince() {
+        Post old = postRepository.save(Post.builder().title("옛 인기글").content("c").user(user).build());
+        postRepository.increaseViewCount(old.getId());
+        postRepository.increaseViewCount(old.getId());
+        Post recent = postRepository.save(Post.builder().title("최근 글").content("c").user(user).build());
+        postRepository.increaseViewCount(recent.getId());
+        em.flush();
+        // BaseEntity.createdAt은 @CreatedDate라 직접 세팅할 수 없으니, 네이티브 UPDATE로
+        // "옛 글"의 작성일만 기준 시각보다 앞으로 옮긴다.
+        em.getEntityManager().createNativeQuery("UPDATE posts SET created_at = :ts WHERE id = :id")
+                .setParameter("ts", LocalDateTime.now().minusDays(30))
+                .setParameter("id", old.getId())
+                .executeUpdate();
+        em.clear();
+
+        List<PostRowDto> top = postRepository.findTopByViewCountDesc(
+                LocalDateTime.now().minusDays(7), PageRequest.of(0, 10));
+
+        assertThat(top).extracting(PostRowDto::id).containsExactly(recent.getId());
     }
 
     @Test

@@ -49,6 +49,9 @@ async function loadMore(button, status, list, startPage, seenIds) {
     if (button.dataset.sort) {
         params.set('sort', button.dataset.sort);
     }
+    if (button.dataset.scope) {
+        params.set('scope', button.dataset.scope);
+    }
 
     let result;
     try {

@@ -38,6 +38,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -228,7 +230,12 @@ public class PostService {
     }
 
     public PostsPageResponseDto findAllDesc(Pageable pageable) {
-        return findAllDesc(pageable, null, null);
+        return findAllDesc(pageable, null, null, false);
+    }
+
+    /** 검색 범위를 지정하지 않는 호출은 기본값(제목만, A-BE-02 2단계)으로 좁힌다. */
+    public PostsPageResponseDto findAllDesc(Pageable pageable, String keyword, Category category) {
+        return findAllDesc(pageable, keyword, category, false);
     }
 
     /**
@@ -240,11 +247,15 @@ public class PostService {
      * (SSR/REST 두 컨트롤러)가 이미 허용 목록으로 걸러 둔 Sort를, id 동점 처리를 포함한
      * 실제 정렬로 바꿔 리포지토리에 넘긴다. 두 컨트롤러가 각자 이 변환을 반복하지 않도록
      * 여기 한 곳에만 둔다.
+     * <p>
+     * {@code searchContent}가 false면 제목만 검색한다(A-BE-02 2단계, 기본값) — 본문(TEXT)
+     * 까지 뒤지는 선행 와일드카드 LIKE가 이 검색에서 가장 비용이 큰 부분이라, 사용자가
+     * "제목+내용"을 직접 고를 때만 켠다.
      */
-    public PostsPageResponseDto findAllDesc(Pageable pageable, String keyword, Category category) {
+    public PostsPageResponseDto findAllDesc(Pageable pageable, String keyword, Category category, boolean searchContent) {
         Pageable effective = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
                 PostSortPolicy.effectiveSort(pageable.getSort()));
-        Page<PostRowDto> page = postRepository.search(normalize(keyword), category, effective);
+        Page<PostRowDto> page = postRepository.search(normalize(keyword), category, searchContent, effective);
         Map<Long, Long> commentCounts = commentRepository.countByPostIdIn(
                 page.getContent().stream().map(PostRowDto::id).toList());
         Page<PostsListResponseDto> mapped = page.map(row ->
@@ -253,7 +264,11 @@ public class PostService {
     }
 
     /**
-     * 조회수 기준 상위 {@code limit}개(인기글). 목록 화면 상단의 별도 섹션에 쓰인다.
+     * 최근 {@link #POPULAR_WINDOW}(7일) 이내에 작성된 글 중 조회수 기준 상위 {@code limit}개
+     * (인기글). 목록 화면 상단의 별도 섹션에 쓰인다.
+     * <p>
+     * 누적 조회수만 보면 오래전에 조회수를 많이 쌓은 글이 자리를 영영 독점한다(A-BE-10) —
+     * 최근 글로 후보를 좁혀 새 글도 인기글에 오를 수 있게 한다.
      * <p>
      * 인기글 템플릿은 제목·조회수만 보여주고 댓글 수는 쓰지 않는다(index.html 확인). 예전에는
      * 여기서도 목록과 같은 댓글 수 집계 쿼리를 돌렸다(개선 보고서 "게시판 목록의 불필요한 열과
@@ -263,9 +278,13 @@ public class PostService {
      * application.yml의 spring.cache.caffeine.spec). 새 글의 조회수가 인기글 순위에 반영되는
      * 데 최대 캐시 유효시간만큼 지연이 생길 수 있지만, 실시간성이 중요한 값이 아니다.
      */
+    /** 인기글 후보를 이 기간 이내에 작성된 글로 좁힌다(A-BE-10). */
+    private static final Duration POPULAR_WINDOW = Duration.ofDays(7);
+
     @Cacheable("popularPosts")
     public List<PostsListResponseDto> findPopular(int limit) {
-        List<PostRowDto> rows = postRepository.findTopByViewCountDesc(PageRequest.of(0, limit));
+        LocalDateTime since = LocalDateTime.now().minus(POPULAR_WINDOW);
+        List<PostRowDto> rows = postRepository.findTopByViewCountDesc(since, PageRequest.of(0, limit));
         return rows.stream()
                 .map(row -> new PostsListResponseDto(row, 0L))
                 .toList();

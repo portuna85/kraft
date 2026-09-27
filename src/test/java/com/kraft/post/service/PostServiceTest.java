@@ -40,6 +40,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -332,7 +333,7 @@ class PostServiceTest {
         PostRowDto row = rowOf(owner, 1L);
         Pageable pageable = PageRequest.of(0, 10);
         Page<PostRowDto> page = new PageImpl<>(List.of(row), pageable, 1);
-        given(postRepository.search(null, null, idDescOf(pageable))).willReturn(page);
+        given(postRepository.search(null, null, false, idDescOf(pageable))).willReturn(page);
 
         PostsPageResponseDto result = postService.findAllDesc(pageable);
 
@@ -352,7 +353,7 @@ class PostServiceTest {
         PostRowDto row = rowOf(owner, 1L);
         Pageable pageable = PageRequest.of(0, 10);
         Page<PostRowDto> page = new PageImpl<>(List.of(row), pageable, 1);
-        given(postRepository.search("공지", Category.NOTICE, idDescOf(pageable))).willReturn(page);
+        given(postRepository.search("공지", Category.NOTICE, false, idDescOf(pageable))).willReturn(page);
         given(commentRepository.countByPostIdIn(List.of(1L))).willReturn(Map.of(1L, 3L));
 
         PostsPageResponseDto result = postService.findAllDesc(pageable, "공지", Category.NOTICE);
@@ -365,11 +366,11 @@ class PostServiceTest {
     void findAllDesc_normalizesBlankKeywordToNull() {
         Pageable pageable = PageRequest.of(0, 10);
         Page<PostRowDto> page = new PageImpl<>(List.of(), pageable, 0);
-        given(postRepository.search(null, null, idDescOf(pageable))).willReturn(page);
+        given(postRepository.search(null, null, false, idDescOf(pageable))).willReturn(page);
 
         postService.findAllDesc(pageable, "   ", null);
 
-        verify(postRepository).search(null, null, idDescOf(pageable));
+        verify(postRepository).search(null, null, false, idDescOf(pageable));
     }
 
     @Test
@@ -379,11 +380,11 @@ class PostServiceTest {
         String tooLong = "가".repeat(150);
         String truncated = "가".repeat(100);
         Page<PostRowDto> page = new PageImpl<>(List.of(), pageable, 0);
-        given(postRepository.search(truncated, null, idDescOf(pageable))).willReturn(page);
+        given(postRepository.search(truncated, null, false, idDescOf(pageable))).willReturn(page);
 
         postService.findAllDesc(pageable, tooLong, null);
 
-        verify(postRepository).search(truncated, null, idDescOf(pageable));
+        verify(postRepository).search(truncated, null, false, idDescOf(pageable));
     }
 
     /**
@@ -396,11 +397,11 @@ class PostServiceTest {
     void findAllDesc_escapesLikeWildcardsInKeyword() {
         Pageable pageable = PageRequest.of(0, 10);
         Page<PostRowDto> page = new PageImpl<>(List.of(), pageable, 0);
-        given(postRepository.search("100\\%\\_할인\\\\", null, idDescOf(pageable))).willReturn(page);
+        given(postRepository.search("100\\%\\_할인\\\\", null, false, idDescOf(pageable))).willReturn(page);
 
         postService.findAllDesc(pageable, "100%_할인\\", null);
 
-        verify(postRepository).search("100\\%\\_할인\\\\", null, idDescOf(pageable));
+        verify(postRepository).search("100\\%\\_할인\\\\", null, false, idDescOf(pageable));
     }
 
     /**
@@ -412,11 +413,11 @@ class PostServiceTest {
     void findAllDesc_normalizesTooShortKeywordToNull() {
         Pageable pageable = PageRequest.of(0, 10);
         Page<PostRowDto> page = new PageImpl<>(List.of(), pageable, 0);
-        given(postRepository.search(null, null, idDescOf(pageable))).willReturn(page);
+        given(postRepository.search(null, null, false, idDescOf(pageable))).willReturn(page);
 
         postService.findAllDesc(pageable, "a", null);
 
-        verify(postRepository).search(null, null, idDescOf(pageable));
+        verify(postRepository).search(null, null, false, idDescOf(pageable));
     }
 
     @Test
@@ -424,11 +425,11 @@ class PostServiceTest {
     void findAllDesc_keepsExactlyTwoCharacterKeyword() {
         Pageable pageable = PageRequest.of(0, 10);
         Page<PostRowDto> page = new PageImpl<>(List.of(), pageable, 0);
-        given(postRepository.search("ab", null, idDescOf(pageable))).willReturn(page);
+        given(postRepository.search("ab", null, false, idDescOf(pageable))).willReturn(page);
 
         postService.findAllDesc(pageable, "ab", null);
 
-        verify(postRepository).search("ab", null, idDescOf(pageable));
+        verify(postRepository).search("ab", null, false, idDescOf(pageable));
     }
 
     /**
@@ -443,11 +444,11 @@ class PostServiceTest {
         Pageable expectedEffective = PageRequest.of(0, 10,
                 Sort.by(Sort.Direction.DESC, "viewCount").and(Sort.by(Sort.Direction.DESC, "id")));
         Page<PostRowDto> page = new PageImpl<>(List.of(), expectedEffective, 0);
-        given(postRepository.search(null, null, expectedEffective)).willReturn(page);
+        given(postRepository.search(null, null, false, expectedEffective)).willReturn(page);
 
         postService.findAllDesc(requested);
 
-        verify(postRepository).search(null, null, expectedEffective);
+        verify(postRepository).search(null, null, false, expectedEffective);
     }
 
     @Test
@@ -455,7 +456,7 @@ class PostServiceTest {
     void findPopular_returnsTopPostsWithoutCommentCountAggregation() {
         User owner = userWithEmail("owner@example.com", 1L);
         PostRowDto row = rowOf(owner, 1L);
-        given(postRepository.findTopByViewCountDesc(PageRequest.of(0, 5))).willReturn(List.of(row));
+        given(postRepository.findTopByViewCountDesc(any(), eq(PageRequest.of(0, 5)))).willReturn(List.of(row));
 
         List<PostsListResponseDto> result = postService.findPopular(5);
 

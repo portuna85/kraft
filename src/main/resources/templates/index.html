@@ -9,6 +9,7 @@
 <!--/*@thymesVar id="category" type="com.kraft.post.domain.Category"*/-->
 <!--/*@thymesVar id="q" type="java.lang.String"*/-->
 <!--/*@thymesVar id="currentSort" type="java.lang.String"*/-->
+<!--/*@thymesVar id="searchContent" type="java.lang.Boolean"*/-->
 <head th:replace="~{layout/header :: header}"></head>
 <body>
 
@@ -31,7 +32,15 @@
         <form class="board-search" method="get" action="/">
             <label for="search-q" class="visually-hidden">검색어</label>
             <input type="search" id="search-q" name="q" class="form-control board-search__input"
-                   placeholder="제목·내용 검색" th:value="${q}">
+                   placeholder="검색어" th:value="${q}">
+            <label for="search-scope" class="visually-hidden">검색 범위</label>
+            <!-- 기본값은 제목만이다(전체 리뷰 2026-09-26 A-BE-02 2단계) — 본문(TEXT)까지 뒤지는
+                 선행 와일드카드 LIKE가 이 검색에서 가장 비용이 큰 부분이라, 필요할 때만 켠다. -->
+            <select id="search-scope" name="scope" class="form-select board-search__scope"
+                    th:classappend="${searchContent} ? ' is-active' : ''">
+                <option value="" th:selected="${!searchContent}">제목만</option>
+                <option value="all" th:selected="${searchContent}">제목+내용</option>
+            </select>
             <label for="search-category" class="visually-hidden">분류</label>
             <select id="search-category" name="category" class="form-select board-search__category"
                     th:classappend="${category != null} ? ' is-active' : ''">
@@ -56,7 +65,7 @@
         <div class="board-filter-summary" th:if="${!#strings.isEmpty(q) or category != null or currentSort != null}">
             <span class="board-filter-summary__label">적용된 조건:</span>
             <span class="board-filter-summary__chip" th:if="${!#strings.isEmpty(q)}">
-                검색 "<span th:text="${q}">검색어</span>"
+                검색 "<span th:text="${q}">검색어</span>"<span th:if="${searchContent}">(제목+내용)</span>
             </span>
             <span class="board-filter-summary__chip" th:if="${category != null}" th:text="${category.title}">분류</span>
             <span class="board-filter-summary__chip" th:if="${currentSort == 'viewCount,desc'}">조회순</span>
@@ -119,7 +128,7 @@
              새 API를 만들지 않는다(static/js/app/features/load-more.js). -->
         <div class="board-load-more" th:if="${!#lists.isEmpty(posts) and !postsPage.last}">
             <button type="button" id="btn-load-more" class="btn btn-outline-primary" hidden
-                    th:attr="data-next-page=${postsPage.page + 1}, data-q=${q}, data-category=${category}, data-sort=${currentSort}">
+                    th:attr="data-next-page=${postsPage.page + 1}, data-q=${q}, data-category=${category}, data-sort=${currentSort}, data-scope=${searchContent} ? 'all' : ''">
                 더 보기
             </button>
             <p id="load-more-status" class="board-load-more__status" aria-live="polite"></p>
@@ -131,7 +140,7 @@
         <nav class="pager" th:if="${postsPage.totalPages > 1}" aria-label="게시글 목록 페이지 이동"
              th:attr="data-total-pages=${pageWindow.totalPages}">
             <a class="pager__step" th:if="${pageWindow.hasPrev}"
-               th:href="@{/(page=${pageWindow.prev}, q=${q}, category=${category}, sort=${currentSort})}">이전</a>
+               th:href="@{/(page=${pageWindow.prev}, q=${q}, category=${category}, sort=${currentSort}, scope=${searchContent} ? 'all' : null)}">이전</a>
             <span class="pager__step is-disabled" th:unless="${pageWindow.hasPrev}"
                   aria-hidden="true">이전</span>
 
@@ -142,7 +151,7 @@
             <span class="pager__numbers">
                 <th:block th:each="i : ${pageWindow.pages}">
                     <a class="pager__page" th:if="${i != postsPage.page}"
-                       th:href="@{/(page=${i}, q=${q}, category=${category}, sort=${currentSort})}"
+                       th:href="@{/(page=${i}, q=${q}, category=${category}, sort=${currentSort}, scope=${searchContent} ? 'all' : null)}"
                        th:text="${i + 1}" th:attr="data-page=${i}">1</a>
                     <span class="pager__page is-current" th:if="${i == postsPage.page}"
                           th:text="${i + 1}" aria-current="page" th:attr="data-page=${i}">1</span>
@@ -150,7 +159,7 @@
             </span>
 
             <a class="pager__step" th:if="${pageWindow.hasNext}" data-role="next"
-               th:href="@{/(page=${pageWindow.next}, q=${q}, category=${category}, sort=${currentSort})}">다음</a>
+               th:href="@{/(page=${pageWindow.next}, q=${q}, category=${category}, sort=${currentSort}, scope=${searchContent} ? 'all' : null)}">다음</a>
             <span class="pager__step is-disabled" th:unless="${pageWindow.hasNext}" data-role="next"
                   aria-hidden="true">다음</span>
         </nav>
