@@ -85,7 +85,8 @@ test('탈퇴해도 쓴 글은 목록에 남고 작성자만 익명으로 바뀐�
     await page.locator('#title').fill(title);
     await page.locator('#content').fill('작성자가 탈퇴해도 이 글은 남아야 한다.');
     await page.locator('#btn-save').click();
-    await page.waitForURL('/');
+    // 등록 후 목록이 아니라 방금 쓴 글로 바로 이동한다(전체 리뷰 2026-09-26 A-FE-02).
+    await page.waitForURL(/\/posts\/update\/\d+$/);
 
     await openWithdrawModal(page);
     // 모달의 안내와 실제 동작이 같은지가 이 테스트의 핵심이다.

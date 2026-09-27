@@ -7,6 +7,7 @@ import { showToast } from '@ui/toast.js';
 import { useImageUpload } from '../shared/useImageUpload.js';
 import { useUnsavedGuard } from '../shared/useUnsavedGuard.js';
 import { useDraftAutosave } from '../shared/useDraftAutosave.js';
+import { clearDraft, safeLocalStorage } from '../shared/draftStorage.js';
 import MarkdownBody from '../shared/MarkdownBody.vue';
 import MarkdownToolbar from '../shared/MarkdownToolbar.vue';
 import DraftRestoreBanner from '../shared/DraftRestoreBanner.vue';
@@ -18,6 +19,10 @@ const props = defineProps({
     post: { type: /** @type {import('vue').PropType<import('../shared/types.js').PostViewDto>} */ (Object), required: true },
     categoryOptions: { type: /** @type {import('vue').PropType<import('../shared/types.js').CategoryOption[]>} */ (Array), required: true },
     authenticated: { type: Boolean, required: true },
+    // 자동 임시 저장 키를 계정별로 분리하는 데만 쓴다(전체 리뷰 2026-09-26 A-FE-03). 편집
+    // 폼 자체가 로그인·소유권을 요구하므로 실제로는 항상 값이 있다. null이면(value == null이라
+    // Vue가 타입 검사를 건너뛴다) 아래에서 초안 기능을 끈다.
+    userId: { type: Number, default: null },
 });
 
 // 로그인 후 이 글로 돌아오게 한다(FE-16) — navbar의 로그인 링크와 같은 규칙
@@ -124,7 +129,18 @@ const unsavedGuard = useUnsavedGuard(isDirty);
 
 // 자동 임시 저장(이탈 경고를 대체하지 않고 나란히 쓴다 — useDraftAutosave.js 참고). 사진은
 // 직렬화할 수 없어 제목·분류·내용만 담는다. 글마다 따로 기억하도록 키에 id를 넣는다.
-const autosave = useDraftAutosave(`kraft:draft:post-edit:${props.post.id}`, draft);
+//
+// 회원 id도 함께 넣는다(전체 리뷰 2026-09-26 A-FE-03) — 예전 키(kraft:draft:post-edit:{id})는
+// 사용자 구분이 없어, 공용 PC에서 다른 계정이 같은 글을 편집하다 만 초안을 그대로 보게 될 수
+// 있었다. userId가 없으면(편집 폼 자체가 로그인·소유권을 요구하므로 실제로는 일어나지 않는다)
+// storage를 null로 둬 초안 기능 자체를 건너뛴다.
+const LEGACY_DRAFT_KEY = `kraft:draft:post-edit:${props.post.id}`;
+const draftKey = props.userId != null
+    ? `kraft:draft:${props.userId}:post-edit:${props.post.id}`
+    : LEGACY_DRAFT_KEY;
+const autosave = useDraftAutosave(draftKey, draft, {
+    storage: props.userId != null ? undefined : null,
+});
 
 // 편집 모드일 때만 저장한다 — 조회 모드에서는 draft가 항상 original과 같아 저장할 이유가
 // 없고, 마운트 시점에 곧바로 저장소를 건드리지도 않는다.
@@ -156,6 +172,11 @@ async function startEdit() {
     autosave.checkAvailable((stored) =>
         stored.title === original.title && stored.content === original.content && stored.category === original.category,
     );
+    // 옛(사용자 구분 없는) 키에 남아 있을 수 있는 초안은 지운다 — 다음 사용자에게 보이지
+    // 않게 한다. 지금 쓸 키가 바로 그 옛 키이면(userId 없음) 건드리지 않는다.
+    if (props.userId != null) {
+        clearDraft(safeLocalStorage(), LEGACY_DRAFT_KEY);
+    }
     await nextTick();
     titleInput.value?.focus();
 }
@@ -231,7 +252,10 @@ async function onSubmit() {
         flash.set('POST_UPDATED');
         unsavedGuard.allowNavigation();
         autosave.discard();
-        window.location.href = '/';
+        // 목록으로 튕기지 않고 같은 글(이 화면 자신의 URL)을 새로고침한다(전체 리뷰
+        // 2026-09-26 A-FE-02) — 서버가 다시 그린 화면이 방금 저장한 제목·본문·버전을
+        // 그대로 보여준다.
+        window.location.href = `/posts/update/${props.post.id}`;
     } catch (error) {
         progressText.value = null;
         saving.value = false;

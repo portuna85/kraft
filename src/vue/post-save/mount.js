@@ -17,6 +17,6 @@ mountIsland({
         if (!initial) {
             return null;
         }
-        return { categoryOptions: initial.categoryOptions, author: initial.author };
+        return { categoryOptions: initial.categoryOptions, author: initial.author, userId: initial.userId ?? null };
     },
 });

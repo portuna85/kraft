@@ -1,15 +1,19 @@
-import { test, expect, storageStateFor, uniqueTitle, openPostByTitle } from './fixtures.js';
+import { test, expect, storageStateFor, uniqueTitle } from './fixtures.js';
 
 test.use({ storageState: storageStateFor('user') });
 
 // useDraftAutosave.js의 디바운스(800ms)를 여유 있게 기다린다.
 const AUTOSAVE_DEBOUNCE_WAIT = 1100;
 
-/** localStorage에서 이 접두사로 시작하는 키가 있는지 확인한다. */
-async function hasDraftKey(page, prefix) {
+/**
+ * localStorage에 이 조각을 포함한 키가 있는지 확인한다. 키에는 회원 id가 들어가므로
+ * (kraft:draft:{userId}:post-save, 전체 리뷰 2026-09-26 A-FE-03) 접두사 대신 ':post-save'·
+ * ':post-edit:'처럼 화면 종류를 가리키는 조각으로 찾는다.
+ */
+async function hasDraftKey(page, marker) {
     return page.evaluate(
-        (p) => Object.keys(window.localStorage).some((key) => key.startsWith(p)),
-        prefix,
+        (m) => Object.keys(window.localStorage).some((key) => key.includes(m)),
+        marker,
     );
 }
 
@@ -18,8 +22,8 @@ async function createOwnPost(page, title) {
     await page.locator('#title').fill(title);
     await page.locator('#content').fill('자동 임시 저장 테스트용 본문입니다.');
     await page.locator('#btn-save').click();
-    await page.waitForURL('/');
-    await openPostByTitle(page, title);
+    // 등록 후 목록이 아니라 방금 쓴 글로 바로 이동한다(전체 리뷰 2026-09-26 A-FE-02).
+    await page.waitForURL(/\/posts\/update\/\d+$/);
 }
 
 test.describe('글쓰기 — 자동 임시 저장', () => {
@@ -33,7 +37,7 @@ test.describe('글쓰기 — 자동 임시 저장', () => {
         await page.locator('#content').fill('새로고침해도 되찾을 내용입니다.');
         await page.waitForTimeout(AUTOSAVE_DEBOUNCE_WAIT);
 
-        expect(await hasDraftKey(page, 'kraft:draft:post-save')).toBe(true);
+        expect(await hasDraftKey(page, ':post-save')).toBe(true);
 
         await page.reload();
 
@@ -59,7 +63,7 @@ test.describe('글쓰기 — 자동 임시 저장', () => {
         await page.locator('#btn-draft-discard').click();
         await expect(page.locator('#draft-restore-banner')).toBeHidden();
         await expect(page.locator('#title')).toHaveValue('');
-        expect(await hasDraftKey(page, 'kraft:draft:post-save')).toBe(false);
+        expect(await hasDraftKey(page, ':post-save')).toBe(false);
     });
 
     test('등록에 성공하면 임시 저장이 지워진다', async ({ page }) => {
@@ -68,13 +72,13 @@ test.describe('글쓰기 — 자동 임시 저장', () => {
         await page.locator('#title').fill(title);
         await page.locator('#content').fill('등록되면 임시 저장이 남지 않아야 합니다.');
         await page.waitForTimeout(AUTOSAVE_DEBOUNCE_WAIT);
-        expect(await hasDraftKey(page, 'kraft:draft:post-save')).toBe(true);
+        expect(await hasDraftKey(page, ':post-save')).toBe(true);
 
         await page.locator('#btn-save').click();
-        await page.waitForURL('/');
+        await page.waitForURL(/\/posts\/update\/\d+$/);
 
         await page.goto('/posts/save');
-        expect(await hasDraftKey(page, 'kraft:draft:post-save')).toBe(false);
+        expect(await hasDraftKey(page, ':post-save')).toBe(false);
         await expect(page.locator('#draft-restore-banner')).toBeHidden();
     });
 
@@ -113,12 +117,15 @@ test.describe('편집 — 자동 임시 저장', () => {
         await page.locator('#btn-edit').click();
         await page.locator('#content').fill('저장하면 임시 저장이 남지 않아야 합니다.');
         await page.waitForTimeout(AUTOSAVE_DEBOUNCE_WAIT);
-        expect(await hasDraftKey(page, 'kraft:draft:post-edit:')).toBe(true);
+        expect(await hasDraftKey(page, ':post-edit:')).toBe(true);
 
         await page.locator('#btn-update').click();
-        await page.waitForURL('/');
+        // 저장 후 이동은 편집 중이던 바로 그 URL로 돌아간다(전체 리뷰 2026-09-26 A-FE-02)이라
+        // waitForURL은 URL이 안 바뀌므로 곧바로(저장이 끝나기 전에) 통과해 버린다 — 실제로
+        // 새로고침이 끝났다는 신호(플래시 메시지, 자동 재시도되는 assertion)로 기다린다.
+        await expect(page.locator('#flash')).toContainText('글이 수정되었습니다.');
 
-        expect(await hasDraftKey(page, 'kraft:draft:post-edit:')).toBe(false);
+        expect(await hasDraftKey(page, ':post-edit:')).toBe(false);
     });
 
     test('취소하면 임시 저장도 함께 지워진다', async ({ page }) => {
@@ -128,12 +135,12 @@ test.describe('편집 — 자동 임시 저장', () => {
         await page.locator('#btn-edit').click();
         await page.locator('#content').fill('취소할 내용입니다.');
         await page.waitForTimeout(AUTOSAVE_DEBOUNCE_WAIT);
-        expect(await hasDraftKey(page, 'kraft:draft:post-edit:')).toBe(true);
+        expect(await hasDraftKey(page, ':post-edit:')).toBe(true);
 
         page.once('dialog', (dialog) => dialog.accept());
         await page.locator('#btn-cancel-edit').click();
 
-        expect(await hasDraftKey(page, 'kraft:draft:post-edit:')).toBe(false);
+        expect(await hasDraftKey(page, ':post-edit:')).toBe(false);
     });
 
     test('원본과 같은 내용의 초안은 배너를 띄우지 않는다', async ({ page }) => {
@@ -141,19 +148,25 @@ test.describe('편집 — 자동 임시 저장', () => {
         const content = '자동 임시 저장 테스트용 본문입니다.'; // createOwnPost가 쓰는 본문과 맞춘다.
         await createOwnPost(page, title);
 
-        const postId = page.url().match(/\/posts\/update\/(\d+)$/)?.[1];
-        expect(postId, '게시글 id를 URL에서 얻어야 한다').toBeTruthy();
+        // 키에는 회원 id가 들어간다(전체 리뷰 2026-09-26 A-FE-03) — 직접 조립하지 않고, 실제
+        // 편집 흐름을 한 번 거쳐 이 화면이 실제로 쓰는 키를 알아낸다.
+        await page.locator('#btn-edit').click();
+        await page.locator('#content').fill('키를 알아내기 위한 임시 변경입니다.');
+        await page.waitForTimeout(AUTOSAVE_DEBOUNCE_WAIT);
+        const draftKey = await page.evaluate(() =>
+            Object.keys(window.localStorage).find((key) => key.includes(':post-edit:')));
+        expect(draftKey, '편집 초안 키를 찾아야 한다').toBeTruthy();
 
-        // 서버 원본과 완전히 같은 초안을 직접 심어 둔다 — checkAvailable의 "무의미한 초안"
-        // 판단(원본과 같으면 배너를 띄우지 않는다)을 실제로 겨냥한다.
+        // 서버 원본과 완전히 같은 초안을 그 키에 덮어 심는다 — checkAvailable의 "무의미한
+        // 초안" 판단(원본과 같으면 배너를 띄우지 않는다)을 실제로 겨냥한다.
         await page.evaluate(
-            ({ id, t, c }) => {
+            ({ key, t, c }) => {
                 window.localStorage.setItem(
-                    `kraft:draft:post-edit:${id}`,
+                    key,
                     JSON.stringify({ savedAt: Date.now(), title: t, content: c, category: 'FREE' }),
                 );
             },
-            { id: postId, t: title, c: content },
+            { key: draftKey, t: title, c: content },
         );
 
         await page.reload();

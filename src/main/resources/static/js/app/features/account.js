@@ -1,6 +1,7 @@
 import { byId, on, rawValueOf, setBusy, setText } from '../core/dom.js';
 import { api, messageOf } from '../core/http.js';
 import { modal } from '../core/bootstrap-ui.js';
+import { clearAllDrafts } from '../core/drafts.js';
 import { showToast } from '../ui/toast.js';
 import * as flash from '../ui/flash.js';
 
@@ -45,7 +46,13 @@ function initLogout() {
 
     // requestSubmit()이 아니라 submit()을 쓴다 — 전자는 Safari 16+이고 이 프로젝트의 지원
     // 범위는 iOS 15부터다. 이 폼에는 submit 핸들러도 검증할 입력도 없어 차이가 없다.
-    on(button, 'click', () => form.submit());
+    on(button, 'click', () => {
+        // 이 계정의 초안을 지운다(A-FE-03) — 다음에 이 브라우저로 로그인하는 사람이 볼 수
+        // 없게 한다. 서버 요청(폼 제출) 전에 해도 안전하다 — 실패해도 로그아웃은 어차피
+        // 진행되고, 초안은 지워져도 큰 손실이 아니다.
+        clearAllDrafts();
+        form.submit();
+    });
 }
 
 /**
@@ -113,6 +120,8 @@ async function changePassword(openedAt) {
             currentPassword: rawValueOf(byId('currentPassword')),
             newPassword: rawValueOf(byId('changeNewPassword')),
         });
+        // 서버가 이미 이 계정의 모든 세션을 폐기했다 — 초안도 함께 지운다(A-FE-03).
+        clearAllDrafts();
         flash.set('PASSWORD_CHANGED');
         window.location.href = '/login';
     } catch (error) {
@@ -178,6 +187,8 @@ async function withdraw(openedAt) {
         await api.del('/api/v1/users/me', {
             currentPassword: rawValueOf(byId('withdrawPassword')),
         });
+        // 탈퇴 계정의 초안은 되찾을 계정 자체가 없다 — 지운다(A-FE-03).
+        clearAllDrafts();
         flash.set('ACCOUNT_WITHDRAWN');
         window.location.href = '/login';
     } catch (error) {

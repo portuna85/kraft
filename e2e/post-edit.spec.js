@@ -8,8 +8,8 @@ async function createOwnPost(page, title) {
     await page.locator('#title').fill(title);
     await page.locator('#content').fill('편집 테스트용 본문입니다.');
     await page.locator('#btn-save').click();
-    await page.waitForURL('/');
-    await openPostByTitle(page, title);
+    // 등록 후 목록이 아니라 방금 쓴 글로 바로 이동한다(전체 리뷰 2026-09-26 A-FE-02).
+    await page.waitForURL(/\/posts\/update\/\d+$/);
 }
 
 test('F12 회귀 방지: 분류만 바꾸고 취소하면 확인을 묻고 분류가 되돌아온다', async ({ page }) => {
@@ -46,9 +46,9 @@ test('제목·본문·분류를 바꿔 저장하면 반영된다', async ({ page
     await page.locator('#edit-category').selectOption('QNA');
     await page.locator('#btn-update').click();
 
-    await page.waitForURL('/');
+    // 목록으로 튕기지 않고 같은 글을 새로고침해서 보여준다(전체 리뷰 2026-09-26 A-FE-02).
+    await page.waitForURL(/\/posts\/update\/\d+$/);
     await expect(page.locator('#flash')).toContainText('글이 수정되었습니다.');
-    await openPostByTitle(page, newTitle);
     await expect(page.locator('#post-title-text')).toHaveText(newTitle);
 });
 
@@ -99,7 +99,7 @@ test('F04: 저장 중에는 취소·제목·본문·분류가 모두 비활성 �
     await expect(page.locator('#btn-update')).toBeDisabled();
 
     releaseResponse();
-    await page.waitForURL('/');
+    await page.waitForURL(/\/posts\/update\/\d+$/);
     await expect(page.locator('#flash')).toContainText('글이 수정되었습니다.');
 });
 
@@ -125,7 +125,7 @@ test('저장이 실패한 뒤에는 다시 시도할 수 있다', async ({ page 
     await expect(page.locator('#title')).toBeEnabled();
 
     await page.locator('#btn-update').click();
-    await page.waitForURL('/');
+    await page.waitForURL(/\/posts\/update\/\d+$/);
     await expect(page.locator('#flash')).toContainText('글이 수정되었습니다.');
 });
 

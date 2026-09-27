@@ -103,7 +103,8 @@ public class PostPageController {
                 .map(c -> new CategoryOptionDto(c.name(), c.getTitle()))
                 .toList();
         model.addAttribute("postSaveInitialJson", JsonHtmlEmbedding.escapeForHtmlScript(
-                objectMapper.writeValueAsString(new PostSaveBootstrapDto(categoryOptions, displayNameOf(authentication)))));
+                objectMapper.writeValueAsString(
+                        new PostSaveBootstrapDto(categoryOptions, displayNameOf(authentication), userIdOf(authentication)))));
         model.addAttribute("pageTitle", "글쓰기");
         return "post/post-save";
     }
@@ -130,6 +131,19 @@ public class PostPageController {
             return details.getDisplayName();
         }
         return authentication.getName();
+    }
+
+    /**
+     * 자동 임시 저장 키를 계정별로 분리하는 데 쓸 회원 id(전체 리뷰 2026-09-26 A-FE-03).
+     * 로그인하지 않았거나 principal이 {@link KraftUserDetails}가 아니면(옛 세션 등) null —
+     * 그 경우 화면 쪽(useDraftAutosave)이 사용자 구분 없는 키로 물러서지 않고 그냥 자동
+     * 임시 저장을 건너뛴다.
+     */
+    private static Long userIdOf(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof KraftUserDetails details) {
+            return details.getUserId();
+        }
+        return null;
     }
 
     /**
@@ -167,7 +181,8 @@ public class PostPageController {
                 .toList();
         boolean authenticated = OwnershipPolicy.isAuthenticated(authentication);
         model.addAttribute("postEditInitialJson", JsonHtmlEmbedding.escapeForHtmlScript(
-                objectMapper.writeValueAsString(new PostEditBootstrapDto(post, categoryOptions, authenticated))));
+                objectMapper.writeValueAsString(
+                        new PostEditBootstrapDto(post, categoryOptions, authenticated, userIdOf(authentication)))));
 
         // 댓글 아일랜드가 "입력창을 보여줄지"를 정하는 값. 글쓰기 화면과 같은 규칙을 쓴다.
         // 한 번만 조회해 두 속성에 함께 쓴다 — 예전에는 같은 조회를 두 번 했다.

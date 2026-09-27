@@ -10,7 +10,8 @@ async function writePost(page, title) {
     await page.locator('#title').fill(title);
     await page.locator('#content').fill('신고 시나리오용 본문입니다.');
     await page.locator('#btn-save').click();
-    await page.waitForURL('/');
+    // 등록 후 목록이 아니라 방금 쓴 글로 바로 이동한다(전체 리뷰 2026-09-26 A-FE-02).
+    await page.waitForURL(/\/posts\/update\/\d+$/);
 }
 
 async function reportOpenPost(page, reason, detail) {

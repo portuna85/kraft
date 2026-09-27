@@ -1,4 +1,4 @@
-import { test, expect, storageStateFor, uniqueTitle, openPostByTitle } from './fixtures.js';
+import { test, expect, storageStateFor, uniqueTitle } from './fixtures.js';
 
 test.use({ storageState: storageStateFor('user') });
 
@@ -10,9 +10,9 @@ test('글을 등록하면 목록에 보이고 완료 메시지가 뜬다', async
     await page.locator('#content').fill('E2E가 작성한 본문입니다.');
     await page.locator('#btn-save').click();
 
-    await page.waitForURL('/');
+    // 목록이 아니라 방금 등록한 글로 바로 이동한다(전체 리뷰 2026-09-26 A-FE-02).
+    await page.waitForURL(/\/posts\/update\/\d+$/);
     await expect(page.locator('#flash')).toContainText('글이 등록되었습니다.');
-    await openPostByTitle(page, title);
     await expect(page.locator('#post-title-text')).toHaveText(title);
 });
 
@@ -84,10 +84,9 @@ test('이미지 업로드를 기다리는 동안 입력이 잠기고, 그 사이
     await expect(page.locator('#content')).toBeDisabled();
 
     releaseUpload();
-    await page.waitForURL('/');
+    await page.waitForURL(/\/posts\/update\/\d+$/);
 
     expect(requestBody.title, '업로드 중 입력이 잠겨 있으므로 제출 당시 제목과 일치해야 한다')
         .toBe(submittedTitle);
-    await openPostByTitle(page, submittedTitle);
     await expect(page.locator('#post-title-text')).toHaveText(submittedTitle);
 });

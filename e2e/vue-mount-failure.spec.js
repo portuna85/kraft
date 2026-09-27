@@ -1,4 +1,4 @@
-import { test, expect, storageStateFor, uniqueTitle, openPostByTitle } from './fixtures.js';
+import { test, expect, storageStateFor, uniqueTitle } from './fixtures.js';
 
 test.use({ storageState: storageStateFor('user') });
 
@@ -12,8 +12,8 @@ test('게시글 상세의 초기 JSON이 깨지면 빈 화면 대신 안내가 �
     await page.locator('#title').fill(title);
     await page.locator('#content').fill('마운트 실패 재현용 본문');
     await page.locator('#btn-save').click();
-    await page.waitForURL('/');
-    await openPostByTitle(page, title);
+    // 등록 후 목록이 아니라 방금 쓴 글로 바로 이동한다(전체 리뷰 2026-09-26 A-FE-02).
+    await page.waitForURL(/\/posts\/update\/\d+$/);
     const postUrl = page.url();
 
     await page.route(/\/posts\/update\/\d+$/, async (route) => {
@@ -43,8 +43,8 @@ test('댓글의 초기 JSON이 깨지면 댓글 영역에만 안내가 뜨고 �
     await page.locator('#title').fill(title);
     await page.locator('#content').fill('댓글 마운트 실패 재현용 본문');
     await page.locator('#btn-save').click();
-    await page.waitForURL('/');
-    await openPostByTitle(page, title);
+    // 등록 후 목록이 아니라 방금 쓴 글로 바로 이동한다(전체 리뷰 2026-09-26 A-FE-02).
+    await page.waitForURL(/\/posts\/update\/\d+$/);
     const postUrl = page.url();
 
     await page.route(/\/posts\/update\/\d+$/, async (route) => {

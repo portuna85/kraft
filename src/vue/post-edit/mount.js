@@ -23,6 +23,7 @@ mountIsland({
             post: initial.post,
             categoryOptions: initial.categoryOptions,
             authenticated: initial.authenticated,
+            userId: initial.userId ?? null,
         };
     },
 });

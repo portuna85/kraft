@@ -33,7 +33,8 @@ test('신고를 정지와 함께 처리하면 그 사람은 글을 쓸 수 없�
     await page.locator('#title').fill(title);
     await page.locator('#content').fill('신고와 정지 시나리오용 본문입니다.');
     await page.locator('#btn-save').click();
-    await page.waitForURL('/');
+    // 등록 후 목록이 아니라 방금 쓴 글로 바로 이동한다(전체 리뷰 2026-09-26 A-FE-02).
+    await page.waitForURL(/\/posts\/update\/\d+$/);
 
     // 다른 사람이 신고한다.
     const reporterPage = await (await browser.newContext({ storageState: storageStateFor('other') })).newPage();

@@ -1,4 +1,4 @@
-import { test, expect, storageStateFor, uniqueTitle, openPostByTitle } from './fixtures.js';
+import { test, expect, storageStateFor, uniqueTitle } from './fixtures.js';
 
 /**
  * style.css가 만드는 화면들의 기준선.
@@ -102,8 +102,7 @@ test.describe('게시글 상세', () => {
         await page.locator('#title').fill(title);
         await page.locator('#content').fill('시각 회귀 기준선을 위한 본문입니다.');
         await page.locator('#btn-save').click();
-        await page.waitForURL('/');
-        await openPostByTitle(page, title);
+        await page.waitForURL(/\/posts\/update\/\d+$/);
 
         await expect(page.locator('#post-view')).toHaveScreenshot('post-view.png', {
             ...PIXEL_TOLERANCE,
@@ -119,8 +118,7 @@ test.describe('게시글 상세', () => {
         await page.locator('#title').fill(title);
         await page.locator('#content').fill('편집 폼 기준선입니다.');
         await page.locator('#btn-save').click();
-        await page.waitForURL('/');
-        await openPostByTitle(page, title);
+        await page.waitForURL(/\/posts\/update\/\d+$/);
         await page.locator('#btn-edit').click();
 
         await expect(page.locator('#post-edit')).toHaveScreenshot('post-edit-form.png', {
@@ -136,8 +134,7 @@ test.describe('게시글 상세', () => {
         await page.locator('#title').fill(title);
         await page.locator('#content').fill('댓글 기준선입니다.');
         await page.locator('#btn-save').click();
-        await page.waitForURL('/');
-        await openPostByTitle(page, title);
+        await page.waitForURL(/\/posts\/update\/\d+$/);
 
         await page.locator('#comment-content').fill('기준선용 댓글입니다.');
         await page.locator('#btn-comment-save').click();

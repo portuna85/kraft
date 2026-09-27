@@ -6,6 +6,7 @@ import * as flash from '@ui/flash.js';
 import { useImageUpload } from '../shared/useImageUpload.js';
 import { useUnsavedGuard } from '../shared/useUnsavedGuard.js';
 import { useDraftAutosave } from '../shared/useDraftAutosave.js';
+import { clearDraft, safeLocalStorage } from '../shared/draftStorage.js';
 import MarkdownToolbar from '../shared/MarkdownToolbar.vue';
 import DraftRestoreBanner from '../shared/DraftRestoreBanner.vue';
 
@@ -21,6 +22,10 @@ import DraftRestoreBanner from '../shared/DraftRestoreBanner.vue';
 const props = defineProps({
     categoryOptions: { type: /** @type {import('vue').PropType<import('../shared/types.js').CategoryOption[]>} */ (Array), required: true },
     author: { type: String, required: true },
+    // 자동 임시 저장 키를 계정별로 분리하는 데만 쓴다(전체 리뷰 2026-09-26 A-FE-03). 이
+    // 화면은 로그인이 필수라 실제로는 항상 값이 있다. null이면(value == null이라 Vue가 타입
+    // 검사를 건너뛴다) 아래에서 사용자 구분 없는 키로 물러서지 않고 그냥 초안 기능을 끈다.
+    userId: { type: Number, default: null },
 });
 
 const draft = reactive({
@@ -44,12 +49,26 @@ const unsavedGuard = useUnsavedGuard(isDirty);
 
 // 자동 임시 저장(이탈 경고를 대체하지 않고 나란히 쓴다 — useDraftAutosave.js 참고). 사진은
 // 직렬화할 수 없어 제목·분류·내용만 담는다.
+//
+// 키에 회원 id를 넣는다(전체 리뷰 2026-09-26 A-FE-03) — 예전 키(kraft:draft:post-save)는
+// 사용자 구분이 없어, 공용 PC에서 A가 쓰다 만 초안이 그 브라우저로 로그인한 B의 글쓰기
+// 화면에 그대로 떴다. userId가 없으면(이 화면은 로그인이 필수라 실제로는 일어나지 않는다)
+// storage를 null로 둬 초안 기능 자체를 건너뛴다.
 const titleInput = ref(/** @type {HTMLInputElement | null} */ (null));
-const autosave = useDraftAutosave('kraft:draft:post-save', draft);
+const LEGACY_DRAFT_KEY = 'kraft:draft:post-save';
+const draftKey = props.userId != null ? `kraft:draft:${props.userId}:post-save` : LEGACY_DRAFT_KEY;
+const autosave = useDraftAutosave(draftKey, draft, {
+    storage: props.userId != null ? undefined : null,
+});
 
 onMounted(() => {
     // 빈 초안(제목·내용 둘 다 없음)은 되찾을 게 없으니 배너를 띄우지 않는다.
     autosave.checkAvailable((stored) => !stored.title && !stored.content);
+    // 옛(사용자 구분 없는) 키에 남아 있을 수 있는 초안은 지운다 — 다음 사용자에게 보이지
+    // 않게 한다. 지금 쓸 키가 바로 그 옛 키이면(userId 없음) 건드리지 않는다.
+    if (props.userId != null) {
+        clearDraft(safeLocalStorage(), LEGACY_DRAFT_KEY);
+    }
 });
 
 watch(draft, () => autosave.schedule(), { deep: true });
@@ -114,7 +133,7 @@ async function onSubmit() {
 
     progressText.value = '게시글 등록 중…';
     try {
-        await api.post(API.POSTS, {
+        const newPostId = await api.post(API.POSTS, {
             title: snapshot.title,
             content: snapshot.content,
             picture: pictureUrl,
@@ -124,7 +143,9 @@ async function onSubmit() {
         flash.set('POST_SAVED');
         unsavedGuard.allowNavigation();
         autosave.discard();
-        window.location.href = '/';
+        // 목록 첫 페이지가 아니라 방금 쓴 글로 이동한다(전체 리뷰 2026-09-26 A-FE-02) —
+        // 등록 API가 새 글 id를 그대로 돌려준다.
+        window.location.href = `/posts/update/${newPostId}`;
     } catch (error) {
         progressText.value = null;
         saving.value = false;

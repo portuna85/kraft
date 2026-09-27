@@ -1,4 +1,4 @@
-import { test, expect, storageStateFor, uniqueTitle, openPostByTitle } from './fixtures.js';
+import { test, expect, storageStateFor, uniqueTitle } from './fixtures.js';
 
 test.use({ storageState: storageStateFor('user') });
 
@@ -18,8 +18,7 @@ test('제목·본문·댓글에 </script>가 있어도 스크립트가 실행되
     await page.locator('#title').fill(title);
     await page.locator('#content').fill(payload);
     await page.locator('#btn-save').click();
-    await page.waitForURL('/');
-    await openPostByTitle(page, title);
+    await page.waitForURL(/\/posts\/update\/\d+$/);
 
     await expect(page.locator('#post-title-text')).toHaveText(title);
     await expect(page.locator('#post-content-text')).toHaveText(payload);
@@ -53,8 +52,7 @@ test('마크다운 링크 문법에 javascript: 스킴을 넣어도 평문으로
     await page.locator('#title').fill(title);
     await page.locator('#content').fill(payload);
     await page.locator('#btn-save').click();
-    await page.waitForURL('/');
-    await openPostByTitle(page, title);
+    await page.waitForURL(/\/posts\/update\/\d+$/);
 
     await expect(page.locator('#post-content-text')).toHaveText(payload);
     // 링크로 해석됐다면 <a href="javascript:...">가 실제 요소로 생겼을 것이다.

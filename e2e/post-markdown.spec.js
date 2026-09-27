@@ -1,4 +1,4 @@
-import { test, expect, storageStateFor, uniqueTitle, openPostByTitle } from './fixtures.js';
+import { test, expect, storageStateFor, uniqueTitle } from './fixtures.js';
 
 test.use({ storageState: storageStateFor('user') });
 
@@ -26,8 +26,7 @@ test('굵게 마크다운 문법으로 저장하면 상세 화면에 <strong>으
     await page.locator('#title').fill(title);
     await page.locator('#content').fill('**굵은 문장**입니다');
     await page.locator('#btn-save').click();
-    await page.waitForURL('/');
-    await openPostByTitle(page, title);
+    await page.waitForURL(/\/posts\/update\/\d+$/);
 
     const strong = page.locator('#post-content-text strong');
     await expect(strong).toHaveText('굵은 문장');
@@ -41,8 +40,7 @@ test('목록 문법으로 저장하면 상세 화면에 <ul><li>로 보인다', 
     await page.locator('#title').fill(title);
     await page.locator('#content').fill('- 첫째\n- 둘째');
     await page.locator('#btn-save').click();
-    await page.waitForURL('/');
-    await openPostByTitle(page, title);
+    await page.waitForURL(/\/posts\/update\/\d+$/);
 
     const items = page.locator('#post-content-text ul li');
     await expect(items).toHaveCount(2);
@@ -100,14 +98,12 @@ test('수정 화면에서도 같은 툴바로 서식을 적용할 수 있다', a
     await page.locator('#title').fill(title);
     await page.locator('#content').fill('평범한 내용');
     await page.locator('#btn-save').click();
-    await page.waitForURL('/');
-    await openPostByTitle(page, title);
+    await page.waitForURL(/\/posts\/update\/\d+$/);
 
     await page.locator('#btn-edit').click();
     await page.locator('#content').fill('*기울인* 내용으로 수정');
     await page.locator('#btn-update').click();
-    await page.waitForURL('/');
-    await openPostByTitle(page, title);
+    await page.waitForURL(/\/posts\/update\/\d+$/);
 
     const em = page.locator('#post-content-text em');
     await expect(em).toHaveText('기울인');
