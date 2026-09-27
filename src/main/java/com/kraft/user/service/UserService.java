@@ -16,6 +16,7 @@ import com.kraft.user.domain.UserRepository;
 import com.kraft.user.mail.OutboxMailKind;
 import com.kraft.user.mail.OutboxMailRepository;
 import com.kraft.user.mail.OutboxMailStore;
+import com.kraft.user.mail.OutboxMailWorker;
 import com.kraft.user.session.SessionRevocationStore;
 import com.kraft.user.session.SessionRevocationWorker;
 import lombok.RequiredArgsConstructor;
@@ -53,6 +54,7 @@ public class UserService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final OutboxMailRepository outboxMailRepository;
     private final OutboxMailStore outboxMailStore;
+    private final OutboxMailWorker outboxMailWorker;
 
     /**
      * @return 새로 계정을 만들었으면 {@code true}. 이미 가입된 이메일이면 {@code false}를
@@ -81,6 +83,9 @@ public class UserService {
         Optional<User> existing = userRepository.findByEmailHash(EmailHasher.sha512Hex(email));
         if (existing.isPresent()) {
             outboxMailStore.enqueue(existing.get(), null, OutboxMailKind.ACCOUNT_EXISTS);
+            // 가입·재설정과 같은 관례: 예약 주기(최대 수십 초)까지 기다리지 않고 커밋 직후
+            // 바로 한 번 드레인한다 — 그러지 않으면 이 안내 메일이 다음 주기 전까지 쌓여 있는다.
+            AfterCommit.run(outboxMailWorker::drainAsync);
             return false;
         }
 

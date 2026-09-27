@@ -10,6 +10,7 @@ import com.kraft.user.domain.UserRepository;
 import com.kraft.user.mail.OutboxMailKind;
 import com.kraft.user.mail.OutboxMailRepository;
 import com.kraft.user.mail.OutboxMailStore;
+import com.kraft.user.mail.OutboxMailWorker;
 import com.kraft.user.session.SessionRevocationStore;
 import com.kraft.user.session.SessionRevocationWorker;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,12 +63,16 @@ class UserServiceTest {
     @Mock
     private OutboxMailStore outboxMailStore;
 
+    @Mock
+    private OutboxMailWorker outboxMailWorker;
+
     private UserService userService;
 
     @BeforeEach
     void setUp() {
         userService = new UserService(userRepository, passwordEncoder, sessionRevocationStore, sessionRevocationWorker,
-                emailVerificationTokenRepository, passwordResetTokenRepository, outboxMailRepository, outboxMailStore);
+                emailVerificationTokenRepository, passwordResetTokenRepository, outboxMailRepository, outboxMailStore,
+                outboxMailWorker);
     }
 
     @Test
