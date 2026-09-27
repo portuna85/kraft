@@ -28,19 +28,25 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      * 반영되지 않는다. 호출자({@code PostService.findAllDesc})가
      * {@code PostSortPolicy.effectiveSort}로 만든 Sort를 담은 pageable을 넘겨야
      * 정렬이 보장된다 — 정렬이 없는 pageable을 그대로 넘기면 순서가 정의되지 않는다.
+     * <p>
+     * {@code keyword}는 호출 전에 {@code PostService.normalize}가 {@code %}·{@code _}를
+     * 이스케이프해 넘긴다(개선 보고서 A-BE-02 1단계) — 그러지 않으면 사용자가 입력한 그
+     * 문자가 그대로 와일드카드로 해석되어({@code q=%}는 전체 목록과 같고 {@code q=_}는
+     * 모든 글과 일치) 검색이 사실상 무력화된다. {@code ESCAPE '\'}가 그 이스케이프를
+     * 실제로 해석하게 한다.
      */
     @Query(value = "SELECT new com.kraft.post.dto.PostRowDto("
             + "p.id, p.title, u.name, p.updatedAt, p.category, p.viewCount) "
             + "FROM Post p JOIN p.user u "
             + "WHERE (:category IS NULL OR p.category = :category) "
             + "AND (:keyword IS NULL "
-            + "     OR LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%')) "
-            + "     OR LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')))",
+            + "     OR LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\' "
+            + "     OR LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\')",
             countQuery = "SELECT COUNT(p) FROM Post p "
                     + "WHERE (:category IS NULL OR p.category = :category) "
                     + "AND (:keyword IS NULL "
-                    + "     OR LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%')) "
-                    + "     OR LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+                    + "     OR LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\' "
+                    + "     OR LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\')")
     Page<PostRowDto> search(@Param("keyword") String keyword, @Param("category") Category category, Pageable pageable);
 
     @Query("SELECT new com.kraft.post.dto.PostRowDto("

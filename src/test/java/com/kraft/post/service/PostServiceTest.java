@@ -387,6 +387,51 @@ class PostServiceTest {
     }
 
     /**
+     * A-BE-02 1단계: 이스케이프하지 않으면 사용자가 입력한 {@code %}·{@code _}가 그대로
+     * LIKE 와일드카드로 해석된다 — {@code q=%}는 전체 목록과 같아지고 {@code q=_}는 모든
+     * 글과 일치한다. PostRepository.search의 {@code ESCAPE '\'}와 짝을 이룬다.
+     */
+    @Test
+    @DisplayName("findAllDesc: 검색어의 %·_·\\는 리포지토리에 전달하기 전에 이스케이프한다")
+    void findAllDesc_escapesLikeWildcardsInKeyword() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<PostRowDto> page = new PageImpl<>(List.of(), pageable, 0);
+        given(postRepository.search("100\\%\\_할인\\\\", null, idDescOf(pageable))).willReturn(page);
+
+        postService.findAllDesc(pageable, "100%_할인\\", null);
+
+        verify(postRepository).search("100\\%\\_할인\\\\", null, idDescOf(pageable));
+    }
+
+    /**
+     * A-BE-02 1단계: 1글자 검색어는 선행 와일드카드 LIKE에서 사실상 전체 스캔과 같은 대량의
+     * 행을 매치시킨다 — 검색어가 없는 것으로 보고 전체 목록을 보여준다.
+     */
+    @Test
+    @DisplayName("findAllDesc: 2자 미만 검색어는 null로 정규화해 전체 목록을 보여준다")
+    void findAllDesc_normalizesTooShortKeywordToNull() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<PostRowDto> page = new PageImpl<>(List.of(), pageable, 0);
+        given(postRepository.search(null, null, idDescOf(pageable))).willReturn(page);
+
+        postService.findAllDesc(pageable, "a", null);
+
+        verify(postRepository).search(null, null, idDescOf(pageable));
+    }
+
+    @Test
+    @DisplayName("findAllDesc: 정확히 2자인 검색어는 그대로 전달한다(경계값)")
+    void findAllDesc_keepsExactlyTwoCharacterKeyword() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<PostRowDto> page = new PageImpl<>(List.of(), pageable, 0);
+        given(postRepository.search("ab", null, idDescOf(pageable))).willReturn(page);
+
+        postService.findAllDesc(pageable, "ab", null);
+
+        verify(postRepository).search("ab", null, idDescOf(pageable));
+    }
+
+    /**
      * B10: viewCount·updatedAt 정렬을 요청하면 그 컬럼이 주 정렬로 리포지토리에 전달되고,
      * id 내림차순이 동점 처리로 끝에 붙어야 한다 — 예전에는 리포지토리 JPQL의 고정
      * ORDER BY p.id DESC가 항상 먼저라 이 정렬이 반환 순서에 전혀 반영되지 않았다.

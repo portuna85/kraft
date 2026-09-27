@@ -9,6 +9,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 /**
  * 요청마다 짧은 상관관계 id를 만들어 MDC에 넣는다(BE-28). 지금까지는 같은 요청이 남긴 여러
@@ -23,17 +24,25 @@ import java.util.UUID;
  * <p>
  * {@link RequestMetricsFilter}보다 먼저(더 이른 순서로) 등록한다({@link ObservabilityConfig})
  * — 그래야 메트릭 필터를 포함해 이 요청이 지나가는 모든 로거가 이 id를 볼 수 있다.
+ * <p>
+ * 헤더 값을 형식 검증 없이 그대로 채택했었다(전체 리뷰 2026-09-26 A-SEC-03) — 신뢰하는
+ * 프록시가 흔히 붙이는 짧은 상관관계 id 형식(UUID 등)만 허용하고, 그 밖의 임의 문자열(외부
+ * 클라이언트가 직접 보낸 것일 수 있다)은 새로 만든 값으로 대체한다. 로그 한 줄마다 최대
+ * 헤더 크기의 문자열이 복제되는 것을 막고, 다른 요청의 id를 사칭한 로그 추적 혼란도 막는다.
  */
 public class RequestIdFilter extends OncePerRequestFilter {
 
     static final String HEADER_NAME = "X-Request-Id";
     static final String MDC_KEY = "requestId";
 
+    /** UUID·짧은 영숫자 상관관계 id에 흔히 쓰이는 문자만 허용한다. */
+    private static final Pattern VALID_REQUEST_ID = Pattern.compile("^[A-Za-z0-9._-]{1,64}$");
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         String requestId = request.getHeader(HEADER_NAME);
-        if (requestId == null || requestId.isBlank()) {
+        if (requestId == null || !VALID_REQUEST_ID.matcher(requestId).matches()) {
             requestId = UUID.randomUUID().toString();
         }
         MDC.put(MDC_KEY, requestId);

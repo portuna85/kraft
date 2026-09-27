@@ -148,6 +148,28 @@ class PostRepositoryTest {
                 .containsExactlyInAnyOrder(titleMatch.getId(), contentMatch.getId());
     }
 
+    /**
+     * A-BE-02 1단계: 이스케이프된 {@code \%}·{@code \_}는 리터럴 문자로만 매치돼야 한다 —
+     * PostService.normalize가 이스케이프해 넘기는 값을 이 쿼리의 {@code ESCAPE '\'}가
+     * 실제로 해석하는지 확인한다(리포지토리 자체는 이스케이프하지 않고 그대로 LIKE에 싣는다).
+     */
+    @Test
+    @DisplayName("search: 이스케이프된 %·_는 와일드카드가 아니라 리터럴 문자로만 매치한다")
+    void search_withEscapedWildcards_matchesOnlyLiteralCharacters() {
+        Post literalMatch = postRepository.save(
+                Post.builder().title("100% 할인").content("내용").user(user).build());
+        postRepository.save(Post.builder().title("100원 할인").content("내용").user(user).build());
+        em.flush();
+        em.clear();
+
+        // PostService.escapeLikeWildcards("100% ")와 같은 결과 — 실제 서비스 계층 없이
+        // 리포지토리가 받는 값 그대로를 검증한다.
+        Page<PostRowDto> page = postRepository.search("100\\% ", null, PageRequest.of(0, 10));
+
+        assertThat(page.getContent()).extracting(PostRowDto::id)
+                .containsExactly(literalMatch.getId());
+    }
+
     @Test
     @DisplayName("search: category로 좁히면 해당 분류의 글만 반환한다")
     void search_filtersByCategory() {

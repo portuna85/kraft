@@ -60,6 +60,14 @@ public class PostService {
     private static final int MAX_KEYWORD_LENGTH = 100;
 
     /**
+     * 검색어 최소 길이(개선 보고서 A-BE-02 1단계). 1글자 검색은 인덱스를 못 타는 선행
+     * 와일드카드 LIKE에서 사실상 전체 스캔과 같은 대량의 행을 매치시켜, 검색 폼 연타만으로
+     * DB CPU를 쉽게 점유할 수 있었다. 이보다 짧으면 검색어가 없는 것으로 보고 전체 목록을
+     * 보여준다 — 오류로 거절하지 않는다(공백 검색어를 무시하는 기존 동작과 같은 관례).
+     */
+    private static final int MIN_KEYWORD_LENGTH = 2;
+
+    /**
      * 이미지를 저장하고 업로더를 대장에 기록한다. 업로드 권한을 글쓰기 권한과 같게 맞춘다 —
      * 예전에는 이메일 미인증(GUEST)도 업로드 API를 쓸 수 있었다(개선 보고서 F06).
      * <p>
@@ -364,7 +372,23 @@ public class PostService {
             return null;
         }
         String trimmed = keyword.trim();
-        return trimmed.length() > MAX_KEYWORD_LENGTH ? trimmed.substring(0, MAX_KEYWORD_LENGTH) : trimmed;
+        if (trimmed.length() < MIN_KEYWORD_LENGTH) {
+            return null;
+        }
+        String truncated = trimmed.length() > MAX_KEYWORD_LENGTH ? trimmed.substring(0, MAX_KEYWORD_LENGTH) : trimmed;
+        return escapeLikeWildcards(truncated);
+    }
+
+    /**
+     * LIKE 패턴에서 특별한 의미를 갖는 문자(개선 보고서 A-BE-02 1단계)를 문자 그대로 매치되게
+     * 이스케이프한다 — 이스케이프하지 않으면 사용자가 입력한 {@code %}·{@code _}가 그대로
+     * 와일드카드로 해석된다({@code q=%}는 전체 목록과 같고 {@code q=_}는 모든 글과 일치).
+     * 이스케이프 문자 자신({@code \})도 먼저 이스케이프해야 한다 — 그러지 않으면 사용자가
+     * 입력한 역슬래시가 뒤따르는 문자와 합쳐져 의도치 않은 이스케이프 시퀀스가 된다.
+     * {@code PostRepository.search}의 {@code ESCAPE '\'}와 반드시 함께 쓴다.
+     */
+    private static String escapeLikeWildcards(String keyword) {
+        return keyword.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     private User findUser(Authentication authentication) {

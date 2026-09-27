@@ -2,8 +2,11 @@ package com.kraft.observability;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -45,7 +48,7 @@ class HealthControllerTest {
         given(dataSource.getConnection()).willReturn(connection);
         given(connection.isValid(anyInt())).willReturn(true);
 
-        ResponseEntity<Void> response = controller(Duration.ofSeconds(2)).readyz();
+        ResponseEntity<Void> response = controller(Duration.ofSeconds(2)).readyz(loopbackRequest());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNull();
@@ -56,7 +59,7 @@ class HealthControllerTest {
     void readyz_whenConnectionFails_isUnavailable() throws Exception {
         given(dataSource.getConnection()).willThrow(new SQLException("Access denied for user 'kraft'@'10.0.0.1'"));
 
-        ResponseEntity<Void> response = controller(Duration.ofSeconds(2)).readyz();
+        ResponseEntity<Void> response = controller(Duration.ofSeconds(2)).readyz(loopbackRequest());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
         assertThat(response.getBody()).isNull();
@@ -68,7 +71,7 @@ class HealthControllerTest {
         given(dataSource.getConnection()).willReturn(connection);
         given(connection.isValid(anyInt())).willReturn(false);
 
-        assertThat(controller(Duration.ofSeconds(2)).readyz().getStatusCode())
+        assertThat(controller(Duration.ofSeconds(2)).readyz(loopbackRequest()).getStatusCode())
                 .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
@@ -81,7 +84,7 @@ class HealthControllerTest {
         });
 
         long startedAt = System.nanoTime();
-        ResponseEntity<Void> response = controller(Duration.ofMillis(300)).readyz();
+        ResponseEntity<Void> response = controller(Duration.ofMillis(300)).readyz(loopbackRequest());
         long elapsedMillis = (System.nanoTime() - startedAt) / 1_000_000;
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
@@ -103,11 +106,11 @@ class HealthControllerTest {
         HealthController controller = controller(Duration.ofSeconds(5));
         ExecutorService callers = Executors.newFixedThreadPool(2);
         try {
-            Future<ResponseEntity<Void>> first = callers.submit(controller::readyz);
+            Future<ResponseEntity<Void>> first = callers.submit(() -> controller.readyz(loopbackRequest()));
             // 두 번째 요청이 첫 번째 검사가 아직 끝나지 않은 시점에 들어오도록, 커넥션 호출이
             // 시작될 때까지는 기다리되 끝나기 전에(래치를 아직 풀지 않은 채) 제출한다.
             connectionCallStarted.await(1, TimeUnit.SECONDS);
-            Future<ResponseEntity<Void>> second = callers.submit(controller::readyz);
+            Future<ResponseEntity<Void>> second = callers.submit(() -> controller.readyz(loopbackRequest()));
             Thread.sleep(50); // second가 currentOrNewCheck()까지 진입할 시간을 준다.
             releaseConnection.countDown();
 
@@ -118,6 +121,26 @@ class HealthControllerTest {
         }
 
         verify(dataSource, times(1)).getConnection();
+    }
+
+    /** A-SEC-04: 루프백이 아니면 검사조차 하지 않고 404를 준다. */
+    @ParameterizedTest(name = "원격 주소 [{0}]는 404다")
+    @ValueSource(strings = {"203.0.113.7", "10.0.0.5", "::ffff:127.0.0.1"})
+    @DisplayName("readyz: 루프백이 아닌 요청은 404이고 DB를 확인하지 않는다")
+    void readyz_whenNotLoopback_returnsNotFoundWithoutCheckingDatabase(String remoteAddr) throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr(remoteAddr);
+
+        ResponseEntity<Void> response = controller(Duration.ofSeconds(2)).readyz(request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        verify(dataSource, org.mockito.Mockito.never()).getConnection();
+    }
+
+    private static MockHttpServletRequest loopbackRequest() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("127.0.0.1");
+        return request;
     }
 
     private HealthController controller(Duration timeout) {

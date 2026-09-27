@@ -1,5 +1,6 @@
 package com.kraft.observability;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -32,6 +33,13 @@ import java.util.concurrent.atomic.AtomicReference;
  * 외부 HTTP 호출이나 추천 생성처럼 비싼 작업은 readiness에 넣지 않는다. 외부 스모크 테스트
  * ({@code build.yml}의 "Smoke test")는 이 엔드포인트가 아니라 홈({@code /})을 찌른다.
  * {@code SecurityConfig}가 모든 요청을 permitAll로 열어두므로 별도 보안 설정은 필요 없다.
+ * <p>
+ * {@code /readyz}는 루프백에서만 응답한다(전체 리뷰 2026-09-26 A-SEC-04) — 배포 스크립트가
+ * 항상 {@code 127.0.0.1}로만 부르므로 외부에 열 이유가 없다. 열어 두면 외부에서 빠르게
+ * 반복 호출해 커넥션 풀(단일 DB 확인마다 하나씩)을 점유하거나, 응답 코드로 DB 장애 여부를
+ * 외부에 드러낼 수 있다. {@code server.forward-headers-strategy: native}(application.yml)라
+ * 프록시 뒤에서도 {@code request.getRemoteAddr()}가 실제 클라이언트 IP를 반영한다 — 루프백이
+ * 아닌 주소는 프록시를 거치지 않고 직접 도달했거나, 프록시가 실제 IP를 그대로 넘긴 것이다.
  */
 @Slf4j
 @RestController
@@ -60,7 +68,11 @@ public class HealthController {
     }
 
     @GetMapping("/readyz")
-    public ResponseEntity<Void> readyz() {
+    public ResponseEntity<Void> readyz(HttpServletRequest request) {
+        if (!isLoopback(request.getRemoteAddr())) {
+            // 존재를 알리지 않는다 — 403이 아니라 404다(다른 경로들과 구분되지 않게).
+            return ResponseEntity.notFound().build();
+        }
         CompletableFuture<Boolean> check = currentOrNewCheck();
         try {
             if (check.get(timeout.toMillis(), TimeUnit.MILLISECONDS)) {
@@ -90,6 +102,10 @@ public class HealthController {
             next.whenComplete((result, error) -> inFlightCheck.compareAndSet(next, null));
             return next;
         });
+    }
+
+    private static boolean isLoopback(String remoteAddr) {
+        return "127.0.0.1".equals(remoteAddr) || "0:0:0:0:0:0:0:1".equals(remoteAddr) || "::1".equals(remoteAddr);
     }
 
     private boolean databaseReachable() {
