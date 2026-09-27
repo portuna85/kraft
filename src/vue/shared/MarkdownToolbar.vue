@@ -103,6 +103,15 @@ function onInvalid() {
         textarea.value?.focus();
     });
 }
+
+// 서버 검증 오류(A-FE-08)가 이 필드를 가리킬 때 부모가 포커스를 옮길 수 있게 한다 —
+// onInvalid와 같은 이유로 먼저 작성 모드로 돌아와야 실제로 보이는 textarea에 포커스가 간다.
+defineExpose({
+    focus() {
+        mode.value = 'write';
+        nextTick(() => textarea.value?.focus());
+    },
+});
 </script>
 
 <template>

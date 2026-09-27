@@ -8,6 +8,7 @@ import { useImageUpload } from '../shared/useImageUpload.js';
 import { useUnsavedGuard } from '../shared/useUnsavedGuard.js';
 import { useDraftAutosave } from '../shared/useDraftAutosave.js';
 import { clearDraft, safeLocalStorage } from '../shared/draftStorage.js';
+import { useFieldErrors } from '../shared/useFieldErrors.js';
 import MarkdownBody from '../shared/MarkdownBody.vue';
 import MarkdownToolbar from '../shared/MarkdownToolbar.vue';
 import DraftRestoreBanner from '../shared/DraftRestoreBanner.vue';
@@ -46,8 +47,11 @@ const liking = ref(false);
 const picture = useImageUpload({ initialUrl: props.post.picture });
 
 const titleInput = ref(/** @type {HTMLInputElement | null} */ (null));
+/** @type {import('vue').Ref<InstanceType<typeof MarkdownToolbar> | null>} */
+const contentInput = ref(null);
 const editButton = ref(/** @type {HTMLButtonElement | null} */ (null));
 const fileInput = ref(/** @type {HTMLInputElement | null} */ (null));
+const { fieldErrors, apply: applyFieldErrors } = useFieldErrors();
 
 // 글자크기 조절: 3단계(작게/보통/크게), 세션을 넘어 유지하도록 localStorage에 기억한다.
 // localStorage 접근이 막힌 환경(프라이빗 모드 등)에서도 화면은 기본값으로 그대로 동작해야
@@ -259,6 +263,16 @@ async function onSubmit() {
     } catch (error) {
         progressText.value = null;
         saving.value = false;
+        // A-FE-12: 편집 중 세션이 끊기면 저장 시점에야 403/로그인 리다이렉트로 드러난다.
+        // 자동 임시 저장이 내용을 지키고 있다는 사실부터 알린다.
+        if (error?.kind === 'forbidden' || error?.kind === 'auth') {
+            flash.showError('로그인이 만료되었습니다. 작성 중인 내용은 임시 저장되어 있으니, 다시 로그인한 뒤 이어서 쓸 수 있습니다.');
+            return;
+        }
+        const handledByField = await applyFieldErrors(error, { title: titleInput, content: contentInput });
+        if (handledByField) {
+            return;
+        }
         const retryHint = pictureUrl
             ? ' 이미지는 이미 업로드되어 있으니 다시 "저장"을 누르면 같은 이미지로 재시도합니다.'
             : '';
@@ -425,10 +439,19 @@ async function onSubmit() {
         v-model="draft.title"
         type="text"
         class="form-control"
+        :class="{ 'is-invalid': fieldErrors.title }"
+        :aria-invalid="fieldErrors.title ? 'true' : undefined"
         maxlength="255"
+        aria-describedby="edit-title-error"
         required
         :disabled="saving"
       >
+      <div
+        id="edit-title-error"
+        class="invalid-feedback"
+      >
+        {{ fieldErrors.title }}
+      </div>
     </div>
     <div class="mb-3">
       <label for="edit-category">분류</label>
@@ -451,10 +474,20 @@ async function onSubmit() {
       <label for="content">내용</label>
       <MarkdownToolbar
         id="content"
+        ref="contentInput"
         v-model="draft.content"
         :maxlength="10000"
         :disabled="saving"
+        :aria-invalid="fieldErrors.content ? 'true' : undefined"
+        aria-describedby="edit-content-error"
       />
+      <div
+        v-if="fieldErrors.content"
+        id="edit-content-error"
+        class="invalid-feedback d-block"
+      >
+        {{ fieldErrors.content }}
+      </div>
     </div>
     <div class="mb-3">
       <label for="edit-picture">사진</label>

@@ -4,6 +4,7 @@ import { api, messageOf } from '@core/http.js';
 import { PASSWORD } from '@core/constants.js';
 import * as flash from '@ui/flash.js';
 import { usePasswordConfirm } from '../shared/usePasswordConfirm.js';
+import { useFieldErrors } from '../shared/useFieldErrors.js';
 
 /**
  * 회원가입 폼.
@@ -30,6 +31,14 @@ const saving = ref(false);
 
 const { confirmError, confirmInput, validateMatch } =
     usePasswordConfirm(() => form.password, () => form.passwordConfirm);
+const { fieldErrors, apply: applyFieldErrors } = useFieldErrors();
+
+/** @type {import('vue').Ref<HTMLInputElement|null>} */
+const nameInput = ref(null);
+/** @type {import('vue').Ref<HTMLInputElement|null>} */
+const emailInput = ref(null);
+/** @type {import('vue').Ref<HTMLInputElement|null>} */
+const passwordInput = ref(null);
 
 async function onSubmit() {
     if (saving.value) {
@@ -53,7 +62,14 @@ async function onSubmit() {
         flash.set('SIGNUP_DONE');
         window.location.href = '/login';
     } catch (error) {
-        flash.showError(messageOf(error));
+        // 필드별 오류(A-BE-07)가 있으면 입력칸 옆에서 알린다. 이메일 중복처럼 필드 하나로
+        // 좁혀지지 않는 서버 판정에는 errors가 없으므로 그때만 배너로 보여준다(A-FE-08).
+        const handledByField = await applyFieldErrors(error, {
+            name: nameInput, email: emailInput, password: passwordInput,
+        });
+        if (!handledByField) {
+            flash.showError(messageOf(error));
+        }
         saving.value = false;
     }
 }
@@ -70,45 +86,74 @@ async function onSubmit() {
       <label for="name">공개 닉네임</label>
       <input
         id="name"
+        ref="nameInput"
         v-model.trim="form.name"
         type="text"
         class="form-control"
+        :class="{ 'is-invalid': fieldErrors.name }"
+        :aria-invalid="fieldErrors.name ? 'true' : undefined"
         placeholder="다른 사람에게 보일 닉네임"
         maxlength="50"
-        aria-describedby="name-help"
+        aria-describedby="name-help name-error"
         required
       >
       <small
         id="name-help"
         class="form-text text-muted"
       >게시글·댓글 작성자로 모든 방문자에게 표시됩니다. 실명 대신 닉네임을 권장합니다. 탈퇴하면 '탈퇴한 사용자'로 바뀝니다.</small>
+      <div
+        id="name-error"
+        class="invalid-feedback"
+      >
+        {{ fieldErrors.name }}
+      </div>
     </div>
     <div class="mb-3">
       <label for="email">이메일</label>
       <input
         id="email"
+        ref="emailInput"
         v-model.trim="form.email"
         type="email"
         class="form-control"
+        :class="{ 'is-invalid': fieldErrors.email }"
+        :aria-invalid="fieldErrors.email ? 'true' : undefined"
         placeholder="이메일을 입력하세요"
         maxlength="100"
         autocomplete="email"
+        aria-describedby="email-error"
         required
       >
+      <div
+        id="email-error"
+        class="invalid-feedback"
+      >
+        {{ fieldErrors.email }}
+      </div>
     </div>
     <div class="mb-3">
       <label for="password">비밀번호 ({{ PASSWORD.HINT }})</label>
       <input
         id="password"
+        ref="passwordInput"
         v-model="form.password"
         type="password"
         class="form-control"
+        :class="{ 'is-invalid': fieldErrors.password }"
+        :aria-invalid="fieldErrors.password ? 'true' : undefined"
         placeholder="비밀번호를 입력하세요"
         autocomplete="new-password"
         :minlength="PASSWORD.MIN_LENGTH"
         :maxlength="PASSWORD.MAX_LENGTH"
+        aria-describedby="password-error"
         required
       >
+      <div
+        id="password-error"
+        class="invalid-feedback"
+      >
+        {{ fieldErrors.password }}
+      </div>
     </div>
     <div class="mb-3">
       <label for="passwordConfirm">비밀번호 확인</label>

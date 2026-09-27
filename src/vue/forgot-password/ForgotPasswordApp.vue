@@ -2,6 +2,7 @@
 import { nextTick, ref } from 'vue';
 import { api, messageOf } from '@core/http.js';
 import * as flash from '@ui/flash.js';
+import { useFieldErrors } from '../shared/useFieldErrors.js';
 
 /**
  * 비밀번호 재설정 링크 요청.
@@ -16,6 +17,8 @@ const email = ref('');
 const sending = ref(false);
 const sent = ref(false);
 const doneHeading = ref(/** @type {HTMLElement | null} */ (null));
+const emailInput = ref(/** @type {HTMLInputElement | null} */ (null));
+const { fieldErrors, apply: applyFieldErrors } = useFieldErrors();
 
 async function onSubmit() {
     if (sending.value) {
@@ -35,7 +38,10 @@ async function onSubmit() {
         await nextTick();
         doneHeading.value?.focus();
     } catch (error) {
-        flash.showError(messageOf(error));
+        const handledByField = await applyFieldErrors(error, { email: emailInput });
+        if (!handledByField) {
+            flash.showError(messageOf(error));
+        }
     } finally {
         sending.value = false;
     }
@@ -77,14 +83,24 @@ async function onSubmit() {
       <label for="email">이메일</label>
       <input
         id="email"
+        ref="emailInput"
         v-model.trim="email"
         type="email"
         class="form-control"
+        :class="{ 'is-invalid': fieldErrors.email }"
+        :aria-invalid="fieldErrors.email ? 'true' : undefined"
         placeholder="이메일을 입력하세요"
         maxlength="100"
         autocomplete="email"
+        aria-describedby="email-error"
         required
       >
+      <div
+        id="email-error"
+        class="invalid-feedback"
+      >
+        {{ fieldErrors.email }}
+      </div>
     </div>
     <div class="btn-group-gap">
       <a

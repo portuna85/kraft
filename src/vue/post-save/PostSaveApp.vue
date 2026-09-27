@@ -7,6 +7,7 @@ import { useImageUpload } from '../shared/useImageUpload.js';
 import { useUnsavedGuard } from '../shared/useUnsavedGuard.js';
 import { useDraftAutosave } from '../shared/useDraftAutosave.js';
 import { clearDraft, safeLocalStorage } from '../shared/draftStorage.js';
+import { useFieldErrors } from '../shared/useFieldErrors.js';
 import MarkdownToolbar from '../shared/MarkdownToolbar.vue';
 import DraftRestoreBanner from '../shared/DraftRestoreBanner.vue';
 
@@ -55,6 +56,9 @@ const unsavedGuard = useUnsavedGuard(isDirty);
 // 화면에 그대로 떴다. userId가 없으면(이 화면은 로그인이 필수라 실제로는 일어나지 않는다)
 // storage를 null로 둬 초안 기능 자체를 건너뛴다.
 const titleInput = ref(/** @type {HTMLInputElement | null} */ (null));
+/** @type {import('vue').Ref<InstanceType<typeof MarkdownToolbar> | null>} */
+const contentInput = ref(null);
+const { fieldErrors, apply: applyFieldErrors } = useFieldErrors();
 const LEGACY_DRAFT_KEY = 'kraft:draft:post-save';
 const draftKey = props.userId != null ? `kraft:draft:${props.userId}:post-save` : LEGACY_DRAFT_KEY;
 const autosave = useDraftAutosave(draftKey, draft, {
@@ -149,6 +153,17 @@ async function onSubmit() {
     } catch (error) {
         progressText.value = null;
         saving.value = false;
+        // 긴 글을 쓰는 동안 세션이 끊기면 이 시점에야 403/로그인 리다이렉트로 드러난다
+        // (A-FE-12). 자동 임시 저장이 내용을 지키고 있으니 그 사실부터 알린다 — 일반 오류
+        // 문구("권한이 없거나...")만으로는 다음에 뭘 해야 할지 분명하지 않았다.
+        if (error?.kind === 'forbidden' || error?.kind === 'auth') {
+            flash.showError('로그인이 만료되었습니다. 작성 중인 내용은 임시 저장되어 있으니, 다시 로그인한 뒤 이어서 쓸 수 있습니다.');
+            return;
+        }
+        const handledByField = await applyFieldErrors(error, { title: titleInput, content: contentInput });
+        if (handledByField) {
+            return;
+        }
         // 업로드까지는 끝났다는 사실을 알려야 사용자가 파일을 다시 고르지 않는다.
         const retryHint = pictureUrl
             ? ' 이미지는 이미 업로드되어 있으니 다시 "등록"을 누르면 같은 이미지로 재시도합니다.'
@@ -178,11 +193,20 @@ async function onSubmit() {
         v-model="draft.title"
         type="text"
         class="form-control"
+        :class="{ 'is-invalid': fieldErrors.title }"
+        :aria-invalid="fieldErrors.title ? 'true' : undefined"
         placeholder="제목을 입력하세요"
         maxlength="255"
+        aria-describedby="title-error"
         required
         :disabled="saving"
       >
+      <div
+        id="title-error"
+        class="invalid-feedback"
+      >
+        {{ fieldErrors.title }}
+      </div>
     </div>
     <!-- 닉네임을 보여준다. 값은 서버가 principal에서 꺼내 내려준 것이고, 저장 요청에는
          담지 않는다 — 작성자는 서버가 로그인 계정으로 정한다. 입력할 것이 없는 값이라
@@ -211,11 +235,21 @@ async function onSubmit() {
       <label for="content">내용</label>
       <MarkdownToolbar
         id="content"
+        ref="contentInput"
         v-model="draft.content"
         placeholder="내용을 입력하세요"
         :maxlength="10000"
         :disabled="saving"
+        :aria-invalid="fieldErrors.content ? 'true' : undefined"
+        aria-describedby="content-error"
       />
+      <div
+        v-if="fieldErrors.content"
+        id="content-error"
+        class="invalid-feedback d-block"
+      >
+        {{ fieldErrors.content }}
+      </div>
     </div>
     <div class="mb-3">
       <label for="picture">사진</label>

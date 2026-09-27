@@ -4,6 +4,7 @@ import { api, messageOf } from '@core/http.js';
 import { PASSWORD } from '@core/constants.js';
 import * as flash from '@ui/flash.js';
 import { usePasswordConfirm } from '../shared/usePasswordConfirm.js';
+import { useFieldErrors } from '../shared/useFieldErrors.js';
 
 /**
  * 메일 링크로 들어온 사람이 새 비밀번호를 정하는 화면.
@@ -23,6 +24,9 @@ const saving = ref(false);
 
 const { confirmError, confirmInput, validateMatch } =
     usePasswordConfirm(() => form.newPassword, () => form.confirm);
+const { fieldErrors, apply: applyFieldErrors } = useFieldErrors();
+/** @type {import('vue').Ref<HTMLInputElement|null>} */
+const newPasswordInput = ref(null);
 
 async function onSubmit() {
     if (saving.value) {
@@ -44,8 +48,11 @@ async function onSubmit() {
         flash.set('PASSWORD_RESET');
         window.location.href = '/login';
     } catch (error) {
-        // 만료·이미 쓴 링크도 여기로 온다. 서버 문구에 다시 요청하라는 안내가 들어 있다.
-        flash.showError(messageOf(error));
+        const handledByField = await applyFieldErrors(error, { newPassword: newPasswordInput });
+        if (!handledByField) {
+            // 만료·이미 쓴 링크도 여기로 온다. 서버 문구에 다시 요청하라는 안내가 들어 있다.
+            flash.showError(messageOf(error));
+        }
         saving.value = false;
     }
 }
@@ -60,15 +67,25 @@ async function onSubmit() {
       <label for="newPassword">새 비밀번호 ({{ PASSWORD.HINT }})</label>
       <input
         id="newPassword"
+        ref="newPasswordInput"
         v-model="form.newPassword"
         type="password"
         class="form-control"
+        :class="{ 'is-invalid': fieldErrors.newPassword }"
+        :aria-invalid="fieldErrors.newPassword ? 'true' : undefined"
         placeholder="새 비밀번호를 입력하세요"
         autocomplete="new-password"
         :minlength="PASSWORD.MIN_LENGTH"
         :maxlength="PASSWORD.MAX_LENGTH"
+        aria-describedby="newPassword-error"
         required
       >
+      <div
+        id="newPassword-error"
+        class="invalid-feedback"
+      >
+        {{ fieldErrors.newPassword }}
+      </div>
     </div>
     <div class="mb-3">
       <label for="newPasswordConfirm">새 비밀번호 확인</label>

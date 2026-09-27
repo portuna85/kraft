@@ -116,6 +116,11 @@ spring:
             enable: true
 
   servlet:
+    session:
+      # 기본값(30분)에 기대지 않고 명시한다(A-FE-12) — 긴 글을 쓰는 동안 세션이 끊겨 "등록"
+      # 시점에야 403으로 실패하는 사례가 있었다. 자동 임시 저장이 내용을 지키긴 하지만, 그
+      # 전에 세션이 오래 버티는 편이 사용자에게 더 낫다.
+      timeout: 2h
     multipart:
       # 게시글 사진 업로드의 실제 수신 한도. 설정이 없으면 Spring Boot 기본값이
       # max-file-size=1MB로 적용되어, PostImageService의 5MB 검사와 화면 안내("최대 5MB")에
