@@ -5,7 +5,9 @@ import com.kraft.report.domain.ReportReason;
 import com.kraft.report.domain.ReportTargetType;
 import com.kraft.report.dto.ReportSaveRequestDto;
 import com.kraft.report.service.ReportService;
+import com.kraft.shared.web.WriteRateLimiters;
 import com.kraft.user.domain.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +22,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -46,6 +49,15 @@ class ReportApiControllerTest {
     @MockitoBean
     private UserRepository userRepository;
 
+    @MockitoBean
+    private WriteRateLimiters rateLimiters;
+
+    /** A-SEC-06 제한기는 이 슬라이스의 관심사가 아니다 — 기본으로 항상 통과시킨다. */
+    @BeforeEach
+    void allowAllRateLimits() {
+        given(rateLimiters.tryAcquireReport(any())).willReturn(true);
+    }
+
     @Test
     @DisplayName("POST /api/v1/reports 는 로그인+CSRF면 접수하고 id를 반환한다")
     void report_whenAuthenticated_returnsId() throws Exception {
@@ -61,6 +73,22 @@ class ReportApiControllerTest {
         verify(reportService).report(
                 eq(new ReportSaveRequestDto(ReportTargetType.POST, 10L, ReportReason.SPAM, "광고입니다")),
                 any(Authentication.class));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/reports 는 속도 제한에 걸리면 429이고 서비스는 호출되지 않는다")
+    void report_whenRateLimited_returns429AndDoesNotCallService() throws Exception {
+        given(rateLimiters.tryAcquireReport(any())).willReturn(false);
+
+        mockMvc.perform(post("/api/v1/reports")
+                        .with(user("reporter@example.com").roles("GUEST"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"targetType\":\"POST\",\"targetId\":10,\"reason\":\"SPAM\",\"detail\":\"광고입니다\"}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("REPORT_RATE_LIMITED"));
+
+        verify(reportService, never()).report(any(), any());
     }
 
     @Test

@@ -9,7 +9,9 @@ import com.kraft.post.domain.PostNotFoundException;
 import com.kraft.post.dto.PostsPageResponseDto;
 import com.kraft.post.dto.PostViewDto;
 import com.kraft.post.service.PostService;
+import com.kraft.shared.web.WriteRateLimiters;
 import com.kraft.user.service.UserService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,6 +65,15 @@ class PostPageControllerTest {
     /** 화면이 "글을 쓸 수 있는 사람인가"를 물어보는 곳. 기본 모킹은 빈 값(=쓸 수 있음)이다. */
     @MockitoBean
     private UserService userService;
+
+    @MockitoBean
+    private WriteRateLimiters rateLimiters;
+
+    /** A-SEC-06 검색 제한기는 이 슬라이스의 관심사가 아니다 — 기본으로 항상 통과시킨다. */
+    @BeforeEach
+    void allowAllRateLimits() {
+        given(rateLimiters.tryAcquireSearch(any())).willReturn(true);
+    }
 
     @Test
     @DisplayName("GET / 는 목록을 모델에 담아 index 뷰를 렌더링한다")
@@ -143,6 +154,30 @@ class PostPageControllerTest {
                 .andExpect(view().name("index"))
                 .andExpect(model().attribute("q", "키워드"))
                 .andExpect(model().attribute("category", Category.NOTICE));
+    }
+
+    /** A-SEC-06: q 없는 일반 목록 열람은 검색 제한기를 건드리지 않는다. */
+    @Test
+    @DisplayName("GET / 는 q가 없으면 검색 속도 제한을 검사하지 않는다")
+    void index_withoutKeyword_skipsSearchRateLimit() throws Exception {
+        given(postService.findAllDesc(any(Pageable.class), any(), any()))
+                .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
+        given(postService.findPopular(5)).willReturn(List.of());
+
+        mockMvc.perform(get("/")).andExpect(status().isOk());
+
+        org.mockito.Mockito.verify(rateLimiters, org.mockito.Mockito.never()).tryAcquireSearch(any());
+    }
+
+    @Test
+    @DisplayName("GET /?q=... 는 검색 속도 제한에 걸리면 429(전역 4xx 오류 화면)를 돌려준다")
+    void index_withKeyword_whenRateLimited_returns429() throws Exception {
+        given(rateLimiters.tryAcquireSearch(any())).willReturn(false);
+
+        mockMvc.perform(get("/").param("q", "키워드"))
+                .andExpect(status().isTooManyRequests());
+
+        org.mockito.Mockito.verify(postService, org.mockito.Mockito.never()).findAllDesc(any(), any(), any());
     }
 
     @Test

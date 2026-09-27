@@ -6,8 +6,11 @@ import com.kraft.comment.dto.CommentSaveRequestDto;
 import com.kraft.comment.dto.CommentUpdateRequestDto;
 import com.kraft.comment.dto.CommentViewDto;
 import com.kraft.comment.service.CommentService;
+import com.kraft.shared.web.RateLimitResponses;
+import com.kraft.shared.web.WriteRateLimiters;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,11 +19,16 @@ import org.springframework.web.bind.annotation.*;
 public class CommentApiController {
 
     private final CommentService commentService;
+    private final WriteRateLimiters rateLimiters;
 
+    /** 이메일 인증만 통과하면 무제한으로 빠르게 쓸 수 있었다(전체 리뷰 2026-09-26 A-SEC-06). */
     @PostMapping("/api/v1/posts/{postId}/comments")
-    public CommentViewDto save(@PathVariable Long postId, @Valid @RequestBody CommentSaveRequestDto requestDto,
-                                Authentication authentication) {
-        return commentService.save(postId, authentication, requestDto);
+    public ResponseEntity<?> save(@PathVariable Long postId, @Valid @RequestBody CommentSaveRequestDto requestDto,
+                                   Authentication authentication) {
+        if (!rateLimiters.tryAcquireComment(authentication)) {
+            return RateLimitResponses.tooManyRequests("COMMENT_RATE_LIMITED", 60);
+        }
+        return ResponseEntity.ok(commentService.save(postId, authentication, requestDto));
     }
 
     /**

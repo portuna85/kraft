@@ -9,6 +9,8 @@ import com.kraft.post.dto.PostSaveRequestDto;
 import com.kraft.post.dto.PostsPageResponseDto;
 import com.kraft.post.dto.PostUpdateRequestDto;
 import com.kraft.post.service.PostService;
+import com.kraft.shared.web.WriteRateLimiters;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +41,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -59,6 +62,17 @@ class PostApiControllerTest {
 
     @MockitoBean
     private PostService postService;
+
+    @MockitoBean
+    private WriteRateLimiters rateLimiters;
+
+    /** A-SEC-06 제한기는 이 슬라이스의 관심사가 아니다 — 기본으로 항상 통과시킨다. */
+    @BeforeEach
+    void allowAllRateLimits() {
+        given(rateLimiters.tryAcquirePost(any())).willReturn(true);
+        given(rateLimiters.tryAcquireUpload(any())).willReturn(true);
+        given(rateLimiters.tryAcquireSearch(any())).willReturn(true);
+    }
 
     @Test
     @DisplayName("GET /api/v1/posts 는 인증 없이도 호출할 수 있다")
@@ -82,6 +96,30 @@ class PostApiControllerTest {
                 .andExpect(status().isOk());
 
         verify(postService).findAllDesc(any(Pageable.class), eq("공지"), eq(Category.NOTICE));
+    }
+
+    /** A-SEC-06: q 없는 일반 목록 열람은 검색 제한기를 건드리지 않는다. */
+    @Test
+    @DisplayName("GET /api/v1/posts 는 q가 없으면 검색 속도 제한을 검사하지 않는다")
+    void listPosts_withoutKeyword_skipsSearchRateLimit() throws Exception {
+        given(postService.findAllDesc(any(Pageable.class), any(), any()))
+                .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
+
+        mockMvc.perform(get("/api/v1/posts")).andExpect(status().isOk());
+
+        verify(rateLimiters, never()).tryAcquireSearch(any());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/posts?q=... 는 검색 속도 제한에 걸리면 429이고 서비스는 호출되지 않는다")
+    void listPosts_withKeyword_whenRateLimited_returns429() throws Exception {
+        given(rateLimiters.tryAcquireSearch(any())).willReturn(false);
+
+        mockMvc.perform(get("/api/v1/posts").param("q", "검색어"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("SEARCH_RATE_LIMITED"));
+
+        verify(postService, never()).findAllDesc(any(), any(), any());
     }
 
     @Test
@@ -195,6 +233,24 @@ class PostApiControllerTest {
                         .content("{\"title\":\"제목\",\"content\":\"내용\",\"picture\":null}"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("1"));
+    }
+
+    /** A-SEC-06: 속도 제한에 걸리면 서비스는 호출되지 않고 429를 돌려준다. */
+    @Test
+    @DisplayName("POST /api/v1/posts 는 속도 제한에 걸리면 429이고 서비스는 호출되지 않는다")
+    void savePost_whenRateLimited_returns429AndDoesNotCallService() throws Exception {
+        given(rateLimiters.tryAcquirePost(any())).willReturn(false);
+
+        mockMvc.perform(post("/api/v1/posts")
+                        .with(user("tester@example.com"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"제목\",\"content\":\"내용\",\"picture\":null}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Retry-After", "60"))
+                .andExpect(jsonPath("$.code").value("POST_RATE_LIMITED"));
+
+        verify(postService, never()).save(any(), any());
     }
 
     @Test
@@ -332,6 +388,21 @@ class PostApiControllerTest {
                         .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.url").value("/images/generated-uuid.png"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/posts/images 는 속도 제한에 걸리면 429이고 서비스는 호출되지 않는다")
+    void uploadImage_whenRateLimited_returns429AndDoesNotCallService() throws Exception {
+        given(rateLimiters.tryAcquireUpload(any())).willReturn(false);
+        MockMultipartFile file = new MockMultipartFile("file", "photo.png", "image/png", "img".getBytes());
+
+        mockMvc.perform(multipart("/api/v1/posts/images").file(file)
+                        .with(user("tester@example.com"))
+                        .with(csrf()))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("UPLOAD_RATE_LIMITED"));
+
+        verify(postService, never()).uploadImage(any(), any());
     }
 
     @Test

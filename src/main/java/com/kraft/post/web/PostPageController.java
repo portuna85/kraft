@@ -14,17 +14,21 @@ import com.kraft.post.service.CategoryPolicy;
 import com.kraft.post.service.PostService;
 import com.kraft.shared.security.OwnershipPolicy;
 import com.kraft.shared.web.PageWindow;
+import com.kraft.shared.web.WriteRateLimiters;
 import com.kraft.user.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 import tools.jackson.databind.ObjectMapper;
 
@@ -39,12 +43,19 @@ public class PostPageController {
     private final CommentService commentService;
     private final ObjectMapper objectMapper;
     private final UserService userService;
+    private final WriteRateLimiters rateLimiters;
 
     @GetMapping("/")
     public String index(@PageableDefault(size = 10) Pageable pageable,
                          @RequestParam(required = false) String q,
+                         HttpServletRequest request,
                          @RequestParam(required = false) Category category,
                          Model model) {
+        // 검색은 익명·무제한이라 선행 와일드카드 LIKE 전체 스캔을 검색 폼 연타만으로 반복시킬
+        // 수 있었다(전체 리뷰 2026-09-26 A-SEC-06). q가 없는 일반 목록 열람은 걸지 않는다.
+        if (q != null && !q.isBlank() && !rateLimiters.tryAcquireSearch(request.getRemoteAddr())) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.");
+        }
         Pageable sanitized = PostSortPolicy.sanitize(pageable);
         PostsPageResponseDto postsPage = postService.findAllDesc(sanitized, q, category);
         // 화면(검색 폼·페이지 이동 링크)이 되돌려 붙일 수 있는 형태(예: "viewCount,desc").

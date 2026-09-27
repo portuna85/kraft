@@ -283,6 +283,21 @@ app:
       resend-per-minute: 5
       report-interval-ms: 600000
 
+  write:
+    rate-limit:
+      # 게시글·댓글·신고·업로드·검색에 적용하는 계정(검색은 IP) 기준 속도 제한(전체 리뷰
+      # 2026-09-26 A-SEC-06). 로그인·가입은 위 auth.rate-limit이 이미 지키지만, 인증을 마친
+      # 계정은 이 제한이 생기기 전까지 무제한으로 빠르게 쓸 수 있었다. 실측 전 초기값이며,
+      # WriteRateLimiters.reportAndCleanup의 허용/거부 집계가 조정 근거가 된다.
+      enabled: true
+      post-per-minute: 3
+      post-per-hour: 20
+      comment-per-minute: 10
+      report-per-minute: 5
+      upload-per-minute: 10
+      search-per-minute: 60
+      report-interval-ms: 600000
+
   # 이메일 인증 링크를 만들 때 붙일 기본 URL. 운영에서는 실제 배포 도메인으로 덮어써야 한다
   # (application-prod.yml 참고).
   base-url: http://localhost:8080

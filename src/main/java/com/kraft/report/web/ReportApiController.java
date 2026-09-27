@@ -2,6 +2,8 @@ package com.kraft.report.web;
 
 import com.kraft.report.dto.ReportSaveRequestDto;
 import com.kraft.report.service.ReportService;
+import com.kraft.shared.web.RateLimitResponses;
+import com.kraft.shared.web.WriteRateLimiters;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -21,11 +23,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class ReportApiController {
 
     private final ReportService reportService;
+    private final WriteRateLimiters rateLimiters;
 
-    /** 신고 접수. 로그인만 하면 할 수 있다 — 이메일 인증 전이라도 문제를 알릴 수는 있어야 한다. */
+    /**
+     * 신고 접수. 로그인만 하면 할 수 있다 — 이메일 인증 전이라도 문제를 알릴 수는 있어야 한다.
+     * 속도 제한(전체 리뷰 2026-09-26 A-SEC-06)은 관리자를 제외한다 — 신고 처리는 관리자
+     * 전용 다른 API({@code resolve}·{@code reject})라 이 제한과는 무관하지만, 방어적으로
+     * {@code WriteRateLimiters}의 공통 규칙(관리자 제외)을 그대로 따른다.
+     */
     @PostMapping("/api/v1/reports")
-    public Long report(@Valid @RequestBody ReportSaveRequestDto requestDto, Authentication authentication) {
-        return reportService.report(requestDto, authentication);
+    public ResponseEntity<?> report(@Valid @RequestBody ReportSaveRequestDto requestDto, Authentication authentication) {
+        if (!rateLimiters.tryAcquireReport(authentication)) {
+            return RateLimitResponses.tooManyRequests("REPORT_RATE_LIMITED", 60);
+        }
+        return ResponseEntity.ok(reportService.report(requestDto, authentication));
     }
 
     /**

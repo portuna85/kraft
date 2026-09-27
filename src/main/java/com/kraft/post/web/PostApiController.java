@@ -9,11 +9,15 @@ import com.kraft.post.dto.PostSaveRequestDto;
 import com.kraft.post.dto.PostsPageResponseDto;
 import com.kraft.post.dto.PostUpdateRequestDto;
 import com.kraft.post.service.PostService;
+import com.kraft.shared.web.RateLimitResponses;
+import com.kraft.shared.web.WriteRateLimiters;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -23,10 +27,18 @@ import org.springframework.web.multipart.MultipartFile;
 public class PostApiController {
 
     private final PostService postService;
+    private final WriteRateLimiters rateLimiters;
 
+    /**
+     * 이메일 인증만 통과하면 스팸 봇 하나로 게시판 전체를 덮을 수 있었다(전체 리뷰
+     * 2026-09-26 A-SEC-06) — 분당·시간당 두 창을 함께 건다({@code WriteRateLimiters}).
+     */
     @PostMapping("/api/v1/posts")
-    public Long save(@Valid @RequestBody PostSaveRequestDto requestDto, Authentication authentication) {
-        return postService.save(authentication, requestDto);
+    public ResponseEntity<?> save(@Valid @RequestBody PostSaveRequestDto requestDto, Authentication authentication) {
+        if (!rateLimiters.tryAcquirePost(authentication)) {
+            return RateLimitResponses.tooManyRequests("POST_RATE_LIMITED", 60);
+        }
+        return ResponseEntity.ok(postService.save(authentication, requestDto));
     }
 
     @PutMapping("/api/v1/posts/{id}")
@@ -46,12 +58,20 @@ public class PostApiController {
         return postService.findById(id);
     }
 
+    /**
+     * "더 보기"(load-more.js)가 이어 받는 페이지도 검색어를 실을 수 있어, SSR 검색(
+     * {@code PostPageController.index})과 같은 IP 기준 속도 제한을 건다(A-SEC-06).
+     */
     @GetMapping("/api/v1/posts")
-    public PostsPageResponseDto findAll(@PageableDefault(size = 10) Pageable pageable,
-                                         @RequestParam(required = false) String q,
-                                         @RequestParam(required = false) Category category) {
+    public ResponseEntity<?> findAll(@PageableDefault(size = 10) Pageable pageable,
+                                      @RequestParam(required = false) String q,
+                                      @RequestParam(required = false) Category category,
+                                      HttpServletRequest request) {
+        if (q != null && !q.isBlank() && !rateLimiters.tryAcquireSearch(request.getRemoteAddr())) {
+            return RateLimitResponses.tooManyRequests("SEARCH_RATE_LIMITED", 60);
+        }
         PostSortPolicy.validate(pageable.getSort());
-        return postService.findAllDesc(pageable, q, category);
+        return ResponseEntity.ok(postService.findAllDesc(pageable, q, category));
     }
 
     /**
@@ -59,9 +79,12 @@ public class PostApiController {
      * 파일 저장만 하는 {@code PostImageService} 대신 {@code PostService}를 거친다.
      */
     @PostMapping(value = "/api/v1/posts/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ImageUploadResponseDto uploadImage(@RequestParam("file") MultipartFile file,
-                                               Authentication authentication) {
-        return new ImageUploadResponseDto(postService.uploadImage(file, authentication));
+    public ResponseEntity<?> uploadImage(@RequestParam("file") MultipartFile file,
+                                          Authentication authentication) {
+        if (!rateLimiters.tryAcquireUpload(authentication)) {
+            return RateLimitResponses.tooManyRequests("UPLOAD_RATE_LIMITED", 60);
+        }
+        return ResponseEntity.ok(new ImageUploadResponseDto(postService.uploadImage(file, authentication)));
     }
 
     /**

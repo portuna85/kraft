@@ -6,6 +6,8 @@ import com.kraft.comment.dto.CommentUpdateRequestDto;
 import com.kraft.comment.dto.CommentViewDto;
 import com.kraft.comment.service.CommentService;
 import com.kraft.config.security.SecurityConfig;
+import com.kraft.shared.web.WriteRateLimiters;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +51,15 @@ class CommentApiControllerTest {
 
     @MockitoBean
     private CommentService commentService;
+
+    @MockitoBean
+    private WriteRateLimiters rateLimiters;
+
+    /** A-SEC-06 제한기는 이 슬라이스의 관심사가 아니다 — 기본으로 항상 통과시킨다. */
+    @BeforeEach
+    void allowAllRateLimits() {
+        given(rateLimiters.tryAcquireComment(any())).willReturn(true);
+    }
 
     @Test
     @DisplayName("F13: GET .../comments/page 는 인증 없이도 afterId 커서를 그대로 서비스에 전달한다")
@@ -96,6 +107,22 @@ class CommentApiControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(10))
                 .andExpect(jsonPath("$.version").value(0));
+    }
+
+    @Test
+    @DisplayName("POST .../comments 는 속도 제한에 걸리면 429이고 서비스는 호출되지 않는다")
+    void saveComment_whenRateLimited_returns429AndDoesNotCallService() throws Exception {
+        given(rateLimiters.tryAcquireComment(any())).willReturn(false);
+
+        mockMvc.perform(post("/api/v1/posts/1/comments")
+                        .with(user("tester@example.com"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\":\"댓글 내용\"}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("COMMENT_RATE_LIMITED"));
+
+        verify(commentService, never()).save(any(), any(), any());
     }
 
     @Test
