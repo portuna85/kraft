@@ -516,6 +516,19 @@ class PostServiceTest {
     }
 
     @Test
+    @DisplayName("findByIdForView(countView=false): A-BE-04 중복 방문 판정에 따라 조회수를 올리지 않는다")
+    void findByIdForView_whenCountViewFalse_doesNotIncreaseViewCount() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Post post = postOf(owner, 100L);
+        given(postRepository.findById(100L)).willReturn(Optional.of(post));
+        given(postLikeRepository.countByPostId(100L)).willReturn(0L);
+
+        postService.findByIdForView(100L, null, false);
+
+        verify(postRepository, never()).increaseViewCount(any());
+    }
+
+    @Test
     @DisplayName("setLike(true): 아직 안 눌렀으면 추천을 추가하고 liked=true를 반환한다")
     void setLike_toTrueWhenNotLikedYet_addsLikeAndReturnsLikedTrue() {
         User user = userWithEmail("liker@example.com", 2L);

@@ -209,6 +209,16 @@ public class PostService {
     }
 
     /**
+     * 상세 화면용 조회. 항상 조회수를 올린다 — 호출자가 중복 방문 여부를 판단하지 않는
+     * 내부·테스트 호출에 쓴다. 실제 컨트롤러 경로는 {@link #findByIdForView(Long, Authentication, boolean)}로
+     * 중복 방문 여부(A-BE-04)를 넘긴다.
+     */
+    @Transactional
+    public PostViewDto findByIdForView(Long id, Authentication authentication) {
+        return findByIdForView(id, authentication, true);
+    }
+
+    /**
      * 상세 화면용 조회. 인증 객체와 엔티티를 함께 볼 수 있는 이 지점에서 관리 권한을 계산해
      * 화면 전용 DTO로 내려준다. 화면이 작성자 이름과 로그인 이메일을 비교하는 방식(잘못된
      * 소유권 추정)을 쓰지 않게 하려는 것이다. 공개 REST DTO는 그대로 둔다.
@@ -216,11 +226,17 @@ public class PostService {
      * 조회수는 엔티티를 읽기 <b>전에</b> 별도의 원자적 UPDATE로 올린다. 엔티티를 바꿔 변경
      * 감지에 맡기면 제목·본문·분류까지 함께 UPDATE에 실려, 단순 열람이 다른 트랜잭션의 편집을
      * 되돌리고 최종수정일까지 바꿨다(개선 보고서 F02·F11). 순서를 이렇게 두면 늘어난 조회수가
-     * 그대로 화면에 반영된다(새로고침·중복 방문 방지는 여전히 없는 단순 카운터다).
+     * 그대로 화면에 반영된다.
+     * <p>
+     * {@code countView}가 false면 조회수를 올리지 않는다 — {@code PostViewDedup}(A-BE-04)가
+     * 같은 방문자가 짧은 시간 안에 같은 글을 다시 열었다고 판단했을 때 컨트롤러가 넘기는 값이다.
+     * 새로고침·봇·링크 미리보기·재방문이 매번 1씩 올리던 것을 줄인다.
      */
     @Transactional
-    public PostViewDto findByIdForView(Long id, Authentication authentication) {
-        postRepository.increaseViewCount(id);
+    public PostViewDto findByIdForView(Long id, Authentication authentication, boolean countView) {
+        if (countView) {
+            postRepository.increaseViewCount(id);
+        }
 
         Post post = findPost(id);
         Long userId = currentUserId(authentication);

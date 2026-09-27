@@ -17,6 +17,7 @@ import com.kraft.shared.web.PageWindow;
 import com.kraft.shared.web.WriteRateLimiters;
 import com.kraft.user.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -44,6 +45,7 @@ public class PostPageController {
     private final ObjectMapper objectMapper;
     private final UserService userService;
     private final WriteRateLimiters rateLimiters;
+    private final PostViewDedup postViewDedup;
 
     @GetMapping("/")
     public String index(@PageableDefault(size = 10) Pageable pageable,
@@ -168,8 +170,11 @@ public class PostPageController {
      * (익명 요청이면 {@code authentication}이 null이거나 익명 토큰이며, 두 경우 모두 false).
      */
     @GetMapping("/posts/update/{id}")
-    public String postsUpdate(@PathVariable Long id, Authentication authentication, Model model) {
-        PostViewDto post = postService.findByIdForView(id, authentication);
+    public String postsUpdate(@PathVariable Long id, Authentication authentication, Model model,
+                               HttpServletRequest request, HttpServletResponse response) {
+        // 새로고침·봇·재방문이 매번 조회수를 올리지 않게 한다(전체 리뷰 2026-09-26 A-BE-04).
+        boolean countView = postViewDedup.shouldCount(request, response, id, authentication);
+        PostViewDto post = postService.findByIdForView(id, authentication, countView);
         CommentPageDto commentPage = commentService.findInitialPageForView(id, authentication);
         model.addAttribute("post", post);
         model.addAttribute("comments", commentPage.comments());

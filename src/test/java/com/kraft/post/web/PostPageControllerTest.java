@@ -70,10 +70,17 @@ class PostPageControllerTest {
     @MockitoBean
     private WriteRateLimiters rateLimiters;
 
-    /** A-SEC-06 검색 제한기는 이 슬라이스의 관심사가 아니다 — 기본으로 항상 통과시킨다. */
+    @MockitoBean
+    private PostViewDedup postViewDedup;
+
+    /**
+     * A-SEC-06 검색 제한기·A-BE-04 중복 방문 판정은 이 슬라이스의 관심사가 아니다 — 기본으로
+     * 항상 통과(=조회수를 센다)시킨다.
+     */
     @BeforeEach
     void allowAllRateLimits() {
         given(rateLimiters.tryAcquireSearch(any())).willReturn(true);
+        given(postViewDedup.shouldCount(any(), any(), any(), any())).willReturn(true);
     }
 
     @Test
@@ -259,7 +266,7 @@ class PostPageControllerTest {
     @Test
     @DisplayName("GET /posts/update/{id} 는 조회한 게시글과 댓글 목록을 모델에 담아 렌더링한다")
     void postsUpdate_rendersUpdateViewWithPostAndComments() throws Exception {
-        given(postService.findByIdForView(eq(1L), nullable(Authentication.class)))
+        given(postService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
                 .willReturn(new PostViewDto(1L, "제목", "내용", null, "작성자", false, Category.FREE, 0L, 0L, false, 0L));
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(List.of(), 0L, false));
@@ -273,7 +280,7 @@ class PostPageControllerTest {
     @Test
     @DisplayName("GET /posts/update/{id} 는 본문을 마크다운으로 해석해 그린다(13단계, SSR)")
     void postsUpdate_rendersMarkdownContentAsHtml() throws Exception {
-        given(postService.findByIdForView(eq(1L), nullable(Authentication.class)))
+        given(postService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
                 .willReturn(new PostViewDto(1L, "제목", "**굵게** 본문", null, "작성자", false, Category.FREE, 0L, 0L, false, 0L));
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(List.of(), 0L, false));
@@ -301,7 +308,7 @@ class PostPageControllerTest {
     @Test
     @DisplayName("GET /posts/update/{id} 는 본문에 HTML 태그가 있어도 해석하지 않고 이스케이프해 보여준다")
     void postsUpdate_escapesHtmlTagsInMarkdownContent() throws Exception {
-        given(postService.findByIdForView(eq(1L), nullable(Authentication.class)))
+        given(postService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
                 .willReturn(new PostViewDto(1L, "제목", "<script>alert(1)</script>", null, "작성자", false, Category.FREE, 0L, 0L, false, 0L));
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(List.of(), 0L, false));
@@ -321,7 +328,7 @@ class PostPageControllerTest {
     @Test
     @DisplayName("GET /posts/update/{id} 는 관련 게시글 조회를 조회한 글의 분류·id로 위임한다")
     void postsUpdate_delegatesRelatedPostsLookupToPostCategoryAndId() throws Exception {
-        given(postService.findByIdForView(eq(1L), nullable(Authentication.class)))
+        given(postService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
                 .willReturn(new PostViewDto(1L, "제목", "내용", null, "작성자", false, Category.QNA, 0L, 0L, false, 0L));
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(List.of(), 0L, false));
@@ -337,7 +344,7 @@ class PostPageControllerTest {
             "PostNotFoundException은 ApiExceptionHandler(REST 컨트롤러 전용)의 범위 밖이지만, " +
             "ViewExceptionHandler가 화면 컨트롤러 전용으로 404 + error/not-found 뷰로 변환한다.")
     void postsUpdate_whenPostNotFound_rendersNotFoundViewWith404() throws Exception {
-        given(postService.findByIdForView(eq(999L), nullable(Authentication.class)))
+        given(postService.findByIdForView(eq(999L), nullable(Authentication.class), anyBoolean()))
                 .willThrow(new PostNotFoundException(999L));
 
         mockMvc.perform(get("/posts/update/999"))
@@ -381,7 +388,7 @@ class PostPageControllerTest {
     @Test
     @DisplayName("GET /posts/update/{id} 는 편집 충돌 감지용 버전을 Vue 초기 상태(JSON)로 내려준다")
     void postsUpdate_rendersVersionForConflictDetection() throws Exception {
-        given(postService.findByIdForView(eq(1L), nullable(Authentication.class)))
+        given(postService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
                 .willReturn(new PostViewDto(1L, "제목", "내용", null, "작성자", true, Category.FREE, 0L, 0L, false, 7L));
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(List.of(), 0L, false));
@@ -397,7 +404,7 @@ class PostPageControllerTest {
     @Test
     @DisplayName("F12: 편집 취소가 분류를 되돌릴 수 있도록 원본 분류를 Vue 초기 상태(JSON)로 내려준다")
     void postsUpdate_rendersOriginalCategoryForCancel() throws Exception {
-        given(postService.findByIdForView(eq(1L), nullable(Authentication.class)))
+        given(postService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
                 .willReturn(new PostViewDto(1L, "제목", "내용", null, "작성자", true, Category.QNA, 0L, 0L, false, 0L));
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(List.of(), 0L, false));
@@ -414,7 +421,7 @@ class PostPageControllerTest {
     @DisplayName("제목·댓글에 </script>가 있어도 script 태그를 탈출하지 못한다 (저장형 XSS 방지)")
     void postsUpdate_escapesScriptClosingSequenceInEmbeddedJson() throws Exception {
         String payload = "</script><script>alert(1)</script>";
-        given(postService.findByIdForView(eq(1L), nullable(Authentication.class)))
+        given(postService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
                 .willReturn(new PostViewDto(1L, payload, "내용", null, "작성자", true, Category.FREE, 0L, 0L, false, 0L));
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(
