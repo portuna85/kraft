@@ -33,10 +33,73 @@ import * as flash from '@ui/flash.js';
  * 안내 문구를 비슷하게 반복하는 것은 남아 있는 중복이지만, 그 둘은 POST/PUT과 버전
  * 충돌 처리가 달라 억지로 합치지 않기로 했다(각 파일의 onSubmit 주석 참고).
  */
+/** 이보다 긴 변을 가진 이미지만 줄인다(A-FE-06). 이미 작은 이미지를 다시 인코딩할 이유는 없다. */
+const MAX_DIMENSION = 2048;
+const RESIZE_QUALITY = 0.85;
+
+/**
+ * 캔버스로 다시 그려 축소한다. 세 가지 효과를 동시에 얻는다: 5MB 초과로 거절되는 사례를
+ * 줄이고, 상세 화면이 원본 해상도를 그대로 서빙하지 않게 하고, 브라우저가 다시 인코딩하는
+ * 과정에서 EXIF가 빠져 서버 쪽 제거(A-SEC-10)의 이중 방어가 된다.
+ *
+ * 원본과 같은 포맷으로 다시 인코딩한다(PNG→PNG, WEBP→WEBP) — 항상 JPEG로 바꾸면 투명
+ * 배경이 있는 PNG의 알파가 사라지는데, 그걸 피하려고 알파 채널 유무를 따로 검사하는 대신
+ * 포맷을 유지하는 쪽을 택했다. GIF(애니메이션 가능성)는 손대지 않는다.
+ *
+ * {@code createImageBitmap}의 {@code imageOrientation} 옵션을 지원하지 않는 구형 브라우저
+ * (iOS 15 하한 근처)나 디코딩 실패 시에는 원본 파일을 그대로 돌려준다(점진적 향상) — 서버가
+ * 어차피 5MB·픽셀 수 제한과 EXIF 제거를 최종적으로 처리한다.
+ *
+ * @param {File} original
+ * @param {string} extension
+ * @returns {Promise<File>}
+ */
+async function resizeIfNeeded(original, extension) {
+    if (extension === 'gif' || typeof createImageBitmap !== 'function') {
+        return original;
+    }
+    try {
+        const bitmap = await createImageBitmap(original, { imageOrientation: 'from-image' });
+        const scale = Math.min(1, MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
+        if (scale >= 1) {
+            bitmap.close?.();
+            return original;
+        }
+
+        const width = Math.round(bitmap.width * scale);
+        const height = Math.round(bitmap.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            bitmap.close?.();
+            return original;
+        }
+        ctx.drawImage(bitmap, 0, 0, width, height);
+        bitmap.close?.();
+
+        const mimeType = extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg';
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, mimeType, RESIZE_QUALITY));
+        if (!blob) {
+            return original;
+        }
+        const resizedExtension = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
+        const resizedName = original.name.replace(/\.[^.]+$/, `.${resizedExtension}`);
+        return new File([blob], resizedName, { type: mimeType });
+    } catch {
+        return original;
+    }
+}
+
 /** @param {{ initialUrl?: string|null }} [options] */
 export function useImageUpload({ initialUrl = null } = {}) {
     /** @type {import('vue').Ref<File|null>} */
     const file = ref(null);
+    // onFileSelected가 비동기(축소 처리)라 빠르게 다른 파일을 다시 고르면 먼저 시작한
+    // 축소가 나중에 끝나 방금 고른 파일을 덮어쓸 수 있다 — 매 호출마다 새 토큰을 발급해
+    // 자신이 마지막 선택일 때만 결과를 반영한다.
+    let currentSelectionToken = null;
     /** @type {import('vue').Ref<string|null>} */
     const previewUrl = ref(null);
     const removedExisting = ref(false);
@@ -71,9 +134,11 @@ export function useImageUpload({ initialUrl = null } = {}) {
 
     /**
      * 파일 입력의 change 이벤트에서 선택된 File(또는 선택 해제 시 null)을 넘겨받는다.
+     * 형식 검증을 통과하면 축소를 시도한 뒤(A-FE-06) 그 결과로 크기를 검사한다 — 축소
+     * 덕분에 5MB를 넘던 원본도 통과할 수 있다.
      * @param {File|null} selectedFile
      */
-    function onFileSelected(selectedFile) {
+    async function onFileSelected(selectedFile) {
         uploadedUrl.value = null;
         uploadedForFile = null;
         revokePreview();
@@ -94,7 +159,16 @@ export function useImageUpload({ initialUrl = null } = {}) {
             file.value = null;
             return;
         }
-        if (selectedFile.size > UPLOAD.MAX_BYTES) {
+
+        const selectionToken = Symbol('selection');
+        currentSelectionToken = selectionToken;
+        const resized = await resizeIfNeeded(selectedFile, extension);
+        if (currentSelectionToken !== selectionToken) {
+            // 축소가 끝나기 전에 사용자가 다른 파일을 또 골랐다 — 그 최신 선택이 이긴다.
+            return;
+        }
+
+        if (resized.size > UPLOAD.MAX_BYTES) {
             flash.showError(UPLOAD_MESSAGES.TOO_LARGE);
             file.value = null;
             return;
@@ -104,8 +178,8 @@ export function useImageUpload({ initialUrl = null } = {}) {
         // 새 파일을 고르면 기존 이미지는 교체 대상이므로, 전에 눌러 둔 "삭제"는 무시한다
         // (파일 우선 규칙).
         removedExisting.value = false;
-        file.value = selectedFile;
-        previewUrl.value = URL.createObjectURL(selectedFile);
+        file.value = resized;
+        previewUrl.value = URL.createObjectURL(resized);
     }
 
     /**

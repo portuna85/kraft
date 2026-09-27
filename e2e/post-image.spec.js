@@ -114,6 +114,67 @@ test('이미지를 붙여 글을 등록하면 상세에 그 이미지가 보인�
 });
 
 /**
+ * A-FE-06: 5MB를 훌쩍 넘는 원본도 브라우저에서 축소된 뒤 통과한다.
+ *
+ * 업로드 파일은 무압축 BMP(가로세로 3000×2000, 약 18MB)다. 확장자는 .png로 속이지만
+ * 문제가 되지 않는다 — 브라우저의 createImageBitmap은 파일 이름이 아니라 실제 바이트로
+ * 형식을 판별하므로 BMP로 정상 디코딩되고, 축소 결과는 canvas.toBlob이 새로 만든 진짜
+ * PNG라 서버 검증(매직 바이트)도 통과한다. 2048px가 넘는 원본이라 축소 경로를 반드시
+ * 타는 크기로 골랐다.
+ */
+function hugeBmpDisguisedAsPng() {
+    const width = 3000;
+    const height = 2000;
+    const rowSize = width * 3;
+    const rowPadded = Math.ceil(rowSize / 4) * 4;
+    const pixelDataSize = rowPadded * height;
+    const fileSize = 54 + pixelDataSize;
+
+    const buffer = Buffer.alloc(fileSize);
+    buffer.write('BM', 0, 'ascii');
+    buffer.writeUInt32LE(fileSize, 2);
+    buffer.writeUInt32LE(54, 10); // 픽셀 데이터 시작 오프셋
+    buffer.writeUInt32LE(40, 14); // BITMAPINFOHEADER 크기
+    buffer.writeInt32LE(width, 18);
+    buffer.writeInt32LE(height, 22); // 양수 = 아래에서 위로 저장
+    buffer.writeUInt16LE(1, 26); // 색상 평면
+    buffer.writeUInt16LE(24, 28); // 픽셀당 24비트(BGR)
+    buffer.writeUInt32LE(0, 30); // BI_RGB(무압축)
+
+    let offset = 54;
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            buffer[offset++] = x % 256; // B
+            buffer[offset++] = y % 256; // G
+            buffer[offset++] = (x + y) % 256; // R
+        }
+        offset += rowPadded - rowSize; // 4바이트 정렬 패딩
+    }
+
+    return { name: 'huge.png', mimeType: 'image/png', buffer };
+}
+
+test('가로세로 2048px를 넘는 큰 이미지는 브라우저에서 축소된 뒤 첨부·등록된다', async ({ page }) => {
+    const title = uniqueTitle('큰이미지');
+    const huge = hugeBmpDisguisedAsPng();
+    expect(huge.buffer.length).toBeGreaterThan(5 * 1024 * 1024);
+
+    await page.goto('/posts/save');
+    await page.locator('#title').fill(title);
+    await page.locator('#content').fill('축소돼서 올라가는 큰 이미지입니다.');
+    await page.locator('#picture').setInputFiles(huge);
+
+    // 원본은 5MB를 훌쩍 넘지만 축소 후 크기로 검사하므로 거절 배너가 뜨지 않는다.
+    await expect(page.locator('#picture-preview')).toBeVisible();
+    await expect(page.locator('#flash')).not.toContainText('5MB');
+
+    await page.locator('#btn-save').click();
+
+    await page.waitForURL(/\/posts\/update\/\d+$/);
+    await expect(page.locator('.post-image img')).toHaveAttribute('src', /^\/images\//);
+});
+
+/**
  * "업로드는 성공했는데 저장이 실패한" 경우 같은 파일을 다시 올리지 않고 이미 받은 URL로
  * 재시도한다. 이 동작은 postEdit/postForm 양쪽에 복사되어 있어 리팩터링에서 깨지기 쉬운데,
  * 업로드 요청 수를 세는 것 말고는 확인할 방법이 없다.

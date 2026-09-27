@@ -73,7 +73,11 @@ public class PostImageService {
         Path target = Path.of(uploadDir).resolve(filename);
         try {
             Files.createDirectories(target.getParent());
-            file.transferTo(target);
+            // GPS 좌표 등 위치·기기 정보가 담긴 메타데이터를 재인코딩 없이 제거한 뒤
+            // 저장한다(A-SEC-10). validate()가 이미 5MB 이하임을 확인했으므로 전체를
+            // 메모리에 올려도 된다.
+            byte[] stripped = ImageMetadataStripper.strip(file.getBytes(), extension);
+            Files.write(target, stripped);
         } catch (IOException e) {
             // 사용자 입력이 아니라 서버 디스크 문제다(A-BE-12) — 400이 아니라 500으로 나가야
             // 5xx 경보에 잡힌다.

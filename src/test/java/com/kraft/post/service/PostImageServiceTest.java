@@ -79,6 +79,55 @@ class PostImageServiceTest {
     }
 
     @Test
+    @DisplayName("A-SEC-10: 저장 파일에서 EXIF(GPS 등) 메타데이터가 사라진다")
+    void store_stripsExifMetadataFromSavedFile() throws IOException {
+        // ImageIO가 만든 순수 JPEG(EXIF 없음) 바로 뒤(SOI 다음)에 GPS 태그가 든 APP1을
+        // 끼워 넣는다 — JPEG는 SOI 뒤 마커 순서를 엄격히 강제하지 않고, PostImageService의
+        // 서명 검사도 앞 3바이트(FF D8 FF)만 본다.
+        byte[] plain = TestImages.jpegFile("photo.jpg").getBytes();
+        byte[] exifApp1 = exifApp1WithGpsPointer();
+        byte[] withExif = new byte[2 + exifApp1.length + (plain.length - 2)];
+        System.arraycopy(plain, 0, withExif, 0, 2);
+        System.arraycopy(exifApp1, 0, withExif, 2, exifApp1.length);
+        System.arraycopy(plain, 2, withExif, 2 + exifApp1.length, plain.length - 2);
+        MockMultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", withExif);
+
+        String url = postImageService.store(file);
+
+        byte[] saved = readAll(uploadDir.resolve(url.substring("/images/".length())));
+        assertThat(new String(saved, StandardCharsets.US_ASCII)).doesNotContain("Exif");
+    }
+
+    private static byte[] readAll(Path path) {
+        try {
+            return Files.readAllBytes(path);
+        } catch (IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+    }
+
+    /** Orientation 없이 GPSInfoIFDPointer 태그 하나만 담은 최소 EXIF APP1. */
+    private static byte[] exifApp1WithGpsPointer() {
+        byte[] tiff = {
+                'I', 'I', 0x2A, 0x00, 0x08, 0x00, 0x00, 0x00, // 헤더 + IFD0 오프셋(8)
+                0x01, 0x00,                                   // 항목 1개
+                0x25, (byte) 0x88, 0x04, 0x00, 0x01, 0x00, 0x00, 0x00, (byte) 0xE7, 0x03, 0x00, 0x00, // GPSInfoIFDPointer
+                0x00, 0x00, 0x00, 0x00,                       // 다음 IFD 없음
+        };
+        byte[] payload = new byte[6 + tiff.length];
+        System.arraycopy("Exif\0\0".getBytes(StandardCharsets.US_ASCII), 0, payload, 0, 6);
+        System.arraycopy(tiff, 0, payload, 6, tiff.length);
+        int length = payload.length + 2;
+        byte[] segment = new byte[4 + payload.length];
+        segment[0] = (byte) 0xFF;
+        segment[1] = (byte) 0xE1;
+        segment[2] = (byte) (length >> 8);
+        segment[3] = (byte) length;
+        System.arraycopy(payload, 0, segment, 4, payload.length);
+        return segment;
+    }
+
+    @Test
     @DisplayName("store: 픽셀 수 검증에 쓴 원본 입력 스트림도 닫는다 (스트림 누수 방지)")
     void store_closesEveryOpenedInputStream() {
         CloseTrackingMultipartFile file =
