@@ -202,9 +202,9 @@
 
       CDN이 아니라 이 서버가 직접 제공한다(개선 보고서 F08) — CDN 장애가 모달·토스트 UI
       전체를 죽이는 단일 장애점이었다. node_modules/bootstrap/dist/js/bootstrap.min.js를
-      그대로 복사한 것이라(바이트가 위 SRI 해시와 실제로 일치함을 확인했다) integrity·
-      crossorigin은 자체 호스팅에는 의미가 없어 뺐다. 버전을 올릴 때는 이 파일도 같이
-      바꿔야 한다(package.json의 bootstrap 버전과 맞출 것).
+      그대로 복사한 파일이라 integrity·crossorigin은 자체 호스팅에는 의미가 없어 뺐다(같은
+      서버가 서빙하므로 무결성은 이미 전송 구간(HTTPS)이 보장한다). 버전을 올릴 때는 이
+      파일도 같이 바꿔야 한다(package.json의 bootstrap 버전과 맞출 것).
     -->
     <script th:src="@{/js/vendor/bootstrap.min.js}"></script>
 

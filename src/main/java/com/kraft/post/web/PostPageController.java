@@ -118,8 +118,9 @@ public class PostPageController {
     }
 
     /**
-     * 화면에 보여줄 이름. 로그인 아이디는 이메일이므로 닉네임을 들고 다니는 principal이면
-     * 그쪽을 쓴다(옛 세션에는 없을 수 있어 이름으로 물러선다 — layout/navbar와 같은 규칙).
+     * 화면에 보여줄 이름. 로그인 아이디(principal name)는 회원 id다(BE-04) — 그대로 보여줄
+     * 수 없으므로 닉네임을 들고 다니는 principal이면 그쪽을 쓴다(옛 세션에는 없을 수 있어
+     * 이름으로 물러선다 — layout/navbar와 같은 규칙).
      */
     private static String displayNameOf(Authentication authentication) {
         if (authentication == null) {

@@ -23,8 +23,8 @@ import java.time.LocalDateTime;
  * 저장하는데 아웃박스에 평문으로 또 적으면 그 보호가 무의미해진다. 대신 회원과 토큰만 가리키고,
  * 보낼 때 그 자리에서 주소와 본문을 만든다.
  * <p>
- * 지금은 이메일 인증 메일만 담는다. 종류가 늘면 {@code type} 컬럼을 더하고 본문 생성을
- * 종류별로 나눈다.
+ * {@link OutboxMailKind}로 메일 종류(이메일 인증·비밀번호 재설정 등)를 구분하고, 본문은
+ * {@code OutboxMailWorker}가 종류별로 만든다.
  */
 @Getter
 @Entity

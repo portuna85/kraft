@@ -48,10 +48,9 @@ class SecurityHeadersTest {
     }
 
     /**
-     * TLS는 리버스 프록시가 종단하고 {@code server.forward-headers-strategy}는 아직 설정하지
-     * 않았다 — {@code request.isSecure()}가 항상 false일 수 있는 환경에서도 HSTS가 붙어야
-     * 한다(기본 매처를 그대로 썼다면 이 테스트가 실패해야 정상이다: MockMvc 요청은 HTTPS가
-     * 아니다).
+     * TLS는 리버스 프록시가 종단한다. {@code server.forward-headers-strategy}(native)가 켜져
+     * 있어도 이 앱은 기본 매처(isSecure) 대신 HSTS를 항상 붙인다(기본 매처를 그대로 썼다면
+     * 이 테스트가 실패해야 정상이다: MockMvc 요청은 HTTPS가 아니다).
      */
     @Test
     @DisplayName("SEC-05: HTTPS가 아닌 요청에도 HSTS가 붙는다(프록시 뒤에서도 항상 적용)")
