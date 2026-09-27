@@ -262,7 +262,7 @@ class PostApiControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"\",\"content\":\"내용\",\"picture\":null}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("title: 제목은 필수입니다."));
+                .andExpect(jsonPath("$.detail").value("제목은 필수입니다."));
 
         verify(postService, never()).save(any(), any());
     }
@@ -278,7 +278,7 @@ class PostApiControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"" + tooLongTitle + "\",\"content\":\"내용\",\"picture\":null}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("title: 제목은 255자 이하로 입력하세요."));
+                .andExpect(jsonPath("$.detail").value("제목은 255자 이하로 입력하세요."));
 
         verify(postService, never()).save(any(), any());
     }
@@ -327,7 +327,7 @@ class PostApiControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"" + tooLongTitle + "\",\"content\":\"내용\",\"version\":0}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("title: 제목은 255자 이하로 입력하세요."));
+                .andExpect(jsonPath("$.detail").value("제목은 255자 이하로 입력하세요."));
 
         verify(postService, never()).update(any(), any(), any());
     }
@@ -341,7 +341,7 @@ class PostApiControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"제목\",\"content\":\"내용\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("version: ")));
+                .andExpect(jsonPath("$.detail").value("수정할 글의 버전 정보가 필요합니다. 화면을 새로고침한 뒤 다시 시도하세요."));
 
         verify(postService, never()).update(any(), any(), any());
     }

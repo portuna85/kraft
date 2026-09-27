@@ -1,5 +1,6 @@
 package com.kraft.post.service;
 
+import com.kraft.shared.exception.StorageException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -74,7 +75,9 @@ public class PostImageService {
             Files.createDirectories(target.getParent());
             file.transferTo(target);
         } catch (IOException e) {
-            throw new IllegalArgumentException("이미지 저장에 실패했습니다.", e);
+            // 사용자 입력이 아니라 서버 디스크 문제다(A-BE-12) — 400이 아니라 500으로 나가야
+            // 5xx 경보에 잡힌다.
+            throw new StorageException("이미지 저장에 실패했습니다.", e);
         }
 
         return "/images/" + filename;
@@ -122,7 +125,7 @@ public class PostImageService {
         try {
             Files.deleteIfExists(target);
         } catch (IOException e) {
-            throw new IllegalArgumentException("이미지 삭제에 실패했습니다.", e);
+            throw new StorageException("이미지 삭제에 실패했습니다.", e);
         }
     }
 

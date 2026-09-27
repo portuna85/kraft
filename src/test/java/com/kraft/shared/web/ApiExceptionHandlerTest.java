@@ -71,4 +71,42 @@ class ApiExceptionHandlerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("잘못된 요청입니다."));
     }
+
+    @Test
+    @DisplayName("A-SEC-05: 한글이 없는 IllegalArgumentException은 400 대신 500 + 일반 문구다")
+    void illegalArgumentWithoutKoreanMessage_returns500() throws Exception {
+        mockMvc.perform(post("/test/illegal-argument-non-korean"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.detail").value("서버 내부 오류가 발생했습니다."));
+    }
+
+    @Test
+    @DisplayName("A-BE-12: 디스크 저장 실패(StorageException)는 400이 아니라 500이다")
+    void storageException_returns500() throws Exception {
+        mockMvc.perform(post("/test/storage-failure"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.detail").value("서버 내부 오류가 발생했습니다."));
+    }
+
+    @Test
+    @DisplayName("A-SEC-05: AccessDeniedException 메시지 끝의 내부 id는 응답에서 잘린다")
+    void accessDenied_stripsTrailingInternalId() throws Exception {
+        mockMvc.perform(post("/test/access-denied"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.detail").value("작성자 본인 또는 관리자만 수정·삭제할 수 있습니다."));
+    }
+
+    @Test
+    @DisplayName("A-BE-07: 검증 실패는 필드명 없는 detail과 errors[] 배열을 함께 준다")
+    void validationFailure_returnsDetailAndFieldErrors() throws Exception {
+        mockMvc.perform(post("/test/validation")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"\",\"content\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("title"))))
+                .andExpect(jsonPath("$.errors", org.hamcrest.Matchers.hasSize(2)))
+                .andExpect(jsonPath("$.errors[*].field", org.hamcrest.Matchers.containsInAnyOrder("title", "content")))
+                .andExpect(jsonPath("$.errors[*].message",
+                        org.hamcrest.Matchers.containsInAnyOrder("제목은 필수입니다.", "내용은 필수입니다.")));
+    }
 }

@@ -134,7 +134,7 @@ class CommentApiControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("content: 내용은 필수입니다."));
+                .andExpect(jsonPath("$.detail").value("내용은 필수입니다."));
 
         verify(commentService, never()).save(any(), any(), any());
     }
@@ -200,7 +200,7 @@ class CommentApiControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"수정\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("version: ")));
+                .andExpect(jsonPath("$.detail").value("수정할 댓글의 버전 정보가 필요합니다. 화면을 새로고침한 뒤 다시 시도하세요."));
 
         verify(commentService, never()).update(any(), any(), any());
     }

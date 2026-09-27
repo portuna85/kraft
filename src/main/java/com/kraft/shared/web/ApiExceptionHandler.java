@@ -5,6 +5,7 @@ import com.kraft.recommend.domain.RecommendationGenerationLimitException;
 import com.kraft.recommend.domain.RecommendationHistoryNotReadyException;
 import com.kraft.recommend.domain.RecommendationValidationException;
 import com.kraft.shared.exception.NotFoundException;
+import com.kraft.shared.exception.StorageException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -25,7 +26,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-import java.util.stream.Collectors;
+import java.util.List;
 
 /**
  * 기능별 패키지의 {@link RestController} 전용 전역 예외 처리기.
@@ -51,14 +52,39 @@ import java.util.stream.Collectors;
 @RestControllerAdvice(annotations = RestController.class)
 public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
+    /** 서비스가 직접 던지는 검증 실패 메시지는 전부 한글이다 — 이 특징으로 프로그래밍 오류를 가려낸다(A-SEC-05). */
+    private static final java.util.regex.Pattern HANGUL = java.util.regex.Pattern.compile("[\\uAC00-\\uD7A3]");
+
     /**
      * 서비스 계층에서 "대상을 찾을 수 없음", "이미 존재함" 등의 검증 실패를 나타낼 때 사용하는
      * {@link IllegalArgumentException}을 400으로 변환한다.
      * (예: 존재하지 않는 게시글/회원 조회, 이메일 중복 가입)
+     * <p>
+     * 다만 이 관례 때문에 Spring {@code Assert}·JDK 파싱 오류·Hibernate 인자 검사처럼 우리
+     * 서비스 코드가 던지지 않은 IAE까지 같은 핸들러에 걸려 "사용자 잘못(400) + 영문 내부
+     * 메시지"로 그대로 나갔다(A-SEC-05). 우리 서비스가 던지는 메시지는 전부 한글이므로, 한글이
+     * 없는 메시지는 프로그래밍 오류로 보고 500 + 일반 문구로 감추고 스택 트레이스를 남긴다.
      */
     @ExceptionHandler(IllegalArgumentException.class)
     public ProblemDetail handleIllegalArgument(IllegalArgumentException e) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
+        String message = e.getMessage();
+        if (message == null || !HANGUL.matcher(message).find()) {
+            log.error("한글 메시지가 없는 IllegalArgumentException입니다 — 검증 실패가 아니라 "
+                    + "프로그래밍 오류일 수 있습니다.", e);
+            return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
+        }
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, message);
+    }
+
+    /**
+     * 디스크 읽기·쓰기·삭제 실패(A-BE-12). 사용자 잘못이 아니라 서버 환경 문제이므로 500으로
+     * 나간다 — {@code IllegalArgumentException}으로 던지던 예전 방식은 이 상황을 400으로
+     * 집계해 5xx 경보에 잡히지 않게 했다.
+     */
+    @ExceptionHandler(StorageException.class)
+    public ProblemDetail handleStorage(StorageException e) {
+        log.error("파일 저장소 처리에 실패했습니다.", e);
+        return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
     }
 
     /**
@@ -132,11 +158,21 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
-        String message = ex.getBindingResult().getFieldErrors().stream()
-                .map(fieldError -> fieldError.getField() + ": " + fieldError.getDefaultMessage())
-                .collect(Collectors.joining(", "));
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, message));
+        List<FieldErrorDto> errors = ex.getBindingResult().getFieldErrors().stream()
+                .map(fieldError -> new FieldErrorDto(fieldError.getField(), fieldError.getDefaultMessage()))
+                .toList();
+        // detail은 필드명 없이 첫 오류 메시지만 담는다(A-BE-07) — 예전에는 "title: 제목은
+        // 필수입니다., content: ..."처럼 영문 필드명과 이어 붙여 사용자에게 내부 필드명이
+        // 그대로 노출됐다. 필드별 오류는 errors 확장 속성으로 따로 싣는다(A-FE-08이 읽는다).
+        // 이 detail만 읽는 옛 클라이언트도 여전히 동작한다.
+        String detail = errors.isEmpty() ? "입력값을 확인해 주세요." : errors.get(0).message();
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
+        problem.setProperty("errors", errors);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
+    }
+
+    /** {@code errors[]} 확장 속성 한 항목. 화면이 입력칸 옆에 붙일 수 있게 필드명과 메시지를 나눠 싣는다. */
+    public record FieldErrorDto(String field, String message) {
     }
 
     /**
@@ -169,9 +205,16 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
      * 대신 처리하지만(그 경우도 403), 이 애노테이션이 있으면 다른 오류들과 동일한 JSON 형식으로
      * 통일된다.
      */
+    /** 메시지 끝의 {@code " id=123"}·{@code " fileName=..."} 같은 내부 식별자를 잘라낸다(A-SEC-05). */
+    private static final java.util.regex.Pattern TRAILING_IDENTIFIER = java.util.regex.Pattern.compile("\\s+\\w+=\\S+$");
+
     @ExceptionHandler(AccessDeniedException.class)
     public ProblemDetail handleAccessDenied(AccessDeniedException e) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.getMessage());
+        // 내부 id·파일명은 사용자 응답에는 필요 없고 로그로만 남긴다.
+        log.warn(e.getMessage());
+        String message = e.getMessage() == null ? "권한이 없습니다."
+                : TRAILING_IDENTIFIER.matcher(e.getMessage()).replaceFirst("");
+        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, message);
     }
 
     /**

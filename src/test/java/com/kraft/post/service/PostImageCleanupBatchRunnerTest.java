@@ -96,7 +96,7 @@ class PostImageCleanupBatchRunnerTest {
         given(postImageRepository.findAllByStatusAndIdGreaterThanOrderByIdAsc(
                 eq(PostImageStatus.PENDING_DELETE), eq(0L), any(Pageable.class)))
                 .willReturn(List.of(failing, succeeding));
-        willThrow(new IllegalArgumentException("이미지 삭제에 실패했습니다."))
+        willThrow(new com.kraft.shared.exception.StorageException("이미지 삭제에 실패했습니다.", new java.io.IOException()))
                 .given(postImageService).deleteIfExists("/images/locked.png");
         willDoNothing().given(postImageService).deleteIfExists("/images/fine.png");
 

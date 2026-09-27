@@ -109,7 +109,7 @@ class UserApiControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"" + tooLongName + "\",\"email\":\"tester@example.com\",\"password\":\"Password123!\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("name: 이름은 50자 이하로 입력하세요."));
+                .andExpect(jsonPath("$.detail").value("이름은 50자 이하로 입력하세요."));
 
         verify(userService, never()).signUp(any(), any(), any());
     }

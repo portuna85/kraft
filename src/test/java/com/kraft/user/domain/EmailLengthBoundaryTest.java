@@ -115,7 +115,7 @@ class EmailLengthBoundaryTest {
         signUp(emailOfLength(EmailPolicy.MAX_LENGTH + 1))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value(
-                        "email: 이메일은 " + EmailPolicy.MAX_LENGTH + "자 이하로 입력하세요."));
+                        "이메일은 " + EmailPolicy.MAX_LENGTH + "자 이하로 입력하세요."));
 
         assertThat(userRepository.count()).isZero();
     }
