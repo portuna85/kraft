@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { clearDraft, readDraft, writeDraft } from './draftStorage.js';
+import { clearDraft, readDraft, safeLocalStorage, writeDraft } from './draftStorage.js';
 
 const DEFAULT_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7일
 const DEBOUNCE_MS = 800;
@@ -13,11 +13,14 @@ const DEBOUNCE_MS = 800;
  *
  * @param {string} storageKey
  * @param {import('vue').Reactive<Record<string, unknown>>} draft
- * @param {{ ttlMs?: number, storage?: Storage }} [options]
+ * @param {{ ttlMs?: number, storage?: Storage | null }} [options]
  */
 export function useDraftAutosave(storageKey, draft, options = {}) {
     const ttlMs = options.ttlMs ?? DEFAULT_TTL_MS;
-    const storage = options.storage ?? window.localStorage;
+    // window.localStorage 속성 접근 자체가 던질 수 있어(safeLocalStorage 참고) 여기서
+    // 직접 읽지 않는다 — 이 기본값은 컴포넌트 setup() 도중 평가되므로, 여기서 던지면 try로
+    // 감쌀 곳이 없어 Vue 마운트 전체가 실패한다.
+    const storage = options.storage ?? safeLocalStorage();
 
     const available = ref(false);
     let pendingRestore = /** @type {Record<string, unknown> | null} */ (null);

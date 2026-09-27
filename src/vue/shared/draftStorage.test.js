@@ -1,7 +1,7 @@
 // 자동 임시 저장 저장소의 순수 로직 테스트. `npm run test:unit`.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clearDraft, readDraft, writeDraft } from './draftStorage.js';
+import { clearDraft, readDraft, safeLocalStorage, writeDraft } from './draftStorage.js';
 
 /** window.localStorage를 흉내 낸 메모리 저장소. */
 function fakeStorage(initial = {}) {
@@ -77,4 +77,28 @@ test('storage 접근이 예외를 던져도(프라이빗 모드 등) 조용히 �
     assert.doesNotThrow(() => writeDraft(throwing, 'k', { title: '제목' }));
     assert.doesNotThrow(() => clearDraft(throwing, 'k'));
     assert.equal(readDraft(throwing, 'k', 1000), null);
+});
+
+test('storage가 null이면(safeLocalStorage가 접근 자체를 못 한 경우) 아무것도 하지 않고 조용히 넘어간다', () => {
+    assert.doesNotThrow(() => writeDraft(null, 'k', { title: '제목' }));
+    assert.doesNotThrow(() => clearDraft(null, 'k'));
+    assert.equal(readDraft(null, 'k', 1000), null);
+});
+
+test('safeLocalStorage: window.localStorage 접근이 던지면 null을 반환한다', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
+    globalThis.window = {
+        get localStorage() {
+            throw new Error('SecurityError: 저장소 접근이 차단됨');
+        },
+    };
+    try {
+        assert.equal(safeLocalStorage(), null);
+    } finally {
+        if (originalDescriptor) {
+            Object.defineProperty(globalThis, 'window', originalDescriptor);
+        } else {
+            delete globalThis.window;
+        }
+    }
 });
