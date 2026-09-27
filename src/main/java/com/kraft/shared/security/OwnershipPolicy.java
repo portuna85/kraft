@@ -42,16 +42,15 @@ public final class OwnershipPolicy {
      * 재사용될 수 있다 — 세션 폐기가 지연된 옛 세션이 남아 있는 채로 같은 이메일로 새 계정이
      * 가입하면, 이메일만 비교하는 판정은 그 옛 세션을 새 계정의 소유자로 착각한다.
      * <p>
-     * principal이 {@link KraftUserDetails}가 아니면(단위 테스트가 이메일 문자열만으로
-     * {@code Authentication}을 만드는 경우가 많다) 예전처럼 이메일로 비교한다 — 실제 운영
-     * 로그인은 {@code UserDetailsServiceImpl}이 항상 KraftUserDetails를 principal로 만들므로
-     * 이 폴백을 타지 않는다.
+     * principal이 {@link KraftUserDetails}가 아니면 소유자가 아닌 것으로 본다(A-QA-02) —
+     * 실제 운영 로그인은 {@code UserDetailsServiceImpl}이 항상 KraftUserDetails를 principal로
+     * 만들므로, 그 외의 principal 타입은 운영에서 나올 수 없는 형태다. 이메일 문자열로 비교하던
+     * 예전 폴백은 principal 이름이 회원 id로 바뀐 뒤로는 운영에서 절대 참이 될 수 없는 죽은
+     * 코드였다(테스트에는 {@code TestAuthentication}을 쓴다).
      */
     private static boolean isSamePrincipal(Authentication authentication, User owner) {
-        if (authentication.getPrincipal() instanceof KraftUserDetails principal) {
-            return owner.getId() != null && owner.getId().equals(principal.getUserId());
-        }
-        return owner.getEmail().equals(authentication.getName());
+        return authentication.getPrincipal() instanceof KraftUserDetails principal
+                && owner.getId() != null && owner.getId().equals(principal.getUserId());
     }
 
     /**

@@ -11,6 +11,7 @@ import com.kraft.report.domain.ReportRepository;
 import com.kraft.report.domain.ReportReason;
 import com.kraft.report.domain.ReportTargetType;
 import com.kraft.report.service.ReportService;
+import com.kraft.support.TestAuthentication;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
@@ -20,9 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.testcontainers.mariadb.MariaDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -95,10 +94,8 @@ class PostDeleteWithRepliesMariaDbTest {
         User commenter = userRepository.save(User.builder()
                 .name("reply-commenter").email("reply-commenter@example.com").password("encoded").role(Role.USER)
                 .build());
-        authorAuth = new UsernamePasswordAuthenticationToken(author.getEmail(), null,
-                List.of(new SimpleGrantedAuthority(Role.USER.getKey())));
-        adminAuth = new UsernamePasswordAuthenticationToken(admin.getEmail(), null,
-                List.of(new SimpleGrantedAuthority(Role.ADMIN.getKey())));
+        authorAuth = TestAuthentication.of(author);
+        adminAuth = TestAuthentication.of(admin);
         this.commenterId = commenter.getId();
     }
 

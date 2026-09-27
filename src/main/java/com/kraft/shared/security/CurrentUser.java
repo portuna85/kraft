@@ -2,9 +2,6 @@ package com.kraft.shared.security;
 
 import com.kraft.config.security.KraftUserDetails;
 import com.kraft.shared.exception.NotFoundException;
-import com.kraft.user.domain.EmailHasher;
-import com.kraft.user.domain.EmailMasker;
-import com.kraft.user.domain.EmailPolicy;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
 import org.springframework.security.core.Authentication;
@@ -13,15 +10,16 @@ import java.util.Optional;
 
 /**
  * 인증된 principal에서 현재 사용자를 얻는다(개선 보고서 COR-02). {@link KraftUserDetails}가
- * 담고 있는 불변 userId를 우선 쓴다 — 이메일은 탈퇴 후 재사용될 수 있다. 세션 폐기가 지연된
+ * 담고 있는 불변 userId를 쓴다 — 이메일은 탈퇴 후 재사용될 수 있다. 세션 폐기가 지연된
  * 옛 세션이 남아 있는 채로 같은 이메일로 새 계정이 가입하면, 이메일로 다시 조회하는 방식은
  * 그 사이 가입한 새 계정을 옛 세션의 주인으로 착각한다 — userId는 로그인 시점에 세션에 고정된
  * 값이라 이 문제가 없다.
  * <p>
- * principal이 KraftUserDetails가 아니면(단위 테스트가 이메일 문자열만으로 {@code Authentication}을
- * 만드는 경우가 많다) 예전처럼 이메일 해시로 조회한다 — 실제 운영 로그인은
- * {@code UserDetailsServiceImpl}이 항상 KraftUserDetails를 principal로 만들므로 이 폴백을 타지
- * 않는다.
+ * principal이 KraftUserDetails가 아니면 미인증으로 본다(A-QA-02) — 실제 운영 로그인은
+ * {@code UserDetailsServiceImpl}이 항상 KraftUserDetails를 principal로 만들므로, 그 외의
+ * principal 타입은 운영에서 나올 수 없는 형태다. 이메일 해시로 다시 조회하던 예전 폴백은
+ * principal 이름이 회원 id로 바뀐 뒤로는 운영에서 절대 타지 않는 죽은 코드였다(테스트에는
+ * {@code TestAuthentication}을 쓴다).
  */
 public final class CurrentUser {
 
@@ -44,37 +42,25 @@ public final class CurrentUser {
         if (!OwnershipPolicy.isAuthenticated(authentication)) {
             return null;
         }
-        return userId(authentication)
-                .orElseGet(() -> byEmail(authentication.getName(), userRepository)
-                        .map(User::getId)
-                        .orElse(null));
+        return userId(authentication).orElse(null);
     }
 
     /**
-     * @throws NotFoundException 계정을 찾지 못하면(탈퇴 등, BE-07). 기존 findUser(email)들과
-     *                            같은 메시지 형식을 유지한다.
+     * @throws NotFoundException 계정을 찾지 못하면(탈퇴 등, BE-07), 또는 principal이
+     *                            KraftUserDetails가 아니면(운영에서는 일어나지 않는다).
      */
     public static User require(Authentication authentication, UserRepository userRepository) {
-        Optional<Long> id = userId(authentication);
-        if (id.isPresent()) {
-            User user = userRepository.findById(id.get())
-                    .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. userId=" + id.get()));
-            // userId는 로그인 시점에 세션에 고정된 값이라, 그 뒤 이 계정이 탈퇴해도 세션 자체는
-            // (폐기가 지연되는 한) 계속 인증된 상태로 남는다. UserDetailsServiceImpl은 로그인
-            // 시점에만 탈퇴 여부를 본다 — 여기서 한 번 더 걸러야 폐기가 끝나기 전까지 탈퇴한
-            // 계정으로 새 글·댓글을 쓸 수 있는 창이 남지 않는다.
-            if (user.isWithdrawn()) {
-                throw new NotFoundException("존재하지 않는 회원입니다. userId=" + id.get());
-            }
-            return user;
+        Long id = userId(authentication)
+                .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다."));
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. userId=" + id));
+        // userId는 로그인 시점에 세션에 고정된 값이라, 그 뒤 이 계정이 탈퇴해도 세션 자체는
+        // (폐기가 지연되는 한) 계속 인증된 상태로 남는다. UserDetailsServiceImpl은 로그인
+        // 시점에만 탈퇴 여부를 본다 — 여기서 한 번 더 걸러야 폐기가 끝나기 전까지 탈퇴한
+        // 계정으로 새 글·댓글을 쓸 수 있는 창이 남지 않는다.
+        if (user.isWithdrawn()) {
+            throw new NotFoundException("존재하지 않는 회원입니다. userId=" + id);
         }
-        String email = authentication.getName();
-        return byEmail(email, userRepository)
-                .orElseThrow(() -> new NotFoundException(
-                        "존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
-    }
-
-    private static Optional<User> byEmail(String email, UserRepository userRepository) {
-        return userRepository.findByEmailHash(EmailHasher.sha512Hex(EmailPolicy.normalize(email)));
+        return user;
     }
 }

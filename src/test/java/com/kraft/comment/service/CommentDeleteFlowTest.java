@@ -5,6 +5,7 @@ import com.kraft.comment.domain.CommentRepository;
 import com.kraft.comment.dto.CommentDeleteResultDto;
 import com.kraft.post.domain.Post;
 import com.kraft.post.domain.PostRepository;
+import com.kraft.support.TestAuthentication;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
@@ -13,9 +14,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.util.List;
 import java.util.UUID;
@@ -63,14 +62,8 @@ class CommentDeleteFlowTest {
                 .build());
     }
 
-    /**
-     * principal을 이메일 문자열로 만든다 — {@link com.kraft.shared.security.OwnershipPolicy}는
-     * principal이 {@code KraftUserDetails}가 아니면(단위·통합 테스트가 흔히 그렇다) 이메일로
-     * 물러서는 폴백을 탄다(ReportFlowTest.authOf와 같은 패턴).
-     */
     private static Authentication authOf(User user) {
-        return new UsernamePasswordAuthenticationToken(user.getEmail(), "n/a",
-                List.of(new SimpleGrantedAuthority(user.getRoleKey())));
+        return TestAuthentication.of(user);
     }
 
     @Test

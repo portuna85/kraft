@@ -12,6 +12,7 @@ import com.kraft.report.domain.ReportStatus;
 import com.kraft.report.domain.ReportTargetType;
 import com.kraft.report.dto.ReportSaveRequestDto;
 import com.kraft.report.dto.ReportViewDto;
+import com.kraft.support.TestAuthentication;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
@@ -25,7 +26,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -84,12 +84,16 @@ class ReportServiceTest {
         return user;
     }
 
-    private static Authentication authOf(String email) {
-        return new UsernamePasswordAuthenticationToken(email, "n/a", List.of());
+    private static Authentication authOf(User user) {
+        return TestAuthentication.of(user);
+    }
+
+    private static Authentication authOf(Long id, String email, Role role) {
+        return TestAuthentication.of(id, email, role);
     }
 
     private void givenReporter(User reporter) {
-        given(userRepository.findByEmailHash(any())).willReturn(Optional.of(reporter));
+        given(userRepository.findById(any())).willReturn(Optional.of(reporter));
     }
 
     private static Post postBy(User author) {
@@ -99,12 +103,13 @@ class ReportServiceTest {
     @Test
     @DisplayName("report: 대상이 이미 없으면 접수하지 않는다")
     void report_whenTargetIsGone_isRejected() {
-        givenReporter(userWithId(1L, REPORTER_EMAIL));
+        User reporter = userWithId(1L, REPORTER_EMAIL);
+        givenReporter(reporter);
         given(postRepository.findById(99L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> reportService.report(
                 new ReportSaveRequestDto(ReportTargetType.POST, 99L, ReportReason.SPAM, null),
-                authOf(REPORTER_EMAIL)))
+                authOf(reporter)))
                 .isInstanceOf(com.kraft.shared.exception.NotFoundException.class)
                 .hasMessageContaining("존재하지 않는 대상");
 
@@ -120,7 +125,7 @@ class ReportServiceTest {
 
         assertThatThrownBy(() -> reportService.report(
                 new ReportSaveRequestDto(ReportTargetType.POST, 10L, ReportReason.SPAM, null),
-                authOf(REPORTER_EMAIL)))
+                authOf(reporter)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("자신이 쓴 글");
 
@@ -138,7 +143,7 @@ class ReportServiceTest {
 
         assertThatThrownBy(() -> reportService.report(
                 new ReportSaveRequestDto(ReportTargetType.POST, 10L, ReportReason.ABUSE, null),
-                authOf(REPORTER_EMAIL)))
+                authOf(reporter)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("이미 신고한 대상");
 
@@ -157,12 +162,12 @@ class ReportServiceTest {
                 .build();
         ReflectionTestUtils.setField(report, "id", 5L);
         given(reportRepository.findById(5L)).willReturn(Optional.of(report));
-        given(userRepository.findByEmailHash(any())).willReturn(Optional.of(admin));
+        given(userRepository.findById(any())).willReturn(Optional.of(admin));
         given(postRepository.findById(10L)).willReturn(Optional.of(postBy(userWithId(2L, "other@example.com"))));
         given(reportRepository.findByTargetTypeAndTargetIdAndStatus(
                 ReportTargetType.POST, 10L, ReportStatus.PENDING)).willReturn(List.of(report));
 
-        Authentication adminAuth = authOf("admin@example.com");
+        Authentication adminAuth = authOf(admin);
         reportService.resolve(5L, adminAuth);
 
         verify(postService).delete(10L, adminAuth);
@@ -182,12 +187,12 @@ class ReportServiceTest {
                 .build();
         ReflectionTestUtils.setField(report, "id", 6L);
         given(reportRepository.findById(6L)).willReturn(Optional.of(report));
-        given(userRepository.findByEmailHash(any())).willReturn(Optional.of(admin));
+        given(userRepository.findById(any())).willReturn(Optional.of(admin));
         given(commentRepository.findById(77L)).willReturn(Optional.empty());
         given(reportRepository.findByTargetTypeAndTargetIdAndStatus(
                 ReportTargetType.COMMENT, 77L, ReportStatus.PENDING)).willReturn(List.of(report));
 
-        reportService.resolve(6L, authOf("admin@example.com"));
+        reportService.resolve(6L, authOf(admin));
 
         verify(commentService, never()).delete(anyLong(), any());
         org.assertj.core.api.Assertions.assertThat(report.getStatus()).isEqualTo(ReportStatus.RESOLVED);
@@ -213,12 +218,12 @@ class ReportServiceTest {
                 .build();
         ReflectionTestUtils.setField(report, "id", 6L);
         given(reportRepository.findById(6L)).willReturn(Optional.of(report));
-        given(userRepository.findByEmailHash(any())).willReturn(Optional.of(admin));
+        given(userRepository.findById(any())).willReturn(Optional.of(admin));
         given(commentRepository.findById(77L)).willReturn(Optional.empty());
         given(reportRepository.findByTargetTypeAndTargetIdAndStatus(
                 ReportTargetType.COMMENT, 77L, ReportStatus.PENDING)).willReturn(List.of(report));
 
-        reportService.resolve(6L, authOf("admin@example.com"), 7);
+        reportService.resolve(6L, authOf(admin), 7);
 
         org.assertj.core.api.Assertions.assertThat(snapshotAuthor.isSuspended()).isTrue();
     }
@@ -236,12 +241,12 @@ class ReportServiceTest {
         ReflectionTestUtils.setField(handled, "id", 5L);
         ReflectionTestUtils.setField(other, "id", 6L);
         given(reportRepository.findById(5L)).willReturn(Optional.of(handled));
-        given(userRepository.findByEmailHash(any())).willReturn(Optional.of(admin));
+        given(userRepository.findById(any())).willReturn(Optional.of(admin));
         given(postRepository.findById(10L)).willReturn(Optional.of(postBy(userWithId(2L, "other@example.com"))));
         given(reportRepository.findByTargetTypeAndTargetIdAndStatus(
                 ReportTargetType.POST, 10L, ReportStatus.PENDING)).willReturn(List.of(handled, other));
 
-        reportService.resolve(5L, authOf("admin@example.com"));
+        reportService.resolve(5L, authOf(admin));
 
         // 이미 지운 글이 목록에 남아 있으면 관리자가 같은 판단을 반복하게 된다.
         org.assertj.core.api.Assertions.assertThat(other.getStatus()).isEqualTo(ReportStatus.RESOLVED);
@@ -252,7 +257,7 @@ class ReportServiceTest {
     @Test
     @DisplayName("resolve: 음수 정지 기간은 조용히 건너뛰지 않고 거절한다(O05)")
     void resolve_withNegativeSuspendDays_isRejected() {
-        assertThatThrownBy(() -> reportService.resolve(5L, authOf("admin@example.com"), -1))
+        assertThatThrownBy(() -> reportService.resolve(5L, authOf(9L, "admin@example.com", Role.ADMIN), -1))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("정지 기간");
 
@@ -262,7 +267,7 @@ class ReportServiceTest {
     @Test
     @DisplayName("resolve: 지나치게 큰 정지 기간은 거절한다(O05)")
     void resolve_withExcessiveSuspendDays_isRejected() {
-        assertThatThrownBy(() -> reportService.resolve(5L, authOf("admin@example.com"), 3651))
+        assertThatThrownBy(() -> reportService.resolve(5L, authOf(9L, "admin@example.com", Role.ADMIN), 3651))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("정지 기간");
 
@@ -278,9 +283,9 @@ class ReportServiceTest {
                 .targetType(ReportTargetType.POST).targetId(10L).reason(ReportReason.OTHER).build();
         ReflectionTestUtils.setField(report, "id", 5L);
         given(reportRepository.findById(5L)).willReturn(Optional.of(report));
-        given(userRepository.findByEmailHash(any())).willReturn(Optional.of(admin));
+        given(userRepository.findById(any())).willReturn(Optional.of(admin));
 
-        reportService.reject(5L, authOf("admin@example.com"));
+        reportService.reject(5L, authOf(admin));
 
         verify(postService, never()).delete(anyLong(), any());
         org.assertj.core.api.Assertions.assertThat(report.getStatus()).isEqualTo(ReportStatus.REJECTED);
@@ -297,7 +302,7 @@ class ReportServiceTest {
         report.reject(admin);
         given(reportRepository.findById(5L)).willReturn(Optional.of(report));
 
-        assertThatThrownBy(() -> reportService.resolve(5L, authOf("admin@example.com")))
+        assertThatThrownBy(() -> reportService.resolve(5L, authOf(admin)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("이미 처리된 신고");
 
@@ -386,7 +391,7 @@ class ReportServiceTest {
 
         Long id = reportService.report(
                 new ReportSaveRequestDto(ReportTargetType.COMMENT, 77L, ReportReason.ABUSE, "욕설입니다"),
-                authOf(REPORTER_EMAIL));
+                authOf(reporter));
 
         org.assertj.core.api.Assertions.assertThat(id).isEqualTo(3L);
         verify(reportRepository).save(any(Report.class));
@@ -407,7 +412,7 @@ class ReportServiceTest {
 
         reportService.report(
                 new ReportSaveRequestDto(ReportTargetType.POST, 10L, ReportReason.SPAM, null),
-                authOf(REPORTER_EMAIL));
+                authOf(reporter));
 
         org.mockito.ArgumentCaptor<Report> captor = org.mockito.ArgumentCaptor.forClass(Report.class);
         verify(reportRepository).save(captor.capture());

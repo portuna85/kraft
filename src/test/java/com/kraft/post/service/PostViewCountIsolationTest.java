@@ -7,6 +7,7 @@ import com.kraft.post.domain.PostImageRepository;
 import com.kraft.post.domain.PostLikeRepository;
 import com.kraft.post.domain.PostRepository;
 import com.kraft.post.dto.PostUpdateRequestDto;
+import com.kraft.support.TestAuthentication;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
@@ -16,14 +17,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.OptimisticLockingFailureException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -80,10 +78,9 @@ class PostViewCountIsolationTest {
         postRepository.deleteAll();
         userRepository.deleteAll();
 
-        userRepository.save(User.builder()
+        User ownerUser = userRepository.save(User.builder()
                 .name("owner").email("owner@example.com").password("encoded").role(Role.USER).build());
-        owner = new UsernamePasswordAuthenticationToken("owner@example.com", null,
-                List.of(new SimpleGrantedAuthority(Role.USER.getKey())));
+        owner = TestAuthentication.of(ownerUser);
     }
 
     @Test

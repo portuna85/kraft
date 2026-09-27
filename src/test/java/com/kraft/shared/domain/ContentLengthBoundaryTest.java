@@ -6,6 +6,7 @@ import com.kraft.comment.service.CommentService;
 import com.kraft.post.domain.PostRepository;
 import com.kraft.post.dto.PostSaveRequestDto;
 import com.kraft.post.service.PostService;
+import com.kraft.support.TestAuthentication;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
@@ -15,12 +16,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -72,10 +70,9 @@ class ContentLengthBoundaryTest {
         postRepository.deleteAll();
         userRepository.deleteAll();
 
-        userRepository.save(User.builder()
+        User authorUser = userRepository.save(User.builder()
                 .name("author").email("author@example.com").password("encoded").role(Role.USER).build());
-        author = new UsernamePasswordAuthenticationToken("author@example.com", null,
-                List.of(new SimpleGrantedAuthority(Role.USER.getKey())));
+        author = TestAuthentication.of(authorUser);
     }
 
     @Test

@@ -10,6 +10,7 @@ import com.kraft.report.domain.ReportTargetType;
 import com.kraft.report.dto.ReportSaveRequestDto;
 import com.kraft.report.dto.ReportViewDto;
 import com.kraft.shared.security.WriteAccessPolicy;
+import com.kraft.support.TestAuthentication;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
@@ -21,10 +22,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.util.List;
 import java.util.UUID;
@@ -99,8 +98,7 @@ class ReportFlowTest {
     }
 
     private static Authentication authOf(User user) {
-        return new UsernamePasswordAuthenticationToken(user.getEmail(), "n/a",
-                List.of(new SimpleGrantedAuthority(user.getRoleKey())));
+        return TestAuthentication.of(user);
     }
 
     private Long reportThePost(User by, ReportReason reason) {

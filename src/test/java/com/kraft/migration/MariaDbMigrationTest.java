@@ -5,6 +5,7 @@ import com.kraft.post.domain.Category;
 import com.kraft.post.domain.Post;
 import com.kraft.post.domain.PostImage;
 import com.kraft.post.domain.PostLike;
+import com.kraft.support.TestAuthentication;
 import com.kraft.post.domain.PostRepository;
 import com.kraft.post.dto.PostSaveRequestDto;
 import com.kraft.post.service.PostService;
@@ -30,9 +31,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.mariadb.MariaDBContainer;
@@ -190,8 +189,7 @@ class MariaDbMigrationTest {
                 .password("encoded")
                 .role(Role.USER)
                 .build());
-        Authentication auth = new UsernamePasswordAuthenticationToken(author.getEmail(), null,
-                List.of(new SimpleGrantedAuthority(Role.USER.getKey())));
+        Authentication auth = TestAuthentication.of(author);
 
         Long id = postService.save(auth, new PostSaveRequestDto("제목", "내용", null, Category.QNA));
 

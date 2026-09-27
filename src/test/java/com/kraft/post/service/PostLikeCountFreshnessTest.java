@@ -4,6 +4,7 @@ import com.kraft.post.domain.Post;
 import com.kraft.post.domain.PostLikeRepository;
 import com.kraft.post.domain.PostRepository;
 import com.kraft.post.dto.PostLikeResponseDto;
+import com.kraft.support.TestAuthentication;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
@@ -13,9 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.mariadb.MariaDBContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -76,8 +75,7 @@ class PostLikeCountFreshnessTest {
         User likerUser = userRepository.save(User.builder()
                 .name("fresh-liker").email("fresh-liker@example.com").password("encoded").role(Role.USER).build());
         post = postRepository.save(Post.builder().title("제목").content("내용").user(author).build());
-        liker = new UsernamePasswordAuthenticationToken(likerUser.getEmail(), null,
-                List.of(new SimpleGrantedAuthority(Role.USER.getKey())));
+        liker = TestAuthentication.of(likerUser);
     }
 
     @Test

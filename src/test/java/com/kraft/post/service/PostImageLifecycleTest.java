@@ -8,6 +8,7 @@ import com.kraft.post.domain.PostLikeRepository;
 import com.kraft.post.domain.PostRepository;
 import com.kraft.post.dto.PostSaveRequestDto;
 import com.kraft.post.dto.PostUpdateRequestDto;
+import com.kraft.support.TestAuthentication;
 import com.kraft.support.TestImages;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
@@ -21,9 +22,7 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.TransactionDefinition;
@@ -95,6 +94,7 @@ class PostImageLifecycleTest {
     private Authentication alice;
     private Authentication bob;
     private User aliceUser;
+    private User guestUser;
 
     @BeforeEach
     void setUp() {
@@ -108,11 +108,11 @@ class PostImageLifecycleTest {
         userRepository.deleteAll();
 
         aliceUser = saveUser("alice", "alice@example.com", Role.USER);
-        saveUser("bob", "bob@example.com", Role.USER);
-        saveUser("guest", "guest@example.com", Role.GUEST);
+        User bobUser = saveUser("bob", "bob@example.com", Role.USER);
+        guestUser = saveUser("guest", "guest@example.com", Role.GUEST);
 
-        alice = authOf("alice@example.com", Role.USER);
-        bob = authOf("bob@example.com", Role.USER);
+        alice = authOf(aliceUser);
+        bob = authOf(bobUser);
     }
 
     @Test
@@ -166,7 +166,7 @@ class PostImageLifecycleTest {
     @Test
     @DisplayName("F06: 이메일 인증 전(GUEST)이면 업로드할 수 없다")
     void uploadImage_whenGuest_isRejected() {
-        assertThatThrownBy(() -> postService.uploadImage(imageFile(), authOf("guest@example.com", Role.GUEST)))
+        assertThatThrownBy(() -> postService.uploadImage(imageFile(), authOf(guestUser)))
                 .isInstanceOf(AccessDeniedException.class);
 
         assertThat(postImageRepository.count()).isZero();
@@ -530,9 +530,8 @@ class PostImageLifecycleTest {
         return userRepository.save(User.builder().name(name).email(email).password("encoded").role(role).build());
     }
 
-    private static Authentication authOf(String email, Role role) {
-        return new UsernamePasswordAuthenticationToken(email, null,
-                java.util.List.of(new SimpleGrantedAuthority(role.getKey())));
+    private static Authentication authOf(User user) {
+        return TestAuthentication.of(user);
     }
 
     private static MockMultipartFile imageFile() {

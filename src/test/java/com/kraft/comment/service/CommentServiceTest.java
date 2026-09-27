@@ -9,7 +9,7 @@ import com.kraft.comment.dto.CommentUpdateRequestDto;
 import com.kraft.comment.dto.CommentViewDto;
 import com.kraft.post.domain.Post;
 import com.kraft.post.domain.PostRepository;
-import com.kraft.user.domain.EmailHasher;
+import com.kraft.support.TestAuthentication;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
@@ -22,9 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
@@ -91,9 +89,12 @@ class CommentServiceTest {
         return reply;
     }
 
-    private static Authentication authOf(String email, Role role) {
-        return new UsernamePasswordAuthenticationToken(
-                email, null, List.of(new SimpleGrantedAuthority(role.getKey())));
+    private static Authentication authOf(User user) {
+        return TestAuthentication.of(user);
+    }
+
+    private static Authentication authOf(Long id, String email, Role role) {
+        return TestAuthentication.of(id, email, role);
     }
 
     @Test
@@ -102,11 +103,11 @@ class CommentServiceTest {
         Post post = postOf(1L);
         User user = userWithEmail("tester@example.com", 1L);
         given(postRepository.findById(1L)).willReturn(Optional.of(post));
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(user));
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
         Comment saved = commentOf(user, 100L);
         given(commentRepository.saveAndFlush(any(Comment.class))).willReturn(saved);
 
-        CommentViewDto result = commentService.save(1L, authOf("tester@example.com", Role.USER),
+        CommentViewDto result = commentService.save(1L, authOf(user),
                 new CommentSaveRequestDto("댓글 내용", null));
 
         assertThat(result.id()).isEqualTo(100L);
@@ -117,7 +118,7 @@ class CommentServiceTest {
     void save_whenPostNotFound_throwsIllegalArgumentException() {
         given(postRepository.findById(999L)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> commentService.save(999L, authOf("tester@example.com", Role.USER), new CommentSaveRequestDto("내용", null)))
+        assertThatThrownBy(() -> commentService.save(999L, authOf(1L, "tester@example.com", Role.USER), new CommentSaveRequestDto("내용", null)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("해당 게시글이 없습니다");
 
@@ -130,9 +131,9 @@ class CommentServiceTest {
         User guest = User.builder().name("tester").email("guest@example.com").password("encoded").role(Role.GUEST).build();
         ReflectionTestUtils.setField(guest, "id", 1L);
         given(postRepository.findById(1L)).willReturn(Optional.of(postOf(1L)));
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("guest@example.com"))).willReturn(Optional.of(guest));
+        given(userRepository.findById(1L)).willReturn(Optional.of(guest));
 
-        assertThatThrownBy(() -> commentService.save(1L, authOf("guest@example.com", Role.GUEST), new CommentSaveRequestDto("내용", null)))
+        assertThatThrownBy(() -> commentService.save(1L, authOf(guest), new CommentSaveRequestDto("내용", null)))
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(commentRepository, never()).save(any());
@@ -142,9 +143,9 @@ class CommentServiceTest {
     @DisplayName("save: 회원이 없으면 NotFoundException")
     void save_whenUserNotFound_throwsIllegalArgumentException() {
         given(postRepository.findById(1L)).willReturn(Optional.of(postOf(1L)));
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
+        given(userRepository.findById(999L)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> commentService.save(1L, authOf("nobody@example.com", Role.USER), new CommentSaveRequestDto("내용", null)))
+        assertThatThrownBy(() -> commentService.save(1L, authOf(999L, "nobody@example.com", Role.USER), new CommentSaveRequestDto("내용", null)))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("존재하지 않는 회원");
 
@@ -162,12 +163,12 @@ class CommentServiceTest {
         User author = userWithEmail("tester@example.com", 1L);
         Comment parent = commentOf(author, 100L);
         given(postRepository.findById(1L)).willReturn(Optional.of(post));
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(author));
+        given(userRepository.findById(1L)).willReturn(Optional.of(author));
         given(commentRepository.findById(100L)).willReturn(Optional.of(parent));
         Comment savedReply = replyOf(author, 200L, parent);
         given(commentRepository.saveAndFlush(any(Comment.class))).willReturn(savedReply);
 
-        CommentViewDto result = commentService.save(1L, authOf("tester@example.com", Role.USER),
+        CommentViewDto result = commentService.save(1L, authOf(author),
                 new CommentSaveRequestDto("답글 내용", 100L));
 
         assertThat(result.id()).isEqualTo(200L);
@@ -184,10 +185,10 @@ class CommentServiceTest {
         Comment topLevel = commentOf(author, 100L);
         Comment existingReply = replyOf(author, 200L, topLevel);
         given(postRepository.findById(1L)).willReturn(Optional.of(post));
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(author));
+        given(userRepository.findById(1L)).willReturn(Optional.of(author));
         given(commentRepository.findById(200L)).willReturn(Optional.of(existingReply));
 
-        assertThatThrownBy(() -> commentService.save(1L, authOf("tester@example.com", Role.USER), new CommentSaveRequestDto("답글의 답글", 200L)))
+        assertThatThrownBy(() -> commentService.save(1L, authOf(author), new CommentSaveRequestDto("답글의 답글", 200L)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("답글에는 답글을 달 수 없습니다");
 
@@ -201,10 +202,10 @@ class CommentServiceTest {
         Comment parentOnAnotherPost = Comment.builder().content("다른 글의 댓글").post(postOf(2L)).user(author).build();
         ReflectionTestUtils.setField(parentOnAnotherPost, "id", 300L);
         given(postRepository.findById(1L)).willReturn(Optional.of(postOf(1L)));
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(author));
+        given(userRepository.findById(1L)).willReturn(Optional.of(author));
         given(commentRepository.findById(300L)).willReturn(Optional.of(parentOnAnotherPost));
 
-        assertThatThrownBy(() -> commentService.save(1L, authOf("tester@example.com", Role.USER), new CommentSaveRequestDto("답글", 300L)))
+        assertThatThrownBy(() -> commentService.save(1L, authOf(author), new CommentSaveRequestDto("답글", 300L)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("다른 게시글의 댓글에는 답글을 달 수 없습니다");
 
@@ -224,7 +225,7 @@ class CommentServiceTest {
                 .willReturn(Map.of(100L, List.of(reply)));
         given(commentRepository.countByPostId(1L)).willReturn(2L);
 
-        CommentPageDto result = commentService.findInitialPageForView(1L, authOf("owner@example.com", Role.USER));
+        CommentPageDto result = commentService.findInitialPageForView(1L, authOf(owner));
 
         assertThat(result.comments()).hasSize(1);
         assertThat(result.comments().get(0).replies()).hasSize(1);
@@ -258,7 +259,7 @@ class CommentServiceTest {
                 .willReturn(Map.of(100L, firstTwentyOfA, 101L, List.of(replyB)));
         given(commentRepository.countByPostId(1L)).willReturn(622L);
 
-        CommentPageDto result = commentService.findInitialPageForView(1L, authOf("owner@example.com", Role.USER));
+        CommentPageDto result = commentService.findInitialPageForView(1L, authOf(owner));
 
         CommentViewDto viewA = result.comments().get(0);
         CommentViewDto viewB = result.comments().get(1);
@@ -280,7 +281,7 @@ class CommentServiceTest {
         given(commentRepository.findRepliesByParentIdAsc(eq(100L), eq(320L), any(PageRequest.class)))
                 .willReturn(List.of(reply21));
 
-        CommentPageDto result = commentService.findRepliesPage(100L, 320L, authOf("owner@example.com", Role.USER));
+        CommentPageDto result = commentService.findRepliesPage(100L, 320L, authOf(owner));
 
         assertThat(result.comments()).extracting(CommentViewDto::id).containsExactly(321L);
         // A-BE-13: 답글 더 보기는 항상 후속 페이지라 전체 개수를 다시 세지 않는다.
@@ -294,10 +295,10 @@ class CommentServiceTest {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("owner@example.com"))).willReturn(Optional.of(owner));
+        given(userRepository.findById(1L)).willReturn(Optional.of(owner));
 
         CommentViewDto result = commentService.update(100L, new CommentUpdateRequestDto("수정된 댓글", null),
-                authOf("owner@example.com", Role.USER));
+                authOf(owner));
 
         assertThat(result.id()).isEqualTo(100L);
         assertThat(comment.getContent()).isEqualTo("수정된 댓글");
@@ -314,10 +315,10 @@ class CommentServiceTest {
         Comment comment = commentOf(owner, 100L);
         ReflectionTestUtils.setField(comment, "version", 5L);
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("owner@example.com"))).willReturn(Optional.of(owner));
+        given(userRepository.findById(1L)).willReturn(Optional.of(owner));
 
         commentService.update(100L, new CommentUpdateRequestDto("수정된 댓글", 5L),
-                authOf("owner@example.com", Role.USER));
+                authOf(owner));
 
         assertThat(comment.getContent()).isEqualTo("수정된 댓글");
     }
@@ -334,10 +335,10 @@ class CommentServiceTest {
         Comment comment = commentOf(owner, 100L);
         ReflectionTestUtils.setField(comment, "version", 5L);
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("owner@example.com"))).willReturn(Optional.of(owner));
+        given(userRepository.findById(1L)).willReturn(Optional.of(owner));
 
         assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("수정된 댓글", 4L),
-                authOf("owner@example.com", Role.USER)))
+                authOf(owner)))
                 .isInstanceOf(org.springframework.orm.ObjectOptimisticLockingFailureException.class);
 
         assertThat(comment.getContent()).isEqualTo("원래 댓글");
@@ -350,10 +351,10 @@ class CommentServiceTest {
         Comment comment = commentOf(owner, 100L);
         User intruder = userWithEmail("intruder@example.com", 2L);
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("intruder@example.com"))).willReturn(Optional.of(intruder));
+        given(userRepository.findById(2L)).willReturn(Optional.of(intruder));
 
         assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("해킹", null),
-                authOf("intruder@example.com", Role.USER)))
+                authOf(intruder)))
                 .isInstanceOf(AccessDeniedException.class);
 
         assertThat(comment.getContent()).isEqualTo("원래 댓글");
@@ -364,12 +365,13 @@ class CommentServiceTest {
     void update_whenAdmin_updatesContentEvenIfNotAuthor() {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
-        User admin = userWithEmail("admin@example.com", 2L);
+        User admin = User.builder().name("admin").email("admin@example.com").password("encoded").role(Role.ADMIN).build();
+        ReflectionTestUtils.setField(admin, "id", 2L);
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("admin@example.com"))).willReturn(Optional.of(admin));
+        given(userRepository.findById(2L)).willReturn(Optional.of(admin));
 
         commentService.update(100L, new CommentUpdateRequestDto("관리자 수정", null),
-                authOf("admin@example.com", Role.ADMIN));
+                authOf(admin));
 
         assertThat(comment.getContent()).isEqualTo("관리자 수정");
     }
@@ -381,10 +383,10 @@ class CommentServiceTest {
         owner.suspendUntil(java.time.LocalDateTime.now().plusDays(1), "규정 위반");
         Comment comment = commentOf(owner, 100L);
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("owner@example.com"))).willReturn(Optional.of(owner));
+        given(userRepository.findById(1L)).willReturn(Optional.of(owner));
 
         assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("수정 시도", null),
-                authOf("owner@example.com", Role.USER)))
+                authOf(owner)))
                 .isInstanceOf(AccessDeniedException.class);
 
         assertThat(comment.getContent()).isEqualTo("원래 댓글");
@@ -397,7 +399,7 @@ class CommentServiceTest {
         Comment comment = commentOf(owner, 100L);
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
 
-        assertThatThrownBy(() -> commentService.delete(100L, authOf("intruder@example.com", Role.USER)))
+        assertThatThrownBy(() -> commentService.delete(100L, authOf(2L, "intruder@example.com", Role.USER)))
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(commentRepository, never()).delete(any());
@@ -417,7 +419,7 @@ class CommentServiceTest {
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
         given(commentRepository.countRepliesByParentIdIn(List.of(100L))).willReturn(Map.of());
 
-        var result = commentService.delete(100L, authOf("owner@example.com", Role.USER));
+        var result = commentService.delete(100L, authOf(owner));
 
         var inOrder = org.mockito.Mockito.inOrder(commentRepository);
         inOrder.verify(commentRepository).deleteAllByParentId(100L);
@@ -441,7 +443,7 @@ class CommentServiceTest {
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
         given(commentRepository.countRepliesByParentIdIn(List.of(100L))).willReturn(Map.of(100L, 2L));
 
-        var result = commentService.delete(100L, authOf("owner@example.com", Role.USER));
+        var result = commentService.delete(100L, authOf(owner));
 
         assertThat(result.softDeleted()).isTrue();
         assertThat(comment.isDeleted()).isTrue();
@@ -458,7 +460,7 @@ class CommentServiceTest {
         comment.softDelete();
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
 
-        var result = commentService.delete(100L, authOf("owner@example.com", Role.USER));
+        var result = commentService.delete(100L, authOf(owner));
 
         assertThat(result.softDeleted()).isTrue();
         verify(commentRepository, never()).delete(any());
@@ -473,10 +475,10 @@ class CommentServiceTest {
         Comment comment = commentOf(owner, 100L);
         comment.softDelete();
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
-        given(userRepository.findByEmailHash(any())).willReturn(Optional.of(owner));
+        given(userRepository.findById(any())).willReturn(Optional.of(owner));
 
         assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("수정 시도", null),
-                authOf("owner@example.com", Role.USER)))
+                authOf(owner)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("삭제된 댓글");
     }
@@ -491,7 +493,7 @@ class CommentServiceTest {
         given(commentRepository.findPageByPostIdAsc(1L, null, PageRequest.of(0, 21))).willReturn(twentyOne);
         given(commentRepository.countByPostId(1L)).willReturn(30L);
 
-        CommentPageDto result = commentService.findInitialPageForView(1L, authOf("owner@example.com", Role.USER));
+        CommentPageDto result = commentService.findInitialPageForView(1L, authOf(owner));
 
         assertThat(result.comments()).hasSize(20);
         assertThat(result.hasMore()).isTrue();
@@ -503,7 +505,7 @@ class CommentServiceTest {
     void findNextPageForView_passesAfterIdCursorToRepository() {
         given(commentRepository.findPageByPostIdAsc(1L, 20L, PageRequest.of(0, 21))).willReturn(List.of());
 
-        CommentPageDto result = commentService.findNextPageForView(1L, 20L, authOf("owner@example.com", Role.USER));
+        CommentPageDto result = commentService.findNextPageForView(1L, 20L, authOf(1L, "owner@example.com", Role.USER));
 
         assertThat(result.comments()).isEmpty();
         assertThat(result.hasMore()).isFalse();

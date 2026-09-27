@@ -1,13 +1,14 @@
 package com.kraft.user.web;
 
+import com.kraft.config.security.KraftUserDetails;
 import com.kraft.config.security.SecurityConfig;
-import com.kraft.user.domain.EmailHasher;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
 import com.kraft.user.service.EmailVerificationService;
 import com.kraft.user.service.PasswordResetService;
 import com.kraft.user.service.UserService;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,9 +16,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -60,17 +63,23 @@ class UserApiControllerTest {
     @MockitoBean
     private UserRepository userRepository;
 
+    private static final Long TESTER_ID = 1L;
+
     /**
-     * 세션 principal은 이제 회원 id다(BE-04)— 이 테스트가 {@code with(user("tester@example.com"))}로
-     * 만드는 인증 객체는 {@code KraftUserDetails}가 아니라 일반 문자열 username이라, 컨트롤러가
-     * {@code CurrentUser.require}로 principal의 id 대신 이메일 폴백 경로를 타게 된다(단위
-     * 테스트가 흔히 쓰는 조합 — CurrentUser 자체의 문서화된 동작). 그 경로가 이메일로 사용자를
-     * 찾으므로, 인증이 필요한 엔드포인트를 호출하는 테스트는 이 스텁이 있어야 한다.
+     * 세션 principal은 회원 id다(BE-04) — {@code CurrentUser.require}는 principal이
+     * {@link KraftUserDetails}가 아니면 미인증으로 본다(A-QA-02). 그래서
+     * {@code with(user("tester@example.com"))}처럼 문자열 username만으로 인증을 흉내 내면
+     * 안 되고, 운영과 같은 모양의 principal을 직접 만들어 써야 한다.
      */
+    private static RequestPostProcessor authenticatedTester() {
+        return user(new KraftUserDetails(TESTER_ID, "encoded", "tester",
+                List.of(new SimpleGrantedAuthority(Role.USER.getKey()))));
+    }
+
     private void givenAuthenticatedUser(String email) {
         User user = User.builder().name("tester").email(email).password("encoded").role(Role.USER).build();
-        ReflectionTestUtils.setField(user, "id", 1L);
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex(email))).willReturn(Optional.of(user));
+        ReflectionTestUtils.setField(user, "id", TESTER_ID);
+        given(userRepository.findById(TESTER_ID)).willReturn(Optional.of(user));
     }
 
     @Test
@@ -196,7 +205,7 @@ class UserApiControllerTest {
         givenAuthenticatedUser("tester@example.com");
 
         mockMvc.perform(put("/api/v1/users/me/password")
-                        .with(user("tester@example.com"))
+                        .with(authenticatedTester())
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"currentPassword\":\"old12345\",\"newPassword\":\"New12345!\"}"))
@@ -214,7 +223,7 @@ class UserApiControllerTest {
                 .given(userService).changePassword("tester@example.com", "wrong", "New12345!");
 
         mockMvc.perform(put("/api/v1/users/me/password")
-                        .with(user("tester@example.com"))
+                        .with(authenticatedTester())
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"currentPassword\":\"wrong\",\"newPassword\":\"New12345!\"}"))
@@ -226,7 +235,7 @@ class UserApiControllerTest {
     @DisplayName("PUT /api/v1/users/me/password 는 새 비밀번호가 8자 미만이면 400이고 서비스는 호출되지 않는다")
     void changePassword_whenNewPasswordIsTooShort_returns400BadRequest() throws Exception {
         mockMvc.perform(put("/api/v1/users/me/password")
-                        .with(user("tester@example.com"))
+                        .with(authenticatedTester())
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"currentPassword\":\"old12345\",\"newPassword\":\"short\"}"))
@@ -239,7 +248,7 @@ class UserApiControllerTest {
     @DisplayName("PUT /api/v1/users/me/password 는 새 비밀번호에 대문자·소문자·특수문자가 모두 포함되지 않으면 400이고 서비스는 호출되지 않는다")
     void changePassword_whenNewPasswordDoesNotMeetComplexityRequirements_returns400BadRequest() throws Exception {
         mockMvc.perform(put("/api/v1/users/me/password")
-                        .with(user("tester@example.com"))
+                        .with(authenticatedTester())
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"currentPassword\":\"old12345\",\"newPassword\":\"alllowercase123\"}"))
@@ -265,7 +274,7 @@ class UserApiControllerTest {
         givenAuthenticatedUser("tester@example.com");
 
         mockMvc.perform(post("/api/v1/users/me/verify-email/resend")
-                        .with(user("tester@example.com"))
+                        .with(authenticatedTester())
                         .with(csrf()))
                 .andExpect(status().isNoContent());
 
@@ -280,7 +289,7 @@ class UserApiControllerTest {
                 .given(emailVerificationService).resend("tester@example.com");
 
         mockMvc.perform(post("/api/v1/users/me/verify-email/resend")
-                        .with(user("tester@example.com"))
+                        .with(authenticatedTester())
                         .with(csrf()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("이미 인증된 계정입니다."));
@@ -365,7 +374,7 @@ class UserApiControllerTest {
         givenAuthenticatedUser("tester@example.com");
 
         mockMvc.perform(delete("/api/v1/users/me")
-                        .with(user("tester@example.com"))
+                        .with(authenticatedTester())
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"currentPassword\":\"Password123!\"}"))
@@ -391,7 +400,7 @@ class UserApiControllerTest {
     @DisplayName("DELETE /api/v1/users/me 는 CSRF 토큰이 없으면 403")
     void withdraw_withoutCsrfToken_returns403Forbidden() throws Exception {
         mockMvc.perform(delete("/api/v1/users/me")
-                        .with(user("tester@example.com"))
+                        .with(authenticatedTester())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"currentPassword\":\"Password123!\"}"))
                 .andExpect(status().isForbidden());
@@ -407,7 +416,7 @@ class UserApiControllerTest {
                 .given(userService).withdraw("tester@example.com", "WrongPass1!");
 
         mockMvc.perform(delete("/api/v1/users/me")
-                        .with(user("tester@example.com"))
+                        .with(authenticatedTester())
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"currentPassword\":\"WrongPass1!\"}"))
@@ -419,7 +428,7 @@ class UserApiControllerTest {
     @DisplayName("DELETE /api/v1/users/me 는 비밀번호가 비어 있으면 400이고 서비스는 호출되지 않는다")
     void withdraw_withBlankPassword_returns400BadRequest() throws Exception {
         mockMvc.perform(delete("/api/v1/users/me")
-                        .with(user("tester@example.com"))
+                        .with(authenticatedTester())
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"currentPassword\":\"\"}"))

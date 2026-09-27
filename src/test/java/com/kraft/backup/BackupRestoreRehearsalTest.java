@@ -6,6 +6,7 @@ import com.kraft.post.domain.PostRepository;
 import com.kraft.post.dto.PostSaveRequestDto;
 import com.kraft.post.service.PostImageService;
 import com.kraft.post.service.PostService;
+import com.kraft.support.TestAuthentication;
 import com.kraft.support.TestImages;
 import com.kraft.user.domain.EmailHasher;
 import com.kraft.user.domain.Role;
@@ -18,9 +19,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.testcontainers.mariadb.MariaDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -170,8 +169,7 @@ class BackupRestoreRehearsalTest {
                     .password("encoded")
                     .role(Role.USER)
                     .build());
-            Authentication auth = new UsernamePasswordAuthenticationToken(author.getEmail(), null,
-                    List.of(new SimpleGrantedAuthority(Role.USER.getKey())));
+            Authentication auth = TestAuthentication.of(author);
 
             PostService posts = context.getBean(PostService.class);
             seeded.pictureUrl = posts.uploadImage(TestImages.pngFile("drill.png"), auth);
