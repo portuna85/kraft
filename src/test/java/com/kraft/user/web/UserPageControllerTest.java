@@ -76,14 +76,13 @@ class UserPageControllerTest {
     }
 
     @Test
-    @DisplayName("GET /users/password-reset 은 토큰을 검사하지 않고 화면에 그대로 넘긴다")
-    void passwordReset_passesTokenToViewWithoutConsumingIt() throws Exception {
-        // 화면을 여는 것만으로 토큰이 소모되면 메일 미리보기·링크 검사기가 대신 눌러 버린다.
-        // 판정은 새 비밀번호와 함께 오는 저장 요청에서 한 번만 한다.
-        mockMvc.perform(get("/users/password-reset").param("token", "some-token"))
+    @DisplayName("GET /users/password-reset 은 토큰을 요구하지 않고 화면만 보여준다(A-SEC-11: 토큰은 URL 프래그먼트로 온다)")
+    void passwordReset_rendersViewWithoutRequiringTokenParam() throws Exception {
+        // 토큰은 브라우저가 서버로 보내지 않는 프래그먼트(#token=...)에 있다 — 이 요청 자체에는
+        // 토큰이 실리지 않는다. 화면(Vue)이 location.hash에서 직접 읽는다.
+        mockMvc.perform(get("/users/password-reset"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("user/password-reset"))
-                .andExpect(model().attribute("resetToken", "some-token"));
+                .andExpect(view().name("user/password-reset"));
     }
 
     @Test

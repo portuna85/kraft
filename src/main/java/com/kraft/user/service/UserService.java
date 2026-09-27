@@ -13,7 +13,9 @@ import com.kraft.user.domain.PasswordResetTokenRepository;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
+import com.kraft.user.mail.OutboxMailKind;
 import com.kraft.user.mail.OutboxMailRepository;
+import com.kraft.user.mail.OutboxMailStore;
 import com.kraft.user.session.SessionRevocationStore;
 import com.kraft.user.session.SessionRevocationWorker;
 import lombok.RequiredArgsConstructor;
@@ -50,9 +52,16 @@ public class UserService {
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final OutboxMailRepository outboxMailRepository;
+    private final OutboxMailStore outboxMailStore;
 
+    /**
+     * @return 새로 계정을 만들었으면 {@code true}. 이미 가입된 이메일이면 {@code false}를
+     * 돌려주지만, 호출한 쪽(컨트롤러)은 이 값과 무관하게 <b>같은 응답</b>을 내려야 한다(A-SEC-01) —
+     * 응답이 갈리면 그 자체로 이메일 가입 여부를 확인하는 도구가 된다({@code PasswordResetService}가
+     * 항상 204를 주는 것과 같은 이유).
+     */
     @Transactional
-    public Long signUp(String name, String email, String rawPassword) {
+    public boolean signUp(String name, String email, String rawPassword) {
         // 대소문자·앞뒤 공백만 다른 이메일이 별개 계정으로 가입되지 않도록 정규화부터
         // 한다(BE-06) — 이후의 해시·저장이 전부 이 값을 쓴다.
         email = EmailPolicy.normalize(email);
@@ -62,14 +71,18 @@ public class UserService {
         if (email.endsWith(WITHDRAWN_EMAIL_DOMAIN)) {
             throw new IllegalArgumentException("사용할 수 없는 이메일 주소입니다.");
         }
+        // 닉네임 중복은 공개 정보라(다른 사람 글에 그대로 보인다) 지금처럼 즉시 알려도 된다 —
+        // 계정 열거 방지가 필요한 것은 이메일뿐이다.
         if (userRepository.existsByName(name)) {
             throw new IllegalArgumentException("이미 사용중인 이름입니다. name=" + name);
         }
-        if (userRepository.existsByEmailHash(EmailHasher.sha512Hex(email))) {
-            throw new IllegalArgumentException("이미 가입된 이메일입니다.");
-        }
-
         PasswordBytePolicy.validate(rawPassword);
+
+        Optional<User> existing = userRepository.findByEmailHash(EmailHasher.sha512Hex(email));
+        if (existing.isPresent()) {
+            outboxMailStore.enqueue(existing.get(), null, OutboxMailKind.ACCOUNT_EXISTS);
+            return false;
+        }
 
         User user = User.builder()
                 .name(name)
@@ -78,7 +91,8 @@ public class UserService {
                 .role(Role.GUEST)
                 .build();
 
-        return userRepository.save(user).getId();
+        userRepository.save(user);
+        return true;
     }
 
     /**

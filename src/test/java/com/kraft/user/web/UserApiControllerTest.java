@@ -76,14 +76,14 @@ class UserApiControllerTest {
     @Test
     @DisplayName("회원가입은 인증 없이(CSRF 토큰만 있으면) 가능하다")
     void signUp_isAccessibleWithoutAuthentication() throws Exception {
-        given(userService.signUp("tester", "tester@example.com", "Password123!")).willReturn(1L);
+        given(userService.signUp("tester", "tester@example.com", "Password123!")).willReturn(true);
 
         mockMvc.perform(post("/api/v1/users")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"tester\",\"email\":\"tester@example.com\",\"password\":\"Password123!\"}"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("1"));
+                .andExpect(content().string(""));
 
         verify(emailVerificationService).sendVerificationEmailSafely("tester@example.com");
     }
@@ -149,17 +149,18 @@ class UserApiControllerTest {
     }
 
     @Test
-    @DisplayName("이메일이 중복이면 400 ProblemDetail을 반환한다")
-    void signUp_whenEmailAlreadyExists_returns400BadRequest() throws Exception {
-        given(userService.signUp(any(), any(), any()))
-                .willThrow(new IllegalArgumentException("이미 가입된 이메일입니다."));
+    @DisplayName("A-SEC-01: 이메일이 이미 가입되어 있어도 신규 가입과 같은 200을 주고 인증 메일은 보내지 않는다(계정 열거 방지)")
+    void signUp_whenEmailAlreadyExists_returnsSameResponseAsNewSignUpWithoutVerificationMail() throws Exception {
+        given(userService.signUp(any(), any(), any())).willReturn(false);
 
         mockMvc.perform(post("/api/v1/users")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"tester\",\"email\":\"dup@example.com\",\"password\":\"Password123!\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("이미 가입된 이메일입니다."));
+                .andExpect(status().isOk())
+                .andExpect(content().string(""));
+
+        verify(emailVerificationService, never()).sendVerificationEmailSafely(any());
     }
 
     @Test

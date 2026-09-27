@@ -119,7 +119,7 @@ public class OutboxMailStore {
                     .filter(token -> !token.isExpired()).isPresent();
             case PASSWORD_RESET -> passwordResetTokenRepository.findByTokenHash(tokenHash)
                     .filter(token -> !token.isExpired()).isPresent();
-            case LOGIN_ATTEMPTS_WARNING -> true;
+            case LOGIN_ATTEMPTS_WARNING, ACCOUNT_EXISTS -> true;
         };
     }
 

@@ -92,7 +92,12 @@ test('Enter로도 제출되고, 필수 입력이 비어 있으면 브라우저 �
     expect(requested, '불일치는 서버까지 갈 필요가 없다').toBe(false);
 });
 
-test('이미 가입된 이메일이면 서버 메시지를 그대로 보여준다', async ({ page }) => {
+/**
+ * A-SEC-01: 계정 열거 방지. 이미 가입된 이메일로 가입을 시도해도 신규 가입과 똑같은 성공
+ * 응답을 보여준다 — 응답이 갈리면 그 자체로 "이 주소가 가입되어 있다"를 확인하는 도구가
+ * 된다. 대신 계정 주인에게만 보이는 안내 메일이 간다.
+ */
+test('이미 가입된 이메일로 가입해도 신규 가입과 같은 안내가 뜨고, 계정 주인에게만 메일이 간다', async ({ page, request }) => {
     await page.goto('/signup');
     await page.locator('#name').fill(uniqueTitle('중복'));
     await page.locator('#email').fill('user@e2e.test');
@@ -100,7 +105,15 @@ test('이미 가입된 이메일이면 서버 메시지를 그대로 보여준�
     await page.locator('#passwordConfirm').fill(PASSWORD);
     await page.locator('#btn-signup').click();
 
-    await expect(page.locator('#flash')).toContainText('이미 가입된 이메일입니다');
+    await page.waitForURL(/\/login/);
+    await expect(page.locator('#flash')).toContainText('요청을 받았습니다');
+
+    await expect
+        .poll(async () => (await request.get(`/e2e/mails/latest?to=${encodeURIComponent('user@e2e.test')}`)).status(),
+            { timeout: 10_000 })
+        .toBe(200);
+    const mail = await (await request.get(`/e2e/mails/latest?to=${encodeURIComponent('user@e2e.test')}`)).json();
+    expect(mail.subject).toContain('이미 가입된 계정');
 });
 
 /**
@@ -121,7 +134,7 @@ test('가입하고 인증 링크를 열면 글을 쓸 수 있게 된다', async 
     await page.locator('#btn-signup').click();
 
     await page.waitForURL(/\/login/);
-    await expect(page.locator('#flash')).toContainText('가입이 완료되었습니다');
+    await expect(page.locator('#flash')).toContainText('요청을 받았습니다');
 
     // 인증 전에는 GUEST라 글쓰기 폼 대신 안내가 보인다.
     await login(page, email);

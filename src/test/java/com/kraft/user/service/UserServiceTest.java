@@ -7,7 +7,9 @@ import com.kraft.user.domain.PasswordResetTokenRepository;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
+import com.kraft.user.mail.OutboxMailKind;
 import com.kraft.user.mail.OutboxMailRepository;
+import com.kraft.user.mail.OutboxMailStore;
 import com.kraft.user.session.SessionRevocationStore;
 import com.kraft.user.session.SessionRevocationWorker;
 import org.junit.jupiter.api.BeforeEach;
@@ -57,19 +59,22 @@ class UserServiceTest {
     @Mock
     private OutboxMailRepository outboxMailRepository;
 
+    @Mock
+    private OutboxMailStore outboxMailStore;
+
     private UserService userService;
 
     @BeforeEach
     void setUp() {
         userService = new UserService(userRepository, passwordEncoder, sessionRevocationStore, sessionRevocationWorker,
-                emailVerificationTokenRepository, passwordResetTokenRepository, outboxMailRepository);
+                emailVerificationTokenRepository, passwordResetTokenRepository, outboxMailRepository, outboxMailStore);
     }
 
     @Test
-    @DisplayName("signUp: 이메일이 중복되지 않으면 비밀번호를 인코딩해 GUEST로 저장한다")
+    @DisplayName("signUp: 이메일이 중복되지 않으면 비밀번호를 인코딩해 GUEST로 저장하고 true를 돌려준다")
     void signUp_whenValid_encodesPasswordAndSavesGuestUser() {
         given(userRepository.existsByName("new")).willReturn(false);
-        given(userRepository.existsByEmailHash(EmailHasher.sha512Hex("new@example.com"))).willReturn(false);
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("new@example.com"))).willReturn(Optional.empty());
         given(passwordEncoder.encode("rawPassword")).willReturn("encodedPassword");
 
         User saved = User.builder().name("new").email("new@example.com")
@@ -77,9 +82,9 @@ class UserServiceTest {
         ReflectionTestUtils.setField(saved, "id", 1L);
         given(userRepository.save(any(User.class))).willReturn(saved);
 
-        Long id = userService.signUp("new", "new@example.com", "rawPassword");
+        boolean created = userService.signUp("new", "new@example.com", "rawPassword");
 
-        assertThat(id).isEqualTo(1L);
+        assertThat(created).isTrue();
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture());
@@ -89,15 +94,17 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("signUp: 이메일이 이미 있으면 IllegalArgumentException이고 저장을 시도하지 않는다")
-    void signUp_whenEmailAlreadyExists_throwsIllegalArgumentExceptionAndDoesNotSave() {
+    @DisplayName("signUp: 이메일이 이미 있으면 저장 대신 안내 메일을 큐에 넣고 false를 돌려준다(A-SEC-01 계정 열거 방지)")
+    void signUp_whenEmailAlreadyExists_queuesNoticeMailAndReturnsFalseWithoutSaving() {
+        User existing = User.builder().name("dupOwner").email("dup@example.com")
+                .password("encoded").role(Role.USER).build();
         given(userRepository.existsByName("dup")).willReturn(false);
-        given(userRepository.existsByEmailHash(EmailHasher.sha512Hex("dup@example.com"))).willReturn(true);
+        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("dup@example.com"))).willReturn(Optional.of(existing));
 
-        assertThatThrownBy(() -> userService.signUp("dup", "dup@example.com", "pw12345678"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("이미 가입된 이메일");
+        boolean created = userService.signUp("dup", "dup@example.com", "pw12345678");
 
+        assertThat(created).isFalse();
+        verify(outboxMailStore).enqueue(existing, null, OutboxMailKind.ACCOUNT_EXISTS);
         verify(userRepository, never()).save(any());
         verify(passwordEncoder, never()).encode(any());
     }
@@ -111,7 +118,7 @@ class UserServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("이미 사용중인 이름");
 
-        verify(userRepository, never()).existsByEmailHash(any());
+        verify(userRepository, never()).findByEmailHash(any());
         verify(userRepository, never()).save(any());
         verify(passwordEncoder, never()).encode(any());
     }

@@ -38,11 +38,18 @@ public class UserApiController {
         return CurrentUser.require(authentication, userRepository).getEmail();
     }
 
+    /**
+     * 계정 열거 방지(A-SEC-01) — 이미 가입된 이메일이어도 신규 가입과 같은 응답(200, 빈 본문)을
+     * 준다. 새로 만든 계정에만 인증 메일을 보낸다 — 이미 있는 계정에는 {@code UserService.signUp}이
+     * 별도의 안내 메일을 큐에 넣는다.
+     */
     @PostMapping("/api/v1/users")
-    public Long signUp(@Valid @RequestBody SignUpRequestDto requestDto) {
-        Long id = userService.signUp(requestDto.name(), requestDto.email(), requestDto.password());
-        emailVerificationService.sendVerificationEmailSafely(requestDto.email());
-        return id;
+    public ResponseEntity<Void> signUp(@Valid @RequestBody SignUpRequestDto requestDto) {
+        boolean created = userService.signUp(requestDto.name(), requestDto.email(), requestDto.password());
+        if (created) {
+            emailVerificationService.sendVerificationEmailSafely(requestDto.email());
+        }
+        return ResponseEntity.ok().build();
     }
 
     @PutMapping("/api/v1/users/me/password")

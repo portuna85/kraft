@@ -2,6 +2,7 @@ package com.kraft.user.service;
 
 import com.kraft.post.domain.Post;
 import com.kraft.post.domain.PostRepository;
+import com.kraft.user.domain.EmailHasher;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
@@ -93,10 +94,11 @@ class WithdrawalFlowTest {
     void withdraw_freesTheEmailForSignUpAgain() {
         userService.withdraw(email, "OldPass1!");
 
-        Long newId = userService.signUp("다시온사람-" + UUID.randomUUID().toString().substring(0, 6),
+        boolean created = userService.signUp("다시온사람-" + UUID.randomUUID().toString().substring(0, 6),
                 email, "BrandNew1!");
 
-        User rejoined = userRepository.findById(newId).orElseThrow();
+        assertThat(created).isTrue();
+        User rejoined = userRepository.findByEmailHash(EmailHasher.sha512Hex(email)).orElseThrow();
         assertThat(rejoined.getId()).isNotEqualTo(user.getId());
         assertThat(rejoined.isWithdrawn()).isFalse();
         // 옛 계정은 그대로 탈퇴 상태다. 두 행이 같은 주소를 가리키지 않는다.

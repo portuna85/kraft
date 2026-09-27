@@ -47,7 +47,7 @@ test('탈퇴하면 로그아웃되고 그 계정으로는 다시 로그인할 �
     await page.locator('#passwordConfirm').fill(PASSWORD);
     await page.locator('#btn-signup').click();
     await expect(page).toHaveURL(/\/login/);
-    await expect(page.locator('#flash')).toContainText('가입이 완료되었습니다');
+    await expect(page.locator('#flash')).toContainText('요청을 받았습니다');
 });
 
 test('비밀번호가 틀리면 모달 안에서 알려주고 계정은 그대로다', async ({ page }) => {

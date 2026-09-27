@@ -49,10 +49,13 @@ public class UserPageController {
      * 메일의 링크가 여는 화면. 토큰은 여기서 검사하지 않는다 — 화면을 그리는 것만으로 토큰을
      * 쓴 셈이 되면 안 되고(메일 미리보기·링크 검사기가 대신 눌러 버린다), 판정은 새 비밀번호와
      * 함께 오는 저장 요청에서 한 번만 한다.
+     * <p>
+     * 토큰은 쿼리 문자열이 아니라 URL 프래그먼트(#token=...)로 온다(A-SEC-11) — 브라우저가
+     * 프래그먼트를 서버로 보내지 않으므로 이 메서드는 토큰 값을 아예 받지 않는다. 화면
+     * (Vue의 password-reset/mount.js)이 {@code location.hash}에서 직접 읽는다.
      */
     @GetMapping("/users/password-reset")
-    public String passwordReset(@RequestParam String token, Model model) {
-        model.addAttribute("resetToken", token);
+    public String passwordReset(Model model) {
         model.addAttribute("pageTitle", "비밀번호 재설정");
         return "user/password-reset";
     }

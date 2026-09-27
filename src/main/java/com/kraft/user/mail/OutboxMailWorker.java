@@ -241,6 +241,7 @@ public class OutboxMailWorker {
             case VERIFY_EMAIL -> "[kraft] 이메일 인증을 완료해 주세요";
             case PASSWORD_RESET -> "[kraft] 비밀번호 재설정 링크입니다";
             case LOGIN_ATTEMPTS_WARNING -> "[kraft] 로그인 시도가 많았습니다";
+            case ACCOUNT_EXISTS -> "[kraft] 이미 가입된 계정입니다";
         };
     }
 
@@ -253,13 +254,19 @@ public class OutboxMailWorker {
             case VERIFY_EMAIL -> "아래 링크를 클릭해 이메일 인증을 완료해 주세요:\n"
                     + baseUrl + "/users/verify?token=" + token
                     + "\n\n이 링크는 24시간 동안 유효합니다.";
+            // 토큰을 쿼리 문자열이 아니라 프래그먼트(#)로 싣는다(A-SEC-11) — 프래그먼트는
+            // 브라우저가 서버·프록시로 전송하지 않으므로 nginx 접근 로그에 1회용 토큰이
+            // 남지 않는다. PasswordResetApp.vue가 location.hash에서 읽는다.
             case PASSWORD_RESET -> "아래 링크에서 새 비밀번호를 정해 주세요:\n"
-                    + baseUrl + "/users/password-reset?token=" + token
+                    + baseUrl + "/users/password-reset#token=" + token
                     + "\n\n이 링크는 30분 동안 한 번만 사용할 수 있습니다."
                     + "\n요청한 적이 없다면 이 메일을 무시하세요. 비밀번호는 그대로입니다.";
             case LOGIN_ATTEMPTS_WARNING -> "회원님 계정에 짧은 시간 동안 로그인 시도가 많았습니다."
                     + "\n본인이 아니라면 비밀번호를 바꾸는 것을 권장합니다."
                     + "\n\n반복된 실패가 이어지면 계정은 잠시 잠기며, 시간이 지나면 저절로 풀립니다.";
+            case ACCOUNT_EXISTS -> "이미 이 메일 주소로 가입된 계정이 있습니다."
+                    + "\n본인이라면 로그인하거나, 비밀번호를 잊으셨다면 재설정을 이용해 주세요."
+                    + "\n본인이 가입을 시도한 적이 없다면 이 메일을 무시하세요.";
         };
     }
 }
