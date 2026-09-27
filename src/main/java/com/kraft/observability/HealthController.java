@@ -15,6 +15,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 생존(liveness)과 준비(readiness)를 나눈 경량 헬스 엔드포인트.
@@ -41,6 +42,11 @@ public class HealthController {
     // 커넥션 풀이 막혀 getConnection()이 풀 대기 시간만큼 멈춰도 요청 스레드는 제한 시간에
     // 돌려받는다. 가상 스레드라 멈춘 검사가 쌓여도 플랫폼 스레드를 잡아먹지 않는다.
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+    // 동시에 들어온 /readyz 요청이 각자 새 DB 커넥션 검사를 띄우면, 검사 자체가 요청 수만큼
+    // 풀을 잡아먹어 정작 확인하려던 "풀이 막혔는가"를 검사가 스스로 재현한다(전체 리뷰
+    // 2026-09-26 BE-01). 진행 중인 검사가 있으면 새로 만들지 않고 그 결과를 함께 기다린다 —
+    // 타임아웃도 각자 자기 것으로 재되, 공유 중인 future는 다른 대기자를 위해 취소하지 않는다.
+    private final AtomicReference<CompletableFuture<Boolean>> inFlightCheck = new AtomicReference<>();
 
     public HealthController(DataSource dataSource,
                             @Value("${app.readiness.timeout:2s}") Duration timeout) {
@@ -55,13 +61,12 @@ public class HealthController {
 
     @GetMapping("/readyz")
     public ResponseEntity<Void> readyz() {
-        CompletableFuture<Boolean> check = CompletableFuture.supplyAsync(this::databaseReachable, executor);
+        CompletableFuture<Boolean> check = currentOrNewCheck();
         try {
             if (check.get(timeout.toMillis(), TimeUnit.MILLISECONDS)) {
                 return ResponseEntity.ok().build();
             }
         } catch (TimeoutException e) {
-            check.cancel(true);
             log.warn("readiness: DB 확인이 {}ms 안에 끝나지 않았다", timeout.toMillis());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -69,6 +74,22 @@ public class HealthController {
             log.warn("readiness: DB 확인 실패", e);
         }
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+    }
+
+    /**
+     * 진행 중인 검사가 있으면 그것을 재사용하고, 없거나 이미 끝났으면 새로 시작한다. 새로
+     * 시작한 검사는 끝나는 즉시 자기 자신을 참조에서 걷어 내(compareAndSet) 다음 요청이 새
+     * 검사를 시작할 수 있게 한다 — 다른 검사가 이미 그 자리를 대체했다면 건드리지 않는다.
+     */
+    private CompletableFuture<Boolean> currentOrNewCheck() {
+        return inFlightCheck.updateAndGet(existing -> {
+            if (existing != null && !existing.isDone()) {
+                return existing;
+            }
+            CompletableFuture<Boolean> next = CompletableFuture.supplyAsync(this::databaseReachable, executor);
+            next.whenComplete((result, error) -> inFlightCheck.compareAndSet(next, null));
+            return next;
+        });
     }
 
     private boolean databaseReachable() {

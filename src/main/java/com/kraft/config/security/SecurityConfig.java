@@ -159,12 +159,12 @@ public class SecurityConfig {
                                         + "object-src 'none'"))
                         .referrerPolicy(referrer -> referrer
                                 .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
-                        // TLS는 앞단 리버스 프록시가 종단한다. server.forward-headers-strategy를
-                        // 아직 설정하지 않아(운영 프록시 설정을 확인한 뒤 SEC-01과 함께 정할
-                        // 예정) request.isSecure()가 프록시를 못 거치면 항상 false일 수 있다 —
-                        // 기본 매처(isSecure)를 쓰면 그 경우 HSTS가 영영 안 붙는다. 이 헤더는
-                        // 평문 HTTP 응답에 실려도 브라우저가 무시하므로(사양상 보안 컨텍스트가
-                        // 아니면 적용하지 않는다), 항상 붙이는 쪽이 안전하다.
+                        // TLS는 앞단 리버스 프록시가 종단한다. server.forward-headers-strategy는
+                        // native로 설정돼 있어(application.yml) request.isSecure()가 프록시 뒤에서도
+                        // 실제 프로토콜을 반영하지만, 그래도 기본 매처(isSecure) 대신 항상 붙이는
+                        // 쪽을 유지한다 — 이 헤더는 평문 HTTP 응답에 실려도 브라우저가 무시하므로
+                        // (사양상 보안 컨텍스트가 아니면 적용하지 않는다), 프록시 헤더 설정이
+                        // 어긋나는 경로가 생겨도 HSTS 자체는 안전하게 항상 적용된다.
                         .httpStrictTransportSecurity(hsts -> hsts
                                 .includeSubDomains(true)
                                 .maxAgeInSeconds(31536000)
@@ -183,7 +183,7 @@ public class SecurityConfig {
 
     /** 색인하지 않을 경로. "/users/"처럼 /로 끝나면 그 아래 전부, 아니면 그 경로와 그 하위. */
     private static final List<String> NOINDEX_PREFIXES = List.of(
-            "/login", "/signup", "/forgot-password", "/users/", "/admin", "/posts/save", "/api/");
+            "/login", "/signup", "/forgot-password", "/users/", "/admin", "/posts/save", "/api/", "/error");
 
     static boolean isNoindexPath(HttpServletRequest request) {
         String path = request.getRequestURI().substring(request.getContextPath().length());

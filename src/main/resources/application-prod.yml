@@ -36,14 +36,6 @@ spring:
               # 운영에서 상시 켜 둘 수 있다.
               LOG_QUERIES_SLOWER_THAN_MS: 200
 
-  servlet:
-    session:
-      cookie:
-        # server.forward-headers-strategy(BE-01)로 request.isSecure()가 프록시 뒤에서도
-        # 실제 프로토콜을 반영하게 됐으므로, 세션 쿠키에 Secure를 강제해도 로컬 개발
-        # (application.yml, HTTP)에는 영향이 없다.
-        secure: true
-
   flyway:
     enabled: true
     # 이 세션에서 Flyway를 처음 도입한다. 이미 스키마가 있는 기존 운영 DB에 처음 연결할 때는
@@ -63,6 +55,18 @@ spring:
     cache: true
 
   # SMTP 설정(spring.mail.*)은 모든 프로파일이 공유하는 application.yml에 있다.
+
+server:
+  servlet:
+    session:
+      cookie:
+        # server.forward-headers-strategy(BE-01)로 request.isSecure()가 프록시 뒤에서도
+        # 실제 프로토콜을 반영하게 됐으므로, 세션 쿠키에 Secure를 강제해도 로컬 개발
+        # (application.yml, HTTP)에는 영향이 없다. 이 속성은 spring.servlet이 아니라
+        # server.servlet 아래여야 바인딩된다(전체 리뷰 2026-09-26 SEC-01 — 예전에는
+        # spring.servlet.session.cookie.secure로 잘못 놓여 있어 어떤 프로퍼티에도 매핑되지
+        # 않고 조용히 무시됐다).
+        secure: true
 
 app:
   # 이메일 인증 링크에 사용할 실제 배포 도메인. 반드시 환경변수로 지정해야 한다(기본값 없음 —

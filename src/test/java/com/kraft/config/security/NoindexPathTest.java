@@ -21,6 +21,7 @@ class NoindexPathTest {
             "/admin/reports, true",
             "/posts/save, true",
             "/api/v1/posts, true",
+            "/error, true",
             "/, false",
             "/recommend, false",
             "/posts/update/1, false",

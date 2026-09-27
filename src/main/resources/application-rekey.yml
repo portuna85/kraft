@@ -46,6 +46,11 @@ app:
   # 데이터를 통째로 다시 쓰는 동안 주기 작업이 끼어들 이유가 없다. 전부 끈다.
   mail:
     enabled: false
+    # 발송 자체와 별개로 outbox_mails 보관기간 정리는 enabled 플래그와 무관하게 항상 돈다
+    # (OutboxMailWorker.cleanupOldTerminal, OBS-05). "무관한 스케줄러를 한 실행에 섞지
+    # 않는다"는 이 파일의 원칙을 지키려면 이 창에서는 이것도 따로 꺼야 한다(전체 리뷰
+    # 2026-09-26 OPS-02).
+    retention-enabled: false
   upload:
     cleanup-enabled: false
     reconcile-enabled: false
@@ -61,6 +66,11 @@ app:
     purge-enabled: false
   session-revocation:
     enabled: false
+    # cleanupOldTerminal도 enabled와 무관하게 항상 돈다(SessionRevocationWorker, OBS-05).
+    # 그 자체로 위험하지는 않지만(상태·시각 기준 bulk delete라 email_snapshot을 복호화하지
+    # 않는다), EmailRekeyService가 같은 테이블(session_revocation_tasks)을 id 순으로
+    # 순회하며 재암호화하는 동안 행이 사라지는 것을 피하려고 이 창에서는 끈다.
+    retention-enabled: false
   recommend:
     # 동행복권 자동 수집도 이 창에서 돌 이유가 없다(개선 보고서 OBS-05) — users 테이블만
     # 건드리는 작업이라 직접 위험하진 않지만, 한 실행에 무관한 스케줄러를 섞지 않는다는

@@ -9,11 +9,18 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 /**
  * readiness 판정 규칙(평가 보고서 2026-09-25 F04). 배포·롤백 성공 판정에 쓰이므로 DB에 붙지
@@ -79,6 +86,38 @@ class HealthControllerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
         assertThat(elapsedMillis).isLessThan(3_000);
+    }
+
+    @Test
+    @DisplayName("readyz: 동시에 들어온 요청은 새 DB 확인을 각자 띄우지 않고 진행 중인 검사를 공유한다")
+    void readyz_concurrentRequests_shareSingleDatabaseCheck() throws Exception {
+        CountDownLatch connectionCallStarted = new CountDownLatch(1);
+        CountDownLatch releaseConnection = new CountDownLatch(1);
+        given(dataSource.getConnection()).willAnswer(invocation -> {
+            connectionCallStarted.countDown();
+            releaseConnection.await(5, TimeUnit.SECONDS);
+            return connection;
+        });
+        given(connection.isValid(anyInt())).willReturn(true);
+
+        HealthController controller = controller(Duration.ofSeconds(5));
+        ExecutorService callers = Executors.newFixedThreadPool(2);
+        try {
+            Future<ResponseEntity<Void>> first = callers.submit(controller::readyz);
+            // 두 번째 요청이 첫 번째 검사가 아직 끝나지 않은 시점에 들어오도록, 커넥션 호출이
+            // 시작될 때까지는 기다리되 끝나기 전에(래치를 아직 풀지 않은 채) 제출한다.
+            connectionCallStarted.await(1, TimeUnit.SECONDS);
+            Future<ResponseEntity<Void>> second = callers.submit(controller::readyz);
+            Thread.sleep(50); // second가 currentOrNewCheck()까지 진입할 시간을 준다.
+            releaseConnection.countDown();
+
+            assertThat(first.get(5, TimeUnit.SECONDS).getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(second.get(5, TimeUnit.SECONDS).getStatusCode()).isEqualTo(HttpStatus.OK);
+        } finally {
+            callers.shutdownNow();
+        }
+
+        verify(dataSource, times(1)).getConnection();
     }
 
     private HealthController controller(Duration timeout) {
