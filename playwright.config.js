@@ -31,7 +31,8 @@ export default defineConfig({
      */
     testIgnore: process.env.CI ? [/visual.*\.spec\.js/] : [],
 
-    // 인메모리 H2 하나를 모든 테스트가 공유한다. 병렬로 돌리면 서로의 데이터를 본다.
+    // 러너 하나 안에서는 H2를 공유하므로 순차 실행한다. CI의 shard는 각각 독립된
+    // 서버·DB를 가지며 파일 단위로 분할한다(fullyParallel을 켜지 않는다).
     // 각 스펙이 고유한 제목으로 자기 데이터를 만들되, 전체 개수에는 절대 의존하지 않는다.
     fullyParallel: false,
     workers: 1,

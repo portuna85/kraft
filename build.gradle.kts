@@ -112,12 +112,12 @@ val buildVersion: String = try {
 }
 
 tasks.processResources {
-    // Ant의 ReplaceTokens 필터는 설정 캐시가 직렬화할 수 없는 스크립트 객체 참조를 만든다
-    // (Gradle 9.7.1 실측 — "cannot serialize Gradle script object references"). 이 태스크
-    // 하나만 설정 캐시 대상에서 빼고, 나머지 태스크는 계속 캐시 혜택을 받는다.
-    notCompatibleWithConfigurationCache("ReplaceTokens 필터가 설정 캐시와 호환되지 않는다")
+    // 실행 시점의 filesMatching 콜백에는 스크립트 대신 로컬 값만 캡처한다.
+    // 커밋 변경도 태스크 입력으로 추적해 캐시가 이전 정적 자원 버전을 재사용하지 않게 한다.
+    val resourceTokens = mapOf("buildVersion" to buildVersion)
+    inputs.property("buildVersion", resourceTokens.getValue("buildVersion"))
     filesMatching("application.yml") {
-        filter(ReplaceTokens::class, "tokens" to mapOf("buildVersion" to buildVersion))
+        filter(ReplaceTokens::class, "tokens" to resourceTokens)
     }
 }
 

@@ -12,12 +12,20 @@ async function openOwnPost(page) {
     await page.waitForURL(/\/posts\/update\/\d+$/);
 }
 
-/** 서버 페이지네이션(PAGE_SIZE=20)을 실제로 넘기기 위해 댓글을 순차로 만든다. */
-async function seedComments(page, count) {
+/**
+ * 페이지네이션의 준비 데이터는 실제 API로 순차 생성한다. 등록·답글 UI는 별도 테스트와
+ * 각 회귀 시나리오의 새 댓글/답글로 검증하며, 21회씩 동일 폼을 반복 조작하지 않는다.
+ */
+async function seedComments(page, count, parentId = null) {
+    const postId = new URL(page.url()).pathname.split('/').pop();
+    const token = await page.locator('meta[name="_csrf"]').getAttribute('content');
+    const headerName = await page.locator('meta[name="_csrf_header"]').getAttribute('content');
     for (let i = 1; i <= count; i += 1) {
-        await page.locator('#comment-content').fill(`시드 댓글 ${i}`);
-        await page.locator('#btn-comment-save').click();
-        await expect(page.locator('#flash')).toContainText('댓글이 등록되었습니다.');
+        const response = await page.request.post(`/api/v1/posts/${postId}/comments`, {
+            headers: { [headerName]: token },
+            data: { content: `시드 ${parentId === null ? '댓글' : '답글'} ${i}`, parentId },
+        });
+        expect(response.ok(), `시드 생성 요청이 성공해야 한다(${response.status()})`).toBe(true);
     }
 }
 
@@ -439,15 +447,9 @@ test('COR-05 회귀: 답글이 21개면 새로고침 후 20개만 보이고, 답
     await expect(page.locator('#flash')).toContainText('댓글이 등록되었습니다.');
 
     const topLevelItem = page.locator('.comment-list > .comment-list__item').first();
-    for (let i = 1; i <= 21; i += 1) {
-        await topLevelItem.locator('.btn-comment-reply').click();
-        await topLevelItem.locator('.comment-reply-form textarea').fill(`시드 답글 ${i}`);
-        await topLevelItem.locator('.btn-comment-reply-save').click();
-        await expect(page.locator('#flash')).toContainText('댓글이 등록되었습니다.');
-    }
+    await seedComments(page, 21, Number(await topLevelItem.getAttribute('data-comment-id')));
 
-    // 로컬에 즉시 반영된 상태(등록 응답을 그대로 붙인 것)라 서버의 부모별 상한과 무관하게
-    // 21개 모두 보인다 — 상한은 서버가 처음 페이지를 그릴 때만 적용되므로 새로고침해야 한다.
+    // 실제 서버의 부모별 상한을 적용한 초기 화면을 받는다.
     await page.reload();
     const reloadedTopLevelItem = page.locator('.comment-list > .comment-list__item').first();
     const replies = reloadedTopLevelItem.locator('.comment-list__replies .comment-list__item');
@@ -474,12 +476,7 @@ test('F02·F03 회귀: 새 답글을 쓴 뒤 답글 더 보기로 빠짐없이 �
     await expect(page.locator('#flash')).toContainText('댓글이 등록되었습니다.');
 
     const topLevelItem = page.locator('.comment-list > .comment-list__item').first();
-    for (let i = 1; i <= 21; i += 1) {
-        await topLevelItem.locator('.btn-comment-reply').click();
-        await topLevelItem.locator('.comment-reply-form textarea').fill(`시드 답글 ${i}`);
-        await topLevelItem.locator('.btn-comment-reply-save').click();
-        await expect(page.locator('#flash')).toContainText('댓글이 등록되었습니다.');
-    }
+    await seedComments(page, 21, Number(await topLevelItem.getAttribute('data-comment-id')));
 
     await page.reload();
     const parent = page.locator('.comment-list > .comment-list__item').first();
@@ -755,6 +752,7 @@ test('답글 취소·등록 후 포커스가 답글 버튼으로 돌아온다', 
 test('닫힌 댓글 폼은 DOM에 없다가 열었을 때만 생긴다', async ({ page }) => {
     await openOwnPost(page);
     await seedComments(page, 3);
+    await page.reload();
     await expect(page.locator('.comment-list__content')).toHaveCount(3);
 
     // 수정·답글 폼이 공유하는 클래스. 닫힌 상태에서는 하나도 없어야 한다(새 댓글 입력창은
