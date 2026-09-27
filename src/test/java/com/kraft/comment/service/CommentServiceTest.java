@@ -279,12 +279,12 @@ class CommentServiceTest {
         Comment reply21 = replyOf(owner, 321L, parent);
         given(commentRepository.findRepliesByParentIdAsc(eq(100L), eq(320L), any(PageRequest.class)))
                 .willReturn(List.of(reply21));
-        given(commentRepository.countRepliesByParentIdIn(List.of(100L))).willReturn(Map.of(100L, 21L));
 
         CommentPageDto result = commentService.findRepliesPage(100L, 320L, authOf("owner@example.com", Role.USER));
 
         assertThat(result.comments()).extracting(CommentViewDto::id).containsExactly(321L);
-        assertThat(result.totalCount()).isEqualTo(21L);
+        // A-BE-13: 답글 더 보기는 항상 후속 페이지라 전체 개수를 다시 세지 않는다.
+        assertThat(result.totalCount()).isNull();
         assertThat(result.hasMore()).isFalse();
     }
 
@@ -502,12 +502,14 @@ class CommentServiceTest {
     @DisplayName("F13: findNextPageForView는 afterId 커서를 그대로 리포지토리에 전달한다")
     void findNextPageForView_passesAfterIdCursorToRepository() {
         given(commentRepository.findPageByPostIdAsc(1L, 20L, PageRequest.of(0, 21))).willReturn(List.of());
-        given(commentRepository.countByPostId(1L)).willReturn(20L);
 
         CommentPageDto result = commentService.findNextPageForView(1L, 20L, authOf("owner@example.com", Role.USER));
 
         assertThat(result.comments()).isEmpty();
         assertThat(result.hasMore()).isFalse();
+        // A-BE-13: 후속 페이지는 전체 개수를 다시 세지 않는다(countByPostId를 부르지 않는다).
+        assertThat(result.totalCount()).isNull();
         verify(commentRepository).findPageByPostIdAsc(1L, 20L, PageRequest.of(0, 21));
+        verify(commentRepository, never()).countByPostId(any());
     }
 }

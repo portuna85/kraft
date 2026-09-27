@@ -85,8 +85,10 @@ async function loadMore() {
         );
         mergeComments(page.comments);
         // 요청이 진행되는 동안 등록/답글/삭제가 없었을 때만 이 응답의 totalCount를 믿는다.
-        // 그사이 변경이 있었다면 로컬에서 이미 정확히 증감된 값을 유지한다.
-        if (mutationSeq.value === seqAtStart) {
+        // 그사이 변경이 있었다면 로컬에서 이미 정확히 증감된 값을 유지한다. 서버가 이 값을
+        // 아예 생략(null)할 수도 있다(A-BE-13) — "더 보기" 후속 페이지는 다시 세지 않으므로,
+        // 그때도 로컬 값을 그대로 둔다.
+        if (mutationSeq.value === seqAtStart && page.totalCount != null) {
             totalCount.value = page.totalCount;
         }
         hasMore.value = page.hasMore;

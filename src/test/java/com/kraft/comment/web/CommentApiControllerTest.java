@@ -65,7 +65,7 @@ class CommentApiControllerTest {
     @DisplayName("F13: GET .../comments/page 는 인증 없이도 afterId 커서를 그대로 서비스에 전달한다")
     void pageComments_isAccessibleWithoutAuthenticationAndPassesAfterIdCursor() throws Exception {
         given(commentService.findNextPageForView(eq(1L), eq(20L), any()))
-                .willReturn(new CommentPageDto(List.of(), 30, true));
+                .willReturn(new CommentPageDto(List.of(), 30L, true));
 
         mockMvc.perform(get("/api/v1/posts/1/comments/page").param("afterId", "20"))
                 .andExpect(status().isOk())

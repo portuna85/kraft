@@ -208,7 +208,9 @@ public class CommentService {
         List<CommentViewDto> views = page.stream()
                 .map(comment -> withInitialReplies(comment, authentication, replyCounts, repliesByParent))
                 .toList();
-        long totalCount = commentRepository.countByPostId(postId);
+        // afterId가 있으면 "더 보기"로 이어받는 후속 페이지다 — 전체 개수는 최초 페이지에서
+        // 이미 받았으므로 다시 세지 않는다(A-BE-13). 화면이 로컬로 유지한 값을 그대로 쓴다.
+        Long totalCount = afterId == null ? commentRepository.countByPostId(postId) : null;
         return new CommentPageDto(views, totalCount, hasMore);
     }
 
@@ -238,8 +240,9 @@ public class CommentService {
         List<CommentViewDto> views = page.stream()
                 .map(reply -> new CommentViewDto(reply, OwnershipPolicy.canManage(authentication, reply.getUser())))
                 .toList();
-        long totalCount = commentRepository.countRepliesByParentIdIn(List.of(parentId)).getOrDefault(parentId, 0L);
-        return new CommentPageDto(views, totalCount, hasMore);
+        // "답글 더 보기"는 항상 후속 페이지다 — 최초 답글 수는 이미 withInitialReplies가 배치로
+        // 계산해 부모 댓글에 실어 보냈고, 화면도 이 값을 읽지 않는다(A-BE-13).
+        return new CommentPageDto(views, null, hasMore);
     }
 
     private Comment findComment(Long id) {
