@@ -172,10 +172,10 @@ class BackupRestoreRehearsalTest {
             Authentication auth = TestAuthentication.of(author);
 
             PostService posts = context.getBean(PostService.class);
-            seeded.pictureUrl = posts.uploadImage(TestImages.pngFile("drill.png"), auth);
+            seeded.pictureUrl = posts.uploadImage(TestImages.pngFile("drill.png"), auth).url();
             seeded.postId = posts.save(auth,
                     new PostSaveRequestDto("백업 리허설", "복구 후에도 남아 있어야 한다",
-                            seeded.pictureUrl, Category.FREE));
+                            seeded.pictureUrl, null, null, Category.FREE));
         }, KEY, "--spring.jpa.hibernate.ddl-auto=update");
 
         return new Seeded(email, seeded.postId, seeded.pictureUrl);

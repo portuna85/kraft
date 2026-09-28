@@ -191,7 +191,7 @@ class MariaDbMigrationTest {
                 .build());
         Authentication auth = TestAuthentication.of(author);
 
-        Long id = postService.save(auth, new PostSaveRequestDto("제목", "내용", null, Category.QNA));
+        Long id = postService.save(auth, new PostSaveRequestDto("제목", "내용", null, null, null, Category.QNA));
 
         var saved = postRepository.findById(id).orElseThrow();
         assertThat(saved.getCategory()).isEqualTo(Category.QNA);

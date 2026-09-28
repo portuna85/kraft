@@ -267,7 +267,7 @@ class PostPageControllerTest {
     @DisplayName("GET /posts/update/{id} 는 조회한 게시글과 댓글 목록을 모델에 담아 렌더링한다")
     void postsUpdate_rendersUpdateViewWithPostAndComments() throws Exception {
         given(postService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
-                .willReturn(new PostViewDto(1L, "제목", "내용", null, "작성자", false, Category.FREE, 0L, 0L, false, 0L));
+                .willReturn(new PostViewDto(1L, "제목", "내용", null, null, null, "작성자", false, Category.FREE, 0L, 0L, false, 0L));
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(List.of(), 0L, false));
 
@@ -281,7 +281,7 @@ class PostPageControllerTest {
     @DisplayName("GET /posts/update/{id} 는 본문을 마크다운으로 해석해 그린다(13단계, SSR)")
     void postsUpdate_rendersMarkdownContentAsHtml() throws Exception {
         given(postService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
-                .willReturn(new PostViewDto(1L, "제목", "**굵게** 본문", null, "작성자", false, Category.FREE, 0L, 0L, false, 0L));
+                .willReturn(new PostViewDto(1L, "제목", "**굵게** 본문", null, null, null, "작성자", false, Category.FREE, 0L, 0L, false, 0L));
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(List.of(), 0L, false));
 
@@ -309,7 +309,7 @@ class PostPageControllerTest {
     @DisplayName("GET /posts/update/{id} 는 본문에 HTML 태그가 있어도 해석하지 않고 이스케이프해 보여준다")
     void postsUpdate_escapesHtmlTagsInMarkdownContent() throws Exception {
         given(postService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
-                .willReturn(new PostViewDto(1L, "제목", "<script>alert(1)</script>", null, "작성자", false, Category.FREE, 0L, 0L, false, 0L));
+                .willReturn(new PostViewDto(1L, "제목", "<script>alert(1)</script>", null, null, null, "작성자", false, Category.FREE, 0L, 0L, false, 0L));
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(List.of(), 0L, false));
 
@@ -329,7 +329,7 @@ class PostPageControllerTest {
     @DisplayName("GET /posts/update/{id} 는 관련 게시글 조회를 조회한 글의 분류·id로 위임한다")
     void postsUpdate_delegatesRelatedPostsLookupToPostCategoryAndId() throws Exception {
         given(postService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
-                .willReturn(new PostViewDto(1L, "제목", "내용", null, "작성자", false, Category.QNA, 0L, 0L, false, 0L));
+                .willReturn(new PostViewDto(1L, "제목", "내용", null, null, null, "작성자", false, Category.QNA, 0L, 0L, false, 0L));
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(List.of(), 0L, false));
 
@@ -389,7 +389,7 @@ class PostPageControllerTest {
     @DisplayName("GET /posts/update/{id} 는 편집 충돌 감지용 버전을 Vue 초기 상태(JSON)로 내려준다")
     void postsUpdate_rendersVersionForConflictDetection() throws Exception {
         given(postService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
-                .willReturn(new PostViewDto(1L, "제목", "내용", null, "작성자", true, Category.FREE, 0L, 0L, false, 7L));
+                .willReturn(new PostViewDto(1L, "제목", "내용", null, null, null, "작성자", true, Category.FREE, 0L, 0L, false, 7L));
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(List.of(), 0L, false));
 
@@ -405,7 +405,7 @@ class PostPageControllerTest {
     @DisplayName("F12: 편집 취소가 분류를 되돌릴 수 있도록 원본 분류를 Vue 초기 상태(JSON)로 내려준다")
     void postsUpdate_rendersOriginalCategoryForCancel() throws Exception {
         given(postService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
-                .willReturn(new PostViewDto(1L, "제목", "내용", null, "작성자", true, Category.QNA, 0L, 0L, false, 0L));
+                .willReturn(new PostViewDto(1L, "제목", "내용", null, null, null, "작성자", true, Category.QNA, 0L, 0L, false, 0L));
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(List.of(), 0L, false));
 
@@ -422,7 +422,7 @@ class PostPageControllerTest {
     void postsUpdate_escapesScriptClosingSequenceInEmbeddedJson() throws Exception {
         String payload = "</script><script>alert(1)</script>";
         given(postService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
-                .willReturn(new PostViewDto(1L, payload, "내용", null, "작성자", true, Category.FREE, 0L, 0L, false, 0L));
+                .willReturn(new PostViewDto(1L, payload, "내용", null, null, null, "작성자", true, Category.FREE, 0L, 0L, false, 0L));
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(
                         List.of(new CommentViewDto(2L, 1L, null, payload, "댓글작성자", null, true, List.of(), 0L, false, 0L, false)), 1L, false));

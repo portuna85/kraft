@@ -52,6 +52,8 @@
  * @property {string} title
  * @property {string} content
  * @property {string | null} picture
+ * @property {number | null} pictureWidth
+ * @property {number | null} pictureHeight
  * @property {string | null} author
  * @property {boolean} canManagePost
  * @property {string} category

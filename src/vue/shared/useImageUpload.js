@@ -8,6 +8,8 @@ import * as flash from '@ui/flash.js';
 /**
  * @typedef {Object} UploadResponse
  * @property {string} url
+ * @property {number} width
+ * @property {number} height
  */
 
 /**
@@ -105,6 +107,12 @@ export function useImageUpload({ initialUrl = null } = {}) {
     const removedExisting = ref(false);
     /** @type {import('vue').Ref<string|null>} */
     const uploadedUrl = ref(null);
+    // 업로드 응답의 실제 픽셀 크기(A-FE-09) — resolveUrl()이 채운다. uploadedUrl과 항상 짝을
+    // 이루므로 uploadedForFile 캐시 판정도 그대로 재사용한다(따로 무효화할 필요가 없다).
+    /** @type {import('vue').Ref<number|null>} */
+    const uploadedWidth = ref(null);
+    /** @type {import('vue').Ref<number|null>} */
+    const uploadedHeight = ref(null);
     const uploading = ref(false);
     /** @type {File|null} */
     let uploadedForFile = null;
@@ -124,6 +132,8 @@ export function useImageUpload({ initialUrl = null } = {}) {
     function clear() {
         file.value = null;
         uploadedUrl.value = null;
+        uploadedWidth.value = null;
+        uploadedHeight.value = null;
         uploadedForFile = null;
         revokePreview();
     }
@@ -140,6 +150,8 @@ export function useImageUpload({ initialUrl = null } = {}) {
      */
     async function onFileSelected(selectedFile) {
         uploadedUrl.value = null;
+        uploadedWidth.value = null;
+        uploadedHeight.value = null;
         uploadedForFile = null;
         revokePreview();
 
@@ -222,6 +234,8 @@ export function useImageUpload({ initialUrl = null } = {}) {
         }
 
         uploadedUrl.value = response.url;
+        uploadedWidth.value = response.width;
+        uploadedHeight.value = response.height;
         uploadedForFile = fileAtStart;
         return uploadedUrl.value;
     }
@@ -236,6 +250,8 @@ export function useImageUpload({ initialUrl = null } = {}) {
         fileLabel,
         removedExisting,
         uploading,
+        uploadedWidth,
+        uploadedHeight,
         onFileSelected,
         clear,
         removeExisting,

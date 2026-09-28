@@ -63,12 +63,20 @@ public class PostImageService {
     @Value("${app.upload.dir}")
     private String uploadDir;
 
-    public String store(MultipartFile file) {
+    /**
+     * 저장한 공개 URL과 원본 픽셀 크기(A-FE-09) — 상세 화면이 {@code <img width height>}를
+     * 채워 레이아웃 이동(CLS)을 줄이는 데 쓴다. 축소(A-FE-06)는 클라이언트가 업로드 전에
+     * 하므로, 여기서 읽는 크기는 이미 그 축소가 끝난 뒤의(즉 실제로 저장되는) 크기다.
+     */
+    public record StoredImage(String url, int width, int height) {
+    }
+
+    public StoredImage store(MultipartFile file) {
         // 검증이 소문자로 정규화한 확장자를 그대로 파일명에 쓴다. 예전에는 검증만 소문자로 하고
         // 저장은 원본 확장자를 썼기 때문에, 휴대폰·카메라가 흔히 만드는 "IMG_0001.JPG"가
         // "uuid.JPG"로 저장됐다(대소문자를 구분하는 파일 시스템에서 문제가 될 수 있다).
-        String extension = validate(file);
-        String filename = UUID.randomUUID() + "." + extension;
+        ValidatedImage validated = validate(file);
+        String filename = UUID.randomUUID() + "." + validated.extension();
 
         Path target = Path.of(uploadDir).resolve(filename);
         try {
@@ -76,7 +84,7 @@ public class PostImageService {
             // GPS 좌표 등 위치·기기 정보가 담긴 메타데이터를 재인코딩 없이 제거한 뒤
             // 저장한다(A-SEC-10). validate()가 이미 5MB 이하임을 확인했으므로 전체를
             // 메모리에 올려도 된다.
-            byte[] stripped = ImageMetadataStripper.strip(file.getBytes(), extension);
+            byte[] stripped = ImageMetadataStripper.strip(file.getBytes(), validated.extension());
             Files.write(target, stripped);
         } catch (IOException e) {
             // 사용자 입력이 아니라 서버 디스크 문제다(A-BE-12) — 400이 아니라 500으로 나가야
@@ -84,7 +92,7 @@ public class PostImageService {
             throw new StorageException("이미지 저장에 실패했습니다.", e);
         }
 
-        return "/images/" + filename;
+        return new StoredImage("/images/" + filename, validated.width(), validated.height());
     }
 
     /** {@code store()}가 돌려주는 공개 URL의 접두어. */
@@ -133,10 +141,14 @@ public class PostImageService {
         }
     }
 
+    /** 검증을 통과한 확장자와 실제 픽셀 크기. */
+    private record ValidatedImage(String extension, int width, int height) {
+    }
+
     /**
-     * 업로드 파일을 검증하고, 저장에 쓸 소문자 확장자를 돌려준다.
+     * 업로드 파일을 검증하고, 저장에 쓸 소문자 확장자와 실제 픽셀 크기를 돌려준다.
      */
-    private String validate(MultipartFile file) {
+    private ValidatedImage validate(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("업로드할 파일이 없습니다.");
         }
@@ -152,8 +164,8 @@ public class PostImageService {
         if (!ALLOWED_EXTENSIONS.contains(extension)) {
             throw new IllegalArgumentException("허용되지 않는 파일 형식입니다: " + extension);
         }
-        validateRealImage(file, extension);
-        return extension;
+        Dimensions dimensions = validateRealImage(file, extension);
+        return new ValidatedImage(extension, dimensions.width(), dimensions.height());
     }
 
     /**
@@ -169,13 +181,13 @@ public class PostImageService {
      * {@link #validateWebpPixelCount}가 담당한다(F04).</li>
      * </ol>
      */
-    private void validateRealImage(MultipartFile file, String extension) {
+    private Dimensions validateRealImage(MultipartFile file, String extension) {
         byte[] header = readHeader(file, SIGNATURE_HEADER_LENGTH);
         if (!matchesSignature(header, extension)) {
             throw new IllegalArgumentException(
                     "이미지 파일이 아니거나 확장자와 실제 형식이 다릅니다: " + extension);
         }
-        validatePixelCount(file, extension);
+        return validatePixelCount(file, extension);
     }
 
     private boolean matchesSignature(byte[] header, String extension) {
@@ -206,29 +218,39 @@ public class PostImageService {
      * 적용한다(F04). 예전에는 여기서 그냥 건너뛰어, WEBP는 시그니처만 맞으면 픽셀 수 제한
      * 없이 올라갔다.
      */
-    private void validatePixelCount(MultipartFile file, String extension) {
+    /** 픽셀 크기. 0은 "읽지 못함"이다 — 리더가 없거나 스트림을 못 열었을 때뿐이고, 그때는
+     * 픽셀 수 상한 검사 자체를 건너뛰므로(예전부터의 관용, 아래 주석 참고) 저장은 계속되지만
+     * {@code <img width height>}를 채울 값이 없다는 뜻이 된다 — 화면은 이 경우 그 속성을
+     * 생략하고 CLS 개선 이전 동작(속성 없음)으로 자연히 물러난다. */
+    private record Dimensions(int width, int height) {
+        static final Dimensions UNKNOWN = new Dimensions(0, 0);
+    }
+
+    private Dimensions validatePixelCount(MultipartFile file, String extension) {
         if ("webp".equals(extension)) {
-            validateWebpPixelCount(file);
-            return;
+            return validateWebpPixelCount(file);
         }
         try (InputStream in = file.getInputStream();
              ImageInputStream input = ImageIO.createImageInputStream(in)) {
             if (input == null) {
-                return;
+                return Dimensions.UNKNOWN;
             }
             Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
             if (!readers.hasNext()) {
-                return;
+                return Dimensions.UNKNOWN;
             }
 
             ImageReader reader = readers.next();
             try {
                 reader.setInput(input);
-                long pixels = (long) reader.getWidth(0) * reader.getHeight(0);
+                int width = reader.getWidth(0);
+                int height = reader.getHeight(0);
+                long pixels = (long) width * height;
                 if (pixels > MAX_PIXELS) {
                     throw new IllegalArgumentException(
                             "이미지 크기가 너무 큽니다. 가로×세로 " + MAX_PIXELS / 1_000_000 + "메가픽셀 이하만 올릴 수 있습니다.");
                 }
+                return new Dimensions(width, height);
             } finally {
                 reader.dispose();
             }
@@ -243,7 +265,7 @@ public class PostImageService {
      * 읽어, 이미지 데이터가 없는 헤더만의 파일도 통과했다. 파일 크기는 {@link #validate}가 이미
      * 5MB 이하로 제한했으므로 전체를 메모리로 읽어도 된다.
      */
-    private void validateWebpPixelCount(MultipartFile file) {
+    private Dimensions validateWebpPixelCount(MultipartFile file) {
         byte[] data;
         try (InputStream in = file.getInputStream()) {
             data = in.readAllBytes();
@@ -256,6 +278,7 @@ public class PostImageService {
             throw new IllegalArgumentException(
                     "이미지 크기가 너무 큽니다. 가로×세로 " + MAX_PIXELS / 1_000_000 + "메가픽셀 이하만 올릴 수 있습니다.");
         }
+        return new Dimensions((int) dimensions[0], (int) dimensions[1]);
     }
 
     private byte[] readHeader(MultipartFile file, int length) {

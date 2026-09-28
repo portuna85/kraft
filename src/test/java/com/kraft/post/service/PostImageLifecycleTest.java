@@ -118,9 +118,9 @@ class PostImageLifecycleTest {
     @Test
     @DisplayName("F01: 남이 올린 이미지를 자기 게시글에 붙일 수 없다")
     void save_withAnotherUsersImage_isRejected() {
-        String url = postService.uploadImage(imageFile(), alice);
+        String url = postService.uploadImage(imageFile(), alice).url();
 
-        assertThatThrownBy(() -> postService.save(bob, new PostSaveRequestDto("제목", "내용", url, null)))
+        assertThatThrownBy(() -> postService.save(bob, new PostSaveRequestDto("제목", "내용", url, null, null, null)))
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessageContaining("직접 업로드한 이미지");
 
@@ -131,12 +131,12 @@ class PostImageLifecycleTest {
     @Test
     @DisplayName("F01: 남의 이미지를 붙인 글을 지워서 그 파일을 없앨 수 없다 — 재현했던 경로 전체")
     void delete_cannotRemoveAnotherUsersImageFile() {
-        String url = postService.uploadImage(imageFile(), alice);
-        Long alicePost = postService.save(alice, new PostSaveRequestDto("앨리스 글", "내용", url, null));
+        String url = postService.uploadImage(imageFile(), alice).url();
+        Long alicePost = postService.save(alice, new PostSaveRequestDto("앨리스 글", "내용", url, null, null, null));
 
         // 밥이 같은 URL로 자기 글을 만들려는 시도 자체가 막힌다. 예전에는 이 글이 만들어졌고,
         // 밥이 그 글을 지우면 앨리스의 파일이 사라졌다.
-        assertThatThrownBy(() -> postService.save(bob, new PostSaveRequestDto("밥 글", "내용", url, null)))
+        assertThatThrownBy(() -> postService.save(bob, new PostSaveRequestDto("밥 글", "내용", url, null, null, null)))
                 .isInstanceOf(AccessDeniedException.class);
 
         assertThat(fileOf(url)).exists();
@@ -146,10 +146,10 @@ class PostImageLifecycleTest {
     @Test
     @DisplayName("F01: 이미 다른 게시글이 쓰는 이미지는 재사용할 수 없다")
     void save_withImageAlreadyAttachedToAnotherPost_isRejected() {
-        String url = postService.uploadImage(imageFile(), alice);
-        postService.save(alice, new PostSaveRequestDto("첫 글", "내용", url, null));
+        String url = postService.uploadImage(imageFile(), alice).url();
+        postService.save(alice, new PostSaveRequestDto("첫 글", "내용", url, null, null, null));
 
-        assertThatThrownBy(() -> postService.save(alice, new PostSaveRequestDto("둘째 글", "내용", url, null)))
+        assertThatThrownBy(() -> postService.save(alice, new PostSaveRequestDto("둘째 글", "내용", url, null, null, null)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("이미 다른 게시글");
     }
@@ -158,7 +158,7 @@ class PostImageLifecycleTest {
     @DisplayName("F01: 업로드 기록이 없는 이미지 주소는 거부한다")
     void save_withUnknownImageUrl_isRejected() {
         assertThatThrownBy(() -> postService.save(alice,
-                new PostSaveRequestDto("제목", "내용", "/images/never-uploaded.png", null)))
+                new PostSaveRequestDto("제목", "내용", "/images/never-uploaded.png", null, null, null)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("업로드 기록이 없는");
     }
@@ -219,14 +219,14 @@ class PostImageLifecycleTest {
                 + "(SELECT id FROM users WHERE name = 'alice')", PostImageRegistry.MAX_BYTES_PER_USER);
 
         // 밥은 아직 한 번도 올리지 않았으므로 정상 동작해야 한다.
-        assertThat(postService.uploadImage(imageFile(), bob)).startsWith("/images/");
+        assertThat(postService.uploadImage(imageFile(), bob).url()).startsWith("/images/");
     }
 
     @Test
     @DisplayName("F05: 게시글 삭제가 커밋되면 붙어 있던 이미지 파일도 정리된다")
     void delete_afterCommit_removesImageFile() {
-        String url = postService.uploadImage(imageFile(), alice);
-        Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", url, null));
+        String url = postService.uploadImage(imageFile(), alice).url();
+        Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", url, null, null, null));
 
         postService.delete(postId, alice);
 
@@ -237,14 +237,14 @@ class PostImageLifecycleTest {
     @Test
     @DisplayName("F05: 이미지 교체 트랜잭션이 롤백되면 기존 이미지 파일이 그대로 남는다")
     void update_whenTransactionRollsBack_keepsOldImageFile() {
-        String oldUrl = postService.uploadImage(imageFile(), alice);
-        Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", oldUrl, null));
-        String newUrl = postService.uploadImage(imageFile(), alice);
+        String oldUrl = postService.uploadImage(imageFile(), alice).url();
+        Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", oldUrl, null, null, null));
+        String newUrl = postService.uploadImage(imageFile(), alice).url();
 
         // 이미지를 교체한 뒤 같은 트랜잭션을 롤백시킨다. 예전에는 update()가 커밋 전에 파일을
         // 지웠기 때문에, DB는 기존 이미지를 가리키는 상태로 되돌아오는데 파일은 이미 없었다.
         transactionTemplate.executeWithoutResult(status -> {
-            postService.update(postId, new PostUpdateRequestDto("제목", "내용", newUrl, null, null), alice);
+            postService.update(postId, new PostUpdateRequestDto("제목", "내용", newUrl, null, null, null, null), alice);
             status.setRollbackOnly();
         });
 
@@ -256,11 +256,11 @@ class PostImageLifecycleTest {
     @Test
     @DisplayName("F05: 이미지 교체가 커밋되면 기존 파일만 정리되고 새 파일은 남는다")
     void update_afterCommit_removesOnlyOldImageFile() {
-        String oldUrl = postService.uploadImage(imageFile(), alice);
-        Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", oldUrl, null));
-        String newUrl = postService.uploadImage(imageFile(), alice);
+        String oldUrl = postService.uploadImage(imageFile(), alice).url();
+        Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", oldUrl, null, null, null));
+        String newUrl = postService.uploadImage(imageFile(), alice).url();
 
-        postService.update(postId, new PostUpdateRequestDto("제목", "내용", newUrl, null, null), alice);
+        postService.update(postId, new PostUpdateRequestDto("제목", "내용", newUrl, null, null, null, null), alice);
 
         assertThat(fileOf(oldUrl)).doesNotExist();
         assertThat(fileOf(newUrl)).exists();
@@ -270,7 +270,7 @@ class PostImageLifecycleTest {
     @Test
     @DisplayName("F05: 커밋 직후 정리가 실행되지 못했어도 예약이 DB에 남아 다음 정리가 마저 치운다")
     void cleanPendingDeletions_picksUpReservationsLeftBehind() {
-        String url = postService.uploadImage(imageFile(), alice);
+        String url = postService.uploadImage(imageFile(), alice).url();
 
         // 커밋은 됐는데 그 직후 프로세스가 죽어 파일 삭제가 실행되지 못한 상태를 만든다.
         jdbcTemplate.update("UPDATE post_images SET status = 'PENDING_DELETE' WHERE file_name = ?",
@@ -288,8 +288,8 @@ class PostImageLifecycleTest {
     @Test
     @DisplayName("업로드만 하고 글을 저장하지 않은 파일은 만료 후 정리된다")
     void cleanExpiredOrphans_removesUnattachedUploads() {
-        String fresh = postService.uploadImage(imageFile(), alice);
-        String stale = postService.uploadImage(imageFile(), alice);
+        String fresh = postService.uploadImage(imageFile(), alice).url();
+        String stale = postService.uploadImage(imageFile(), alice).url();
         backdate(stale, LocalDateTime.now().minusHours(25));
 
         int deleted = postImageCleaner.cleanExpiredOrphans();
@@ -303,9 +303,9 @@ class PostImageLifecycleTest {
     @Test
     @DisplayName("F03/F04: 같은 이미지를 서로 다른 두 게시글에 거의 동시에 붙이면 나중에 커밋한 쪽이 충돌로 실패한다")
     void attach_concurrentAttachToDifferentPosts_conflictsOnOptimisticLock() {
-        String url = postService.uploadImage(imageFile(), alice);
-        Long postAId = postService.save(alice, new PostSaveRequestDto("A", "내용", null, null));
-        Long postBId = postService.save(alice, new PostSaveRequestDto("B", "내용", null, null));
+        String url = postService.uploadImage(imageFile(), alice).url();
+        Long postAId = postService.save(alice, new PostSaveRequestDto("A", "내용", null, null, null, null));
+        Long postBId = postService.save(alice, new PostSaveRequestDto("B", "내용", null, null, null, null));
 
         assertThatThrownBy(() -> transactionTemplate.executeWithoutResult(outer -> {
             // 바깥 트랜잭션이 이미지를 읽어(version=0) postA에 붙인다. 아직 커밋 전이다.
@@ -385,17 +385,17 @@ class PostImageLifecycleTest {
     @Test
     @DisplayName("F06: 커밋 후 정리는 이번 요청이 표시한 이미지만 치우고 다른 삭제 대기 이미지는 건드리지 않는다")
     void update_cleanUpAfterCommit_touchesOnlyThisRequestsImage() {
-        String oldUrl = postService.uploadImage(imageFile(), alice);
-        Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", oldUrl, null));
-        String newUrl = postService.uploadImage(imageFile(), alice);
+        String oldUrl = postService.uploadImage(imageFile(), alice).url();
+        Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", oldUrl, null, null, null));
+        String newUrl = postService.uploadImage(imageFile(), alice).url();
 
         // 이 요청과 무관하게 이미 삭제 대기 중인 이미지가 있다고 가정한다 — 시스템 전체의
         // 밀린 삭제 대기열을 흉내 낸다.
-        String unrelatedUrl = postService.uploadImage(imageFile(), alice);
+        String unrelatedUrl = postService.uploadImage(imageFile(), alice).url();
         jdbcTemplate.update("UPDATE post_images SET status = 'PENDING_DELETE' WHERE file_name = ?",
                 fileNameOf(unrelatedUrl));
 
-        postService.update(postId, new PostUpdateRequestDto("제목", "내용", newUrl, null, null), alice);
+        postService.update(postId, new PostUpdateRequestDto("제목", "내용", newUrl, null, null, null, null), alice);
 
         // 이번 요청이 표시한 것만 곧바로 지워진다.
         assertThat(fileOf(oldUrl)).doesNotExist();
@@ -416,7 +416,7 @@ class PostImageLifecycleTest {
         // 롤백으로 자연히 사라지지만 이미 디스크에 쓴 파일은 그렇지 않다 — OnRollback으로
         // 등록한 보상이 이것까지 지워야 한다.
         transactionTemplate.executeWithoutResult(status -> {
-            urlRef.set(postService.uploadImage(imageFile(), alice));
+            urlRef.set(postService.uploadImage(imageFile(), alice).url());
             status.setRollbackOnly();
         });
 
@@ -428,8 +428,8 @@ class PostImageLifecycleTest {
     @Test
     @DisplayName("B01: 삭제가 예약된 이미지는 다시 연결할 수 없다")
     void attach_toImageMarkedForDeletion_isRejected() {
-        String url = postService.uploadImage(imageFile(), alice);
-        Long postId = postService.save(alice, new PostSaveRequestDto("원본", "내용", null, null));
+        String url = postService.uploadImage(imageFile(), alice).url();
+        Long postId = postService.save(alice, new PostSaveRequestDto("원본", "내용", null, null, null, null));
         jdbcTemplate.update("UPDATE post_images SET status = 'PENDING_DELETE', post_id = NULL WHERE file_name = ?",
                 fileNameOf(url));
 
@@ -443,9 +443,9 @@ class PostImageLifecycleTest {
     @Test
     @DisplayName("B01: 정리 작업이 대상을 고른 뒤 다른 트랜잭션이 먼저 연결하면 파일을 지우지 않고 건너뛴다")
     void cleanExpiredOrphans_skipsImageAttachedBetweenSelectAndClaim() {
-        String url = postService.uploadImage(imageFile(), alice);
+        String url = postService.uploadImage(imageFile(), alice).url();
         backdate(url, LocalDateTime.now().minusHours(25));
-        Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", null, null));
+        Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", null, null, null, null));
         Long imageId = postImageRepository.findByFileName(fileNameOf(url)).orElseThrow().getId();
         LocalDateTime threshold = LocalDateTime.now().minus(PostImageCleaner.ORPHAN_TTL);
 
@@ -476,9 +476,9 @@ class PostImageLifecycleTest {
     @Test
     @DisplayName("COR-06 회귀: attach가 만료된 이미지를 먼저 읽어 두어도, 그 사이 정리 작업의 선점이 먼저 커밋되면 충돌로 실패한다")
     void attach_whenCleanupClaimsExpiredOrphanInBetween_conflictsOnOptimisticLock() {
-        String url = postService.uploadImage(imageFile(), alice);
+        String url = postService.uploadImage(imageFile(), alice).url();
         backdate(url, LocalDateTime.now().minus(PostImageCleaner.ORPHAN_TTL).minusMinutes(1));
-        Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", null, null));
+        Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", null, null, null, null));
         Long imageId = postImageRepository.findByFileName(fileNameOf(url)).orElseThrow().getId();
         LocalDateTime threshold = LocalDateTime.now().minus(PostImageCleaner.ORPHAN_TTL);
 

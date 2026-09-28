@@ -123,7 +123,7 @@ class PostServiceTest {
         given(postRepository.save(any(Post.class))).willReturn(saved);
 
         Long id = postService.save(authOf(user),
-                new PostSaveRequestDto("제목", "내용", null, null));
+                new PostSaveRequestDto("제목", "내용", null, null, null, null));
 
         assertThat(id).isEqualTo(10L);
     }
@@ -135,7 +135,7 @@ class PostServiceTest {
         ReflectionTestUtils.setField(guest, "id", 1L);
         given(userRepository.findById(1L)).willReturn(Optional.of(guest));
 
-        assertThatThrownBy(() -> postService.save(authOf(guest), new PostSaveRequestDto("제목", "내용", null, null)))
+        assertThatThrownBy(() -> postService.save(authOf(guest), new PostSaveRequestDto("제목", "내용", null, null, null, null)))
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(postRepository, never()).save(any());
@@ -147,7 +147,7 @@ class PostServiceTest {
         given(userRepository.findById(999L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> postService.save(authOf(999L, "nobody@example.com", Role.USER),
-                new PostSaveRequestDto("제목", "내용", null, null)))
+                new PostSaveRequestDto("제목", "내용", null, null, null, null)))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("존재하지 않는 회원");
 
@@ -162,7 +162,7 @@ class PostServiceTest {
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
 
-        Long id = postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용", null, null, null),
+        Long id = postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용", null, null, null, null, null),
                 authOf(owner));
 
         assertThat(id).isEqualTo(100L);
@@ -179,7 +179,7 @@ class PostServiceTest {
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
 
-        postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용", "/images/new.png", null, null),
+        postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용", "/images/new.png", null, null, null, null),
                 authOf(owner));
 
         assertThat(post.getPicture()).isEqualTo("/images/new.png");
@@ -198,7 +198,7 @@ class PostServiceTest {
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
 
-        postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용", "/images/same.png", null, null),
+        postService.update(100L, new PostUpdateRequestDto("새 제목", "새 내용", "/images/same.png", null, null, null, null),
                 authOf(owner));
 
         verify(postImageRegistry, never()).markForDeletion(any());
@@ -214,7 +214,7 @@ class PostServiceTest {
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
         given(userRepository.findById(2L)).willReturn(Optional.of(intruder));
 
-        assertThatThrownBy(() -> postService.update(100L, new PostUpdateRequestDto("해킹", "해킹", null, null, null),
+        assertThatThrownBy(() -> postService.update(100L, new PostUpdateRequestDto("해킹", "해킹", null, null, null, null, null),
                 authOf(intruder)))
                 .isInstanceOf(AccessDeniedException.class);
 
@@ -230,7 +230,7 @@ class PostServiceTest {
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
 
-        assertThatThrownBy(() -> postService.update(100L, new PostUpdateRequestDto("수정 시도", "내용", null, null, null),
+        assertThatThrownBy(() -> postService.update(100L, new PostUpdateRequestDto("수정 시도", "내용", null, null, null, null, null),
                 authOf(owner)))
                 .isInstanceOf(AccessDeniedException.class);
 
@@ -246,7 +246,7 @@ class PostServiceTest {
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
         given(userRepository.findById(2L)).willReturn(Optional.of(admin));
 
-        postService.update(100L, new PostUpdateRequestDto("관리자 수정", "관리자 수정", null, null, null),
+        postService.update(100L, new PostUpdateRequestDto("관리자 수정", "관리자 수정", null, null, null, null, null),
                 authOf(admin));
 
         assertThat(post.getTitle()).isEqualTo("관리자 수정");
@@ -261,7 +261,7 @@ class PostServiceTest {
         given(postRepository.findById(200L)).willReturn(Optional.of(post));
         given(userRepository.findById(3L)).willReturn(Optional.of(someone));
 
-        assertThatThrownBy(() -> postService.update(200L, new PostUpdateRequestDto("x", "y", null, null, null),
+        assertThatThrownBy(() -> postService.update(200L, new PostUpdateRequestDto("x", "y", null, null, null, null, null),
                 authOf(someone)))
                 .isInstanceOf(AccessDeniedException.class);
     }
@@ -644,7 +644,7 @@ class PostServiceTest {
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
 
         assertThatThrownBy(() -> postService.save(authOf(user),
-                new PostSaveRequestDto("공지", "내용", null, Category.NOTICE)))
+                new PostSaveRequestDto("공지", "내용", null, null, null, Category.NOTICE)))
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessageContaining("공지 분류는 관리자만");
 
@@ -659,7 +659,7 @@ class PostServiceTest {
         given(postRepository.save(any(Post.class))).willReturn(postOf(admin, 10L));
 
         Long id = postService.save(authOf(admin),
-                new PostSaveRequestDto("공지", "내용", null, Category.NOTICE));
+                new PostSaveRequestDto("공지", "내용", null, null, null, Category.NOTICE));
 
         assertThat(id).isEqualTo(10L);
     }
@@ -673,7 +673,7 @@ class PostServiceTest {
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
 
         assertThatThrownBy(() -> postService.update(100L,
-                new PostUpdateRequestDto("제목", "내용", null, Category.NOTICE, null),
+                new PostUpdateRequestDto("제목", "내용", null, null, null, Category.NOTICE, null),
                 authOf(owner)))
                 .isInstanceOf(AccessDeniedException.class);
 
@@ -690,7 +690,7 @@ class PostServiceTest {
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
 
         assertThatThrownBy(() -> postService.update(100L,
-                new PostUpdateRequestDto("나중 저장", "내용", null, null, 1L),
+                new PostUpdateRequestDto("나중 저장", "내용", null, null, null, null, 1L),
                 authOf(owner)))
                 .isInstanceOf(OptimisticLockingFailureException.class);
 
@@ -706,7 +706,7 @@ class PostServiceTest {
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
 
-        postService.update(100L, new PostUpdateRequestDto("수정됨", "내용", null, null, null),
+        postService.update(100L, new PostUpdateRequestDto("수정됨", "내용", null, null, null, null, null),
                 authOf(owner));
 
         assertThat(post.getTitle()).isEqualTo("수정됨");

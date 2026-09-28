@@ -40,6 +40,15 @@ public class Post extends BaseEntity {
     @Column(length = 500)
     private String picture;
 
+    /**
+     * picture의 실제 픽셀 크기(A-FE-09) — 상세 화면이 {@code <img width height>}를 채워
+     * 레이아웃 이동(CLS)을 줄이는 데만 쓴다. picture가 없으면(글에 사진이 없으면) 둘 다
+     * null이다. V32 이전에 저장된 글도 null로 남는다 — 소급 채움은 하지 않는다(다시 열람할
+     * 때 값이 없다는 것만 다를 뿐 동작에는 지장이 없다).
+     */
+    private Integer pictureWidth;
+    private Integer pictureHeight;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
@@ -69,19 +78,25 @@ public class Post extends BaseEntity {
     private Long version;
 
     @Builder
-    public Post(String title, String content, String picture, User user, Category category) {
+    public Post(String title, String content, String picture, Integer pictureWidth, Integer pictureHeight,
+                User user, Category category) {
         this.title = title;
         this.content = content;
         this.picture = picture;
+        this.pictureWidth = pictureWidth;
+        this.pictureHeight = pictureHeight;
         this.user = user;
         this.category = category != null ? category : Category.FREE;
         this.viewCount = 0L;
     }
 
-    public void update(String title, String content, String picture, Category category) {
+    public void update(String title, String content, String picture, Integer pictureWidth, Integer pictureHeight,
+                        Category category) {
         this.title = title;
         this.content = content;
         this.picture = picture;
+        this.pictureWidth = pictureWidth;
+        this.pictureHeight = pictureHeight;
         this.category = category != null ? category : this.category;
     }
 }

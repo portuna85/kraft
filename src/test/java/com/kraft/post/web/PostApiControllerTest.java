@@ -8,6 +8,7 @@ import com.kraft.post.dto.PostLikeResponseDto;
 import com.kraft.post.dto.PostSaveRequestDto;
 import com.kraft.post.dto.PostsPageResponseDto;
 import com.kraft.post.dto.PostUpdateRequestDto;
+import com.kraft.post.service.PostImageService;
 import com.kraft.post.service.PostService;
 import com.kraft.shared.web.WriteRateLimiters;
 import org.junit.jupiter.api.BeforeEach;
@@ -394,13 +395,16 @@ class PostApiControllerTest {
     @DisplayName("POST /api/v1/posts/images 는 인증+CSRF+유효한 파일이면 200과 업로드된 URL을 반환한다")
     void uploadImage_whenAuthenticatedAndValid_returns200AndUrl() throws Exception {
         MockMultipartFile file = new MockMultipartFile("file", "photo.png", "image/png", "img".getBytes());
-        given(postService.uploadImage(any(), any(Authentication.class))).willReturn("/images/generated-uuid.png");
+        given(postService.uploadImage(any(), any(Authentication.class)))
+                .willReturn(new PostImageService.StoredImage("/images/generated-uuid.png", 64, 48));
 
         mockMvc.perform(multipart("/api/v1/posts/images").file(file)
                         .with(user("tester@example.com"))
                         .with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.url").value("/images/generated-uuid.png"));
+                .andExpect(jsonPath("$.url").value("/images/generated-uuid.png"))
+                .andExpect(jsonPath("$.width").value(64))
+                .andExpect(jsonPath("$.height").value(48));
     }
 
     @Test

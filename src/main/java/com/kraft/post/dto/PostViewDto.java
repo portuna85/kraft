@@ -12,6 +12,9 @@ public record PostViewDto(
         String title,
         String content,
         String picture,
+        /** picture의 실제 픽셀 크기(A-FE-09). picture가 없거나 V32 이전에 저장된 글이면 null. */
+        Integer pictureWidth,
+        Integer pictureHeight,
         String author,
         boolean canManagePost,
         Category category,
@@ -28,6 +31,8 @@ public record PostViewDto(
                 entity.getTitle(),
                 entity.getContent(),
                 entity.getPicture(),
+                entity.getPictureWidth(),
+                entity.getPictureHeight(),
                 entity.getUser() != null ? entity.getUser().getName() : null,
                 canManagePost,
                 entity.getCategory(),

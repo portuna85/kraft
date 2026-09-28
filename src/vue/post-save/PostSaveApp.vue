@@ -141,6 +141,8 @@ async function onSubmit() {
             title: snapshot.title,
             content: snapshot.content,
             picture: pictureUrl,
+            pictureWidth: pictureUrl ? picture.uploadedWidth.value : null,
+            pictureHeight: pictureUrl ? picture.uploadedHeight.value : null,
             category: snapshot.category,
         });
         picture.revokePreview();

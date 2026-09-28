@@ -42,9 +42,20 @@ class PostImageServiceTest {
     void store_withAllowedExtension_savesFileAndReturnsPublicUrl() {
         MockMultipartFile file = TestImages.pngFile("photo.png");
 
-        String url = postImageService.store(file);
+        String url = postImageService.store(file).url();
 
         assertThat(url).startsWith("/images/").endsWith(".png");
+    }
+
+    @Test
+    @DisplayName("A-FE-09: store가 실제 픽셀 크기를 돌려준다(CLS 방지용 img width/height)")
+    void store_returnsActualPixelDimensions() {
+        MockMultipartFile file = new MockMultipartFile("file", "photo.png", "image/png", TestImages.pngBytes(64, 32));
+
+        PostImageService.StoredImage stored = postImageService.store(file);
+
+        assertThat(stored.width()).isEqualTo(64);
+        assertThat(stored.height()).isEqualTo(32);
     }
 
     @Test
@@ -72,7 +83,7 @@ class PostImageServiceTest {
     void store_withUppercaseExtension_savesWithLowercaseExtension() {
         MockMultipartFile file = TestImages.jpegFile("IMG_0001.JPG");
 
-        String url = postImageService.store(file);
+        String url = postImageService.store(file).url();
 
         assertThat(url).endsWith(".jpg");
         assertThat(Files.exists(uploadDir.resolve(url.substring("/images/".length())))).isTrue();
@@ -92,7 +103,7 @@ class PostImageServiceTest {
         System.arraycopy(plain, 2, withExif, 2 + exifApp1.length, plain.length - 2);
         MockMultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", withExif);
 
-        String url = postImageService.store(file);
+        String url = postImageService.store(file).url();
 
         byte[] saved = readAll(uploadDir.resolve(url.substring("/images/".length())));
         assertThat(new String(saved, StandardCharsets.US_ASCII)).doesNotContain("Exif");
@@ -272,7 +283,7 @@ class PostImageServiceTest {
     @DisplayName("deleteIfExists: store()가 만든 URL로 실제 파일을 지운다")
     void deleteIfExists_withStoredUrl_deletesActualFile() {
         MockMultipartFile file = TestImages.pngFile("photo.png");
-        String url = postImageService.store(file);
+        String url = postImageService.store(file).url();
         Path saved = uploadDir.resolve(url.substring("/images/".length()));
         assertThat(Files.exists(saved)).isTrue();
 

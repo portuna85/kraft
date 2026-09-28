@@ -245,14 +245,22 @@ async function onSubmit() {
     const snapshot = { title: draft.title, content: draft.content, category: draft.category, version: version.value };
 
     let pictureUrl;
+    let pictureWidth;
+    let pictureHeight;
     try {
         if (picture.hasFile.value) {
             progressText.value = '이미지 업로드 중…';
             pictureUrl = await picture.resolveUrl();
+            pictureWidth = picture.uploadedWidth.value;
+            pictureHeight = picture.uploadedHeight.value;
         } else if (picture.removedExisting.value) {
             pictureUrl = null;
+            pictureWidth = null;
+            pictureHeight = null;
         } else {
             pictureUrl = props.post.picture || null;
+            pictureWidth = props.post.pictureWidth ?? null;
+            pictureHeight = props.post.pictureHeight ?? null;
         }
     } catch (error) {
         progressText.value = null;
@@ -267,6 +275,8 @@ async function onSubmit() {
             title: snapshot.title,
             content: snapshot.content,
             picture: pictureUrl,
+            pictureWidth,
+            pictureHeight,
             category: snapshot.category,
             // 편집을 시작할 때 받아간 버전. 그 사이 다른 곳에서 저장됐으면 서버가 409로 거절한다.
             version: snapshot.version,
@@ -352,10 +362,16 @@ async function onSubmit() {
       v-if="post.picture"
       class="post-image"
     >
+      <!-- 상세 본문 이미지는 대개 첫 화면(LCP 후보)이다(A-FE-09). 크기를 알면(V32 이후
+           저장된 글) eager+높은 우선순위로 바꾸고 width/height로 레이아웃 이동(CLS)을
+           막는다 — 크기를 모르는 옛 글은 이전 동작(lazy, 속성 없음) 그대로 둔다. -->
       <img
         :src="post.picture"
+        :width="post.pictureWidth ?? undefined"
+        :height="post.pictureHeight ?? undefined"
         alt="게시글 첨부 이미지"
-        loading="lazy"
+        :loading="post.pictureWidth ? 'eager' : 'lazy'"
+        :fetchpriority="post.pictureWidth ? 'high' : undefined"
         decoding="async"
       >
     </div>

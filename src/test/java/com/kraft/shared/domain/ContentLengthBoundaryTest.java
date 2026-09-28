@@ -94,7 +94,7 @@ class ContentLengthBoundaryTest {
     void postContent_atPolicyLimit_isStoredAndReadBack() {
         String content = WORST_CASE_CHAR.repeat(ContentPolicy.POST_CONTENT_MAX_LENGTH);
 
-        Long id = postService.save(author, new PostSaveRequestDto("제목", content, null, null));
+        Long id = postService.save(author, new PostSaveRequestDto("제목", content, null, null, null, null));
 
         assertThat(postRepository.findById(id).orElseThrow().getContent()).isEqualTo(content);
     }
@@ -102,7 +102,7 @@ class ContentLengthBoundaryTest {
     @Test
     @DisplayName("정책 상한 길이의 댓글 본문은 실제로 저장되고 그대로 읽힌다")
     void commentContent_atPolicyLimit_isStoredAndReadBack() {
-        Long postId = postService.save(author, new PostSaveRequestDto("제목", "내용", null, null));
+        Long postId = postService.save(author, new PostSaveRequestDto("제목", "내용", null, null, null, null));
         String content = WORST_CASE_CHAR.repeat(ContentPolicy.COMMENT_CONTENT_MAX_LENGTH);
 
         Long id = commentService.save(postId, author, new CommentSaveRequestDto(content, null)).id();
@@ -114,7 +114,7 @@ class ContentLengthBoundaryTest {
     @DisplayName("정책 상한을 넘는 본문은 입력 검증이 거부한다(DB까지 가지 않는다)")
     void contentOverPolicyLimit_isRejectedByValidation() {
         var tooLongPost = new PostSaveRequestDto(
-                "제목", WORST_CASE_CHAR.repeat(ContentPolicy.POST_CONTENT_MAX_LENGTH + 1), null, null);
+                "제목", WORST_CASE_CHAR.repeat(ContentPolicy.POST_CONTENT_MAX_LENGTH + 1), null, null, null, null);
         var tooLongComment = new CommentSaveRequestDto(
                 WORST_CASE_CHAR.repeat(ContentPolicy.COMMENT_CONTENT_MAX_LENGTH + 1), null);
 
@@ -130,7 +130,7 @@ class ContentLengthBoundaryTest {
     @DisplayName("정책 상한 이내의 본문은 입력 검증을 통과한다")
     void contentAtPolicyLimit_passesValidation() {
         var post = new PostSaveRequestDto(
-                "제목", WORST_CASE_CHAR.repeat(ContentPolicy.POST_CONTENT_MAX_LENGTH), null, null);
+                "제목", WORST_CASE_CHAR.repeat(ContentPolicy.POST_CONTENT_MAX_LENGTH), null, null, null, null);
         var comment = new CommentSaveRequestDto(
                 WORST_CASE_CHAR.repeat(ContentPolicy.COMMENT_CONTENT_MAX_LENGTH), null);
 

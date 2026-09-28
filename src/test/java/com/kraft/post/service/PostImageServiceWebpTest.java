@@ -51,7 +51,7 @@ class PostImageServiceWebpTest {
     @ValueSource(strings = { "lossy", "lossless", "alpha", "simple-lossy", "simple-lossless", "animated" })
     @DisplayName("실제 인코더가 만든 WEBP(손실·무손실·알파·단순 형식·애니메이션)는 저장된다")
     void realWebp_isAccepted(String name) {
-        String url = postImageService.store(webpFile(fixture(name)));
+        String url = postImageService.store(webpFile(fixture(name))).url();
 
         assertThat(url).endsWith(".webp");
         assertThat(uploadDir.resolve(PostImageService.fileNameOf(url))).exists();
@@ -142,9 +142,11 @@ class PostImageServiceWebpTest {
     @Test
     @DisplayName("구조를 만족하는 합성 파일은 상한 이내면 통과한다(검사가 지나치게 엄격하지 않다)")
     void structurallyValidSynthetic_isAccepted() {
-        String url = postImageService.store(webpFile(riff(chunk("VP8L", vp8lPayload(100, 100, 16)))));
+        PostImageService.StoredImage stored = postImageService.store(webpFile(riff(chunk("VP8L", vp8lPayload(100, 100, 16)))));
 
-        assertThat(url).endsWith(".webp");
+        assertThat(stored.url()).endsWith(".webp");
+        assertThat(stored.width()).isEqualTo(100);
+        assertThat(stored.height()).isEqualTo(100);
     }
 
     private void assertRejected(byte[] bytes, String message) {

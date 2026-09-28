@@ -110,7 +110,34 @@ test('이미지를 붙여 글을 등록하면 상세에 그 이미지가 보인�
 
     // 등록 후 목록이 아니라 방금 쓴 글로 바로 이동한다(전체 리뷰 2026-09-26 A-FE-02).
     await page.waitForURL(/\/posts\/update\/\d+$/);
-    await expect(page.locator('.post-image img')).toHaveAttribute('src', /^\/images\//);
+    const img = page.locator('.post-image img');
+    await expect(img).toHaveAttribute('src', /^\/images\//);
+    // A-FE-09: 서버가 검증 때 읽은 실제 픽셀 크기(1×1 고정 픽스처)가 CLS 방지용
+    // width/height로 그대로 내려온다 — eager 로딩·높은 우선순위로도 바뀐다.
+    await expect(img).toHaveAttribute('width', '1');
+    await expect(img).toHaveAttribute('height', '1');
+    await expect(img).toHaveAttribute('loading', 'eager');
+    await expect(img).toHaveAttribute('fetchpriority', 'high');
+});
+
+test('A-FE-09: 이미지를 그대로 두고 제목만 고치면 크기 정보가 그대로 남는다', async ({ page }) => {
+    const title = uniqueTitle('이미지수정');
+
+    await page.goto('/posts/save');
+    await page.locator('#title').fill(title);
+    await page.locator('#content').fill('이미지가 붙은 글입니다.');
+    await page.locator('#picture').setInputFiles(pngFile());
+    await page.locator('#btn-save').click();
+    await page.waitForURL(/\/posts\/update\/\d+$/);
+
+    await page.locator('#btn-edit').click();
+    await page.locator('#title').fill(`${title}-수정`);
+    await page.locator('#btn-update').click();
+    await page.waitForURL(/\/posts\/update\/\d+$/);
+
+    const img = page.locator('.post-image img');
+    await expect(img).toHaveAttribute('width', '1');
+    await expect(img).toHaveAttribute('height', '1');
 });
 
 /**

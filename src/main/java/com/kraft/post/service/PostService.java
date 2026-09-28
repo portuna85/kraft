@@ -112,18 +112,18 @@ public class PostService {
      * 무조건 중단시켜, 위 2번(바깥 트랜잭션과의 합류)이 깨진다 — 그래서 SUPPORTS가 맞다.
      */
     @Transactional(propagation = Propagation.SUPPORTS, readOnly = false)
-    public String uploadImage(MultipartFile file, Authentication authentication) {
+    public PostImageService.StoredImage uploadImage(MultipartFile file, Authentication authentication) {
         User user = findUser(authentication);
         WriteAccessPolicy.requireVerified(user);
 
-        String url = postImageService.store(file);
+        PostImageService.StoredImage stored = postImageService.store(file);
         try {
-            postImageRegistry.validateQuotaAndRegister(url, user, file.getSize());
+            postImageRegistry.validateQuotaAndRegister(stored.url(), user, file.getSize());
         } catch (RuntimeException e) {
-            postImageService.deleteIfExists(url);
+            postImageService.deleteIfExists(stored.url());
             throw e;
         }
-        return url;
+        return stored;
     }
 
     @Transactional
@@ -163,7 +163,11 @@ public class PostService {
             postImageRegistry.attach(newPicture, actor, post);
         }
 
-        post.update(requestDto.title(), requestDto.content(), newPicture, requestDto.category());
+        // 이미지를 지웠으면(newPicture == null) 크기도 함께 비운다 — picture 없이 크기만
+        // 남으면 다음 열람 때 쓸모없는 값이 된다(A-FE-09).
+        Integer newWidth = newPicture == null ? null : requestDto.pictureWidth();
+        Integer newHeight = newPicture == null ? null : requestDto.pictureHeight();
+        post.update(requestDto.title(), requestDto.content(), newPicture, newWidth, newHeight, requestDto.category());
 
         if (pictureChanged && oldPicture != null) {
             Long deletedImageId = postImageRegistry.markForDeletion(oldPicture).orElse(null);
