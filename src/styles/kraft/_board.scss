@@ -73,6 +73,12 @@
     background-color: var(--kraft-surface-subtle);
 }
 
+// 고정 공지(A-BE-05). 색만으로 구분하지 않는다 — 행 안의 📌 이모지 + 스크린리더용
+// "공지" 텍스트가 이미 있으므로, 이 배경은 눈으로 훑을 때 한 번 더 도와주는 보조 신호다.
+.post-list--pinned .post-list__item {
+    background-color: var(--kraft-surface-subtle);
+}
+
 .post-list__title {
     // PlayForum 비교(문서 4.1): 상세의 .post-title(700)만큼 굵지는 않되, 본문 기본 굵기(400)와
     // 보조정보($fs-xs·--kraft-text-muted)보다는 뚜렷이 도드라지게 한다.

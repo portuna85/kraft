@@ -307,6 +307,26 @@ public class PostService {
     }
 
     /**
+     * 목록 첫 페이지 상단에 고정할 최근 공지 최대 {@code limit}개(A-BE-05). 공지는 관리자만
+     * 쓸 수 있지만({@code CategoryPolicy}) 목록에서는 일반 글과 똑같이 최신순으로 섞여, 오래되면
+     * 뒤 페이지로 밀려 사실상 보이지 않았다.
+     * <p>
+     * 일반 목록 행과 같은 모양(post-list__item)으로 보여주므로 댓글 수도 실제 값을 담는다
+     * (findPopular의 인기글 위젯과 달리 여기는 "0건"이 눈에 띄게 어색하다).
+     * <p>
+     * {@link #findPopular}와 같은 이유로 짧게 캐시한다 — 공지는 자주 바뀌지 않으므로 캐시
+     * 지연(최대 45초)이 실질적인 문제가 되지 않는다.
+     */
+    @Cacheable("pinnedNotices")
+    public List<PostsListResponseDto> findPinnedNotices(int limit) {
+        List<PostRowDto> rows = postRepository.findPinnedNotices(PageRequest.of(0, limit));
+        Map<Long, Long> commentCounts = commentRepository.countByPostIdIn(rows.stream().map(PostRowDto::id).toList());
+        return rows.stream()
+                .map(row -> new PostsListResponseDto(row, commentCounts.getOrDefault(row.id(), 0L)))
+                .toList();
+    }
+
+    /**
      * 상세 화면 하단의 관련 게시글(같은 분류, 현재 글 제외, 최신순 최대 {@code limit}개).
      */
     public List<PostRowDto> findRelated(Category category, Long excludeId, int limit) {

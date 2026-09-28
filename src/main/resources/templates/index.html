@@ -5,6 +5,7 @@
 <!--/*@thymesVar id="postsPage" type="com.kraft.post.dto.PostsPageResponseDto"*/-->
 <!--/*@thymesVar id="pageWindow" type="com.kraft.shared.web.PageWindow"*/-->
 <!--/*@thymesVar id="popularPosts" type="java.util.List<com.kraft.post.dto.PostsListResponseDto>"*/-->
+<!--/*@thymesVar id="pinnedPosts" type="java.util.List<com.kraft.post.dto.PostsListResponseDto>"*/-->
 <!--/*@thymesVar id="categories" type="com.kraft.post.domain.Category[]"*/-->
 <!--/*@thymesVar id="category" type="com.kraft.post.domain.Category"*/-->
 <!--/*@thymesVar id="q" type="java.lang.String"*/-->
@@ -72,6 +73,36 @@
             <span class="board-filter-summary__chip" th:if="${currentSort == 'updatedAt,desc'}">최근 수정순</span>
             <a class="board-filter-summary__reset" href="/">초기화</a>
         </div>
+
+        <!-- 공지 고정 영역(A-BE-05). 검색·분류로 좁히지 않은 첫 페이지에만 뜬다
+             (PostPageController.showPinned). 본목록과 별도 조회라 페이지 계산(totalElements)에
+             섞이지 않는다 — 행 모양은 아래 본목록과 같게 맞춘다(post-list__item 마크업을
+             그대로 복제했다. 한쪽을 고치면 다른 쪽도 함께 고친다). -->
+        <ul class="post-list post-list--pinned" th:if="${!#lists.isEmpty(pinnedPosts)}"
+            aria-label="고정된 공지">
+            <li class="post-list__item" th:each="post : ${pinnedPosts}" th:attr="data-post-id=${post.id}">
+                <span class="post-list__no">
+                    <span class="visually-hidden">공지</span><span aria-hidden="true">📌</span>
+                </span>
+                <a class="post-list__title" th:href="@{'/posts/update/' + ${post.id}}">
+                    <span class="post-list__category" th:text="${post.category.title}">공지</span>
+                    <span th:text="${post.title}">제목</span>
+                </a>
+                <span class="post-list__meta">
+                    <span class="post-list__author" th:text="${post.author}">작성자</span>
+                    <span class="post-list__date"
+                          th:text="${post.createdAt != null}
+                                   ? ${#temporals.format(post.createdAt, 'yyyy.MM.dd HH:mm')} + (${post.modified} ? ' (수정됨)' : '')
+                                   : ''">2026.01.01 00:00</span>
+                </span>
+                <span class="post-list__views">
+                    <span class="visually-hidden">조회 </span><span th:text="${post.viewCount}">0</span>
+                </span>
+                <span class="post-list__comments">
+                    <span class="visually-hidden">댓글 </span><span th:text="${post.commentCount}">0</span>
+                </span>
+            </li>
+        </ul>
 
         <!-- 목록은 하나의 데이터로만 렌더링한다. 열 정렬은 넓은 화면에서 CSS Grid가 담당한다. -->
         <ul class="post-list" th:if="${!#lists.isEmpty(posts)}">

@@ -471,6 +471,20 @@ class PostServiceTest {
     }
 
     @Test
+    @DisplayName("findPinnedNotices: 최근 공지를 댓글 수와 함께 반환한다(A-BE-05)")
+    void findPinnedNotices_returnsRecentNoticesWithCommentCounts() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        PostRowDto row = rowOf(owner, 1L);
+        given(postRepository.findPinnedNotices(PageRequest.of(0, 5))).willReturn(List.of(row));
+        given(commentRepository.countByPostIdIn(List.of(1L))).willReturn(Map.of(1L, 3L));
+
+        List<PostsListResponseDto> result = postService.findPinnedNotices(5);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).commentCount()).isEqualTo(3L);
+    }
+
+    @Test
     @DisplayName("findRelated: 분류·제외할 id·limit을 그대로 리포지토리에 넘긴다")
     void findRelated_delegatesToRepositoryWithCategoryExcludeIdAndLimit() {
         User owner = userWithEmail("owner@example.com", 1L);

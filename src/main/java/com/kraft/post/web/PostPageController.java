@@ -86,6 +86,10 @@ public class PostPageController {
         model.addAttribute("postsPage", postsPage);
         model.addAttribute("pageWindow", PageWindow.of(postsPage.page(), postsPage.totalPages()));
         model.addAttribute("popularPosts", postService.findPopular(5));
+        // 검색·분류로 좁히지 않은 첫 페이지에만 공지를 고정한다(A-BE-05) — 검색 결과나 분류별
+        // 목록, 2페이지 이후에 공지가 끼어들면 "이 조건에 맞는 글"이라는 목록의 의미가 흐려진다.
+        boolean showPinned = (q == null || q.isBlank()) && category == null && pageable.getPageNumber() == 0;
+        model.addAttribute("pinnedPosts", showPinned ? postService.findPinnedNotices(5) : List.of());
         model.addAttribute("q", q);
         model.addAttribute("category", category);
         model.addAttribute("currentSort", currentSort);

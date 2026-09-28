@@ -94,6 +94,38 @@ test('글을 수정하면 목록 날짜 옆에 "(수정됨)"이 붙는다', asyn
 });
 
 /**
+ * A-BE-05: 시드 데이터의 "공지 게시글"(NOTICE)이 검색·분류로 좁히지 않은 첫 페이지에서만
+ * 별도 고정 영역(.post-list--pinned)에 보인다. 본목록에서도 여전히 최신순 자리 그대로
+ * 보인다 — 고정은 "복제해서 보여주는 것"이지 본목록에서 빼는 것이 아니다.
+ */
+test.describe('공지 고정', () => {
+    test('검색·분류 없는 첫 페이지에는 고정 영역에 공지가 보인다', async ({ page }) => {
+        await page.goto('/');
+        await expect(page.locator('.post-list--pinned .post-list__item')).toContainText('공지 게시글');
+    });
+
+    test('검색 결과 화면에는 고정 영역이 없다', async ({ page }) => {
+        await page.goto('/?q=zzz-nothing-matches-this-zzz');
+        await expect(page.locator('.post-list--pinned')).toHaveCount(0);
+    });
+
+    test('분류를 고르면 고정 영역이 없다', async ({ page }) => {
+        await page.goto('/?category=FREE');
+        await expect(page.locator('.post-list--pinned')).toHaveCount(0);
+    });
+
+    test('2페이지에는 고정 영역이 없다', async ({ page }) => {
+        // 2페이지가 실제로 존재해야 한다 — 이 스펙만 따로 돌리면 시드 글 몇 개뿐이라 2페이지가
+        // 없어 page=1 요청이 마지막 유효 페이지(0쪽)로 리다이렉트되어 버린다(PostPageController).
+        await createPosts(page, 15, uniqueTitle('공지고정-2페이지'));
+
+        await page.goto('/?page=1');
+        await expect(page).toHaveURL(/page=1/);
+        await expect(page.locator('.post-list--pinned')).toHaveCount(0);
+    });
+});
+
+/**
  * 992~1199px 구간은 픽셀 기준 이미지 대신 규칙으로 고정한다. 이 폭에서 오른쪽 안내
  * (.kraft-aside)가 본문 아래로 떨어지면 폭이 남는데도 한 줄만 쓰는 셈이 된다 — 2열 전환을
  * 1200px에서 992px로 낮춘 것이 바로 이 구간을 겨냥한 것이다.

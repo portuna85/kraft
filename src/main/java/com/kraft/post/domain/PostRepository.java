@@ -67,6 +67,17 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     List<PostRowDto> findTopByViewCountDesc(@Param("since") LocalDateTime since, Pageable pageable);
 
     /**
+     * 목록 상단에 고정할 최근 공지(A-BE-05). 별도 쿼리로 두는 이유는 {@link #search}의
+     * {@code totalElements}·페이지 계산을 흐트러뜨리지 않기 위해서다 — 정렬 로직에 섞으면
+     * "몇 번째 페이지에 공지가 몇 개 끼어 있는가"를 계산해야 하는 문제가 생긴다.
+     */
+    @Query("SELECT new com.kraft.post.dto.PostRowDto("
+            + "p.id, p.title, u.name, p.createdAt, p.updatedAt, p.category, p.viewCount) "
+            + "FROM Post p JOIN p.user u WHERE p.category = com.kraft.post.domain.Category.NOTICE "
+            + "ORDER BY p.id DESC")
+    List<PostRowDto> findPinnedNotices(Pageable pageable);
+
+    /**
      * 여러 id를 한 번에 조회한다(N+1 방지). 신고 목록이 페이지 안의 게시글 대상들을 한 번에
      * 묶어 조회할 때 쓴다(개선 보고서 "신고 목록의 대상별 조회").
      */
