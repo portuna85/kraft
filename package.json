@@ -19,7 +19,7 @@
     "test:e2e:ui": "playwright test --ui",
     "typecheck": "tsc --noEmit -p jsconfig.json",
     "typecheck:vue": "vue-tsc --noEmit -p tsconfig.vue.json",
-    "test:unit": "node --test \"src/vue/**/*.test.js\"",
+    "test:unit": "node --test \"src/vue/**/*.test.js\" \"src/main/resources/static/js/**/*.test.js\"",
     "build:css": "npm run build:css:bootstrap && npm run build:css:app",
     "check:css": "npm run build:css && git add -N -- src/main/resources/static/css && git diff --exit-code --stat -- src/main/resources/static/css",
     "build:css:bootstrap": "sass --load-path=node_modules/bootstrap/scss --style=compressed --no-source-map --quiet-deps src/styles/bootstrap-custom.scss src/main/resources/static/css/bootstrap.custom.css",

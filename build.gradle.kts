@@ -119,6 +119,9 @@ tasks.processResources {
     filesMatching("application.yml") {
         filter(ReplaceTokens::class, "tokens" to resourceTokens)
     }
+    // static/js 안의 *.test.js(A-QA-08)는 node --test로만 실행하는 순수 로직 단위 테스트다.
+    // 배포 정적 자원으로 나갈 이유가 없다 — src/vue의 테스트가 vite build 대상에서 빠지는 것과 같다.
+    exclude("**/*.test.js")
 }
 
 tasks.withType<Test> {
