@@ -236,6 +236,12 @@ app:
     # 세고(slow-request-ms), 그 건수가 이 기준(slow-requests)을 넘으면 알린다.
     slow-request-ms: 3000
     slow-requests: 5
+    # 기준을 넘기면 관리자에게 메일로도 알린다(A-OPS-02, AlertMailer). 비워 두면(기본값)
+    # 로그만 남기고 메일은 보내지 않는다 — 로컬은 이 기본값 그대로 둔다. 운영 주소는
+    # application-prod.yml에서 채운다. 같은 종류(예: 오류율 초과)는 이 간격(기본 1시간)에
+    # 한 번만 보낸다 — 반복해서 울리는 같은 문제로 메일함을 채우지 않기 위해서다.
+    alert-email: ""
+    alert-cooldown-ms: 3600000
 
   upload:
     # 게시글 사진 업로드 저장 경로(상대 경로는 애플리케이션 실행 위치 기준). 운영 환경에서

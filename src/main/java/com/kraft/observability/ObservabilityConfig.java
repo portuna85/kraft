@@ -3,6 +3,7 @@ package com.kraft.observability;
 import com.kraft.post.domain.PostImageRepository;
 import com.kraft.recommend.domain.RecommendationHistoryStateRepository;
 import com.kraft.report.domain.ReportRepository;
+import com.kraft.user.mail.EmailSender;
 import com.kraft.user.mail.OutboxMailRepository;
 import com.kraft.user.session.SessionRevocationTaskRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,6 +13,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 
 import javax.sql.DataSource;
+import java.time.Duration;
 
 /**
  * 관측 구성요소를 한곳에서 조립한다.
@@ -68,9 +70,22 @@ public class ObservabilityConfig {
                                          PostImageRepository postImageRepository,
                                          RecommendationHistoryStateRepository recommendationHistoryStateRepository,
                                          DataSource dataSource,
-                                         @Value("${app.upload.dir}") String uploadDir) {
+                                         @Value("${app.upload.dir}") String uploadDir,
+                                         AlertMailer alertMailer) {
         return new HealthReporter(metrics, outboxMailRepository, reportRepository,
                 sessionRevocationTaskRepository, postImageRepository, recommendationHistoryStateRepository,
-                dataSource, uploadDir);
+                dataSource, uploadDir, alertMailer);
+    }
+
+    /**
+     * {@code app.metrics.alert-email}이 비어 있으면(기본값, 로컬 등) {@link AlertMailer#disabled()}와
+     * 동등하게 동작한다 — 관리자 주소를 설정하지 않은 환경에서 별도 분기 없이 조용히 꺼진다
+     * (A-OPS-02).
+     */
+    @Bean
+    public AlertMailer alertMailer(EmailSender emailSender,
+                                   @Value("${app.metrics.alert-email:}") String alertEmail,
+                                   @Value("${app.metrics.alert-cooldown-ms:3600000}") long cooldownMs) {
+        return new AlertMailer(emailSender, alertEmail, Duration.ofMillis(cooldownMs));
     }
 }

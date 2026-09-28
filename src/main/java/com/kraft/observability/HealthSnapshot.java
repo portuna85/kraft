@@ -2,6 +2,8 @@ package com.kraft.observability;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 한 주기의 상태를 담은 값. 만드는 것(수집)과 판정하는 것을 분리해 두었다 —
@@ -76,66 +78,87 @@ public record HealthSnapshot(
      * 알아야 할 상태다.
      */
     public List<String> breaches(HealthThresholds limits) {
-        List<String> found = new ArrayList<>();
+        return breachList(limits).stream().map(Breach::message).toList();
+    }
+
+    /**
+     * {@link #breaches}와 같은 판정에서 항목별 안정된 식별자만 뽑는다(A-OPS-02). 메시지
+     * 문자열은 수치가 매번 달라 알림 억제 키로 쓸 수 없다("HTTP 오류율 12.3%"와 "15.0%"는
+     * 같은 문제인데 문자열은 다르다) — {@link AlertMailer}가 "같은 종류는 1시간에 1회"를
+     * 판단할 때 이 식별자를 쓴다.
+     */
+    Set<String> breachKinds(HealthThresholds limits) {
+        return breachList(limits).stream().map(Breach::kind).collect(Collectors.toSet());
+    }
+
+    private record Breach(String kind, String message) {
+    }
+
+    private List<Breach> breachList(HealthThresholds limits) {
+        List<Breach> found = new ArrayList<>();
 
         // 표본이 적으면 비율이 요동치므로 오류율은 요청이 충분히 모였을 때만 본다.
         // 반면 5xx는 표본과 무관하게 센다 — 한 건이라도 서버가 잘못한 것이기 때문이다.
         if (requests >= limits.minRequests() && errorRate() > limits.errorRate()) {
-            found.add("HTTP 오류율 %.1f%% (기준 %.1f%%, 요청 %d건)"
-                    .formatted(errorRate() * 100, limits.errorRate() * 100, requests));
+            found.add(new Breach("ERROR_RATE", "HTTP 오류율 %.1f%% (기준 %.1f%%, 요청 %d건)"
+                    .formatted(errorRate() * 100, limits.errorRate() * 100, requests)));
         }
         if (serverErrors > limits.serverErrors()) {
-            found.add("5xx %d건 (기준 %d건)".formatted(serverErrors, limits.serverErrors()));
+            found.add(new Breach("SERVER_ERRORS", "5xx %d건 (기준 %d건)".formatted(serverErrors, limits.serverErrors())));
         }
         if (requests >= limits.minRequests() && avgMillis > limits.avgMillis()) {
-            found.add("평균 응답 %dms (기준 %dms, 최대 %dms)".formatted(avgMillis, limits.avgMillis(), maxMillis));
+            found.add(new Breach("AVG_RESPONSE",
+                    "평균 응답 %dms (기준 %dms, 최대 %dms)".formatted(avgMillis, limits.avgMillis(), maxMillis)));
         }
         if (poolTotal > 0 && poolUsage() > limits.poolUsage()) {
-            found.add("DB 커넥션 %d/%d 사용 중, 대기 %d (기준 %.0f%%)"
-                    .formatted(poolActive, poolTotal, poolPending, limits.poolUsage() * 100));
+            found.add(new Breach("POOL_USAGE", "DB 커넥션 %d/%d 사용 중, 대기 %d (기준 %.0f%%)"
+                    .formatted(poolActive, poolTotal, poolPending, limits.poolUsage() * 100)));
         }
         if (diskFreeBytes >= 0 && diskFreeBytes < limits.diskFreeBytes()) {
-            found.add("디스크 여유 %dMB (기준 %dMB)"
-                    .formatted(diskFreeBytes / 1048576, limits.diskFreeBytes() / 1048576));
+            found.add(new Breach("DISK_FREE", "디스크 여유 %dMB (기준 %dMB)"
+                    .formatted(diskFreeBytes / 1048576, limits.diskFreeBytes() / 1048576)));
         }
         if (mailPending == -1) {
-            found.add("측정 불가: 발송 대기 메일 수");
+            found.add(new Breach("MAIL_PENDING", "측정 불가: 발송 대기 메일 수"));
         } else if (mailPending > limits.mailPending()) {
-            found.add("발송 대기 메일 %d통 (기준 %d통)".formatted(mailPending, limits.mailPending()));
+            found.add(new Breach("MAIL_PENDING", "발송 대기 메일 %d통 (기준 %d통)".formatted(mailPending, limits.mailPending())));
         }
         if (mailFailed == -1) {
-            found.add("측정 불가: 발송 포기 메일 수");
+            found.add(new Breach("MAIL_FAILED", "측정 불가: 발송 포기 메일 수"));
         } else if (mailFailed > limits.mailFailed()) {
-            found.add("발송 포기 메일 %d통 (기준 %d통)".formatted(mailFailed, limits.mailFailed()));
+            found.add(new Breach("MAIL_FAILED", "발송 포기 메일 %d통 (기준 %d통)".formatted(mailFailed, limits.mailFailed())));
         }
         // 다른 항목과 성격이 다르다. 앱은 멀쩡한데 사람이 보고 있지 않다는 뜻이고, 그동안
         // 신고된 글은 그대로 보인다.
         if (reportsPending == -1) {
-            found.add("측정 불가: 미처리 신고 수");
+            found.add(new Breach("REPORTS_PENDING", "측정 불가: 미처리 신고 수"));
         } else if (reportsPending > limits.reportsPending()) {
-            found.add("미처리 신고 %d건 (기준 %d건)".formatted(reportsPending, limits.reportsPending()));
+            found.add(new Breach("REPORTS_PENDING", "미처리 신고 %d건 (기준 %d건)".formatted(reportsPending, limits.reportsPending())));
         }
         if (slowRequests > limits.slowRequests()) {
-            found.add("느린 요청 %d건 (기준 %d건, 최대 %dms)".formatted(slowRequests, limits.slowRequests(), maxMillis));
+            found.add(new Breach("SLOW_REQUESTS",
+                    "느린 요청 %d건 (기준 %d건, 최대 %dms)".formatted(slowRequests, limits.slowRequests(), maxMillis)));
         }
         if (sessionRevocationFailed == -1) {
-            found.add("측정 불가: 세션 폐기 실패 수");
+            found.add(new Breach("SESSION_REVOCATION_FAILED", "측정 불가: 세션 폐기 실패 수"));
         } else if (sessionRevocationFailed > limits.sessionRevocationFailed()) {
-            found.add("세션 폐기 실패 %d건 (기준 %d건)".formatted(sessionRevocationFailed, limits.sessionRevocationFailed()));
+            found.add(new Breach("SESSION_REVOCATION_FAILED",
+                    "세션 폐기 실패 %d건 (기준 %d건)".formatted(sessionRevocationFailed, limits.sessionRevocationFailed())));
         }
         if (imageDeleteBacklog == -1) {
-            found.add("측정 불가: 이미지 삭제 backlog");
+            found.add(new Breach("IMAGE_DELETE_BACKLOG", "측정 불가: 이미지 삭제 backlog"));
         } else if (imageDeleteBacklog > limits.imageDeleteBacklog()) {
-            found.add("이미지 삭제 backlog %d건 (기준 %d건)".formatted(imageDeleteBacklog, limits.imageDeleteBacklog()));
+            found.add(new Breach("IMAGE_DELETE_BACKLOG",
+                    "이미지 삭제 backlog %d건 (기준 %d건)".formatted(imageDeleteBacklog, limits.imageDeleteBacklog())));
         }
         if (recommendationHistoryAgeHours == -1) {
             // 기능이 꺼져 있으면 이력이 애초에 없는 게 정상이다 — 그때는 남기지 않는다.
             if (recommendEnabled) {
-                found.add("추천 이력 미준비");
+                found.add(new Breach("RECOMMENDATION_HISTORY_STALE", "추천 이력 미준비"));
             }
         } else if (recommendationHistoryAgeHours > limits.recommendationHistoryStaleHours()) {
-            found.add("추천 이력 검증 기준이 %d시간째 갱신되지 않음 (기준 %d시간)"
-                    .formatted(recommendationHistoryAgeHours, limits.recommendationHistoryStaleHours()));
+            found.add(new Breach("RECOMMENDATION_HISTORY_STALE", "추천 이력 검증 기준이 %d시간째 갱신되지 않음 (기준 %d시간)"
+                    .formatted(recommendationHistoryAgeHours, limits.recommendationHistoryStaleHours())));
         }
         return found;
     }

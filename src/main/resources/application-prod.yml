@@ -73,6 +73,12 @@ app:
   # 지정하지 않으면 인증 링크에 "${APP_BASE_URL}" 문자열이 그대로 들어가는 명백한 오류가 되어
   # 눈에 띄게 실패한다).
   base-url: ${APP_BASE_URL}
+  metrics:
+    # 상태 이상 메일을 받을 관리자 주소(A-OPS-02). base-url과 달리 기본값을 빈 문자열로
+    # 두어, 설정하지 않아도 기동은 그대로 되고 알림만 조용히 꺼진다 — 이 주소가 없다고
+    # 서비스를 막을 이유는 없다. 실제로 알림을 받으려면 METRICS_ALERT_EMAIL 환경변수를
+    # 채운다.
+    alert-email: ${METRICS_ALERT_EMAIL:}
   security:
     # User.email 컬럼 AES 암호화 키. 기본값 없음 — 지정하지 않으면 기동 자체가 실패한다
     # (의도된 fail-fast). 유출되면 저장된 모든 이메일을 복호화할 수 있으므로 DB_URL·MAIL_HOST와

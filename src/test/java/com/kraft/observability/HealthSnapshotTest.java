@@ -220,4 +220,26 @@ class HealthSnapshotTest {
         assertThat(idle.breaches(LIMITS)).isEmpty();
         assertThat(idle.summary()).contains("요청=0");
     }
+
+    /**
+     * A-OPS-02: {@link AlertMailer}가 같은 문제로 반복 발송하지 않으려면 수치가 바뀌어도
+     * 안정적인 식별자가 필요하다 — breaches()의 문장은 매번 다른 수치를 담아 그 용도로 쓸 수
+     * 없다.
+     */
+    @Test
+    @DisplayName("breachKinds는 수치와 무관하게 안정된 식별자를 돌려준다")
+    void breachKindsAreStableAcrossDifferentValues() {
+        HealthSnapshot snapshotA = new HealthSnapshot(100, 30, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0, true);
+        HealthSnapshot snapshotB = new HealthSnapshot(100, 90, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0, true);
+
+        assertThat(snapshotA.breachKinds(LIMITS)).containsExactly("ERROR_RATE");
+        assertThat(snapshotB.breachKinds(LIMITS)).containsExactly("ERROR_RATE");
+        assertThat(snapshotA.breaches(LIMITS)).isNotEqualTo(snapshotB.breaches(LIMITS));
+    }
+
+    @Test
+    @DisplayName("breachKinds도 정상 범위에서는 비어 있다")
+    void breachKindsEmptyWhenHealthy() {
+        assertThat(healthy().breachKinds(LIMITS)).isEmpty();
+    }
 }

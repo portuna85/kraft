@@ -52,6 +52,7 @@ public class HealthReporter {
     private final RecommendationHistoryStateRepository recommendationHistoryStateRepository;
     private final DataSource dataSource;
     private final Path uploadDir;
+    private final AlertMailer alertMailer;
 
     @Value("${app.metrics.enabled:true}")
     private boolean enabled;
@@ -121,6 +122,19 @@ public class HealthReporter {
                           RecommendationHistoryStateRepository recommendationHistoryStateRepository,
                           DataSource dataSource,
                           String uploadDir) {
+        this(requestMetrics, outboxMailRepository, reportRepository, sessionRevocationTaskRepository,
+                postImageRepository, recommendationHistoryStateRepository, dataSource, uploadDir, AlertMailer.disabled());
+    }
+
+    public HealthReporter(RequestMetrics requestMetrics,
+                          OutboxMailRepository outboxMailRepository,
+                          ReportRepository reportRepository,
+                          SessionRevocationTaskRepository sessionRevocationTaskRepository,
+                          PostImageRepository postImageRepository,
+                          RecommendationHistoryStateRepository recommendationHistoryStateRepository,
+                          DataSource dataSource,
+                          String uploadDir,
+                          AlertMailer alertMailer) {
         this.requestMetrics = requestMetrics;
         this.outboxMailRepository = outboxMailRepository;
         this.reportRepository = reportRepository;
@@ -129,6 +143,7 @@ public class HealthReporter {
         this.recommendationHistoryStateRepository = recommendationHistoryStateRepository;
         this.dataSource = dataSource;
         this.uploadDir = Path.of(uploadDir).toAbsolutePath();
+        this.alertMailer = alertMailer;
     }
 
     @Scheduled(initialDelayString = "${app.metrics.initial-delay-ms:60000}",
@@ -148,11 +163,13 @@ public class HealthReporter {
 
     /** 수집한 뒤 판정해 기록한다. 테스트가 임의의 스냅숏으로 이 경로만 확인할 수 있게 분리했다. */
     void report(HealthSnapshot snapshot) {
-        List<String> breaches = snapshot.breaches(thresholds());
+        HealthThresholds thresholds = thresholds();
+        List<String> breaches = snapshot.breaches(thresholds);
         if (breaches.isEmpty()) {
             log.info("상태 정상 | {}", snapshot.summary());
         } else {
             log.error("상태 이상: {} | {}", String.join(", ", breaches), snapshot.summary());
+            alertMailer.alertIfDue(snapshot, thresholds);
         }
     }
 
