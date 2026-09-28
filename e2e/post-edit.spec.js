@@ -12,6 +12,67 @@ async function createOwnPost(page, title) {
     await page.waitForURL(/\/posts\/update\/\d+$/);
 }
 
+/**
+ * A-FE-14: navigator.share가 있으면 그 시트를 먼저 띄우고, 없으면 클립보드 복사로
+ * 물러선다. Playwright의 chromium 프로젝트(channel: 'chromium', 전체 데스크톱 빌드)는
+ * navigator.share를 이미 구현하고 있으므로, "없는 브라우저" 경로를 보려면 명시적으로
+ * 지워야 한다 — 실제 실행에서 지우지 않으면(사용자 제스처 밖 자동화 호출이라) 거절되어
+ * 클립보드 대신 실패 토스트가 뜬다.
+ */
+test.describe('공유 버튼', () => {
+    test('navigator.share가 없으면 클립보드로 복사한다', async ({ page, context }) => {
+        await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+        await page.addInitScript(() => {
+            navigator.share = undefined;
+        });
+        await createOwnPost(page, uniqueTitle('공유'));
+
+        await page.locator('#btn-share').click();
+
+        await expect(page.locator('#app-toast-body')).toContainText('링크를 복사했습니다.');
+        const copied = await page.evaluate(() => navigator.clipboard.readText());
+        expect(copied).toContain('/posts/update/');
+    });
+
+    test('navigator.share가 있으면 그 시트를 먼저 띄우고 클립보드는 건드리지 않는다', async ({ page, context }) => {
+        await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+        await page.addInitScript(() => {
+            window.__shareCalls = [];
+            navigator.share = (data) => {
+                window.__shareCalls.push(data);
+                return Promise.resolve();
+            };
+        });
+        await createOwnPost(page, uniqueTitle('공유'));
+        // 클립보드를 미리 알아볼 수 있는 값으로 채워, 공유 시트 경로에서는 이 값이 그대로
+        // 남는지(=클립보드에 쓰지 않았는지) 확인한다. 페이지가 뜬 뒤에 써야 한다 — 탐색
+        // 전(about:blank)에는 Clipboard API 자체가 없다.
+        await page.evaluate(() => navigator.clipboard.writeText('untouched'));
+
+        await page.locator('#btn-share').click();
+
+        const calls = await page.evaluate(() => window.__shareCalls);
+        expect(calls).toHaveLength(1);
+        expect(calls[0].url).toContain('/posts/update/');
+        expect(calls[0].title).toBeTruthy();
+        expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('untouched');
+    });
+
+    test('공유 시트를 취소해도(AbortError) 클립보드로 대신 복사하지 않는다', async ({ page, context }) => {
+        await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+        await page.addInitScript(() => {
+            navigator.share = () => Promise.reject(new DOMException('취소됨', 'AbortError'));
+        });
+        await createOwnPost(page, uniqueTitle('공유'));
+        await page.evaluate(() => navigator.clipboard.writeText('untouched'));
+
+        await page.locator('#btn-share').click();
+        // 성공도 실패도 토스트가 뜨지 않는다 — 취소는 조용히 끝난다.
+        await expect(page.locator('#app-toast')).toBeHidden();
+        expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('untouched');
+    });
+});
+
 test('F12 회귀 방지: 분류만 바꾸고 취소하면 확인을 묻고 분류가 되돌아온다', async ({ page }) => {
     await createOwnPost(page, uniqueTitle('편집'));
 

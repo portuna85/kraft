@@ -87,7 +87,26 @@ function setFontScaleIndex(index) {
     }
 }
 
+/**
+ * navigator.share가 있으면(iOS Safari·Android Chrome) 네이티브 공유 시트를 먼저 띄운다
+ * (A-FE-14) — 메시지 앱으로 바로 보내기 같은, 클립보드 복사보다 나은 경로를 그 플랫폼이
+ * 이미 제공하기 때문이다. 없는 브라우저(대부분의 데스크톱)는 기존 클립보드 복사로 물러선다.
+ * 사용자가 공유 시트를 취소하면 AbortError가 나는데, 이때는 클립보드로도 대신 복사하지
+ * 않는다 — 취소는 "공유하지 않겠다"는 의사 표시라 조용히 끝나는 것이 맞고, 그런데도 뭔가
+ * 복사됐다는 토스트가 뜨면 오히려 혼란스럽다.
+ */
 async function shareLink() {
+    if (navigator.share) {
+        try {
+            await navigator.share({ title: props.post.title, url: window.location.href });
+        } catch (error) {
+            if (error?.name !== 'AbortError') {
+                showToast('공유에 실패했습니다. 주소창의 URL을 직접 복사해 주세요.', 'danger');
+            }
+        }
+        return;
+    }
+
     try {
         await navigator.clipboard.writeText(window.location.href);
         showToast('링크를 복사했습니다.', 'success');
