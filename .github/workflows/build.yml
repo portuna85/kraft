@@ -36,7 +36,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      # fetch-depth: 0 — 아래 "Warn on destructive DDL" 스텝이 이번 푸시 이전 커밋(github.
+      # event.before)과 diff해야 하는데, 기본 얕은 클론(depth 1)에는 그 커밋이 없다.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
 
       # 이 deploy/*.sh 파일들(backup.sh, deploy-apply.sh 등)은 러너가 아니라 운영 서버에서
       # 수동 설치된 채로 돈다 — 아래 deploy 잡은 jar를 올리고 이 스크립트를 서버에서
@@ -47,6 +51,25 @@ jobs:
       # 걸러 둔다.
       - name: Shellcheck deploy scripts
         run: shellcheck -S warning deploy/*.sh
+
+      # 마이그레이션 규칙(A-OPS-03, src/main/resources/db/migration/README.md)의 "확장→배포→
+      # 수축" 위반 후보를 찾는다. 이번 푸시에서 새로 추가된 V*.sql 파일만 본다 — 이미 배포된
+      # 옛 파일(V24 등)은 의도적으로 확장+수축을 한 파일에 압축한 적이 있어 매번 다시 걸리면
+      # 안 된다. 실패시키지 않고 경고만 남긴다 — 의도된 경우(토큰 해시화처럼 되돌릴 이유가
+      # 없는 보안 수정)가 있어서다.
+      - name: Warn on destructive DDL in new migration files
+        run: |
+          base="${{ github.event.before }}"
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
+            echo "비교할 이전 커밋이 없습니다(새 브랜치 첫 푸시 등) — 건너뜁니다."
+            exit 0
+          fi
+          new_files=$(git diff --name-only --diff-filter=A "$base" HEAD -- 'src/main/resources/db/migration/V*.sql' || true)
+          for f in $new_files; do
+            if grep -iE 'drop[[:space:]]+column|drop[[:space:]]+table|rename[[:space:]]+column|rename[[:space:]]+table|change[[:space:]]+column' "$f" > /dev/null; then
+              echo "::warning file=$f::파괴적 DDL이 있습니다 — 확장→배포→수축 규칙(db/migration/README.md)을 지켰는지 확인하세요."
+            fi
+          done
 
       - name: Set up JDK 25
         uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
