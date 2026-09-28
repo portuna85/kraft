@@ -39,6 +39,11 @@ export const API = {
     COMMENTS: '/api/v1/comments',
     REPORTS: '/api/v1/reports',
     NUMBERS_RECOMMEND: '/api/v1/numbers/recommend',
+    USERS: '/api/v1/users',
+    USERS_ME: '/api/v1/users/me',
+    PASSWORD_RESET: '/api/v1/users/password-reset',
+    ADMIN_REPORTS: '/api/v1/admin/reports',
+    ADMIN_USERS: '/api/v1/admin/users',
 };
 
 /**

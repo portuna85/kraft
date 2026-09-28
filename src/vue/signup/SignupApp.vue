@@ -1,7 +1,7 @@
 <script setup>
 import { reactive, ref } from 'vue';
 import { api, messageOf } from '@core/http.js';
-import { PASSWORD } from '@core/constants.js';
+import { API, PASSWORD } from '@core/constants.js';
 import * as flash from '@ui/flash.js';
 import { usePasswordConfirm } from '../shared/usePasswordConfirm.js';
 import { useFieldErrors } from '../shared/useFieldErrors.js';
@@ -54,7 +54,7 @@ async function onSubmit() {
     // 사용자가 값을 고치더라도 이번 요청은 제출 시점 스냅샷을 그대로 쓴다(F02).
     const snapshot = { name: form.name, email: form.email, password: form.password };
     try {
-        await api.post('/api/v1/users', {
+        await api.post(API.USERS, {
             name: snapshot.name,
             email: snapshot.email,
             password: snapshot.password,

@@ -1,5 +1,6 @@
 import { byId, qs, qsa, setBusy, setText } from '../core/dom.js';
 import { api, messageOf } from '../core/http.js';
+import { API } from '../core/constants.js';
 
 /**
  * 목록 "더 보기"(10단계). 기존 페이지 이동은 그대로 두고, JSON API(/api/v1/posts, 새로
@@ -55,7 +56,7 @@ async function loadMore(button, status, list, startPage, seenIds) {
 
     let result;
     try {
-        result = await api.get(`/api/v1/posts?${params.toString()}`);
+        result = await api.get(`${API.POSTS}?${params.toString()}`);
     } catch (error) {
         setBusy(button, false);
         status.classList.add('is-error');

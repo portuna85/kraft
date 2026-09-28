@@ -1,5 +1,6 @@
 import { delegate, qs } from '../core/dom.js';
 import { api, messageOf } from '../core/http.js';
+import { API } from '../core/constants.js';
 import { showToast } from '../ui/toast.js';
 import { confirmAction } from '../ui/confirm-dialog.js';
 
@@ -89,7 +90,7 @@ async function handle(trigger, action, suspendDays = 0) {
     setRowDisabled(item, true);
     try {
         const query = suspendDays > 0 ? `?suspendDays=${suspendDays}` : '';
-        await api.post(`/api/v1/admin/reports/${id}/${action}${query}`);
+        await api.post(`${API.ADMIN_REPORTS}/${id}/${action}${query}`);
         window.location.reload();
     } catch (error) {
         showToast(messageOf(error), 'danger');
@@ -109,7 +110,7 @@ async function liftSuspension(trigger) {
 
     setRowDisabled(item, true);
     try {
-        await api.post(`/api/v1/admin/users/${id}/suspension/lift`);
+        await api.post(`${API.ADMIN_USERS}/${id}/suspension/lift`);
         window.location.reload();
     } catch (error) {
         showToast(messageOf(error), 'danger');

@@ -1,6 +1,7 @@
 <script setup>
 import { nextTick, ref } from 'vue';
 import { api, messageOf } from '@core/http.js';
+import { API } from '@core/constants.js';
 import * as flash from '@ui/flash.js';
 import { useFieldErrors } from '../shared/useFieldErrors.js';
 
@@ -27,7 +28,7 @@ async function onSubmit() {
     sending.value = true;
     const snapshot = { email: email.value };
     try {
-        await api.post('/api/v1/users/password-reset', { email: snapshot.email });
+        await api.post(API.PASSWORD_RESET, { email: snapshot.email });
         sent.value = true;
         // 이 화면은 성공해도 페이지 이동이 없다 — 실패 후 재시도해 성공하면, 이전 시도가
         // 남긴 #flash 오류 배너가 지워지지 않은 채 완료 안내와 함께 남는다(개선 보고서 F13).

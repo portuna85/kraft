@@ -1,7 +1,7 @@
 <script setup>
 import { reactive, ref } from 'vue';
 import { api, messageOf } from '@core/http.js';
-import { PASSWORD } from '@core/constants.js';
+import { API, PASSWORD } from '@core/constants.js';
 import * as flash from '@ui/flash.js';
 import { usePasswordConfirm } from '../shared/usePasswordConfirm.js';
 import { useFieldErrors } from '../shared/useFieldErrors.js';
@@ -40,7 +40,7 @@ async function onSubmit() {
     saving.value = true;
     const snapshot = { newPassword: form.newPassword };
     try {
-        await api.post('/api/v1/users/password-reset/confirm', {
+        await api.post(`${API.PASSWORD_RESET}/confirm`, {
             token: props.token,
             newPassword: snapshot.newPassword,
         });

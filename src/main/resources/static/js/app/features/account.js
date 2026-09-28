@@ -1,5 +1,6 @@
 import { byId, on, rawValueOf, setBusy, setText } from '../core/dom.js';
 import { api, messageOf } from '../core/http.js';
+import { API } from '../core/constants.js';
 import { modal } from '../core/bootstrap-ui.js';
 import { clearAllDrafts } from '../core/drafts.js';
 import { showToast } from '../ui/toast.js';
@@ -116,7 +117,7 @@ async function changePassword(openedAt) {
     hideModalError();
 
     try {
-        await api.put('/api/v1/users/me/password', {
+        await api.put(`${API.USERS_ME}/password`, {
             currentPassword: rawValueOf(byId('currentPassword')),
             newPassword: rawValueOf(byId('changeNewPassword')),
         });
@@ -184,7 +185,7 @@ async function withdraw(openedAt) {
     hideWithdrawError();
 
     try {
-        await api.del('/api/v1/users/me', {
+        await api.del(API.USERS_ME, {
             currentPassword: rawValueOf(byId('withdrawPassword')),
         });
         // 탈퇴 계정의 초안은 되찾을 계정 자체가 없다 — 지운다(A-FE-03).
@@ -217,7 +218,7 @@ function initResendVerification() {
     on(button, 'click', async () => {
         setBusy(button, true);
         try {
-            await api.post('/api/v1/users/me/verify-email/resend');
+            await api.post(`${API.USERS_ME}/verify-email/resend`);
             showToast('인증 메일을 다시 보냈습니다. 메일함을 확인해 주세요.', 'success');
         } catch (error) {
             showToast(messageOf(error), 'danger');
