@@ -55,6 +55,45 @@ test('조회수·댓글수 옆에 스크린리더용 이름표가 붙는다', as
 });
 
 /**
+ * A-BE-11: 기본 정렬이 등록순(id)이므로 날짜 열도 등록일을 보인다 — 수정 시각을 보이면
+ * 오래된 글을 고쳤을 때 "최신 등록순" 중간에 오늘 날짜가 찍혀 순서가 뒤섞여 보인다.
+ * 실제로 수정된 글만 "(수정됨)"이 붙는다.
+ */
+test('등록만 하고 수정하지 않은 글에는 "(수정됨)"이 붙지 않는다', async ({ page }) => {
+    const title = uniqueTitle('날짜표시');
+    await page.goto('/posts/save');
+    await page.locator('#title').fill(title);
+    await page.locator('#content').fill('수정하지 않을 본문입니다.');
+    await page.locator('#btn-save').click();
+    await page.waitForURL(/\/posts\/update\/\d+$/);
+
+    await page.goto(`/?q=${encodeURIComponent(title)}`);
+    const row = page.locator('.post-list__item').filter({ hasText: title });
+    await expect(row.locator('.post-list__date')).not.toContainText('수정됨');
+});
+
+test('글을 수정하면 목록 날짜 옆에 "(수정됨)"이 붙는다', async ({ page }) => {
+    const title = uniqueTitle('날짜표시');
+    await page.goto('/posts/save');
+    await page.locator('#title').fill(title);
+    await page.locator('#content').fill('곧 수정할 본문입니다.');
+    await page.locator('#btn-save').click();
+    await page.waitForURL(/\/posts\/update\/\d+$/);
+
+    await page.locator('#btn-edit').click();
+    await page.locator('#content').fill('수정된 본문입니다.');
+    await page.locator('#btn-update').click();
+    await page.waitForURL(/\/posts\/update\/\d+$/);
+    // 새로고침 이동이 끝났다는 것을 화면 렌더로 확인한 뒤에 다음 페이지로 이동한다 —
+    // 그러지 않으면 아직 끝나지 않은 이전 이동과 겹쳐 다음 goto가 중단될 수 있다.
+    await expect(page.locator('#flash')).toContainText('글이 수정되었습니다.');
+
+    await page.goto(`/?q=${encodeURIComponent(title)}`);
+    const row = page.locator('.post-list__item').filter({ hasText: title });
+    await expect(row.locator('.post-list__date')).toContainText('(수정됨)');
+});
+
+/**
  * 992~1199px 구간은 픽셀 기준 이미지 대신 규칙으로 고정한다. 이 폭에서 오른쪽 안내
  * (.kraft-aside)가 본문 아래로 떨어지면 폭이 남는데도 한 줄만 쓰는 셈이 된다 — 2열 전환을
  * 1200px에서 992px로 낮춘 것이 바로 이 구간을 겨냥한 것이다.

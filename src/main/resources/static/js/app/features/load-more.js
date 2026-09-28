@@ -227,7 +227,9 @@ function buildRow(post) {
     author.textContent = post.author;
     const date = document.createElement('span');
     date.className = 'post-list__date';
-    date.textContent = formatDate(post.modifiedDate);
+    // index.html과 같은 규칙(A-BE-11): 기본 정렬이 등록순이라 등록일을 보이고, 실제로
+    // 수정된 글만 표시를 덧붙인다.
+    date.textContent = formatDate(post.createdAt) + (post.modified ? ' (수정됨)' : '');
     meta.append(author, date);
 
     const views = document.createElement('span');

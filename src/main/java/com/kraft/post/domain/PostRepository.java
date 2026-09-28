@@ -41,7 +41,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      * 켜게 한다({@code PostService.findAllDesc}가 기본값을 정한다).
      */
     @Query(value = "SELECT new com.kraft.post.dto.PostRowDto("
-            + "p.id, p.title, u.name, p.updatedAt, p.category, p.viewCount) "
+            + "p.id, p.title, u.name, p.createdAt, p.updatedAt, p.category, p.viewCount) "
             + "FROM Post p JOIN p.user u "
             + "WHERE (:category IS NULL OR p.category = :category) "
             + "AND (:keyword IS NULL "
@@ -61,7 +61,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      * 오를 수 없었다. {@code since} 이후 작성된 글 중 조회수 상위를 뽑는다.
      */
     @Query("SELECT new com.kraft.post.dto.PostRowDto("
-            + "p.id, p.title, u.name, p.updatedAt, p.category, p.viewCount) "
+            + "p.id, p.title, u.name, p.createdAt, p.updatedAt, p.category, p.viewCount) "
             + "FROM Post p JOIN p.user u WHERE p.createdAt >= :since "
             + "ORDER BY p.viewCount DESC, p.id DESC")
     List<PostRowDto> findTopByViewCountDesc(@Param("since") LocalDateTime since, Pageable pageable);
@@ -90,7 +90,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      * 상세 화면 하단의 관련 게시글. 같은 분류에서 현재 글을 제외하고 최신순으로 뽑는다.
      */
     @Query("SELECT new com.kraft.post.dto.PostRowDto("
-            + "p.id, p.title, u.name, p.updatedAt, p.category, p.viewCount) "
+            + "p.id, p.title, u.name, p.createdAt, p.updatedAt, p.category, p.viewCount) "
             + "FROM Post p JOIN p.user u "
             + "WHERE p.category = :category AND p.id <> :excludeId "
             + "ORDER BY p.id DESC")

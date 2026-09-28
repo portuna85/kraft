@@ -76,7 +76,7 @@
         <!-- 목록은 하나의 데이터로만 렌더링한다. 열 정렬은 넓은 화면에서 CSS Grid가 담당한다. -->
         <ul class="post-list" th:if="${!#lists.isEmpty(posts)}">
             <li class="post-list__head" aria-hidden="true">
-                <span>번호</span><span>제목</span><span>작성자</span><span>최종수정일</span><span>조회</span><span>댓글</span>
+                <span>번호</span><span>제목</span><span>작성자</span><span>등록일</span><span>조회</span><span>댓글</span>
             </li>
             <li class="post-list__item" th:each="post : ${posts}" th:attr="data-post-id=${post.id}">
                 <span class="post-list__no">
@@ -88,9 +88,13 @@
                 </a>
                 <span class="post-list__meta">
                     <span class="post-list__author" th:text="${post.author}">작성자</span>
+                    <!-- 기본 정렬이 등록순(id)이므로 날짜도 등록일을 보인다(A-BE-11) — 수정
+                         시각을 보이면 오래된 글을 고쳤을 때 "최신 등록순" 중간에 오늘 날짜가
+                         찍혀 순서가 뒤섞여 보인다. 실제로 수정된 글만 "(수정됨)"을 덧붙인다. -->
                     <span class="post-list__date"
-                          th:text="${post.modifiedDate != null}
-                                   ? ${#temporals.format(post.modifiedDate, 'yyyy.MM.dd HH:mm')} : ''">2026.01.01 00:00</span>
+                          th:text="${post.createdAt != null}
+                                   ? ${#temporals.format(post.createdAt, 'yyyy.MM.dd HH:mm')} + (${post.modified} ? ' (수정됨)' : '')
+                                   : ''">2026.01.01 00:00</span>
                 </span>
                 <span class="post-list__views">
                     <span class="visually-hidden">조회 </span><span th:text="${post.viewCount}">0</span>

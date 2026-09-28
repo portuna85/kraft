@@ -103,7 +103,7 @@ class PostServiceTest {
 
     /** search/findTopByViewCountDesc가 반환하는 projection. postOf와 같은 표시값을 쓴다. */
     private static PostRowDto rowOf(User owner, Long id) {
-        return new PostRowDto(id, "원래 제목", owner.getName(), null, null, 0L);
+        return new PostRowDto(id, "원래 제목", owner.getName(), null, null, null, 0L);
     }
 
     private static Authentication authOf(User user) {
