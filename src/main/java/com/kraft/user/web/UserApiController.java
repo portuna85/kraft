@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -91,6 +92,19 @@ public class UserApiController {
     @PostMapping("/api/v1/users/me/verify-email/resend")
     public ResponseEntity<Void> resendVerificationEmail(Authentication authentication) {
         emailVerificationService.resend(currentUserId(authentication));
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * 아무 일도 하지 않는다 — 인증된 요청이라는 사실 자체가 목적이다(A-FE-12). 글쓰기·편집
+     * 화면이 오래 열려 있는 동안 이 엔드포인트를 주기적으로 불러 세션을 연장한다. Spring
+     * Session은 인증이 걸린 요청이 오면 그 세션의 마지막 접근 시각을 갱신해 만료 시각을
+     * 뒤로 미룬다({@code server.servlet.session.timeout}) — 이 엔드포인트는 그 갱신을
+     * 일으키는 것 말고는 아무 상태도 바꾸지 않는다. DB 조회조차 하지 않는다(회원을 다시
+     * 찾을 이유가 없다).
+     */
+    @GetMapping("/api/v1/users/me/ping")
+    public ResponseEntity<Void> ping() {
         return ResponseEntity.noContent().build();
     }
 }

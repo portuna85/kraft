@@ -228,3 +228,28 @@ test('F08: JS 없이도 본문을 읽을 수 있고, 마운트 뒤에는 한 번
     await page.locator('#btn-edit').click();
     await expect(page.locator('#edit-category')).toBeVisible();
 });
+
+/**
+ * A-FE-12: 세션 만료를 막기 위해 10분마다 가벼운 GET(/api/v1/users/me/ping)을 보낸다.
+ * page.clock으로 실제 10분을 기다리지 않고 타이머만 앞으로 돌린다 — setInterval이 실제로
+ * 등록됐는지, 주기가 맞는지를 확인하는 것이 목적이고 네트워크 자체는 그대로 나간다.
+ */
+test('편집 화면이 열려 있는 동안 세션 연장 핑을 주기적으로 보낸다', async ({ page }) => {
+    await page.clock.install();
+
+    const pingRequests = [];
+    page.on('request', (request) => {
+        if (request.url().includes('/api/v1/users/me/ping')) {
+            pingRequests.push(request);
+        }
+    });
+
+    await createOwnPost(page, uniqueTitle('세션연장'));
+    expect(pingRequests).toHaveLength(0);
+
+    await page.clock.fastForward('10:00');
+    await expect.poll(() => pingRequests.length).toBe(1);
+
+    await page.clock.fastForward('10:00');
+    await expect.poll(() => pingRequests.length).toBe(2);
+});

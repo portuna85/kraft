@@ -8,6 +8,7 @@ import { useUnsavedGuard } from '../shared/useUnsavedGuard.js';
 import { useDraftAutosave } from '../shared/useDraftAutosave.js';
 import { clearDraft, safeLocalStorage } from '../shared/draftStorage.js';
 import { useFieldErrors } from '../shared/useFieldErrors.js';
+import { useSessionKeepAlive } from '../shared/useSessionKeepAlive.js';
 import MarkdownToolbar from '../shared/MarkdownToolbar.vue';
 import DraftRestoreBanner from '../shared/DraftRestoreBanner.vue';
 
@@ -64,6 +65,7 @@ const draftKey = props.userId != null ? `kraft:draft:${props.userId}:post-save` 
 const autosave = useDraftAutosave(draftKey, draft, {
     storage: props.userId != null ? undefined : null,
 });
+useSessionKeepAlive();
 
 onMounted(() => {
     // 빈 초안(제목·내용 둘 다 없음)은 되찾을 게 없으니 배너를 띄우지 않는다.

@@ -31,6 +31,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -293,6 +294,22 @@ class UserApiControllerTest {
                         .with(csrf()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("이미 인증된 계정입니다."));
+    }
+
+    @Test
+    @DisplayName("A-FE-12: GET /api/v1/users/me/ping 은 미인증이면 로그인 페이지로 리다이렉트된다")
+    void ping_whenUnauthenticated_redirectsToLoginPage() throws Exception {
+        mockMvc.perform(get("/api/v1/users/me/ping"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login"));
+    }
+
+    @Test
+    @DisplayName("A-FE-12: GET /api/v1/users/me/ping 은 인증만 되어 있으면 204를 반환한다(CSRF 불필요 — GET)")
+    void ping_whenAuthenticated_returns204NoContent() throws Exception {
+        mockMvc.perform(get("/api/v1/users/me/ping")
+                        .with(authenticatedTester()))
+                .andExpect(status().isNoContent());
     }
 
     @Test

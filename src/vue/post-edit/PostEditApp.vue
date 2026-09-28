@@ -9,6 +9,7 @@ import { useUnsavedGuard } from '../shared/useUnsavedGuard.js';
 import { useDraftAutosave } from '../shared/useDraftAutosave.js';
 import { clearDraft, safeLocalStorage } from '../shared/draftStorage.js';
 import { useFieldErrors } from '../shared/useFieldErrors.js';
+import { useSessionKeepAlive } from '../shared/useSessionKeepAlive.js';
 import MarkdownBody from '../shared/MarkdownBody.vue';
 import MarkdownToolbar from '../shared/MarkdownToolbar.vue';
 import DraftRestoreBanner from '../shared/DraftRestoreBanner.vue';
@@ -164,6 +165,7 @@ const draftKey = props.userId != null
 const autosave = useDraftAutosave(draftKey, draft, {
     storage: props.userId != null ? undefined : null,
 });
+useSessionKeepAlive();
 
 // 편집 모드일 때만 저장한다 — 조회 모드에서는 draft가 항상 original과 같아 저장할 이유가
 // 없고, 마운트 시점에 곧바로 저장소를 건드리지도 않는다.
