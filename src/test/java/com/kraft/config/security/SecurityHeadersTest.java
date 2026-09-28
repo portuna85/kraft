@@ -36,7 +36,27 @@ class SecurityHeadersTest {
                 .andExpect(header().string("Content-Security-Policy", containsString("script-src 'self'")))
                 .andExpect(header().string("Content-Security-Policy", containsString("style-src 'self'")))
                 .andExpect(header().string("Content-Security-Policy", containsString("img-src 'self' data: blob:")))
-                .andExpect(header().string("Content-Security-Policy", containsString("object-src 'none'")));
+                .andExpect(header().string("Content-Security-Policy", containsString("object-src 'none'")))
+                .andExpect(header().string("Content-Security-Policy", containsString("upgrade-insecure-requests")));
+    }
+
+    @Test
+    @DisplayName("A-SEC-12: 쓰지 않는 브라우저 기능을 Permissions-Policy로 막는다")
+    void response_hasPermissionsPolicy() throws Exception {
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Permissions-Policy", containsString("camera=()")))
+                .andExpect(header().string("Permissions-Policy", containsString("microphone=()")))
+                .andExpect(header().string("Permissions-Policy", containsString("geolocation=()")))
+                .andExpect(header().string("Permissions-Policy", containsString("payment=()")));
+    }
+
+    @Test
+    @DisplayName("A-SEC-12: 다른 오리진 탭과 window 참조를 격리한다")
+    void response_hasCrossOriginOpenerPolicy() throws Exception {
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cross-Origin-Opener-Policy", "same-origin"));
     }
 
     @Test

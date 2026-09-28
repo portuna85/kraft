@@ -15,6 +15,16 @@ spring:
     # 사라지지 않게 한다 — 이것이 없으면 컨텍스트는 살아 있는데 DB만 먼저 사라져 "Table not
     # found"가 날 수 있다(H2 커넥션 풀 연동의 잘 알려진 함정). 같은 컨텍스트를 공유하는 여러
     # 테스트 클래스가 서로 남긴 데이터는 GlobalH2CleanupExtension이 매 테스트 전에 정리한다.
+    # MODE=MariaDB는 SQL 문법·함수 호환일 뿐이다(A-QA-04) — 아래는 이 모드가 흉내 내지
+    # 못해 실제로 결함을 숨긴 적이 있는 것들이다. 이 목록에 해당하는 동작을 바꾸는 테스트는
+    # Testcontainers MariaDB로 반드시 한 번 더 확인한다(예: *MariaDbTest 클래스들).
+    #   - 읽기 전용 트랜잭션 제약: H2는 @Transactional(readOnly=true)에서도 쓰기를 막지
+    #     않는다. MariaDB는 막는다.
+    #   - 자기참조 FK의 제약 검사 시점(PostDeleteWithRepliesMariaDbTest가 실제로 다르게
+    #     동작함을 확인했다).
+    #   - 제약 위반 예외 메시지·제약 이름 형식(PostLikeWriter.isDuplicateLikeConstraint가
+    #     이 차이 때문에 DB별로 다르게 판정한다).
+    #   - FOR UPDATE SKIP LOCKED·ROW_NUMBER() 등 네이티브 쿼리의 정확한 잠금·정렬 동작.
     url: jdbc:h2:mem:kraft-${random.uuid};MODE=MariaDB;DB_CLOSE_DELAY=-1
     driver-class-name: org.h2.Driver
     username: sa

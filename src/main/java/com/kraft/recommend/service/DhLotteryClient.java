@@ -14,9 +14,9 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 동행복권의 비공식·내부용 회차 조회 주소 하나만 알고 있는 얇은 클라이언트. 공식 문서화된
@@ -61,7 +61,16 @@ public class DhLotteryClient {
     private static final String USER_AGENT = "kraft-recommend-bot/1.0 (+https://kraft.io.kr; 번호 추천 기능의 회차 조회, 주 최대 4회 예약 실행)";
 
     private final RestClient restClient;
-    private final Map<Integer, ImportedDraw> cache = new ConcurrentHashMap<>();
+    /**
+     * 마지막으로 받은 배치. {@code volatile} 참조를 통째로 교체한다(A-BE-15) —
+     * {@code RecommendationHistoryProvider.cached}와 같은 패턴이다. 이전에는
+     * {@code ConcurrentHashMap}을 {@code clear()}한 뒤 {@code put()}을 반복해 채웠는데, 그
+     * 구간 전체가 원자적이지 않았다 — 같은 JVM에서 두 스레드가 동시에 {@link #fetchRound}를
+     * 부르면 한쪽이 지운 직후·채우는 도중을 다른 쪽이 읽어 방금 받은 배치가 비어 보일 수
+     * 있었다. 자동 수집(예약)과 백필(보통 별도 프로세스)이 겹칠 일은 드물지만, 겹치지 않는다는
+     * 보장은 이 클래스 밖에 있다.
+     */
+    private volatile Map<Integer, ImportedDraw> cache = Map.of();
 
     @Autowired
     public DhLotteryClient(
@@ -123,7 +132,7 @@ public class DhLotteryClient {
             items = List.of();
         }
 
-        cache.clear();
+        Map<Integer, ImportedDraw> nextBatch = new HashMap<>();
         boolean requestedRoundExists = false;
         for (DhLotteryDrawItem item : items) {
             if (item.ltEpsd() == drwNo) {
@@ -138,11 +147,13 @@ public class DhLotteryClient {
                         item.tm1WnNo(), item.tm2WnNo(), item.tm3WnNo(),
                         item.tm4WnNo(), item.tm5WnNo(), item.tm6WnNo()));
                 LottoNumbers.of(numbers);
-                cache.put(item.ltEpsd(), new ImportedDraw(item.ltEpsd(), numbers, buildDetails(item)));
+                nextBatch.put(item.ltEpsd(), new ImportedDraw(item.ltEpsd(), numbers, buildDetails(item)));
             } catch (RuntimeException e) {
                 log.warn("동행복권 회차 {} 응답의 번호가 유효하지 않음: {}", item.ltEpsd(), e.getMessage());
             }
         }
+        // 다 채운 뒤 한 번에 교체한다 — 이 대입 전까지는 다른 스레드가 여전히 이전 배치를 본다.
+        cache = Map.copyOf(nextBatch);
 
         if (!requestedRoundExists) {
             return new FetchOutcome.NotYetDrawn();

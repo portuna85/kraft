@@ -22,6 +22,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+import org.springframework.security.web.header.writers.CrossOriginOpenerPolicyHeaderWriter;
 import org.springframework.security.web.header.writers.DelegatingRequestMatcherHeaderWriter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.security.web.header.writers.StaticHeadersWriter;
@@ -168,9 +169,25 @@ public class SecurityConfig {
                                         + "form-action 'self'; "
                                         + "frame-ancestors 'self'; "
                                         + "base-uri 'self'; "
-                                        + "object-src 'none'"))
+                                        + "object-src 'none'; "
+                                        // TLS는 앞단 프록시가 종단하므로 평문 HTTP로 이 앱에 닿을 일은
+                                        // 원래도 없어야 하지만, HSTS의 첫 방문 창(프록시 설정 오류 등)을
+                                        // 보완한다 — http: 링크가 섞여 있어도 브라우저가 https:로
+                                        // 바꿔 요청한다(A-SEC-12).
+                                        + "upgrade-insecure-requests"))
                         .referrerPolicy(referrer -> referrer
                                 .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                        // 이 앱은 카메라·마이크·위치·결제 API를 전혀 쓰지 않는다 — 뭔가 알 수 없는
+                        // 경로로 삽입된 스크립트가 있더라도 이 기능들을 아예 요청조차 못 하게
+                        // 막아 둔다(A-SEC-12).
+                        .permissionsPolicyHeader(permissions -> permissions
+                                .policy("camera=(), microphone=(), geolocation=(), payment=()"))
+                        // 이 앱을 여는 탭이 새로 연 다른 오리진 탭의 window 참조를 갖지 못하게
+                        // 격리한다 — 탭 간 참조를 이용한 일부 사이드 채널·리버스 탭내빙 공격을
+                        // 막는다(A-SEC-12). frame-ancestors 'self'와 별개로, 이쪽은 반대 방향
+                        // (이 앱이 새로 여는 창)을 막는다.
+                        .crossOriginOpenerPolicy(coop -> coop
+                                .policy(CrossOriginOpenerPolicyHeaderWriter.CrossOriginOpenerPolicy.SAME_ORIGIN))
                         // TLS는 앞단 리버스 프록시가 종단한다. server.forward-headers-strategy는
                         // native로 설정돼 있어(application.yml) request.isSecure()가 프록시 뒤에서도
                         // 실제 프로토콜을 반영하지만, 그래도 기본 매처(isSecure) 대신 항상 붙이는
