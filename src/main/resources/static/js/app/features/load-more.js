@@ -13,6 +13,13 @@ import { API } from '../core/constants.js';
  * 범위에 맞춰 갱신한다 — 예전에는 pager가 서버가 처음 그린 1페이지에 멈춰 있어, 두세 번
  * 더 눌러도 "다음"을 누르면 이미 화면에 있는 페이지로 다시 이동했다. 정렬 기준에 따라
  * 순서가 바뀔 수 있는 데이터(조회순 등)에 대비해 이미 붙은 글 id는 건너뛴다(중복 방지).
+ *
+ * A-FE-07: 더 보기로 불러온 행은 DOM에만 있고 URL·기록에 흔적이 없어, 글을 열었다가
+ * 뒤로 가면(bfcache가 없는 경우 — 있으면 DOM이 그대로 남아 이 모듈 자체가 다시 실행되지
+ * 않는다) 서버가 처음 그린 1페이지로 돌아가 다시 눌러야 했다. 불러온 글 데이터를
+ * sessionStorage에 같은 검색 조건 키로 남겨 두고, 이 모듈이 다시 실행될 때(=bfcache가
+ * 아닌 새 렌더) 있으면 네트워크 없이 그대로 재생한다 — 조회수 등 최신값과 살짝 다를 수
+ * 있지만, "다시 눌러야 하는" 불편보다 낫다.
  */
 export function init() {
     const button = /** @type {HTMLButtonElement | null} */ (byId('btn-load-more'));
@@ -28,8 +35,62 @@ export function init() {
         qsa('.post-list__item[data-post-id]', list).map((el) => el.dataset.postId),
     );
 
+    // 점진적 향상 노출이 먼저다 — restoreLoadedState가 "이미 마지막 페이지까지 불러온
+    // 상태"를 복원하면서 다시 숨길 수 있는데, 그 뒤에 여기서 무조건 드러내면 그 숨김이
+    // 곧바로 지워진다.
     button.hidden = false;
+    restoreLoadedState(button, status, list, startPage, seenIds);
+
     button.addEventListener('click', () => loadMore(button, status, list, startPage, seenIds));
+}
+
+/** 같은 검색·분류·정렬 조건을 가리키는 안정된 키. page는 일부러 뺀다 — 복원 대상은
+ * "이 조건의 목록에서 얼마나 더 불러왔는가"이지 특정 페이지 번호가 아니다. */
+function storageKeyFor(button) {
+    const parts = ['q', 'category', 'sort', 'scope'].map((name) => `${name}=${button.dataset[name] ?? ''}`);
+    return `kraft:load-more:${parts.join('&')}`;
+}
+
+/** sessionStorage 접근 자체가 막힌 환경(프라이빗 모드 등)에서도 더 보기 기본 동작은
+ * 그대로 되어야 한다 — 저장·복원 모두 실패를 조용히 삼킨다(draftStorage.js와 같은 관례). */
+function saveLoadedState(button, startPage, loadedPosts, isLast) {
+    try {
+        window.sessionStorage.setItem(storageKeyFor(button), JSON.stringify({
+            startPage,
+            posts: loadedPosts,
+            nextPage: button.dataset.nextPage,
+            isLast,
+        }));
+    } catch {
+        // 복원은 그냥 못 하게 될 뿐, 더 보기 자체의 성공에는 영향이 없다.
+    }
+}
+
+function restoreLoadedState(button, status, list, startPage, seenIds) {
+    let saved;
+    try {
+        const raw = window.sessionStorage.getItem(storageKeyFor(button));
+        saved = raw ? JSON.parse(raw) : null;
+    } catch {
+        return;
+    }
+    if (!saved || saved.startPage !== startPage) {
+        return;
+    }
+
+    const restoredPosts = saved.posts.filter((post) => !seenIds.has(String(post.id)));
+    if (restoredPosts.length === 0) {
+        return;
+    }
+    restoredPosts.forEach((post) => seenIds.add(String(post.id)));
+    restoredPosts.map(buildRow).forEach((row) => list.appendChild(row));
+
+    button.dataset.nextPage = saved.nextPage;
+    button.hidden = saved.isLast;
+    updatePager(startPage, Number(saved.nextPage) - 1, saved.isLast);
+    setText(status, saved.isLast
+        ? '마지막 글까지 모두 불러왔습니다.'
+        : `게시글 ${restoredPosts.length}개를 이전 상태에서 이어서 불러왔습니다.`);
 }
 
 async function loadMore(button, status, list, startPage, seenIds) {
@@ -78,6 +139,9 @@ async function loadMore(button, status, list, startPage, seenIds) {
         button.dataset.nextPage = String(result.page + 1);
     }
 
+    const previouslyLoaded = readLoadedPosts(button);
+    saveLoadedState(button, startPage, [...previouslyLoaded, ...newPosts], result.last);
+
     // 방금 붙은 첫 행의 제목으로 포커스를 옮긴다 — 화면이 아래로 늘어났다는 사실과 위치를
     // 함께 알린다. 새로 붙은 행이 없으면(전부 중복이거나, last=false인데 빈 페이지를 준 극단
     // 적인 경우) 포커스를 건드리지 않고 상태 문구로만 알린다 — 포커스 이동과 문구 갱신
@@ -92,6 +156,17 @@ async function loadMore(button, status, list, startPage, seenIds) {
         setText(status, result.last
             ? '마지막 글까지 모두 불러왔습니다.'
             : '새 게시글이 없습니다.');
+    }
+}
+
+/** saveLoadedState가 남긴 이번 조건의 누적 목록. 없거나 읽을 수 없으면 빈 배열이다. */
+function readLoadedPosts(button) {
+    try {
+        const raw = window.sessionStorage.getItem(storageKeyFor(button));
+        const saved = raw ? JSON.parse(raw) : null;
+        return saved?.posts ?? [];
+    } catch {
+        return [];
     }
 }
 

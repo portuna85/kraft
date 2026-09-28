@@ -355,4 +355,39 @@ test.describe('더 보기', () => {
         await expect(page.locator('.post-list__item')).toHaveCount(11);
         await expect(page.locator(`.post-list__item[data-post-id="${firstRowId}"]`)).toHaveCount(1);
     });
+
+    /**
+     * A-FE-07: bfcache가 없는 새로고침(page.reload는 항상 새 탐색이라 bfcache를 타지 않는다 —
+     * bfcache가 있었다면 이 모듈이 다시 실행되지 않고 DOM이 그대로 남아 애초에 문제가 없다)
+     * 뒤에도 sessionStorage에 남긴 상태로 이어 붙인 행이 네트워크 없이 되살아난다.
+     */
+    test('더 보기로 불러온 뒤 새로고침해도 불러온 글이 그대로 남는다', async ({ page }) => {
+        const prefix = uniqueTitle('새로고침복원');
+        await createPosts(page, 11, prefix);
+
+        await page.goto(`/?q=${encodeURIComponent(prefix)}`);
+        await page.locator('#btn-load-more').click();
+        await expect(page.locator('.post-list__item')).toHaveCount(11);
+        await expect(page.locator('#btn-load-more')).toBeHidden();
+
+        await page.reload();
+
+        await expect(page.locator('.post-list__item')).toHaveCount(11);
+        await expect(page.locator('#btn-load-more')).toBeHidden();
+        await expect(page.locator('#load-more-status')).toHaveText('마지막 글까지 모두 불러왔습니다.');
+    });
+
+    test('조건이 다른 목록으로 이동하면 이전에 불러온 상태를 복원하지 않는다', async ({ page }) => {
+        const prefix = uniqueTitle('조건다름복원');
+        await createPosts(page, 11, prefix);
+
+        await page.goto(`/?q=${encodeURIComponent(prefix)}`);
+        await page.locator('#btn-load-more').click();
+        await expect(page.locator('.post-list__item')).toHaveCount(11);
+
+        // 같은 프리픽스로 검색하지만 분류를 좁히면 다른 저장 키를 쓴다 — 복원되지 않는다.
+        await page.goto(`/?q=${encodeURIComponent(prefix)}&category=FREE`);
+        await expect(page.locator('.post-list__item')).toHaveCount(10);
+        await expect(page.locator('#btn-load-more')).toBeVisible();
+    });
 });
