@@ -4,7 +4,6 @@ import com.kraft.shared.security.CurrentUser;
 import com.kraft.shared.security.WriteAccessPolicy;
 import com.kraft.shared.transaction.AfterCommit;
 import com.kraft.user.domain.EmailHasher;
-import com.kraft.user.domain.EmailMasker;
 import com.kraft.user.domain.EmailPolicy;
 import com.kraft.shared.exception.NotFoundException;
 import com.kraft.user.domain.EmailVerificationTokenRepository;
@@ -104,16 +103,20 @@ public class UserService {
      * 회원정보 변경은 비밀번호 변경만 가능하다는 기획 의도(User.java 클래스 주석)에 따라,
      * 반드시 현재 비밀번호를 확인한 뒤에만 새 비밀번호로 바꾼다.
      * <p>
+     * 세션 principal은 이미 불변 회원 id다(BE-04, A-QA-03) — 호출한 쪽(컨트롤러)이
+     * {@code CurrentUser}로 이미 찾아 둔 회원의 id를 그대로 넘긴다. 예전에는 여기서 이메일을
+     * 다시 정규화·해시해 같은 회원을 한 번 더 찾았는데, 컨트롤러가 이미 복호화한 이메일을
+     * 다시 암호화 컬럼 조회 경로로 되돌리는 낭비였다.
+     * <p>
      * 변경이 <b>커밋된 뒤</b> 이 계정의 모든 세션을 서버에서 폐기하도록 영속 태스크를 남긴다
      * ({@link #revokeSessionsAfterCommit}). 브라우저 JS의 후속 로그아웃에 맡기던 예전 방식은
      * API 직접 호출이나 후속 요청 실패에 무력했고 다른 기기의 세션도 남겼다(개선 보고서 F04).
      * 커밋 이후로 미루는 이유는, 변경이 롤백되면 세션도 그대로 유지되어야 하기 때문이다.
      */
     @Transactional
-    public void changePassword(String rawEmail, String currentPassword, String newPassword) {
-        String email = EmailPolicy.normalize(rawEmail);
-        User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
-                .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
+    public void changePassword(Long userId, String currentPassword, String newPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. userId=" + userId));
 
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
             throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
@@ -121,7 +124,7 @@ public class UserService {
         PasswordBytePolicy.validate(newPassword);
 
         user.changePassword(passwordEncoder.encode(newPassword));
-        revokeSessionsAfterCommit(user, email);
+        revokeSessionsAfterCommit(user, user.getEmail());
     }
 
     /**
@@ -153,18 +156,23 @@ public class UserService {
      * 이메일이 익명 주소로 바뀌므로 원래 주소로 다시 가입할 수 있다. 보낼 예정이던 메일과
      * 남아 있던 링크들은 함께 지운다 — 없는 계정으로 가는 메일이고, 지우지 않으면 탈퇴 후에도
      * 옛 링크로 무언가 할 수 있는 길이 남는다.
+     * <p>
+     * 세션 principal은 이미 불변 회원 id다(BE-04, A-QA-03) — {@link #changePassword}와 같은
+     * 이유로 이메일이 아니라 id를 받는다.
      */
     @Transactional
-    public void withdraw(String rawEmail, String currentPassword) {
-        String email = EmailPolicy.normalize(rawEmail);
-        User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
-                .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
+    public void withdraw(Long userId, String currentPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. userId=" + userId));
 
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
             throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
         }
 
-        Long userId = user.getId();
+        // user.withdraw() 이후 user.getEmail()을 쓰면 이미 익명 주소로 바뀐 뒤라, 탈퇴 전
+        // 주소를 먼저 따로 담아 둔다 — 아래 revokeSessionsAfterCommit에 그대로 쓴다.
+        String emailBeforeWithdrawal = user.getEmail();
+
         emailVerificationTokenRepository.deleteByUserId(userId);
         passwordResetTokenRepository.deleteByUserId(userId);
         outboxMailRepository.deleteByUserId(userId);
@@ -175,9 +183,7 @@ public class UserService {
                 // 아무도 맞힐 수 없는 값. 익명 주소를 알아내도 로그인할 수 없다.
                 passwordEncoder.encode(UUID.randomUUID().toString()));
 
-        // 여기서 넘기는 email은 위에서 파라미터로 받은 탈퇴 전 주소다. user.withdraw() 이후
-        // user.getEmail()을 쓰면 이미 익명 주소를 태스크에 남기게 된다.
-        revokeSessionsAfterCommit(user, email);
+        revokeSessionsAfterCommit(user, emailBeforeWithdrawal);
     }
 
     /**

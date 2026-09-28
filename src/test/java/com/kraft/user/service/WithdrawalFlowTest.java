@@ -69,7 +69,7 @@ class WithdrawalFlowTest {
                 .user(user)
                 .build());
 
-        userService.withdraw(email, "OldPass1!");
+        userService.withdraw(user.getId(), "OldPass1!");
 
         Post reloaded = postRepository.findById(post.getId()).orElseThrow();
         assertThat(reloaded.getTitle()).isEqualTo("탈퇴해도 남을 글");
@@ -83,7 +83,7 @@ class WithdrawalFlowTest {
     @Test
     @DisplayName("탈퇴하면 그 계정으로는 로그인할 수 없다")
     void withdraw_blocksLogin() {
-        userService.withdraw(email, "OldPass1!");
+        userService.withdraw(user.getId(), "OldPass1!");
 
         assertThatThrownBy(() -> userDetailsService.loadUserByUsername(email))
                 .isInstanceOf(UsernameNotFoundException.class);
@@ -92,7 +92,7 @@ class WithdrawalFlowTest {
     @Test
     @DisplayName("탈퇴한 주소로 다시 가입할 수 있다 — 탈퇴가 그 주소를 영영 잠그면 안 된다")
     void withdraw_freesTheEmailForSignUpAgain() {
-        userService.withdraw(email, "OldPass1!");
+        userService.withdraw(user.getId(), "OldPass1!");
 
         boolean created = userService.signUp("다시온사람-" + UUID.randomUUID().toString().substring(0, 6),
                 email, "BrandNew1!");
@@ -122,7 +122,7 @@ class WithdrawalFlowTest {
                 .role(Role.USER)
                 .build());
 
-        userService.withdraw(email, "OldPass1!");
+        userService.withdraw(user.getId(), "OldPass1!");
 
         User withdrawn = userRepository.findById(user.getId()).orElseThrow();
         assertThat(withdrawn.isWithdrawn()).isTrue();
@@ -145,7 +145,7 @@ class WithdrawalFlowTest {
                 .role(Role.USER)
                 .build());
 
-        userService.withdraw(email, "OldPass1!");
+        userService.withdraw(user.getId(), "OldPass1!");
 
         User withdrawn = userRepository.findById(user.getId()).orElseThrow();
         assertThat(withdrawn.isWithdrawn()).isTrue();
@@ -170,7 +170,7 @@ class WithdrawalFlowTest {
     @Test
     @DisplayName("현재 비밀번호가 틀리면 탈퇴하지 않는다 — 계정은 그대로 남는다")
     void withdraw_withWrongPassword_keepsAccountIntact() {
-        assertThatThrownBy(() -> userService.withdraw(email, "WrongPass1!"))
+        assertThatThrownBy(() -> userService.withdraw(user.getId(), "WrongPass1!"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("현재 비밀번호");
 

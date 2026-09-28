@@ -258,9 +258,9 @@ class EmailVerificationServiceTest {
     @Test
     @DisplayName("resend: 존재하지 않는 회원이면 NotFoundException")
     void resend_whenUserNotFound_throwsIllegalArgumentException() {
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
+        given(userRepository.findByIdForUpdate(999L)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> emailVerificationService.resend("nobody@example.com"))
+        assertThatThrownBy(() -> emailVerificationService.resend(999L))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("존재하지 않는 회원입니다");
 
@@ -273,11 +273,10 @@ class EmailVerificationServiceTest {
     void resend_whenUserAlreadyVerified_throwsIllegalArgumentException() {
         User verifiedUser = User.builder().name("tester").email("tester@example.com").password("encoded").role(Role.USER).build();
         ReflectionTestUtils.setField(verifiedUser, "id", 1L);
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(verifiedUser));
         // resend는 쿨다운 검사를 계정 단위로 직렬화하려고 잠금 조회 결과를 실제로 쓴다(BE-15).
         given(userRepository.findByIdForUpdate(1L)).willReturn(Optional.of(verifiedUser));
 
-        assertThatThrownBy(() -> emailVerificationService.resend("tester@example.com"))
+        assertThatThrownBy(() -> emailVerificationService.resend(1L))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("이미 인증된 계정입니다");
 
@@ -289,11 +288,10 @@ class EmailVerificationServiceTest {
     @DisplayName("resend: GUEST 회원이면 기존 토큰을 지우고 새 토큰으로 메일을 다시 대기열에 넣는다")
     void resend_whenUserIsGuest_deletesOldTokenAndResendsEmail() {
         User user = userWithId(1L, "tester@example.com");
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(user));
         // resend는 쿨다운 검사를 계정 단위로 직렬화하려고 잠금 조회 결과를 실제로 쓴다(BE-15).
         given(userRepository.findByIdForUpdate(1L)).willReturn(Optional.of(user));
 
-        emailVerificationService.resend("tester@example.com");
+        emailVerificationService.resend(1L);
 
         verify(tokenRepository).deleteByUserId(1L);
         verify(tokenRepository).save(any(EmailVerificationToken.class));

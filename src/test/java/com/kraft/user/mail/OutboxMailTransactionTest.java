@@ -476,10 +476,9 @@ class OutboxMailTransactionTest {
     @Test
     @DisplayName("재발송을 연달아 요청하면 거부하고 얼마나 기다려야 하는지 알려준다")
     void resendIsRateLimited() {
-        String email = user.getEmail();
-        emailVerificationService.resend(email);
+        emailVerificationService.resend(user.getId());
 
-        assertThatThrownBy(() -> emailVerificationService.resend(email))
+        assertThatThrownBy(() -> emailVerificationService.resend(user.getId()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("초 후에 다시 시도해 주세요");
 

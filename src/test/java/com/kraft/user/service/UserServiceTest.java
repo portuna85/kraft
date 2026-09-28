@@ -132,11 +132,12 @@ class UserServiceTest {
     @DisplayName("changePassword: 현재 비밀번호가 일치하면 새 비밀번호로 변경한다")
     void changePassword_whenCurrentPasswordMatches_changesToNewPassword() {
         User user = User.builder().name("a").email("a@example.com").password("oldEncoded").role(Role.USER).build();
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("a@example.com"))).willReturn(Optional.of(user));
+        ReflectionTestUtils.setField(user, "id", 1L);
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
         given(passwordEncoder.matches("oldRaw", "oldEncoded")).willReturn(true);
         given(passwordEncoder.encode("newRawPassword")).willReturn("newEncoded");
 
-        userService.changePassword("a@example.com", "oldRaw", "newRawPassword");
+        userService.changePassword(1L, "oldRaw", "newRawPassword");
 
         assertThat(user.getPassword()).isEqualTo("newEncoded");
     }
@@ -145,10 +146,11 @@ class UserServiceTest {
     @DisplayName("changePassword: 현재 비밀번호가 틀리면 IllegalArgumentException이고 비밀번호는 변경되지 않는다")
     void changePassword_whenCurrentPasswordMismatch_throwsIllegalArgumentException() {
         User user = User.builder().name("a").email("a@example.com").password("oldEncoded").role(Role.USER).build();
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("a@example.com"))).willReturn(Optional.of(user));
+        ReflectionTestUtils.setField(user, "id", 1L);
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
         given(passwordEncoder.matches("wrongRaw", "oldEncoded")).willReturn(false);
 
-        assertThatThrownBy(() -> userService.changePassword("a@example.com", "wrongRaw", "newRawPassword"))
+        assertThatThrownBy(() -> userService.changePassword(1L, "wrongRaw", "newRawPassword"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("현재 비밀번호가 일치하지 않습니다");
 
@@ -156,11 +158,11 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("changePassword: 존재하지 않는 이메일이면 NotFoundException")
+    @DisplayName("changePassword: 존재하지 않는 회원이면 NotFoundException")
     void changePassword_whenUserNotFound_throwsIllegalArgumentException() {
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
+        given(userRepository.findById(999L)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> userService.changePassword("nobody@example.com", "raw", "newRawPassword"))
+        assertThatThrownBy(() -> userService.changePassword(999L, "raw", "newRawPassword"))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("존재하지 않는 회원");
     }
@@ -171,12 +173,11 @@ class UserServiceTest {
         User user = User.builder().name("탈퇴할사람").email("bye@example.com").password("oldEncoded")
                 .role(Role.USER).build();
         ReflectionTestUtils.setField(user, "id", 7L);
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("bye@example.com")))
-                .willReturn(Optional.of(user));
+        given(userRepository.findById(7L)).willReturn(Optional.of(user));
         given(passwordEncoder.matches("rawPassword", "oldEncoded")).willReturn(true);
         given(passwordEncoder.encode(any())).willReturn("unusableEncoded");
 
-        userService.withdraw("bye@example.com", "rawPassword");
+        userService.withdraw(7L, "rawPassword");
 
         // 남는 것은 "이 글을 누군가 썼다"는 연결뿐이다.
         assertThat(user.isWithdrawn()).isTrue();
@@ -196,11 +197,10 @@ class UserServiceTest {
         User user = User.builder().name("탈퇴할사람").email("bye@example.com").password("oldEncoded")
                 .role(Role.USER).build();
         ReflectionTestUtils.setField(user, "id", 7L);
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("bye@example.com")))
-                .willReturn(Optional.of(user));
+        given(userRepository.findById(7L)).willReturn(Optional.of(user));
         given(passwordEncoder.matches("wrongRaw", "oldEncoded")).willReturn(false);
 
-        assertThatThrownBy(() -> userService.withdraw("bye@example.com", "wrongRaw"))
+        assertThatThrownBy(() -> userService.withdraw(7L, "wrongRaw"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("현재 비밀번호가 일치하지 않습니다");
 

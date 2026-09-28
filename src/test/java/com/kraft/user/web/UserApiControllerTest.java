@@ -211,7 +211,7 @@ class UserApiControllerTest {
                         .content("{\"currentPassword\":\"old12345\",\"newPassword\":\"New12345!\"}"))
                 .andExpect(status().isNoContent());
 
-        verify(userService).changePassword("tester@example.com", "old12345", "New12345!");
+        verify(userService).changePassword(TESTER_ID, "old12345", "New12345!");
     }
 
     @Test
@@ -220,7 +220,7 @@ class UserApiControllerTest {
         givenAuthenticatedUser("tester@example.com");
         // changePassword는 void 메서드라 BDDMockito.given이 아니라 willThrow(...).given(...) 형태로 스텁한다.
         willThrow(new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다."))
-                .given(userService).changePassword("tester@example.com", "wrong", "New12345!");
+                .given(userService).changePassword(TESTER_ID, "wrong", "New12345!");
 
         mockMvc.perform(put("/api/v1/users/me/password")
                         .with(authenticatedTester())
@@ -278,7 +278,7 @@ class UserApiControllerTest {
                         .with(csrf()))
                 .andExpect(status().isNoContent());
 
-        verify(emailVerificationService).resend("tester@example.com");
+        verify(emailVerificationService).resend(TESTER_ID);
     }
 
     @Test
@@ -286,7 +286,7 @@ class UserApiControllerTest {
     void resendVerificationEmail_whenAlreadyVerified_returns400BadRequest() throws Exception {
         givenAuthenticatedUser("tester@example.com");
         willThrow(new IllegalArgumentException("이미 인증된 계정입니다."))
-                .given(emailVerificationService).resend("tester@example.com");
+                .given(emailVerificationService).resend(TESTER_ID);
 
         mockMvc.perform(post("/api/v1/users/me/verify-email/resend")
                         .with(authenticatedTester())
@@ -380,7 +380,7 @@ class UserApiControllerTest {
                         .content("{\"currentPassword\":\"Password123!\"}"))
                 .andExpect(status().isNoContent());
 
-        verify(userService).withdraw("tester@example.com", "Password123!");
+        verify(userService).withdraw(TESTER_ID, "Password123!");
     }
 
     @Test
@@ -413,7 +413,7 @@ class UserApiControllerTest {
     void withdraw_whenPasswordDoesNotMatch_returns400BadRequest() throws Exception {
         givenAuthenticatedUser("tester@example.com");
         willThrow(new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다."))
-                .given(userService).withdraw("tester@example.com", "WrongPass1!");
+                .given(userService).withdraw(TESTER_ID, "WrongPass1!");
 
         mockMvc.perform(delete("/api/v1/users/me")
                         .with(authenticatedTester())

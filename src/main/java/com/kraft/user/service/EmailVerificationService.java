@@ -88,8 +88,18 @@ public class EmailVerificationService {
             throw new IllegalArgumentException("탈퇴한 회원입니다. email=" + EmailMasker.mask(email));
         }
 
-        // 평문 token은 이 메서드를 벗어나지 않는다(SEC-04) — 조회 테이블에는 해시만 남고,
-        // 메일 본문 링크를 만들 유일한 평문 사본은 outbox_mails에 실려 발송될 때까지만 산다.
+        issueTokenAndEnqueue(user);
+    }
+
+    /**
+     * 토큰을 만들어 저장하고 메일을 대기열에 넣는 실제 동작. 이미 회원을 손에 쥔 호출자
+     * ({@link #resend})는 {@link #sendVerificationEmail}처럼 이메일로 다시 찾을 필요가 없다
+     * (A-QA-03) — 여기로 바로 들어온다.
+     * <p>
+     * 평문 token은 이 메서드를 벗어나지 않는다(SEC-04) — 조회 테이블에는 해시만 남고,
+     * 메일 본문 링크를 만들 유일한 평문 사본은 outbox_mails에 실려 발송될 때까지만 산다.
+     */
+    private void issueTokenAndEnqueue(User user) {
         String token = UUID.randomUUID().toString();
         tokenRepository.save(EmailVerificationToken.builder()
                 .tokenHash(EmailHasher.sha512Hex(token))
@@ -168,20 +178,17 @@ public class EmailVerificationService {
      * 짧은 간격의 반복 요청은 막는다. 버튼을 연타하면 메일이 그만큼 쌓이는데, 재발송이 기존 토큰을
      * 지우므로 <b>먼저 도착한 링크들이 전부 무효가 된다</b> — 받는 사람은 여러 통을 받고 그중
      * 마지막 하나만 동작하는 상황이 된다. 발송 비용보다 이 혼란이 더 문제다.
+     * <p>
+     * 세션 principal은 이미 불변 회원 id다(BE-04, A-QA-03) — 예전에는 컨트롤러가 그 id로
+     * 회원을 찾아 이메일을 복호화한 뒤, 여기서 그 이메일을 다시 정규화·해시해 같은 회원을
+     * 한 번 더 찾았다. id를 바로 받으면 그 왕복 없이 아래의 쿨다운 잠금 조회 하나로 끝난다.
      */
     @Transactional
-    public void resend(String rawEmail) {
-        String email = EmailPolicy.normalize(rawEmail);
-        User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
-                .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
-
+    public void resend(Long userId) {
         // 쿨다운 검사와 재발급을 계정 단위로 직렬화한다(B07) — 그래야 두 동시 요청이 같은
-        // "마지막 발송 시각"을 동시에 읽고 둘 다 쿨다운을 통과하는 경쟁이 없어진다. 잠금
-        // 조회 결과를 실제로 써야 한다(BE-15) — 영속성 컨텍스트가 이미 들고 있던 인스턴스를
-        // 그대로 반환하므로, 결과를 버리면 아래 getRole()이 잠금 전(다른 트랜잭션이 아직
-        // 커밋하지 않았을 수 있는) 상태를 볼 수 있다.
-        user = userRepository.findByIdForUpdate(user.getId()).orElseThrow(
-                () -> new NotFoundException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
+        // "마지막 발송 시각"을 동시에 읽고 둘 다 쿨다운을 통과하는 경쟁이 없어진다.
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. userId=" + userId));
 
         if (user.getRole() != Role.GUEST) {
             throw new IllegalArgumentException("이미 인증된 계정입니다.");
@@ -189,7 +196,7 @@ public class EmailVerificationService {
         requireResendAllowed(user.getId());
 
         tokenRepository.deleteByUserId(user.getId());
-        sendVerificationEmail(email);
+        issueTokenAndEnqueue(user);
     }
 
     private void requireResendAllowed(Long userId) {

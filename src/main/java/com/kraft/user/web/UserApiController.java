@@ -30,12 +30,13 @@ public class UserApiController {
     private final UserRepository userRepository;
 
     /**
-     * 세션 principal({@code authentication.getName()})은 회원 id다(BE-04) — 이메일 기반
-     * 서비스 메서드(가입·인증·재설정 흐름과 시그니처를 맞춘)를 그대로 쓰기 위해, 여기서만
-     * id로 사용자를 찾아 이메일을 꺼낸다.
+     * 로그인 사용자 대상 서비스 메서드는 이메일이 아니라 이 id를 받는다(A-QA-03) — 세션
+     * principal이 이미 불변 회원 id이므로(BE-04), 컨트롤러가 이메일을 복호화해 넘기고
+     * 서비스가 그 이메일을 다시 정규화·해시해 같은 회원을 한 번 더 찾는 왕복이 필요 없다.
+     * {@code CurrentUser.require}가 탈퇴 여부도 함께 걸러 준다.
      */
-    private String currentEmail(Authentication authentication) {
-        return CurrentUser.require(authentication, userRepository).getEmail();
+    private Long currentUserId(Authentication authentication) {
+        return CurrentUser.require(authentication, userRepository).getId();
     }
 
     /**
@@ -55,7 +56,7 @@ public class UserApiController {
     @PutMapping("/api/v1/users/me/password")
     public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequestDto requestDto,
                                                 Authentication authentication) {
-        userService.changePassword(currentEmail(authentication), requestDto.currentPassword(), requestDto.newPassword());
+        userService.changePassword(currentUserId(authentication), requestDto.currentPassword(), requestDto.newPassword());
         return ResponseEntity.noContent().build();
     }
 
@@ -66,7 +67,7 @@ public class UserApiController {
     @DeleteMapping("/api/v1/users/me")
     public ResponseEntity<Void> withdraw(@Valid @RequestBody WithdrawRequestDto requestDto,
                                           Authentication authentication) {
-        userService.withdraw(currentEmail(authentication), requestDto.currentPassword());
+        userService.withdraw(currentUserId(authentication), requestDto.currentPassword());
         return ResponseEntity.noContent().build();
     }
 
@@ -89,7 +90,7 @@ public class UserApiController {
 
     @PostMapping("/api/v1/users/me/verify-email/resend")
     public ResponseEntity<Void> resendVerificationEmail(Authentication authentication) {
-        emailVerificationService.resend(currentEmail(authentication));
+        emailVerificationService.resend(currentUserId(authentication));
         return ResponseEntity.noContent().build();
     }
 }

@@ -105,7 +105,7 @@ class PasswordMultibyteBoundaryTest {
 
         String changedTo = "한글비번" + "b".repeat(50);
         assertThat(changedTo.getBytes(StandardCharsets.UTF_8).length).isLessThanOrEqualTo(72);
-        userService.changePassword(email, initial, changedTo);
+        userService.changePassword(user.getId(), initial, changedTo);
 
         var afterChange = userRepository.findById(user.getId()).orElseThrow();
         assertThat(passwordEncoder.matches(changedTo, afterChange.getPassword())).isTrue();
