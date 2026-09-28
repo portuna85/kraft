@@ -38,6 +38,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  * DB·트랜잭션을 전혀 모른다 — 회차 하나를 조회하는 것만 담당하며,
  * {@link RecommendationAutoFetchScheduler}와 백필 러너가 함께 재사용한다.
+ * <p>
+ * 연속 실패 시 호출을 멈추는 서킷은 따로 두지 않는다(A-OPS-08 검토 결과) — 두 호출자
+ * 모두 {@code Unavailable}을 받으면 그 실행에서 즉시 멈추고 다음 예약/재실행으로 넘긴다
+ * ({@link RecommendationAutoFetchScheduler#fetchLatestIfDue}, 백필 러너의
+ * {@code backfill()}). 이미 "한 번 막히면 그 자리에서 멈춘다"가 보장돼 있어, 클라이언트
+ * 안에 같은 것을 또 두면 두 곳에서 같은 결정을 내리는 코드가 생긴다.
  */
 @Slf4j
 @Component
@@ -45,6 +51,14 @@ public class DhLotteryClient {
 
     private static final String BASE_URL = "https://www.dhlottery.co.kr";
     private static final String PATH = "/lt645/selectPstLt645InfoNew.do?srchDir=center&srchLtEpsd={drwNo}";
+
+    /**
+     * 기본 User-Agent(자바 HTTP 클라이언트의 익명 문자열) 대신 이 서비스를 식별하고 연락할 수
+     * 있는 값을 보낸다(A-OPS-08). 비공식 엔드포인트를 여러 사용자를 대신해 정기적으로 두드리는
+     * 입장에서, 문제가 생겼을 때(봇 차단, 트래픽 문의) 상대가 누구인지 알 수 있게 하는 최소한의
+     * 예의다 — 차단을 피하려는 위장이 아니라 그 반대다.
+     */
+    private static final String USER_AGENT = "kraft-recommend-bot/1.0 (+https://kraft.io.kr; 번호 추천 기능의 회차 조회, 주 최대 4회 예약 실행)";
 
     private final RestClient restClient;
     private final Map<Integer, ImportedDraw> cache = new ConcurrentHashMap<>();
@@ -59,7 +73,11 @@ public class DhLotteryClient {
         // RestClient.Builder는 spring-boot-starter-restclient가 있어야 자동 구성되는 빈이라 이
         // 프로젝트 의존성에는 없다 — 새 의존성을 추가하는 대신 직접 만든다(HTTP 클라이언트
         // 하나만 필요한 이 용도에는 충분하다).
-        this.restClient = RestClient.builder().baseUrl(BASE_URL).requestFactory(requestFactory).build();
+        this.restClient = RestClient.builder()
+                .baseUrl(BASE_URL)
+                .requestFactory(requestFactory)
+                .defaultHeader("User-Agent", USER_AGENT)
+                .build();
     }
 
     /**
