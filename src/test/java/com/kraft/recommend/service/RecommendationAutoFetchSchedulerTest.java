@@ -30,9 +30,11 @@ class RecommendationAutoFetchSchedulerTest {
     @Mock
     private RecommendationHistoryStateRepository stateRepository;
 
+    private final RecommendationFetchStatus fetchStatus = new RecommendationFetchStatus();
+
     private RecommendationAutoFetchScheduler scheduler() {
         RecommendationAutoFetchScheduler scheduler =
-                new RecommendationAutoFetchScheduler(dhLotteryClient, importer, stateRepository);
+                new RecommendationAutoFetchScheduler(dhLotteryClient, importer, stateRepository, fetchStatus);
         ReflectionTestUtils.setField(scheduler, "enabled", true);
         return scheduler;
     }
@@ -143,7 +145,7 @@ class RecommendationAutoFetchSchedulerTest {
     @DisplayName("스케줄러가 꺼져 있으면 아무 조회도 하지 않는다")
     void disabled_doesNothing() {
         RecommendationAutoFetchScheduler scheduler =
-                new RecommendationAutoFetchScheduler(dhLotteryClient, importer, stateRepository);
+                new RecommendationAutoFetchScheduler(dhLotteryClient, importer, stateRepository, fetchStatus);
         ReflectionTestUtils.setField(scheduler, "enabled", false);
 
         scheduler.fetchLatestIfDue();
@@ -162,5 +164,26 @@ class RecommendationAutoFetchSchedulerTest {
                 .willThrow(new RecommendationImportException("MISSING_ROUND", "boom"));
 
         scheduler().fetchLatestIfDue();
+    }
+
+    @Test
+    @DisplayName("신뢰할 수 없는 응답이 이어지면 연속 실패로 세고, 정상 응답(추첨 전 포함)이 오면 0으로 돌아간다")
+    void unavailable_countsConsecutiveFailures_andSuccessResets() {
+        given(stateRepository.findById(1)).willReturn(Optional.of(
+                RecommendationHistoryState.builder().id(1).version(3L).verifiedThroughRound(10).build()));
+        given(dhLotteryClient.fetchRound(11))
+                .willReturn(new DhLotteryClient.FetchOutcome.Unavailable("HTTP_ERROR: boom"))
+                .willReturn(new DhLotteryClient.FetchOutcome.Unavailable("HTTP_ERROR: boom"))
+                .willReturn(new DhLotteryClient.FetchOutcome.NotYetDrawn());
+        RecommendationAutoFetchScheduler scheduler = scheduler();
+
+        scheduler.fetchLatestIfDue();
+        scheduler.fetchLatestIfDue();
+        org.assertj.core.api.Assertions.assertThat(fetchStatus.consecutiveFailures()).isEqualTo(2);
+        org.assertj.core.api.Assertions.assertThat(fetchStatus.lastFailureReason()).startsWith("HTTP_ERROR");
+
+        scheduler.fetchLatestIfDue();
+        org.assertj.core.api.Assertions.assertThat(fetchStatus.consecutiveFailures()).isZero();
+        org.assertj.core.api.Assertions.assertThat(fetchStatus.lastSuccessAt()).isNotNull();
     }
 }

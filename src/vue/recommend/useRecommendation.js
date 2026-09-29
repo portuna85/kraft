@@ -31,17 +31,17 @@ export const STRATEGIES = [
     {
         value: 'balanced',
         label: '형태 균형',
-        description: '홀짝·저고·합계·연속·구간 분산 5가지 형태 기준을 채점해 상위 조합을 고릅니다.',
+        description: '홀짝·저고·합계·연속·구간 분산 5가지 형태 기준을 모두 채점해 상위 조합을 고릅니다.',
     },
     {
         value: 'random',
         label: '조건 내 무작위',
-        description: '고정·제외·과거 당첨 조합 제외 조건을 지킨 상태에서 무작위로 뽑습니다.',
+        description: '고정·제외·과거 1등 조합 제외 조건을 통과한 허용 조합 안에서 무작위로 뽑습니다.',
     },
     {
         value: 'reduce_shared_winner_risk',
         label: '흔한 선택 패턴 피하기',
-        description: '생일·기념일처럼 몰리기 쉬운 숫자 선택 패턴을 피하려는 규칙을 적용합니다.',
+        description: '생일·기념일처럼 몰리기 쉬운 숫자 선택 패턴을 피하는 가정에 따른 휴리스틱입니다. 당첨 확률이나 공동 당첨 위험이 실제로 줄어든다고 보장하지 않습니다.',
     },
 ];
 

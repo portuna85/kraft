@@ -56,7 +56,22 @@ public record HealthSnapshot(
         long sessionRevocationFailed,
         long imageDeleteBacklog,
         long recommendationHistoryAgeHours,
-        boolean recommendEnabled) {
+        boolean recommendEnabled,
+        int recommendationFetchFailures) {
+
+    /** 이만큼 연속으로 수집이 실패하면(주 4회 시도 = 한 주 내내) 사람이 봐야 한다. */
+    static final int RECOMMENDATION_FETCH_FAILURE_LIMIT = 4;
+
+    /** 수집 연속 실패 수를 모르는(측정하지 않는) 호출용. */
+    public HealthSnapshot(long requests, long errors, long serverErrors, long avgMillis, long maxMillis,
+                          int poolActive, int poolTotal, int poolPending, long diskFreeBytes,
+                          long mailPending, long mailFailed, long reportsPending, long slowRequests,
+                          long sessionRevocationFailed, long imageDeleteBacklog,
+                          long recommendationHistoryAgeHours, boolean recommendEnabled) {
+        this(requests, errors, serverErrors, avgMillis, maxMillis, poolActive, poolTotal, poolPending,
+                diskFreeBytes, mailPending, mailFailed, reportsPending, slowRequests, sessionRevocationFailed,
+                imageDeleteBacklog, recommendationHistoryAgeHours, recommendEnabled, 0);
+    }
 
     public double errorRate() {
         return requests == 0 ? 0 : (double) errors / requests;
@@ -159,6 +174,11 @@ public record HealthSnapshot(
         } else if (recommendationHistoryAgeHours > limits.recommendationHistoryStaleHours()) {
             found.add(new Breach("RECOMMENDATION_HISTORY_STALE", "추천 이력 검증 기준이 %d시간째 갱신되지 않음 (기준 %d시간)"
                     .formatted(recommendationHistoryAgeHours, limits.recommendationHistoryStaleHours())));
+        }
+        if (recommendEnabled && recommendationFetchFailures >= RECOMMENDATION_FETCH_FAILURE_LIMIT) {
+            found.add(new Breach("RECOMMENDATION_FETCH_FAILING",
+                    "추천 이력 자동 수집이 %d회 연속 실패 (기준 %d회)"
+                            .formatted(recommendationFetchFailures, RECOMMENDATION_FETCH_FAILURE_LIMIT)));
         }
         return found;
     }

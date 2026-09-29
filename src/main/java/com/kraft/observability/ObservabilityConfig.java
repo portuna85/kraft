@@ -2,6 +2,7 @@ package com.kraft.observability;
 
 import com.kraft.post.domain.PostImageRepository;
 import com.kraft.recommend.domain.RecommendationHistoryStateRepository;
+import com.kraft.recommend.service.RecommendationFetchStatus;
 import com.kraft.report.domain.ReportRepository;
 import com.kraft.user.mail.EmailSender;
 import com.kraft.user.mail.OutboxMailRepository;
@@ -71,10 +72,13 @@ public class ObservabilityConfig {
                                          RecommendationHistoryStateRepository recommendationHistoryStateRepository,
                                          DataSource dataSource,
                                          @Value("${app.upload.dir}") String uploadDir,
-                                         AlertMailer alertMailer) {
-        return new HealthReporter(metrics, outboxMailRepository, reportRepository,
+                                         AlertMailer alertMailer,
+                                         RecommendationFetchStatus recommendationFetchStatus) {
+        HealthReporter reporter = new HealthReporter(metrics, outboxMailRepository, reportRepository,
                 sessionRevocationTaskRepository, postImageRepository, recommendationHistoryStateRepository,
                 dataSource, uploadDir, alertMailer);
+        reporter.setRecommendationFetchStatus(recommendationFetchStatus);
+        return reporter;
     }
 
     /**

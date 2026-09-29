@@ -242,4 +242,17 @@ class HealthSnapshotTest {
     void breachKindsEmptyWhenHealthy() {
         assertThat(healthy().breachKinds(LIMITS)).isEmpty();
     }
+
+    @Test
+    @DisplayName("추천 이력 자동 수집이 4회 연속 실패하면 경보 대상이고, 3회까지나 기능이 꺼져 있으면 아니다")
+    void recommendationFetchFailing_breachesAtLimit() {
+        HealthThresholds limits = LIMITS;
+        HealthSnapshot three = new HealthSnapshot(100, 2, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0, true, 3);
+        HealthSnapshot four = new HealthSnapshot(100, 2, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0, true, 4);
+        HealthSnapshot disabled = new HealthSnapshot(100, 2, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0, false, 9);
+
+        org.assertj.core.api.Assertions.assertThat(three.breachKinds(limits)).doesNotContain("RECOMMENDATION_FETCH_FAILING");
+        org.assertj.core.api.Assertions.assertThat(four.breachKinds(limits)).contains("RECOMMENDATION_FETCH_FAILING");
+        org.assertj.core.api.Assertions.assertThat(disabled.breachKinds(limits)).doesNotContain("RECOMMENDATION_FETCH_FAILING");
+    }
 }

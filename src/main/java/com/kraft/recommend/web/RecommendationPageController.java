@@ -3,6 +3,7 @@ package com.kraft.recommend.web;
 import com.kraft.recommend.domain.LottoPrizeTax;
 import com.kraft.recommend.domain.WinningDraw;
 import com.kraft.recommend.domain.WinningDrawRepository;
+import com.kraft.recommend.service.RecommendationFreshness;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Controller;
@@ -28,6 +29,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class RecommendationPageController {
 
     private final WinningDrawRepository winningDrawRepository;
+    private final RecommendationFreshness freshness;
 
     @GetMapping("/recommend")
     public String recommend(Model model) {
@@ -36,6 +38,11 @@ public class RecommendationPageController {
         model.addAttribute("pageDescription",
                 "고정·제외할 번호를 정해 로또 번호 조합을 추천받고 최근 회차 당첨 번호를 확인합니다. 당첨 확률을 높이는 기능은 아닙니다.");
         model.addAttribute("canonicalPath", "/recommend");
+        RecommendationFreshness.Status history = freshness.current();
+        model.addAttribute("historyReady", history.ready());
+        model.addAttribute("historyStale", history.stale());
+        model.addAttribute("historyVerifiedRound", history.verifiedThroughRound());
+        model.addAttribute("historyVerifiedAt", history.verifiedAt());
         winningDrawRepository.findTopByOrderByRoundNoDesc().ifPresent(draw -> {
             model.addAttribute("latestRoundNo", draw.getRoundNo());
             model.addAttribute("latestRoundNumbers", draw.numbers());

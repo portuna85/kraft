@@ -54,4 +54,50 @@ class CombinationScorerTest {
         // sum=180(130~220): 32~45(33,34, +3*2=+6) + 연속쌍 2개(-2) + 합계 보너스(+4) = 8
         assertThat(CombinationScorer.score(List.of(26, 27, 29, 31, 33, 34))).isEqualTo(8);
     }
+
+    @Test
+    @DisplayName("고번호 가점은 32부터 45까지, 31·46 근처는 적용되지 않는다")
+    void highNumberBoundaries() {
+        // 32와 45가 +3인지: 중립값(11,13,17,19)에 32,45를 더하면 합 137(+4), 연속쌍 없음. 45는 5의 배수라 -2.
+        assertThat(CombinationScorer.score(List.of(11, 13, 17, 19, 32, 45))).isEqualTo(6 - 2 + 4);
+        // 31은 가점이 없다: 합 11+13+17+19+31+41=132(+4), 41만 +3.
+        assertThat(CombinationScorer.score(List.of(11, 13, 17, 19, 31, 41))).isEqualTo(3 + 4);
+    }
+
+    @Test
+    @DisplayName("합계 경계: 99는 -5, 100·129는 가감점 없음, 130·220은 +4, 221은 가감점 없음")
+    void sumBoundaries() {
+        // 기대값은 번호별 규칙(5배수 -2, 7배수 -1, 32~45 +3, 연속쌍 -1)을 손으로 더한 뒤 합계 구간을 얹은 값.
+        // 99: 10(-2) 14(-1) + 합계<100(-5)
+        assertThat(CombinationScorer.score(List.of(10, 12, 14, 16, 18, 29))).isEqualTo(-8);
+        // 100: 10(-2) 14(-1) 30(-2), 합계 구간 가감점 없음
+        assertThat(CombinationScorer.score(List.of(10, 12, 14, 16, 18, 30))).isEqualTo(-5);
+        // 129: 번호 가감점 없음(중립), 합계 구간 가감점 없음
+        assertThat(CombinationScorer.score(List.of(11, 13, 18, 27, 29, 31))).isEqualTo(0);
+        // 130: 중립 + 합계 +4
+        assertThat(CombinationScorer.score(List.of(11, 13, 19, 27, 29, 31))).isEqualTo(4);
+        // 220: 32~45 다섯 개(+15) + 합계 +4
+        assertThat(CombinationScorer.score(List.of(26, 33, 37, 39, 41, 44))).isEqualTo(19);
+        // 221: 32~45 다섯 개(+15), 합계 구간 밖이라 가감점 없음
+        assertThat(CombinationScorer.score(List.of(26, 34, 37, 39, 41, 44))).isEqualTo(15);
+    }
+
+    @Test
+    @DisplayName("5의 배수는 -2, 7의 배수는 -1, 연속쌍은 쌍당 -1이다")
+    void multiplesAndConsecutivePairs() {
+        List<Integer> neutral = List.of(11, 13, 17, 19, 23, 29);
+        int base = CombinationScorer.score(neutral);
+
+        // 29 → 25(5의 배수): 합이 4 줄어도 같은 구간(100~129 -> 112 vs 108)이어야 비교가 순수하다.
+        int with25 = CombinationScorer.score(List.of(11, 13, 17, 19, 23, 25));
+        assertThat(with25 - base).isEqualTo(-2);
+
+        // 29 → 28(7의 배수, 5의 배수 아님)
+        int with28 = CombinationScorer.score(List.of(11, 13, 17, 19, 23, 28));
+        assertThat(with28 - base).isEqualTo(-1);
+
+        // 29 → 24: 23·24 연속쌍 1개
+        int with24 = CombinationScorer.score(List.of(11, 13, 17, 19, 23, 24));
+        assertThat(with24 - base).isEqualTo(-1);
+    }
 }

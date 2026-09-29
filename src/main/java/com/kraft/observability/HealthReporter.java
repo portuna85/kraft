@@ -4,6 +4,7 @@ import com.kraft.post.domain.PostImageRepository;
 import com.kraft.post.domain.PostImageStatus;
 import com.kraft.recommend.domain.RecommendationHistoryState;
 import com.kraft.recommend.domain.RecommendationHistoryStateRepository;
+import com.kraft.recommend.service.RecommendationFetchStatus;
 import com.kraft.report.domain.ReportRepository;
 import com.kraft.report.domain.ReportStatus;
 import com.kraft.user.mail.OutboxMailRepository;
@@ -114,6 +115,13 @@ public class HealthReporter {
     @Value("${app.recommend.enabled:true}")
     private boolean recommendEnabled;
 
+    /** 자동 수집의 연속 실패 수(없으면 측정하지 않는다). 테스트가 직접 만드는 생성자와 호환되도록 세터로 받는다. */
+    private RecommendationFetchStatus recommendationFetchStatus;
+
+    public void setRecommendationFetchStatus(RecommendationFetchStatus status) {
+        this.recommendationFetchStatus = status;
+    }
+
     public HealthReporter(RequestMetrics requestMetrics,
                           OutboxMailRepository outboxMailRepository,
                           ReportRepository reportRepository,
@@ -203,7 +211,8 @@ public class HealthReporter {
                 safeCount("세션 폐기 실패 수", () -> sessionRevocationTaskRepository.countByStatus(SessionRevocationTaskStatus.FAILED)),
                 safeCount("이미지 삭제 backlog", () -> postImageRepository.countByStatus(PostImageStatus.PENDING_DELETE)),
                 recommendationHistoryAgeHours(),
-                recommendEnabled);
+                recommendEnabled,
+                recommendationFetchStatus == null ? 0 : recommendationFetchStatus.consecutiveFailures());
     }
 
     /**

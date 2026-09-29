@@ -1,6 +1,7 @@
 <!DOCTYPE HTML>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <!--/*@thymesVar id="pageTitle" type="java.lang.String"*/-->
+<!--/*@thymesVar id="historyReady" type="java.lang.Boolean"*/-->
 <!--/*@thymesVar id="latestRoundNo" type="java.lang.Integer"*/-->
 <!--/*@thymesVar id="latestRoundNumbers" type="java.util.List"*/-->
 <head th:replace="~{layout/header :: header}"></head>
@@ -49,6 +50,17 @@
                 <dd th:text="${#numbers.formatInteger(latestRoundTakeHomeAmount, 0, 'COMMA')} + '원'"></dd>
             </dl>
         </section>
+
+        <!--/* 제외 검증의 기준 — 이력이 어느 회차까지, 언제 확인됐는지와 지연 여부. 이력이 준비되지
+               않았으면 생성이 거절되므로(503) 그 사실을 미리 알린다(RecommendationFreshness). */-->
+        <p th:if="${historyReady}" class="recommend__history" th:classappend="${historyStale} ? 'recommend__history--stale'">
+            과거 1등 조합 제외 기준: <strong th:text="${historyVerifiedRound}"></strong>회차까지 검증
+            (<span th:text="${#temporals.format(historyVerifiedAt, 'yyyy.MM.dd HH:mm')}"></span> 확인)
+            <span th:if="${historyStale}" role="status">· 갱신이 늦어지고 있습니다. 최신 회차가 아직 반영되지 않았을 수 있습니다.</span>
+        </p>
+        <p th:unless="${historyReady}" class="recommend__history recommend__history--stale" role="status">
+            과거 1등 조합 이력을 준비하는 중이라 지금은 번호를 생성할 수 없습니다.
+        </p>
 
         <!--/* 생성 폼·결과는 전부 Vue 아일랜드(src/vue/recommend)가 그린다. 서버가 내려줄 초기
                상태는 없다 — 생성은 사용자가 버튼을 눌렀을 때만 REST API로 요청한다. */-->

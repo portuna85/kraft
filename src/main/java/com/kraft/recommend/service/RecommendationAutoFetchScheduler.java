@@ -29,6 +29,7 @@ public class RecommendationAutoFetchScheduler {
     private final DhLotteryClient dhLotteryClient;
     private final RecommendationHistoryImporter importer;
     private final RecommendationHistoryStateRepository stateRepository;
+    private final RecommendationFetchStatus fetchStatus;
 
     @Value("${app.recommend.auto-fetch.enabled:true}")
     private boolean enabled;
@@ -64,11 +65,13 @@ public class RecommendationAutoFetchScheduler {
                 }
                 case DhLotteryClient.FetchOutcome.NotYetDrawn ignored -> {
                     log.info("회차 {}은(는) 아직 추첨 전으로 보입니다. 다음 예약 시각에 다시 시도합니다.", target);
+                    fetchStatus.recordSuccess();
                     return;
                 }
                 case DhLotteryClient.FetchOutcome.Unavailable unavailable -> {
                     log.warn("회차 {} 자동 수집 실패(신뢰할 수 없는 응답): {}. 다음 예약 시각에 다시 시도합니다.",
                             target, unavailable.reason());
+                    fetchStatus.recordFailure(unavailable.reason());
                     return;
                 }
             }
@@ -90,10 +93,12 @@ public class RecommendationAutoFetchScheduler {
                     importer.importHistory(List.of(success.draw()), target, "dhlottery-api-auto");
             log.info("회차 {} 자동 반영 완료(신규 {}건, 정정 {}건).",
                     target, result.inserted(), result.updated());
+            fetchStatus.recordSuccess();
             return true;
         } catch (RecommendationImportException e) {
             log.warn("회차 {} 자동 반영 검증 실패 [{}]: {}. 다음 예약 시각에 다시 시도합니다.",
                     target, e.getReason(), e.getMessage());
+            fetchStatus.recordFailure(String.valueOf(e.getReason()));
             return false;
         }
     }
