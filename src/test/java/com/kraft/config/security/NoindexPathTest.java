@@ -29,6 +29,7 @@ class NoindexPathTest {
             "/administrator, false",
             "/posts/saved, false",
             "/robots.txt, false",
+            "/sitemap.xml, false",
     })
     @DisplayName("색인 제외 경로 판정")
     void isNoindexPath(String path, boolean expected) {

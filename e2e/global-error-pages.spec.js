@@ -1,4 +1,8 @@
-import { test, expect } from './fixtures.js';
+import { test, expect, storageStateFor } from './fixtures.js';
+
+// 기본이 authenticated(P1-7)라 익명이 없는 경로를 요청하면 404 대신 로그인으로 간다 — 404 화면은
+// 로그인한 사용자 기준으로 확인한다.
+test.use({ storageState: storageStateFor('user') });
 
 /**
  * 13단계: 게시글 삭제 후 접근(PostNotFoundException → error/not-found)이 아니라, 애초에

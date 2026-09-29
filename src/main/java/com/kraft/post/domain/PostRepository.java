@@ -77,6 +77,16 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             + "ORDER BY p.id DESC")
     List<PostRowDto> findPinnedNotices(Pageable pageable);
 
+    /** sitemap용 최소 프로젝션 — 본문(TEXT)과 작성자를 읽지 않는다. */
+    interface SitemapRow {
+        Long getId();
+
+        LocalDateTime getUpdatedAt();
+    }
+
+    @Query("SELECT p.id AS id, p.updatedAt AS updatedAt FROM Post p ORDER BY p.id")
+    List<SitemapRow> findSitemapRows(Pageable pageable);
+
     /**
      * 여러 id를 한 번에 조회한다(N+1 방지). 신고 목록이 페이지 안의 게시글 대상들을 한 번에
      * 묶어 조회할 때 쓴다(개선 보고서 "신고 목록의 대상별 조회").

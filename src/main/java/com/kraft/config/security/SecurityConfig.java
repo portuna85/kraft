@@ -24,6 +24,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.security.web.header.writers.CrossOriginOpenerPolicyHeaderWriter;
 import org.springframework.security.web.header.writers.DelegatingRequestMatcherHeaderWriter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.savedrequest.NullRequestCache;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.security.web.header.writers.StaticHeadersWriter;
 import tools.jackson.databind.ObjectMapper;
@@ -117,9 +119,27 @@ public class SecurityConfig {
             throws Exception {
         http
                 .addFilterBefore(authRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+                // CSRF 토큰을 세션이 아니라 쿠키에 둔다(P1-6). 모든 화면의 헤더가 _csrf 메타를
+                // 렌더링하는데, 세션 저장소는 익명 GET마다 토큰을 저장하려 세션(SPRING_SESSION
+                // 행)을 만들어 봇 트래픽만으로 테이블이 불어났다. JS는 계속 메타의 값을 쓰므로
+                // HttpOnly 그대로 둔다(스크립트가 쿠키를 읽을 일이 없다).
+                .csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository()))
                 .authorizeHttpRequests(auth -> auth
                         // 정적 자원(/css, /js, /images)은 위 staticResourceChain이 먼저 처리한다.
-                        .requestMatchers("/").permitAll()
+                        // 기본은 인증 필요(P1-7) — 새 엔드포인트가 검사를 빠뜨려도 공개되지 않는다.
+                        // 공개 화면·자원은 아래에 명시한다.
+                        .requestMatchers("/", "/recommend", "/robots.txt", "/sitemap.xml",
+                                "/login", "/signup", "/forgot-password",
+                                "/users/password-reset", "/users/verify", "/users/verify/result",
+                                "/healthz", "/readyz", "/error", "/error/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/posts/update/*").permitAll()
+                        // 버전 접두사가 붙은 정적 자원(/{버전}/js/... — FE-01, spring.web.resources.chain).
+                        // 접두사(빌드 SHA)는 배포마다 달라 경로 패턴으로 연다.
+                        .requestMatchers(HttpMethod.GET, "/*/js/**", "/*/css/**", "/*/images/**").permitAll()
+                        // 글쓰기 화면은 익명에게도 열려 있고 화면이 안내를 보여준다.
+                        .requestMatchers("/posts/save").permitAll()
+                        // E2E 소스셋 전용 경로(운영 코드에는 매핑이 없어 404다).
+                        .requestMatchers("/e2e/**").permitAll()
                         .requestMatchers("/api/v1/users").permitAll()
                         // 비밀번호를 잊은 사람은 로그인할 수 없다. 이 두 경로만 열어 두고,
                         // 실제 경계는 메일로 보낸 1회용 토큰이 잡는다(PasswordResetService).
@@ -139,8 +159,11 @@ public class SecurityConfig {
                         // 같은 규칙으로 막아, 화면을 감추는 것으로 끝내지 않는다.
                         .requestMatchers("/admin/**", "/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/**").authenticated()
-                        .anyRequest().permitAll()
+                        .anyRequest().authenticated()
                 )
+                // 보호된 경로에 익명으로 닿아도 원래 요청을 세션에 저장하지 않는다 — 봇이 임의 경로를
+                // 훑어도 세션 행이 생기지 않는다. 로그인 후 복귀는 ?redirect= 파라미터가 맡는다.
+                .requestCache(cache -> cache.requestCache(new NullRequestCache()))
                 .formLogin(form -> form
                         .loginPage("/login")
                         .successHandler(redirectAwareSuccessHandler())
@@ -208,6 +231,12 @@ public class SecurityConfig {
                 );
 
         return http.build();
+    }
+
+    private static CookieCsrfTokenRepository csrfTokenRepository() {
+        CookieCsrfTokenRepository repository = new CookieCsrfTokenRepository();
+        repository.setCookieCustomizer(cookie -> cookie.sameSite("Lax"));
+        return repository;
     }
 
     /** 색인하지 않을 경로. "/users/"처럼 /로 끝나면 그 아래 전부, 아니면 그 경로와 그 하위. */

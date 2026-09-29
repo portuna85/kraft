@@ -21,6 +21,7 @@ import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
@@ -62,7 +63,7 @@ class UserPageControllerTest {
     @Test
     @DisplayName("GET /users/me/password 는 더 이상 화면이 아니다(비밀번호 변경은 모달로 옮겼다)")
     void changePasswordPage_isGone() throws Exception {
-        mockMvc.perform(get("/users/me/password"))
+        mockMvc.perform(get("/users/me/password").with(user("member").roles("USER")))
                 .andExpect(status().isNotFound());
     }
 

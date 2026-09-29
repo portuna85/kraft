@@ -51,6 +51,7 @@ public class PostPageController {
     public String index(@PageableDefault(size = 10) Pageable pageable,
                          @RequestParam(required = false) String q,
                          HttpServletRequest request,
+                         HttpServletResponse response,
                          @RequestParam(required = false) Category category,
                          @RequestParam(required = false) String scope,
                          Model model) {
@@ -58,6 +59,11 @@ public class PostPageController {
         // 수 있었다(전체 리뷰 2026-09-26 A-SEC-06). q가 없는 일반 목록 열람은 걸지 않는다.
         if (q != null && !q.isBlank() && !rateLimiters.tryAcquireSearch(request.getRemoteAddr())) {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.");
+        }
+        // 내부 검색 결과는 색인하지 않되 링크는 따라가게 한다(P1-1). robots.txt로 막지 않는 이유는,
+        // 막으면 검색엔진이 이 응답의 noindex를 아예 읽지 못하기 때문이다.
+        if (q != null && !q.isBlank()) {
+            response.setHeader("X-Robots-Tag", "noindex, follow");
         }
         Pageable sanitized = PostSortPolicy.sanitize(pageable);
         boolean searchContent = SearchScope.isContent(scope);
