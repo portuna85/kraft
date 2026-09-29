@@ -59,6 +59,7 @@ app:
   # (개선 보고서 SEC-01). 필터 자체를 검증하는 테스트는 @TestPropertySource로 개별적으로
   # 다시 켠다(AuthRateLimitFilterTest).
   auth:
+    min-response-millis: 0
     rate-limit:
       enabled: false
 

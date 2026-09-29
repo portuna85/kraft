@@ -1,6 +1,7 @@
 package com.kraft.user.web;
 
 import com.kraft.shared.security.CurrentUser;
+import com.kraft.shared.web.ResponseTimeFloor;
 import com.kraft.user.domain.UserRepository;
 import com.kraft.user.dto.ChangePasswordRequestDto;
 import com.kraft.user.dto.PasswordResetConfirmDto;
@@ -12,6 +13,7 @@ import com.kraft.user.service.PasswordResetService;
 import com.kraft.user.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -31,6 +33,13 @@ public class UserApiController {
     private final UserRepository userRepository;
 
     /**
+     * 가입·재설정 요청의 응답 시간 하한(P1-8). 가입된 주소와 아닌 주소의 처리 시간 격차를 가린다.
+     * 필드 주입인 이유는 생성자 시그니처(테스트가 직접 만든다)를 바꾸지 않기 위해서다.
+     */
+    @Value("${app.auth.min-response-millis:250}")
+    private long minResponseMillis;
+
+    /**
      * 로그인 사용자 대상 서비스 메서드는 이메일이 아니라 이 id를 받는다(A-QA-03) — 세션
      * principal이 이미 불변 회원 id이므로(BE-04), 컨트롤러가 이메일을 복호화해 넘기고
      * 서비스가 그 이메일을 다시 정규화·해시해 같은 회원을 한 번 더 찾는 왕복이 필요 없다.
@@ -47,10 +56,12 @@ public class UserApiController {
      */
     @PostMapping("/api/v1/users")
     public ResponseEntity<Void> signUp(@Valid @RequestBody SignUpRequestDto requestDto) {
+        long start = System.nanoTime();
         boolean created = userService.signUp(requestDto.name(), requestDto.email(), requestDto.password());
         if (created) {
             emailVerificationService.sendVerificationEmailSafely(requestDto.email());
         }
+        ResponseTimeFloor.await(start, minResponseMillis);
         return ResponseEntity.ok().build();
     }
 
@@ -78,7 +89,9 @@ public class UserApiController {
      */
     @PostMapping("/api/v1/users/password-reset")
     public ResponseEntity<Void> requestPasswordReset(@Valid @RequestBody PasswordResetRequestDto requestDto) {
+        long start = System.nanoTime();
         passwordResetService.request(requestDto.email());
+        ResponseTimeFloor.await(start, minResponseMillis);
         return ResponseEntity.noContent().build();
     }
 

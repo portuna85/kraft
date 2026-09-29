@@ -79,6 +79,10 @@ public class UserService {
         }
         PasswordBytePolicy.validate(rawPassword);
 
+        // 비밀번호 해시를 분기보다 먼저 계산한다(P1-8) — 예전에는 새 계정만 이 비싼 해시를 거쳐,
+        // 응답이 빠르면 "이미 가입된 주소"라는 사실이 시간으로 드러났다.
+        String encodedPassword = passwordEncoder.encode(rawPassword);
+
         Optional<User> existing = userRepository.findByEmailHash(EmailHasher.sha512Hex(email));
         if (existing.isPresent()) {
             // 쿨다운·시간당 예산 안에서만 큐에 넣는다(P0-4) — 남의 주소로 가입을 반복해 그 메일함을
@@ -94,7 +98,7 @@ public class UserService {
         User user = User.builder()
                 .name(name)
                 .email(email)
-                .password(passwordEncoder.encode(rawPassword))
+                .password(encodedPassword)
                 .role(Role.GUEST)
                 .build();
 

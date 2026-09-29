@@ -111,7 +111,7 @@ class UserServiceTest {
         assertThat(created).isFalse();
         verify(outboxMailStore).enqueueNotice(existing, OutboxMailKind.ACCOUNT_EXISTS);
         verify(userRepository, never()).save(any());
-        verify(passwordEncoder, never()).encode(any());
+        verify(passwordEncoder).encode("pw12345678"); // 타이밍 격차 방지: 기존 주소여도 해시를 계산한다(P1-8)
     }
 
     @Test

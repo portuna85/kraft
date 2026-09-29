@@ -48,6 +48,7 @@ app:
   base-url: http://127.0.0.1:8081
   # 여러 spec이 같은 IP(로컬 호스트)에서 로그인·가입을 반복하므로 꺼 둔다(개선 보고서 SEC-01).
   auth:
+    min-response-millis: 0
     rate-limit:
       enabled: false
   # 같은 이유(A-SEC-06) — 여러 spec이 게시글·댓글·신고·업로드·검색을 반복한다.
