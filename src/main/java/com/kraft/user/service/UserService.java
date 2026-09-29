@@ -81,10 +81,13 @@ public class UserService {
 
         Optional<User> existing = userRepository.findByEmailHash(EmailHasher.sha512Hex(email));
         if (existing.isPresent()) {
-            outboxMailStore.enqueue(existing.get(), null, OutboxMailKind.ACCOUNT_EXISTS);
-            // 가입·재설정과 같은 관례: 예약 주기(최대 수십 초)까지 기다리지 않고 커밋 직후
-            // 바로 한 번 드레인한다 — 그러지 않으면 이 안내 메일이 다음 주기 전까지 쌓여 있는다.
-            AfterCommit.run(outboxMailWorker::drainAsync);
+            // 쿨다운·시간당 예산 안에서만 큐에 넣는다(P0-4) — 남의 주소로 가입을 반복해 그 메일함을
+            // 채우지 못하게. 큐잉 여부와 무관하게 응답은 같다.
+            if (outboxMailStore.enqueueNotice(existing.get(), OutboxMailKind.ACCOUNT_EXISTS)) {
+                // 가입·재설정과 같은 관례: 예약 주기(최대 수십 초)까지 기다리지 않고 커밋 직후
+                // 바로 한 번 드레인한다 — 그러지 않으면 이 안내 메일이 다음 주기 전까지 쌓여 있는다.
+                AfterCommit.run(outboxMailWorker::drainAsync);
+            }
             return false;
         }
 

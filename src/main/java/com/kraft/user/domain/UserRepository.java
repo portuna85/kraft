@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -19,6 +20,31 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmailHash(String emailHash);
 
     boolean existsByName(String name);
+
+    /**
+     * 로그인 실패 횟수를 DB에서 원자적으로 1 올린다(P1-5). 엔티티를 읽어 고쳐 쓰면 동시 실패가
+     * 같은 행을 갱신할 때 {@code @Version} 충돌이나 증가분 유실이 생긴다. 벌크 UPDATE는 버전을
+     * 건드리지 않으므로 다른 변경(비밀번호 변경 등)과도 충돌하지 않는다.
+     */
+    @Modifying
+    @Query("UPDATE User u SET u.failedLoginAttempts = u.failedLoginAttempts + 1 WHERE u.id = :id")
+    int incrementFailedLogins(@Param("id") Long id);
+
+    /** {@link #incrementFailedLogins}와 같은 트랜잭션에서 부른다 — UPDATE가 잡은 행 잠금 덕에 방금 올린 값이 보인다. */
+    @Query("SELECT u.failedLoginAttempts FROM User u WHERE u.id = :id")
+    int findFailedLoginAttempts(@Param("id") Long id);
+
+    /** 더 늦은 잠금 시각만 반영한다 — 동시 실패 중 짧은 잠금이 긴 잠금을 덮지 않게 한다. */
+    @Modifying
+    @Query("UPDATE User u SET u.lockedUntil = :until "
+            + "WHERE u.id = :id AND (u.lockedUntil IS NULL OR u.lockedUntil < :until)")
+    int extendLock(@Param("id") Long id, @Param("until") LocalDateTime until);
+
+    /** 로그인 성공 시 누적·잠금을 지운다. 이미 깨끗하면 쓰기 자체를 하지 않는다. */
+    @Modifying
+    @Query("UPDATE User u SET u.failedLoginAttempts = 0, u.lockedUntil = NULL "
+            + "WHERE u.id = :id AND (u.failedLoginAttempts <> 0 OR u.lockedUntil IS NOT NULL)")
+    int resetFailedLogins(@Param("id") Long id);
 
     /**
      * 이메일 인증·비밀번호 재설정의 재발급 쿨다운 검사를 계정 단위로 직렬화한다(B07). 검사

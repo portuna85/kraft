@@ -128,4 +128,43 @@ class LoginLockoutServiceTest {
 
         assertThat(reload().getFailedLoginAttempts()).isZero();
     }
+
+    @Test
+    @DisplayName("동시에 20건 실패해도 예외 없이 카운터가 정확하다")
+    void onAuthenticationFailure_concurrent_countsExactly() throws Exception {
+        int threads = 20;
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(threads);
+        var ready = new java.util.concurrent.CountDownLatch(threads);
+        var go = new java.util.concurrent.CountDownLatch(1);
+        var futures = new java.util.ArrayList<java.util.concurrent.Future<?>>();
+        for (int i = 0; i < threads; i++) {
+            futures.add(pool.submit(() -> {
+                ready.countDown();
+                go.await();
+                fail();
+                return null;
+            }));
+        }
+        ready.await();
+        go.countDown();
+        for (var f : futures) {
+            f.get(30, java.util.concurrent.TimeUnit.SECONDS);
+        }
+        pool.shutdown();
+
+        User reloaded = reload();
+        assertThat(reloaded.getFailedLoginAttempts()).isEqualTo(threads);
+        assertThat(reloaded.isLocked()).isTrue();
+    }
+
+    @Test
+    @DisplayName("잠금 시간은 상한(60분)을 넘지 않는다")
+    void onAuthenticationFailure_lockDurationIsCapped() {
+        for (int i = 0; i < LoginLockoutService.LOCK_THRESHOLD + 15; i++) {
+            fail();
+        }
+
+        var limit = java.time.LocalDateTime.now().plusMinutes(LoginLockoutService.MAX_LOCK_MINUTES).plusSeconds(5);
+        assertThat(reload().getLockedUntil()).isBefore(limit);
+    }
 }

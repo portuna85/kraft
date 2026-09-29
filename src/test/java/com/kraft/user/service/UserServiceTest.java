@@ -109,7 +109,7 @@ class UserServiceTest {
         boolean created = userService.signUp("dup", "dup@example.com", "pw12345678");
 
         assertThat(created).isFalse();
-        verify(outboxMailStore).enqueue(existing, null, OutboxMailKind.ACCOUNT_EXISTS);
+        verify(outboxMailStore).enqueueNotice(existing, OutboxMailKind.ACCOUNT_EXISTS);
         verify(userRepository, never()).save(any());
         verify(passwordEncoder, never()).encode(any());
     }

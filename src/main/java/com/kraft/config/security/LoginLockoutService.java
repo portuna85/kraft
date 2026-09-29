@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 
 /**
  * 로그인 연속 실패에 대한 계정 단위 누적 방어(전체 리뷰 2026-09-26 A-SEC-08). 지금까지는
@@ -56,24 +57,30 @@ public class LoginLockoutService {
     @Transactional
     public void onAuthenticationSuccess(AuthenticationSuccessEvent event) {
         if (event.getAuthentication().getPrincipal() instanceof KraftUserDetails principal) {
-            userRepository.findById(principal.getUserId()).ifPresent(User::resetFailedLogins);
+            userRepository.resetFailedLogins(principal.getUserId());
         }
     }
 
+    /**
+     * 카운터·잠금을 엔티티가 아니라 원자적 UPDATE로 갱신한다(P1-5) — 같은 계정에 동시 실패가
+     * 몰려도 {@code @Version} 충돌 예외나 증가분 유실이 없다.
+     */
     private void recordFailure(User user) {
-        int attempts = user.recordFailedLogin();
+        Long id = user.getId();
+        userRepository.incrementFailedLogins(id);
+        int attempts = userRepository.findFailedLoginAttempts(id);
         if (attempts < LOCK_THRESHOLD) {
             return;
         }
 
         // 5회째부터 5→1분, 6→2분, 7→4분 ... 식으로 두 배씩 늘리다 상한에서 멈춘다.
         long minutes = Math.min(MAX_LOCK_MINUTES, 1L << Math.min(attempts - LOCK_THRESHOLD, 10));
-        user.lockFor(Duration.ofMinutes(minutes));
+        userRepository.extendLock(id, LocalDateTime.now().plus(Duration.ofMinutes(minutes)));
 
         // 임계를 처음 넘는 순간에만 알린다 — 잠긴 동안에는 더 실패가 쌓이지 않으니 매번 다시
-        // 보낼 일도 없다.
+        // 보낼 일도 없다. 쿨다운·예산은 enqueueNotice가 지킨다(P0-4).
         if (attempts == LOCK_THRESHOLD) {
-            outboxMailStore.enqueue(user, null, OutboxMailKind.LOGIN_ATTEMPTS_WARNING);
+            outboxMailStore.enqueueNotice(user, OutboxMailKind.LOGIN_ATTEMPTS_WARNING);
         }
     }
 }

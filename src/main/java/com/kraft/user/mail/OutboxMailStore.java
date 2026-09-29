@@ -1,5 +1,6 @@
 package com.kraft.user.mail;
 
+import com.kraft.shared.web.FixedWindowRateLimiter;
 import com.kraft.user.domain.EmailHasher;
 import com.kraft.user.domain.EmailVerificationTokenRepository;
 import com.kraft.user.domain.PasswordResetTokenRepository;
@@ -8,10 +9,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -36,6 +39,15 @@ public class OutboxMailStore {
 
     @Value("${app.mail.max-attempts:5}")
     private int maxAttempts;
+
+    /** 같은 회원에게 같은 종류의 안내 메일을 다시 큐에 넣기까지의 최소 간격. */
+    static final Duration NOTICE_COOLDOWN = Duration.ofHours(1);
+
+    /** 종류별 전체 시간당 안내 메일 상한 — 분산 IP 공격에도 SMTP 쿼터를 지킨다. */
+    private static final int NOTICE_BUDGET_PER_HOUR = 200;
+
+    private final FixedWindowRateLimiter noticeBudget =
+            new FixedWindowRateLimiter("notice-mail-budget", NOTICE_BUDGET_PER_HOUR, Duration.ofHours(1).toMillis());
 
     /**
      * requeueStuck이 한 번에 조회·처리하는 최대 개수(B10). 적체 전체를 한 트랜잭션에 다 로딩하면
@@ -178,6 +190,34 @@ public class OutboxMailStore {
     @Transactional(readOnly = true)
     public Optional<LocalDateTime> lastQueuedAt(Long userId, OutboxMailKind kind) {
         return outboxMailRepository.findFirstByUserIdAndKindOrderByIdDesc(userId, kind).map(OutboxMail::getCreatedAt);
+    }
+
+    /**
+     * 수신자가 유발하지 않은 안내 메일(계정 존재·로그인 시도 경고)을 쿨다운과 전체 시간당 예산
+     * 안에서만 큐에 넣는다(P0-4). 남의 주소로 가입/로그인을 반복해 그 메일함을 채우거나 SMTP
+     * 일일 쿼터를 소진시키는 것을 막는다. 호출한 쪽의 응답은 큐잉 여부와 무관하게 같아야 한다.
+     *
+     * @return 실제로 큐에 넣었으면 {@code true}
+     */
+    @Transactional
+    public boolean enqueueNotice(User user, OutboxMailKind kind) {
+        if (outboxMailRepository.findFirstByUserIdAndKindOrderByIdDesc(user.getId(), kind)
+                .map(OutboxMail::getCreatedAt)
+                .filter(last -> LocalDateTime.now().isBefore(last.plus(NOTICE_COOLDOWN)))
+                .isPresent()) {
+            return false;
+        }
+        if (!noticeBudget.tryAcquire(kind.name())) {
+            log.warn("안내 메일 시간당 예산을 넘어 큐잉하지 않았습니다. kind={}", kind);
+            return false;
+        }
+        enqueue(user, null, kind);
+        return true;
+    }
+
+    @Scheduled(fixedDelayString = "${app.auth.rate-limit.report-interval-ms:600000}")
+    public void reportNoticeBudget() {
+        noticeBudget.reportAndCleanup(System.currentTimeMillis());
     }
 
     /** 보관 기한이 지난 SENT/FAILED 행을 지운다. 지운 행 수를 돌려준다. */
