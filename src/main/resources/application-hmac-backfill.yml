@@ -1,0 +1,17 @@
+# 이메일 HMAC 백필 전용 프로파일(P0-3). --spring.profiles.active=hmac-backfill 로만 활성화된다.
+#
+#   java -jar kraft.jar --spring.profiles.active=hmac-backfill
+#
+# EMAIL_ENCRYPTION_KEY(현재 키)와 EMAIL_HASH_PEPPER를 지정한다. 앱이 이중 기록을 시작하기 전에
+# 만들어진 행(email_hmac IS NULL)을 복호화해 HMAC을 채운다. 재실행해도 안전하다(NULL인 행만 처리).
+# 앱을 내리지 않고 돌려도 되지만, DB 백업을 먼저 받는 것이 좋다. 스키마(V33)는 평소 기동이
+# 적용하므로 배포가 끝난 뒤에 실행한다.
+#
+# 주기 작업을 끄고 포트를 열지 않는 설정은 rekey 프로파일과 같아 그대로 가져온다.
+spring:
+  config:
+    import: "classpath:application-rekey.yml"
+
+app:
+  security:
+    email-hash-pepper: ${EMAIL_HASH_PEPPER}

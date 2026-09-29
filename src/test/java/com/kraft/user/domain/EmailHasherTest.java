@@ -40,4 +40,47 @@ class EmailHasherTest {
         assertThat(EmailHasher.sha512Hex("a@example.com"))
                 .isNotEqualTo(EmailHasher.sha512Hex("b@example.com"));
     }
+
+    /** 정적 pepper는 JVM 전체가 공유하므로 다른 테스트가 보는 값으로 되돌려 둔다. */
+    private static final String SHARED_TEST_PEPPER = "test-only-hash-pepper-0123456789";
+
+    @org.junit.jupiter.api.AfterEach
+    void restorePepper() {
+        EmailHasher.configurePepper(SHARED_TEST_PEPPER);
+    }
+
+    @Test
+    void hmacHex_matchesIndependentlyComputedVector() {
+        EmailHasher.configurePepper("test-pepper-0123456789");
+
+        // python: hmac.new(b"test-pepper-0123456789", b"user@example.com", sha256).hexdigest()
+        assertThat(EmailHasher.hmacHex("user@example.com")).isEqualTo(
+                "873614aece2f7f7975bf314459cf9d74d407ed1f74704a9efe47727c0bb21765");
+    }
+
+    @Test
+    void hmacHex_dependsOnPepper_andIsLowercase64Hex() {
+        EmailHasher.configurePepper("pepper-one-0123456789");
+        String one = EmailHasher.hmacHex("user@example.com");
+        EmailHasher.configurePepper("pepper-two-0123456789");
+        String two = EmailHasher.hmacHex("user@example.com");
+
+        assertThat(one).isNotEqualTo(two).matches("[0-9a-f]{64}");
+        assertThat(one).isNotEqualTo(EmailHasher.sha512Hex("user@example.com"));
+    }
+
+    @Test
+    void hmac_withoutPepper_isNotConfigured_andRefusesToHash() {
+        EmailHasher.configurePepper("");
+
+        assertThat(EmailHasher.hmacConfigured()).isFalse();
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> EmailHasher.hmacHex("a@b.co"))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void configurePepper_rejectsTooShortValue() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> EmailHasher.configurePepper("short"))
+                .isInstanceOf(IllegalStateException.class);
+    }
 }

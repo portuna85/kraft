@@ -55,6 +55,10 @@ public class User extends BaseEntity {
     @Column(name = "email_hash", nullable = false, length = 128)
     private String emailHash;
 
+    // email의 HMAC-SHA256(pepper). email_hash를 대체할 조회 키(P0-3). 이중 기록 단계라 백필 전 행은 null이다.
+    @Column(name = "email_hmac", length = 64)
+    private String emailHmac;
+
     @Column(nullable = false, length = 100)
     private String password;
 
@@ -184,5 +188,8 @@ public class User extends BaseEntity {
     @PreUpdate
     private void hashEmail() {
         this.emailHash = EmailHasher.sha512Hex(this.email);
+        if (EmailHasher.hmacConfigured()) {
+            this.emailHmac = EmailHasher.hmacHex(this.email);
+        }
     }
 }

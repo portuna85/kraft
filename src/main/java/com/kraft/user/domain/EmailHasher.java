@@ -1,9 +1,12 @@
 package com.kraft.user.domain;
 
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  * 이메일 조회·중복확인용 SHA-512 해시. {@code User.email}은 AES로 암호화되어 등호 조회가
@@ -13,6 +16,50 @@ import java.util.HexFormat;
 public final class EmailHasher {
 
     private EmailHasher() {
+    }
+
+    /** pepper의 최소 길이. 짧은 값은 HMAC의 이점(키 없는 해시 대비 사전 대입 저항)을 크게 깎는다. */
+    static final int MIN_PEPPER_LENGTH = 16;
+
+    private static volatile byte[] pepper;
+
+    /**
+     * 기동 시 한 번 설정한다({@link EmailHmacConfiguration}). {@code User}의 JPA 콜백이 정적으로
+     * 부르는 구조라 주입 대신 정적 보관을 쓴다. 비어 있으면 설정하지 않은 것으로 본다 —
+     * 이메일 HMAC 없이 도는 최소 슬라이스 테스트와 rekey 도구를 위한 것이고, 운영은
+     * {@code EMAIL_HASH_PEPPER}가 필수라 이 경로로 오지 않는다.
+     */
+    static void configurePepper(String value) {
+        if (value == null || value.isBlank()) {
+            pepper = null;
+            return;
+        }
+        if (value.length() < MIN_PEPPER_LENGTH) {
+            throw new IllegalStateException("이메일 해시 pepper는 최소 " + MIN_PEPPER_LENGTH + "자여야 합니다.");
+        }
+        pepper = value.getBytes(StandardCharsets.UTF_8);
+    }
+
+    public static boolean hmacConfigured() {
+        return pepper != null;
+    }
+
+    /**
+     * 이메일 조회용 HMAC-SHA256(pepper, email)의 소문자 16진수. 토큰 해시는 122비트 난수라
+     * 사전 대입 대상이 아니므로 {@link #sha512Hex}를 그대로 쓴다.
+     */
+    public static String hmacHex(String email) {
+        byte[] key = pepper;
+        if (key == null) {
+            throw new IllegalStateException("app.security.email-hash-pepper가 설정되지 않았습니다.");
+        }
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(key, "HmacSHA256"));
+            return HexFormat.of().formatHex(mac.doFinal(email.getBytes(StandardCharsets.UTF_8)));
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("HMAC-SHA256을 사용할 수 없습니다.", e);
+        }
     }
 
     /**

@@ -54,6 +54,7 @@ logging:
 app:
   security:
     email-encryption-key: local-dev-only-email-key-do-not-use-in-prod
+    email-hash-pepper: test-only-hash-pepper-0123456789
 
   # 로그인·가입 등을 반복하는 MockMvc 테스트가 이 제한기 때문에 흔들리지 않도록 꺼 둔다
   # (개선 보고서 SEC-01). 필터 자체를 검증하는 테스트는 @TestPropertySource로 개별적으로

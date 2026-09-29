@@ -88,3 +88,7 @@ app:
     # 키를 쓰지 않아 로그인은 계속 되므로, 이메일만 깨진 것을 한참 뒤에야 알게 된다. 교체가
     # 필요하면 앱을 내리고 rekey 프로파일로 재암호화한다(README "이메일 암호화 키 교체").
     email-encryption-key: ${EMAIL_ENCRYPTION_KEY}
+    # 이메일 조회용 HMAC-SHA256의 pepper(P0-3). 기본값 없음 — 지정하지 않으면 기동이 실패한다.
+    # EMAIL_ENCRYPTION_KEY와 다른 값을 쓰고, 백업과 분리해 따로 보관한다. 잃으면 이메일 조회가
+    # 되지 않으므로 키와 같은 등급으로 다룬다. 바꾸려면 hmac-backfill 도구로 다시 채워야 한다.
+    email-hash-pepper: ${EMAIL_HASH_PEPPER}
