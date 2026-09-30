@@ -82,6 +82,25 @@ class HomePageControllerTest {
     }
 
     @Test
+    @DisplayName("추첨일·당첨금·당첨자가 있으면 천 단위 구분과 세후 금액까지 그린다")
+    void rendersPrizeDetails() throws Exception {
+        WinningDraw draw = mock(WinningDraw.class);
+        given(draw.getRoundNo()).willReturn(1243);
+        given(draw.numbers()).willReturn(List.of(9, 18, 24, 38, 43, 44));
+        given(draw.getDrawDate()).willReturn(java.time.LocalDate.of(2026, 9, 26));
+        given(draw.getFirstPrizeAmount()).willReturn(2_592_525_282L);
+        given(draw.getFirstPrizeWinnerCount()).willReturn(12);
+        given(winningDrawRepository.findTopByOrderByRoundNoDesc()).willReturn(Optional.of(draw));
+
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("2026.09.26 추첨")))
+                .andExpect(content().string(containsString("2,592,525,282원")))
+                .andExpect(content().string(containsString("(12명)")))
+                .andExpect(content().string(containsString("세후 예상")));
+    }
+
+    @Test
     @DisplayName("옛 게시판 주소(/?q=…, ?page=…)는 /community로 301 이동한다")
     void legacyBoardQueryMovesPermanently() throws Exception {
         mockMvc.perform(get("/").queryParam("q", "abc").queryParam("page", "2"))
