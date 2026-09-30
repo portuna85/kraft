@@ -10,7 +10,7 @@
 .recommend__latest {
     // --kraft-space-5는 정의되어 있지 않아(_tokens.scss) fallback 없이 무시되고 여백이 0px이
     // 됐다(개선 보고서 F06). 최신 회차 카드와 아래 생성 폼을 가르는 큰 단락 경계이므로,
-    // 같은 역할로 쓰이는 .recommend__field의 필드셋 간 여백과 같은 --kraft-space-6을 쓴다.
+    // 큰 단락 경계 여백인 --kraft-space-6을 쓴다.
     margin-bottom: var(--kraft-space-6);
 }
 
@@ -49,40 +49,38 @@
 }
 
 // 동행복권 공식 배색(1~10 노랑·11~20 파랑·21~30 빨강·31~40 회색·41~45 초록) 근사값 +
-// 그라데이션. 노랑·초록은 흰 글씨 대비가 약해 글자색을 따로 어둡게 둔다.
+// 광택 구슬 그라데이션(좌상단 하이라이트 → 기본색 → 가장자리 어두운 톤)과 안쪽 그림자.
+// 최신 회차와 추천 결과가 같은 클래스를 쓴다.
 //
-// F05: 이 규칙에 color 지정이 빠져 있어 위 설명과 달리 기본값(흰색, .recommend__latest-ball)
-// 그대로 쓰이고 있었다 — 흰 숫자 대 #fbc400/#e0a800 배경의 WCAG 대비가 약 1.6~2.1:1로
-// 4.5:1(본문 텍스트 AA 기준) 근처에도 못 미친다. 초록(.recommend__latest-ball--green)과
-// 같은 방식으로 어두운 글자색을 지정해 실제로 약 7:1(밝은 쪽 배경 기준)을 만든다.
+// 글자색: 노랑·파랑·초록은 밝은 배경이라 어두운 글자, 빨강·회색은 배경을 4.5:1 이상 나오게
+// 어둡게 두고 흰 글자로 고정한다(다크 모드에서 --kraft-on-primary가 어두워져 안 보이던 문제,
+// 13단계). 하이라이트는 글자 자리(중앙)보다 바깥이라 대비에 영향이 작다.
+.recommend__latest-ball {
+    box-shadow: inset 0 -3px 5px rgba(0, 0, 0, 0.22), 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
 .recommend__latest-ball--yellow {
-    background: linear-gradient(135deg, #fbc400, #e0a800);
+    background: radial-gradient(circle at 32% 26%, #ffe680 0%, #fbc400 50%, #d29a00 100%);
     color: #4a3800;
 }
 
 .recommend__latest-ball--blue {
-    background: linear-gradient(135deg, #69c8f2, #3fa9dc);
+    background: radial-gradient(circle at 32% 26%, #b5e6fa 0%, #58b9e8 50%, #2f8fc0 100%);
     color: #0b3d54;
 }
 
-// 빨강·회색도 노랑과 같은 이유로 어두운 톤으로 바꿨다 — 원래 배경(#ff7272~#e94b4b,
-// #aaaaaa~#888888)은 밝은 쪽 대비가 각각 2.66:1·2.32:1로 흰 숫자와 거의 구별되지 않았다
-// (개선 보고서 FE-A1). 초록·노랑처럼 어두운 글자색을 쓰는 대신 배경 자체를 두 톤 모두
-// 4.5:1을 넘도록 낮췄다. 글자색은 흰색으로 못박는다(13단계) — 원래 .recommend__latest-ball의
-// var(--kraft-on-primary)를 물려받았는데, 다크 모드에서는 그 값이 어두운 글자(#111827)라
-// 테마와 무관하게 고정된 이 어두운 배경 위에서 숫자가 거의 보이지 않았다.
 .recommend__latest-ball--red {
-    background: linear-gradient(135deg, #c62828, #a61b1b);
+    background: radial-gradient(circle at 32% 26%, #e85a5a 0%, #c62828 50%, #8f1414 100%);
     color: #fff;
 }
 
 .recommend__latest-ball--gray {
-    background: linear-gradient(135deg, #6b7280, #4b5563);
+    background: radial-gradient(circle at 32% 26%, #9ca3af 0%, #6b7280 50%, #3f4652 100%);
     color: #fff;
 }
 
 .recommend__latest-ball--green {
-    background: linear-gradient(135deg, #b0d840, #8fc31f);
+    background: radial-gradient(circle at 32% 26%, #d8f27e 0%, #b0d840 50%, #7aac10 100%);
     color: #2c3d05;
 }
 
@@ -121,83 +119,6 @@
     margin-bottom: var(--kraft-space-4);
 }
 
-.recommend__field {
-    margin-bottom: var(--kraft-space-6);
-    border: none;
-    padding: 0;
-}
-
-.recommend__field legend {
-    font-weight: 600;
-    margin-bottom: var(--kraft-space-2);
-    padding: 0;
-}
-
-.recommend__strategy {
-    padding: var(--kraft-space-2) 0;
-}
-
-.recommend__strategy-label {
-    font-weight: 600;
-    margin-left: var(--kraft-space-1);
-}
-
-.recommend__strategy-desc {
-    color: var(--kraft-text-muted);
-    font-size: $fs-xs;
-    margin: 0 0 0 calc(var(--kraft-space-4) + var(--kraft-space-1));
-}
-
-.recommend__count {
-    max-width: 120px;
-}
-
-.recommend__mode-toggle {
-    display: flex;
-    gap: var(--kraft-space-2);
-    margin-bottom: var(--kraft-space-3);
-}
-
-.recommend__grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: var(--kraft-space-2);
-}
-
-@include from($bp-md) {
-    .recommend__grid {
-        grid-template-columns: repeat(9, 1fr);
-    }
-}
-
-.recommend-number {
-    min-height: 40px;
-    border: 1px solid var(--kraft-control-border);
-    border-radius: var(--kraft-radius-control);
-    background-color: var(--kraft-surface);
-    color: var(--kraft-text);
-    font-size: $fs-sm;
-}
-
-.recommend-number--locked {
-    background-color: var(--kraft-primary);
-    border-color: var(--kraft-primary-dark);
-    color: var(--kraft-on-primary);
-}
-
-.recommend-number--excluded {
-    background-color: var(--kraft-surface-subtle);
-    border-color: var(--kraft-danger);
-    color: var(--kraft-danger-dark);
-    text-decoration: line-through;
-}
-
-.recommend__validation {
-    color: var(--kraft-danger-dark);
-    font-size: $fs-sm;
-    margin-top: var(--kraft-space-2);
-}
-
 .recommend__notice,
 .recommend__error {
     border-radius: var(--kraft-radius);
@@ -213,12 +134,6 @@
 .recommend__error {
     background-color: var(--kraft-danger-bg);
     color: var(--kraft-danger-dark);
-}
-
-.recommend__stale {
-    color: var(--kraft-danger-dark);
-    font-weight: 600;
-    margin-bottom: var(--kraft-space-3);
 }
 
 .recommend__history-basis {
@@ -240,32 +155,8 @@
     padding: var(--kraft-space-3) var(--kraft-space-4);
 }
 
-.recommend__item-numbers {
-    font-weight: 700;
-    font-size: 1.1rem;
-}
-
-.recommend__item-score {
-    margin-left: var(--kraft-space-3);
-    color: var(--kraft-text-muted);
-    font-size: $fs-sm;
-}
-
-.recommend__item-codes {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--kraft-space-2);
-    margin: var(--kraft-space-2) 0 0;
-    padding-left: 0;
-    list-style: none;
-    font-size: $fs-2xs;
-    color: var(--kraft-text-muted);
-}
-
-.recommend__item-codes li {
-    background-color: var(--kraft-surface-subtle);
-    border-radius: var(--kraft-radius-control);
-    padding: 2px var(--kraft-space-2);
+.recommend__item .recommend__latest-balls {
+    margin: 0;
 }
 
 .recommend__noscript {
