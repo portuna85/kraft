@@ -32,6 +32,8 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     private static final String SIGNUP_PATH = "/api/v1/users";
     private static final String PASSWORD_RESET_PATH = "/api/v1/users/password-reset";
     private static final String RESEND_PATH = "/api/v1/users/me/verify-email/resend";
+    /** 메일 링크의 이메일 인증 확인(폼 POST). 토큰이 122비트라 추측은 현실적이지 않지만 무제한 시도를 막는다(P2-3). */
+    private static final String VERIFY_CONFIRM_PATH = "/users/verify";
 
     private final boolean enabled;
     private final FixedWindowRateLimiter loginIpLimiter;
@@ -93,6 +95,10 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             return;
         } else if (RESEND_PATH.equals(path) && !resendLimiter.tryAcquire(ip)) {
             writeTooManyRequests(response);
+            return;
+        } else if (VERIFY_CONFIRM_PATH.equals(path) && !resendLimiter.tryAcquire("verify:" + ip)) {
+            // 브라우저 폼이 보낸 요청이라 JSON이 아니라 공통 오류 화면(429)으로 보낸다.
+            response.sendError(HttpStatus.TOO_MANY_REQUESTS.value());
             return;
         }
 

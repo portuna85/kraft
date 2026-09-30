@@ -59,6 +59,17 @@ class PostImageServiceTest {
     }
 
     @Test
+    @DisplayName("P2-3: store가 돌려주는 sizeBytes는 실제로 디스크에 저장된 파일 크기다(쿼터 기준)")
+    void store_returnsStoredSizeUsedForQuota() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "photo.png", "image/png", TestImages.pngBytes(64, 32));
+
+        PostImageService.StoredImage stored = postImageService.store(file);
+
+        long onDisk = java.nio.file.Files.size(uploadDir.resolve(stored.url().substring("/images/".length())));
+        assertThat(stored.sizeBytes()).isEqualTo(onDisk).isPositive();
+    }
+
+    @Test
     @DisplayName("store: 파일이 없으면 IllegalArgumentException")
     void store_whenFileIsEmpty_throwsIllegalArgumentException() {
         MockMultipartFile emptyFile = new MockMultipartFile("file", "photo.png", "image/png", new byte[0]);

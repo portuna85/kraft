@@ -7,6 +7,7 @@ import com.kraft.recommend.domain.RecommendationValidationException;
 import com.kraft.shared.exception.NotFoundException;
 import com.kraft.shared.exception.StorageException;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -237,13 +238,29 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     /**
-     * 유니크 제약 위반(예: 같은 이름으로 동시에 가입)을 409로 변환한다. 서비스의 사전 중복
-     * 검사와 INSERT 사이의 경쟁은 DB 제약만이 최종적으로 막을 수 있고, 그때 나오는 예외가
-     * catch-all에 잡혀 500이 되지 않게 한다.
+     * 제약 위반을 종류별로 나눠 응답한다(P2-3). 예전에는 전부 "이미 사용 중인 값"(409)이라
+     * 삭제된 글에 댓글을 다는 경쟁(FK)이나 우리 코드의 누락(NOT NULL)까지 그렇게 보였다.
+     * <ul>
+     * <li>UNIQUE — 서비스의 사전 중복 검사와 INSERT 사이의 경쟁은 DB 제약만이 막을 수 있다. 409.</li>
+     * <li>FOREIGN_KEY — 참조하던 대상(글·댓글 등)이 그사이 삭제·변경됐다. 409, 새로고침 안내.</li>
+     * <li>NOT_NULL·CHECK — 사용자 입력이 아니라 서버 코드의 결함이다. 500으로 나가야 5xx 경보에 잡힌다.</li>
+     * <li>그 밖(원인을 알 수 없는 경우 포함) — 이전 동작을 유지해 409.</li>
+     * </ul>
      */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ProblemDetail handleDataIntegrityViolation(DataIntegrityViolationException e) {
-        log.warn("데이터 무결성 제약을 위반했습니다.", e);
+        ConstraintViolationException.ConstraintKind kind = e.getCause() instanceof ConstraintViolationException cve
+                ? cve.getKind() : null;
+        if (kind == ConstraintViolationException.ConstraintKind.NOT_NULL
+                || kind == ConstraintViolationException.ConstraintKind.CHECK) {
+            log.error("서버 코드가 제약을 지키지 못했습니다. kind={}", kind, e);
+            return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
+        }
+        log.warn("데이터 무결성 제약을 위반했습니다. kind={}", kind, e);
+        if (kind == ConstraintViolationException.ConstraintKind.FOREIGN_KEY) {
+            return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
+                    "대상이 그사이 삭제되었거나 변경되었습니다. 새로고침 후 다시 시도해 주세요.");
+        }
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
                 "이미 사용 중인 값입니다. 다른 값으로 다시 시도해 주세요.");
     }

@@ -118,7 +118,8 @@ public class PostService {
 
         PostImageService.StoredImage stored = postImageService.store(file);
         try {
-            postImageRegistry.validateQuotaAndRegister(stored.url(), user, file.getSize());
+            // 쿼터는 업로드 원본이 아니라 실제로 디스크에 저장된(메타데이터를 뺀) 크기로 센다.
+            postImageRegistry.validateQuotaAndRegister(stored.url(), user, stored.sizeBytes());
         } catch (RuntimeException e) {
             postImageService.deleteIfExists(stored.url());
             throw e;

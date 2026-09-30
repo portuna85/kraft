@@ -65,4 +65,23 @@ class MarkdownParserTest {
         assertThat(MarkdownParser.parse("`닫히지 않은 코드")).isEqualTo(
                 List.of(Map.of("type", "p", "children", List.of("`닫히지 않은 코드"))));
     }
+
+    /**
+     * 본문은 10,000자로 제한된다(ContentPolicy). 그 한도 안에서 닫히지 않는 구분자를 잔뜩 넣어도
+     * 상세 화면 SSR이 눈에 띄게 느려지지 않는지(P2-3) 최악 입력으로 고정한다 — 파서는 구분자마다
+     * 닫는 위치를 다시 찾으므로 입력 길이의 제곱에 비례하지만, 한도 안에서는 무시할 만하다.
+     */
+    @org.junit.jupiter.api.Test
+    void worstCaseInputsWithinContentLimit_parseQuickly() {
+        int limit = com.kraft.shared.domain.ContentPolicy.POST_CONTENT_MAX_LENGTH;
+        for (String unit : List.of("[", "*", "**a ", "`", "[a](", "*a* ", "**a*b")) {
+            String source = unit.repeat(limit / unit.length());
+
+            long start = System.nanoTime();
+            MarkdownParser.parse(source);
+            long millis = (System.nanoTime() - start) / 1_000_000;
+
+            assertThat(millis).as("입력 '%s' 반복 파싱 시간(ms)", unit).isLessThan(2_000);
+        }
+    }
 }

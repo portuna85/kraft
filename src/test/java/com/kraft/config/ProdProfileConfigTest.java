@@ -37,4 +37,24 @@ class ProdProfileConfigTest {
 
         assertThat(secure).isTrue();
     }
+
+    /**
+     * {@code /readyz}의 루프백 판정({@code HealthController})은 {@code request.getRemoteAddr()}가 프록시
+     * 뒤에서 실제 클라이언트 IP를 반영한다는 데 기대고 있다 — 그러려면 forward-headers 처리가 켜져
+     * 있어야 한다. 이 설정이 조용히 사라지면 프록시(로컬 nginx)의 주소인 127.0.0.1이 항상 보여
+     * 외부에서도 /readyz가 열린다(P2-3).
+     */
+    @Test
+    @DisplayName("P2-3: server.forward-headers-strategy가 native로 설정되어 /readyz 루프백 판정이 유지된다")
+    void forwardHeadersStrategy_isNative() throws Exception {
+        String classpathYaml = "application.yml";
+        List<PropertySource<?>> sources = new YamlPropertySourceLoader()
+                .load(classpathYaml, new ClassPathResource(classpathYaml));
+
+        String strategy = new Binder(ConfigurationPropertySources.from(sources))
+                .bind("server.forward-headers-strategy", String.class)
+                .orElseThrow(() -> new AssertionError("server.forward-headers-strategy가 설정되지 않았다"));
+
+        assertThat(strategy).isEqualTo("native");
+    }
 }

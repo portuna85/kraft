@@ -68,7 +68,11 @@ public class PostImageService {
      * 채워 레이아웃 이동(CLS)을 줄이는 데 쓴다. 축소(A-FE-06)는 클라이언트가 업로드 전에
      * 하므로, 여기서 읽는 크기는 이미 그 축소가 끝난 뒤의(즉 실제로 저장되는) 크기다.
      */
-    public record StoredImage(String url, int width, int height) {
+    public record StoredImage(String url, int width, int height, long sizeBytes) {
+        /** 저장 크기를 따로 알릴 필요가 없는 호출(테스트 등)용 — 0으로 둔다. */
+        public StoredImage(String url, int width, int height) {
+            this(url, width, height, 0L);
+        }
     }
 
     public StoredImage store(MultipartFile file) {
@@ -79,6 +83,7 @@ public class PostImageService {
         String filename = UUID.randomUUID() + "." + validated.extension();
 
         Path target = Path.of(uploadDir).resolve(filename);
+        long storedSize;
         try {
             Files.createDirectories(target.getParent());
             // GPS 좌표 등 위치·기기 정보가 담긴 메타데이터를 재인코딩 없이 제거한 뒤
@@ -86,13 +91,14 @@ public class PostImageService {
             // 메모리에 올려도 된다.
             byte[] stripped = ImageMetadataStripper.strip(file.getBytes(), validated.extension());
             Files.write(target, stripped);
+            storedSize = stripped.length;
         } catch (IOException e) {
             // 사용자 입력이 아니라 서버 디스크 문제다(A-BE-12) — 400이 아니라 500으로 나가야
             // 5xx 경보에 잡힌다.
             throw new StorageException("이미지 저장에 실패했습니다.", e);
         }
 
-        return new StoredImage("/images/" + filename, validated.width(), validated.height());
+        return new StoredImage("/images/" + filename, validated.width(), validated.height(), storedSize);
     }
 
     /** {@code store()}가 돌려주는 공개 URL의 접두어. */

@@ -193,12 +193,18 @@ final class ImageMetadataStripper {
 
     // ── PNG ─────────────────────────────────────────────────────────────────
 
+    /** 텍스트·EXIF·XMP·수정 시각을 담을 수 있는 청크. */
+    private static final java.util.Set<String> PNG_METADATA_CHUNKS =
+            java.util.Set.of("eXIf", "tEXt", "iTXt", "zTXt", "tIME");
+
     private static final byte[] PNG_SIGNATURE =
             { (byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n' };
 
     /**
-     * 청크를 하나씩 훑어 {@code eXIf}·{@code tEXt} 타입만 뺀다. 남기는 청크는 CRC까지
-     * 그대로 복사하므로(내용을 바꾸지 않았다) 다시 계산할 필요가 없다.
+     * 청크를 하나씩 훑어 메타데이터 청크만 뺀다({@link #PNG_METADATA_CHUNKS}). {@code iTXt}는
+     * XMP(작성 도구·편집 이력)를, {@code zTXt}는 압축된 텍스트를 담을 수 있어 {@code tEXt}와
+     * 같이 뺀다. 남기는 청크는 CRC까지 그대로 복사하므로(내용을 바꾸지 않았다) 다시 계산할
+     * 필요가 없다. 색 재현에 필요한 {@code iCCP} 등은 남긴다.
      */
     private static byte[] stripPng(byte[] data) {
         if (data.length < PNG_SIGNATURE.length || !startsWith(data, PNG_SIGNATURE)) {
@@ -216,7 +222,7 @@ final class ImageMetadataStripper {
             if (chunkDataLength < 0 || pos + chunkTotal > data.length) {
                 return data;
             }
-            if (!type.equals("eXIf") && !type.equals("tEXt")) {
+            if (!PNG_METADATA_CHUNKS.contains(type)) {
                 out.write(data, pos, (int) chunkTotal);
             }
             pos += (int) chunkTotal;

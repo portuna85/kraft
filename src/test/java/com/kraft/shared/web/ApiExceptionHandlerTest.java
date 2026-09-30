@@ -109,4 +109,32 @@ class ApiExceptionHandlerTest {
                 .andExpect(jsonPath("$.errors[*].message",
                         org.hamcrest.Matchers.containsInAnyOrder("제목은 필수입니다.", "내용은 필수입니다.")));
     }
+
+    private static org.springframework.dao.DataIntegrityViolationException violation(
+            org.hibernate.exception.ConstraintViolationException.ConstraintKind kind) {
+        return new org.springframework.dao.DataIntegrityViolationException("x",
+                new org.hibernate.exception.ConstraintViolationException("x", new java.sql.SQLException("x"), kind, "c"));
+    }
+
+    @Test
+    @DisplayName("P2-3: 유니크 위반은 409 '이미 사용 중', FK 위반은 409 '대상이 삭제·변경됨', NOT NULL은 500")
+    void dataIntegrityViolation_isMappedByKind() {
+        ApiExceptionHandler handler = new ApiExceptionHandler();
+
+        var unique = handler.handleDataIntegrityViolation(violation(
+                org.hibernate.exception.ConstraintViolationException.ConstraintKind.UNIQUE));
+        var fk = handler.handleDataIntegrityViolation(violation(
+                org.hibernate.exception.ConstraintViolationException.ConstraintKind.FOREIGN_KEY));
+        var notNull = handler.handleDataIntegrityViolation(violation(
+                org.hibernate.exception.ConstraintViolationException.ConstraintKind.NOT_NULL));
+        var unknown = handler.handleDataIntegrityViolation(
+                new org.springframework.dao.DataIntegrityViolationException("no hibernate cause"));
+
+        org.assertj.core.api.Assertions.assertThat(unique.getStatus()).isEqualTo(409);
+        org.assertj.core.api.Assertions.assertThat(unique.getDetail()).contains("이미 사용 중");
+        org.assertj.core.api.Assertions.assertThat(fk.getStatus()).isEqualTo(409);
+        org.assertj.core.api.Assertions.assertThat(fk.getDetail()).contains("삭제되었거나 변경");
+        org.assertj.core.api.Assertions.assertThat(notNull.getStatus()).isEqualTo(500);
+        org.assertj.core.api.Assertions.assertThat(unknown.getStatus()).isEqualTo(409);
+    }
 }

@@ -120,4 +120,17 @@ class AuthRateLimitFilterTest {
                 .andExpect(status().is(429))
                 .andExpect(jsonPath("$.code").value("AUTH_RATE_LIMITED"));
     }
+
+    @Test
+    @DisplayName("P2-3: 이메일 인증 확인 POST도 같은 IP의 반복 시도를 한도에서 429로 막는다")
+    void verifyConfirm_exceedingLimit_returns429() throws Exception {
+        for (int i = 0; i < 2; i++) {
+            int status = mockMvc.perform(post("/users/verify").param("token", "not-a-real-token").with(csrf()))
+                    .andReturn().getResponse().getStatus();
+            org.assertj.core.api.Assertions.assertThat(status).isNotEqualTo(429);
+        }
+
+        mockMvc.perform(post("/users/verify").param("token", "not-a-real-token").with(csrf()))
+                .andExpect(status().isTooManyRequests());
+    }
 }
