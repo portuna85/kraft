@@ -78,7 +78,7 @@ public class EmailVerificationService {
     @Transactional
     public void sendVerificationEmail(String rawEmail) {
         String email = EmailPolicy.normalize(rawEmail);
-        User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
+        User user = userRepository.findByEmailHmac(EmailHasher.hmacHex(email))
                 .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
 
         // 탈퇴 계정은 조회 조건에서도 걸러야 하지만(UserRepository.findGuestsMissingVerificationMail

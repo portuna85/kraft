@@ -79,7 +79,7 @@ class UserServiceTest {
     @DisplayName("signUp: 이메일이 중복되지 않으면 비밀번호를 인코딩해 GUEST로 저장하고 true를 돌려준다")
     void signUp_whenValid_encodesPasswordAndSavesGuestUser() {
         given(userRepository.existsByName("new")).willReturn(false);
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("new@example.com"))).willReturn(Optional.empty());
+        given(userRepository.findByEmailHmac(EmailHasher.hmacHex("new@example.com"))).willReturn(Optional.empty());
         given(passwordEncoder.encode("rawPassword")).willReturn("encodedPassword");
 
         User saved = User.builder().name("new").email("new@example.com")
@@ -104,7 +104,7 @@ class UserServiceTest {
         User existing = User.builder().name("dupOwner").email("dup@example.com")
                 .password("encoded").role(Role.USER).build();
         given(userRepository.existsByName("dup")).willReturn(false);
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("dup@example.com"))).willReturn(Optional.of(existing));
+        given(userRepository.findByEmailHmac(EmailHasher.hmacHex("dup@example.com"))).willReturn(Optional.of(existing));
 
         boolean created = userService.signUp("dup", "dup@example.com", "pw12345678");
 
@@ -123,7 +123,7 @@ class UserServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("이미 사용중인 이름");
 
-        verify(userRepository, never()).findByEmailHash(any());
+        verify(userRepository, never()).findByEmailHmac(any());
         verify(userRepository, never()).save(any());
         verify(passwordEncoder, never()).encode(any());
     }

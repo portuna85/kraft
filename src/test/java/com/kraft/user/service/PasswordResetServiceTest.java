@@ -76,7 +76,7 @@ class PasswordResetServiceTest {
     @Test
     @DisplayName("request: 가입하지 않은 주소는 예외 없이 조용히 끝난다 — 응답으로 가입 여부를 알 수 없어야 한다")
     void request_whenEmailIsNotRegistered_doesNothingQuietly() {
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com")))
+        given(userRepository.findByEmailHmac(EmailHasher.hmacHex("nobody@example.com")))
                 .willReturn(Optional.empty());
 
         passwordResetService.request("nobody@example.com");
@@ -89,7 +89,7 @@ class PasswordResetServiceTest {
     @DisplayName("request: 가입한 주소면 옛 링크를 무효로 만들고 30분짜리 새 토큰을 메일 대기열에 넣는다")
     void request_whenEmailIsRegistered_replacesTokenAndQueuesMail() {
         User user = userWithId(7L, "user@example.com");
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("user@example.com")))
+        given(userRepository.findByEmailHmac(EmailHasher.hmacHex("user@example.com")))
                 .willReturn(Optional.of(user));
         given(outboxMailStore.lastQueuedAt(7L, OutboxMailKind.PASSWORD_RESET)).willReturn(Optional.empty());
 
@@ -115,7 +115,7 @@ class PasswordResetServiceTest {
     @DisplayName("request: 방금 보냈으면 다시 보내지 않는다 — 거절도 조용히 한다")
     void request_whenRequestedTooRecently_doesNotQueueAnotherMail() {
         User user = userWithId(7L, "user@example.com");
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("user@example.com")))
+        given(userRepository.findByEmailHmac(EmailHasher.hmacHex("user@example.com")))
                 .willReturn(Optional.of(user));
         given(outboxMailStore.lastQueuedAt(7L, OutboxMailKind.PASSWORD_RESET))
                 .willReturn(Optional.of(LocalDateTime.now().minusSeconds(5)));
@@ -133,7 +133,7 @@ class PasswordResetServiceTest {
         // 가입 직후에는 인증 메일이 막 나간 상태다. 종류를 가리지 않고 제한하면 그 사람은
         // 비밀번호를 잊어도 1분 동안 아무 반응 없는 화면만 보게 된다.
         User user = userWithId(7L, "user@example.com");
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("user@example.com")))
+        given(userRepository.findByEmailHmac(EmailHasher.hmacHex("user@example.com")))
                 .willReturn(Optional.of(user));
         given(outboxMailStore.lastQueuedAt(7L, OutboxMailKind.PASSWORD_RESET)).willReturn(Optional.empty());
 

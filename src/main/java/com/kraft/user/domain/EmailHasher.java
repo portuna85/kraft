@@ -29,7 +29,7 @@ public final class EmailHasher {
      * 이메일 HMAC 없이 도는 최소 슬라이스 테스트와 rekey 도구를 위한 것이고, 운영은
      * {@code EMAIL_HASH_PEPPER}가 필수라 이 경로로 오지 않는다.
      */
-    static void configurePepper(String value) {
+    public static void configurePepper(String value) {
         if (value == null || value.isBlank()) {
             pepper = null;
             return;

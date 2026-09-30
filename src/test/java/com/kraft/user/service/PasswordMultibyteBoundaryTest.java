@@ -88,7 +88,7 @@ class PasswordMultibyteBoundaryTest {
                 .hasMessageContaining("72바이트")
                 .hasMessageNotContaining("password cannot be more than");
 
-        assertThat(userRepository.findByEmailHash(com.kraft.user.domain.EmailHasher.sha512Hex(email))).isEmpty();
+        assertThat(userRepository.findByEmailHmac(com.kraft.user.domain.EmailHasher.hmacHex(email))).isEmpty();
     }
 
     @Test
@@ -98,7 +98,7 @@ class PasswordMultibyteBoundaryTest {
         assertThat(initial.getBytes(StandardCharsets.UTF_8).length).isLessThanOrEqualTo(72);
 
         userService.signUp("multibyte-tester2", email, initial);
-        var user = userRepository.findByEmailHash(com.kraft.user.domain.EmailHasher.sha512Hex(email)).orElseThrow();
+        var user = userRepository.findByEmailHmac(com.kraft.user.domain.EmailHasher.hmacHex(email)).orElseThrow();
         userService.promoteToUser(user.getId());
 
         assertThat(passwordEncoder.matches(initial, user.getPassword())).isTrue();

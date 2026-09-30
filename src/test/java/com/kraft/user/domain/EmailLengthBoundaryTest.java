@@ -86,7 +86,7 @@ class EmailLengthBoundaryTest {
         // 회원 id라(BE-04) 그 제한과 무관해졌지만, 로그인·세션 저장 자체가 여전히 끝까지
         // 동작하는지는 계속 확인한다.
         Cookie session = login(email);
-        Long userId = userRepository.findByEmailHash(EmailHasher.sha512Hex(email)).orElseThrow().getId();
+        Long userId = userRepository.findByEmailHmac(EmailHasher.hmacHex(email)).orElseThrow().getId();
         assertThat(sessionRepository.findByPrincipalName(String.valueOf(userId))).hasSize(1);
 
         mockMvc.perform(post("/api/v1/posts")

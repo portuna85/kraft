@@ -78,7 +78,7 @@ class BackupRestoreRehearsalTest {
         // 스키마까지 온전히 돌아왔다면 validate로 기동된다. 덤프에 빠진 테이블이 있으면 여기서 깨진다.
         withApp(uploads, context -> {
             UserRepository users = context.getBean(UserRepository.class);
-            User restored = users.findByEmailHash(EmailHasher.sha512Hex(seeded.email())).orElseThrow();
+            User restored = users.findByEmailHmac(EmailHasher.hmacHex(seeded.email())).orElseThrow();
 
             assertThat(restored.getEmail())
                     .as("같은 키로 기동했으므로 저장된 이메일이 그대로 읽혀야 한다")
@@ -111,8 +111,8 @@ class BackupRestoreRehearsalTest {
         restoreDatabase(dump);
 
         // 행은 SQL로 보면 멀쩡히 살아 있다. 덤프는 제 몫을 다한 것이다.
-        Long rows = jdbc().queryForObject("SELECT COUNT(*) FROM users WHERE email_hash = ?",
-                Long.class, EmailHasher.sha512Hex(seeded.email()));
+        Long rows = jdbc().queryForObject("SELECT COUNT(*) FROM users WHERE email_hmac = ?",
+                Long.class, EmailHasher.hmacHex(seeded.email()));
         assertThat(rows).as("DB 복구 자체는 성공했다").isEqualTo(1L);
 
         withApp(uploads, context -> {
@@ -120,7 +120,7 @@ class BackupRestoreRehearsalTest {
 
             // 그런데 앱은 이 회원을 읽어 올 수조차 없다. 복호화는 엔티티를 만드는 시점에
             // 일어나므로, 조회가 통째로 실패한다.
-            assertThatThrownBy(() -> users.findByEmailHash(EmailHasher.sha512Hex(seeded.email())))
+            assertThatThrownBy(() -> users.findByEmailHmac(EmailHasher.hmacHex(seeded.email())))
                     .as("키가 없으면 행이 남아 있어도 쓸 수 없다 — 그래서 키도 함께 백업한다")
                     .hasRootCauseInstanceOf(javax.crypto.AEADBadTagException.class);
         }, "completely-different-key-2222");
@@ -245,7 +245,7 @@ class BackupRestoreRehearsalTest {
      */
     private void withApp(Path uploads, java.util.function.Consumer<ConfigurableApplicationContext> work,
                          String encryptionKey, String... extraArgs) {
-        String[] args = new String[extraArgs.length + 8];
+        String[] args = new String[extraArgs.length + 9];
         // build.gradle.kts가 모든 Test 태스크에 걸어 두는 test 프로파일(H2)을 덮어써야 한다.
         args[0] = "--spring.profiles.active=backup-drill";
         args[1] = "--spring.datasource.url=" + mariadb.getJdbcUrl();
@@ -255,7 +255,8 @@ class BackupRestoreRehearsalTest {
         args[5] = "--app.security.email-encryption-key=" + encryptionKey;
         args[6] = "--app.upload.dir=" + uploads;
         args[7] = "--spring.flyway.enabled=false";
-        System.arraycopy(extraArgs, 0, args, 8, extraArgs.length);
+        args[8] = "--app.security.email-hash-pepper=rehearsal-hash-pepper-0123456789";
+        System.arraycopy(extraArgs, 0, args, 9, extraArgs.length);
 
         try (ConfigurableApplicationContext context =
                      new SpringApplicationBuilder(KraftApplication.class).run(args)) {

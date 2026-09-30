@@ -17,7 +17,7 @@ import java.util.Map;
  *
  * <h3>왜 필요한가</h3>
  * 키가 유출되면 바꿔야 한다. 그런데 {@code users.email}은 키로 암호화되어 있고 조회에 쓰는
- * {@code email_hash}는 <b>키를 쓰지 않는다</b>. 그래서 키만 갈아 끼우면 <b>로그인은 계속 되는데
+ * {@code email_hmac}은 이메일 암호화 키가 아니라 별도 pepper로 만든다. 그래서 키만 갈아 끼우면 <b>로그인은 계속 되는데
  * 저장된 이메일만 전부 읽을 수 없는</b> 상태가 되고, 그 사실은 한참 뒤에야 드러난다.
  *
  * <h3>왜 엔티티가 아니라 {@link JdbcTemplate}인가</h3>
@@ -28,10 +28,10 @@ import java.util.Map;
  * <ol>
  * <li>새 키로 복호화해 본다 — 되면 이미 변환된 행이므로 건너뛴다(<b>재실행 안전</b>)</li>
  * <li>옛 키로 복호화한다 — 실패하면 그 id를 알리고 <b>멈춘다</b></li>
- * <li>평문의 SHA-512가 그 행의 {@code email_hash}와 같은지 확인한다</li>
+ * <li>평문의 HMAC이 그 행의 {@code email_hmac}와 같은지 확인한다</li>
  * <li>새 키로 암호화해 UPDATE 한다</li>
  * </ol>
- * 3번이 이 도구의 핵심이다. {@code email_hash}는 키와 무관해 교체 전후로 변하지 않는 불변값이라,
+ * 3번이 이 도구의 핵심이다. {@code email_hmac}은 키와 무관해 교체 전후로 변하지 않는 불변값이라,
  * 이것과 대조하면 "평문이 온전히 살아남았는가"를 <b>주소를 한 번도 꺼내 보지 않고</b> 증명할 수 있다.
  * <p>
  * 행마다 즉시 커밋한다(오토커밋). 전체를 한 트랜잭션으로 묶는 것보다 중단에 강하다 — 중간에
@@ -73,7 +73,7 @@ public class EmailRekeyService {
                 long id = ((Number) row.get("id")).longValue();
                 lastId = id;
 
-                if (rekeyRow(id, (String) row.get("email"), (String) row.get("email_hash"), from, to)) {
+                if (rekeyRow(id, (String) row.get("email"), (String) row.get("email_hmac"), from, to)) {
                     converted++;
                 } else {
                     alreadyDone++;
@@ -94,8 +94,8 @@ public class EmailRekeyService {
 
     /**
      * {@code session_revocation_tasks.email_snapshot}도 {@code users.email}과 같은 방식(AES)으로
-     * 암호화되어 있지만, 대조할 {@code email_hash}가 없다(탈퇴 후 재가입 시 스냅샷이 현재 계정의
-     * 이메일과 달라질 수 있어 users의 email_hash와 비교할 수 없다). 그래서 여기서는 "새 키로
+     * 암호화되어 있지만, 대조할 {@code email_hmac}가 없다(탈퇴 후 재가입 시 스냅샷이 현재 계정의
+     * 이메일과 달라질 수 있어 users의 email_hmac와 비교할 수 없다). 그래서 여기서는 "새 키로
      * 복호화 성공"만을 판정 근거로 삼는다 — AES-GCM은 인증 태그가 있어 틀린 키로는 복호화 자체가
      * 실패하므로, 성공했다는 사실 자체가 무결성 증거다.
      */
@@ -161,19 +161,19 @@ public class EmailRekeyService {
 
     private List<Map<String, Object>> nextBatch(long lastId) {
         return jdbcTemplate.queryForList(
-                "SELECT id, email, email_hash FROM users WHERE id > ? ORDER BY id LIMIT " + BATCH_SIZE,
+                "SELECT id, email, email_hmac FROM users WHERE id > ? ORDER BY id LIMIT " + BATCH_SIZE,
                 lastId);
     }
 
     /** @return 이 행을 실제로 변환했으면 true, 이미 새 키로 되어 있어 건너뛰었으면 false */
-    private boolean rekeyRow(long id, String cipher, String emailHash, TextEncryptor from, TextEncryptor to) {
+    private boolean rekeyRow(long id, String cipher, String emailHmac, TextEncryptor from, TextEncryptor to) {
         String alreadyNew = decryptOrNull(to, cipher);
         if (alreadyNew != null) {
-            // 이미 새 키로 읽히는 행도 email_hash와 대조한다 — 그렇지 않으면 우연히 새 키로도
+            // 이미 새 키로 읽히는 행도 email_hmac와 대조한다 — 그렇지 않으면 우연히 새 키로도
             // "복호화만" 성공하고 내용은 다른 행(예: 수동 복구 과정의 실수)을 조용히 건너뛰게 된다.
-            if (!EmailHasher.sha512Hex(alreadyNew).equals(emailHash)) {
+            if (!EmailHasher.hmacHex(alreadyNew).equals(emailHmac)) {
                 throw new IllegalStateException(
-                        "이미 새 키로 읽히지만 email_hash와 일치하지 않는 행이 있습니다. userId=" + id);
+                        "이미 새 키로 읽히지만 email_hmac와 일치하지 않는 행이 있습니다. userId=" + id);
             }
             return false;
         }
@@ -184,9 +184,9 @@ public class EmailRekeyService {
             throw new IllegalStateException(
                     "어느 키로도 복호화되지 않는 행이 있습니다. 옛 키가 맞는지 확인하세요. userId=" + id);
         }
-        if (!EmailHasher.sha512Hex(plain).equals(emailHash)) {
+        if (!EmailHasher.hmacHex(plain).equals(emailHmac)) {
             throw new IllegalStateException(
-                    "복호화한 값이 저장된 email_hash와 일치하지 않습니다. userId=" + id);
+                    "복호화한 값이 저장된 email_hmac와 일치하지 않습니다. userId=" + id);
         }
 
         jdbcTemplate.update("UPDATE users SET email = ? WHERE id = ?", to.encrypt(plain), id);
@@ -217,12 +217,12 @@ public class EmailRekeyService {
                 lastId = id;
 
                 String plain = decryptOrNull(to, (String) row.get("email"));
-                boolean ok = plain != null && EmailHasher.sha512Hex(plain).equals(row.get("email_hash"));
+                boolean ok = plain != null && EmailHasher.hmacHex(plain).equals(row.get("email_hmac"));
                 if (ok) {
                     verified++;
                 } else {
                     mismatched++;
-                    log.warn("이메일 키 교체 검증 실패 — 새 키로 email_hash와 일치하지 않습니다. userId={}", id);
+                    log.warn("이메일 키 교체 검증 실패 — 새 키로 email_hmac와 일치하지 않습니다. userId={}", id);
                 }
             }
         }
@@ -237,7 +237,7 @@ public class EmailRekeyService {
     }
 
     /**
-     * 대조할 {@code email_hash}가 없으므로(위 {@link #rekeySessionRevocationTasks} 참고),
+     * 대조할 {@code email_hmac}가 없으므로(위 {@link #rekeySessionRevocationTasks} 참고),
      * 새 키로 복호화가 성공하는지만 확인한다.
      */
     private SessionTaskVerifyResult verifySessionRevocationTasks(TextEncryptor to) {
@@ -294,7 +294,7 @@ public class EmailRekeyService {
     }
 
     /**
-     * @param verified                새 키로 복호화한 값이 email_hash와 일치한 users 행
+     * @param verified                새 키로 복호화한 값이 email_hmac와 일치한 users 행
      * @param mismatched               새 키로 복호화되지 않거나 해시가 어긋난 users 행
      * @param sessionTasksVerified     새 키로 복호화에 성공한 session_revocation_tasks 행
      * @param sessionTasksMismatched   새 키로 복호화되지 않은 session_revocation_tasks 행

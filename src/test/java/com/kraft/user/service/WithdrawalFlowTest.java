@@ -98,7 +98,7 @@ class WithdrawalFlowTest {
                 email, "BrandNew1!");
 
         assertThat(created).isTrue();
-        User rejoined = userRepository.findByEmailHash(EmailHasher.sha512Hex(email)).orElseThrow();
+        User rejoined = userRepository.findByEmailHmac(EmailHasher.hmacHex(email)).orElseThrow();
         assertThat(rejoined.getId()).isNotEqualTo(user.getId());
         assertThat(rejoined.isWithdrawn()).isFalse();
         // 옛 계정은 그대로 탈퇴 상태다. 두 행이 같은 주소를 가리키지 않는다.

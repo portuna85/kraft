@@ -86,7 +86,7 @@ class EmailVerificationServiceTest {
     @Test
     @DisplayName("sendVerificationEmail: 존재하지 않는 회원이면 NotFoundException")
     void sendVerificationEmail_whenUserNotFound_throwsIllegalArgumentException() {
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
+        given(userRepository.findByEmailHmac(EmailHasher.hmacHex("nobody@example.com"))).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> emailVerificationService.sendVerificationEmail("nobody@example.com"))
                 .isInstanceOf(NotFoundException.class)
@@ -100,7 +100,7 @@ class EmailVerificationServiceTest {
     @DisplayName("sendVerificationEmail: 회원이 존재하면 토큰을 저장하고 같은 토큰으로 메일을 대기열에 넣는다")
     void sendVerificationEmail_whenUserExists_savesTokenAndSendsEmail() {
         User user = userWithId(1L, "tester@example.com");
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("tester@example.com"))).willReturn(Optional.of(user));
+        given(userRepository.findByEmailHmac(EmailHasher.hmacHex("tester@example.com"))).willReturn(Optional.of(user));
 
         emailVerificationService.sendVerificationEmail("tester@example.com");
 
@@ -119,7 +119,7 @@ class EmailVerificationServiceTest {
     }
 
     /**
-     * B16: withdraw()는 role을 바꾸지 않으므로, 탈퇴한 계정도 findByEmailHash로는 여전히
+     * B16: withdraw()는 role을 바꾸지 않으므로, 탈퇴한 계정도 findByEmailHmac로는 여전히
      * 조회된다. 이 메서드 자체가 탈퇴 여부를 거부해야, 조회 조건(UserRepository.
      * findGuestsMissingVerificationMail)의 필터링에만 기대지 않는다.
      */
@@ -128,7 +128,7 @@ class EmailVerificationServiceTest {
     void sendVerificationEmail_whenUserWithdrawn_throwsIllegalArgumentException() {
         User user = userWithId(1L, "withdrawn@example.com");
         user.withdraw("withdrawn-1@kraft.invalid", "탈퇴한 사용자", "encoded");
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("withdrawn@example.com"))).willReturn(Optional.of(user));
+        given(userRepository.findByEmailHmac(EmailHasher.hmacHex("withdrawn@example.com"))).willReturn(Optional.of(user));
 
         assertThatThrownBy(() -> emailVerificationService.sendVerificationEmail("withdrawn@example.com"))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -141,7 +141,7 @@ class EmailVerificationServiceTest {
     @Test
     @DisplayName("sendVerificationEmailSafely: 내부에서 예외가 발생해도 전파되지 않는다")
     void sendVerificationEmailSafely_absorbsInternalException() {
-        given(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).willReturn(Optional.empty());
+        given(userRepository.findByEmailHmac(EmailHasher.hmacHex("nobody@example.com"))).willReturn(Optional.empty());
 
         emailVerificationService.sendVerificationEmailSafely("nobody@example.com");
 
@@ -156,7 +156,7 @@ class EmailVerificationServiceTest {
     @Test
     @DisplayName("sendVerificationEmailSafely: 실패를 로그로 남기되 주소는 가린다")
     void sendVerificationEmailSafely_masksTheAddressInTheLog() {
-        given(userRepository.findByEmailHash(anyString())).willReturn(Optional.empty());
+        given(userRepository.findByEmailHmac(anyString())).willReturn(Optional.empty());
 
         ListAppender<ILoggingEvent> logs = new ListAppender<>();
         logs.start();

@@ -110,7 +110,7 @@ class SessionRevocationAccountIsolationTest {
                 .build());
         Cookie oldSession = login(email);
 
-        User oldAccount = userRepository.findByEmailHash(com.kraft.user.domain.EmailHasher.sha512Hex(email)).orElseThrow();
+        User oldAccount = userRepository.findByEmailHmac(com.kraft.user.domain.EmailHasher.hmacHex(email)).orElseThrow();
         oldAccount.withdraw("withdrawn-" + oldAccount.getId() + "@kraft.invalid", "탈퇴한 사용자" + oldAccount.getId(), "encoded");
         userRepository.save(oldAccount);
 

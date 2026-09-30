@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Entity
 @Table(name = "users", uniqueConstraints = {
-        @UniqueConstraint(name = "UK_USER_EMAIL_HASH", columnNames = "email_hash"),
+        @UniqueConstraint(name = "UK_USER_EMAIL_HMAC", columnNames = "email_hmac"),
         @UniqueConstraint(name = "UK_USER_NAME", columnNames = "name")
 }, indexes = {
         // V11__user_suspension.sql. 엔티티에 선언이 없어 ddl-auto: update로 만든 기존 DB에는
@@ -46,17 +46,14 @@ public class User extends BaseEntity {
     @Column(nullable = false, length = 50)
     private String name;
 
-    // AES로 암호화해 저장한다(EmailAttributeConverter). 조회는 이 컬럼이 아니라 emailHash로 한다.
+    // AES로 암호화해 저장한다(EmailAttributeConverter). 조회는 이 컬럼이 아니라 emailHmac으로 한다.
     @Column(nullable = false, length = 500)
     @Convert(converter = EmailAttributeConverter.class)
     private String email;
 
-    // email의 SHA-512 해시. 조회·중복확인·유니크 제약은 전부 이 컬럼을 통해 이뤄진다(EmailHasher).
-    @Column(name = "email_hash", nullable = false, length = 128)
-    private String emailHash;
-
-    // email의 HMAC-SHA256(pepper). email_hash를 대체할 조회 키(P0-3). 이중 기록 단계라 백필 전 행은 null이다.
-    @Column(name = "email_hmac", length = 64)
+    // email의 HMAC-SHA256(pepper). 조회·중복확인·유니크 제약은 전부 이 컬럼을 통해 이뤄진다(EmailHasher).
+    // 키 없는 해시와 달리 DB만 유출돼서는 후보 주소 목록으로 가입 여부를 확인할 수 없다(P0-3).
+    @Column(name = "email_hmac", nullable = false, length = 64)
     private String emailHmac;
 
     @Column(nullable = false, length = 100)
@@ -128,7 +125,7 @@ public class User extends BaseEntity {
 
     /**
      * 탈퇴 처리. 남는 것은 "이 글을 누군가 썼다"는 연결뿐이고, 그 사람을 가리키는 값은 모두
-     * 사라진다. 이메일이 바뀌면 {@link #hashEmail}이 email_hash도 다시 계산하므로 원래 주소로
+     * 사라진다. 이메일이 바뀌면 {@link #hashEmail}이 email_hmac도 다시 계산하므로 원래 주소로
      * 다시 가입할 수 있다.
      *
      * @param placeholderEmail 탈퇴 계정을 가리키는 쓰지 않는 주소
@@ -187,9 +184,6 @@ public class User extends BaseEntity {
     @PrePersist
     @PreUpdate
     private void hashEmail() {
-        this.emailHash = EmailHasher.sha512Hex(this.email);
-        if (EmailHasher.hmacConfigured()) {
-            this.emailHmac = EmailHasher.hmacHex(this.email);
-        }
+        this.emailHmac = EmailHasher.hmacHex(this.email);
     }
 }

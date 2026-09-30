@@ -48,7 +48,7 @@ public class LoginLockoutService {
         if (email == null) {
             return;
         }
-        userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
+        userRepository.findByEmailHmac(EmailHasher.hmacHex(email))
                 .filter(user -> !user.isWithdrawn())
                 .ifPresent(this::recordFailure);
     }

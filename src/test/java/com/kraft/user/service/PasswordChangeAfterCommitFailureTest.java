@@ -99,7 +99,7 @@ class PasswordChangeAfterCommitFailureTest {
                 .andExpect(status().isNoContent());
 
         // 세션 폐기는 실패했지만 비밀번호 변경 자체는 이미 커밋되어 있다.
-        User reloaded = userRepository.findByEmailHash(EmailHasher.sha512Hex(EMAIL)).orElseThrow();
+        User reloaded = userRepository.findByEmailHmac(EmailHasher.hmacHex(EMAIL)).orElseThrow();
         assertThat(passwordEncoder.matches("NewPassword123!", reloaded.getPassword())).isTrue();
     }
 

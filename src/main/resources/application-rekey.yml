@@ -40,6 +40,8 @@ server:
 app:
   security:
     email-encryption-key: ${EMAIL_ENCRYPTION_KEY}
+    # 저장된 이메일의 HMAC(email_hmac)과 대조하는 데 쓴다. 암호화 키와 다른 pepper다.
+    email-hash-pepper: ${EMAIL_HASH_PEPPER}
     # 지금 DB에 저장된 암호문을 만든 키. 이 프로파일에서만 쓴다.
     old-email-encryption-key: ${EMAIL_ENCRYPTION_KEY_OLD:}
 

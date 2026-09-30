@@ -83,7 +83,7 @@ public class UserService {
         // 응답이 빠르면 "이미 가입된 주소"라는 사실이 시간으로 드러났다.
         String encodedPassword = passwordEncoder.encode(rawPassword);
 
-        Optional<User> existing = userRepository.findByEmailHash(EmailHasher.sha512Hex(email));
+        Optional<User> existing = userRepository.findByEmailHmac(EmailHasher.hmacHex(email));
         if (existing.isPresent()) {
             // 쿨다운·시간당 예산 안에서만 큐에 넣는다(P0-4) — 남의 주소로 가입을 반복해 그 메일함을
             // 채우지 못하게. 큐잉 여부와 무관하게 응답은 같다.
@@ -207,7 +207,7 @@ public class UserService {
     private String replacementEmail(Long userId) {
         String local = "withdrawn-" + userId;
         return firstUnused(local + WITHDRAWN_EMAIL_DOMAIN,
-                candidate -> userRepository.existsByEmailHash(EmailHasher.sha512Hex(candidate)),
+                candidate -> userRepository.existsByEmailHmac(EmailHasher.hmacHex(candidate)),
                 suffix -> local + "-" + suffix + WITHDRAWN_EMAIL_DOMAIN);
     }
 

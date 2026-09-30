@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * <p>
  * 지금까지 키를 바꿀 방법이 아예 없었다. {@code application-prod.yml}은 "운영 중 절대
  * 변경하지 않는다"고 적혀 있었지만, <b>키가 유출되면 바꿔야 한다</b>. 손으로 바꾸면
- * {@code email_hash}는 키를 쓰지 않으므로 로그인은 계속 되고 저장된 이메일만 전부 깨진다.
+ * {@code email_hmac}은 키를 쓰지 않으므로 로그인은 계속 되고 저장된 이메일만 전부 깨진다.
  * <p>
  * 옛 키로 만든 암호문을 {@link JdbcTemplate}으로 직접 심는다. 컨텍스트의 컨버터가 어떤 키로
  * 만들어졌는지와 무관하게 검증되므로, 프로파일을 흔들 필요가 없다.
@@ -53,12 +53,12 @@ class EmailRekeyServiceTest {
     /** 옛 키로 암호화된 행을 만든다. 엔티티로 저장하면 컨텍스트의 키가 쓰이므로 직접 넣는다. */
     private long givenUserEncryptedWithOldKey(String email) {
         String name = "rekey-" + UUID.randomUUID().toString().substring(0, 8);
-        jdbcTemplate.update("INSERT INTO users (name, email, email_hash, password, role, version, "
+        jdbcTemplate.update("INSERT INTO users (name, email, email_hmac, password, role, version, "
                         + "failed_login_attempts, created_at, updated_at) "
                         + "VALUES (?, ?, ?, ?, ?, 0, 0, NOW(), NOW())",
                 name,
                 EmailEncryption.encryptor(OLD_KEY).encrypt(email),
-                EmailHasher.sha512Hex(email),
+                EmailHasher.hmacHex(email),
                 "encoded",
                 Role.USER.name());
         return jdbcTemplate.queryForObject("SELECT id FROM users WHERE name = ?", Long.class, name);
@@ -69,7 +69,7 @@ class EmailRekeyServiceTest {
     }
 
     private String storedHash(long id) {
-        return jdbcTemplate.queryForObject("SELECT email_hash FROM users WHERE id = ?", String.class, id);
+        return jdbcTemplate.queryForObject("SELECT email_hmac FROM users WHERE id = ?", String.class, id);
     }
 
     /** 옛 키로 암호화된 세션 폐기 태스크를 만든다. FK 때문에 users 행이 먼저 있어야 한다. */
@@ -105,11 +105,11 @@ class EmailRekeyServiceTest {
     }
 
     /**
-     * 이것이 "로그인은 계속 된다"의 근거다. {@code email_hash}는 키를 쓰지 않으므로 교체가
+     * 이것이 "로그인은 계속 된다"의 근거다. {@code email_hmac}은 키를 쓰지 않으므로 교체가
      * 건드릴 이유가 없고, 실제로 건드리지 않아야 한다.
      */
     @Test
-    @DisplayName("조회에 쓰는 email_hash는 한 글자도 바뀌지 않는다")
+    @DisplayName("조회에 쓰는 email_hmac는 한 글자도 바뀌지 않는다")
     void searchHashIsUntouched() {
         long id = givenUserEncryptedWithOldKey("hash-stays@example.com");
         String before = storedHash(id);
@@ -178,13 +178,13 @@ class EmailRekeyServiceTest {
     @DisplayName("복호화한 값이 저장된 해시와 어긋나면 쓰지 않고 멈춘다")
     void stopsWhenThePlaintextDoesNotMatchTheStoredHash() {
         long id = givenUserEncryptedWithOldKey("hash-mismatch@example.com");
-        jdbcTemplate.update("UPDATE users SET email_hash = ? WHERE id = ?",
-                EmailHasher.sha512Hex("someone-else@example.com"), id);
+        jdbcTemplate.update("UPDATE users SET email_hmac = ? WHERE id = ?",
+                EmailHasher.hmacHex("someone-else@example.com"), id);
         String before = storedCipher(id);
 
         assertThatThrownBy(() -> emailRekeyService.rekeyAll(OLD_KEY, NEW_KEY))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("email_hash");
+                .hasMessageContaining("email_hmac");
 
         assertThat(storedCipher(id)).as("멈췄으면 그 행은 그대로여야 한다").isEqualTo(before);
     }
@@ -220,12 +220,12 @@ class EmailRekeyServiceTest {
     }
 
     /**
-     * B13: 이미 새 키로 읽히는 행이라도 건너뛰기 전에 email_hash와 대조해야 한다 — 그렇지
+     * B13: 이미 새 키로 읽히는 행이라도 건너뛰기 전에 email_hmac와 대조해야 한다 — 그렇지
      * 않으면 새 키로 우연히 복호화는 되지만 내용이 다른 행(수동 복구 실수 등)을 "이미 완료"로
      * 잘못 간주하고 조용히 지나친다.
      */
     @Test
-    @DisplayName("B13: 이미 새 키로 읽히지만 email_hash와 어긋나는 행을 만나면 멈춘다")
+    @DisplayName("B13: 이미 새 키로 읽히지만 email_hmac와 어긋나는 행을 만나면 멈춘다")
     void stopsWhenAnAlreadyNewKeyRowDoesNotMatchTheStoredHash() {
         long id = givenUserEncryptedWithOldKey("already-new-but-wrong@example.com");
         jdbcTemplate.update("UPDATE users SET email = ? WHERE id = ?",

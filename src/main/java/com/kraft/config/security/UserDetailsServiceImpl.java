@@ -24,7 +24,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String rawEmail) throws UsernameNotFoundException {
         String email = EmailPolicy.normalize(rawEmail);
-        User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email))
+        User user = userRepository.findByEmailHmac(EmailHasher.hmacHex(email))
                 .orElseThrow(() -> new UsernameNotFoundException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
 
         // 탈퇴한 계정은 없는 계정처럼 다룬다. 탈퇴 시 비밀번호를 아무도 맞힐 수 없는 값으로

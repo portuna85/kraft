@@ -239,14 +239,15 @@ class MariaDbUpgradeRehearsalTest {
      * 켜져 컨테이너가 아니라 인메모리 DB를 검증하게 된다.
      */
     private static ConfigurableApplicationContext boot(String url, String... extraArgs) {
-        String[] args = new String[extraArgs.length + 6];
+        String[] args = new String[extraArgs.length + 7];
         args[0] = "--spring.profiles.active=upgrade-rehearsal";
         args[1] = "--spring.datasource.url=" + url;
         args[2] = "--spring.datasource.username=" + mariadb.getUsername();
         args[3] = "--spring.datasource.password=" + mariadb.getPassword();
         args[4] = "--server.port=0";
         args[5] = "--app.security.email-encryption-key=rehearsal-key";
-        System.arraycopy(extraArgs, 0, args, 6, extraArgs.length);
+        args[6] = "--app.security.email-hash-pepper=rehearsal-hash-pepper-0123456789";
+        System.arraycopy(extraArgs, 0, args, 7, extraArgs.length);
 
         return new SpringApplicationBuilder(KraftApplication.class).run(args);
     }

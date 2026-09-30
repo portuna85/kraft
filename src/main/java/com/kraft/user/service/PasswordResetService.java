@@ -62,7 +62,7 @@ public class PasswordResetService {
     @Transactional
     public void request(String email) {
         email = EmailPolicy.normalize(email);
-        User user = userRepository.findByEmailHash(EmailHasher.sha512Hex(email)).orElse(null);
+        User user = userRepository.findByEmailHmac(EmailHasher.hmacHex(email)).orElse(null);
         if (user == null) {
             // 가입되지 않은 주소. 로그에도 존재 여부만 남기고 주소는 가린다.
             log.info("가입되지 않은 주소로 비밀번호 재설정을 요청했습니다. email={}", EmailMasker.mask(email));

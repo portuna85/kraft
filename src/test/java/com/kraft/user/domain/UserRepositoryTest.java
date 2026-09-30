@@ -38,11 +38,11 @@ class UserRepositoryTest {
     }
 
     @Test
-    @DisplayName("findByEmailHash: 저장된 이메일의 해시면 회원을 조회한다")
-    void findByEmailHash_whenEmailHashExists_returnsUser() {
+    @DisplayName("findByEmailHmac: 저장된 이메일의 해시면 회원을 조회한다")
+    void findByEmailHmac_whenEmailHashExists_returnsUser() {
         userRepository.save(user("found@example.com"));
 
-        Optional<User> result = userRepository.findByEmailHash(EmailHasher.sha512Hex("found@example.com"));
+        Optional<User> result = userRepository.findByEmailHmac(EmailHasher.hmacHex("found@example.com"));
 
         assertThat(result).isPresent();
         assertThat(result.get().getName()).isEqualTo("tester");
@@ -50,18 +50,18 @@ class UserRepositoryTest {
     }
 
     @Test
-    @DisplayName("findByEmailHash: 존재하지 않는 이메일의 해시면 빈 Optional")
-    void findByEmailHash_whenEmailHashDoesNotExist_returnsEmptyOptional() {
-        assertThat(userRepository.findByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).isEmpty();
+    @DisplayName("findByEmailHmac: 존재하지 않는 이메일의 해시면 빈 Optional")
+    void findByEmailHmac_whenEmailHashDoesNotExist_returnsEmptyOptional() {
+        assertThat(userRepository.findByEmailHmac(EmailHasher.hmacHex("nobody@example.com"))).isEmpty();
     }
 
     @Test
-    @DisplayName("existsByEmailHash: 저장 여부에 따라 true/false")
-    void existsByEmailHash_returnsCorrectBooleanBasedOnExistence() {
+    @DisplayName("existsByEmailHmac: 저장 여부에 따라 true/false")
+    void existsByEmailHmac_returnsCorrectBooleanBasedOnExistence() {
         userRepository.save(user("exists@example.com"));
 
-        assertThat(userRepository.existsByEmailHash(EmailHasher.sha512Hex("exists@example.com"))).isTrue();
-        assertThat(userRepository.existsByEmailHash(EmailHasher.sha512Hex("nobody@example.com"))).isFalse();
+        assertThat(userRepository.existsByEmailHmac(EmailHasher.hmacHex("exists@example.com"))).isTrue();
+        assertThat(userRepository.existsByEmailHmac(EmailHasher.hmacHex("nobody@example.com"))).isFalse();
     }
 
     @Test
