@@ -20,80 +20,10 @@
     margin-bottom: var(--kraft-space-2);
 }
 
-.recommend__latest-balls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--kraft-space-2);
-    padding-left: 0;
-    list-style: none;
-}
-
-.recommend__latest-ball {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 36px;
-    height: 36px;
-    padding: 0 var(--kraft-space-2);
-    border-radius: 999px;
-    background-color: var(--kraft-primary);
-    color: var(--kraft-on-primary);
-    font-weight: 700;
-    font-size: $fs-sm;
-}
-
 .recommend__latest-date {
     font-size: $fs-xs;
     color: var(--kraft-text-muted);
     margin: calc(-1 * var(--kraft-space-1)) 0 var(--kraft-space-2);
-}
-
-// 동행복권 공식 배색(1~10 노랑·11~20 파랑·21~30 빨강·31~40 회색·41~45 초록) 근사값 +
-// 광택 구슬 그라데이션(좌상단 하이라이트 → 기본색 → 가장자리 어두운 톤)과 안쪽 그림자.
-// 최신 회차와 추천 결과가 같은 클래스를 쓴다.
-//
-// 글자색: 노랑·파랑·초록은 밝은 배경이라 어두운 글자, 빨강·회색은 배경을 4.5:1 이상 나오게
-// 어둡게 두고 흰 글자로 고정한다(다크 모드에서 --kraft-on-primary가 어두워져 안 보이던 문제,
-// 13단계). 하이라이트는 글자 자리(중앙)보다 바깥이라 대비에 영향이 작다.
-.recommend__latest-ball {
-    box-shadow: inset 0 -3px 5px rgba(0, 0, 0, 0.22), 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.recommend__latest-ball--yellow {
-    background: radial-gradient(circle at 32% 26%, #ffe680 0%, #fbc400 50%, #d29a00 100%);
-    color: #4a3800;
-}
-
-.recommend__latest-ball--blue {
-    background: radial-gradient(circle at 32% 26%, #b5e6fa 0%, #58b9e8 50%, #2f8fc0 100%);
-    color: #0b3d54;
-}
-
-.recommend__latest-ball--red {
-    background: radial-gradient(circle at 32% 26%, #e85a5a 0%, #c62828 50%, #8f1414 100%);
-    color: #fff;
-}
-
-.recommend__latest-ball--gray {
-    background: radial-gradient(circle at 32% 26%, #9ca3af 0%, #6b7280 50%, #3f4652 100%);
-    color: #fff;
-}
-
-.recommend__latest-ball--green {
-    background: radial-gradient(circle at 32% 26%, #d8f27e 0%, #b0d840 50%, #7aac10 100%);
-    color: #2c3d05;
-}
-
-.recommend__latest-ball-plus {
-    display: flex;
-    align-items: center;
-    font-weight: 700;
-    color: var(--kraft-text-muted);
-    padding: 0 var(--kraft-space-1);
-}
-
-.recommend__latest-ball--bonus {
-    box-shadow: 0 0 0 2px var(--kraft-surface), 0 0 0 3px var(--kraft-text-muted);
 }
 
 .recommend__latest-prize {
