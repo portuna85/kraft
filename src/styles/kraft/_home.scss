@@ -1,0 +1,128 @@
+/* ==========================================================================
+   홈(랜딩). 카드는 최신 당첨 결과 한 곳에만 쓰고 나머지는 면 위에 그대로 둔다.
+   ========================================================================== */
+.kraft-main--home {
+    max-width: 880px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.home-num {
+    font-variant-numeric: tabular-nums;
+}
+
+.home-hero {
+    padding: var(--kraft-space-8) 0 var(--kraft-space-6);
+}
+
+.home-hero__title {
+    font-size: $fs-heading-lg;
+    margin-bottom: var(--kraft-space-2);
+}
+
+.home-hero__lead {
+    color: var(--kraft-text-muted);
+    margin-bottom: var(--kraft-space-4);
+}
+
+.home-hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--kraft-space-2);
+}
+
+.home-hero__actions .btn {
+    min-height: 44px;
+}
+
+.home-section__title {
+    font-size: $fs-heading;
+    margin-bottom: var(--kraft-space-3);
+}
+
+.home-latest,
+.home-recommend,
+.home-community,
+.home-guide {
+    margin-bottom: var(--kraft-space-6);
+}
+
+.home-latest {
+    border: 1px solid var(--kraft-border);
+    border-radius: var(--kraft-radius-surface);
+    background-color: var(--kraft-surface);
+    padding: var(--kraft-space-4);
+}
+
+.home-latest__date {
+    font-size: $fs-xs;
+    color: var(--kraft-text-muted);
+    margin: calc(-1 * var(--kraft-space-2)) 0 var(--kraft-space-3);
+}
+
+.home-latest__prize {
+    margin: var(--kraft-space-3) 0 0;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--kraft-space-1) var(--kraft-space-3);
+    font-size: $fs-sm;
+}
+
+.home-latest__prize dt {
+    color: var(--kraft-text-muted);
+}
+
+.home-latest__prize dd {
+    margin: 0;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.home-community__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--kraft-space-3);
+}
+
+.home-posts {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.home-posts__item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--kraft-space-1) var(--kraft-space-3);
+    padding: var(--kraft-space-2) 0;
+    border-bottom: 1px solid var(--kraft-border);
+}
+
+.home-posts__title {
+    flex: 1 1 16rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.home-posts__meta {
+    display: flex;
+    gap: var(--kraft-space-3);
+    font-size: $fs-xs;
+    color: var(--kraft-text-muted);
+}
+
+.home-empty {
+    color: var(--kraft-text-muted);
+    padding: var(--kraft-space-4) 0;
+}
+
+.home-empty p {
+    margin: 0;
+}
+
+.home-empty__hint {
+    font-size: $fs-sm;
+}

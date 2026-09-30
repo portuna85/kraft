@@ -58,7 +58,7 @@ export function uniqueTitle(prefix) {
  * 쌓일수록 원하는 글이 페이지 밖으로 밀려난다. 검색으로 좁혀야 실행 순서와 무관해진다.
  */
 export async function openPostByTitle(page, title) {
-    await page.goto(`/?q=${encodeURIComponent(title)}`);
+    await page.goto(`/community?q=${encodeURIComponent(title)}`);
     // 목록의 링크는 분류 배지와 제목을 함께 담고 있어(접근성 이름이 "자유 제목" 꼴) 제목만으로
     // 정확히 일치시킬 수 없다. 링크 안에 제목이 들어 있는지로 찾는다.
     await page.locator('.post-list__title').filter({ hasText: title }).first().click();

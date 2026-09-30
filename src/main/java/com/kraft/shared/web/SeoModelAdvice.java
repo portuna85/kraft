@@ -1,5 +1,6 @@
 package com.kraft.shared.web;
 
+import com.kraft.home.web.HomePageController;
 import com.kraft.post.web.PostPageController;
 import com.kraft.recommend.web.RecommendationPageController;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,7 +16,8 @@ import org.springframework.web.bind.annotation.ModelAttribute;
  * 색인 대상인 화면 컨트롤러에만 적용한다 — 로그인·관리자 등은 X-Robots-Tag로 색인에서 뺀다
  * ({@code SecurityConfig#isNoindexPath}).
  */
-@ControllerAdvice(assignableTypes = { PostPageController.class, RecommendationPageController.class })
+@ControllerAdvice(assignableTypes = { PostPageController.class, RecommendationPageController.class,
+        HomePageController.class })
 public class SeoModelAdvice {
 
     private final String siteBaseUrl;

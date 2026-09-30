@@ -20,7 +20,7 @@ async function scan(page) {
 
 test.describe('로그인 없이 보는 화면', () => {
     test('목록', async ({ page }) => {
-        await page.goto('/');
+        await page.goto('/community');
         await scan(page);
     });
 
@@ -70,6 +70,6 @@ test.describe('관리자 화면', () => {
  */
 test('다크 모드에서도 심각한 위반이 없다', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' });
-    await page.goto('/');
+    await page.goto('/community');
     await scan(page);
 });

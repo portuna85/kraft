@@ -1,0 +1,105 @@
+<!DOCTYPE HTML>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<!--/*@thymesVar id="latestDraw" type="com.kraft.home.web.HomePageController.LatestDraw"*/-->
+<!--/*@thymesVar id="recentPosts" type="java.util.List<com.kraft.post.dto.PostsListResponseDto>"*/-->
+<!--/*@thymesVar id="recommendEnabled" type="java.lang.Boolean"*/-->
+<head th:replace="~{layout/header :: header}"></head>
+<body>
+
+<a class="skip-link" href="#main">본문 바로가기</a>
+<div th:replace="~{layout/navbar :: topbar}"></div>
+
+<div class="kraft-shell">
+    <main id="main" class="kraft-main kraft-main--home">
+        <div th:replace="~{layout/footer :: flash}"></div>
+
+        <!--/* 첫 화면은 서비스가 무엇인지 먼저 말한다. 게시판은 /community로 옮겼고 아래 "최근
+               커뮤니티"가 들어가는 길이다. 추천이 당첨 확률을 높인다고 읽히는 문구는 쓰지 않는다. */-->
+        <section class="home-hero" aria-labelledby="home-title">
+            <h1 id="home-title" class="home-hero__title">데이터로 살펴보는 로또 6/45</h1>
+            <p class="home-hero__lead">과거 당첨 데이터를 확인하고, 서로 다른 기준의 번호 추천을 비교해 보세요.</p>
+            <div class="home-hero__actions" th:if="${recommendEnabled}">
+                <a href="/recommend" class="btn btn-primary">번호 추천 받기</a>
+                <a href="/community" class="btn btn-outline-primary">커뮤니티 보기</a>
+            </div>
+            <div class="home-hero__actions" th:unless="${recommendEnabled}">
+                <a href="/community" class="btn btn-primary">커뮤니티 보기</a>
+            </div>
+        </section>
+
+        <!--/* 최신 회차 값은 모두 DB에서 온다. 추첨일·보너스·당첨금은 null일 수 있어(V21 이전 회차)
+               각각 있을 때만 그린다. 이력이 비었거나 추천 기능이 꺼져 있으면 섹션 자체가 없다. */-->
+        <section th:if="${latestDraw != null}" class="home-latest" aria-labelledby="home-latest-title">
+            <h2 id="home-latest-title" class="home-section__title">
+                최신 <span class="home-num" th:text="${latestDraw.roundNo}">1</span>회 당첨 결과
+            </h2>
+            <p th:if="${latestDraw.drawDate != null}" class="home-latest__date home-num"
+               th:text="${#temporals.format(latestDraw.drawDate, 'yyyy.MM.dd')} + ' 추첨'"></p>
+
+            <ul class="lotto-balls" aria-label="당첨번호">
+                <li th:each="n : ${latestDraw.numbers}" class="lotto-ball"
+                    th:classappend="'lotto-ball--' + ${T(com.kraft.recommend.domain.LottoBallColor).colorName(n)}"
+                    th:text="${n}"></li>
+                <li th:if="${latestDraw.bonusNo != null}" class="lotto-ball-plus" aria-hidden="true">+</li>
+                <li th:if="${latestDraw.bonusNo != null}" class="lotto-ball lotto-ball--bonus"
+                    th:classappend="'lotto-ball--' + ${T(com.kraft.recommend.domain.LottoBallColor).colorName(latestDraw.bonusNo)}">
+                    <span class="visually-hidden">보너스 </span><span th:text="${latestDraw.bonusNo}"></span>
+                </li>
+            </ul>
+
+            <dl th:if="${latestDraw.firstPrizeAmount != null}" class="home-latest__prize">
+                <dt>1등 당첨금</dt>
+                <dd class="home-num">
+                    <span th:text="${#numbers.formatInteger(latestDraw.firstPrizeAmount, 0, 'COMMA')} + '원'"></span>
+                    <span th:if="${latestDraw.winnerCount != null}" th:text="'(' + ${latestDraw.winnerCount} + '명)'"></span>
+                </dd>
+                <dt>세후 예상</dt>
+                <dd class="home-num" th:text="${#numbers.formatInteger(latestDraw.takeHomeAmount, 0, 'COMMA')} + '원'"></dd>
+            </dl>
+        </section>
+
+        <section th:if="${recommendEnabled}" class="home-recommend" aria-labelledby="home-recommend-title">
+            <h2 id="home-recommend-title" class="home-section__title">번호 추천</h2>
+            <p>고정·제외할 번호를 정해 조합을 받아볼 수 있습니다. 추천 방식이 달라도 유효한 조합 하나하나의
+                1등 당첨 확률은 모두 같으며, 추천은 당첨 확률을 높이는 기능이 아닙니다.</p>
+            <p><a href="/recommend">번호 추천 화면으로 이동</a></p>
+        </section>
+
+        <section class="home-community" aria-labelledby="home-community-title">
+            <div class="home-community__head">
+                <h2 id="home-community-title" class="home-section__title">최근 커뮤니티</h2>
+                <a href="/community">전체 보기</a>
+            </div>
+            <ul class="home-posts" th:if="${!#lists.isEmpty(recentPosts)}">
+                <li class="home-posts__item" th:each="post : ${recentPosts}">
+                    <a class="home-posts__title" th:href="@{'/posts/update/' + ${post.id}}">
+                        <span class="post-list__category" th:text="${post.category.title}">분류</span>
+                        <span th:text="${post.title}">제목</span>
+                    </a>
+                    <span class="home-posts__meta">
+                        <span th:text="${post.author}">작성자</span>
+                        <span class="home-num" th:if="${post.createdAt != null}"
+                              th:text="${#temporals.format(post.createdAt, 'yyyy.MM.dd')}">2026.01.01</span>
+                    </span>
+                </li>
+            </ul>
+            <div class="home-empty" th:if="${#lists.isEmpty(recentPosts)}">
+                <p>아직 등록된 게시글이 없습니다.</p>
+                <p class="home-empty__hint">첫 글이 등록되면 이곳에서 확인할 수 있습니다.</p>
+            </div>
+        </section>
+
+        <section class="home-guide" aria-labelledby="home-guide-title">
+            <h2 id="home-guide-title" class="home-section__title">이용 안내</h2>
+            <ul class="kraft-aside__list">
+                <li>글 작성 시 이미지 한 개를 첨부할 수 있습니다.</li>
+                <li>이미지는 JPG, JPEG, PNG, GIF, WEBP 형식, 최대 5MB까지 등록할 수 있습니다.</li>
+                <li>작성한 글과 댓글은 작성자 본인과 관리자만 수정·삭제할 수 있습니다.</li>
+            </ul>
+        </section>
+    </main>
+</div>
+
+<div th:replace="~{layout/footer :: footer}"></div>
+</body>
+</html>

@@ -17,20 +17,20 @@ test.describe('공통 레이아웃', () => {
 
     test('헤더 - 넓은 화면', async ({ page }) => {
         await page.setViewportSize({ width: 1280, height: 800 });
-        await page.goto('/');
+        await page.goto('/community');
         await expect(page.locator('.kraft-topbar')).toHaveScreenshot('header-wide.png', PIXEL_TOLERANCE);
     });
 
     test('헤더 - 좁은 화면에서 메뉴를 펼친 상태', async ({ page }) => {
         await page.setViewportSize({ width: 390, height: 844 });
-        await page.goto('/');
+        await page.goto('/community');
         await page.locator('#btn-nav-toggle').click();
         await expect(page.locator('#site-nav')).toBeVisible();
         await expect(page.locator('.kraft-topbar')).toHaveScreenshot('header-narrow-open.png', PIXEL_TOLERANCE);
     });
 
     test('게시판 머리말과 검색 영역', async ({ page }) => {
-        await page.goto('/');
+        await page.goto('/community');
         await expect(page.locator('.board-head')).toHaveScreenshot('board-head.png', PIXEL_TOLERANCE);
     });
 });
@@ -47,7 +47,7 @@ test.describe('목록 반응형', () => {
     test.use({ storageState: storageStateFor('user') });
 
     async function openSeedPostRow(page) {
-        await page.goto(`/?q=${encodeURIComponent('다른 사람의 글')}`);
+        await page.goto(`/community?q=${encodeURIComponent('다른 사람의 글')}`);
         const row = page.locator('.post-list__item').first();
         await expect(row).toBeVisible();
         return row;
@@ -152,12 +152,12 @@ test.describe('빈 상태와 페이지 이동', () => {
     test.use({ storageState: storageStateFor('user') });
 
     test('검색 결과 없음', async ({ page }) => {
-        await page.goto('/?q=zzz-nothing-matches-this-zzz');
+        await page.goto('/community?q=zzz-nothing-matches-this-zzz');
         await expect(page.locator('.empty-state')).toHaveScreenshot('empty-state.png', PIXEL_TOLERANCE);
     });
 
     test('페이지 이동 위젯', async ({ page }) => {
-        await page.goto('/');
+        await page.goto('/community');
         const pager = page.locator('.pager');
         // 글이 한 페이지에 다 들어가면 위젯이 없을 수 있다. 있을 때만 확인한다.
         if (!(await pager.count())) {
@@ -197,7 +197,7 @@ test.describe('다크 모드', () => {
         // align-items:start(_shell.scss)로 main이 늘어나진 않지만, 전체 문서 높이는 더 큰
         // 쪽을 따라가 페이지 전체 스크린샷의 세로 크기 자체가 실행마다 달라진다. #main은
         // 요소 자체의 실제 렌더 크기만 찍으므로(그리드 행 높이가 아니라) 이 영향을 받지 않는다.
-        await page.goto('/?q=%EB%8B%A4%EB%A5%B8%20%EC%82%AC%EB%9E%8C%EC%9D%98%20%EA%B8%80');
+        await page.goto('/community?q=%EB%8B%A4%EB%A5%B8%20%EC%82%AC%EB%9E%8C%EC%9D%98%20%EA%B8%80');
         await expect(page.locator('html')).toHaveAttribute('data-bs-theme', 'dark');
         await expect(page.locator('#main')).toHaveScreenshot('board-dark.png', {
             ...PIXEL_TOLERANCE,

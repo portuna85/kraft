@@ -7,18 +7,23 @@ public final class LottoBallColor {
     }
 
     public static String cssClass(int n) {
+        return "recommend__latest-ball--" + colorName(n);
+    }
+
+    /** 홈처럼 공용 {@code lotto-ball--*} 클래스를 쓰는 화면이 접미사만 가져다 쓴다. */
+    public static String colorName(int n) {
         if (n <= 10) {
-            return "recommend__latest-ball--yellow";
+            return "yellow";
         }
         if (n <= 20) {
-            return "recommend__latest-ball--blue";
+            return "blue";
         }
         if (n <= 30) {
-            return "recommend__latest-ball--red";
+            return "red";
         }
         if (n <= 40) {
-            return "recommend__latest-ball--gray";
+            return "gray";
         }
-        return "recommend__latest-ball--green";
+        return "green";
     }
 }

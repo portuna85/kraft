@@ -80,7 +80,7 @@ test('게시글 삭제: 취소하면 그대로, 확인하면 목록으로 돌아
     await page.locator('#btn-delete-post').click();
     await page.locator('#btn-confirm-delete').click();
 
-    await page.waitForURL('/');
+    await page.waitForURL('/community');
     await expect(page.locator('#flash')).toContainText('글이 삭제되었습니다.');
 });
 
@@ -94,7 +94,7 @@ test('삭제된 글 주소로 들어가면 설명과 게시판 복귀 링크가 
 
     await page.locator('#btn-delete-post').click();
     await page.locator('#btn-confirm-delete').click();
-    await page.waitForURL('/');
+    await page.waitForURL('/community');
 
     await page.goto(deletedPostUrl);
     await expect(page.locator('.page-title')).toContainText('게시글을 찾을 수 없습니다');
@@ -103,5 +103,5 @@ test('삭제된 글 주소로 들어가면 설명과 게시판 복귀 링크가 
     const backLink = page.getByRole('link', { name: '게시판으로 돌아가기' });
     await expect(backLink).toBeVisible();
     await backLink.click();
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL('/community');
 });

@@ -61,7 +61,7 @@ export function init() {
             // 서버 반영은 이미 끝났다 — 안내와 목록 갱신은 세대와 무관하게 항상 수행한다.
             if (kind === 'post') {
                 flash.set('POST_DELETED');
-                window.location.href = '/';
+                window.location.href = '/community';
             } else {
                 // 댓글 목록은 Vue 아일랜드(src/vue/comments)가 그리므로 새로고침하지 않는다.
                 // 이동이 없으니 showNow로 즉시 배너를 띄우고, 목록 갱신은 이벤트로 알린다.

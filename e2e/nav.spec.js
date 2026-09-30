@@ -4,7 +4,7 @@ test.describe('모바일 헤더 메뉴', () => {
     test.use({ storageState: storageStateFor('user'), viewport: { width: 390, height: 844 } });
 
     test('토글로 열고 닫으며, Escape로도 닫히고 포커스가 돌아온다', async ({ page }) => {
-        await page.goto('/');
+        await page.goto('/community');
 
         const toggle = page.locator('#btn-nav-toggle');
         const nav = page.locator('#site-nav');
@@ -28,7 +28,7 @@ test.describe('넓은 화면', () => {
     test.use({ storageState: storageStateFor('user'), viewport: { width: 1280, height: 800 } });
 
     test('바깥 메뉴 토글 없이 닉네임이 보이고, 계정 펼침 메뉴를 열면 로그아웃이 보인다', async ({ page }) => {
-        await page.goto('/');
+        await page.goto('/community');
 
         await expect(page.locator('#btn-nav-toggle')).toBeHidden();
         await expect(page.locator('.kraft-actions__name')).toContainText(ACCOUNTS.user.name);
@@ -54,7 +54,7 @@ test.describe('로그인 복귀', () => {
     test.use({ storageState: { cookies: [], origins: [] } });
 
     test('검색 중이던 화면에서 로그인하면 검색어까지 유지된다', async ({ page }) => {
-        await page.goto('/?q=%EA%B3%B5%EC%A7%80');
+        await page.goto('/community?q=%EA%B3%B5%EC%A7%80');
 
         await openAccountMenu(page);
         await page.getByRole('link', { name: '로그인' }).click();
@@ -79,7 +79,7 @@ test.describe('미인증 안내', () => {
 
     test('GUEST에게는 댓글 입력창 대신 인증 안내가 보인다', async ({ page }) => {
         // 시드 게시글이면 무엇이든 된다 — 댓글 영역의 안내만 본다.
-        await page.goto('/');
+        await page.goto('/community');
         await page.locator('.post-list__title').first().click();
 
         // 글쓰기와 댓글이 같은 규칙(WriteAccessPolicy)을 쓰므로 안내 문장도 하나다.

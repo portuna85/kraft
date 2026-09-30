@@ -99,7 +99,7 @@ test('탈퇴해도 쓴 글은 목록에 남고 작성자만 익명으로 바뀐�
     await page.waitForURL(/\/login/);
 
     // 로그인하지 않은 방문자에게도 글은 그대로 보이고, 작성자만 익명이다.
-    await page.goto(`/?q=${encodeURIComponent(title)}`);
+    await page.goto(`/community?q=${encodeURIComponent(title)}`);
     const row = page.locator('.post-list__item').filter({ hasText: title });
     await expect(row).toBeVisible();
     await expect(row.locator('.post-list__author')).toContainText('탈퇴한 사용자');

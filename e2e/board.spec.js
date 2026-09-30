@@ -9,7 +9,7 @@ test.use({ storageState: storageStateFor('user') });
  * 토큰을 직접 읽어 헤더에 실어야 한다(core/http.js의 csrfHeaders()와 같은 방식).
  */
 async function createPosts(page, count, titlePrefix) {
-    await page.goto('/');
+    await page.goto('/community');
     const token = await page.locator('meta[name="_csrf"]').getAttribute('content');
     const headerName = await page.locator('meta[name="_csrf_header"]').getAttribute('content');
 
@@ -31,14 +31,14 @@ async function createPosts(page, count, titlePrefix) {
  * (조건을 지운다 / 첫 글을 쓴다). 예전에는 둘 다 "아직 게시글이 없습니다"였다.
  */
 test('검색 결과가 없으면 게시판이 빈 것처럼 안내하지 않는다', async ({ page }) => {
-    await page.goto('/?q=zzz-nothing-matches-this-zzz');
+    await page.goto('/community?q=zzz-nothing-matches-this-zzz');
 
     await expect(page.locator('.empty-state')).toContainText('검색 조건에 맞는 게시글이 없습니다.');
     await expect(page.getByText('아직 게시글이 없습니다.')).toHaveCount(0);
 
     // 조건을 지우고 돌아갈 길을 준다 — 시드 데이터가 있으므로 목록이 다시 보인다.
     await page.locator('.empty-state').getByRole('link', { name: '전체 게시글 보기' }).click();
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL('/community');
     await expect(page.locator('.post-list__item').first()).toBeVisible();
 });
 
@@ -47,7 +47,7 @@ test('검색 결과가 없으면 게시판이 빈 것처럼 안내하지 않는�
  * 숫자만 렌더링돼, 그 숫자가 무엇을 뜻하는지 스크린리더가 읽어줄 텍스트가 없었다.
  */
 test('조회수·댓글수 옆에 스크린리더용 이름표가 붙는다', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/community');
 
     const item = page.locator('.post-list__item').first();
     await expect(item.locator('.post-list__views')).toContainText(/조회\s*\d+/);
@@ -67,7 +67,7 @@ test('등록만 하고 수정하지 않은 글에는 "(수정됨)"이 붙지 않
     await page.locator('#btn-save').click();
     await page.waitForURL(/\/posts\/update\/\d+$/);
 
-    await page.goto(`/?q=${encodeURIComponent(title)}`);
+    await page.goto(`/community?q=${encodeURIComponent(title)}`);
     const row = page.locator('.post-list__item').filter({ hasText: title });
     await expect(row.locator('.post-list__date')).not.toContainText('수정됨');
 });
@@ -88,7 +88,7 @@ test('글을 수정하면 목록 날짜 옆에 "(수정됨)"이 붙는다', asyn
     // 그러지 않으면 아직 끝나지 않은 이전 이동과 겹쳐 다음 goto가 중단될 수 있다.
     await expect(page.locator('#flash')).toContainText('글이 수정되었습니다.');
 
-    await page.goto(`/?q=${encodeURIComponent(title)}`);
+    await page.goto(`/community?q=${encodeURIComponent(title)}`);
     const row = page.locator('.post-list__item').filter({ hasText: title });
     await expect(row.locator('.post-list__date')).toContainText('(수정됨)');
 });
@@ -100,17 +100,17 @@ test('글을 수정하면 목록 날짜 옆에 "(수정됨)"이 붙는다', asyn
  */
 test.describe('공지 고정', () => {
     test('검색·분류 없는 첫 페이지에는 고정 영역에 공지가 보인다', async ({ page }) => {
-        await page.goto('/');
+        await page.goto('/community');
         await expect(page.locator('.post-list--pinned .post-list__item')).toContainText('공지 게시글');
     });
 
     test('검색 결과 화면에는 고정 영역이 없다', async ({ page }) => {
-        await page.goto('/?q=zzz-nothing-matches-this-zzz');
+        await page.goto('/community?q=zzz-nothing-matches-this-zzz');
         await expect(page.locator('.post-list--pinned')).toHaveCount(0);
     });
 
     test('분류를 고르면 고정 영역이 없다', async ({ page }) => {
-        await page.goto('/?category=FREE');
+        await page.goto('/community?category=FREE');
         await expect(page.locator('.post-list--pinned')).toHaveCount(0);
     });
 
@@ -119,7 +119,7 @@ test.describe('공지 고정', () => {
         // 없어 page=1 요청이 마지막 유효 페이지(0쪽)로 리다이렉트되어 버린다(PostPageController).
         await createPosts(page, 15, uniqueTitle('공지고정-2페이지'));
 
-        await page.goto('/?page=1');
+        await page.goto('/community?page=1');
         await expect(page).toHaveURL(/page=1/);
         await expect(page.locator('.post-list--pinned')).toHaveCount(0);
     });
@@ -135,7 +135,7 @@ test.describe('공지 고정', () => {
  */
 test('992~1199px에서는 안내가 본문 옆에 남고 아래로 떨어지지 않는다', async ({ page }) => {
     await page.setViewportSize({ width: 1024, height: 900 });
-    await page.goto('/');
+    await page.goto('/community');
 
     const main = page.locator('.kraft-main');
     const aside = page.locator('.kraft-aside');
@@ -154,19 +154,19 @@ test('992~1199px에서는 안내가 본문 옆에 남고 아래로 떨어지지 
  * 초기화하면 조건 없는 목록으로 돌아간다.
  */
 test('검색 조건이 있으면 적용된 조건 요약이 보이고, 초기화하면 사라진다', async ({ page }) => {
-    await page.goto('/?q=zzz-nothing-matches-this-zzz');
+    await page.goto('/community?q=zzz-nothing-matches-this-zzz');
 
     const summary = page.locator('.board-filter-summary');
     await expect(summary).toBeVisible();
     await expect(summary).toContainText('zzz-nothing-matches-this-zzz');
 
     await summary.getByRole('link', { name: '초기화' }).click();
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL('/community');
     await expect(page.locator('.board-filter-summary')).toHaveCount(0);
 });
 
 test('검색·분류 조건이 없으면 적용된 조건 요약이 보이지 않는다', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/community');
 
     await expect(page.locator('.board-filter-summary')).toHaveCount(0);
 });
@@ -177,7 +177,7 @@ test('검색·분류 조건이 없으면 적용된 조건 요약이 보이지 �
  * 정렬(최신 등록순)로 돌아간다.
  */
 test('정렬을 조회순으로 바꾸면 URL에 반영되고 조건 요약에 칩으로 보인다', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/community');
     await expect(page.locator('#search-sort')).toHaveValue('');
 
     await page.locator('#search-sort').selectOption('viewCount,desc');
@@ -190,7 +190,7 @@ test('정렬을 조회순으로 바꾸면 URL에 반영되고 조건 요약에 �
     await expect(summary).toContainText('조회순');
 
     await summary.getByRole('link', { name: '초기화' }).click();
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL('/community');
     await expect(page.locator('#search-sort')).toHaveValue('');
     await expect(page.locator('.board-filter-summary')).toHaveCount(0);
 });
@@ -198,7 +198,7 @@ test('정렬을 조회순으로 바꾸면 URL에 반영되고 조건 요약에 �
 test('정렬을 고른 채 페이지를 이동해도 정렬이 유지된다', async ({ page }) => {
     // size=1로 강제로 여러 페이지를 만든다 — 기본 크기(10)면 시드 글 수에 따라 페이지가
     // 하나뿐일 수 있어 pager 자체가 렌더링되지 않는다.
-    await page.goto('/?sort=updatedAt,desc&page=0&size=1');
+    await page.goto('/community?sort=updatedAt,desc&page=0&size=1');
 
     const nextLink = page.getByRole('link', { name: '다음' });
     await expect(nextLink).toHaveAttribute('href', /sort=updatedAt,desc/);
@@ -217,7 +217,7 @@ test.describe('더 보기', () => {
         const prefix = uniqueTitle('더보기');
         await createPosts(page, 11, prefix);
 
-        await page.goto(`/?q=${encodeURIComponent(prefix)}`);
+        await page.goto(`/community?q=${encodeURIComponent(prefix)}`);
         await expect(page.locator('.post-list__item')).toHaveCount(10);
 
         const button = page.locator('#btn-load-more');
@@ -238,7 +238,7 @@ test.describe('더 보기', () => {
         const prefix = uniqueTitle('포커스');
         await createPosts(page, 11, prefix);
 
-        await page.goto(`/?q=${encodeURIComponent(prefix)}`);
+        await page.goto(`/community?q=${encodeURIComponent(prefix)}`);
         await page.locator('#btn-load-more').click();
 
         const focused = page.locator(':focus');
@@ -249,7 +249,7 @@ test.describe('더 보기', () => {
         const prefix = uniqueTitle('정렬더보기');
         await createPosts(page, 11, prefix);
 
-        await page.goto(`/?q=${encodeURIComponent(prefix)}&sort=viewCount,desc`);
+        await page.goto(`/community?q=${encodeURIComponent(prefix)}&sort=viewCount,desc`);
 
         const requestPromise = page.waitForRequest((req) =>
             req.url().includes('/api/v1/posts') && req.url().includes('sort=viewCount'));
@@ -262,7 +262,7 @@ test.describe('더 보기', () => {
         const prefix = uniqueTitle('실패');
         await createPosts(page, 11, prefix);
 
-        await page.goto(`/?q=${encodeURIComponent(prefix)}`);
+        await page.goto(`/community?q=${encodeURIComponent(prefix)}`);
 
         let requestCount = 0;
         // Playwright의 문자열 glob 패턴에서 "?"는 "임의의 문자 한 개"를 뜻하는 특수문자라
@@ -297,7 +297,7 @@ test.describe('더 보기', () => {
         const prefix = uniqueTitle('페이저갱신');
         await createPosts(page, 25, prefix); // 페이지 크기 10 → 총 3페이지(10·10·5)
 
-        await page.goto(`/?q=${encodeURIComponent(prefix)}`);
+        await page.goto(`/community?q=${encodeURIComponent(prefix)}`);
         const pager = page.locator('nav.pager');
         await expect(pager.locator('.pager__page[data-page="0"]')).toHaveAttribute('aria-current', 'page');
 
@@ -335,7 +335,7 @@ test.describe('더 보기', () => {
         const prefix = uniqueTitle('중복방지');
         await createPosts(page, 11, prefix);
 
-        await page.goto(`/?q=${encodeURIComponent(prefix)}`);
+        await page.goto(`/community?q=${encodeURIComponent(prefix)}`);
         const firstRowId = await page.locator('.post-list__item').first().getAttribute('data-post-id');
 
         await page.route(/\/api\/v1\/posts\?/, async (route) => {
@@ -365,7 +365,7 @@ test.describe('더 보기', () => {
         const prefix = uniqueTitle('새로고침복원');
         await createPosts(page, 11, prefix);
 
-        await page.goto(`/?q=${encodeURIComponent(prefix)}`);
+        await page.goto(`/community?q=${encodeURIComponent(prefix)}`);
         await page.locator('#btn-load-more').click();
         await expect(page.locator('.post-list__item')).toHaveCount(11);
         await expect(page.locator('#btn-load-more')).toBeHidden();
@@ -381,12 +381,12 @@ test.describe('더 보기', () => {
         const prefix = uniqueTitle('조건다름복원');
         await createPosts(page, 11, prefix);
 
-        await page.goto(`/?q=${encodeURIComponent(prefix)}`);
+        await page.goto(`/community?q=${encodeURIComponent(prefix)}`);
         await page.locator('#btn-load-more').click();
         await expect(page.locator('.post-list__item')).toHaveCount(11);
 
         // 같은 프리픽스로 검색하지만 분류를 좁히면 다른 저장 키를 쓴다 — 복원되지 않는다.
-        await page.goto(`/?q=${encodeURIComponent(prefix)}&category=FREE`);
+        await page.goto(`/community?q=${encodeURIComponent(prefix)}&category=FREE`);
         await expect(page.locator('.post-list__item')).toHaveCount(10);
         await expect(page.locator('#btn-load-more')).toBeVisible();
     });

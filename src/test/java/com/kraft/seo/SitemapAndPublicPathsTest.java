@@ -73,10 +73,10 @@ class SitemapAndPublicPathsTest {
     @Test
     @DisplayName("검색 결과 페이지는 noindex,follow 헤더를 받고 일반 목록은 받지 않는다")
     void searchResults_areNoindex() throws Exception {
-        mockMvc.perform(get("/").param("q", "abc"))
+        mockMvc.perform(get("/community").param("q", "abc"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("X-Robots-Tag", "noindex, follow"));
-        MvcResult plain = mockMvc.perform(get("/")).andExpect(status().isOk()).andReturn();
+        MvcResult plain = mockMvc.perform(get("/community")).andExpect(status().isOk()).andReturn();
         assertThat(plain.getResponse().getHeader("X-Robots-Tag")).isNull();
     }
 

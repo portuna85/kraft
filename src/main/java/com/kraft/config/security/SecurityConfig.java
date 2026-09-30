@@ -128,7 +128,7 @@ public class SecurityConfig {
                         // 정적 자원(/css, /js, /images)은 위 staticResourceChain이 먼저 처리한다.
                         // 기본은 인증 필요(P1-7) — 새 엔드포인트가 검사를 빠뜨려도 공개되지 않는다.
                         // 공개 화면·자원은 아래에 명시한다.
-                        .requestMatchers("/", "/recommend", "/robots.txt", "/sitemap.xml",
+                        .requestMatchers("/", "/community", "/recommend", "/robots.txt", "/sitemap.xml",
                                 "/login", "/signup", "/forgot-password",
                                 "/users/password-reset", "/users/verify", "/users/verify/result",
                                 "/healthz", "/readyz", "/error", "/error/**").permitAll()

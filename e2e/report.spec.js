@@ -164,7 +164,7 @@ test.describe('관리자 처리', () => {
         await expect(adminPage.locator('.report-list__item').filter({ hasText: title })).toHaveCount(0);
 
         // 글도 실제로 사라졌다.
-        await adminPage.goto(`/?q=${encodeURIComponent(title)}`);
+        await adminPage.goto(`/community?q=${encodeURIComponent(title)}`);
         await expect(adminPage.locator('.post-list__item').filter({ hasText: title })).toHaveCount(0);
         await adminPage.close();
     });

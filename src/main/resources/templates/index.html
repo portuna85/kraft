@@ -30,7 +30,7 @@
         </div>
         <p class="board-head__desc">최근 등록 순으로 게시글을 확인하세요.</p>
 
-        <form class="board-search" method="get" action="/">
+        <form class="board-search" method="get" action="/community">
             <label for="search-q" class="visually-hidden">검색어</label>
             <input type="search" id="search-q" name="q" class="form-control board-search__input"
                    placeholder="검색어" th:value="${q}">
@@ -71,7 +71,7 @@
             <span class="board-filter-summary__chip" th:if="${category != null}" th:text="${category.title}">분류</span>
             <span class="board-filter-summary__chip" th:if="${currentSort == 'viewCount,desc'}">조회순</span>
             <span class="board-filter-summary__chip" th:if="${currentSort == 'updatedAt,desc'}">최근 수정순</span>
-            <a class="board-filter-summary__reset" href="/">초기화</a>
+            <a class="board-filter-summary__reset" href="/community">초기화</a>
         </div>
 
         <!-- 공지 고정 영역(A-BE-05). 검색·분류로 좁히지 않은 첫 페이지에만 뜬다
@@ -144,7 +144,7 @@
              th:if="${#lists.isEmpty(posts) and postsPage.totalElements == 0
                       and (!#strings.isEmpty(q) or category != null)}">
             <p class="empty-state__text">검색 조건에 맞는 게시글이 없습니다.</p>
-            <a href="/" class="btn btn-outline-primary">전체 게시글 보기</a>
+            <a href="/community" class="btn btn-outline-primary">전체 게시글 보기</a>
         </div>
         <div class="empty-state"
              th:if="${#lists.isEmpty(posts) and postsPage.totalElements == 0
@@ -155,7 +155,7 @@
         </div>
         <div class="empty-state" th:if="${#lists.isEmpty(posts) and postsPage.totalElements > 0}">
             <p class="empty-state__text">이 페이지에 게시글이 없습니다.</p>
-            <a href="/" class="btn btn-outline-primary">첫 페이지로 이동</a>
+            <a href="/community" class="btn btn-outline-primary">첫 페이지로 이동</a>
         </div>
 
         <!-- 10단계: "더 보기"는 기존 페이지 이동과 공존한다(점진적 향상) — JS가 없으면 버튼이
@@ -175,7 +175,7 @@
         <nav class="pager" th:if="${postsPage.totalPages > 1}" aria-label="게시글 목록 페이지 이동"
              th:attr="data-total-pages=${pageWindow.totalPages}">
             <a class="pager__step" th:if="${pageWindow.hasPrev}"
-               th:href="@{/(page=${pageWindow.prev}, q=${q}, category=${category}, sort=${currentSort}, scope=${searchContent} ? 'all' : null)}">이전</a>
+               th:href="@{/community(page=${pageWindow.prev}, q=${q}, category=${category}, sort=${currentSort}, scope=${searchContent} ? 'all' : null)}">이전</a>
             <span class="pager__step is-disabled" th:unless="${pageWindow.hasPrev}"
                   aria-hidden="true">이전</span>
 
@@ -186,7 +186,7 @@
             <span class="pager__numbers">
                 <th:block th:each="i : ${pageWindow.pages}">
                     <a class="pager__page" th:if="${i != postsPage.page}"
-                       th:href="@{/(page=${i}, q=${q}, category=${category}, sort=${currentSort}, scope=${searchContent} ? 'all' : null)}"
+                       th:href="@{/community(page=${i}, q=${q}, category=${category}, sort=${currentSort}, scope=${searchContent} ? 'all' : null)}"
                        th:text="${i + 1}" th:attr="data-page=${i}">1</a>
                     <span class="pager__page is-current" th:if="${i == postsPage.page}"
                           th:text="${i + 1}" aria-current="page" th:attr="data-page=${i}">1</span>
@@ -194,7 +194,7 @@
             </span>
 
             <a class="pager__step" th:if="${pageWindow.hasNext}" data-role="next"
-               th:href="@{/(page=${pageWindow.next}, q=${q}, category=${category}, sort=${currentSort}, scope=${searchContent} ? 'all' : null)}">다음</a>
+               th:href="@{/community(page=${pageWindow.next}, q=${q}, category=${category}, sort=${currentSort}, scope=${searchContent} ? 'all' : null)}">다음</a>
             <span class="pager__step is-disabled" th:unless="${pageWindow.hasNext}" data-role="next"
                   aria-hidden="true">다음</span>
         </nav>

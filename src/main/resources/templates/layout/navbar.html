@@ -30,6 +30,10 @@
                th:classappend="${currentPath == '/recommend'} ? 'is-current'"
                th:attr="aria-current=${currentPath == '/recommend'} ? 'page' : null">번호 추천</a>
 
+            <a href="/community" class="kraft-actions__link"
+               th:classappend="${currentPath != null and (currentPath == '/community' or #strings.startsWith(currentPath, '/community?'))} ? 'is-current'"
+               th:attr="aria-current=${currentPath != null and (currentPath == '/community' or #strings.startsWith(currentPath, '/community?'))} ? 'page' : null">커뮤니티</a>
+
             <a sec:authorize="isAuthenticated()" href="/posts/save" class="kraft-actions__link"
                th:classappend="${currentPath == '/posts/save'} ? 'is-current'"
                th:attr="aria-current=${currentPath == '/posts/save'} ? 'page' : null">글쓰기</a>

@@ -105,9 +105,11 @@ class SeoMetadataTest {
         }
 
         assertThat(page("/", null)).contains("<link rel=\"canonical\" href=\"" + base + "/\"");
-        assertThat(page("/?category=QNA", null)).contains("<link rel=\"canonical\" href=\"" + base + "/?category=QNA\"");
-        assertThat(page("/?q=abc", null)).doesNotContain("rel=\"canonical\"");
-        assertThat(page("/?page=1", null)).doesNotContain("rel=\"canonical\"");
+        assertThat(page("/community", null)).contains("<link rel=\"canonical\" href=\"" + base + "/community\"");
+        assertThat(page("/community?category=QNA", null))
+                .contains("<link rel=\"canonical\" href=\"" + base + "/community?category=QNA\"");
+        assertThat(page("/community?q=abc", null)).doesNotContain("rel=\"canonical\"");
+        assertThat(page("/community?page=1", null)).doesNotContain("rel=\"canonical\"");
     }
 
     @Test
@@ -118,6 +120,7 @@ class SeoMetadataTest {
         }
         mockMvc.perform(get("/api/v1/posts")).andExpect(header().string("X-Robots-Tag", "noindex, nofollow"));
         mockMvc.perform(get("/")).andExpect(header().doesNotExist("X-Robots-Tag"));
+        mockMvc.perform(get("/community")).andExpect(header().doesNotExist("X-Robots-Tag"));
         mockMvc.perform(get("/posts/update/" + postId)).andExpect(header().doesNotExist("X-Robots-Tag"));
         mockMvc.perform(get("/recommend")).andExpect(header().doesNotExist("X-Robots-Tag"));
     }

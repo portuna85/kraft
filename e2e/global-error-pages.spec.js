@@ -20,5 +20,5 @@ test('없는 경로로 들어가면 공통 404 안내와 게시판 복귀 링크
     const backLink = page.getByRole('link', { name: '게시판으로 돌아가기' });
     await expect(backLink).toBeVisible();
     await backLink.click();
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL('/community');
 });

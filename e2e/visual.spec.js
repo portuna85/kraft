@@ -38,7 +38,7 @@ test.describe('로그인 후 화면', () => {
     test('목록 한 줄의 생김새', async ({ page }) => {
         // 목록 전체를 찍으면 다른 스펙이 만든 글이 섞여 매번 달라진다. 시드 글 하나만
         // 나오도록 검색으로 좁혀 실행 순서와 무관하게 만든다.
-        await page.goto('/?q=%EB%8B%A4%EB%A5%B8%20%EC%82%AC%EB%9E%8C%EC%9D%98%20%EA%B8%80');
+        await page.goto('/community?q=%EB%8B%A4%EB%A5%B8%20%EC%82%AC%EB%9E%8C%EC%9D%98%20%EA%B8%80');
         const row = page.locator('.post-list__item').first();
         await expect(row).toBeVisible();
         await expect(row).toHaveScreenshot('post-list-row.png', {
@@ -53,7 +53,7 @@ test.describe('로그인 후 화면', () => {
     });
 
     test('비밀번호 변경 모달', async ({ page }) => {
-        await page.goto('/');
+        await page.goto('/community');
         await openAccountMenu(page);
         await page.getByRole('button', { name: '비밀번호 변경' }).click();
         const modal = page.locator('#changePasswordModal');
@@ -68,7 +68,7 @@ test.describe('로그인 후 화면', () => {
     });
 
     test('토스트 알림', async ({ page }) => {
-        await page.goto('/');
+        await page.goto('/community');
         // 실제 동작으로 띄우면 화면이 바뀌므로, 토스트 컴포넌트만 직접 보여 준다.
         await page.evaluate(() => {
             const el = document.getElementById('app-toast');

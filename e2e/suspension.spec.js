@@ -41,7 +41,7 @@ test('신고를 정지와 함께 처리하면 그 사람은 글을 쓸 수 없�
 
     // 다른 사람이 신고한다.
     const reporterPage = await (await browser.newContext({ storageState: storageStateFor('other') })).newPage();
-    await reporterPage.goto(`/?q=${encodeURIComponent(title)}`);
+    await reporterPage.goto(`/community?q=${encodeURIComponent(title)}`);
     await reporterPage.locator('.post-list__title').filter({ hasText: title }).first().click();
     await reporterPage.locator('#btn-report-post').click();
     await reporterPage.locator('#report-reason').selectOption('ABUSE');
@@ -69,7 +69,7 @@ test('신고를 정지와 함께 처리하면 그 사람은 글을 쓸 수 없�
     await expect(page.locator('#post-save-app')).toHaveCount(0);
 
     // 댓글도 같은 규칙으로 막히고, 같은 이유를 보여준다.
-    await page.goto('/');
+    await page.goto('/community');
     await page.locator('.post-list__title').first().click();
     await expect(page.locator('.comments__login-hint')).toContainText('이용이 제한된 계정입니다');
     await expect(page.locator('#comment-content')).toHaveCount(0);

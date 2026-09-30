@@ -90,7 +90,7 @@ class PostPageControllerTest {
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
         given(postService.findPopular(5)).willReturn(List.of());
 
-        mockMvc.perform(get("/"))
+        mockMvc.perform(get("/community"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("index"))
                 .andExpect(model().attributeExists("posts", "postsPage", "pageWindow"));
@@ -103,7 +103,7 @@ class PostPageControllerTest {
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
         given(postService.findPopular(5)).willReturn(List.of());
 
-        mockMvc.perform(get("/").param("page", "-1"))
+        mockMvc.perform(get("/community").param("page", "-1"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("index"));
     }
@@ -115,7 +115,7 @@ class PostPageControllerTest {
                 .willReturn(new PostsPageResponseDto(List.of(), 999, 10, 0, 0, true, true));
         given(postService.findPopular(5)).willReturn(List.of());
 
-        mockMvc.perform(get("/").param("page", "999"))
+        mockMvc.perform(get("/community").param("page", "999"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("index"));
     }
@@ -133,7 +133,7 @@ class PostPageControllerTest {
         given(postService.findAllDesc(any(Pageable.class), eq("키워드"), eq(Category.NOTICE), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 5, 10, 42, 5, false, true));
 
-        mockMvc.perform(get("/").param("page", "5").param("q", "키워드").param("category", "NOTICE"))
+        mockMvc.perform(get("/community").param("page", "5").param("q", "키워드").param("category", "NOTICE"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(header().string("Location",
                         containsString("page=4")));
@@ -145,7 +145,7 @@ class PostPageControllerTest {
         given(postService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 5, 10, 42, 5, false, true));
 
-        mockMvc.perform(get("/").param("page", "5").param("sort", "viewCount,desc"))
+        mockMvc.perform(get("/community").param("page", "5").param("sort", "viewCount,desc"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(header().string("Location", containsString("sort=viewCount,desc")));
     }
@@ -157,7 +157,7 @@ class PostPageControllerTest {
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
         given(postService.findPopular(5)).willReturn(List.of());
 
-        mockMvc.perform(get("/").param("q", "키워드").param("category", "NOTICE"))
+        mockMvc.perform(get("/community").param("q", "키워드").param("category", "NOTICE"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("index"))
                 .andExpect(model().attribute("q", "키워드"))
@@ -171,7 +171,7 @@ class PostPageControllerTest {
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
         given(postService.findPopular(5)).willReturn(List.of());
 
-        mockMvc.perform(get("/").param("q", "키워드").param("scope", "all"))
+        mockMvc.perform(get("/community").param("q", "키워드").param("scope", "all"))
                 .andExpect(status().isOk())
                 .andExpect(model().attribute("searchContent", true));
 
@@ -185,7 +185,7 @@ class PostPageControllerTest {
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
         given(postService.findPopular(5)).willReturn(List.of());
 
-        mockMvc.perform(get("/").param("q", "키워드"))
+        mockMvc.perform(get("/community").param("q", "키워드"))
                 .andExpect(status().isOk())
                 .andExpect(model().attribute("searchContent", false));
     }
@@ -198,7 +198,7 @@ class PostPageControllerTest {
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
         given(postService.findPopular(5)).willReturn(List.of());
 
-        mockMvc.perform(get("/")).andExpect(status().isOk());
+        mockMvc.perform(get("/community")).andExpect(status().isOk());
 
         org.mockito.Mockito.verify(rateLimiters, org.mockito.Mockito.never()).tryAcquireSearch(any());
     }
@@ -208,7 +208,7 @@ class PostPageControllerTest {
     void index_withKeyword_whenRateLimited_returns429() throws Exception {
         given(rateLimiters.tryAcquireSearch(any())).willReturn(false);
 
-        mockMvc.perform(get("/").param("q", "키워드"))
+        mockMvc.perform(get("/community").param("q", "키워드"))
                 .andExpect(status().isTooManyRequests());
 
         org.mockito.Mockito.verify(postService, org.mockito.Mockito.never()).findAllDesc(any(), any(), any(), anyBoolean());
@@ -221,7 +221,7 @@ class PostPageControllerTest {
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
         given(postService.findPopular(5)).willReturn(List.of());
 
-        mockMvc.perform(get("/").param("sort", "content,desc"))
+        mockMvc.perform(get("/community").param("sort", "content,desc"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("index"))
                 // 허용되지 않는 정렬은 무시되므로 화면이 되돌려 쓸 currentSort도 비어 있어야
@@ -237,7 +237,7 @@ class PostPageControllerTest {
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
         given(postService.findPopular(5)).willReturn(List.of());
 
-        mockMvc.perform(get("/").param("sort", "viewCount,desc"))
+        mockMvc.perform(get("/community").param("sort", "viewCount,desc"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("index"))
                 .andExpect(model().attribute("currentSort", "viewCount,desc"));
@@ -250,7 +250,7 @@ class PostPageControllerTest {
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
         given(postService.findPopular(5)).willReturn(List.of());
 
-        mockMvc.perform(get("/"))
+        mockMvc.perform(get("/community"))
                 .andExpect(status().isOk())
                 .andExpect(model().attribute("currentSort", org.hamcrest.Matchers.nullValue()));
     }

@@ -54,6 +54,7 @@ public class SitemapService {
         xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
                 .append("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n");
         appendUrl(xml, "/", null);
+        appendUrl(xml, "/community", null);
         if (recommendEnabled) {
             appendUrl(xml, "/recommend", null);
         }

@@ -47,7 +47,7 @@ public class PostPageController {
     private final WriteRateLimiters rateLimiters;
     private final PostViewDedup postViewDedup;
 
-    @GetMapping("/")
+    @GetMapping("/community")
     public String index(@PageableDefault(size = 10) Pageable pageable,
                          @RequestParam(required = false) String q,
                          HttpServletRequest request,
@@ -78,7 +78,7 @@ public class PostPageController {
         // 페이지네이션 링크는 보정된(마지막) 페이지를 가리켜, 그중 어느 것도 "현재"로 표시되지
         // 않는 채 빈 화면만 보였다(F09). 검색어·분류·정렬은 유지한 채 유효한 마지막 페이지로 보낸다.
         if (postsPage.totalPages() > 0 && pageable.getPageNumber() >= postsPage.totalPages()) {
-            return "redirect:" + UriComponentsBuilder.fromPath("/")
+            return "redirect:" + UriComponentsBuilder.fromPath("/community")
                     .queryParam("page", postsPage.totalPages() - 1)
                     .queryParamIfPresent("q", Optional.ofNullable(q).filter(s -> !s.isBlank()))
                     .queryParamIfPresent("category", Optional.ofNullable(category))
@@ -101,12 +101,12 @@ public class PostPageController {
         model.addAttribute("currentSort", currentSort);
         model.addAttribute("searchContent", searchContent);
         model.addAttribute("categories", Category.values());
-        model.addAttribute("pageTitle", "전체 게시글");
+        model.addAttribute("pageTitle", "커뮤니티");
         // 대표 경로(F08)는 검색하지 않은 첫 페이지에만 준다 — 분류만 고른 첫 페이지는 그 분류의
         // 대표 목록이다. 검색 결과와 2쪽 이후는 대표 경로를 선언하지 않는다(첫 페이지로 모으면
         // 검색 엔진이 그 목록의 나머지 글을 보지 않게 된다).
         if ((q == null || q.isBlank()) && pageable.getPageNumber() == 0) {
-            model.addAttribute("canonicalPath", category == null ? "/" : "/?category=" + category.name());
+            model.addAttribute("canonicalPath", category == null ? "/community" : "/community?category=" + category.name());
         }
         return "index";
     }
