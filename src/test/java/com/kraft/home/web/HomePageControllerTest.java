@@ -108,6 +108,17 @@ class HomePageControllerTest {
     }
 
     @Test
+    @DisplayName("홈에는 WebSite JSON-LD가 한 번 실린다")
+    void rendersWebSiteJsonLd() throws Exception {
+        given(winningDrawRepository.findTopByOrderByRoundNoDesc()).willReturn(Optional.empty());
+
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("application/ld+json")))
+                .andExpect(content().string(containsString("\"@type\": \"WebSite\"")));
+    }
+
+    @Test
     @DisplayName("옛 게시판 주소(/?q=…, ?page=…)는 /community로 301 이동한다")
     void legacyBoardQueryMovesPermanently() throws Exception {
         mockMvc.perform(get("/").queryParam("q", "abc").queryParam("page", "2"))

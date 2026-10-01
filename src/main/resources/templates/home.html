@@ -157,6 +157,15 @@
     </main>
 </div>
 
+<!--/* 검색 엔진용 사이트 설명(JSON-LD). 실행되는 스크립트가 아니라 CSP와 무관하고, 값은 인라인 JS
+       직렬화가 따옴표·꺾쇠를 이스케이프한다. */-->
+<script type="application/ld+json" th:inline="javascript">
+{"@context": "https://schema.org", "@type": "WebSite", "name": "Kraft",
+ "url": /*[[${siteBaseUrl}]]*/ "https://example.test",
+ "inLanguage": "ko",
+ "description": /*[[${pageDescription}]]*/ "설명"}
+</script>
+
 <div th:replace="~{layout/footer :: footer}"></div>
 </body>
 </html>
