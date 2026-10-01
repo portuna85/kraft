@@ -81,3 +81,37 @@
     font-size: $fs-sm;
     line-height: 1.6;
 }
+
+/* 사이트 공통 푸터. 본문 셸 아래에 얇은 구분선과 한두 줄 안내만 둔다. */
+.kraft-footer {
+    border-top: 1px solid var(--kraft-border);
+    margin-top: var(--kraft-space-8);
+    padding: var(--kraft-space-6) var(--kraft-space-4);
+    font-size: $fs-xs;
+    color: var(--kraft-text-muted);
+}
+
+.kraft-footer__inner {
+    max-width: 1280px;
+    margin: 0 auto;
+}
+
+.kraft-footer__brand {
+    font-weight: 700;
+    margin-bottom: var(--kraft-space-1);
+}
+
+.kraft-footer__note {
+    margin-bottom: var(--kraft-space-2);
+}
+
+.kraft-footer__links {
+    display: flex;
+    gap: var(--kraft-space-4);
+}
+
+.kraft-footer__links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+}

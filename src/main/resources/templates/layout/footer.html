@@ -8,6 +8,21 @@
 </div>
 
 <div th:fragment="footer">
+    <!--/* 사이트 공통 푸터. 서비스의 성격(과거 데이터 조회·통계)과 확률 고지를 모든 화면 끝에 한 번
+           둔다. 링크는 내비게이션과 같은 규칙(추천 기능을 끄면 추천 링크도 감춘다)을 따른다. */-->
+    <footer class="kraft-footer">
+        <div class="kraft-footer__inner">
+            <p class="kraft-footer__brand">Kraft</p>
+            <p class="kraft-footer__note">과거 당첨 데이터를 조회·통계로 보여주는 서비스입니다.
+                모든 유효한 로또 조합의 1등 당첨 확률은 같으며, 추천은 당첨 확률을 높이지 않습니다.</p>
+            <nav class="kraft-footer__links" aria-label="푸터">
+                <a th:if="${@environment.getProperty('app.recommend.enabled', 'true')} == 'true'"
+                   href="/recommend">번호 추천</a>
+                <a href="/community">커뮤니티</a>
+            </nav>
+        </div>
+    </footer>
+
     <!-- 로그아웃은 CSRF 토큰이 필요한 POST라 감춰 둔 폼으로 보낸다. 헤더의 로그아웃 버튼이
          이 폼을 제출한다(features/account.js).
          next 히든 필드는 없앴다 — 비밀번호 변경이 /login으로 직접 이동하도록 바뀌면서
