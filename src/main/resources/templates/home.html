@@ -53,9 +53,17 @@
                     <span th:text="${#numbers.formatInteger(latestDraw.firstPrizeAmount, 0, 'COMMA')} + '원'"></span>
                     <span th:if="${latestDraw.winnerCount != null}" th:text="'(' + ${latestDraw.winnerCount} + '명)'"></span>
                 </dd>
-                <dt>세후 예상</dt>
-                <dd class="home-num" th:text="${#numbers.formatInteger(latestDraw.takeHomeAmount, 0, 'COMMA')} + '원'"></dd>
+                <dt th:if="${latestDraw.takeHomeAmount != null}">세후 예상</dt>
+                <dd class="home-num" th:if="${latestDraw.takeHomeAmount != null}" th:text="${#numbers.formatInteger(latestDraw.takeHomeAmount, 0, 'COMMA')} + '원'"></dd>
             </dl>
+        </section>
+
+        <section th:if="${recommendEnabled}" class="home-recommend" aria-labelledby="home-recommend-title">
+            <h2 id="home-recommend-title" class="home-section__title">번호 추천</h2>
+            <p>고정·제외할 번호를 정해 조합을 받아볼 수 있습니다. 추천 방식은 무작위, 균형 조합(홀짝·고저·구간 분포 고려),
+                공동 당첨 위험 완화(사람들이 자주 고르는 패턴 회피) 중에서 고릅니다. 방식이 달라도 유효한 조합 하나하나의
+                1등 당첨 확률은 모두 같으며, 추천은 당첨 확률을 높이는 기능이 아닙니다.</p>
+            <p><a href="/recommend">번호 추천 화면으로 이동</a></p>
         </section>
 
         <!--/* 과거 기록을 있는 그대로 세어 보여줄 뿐 다음 추첨과는 무관하다 — 문구에서도 예측·유리함을
@@ -113,13 +121,6 @@
                     <span class="home-num" th:text="${count} + '개'">0개</span>
                 </li>
             </ul>
-        </section>
-
-        <section th:if="${recommendEnabled}" class="home-recommend" aria-labelledby="home-recommend-title">
-            <h2 id="home-recommend-title" class="home-section__title">번호 추천</h2>
-            <p>고정·제외할 번호를 정해 조합을 받아볼 수 있습니다. 추천 방식이 달라도 유효한 조합 하나하나의
-                1등 당첨 확률은 모두 같으며, 추천은 당첨 확률을 높이는 기능이 아닙니다.</p>
-            <p><a href="/recommend">번호 추천 화면으로 이동</a></p>
         </section>
 
         <section class="home-community" aria-labelledby="home-community-title">

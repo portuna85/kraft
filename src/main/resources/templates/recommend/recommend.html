@@ -46,8 +46,8 @@
                 </dd>
                 <!--/* 원천징수 세율로 계산한 표시용 추정치다(LottoPrizeTax) — "실수령액"은 확정액으로
                        읽혀 바꿨다(평가 보고서 2026-09-25 §6). */-->
-                <dt>세후 예상 금액</dt>
-                <dd th:text="${#numbers.formatInteger(latestRoundTakeHomeAmount, 0, 'COMMA')} + '원'"></dd>
+                <dt th:if="${latestRoundTakeHomeAmount != null}">세후 예상 금액</dt>
+                <dd th:if="${latestRoundTakeHomeAmount != null}" th:text="${#numbers.formatInteger(latestRoundTakeHomeAmount, 0, 'COMMA')} + '원'"></dd>
             </dl>
         </section>
 

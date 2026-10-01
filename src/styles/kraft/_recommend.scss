@@ -14,6 +14,12 @@
     margin-bottom: var(--kraft-space-6);
 }
 
+.recommend__latest-heading,
+.recommend__latest-date,
+.recommend__latest-prize dd {
+    font-variant-numeric: tabular-nums;
+}
+
 .recommend__latest-heading {
     font-size: $fs-sm;
     color: var(--kraft-text-muted);
