@@ -32,11 +32,6 @@ watch(status, async (next) => {
 
 <template>
   <div class="recommend">
-    <p class="recommend__disclaimer">
-      추천은 번호를 고르는 도구이며 당첨 확률을 높이는 기능이 아닙니다.
-      추첨은 매번 독립이라 확률은 그대로이고, 과거 1등 조합 제외는 서비스가 정한 고정 선호 정책입니다.
-    </p>
-
     <form
       class="recommend__form"
       @submit.prevent="generate"

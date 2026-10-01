@@ -54,8 +54,6 @@
         <!--/* 제외 검증의 기준 — 이력이 어느 회차까지, 언제 확인됐는지와 지연 여부. 이력이 준비되지
                않았으면 생성이 거절되므로(503) 그 사실을 미리 알린다(RecommendationFreshness). */-->
         <p th:if="${historyReady}" class="recommend__history" th:classappend="${historyStale} ? 'recommend__history--stale'">
-            과거 1등 조합 제외 기준: <strong th:text="${historyVerifiedRound}"></strong>회차까지 검증
-            (<span th:text="${#temporals.format(historyVerifiedAt, 'yyyy.MM.dd HH:mm')}"></span> 확인)
             <span th:if="${historyStale}" role="status">· 갱신이 늦어지고 있습니다. 최신 회차가 아직 반영되지 않았을 수 있습니다.</span>
         </p>
         <p th:unless="${historyReady}" class="recommend__history recommend__history--stale" role="status">
