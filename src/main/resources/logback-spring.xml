@@ -129,6 +129,9 @@
         <appender-ref ref="ERROR_FILE"/>
     </logger>
 
+    <!-- Hibernate의 연결 정보 INFO에는 JDBC URL에 덧붙은 DB 비밀번호가 포함될 수 있다. -->
+    <logger name="org.hibernate.orm.connections.pooling" level="WARN"/>
+
     <!-- additivity 기본값(true) 유지: kraft.log에도 그대로 남고, 전용 파일에도 따로 모인다. -->
     <logger name="org.springframework.security" additivity="true">
         <appender-ref ref="SECURITY_FILE"/>

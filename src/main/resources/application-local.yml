@@ -15,9 +15,11 @@
 # SQL 구성물이라 Hibernate 스키마 생성으로는 만들 수 없고, 그 결과 새 로컬 DB에서는
 # RecommendationHistoryImporter가 HISTORY_STATE_MISSING으로 즉시 실패했다.
 #
-# 스키마를 바꾸려면 이제 엔티티만 고치는 것으로 끝나지 않는다 — db/migration에 새 V파일을
-# 추가해야 한다(운영과 동일한 워크플로). docker 볼륨은 기동 사이에 유지되므로 계정·게시글은
-# 그대로 남는다.
+# 스키마를 바꾸려면 db/migration에 새 V파일을 추가해야 한다(운영과 동일한 워크플로).
+# 이 설정은 Flyway 도입 전에 Hibernate가 만든 기존 볼륨을 자동으로 baseline하지 않는다.
+# 그런 볼륨에는 flyway_schema_history가 없으므로 기동이 실패한다. 임의 버전으로 baseline하면
+# 이미 적용된 DDL을 다시 실행하거나, 아직 적용되지 않은 마이그레이션을 건너뛸 수 있다.
+# 기존 데이터가 있으면 README의 "기존 로컬 DB 전환" 절차에 따라 상태를 먼저 확인한다.
 spring:
   config:
     import: "optional:file:./.env[.properties]"

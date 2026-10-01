@@ -23,6 +23,21 @@ docker compose up -d --wait # 개발용 MariaDB만 띄운다
 
 `local` 프로파일이 프로젝트 루트의 `.env`를 읽습니다. 같은 이름의 OS 환경변수가 `.env`보다 우선합니다.
 
+### 기존 로컬 DB 전환
+
+Flyway 도입 전에 Hibernate가 만든 Docker 볼륨에는 테이블이 있어도
+`flyway_schema_history`가 없을 수 있습니다. 이 상태에서 `bootRun`을 실행하면
+`Found non-empty schema(s) ... but no schema history table` 오류로 중단됩니다.
+로컬 데이터가 필요 없다면 앱을 종료하고 `docker compose down -v`로 개발용 DB 볼륨을
+비운 뒤 `docker compose up -d --wait`와 `./gradlew bootRun`을 순서대로 실행합니다.
+빈 DB에는 Flyway가 V1부터 모든 마이그레이션을 적용합니다. 추천 이력은 별도 반영 전까지
+미준비 상태로 표시됩니다.
+기존 데이터를 보존하려면 DB 덤프를 먼저 받고, 실제 테이블·컬럼·인덱스·트리거를
+마이그레이션 파일과 대조한 뒤 적용된 마지막 버전으로 기준선을 잡아야 합니다.
+기준선 이후의 마이그레이션은 순서대로 실행하고, 이메일 HMAC 전환(V33~V34)은
+기존 이메일 백필을 마친 뒤 완료해야 합니다. 최신 버전을 임의로 기준선에 지정하면
+누락된 스키마 변경과 트리거가 영구히 건너뛰어질 수 있습니다.
+
 프런트 자원을 고칠 때:
 
 ```
