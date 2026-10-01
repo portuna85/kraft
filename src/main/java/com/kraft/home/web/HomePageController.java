@@ -1,5 +1,7 @@
 package com.kraft.home.web;
 
+import com.kraft.home.service.DrawInsights;
+import com.kraft.home.service.HomeInsightsService;
 import com.kraft.post.dto.PostsListResponseDto;
 import com.kraft.post.service.PostService;
 import com.kraft.recommend.domain.LottoPrizeTax;
@@ -35,12 +37,15 @@ public class HomePageController {
 
     private final WinningDrawRepository winningDrawRepository;
     private final PostService postService;
+    private final HomeInsightsService insightsService;
     private final boolean recommendEnabled;
 
     public HomePageController(WinningDrawRepository winningDrawRepository, PostService postService,
+                              HomeInsightsService insightsService,
                               @Value("${app.recommend.enabled:true}") boolean recommendEnabled) {
         this.winningDrawRepository = winningDrawRepository;
         this.postService = postService;
+        this.insightsService = insightsService;
         this.recommendEnabled = recommendEnabled;
     }
 
@@ -60,6 +65,10 @@ public class HomePageController {
         if (recommendEnabled) {
             winningDrawRepository.findTopByOrderByRoundNoDesc()
                     .ifPresent(draw -> model.addAttribute("latestDraw", LatestDraw.from(draw)));
+            DrawInsights insights = insightsService.current();
+            if (!insights.isEmpty()) {
+                model.addAttribute("insights", insights);
+            }
         }
         List<PostsListResponseDto> recentPosts =
                 postService.findAllDesc(PageRequest.of(0, RECENT_POSTS)).content();

@@ -42,6 +42,7 @@
 
 .home-latest,
 .home-recommend,
+.home-insights,
 .home-community,
 .home-guide {
     margin-bottom: var(--kraft-space-6);
@@ -125,4 +126,54 @@
 
 .home-empty__hint {
     font-size: $fs-sm;
+}
+
+.home-insights__note {
+    color: var(--kraft-text-muted);
+    font-size: $fs-sm;
+}
+
+.home-insights__grid {
+    display: grid;
+    gap: var(--kraft-space-4);
+    grid-template-columns: 1fr;
+
+    @include from($bp-md) {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.home-insights__sub {
+    font-size: $fs-md;
+    margin: var(--kraft-space-4) 0 var(--kraft-space-2);
+}
+
+.home-insights__list {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+    font-size: $fs-sm;
+}
+
+.home-insights__list li {
+    display: grid;
+    grid-template-columns: 9rem 1fr 4.5rem;
+    align-items: center;
+    gap: var(--kraft-space-2);
+    padding: var(--kraft-space-1) 0;
+}
+
+.home-insights__list meter {
+    width: 100%;
+    height: 12px;
+}
+
+.home-insights__list li > :last-child {
+    text-align: right;
+}
+
+@media (max-width: 400px) {
+    .home-insights__list li {
+        grid-template-columns: 6.5rem 1fr 3.5rem;
+    }
 }

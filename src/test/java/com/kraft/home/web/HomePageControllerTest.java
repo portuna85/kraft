@@ -45,8 +45,13 @@ class HomePageControllerTest {
     @MockitoBean
     private PostService postService;
 
+    @MockitoBean
+    private com.kraft.home.service.HomeInsightsService insightsService;
+
     @BeforeEach
     void emptyBoard() {
+        given(insightsService.current())
+                .willReturn(com.kraft.home.service.DrawInsights.of(List.of(List.of(1, 2, 3, 4, 5, 6)), 30));
         given(postService.findAllDesc(any(Pageable.class)))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 5, 0, 0, true, true));
     }
@@ -78,7 +83,9 @@ class HomePageControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(model().attributeExists("latestDraw"))
                 .andExpect(content().string(containsString("1243")))
-                .andExpect(content().string(containsString("lotto-ball--bonus")));
+                .andExpect(content().string(containsString("lotto-ball--bonus")))
+                .andExpect(content().string(containsString("과거 기록 살펴보기")))
+                .andExpect(content().string(containsString("다음 추첨 결과와는 관계가 없습니다")));
     }
 
     @Test
@@ -113,7 +120,7 @@ class HomePageControllerTest {
     @DisplayName("추천 기능이 꺼져 있으면 최신 회차를 조회하지 않고 추천 링크도 그리지 않는다")
     void recommendDisabledHidesDrawAndCta() throws Exception {
         // 기능 플래그는 생성자 값이라 같은 슬라이스에서 끄려면 별도 컨트롤러 인스턴스가 필요하다.
-        HomePageController controller = new HomePageController(winningDrawRepository, postService, false);
+        HomePageController controller = new HomePageController(winningDrawRepository, postService, insightsService, false);
         org.springframework.ui.ExtendedModelMap model = new org.springframework.ui.ExtendedModelMap();
         Object result = controller.home(new org.springframework.mock.web.MockHttpServletRequest(), model);
 
