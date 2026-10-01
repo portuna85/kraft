@@ -126,13 +126,18 @@ tasks.processResources {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    // CI는 두 JVM으로 클래스들을 나눠 실행한다. JVM 내부의 JUnit 실행은 순차로 유지해
+    // Spring 컨텍스트·H2 정리 확장이 같은 DB를 동시에 건드리지 않게 한다.
+    maxParallelForks = providers.gradleProperty("testForks").map(String::toInt).getOrElse(1)
     // local(기본값)은 2026-09-11부터 Docker MariaDB를 쓰므로, 테스트가 Docker 없이도 항상
     // 빠르고 격리되어 돌도록 test 프로파일(src/test/resources/application-test.yml, H2
     // 인메모리)을 강제한다. @DataJpaTest 슬라이스는 기본적으로 임베디드 DB로 자동 교체되어
     // 이 설정과 무관하지만, @SpringBootTest(KraftApplicationTests, SecurityConfigTest)는
     // 실제 데이터소스 설정을 그대로 쓰므로 이 프로파일이 없으면 Docker가 떠 있어야만 통과한다.
     systemProperty("spring.profiles.active", "test")
-    systemProperty("logging.file.path", layout.buildDirectory.dir("test-logs").get().asFile.absolutePath)
+    // Spring이 각 테스트 JVM의 worker 번호를 해석한다. 롤링 로그 파일 충돌을 막는다.
+    systemProperty("logging.file.path",
+        layout.buildDirectory.dir("test-logs").get().asFile.absolutePath + "/\${org.gradle.test.worker:single}")
     jvmArgs("-javaagent:${mockitoAgent.asPath}")
 }
 
