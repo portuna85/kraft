@@ -79,10 +79,11 @@ npm run test:e2e        # Playwright
 
 ### CI 실행 구조
 
-- 백엔드 테스트와 프런트 검사는 E2E JAR 빌드와 병렬로 시작합니다. CI의 백엔드 테스트는 `-PtestForks=2 --max-workers=2`로 두 JVM에서 실행하며, 파일 로그도 worker별로 분리합니다. 로컬 기본값은 한 JVM입니다.
-- `e2e-build`가 전용 JAR를 한 번 만들어 네 E2E shard에 전달합니다. 각 shard는 별도 서버와 H2를 사용하며, 공유 계정 충돌을 막기 위해 내부에서는 한 worker로 실행합니다. shard 수는 workflow의 matrix에서 조정합니다.
+- 백엔드 테스트와 프런트 검사는 E2E JAR 빌드와 병렬로 시작합니다. 백엔드 테스트는 기본 한 JVM이며, `-PtestForks=2 --max-workers=2`로 병렬도를 비교할 수 있습니다. 파일 로그는 worker별로 분리합니다. CI 실측에서 두 JVM은 단축 효과가 없어 기본값을 유지합니다.
+- `e2e-build`가 전용 JAR를 한 번 만들어 세 E2E shard에 전달합니다. 각 shard는 별도 서버와 H2를 사용하며, 공유 계정 충돌을 막기 위해 내부에서는 한 worker로 실행합니다. 네 shard도 긴 파일에 따른 불균형을 해소하지 못해 세 개를 유지합니다.
 - E2E는 브라우저와 OS 라이브러리가 포함된 공식 Playwright 컨테이너에서 실행합니다. 이미지 버전은 `package-lock.json`의 `playwright-core` 버전에서 읽으므로 패키지 업데이트 시 workflow 버전을 따로 수정할 필요가 없습니다.
 - Gradle 캐시는 백엔드 `test` 잡에서 저장하고 `e2e-build`에서는 읽기만 합니다. 의존성 그래프 제출은 저장소의 **Automatic Dependency Submission (Gradle)** 기능이 담당합니다. 이 기능을 끄면 별도 제출 잡을 복구해야 합니다.
+- `test` 잡은 `cache-cleanup: never`로 캐시 저장 전 별도 Gradle 프로세스를 띄우는 정리 비용(실측 약 25초)을 줄입니다. 캐시 저장·복원은 유지하지만 미사용 항목이 남을 수 있으므로, 캐시 크기나 복원 시간이 커지면 `on-success`로 정리한 뒤 다시 비교합니다.
 - 속도 비교는 Actions의 잡 전체 시간과 단계별 시간을 함께 확인합니다. 컨테이너 이미지 다운로드·러너 대기 시간도 포함해 비교하며, 테스트와 배포 게이트는 그대로 유지합니다.
 
 ## 배포

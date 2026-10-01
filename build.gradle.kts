@@ -126,7 +126,7 @@ tasks.processResources {
 
 tasks.withType<Test> {
     useJUnitPlatform()
-    // CI는 두 JVM으로 클래스들을 나눠 실행한다. JVM 내부의 JUnit 실행은 순차로 유지해
+    // -PtestForks=N으로 JVM 수를 조정할 수 있다. JVM 내부의 JUnit 실행은 순차로 유지해
     // Spring 컨텍스트·H2 정리 확장이 같은 DB를 동시에 건드리지 않게 한다.
     maxParallelForks = providers.gradleProperty("testForks").map(String::toInt).getOrElse(1)
     // local(기본값)은 2026-09-11부터 Docker MariaDB를 쓰므로, 테스트가 Docker 없이도 항상

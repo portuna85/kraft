@@ -79,9 +79,13 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
+        with:
+          # 후처리의 캐시 정리가 별도 Gradle/JVM을 띄워 약 25초를 쓴다.
+          # 캐시 저장·복원은 유지하고 매 push의 추가 정리 실행만 생략한다.
+          cache-cleanup: never
 
       - name: Test and build jar
-        run: ./gradlew test bootJar -PtestForks=2 --max-workers=2 --no-daemon --console=plain
+        run: ./gradlew test bootJar --no-daemon --console=plain
 
       # @Testcontainers(disabledWithoutDocker = true) 클래스는 Docker가 없으면 "실패"가 아니라
       # 전부 skipped로 조용히 통과한다 — CI 이미지에서 Docker가 빠지거나 데몬이 죽어 있어도
@@ -263,7 +267,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
