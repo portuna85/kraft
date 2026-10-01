@@ -77,6 +77,14 @@ npm run test:e2e        # Playwright
 - 일부 테스트(MariaDB 마이그레이션·백업 복원 리허설 등)는 Testcontainers를 씁니다. Docker가 꺼져 있으면 건너뜁니다. CI에서는 모두 실행됩니다.
 - E2E는 먼저 `./gradlew bootE2eJar`로 `build/libs/kraft-e2e.jar`를 만든 뒤 실행합니다.
 
+### CI 실행 구조
+
+- 백엔드 테스트와 프런트 검사는 E2E JAR 빌드와 병렬로 시작합니다.
+- `e2e-build`가 전용 JAR를 한 번 만들어 세 E2E shard에 전달합니다. 각 shard는 별도 서버와 H2를 사용하며, 공유 계정 충돌을 막기 위해 내부에서는 한 worker로 실행합니다.
+- E2E는 브라우저와 OS 라이브러리가 포함된 공식 Playwright 컨테이너에서 실행합니다. 이미지 버전은 `package-lock.json`의 `playwright-core` 버전에서 읽으므로 패키지 업데이트 시 workflow 버전을 따로 수정할 필요가 없습니다.
+- Gradle 캐시는 백엔드 `test` 잡에서 저장하고 `e2e-build`에서는 읽기만 합니다. 의존성 그래프 제출은 저장소의 **Automatic Dependency Submission (Gradle)** 기능이 담당합니다. 이 기능을 끄면 별도 제출 잡을 복구해야 합니다.
+- 속도 비교는 Actions의 잡 전체 시간과 단계별 시간을 함께 확인합니다. 컨테이너 이미지 다운로드·러너 대기 시간도 포함해 비교하며, 테스트와 배포 게이트는 그대로 유지합니다.
+
 ## 배포
 
 `main`에 푸시하면 GitHub Actions(`.github/workflows/build.yml`)가 테스트를 돌리고, 모두 통과하면 **테스트한 JAR 그대로** 운영 서버에 배포합니다. 즉 **`main` 푸시는 곧 운영 배포**입니다.
