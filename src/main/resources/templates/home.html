@@ -20,7 +20,8 @@
             <p class="home-hero__lead">과거 당첨 데이터를 확인하고, 서로 다른 기준의 번호 추천을 비교해 보세요.</p>
             <div class="home-hero__actions" th:if="${recommendEnabled}">
                 <a href="/recommend" class="btn btn-primary">번호 추천 받기</a>
-                <a href="/community" class="btn btn-outline-primary">커뮤니티 보기</a>
+                <a th:if="${insights != null}" href="#home-insights-title" class="btn btn-outline-primary">당첨 통계 보기</a>
+                <a th:unless="${insights != null}" href="/community" class="btn btn-outline-primary">커뮤니티 보기</a>
             </div>
             <div class="home-hero__actions" th:unless="${recommendEnabled}">
                 <a href="/community" class="btn btn-primary">커뮤니티 보기</a>
