@@ -30,10 +30,13 @@
         <div class="card-kraft" sec:authorize="isAuthenticated()" th:if="${writeBlockReason == null}">
             <script type="application/json" id="post-save-initial-data" th:utext="${postSaveInitialJson}"></script>
             <div id="post-save-app"></div>
-            <!-- post-save.js가 정적으로 import하는 공유 청크(Vue 런타임 포함, 67KB)를 미리
-                 받아 둔다. 이게 없으면 브라우저가 post-save.js를 내려받아 파싱한 뒤에야 이
-                 import를 발견해 청크를 요청하므로 왕복이 하나 더 든다. -->
+            <!-- post-save.js가 정적으로 import하는 청크를 모두 미리 받아 둔다(FE-04). 이게 없으면
+                 브라우저가 post-save.js를 내려받아 파싱한 뒤에야 import를 발견해 청크를 요청하므로
+                 왕복이 하나 더 든다. runtime은 Vue 런타임과 작은 공용 모듈(약 67KB), post-shared는
+                 글 작성·수정이 함께 쓰는 폼 코드다. 어떤 청크를 미리 받아야 하는지는
+                 scripts/check-preload.mjs가 빌드 결과와 대조해 검증한다. -->
             <link rel="modulepreload" th:href="@{/js/vue-dist/chunks/runtime.js}" />
+            <link rel="modulepreload" th:href="@{/js/vue-dist/chunks/post-shared.js}" />
             <script type="module" th:src="@{/js/vue-dist/post-save.js}" data-mount-fallback="post-save-app"></script>
         </div>
 

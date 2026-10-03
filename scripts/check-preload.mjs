@@ -4,8 +4,11 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
- * 템플릿의 <link rel="modulepreload">가 실제로 그 페이지의 "무거운" 공유 청크를 미리 받도록
- * 되어 있는지 검증한다.
+ * 템플릿의 <link rel="modulepreload">가 그 페이지의 진입 스크립트가 의존하는 청크를 빠짐없이
+ * 미리 받도록 되어 있는지 검증한다(FE-04). 안 쓰는 청크를 preload하는 것도 실패다.
+ *
+ * 아래 설명은 처음 만들 때(F07·F01)의 배경이다. 지금은 "가장 무거운 것"이 아니라 "모든
+ * 의존 청크"를 확인한다.
  *
  * F07: 5개 템플릿이 "Vue 런타임을 포함한 공유 청크"라며 chunks/flash.js(1.3KB)를 preload했지만,
  * 실제 런타임은 훨씬 큰 다른 청크(당시 chunks/http.js, 67KB)에 있었다. flash.js도 그 큰 청크를
@@ -134,30 +137,38 @@ for (const file of listHtmlFiles(templatesDir)) {
         }
     }
 
-    // 이 페이지의 진입 스크립트들이 의존하는 모든 청크 중 가장 무거운 것을 구한다 — 그것이
-    // preload할 가치가 있는 청크다. 실제로 preload되어 있는지 확인한다(preload가 하나도
-    // 없는 페이지도 여기 포함된다 — F01).
+    // 이 페이지의 진입 스크립트들이 의존하는 모든 청크를 구한다. 하나라도 preload되어 있지
+    // 않으면 그 청크는 진입 스크립트를 파싱한 뒤에야 발견되어 2단 워터폴이 된다(FE-04).
+    // preload가 하나도 없는 페이지도 여기 포함된다(F01). 예전에는 "가장 무거운 청크"만
+    // 확인했지만(F07), 작은 청크(1KB짜리 flash·toast 등)도 왕복 한 번씩을 만든다.
     const allDeps = new Set();
     for (const entry of entries) {
         for (const dep of transitiveChunkDeps(graph, entry)) {
             allDeps.add(dep);
         }
     }
-    if (allDeps.size === 0) {
-        continue;
-    }
-    const heaviest = [...allDeps].sort((a, b) => graph.get(b).size - graph.get(a).size)[0];
-    if (!preloads.has(heaviest)) {
+    const missing = [...allDeps]
+        .filter((dep) => !preloads.has(dep))
+        .sort((a, b) => graph.get(b).size - graph.get(a).size);
+    if (missing.length > 0) {
         const preloadList = preloads.size > 0 ? [...preloads].join(', ') : '(없음)';
+        const missingList = missing.map((dep) => `${dep}(${graph.get(dep).size}B)`).join(', ');
         console.error(
-            `${file}: ${preloadList}를 preload하지만, 이 페이지가 실제로 의존하는 `
-            + `가장 무거운 청크는 ${heaviest}(${graph.get(heaviest).size}B)다.`,
+            `${file}: 진입 스크립트(${entries.join(', ')})가 의존하는 청크 중 preload되지 않은 것: `
+            + `${missingList}. 현재 preload: ${preloadList}.`,
         );
         failed = true;
+    }
+    // 이 페이지가 쓰지 않는 청크를 preload하면 안 쓸 바이트를 받는다.
+    for (const preload of preloads) {
+        if (graph.has(preload) && !allDeps.has(preload)) {
+            console.error(`${file}: ${preload}를 preload하지만 이 페이지의 진입 스크립트는 그 청크를 import하지 않는다.`);
+            failed = true;
+        }
     }
 }
 
 if (failed) {
     process.exit(1);
 }
-console.log('modulepreload 참조가 실제로 가장 무거운 의존 청크를 가리킨다.');
+console.log('모든 페이지가 진입 스크립트의 의존 청크를 빠짐없이(그리고 그것만) modulepreload한다.');

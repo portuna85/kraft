@@ -20,7 +20,6 @@ export default [
             'playwright-report/**',
             'test-results/**',
             'src/main/resources/static/js/vue-dist/**',
-            'src/main/resources/static/js/vendor/**',
         ],
     },
 
@@ -33,10 +32,10 @@ export default [
             sourceType: 'module',
             globals: {
                 ...globals.browser,
-                // Bootstrap은 이 서버가 자체 호스팅하는 classic script(/js/vendor/bootstrap.min.js,
-                // footer.html 참고)가 올려주는 전역이다. ESM으로 import하지 않는 이유는 모듈
-                // 평가 시점에 별도 네트워크 왕복이 생기기 때문이다. 여기 선언해 두면
-                // "Unresolved variable or type bootstrap"이 사라진다.
+                // Bootstrap은 src/vue/bootstrap/entry.js가 올려주는 전역이다(footer.html 참고,
+                // Modal·Toast만). plain JS는 번들하지 않아 직접 import할 수 없고, Vue 번들과
+                // 인스턴스가 갈라지지 않게 한 곳에서만 만든다. 여기 선언해 두면 "Unresolved
+                // variable or type bootstrap"이 사라진다.
                 bootstrap: 'readonly',
             },
         },

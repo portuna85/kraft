@@ -27,7 +27,6 @@
     "build:vue": "vite build --config src/vue/vite.config.js",
     "check:vue": "npm run build:vue && git add -N -- src/main/resources/static/js/vue-dist && git diff --exit-code --stat -- src/main/resources/static/js/vue-dist",
     "check:preload": "node scripts/check-preload.mjs",
-    "check:vendor": "node scripts/check-vendor.mjs",
     "audit:check": "npm audit --audit-level=high"
   },
   "devDependencies": {

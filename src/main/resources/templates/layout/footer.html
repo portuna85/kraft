@@ -203,25 +203,17 @@
     </div>
 
     <!--
-      jQuery는 더 이상 쓰지 않는다. Bootstrap 5가 jQuery에 의존하지 않게 되면서 이 앱의 코드만
-      jQuery를 쓰고 있었는데, 쓰던 API(.val/.attr/.on/.ajax)가 전부 표준 DOM·fetch로 대체
-      가능해 걷어냈다. CDN 의존이 하나 줄고, 전송량도 약 90KB 줄었다.
+      Bootstrap JS 중 이 앱이 쓰는 Modal·Toast만 담은 번들(src/vue/bootstrap/entry.js → FE-06). 예전에는
+      bootstrap.min.js(60KB, 전 컴포넌트)를 통째로 커밋해 불러왔다. 필요한 컴포넌트만 node_modules에서
+      번들하므로 약 25KB(gzip 8KB)이고 버전은 package-lock.json이 고정한다. Popper가 필요한
+      컴포넌트(드롭다운·툴팁·팝오버)는 쓰지 않는다.
 
-      두 스크립트의 순서는 우연이 아니다. 일반 <script>는 파싱 도중 즉시 실행되고
-      type="module"은 파싱이 끝난 뒤에 실행되므로, 모듈이 도는 시점에는 전역 bootstrap 객체가
-      반드시 준비되어 있다(경합이 아니라 명세가 보장한다). 아래 Bootstrap 태그에 async를
-      붙이면 그 보장이 깨진다.
-
-      Popper가 필요한 컴포넌트(드롭다운·툴팁·팝오버)는 쓰지 않으므로 bundle(Popper 포함,
-      80KB) 대신 본체(60KB)만 불러온다. 모달·토스트는 Popper가 필요 없다.
-
-      CDN이 아니라 이 서버가 직접 제공한다(개선 보고서 F08) — CDN 장애가 모달·토스트 UI
-      전체를 죽이는 단일 장애점이었다. node_modules/bootstrap/dist/js/bootstrap.min.js를
-      그대로 복사한 파일이라 integrity·crossorigin은 자체 호스팅에는 의미가 없어 뺐다(같은
-      서버가 서빙하므로 무결성은 이미 전송 구간(HTTPS)이 보장한다). 버전을 올릴 때는 이
-      파일도 같이 바꿔야 한다(package.json의 bootstrap 버전과 맞출 것).
+      이 서버가 직접 제공한다(개선 보고서 F08) — CDN 장애가 모달·토스트 UI 전체를 죽이는 단일
+      장애점이었다. 모듈 스크립트라 파싱을 막지 않고, 아래 main.js보다 먼저 선언되어 같은 순서로
+      실행된다 — 전역 bootstrap은 모달·토스트를 실제로 여는 시점(사용자 조작)에 이미 있다.
+      core/bootstrap-ui.js는 이 전역이 없어도 예외 대신 경고만 남긴다.
     -->
-    <script th:src="@{/js/vendor/bootstrap.min.js}"></script>
+    <script type="module" th:src="@{/js/vue-dist/bootstrap.js}"></script>
 
     <!-- 앱 코드. ES 모듈이라 하위 파일들을 스스로 불러온다(/js/**는 이미 permitAll). 진입점만
          버전이 붙은 경로로 요청하면 된다 — 그 안의 상대 경로 import(예: ./ui/flash.js)는

@@ -1,1 +1,0 @@
-import{E as e,b as t,k as n}from"./runtime.js";function r(r,i){let a=n(``),o=n(null);e([r,i],()=>{a.value&&r()===i()&&(a.value=``)});async function s(){return a.value=``,r()===i()||(a.value=`비밀번호가 일치하지 않습니다.`,await t(),o.value?.focus(),!1)}return{confirmError:a,confirmInput:o,validateMatch:s}}export{r as t};

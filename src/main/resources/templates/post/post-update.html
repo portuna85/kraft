@@ -42,9 +42,12 @@
                 </div>
             </article>
         </div>
-        <!-- post-edit.js·comments.js가 함께 쓰는 공유 청크(Vue 런타임 포함, 67KB)를 미리
-             받아 둔다 — 두 스크립트가 같은 청크를 가리키므로 여기서 한 번만 선언한다. -->
+        <!-- post-edit.js·comments.js가 정적으로 import하는 청크를 모두 미리 받아 둔다(FE-04).
+             runtime은 Vue 런타임과 작은 공용 모듈(약 67KB)로 두 스크립트가 함께 쓰고, post-shared는
+             글 작성·수정이 함께 쓰는 폼 코드(post-edit만 import)다. 필요한 청크 목록은
+             scripts/check-preload.mjs가 빌드 결과와 대조해 검증한다. -->
         <link rel="modulepreload" th:href="@{/js/vue-dist/chunks/runtime.js}" />
+        <link rel="modulepreload" th:href="@{/js/vue-dist/chunks/post-shared.js}" />
         <script type="module" th:src="@{/js/vue-dist/post-edit.js}" data-mount-fallback="post-app"></script>
 
         <!-- 댓글은 Vue 아일랜드(src/vue/comments)로 렌더링된다. canManage는 서버만 판정할 수
