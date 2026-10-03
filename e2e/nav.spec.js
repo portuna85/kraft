@@ -50,6 +50,25 @@ test.describe('넓은 화면', () => {
     });
 });
 
+test.describe('상단 고정 헤더', () => {
+    test.use({ storageState: storageStateFor('user'), viewport: { width: 1280, height: 800 } });
+
+    test('스크롤해도 헤더가 화면 위에 남고, 통계 링크는 홈의 인사이트 섹션을 가리킨다', async ({ page }) => {
+        await page.goto('/');
+
+        const stats = page.locator('.kraft-actions__link', { hasText: '통계' });
+        await expect(stats).toHaveAttribute('href', '/#home-insights-title');
+
+        // 본문이 짧아도 스크롤이 생기도록 높이를 늘린 뒤 끝까지 내린다.
+        await page.evaluate(() => {
+            document.querySelector('main').style.minHeight = '3000px';
+            window.scrollTo(0, document.body.scrollHeight);
+        });
+        const top = await page.locator('.kraft-topbar').evaluate((el) => el.getBoundingClientRect().top);
+        expect(top).toBe(0);
+    });
+});
+
 test.describe('로그인 복귀', () => {
     test.use({ storageState: { cookies: [], origins: [] } });
 

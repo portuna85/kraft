@@ -3,6 +3,11 @@
     box-sizing: border-box;
 }
 
+/* sticky 헤더(최대 64px)에 앵커 이동 대상이 가려지지 않게 한다. */
+html {
+    scroll-padding-top: 72px;
+}
+
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
         transition-duration: 0.001ms !important;

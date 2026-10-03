@@ -2,8 +2,22 @@
    헤더 / 탐색
    ========================================================================== */
 .kraft-topbar {
+    /* 스크롤해도 탐색이 따라오도록 상단에 고정한다. 헤더 높이는 56px(768px 이상 64px)로
+       유지돼 본문을 가리는 양이 작다. 앵커 이동 시 가림은 _base.scss의 scroll-padding-top. */
+    position: sticky;
+    top: 0;
+    z-index: 30;
     background-color: var(--kraft-header);
     border-bottom: 1px solid var(--kraft-header-border);
+}
+
+/* 모바일에서 메뉴가 펼쳐진 헤더가 뷰포트보다 길어지면 아래 항목이 닿지 못하므로 헤더 안에서
+   스크롤하게 한다. 768px 이상에서는 계정 메뉴가 헤더 밖으로 absolute 펼쳐지므로 적용하지 않는다. */
+@media (max-width: $bp-md - 1px) {
+    .kraft-topbar {
+        max-height: 100vh;
+        overflow-y: auto;
+    }
 }
 
 .kraft-topbar__inner {
