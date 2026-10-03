@@ -4,8 +4,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -37,11 +39,22 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
     long countByStatus(ReportStatus status);
 
     /**
-     * 처리 완료(대기 중이 아닌) 신고 중 스냅샷이 아직 남은 것을 보관기간 정리 작업이 훑는다
-     * (개선 보고서 A-SEC-07, {@code ReportSnapshotPurger}). 스냅샷이 이미 비어 있는 행은
-     * 매번 다시 훑지 않도록 {@code targetContentSnapshot IS NOT NULL}로 거른다.
+     * 처리 완료(대기 중이 아닌) 신고 중 스냅샷이 아직 남은 것의 id를 보관기간 정리 작업이
+     * {@code pageable} 크기만큼만 읽는다(개선 보고서 A-SEC-07, {@code ReportSnapshotPurger}).
+     * 예전에는 대상 엔티티를 제한 없이 전부 올려 한 트랜잭션에서 하나씩 갱신했다(BE-10).
+     * 스냅샷이 이미 비어 있는 행은 매번 다시 훑지 않도록 {@code targetContentSnapshot IS NOT NULL}로 거른다.
      */
-    @Query("SELECT r FROM Report r WHERE r.status <> com.kraft.report.domain.ReportStatus.PENDING "
-            + "AND r.targetContentSnapshot IS NOT NULL AND r.handledAt < :threshold")
-    List<Report> findHandledWithSnapshotOlderThan(@Param("threshold") LocalDateTime threshold);
+    @Query("SELECT r.id FROM Report r WHERE r.status <> com.kraft.report.domain.ReportStatus.PENDING "
+            + "AND r.targetContentSnapshot IS NOT NULL AND r.handledAt < :threshold ORDER BY r.id")
+    List<Long> findHandledIdsWithSnapshotOlderThan(@Param("threshold") LocalDateTime threshold, Pageable pageable);
+
+    /**
+     * 주어진 신고들의 제목·본문 스냅샷을 한 문장으로 비운다. 엔티티를 읽지 않으므로 낙관적 락
+     * 버전·감사 시각은 바뀌지 않는다 — 처리가 끝난 신고라 더 편집될 일이 없고, 비우는 것이
+     * 정리 작업의 목적이다. 자체 트랜잭션이라 묶음마다 짧게 커밋된다.
+     */
+    @Transactional
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Report r SET r.targetTitleSnapshot = null, r.targetContentSnapshot = null WHERE r.id IN :ids")
+    int clearSnapshotsByIdIn(@Param("ids") List<Long> ids);
 }

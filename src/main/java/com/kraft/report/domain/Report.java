@@ -71,7 +71,8 @@ public class Report extends BaseEntity {
      * A-SEC-07). 대상이 이미 사라져도(작성자가 스스로 지웠거나, 처리 중 지연) 관리자가 누구를
      * 정지해야 할지 판단할 최소한의 근거로 남는다 — {@code ReportService.resolve()}가 이
      * 필드를 실시간 조회의 대체 수단(fallback)으로만 쓴다. 처리 완료 후 일정 기간이 지나면
-     * {@code ReportSnapshotPurger}가 비운다(개인정보 보관기간).
+     * {@code ReportSnapshotPurger}가 벌크 UPDATE로 비운다(개인정보 보관기간 — {@code targetAuthor}는
+     * 감사 기록으로 남긴다).
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "target_author_id")
@@ -127,16 +128,6 @@ public class Report extends BaseEntity {
     public void closeAsTargetDeleted() {
         this.status = ReportStatus.TARGET_DELETED;
         this.handledAt = LocalDateTime.now();
-    }
-
-    /**
-     * 처리 완료 후 일정 기간이 지난 스냅샷을 비운다(개인정보 보관기간, {@code ReportSnapshotPurger}).
-     * {@code targetAuthor}는 남긴다 — FK 하나는 별도 개인정보가 아니고, "누구를 정지했는지"의
-     * 감사 기록으로 계속 의미가 있다.
-     */
-    public void clearTargetSnapshot() {
-        this.targetTitleSnapshot = null;
-        this.targetContentSnapshot = null;
     }
 
     private void markHandled(ReportStatus handledStatus, User admin) {

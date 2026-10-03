@@ -1,13 +1,12 @@
 package com.kraft.report.service;
 
-import com.kraft.report.domain.Report;
 import com.kraft.report.domain.ReportRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -36,20 +35,35 @@ public class ReportSnapshotPurger {
     @Value("${app.report.snapshot-purge-enabled:true}")
     private boolean enabled;
 
+    /** 한 번에 비우는 신고 수. 묶음마다 따로 커밋해 락·메모리를 짧게 쓴다(BE-10). */
+    @Value("${app.report.snapshot-purge-batch-size:500}")
+    private int batchSize;
+
     @Scheduled(initialDelayString = "${app.report.snapshot-purge-initial-delay-ms:1800000}",
             fixedDelayString = "${app.report.snapshot-purge-interval-ms:86400000}")
-    @Transactional
     public void purgeOldSnapshots() {
         if (!enabled) {
             return;
         }
 
         LocalDateTime threshold = LocalDateTime.now().minus(Duration.ofDays(retentionDays));
-        List<Report> targets = reportRepository.findHandledWithSnapshotOlderThan(threshold);
-        if (targets.isEmpty()) {
-            return;
+        // 전체를 엔티티로 올려 한 트랜잭션에서 고치는 대신, id를 묶음 단위로 읽어 한 문장으로
+        // 비운다. 비운 행은 다음 조회 조건(IS NOT NULL)에서 빠지므로 항상 앞으로 나아간다.
+        int cleared = 0;
+        while (true) {
+            List<Long> ids = reportRepository.findHandledIdsWithSnapshotOlderThan(
+                    threshold, PageRequest.of(0, batchSize));
+            if (ids.isEmpty()) {
+                break;
+            }
+            int updated = reportRepository.clearSnapshotsByIdIn(ids);
+            if (updated == 0) {
+                break;
+            }
+            cleared += updated;
         }
-        targets.forEach(Report::clearTargetSnapshot);
-        log.info("보관 기한이 지난 신고 스냅샷 {}건을 비웠습니다.", targets.size());
+        if (cleared > 0) {
+            log.info("보관 기한이 지난 신고 스냅샷 {}건을 비웠습니다.", cleared);
+        }
     }
 }
