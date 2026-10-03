@@ -1,4 +1,4 @@
-import { test, expect, ACCOUNTS, PASSWORD, storageStateFor, login, openAccountMenu, uniqueTitle } from './fixtures.js';
+import { test, expect, PASSWORD, PASSWORD_CHANGE_ACCOUNT, storageStateFor, login, openAccountMenu, uniqueTitle } from './fixtures.js';
 
 test.describe('비밀번호 변경', () => {
     test.use({ storageState: storageStateFor('other') });
@@ -110,14 +110,16 @@ test.describe('비밀번호 변경', () => {
 });
 
 test.describe('비밀번호 변경 성공', () => {
-    // 이 스펙은 비밀번호를 실제로 바꾸므로 다른 계정과 섞이면 안 된다.
+    // 이 스펙은 비밀번호를 실제로 바꾸므로 다른 계정과 섞이면 안 된다 — 전용 시드 계정
+    // (PASSWORD_CHANGE_ACCOUNT)을 쓴다. admin을 쓰면 변경과 복원 사이에서 실패했을 때 같은
+    // 샤드의 나머지 테스트가 admin 로그인에 줄줄이 실패했다(OPS-04).
     // storageState 없이 새로 로그인해 쓰고, 끝에서 원래대로 되돌린다.
     test.use({ storageState: { cookies: [], origins: [] } });
 
     test('변경하면 모든 세션이 끊기고 로그인 화면으로 간다', async ({ page }) => {
         const newPassword = `New${uniqueTitle('p').slice(-6)}!aA1`;
 
-        await login(page, ACCOUNTS.admin.email);
+        await login(page, PASSWORD_CHANGE_ACCOUNT.email);
         await openAccountMenu(page);
         await page.getByRole('button', { name: '비밀번호 변경' }).click();
         await page.locator('#currentPassword').fill(PASSWORD);
@@ -128,9 +130,9 @@ test.describe('비밀번호 변경 성공', () => {
         await expect(page.locator('#flash')).toContainText('비밀번호가 변경되었습니다');
 
         // 새 비밀번호로만 들어갈 수 있다.
-        await login(page, ACCOUNTS.admin.email, newPassword);
+        await login(page, PASSWORD_CHANGE_ACCOUNT.email, newPassword);
         await openAccountMenu(page);
-        await expect(page.locator('.kraft-actions__name')).toContainText(ACCOUNTS.admin.name);
+        await expect(page.locator('.kraft-actions__name')).toContainText(PASSWORD_CHANGE_ACCOUNT.name);
 
         // 다음 실행을 위해 되돌린다.
         await page.getByRole('button', { name: '비밀번호 변경' }).click();

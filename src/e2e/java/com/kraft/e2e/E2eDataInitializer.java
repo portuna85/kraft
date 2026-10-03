@@ -40,6 +40,12 @@ public class E2eDataInitializer implements ApplicationRunner {
     public static final String USER_EMAIL = "user@e2e.test";
     public static final String OTHER_EMAIL = "other@e2e.test";
     public static final String GUEST_EMAIL = "guest@e2e.test";
+    /**
+     * 비밀번호 변경 시나리오 전용 계정(OPS-04). 비밀번호를 실제로 바꾸고 모든 세션을 끊는
+     * 테스트가 admin을 쓰면, 변경과 복원 사이에서 실패했을 때 같은 샤드의 나머지 테스트가
+     * 줄줄이 로그인에 실패했다.
+     */
+    public static final String PASSWORD_CHANGE_EMAIL = "pwchange@e2e.test";
 
     private final UserRepository userRepository;
     private final PostRepository postRepository;
@@ -53,6 +59,7 @@ public class E2eDataInitializer implements ApplicationRunner {
         User user = saveUser("테스터", USER_EMAIL, Role.USER);
         User other = saveUser("다른사람", OTHER_EMAIL, Role.USER);
         saveUser("미인증", GUEST_EMAIL, Role.GUEST);
+        saveUser("비번변경", PASSWORD_CHANGE_EMAIL, Role.USER);
 
         Post notice = savePost(admin, "공지 게시글", "관리자가 쓴 공지입니다.", Category.NOTICE);
         Post mine = savePost(user, "테스터의 글", "테스터가 쓴 자유 게시글입니다.", Category.FREE);

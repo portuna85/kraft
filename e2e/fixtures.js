@@ -7,6 +7,12 @@ export const ACCOUNTS = {
     guest: { email: 'guest@e2e.test', name: '미인증' },
 };
 
+/**
+ * 비밀번호 변경 시나리오 전용 계정(OPS-04). ACCOUNTS에 넣지 않는다 — auth.setup.js가 ACCOUNTS를
+ * 돌며 로그인 상태를 저장하는데, 이 계정은 비밀번호가 바뀌어 세션이 끊기는 테스트에서만 쓴다.
+ */
+export const PASSWORD_CHANGE_ACCOUNT = { email: 'pwchange@e2e.test', name: '비번변경' };
+
 /** E2eDataInitializer가 모든 시드 계정에 쓰는 공용 비밀번호. */
 export const PASSWORD = 'E2e!pass1';
 
