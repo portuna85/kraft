@@ -27,22 +27,31 @@ public class FixedWindowRateLimiter {
     private static final long EMERGENCY_EVICT_COOLDOWN_MILLIS = 1_000L;
 
     /**
-     * 처음 보는 키가 이 수를 넘어서면 새 창을 만들지 않고 거절한다(BE-02). 만료 창 제거만으로는
-     * 막을 수 없는 경우가 있다 — 공격자가 한 창(windowMillis) 안에서 서로 다른 키(예: 계정
-     * 리미터의 임의 username)를 계속 만들어 보내면, 그 창이 끝나기 전까지는 어떤 항목도 만료되지
-     * 않아 evictExpired가 할 일이 없다. 상한을 두면 그런 경우에도 메모리가 이 수 이상으로 늘지
-     * 않는다 — 대가로 그 이후의 새 키는 (다른 공격자의 정상 요청이라도) 이번 창 동안 거절된다.
+     * 추적하는 키 수의 상한(BE-02). 만료 창 제거만으로는 막을 수 없는 경우가 있다 — 공격자가 한
+     * 창(windowMillis) 안에서 서로 다른 키(예: 계정 리미터의 임의 username, IPv6 주소)를 계속
+     * 만들어 보내면, 그 창이 끝나기 전까지는 어떤 항목도 만료되지 않아 evictExpired가 할 일이
+     * 없다. 상한을 두면 그런 경우에도 메모리가 이 수 이상으로 늘지 않는다.
+     * <p>
+     * 가득 찼을 때 새 키를 무조건 거절하면 그 창 동안 정상 사용자까지 막혔다(BE-13). 대신
+     * {@link #makeRoom}이 "한 번만 요청하고 지나간" 키를 먼저 비워 자리를 만든다 — 한도에 걸려
+     * 실제로 제한 중인 키(요청 수가 2 이상)는 건드리지 않으므로 제한이 풀리지 않는다. 비울 키가
+     * 하나도 없을 때만(전부 활발히 쓰이는 중일 때) 새 키를 거절한다.
      */
-    private static final int MAX_TRACKED_CLIENTS = 50_000;
+    private static final int DEFAULT_MAX_TRACKED_CLIENTS = 50_000;
+
+    /** 가득 찼을 때 한 번에 비우는 비율(상한의 1/20). 요청마다 O(n) 스캔을 하지 않도록 묶어서 비운다. */
+    private static final int MAKE_ROOM_DIVISOR = 20;
 
     private final String name;
     private final int limitPerWindow;
     private final long windowMillis;
+    private final int maxTrackedClients;
 
     private final ConcurrentHashMap<String, Window> windows = new ConcurrentHashMap<>();
     private final LongAdder allowed = new LongAdder();
     private final LongAdder rejected = new LongAdder();
     private final AtomicLong lastEmergencyEvictAt = new AtomicLong(0);
+    private final AtomicLong lastMakeRoomAt = new AtomicLong(0);
 
     /**
      * @param name          로그에 남길 이름(원시 클라이언트 키는 남기지 않는다).
@@ -50,9 +59,15 @@ public class FixedWindowRateLimiter {
      * @param windowMillis  창 길이(밀리초).
      */
     public FixedWindowRateLimiter(String name, int limitPerWindow, long windowMillis) {
+        this(name, limitPerWindow, windowMillis, DEFAULT_MAX_TRACKED_CLIENTS);
+    }
+
+    /** 테스트가 작은 상한으로 "가득 찬" 상황을 만들 수 있게 열어 둔다. */
+    FixedWindowRateLimiter(String name, int limitPerWindow, long windowMillis, int maxTrackedClients) {
         this.name = name;
         this.limitPerWindow = limitPerWindow;
         this.windowMillis = windowMillis;
+        this.maxTrackedClients = maxTrackedClients;
     }
 
     private record Window(long windowStartMillis, AtomicInteger count) {
@@ -61,9 +76,9 @@ public class FixedWindowRateLimiter {
     public boolean tryAcquire(String clientKey) {
         long now = Instant.now().toEpochMilli();
 
-        if (!windows.containsKey(clientKey) && windows.size() >= MAX_TRACKED_CLIENTS) {
-            evictIfDue(now);
-            if (windows.size() >= MAX_TRACKED_CLIENTS) {
+        if (!windows.containsKey(clientKey) && windows.size() >= maxTrackedClients) {
+            makeRoom(now);
+            if (windows.size() >= maxTrackedClients) {
                 rejected.increment();
                 return false;
             }
@@ -121,6 +136,30 @@ public class FixedWindowRateLimiter {
         long last = lastEmergencyEvictAt.get();
         if (now - last >= EMERGENCY_EVICT_COOLDOWN_MILLIS && lastEmergencyEvictAt.compareAndSet(last, now)) {
             evictExpired(now);
+        }
+    }
+
+    /**
+     * 가득 찼을 때 새 키가 들어갈 자리를 만든다. 만료된 창을 먼저 지우고, 그래도 가득 차 있으면
+     * 요청이 한 번뿐인 키를 일부 비운다. 쿨다운으로 한 번에 한 스레드만 훑게 한다.
+     */
+    private void makeRoom(long now) {
+        long last = lastMakeRoomAt.get();
+        if (now - last < EMERGENCY_EVICT_COOLDOWN_MILLIS || !lastMakeRoomAt.compareAndSet(last, now)) {
+            return;
+        }
+        evictExpired(now);
+        if (windows.size() < maxTrackedClients) {
+            return;
+        }
+        int budget = Math.max(1, maxTrackedClients / MAKE_ROOM_DIVISOR);
+        for (var entry : windows.entrySet()) {
+            if (budget == 0) {
+                break;
+            }
+            if (entry.getValue().count().get() <= 1 && windows.remove(entry.getKey(), entry.getValue())) {
+                budget--;
+            }
         }
     }
 
