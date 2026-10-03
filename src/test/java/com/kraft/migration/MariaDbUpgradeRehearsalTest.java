@@ -4,6 +4,7 @@ import com.kraft.KraftApplication;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.FlywayException;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -47,6 +48,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 각 단계는 {@link SpringApplicationBuilder}로 앱을 실제로 띄우고 닫는다. 컨텍스트를 두 번
  * 띄우는 것 자체가 검증 대상이라 {@code @SpringBootTest}에 맡길 수 없다.
  */
+@Tag("docker")
 @Testcontainers(disabledWithoutDocker = true)
 class MariaDbUpgradeRehearsalTest {
 

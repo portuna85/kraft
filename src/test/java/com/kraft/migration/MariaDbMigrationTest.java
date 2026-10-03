@@ -25,18 +25,12 @@ import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.mariadb.MariaDBContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -44,6 +38,8 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+
+import com.kraft.support.MariaDbIntegrationTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -75,22 +71,7 @@ import static org.hamcrest.Matchers.containsString;
  * 안내하는 대로 Docker 없이도 {@code gradlew test}가 그대로 돈다. CI(ubuntu-latest)에는
  * Docker가 있으므로 실제로 실행된다.
  */
-@Testcontainers(disabledWithoutDocker = true)
-@SpringBootTest(properties = {
-        // 운영(prod)과 같은 스키마 경로: Flyway가 만들고 Hibernate는 검증만 한다.
-        "spring.flyway.enabled=true",
-        "spring.flyway.baseline-on-migrate=false",
-        "spring.jpa.hibernate.ddl-auto=validate",
-        // 세션 테이블도 V3이 만든다. Spring Session이 따로 만들지 않게 한다.
-        "spring.session.jdbc.initialize-schema=never"
-})
-@AutoConfigureMockMvc
-class MariaDbMigrationTest {
-
-    /** docker-compose.yml과 같은 버전을 쓴다. 운영에서 쓰는 것과 다른 DB를 검증하면 의미가 없다. */
-    @Container
-    @ServiceConnection
-    static MariaDBContainer mariadb = new MariaDBContainer("mariadb:11.7.2");
+class MariaDbMigrationTest extends MariaDbIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;

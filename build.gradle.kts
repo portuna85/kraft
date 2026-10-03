@@ -125,7 +125,16 @@ tasks.processResources {
 }
 
 tasks.withType<Test> {
-    useJUnitPlatform()
+    // -PdockerTests=exclude|only로 Docker(Testcontainers) 테스트를 나누거나 그것만 돌린다(OPS-07).
+    // 기본값(all)은 전부 돈다 — 로컬 `gradlew test`는 예전과 같다. CI는 빠른 H2 테스트와 느린
+    // Docker 테스트를 서로 다른 잡에서 병렬로 돌려 배포 전 크리티컬 패스를 줄인다. 태그는
+    // @Tag("docker")이고, MariaDbIntegrationTest 기반 클래스와 두 리허설 테스트가 가진다.
+    useJUnitPlatform {
+        when (providers.gradleProperty("dockerTests").getOrElse("all")) {
+            "exclude" -> excludeTags("docker")
+            "only" -> includeTags("docker")
+        }
+    }
     // -PtestForks=N으로 JVM 수를 조정할 수 있다. JVM 내부의 JUnit 실행은 순차로 유지해
     // Spring 컨텍스트·H2 정리 확장이 같은 DB를 동시에 건드리지 않게 한다.
     maxParallelForks = providers.gradleProperty("testForks").map(String::toInt).getOrElse(1)

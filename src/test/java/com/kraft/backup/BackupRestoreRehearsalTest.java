@@ -13,6 +13,7 @@ import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -49,6 +50,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 셋을 모두 갖추면 복구되고, <b>하나라도 빠지면 어떻게 망가지는지</b>를 함께 고정한다.
  * 후자가 없으면 "왜 세 개나 챙겨야 하는가"가 설득되지 않는다.
  */
+@Tag("docker")
 @Testcontainers(disabledWithoutDocker = true)
 class BackupRestoreRehearsalTest {
 

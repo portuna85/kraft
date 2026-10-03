@@ -74,7 +74,7 @@ npm run check:css       # 커밋된 css가 소스와 일치하는지
 npm run test:e2e        # Playwright
 ```
 
-- 일부 테스트(MariaDB 마이그레이션·백업 복원 리허설 등)는 Testcontainers를 씁니다. Docker가 꺼져 있으면 건너뜁니다. CI에서는 모두 실행됩니다.
+- 일부 테스트(MariaDB 마이그레이션·백업 복원 리허설 등)는 Testcontainers를 씁니다. Docker가 꺼져 있으면 건너뜁니다. CI에서는 모두 실행됩니다. `./gradlew test -PdockerTests=exclude`는 Docker 테스트를 빼고, `-PdockerTests=only`는 그것만 돌립니다(CI는 두 잡으로 나눠 병렬 실행).
 - E2E는 먼저 `./gradlew bootE2eJar`로 `build/libs/kraft-e2e.jar`를 만든 뒤 실행합니다.
 
 ### CI 실행 구조

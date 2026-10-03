@@ -3,13 +3,10 @@ package com.kraft.recommend.service;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.testcontainers.mariadb.MariaDBContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
+
+import com.kraft.support.MariaDbIntegrationTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,17 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 스냅샷을 재사용할 수 있다(로컬 실측으로 확인). 하나로 합쳐 version이 단조 증가하는 하나의
  * 타임라인만 쓰면 이 충돌을 근본적으로 피할 수 있다.
  */
-@Testcontainers(disabledWithoutDocker = true)
-@SpringBootTest(properties = {
-        "spring.flyway.enabled=true",
-        "spring.flyway.baseline-on-migrate=false",
-        "spring.jpa.hibernate.ddl-auto=validate"
-})
-class RecommendationHistoryImportIntegrationTest {
-
-    @Container
-    @ServiceConnection
-    static MariaDBContainer mariadb = new MariaDBContainer("mariadb:11.7.2");
+class RecommendationHistoryImportIntegrationTest extends MariaDbIntegrationTest {
 
     @Autowired
     private RecommendationHistoryImporter importer;
