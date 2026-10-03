@@ -1,7 +1,6 @@
 package com.kraft.home.web;
 
 import com.kraft.config.security.SecurityConfig;
-import com.kraft.post.dto.PostsPageResponseDto;
 import com.kraft.post.service.PostService;
 import com.kraft.recommend.domain.WinningDraw;
 import com.kraft.recommend.domain.WinningDrawRepository;
@@ -11,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -21,6 +19,7 @@ import java.util.Optional;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -52,8 +51,7 @@ class HomePageControllerTest {
     void emptyBoard() {
         given(insightsService.current())
                 .willReturn(com.kraft.home.service.DrawInsights.of(List.of(List.of(1, 2, 3, 4, 5, 6)), 30));
-        given(postService.findAllDesc(any(Pageable.class)))
-                .willReturn(new PostsPageResponseDto(List.of(), 0, 5, 0, 0, true, true));
+        given(postService.findRecent(anyInt())).willReturn(List.of());
     }
 
     @Test

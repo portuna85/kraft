@@ -22,4 +22,23 @@ public interface PostLikeRepository extends JpaRepository<PostLike, Long> {
     void deleteAllByPostId(@Param("postId") Long postId);
 
     long countByPostId(Long postId);
+
+    /**
+     * 상세 화면이 필요한 추천 수와 "내가 눌렀는지"를 한 번에 센다(BE-05) — 예전에는 exists와
+     * count가 따로 나갔다. {@code userId}에 존재하지 않는 id(익명이면 {@link #NO_USER_ID})를
+     * 넘기면 {@code mine}은 0이다.
+     */
+    @Query("SELECT COUNT(l) AS total, "
+            + "COALESCE(SUM(CASE WHEN l.user.id = :userId THEN 1 ELSE 0 END), 0) AS mine "
+            + "FROM PostLike l WHERE l.post.id = :postId")
+    LikeSummary summarize(@Param("postId") Long postId, @Param("userId") Long userId);
+
+    /** 어떤 회원 id와도 일치하지 않는 값(회원 id는 1부터 시작한다). */
+    long NO_USER_ID = 0L;
+
+    interface LikeSummary {
+        Long getTotal();
+
+        Long getMine();
+    }
 }

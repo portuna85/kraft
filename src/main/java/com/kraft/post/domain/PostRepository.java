@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
 
@@ -106,6 +107,22 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Post p SET p.viewCount = p.viewCount + 1 WHERE p.id = :id")
     int increaseViewCount(@Param("id") Long id);
+
+    /**
+     * 상세 화면용 단건 조회. 작성자를 같은 쿼리로 가져온다 — {@code findById}로 읽으면 화면이
+     * {@code post.getUser().getName()}을 부르는 순간 지연 로딩 쿼리가 하나 더 나갔다(BE-05).
+     */
+    @Query("SELECT p FROM Post p JOIN FETCH p.user WHERE p.id = :id")
+    Optional<Post> findByIdWithUser(@Param("id") Long id);
+
+    /**
+     * 홈의 "최근 글"처럼 앞쪽 N개만 필요한 곳용. {@link #search}는 {@code Page}를 돌려주어
+     * 쓰지 않는 {@code COUNT(*)}를 매번 실행했다(BE-06).
+     */
+    @Query("SELECT new com.kraft.post.dto.PostRowDto("
+            + "p.id, p.title, u.name, p.createdAt, p.updatedAt, p.category, p.viewCount) "
+            + "FROM Post p JOIN p.user u ORDER BY p.id DESC")
+    List<PostRowDto> findRecent(Pageable pageable);
 
     /**
      * 상세 화면 하단의 관련 게시글. 같은 분류에서 현재 글을 제외하고 최신순으로 뽑는다.

@@ -243,15 +243,32 @@ public class PostService {
             postRepository.increaseViewCount(id);
         }
 
-        Post post = findPost(id);
+        // 작성자를 같은 쿼리로 가져오고(BE-05), 추천 수·내가 눌렀는지도 한 번에 센다. 조회수
+        // UPDATE가 영속성 컨텍스트를 비우므로 이 조회는 항상 DB를 다시 읽는다.
+        Post post = postRepository.findByIdWithUser(id)
+                .orElseThrow(() -> new PostNotFoundException(id));
         Long userId = currentUserId(authentication);
-        boolean likedByMe = userId != null && postLikeRepository.existsByPostIdAndUserId(id, userId);
-        long likeCount = postLikeRepository.countByPostId(id);
-        return new PostViewDto(post, OwnershipPolicy.canManage(authentication, post.getUser()), likeCount, likedByMe);
+        PostLikeRepository.LikeSummary likes = postLikeRepository.summarize(
+                id, userId != null ? userId : PostLikeRepository.NO_USER_ID);
+        boolean likedByMe = userId != null && likes.getMine() > 0;
+        return new PostViewDto(post, OwnershipPolicy.canManage(authentication, post.getUser()),
+                likes.getTotal(), likedByMe);
     }
 
     public PostsPageResponseDto findAllDesc(Pageable pageable) {
         return findAllDesc(pageable, null, null, false);
+    }
+
+    /**
+     * 최신순 앞쪽 {@code limit}개만(홈의 최근 글). 전체 건수가 필요 없는 호출은 이쪽을 쓴다 —
+     * {@link #findAllDesc}는 {@code Page}라 매번 {@code COUNT(*)}를 실행한다(BE-06).
+     */
+    public List<PostsListResponseDto> findRecent(int limit) {
+        List<PostRowDto> rows = postRepository.findRecent(PageRequest.of(0, limit));
+        Map<Long, Long> commentCounts = commentRepository.countByPostIdIn(rows.stream().map(PostRowDto::id).toList());
+        return rows.stream()
+                .map(row -> new PostsListResponseDto(row, commentCounts.getOrDefault(row.id(), 0L)))
+                .toList();
     }
 
     /** 검색 범위를 지정하지 않는 호출은 기본값(제목만, A-BE-02 2단계)으로 좁힌다. */

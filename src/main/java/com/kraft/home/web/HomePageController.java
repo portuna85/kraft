@@ -9,7 +9,6 @@ import com.kraft.recommend.domain.WinningDraw;
 import com.kraft.recommend.domain.WinningDrawRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -70,8 +69,7 @@ public class HomePageController {
                 model.addAttribute("insights", insights);
             }
         }
-        List<PostsListResponseDto> recentPosts =
-                postService.findAllDesc(PageRequest.of(0, RECENT_POSTS)).content();
+        List<PostsListResponseDto> recentPosts = postService.findRecent(RECENT_POSTS);
         model.addAttribute("recentPosts", recentPosts);
         return "home";
     }

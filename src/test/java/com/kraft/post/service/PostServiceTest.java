@@ -38,6 +38,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -93,6 +94,20 @@ class PostServiceTest {
         User user = User.builder().name("tester").email(email).password("encoded").role(role).build();
         ReflectionTestUtils.setField(user, "id", id);
         return user;
+    }
+
+    private static PostLikeRepository.LikeSummary likeSummary(long total, long mine) {
+        return new PostLikeRepository.LikeSummary() {
+            @Override
+            public Long getTotal() {
+                return total;
+            }
+
+            @Override
+            public Long getMine() {
+                return mine;
+            }
+        };
     }
 
     private static Post postOf(User owner, Long id) {
@@ -501,9 +516,8 @@ class PostServiceTest {
     void findByIdForView_increasesViewCountAtomicallyAndIncludesLikeInformation() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
-        given(postRepository.findById(100L)).willReturn(Optional.of(post));
-        given(postLikeRepository.existsByPostIdAndUserId(100L, 1L)).willReturn(true);
-        given(postLikeRepository.countByPostId(100L)).willReturn(3L);
+        given(postRepository.findByIdWithUser(100L)).willReturn(Optional.of(post));
+        given(postLikeRepository.summarize(100L, 1L)).willReturn(likeSummary(3L, 1L));
 
         var result = postService.findByIdForView(100L, authOf(owner));
 
@@ -512,7 +526,7 @@ class PostServiceTest {
         // 진짜 DB로 검증한다 — mock 리포지토리로는 관찰할 수 없는 지점이다.
         var inOrder = org.mockito.Mockito.inOrder(postRepository);
         inOrder.verify(postRepository).increaseViewCount(100L);
-        inOrder.verify(postRepository).findById(100L);
+        inOrder.verify(postRepository).findByIdWithUser(100L);
         assertThat(post.getViewCount()).isZero();
 
         assertThat(result.likeCount()).isEqualTo(3L);
@@ -520,16 +534,49 @@ class PostServiceTest {
     }
 
     @Test
+    @DisplayName("findRecent: 앞쪽 N개만 읽고 Page(COUNT)를 거치지 않으며 댓글 수를 한 번에 묶어 담는다")
+    void findRecent_readsTopRowsWithoutCountAndAttachesCommentCounts() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        PostRowDto row = rowOf(owner, 1L);
+        given(postRepository.findRecent(org.springframework.data.domain.PageRequest.of(0, 5))).willReturn(List.of(row));
+        given(commentRepository.countByPostIdIn(List.of(1L))).willReturn(Map.of(1L, 3L));
+
+        var result = postService.findRecent(5);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).commentCount()).isEqualTo(3L);
+        verify(postRepository, never()).search(any(), any(), anyBoolean(), any());
+    }
+
+    @Test
     @DisplayName("findByIdForView: 익명이면 likedByMe는 항상 false다")
     void findByIdForView_whenAnonymous_likedByMeIsFalse() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
-        given(postRepository.findById(100L)).willReturn(Optional.of(post));
-        given(postLikeRepository.countByPostId(100L)).willReturn(0L);
+        given(postRepository.findByIdWithUser(100L)).willReturn(Optional.of(post));
+        given(postLikeRepository.summarize(100L, PostLikeRepository.NO_USER_ID)).willReturn(likeSummary(0L, 0L));
 
         var result = postService.findByIdForView(100L, null);
 
         assertThat(result.likedByMe()).isFalse();
+        // 익명은 어떤 회원 id와도 일치하지 않는 값으로 한 번만 센다(BE-05).
+        verify(postLikeRepository).summarize(100L, PostLikeRepository.NO_USER_ID);
+        verify(postLikeRepository, never()).existsByPostIdAndUserId(any(), any());
+    }
+
+    @Test
+    @DisplayName("findByIdForView: 추천 수와 내가 눌렀는지를 쿼리 하나(summarize)로 구한다")
+    void findByIdForView_countsLikesWithSingleQuery() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Post post = postOf(owner, 100L);
+        given(postRepository.findByIdWithUser(100L)).willReturn(Optional.of(post));
+        given(postLikeRepository.summarize(100L, 1L)).willReturn(likeSummary(2L, 0L));
+
+        var result = postService.findByIdForView(100L, authOf(owner));
+
+        assertThat(result.likeCount()).isEqualTo(2L);
+        assertThat(result.likedByMe()).isFalse();
+        verify(postLikeRepository, never()).countByPostId(any());
         verify(postLikeRepository, never()).existsByPostIdAndUserId(any(), any());
     }
 
@@ -538,8 +585,8 @@ class PostServiceTest {
     void findByIdForView_whenCountViewFalse_doesNotIncreaseViewCount() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
-        given(postRepository.findById(100L)).willReturn(Optional.of(post));
-        given(postLikeRepository.countByPostId(100L)).willReturn(0L);
+        given(postRepository.findByIdWithUser(100L)).willReturn(Optional.of(post));
+        given(postLikeRepository.summarize(100L, PostLikeRepository.NO_USER_ID)).willReturn(likeSummary(0L, 0L));
 
         postService.findByIdForView(100L, null, false);
 
