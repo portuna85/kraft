@@ -14,6 +14,15 @@ server:
   # 대역)은 프록시가 같은 사설망에 있다는 가정이며, 신뢰 범위를 넓히면 클라이언트가 헤더를
   # 위조해 다른 IP인 척할 수 있다.
   forward-headers-strategy: native
+  servlet:
+    session:
+      # 기본값(30분)에 기대지 않고 명시한다(A-FE-12) — 긴 글을 쓰는 동안 세션이 끊겨 "등록"
+      # 시점에야 403으로 실패하는 사례가 있었다. 자동 임시 저장이 내용을 지키긴 하지만, 그
+      # 전에 세션이 오래 버티는 편이 사용자에게 더 낫다.
+      # server.servlet 아래여야 한다 — spring.servlet.session.timeout은 존재하지 않는
+      # 프로퍼티라 조용히 무시되어 실제로는 30분이었다(BE-01). Spring Session JDBC도
+      # 이 값을 기본 maxInactiveInterval로 쓴다.
+      timeout: 2h
   tomcat:
     remoteip:
       internal-proxies: 10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|127\.\d{1,3}\.\d{1,3}\.\d{1,3}
@@ -116,11 +125,6 @@ spring:
             enable: true
 
   servlet:
-    session:
-      # 기본값(30분)에 기대지 않고 명시한다(A-FE-12) — 긴 글을 쓰는 동안 세션이 끊겨 "등록"
-      # 시점에야 403으로 실패하는 사례가 있었다. 자동 임시 저장이 내용을 지키긴 하지만, 그
-      # 전에 세션이 오래 버티는 편이 사용자에게 더 낫다.
-      timeout: 2h
     multipart:
       # 게시글 사진 업로드의 실제 수신 한도. 설정이 없으면 Spring Boot 기본값이
       # max-file-size=1MB로 적용되어, PostImageService의 5MB 검사와 화면 안내("최대 5MB")에
