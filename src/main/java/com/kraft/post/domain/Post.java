@@ -22,6 +22,10 @@ import lombok.NoArgsConstructor;
         // V31__posts_created_at_view_count_index.sql. 인기글이 "최근 글 중 조회수 상위"로
         // 바뀌면서(A-BE-10) created_at 조건 + view_count 정렬을 함께 쓰는 쿼리가 생겼다.
         @Index(name = "IX_POSTS_CREATED_AT_VIEW_COUNT", columnList = "created_at, view_count DESC, id DESC"),
+        // V35__posts_updated_at_index.sql. sort=updatedAt(최근 수정순) 목록이 filesort 없이
+        // 읽히게 한다(BE-07).
+        @Index(name = "IX_POSTS_UPDATED_AT_ID", columnList = "updated_at DESC, id DESC"),
+        @Index(name = "IX_POSTS_CATEGORY_UPDATED_AT_ID", columnList = "category, updated_at DESC, id DESC"),
 })
 public class Post extends BaseEntity {
 

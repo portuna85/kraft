@@ -143,6 +143,30 @@ class MariaDbMigrationTest {
         assertThat(columnExists("post_images", "size_bytes")).isTrue();
         assertThat(uniqueConstraintExists("users", "UK_USER_NAME")).isTrue();
         assertThat(indexExists("posts", "IX_POSTS_CATEGORY_ID")).isTrue();
+        assertThat(indexExists("posts", "IX_POSTS_UPDATED_AT_ID")).isTrue();
+        assertThat(indexExists("posts", "IX_POSTS_CATEGORY_UPDATED_AT_ID")).isTrue();
+    }
+
+    @Test
+    @DisplayName("BE-07: sort=updatedAt 목록은 updated_at 인덱스로 정렬하고 filesort를 하지 않는다")
+    void updatedAtSort_usesIndexWithoutFilesort() {
+        User author = userRepository.save(User.builder()
+                .name("explain-author").email("explain@example.com")
+                .password(passwordEncoder.encode("Password123!")).role(Role.USER).build());
+        List<Post> posts = new java.util.ArrayList<>();
+        for (int i = 0; i < 300; i++) {
+            posts.add(Post.builder().title("t" + i).content("c").user(author).category(Category.FREE).build());
+        }
+        postRepository.saveAll(posts);
+        jdbcTemplate.execute("ANALYZE TABLE posts");
+
+        // PostRepository.search + PostSortPolicy.effectiveSort가 만드는 정렬: updated_at DESC, id DESC.
+        List<Map<String, Object>> plan = jdbcTemplate.queryForList(
+                "EXPLAIN SELECT p.id, p.title FROM posts p ORDER BY p.updated_at DESC, p.id DESC LIMIT 10");
+
+        assertThat(plan).hasSize(1);
+        assertThat(String.valueOf(plan.get(0).get("key"))).isEqualTo("IX_POSTS_UPDATED_AT_ID");
+        assertThat(String.valueOf(plan.get(0).get("Extra"))).doesNotContain("filesort");
     }
 
     @Test
