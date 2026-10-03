@@ -114,6 +114,9 @@ export function useImageUpload({ initialUrl = null } = {}) {
     /** @type {import('vue').Ref<number|null>} */
     const uploadedHeight = ref(null);
     const uploading = ref(false);
+    // 파일을 골랐지만 축소가 아직 끝나지 않아 file이 비어 있는 구간(FE-02). 이 동안 제출하면
+    // hasFile이 false라 사진 없이 저장되므로, 화면이 제출 버튼을 막을 수 있게 밖으로 노출한다.
+    const processing = ref(false);
     /** @type {File|null} */
     let uploadedForFile = null;
 
@@ -149,6 +152,10 @@ export function useImageUpload({ initialUrl = null } = {}) {
      * @param {File|null} selectedFile
      */
     async function onFileSelected(selectedFile) {
+        // 어떤 경로로 끝나든 이전 선택의 진행 중 축소는 무효다 — 선택 해제나 검증 실패 뒤에
+        // 먼저 시작한 축소가 끝나면서 file을 되살리지 못하게 토큰도 함께 비운다.
+        currentSelectionToken = null;
+        processing.value = false;
         uploadedUrl.value = null;
         uploadedWidth.value = null;
         uploadedHeight.value = null;
@@ -174,11 +181,14 @@ export function useImageUpload({ initialUrl = null } = {}) {
 
         const selectionToken = Symbol('selection');
         currentSelectionToken = selectionToken;
+        processing.value = true;
         const resized = await resizeIfNeeded(selectedFile, extension);
         if (currentSelectionToken !== selectionToken) {
             // 축소가 끝나기 전에 사용자가 다른 파일을 또 골랐다 — 그 최신 선택이 이긴다.
+            // processing은 그 최신 호출이 관리한다.
             return;
         }
+        processing.value = false;
 
         if (resized.size > UPLOAD.MAX_BYTES) {
             flash.showError(UPLOAD_MESSAGES.TOO_LARGE);
@@ -250,6 +260,7 @@ export function useImageUpload({ initialUrl = null } = {}) {
         fileLabel,
         removedExisting,
         uploading,
+        processing,
         uploadedWidth,
         uploadedHeight,
         onFileSelected,

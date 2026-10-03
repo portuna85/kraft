@@ -90,3 +90,38 @@ test('이미지 업로드를 기다리는 동안 입력이 잠기고, 그 사이
         .toBe(submittedTitle);
     await expect(page.locator('#post-title-text')).toHaveText(submittedTitle);
 });
+
+/**
+ * 본문 서버 검증 오류가 textarea 자체에 연결되어야 한다(FE-01). 예전에는 aria-invalid가
+ * MarkdownToolbar의 루트 div에 붙어, 스크린리더가 입력칸과 오류를 이어 읽지 못했다.
+ */
+test('본문 서버 검증 오류가 textarea의 aria-invalid·aria-describedby에 연결된다', async ({ page }) => {
+    await page.route('**/api/v1/posts', async (route) => {
+        if (route.request().method() !== 'POST') {
+            await route.continue();
+            return;
+        }
+        await route.fulfill({
+            status: 400,
+            contentType: 'application/json',
+            // 실제 ProblemDetail처럼 detail이 있어야 http.js가 body를 보존한 ApiError로 만든다.
+            body: JSON.stringify({
+                detail: '입력값이 올바르지 않습니다.',
+                errors: [{ field: 'content', message: '내용이 너무 깁니다.' }],
+            }),
+        });
+    });
+
+    await page.goto('/posts/save');
+    await page.locator('#title').fill(uniqueTitle('본문오류'));
+    await page.locator('#content').fill('서버가 거절할 본문입니다.');
+    await page.locator('#btn-save').click();
+
+    const textarea = page.locator('#content');
+    await expect(page.locator('#content-error')).toHaveText('내용이 너무 깁니다.');
+    await expect(textarea).toHaveAttribute('aria-invalid', 'true');
+    await expect(textarea).toHaveAttribute('aria-describedby', /(^|\s)content-error(\s|$)/);
+    await expect(textarea).toHaveClass(/is-invalid/);
+    // 툴바 루트 div에는 더 이상 붙지 않는다.
+    await expect(page.locator('.markdown-toolbar')).not.toHaveAttribute('aria-invalid', /.*/);
+});

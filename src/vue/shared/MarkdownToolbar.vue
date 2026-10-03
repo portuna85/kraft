@@ -1,5 +1,5 @@
 <script setup>
-import { nextTick, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { applyMarkup, nextToolbarIndex } from './markdownToolbar.js';
 import MarkdownBody from './MarkdownBody.vue';
 
@@ -21,12 +21,18 @@ const props = defineProps({
     disabled: { type: Boolean, default: false },
     maxlength: { type: Number, default: 10000 },
     placeholder: { type: String, default: '' },
+    // 서버 검증 오류가 이 필드를 가리킬 때 부모가 넘긴다. 예전에는 aria-invalid를 attr로
+    // 넘겨 루트 div에 붙었다(FE-01) — textarea에 직접 걸리도록 명시적인 prop으로 받는다.
+    invalid: { type: Boolean, default: false },
+    // 오류 메시지 요소의 id. 서식 도움말(hintId)과 함께 aria-describedby에 합쳐진다.
+    describedby: { type: String, default: undefined },
 });
 const emit = defineEmits(['update:modelValue']);
 
 const textarea = ref(/** @type {HTMLTextAreaElement | null} */ (null));
 const mode = ref('write'); // 'write' | 'preview'
 const hintId = `${props.id}-markdown-hint`;
+const describedBy = computed(() => [props.describedby, hintId].filter(Boolean).join(' '));
 
 const TOOLS = [
     { kind: 'bold', label: '굵게', aria: '굵게' },
@@ -166,10 +172,11 @@ defineExpose({
       :id="id"
       ref="textarea"
       class="form-control post-edit__textarea"
-      :class="{ 'markdown-toolbar__textarea--hidden': mode === 'preview' }"
+      :class="{ 'markdown-toolbar__textarea--hidden': mode === 'preview', 'is-invalid': invalid }"
       :tabindex="mode === 'preview' ? -1 : 0"
       :aria-hidden="mode === 'preview'"
-      :aria-describedby="hintId"
+      :aria-invalid="invalid ? 'true' : undefined"
+      :aria-describedby="describedBy"
       :maxlength="maxlength"
       :placeholder="placeholder"
       :disabled="disabled"

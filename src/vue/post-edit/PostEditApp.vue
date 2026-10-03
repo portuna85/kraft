@@ -253,6 +253,14 @@ async function onSubmit() {
         if (picture.hasFile.value) {
             progressText.value = '이미지 업로드 중…';
             pictureUrl = await picture.resolveUrl();
+            if (!pictureUrl) {
+                // 파일을 골랐는데 URL이 없다 = 업로드 중 선택이 바뀌었다(FE-02). 그대로 보내면
+                // 기존 사진이 지워지거나 사진 없이 저장되므로 멈추고 다시 확인하게 한다.
+                progressText.value = null;
+                saving.value = false;
+                flash.showError('선택한 이미지가 바뀌었습니다. 이미지를 확인한 뒤 다시 "저장"을 눌러 주세요.');
+                return;
+            }
             pictureWidth = picture.uploadedWidth.value;
             pictureHeight = picture.uploadedHeight.value;
         } else if (picture.removedExisting.value) {
@@ -515,8 +523,8 @@ async function onSubmit() {
         v-model="draft.content"
         :maxlength="10000"
         :disabled="saving"
-        :aria-invalid="fieldErrors.content ? 'true' : undefined"
-        aria-describedby="edit-content-error"
+        :invalid="!!fieldErrors.content"
+        :describedby="fieldErrors.content ? 'edit-content-error' : undefined"
       />
       <div
         v-if="fieldErrors.content"
@@ -628,7 +636,7 @@ async function onSubmit() {
         id="btn-update"
         type="submit"
         class="btn btn-primary"
-        :disabled="saving"
+        :disabled="saving || picture.processing.value"
       >
         {{ saving ? '저장 중…' : '저장' }}
       </button>

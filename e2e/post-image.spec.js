@@ -240,3 +240,32 @@ test('저장이 실패한 뒤 다시 눌러도 이미지를 재업로드하지 �
     await page.waitForURL(/\/posts\/update\/\d+$/);
     expect(uploadCount, '이미 올린 이미지를 다시 올리면 안 된다').toBe(1);
 });
+
+/**
+ * 파일을 고른 직후 축소가 끝나기 전에는 file이 비어 있어, 그 사이 제출하면 사진 없이
+ * 저장됐다(FE-02). 축소 중에는 제출 버튼을 막고, 끝나면 풀어야 한다.
+ */
+test('이미지 축소가 끝나기 전에는 등록 버튼이 잠기고 끝나면 풀린다', async ({ page }) => {
+    // 모바일처럼 느린 축소를 흉내 낸다 — 테스트가 풀어 줄 때까지 createImageBitmap을 보류한다.
+    await page.addInitScript(() => {
+        const original = window.createImageBitmap.bind(window);
+        window.__releaseResize = () => {};
+        window.createImageBitmap = (...args) => new Promise((resolve, reject) => {
+            window.__releaseResize = () => original(...args).then(resolve, reject);
+        });
+    });
+
+    await page.goto('/posts/save');
+    await page.locator('#title').fill(uniqueTitle('축소중'));
+    await page.locator('#content').fill('축소 중 제출 방지');
+
+    await page.locator('#picture').setInputFiles(pngFile());
+
+    await expect(page.locator('#btn-save')).toBeDisabled();
+    await expect(page.locator('#picture-preview')).toBeHidden();
+
+    await page.evaluate(() => window.__releaseResize());
+
+    await expect(page.locator('#picture-preview')).toBeVisible();
+    await expect(page.locator('#btn-save')).toBeEnabled();
+});

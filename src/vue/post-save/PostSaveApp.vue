@@ -129,6 +129,14 @@ async function onSubmit() {
         if (picture.hasFile.value) {
             progressText.value = '이미지 업로드 중…';
             pictureUrl = await picture.resolveUrl();
+            if (!pictureUrl) {
+                // 파일을 골랐는데 URL이 없다 = 업로드 중 선택이 바뀌었다(FE-02). 그대로 보내면
+                // 사진 없이 저장되므로 멈추고 다시 확인하게 한다.
+                progressText.value = null;
+                saving.value = false;
+                flash.showError('선택한 이미지가 바뀌었습니다. 이미지를 확인한 뒤 다시 "등록"을 눌러 주세요.');
+                return;
+            }
         }
     } catch (error) {
         progressText.value = null;
@@ -244,8 +252,8 @@ async function onSubmit() {
         placeholder="내용을 입력하세요"
         :maxlength="10000"
         :disabled="saving"
-        :aria-invalid="fieldErrors.content ? 'true' : undefined"
-        aria-describedby="content-error"
+        :invalid="!!fieldErrors.content"
+        :describedby="fieldErrors.content ? 'content-error' : undefined"
       />
       <div
         v-if="fieldErrors.content"
@@ -323,7 +331,7 @@ async function onSubmit() {
         id="btn-save"
         type="submit"
         class="btn btn-primary"
-        :disabled="saving"
+        :disabled="saving || picture.processing.value"
       >
         {{ saving ? '등록 중…' : '등록' }}
       </button>
