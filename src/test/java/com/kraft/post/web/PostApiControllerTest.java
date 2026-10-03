@@ -80,7 +80,7 @@ class PostApiControllerTest {
     @DisplayName("GET /api/v1/posts 는 인증 없이도 호출할 수 있다")
     void listPosts_isAccessibleWithoutAuthentication() throws Exception {
         given(postService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
-                .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
+                .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
 
         mockMvc.perform(get("/api/v1/posts"))
                 .andExpect(status().isOk())
@@ -88,11 +88,30 @@ class PostApiControllerTest {
                 .andExpect(jsonPath("$.first").value(true));
     }
 
+    /**
+     * BE-08: 검색 응답은 전체 건수를 세지 않는다. 모르는 값은 0이 아니라 null이어야 클라이언트가
+     * "결과 0건"과 구분한다. "더 보기"(load-more.js)가 쓰는 page·last는 그대로 있다.
+     */
+    @Test
+    @DisplayName("BE-08: 검색 응답은 totalElements·totalPages가 null이고 page·last는 그대로다")
+    void listPosts_searchResponseHasNullTotals() throws Exception {
+        given(postService.findAllDesc(any(Pageable.class), eq("공지"), any(), anyBoolean()))
+                .willReturn(new PostsPageResponseDto(List.of(), 2, 10, null, null, false, false));
+
+        mockMvc.perform(get("/api/v1/posts").param("q", "공지").param("page", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.totalPages").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.page").value(2))
+                .andExpect(jsonPath("$.first").value(false))
+                .andExpect(jsonPath("$.last").value(false));
+    }
+
     @Test
     @DisplayName("GET /api/v1/posts?q=...&category=... 는 검색어·분류를 서비스에 그대로 전달하고, scope가 없으면 제목만(false) 검색한다")
     void listPosts_passesSearchKeywordAndCategoryToService() throws Exception {
         given(postService.findAllDesc(any(Pageable.class), eq("공지"), eq(Category.NOTICE), eq(false)))
-                .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
+                .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
 
         mockMvc.perform(get("/api/v1/posts").param("q", "공지").param("category", "NOTICE"))
                 .andExpect(status().isOk());
@@ -104,7 +123,7 @@ class PostApiControllerTest {
     @DisplayName("A-BE-02 2단계: GET /api/v1/posts?scope=all 은 제목+내용 검색(true)으로 전달한다")
     void listPosts_withScopeAll_searchesContentToo() throws Exception {
         given(postService.findAllDesc(any(Pageable.class), eq("공지"), any(), eq(true)))
-                .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
+                .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
 
         mockMvc.perform(get("/api/v1/posts").param("q", "공지").param("scope", "all"))
                 .andExpect(status().isOk());
@@ -117,7 +136,7 @@ class PostApiControllerTest {
     @DisplayName("GET /api/v1/posts 는 q가 없으면 검색 속도 제한을 검사하지 않는다")
     void listPosts_withoutKeyword_skipsSearchRateLimit() throws Exception {
         given(postService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
-                .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
+                .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
 
         mockMvc.perform(get("/api/v1/posts")).andExpect(status().isOk());
 
@@ -149,7 +168,7 @@ class PostApiControllerTest {
     @DisplayName("F12: GET /api/v1/posts?sort=viewCount,desc 는 허용된 정렬이라 그대로 처리된다")
     void listPosts_withAllowedSort_isProcessed() throws Exception {
         given(postService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
-                .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0, 0, true, true));
+                .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
 
         mockMvc.perform(get("/api/v1/posts").param("sort", "viewCount,desc"))
                 .andExpect(status().isOk());

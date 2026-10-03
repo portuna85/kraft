@@ -87,4 +87,36 @@ class PageWindowTest {
 
         assertThat(window.pages()).containsExactly(0, 1, 2);
     }
+
+    @Test
+    @DisplayName("simple: 전체 페이지를 모르면 번호 목록 없이 이전·다음만 계산한다(BE-08)")
+    void simple_hasNoNumberedPagesAndOnlyPrevNext() {
+        PageWindow middle = PageWindow.simple(2, true);
+
+        assertThat(middle.pages()).isEmpty();
+        assertThat(middle.totalPages()).isZero();
+        assertThat(middle.hasPrev()).isTrue();
+        assertThat(middle.prev()).isEqualTo(1);
+        assertThat(middle.hasNext()).isTrue();
+        assertThat(middle.next()).isEqualTo(3);
+        assertThat(middle.displayPage()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("simple: 첫 페이지는 이전이 없고, 마지막 페이지는 다음이 없다")
+    void simple_firstPageHasNoPrev_lastPageHasNoNext() {
+        assertThat(PageWindow.simple(0, true).hasPrev()).isFalse();
+        assertThat(PageWindow.simple(0, true).hasNext()).isTrue();
+        assertThat(PageWindow.simple(4, false).hasNext()).isFalse();
+        assertThat(PageWindow.simple(4, false).hasPrev()).isTrue();
+    }
+
+    @Test
+    @DisplayName("simple: 음수 페이지는 첫 페이지로 보정한다")
+    void simple_negativePageIsClampedToFirst() {
+        PageWindow window = PageWindow.simple(-3, false);
+
+        assertThat(window.displayPage()).isEqualTo(1);
+        assertThat(window.hasPrev()).isFalse();
+    }
 }

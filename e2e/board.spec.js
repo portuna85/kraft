@@ -212,6 +212,58 @@ test('정렬을 고른 채 페이지를 이동해도 정렬이 유지된다', as
  * 10단계: "더 보기"는 JSON API(/api/v1/posts, 새 API 아님)로 다음 페이지를 이어 붙인다.
  * 페이지 이동(pager)과 공존하며, JS가 로드돼야 버튼이 보인다(index.html의 hidden 초기값).
  */
+/**
+ * BE-08: 검색어가 있으면 전체 건수를 세지 않는다(LIKE '%kw%'는 인덱스를 못 타서 COUNT가 항상 전체
+ * 스캔이다). 화면은 총 개수·번호 목록 없이 이전·다음과 "N페이지"만 보여 준다.
+ */
+test.describe('검색 결과(전체 건수를 세지 않음)', () => {
+    test('총 개수와 번호 목록 없이 이전·다음으로 이동한다', async ({ page }) => {
+        const prefix = uniqueTitle('검색이동');
+        await createPosts(page, 11, prefix); // 페이지 크기 10 → 10 + 1
+
+        await page.goto(`/community?q=${encodeURIComponent(prefix)}`);
+
+        await expect(page.locator('.post-list__item')).toHaveCount(10);
+        await expect(page.locator('.board-head__count')).toHaveCount(0);
+        const pager = page.locator('nav.pager');
+        await expect(pager.locator('.pager__numbers')).toHaveCount(0);
+        await expect(pager.locator('.pager__status')).toHaveText('1페이지');
+        await expect(pager.locator('[data-role="next"]')).toHaveText('다음');
+
+        await pager.getByRole('link', { name: '다음' }).click();
+
+        await expect(page).toHaveURL(/page=1/);
+        await expect(page.locator('.post-list__item')).toHaveCount(1);
+        await expect(pager.locator('.pager__status')).toHaveText('2페이지');
+        // 마지막 페이지라 "다음"은 비활성이고 "이전"은 링크다.
+        await expect(pager.locator('[data-role="next"]')).toHaveClass(/is-disabled/);
+        await pager.getByRole('link', { name: '이전' }).click();
+        await expect(page.locator('.post-list__item')).toHaveCount(10);
+    });
+
+    test('결과가 한 페이지에 다 들어오면 pager를 그리지 않고 총 개수도 없다', async ({ page }) => {
+        const prefix = uniqueTitle('검색한쪽');
+        await createPosts(page, 3, prefix);
+
+        await page.goto(`/community?q=${encodeURIComponent(prefix)}`);
+
+        await expect(page.locator('.post-list__item')).toHaveCount(3);
+        await expect(page.locator('nav.pager')).toHaveCount(0);
+        await expect(page.locator('.board-head__count')).toHaveCount(0);
+    });
+
+    test('결과가 없는 범위 밖 페이지는 검색 조건을 유지한 채 첫 페이지로 돌아간다', async ({ page }) => {
+        const prefix = uniqueTitle('검색범위밖');
+        await createPosts(page, 2, prefix);
+
+        await page.goto(`/community?q=${encodeURIComponent(prefix)}&page=9`);
+
+        await expect(page).not.toHaveURL(/page=/);
+        await expect(page).toHaveURL(new RegExp(`q=${encodeURIComponent(prefix)}`));
+        await expect(page.locator('.post-list__item')).toHaveCount(2);
+    });
+});
+
 test.describe('더 보기', () => {
     test('버튼을 누르면 다음 페이지를 이어 붙이고, 마지막이면 버튼이 사라진다', async ({ page }) => {
         const prefix = uniqueTitle('더보기');
@@ -293,38 +345,49 @@ test.describe('더 보기', () => {
      * 예전에는 pager가 서버가 처음 그린 1페이지에 멈춰 있어, 더 보기를 여러 번 눌러도
      * "다음"을 누르면 이미 화면에 있는 페이지로 되돌아갔다.
      */
-    test('더 보기를 두 번 눌러 마지막 페이지까지 불러오면 pager가 그 범위를 반영한다', async ({ page }) => {
+    test('검색 결과에서 더 보기를 두 번 눌러 마지막 페이지까지 불러오면 pager가 "N–M페이지"로 그 범위를 알린다', async ({ page }) => {
         const prefix = uniqueTitle('페이저갱신');
         await createPosts(page, 25, prefix); // 페이지 크기 10 → 총 3페이지(10·10·5)
 
+        // 검색 결과는 전체 건수를 세지 않는다(BE-08) — 번호 목록과 "/ 전체" 없이 이전·다음과 "N페이지"만 있다.
         await page.goto(`/community?q=${encodeURIComponent(prefix)}`);
         const pager = page.locator('nav.pager');
-        await expect(pager.locator('.pager__page[data-page="0"]')).toHaveAttribute('aria-current', 'page');
+        await expect(pager.locator('.pager__status')).toHaveText('1페이지');
+        await expect(pager.locator('.pager__page')).toHaveCount(0);
 
         const button = page.locator('#btn-load-more');
         await button.click(); // 2페이지(index 1)까지 붙음
+        await expect(pager.locator('.pager__status')).toHaveText('1–2페이지');
         await button.click(); // 3페이지(index 2, 마지막)까지 붙음
 
         await expect(page.locator('.post-list__item')).toHaveCount(25);
         await expect(button).toBeHidden();
-
-        // 좁은 화면용 문구(md 미만에서만 보이지만 DOM에는 항상 있다)가 범위로 바뀐다.
-        await expect(pager.locator('.pager__status')).toHaveText('1–3 / 3');
-
-        // 1·2·3페이지 번호 모두 "이미 붙은 범위"로 바뀌어 링크가 아니라 span이고, 마지막
-        // (3페이지)에만 aria-current가 남는다.
-        for (const dataPage of ['0', '1', '2']) {
-            const numberEl = pager.locator(`.pager__page[data-page="${dataPage}"]`);
-            await expect(numberEl).toHaveClass(/is-current/);
-            expect(await numberEl.evaluate((el) => el.tagName)).toBe('SPAN');
-        }
-        await expect(pager.locator('.pager__page[data-page="2"]')).toHaveAttribute('aria-current', 'page');
-        await expect(pager.locator('.pager__page[data-page="0"]')).not.toHaveAttribute('aria-current', 'page');
+        await expect(pager.locator('.pager__status')).toHaveText('1–3페이지');
 
         // "다음"은 더 불러올 페이지가 없으므로 "이전 없음"과 같은 비활성 모양이 된다.
         const nextEl = pager.locator('[data-role="next"]');
         await expect(nextEl).toHaveClass(/is-disabled/);
         expect(await nextEl.evaluate((el) => el.tagName)).toBe('SPAN');
+    });
+
+    /**
+     * 검색어 없는 목록은 총 건수와 번호 pager를 그대로 유지한다(BE-08은 검색만 COUNT를 뺀다).
+     * 글 수는 다른 스펙이 공유 DB에 만든 글에 따라 달라지므로 구체적인 숫자 대신 형태만 본다.
+     */
+    test('검색 아닌 목록은 더 보기 후에도 번호 pager와 "N–M / 전체"를 유지한다', async ({ page }) => {
+        await createPosts(page, 11, uniqueTitle('번호페이저'));
+
+        await page.goto('/community?category=FREE');
+        await expect(page.locator('.board-head__count')).toContainText('총');
+        const pager = page.locator('nav.pager');
+        await expect(pager.locator('.pager__numbers')).toBeVisible();
+        await expect(pager.locator('.pager__status')).toHaveText(/^\s*1 \/ \d+\s*$/);
+        await expect(pager.locator('.pager__page[data-page="0"]')).toHaveAttribute('aria-current', 'page');
+
+        await page.locator('#btn-load-more').click();
+
+        await expect(pager.locator('.pager__status')).toHaveText(/^1–2 \/ \d+$/);
+        await expect(pager.locator('.pager__page[data-page="1"]')).toHaveClass(/is-current/);
     });
 
     /**

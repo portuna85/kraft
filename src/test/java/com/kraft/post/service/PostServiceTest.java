@@ -26,6 +26,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -372,13 +374,49 @@ class PostServiceTest {
         User owner = userWithEmail("owner@example.com", 1L);
         PostRowDto row = rowOf(owner, 1L);
         Pageable pageable = PageRequest.of(0, 10);
-        Page<PostRowDto> page = new PageImpl<>(List.of(row), pageable, 1);
-        given(postRepository.search("공지", Category.NOTICE, false, idDescOf(pageable))).willReturn(page);
+        Slice<PostRowDto> slice = new SliceImpl<>(List.of(row), pageable, false);
+        given(postRepository.searchWithoutCount("공지", Category.NOTICE, false, idDescOf(pageable))).willReturn(slice);
         given(commentRepository.countByPostIdIn(List.of(1L))).willReturn(Map.of(1L, 3L));
 
         PostsPageResponseDto result = postService.findAllDesc(pageable, "공지", Category.NOTICE);
 
         assertThat(result.content().get(0).commentCount()).isEqualTo(3L);
+    }
+
+    /**
+     * BE-08: 검색어가 있으면 COUNT를 세지 않는다(LIKE '%kw%'는 인덱스를 못 타서 COUNT가 항상 전체
+     * 스캔이다). 전체 건수는 null이고 다음 페이지 유무만 안다.
+     */
+    @Test
+    @DisplayName("findAllDesc: 검색어가 있으면 COUNT 없는 쿼리를 쓰고 전체 건수·페이지 수는 null이다")
+    void findAllDesc_withKeyword_usesCountlessQueryAndLeavesTotalsNull() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Pageable pageable = PageRequest.of(1, 10);
+        Slice<PostRowDto> slice = new SliceImpl<>(List.of(rowOf(owner, 1L)), pageable, true);
+        given(postRepository.searchWithoutCount("공지", null, false, idDescOf(pageable))).willReturn(slice);
+
+        PostsPageResponseDto result = postService.findAllDesc(pageable, "공지", null);
+
+        assertThat(result.totalElements()).isNull();
+        assertThat(result.totalPages()).isNull();
+        assertThat(result.page()).isEqualTo(1);
+        assertThat(result.first()).isFalse();
+        assertThat(result.last()).as("다음 페이지가 있으므로 last=false").isFalse();
+        verify(postRepository, never()).search(any(), any(), anyBoolean(), any());
+    }
+
+    @Test
+    @DisplayName("findAllDesc: 검색어가 없으면 기존처럼 COUNT를 포함한 쿼리를 쓰고 전체 건수가 채워진다")
+    void findAllDesc_withoutKeyword_usesCountingQuery() {
+        Pageable pageable = PageRequest.of(0, 10);
+        given(postRepository.search(null, null, false, idDescOf(pageable)))
+                .willReturn(new PageImpl<>(List.of(), pageable, 0));
+
+        PostsPageResponseDto result = postService.findAllDesc(pageable);
+
+        assertThat(result.totalElements()).isZero();
+        assertThat(result.totalPages()).isZero();
+        verify(postRepository, never()).searchWithoutCount(any(), any(), anyBoolean(), any());
     }
 
     @Test
@@ -399,12 +437,12 @@ class PostServiceTest {
         Pageable pageable = PageRequest.of(0, 10);
         String tooLong = "가".repeat(150);
         String truncated = "가".repeat(100);
-        Page<PostRowDto> page = new PageImpl<>(List.of(), pageable, 0);
-        given(postRepository.search(truncated, null, false, idDescOf(pageable))).willReturn(page);
+        Slice<PostRowDto> slice = new SliceImpl<>(List.of(), pageable, false);
+        given(postRepository.searchWithoutCount(truncated, null, false, idDescOf(pageable))).willReturn(slice);
 
         postService.findAllDesc(pageable, tooLong, null);
 
-        verify(postRepository).search(truncated, null, false, idDescOf(pageable));
+        verify(postRepository).searchWithoutCount(truncated, null, false, idDescOf(pageable));
     }
 
     /**
@@ -416,12 +454,12 @@ class PostServiceTest {
     @DisplayName("findAllDesc: 검색어의 %·_·\\는 리포지토리에 전달하기 전에 이스케이프한다")
     void findAllDesc_escapesLikeWildcardsInKeyword() {
         Pageable pageable = PageRequest.of(0, 10);
-        Page<PostRowDto> page = new PageImpl<>(List.of(), pageable, 0);
-        given(postRepository.search("100\\%\\_할인\\\\", null, false, idDescOf(pageable))).willReturn(page);
+        Slice<PostRowDto> slice = new SliceImpl<>(List.of(), pageable, false);
+        given(postRepository.searchWithoutCount("100\\%\\_할인\\\\", null, false, idDescOf(pageable))).willReturn(slice);
 
         postService.findAllDesc(pageable, "100%_할인\\", null);
 
-        verify(postRepository).search("100\\%\\_할인\\\\", null, false, idDescOf(pageable));
+        verify(postRepository).searchWithoutCount("100\\%\\_할인\\\\", null, false, idDescOf(pageable));
     }
 
     /**
@@ -444,12 +482,12 @@ class PostServiceTest {
     @DisplayName("findAllDesc: 정확히 2자인 검색어는 그대로 전달한다(경계값)")
     void findAllDesc_keepsExactlyTwoCharacterKeyword() {
         Pageable pageable = PageRequest.of(0, 10);
-        Page<PostRowDto> page = new PageImpl<>(List.of(), pageable, 0);
-        given(postRepository.search("ab", null, false, idDescOf(pageable))).willReturn(page);
+        Slice<PostRowDto> slice = new SliceImpl<>(List.of(), pageable, false);
+        given(postRepository.searchWithoutCount("ab", null, false, idDescOf(pageable))).willReturn(slice);
 
         postService.findAllDesc(pageable, "ab", null);
 
-        verify(postRepository).search("ab", null, false, idDescOf(pageable));
+        verify(postRepository).searchWithoutCount("ab", null, false, idDescOf(pageable));
     }
 
     /**

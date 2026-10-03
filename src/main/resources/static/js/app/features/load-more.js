@@ -193,7 +193,10 @@ function updateStatusText(pager, startPage, lastLoadedPage, totalPages) {
     }
     const start = startPage + 1;
     const end = lastLoadedPage + 1;
-    statusEl.textContent = start === end ? `${start} / ${totalPages}` : `${start}–${end} / ${totalPages}`;
+    const range = start === end ? `${start}` : `${start}–${end}`;
+    // 전체 페이지 수를 모르는 검색 결과(BE-08)는 서버가 data-total-pages를 0으로 둔다 — "/ 전체" 없이
+    // 지금까지 본 범위만 알린다.
+    statusEl.textContent = totalPages > 0 ? `${range} / ${totalPages}` : `${range}페이지`;
 }
 
 /** 번호 링크 중 이미 화면에 붙은 페이지는 링크를 없애고(다시 눌러도 갈 곳이 없다) 현재

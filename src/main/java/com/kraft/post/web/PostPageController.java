@@ -77,20 +77,32 @@ public class PostPageController {
         // 원래 page 그대로 돌았다 — 범위를 넘는 page(예: ?page=999)는 빈 목록을 돌려주면서
         // 페이지네이션 링크는 보정된(마지막) 페이지를 가리켜, 그중 어느 것도 "현재"로 표시되지
         // 않는 채 빈 화면만 보였다(F09). 검색어·분류·정렬은 유지한 채 유효한 마지막 페이지로 보낸다.
-        if (postsPage.totalPages() > 0 && pageable.getPageNumber() >= postsPage.totalPages()) {
+        // 검색어가 있으면 전체 건수를 세지 않으므로(BE-08) totalPages가 null이다. 그때는 "마지막
+        // 페이지"를 모르니, 결과가 빈 범위 밖 페이지는 첫 페이지로 보낸다.
+        Integer totalPages = postsPage.totalPages();
+        boolean pastLastKnownPage = totalPages != null && totalPages > 0 && pageable.getPageNumber() >= totalPages;
+        boolean emptyBeyondFirst = totalPages == null && postsPage.content().isEmpty() && pageable.getPageNumber() > 0;
+        if (pastLastKnownPage || emptyBeyondFirst) {
             return "redirect:" + UriComponentsBuilder.fromPath("/community")
-                    .queryParam("page", postsPage.totalPages() - 1)
+                    // 마지막 페이지를 아는 경우만 page를 싣는다. 모를 때는 첫 페이지(page 생략)다.
+                    .queryParamIfPresent("page", pastLastKnownPage ? Optional.of(totalPages - 1) : Optional.empty())
                     .queryParamIfPresent("q", Optional.ofNullable(q).filter(s -> !s.isBlank()))
                     .queryParamIfPresent("category", Optional.ofNullable(category))
                     .queryParamIfPresent("sort", Optional.ofNullable(currentSort))
                     .queryParamIfPresent("scope", Optional.ofNullable(scope).filter(SearchScope::isContent))
+                    // 한글 검색어가 그대로 Location에 실리면 Tomcat이 헤더를 만들지 못해 리다이렉트가
+                    // 아예 일어나지 않는다 — 반드시 퍼센트 인코딩한다.
                     .build()
+                    .encode()
                     .toUriString();
         }
 
         model.addAttribute("posts", postsPage.content());
         model.addAttribute("postsPage", postsPage);
-        model.addAttribute("pageWindow", PageWindow.of(postsPage.page(), postsPage.totalPages()));
+        // 전체 건수를 모르는 검색 결과는 번호 목록 없이 이전·다음만 둔다.
+        model.addAttribute("pageWindow", totalPages != null
+                ? PageWindow.of(postsPage.page(), totalPages)
+                : PageWindow.simple(postsPage.page(), !postsPage.last()));
         model.addAttribute("popularPosts", postService.findPopular(5));
         // 검색·분류로 좁히지 않은 첫 페이지에만 공지를 고정한다(A-BE-05) — 검색 결과나 분류별
         // 목록, 2페이지 이후에 공지가 끼어들면 "이 조건에 맞는 글"이라는 목록의 의미가 흐려진다.

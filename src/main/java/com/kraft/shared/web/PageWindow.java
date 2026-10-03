@@ -25,6 +25,18 @@ public record PageWindow(
 
     private static final int WINDOW_SIZE = 5;
 
+    /**
+     * 전체 페이지 수를 모를 때(검색, BE-08) 쓰는 창. 번호 목록 없이 이전·다음만 있고
+     * {@code totalPages}는 0이다. 화면은 {@code displayPage}("N페이지")만 보여 준다.
+     *
+     * @param page    현재 페이지(0-기반)
+     * @param hasNext 다음 페이지가 있는지(Slice의 {@code hasNext})
+     */
+    public static PageWindow simple(int page, boolean hasNext) {
+        int current = Math.max(page, 0);
+        return new PageWindow(List.of(), current > 0, hasNext, current - 1, current + 1, current + 1, 0);
+    }
+
     public static PageWindow of(int page, int totalPages) {
         if (totalPages <= 0) {
             return new PageWindow(List.of(), false, false, 0, 0, 0, 0);

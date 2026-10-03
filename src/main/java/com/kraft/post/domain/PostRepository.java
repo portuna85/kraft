@@ -3,6 +3,7 @@ package com.kraft.post.domain;
 import com.kraft.post.dto.PostRowDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -13,6 +14,17 @@ import java.util.List;
 import java.util.Optional;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
+
+    /** {@link #search}·{@link #searchWithoutCount}가 공유하는 SELECT. 두 쿼리가 어긋나지 않게 한 곳에 둔다. */
+    String SEARCH_SELECT = "SELECT new com.kraft.post.dto.PostRowDto("
+            + "p.id, p.title, u.name, p.createdAt, p.updatedAt, p.category, p.viewCount) "
+            + "FROM Post p JOIN p.user u ";
+
+    /** 검색 조건(분류 AND (제목 OR [본문])). COUNT 쿼리도 같은 조건을 쓴다. */
+    String SEARCH_WHERE = "WHERE (:category IS NULL OR p.category = :category) "
+            + "AND (:keyword IS NULL "
+            + "     OR LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\' "
+            + "     OR (:searchContent = true AND LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\'))";
 
     /**
      * 목록 검색·분류 조회. {@code keyword}는 제목 OR 본문에 대소문자 구분 없이 포함되면
@@ -41,20 +53,24 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      * 뒤지는 것은 선행 와일드카드 LIKE 전체 스캔 비용이 가장 큰 부분이라, 필요할 때만
      * 켜게 한다({@code PostService.findAllDesc}가 기본값을 정한다).
      */
-    @Query(value = "SELECT new com.kraft.post.dto.PostRowDto("
-            + "p.id, p.title, u.name, p.createdAt, p.updatedAt, p.category, p.viewCount) "
-            + "FROM Post p JOIN p.user u "
-            + "WHERE (:category IS NULL OR p.category = :category) "
-            + "AND (:keyword IS NULL "
-            + "     OR LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\' "
-            + "     OR (:searchContent = true AND LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\'))",
-            countQuery = "SELECT COUNT(p) FROM Post p "
-                    + "WHERE (:category IS NULL OR p.category = :category) "
-                    + "AND (:keyword IS NULL "
-                    + "     OR LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\' "
-                    + "     OR (:searchContent = true AND LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\'))")
+    @Query(value = SEARCH_SELECT + SEARCH_WHERE,
+            countQuery = "SELECT COUNT(p) FROM Post p " + SEARCH_WHERE)
     Page<PostRowDto> search(@Param("keyword") String keyword, @Param("category") Category category,
                              @Param("searchContent") boolean searchContent, Pageable pageable);
+
+    /**
+     * {@link #search}와 같은 조건·정렬이지만 전체 건수를 세지 않는다(BE-08). 검색어가 있으면
+     * {@code LIKE '%kw%'}가 인덱스를 못 타서 COUNT는 매칭 여부와 상관없이 항상 테이블 전체를
+     * 읽는다 — 결과 쿼리는 정렬 순서대로 {@code size + 1}개를 찾으면 멈추는데, COUNT는 그
+     * 이점이 없어 검색 비용의 대부분이었다. Spring Data가 {@code size + 1}개를 읽어 다음
+     * 페이지가 있는지({@link Slice#hasNext()})만 알려 준다.
+     * <p>
+     * 검색어 없는 전체·분류 목록은 인덱스로 세는 COUNT가 싸고 "총 N개"·번호 이동이 그 값에
+     * 기대므로 계속 {@link #search}를 쓴다. 검색어 이스케이프·정렬 규칙은 {@link #search}와 같다.
+     */
+    @Query(SEARCH_SELECT + SEARCH_WHERE)
+    Slice<PostRowDto> searchWithoutCount(@Param("keyword") String keyword, @Param("category") Category category,
+                                          @Param("searchContent") boolean searchContent, Pageable pageable);
 
     /**
      * 인기글 후보를 최근 글로 좁힌다(전체 리뷰 2026-09-26 A-BE-10) — 누적 조회수만 보면

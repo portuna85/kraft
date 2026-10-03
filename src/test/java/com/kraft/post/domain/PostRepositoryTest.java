@@ -14,6 +14,7 @@ import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
 
 import java.time.LocalDateTime;
@@ -106,6 +107,67 @@ class PostRepositoryTest {
 
         assertThat(secondPage.getContent()).hasSize(5);
         assertThat(secondPage.isLast()).isTrue();
+    }
+
+    /**
+     * BE-08: COUNT 없는 검색은 같은 조건에서 {@code search}와 같은 행을 같은 순서로 돌려줘야 한다
+     * (WHERE 절은 두 쿼리가 상수를 공유하지만, 실제 DB 결과로 한 번 더 못 박는다).
+     */
+    @Test
+    @DisplayName("searchWithoutCount: 제목·본문 범위, 분류, 이스케이프 조건에서 search와 같은 행을 같은 순서로 돌려준다")
+    void searchWithoutCount_returnsSameRowsAsSearch() {
+        postRepository.save(Post.builder().title("Kraft 소개").content("내용").user(user).category(Category.FREE).build());
+        postRepository.save(Post.builder().title("공지").content("KRAFT 업데이트").user(user).category(Category.NOTICE).build());
+        postRepository.save(Post.builder().title("100% 할인").content("내용").user(user).category(Category.FREE).build());
+        postRepository.save(Post.builder().title("100원 할인").content("내용").user(user).category(Category.QNA).build());
+        postRepository.save(Post.builder().title("관련 없음").content("다른 내용").user(user).category(Category.FREE).build());
+        em.flush();
+        em.clear();
+
+        PageRequest idDesc = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "id"));
+        record Case(String keyword, Category category, boolean searchContent) {
+        }
+        for (Case c : List.of(
+                new Case("kraft", null, false),
+                new Case("kraft", null, true),
+                new Case("kraft", Category.NOTICE, true),
+                new Case("100\\% ", null, false),
+                new Case("할인", Category.QNA, false),
+                new Case("없는검색어", null, true))) {
+            List<Long> expected = postRepository.search(c.keyword(), c.category(), c.searchContent(), idDesc)
+                    .getContent().stream().map(PostRowDto::id).toList();
+
+            List<Long> actual = postRepository.searchWithoutCount(c.keyword(), c.category(), c.searchContent(), idDesc)
+                    .getContent().stream().map(PostRowDto::id).toList();
+
+            assertThat(actual).as("조건 %s", c).isEqualTo(expected);
+        }
+    }
+
+    /** Slice는 size + 1개를 읽어 다음 페이지가 있는지만 판정한다 — 정확히 size개면 마지막이다. */
+    @Test
+    @DisplayName("searchWithoutCount: size를 넘는 일치가 있을 때만 hasNext이고, 정확히 size개면 마지막 페이지다")
+    void searchWithoutCount_hasNextOnlyWhenMoreThanPageSizeMatch() {
+        for (int i = 1; i <= 11; i++) {
+            postRepository.save(Post.builder().title("검색 글 " + i).content("c").user(user).build());
+        }
+        postRepository.save(Post.builder().title("다른 글").content("c").user(user).build());
+        em.flush();
+        em.clear();
+
+        Sort idDesc = Sort.by(Sort.Direction.DESC, "id");
+        Slice<PostRowDto> first = postRepository.searchWithoutCount("검색 글", null, false, PageRequest.of(0, 10, idDesc));
+        Slice<PostRowDto> second = postRepository.searchWithoutCount("검색 글", null, false, PageRequest.of(1, 10, idDesc));
+        Slice<PostRowDto> exactFit = postRepository.searchWithoutCount("검색 글", null, false, PageRequest.of(0, 11, idDesc));
+
+        assertThat(first.getContent()).hasSize(10);
+        assertThat(first.hasNext()).isTrue();
+        assertThat(first.isFirst()).isTrue();
+        assertThat(second.getContent()).hasSize(1);
+        assertThat(second.hasNext()).isFalse();
+        assertThat(second.isLast()).isTrue();
+        assertThat(exactFit.getContent()).hasSize(11);
+        assertThat(exactFit.hasNext()).as("정확히 size개면 다음 페이지가 없다").isFalse();
     }
 
     /**

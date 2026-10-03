@@ -31,6 +31,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -293,12 +294,21 @@ public class PostService {
     public PostsPageResponseDto findAllDesc(Pageable pageable, String keyword, Category category, boolean searchContent) {
         Pageable effective = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
                 PostSortPolicy.effectiveSort(pageable.getSort()));
-        Page<PostRowDto> page = postRepository.search(normalize(keyword), category, searchContent, effective);
-        Map<Long, Long> commentCounts = commentRepository.countByPostIdIn(
-                page.getContent().stream().map(PostRowDto::id).toList());
-        Page<PostsListResponseDto> mapped = page.map(row ->
-                new PostsListResponseDto(row, commentCounts.getOrDefault(row.id(), 0L)));
-        return new PostsPageResponseDto(mapped);
+        String normalized = normalize(keyword);
+        if (normalized == null) {
+            // 검색어 없음(너무 짧아 무시된 경우 포함): 인덱스로 세는 COUNT가 싸고 화면이 총 건수와
+            // 번호 이동을 그린다.
+            Page<PostRowDto> page = postRepository.search(null, category, searchContent, effective);
+            Map<Long, Long> commentCounts = commentCountsOf(page);
+            return new PostsPageResponseDto(page.map(row ->
+                    new PostsListResponseDto(row, commentCounts.getOrDefault(row.id(), 0L))));
+        }
+        // 검색어 있음: LIKE '%kw%'는 인덱스를 못 타서 COUNT가 항상 전체 스캔이다. 세지 않고 다음
+        // 페이지가 있는지만 안다(BE-08).
+        Slice<PostRowDto> slice = postRepository.searchWithoutCount(normalized, category, searchContent, effective);
+        Map<Long, Long> commentCounts = commentCountsOf(slice);
+        return new PostsPageResponseDto(slice.map(row ->
+                new PostsListResponseDto(row, commentCounts.getOrDefault(row.id(), 0L))));
     }
 
     /**
@@ -442,6 +452,11 @@ public class PostService {
         if (expectedVersion != null && !expectedVersion.equals(post.getVersion())) {
             throw new ObjectOptimisticLockingFailureException(Post.class, post.getId());
         }
+    }
+
+    /** 이 페이지에 담긴 글들의 댓글 수를 한 번에 묶어 조회한다(N+1 방지). */
+    private Map<Long, Long> commentCountsOf(Slice<PostRowDto> rows) {
+        return commentRepository.countByPostIdIn(rows.getContent().stream().map(PostRowDto::id).toList());
     }
 
     private String normalize(String keyword) {
