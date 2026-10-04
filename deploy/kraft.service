@@ -16,6 +16,9 @@ Type=simple
 User=kraft
 Group=kraft
 WorkingDirectory=/opt/kraft/app
+# 힙 덤프(OOM 때)에는 복호화된 이메일과 비밀 값이 들어 있다(OPS-21). 같은 서버의 다른 계정이 읽지 못하게
+# 이 프로세스가 만드는 파일을 소유자만 읽고 쓰게 한다.
+UMask=0077
 EnvironmentFile=/opt/kraft/app/.env
 
 # -XX:MaxRAMPercentage는 -Xmx를 고정 값으로 박아 두지 않아, 인스턴스 크기를 바꿔도 이

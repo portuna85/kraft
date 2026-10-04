@@ -32,6 +32,13 @@ PREVIOUS="$APP_DIR/kraft.jar.prev"
 # 먼저 확인한다.
 RELEASES_DIR="$APP_DIR/releases"
 KEEP_RELEASES=5
+# OOM 때 JVM이 남기는 힙 덤프(kraft.service의 HeapDumpPath). 복호화된 이메일·비밀 값이 들어 있고
+# 힙 크기만큼 커서(OPS-21) 최근 몇 개만 남기고 지운다.
+HEAPDUMP_DIR=/opt/kraft/heapdumps
+KEEP_HEAPDUMPS=3
+# 빌드 타깃 JDK(build.gradle.kts의 toolchain). 운영은 OS의 /usr/bin/java로 실행하므로(kraft.service)
+# 서버의 java가 이보다 낮으면 새 jar가 기동하지 못한다(OPS-11).
+REQUIRED_JAVA_MAJOR=25
 LOCK_FILE="$APP_DIR/deploy.lock"
 LOG=/opt/kraft/deploy.log
 # /readyz는 템플릿 렌더링 없이 컨텍스트 기동과 DB 커넥션 검증(제한 시간 2초)만 본다 — DB에
@@ -112,6 +119,17 @@ UNZIP_LISTING=$(unzip -l "$INCOMING" 2>/dev/null) || fail "압축이 깨졌다"
 # 항목을 실제로 풀어 CRC를 대조하므로 그런 손상까지 여기서 걸러낸다.
 unzip -t "$INCOMING" >/dev/null 2>&1 || fail "CRC 무결성 검사 실패 — 항목이 손상되었다"
 log "검증 통과"
+
+# 2-1. 서버의 JVM이 이 jar를 돌릴 수 있는지(OPS-11). 아직 아무것도 바꾸기 전이라 여기서 멈추면 운영은
+#      그대로다. 버전을 읽지 못하면(출력 형식이 달라진 경우 등) 막지 않고 경고만 남긴다 — 확인
+#      실패가 정상 배포를 막으면 안 된다.
+JAVA_SPEC=$(/usr/bin/java -XshowSettings:properties -version 2>&1     | awk -F'= ' '/java.specification.version/ {print $2; exit}' | tr -d ' ' || true)
+if [[ "$JAVA_SPEC" =~ ^[0-9]+$ ]]; then
+    [ "$JAVA_SPEC" -ge "$REQUIRED_JAVA_MAJOR" ]         || fail "서버의 java가 ${JAVA_SPEC}이다. 이 jar는 ${REQUIRED_JAVA_MAJOR} 이상이 필요하다 — 서버 JDK부터 올려야 한다"
+    log "서버 JDK 확인: ${JAVA_SPEC}"
+else
+    log "경고: 서버 java 버전을 읽지 못했다(${JAVA_SPEC:-빈 값}). 확인 없이 진행한다"
+fi
 
 # 3. DB 스냅샷.
 #    운영 프로파일은 Flyway가 앱 기동 시 마이그레이션을 자동 적용한다
@@ -200,6 +218,10 @@ if [ "$healthy" = 1 ]; then
         log "롤백용 보관: releases/kraft-$STAMP-$REF.jar (최근 ${KEEP_RELEASES}개 유지)"
     else
         log "경고: 롤백용 jar 보관에 실패했다(배포 자체는 성공)"
+    fi
+    # 오래된 힙 덤프를 지운다(OPS-21). 정리 실패가 배포 성공을 뒤집지 않는다.
+    if [ -d "$HEAPDUMP_DIR" ]; then
+        ls -1t "$HEAPDUMP_DIR"/*.hprof 2>/dev/null | tail -n +$((KEEP_HEAPDUMPS + 1)) | xargs -r rm -f || true
     fi
     log "───── 배포 성공 (ref=$REF) ─────"
     exit 0
