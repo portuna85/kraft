@@ -2,7 +2,6 @@ package com.kraft.post.service;
 
 import com.kraft.comment.domain.Comment;
 import com.kraft.comment.domain.CommentRepository;
-import com.kraft.comment.service.CommentService;
 import com.kraft.post.domain.Post;
 import com.kraft.post.domain.PostLikeRepository;
 import com.kraft.post.domain.PostRepository;
@@ -21,7 +20,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 
-import java.util.List;
 
 import com.kraft.support.MariaDbIntegrationTest;
 

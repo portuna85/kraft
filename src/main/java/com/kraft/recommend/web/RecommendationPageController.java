@@ -1,7 +1,6 @@
 package com.kraft.recommend.web;
 
 import com.kraft.recommend.domain.LottoPrizeTax;
-import com.kraft.recommend.domain.WinningDraw;
 import com.kraft.recommend.domain.WinningDrawRepository;
 import com.kraft.recommend.service.RecommendationFreshness;
 import lombok.RequiredArgsConstructor;

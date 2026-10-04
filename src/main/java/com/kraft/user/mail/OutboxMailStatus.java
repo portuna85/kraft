@@ -1,6 +1,5 @@
 package com.kraft.user.mail;
 
-import com.kraft.user.domain.User;
 /**
  * 보낼 메일 한 통의 상태.
  * <p>

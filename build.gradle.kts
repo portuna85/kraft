@@ -9,6 +9,7 @@ plugins {
     jacoco
     id("org.springframework.boot") version "4.1.1"
     id("io.spring.dependency-management") version "1.1.7"
+    id("com.diffplug.spotless") version "8.10.3"
 }
 
 group = "com.kraft"
@@ -23,6 +24,20 @@ java {
 
 repositories {
     mavenCentral()
+}
+
+// Java 포맷 게이트(OPS-33). 규칙은 일부러 최소로 둔다 — 미사용 import, 줄 끝 공백, 파일 끝 줄바꿈만 본다.
+// 전체를 google-java-format 같은 도구로 다시 쓰면 15k줄이 한 번에 바뀌어 blame·리뷰가 망가진다. 줄바꿈은
+// git의 autocrlf 설정과 무관하게 LF로 고정한다(저장소의 .editorconfig·.gitattributes와 같다).
+// `./gradlew spotlessCheck`로 확인하고 `./gradlew spotlessApply`로 고친다. CI가 spotlessCheck를 돌린다.
+spotless {
+    lineEndings = com.diffplug.spotless.LineEnding.UNIX
+    java {
+        target("src/**/*.java")
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
 }
 
 // 브라우저 테스트용 서버 코드는 운영 클래스패스와 JAR에 포함하지 않는다.

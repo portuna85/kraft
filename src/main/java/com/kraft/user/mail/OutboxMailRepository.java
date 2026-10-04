@@ -1,6 +1,5 @@
 package com.kraft.user.mail;
 
-import com.kraft.user.domain.User;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

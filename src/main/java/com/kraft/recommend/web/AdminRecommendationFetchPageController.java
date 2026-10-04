@@ -1,6 +1,5 @@
 package com.kraft.recommend.web;
 
-import com.kraft.recommend.domain.RecommendationFetchAttempt;
 import com.kraft.recommend.domain.RecommendationFetchAttemptRepository;
 import com.kraft.recommend.domain.RecommendationHistoryState;
 import com.kraft.recommend.domain.RecommendationHistoryStateRepository;

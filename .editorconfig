@@ -1,0 +1,21 @@
+# 에디터가 같은 규칙으로 저장하게 한다(OPS-33). Java는 Spotless(spotlessCheck)가 미사용 import·줄 끝 공백·파일 끝
+# 줄바꿈을 CI에서 강제하고, 나머지는 여기 규칙을 에디터가 따른다.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{yml,yaml,json}]
+indent_size = 2
+
+# 마크다운은 줄 끝 공백 두 칸이 줄바꿈이다.
+[*.md]
+trim_trailing_whitespace = false
+
+[*.bat]
+end_of_line = crlf

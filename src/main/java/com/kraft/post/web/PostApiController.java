@@ -6,7 +6,6 @@ import com.kraft.post.dto.PostLikeRequestDto;
 import com.kraft.post.dto.PostLikeResponseDto;
 import com.kraft.post.dto.PostResponseDto;
 import com.kraft.post.dto.PostSaveRequestDto;
-import com.kraft.post.dto.PostsPageResponseDto;
 import com.kraft.post.dto.PostUpdateRequestDto;
 import com.kraft.post.service.PostService;
 import com.kraft.post.service.PostSortPolicy;
