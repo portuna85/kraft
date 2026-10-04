@@ -1,0 +1,74 @@
+<!DOCTYPE HTML>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<!--/*@thymesVar id="pageTitle" type="java.lang.String"*/-->
+<!--/*@thymesVar id="autoFetchEnabled" type="java.lang.Boolean"*/-->
+<!--/*@thymesVar id="verifiedThroughRound" type="java.lang.Integer"*/-->
+<!--/*@thymesVar id="nextRound" type="java.lang.Integer"*/-->
+<!--/*@thymesVar id="verifiedAt" type="java.time.LocalDateTime"*/-->
+<!--/*@thymesVar id="sourceReference" type="java.lang.String"*/-->
+<!--/*@thymesVar id="consecutiveFailures" type="java.lang.Integer"*/-->
+<!--/*@thymesVar id="lastSuccessAt" type="java.time.LocalDateTime"*/-->
+<!--/*@thymesVar id="lastFailureAt" type="java.time.LocalDateTime"*/-->
+<!--/*@thymesVar id="lastFailureReason" type="java.lang.String"*/-->
+<head th:replace="~{layout/header :: header}"></head>
+<body>
+
+<a class="skip-link" href="#main">본문 바로가기</a>
+<div th:replace="~{layout/navbar :: topbar}"></div>
+
+<div class="kraft-shell">
+    <main id="main" class="kraft-main">
+        <div th:replace="~{layout/footer :: flash}"></div>
+
+        <div class="board-head">
+            <div class="board-head__text">
+                <h1 class="board-head__title">추천 이력 수집</h1>
+                <p class="board-head__count">
+                    자동 수집 <strong th:text="${autoFetchEnabled} ? '켜짐' : '꺼짐'">켜짐</strong>
+                </p>
+            </div>
+        </div>
+        <p class="board-head__desc">토요일 21:30·22:00, 일요일 06:00·07:00(KST)에 최신 회차를 받아옵니다.
+            아래 마지막 성공·실패 기록은 서버를 재시작하면 비워집니다.
+            <a href="/admin/reports">신고 처리로 돌아가기</a></p>
+
+        <ul class="report-list">
+            <li class="report-list__item">
+                <div class="report-list__head">
+                    <strong>검증 완료 회차</strong>
+                    <span th:if="${verifiedThroughRound != null}" th:text="${verifiedThroughRound} + '회'">1200회</span>
+                    <span class="text-muted" th:unless="${verifiedThroughRound != null}">아직 없음</span>
+                </div>
+                <p class="report-list__detail">
+                    다음 수집 대상 <strong th:text="${nextRound} + '회'">1201회</strong>
+                    <span th:if="${verifiedAt != null}"
+                          th:text="' · 검증 시각 ' + ${#temporals.format(verifiedAt, 'yyyy.MM.dd HH:mm')}"></span>
+                    <span th:if="${sourceReference != null}" th:text="' · 출처 ' + ${sourceReference}"></span>
+                </p>
+            </li>
+            <li class="report-list__item">
+                <div class="report-list__head">
+                    <strong>마지막 성공</strong>
+                    <span th:if="${lastSuccessAt != null}"
+                          th:text="${#temporals.format(lastSuccessAt, 'yyyy.MM.dd HH:mm')}">시각</span>
+                    <span class="text-muted" th:unless="${lastSuccessAt != null}">기록 없음</span>
+                </div>
+                <p class="report-list__detail">반영했거나, 아직 추첨 전이라는 정상 응답을 받은 시각입니다.</p>
+            </li>
+            <li class="report-list__item">
+                <div class="report-list__head">
+                    <strong>연속 실패</strong>
+                    <span th:text="${consecutiveFailures} + '회'">0회</span>
+                </div>
+                <p class="report-list__detail" th:if="${lastFailureAt != null}"
+                   th:text="'마지막 실패 ' + ${#temporals.format(lastFailureAt, 'yyyy.MM.dd HH:mm')}
+                            + (${lastFailureReason != null} ? ' · ' + ${lastFailureReason} : '')">마지막 실패</p>
+                <p class="report-list__detail" th:unless="${lastFailureAt != null}">실패 기록이 없습니다.</p>
+            </li>
+        </ul>
+    </main>
+</div>
+
+<div th:replace="~{layout/footer :: footer}"></div>
+</body>
+</html>

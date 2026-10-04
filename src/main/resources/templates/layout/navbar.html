@@ -96,6 +96,10 @@
                        th:classappend="${currentPath == '/admin/reports'} ? 'is-current'"
                        th:attr="aria-current=${currentPath == '/admin/reports'} ? 'page' : null">신고 처리</a>
 
+                    <a sec:authorize="hasRole('ADMIN')" href="/admin/recommendations" class="kraft-actions__link"
+                       th:classappend="${currentPath == '/admin/recommendations'} ? 'is-current'"
+                       th:attr="aria-current=${currentPath == '/admin/recommendations'} ? 'page' : null">추천 이력 수집</a>
+
                     <button type="button" id="btn-logout" class="kraft-actions__link kraft-actions__link--button">로그아웃</button>
 
                     <hr class="kraft-account__divider">
