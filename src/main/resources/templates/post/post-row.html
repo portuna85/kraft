@@ -1,0 +1,39 @@
+<!DOCTYPE HTML>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<!--/*
+    게시판 목록의 글 한 줄(FE-10). 본목록과 고정 공지가 같은 마크업을 쓰도록 한 곳에 둔다.
+    pinned가 true면 번호 칸에 "공지" 표시를 낸다.
+    "더 보기"가 붙이는 행은 서버가 아니라 static/js/app/features/load-more.js의 buildRow가
+    만든다 — 이 조각의 구조를 바꾸면 그쪽도 함께 맞춘다.
+*/-->
+<body>
+<li class="post-list__item" th:fragment="row(post, pinned)" th:attr="data-post-id=${post.id}">
+    <span class="post-list__no" th:if="${pinned}">
+        <span class="visually-hidden">공지</span><span aria-hidden="true">📌</span>
+    </span>
+    <span class="post-list__no" th:unless="${pinned}">
+        <span class="post-list__no-label">#</span><span th:text="${post.id}">1</span>
+    </span>
+    <a class="post-list__title" th:href="@{'/posts/update/' + ${post.id}}">
+        <span class="post-list__category" th:text="${post.category.title}">분류</span>
+        <span th:text="${post.title}">제목</span>
+    </a>
+    <span class="post-list__meta">
+        <span class="post-list__author" th:text="${post.author}">작성자</span>
+        <!-- 기본 정렬이 등록순(id)이므로 날짜도 등록일을 보인다(A-BE-11) — 수정 시각을 보이면
+             오래된 글을 고쳤을 때 "최신 등록순" 중간에 오늘 날짜가 찍혀 순서가 뒤섞여 보인다.
+             실제로 수정된 글만 "(수정됨)"을 덧붙인다. -->
+        <span class="post-list__date"
+              th:text="${post.createdAt != null}
+                       ? ${#temporals.format(post.createdAt, 'yyyy.MM.dd HH:mm')} + (${post.modified} ? ' (수정됨)' : '')
+                       : ''">2026.01.01 00:00</span>
+    </span>
+    <span class="post-list__views">
+        <span class="visually-hidden">조회 </span><span th:text="${post.viewCount}">0</span>
+    </span>
+    <span class="post-list__comments">
+        <span class="visually-hidden">댓글 </span><span th:text="${post.commentCount}">0</span>
+    </span>
+</li>
+</body>
+</html>
