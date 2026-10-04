@@ -1,5 +1,7 @@
 import org.apache.tools.ant.filters.ReplaceTokens
 import org.springframework.boot.gradle.tasks.bundling.BootJar
+import java.util.zip.Deflater
+import java.util.zip.GZIPOutputStream
 
 plugins {
     java
@@ -126,6 +128,32 @@ tasks.processResources {
     // 그 청크다(FE-03·FE-05) — 원본을 jar에 같이 넣으면 같은 코드를 두 번 싣고, 번들되지 않은
     // 복사본이 /js/app/**로 그대로 서빙된다.
     exclude("static/js/app/**")
+
+    // 정적 텍스트 자원(js·css·svg)을 빌드할 때 한 번 gzip으로 압축해 옆에 .gz로 둔다(FE-24).
+    // application.yml의 spring.web.resources.chain.compressed가 클라이언트가 gzip을 받을 때 이 파일을
+    // 그대로 내려준다 — 요청마다 CPU로 압축하지 않고, 최대 압축률(레벨 9)을 쓸 수 있다. 소스
+    // 트리는 건드리지 않는다(build/ 아래 산출물만). 1KB 미만이거나 줄지 않으면 만들지 않는다.
+    // Brotli는 JDK에 인코더가 없어 별도 네이티브 의존성이 필요해 쓰지 않는다.
+    doLast {
+        val staticDir = destinationDir.resolve("static")
+        if (staticDir.isDirectory) {
+            val compressible = setOf("js", "css", "svg")
+            staticDir.walkTopDown().filter { it.isFile && it.extension == "gz" }.forEach { it.delete() }
+            staticDir.walkTopDown()
+                .filter { it.isFile && it.extension in compressible && it.length() >= 1024 }
+                .forEach { source ->
+                    val target = File(source.path + ".gz")
+                    object : GZIPOutputStream(target.outputStream()) {
+                        init {
+                            def.setLevel(Deflater.BEST_COMPRESSION)
+                        }
+                    }.use { out -> source.inputStream().use { it.copyTo(out) } }
+                    if (target.length() >= source.length()) {
+                        target.delete()
+                    }
+                }
+        }
+    }
 }
 
 tasks.withType<Test> {

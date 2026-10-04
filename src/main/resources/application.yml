@@ -87,6 +87,9 @@ spring:
       # 붙은 URL로 치환한다 — 하드코딩된 href="/js/..."는 이 메커니즘을 타지 않는다.
       chain:
         enabled: true
+        # 빌드가 만든 .gz(build.gradle.kts의 processResources, FE-24)를 클라이언트가 gzip을 받을 때 그대로
+        # 내려준다. 없는 파일은 원본을 보내고, server.compression이 필요하면 동적으로 압축한다.
+        compressed: true
         strategy:
           fixed:
             enabled: true

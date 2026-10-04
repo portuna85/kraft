@@ -32,6 +32,10 @@ const props = defineProps({
 const loginHref = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
 
 const mode = ref('view'); // 'view' | 'edit'
+// 편집 폼은 처음 편집을 누를 때 마운트한다(FE-23). 글을 읽기만 하는 방문자(작성자 본인 포함)에게
+// 툴바·미리보기·사진 입력까지 달린 폼 전체를 매번 만들 이유가 없다. 한 번 열린 뒤에는 v-show로
+// 유지해 입력 중이던 내용이 보기/편집을 오가도 사라지지 않는다.
+const editMounted = ref(false);
 const original = reactive({
     title: props.post.title,
     content: props.post.content,
@@ -192,6 +196,7 @@ function discardDraft() {
 }
 
 async function startEdit() {
+    editMounted.value = true;
     mode.value = 'edit';
     // 서버 원본과 같은 초안은 되찾을 게 없으니 배너를 띄우지 않는다.
     autosave.checkAvailable((stored) =>
@@ -463,7 +468,7 @@ async function onSubmit() {
   </article>
 
   <form
-    v-if="post.canManagePost"
+    v-if="post.canManagePost && editMounted"
     v-show="mode === 'edit'"
     id="post-edit"
     class="card-kraft post-edit"

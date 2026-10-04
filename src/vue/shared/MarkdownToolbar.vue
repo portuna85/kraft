@@ -187,8 +187,10 @@ defineExpose({
       @keydown="onTextareaKeydown"
       @invalid="onInvalid"
     />
+    <!-- v-show가 아니라 v-if다(FE-23) — 숨겨 둔 채로도 키 입력마다 parseMarkdown이 돌았다. 미리보기를
+         켤 때만 렌더링(=파싱)한다. -->
     <div
-      v-show="mode === 'preview'"
+      v-if="mode === 'preview'"
       class="markdown-toolbar__preview post-body post-body--md"
       role="region"
       aria-label="미리보기"
