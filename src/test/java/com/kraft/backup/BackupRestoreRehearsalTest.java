@@ -6,6 +6,7 @@ import com.kraft.post.domain.PostRepository;
 import com.kraft.post.dto.PostSaveRequestDto;
 import com.kraft.post.service.PostImageService;
 import com.kraft.post.service.PostService;
+import com.kraft.support.MariaDbImage;
 import com.kraft.support.TestAuthentication;
 import com.kraft.support.TestImages;
 import com.kraft.user.domain.EmailHasher;
@@ -55,7 +56,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class BackupRestoreRehearsalTest {
 
     @Container
-    static MariaDBContainer mariadb = new MariaDBContainer("mariadb:11.7.2");
+    static MariaDBContainer mariadb = new MariaDBContainer(MariaDbImage.NAME);
 
     private static final String KEY = "backup-drill-key-1111";
 

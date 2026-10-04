@@ -19,7 +19,9 @@
                           않게 하기 위해서다. 다만 ERROR(임계 초과)는 kraft-error.log에도 남는다.
 
     파일은 logs/ 아래에 남고(.gitignore에 등록됨), 매일 또는 20MB를 넘길 때 회전해
-    logs/archive/*.log.gz로 압축 보관한다.
+    logs/archive/*.log.gz로 압축 보관한다. 파일마다 totalSizeCap이 있어 합계가 약 700MB를 넘지
+    않는다(예전에는 6개가 각각 500MB라 최대 3GB, OPS-22) — 주 로그 300MB, error·sql·security
+    100MB, email·metrics 50MB.
 -->
 <configuration>
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
@@ -34,7 +36,7 @@
             <fileNamePattern>${LOG_ARCHIVE}/kraft.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
             <maxFileSize>20MB</maxFileSize>
             <maxHistory>30</maxHistory>
-            <totalSizeCap>500MB</totalSizeCap>
+            <totalSizeCap>300MB</totalSizeCap>
         </rollingPolicy>
         <encoder>
             <pattern>${FILE_LOG_PATTERN}</pattern>
@@ -51,7 +53,7 @@
             <fileNamePattern>${LOG_ARCHIVE}/kraft-error.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
             <maxFileSize>20MB</maxFileSize>
             <maxHistory>90</maxHistory>
-            <totalSizeCap>500MB</totalSizeCap>
+            <totalSizeCap>100MB</totalSizeCap>
         </rollingPolicy>
         <encoder>
             <pattern>${FILE_LOG_PATTERN}</pattern>
@@ -65,7 +67,7 @@
             <fileNamePattern>${LOG_ARCHIVE}/kraft-sql.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
             <maxFileSize>20MB</maxFileSize>
             <maxHistory>14</maxHistory>
-            <totalSizeCap>500MB</totalSizeCap>
+            <totalSizeCap>100MB</totalSizeCap>
         </rollingPolicy>
         <encoder>
             <pattern>${FILE_LOG_PATTERN}</pattern>
@@ -79,7 +81,7 @@
             <fileNamePattern>${LOG_ARCHIVE}/kraft-security.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
             <maxFileSize>20MB</maxFileSize>
             <maxHistory>30</maxHistory>
-            <totalSizeCap>500MB</totalSizeCap>
+            <totalSizeCap>100MB</totalSizeCap>
         </rollingPolicy>
         <encoder>
             <pattern>${FILE_LOG_PATTERN}</pattern>
@@ -93,7 +95,7 @@
             <fileNamePattern>${LOG_ARCHIVE}/kraft-email.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
             <maxFileSize>20MB</maxFileSize>
             <maxHistory>30</maxHistory>
-            <totalSizeCap>500MB</totalSizeCap>
+            <totalSizeCap>50MB</totalSizeCap>
         </rollingPolicy>
         <encoder>
             <pattern>${FILE_LOG_PATTERN}</pattern>
@@ -107,7 +109,7 @@
             <fileNamePattern>${LOG_ARCHIVE}/kraft-metrics.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
             <maxFileSize>20MB</maxFileSize>
             <maxHistory>30</maxHistory>
-            <totalSizeCap>500MB</totalSizeCap>
+            <totalSizeCap>50MB</totalSizeCap>
         </rollingPolicy>
         <encoder>
             <pattern>${FILE_LOG_PATTERN}</pattern>

@@ -55,9 +55,6 @@ import java.util.List;
 @Import(MariaDbIntegrationTest.ContainerConfig.class)
 public abstract class MariaDbIntegrationTest {
 
-    /** docker-compose.yml과 같은 버전을 쓴다. 운영에서 쓰는 것과 다른 DB를 검증하면 의미가 없다. */
-    private static final String IMAGE = "mariadb:11.7.2";
-
     /** 마이그레이션 이력·시드를 보존할 테이블. 앞의 것은 건드리지 않고 뒤의 것은 값을 되돌린다. */
     private static final String FLYWAY_HISTORY = "flyway_schema_history";
     private static final String HISTORY_STATE = "recommendation_history_state";
@@ -68,7 +65,7 @@ public abstract class MariaDbIntegrationTest {
         @Bean
         @ServiceConnection
         MariaDBContainer mariadb() {
-            return new MariaDBContainer(IMAGE);
+            return new MariaDBContainer(MariaDbImage.NAME);
         }
     }
 

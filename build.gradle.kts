@@ -1,5 +1,6 @@
 import org.apache.tools.ant.filters.ReplaceTokens
 import org.springframework.boot.gradle.tasks.bundling.BootJar
+import java.security.MessageDigest
 import java.util.zip.Deflater
 import java.util.zip.GZIPOutputStream
 
@@ -105,12 +106,31 @@ tasks.jar {
 // 새 배포의 자원이 항상 새 경로로 요청된다. git이 없는 환경(예: 소스 tarball 빌드)에서는
 // project.version으로 폴백한다. application.yml의 "@buildVersion@" 토큰만 치환하며(Ant 스타일),
 // Spring의 "${...}" 플레이스홀더 문법과 겹치지 않는다.
-val buildVersion: String = try {
+val gitCommit: String = try {
     providers.exec {
         commandLine("git", "rev-parse", "--short", "HEAD")
     }.standardOutput.asText.get().trim().ifBlank { version.toString() }
 } catch (e: Exception) {
     version.toString()
+}
+
+// 커밋하지 않은 변경이 있으면 변경 내용의 해시를 붙인다(OPS-30). 커밋 SHA만 쓰면 같은 SHA에서 코드를
+// 고쳐 가며 빌드해도 /js 경로 버전이 그대로라 브라우저가 옛 캐시를 쓴다. 같은 변경이면 같은 값이라
+// 반복 빌드는 캐시를 그대로 쓰고, 변경이 바뀌면 값도 바뀐다. 추적 파일 변경만 본다(깨끗한 CI 체크아웃은
+// 영향이 없다 — 배포 확인(X-Kraft-Build)도 SHA 그대로다).
+val buildVersion: String = try {
+    val diff = providers.exec {
+        commandLine("git", "diff", "HEAD")
+        isIgnoreExitValue = true
+    }.standardOutput.asBytes.get()
+    if (diff.isEmpty()) {
+        gitCommit
+    } else {
+        val digest = MessageDigest.getInstance("SHA-1").digest(diff)
+        gitCommit + "-dirty" + digest.joinToString("") { "%02x".format(it) }.take(7)
+    }
+} catch (e: Exception) {
+    gitCommit
 }
 
 tasks.processResources {
@@ -209,7 +229,11 @@ tasks.jacocoTestReport {
     }))
 }
 
-// 리포트를 따로 기억해서 돌릴 필요가 없게 한다. test가 끝나면 항상 갱신된다.
+// CI(환경변수 CI)이거나 -Pcoverage를 줄 때만 test 뒤에 리포트를 만든다(OPS-29). 로컬에서 test를 돌릴
+// 때마다 만들면 매번 느려지는 데 비해 보는 일이 드물다. 로컬에서 필요하면 `./gradlew test -Pcoverage`
+// 또는 `./gradlew jacocoTestReport`.
 tasks.test {
-    finalizedBy(tasks.jacocoTestReport)
+    if (System.getenv("CI") != null || providers.gradleProperty("coverage").isPresent) {
+        finalizedBy(tasks.jacocoTestReport)
+    }
 }

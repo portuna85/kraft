@@ -1,6 +1,7 @@
 package com.kraft.migration;
 
 import com.kraft.KraftApplication;
+import com.kraft.support.MariaDbImage;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.FlywayException;
 import org.junit.jupiter.api.DisplayName;
@@ -54,7 +55,7 @@ class MariaDbUpgradeRehearsalTest {
 
     /** docker-compose.yml·MariaDbMigrationTest와 같은 버전을 쓴다. */
     @Container
-    static MariaDBContainer mariadb = new MariaDBContainer("mariadb:11.7.2");
+    static MariaDBContainer mariadb = new MariaDBContainer(MariaDbImage.NAME);
 
     @Test
     @DisplayName("기존 개발 DB에 baseline-version 1을 그대로 쓰면 중복 컬럼으로 실패한다")
