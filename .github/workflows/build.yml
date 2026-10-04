@@ -358,6 +358,54 @@ jobs:
           path: test-results
           retention-days: 7
 
+  # 시각 회귀(OPS-05). 기준선은 같은 Playwright 이미지(Linux)에서 만든 -chromium-linux.png다.
+  # 일반 e2e 샤드는 이 스펙을 건너뛰고(CI=1), 여기서 VISUAL=1로 이 스펙만 돌린다.
+  #
+  # 폰트 렌더링 차이로 오탐이 날 수 있어 아직 배포를 막지 않는다(deploy의 needs에 없다).
+  # 몇 번의 푸시 동안 오탐 없이 안정적이면 deploy needs에 추가해 막는 쪽으로 올린다. 실패하면
+  # playwright-visual-diff 아티팩트에서 기대·실제·차이 이미지를 본다.
+  visual:
+    needs: e2e-build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    container:
+      image: mcr.microsoft.com/playwright:v${{ needs.e2e-build.outputs.playwright-version }}-noble
+      options: --init --ipc=host
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          java-version: '25'
+          distribution: temurin
+
+      - name: Download E2E jar
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: e2e-jar
+          path: build/libs
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Run visual regression
+        env:
+          VISUAL: '1'
+        run: npx playwright test --project=chromium visual
+
+      - name: Upload visual diff
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: playwright-visual-diff
+          path: test-results
+          retention-days: 7
+
   # main에 실제로 반영된 푸시가 test·frontend-checks·e2e를 모두 통과했을 때만 운영에 배포한다.
   # PR이나 다른 브랜치 푸시에서는 절대 돌지 않는다(if 조건).
   #

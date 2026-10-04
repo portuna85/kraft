@@ -19,17 +19,21 @@ export default defineConfig({
     testDir: './e2e',
 
     /**
-     * 시각 회귀 스펙은 CI에서 돌리지 않는다.
+     * 시각 회귀 스펙(visual*.spec.js)은 기준 이미지가 만든 환경의 폰트 렌더링에 묶인다(OPS-05).
+     * 기준선은 CI와 같은 Docker 이미지(mcr.microsoft.com/playwright, Linux)에서 만든
+     * `-chromium-linux.png`이고, 일반 e2e 샤드는 이 스펙을 건너뛴다(CI=1). 별도 `visual` 잡이
+     * VISUAL=1로 이 스펙만 돌린다.
      *
-     * 기준 이미지는 그것을 만든 플랫폼의 폰트 렌더링에 묶인다. 이 저장소의 14장은 전부
-     * `-chromium-win32.png`이고, CI(ubuntu)는 `-chromium-linux.png`를 찾으므로 애초에 비교가
-     * 성립하지 않는다. 리눅스용 기준선을 따로 두면 같은 화면을 두 벌 관리해야 하는데, 그 비용에
-     * 비해 잡히는 회귀는 같다.
+     * 예전에는 기준선을 Windows 로컬에서 만들어 `-win32.png`로 두고 CI는 건너뛰었는데, 아무도
+     * 로컬에서 갱신하지 않아 기준선이 이미 어긋난 채로 무엇도 잡지 못했다.
      *
-     * 그래서 **CI는 동작(나머지 스펙 전부)·정적 검사·생성물 drift를 지키고, 생김새는 로컬
-     * 게이트로 둔다.** 생김새를 바꾸는 작업을 할 때는 로컬에서 반드시 이 스펙들을 돌린다.
+     * 화면을 일부러 바꿨다면 기준선을 CI와 같은 환경에서 다시 만든다:
+     *   npm run visual:update   (Docker 필요, build/libs/kraft-e2e.jar 필요 → ./gradlew bootE2eJar)
+     *   npm run visual:check    (갱신 없이 비교만)
+     * 로컬(Windows 등)에서 chromium 프로젝트로 직접 돌리면 `-linux` 기준선과 폰트가 달라 실패한다.
+     * mobile-webkit의 `-win32` 기준선은 로컬 전용 도구라 그대로 둔다.
      */
-    testIgnore: process.env.CI ? [/visual.*\.spec\.js/] : [],
+    testIgnore: process.env.CI && !process.env.VISUAL ? [/visual.*\.spec\.js/] : [],
 
     // 러너 하나 안에서는 H2를 공유하므로 순차 실행한다. CI의 shard는 각각 독립된
     // 서버·DB를 가지며 파일 단위로 분할한다(fullyParallel을 켜지 않는다).
