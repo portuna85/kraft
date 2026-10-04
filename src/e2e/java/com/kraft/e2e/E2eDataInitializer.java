@@ -5,6 +5,10 @@ import com.kraft.comment.domain.CommentRepository;
 import com.kraft.post.domain.Category;
 import com.kraft.post.domain.Post;
 import com.kraft.post.domain.PostRepository;
+import com.kraft.recommend.domain.RecommendationHistoryState;
+import com.kraft.recommend.domain.RecommendationHistoryStateRepository;
+import com.kraft.recommend.service.ImportedDraw;
+import com.kraft.recommend.service.RecommendationHistoryImporter;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
@@ -16,6 +20,9 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.IntStream;
 
 /**
  * E2E가 기대는 고정 데이터를 만든다. H2 인메모리 + {@code create-drop}이므로 매 기동마다
@@ -51,6 +58,11 @@ public class E2eDataInitializer implements ApplicationRunner {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final PasswordEncoder passwordEncoder;
+    private final RecommendationHistoryStateRepository historyStateRepository;
+    private final RecommendationHistoryImporter historyImporter;
+
+    /** 시드 당첨 이력의 회차 수. 1..N이 비는 곳 없이 이어져야 추천 이력이 "준비됨"이 된다. */
+    static final int SEEDED_ROUNDS = 30;
 
     @Override
     @Transactional
@@ -68,8 +80,27 @@ public class E2eDataInitializer implements ApplicationRunner {
         commentRepository.save(Comment.builder().content("첫 댓글입니다.").post(mine).user(user).build());
         commentRepository.save(Comment.builder().content("다른 사람의 댓글입니다.").post(notice).user(other).build());
 
+        seedWinningHistory();
+
         log.info("[E2E] 시드 데이터를 만들었습니다. users={}, posts={}",
                 userRepository.count(), postRepository.count());
+    }
+
+    /**
+     * 당첨 이력 1..{@value #SEEDED_ROUNDS}회를 실제 수입 경로(RecommendationHistoryImporter)로 넣는다(OPS-15).
+     * 이 프로파일은 Flyway 없이 엔티티로 스키마를 만들어 V20이 심는 상태 행이 없으므로 먼저 만든다. 이력이
+     * 없으면 /recommend가 항상 503이라 성공 경로를 라우트 가로채기로만 검증할 수 있었다.
+     * 번호는 회차마다 결정적으로 달라지되 항상 서로 다른 6개(1~42)다.
+     */
+    private void seedWinningHistory() {
+        historyStateRepository.save(RecommendationHistoryState.builder().id(1).version(0L).verifiedThroughRound(0).build());
+        List<ImportedDraw> draws = IntStream.rangeClosed(1, SEEDED_ROUNDS)
+                .mapToObj(round -> {
+                    int base = round % 7;
+                    return new ImportedDraw(round, List.of(1 + base, 8 + base, 15 + base, 22 + base, 29 + base, 36 + base));
+                })
+                .toList();
+        historyImporter.importHistory(draws, SEEDED_ROUNDS, "e2e-seed");
     }
 
     private User saveUser(String name, String email, Role role) {

@@ -1,11 +1,9 @@
 import { test, expect } from './fixtures.js';
 
 /**
- * 번호 추천 화면. 이 저장소의 e2e 프로파일은 Flyway를 돌리지 않고
- * 엔티티로 스키마만 만들므로(application-e2e.yml, ddl-auto: create-drop)
- * recommendation_history_state 시드 행이 없다 — 서버는 항상 503
- * RECOMMENDATION_HISTORY_NOT_READY로 응답한다(RecommendationHistoryProvider). 실제 성공
- * 응답 경로는 라우트 가로채기로 결정론적으로 검증한다.
+ * 번호 추천 화면. e2e 프로파일은 당첨 이력 1~30회를 시드한다(E2eDataInitializer) — 서버가 실제로
+ * 추천을 만들어 돌려주는 경로를 한 번은 가로채기 없이 검증하고(OPS-15), 나머지는 응답 모양을
+ * 결정론적으로 고정하려고 라우트를 가로챈다. 이력이 준비되지 않은 503은 가로채서 만든다.
  *
  * 이 기능은 로그인 여부와 무관하게 동일하게 동작하므로 익명 상태에서 검증한다.
  */
@@ -35,7 +33,10 @@ test('진입 시 자동으로 생성 요청을 보내지 않는다', async ({ pa
     });
 
     await page.goto('/recommend');
-    await page.waitForTimeout(500);
+    // 화면이 완전히 마운트된 뒤(버튼이 보이고 네트워크가 조용해진 뒤)에도 요청이 없어야 한다. 고정 500ms 대기 대신
+    // 마운트·네트워크 안정을 기다린다(OPS-17).
+    await expect(page.locator('#btn-recommend-generate')).toBeVisible();
+    await page.waitForLoadState('networkidle');
 
     expect(requested).toBe(false);
 });
@@ -84,7 +85,27 @@ test('생성 중에는 버튼 아래 안내가 보이고, 끝나면 사라진다
     await expect(progress).toHaveCount(0);
 });
 
-test('이력이 준비되지 않으면 안내 문구를 보여준다(이 저장소의 기본 e2e 상태)', async ({ page }) => {
+test('시드된 이력으로 서버가 실제 추천을 만들어 보여준다(가로채기 없음)', async ({ page }) => {
+    await page.goto('/recommend');
+    await page.locator('#btn-recommend-generate').click();
+
+    await expect(page.getByRole('heading', { name: '추천 결과' })).toBeVisible();
+    await expect(page.locator('.recommend__notice')).toHaveCount(0);
+    const items = page.locator('.recommend__item');
+    await expect(items).toHaveCount(5);
+    for (const item of await items.all()) {
+        await expect(item.locator('.recommend__latest-ball')).toHaveCount(6);
+    }
+});
+
+test('이력이 준비되지 않으면 안내 문구를 보여준다', async ({ page }) => {
+    await page.route('**/api/v1/numbers/recommend', async (route) => {
+        await route.fulfill({
+            status: 503,
+            contentType: 'application/json',
+            body: JSON.stringify({ code: 'RECOMMENDATION_HISTORY_NOT_READY', detail: '검증된 당첨 이력이 준비되지 않았습니다.' }),
+        });
+    });
     await page.goto('/recommend');
     await page.locator('#btn-recommend-generate').click();
 

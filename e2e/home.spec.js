@@ -2,8 +2,8 @@ import AxeBuilder from '@axe-core/playwright';
 import { test, expect } from './fixtures.js';
 
 /**
- * 홈(랜딩). e2e 프로파일은 당첨 이력이 비어 있으므로 "최신 회차" 섹션은 나오지 않는 상태가
- * 기준이다 — 그 경우에도 첫 화면이 성립하는지(빈 커뮤니티 문구 포함)를 확인한다.
+ * 홈(랜딩). e2e 프로파일은 당첨 이력 1~30회를 시드하므로(E2eDataInitializer) "최신 회차"와 과거
+ * 기록 요약 섹션이 실제 데이터로 그려진 상태가 기준이다 — 접근성 검사도 그 상태에서 돈다.
  */
 
 async function scanSevere(page) {

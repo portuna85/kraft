@@ -27,26 +27,57 @@ export const storageStateFor = (role) => `e2e/.auth/${role}.json`;
  * jQuery를 걷어내는 과정에서 가장 흔하게 생길 회귀가 바로 이것이라, 모든 스펙을 그 회귀의
  * 탐지기로 만들어 둔다.
  */
+/**
+ * 페이지의 처리되지 않은 JS 오류를 모은다. 기본 page와 openAs로 연 페이지가 같은 감시를 쓴다.
+ * 4xx·5xx 응답 자체에 대한 브라우저 로그는 JS 오류가 아니라 걸러 낸다 — 오류 응답을 일부러 만들어
+ * 안내 문구를 확인하는 스펙이 있다.
+ */
+function watchPageErrors(page) {
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}\n${error.stack ?? ''}`));
+    page.on('console', (message) => {
+        if (message.type() !== 'error') {
+            return;
+        }
+        const text = message.text();
+        if (text.includes('Failed to load resource')) {
+            return;
+        }
+        errors.push(`console.error: ${text}`);
+    });
+    return errors;
+}
+
 export const test = base.extend({
     page: async ({ page }, use) => {
-        const errors = [];
-        page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));
-        page.on('console', (message) => {
-            if (message.type() !== 'error') {
-                return;
-            }
-            // 브라우저가 4xx·5xx 응답 자체에 대해 남기는 로그는 JS 오류가 아니다. 오류 응답을
-            // 일부러 만들어 안내 문구를 확인하는 스펙이 있으므로 여기서 걸러낸다.
-            const text = message.text();
-            if (text.includes('Failed to load resource')) {
-                return;
-            }
-            errors.push(`console.error: ${text}`);
-        });
+        const errors = watchPageErrors(page);
 
         await use(page);
 
         expect(errors, '페이지에서 처리되지 않은 JS 오류').toEqual([]);
+    },
+
+    /**
+     * 다른 역할(user·other·admin…)로 로그인한 새 브라우저 컨텍스트의 페이지를 연다(OPS-16). 여러 역할이
+     * 함께 등장하는 스펙(신고·댓글·정지)이 `browser.newContext`를 직접 부르면 컨텍스트를 닫지 않아
+     * 샤드가 끝날 때까지 쌓이고, 기본 page와 달리 JS 오류 감시도 받지 못했다. 여기서 연 컨텍스트는
+     * 테스트가 끝나면 모두 닫히고, 같은 오류 감시가 붙는다.
+     *
+     * @returns {(role?: string) => Promise<import('@playwright/test').Page>}
+     */
+    openAs: async ({ browser }, use) => {
+        const contexts = [];
+        const watched = [];
+        await use(async (role) => {
+            // role이 없으면 로그인 상태가 없는 새 컨텍스트다(관리자가 화면에서 직접 로그인하는 스펙용).
+            const context = await browser.newContext(role ? { storageState: storageStateFor(role) } : {});
+            contexts.push(context);
+            const page = await context.newPage();
+            watched.push(watchPageErrors(page));
+            return page;
+        });
+        await Promise.all(contexts.map((context) => context.close()));
+        expect(watched.flat(), '다른 역할 페이지에서 처리되지 않은 JS 오류').toEqual([]);
     },
 });
 

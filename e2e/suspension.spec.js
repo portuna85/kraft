@@ -1,4 +1,4 @@
-import { test, expect, ACCOUNTS, PASSWORD, login, storageStateFor, uniqueTitle } from './fixtures.js';
+import { test, expect, ACCOUNTS, PASSWORD, login, uniqueTitle } from './fixtures.js';
 
 // 정지는 계정 상태를 바꾼다. 시드 계정을 쓰면 뒤에 도는 다른 스펙이 글을 못 쓰게 되므로
 // (인메모리 DB를 모두 공유한다) 이 스펙만의 계정을 매번 새로 만든다.
@@ -27,7 +27,7 @@ async function signUpVerifiedAndLogin(page, request, email) {
     return name;
 }
 
-test('신고를 정지와 함께 처리하면 그 사람은 글을 쓸 수 없고 이유를 본다', async ({ page, request, browser }) => {
+test('신고를 정지와 함께 처리하면 그 사람은 글을 쓸 수 없고 이유를 본다', async ({ page, request, openAs }) => {
     const email = `${uniqueTitle('bad').toLowerCase()}@e2e.test`;
     const title = uniqueTitle('정지대상글');
 
@@ -40,7 +40,7 @@ test('신고를 정지와 함께 처리하면 그 사람은 글을 쓸 수 없�
     await page.waitForURL(/\/posts\/update\/\d+$/);
 
     // 다른 사람이 신고한다.
-    const reporterPage = await (await browser.newContext({ storageState: storageStateFor('other') })).newPage();
+    const reporterPage = await openAs('other');
     await reporterPage.goto(`/community?q=${encodeURIComponent(title)}`);
     await reporterPage.locator('.post-list__title').filter({ hasText: title }).first().click();
     await reporterPage.locator('#btn-report-post').click();
@@ -51,7 +51,7 @@ test('신고를 정지와 함께 처리하면 그 사람은 글을 쓸 수 없�
 
     // 관리자가 삭제하면서 작성자를 정지한다. (저장된 admin 상태는 비밀번호 변경 스펙이
     // 폐기할 수 있어 새로 로그인한다.)
-    const adminPage = await (await browser.newContext()).newPage();
+    const adminPage = await openAs();
     await login(adminPage, ACCOUNTS.admin.email);
     await adminPage.goto('/admin/reports');
     const row = adminPage.locator('.report-list__item').filter({ hasText: title });
@@ -75,7 +75,7 @@ test('신고를 정지와 함께 처리하면 그 사람은 글을 쓸 수 없�
     await expect(page.locator('#comment-content')).toHaveCount(0);
 
     // 관리자가 기간 전에 풀면 곧바로 다시 쓸 수 있다. 정지는 사람의 판단이라 되돌릴 길이 있어야 한다.
-    const adminAgain = await (await browser.newContext()).newPage();
+    const adminAgain = await openAs();
     await login(adminAgain, ACCOUNTS.admin.email);
     await adminAgain.goto('/admin/users');
     const userRow = adminAgain.locator('.report-list__item').filter({ hasText: name });

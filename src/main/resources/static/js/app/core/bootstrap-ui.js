@@ -66,8 +66,10 @@ export function modal(selectorOrElement) {
  * @param {{autohide?: boolean, delay?: number} | undefined} [options] 매번 다른 옵션이
  *   필요할 때만 넘긴다(FE-13, 오류 토스트는 자동으로 닫히지 않게). `getOrCreateInstance`는
  *   같은 요소에 이미 인스턴스가 있으면 두 번째 인자를 무시하므로, options가 주어지면 기존
- *   인스턴스를 버리고 새 옵션으로 다시 만든다 — `#app-toast`처럼 여러 화면이 공유하는 단일
- *   요소가 메시지 종류에 따라 다른 동작을 해야 할 때 쓴다.
+ *   인스턴스의 설정을 바꾼다 — `#app-toast`처럼 여러 화면이 공유하는 단일 요소가 메시지 종류에
+ *   따라 다른 동작을 해야 할 때 쓴다. 예전에는 `dispose()` 뒤 새로 만들었는데, 토스트 전환이 아직
+ *   끝나지 않은 채 다음 토스트가 오면(연달아 뜨는 알림) Bootstrap이 예약해 둔 콜백이 이미 null이 된
+ *   `_element`의 `classList`를 읽어 TypeError가 났다(E2E 오류 감시가 잡았다).
  * @returns {import('bootstrap').Toast | BootstrapUiHandle}
  */
 export function toast(selectorOrElement, options) {
@@ -82,9 +84,12 @@ export function toast(selectorOrElement, options) {
         console.warn(`Bootstrap을 불러오지 못해 Toast(${selectorOrElement})를 열 수 없습니다.`);
         return NOOP_HANDLE;
     }
-    if (options) {
-        bs.Toast.getInstance(element)?.dispose();
-        return bs.Toast.getOrCreateInstance(element, options);
+    const existing = bs.Toast.getInstance(element);
+    if (existing && options) {
+        // Bootstrap은 autohide·delay를 show() 때 `_config`에서 읽는다. 공개 API가 없어 그 객체를 직접
+        // 갱신한다 — 버전은 package-lock.json이 고정하고, 이 한 곳에서만 만진다.
+        Object.assign(/** @type {any} */ (existing)._config, options);
+        return existing;
     }
-    return bs.Toast.getOrCreateInstance(element);
+    return bs.Toast.getOrCreateInstance(element, options);
 }

@@ -2,9 +2,6 @@ import { test, expect, storageStateFor, uniqueTitle } from './fixtures.js';
 
 test.use({ storageState: storageStateFor('user') });
 
-// useDraftAutosave.js의 디바운스(800ms)를 여유 있게 기다린다.
-const AUTOSAVE_DEBOUNCE_WAIT = 1100;
-
 /**
  * localStorage에 이 조각을 포함한 키가 있는지 확인한다. 키에는 회원 id가 들어가므로
  * (kraft:draft:{userId}:post-save, 전체 리뷰 2026-09-26 A-FE-03) 접두사 대신 ':post-save'·
@@ -35,9 +32,7 @@ test.describe('글쓰기 — 자동 임시 저장', () => {
 
         await page.locator('#title').fill(title);
         await page.locator('#content').fill('새로고침해도 되찾을 내용입니다.');
-        await page.waitForTimeout(AUTOSAVE_DEBOUNCE_WAIT);
-
-        expect(await hasDraftKey(page, ':post-save')).toBe(true);
+        await expect.poll(() => hasDraftKey(page, ':post-save')).toBe(true);
 
         await page.reload();
 
@@ -55,7 +50,7 @@ test.describe('글쓰기 — 자동 임시 저장', () => {
         await page.goto('/posts/save');
         await page.locator('#title').fill(uniqueTitle('버릴초안'));
         await page.locator('#content').fill('버려질 내용입니다.');
-        await page.waitForTimeout(AUTOSAVE_DEBOUNCE_WAIT);
+        await expect.poll(() => hasDraftKey(page, ':post-save')).toBe(true);
 
         await page.reload();
         await expect(page.locator('#draft-restore-banner')).toBeVisible();
@@ -71,8 +66,7 @@ test.describe('글쓰기 — 자동 임시 저장', () => {
         await page.goto('/posts/save');
         await page.locator('#title').fill(title);
         await page.locator('#content').fill('등록되면 임시 저장이 남지 않아야 합니다.');
-        await page.waitForTimeout(AUTOSAVE_DEBOUNCE_WAIT);
-        expect(await hasDraftKey(page, ':post-save')).toBe(true);
+        await expect.poll(() => hasDraftKey(page, ':post-save')).toBe(true);
 
         await page.locator('#btn-save').click();
         await page.waitForURL(/\/posts\/update\/\d+$/);
@@ -96,7 +90,7 @@ test.describe('편집 — 자동 임시 저장', () => {
 
         await page.locator('#btn-edit').click();
         await page.locator('#content').fill('편집 중 새로고침 전에 잃을 뻔한 내용입니다.');
-        await page.waitForTimeout(AUTOSAVE_DEBOUNCE_WAIT);
+        await expect.poll(() => hasDraftKey(page, ':post-edit:')).toBe(true);
 
         // 새로고침하면 조회 모드로 서버가 다시 그려준다 — 저장하지 않았으므로 아직 원래 본문이다.
         await page.reload();
@@ -116,8 +110,7 @@ test.describe('편집 — 자동 임시 저장', () => {
 
         await page.locator('#btn-edit').click();
         await page.locator('#content').fill('저장하면 임시 저장이 남지 않아야 합니다.');
-        await page.waitForTimeout(AUTOSAVE_DEBOUNCE_WAIT);
-        expect(await hasDraftKey(page, ':post-edit:')).toBe(true);
+        await expect.poll(() => hasDraftKey(page, ':post-edit:')).toBe(true);
 
         await page.locator('#btn-update').click();
         // 저장 후 이동은 편집 중이던 바로 그 URL로 돌아간다(전체 리뷰 2026-09-26 A-FE-02)이라
@@ -134,8 +127,7 @@ test.describe('편집 — 자동 임시 저장', () => {
 
         await page.locator('#btn-edit').click();
         await page.locator('#content').fill('취소할 내용입니다.');
-        await page.waitForTimeout(AUTOSAVE_DEBOUNCE_WAIT);
-        expect(await hasDraftKey(page, ':post-edit:')).toBe(true);
+        await expect.poll(() => hasDraftKey(page, ':post-edit:')).toBe(true);
 
         page.once('dialog', (dialog) => dialog.accept());
         await page.locator('#btn-cancel-edit').click();
@@ -152,10 +144,10 @@ test.describe('편집 — 자동 임시 저장', () => {
         // 편집 흐름을 한 번 거쳐 이 화면이 실제로 쓰는 키를 알아낸다.
         await page.locator('#btn-edit').click();
         await page.locator('#content').fill('키를 알아내기 위한 임시 변경입니다.');
-        await page.waitForTimeout(AUTOSAVE_DEBOUNCE_WAIT);
+        // 디바운스(800ms) 뒤 저장될 때까지 고정 대기 없이 기다린다(OPS-17).
+        await expect.poll(() => hasDraftKey(page, ':post-edit:'), { message: '편집 초안 키를 찾아야 한다' }).toBe(true);
         const draftKey = await page.evaluate(() =>
             Object.keys(window.localStorage).find((key) => key.includes(':post-edit:')));
-        expect(draftKey, '편집 초안 키를 찾아야 한다').toBeTruthy();
 
         // 서버 원본과 완전히 같은 초안을 그 키에 덮어 심는다 — checkAvailable의 "무의미한
         // 초안" 판단(원본과 같으면 배너를 띄우지 않는다)을 실제로 겨냥한다.

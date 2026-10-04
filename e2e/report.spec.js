@@ -29,14 +29,14 @@ test.describe('신고 접수', () => {
     // 테스트는 그 안에서 별도 컨텍스트를 연다.
     test.use({ storageState: storageStateFor('user') });
 
-    test('남의 글을 신고하면 접수되고, 같은 글을 다시 신고하면 거절한다', async ({ browser }) => {
+    test('남의 글을 신고하면 접수되고, 같은 글을 다시 신고하면 거절한다', async ({ openAs }) => {
         const title = uniqueTitle('신고대상');
 
-        const authorPage = await (await browser.newContext({ storageState: storageStateFor('user') })).newPage();
+        const authorPage = await openAs('user');
         await writePost(authorPage, title);
         await authorPage.close();
 
-        const reporterPage = await (await browser.newContext({ storageState: storageStateFor('other') })).newPage();
+        const reporterPage = await openAs('other');
         await openPostByTitle(reporterPage, title);
         await reportOpenPost(reporterPage, 'SPAM', '같은 글을 반복해 올립니다.');
         await expect(reporterPage.locator('#app-toast')).toContainText('신고가 접수되었습니다');
@@ -53,14 +53,14 @@ test.describe('신고 접수', () => {
      * 열려 있는 B의 신고 대화상자를 사용자 모르게 닫아버리면 안 된다(delete-confirm.js와
      * 같은 구조를 report-dialog.js도 공유한다).
      */
-    test('신고 A의 늦은 응답이 지금 열려 있는 B의 신고 대화상자를 건드리지 않는다', async ({ browser }) => {
+    test('신고 A의 늦은 응답이 지금 열려 있는 B의 신고 대화상자를 건드리지 않는다', async ({ openAs }) => {
         const title = uniqueTitle('신고경쟁');
 
-        const authorPage = await (await browser.newContext({ storageState: storageStateFor('user') })).newPage();
+        const authorPage = await openAs('user');
         await writePost(authorPage, title);
         await authorPage.close();
 
-        const commenterPage = await (await browser.newContext({ storageState: storageStateFor('other') })).newPage();
+        const commenterPage = await openAs('other');
         await openPostByTitle(commenterPage, title);
         await commenterPage.locator('#comment-content').fill('신고당할 댓글 A');
         await commenterPage.locator('#btn-comment-save').click();
@@ -70,7 +70,7 @@ test.describe('신고 접수', () => {
         await commenterPage.close();
 
         // 작성자 본인은 신고할 수 없으므로, 글 작성자(user)가 other의 댓글을 신고한다.
-        const reporterPage = await (await browser.newContext({ storageState: storageStateFor('user') })).newPage();
+        const reporterPage = await openAs('user');
         await openPostByTitle(reporterPage, title);
         const commentA = reporterPage.locator('.comment-list__item').filter({ hasText: '신고당할 댓글 A' });
         const commentB = reporterPage.locator('.comment-list__item').filter({ hasText: '신고당할 댓글 B' });
@@ -131,14 +131,14 @@ test.describe('신고 접수', () => {
 });
 
 test.describe('관리자 처리', () => {
-    test('신고를 처리하면 대상 글이 사라지고 목록에서도 빠진다', async ({ browser }) => {
+    test('신고를 처리하면 대상 글이 사라지고 목록에서도 빠진다', async ({ openAs }) => {
         const title = uniqueTitle('삭제될글');
 
-        const authorPage = await (await browser.newContext({ storageState: storageStateFor('user') })).newPage();
+        const authorPage = await openAs('user');
         await writePost(authorPage, title);
         await authorPage.close();
 
-        const reporterPage = await (await browser.newContext({ storageState: storageStateFor('other') })).newPage();
+        const reporterPage = await openAs('other');
         await openPostByTitle(reporterPage, title);
         await reportOpenPost(reporterPage, 'ABUSE', '욕설이 있습니다.');
         await expect(reporterPage.locator('#app-toast')).toContainText('신고가 접수되었습니다');
@@ -146,7 +146,7 @@ test.describe('관리자 처리', () => {
 
         // 저장해 둔 admin 로그인 상태를 쓰지 않는다 — 비밀번호 변경 스펙이 admin의 모든 세션을
         // 폐기하므로, 실행 순서에 따라 그 상태가 이미 죽어 있을 수 있다. 여기서 새로 로그인한다.
-        const adminPage = await (await browser.newContext()).newPage();
+        const adminPage = await openAs();
         await login(adminPage, ACCOUNTS.admin.email);
         await adminPage.goto('/admin/reports');
         const row = adminPage.locator('.report-list__item').filter({ hasText: title });
@@ -169,20 +169,20 @@ test.describe('관리자 처리', () => {
         await adminPage.close();
     });
 
-    test('신고 삭제 확인 대화상자에서 취소하면 요청이 가지 않고 목록도 그대로다', async ({ browser }) => {
+    test('신고 삭제 확인 대화상자에서 취소하면 요청이 가지 않고 목록도 그대로다', async ({ openAs }) => {
         const title = uniqueTitle('취소하면그대로');
 
-        const authorPage = await (await browser.newContext({ storageState: storageStateFor('user') })).newPage();
+        const authorPage = await openAs('user');
         await writePost(authorPage, title);
         await authorPage.close();
 
-        const reporterPage = await (await browser.newContext({ storageState: storageStateFor('other') })).newPage();
+        const reporterPage = await openAs('other');
         await openPostByTitle(reporterPage, title);
         await reportOpenPost(reporterPage, 'SPAM', '취소 확인용');
         await expect(reporterPage.locator('#app-toast')).toContainText('신고가 접수되었습니다');
         await reporterPage.close();
 
-        const adminPage = await (await browser.newContext()).newPage();
+        const adminPage = await openAs();
         await login(adminPage, ACCOUNTS.admin.email);
         await adminPage.goto('/admin/reports');
         const row = adminPage.locator('.report-list__item').filter({ hasText: title });
@@ -204,20 +204,20 @@ test.describe('관리자 처리', () => {
         await adminPage.close();
     });
 
-    test('F05: 처리 요청이 도는 동안 같은 줄의 다른 처리 버튼도 비활성 상태다', async ({ browser }) => {
+    test('F05: 처리 요청이 도는 동안 같은 줄의 다른 처리 버튼도 비활성 상태다', async ({ openAs }) => {
         const title = uniqueTitle('이중클릭방지');
 
-        const authorPage = await (await browser.newContext({ storageState: storageStateFor('user') })).newPage();
+        const authorPage = await openAs('user');
         await writePost(authorPage, title);
         await authorPage.close();
 
-        const reporterPage = await (await browser.newContext({ storageState: storageStateFor('other') })).newPage();
+        const reporterPage = await openAs('other');
         await openPostByTitle(reporterPage, title);
         await reportOpenPost(reporterPage, 'SPAM', '이중 클릭 방지 확인용');
         await expect(reporterPage.locator('#app-toast')).toContainText('신고가 접수되었습니다');
         await reporterPage.close();
 
-        const adminPage = await (await browser.newContext()).newPage();
+        const adminPage = await openAs();
         await login(adminPage, ACCOUNTS.admin.email);
         await adminPage.goto('/admin/reports');
         const row = adminPage.locator('.report-list__item').filter({ hasText: title });
@@ -245,8 +245,8 @@ test.describe('관리자 처리', () => {
         await adminPage.close();
     });
 
-    test('관리자가 아니면 신고 화면에 들어갈 수 없다', async ({ browser }) => {
-        const page = await (await browser.newContext({ storageState: storageStateFor('user') })).newPage();
+    test('관리자가 아니면 신고 화면에 들어갈 수 없다', async ({ openAs }) => {
+        const page = await openAs('user');
 
         const response = await page.goto('/admin/reports');
 
