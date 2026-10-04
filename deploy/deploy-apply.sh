@@ -87,7 +87,17 @@ trap 'rm -f "$INCOMING"' EXIT
 
 # 클라이언트가 보낸 문자열(커밋 SHA)은 **절대 실행하지 않는다.** 로그에 남길 용도로만
 # 쓰며, 안전한 문자만 남기고 길이도 자른다.
-REF=$(printf '%s' "${SSH_ORIGINAL_COMMAND:-unknown}" | tr -cd 'a-zA-Z0-9._/-' | cut -c1-100)
+RAW_ARG=$(printf '%s' "${SSH_ORIGINAL_COMMAND:-unknown}" | tr -cd 'a-zA-Z0-9._/-')
+# CI는 "<커밋 SHA 40자>-<jar의 SHA-256 64자>"를 보낸다(OPS-13). 이 모양이면 앞은 로그·보관 파일 이름용
+# REF로, 뒤는 받은 jar와 대조할 값으로 쓴다. 모양이 다르면(옛 CI·수동 실행) 예전처럼 문자열 전체를
+# REF로 쓰고 대조는 건너뛴다. 정규식으로 16진수만 받으므로 이 값이 명령으로 실행될 일은 없다.
+EXPECTED_SHA256=""
+if [[ "$RAW_ARG" =~ ^([0-9a-f]{40})-([0-9a-f]{64})$ ]]; then
+    REF="${BASH_REMATCH[1]}"
+    EXPECTED_SHA256="${BASH_REMATCH[2]}"
+else
+    REF=$(printf '%s' "$RAW_ARG" | cut -c1-100)
+fi
 [ -n "$REF" ] || REF=unknown
 
 log "───── 배포 시작 (ref=$REF) ─────"
@@ -118,6 +128,17 @@ UNZIP_LISTING=$(unzip -l "$INCOMING" 2>/dev/null) || fail "압축이 깨졌다"
 # 자체가 전송 중 깨졌을 수 있다(개선 보고서 "배포 스크립트의 검증·재시도 공백"). -t는 모든
 # 항목을 실제로 풀어 CRC를 대조하므로 그런 손상까지 여기서 걸러낸다.
 unzip -t "$INCOMING" >/dev/null 2>&1 || fail "CRC 무결성 검사 실패 — 항목이 손상되었다"
+# 위 검사는 "jar로서 온전한가"만 본다. CI가 만든 바로 그 파일인지는 SHA-256으로 대조한다(OPS-13) —
+# 전송 중 잘리거나 바뀌었거나 다른 아티팩트가 올라온 경우를 잡는다. 값은 같은 SSH 채널로 오므로 배포 키
+# 자체가 유출된 공격자(jar와 해시를 함께 만들어 보낼 수 있다)까지 막지는 못한다 — 그건 forced command와
+# 키 보관이 맡는다.
+if [ -n "$EXPECTED_SHA256" ]; then
+    ACTUAL_SHA256=$(sha256sum "$INCOMING" | cut -d' ' -f1)
+    [ "$ACTUAL_SHA256" = "$EXPECTED_SHA256" ]         || fail "jar의 SHA-256이 CI가 알려 준 값과 다르다(받은 ${ACTUAL_SHA256:0:12}…, 기대 ${EXPECTED_SHA256:0:12}…)"
+    log "SHA-256 확인: ${ACTUAL_SHA256:0:12}…"
+else
+    log "경고: CI가 jar의 SHA-256을 알려 주지 않아 대조하지 못했다"
+fi
 log "검증 통과"
 
 # 2-1. 서버의 JVM이 이 jar를 돌릴 수 있는지(OPS-11). 아직 아무것도 바꾸기 전이라 여기서 멈추면 운영은
