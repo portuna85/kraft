@@ -7,13 +7,16 @@ import com.kraft.recommend.domain.RecommendationImportException;
 import com.kraft.recommend.domain.WinningDraw;
 import com.kraft.recommend.domain.WinningDrawRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -31,6 +34,7 @@ public class RecommendationHistoryImporter {
 
     private final WinningDrawRepository winningDrawRepository;
     private final RecommendationHistoryStateRepository stateRepository;
+    private final ApplicationEventPublisher events;
 
     @Transactional
     public Result importHistory(List<ImportedDraw> draws, int verifiedThroughRound, String sourceReference) {
@@ -44,8 +48,13 @@ public class RecommendationHistoryImporter {
         LocalDateTime now = LocalDateTime.now();
         int inserted = 0;
         int updated = 0;
+        // 회차마다 findById를 부르면 전체 백필(약 1,200회차)에서 쿼리가 그만큼 나간다(BE-18) —
+        // 한 번에 읽어 둔다. 관리되는 인스턴스라 아래 변경 감지는 그대로 동작한다.
+        Map<Integer, WinningDraw> existingByRound = new HashMap<>();
+        winningDrawRepository.findAllById(validated.stream().map(ValidatedDraw::roundNo).toList())
+                .forEach(draw -> existingByRound.put(draw.getRoundNo(), draw));
         for (ValidatedDraw draw : validated) {
-            WinningDraw existing = winningDrawRepository.findById(draw.roundNo()).orElse(null);
+            WinningDraw existing = existingByRound.get(draw.roundNo());
             if (existing != null) {
                 // 관리되는 인스턴스를 직접 바꾼다 — 새 인스턴스로 save()(merge)하면 변경이
                 // 조용히 유실될 수 있다(WinningDraw.replaceNumbers 주석 참고).
@@ -76,6 +85,9 @@ public class RecommendationHistoryImporter {
                             + "반영됐지만(inserted=" + inserted + ", updated=" + updated + "), 검증 구간은 "
                             + "바뀌지 않았습니다. 의도적으로 구간을 줄여야 한다면 별도 운영 절차를 따르세요.");
         }
+
+        // 커밋 뒤에 받는 쪽(HomeInsightsService)이 이력 기반 캐시를 비운다(BE-17).
+        events.publishEvent(new RecommendationHistoryChanged(verifiedThroughRound));
 
         return new Result(inserted, updated, verifiedThroughRound);
     }

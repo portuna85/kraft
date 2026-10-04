@@ -25,6 +25,7 @@ import com.kraft.shared.transaction.OnRollback;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -127,6 +128,7 @@ public class PostService {
         return stored;
     }
 
+    @CacheEvict(value = "pinnedNotices", allEntries = true)
     @Transactional
     public Long save(Authentication authentication, PostSaveRequestDto requestDto) {
         User user = findUser(authentication);
@@ -147,6 +149,7 @@ public class PostService {
      * 정책을 검사하고 수정은 소유권만 봤기 때문이다. 삭제는 의도적으로 그대로 둔다 —
      * 정지된 사용자도 자신의 글을 지우는 것까지 막지는 않는다.
      */
+    @CacheEvict(value = "pinnedNotices", allEntries = true)
     @Transactional
     public Long update(Long id, PostUpdateRequestDto requestDto, Authentication authentication) {
         Post post = findPost(id);
@@ -177,6 +180,7 @@ public class PostService {
         return id;
     }
 
+    @CacheEvict(value = "pinnedNotices", allEntries = true)
     @Transactional
     public void delete(Long id, Authentication authentication) {
         Post post = findPost(id);
@@ -345,8 +349,8 @@ public class PostService {
      * 일반 목록 행과 같은 모양(post-list__item)으로 보여주므로 댓글 수도 실제 값을 담는다
      * (findPopular의 인기글 위젯과 달리 여기는 "0건"이 눈에 띄게 어색하다).
      * <p>
-     * {@link #findPopular}와 같은 이유로 짧게 캐시한다 — 공지는 자주 바뀌지 않으므로 캐시
-     * 지연(최대 45초)이 실질적인 문제가 되지 않는다.
+     * {@link #findPopular}와 같은 이유로 짧게 캐시한다. 글을 쓰거나 고치거나 지울 때는 이 캐시를
+     * 비운다(BE-16) — 지운 공지가 최대 45초 동안 목록 위에 남아 404 링크가 되지 않게 한다.
      */
     @Cacheable("pinnedNotices")
     public List<PostsListResponseDto> findPinnedNotices(int limit) {

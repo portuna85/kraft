@@ -38,11 +38,12 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/images/**")
                 .addResourceLocations(location)
                 // 업로드 파일명은 PostImageService가 매번 새 UUID로 짓는다(교체할 파일도 새
-                // 이름을 받는다) — 같은 URL이 다른 내용으로 바뀌는 일이 없으므로 길게 캐시해도
-                // 안전하다. SecurityConfig의 staticResourceChain이 no-store를 붙이지 않아야
-                // 이 값이 실제로 응답에 남는다. immutable()을 붙여(개선 보고서 BE-26) 브라우저가
-                // 만료 전 재검증(If-None-Match 등) 요청조차 보내지 않게 한다 — 내용이 절대
-                // 바뀌지 않는 URL이므로 재검증 왕복 자체가 낭비다.
-                .setCacheControl(CacheControl.maxAge(365, TimeUnit.DAYS).cachePublic().immutable());
+                // 이름을 받는다) — 같은 URL이 다른 내용으로 바뀌는 일은 없다. 그래도 365일
+                // immutable로 캐시하지 않는다(BE-14): 모더레이션으로 글·이미지를 지워도 브라우저와
+                // 프록시 캐시에는 그 이미지가 최대 1년 남는다. 하루면 같은 방문자의 반복 요청은
+                // 충분히 줄이면서, 지운 이미지가 남는 기간을 짧게 둔다. 365일 immutable은 빌드마다
+                // 경로가 바뀌는 정적 산출물(/js, /css)에만 쓴다. SecurityConfig의 staticResourceChain이
+                // no-store를 붙이지 않아야 이 값이 실제로 응답에 남는다.
+                .setCacheControl(CacheControl.maxAge(1, TimeUnit.DAYS).cachePublic());
     }
 }
