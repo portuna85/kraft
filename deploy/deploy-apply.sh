@@ -24,6 +24,14 @@ BACKUP_DIR="$APP_DIR/backups"
 JAR="$APP_DIR/kraft.jar"
 INCOMING="$APP_DIR/kraft.jar.incoming"
 PREVIOUS="$APP_DIR/kraft.jar.prev"
+# 배포에 성공한 jar를 커밋 SHA 이름으로 최근 N개 보관한다(OPS-02). .prev는 직전 1세대뿐이라
+# 두 번 연속 문제가 있는 배포가 나가면 마지막 정상 jar로 돌아갈 방법이 없었다. 수동 롤백:
+#   ls -1t /opt/kraft/app/releases/            # 골라서
+#   cp -p /opt/kraft/app/releases/<파일> /opt/kraft/app/kraft.jar && sudo systemctl restart kraft
+# DB 마이그레이션은 되돌아가지 않으므로 스키마를 바꾼 배포 이후라면 backups/pre-deploy-*.sql.gz를
+# 먼저 확인한다.
+RELEASES_DIR="$APP_DIR/releases"
+KEEP_RELEASES=5
 LOCK_FILE="$APP_DIR/deploy.lock"
 LOG=/opt/kraft/deploy.log
 # /readyz는 템플릿 렌더링 없이 컨텍스트 기동과 DB 커넥션 검증(제한 시간 2초)만 본다 — DB에
@@ -35,6 +43,9 @@ LIVENESS_URL=http://127.0.0.1:8080/healthz
 # 정상 jar보다 훨씬 넉넉한 수신 상한(아래 1번) — 손상되었거나 다른 목적의 대용량 전송이
 # 디스크를 무한정 채우지 않게 한다.
 MAX_JAR_SIZE=524288000  # 500MB
+# 수신 jar + 롤백용 .prev + 보관본 + DB 스냅샷이 한 번에 디스크에 있게 된다(OPS-26). 최악의
+# jar 크기 3배(약 1.5GB)가 비어 있지 않으면 쓰다 가득 차 반쯤 쓰인 파일을 남기기 전에 멈춘다.
+MIN_FREE_KB=$(( MAX_JAR_SIZE * 3 / 1024 ))
 
 log() {
     printf '[%s] %s\n' "$(date -Is)" "$*" | tee -a "$LOG"
@@ -78,6 +89,8 @@ log "───── 배포 시작 (ref=$REF) ─────"
 #    받은 뒤에야 크기를 검사해서, 손상되었거나 악의적인 대용량 전송이 그 사이 디스크를
 #    가득 채울 수 있었다(개선 보고서 OPS-01). head -c는 상한+1바이트만 받고 나머지는
 #    버린다(+1은 "정확히 상한"과 "상한을 넘음"을 아래 크기 검사로 구분하기 위함).
+FREE_KB=$(df -Pk "$APP_DIR" | awk 'NR==2 {print $4}')
+[ "${FREE_KB:-0}" -ge "$MIN_FREE_KB" ]     || fail "디스크 여유가 부족하다(${FREE_KB:-0}KB, 필요 ${MIN_FREE_KB}KB). 배포 전에 정리해야 한다"
 head -c $((MAX_JAR_SIZE + 1)) > "$INCOMING"
 SIZE=$(stat -c%s "$INCOMING")
 log "수신 완료: ${SIZE} 바이트"
@@ -180,6 +193,14 @@ else
 fi
 
 if [ "$healthy" = 1 ]; then
+    # 정상 기동이 확인된 jar만 보관한다 — 롤백 후보에 실패한 jar가 섞이지 않게. 보관 실패
+    # (디스크 등)는 배포 성공을 뒤집지 않는다. 이미 운영이 새 jar로 정상 동작 중이다.
+    if mkdir -p "$RELEASES_DIR" && cp -p "$JAR" "$RELEASES_DIR/kraft-$STAMP-$REF.jar"; then
+        ls -1t "$RELEASES_DIR"/kraft-*.jar 2>/dev/null | tail -n +$((KEEP_RELEASES + 1)) | xargs -r rm -f
+        log "롤백용 보관: releases/kraft-$STAMP-$REF.jar (최근 ${KEEP_RELEASES}개 유지)"
+    else
+        log "경고: 롤백용 jar 보관에 실패했다(배포 자체는 성공)"
+    fi
     log "───── 배포 성공 (ref=$REF) ─────"
     exit 0
 fi
