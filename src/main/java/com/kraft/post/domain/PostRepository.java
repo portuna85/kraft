@@ -65,6 +65,16 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      * 이점이 없어 검색 비용의 대부분이었다. Spring Data가 {@code size + 1}개를 읽어 다음
      * 페이지가 있는지({@link Slice#hasNext()})만 알려 준다.
      * <p>
+     * <b>FULLTEXT로 바꾸지 않는다(BE-08 결론, 2026-10-05).</b> 운영과 같은 MariaDB 11.7.2에서 실험했다.
+     * ngram 파서가 없고 {@code innodb_ft_min_token_size}가 3이라, 이 사이트의 핵심 검색어인 "로또"·"번호"
+     * 같은 2글자 한국어는 {@code MATCH ... AGAINST('로또*')}로도 0건이고 "첨번"처럼 단어 중간을 찾는
+     * 검색도 0건이다(LIKE는 모두 찾는다). 쓰려면 서버 설정을 바꿔 인덱스를 다시 만들어야 하고 그래도
+     * 부분 문자열 검색은 되지 않는다. 비용은 5만 건(본문 125MB)에서 검색어가 하나도 안 맞는 최악의 경우
+     * 제목만 약 0.7초, 본문까지 약 0.9초이고, 흔한 검색어는 size+1개를 찾으면 멈춰 약 0.5ms다. 검색은
+     * 이미 IP당 분당 60회로 제한돼({@code WriteRateLimiters}) 스캔을 반복해 DB를 막기 어렵다. 게시글이
+     * 수만 건을 넘기고 실제로 느려지면 FULLTEXT가 아니라 별도 검색 인덱스(부분 문자열용 n-gram 테이블 등)를
+     * 검토한다. 이 쿼리의 LOWER()는 H2 테스트가 대소문자를 구분해서 필요하다.
+     * <p>
      * 검색어 없는 전체·분류 목록은 인덱스로 세는 COUNT가 싸고 "총 N개"·번호 이동이 그 값에
      * 기대므로 계속 {@link #search}를 쓴다. 검색어 이스케이프·정렬 규칙은 {@link #search}와 같다.
      */
