@@ -43,6 +43,13 @@ class HealthControllerTest {
     }
 
     @Test
+    @DisplayName("healthz는 떠 있는 jar의 빌드를 X-Kraft-Build 헤더로 알린다(OPS-12)")
+    void healthz_exposesBuildVersionHeader() {
+        assertThat(controller(Duration.ofSeconds(2)).healthz().getHeaders().getFirst("X-Kraft-Build"))
+                .isEqualTo("abc1234");
+    }
+
+    @Test
     @DisplayName("readyz: DB 커넥션을 얻고 검증되면 200, 본문 없음")
     void readyz_whenDatabaseValid_isOk() throws Exception {
         given(dataSource.getConnection()).willReturn(connection);
@@ -144,6 +151,6 @@ class HealthControllerTest {
     }
 
     private HealthController controller(Duration timeout) {
-        return new HealthController(dataSource, timeout);
+        return new HealthController(dataSource, timeout, "abc1234");
     }
 }

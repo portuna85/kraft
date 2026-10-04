@@ -160,6 +160,9 @@ spring:
       enabled: true
 
 app:
+  # 이 jar를 만든 커밋(build.gradle.kts의 buildVersion, 보통 짧은 git SHA). /healthz가
+  # X-Kraft-Build 헤더로 내려주고, CI의 배포 후 확인이 방금 푸시한 커밋과 비교한다(OPS-12).
+  build-version: "@buildVersion@"
   mail:
     # 메일 발송은 DB 트랜잭션 밖에서 처리한다(OutboxMailWorker). 가입·재발송 직후 한 번 보내고,
     # 그때 실패했거나 앱이 내려가 있던 것을 주기 작업이 다시 시도한다.

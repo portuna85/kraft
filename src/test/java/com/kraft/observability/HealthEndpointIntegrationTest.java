@@ -9,6 +9,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -25,7 +26,10 @@ class HealthEndpointIntegrationTest {
     @Test
     @DisplayName("익명 요청으로 healthz·readyz 모두 200, 본문 없음")
     void anonymousProbes_areOk() throws Exception {
-        mockMvc.perform(get("/healthz")).andExpect(status().isOk()).andExpect(content().string(""));
+        // 헤더 값은 빌드마다 다르다 — 토큰이 치환되지 않은 채("@buildVersion@") 나가는 회귀만 막는다.
+        mockMvc.perform(get("/healthz")).andExpect(status().isOk()).andExpect(content().string(""))
+                .andExpect(header().string("X-Kraft-Build", org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("@"))));
         mockMvc.perform(get("/readyz")).andExpect(status().isOk()).andExpect(content().string(""));
     }
 }

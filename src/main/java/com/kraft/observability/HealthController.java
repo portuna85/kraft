@@ -45,6 +45,8 @@ import java.util.concurrent.atomic.AtomicReference;
 @RestController
 public class HealthController {
 
+    static final String BUILD_HEADER = "X-Kraft-Build";
+
     private final DataSource dataSource;
     private final Duration timeout;
     // 커넥션 풀이 막혀 getConnection()이 풀 대기 시간만큼 멈춰도 요청 스레드는 제한 시간에
@@ -56,15 +58,24 @@ public class HealthController {
     // 타임아웃도 각자 자기 것으로 재되, 공유 중인 future는 다른 대기자를 위해 취소하지 않는다.
     private final AtomicReference<CompletableFuture<Boolean>> inFlightCheck = new AtomicReference<>();
 
+    private final String buildVersion;
+
     public HealthController(DataSource dataSource,
-                            @Value("${app.readiness.timeout:2s}") Duration timeout) {
+                            @Value("${app.readiness.timeout:2s}") Duration timeout,
+                            @Value("${app.build-version:unknown}") String buildVersion) {
         this.dataSource = dataSource;
         this.timeout = timeout;
+        this.buildVersion = buildVersion;
     }
 
+    /**
+     * 본문은 비우고, 떠 있는 jar의 빌드(커밋)만 {@code X-Kraft-Build} 헤더로 알린다(OPS-12) —
+     * 배포 후 스모크 테스트가 "응답한다"가 아니라 "방금 푸시한 빌드가 응답한다"를 확인하게 한다.
+     * 커밋 SHA는 비밀이 아니고 공개 저장소 이력과 같은 정보다.
+     */
     @GetMapping("/healthz")
     public ResponseEntity<Void> healthz() {
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok().header(BUILD_HEADER, buildVersion).build();
     }
 
     @GetMapping("/readyz")

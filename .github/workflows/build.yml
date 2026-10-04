@@ -438,3 +438,25 @@ jobs:
         run: |
           curl -fsS -o /dev/null --connect-timeout 5 --max-time 15 \
             --retry 5 --retry-delay 3 --retry-all-errors https://kraft.io.kr/
+
+      # 위 스모크 테스트는 "도메인이 응답한다"만 본다 — 배포가 조용히 실패해 옛 jar가 계속 떠
+      # 있어도 통과한다(OPS-12). /healthz의 X-Kraft-Build 헤더가 방금 푸시한 커밋인지 확인한다.
+      # 헤더 값은 build.gradle.kts의 buildVersion(짧은 git SHA)이라 github.sha의 앞부분과
+      # 비교한다. 재시작 직후 잠깐 이전 jar가 응답할 수 있어 여러 번 다시 본다. 롤백된 경우도
+      # 헤더가 없거나 달라 여기서 실패로 드러난다.
+      - name: Verify deployed build
+        if: env.SKIP_DEPLOY != '1'
+        run: |
+          expected="${{ github.sha }}"
+          for attempt in $(seq 1 10); do
+            actual=$(curl -sS -D - -o /dev/null --connect-timeout 5 --max-time 15 https://kraft.io.kr/healthz \
+              | tr -d '\r' | awk -F': ' 'tolower($1)=="x-kraft-build" {print $2}') || actual=""
+            if [ -n "$actual" ] && [[ "$expected" == "$actual"* ]]; then
+              echo "배포된 빌드 확인: $actual"
+              exit 0
+            fi
+            echo "시도 $attempt/10: 응답한 빌드='${actual:-없음}', 기대='${expected:0:7}'"
+            sleep 6
+          done
+          echo "::error::배포 후 /healthz가 방금 푸시한 빌드(${expected:0:7})가 아닌 '${actual:-없음}'를 알립니다 — 옛 jar가 떠 있거나 롤백됐을 수 있습니다."
+          exit 1
