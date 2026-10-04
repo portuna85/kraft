@@ -64,7 +64,7 @@ class SessionRevocationWorkerTest {
         willThrow(new RuntimeException("세션 저장소 장애"))
                 .given(sessionRevoker).revokeAll(String.valueOf(user.getId()), user.getId());
 
-        Long taskId = store.enqueue(user, user.getEmail());
+        Long taskId = store.enqueue(user);
         worker.attemptNow(taskId);
 
         SessionRevocationTask afterFirstAttempt = taskRepository.findById(taskId).orElseThrow();
@@ -87,7 +87,7 @@ class SessionRevocationWorkerTest {
         willThrow(new RuntimeException("영구 장애")).given(sessionRevoker).revokeAll(anyString(), any());
         int maxAttempts = (int) ReflectionTestUtils.getField(store, "maxAttempts");
 
-        Long taskId = store.enqueue(user, user.getEmail());
+        Long taskId = store.enqueue(user);
         for (int i = 0; i < maxAttempts; i++) {
             worker.drainScheduled();
         }
@@ -104,7 +104,7 @@ class SessionRevocationWorkerTest {
     @Test
     @DisplayName("처리 도중 중단되어 PROCESSING으로 남은 태스크는 소유권이 비워진 채 다시 대기열로 돌아온다")
     void stuckTaskIsRequeuedWithOwnershipReleased() {
-        Long taskId = store.enqueue(user, user.getEmail());
+        Long taskId = store.enqueue(user);
         assertThat(store.claimBatch(10, "stuck-owner")).hasSize(1);
         assertThat(taskRepository.findById(taskId).orElseThrow().getStatus())
                 .isEqualTo(SessionRevocationTaskStatus.PROCESSING);
@@ -121,7 +121,7 @@ class SessionRevocationWorkerTest {
     @DisplayName("탈퇴 후 같은 이메일로 재가입한 새 계정이 있어도, 태스크는 원래 계정의 회원 번호로만 폐기를 시도한다")
     void staleTaskUsesTheOriginalUserIdNotTheNewAccount() {
         String email = user.getEmail();
-        Long taskId = store.enqueue(user, email);
+        Long taskId = store.enqueue(user);
 
         // 실제 탈퇴처럼 계정의 이메일을 먼저 익명 주소로 바꿔 커밋하고(원래 이메일 자리를
         // 비워야 email_hash 유니크 제약과 부딪히지 않는다), 그 뒤 같은 이메일로 새 계정이
@@ -143,16 +143,15 @@ class SessionRevocationWorkerTest {
     }
 
     /**
-     * O02: 이메일 키 교체(rekey) 창에서 이 워커가 옛 키로 암호화된 email_snapshot을 복호화
-     * 하려다 죽지 않도록, application-rekey.yml이 이 플래그를 끈다. OutboxMailWorker의
-     * whenDisabled_drainDoesNothing과 같은 패턴이다.
+     * O02: 이메일 키 교체(rekey) 창에서 이 워커가 끼어들지 않도록 application-rekey.yml이
+     * 이 플래그를 끈다. OutboxMailWorker의 whenDisabled_drainDoesNothing과 같은 패턴이다.
      */
     @Test
     @DisplayName("O02: enabled가 false면 예약 실행과 attemptNow 모두 아무 것도 처리하지 않는다")
     void whenDisabled_nothingIsProcessed() {
         ReflectionTestUtils.setField(worker, "enabled", false);
         try {
-            Long taskId = store.enqueue(user, user.getEmail());
+            Long taskId = store.enqueue(user);
 
             worker.attemptNow(taskId);
             worker.drainScheduled();

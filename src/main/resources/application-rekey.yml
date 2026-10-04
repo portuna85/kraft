@@ -60,18 +60,16 @@ app:
     enabled: false
   # GuestVerificationSweeper는 User 엔티티를 읽으면서 email을 즉시 복호화한다(O07) — 아직
   # 옛 키로 남은 GUEST 행이 섞이면 rekeyAll이 미처 돌기 전에 복호화 실패로 멈출 수 있다.
-  # SessionRevocationWorker도 같은 이유로 끈다(O02) — email_snapshot을 옛 키로 복호화하려다
-  # 죽을 수 있다. EmailRekeyService가 이제 session_revocation_tasks도 재암호화하므로(B01),
-  # 이 워커는 다음 평소 기동부터 다시 켜진다.
+  # SessionRevocationWorker도 같은 이유로 끈다(O02) — 키 교체 창에서 계정 상태가 바뀌는 중에
+  # 세션 폐기 태스크가 끼어들 이유가 없다. 이 워커는 다음 평소 기동부터 다시 켜진다.
   verification:
     sweep-enabled: false
     purge-enabled: false
   session-revocation:
     enabled: false
     # cleanupOldTerminal도 enabled와 무관하게 항상 돈다(SessionRevocationWorker, OBS-05).
-    # 그 자체로 위험하지는 않지만(상태·시각 기준 bulk delete라 email_snapshot을 복호화하지
-    # 않는다), EmailRekeyService가 같은 테이블(session_revocation_tasks)을 id 순으로
-    # 순회하며 재암호화하는 동안 행이 사라지는 것을 피하려고 이 창에서는 끈다.
+    # 그 자체로 위험하지는 않지만(상태·시각 기준 bulk delete다), 무관한 스케줄러를 한 실행에
+    # 섞지 않는다는 원칙대로 이 창에서는 끈다.
     retention-enabled: false
   recommend:
     # 동행복권 자동 수집도 이 창에서 돌 이유가 없다(개선 보고서 OBS-05) — users 테이블만

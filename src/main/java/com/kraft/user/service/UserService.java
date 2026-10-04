@@ -131,7 +131,7 @@ public class UserService {
         PasswordBytePolicy.validate(newPassword);
 
         user.changePassword(passwordEncoder.encode(newPassword));
-        revokeSessionsAfterCommit(user, user.getEmail());
+        revokeSessionsAfterCommit(user);
     }
 
     /**
@@ -149,7 +149,7 @@ public class UserService {
         PasswordBytePolicy.validate(newPassword);
 
         user.changePassword(passwordEncoder.encode(newPassword));
-        revokeSessionsAfterCommit(user, user.getEmail());
+        revokeSessionsAfterCommit(user);
     }
 
     /**
@@ -176,10 +176,6 @@ public class UserService {
             throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
         }
 
-        // user.withdraw() 이후 user.getEmail()을 쓰면 이미 익명 주소로 바뀐 뒤라, 탈퇴 전
-        // 주소를 먼저 따로 담아 둔다 — 아래 revokeSessionsAfterCommit에 그대로 쓴다.
-        String emailBeforeWithdrawal = user.getEmail();
-
         emailVerificationTokenRepository.deleteByUserId(userId);
         passwordResetTokenRepository.deleteByUserId(userId);
         outboxMailRepository.deleteByUserId(userId);
@@ -190,7 +186,7 @@ public class UserService {
                 // 아무도 맞힐 수 없는 값. 익명 주소를 알아내도 로그인할 수 없다.
                 passwordEncoder.encode(UUID.randomUUID().toString()));
 
-        revokeSessionsAfterCommit(user, emailBeforeWithdrawal);
+        revokeSessionsAfterCommit(user);
     }
 
     /**
@@ -255,8 +251,8 @@ public class UserService {
      * 방법이 없었다. 태스크가 DB에 남아 있으므로 실패해도 {@link SessionRevocationWorker}의
      * 주기 작업이 최종적으로 완수한다.
      */
-    private void revokeSessionsAfterCommit(User user, String email) {
-        Long taskId = sessionRevocationStore.enqueue(user, email);
+    private void revokeSessionsAfterCommit(User user) {
+        Long taskId = sessionRevocationStore.enqueue(user);
         AfterCommit.run(() -> sessionRevocationWorker.attemptNow(taskId));
     }
 }

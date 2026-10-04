@@ -35,10 +35,9 @@ public class SessionRevocationStore {
      * 아니다) — DB 변경과 이 태스크는 함께 커밋되거나 함께 사라져야 한다.
      */
     @Transactional
-    public Long enqueue(User user, String emailSnapshot) {
+    public Long enqueue(User user) {
         return taskRepository.save(SessionRevocationTask.builder()
                 .user(user)
-                .emailSnapshot(emailSnapshot)
                 .build()).getId();
     }
 
@@ -68,9 +67,8 @@ public class SessionRevocationStore {
         taskRepository.findByIdAndOwnerTokenAndStatus(id, ownerToken, SessionRevocationTaskStatus.PROCESSING)
                 .ifPresentOrElse(task -> {
                     try {
-                        // 세션 principal 이름은 이제 회원 id다(BE-04) — emailSnapshot은 principal이
-                        // 이메일이던 시절 "그때의 이메일로 찾아야 한다"는 이유로 남겼던 값이라
-                        // 더는 조회 키로 쓰지 않는다(회원 번호는 애초에 불변이라 스냅샷도 필요 없다).
+                        // 세션 principal 이름은 회원 id다(BE-04) — 회원 번호는 불변이라 탈퇴·재가입
+                        // 뒤에도 다른 계정의 세션을 잘못 지우지 않는다.
                         sessionRevoker.revokeAll(String.valueOf(task.getUser().getId()), task.getUser().getId());
                         task.markDone();
                     } catch (RuntimeException e) {

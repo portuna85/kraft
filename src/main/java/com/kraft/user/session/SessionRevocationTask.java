@@ -1,10 +1,8 @@
 package com.kraft.user.session;
 
 import com.kraft.shared.domain.BaseEntity;
-import com.kraft.user.domain.EmailAttributeConverter;
 import com.kraft.user.domain.User;
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -46,16 +44,6 @@ public class SessionRevocationTask extends BaseEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    /**
-     * 태스크를 만든 시점(트랜잭션 커밋 시점)의 이메일. 탈퇴가 {@code users.email}을 익명
-     * 주소로 바꿔도 이 값은 고정되어, 처리 시점에 다시 조회하지 않는다 — 그렇지 않으면 탈퇴
-     * 후 같은 이메일로 재가입한 새 계정의 세션을 잘못 지울 수 있다. {@code users.email}과 같은
-     * 방식(AES)으로 암호화해 저장한다.
-     */
-    @Column(name = "email_snapshot", nullable = false, length = 500)
-    @Convert(converter = EmailAttributeConverter.class)
-    private String emailSnapshot;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private SessionRevocationTaskStatus status;
@@ -74,9 +62,8 @@ public class SessionRevocationTask extends BaseEntity {
     private String ownerToken;
 
     @Builder
-    public SessionRevocationTask(User user, String emailSnapshot) {
+    public SessionRevocationTask(User user) {
         this.user = user;
-        this.emailSnapshot = emailSnapshot;
         this.status = SessionRevocationTaskStatus.PENDING;
         this.attempts = 0;
     }

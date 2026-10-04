@@ -73,7 +73,7 @@ class SessionRevocationAccountIsolationTest {
 
         // 아직 처리되지 않은 지연된 태스크를 만든다 — 실제로는 커밋 직후 빠른 경로가 실패했을 때
         // 생기는 상황이다. 일부러 attemptNow를 바로 부르지 않고 재가입까지 미뤄 둔다.
-        Long taskId = store.enqueue(oldAccount, email);
+        Long taskId = store.enqueue(oldAccount);
 
         oldAccount.withdraw("withdrawn-" + oldAccount.getId() + "@kraft.invalid", "탈퇴한 사용자", "encoded");
         userRepository.save(oldAccount);
