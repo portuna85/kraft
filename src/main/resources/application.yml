@@ -34,10 +34,12 @@ spring:
   profiles:
     default: local
 
-  # 홈 화면 인기글(BE-25)처럼 요청마다 다시 계산할 필요가 없는 값을 짧게 캐시한다. maximumSize는
-  # 지금 쓰는 캐시 이름(popularPosts)이 하나뿐이라 작게 잡아도 충분하다 — 캐시가 늘어나면
-  # 그때 다시 본다. expireAfterWrite 45초는 "너무 낡은 인기글을 보여주지 않는다"와 "홈 화면
-  # 트래픽이 몰려도 DB를 매번 두드리지 않는다" 사이의 절충값이다.
+  # 홈 화면 인기글(BE-25)처럼 요청마다 다시 계산할 필요가 없는 값을 짧게 캐시한다. 이 스펙은 모든
+  # 캐시의 기본값이다 — popularPosts·pinnedNotices가 그대로 따른다. maximumSize는 캐시 이름이
+  # 몇 개 안 돼 작게 잡아도 충분하다. expireAfterWrite 45초는 "너무 낡은 인기글을 보여주지 않는다"와
+  # "홈 화면 트래픽이 몰려도 DB를 매번 두드리지 않는다" 사이의 절충값이다. 공지(pinnedNotices)는 글을
+  # 쓰거나 고칠 때 바로 비운다(BE-16). 회차 요약(drawInsights)만 CacheConfig가 따로 1시간으로
+  # 등록하고 이력 반영 때 비운다(BE-17).
   cache:
     caffeine:
       spec: maximumSize=500,expireAfterWrite=45s
