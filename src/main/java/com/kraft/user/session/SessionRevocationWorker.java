@@ -29,9 +29,8 @@ public class SessionRevocationWorker {
 
     /**
      * {@code false}면 예약 실행과 {@link #attemptNow}(커밋 직후 빠른 경로) 모두 막는다.
-     * 이메일 키 교체(rekey) 창에서 이 워커가 옛 키로 암호화된 {@code email_snapshot}을
-     * 새 키로 복호화하려다 죽는 사고를 막기 위해 도입했다(O02) — {@code application-rekey.yml}이
-     * 이 플래그를 끈다.
+     * 이메일 키 교체(rekey) 창에서 계정 상태가 바뀌는 중에 이 워커가 끼어들지 않게 하려고
+     * 도입했다(O02) — {@code application-rekey.yml}이 이 플래그를 끈다.
      */
     @Value("${app.session-revocation.enabled:true}")
     private boolean enabled;
