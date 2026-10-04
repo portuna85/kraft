@@ -117,8 +117,15 @@ class HealthControllerTest {
             // 두 번째 요청이 첫 번째 검사가 아직 끝나지 않은 시점에 들어오도록, 커넥션 호출이
             // 시작될 때까지는 기다리되 끝나기 전에(래치를 아직 풀지 않은 채) 제출한다.
             connectionCallStarted.await(1, TimeUnit.SECONDS);
-            Future<ResponseEntity<Void>> second = callers.submit(() -> controller.readyz(loopbackRequest()));
-            Thread.sleep(50); // second가 currentOrNewCheck()까지 진입할 시간을 준다.
+            java.util.concurrent.atomic.AtomicReference<Thread> secondThread = new java.util.concurrent.atomic.AtomicReference<>();
+            Future<ResponseEntity<Void>> second = callers.submit(() -> {
+                secondThread.set(Thread.currentThread());
+                return controller.readyz(loopbackRequest());
+            });
+            // 두 번째 요청이 진행 중인 검사를 기다리는 상태(future.get)에 들어갈 때까지 기다린다. 고정 sleep 대신
+            // 스레드 상태를 본다(OPS-35).
+            org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(5)).until(() ->
+                    secondThread.get() != null && secondThread.get().getState() == Thread.State.TIMED_WAITING);
             releaseConnection.countDown();
 
             assertThat(first.get(5, TimeUnit.SECONDS).getStatusCode()).isEqualTo(HttpStatus.OK);

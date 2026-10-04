@@ -124,6 +124,15 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         response.getWriter().write(objectMapper.writeValueAsString(problem));
     }
 
+    /** 다섯 제한기의 상태를 모두 처음으로 되돌린다. 테스트가 메서드 사이에 카운터를 남기지 않게 한다(OPS-10). */
+    public void reset() {
+        loginIpLimiter.reset();
+        loginAccountLimiter.reset();
+        signupLimiter.reset();
+        passwordResetLimiter.reset();
+        resendLimiter.reset();
+    }
+
     /**
      * 실측 없이는 한도가 맞는지 알 수 없다 — 다섯 제한기의 허용/거부 집계를 주기적으로 남긴다
      * (RecommendationRateLimiter와 같은 이유). 창이 비어 있어도(제한기를 끈 프로파일 포함)

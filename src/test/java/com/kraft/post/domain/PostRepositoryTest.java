@@ -346,12 +346,17 @@ class PostRepositoryTest {
 
     @Test
     @DisplayName("update() 이후 flush하면 updatedAt이 최초 저장 시점보다 뒤로 갱신된다")
-    void update_updatesUpdatedAtAfterFlush() throws InterruptedException {
+    void update_updatesUpdatedAtAfterFlush() {
         Post saved = postRepository.save(Post.builder().title("t").content("c").user(user).build());
         em.flush();
+        // 타임스탬프 해상도에 기대 sleep하는 대신, 저장된 updatedAt을 한 시간 전으로 옮겨 두고 다시 읽는다(OPS-35).
+        em.getEntityManager().createNativeQuery("UPDATE posts SET updated_at = :ts WHERE id = :id")
+                .setParameter("ts", LocalDateTime.now().minusHours(1))
+                .setParameter("id", saved.getId())
+                .executeUpdate();
+        em.getEntityManager().refresh(saved);
         var createdUpdatedAt = saved.getUpdatedAt();
 
-        Thread.sleep(5); // 타임스탬프 해상도 차이를 확실히 만들기 위한 최소 대기
         saved.update("수정된 제목", "수정된 내용", null, null, null, null);
         em.flush();
 

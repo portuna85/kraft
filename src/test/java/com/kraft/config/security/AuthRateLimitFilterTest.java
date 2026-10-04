@@ -1,12 +1,12 @@
 package com.kraft.config.security;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -24,11 +24,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>
  * {@link AuthRateLimitFilter}는 싱글턴 빈이라 메모리 카운터가 테스트 메서드 사이에 그대로
  * 남는다 — 특히 로그인 IP 제한기는 모든 로그인 테스트가 같은 MockMvc 기본 IP(127.0.0.1)를
- * 공유해 서로의 한도를 갉아먹는다. 메서드마다 컨텍스트를 새로 띄워 제한기를 초기화한다.
+ * 공유해 서로의 한도를 갉아먹는다. 예전에는 메서드마다 컨텍스트를 새로 띄워 초기화했지만(7번,
+ * 약 4초), 이제 {@code @BeforeEach}에서 제한기만 {@link AuthRateLimitFilter#reset()}으로 비운다(OPS-10).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 @TestPropertySource(properties = {
         "app.auth.rate-limit.enabled=true",
         "app.auth.rate-limit.login-per-minute=3",
@@ -41,6 +41,14 @@ class AuthRateLimitFilterTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private AuthRateLimitFilter authRateLimitFilter;
+
+    @BeforeEach
+    void resetLimiters() {
+        authRateLimitFilter.reset();
+    }
 
     @Test
     @DisplayName("로그인: 같은 IP에서 계정을 바꿔 가며 한도를 넘기면 throttled로 리다이렉트한다")

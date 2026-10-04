@@ -155,8 +155,9 @@ class RecommendationBackfillRunnerTest {
         int[] exitCode = new int[1];
         Thread worker = new Thread(() -> exitCode[0] = runner.backfill());
         worker.start();
-        // sleep(60000)에 실제로 진입할 시간을 준다.
-        Thread.sleep(300);
+        // sleep(60000)에 실제로 진입할 때까지 기다린다 — 고정 대기 대신 스레드 상태를 본다(OPS-35).
+        org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(5))
+                .until(() -> worker.getState() == Thread.State.TIMED_WAITING);
         worker.interrupt();
         worker.join(5_000);
 

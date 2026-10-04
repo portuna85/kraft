@@ -73,6 +73,16 @@ public class FixedWindowRateLimiter {
     private record Window(long windowStartMillis, AtomicInteger count) {
     }
 
+    /**
+     * 추적 중인 모든 창과 허용/거부 집계를 비운다. 싱글턴 빈의 메모리 상태를 테스트 메서드마다 처음으로
+     * 되돌릴 때 쓴다 — 예전에는 그러려고 메서드마다 Spring 컨텍스트를 새로 띄웠다(OPS-10).
+     */
+    public void reset() {
+        windows.clear();
+        allowed.reset();
+        rejected.reset();
+    }
+
     public boolean tryAcquire(String clientKey) {
         long now = Instant.now().toEpochMilli();
 

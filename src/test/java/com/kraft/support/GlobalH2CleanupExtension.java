@@ -3,11 +3,14 @@ package com.kraft.support;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.springframework.context.ApplicationContext;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.Set;
 
 /**
  * 매 테스트 메서드 전에 관련 테이블을 FK 안전한 순서로 전부 비운다(개선 보고서 TST-01/TST-04).
@@ -38,8 +41,16 @@ public class GlobalH2CleanupExtension implements BeforeEachCallback {
     private static final String[] TABLES_IN_DELETE_ORDER = {
             "comments", "post_likes", "post_images", "reports",
             "email_verification_tokens", "password_reset_tokens",
-            "outbox_mails", "session_revocation_tasks", "posts", "users",
+            "outbox_mails", "session_revocation_tasks",
+            // 추천 이력과 수집 시도 기록, Spring Session(속성이 세션을 FK로 가리킨다)도 비운다(OPS-08) —
+            // 빠져 있으면 한 클래스가 남긴 회차·세션이 다른 클래스의 기대를 흔든다.
+            "recommendation_fetch_attempts", "recommendation_winning_draws", "recommendation_history_state",
+            "SPRING_SESSION_ATTRIBUTES", "SPRING_SESSION",
+            "posts", "users",
     };
+
+    /** H2의 "테이블 없음" 오류 코드(42S02 = 테이블/뷰 없음, 42102 = 테이블 없음). */
+    private static final Set<String> TABLE_NOT_FOUND_SQL_STATES = Set.of("42S02", "42102");
 
     @Override
     public void beforeEach(ExtensionContext context) {
@@ -65,11 +76,19 @@ public class GlobalH2CleanupExtension implements BeforeEachCallback {
         for (String table : TABLES_IN_DELETE_ORDER) {
             try {
                 jdbcTemplate.execute("DELETE FROM " + table);
-            } catch (Exception e) {
-                // 이 컨텍스트의 스키마에 그 테이블이 없거나(슬라이스 테스트) 아직 준비되지
-                // 않았을 수 있다 — 그 테이블만 건너뛰고 계속한다.
+            } catch (DataAccessException e) {
+                // 이 컨텍스트의 스키마에 그 테이블이 없는 경우(슬라이스 테스트)만 건너뛴다. 예전에는 모든
+                // 예외를 삼켜, 테이블 이름이 틀리거나 FK 위반이 나도 정리가 조용히 아무것도 하지 않았다(OPS-09).
+                if (!isTableNotFound(e)) {
+                    throw e;
+                }
             }
         }
+    }
+
+    private static boolean isTableNotFound(DataAccessException e) {
+        Throwable cause = e.getMostSpecificCause();
+        return cause instanceof SQLException sql && TABLE_NOT_FOUND_SQL_STATES.contains(sql.getSQLState());
     }
 
     private boolean usesH2(ApplicationContext applicationContext) {
