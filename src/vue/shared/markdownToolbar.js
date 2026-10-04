@@ -3,6 +3,9 @@
  * 선택 영역을 돌려준다 — DOM은 `MarkdownToolbar.vue`가 다룬다.
  */
 
+// 이 파일은 node --test가 별칭(@core) 없이 직접 불러오므로 상대 경로로 가져온다.
+import { POST } from '../../main/resources/static/js/app/core/constants.js';
+
 /**
  * 서식 버튼 묶음의 roving tabindex 이동(13단계, WAI-ARIA 툴바 패턴). 좌우 화살표는
  * 순환하고 Home/End는 양 끝으로 보낸다. 다른 키는 현재 인덱스를 그대로 돌려준다.
@@ -30,9 +33,7 @@ export function nextToolbarIndex(currentIndex, key, count) {
     }
 }
 
-// ContentPolicy.POST_CONTENT_MAX_LENGTH(서버)·textarea의 maxlength(PostSaveApp.vue·
-// PostEditApp.vue)와 맞춘 값이다. 세 곳 중 하나만 바뀌면 어긋난다.
-const MAX_LENGTH = 10_000;
+const MAX_LENGTH = POST.CONTENT_MAX_LENGTH;
 
 /**
  * @param {string} value

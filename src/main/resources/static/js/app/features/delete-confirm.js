@@ -2,6 +2,7 @@ import { byId, delegate, on, setText, valueOf } from '../core/dom.js';
 import { api, messageOf } from '../core/http.js';
 import { modal } from '../core/bootstrap-ui.js';
 import { API } from '../core/constants.js';
+import { truncate } from '../core/text.js';
 import { showToast } from '../ui/toast.js';
 import * as flash from '../ui/flash.js';
 
@@ -92,16 +93,6 @@ export function init() {
             }
         }
     });
-}
-
-// 삭제 확인 문구에 대상을 명시한다(문서 5.2) — 제목·댓글 내용이 길면 모달이 한눈에 안
-// 들어오므로 자른다. 게시글 제목은 최대 255자, 댓글 내용은 최대 1000자라 그대로 넣으면
-// 문구가 지나치게 길어질 수 있다.
-function truncate(text, max) {
-    if (!text) {
-        return '';
-    }
-    return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
 function open(kind, targetName) {

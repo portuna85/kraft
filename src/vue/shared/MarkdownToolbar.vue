@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, ref } from 'vue';
+import { POST } from '@core/constants.js';
 import { applyMarkup, nextToolbarIndex } from './markdownToolbar.js';
 import MarkdownBody from './MarkdownBody.vue';
 
@@ -19,7 +20,7 @@ const props = defineProps({
     modelValue: { type: String, required: true },
     id: { type: String, required: true },
     disabled: { type: Boolean, default: false },
-    maxlength: { type: Number, default: 10000 },
+    maxlength: { type: Number, default: POST.CONTENT_MAX_LENGTH },
     placeholder: { type: String, default: '' },
     // 서버 검증 오류가 이 필드를 가리킬 때 부모가 넘긴다. 예전에는 aria-invalid를 attr로
     // 넘겨 루트 div에 붙었다(FE-01) — textarea에 직접 걸리도록 명시적인 prop으로 받는다.

@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, reactive, ref, watch } from 'vue';
 import { api, messageOf } from '@core/http.js';
-import { API } from '@core/constants.js';
+import { API, POST } from '@core/constants.js';
 import * as flash from '@ui/flash.js';
 import { showToast } from '@ui/toast.js';
 import { useImageUpload } from '../shared/useImageUpload.js';
@@ -521,7 +521,7 @@ async function onSubmit() {
         id="content"
         ref="contentInput"
         v-model="draft.content"
-        :maxlength="10000"
+        :maxlength="POST.CONTENT_MAX_LENGTH"
         :disabled="saving"
         :invalid="!!fieldErrors.content"
         :describedby="fieldErrors.content ? 'edit-content-error' : undefined"

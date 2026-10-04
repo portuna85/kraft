@@ -52,6 +52,15 @@ export const API = {
  * 왕복을 줄이는 편의일 뿐이고, 실제 바이트 기준 판정은 서버의 PasswordBytePolicy가 최종
  * 결정한다 — 문자 수 72와 UTF-8 바이트 수 72는 다르다(한글 1자=3바이트).
  */
+export const POST = {
+    /**
+     * 본문 최대 길이. 서버의 ContentPolicy.POST_CONTENT_MAX_LENGTH와 맞춘 값이다(FE-19) — textarea의
+     * maxlength와 마크다운 툴바의 자르기가 모두 이 값 하나를 쓴다. 한쪽만 고치면
+     * UploadPolicySyncTest가 실패한다.
+     */
+    CONTENT_MAX_LENGTH: 10_000,
+};
+
 export const PASSWORD = {
     MIN_LENGTH: 8,
     MAX_LENGTH: 72,

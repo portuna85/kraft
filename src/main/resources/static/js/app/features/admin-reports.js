@@ -1,6 +1,7 @@
 import { delegate, qs } from '../core/dom.js';
 import { api, messageOf } from '../core/http.js';
 import { API } from '../core/constants.js';
+import { truncate } from '../core/text.js';
 import { showToast } from '../ui/toast.js';
 import { confirmAction } from '../ui/confirm-dialog.js';
 
@@ -57,15 +58,6 @@ export function init() {
 /** 같은 줄의 나머지 처리 버튼도 함께 잠가, 요청이 도는 동안 이중 클릭(예: 삭제+반려 동시 클릭)을 막는다. */
 function rowButtons(item) {
     return item ? Array.from(item.querySelectorAll('button')) : [];
-}
-
-// 삭제 확인 문구에 대상을 명시한다(문서 5.5, delete-confirm.js와 같은 규칙). 제목·댓글
-// 내용이 길면 모달이 한눈에 안 들어오므로 자른다.
-function truncate(text, max) {
-    if (!text) {
-        return '';
-    }
-    return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
 function targetOf(trigger) {

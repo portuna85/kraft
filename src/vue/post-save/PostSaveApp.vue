@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { api, messageOf } from '@core/http.js';
-import { API } from '@core/constants.js';
+import { API, POST } from '@core/constants.js';
 import * as flash from '@ui/flash.js';
 import { useImageUpload } from '../shared/useImageUpload.js';
 import { useUnsavedGuard } from '../shared/useUnsavedGuard.js';
@@ -250,7 +250,7 @@ async function onSubmit() {
         ref="contentInput"
         v-model="draft.content"
         placeholder="내용을 입력하세요"
-        :maxlength="10000"
+        :maxlength="POST.CONTENT_MAX_LENGTH"
         :disabled="saving"
         :invalid="!!fieldErrors.content"
         :describedby="fieldErrors.content ? 'content-error' : undefined"

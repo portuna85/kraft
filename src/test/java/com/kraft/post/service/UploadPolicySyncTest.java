@@ -43,6 +43,15 @@ class UploadPolicySyncTest {
     }
 
     @Test
+    @DisplayName("본문 최대 길이가 화면과 서버에서 같다(FE-19)")
+    void postContentMaxLengthMatches() throws IOException {
+        int js = Integer.parseInt(captureOf(JS_CONSTANTS, "CONTENT_MAX_LENGTH:\\s*([\\d_]+)").replace("_", ""));
+
+        assertThat(js).as("constants.js의 POST.CONTENT_MAX_LENGTH와 ContentPolicy").isEqualTo(
+                com.kraft.shared.domain.ContentPolicy.POST_CONTENT_MAX_LENGTH);
+    }
+
+    @Test
     @DisplayName("허용 확장자 목록이 화면과 서버에서 같다")
     void allowedExtensionsMatch() throws IOException {
         List<String> js = quotedWordsIn(captureOf(JS_CONSTANTS, "ALLOWED_EXTENSIONS:\\s*\\[([^\\]]*)\\]"));
