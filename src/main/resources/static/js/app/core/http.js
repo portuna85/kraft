@@ -97,8 +97,9 @@ export const api = {
     /**
      * @param {string} url
      * @param {unknown} [json]
+     * @param {{ timeoutMs?: number }} [options] 오래 걸리는 요청(예: 관리자 수동 수집)만 제한 시간을 늘린다.
      */
-    post: (url, json) => request(url, { method: 'POST', json }),
+    post: (url, json, options = {}) => request(url, { method: 'POST', json, ...options }),
     /**
      * @param {string} url
      * @param {unknown} [json]

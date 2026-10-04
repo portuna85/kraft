@@ -1,5 +1,6 @@
 package com.kraft.recommend.service;
 
+import com.kraft.recommend.domain.RecommendationFetchAttemptRepository;
 import com.kraft.recommend.domain.RecommendationHistoryState;
 import com.kraft.recommend.domain.RecommendationHistoryStateRepository;
 import com.kraft.recommend.domain.RecommendationImportException;
@@ -29,12 +30,15 @@ class RecommendationAutoFetchSchedulerTest {
     private RecommendationHistoryImporter importer;
     @Mock
     private RecommendationHistoryStateRepository stateRepository;
+    @Mock
+    private RecommendationFetchAttemptRepository attemptRepository;
 
     private final RecommendationFetchStatus fetchStatus = new RecommendationFetchStatus();
 
     private RecommendationAutoFetchScheduler scheduler() {
-        RecommendationAutoFetchScheduler scheduler =
-                new RecommendationAutoFetchScheduler(dhLotteryClient, importer, stateRepository, fetchStatus);
+        RecommendationFetchService fetchService = new RecommendationFetchService(
+                dhLotteryClient, importer, stateRepository, fetchStatus, attemptRepository);
+        RecommendationAutoFetchScheduler scheduler = new RecommendationAutoFetchScheduler(fetchService);
         ReflectionTestUtils.setField(scheduler, "enabled", true);
         return scheduler;
     }
@@ -144,8 +148,7 @@ class RecommendationAutoFetchSchedulerTest {
     @Test
     @DisplayName("스케줄러가 꺼져 있으면 아무 조회도 하지 않는다")
     void disabled_doesNothing() {
-        RecommendationAutoFetchScheduler scheduler =
-                new RecommendationAutoFetchScheduler(dhLotteryClient, importer, stateRepository, fetchStatus);
+        RecommendationAutoFetchScheduler scheduler = scheduler();
         ReflectionTestUtils.setField(scheduler, "enabled", false);
 
         scheduler.fetchLatestIfDue();

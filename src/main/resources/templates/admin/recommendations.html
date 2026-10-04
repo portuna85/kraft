@@ -6,10 +6,14 @@
 <!--/*@thymesVar id="nextRound" type="java.lang.Integer"*/-->
 <!--/*@thymesVar id="verifiedAt" type="java.time.LocalDateTime"*/-->
 <!--/*@thymesVar id="sourceReference" type="java.lang.String"*/-->
+<!--/*@thymesVar id="latestDrawRound" type="java.lang.Integer"*/-->
+<!--/*@thymesVar id="latestDrawDate" type="java.time.LocalDate"*/-->
+<!--/*@thymesVar id="nextRunAt" type="java.time.LocalDateTime"*/-->
 <!--/*@thymesVar id="consecutiveFailures" type="java.lang.Integer"*/-->
 <!--/*@thymesVar id="lastSuccessAt" type="java.time.LocalDateTime"*/-->
 <!--/*@thymesVar id="lastFailureAt" type="java.time.LocalDateTime"*/-->
 <!--/*@thymesVar id="lastFailureReason" type="java.lang.String"*/-->
+<!--/*@thymesVar id="attempts" type="java.util.List<com.kraft.recommend.domain.RecommendationFetchAttempt>"*/-->
 <head th:replace="~{layout/header :: header}"></head>
 <body>
 
@@ -27,12 +31,22 @@
                     자동 수집 <strong th:text="${autoFetchEnabled} ? '켜짐' : '꺼짐'">켜짐</strong>
                 </p>
             </div>
+            <div class="btn-group-gap">
+                <button type="button" id="btn-fetch-now" class="btn btn-sm btn-primary">지금 수집</button>
+            </div>
         </div>
         <p class="board-head__desc">토요일 21:30·22:00, 일요일 06:00·07:00(KST)에 최신 회차를 받아옵니다.
-            아래 마지막 성공·실패 기록은 서버를 재시작하면 비워집니다.
+            "지금 수집"은 같은 방식으로 한 번 바로 실행합니다. 이미 수집이 돌고 있으면 시작하지 않습니다.
             <a href="/admin/reports">신고 처리로 돌아가기</a></p>
 
         <ul class="report-list">
+            <li class="report-list__item">
+                <div class="report-list__head">
+                    <strong>다음 예약 수집</strong>
+                    <span th:text="${#temporals.format(nextRunAt, 'yyyy.MM.dd (E) HH:mm')}">2026.10.10 (토) 21:30</span>
+                </div>
+                <p class="report-list__detail" th:unless="${autoFetchEnabled}">자동 수집이 꺼져 있어 이 시각에도 실행되지 않습니다.</p>
+            </li>
             <li class="report-list__item">
                 <div class="report-list__head">
                     <strong>검증 완료 회차</strong>
@@ -45,6 +59,15 @@
                           th:text="' · 검증 시각 ' + ${#temporals.format(verifiedAt, 'yyyy.MM.dd HH:mm')}"></span>
                     <span th:if="${sourceReference != null}" th:text="' · 출처 ' + ${sourceReference}"></span>
                 </p>
+            </li>
+            <li class="report-list__item">
+                <div class="report-list__head">
+                    <strong>DB의 최신 회차</strong>
+                    <span th:if="${latestDrawRound != null}" th:text="${latestDrawRound} + '회'">1244회</span>
+                    <span class="text-muted" th:unless="${latestDrawRound != null}">아직 없음</span>
+                </div>
+                <p class="report-list__detail" th:if="${latestDrawDate != null}"
+                   th:text="'추첨일 ' + ${#temporals.format(latestDrawDate, 'yyyy.MM.dd')}">추첨일</p>
             </li>
             <li class="report-list__item">
                 <div class="report-list__head">
@@ -66,6 +89,28 @@
                 <p class="report-list__detail" th:unless="${lastFailureAt != null}">실패 기록이 없습니다.</p>
             </li>
         </ul>
+
+        <h2 class="h5 mt-4">최근 수집 이력</h2>
+        <ul class="report-list" th:if="${!#lists.isEmpty(attempts)}">
+            <li class="report-list__item" th:each="attempt : ${attempts}">
+                <div class="report-list__head">
+                    <strong th:text="${attempt.roundNo != null} ? ${attempt.roundNo} + '회' : '-'">1244회</strong>
+                    <span th:text="${#temporals.format(attempt.attemptedAt, 'yyyy.MM.dd HH:mm')}">시각</span>
+                </div>
+                <p class="report-list__detail">
+                    <span th:switch="${attempt.outcome.name()}">
+                        <span th:case="'FETCHED'">반영함</span>
+                        <span th:case="'NOT_YET_DRAWN'">아직 추첨 전</span>
+                        <strong th:case="'FAILED'">실패</strong>
+                    </span>
+                    <span th:text="' · ' + (${attempt.trigger.name()} == 'MANUAL' ? '수동' : '예약')">· 예약</span>
+                    <span th:if="${attempt.detail != null}" th:text="' · ' + ${attempt.detail}"></span>
+                </p>
+            </li>
+        </ul>
+        <div class="empty-state" th:if="${#lists.isEmpty(attempts)}">
+            <p class="empty-state__text">아직 수집 시도 기록이 없습니다.</p>
+        </div>
     </main>
 </div>
 

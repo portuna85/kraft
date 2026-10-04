@@ -44,6 +44,7 @@ export const API = {
     PASSWORD_RESET: '/api/v1/users/password-reset',
     ADMIN_REPORTS: '/api/v1/admin/reports',
     ADMIN_USERS: '/api/v1/admin/users',
+    ADMIN_RECOMMENDATION_FETCH: '/api/v1/admin/recommendations/fetch',
 };
 
 /**
