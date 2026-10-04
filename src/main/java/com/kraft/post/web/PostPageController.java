@@ -12,6 +12,7 @@ import com.kraft.post.dto.PostViewDto;
 import com.kraft.post.markdown.MarkdownParser;
 import com.kraft.post.service.CategoryPolicy;
 import com.kraft.post.service.PostService;
+import com.kraft.post.service.PostSortPolicy;
 import com.kraft.shared.security.OwnershipPolicy;
 import com.kraft.shared.web.PageWindow;
 import com.kraft.shared.web.WriteRateLimiters;

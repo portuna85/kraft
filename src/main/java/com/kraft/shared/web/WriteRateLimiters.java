@@ -1,6 +1,6 @@
 package com.kraft.shared.web;
 
-import com.kraft.user.domain.Role;
+import com.kraft.shared.security.OwnershipPolicy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -61,7 +61,7 @@ public class WriteRateLimiters {
      * 더 빨리 막히게 하려는 의도다).
      */
     public boolean tryAcquirePost(Authentication authentication) {
-        if (!enabled || isAdmin(authentication)) {
+        if (!enabled || OwnershipPolicy.isAdmin(authentication)) {
             return true;
         }
         String key = authentication.getName();
@@ -88,12 +88,7 @@ public class WriteRateLimiters {
     }
 
     private boolean isAdminOrDisabled(Authentication authentication) {
-        return !enabled || isAdmin(authentication);
-    }
-
-    private static boolean isAdmin(Authentication authentication) {
-        return authentication != null && authentication.getAuthorities().stream()
-                .anyMatch(authority -> authority.getAuthority().equals(Role.ADMIN.getKey()));
+        return !enabled || OwnershipPolicy.isAdmin(authentication);
     }
 
     /** 실측 없이는 한도가 맞는지 알 수 없다 — 여섯 제한기의 허용/거부 집계를 주기적으로 남긴다. */

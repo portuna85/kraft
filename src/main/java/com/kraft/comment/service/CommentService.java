@@ -12,6 +12,7 @@ import com.kraft.post.domain.PostNotFoundException;
 import com.kraft.post.domain.PostRepository;
 import com.kraft.report.domain.ReportTargetType;
 import com.kraft.report.event.TargetDeletedEvent;
+import com.kraft.shared.domain.VersionCheck;
 import com.kraft.shared.exception.NotFoundException;
 import com.kraft.shared.security.CurrentUser;
 import com.kraft.shared.security.OwnershipPolicy;
@@ -21,7 +22,6 @@ import com.kraft.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -114,22 +114,10 @@ public class CommentService {
         if (comment.isDeleted()) {
             throw new IllegalArgumentException("삭제된 댓글은 수정할 수 없습니다.");
         }
-        validateVersion(comment, requestDto.version());
+        VersionCheck.require(Comment.class, comment.getId(), comment.getVersion(), requestDto.version());
         comment.update(requestDto.content());
         commentRepository.flush();
         return new CommentViewDto(comment, OwnershipPolicy.canManage(authentication, comment.getUser()));
-    }
-
-    /**
-     * 화면이 받아간 버전과 지금 DB의 버전이 다르면, 그 사이 다른 곳에서 저장이 일어난 것이다
-     * (B12). {@code PostService.validateVersion}과 같은 계약 — API 요청은 DTO 검증이 버전을
-     * 필수로 받고(F11), null은 API를 거치지 않는 내부 호출만 해당한다. {@link ObjectOptimisticLockingFailureException}은
-     * {@code ApiExceptionHandler}가 이미 409로 변환한다(Post 편집 충돌과 같은 경로).
-     */
-    private void validateVersion(Comment comment, Long expectedVersion) {
-        if (expectedVersion != null && !expectedVersion.equals(comment.getVersion())) {
-            throw new ObjectOptimisticLockingFailureException(Comment.class, comment.getId());
-        }
     }
 
     /**

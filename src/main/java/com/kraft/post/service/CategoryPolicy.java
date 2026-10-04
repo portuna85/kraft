@@ -1,7 +1,7 @@
 package com.kraft.post.service;
 
 import com.kraft.post.domain.Category;
-import com.kraft.user.domain.Role;
+import com.kraft.shared.security.OwnershipPolicy;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 
@@ -25,7 +25,7 @@ public final class CategoryPolicy {
             return;
         }
 
-        if (!isAdmin(authentication)) {
+        if (!OwnershipPolicy.isAdmin(authentication)) {
             throw new AccessDeniedException("공지 분류는 관리자만 사용할 수 있습니다.");
         }
     }
@@ -36,14 +36,9 @@ public final class CategoryPolicy {
      * post-update.html의 옛 th:each/th:if 필터를 그대로 옮긴 것이다.
      */
     public static List<Category> availableCategoriesFor(Authentication authentication, Category current) {
-        boolean isAdmin = isAdmin(authentication);
+        boolean isAdmin = OwnershipPolicy.isAdmin(authentication);
         return Arrays.stream(Category.values())
                 .filter(c -> c != Category.NOTICE || c == current || isAdmin)
                 .toList();
-    }
-
-    public static boolean isAdmin(Authentication authentication) {
-        return authentication != null && authentication.getAuthorities().stream()
-                .anyMatch(authority -> authority.getAuthority().equals(Role.ADMIN.getKey()));
     }
 }

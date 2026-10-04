@@ -1,5 +1,6 @@
 package com.kraft.seo;
 
+import com.kraft.shared.web.BaseUrl;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
@@ -22,7 +23,7 @@ public class SitemapController {
 
     public SitemapController(SitemapService sitemapService, @Value("${app.base-url}") String baseUrl) {
         this.sitemapService = sitemapService;
-        this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+        this.baseUrl = BaseUrl.normalize(baseUrl);
     }
 
     @GetMapping(value = "/sitemap.xml", produces = MediaType.APPLICATION_XML_VALUE)

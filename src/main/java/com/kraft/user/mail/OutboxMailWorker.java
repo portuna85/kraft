@@ -1,5 +1,6 @@
 package com.kraft.user.mail;
 
+import com.kraft.shared.web.BaseUrl;
 import com.kraft.user.domain.EmailMasker;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -255,13 +256,13 @@ public class OutboxMailWorker {
             // 접근 로그·브라우저 기록에 남는다. 이미 발송된 옛 ?token= 링크는 24시간 동안 계속
             // 열리므로 UserPageController가 쿼리도 함께 받는다.
             case VERIFY_EMAIL -> "아래 링크를 클릭해 이메일 인증을 완료해 주세요:\n"
-                    + baseUrl + "/users/verify#token=" + token
+                    + BaseUrl.normalize(baseUrl) + "/users/verify#token=" + token
                     + "\n\n이 링크는 24시간 동안 유효합니다.";
             // 토큰을 쿼리 문자열이 아니라 프래그먼트(#)로 싣는다(A-SEC-11) — 프래그먼트는
             // 브라우저가 서버·프록시로 전송하지 않으므로 nginx 접근 로그에 1회용 토큰이
             // 남지 않는다. PasswordResetApp.vue가 location.hash에서 읽는다.
             case PASSWORD_RESET -> "아래 링크에서 새 비밀번호를 정해 주세요:\n"
-                    + baseUrl + "/users/password-reset#token=" + token
+                    + BaseUrl.normalize(baseUrl) + "/users/password-reset#token=" + token
                     + "\n\n이 링크는 30분 동안 한 번만 사용할 수 있습니다."
                     + "\n요청한 적이 없다면 이 메일을 무시하세요. 비밀번호는 그대로입니다.";
             case LOGIN_ATTEMPTS_WARNING -> "회원님 계정에 짧은 시간 동안 로그인 시도가 많았습니다."

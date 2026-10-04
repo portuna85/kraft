@@ -30,11 +30,15 @@ public final class OwnershipPolicy {
             return false;
         }
 
-        boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(authority -> authority.getAuthority().equals(Role.ADMIN.getKey()));
         boolean isOwner = owner != null && isSamePrincipal(authentication, owner);
 
-        return isAdmin || isOwner;
+        return isAdmin(authentication) || isOwner;
+    }
+
+    /** 관리자 권한을 가졌는지. 비로그인(null)이면 false다. 관리자 판정은 이 한 곳에서만 한다. */
+    public static boolean isAdmin(Authentication authentication) {
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals(Role.ADMIN.getKey()));
     }
 
     /**

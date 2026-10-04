@@ -189,7 +189,7 @@ class PostRepositoryTest {
         em.clear();
 
         Page<PostRowDto> page = postRepository.search(null, null, false,
-                PageRequest.of(0, 10, com.kraft.post.web.PostSortPolicy.effectiveSort(
+                PageRequest.of(0, 10, com.kraft.post.service.PostSortPolicy.effectiveSort(
                         Sort.by(Sort.Direction.DESC, "viewCount"))));
 
         assertThat(page.getContent()).extracting(PostRowDto::id)

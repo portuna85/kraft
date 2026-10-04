@@ -14,9 +14,9 @@ import com.kraft.post.dto.PostsListResponseDto;
 import com.kraft.post.dto.PostsPageResponseDto;
 import com.kraft.post.dto.PostUpdateRequestDto;
 import com.kraft.post.dto.PostViewDto;
-import com.kraft.post.web.PostSortPolicy;
 import com.kraft.report.domain.ReportTargetType;
 import com.kraft.report.event.TargetDeletedEvent;
+import com.kraft.shared.domain.VersionCheck;
 import com.kraft.shared.security.CurrentUser;
 import com.kraft.shared.security.OwnershipPolicy;
 import com.kraft.shared.security.WriteAccessPolicy;
@@ -32,7 +32,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -154,7 +153,7 @@ public class PostService {
         User actor = findUser(authentication);
         WriteAccessPolicy.requireVerified(actor);
         validateOwner(post, authentication);
-        validateVersion(post, requestDto.version());
+        VersionCheck.require(Post.class, post.getId(), post.getVersion(), requestDto.version());
         CategoryPolicy.requireCanUse(authentication, requestDto.category());
 
         String oldPicture = post.getPicture();
@@ -441,17 +440,6 @@ public class PostService {
             return;
         }
         AfterCommit.run(() -> postImageCleaner.cleanPendingDeletionsFor(imageIds));
-    }
-
-    /**
-     * 화면이 받아간 버전과 지금 DB의 버전이 다르면, 그 사이 다른 곳에서 저장이 일어난 것이다.
-     * API 요청은 DTO 검증이 버전을 필수로 받는다(F11). null은 API를 거치지 않는 내부 호출만
-     * 해당하며 그때는 검사하지 않는다.
-     */
-    private void validateVersion(Post post, Long expectedVersion) {
-        if (expectedVersion != null && !expectedVersion.equals(post.getVersion())) {
-            throw new ObjectOptimisticLockingFailureException(Post.class, post.getId());
-        }
     }
 
     /** 이 페이지에 담긴 글들의 댓글 수를 한 번에 묶어 조회한다(N+1 방지). */

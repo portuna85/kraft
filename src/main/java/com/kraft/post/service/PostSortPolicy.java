@@ -1,4 +1,4 @@
-package com.kraft.post.web;
+package com.kraft.post.service;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;

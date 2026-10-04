@@ -1,6 +1,7 @@
 package com.kraft.seo;
 
 import com.kraft.post.domain.PostRepository;
+import com.kraft.shared.web.BaseUrl;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -34,7 +35,7 @@ public class SitemapService {
                           @Value("${app.base-url}") String baseUrl,
                           @Value("${app.recommend.enabled:true}") boolean recommendEnabled) {
         this.postRepository = postRepository;
-        this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+        this.baseUrl = BaseUrl.normalize(baseUrl);
         this.recommendEnabled = recommendEnabled;
     }
 

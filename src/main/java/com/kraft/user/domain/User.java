@@ -6,7 +6,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 
 /**
@@ -159,26 +158,9 @@ public class User extends BaseEntity {
         this.suspendedUntil = null;
     }
 
-    /** 로그인 실패 한 번을 누적하고, 누적된 값을 돌려준다(잠금 여부는 호출한 쪽이 판단한다). */
-    public int recordFailedLogin() {
-        this.failedLoginAttempts++;
-        return this.failedLoginAttempts;
-    }
-
-    /** 지금부터 {@code duration} 동안 로그인을 막는다. */
-    public void lockFor(Duration duration) {
-        this.lockedUntil = LocalDateTime.now().plus(duration);
-    }
-
     /** 기간이 남았는지 지금 판정한다. 만료된 잠금은 아무것도 하지 않아도 저절로 풀린다. */
     public boolean isLocked() {
         return lockedUntil != null && LocalDateTime.now().isBefore(lockedUntil);
-    }
-
-    /** 로그인 성공 시 누적을 지운다. */
-    public void resetFailedLogins() {
-        this.failedLoginAttempts = 0;
-        this.lockedUntil = null;
     }
 
     @PrePersist

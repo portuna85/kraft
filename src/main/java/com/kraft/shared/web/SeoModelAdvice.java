@@ -23,7 +23,7 @@ public class SeoModelAdvice {
     private final String siteBaseUrl;
 
     public SeoModelAdvice(@Value("${app.base-url}") String baseUrl) {
-        this.siteBaseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+        this.siteBaseUrl = BaseUrl.normalize(baseUrl);
     }
 
     @ModelAttribute("siteBaseUrl")

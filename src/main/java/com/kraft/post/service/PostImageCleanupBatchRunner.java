@@ -46,7 +46,7 @@ class PostImageCleanupBatchRunner {
     /**
      * 삭제가 예약된 파일 한 배치를 지운다. id 커서로 이전 배치의 마지막 id 다음부터 조회해,
      * 계속 실패해 상태가 그대로인 행이 다음 배치 조회를 막지 않게 한다(B06 추가 발견) —
-     * {@code findAllByStatus}로 매번 같은 페이지(0)를 다시 보면 실패 행이 항상 맨 앞을 차지해
+     * 매번 같은 페이지(0)를 다시 보면 실패 행이 항상 맨 앞을 차지해
      * 뒤쪽 정상 행이 한 주기 내내 굶을 수 있었다.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)

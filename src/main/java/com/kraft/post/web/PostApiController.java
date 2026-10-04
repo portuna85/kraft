@@ -9,6 +9,7 @@ import com.kraft.post.dto.PostSaveRequestDto;
 import com.kraft.post.dto.PostsPageResponseDto;
 import com.kraft.post.dto.PostUpdateRequestDto;
 import com.kraft.post.service.PostService;
+import com.kraft.post.service.PostSortPolicy;
 import com.kraft.shared.web.RateLimitResponses;
 import com.kraft.shared.web.WriteRateLimiters;
 import jakarta.validation.Valid;

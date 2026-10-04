@@ -1,5 +1,6 @@
 package com.kraft.user.web;
 
+import com.kraft.shared.web.PageRedirect;
 import com.kraft.shared.web.PageWindow;
 import com.kraft.user.dto.SuspendedUserDto;
 import com.kraft.user.service.SuspensionService;
@@ -10,7 +11,8 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.util.UriComponentsBuilder;
+
+import java.util.Optional;
 
 /**
  * 관리자용 정지 회원 화면. 경로가 {@code /admin} 아래라 {@code SecurityConfig}가 관리자만
@@ -28,11 +30,10 @@ public class AdminUserPageController {
 
         // 정지가 풀릴수록 목록이 줄어든다 — PostPageController·AdminReportPageController와
         // 같은 이유로 범위를 넘는 page를 보정한다(F09).
-        if (users.getTotalPages() > 0 && pageable.getPageNumber() >= users.getTotalPages()) {
-            return "redirect:" + UriComponentsBuilder.fromPath("/admin/users")
-                    .queryParam("page", users.getTotalPages() - 1)
-                    .build()
-                    .toUriString();
+        Optional<String> redirect = PageRedirect.pastLastPage(
+                "/admin/users", pageable.getPageNumber(), users.getTotalPages());
+        if (redirect.isPresent()) {
+            return redirect.get();
         }
 
         model.addAttribute("users", users.getContent());

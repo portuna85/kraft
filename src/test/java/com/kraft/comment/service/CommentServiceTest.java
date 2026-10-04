@@ -305,7 +305,7 @@ class CommentServiceTest {
     }
 
     /**
-     * B12: 화면이 받아간 버전과 지금 버전이 같으면 저장을 허용한다 — PostService.validateVersion과
+     * B12: 화면이 받아간 버전과 지금 버전이 같으면 저장을 허용한다 — VersionCheck과
      * 같은 계약.
      */
     @Test

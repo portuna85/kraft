@@ -14,15 +14,13 @@ public interface PostImageRepository extends JpaRepository<PostImage, Long> {
 
     Optional<PostImage> findByFileName(String fileName);
 
-    boolean existsByFileName(String fileName);
-
     /** 관측용 집계(O03) — 삭제 예약됐지만 아직 실제로 지우지 못한 파일 수(정리 주기의 backlog). */
     long countByStatus(PostImageStatus status);
 
     /**
      * 후보 파일명 중 실제로 대장에 있는 것만 돌려준다(B11). {@code OrphanFileReconciler}가
-     * 예전에는 디렉터리의 파일마다 {@code existsByFileName}을 따로 불러, 파일 수만큼 쿼리가
-     * 늘었다. 청크 단위로 이 메서드를 한 번씩만 불러 왕복 수를 줄인다.
+     * 파일마다 따로 존재 여부를 묻지 않고 청크 단위로 이 메서드를 한 번씩만 불러, 파일 수만큼
+     * 쿼리가 늘지 않게 한다.
      */
     @Query("SELECT p.fileName FROM PostImage p WHERE p.fileName IN :fileNames")
     List<String> findFileNamesIn(@Param("fileNames") List<String> fileNames);
@@ -32,20 +30,11 @@ public interface PostImageRepository extends JpaRepository<PostImage, Long> {
     List<PostImage> findAllByIdInAndStatus(List<Long> ids, PostImageStatus status);
 
     /**
-     * 대상 전체가 아니라 {@code pageable}만큼만 가져온다(B10). 정리 대상이 대량으로 쌓이면
-     * 예전에는 한 트랜잭션이 전부 로딩해 그만큼 heap·잠금 시간이 늘었다 — 호출하는 쪽
-     * ({@code PostImageCleaner})이 여러 번 나눠 부른다.
-     */
-    List<PostImage> findAllByStatus(PostImageStatus status, Pageable pageable);
-
-    /** {@link #findAllByStatus(PostImageStatus, Pageable)}와 같은 이유로 배치 크기를 받는다(B10). */
-    List<PostImage> findAllByStatusAndCreatedAtBefore(PostImageStatus status, LocalDateTime threshold, Pageable pageable);
-
-    /**
-     * id 커서 방식 배치 조회(B06). {@link #findAllByStatus}를 매 배치마다 같은 페이지(0)로
-     * 다시 부르면, 계속 실패해 상태가 그대로인 행이 항상 맨 앞에 걸려 뒤쪽의 정상 행이 한
-     * 주기(최대 25배치) 동안 전혀 처리되지 못할 수 있다. id가 이전 배치의 마지막 id보다 큰
-     * 것만 가져와 실패한 행을 지나쳐 진행한다.
+     * id 커서 방식 배치 조회(B06, B10). 대상 전체가 아니라 {@code pageable}만큼만 가져오고, 호출하는
+     * 쪽({@code PostImageCleanupBatchRunner})이 여러 번 나눠 부른다. 매 배치를 같은 페이지(0)로
+     * 다시 부르면 계속 실패해 상태가 그대로인 행이 항상 맨 앞에 걸려 뒤쪽의 정상 행이 한 주기
+     * (최대 25배치) 동안 전혀 처리되지 못할 수 있다. id가 이전 배치의 마지막 id보다 큰 것만
+     * 가져와 실패한 행을 지나쳐 진행한다.
      */
     List<PostImage> findAllByStatusAndIdGreaterThanOrderByIdAsc(PostImageStatus status, Long id, Pageable pageable);
 
