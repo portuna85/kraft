@@ -57,8 +57,12 @@ public class DhLotteryClient {
      * 있는 값을 보낸다(A-OPS-08). 비공식 엔드포인트를 여러 사용자를 대신해 정기적으로 두드리는
      * 입장에서, 문제가 생겼을 때(봇 차단, 트래픽 문의) 상대가 누구인지 알 수 있게 하는 최소한의
      * 예의다 — 차단을 피하려는 위장이 아니라 그 반대다.
+     * <p>
+     * ASCII만 쓴다 — HTTP 헤더 값에 비ASCII(한글)가 있으면 상대 서버의 방화벽(Spring
+     * StrictHttpFirewall)이 {@code RequestRejectedException}으로 요청을 거부해 500이 돌아와,
+     * 예전에는 자동 수집·백필이 매번 {@code HTTP_ERROR}로 멈췄다(회차 1244 수집 실패).
      */
-    private static final String USER_AGENT = "kraft-recommend-bot/1.0 (+https://kraft.io.kr; 번호 추천 기능의 회차 조회, 주 최대 4회 예약 실행)";
+    static final String USER_AGENT = "kraft-recommend-bot/1.0 (+https://kraft.io.kr; lottery round lookup for number recommendation, scheduled up to 4 times a week)";
 
     private final RestClient restClient;
     /**

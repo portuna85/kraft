@@ -31,6 +31,12 @@ class DhLotteryClientTest {
     }
 
     @Test
+    @DisplayName("User-Agent는 ASCII 인쇄 문자만 쓴다 — 한글이 섞이면 동행복권 방화벽이 요청을 거부한다")
+    void userAgent_isPrintableAscii() {
+        assertThat(DhLotteryClient.USER_AGENT).matches("[\\x20-\\x7E]+");
+    }
+
+    @Test
     @DisplayName("성공 응답이면 요청한 회차의 검증된 번호 6개와 부가 정보를 담은 Success를 반환한다")
     void success_returnsValidatedDraw() {
         MockRestServiceServer[] serverOut = new MockRestServiceServer[1];
