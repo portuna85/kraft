@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
@@ -97,6 +98,18 @@ class UserPageControllerTest {
         verifyNoInteractions(emailVerificationService);
     }
 
+    /** BE-04: 새 메일은 토큰을 프래그먼트로 보내므로 서버가 받는 요청에는 token이 없다. */
+    @Test
+    @DisplayName("GET /users/verify 는 token 쿼리가 없어도(프래그먼트 링크) 확인 화면을 보여준다")
+    void verifyEmailConfirm_withoutQueryToken_stillRenders() throws Exception {
+        mockMvc.perform(get("/users/verify"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("user/verify-confirm"))
+                .andExpect(model().attribute("token", ""));
+
+        verifyNoInteractions(emailVerificationService);
+    }
+
     @Test
     @DisplayName("POST /users/verify 는 토큰이 유효하면 인증하고 성공 결과로 리다이렉트한다")
     void verifyEmailSubmit_whenTokenValid_redirectsWithSuccess() throws Exception {
@@ -138,6 +151,29 @@ class UserPageControllerTest {
                 .andExpect(status().is3xxRedirection());
 
         verify(userDetailsService).loadUserById(1L);
+    }
+
+    /** BE-02: 갱신된 principal이 BCrypt 해시를 들고 세션에 직렬화되지 않는다. */
+    @Test
+    @DisplayName("POST /users/verify 로 갱신한 세션 principal에는 비밀번호 해시가 남지 않는다")
+    void verifyEmailSubmit_whenSessionRefreshed_erasesPasswordHash() throws Exception {
+        given(emailVerificationService.verify("valid-token")).willReturn(1L);
+        KraftUserDetails refreshed = new KraftUserDetails(1L, "encoded-hash", "닉네임",
+                List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        given(userDetailsService.loadUserById(1L)).willReturn(refreshed);
+
+        KraftUserDetails guestPrincipal = new KraftUserDetails(1L, "encoded", "닉네임",
+                List.of(new SimpleGrantedAuthority("ROLE_GUEST")));
+
+        var session = mockMvc.perform(post("/users/verify").param("token", "valid-token").with(csrf())
+                        .with(SecurityMockMvcRequestPostProcessors.user(guestPrincipal)))
+                .andExpect(status().is3xxRedirection())
+                .andReturn().getRequest().getSession(false);
+
+        var savedContext = (org.springframework.security.core.context.SecurityContext) session.getAttribute(
+                org.springframework.security.web.context.HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+        assertThat(savedContext.getAuthentication().getCredentials()).isNull();
+        assertThat(((KraftUserDetails) savedContext.getAuthentication().getPrincipal()).getPassword()).isNull();
     }
 
 }

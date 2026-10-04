@@ -66,5 +66,8 @@ loadIf('.report-list', './features/admin-reports.js');
 // 않는다.
 loadIf('#btn-load-more', './features/load-more.js');
 
+// 이메일 인증 확인 화면: 메일 링크의 프래그먼트 토큰을 폼에 채운다(BE-04).
+loadIf('#verify-confirm-form', './features/verify-confirm.js');
+
 // 다크 모드 토글(11단계). 모든 페이지의 헤더에 항상 있다.
 loadIf('#btn-theme-toggle', './features/theme-toggle.js');

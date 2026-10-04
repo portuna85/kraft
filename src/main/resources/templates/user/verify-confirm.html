@@ -17,11 +17,16 @@
                  스캐너·미리보기가 이 화면을 대신 열어도 인증이 끝나지 않는다. 실제 소비는
                  사용자가 이 버튼을 눌러야만 일어나는 POST에서 한 번만 한다. -->
             <p>아래 버튼을 눌러 이메일 인증을 완료해 주세요.</p>
-            <form th:action="@{/users/verify}" method="post">
-                <input type="hidden" name="token" th:value="${token}" />
+            <!-- 새 메일의 토큰은 URL 프래그먼트(#token=)로 와서 서버가 볼 수 없다(BE-04).
+                 features/verify-confirm.js가 읽어 아래 hidden input을 채운다. 옛 ?token= 링크는
+                 서버가 이미 값을 채워 렌더한다. -->
+            <form id="verify-confirm-form" th:action="@{/users/verify}" method="post">
+                <input id="verify-token" type="hidden" name="token" th:value="${token}" />
                 <input type="hidden" th:name="${_csrf?.parameterName}" th:value="${_csrf?.token}" />
                 <button id="btn-verify-confirm" type="submit" class="btn btn-primary">이메일 인증 완료하기</button>
             </form>
+            <p id="verify-token-missing" class="text-muted" role="alert" hidden>
+                인증 링크가 올바르지 않습니다. 인증 메일의 링크를 다시 열어 주세요.</p>
         </div>
     </main>
 </div>

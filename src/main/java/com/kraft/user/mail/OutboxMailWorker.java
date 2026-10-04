@@ -251,8 +251,11 @@ public class OutboxMailWorker {
      */
     private String body(OutboxMailKind kind, String token) {
         return switch (kind) {
+            // 비밀번호 재설정과 같은 이유로 프래그먼트(#)에 싣는다(BE-04) — 쿼리 문자열은 프록시·
+            // 접근 로그·브라우저 기록에 남는다. 이미 발송된 옛 ?token= 링크는 24시간 동안 계속
+            // 열리므로 UserPageController가 쿼리도 함께 받는다.
             case VERIFY_EMAIL -> "아래 링크를 클릭해 이메일 인증을 완료해 주세요:\n"
-                    + baseUrl + "/users/verify?token=" + token
+                    + baseUrl + "/users/verify#token=" + token
                     + "\n\n이 링크는 24시간 동안 유효합니다.";
             // 토큰을 쿼리 문자열이 아니라 프래그먼트(#)로 싣는다(A-SEC-11) — 프래그먼트는
             // 브라우저가 서버·프록시로 전송하지 않으므로 nginx 접근 로그에 1회용 토큰이

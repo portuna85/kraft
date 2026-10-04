@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.CredentialsContainer;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -22,6 +23,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequiredArgsConstructor
 @Controller
 public class UserPageController {
+
+    /** 상태가 없는 객체라 요청마다 새로 만들 이유가 없다. SecurityConfig가 따로 등록한 빈은 없다. */
+    private static final HttpSessionSecurityContextRepository SESSION_CONTEXT_REPOSITORY =
+            new HttpSessionSecurityContextRepository();
 
     private final EmailVerificationService emailVerificationService;
     private final UserDetailsServiceImpl userDetailsService;
@@ -65,10 +70,14 @@ public class UserPageController {
      * 인증이 끝나 버리면, 사용자보다 먼저 링크를 여는 메일 보안 스캐너·미리보기가 토큰을 대신
      * 써 버린다(전체 리뷰 2026-09-26 A-FE-04). "이메일 인증 완료하기" 버튼을 누른 사용자의
      * 명시적 POST에서만 실제로 소비한다.
+     * <p>
+     * 새 메일의 토큰은 URL 프래그먼트(#token=...)로 와서 서버는 볼 수 없다 — 화면의
+     * {@code verify-confirm.js}가 location.hash에서 읽어 폼에 채운다(BE-04). 쿼리 문자열은
+     * 이 변경 전에 발송된 메일의 옛 링크(24시간 유효)를 위한 하위 호환이다.
      */
     @GetMapping("/users/verify")
-    public String verifyEmailConfirm(@RequestParam String token, Model model) {
-        model.addAttribute("token", token);
+    public String verifyEmailConfirm(@RequestParam(required = false) String token, Model model) {
+        model.addAttribute("token", token == null ? "" : token);
         model.addAttribute("pageTitle", "이메일 인증");
         return "user/verify-confirm";
     }
@@ -119,11 +128,17 @@ public class UserPageController {
             return;
         }
         UserDetails refreshed = userDetailsService.loadUserById(verifiedUserId);
+        // 일반 로그인은 AuthenticationManager가 인증 뒤 credentials를 지우지만 이 경로는 그 단계를
+        // 거치지 않는다 — 지우지 않으면 DB에서 다시 읽은 BCrypt 해시가 principal 그대로 JDBC
+        // 세션 테이블에 직렬화된다(BE-02).
+        if (refreshed instanceof CredentialsContainer container) {
+            container.eraseCredentials();
+        }
         Authentication newAuthentication = UsernamePasswordAuthenticationToken.authenticated(
-                refreshed, authentication.getCredentials(), refreshed.getAuthorities());
+                refreshed, null, refreshed.getAuthorities());
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(newAuthentication);
         SecurityContextHolder.setContext(context);
-        new HttpSessionSecurityContextRepository().saveContext(context, request, response);
+        SESSION_CONTEXT_REPOSITORY.saveContext(context, request, response);
     }
 }
