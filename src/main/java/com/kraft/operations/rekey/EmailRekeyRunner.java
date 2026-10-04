@@ -46,7 +46,8 @@ public class EmailRekeyRunner implements ApplicationRunner {
         System.exit(SpringApplication.exit(context, () -> exitCode));
     }
 
-    private int rekey() {
+    /** package-private: 테스트가 {@code System.exit}를 거치지 않고 종료 코드만 직접 확인한다. */
+    int rekey() {
         try {
             EmailRekeyService.Result result = emailRekeyService.rekeyAll(oldKey, newKey);
             log.info("이메일 키 교체 완료. 대상 {}건. 전체 검증을 시작합니다.", result.total());

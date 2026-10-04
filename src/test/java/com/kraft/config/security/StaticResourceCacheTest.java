@@ -3,9 +3,14 @@ package com.kraft.config.security;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.UUID;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -29,6 +34,32 @@ class StaticResourceCacheTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Value("${app.upload.dir}")
+    private String uploadDir;
+
+    /**
+     * BE-14: 업로드 이미지는 365일 immutable이 아니라 하루 public으로 캐시한다 — 모더레이션으로 지운
+     * 이미지가 브라우저·프록시에 1년 남지 않게 한다. 실제 업로드 디렉터리에 파일을 하나 두고 요청한다.
+     */
+    @Test
+    @DisplayName("업로드 이미지는 1일 public으로 캐시하고 immutable이 아니다(BE-14)")
+    void uploadedImage_hasShortPublicCache() throws Exception {
+        Path dir = Path.of(uploadDir);
+        Files.createDirectories(dir);
+        Path file = dir.resolve("cache-header-test-" + UUID.randomUUID() + ".txt");
+        Files.writeString(file, "x");
+        try {
+            mockMvc.perform(get("/images/" + file.getFileName()))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string("Cache-Control", containsString("max-age=86400")))
+                    .andExpect(header().string("Cache-Control", containsString("public")))
+                    .andExpect(header().string("Cache-Control", not(containsString("immutable"))))
+                    .andExpect(header().string("Cache-Control", not(containsString("no-store"))));
+        } finally {
+            Files.deleteIfExists(file);
+        }
+    }
 
     @Test
     @DisplayName("CSS 응답에는 no-store가 없다")
