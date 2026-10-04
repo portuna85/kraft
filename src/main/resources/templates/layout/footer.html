@@ -215,10 +215,13 @@
     -->
     <script type="module" th:src="@{/js/vue-dist/bootstrap.js}"></script>
 
-    <!-- 앱 코드. ES 모듈이라 하위 파일들을 스스로 불러온다(/js/**는 이미 permitAll). 진입점만
-         버전이 붙은 경로로 요청하면 된다 — 그 안의 상대 경로 import(예: ./ui/flash.js)는
-         브라우저가 이 응답의 실제 URL을 기준으로 풀어, 같은 버전 접두사를 자동으로 물려받는다. -->
-    <script type="module" th:src="@{/js/app/main.js}"></script>
+    <!-- 앱 코드(plain JS). static/js/app의 원본을 Vite가 번들·압축한 것이다(FE-03·FE-05) — Vue
+         아일랜드와 같은 빌드라 core/·ui/ 모듈을 한 벌만 내려받고 실행한다. 각 기능은 해당 페이지에서만
+         동적으로 받는다. 진입점만 버전이 붙은 경로로 요청하면 된다 — 그 안의 상대 경로 import는
+         브라우저가 이 응답의 실제 URL을 기준으로 풀어, 같은 버전 접두사를 자동으로 물려받는다.
+         core 청크는 진입점이 파싱된 뒤에야 발견되는 2단 워터폴이 되지 않게 미리 받는다. -->
+    <link rel="modulepreload" th:href="@{/js/vue-dist/chunks/core.js}" />
+    <script type="module" th:src="@{/js/vue-dist/main.js}"></script>
 </div>
 </body>
 </html>

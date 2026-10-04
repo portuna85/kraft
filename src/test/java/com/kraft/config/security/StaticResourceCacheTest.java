@@ -41,7 +41,7 @@ class StaticResourceCacheTest {
     @Test
     @DisplayName("JS 응답에는 no-store가 없다")
     void jsResponse_hasNoStoreRemoved() throws Exception {
-        mockMvc.perform(get("/js/app/main.js"))
+        mockMvc.perform(get("/js/vue-dist/main.js"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", not(containsString("no-store"))));
     }

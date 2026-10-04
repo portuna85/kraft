@@ -22,26 +22,31 @@ flash.consume();
 siteNav.init();
 
 /**
- * `selector`에 맞는 요소가 있을 때만 `modulePath`를 불러와 `init()`을 부른다.
+ * `selector`에 맞는 요소가 있을 때만 `load()`가 돌려주는 모듈을 불러와 `init()`을 부른다.
+ *
+ * `load`는 `() => import('./features/x.js')`처럼 **문자열 리터럴 경로**를 가진 함수여야 한다 —
+ * 이 파일은 Vite로 번들되는데(FE-03·FE-05), 변수로 만든 경로는 번들러가 모듈을 찾지 못해
+ * 배포본에서 404가 된다. 번들러가 각 기능을 별도 청크로 쪼개 주므로 "필요한 페이지에서만
+ * 받는다"는 성질은 그대로다.
  *
  * 실패하면 콘솔에 남긴다 — 조용히 삼키면 "버튼은 보이는데 눌러도 반응이 없다"는 원인 불명
  * 버그가 된다. E2E 픽스처가 콘솔 오류를 실패로 잡으므로(fixtures.js) 회귀가 여기서 드러난다.
  */
-async function loadIf(selector, modulePath) {
+async function loadIf(selector, load, name) {
     if (!document.querySelector(selector)) {
         return;
     }
     try {
-        const feature = await import(modulePath);
+        const feature = await load();
         feature.init();
     } catch (error) {
-        console.error(`기능을 불러오지 못했습니다: ${modulePath}`, error);
+        console.error(`기능을 불러오지 못했습니다: ${name}`, error);
     }
 }
 
 // 계정 모달(로그아웃·비밀번호 변경·탈퇴·인증 메일 재발송)은 헤더에서 시작하고 로그인
 // 상태에 따라 sec:authorize가 걸러낸 것만 렌더링된다.
-loadIf('#btn-logout, #changePasswordModal, #withdrawModal, #resendVerificationModal', './features/account.js');
+loadIf('#btn-logout, #changePasswordModal, #withdrawModal, #resendVerificationModal', () => import('./features/account.js'), 'features/account.js');
 
 // 게시글·댓글 공용 삭제 확인 모달. 트리거 버튼은 Vue 아일랜드(post-edit·comments)가 그린다.
 // 댓글 목록은 위임 클릭 핸들러라 나중에 추가되는 항목도 그대로 잡지만, 로드 자체는
@@ -53,21 +58,21 @@ loadIf('#btn-logout, #changePasswordModal, #withdrawModal, #resendVerificationMo
 // '#post-app, #comments-app'은 그 Vue 아일랜드가 마운트하는 자리 자체라, Vue 청크 로드가
 // 늦어져 트리거 버튼이 아직 그려지기 전이어도(개선 보고서 "동적 DOM과 기능 초기화 시점")
 // post-update.html이 서버에서 항상 먼저 렌더링하므로 이 셀렉터만은 확실히 존재한다(F06).
-loadIf('[data-target-kind], #comments-heading, #post-app, #comments-app', './features/delete-confirm.js');
+loadIf('[data-target-kind], #comments-heading, #post-app, #comments-app', () => import('./features/delete-confirm.js'), 'features/delete-confirm.js');
 
 // 게시글·댓글 공용 신고 모달. 트리거 버튼도 마찬가지로 Vue 아일랜드가 그리므로 같은 이유로
 // 안정된 마운트 지점도 함께 본다(F06).
-loadIf('[data-report-kind], #post-app, #comments-app', './features/report-dialog.js');
+loadIf('[data-report-kind], #post-app, #comments-app', () => import('./features/report-dialog.js'), 'features/report-dialog.js');
 
 // 관리자 신고·정지 회원 처리 버튼. 목록이 비어 있으면 .report-list 자체가 렌더링되지 않는다.
-loadIf('.report-list', './features/admin-reports.js');
+loadIf('.report-list', () => import('./features/admin-reports.js'), 'features/admin-reports.js');
 
 // 목록 "더 보기"(10단계). 마지막 페이지거나 글이 없으면 index.html이 버튼 자체를 렌더링하지
 // 않는다.
-loadIf('#btn-load-more', './features/load-more.js');
+loadIf('#btn-load-more', () => import('./features/load-more.js'), 'features/load-more.js');
 
 // 이메일 인증 확인 화면: 메일 링크의 프래그먼트 토큰을 폼에 채운다(BE-04).
-loadIf('#verify-confirm-form', './features/verify-confirm.js');
+loadIf('#verify-confirm-form', () => import('./features/verify-confirm.js'), 'features/verify-confirm.js');
 
 // 다크 모드 토글(11단계). 모든 페이지의 헤더에 항상 있다.
-loadIf('#btn-theme-toggle', './features/theme-toggle.js');
+loadIf('#btn-theme-toggle', () => import('./features/theme-toggle.js'), 'features/theme-toggle.js');

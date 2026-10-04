@@ -36,6 +36,7 @@
                  글 작성·수정이 함께 쓰는 폼 코드다. 어떤 청크를 미리 받아야 하는지는
                  scripts/check-preload.mjs가 빌드 결과와 대조해 검증한다. -->
             <link rel="modulepreload" th:href="@{/js/vue-dist/chunks/runtime.js}" />
+            <link rel="modulepreload" th:href="@{/js/vue-dist/chunks/core.js}" />
             <link rel="modulepreload" th:href="@{/js/vue-dist/chunks/post-shared.js}" />
             <script type="module" th:src="@{/js/vue-dist/post-save.js}" data-mount-fallback="post-save-app"></script>
         </div>

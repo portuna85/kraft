@@ -122,6 +122,10 @@ tasks.processResources {
     // static/js 안의 *.test.js(A-QA-08)는 node --test로만 실행하는 순수 로직 단위 테스트다.
     // 배포 정적 자원으로 나갈 이유가 없다 — src/vue의 테스트가 vite build 대상에서 빠지는 것과 같다.
     exclude("**/*.test.js")
+    // static/js/app은 주석이 달린 원본 소스다. 배포되는 것은 Vite가 번들·압축한 vue-dist/main.js와
+    // 그 청크다(FE-03·FE-05) — 원본을 jar에 같이 넣으면 같은 코드를 두 번 싣고, 번들되지 않은
+    // 복사본이 /js/app/**로 그대로 서빙된다.
+    exclude("static/js/app/**")
 }
 
 tasks.withType<Test> {

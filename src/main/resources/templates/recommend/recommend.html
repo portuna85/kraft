@@ -71,6 +71,7 @@
                  둔다. F01: 이 링크가 없었는데도 check-preload.mjs가 "preload가 아예 없는
                  페이지"는 검사하지 않고 건너뛰어 놓쳤다. -->
             <link rel="modulepreload" th:href="@{/js/vue-dist/chunks/runtime.js}" />
+            <link rel="modulepreload" th:href="@{/js/vue-dist/chunks/core.js}" />
             <script type="module" th:src="@{/js/vue-dist/recommend.js}" data-mount-fallback="recommend-app"></script>
         </div>
     </main>

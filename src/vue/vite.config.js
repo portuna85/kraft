@@ -7,11 +7,13 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /**
- * 대부분의 페이지가 쓰는 작은 공용 모듈. 모두 runtime 청크에 묶인다(FE-04, manualChunks 참고).
+ * Vue 없이 동작하는 작은 공용 모듈. 모든 페이지의 main.js(plain JS 진입점, FE-03·FE-05)와 Vue
+ * 아일랜드가 함께 쓰므로 한 청크("core")에 묶는다 — Vue 런타임과 같은 청크에 두면 Vue를 쓰지
+ * 않는 페이지(로그인·목록 등)도 main.js 때문에 Vue를 내려받게 된다.
  * 새 공용 모듈이 생겨 별도 청크로 떨어지면 check-preload.mjs가 그 청크가 preload되지 않았다고
  * 실패시키므로, 그때 여기에 추가하거나 템플릿에 preload를 더한다.
  */
-const SMALL_SHARED_MODULES = [
+const CORE_MODULES = [
     '/core/http.js',
     '/core/httpResponse.js',
     '/core/dom.js',
@@ -19,6 +21,13 @@ const SMALL_SHARED_MODULES = [
     '/core/bootstrap-ui.js',
     '/ui/flash.js',
     '/ui/toast.js',
+];
+
+/**
+ * Vue를 import하는 작은 공용 모듈. Vue 런타임과 같은 "runtime" 청크에 묶는다(FE-04).
+ * 따로 두면 각각이 진입 스크립트를 파싱한 뒤에야 발견되는 2단 워터폴이 된다.
+ */
+const SMALL_VUE_MODULES = [
     '/shared/useFieldErrors.js',
     '/shared/usePasswordConfirm.js',
     '/shared/mountIsland.js',
@@ -78,6 +87,12 @@ export default defineConfig({
                 // Modal·Toast만 담아 전역 bootstrap으로 노출하는 번들(FE-06). 템플릿 footer가
                 // 모듈 스크립트로 불러온다 — Vue 아일랜드가 아니라 모든 페이지 공통이다.
                 bootstrap: resolve(__dirname, 'bootstrap/entry.js'),
+                // 모든 페이지의 plain JS 진입점(FE-03·FE-05). 예전에는 번들 없이 /js/app/main.js를
+                // 그대로 내보내, core/·ui/ 모듈이 Vue 아일랜드 번들 안의 복사본과 따로 두 번 내려가고
+                // 실행됐다. 같은 빌드로 묶으면 청크를 공유하고 압축된다. 각 기능(features/*)은
+                // main.js의 동적 import라 해당 페이지에서만 받는다. 주석이 달린 원본은
+                // static/js/app에 그대로 있고 배포 jar에는 들어가지 않는다(build.gradle.kts).
+                main: resolve(__dirname, '../main/resources/static/js/app/main.js'),
             },
             output: {
                 entryFileNames: '[name].js',
@@ -97,16 +112,22 @@ export default defineConfig({
                 // 바뀌면 조용히 어긋난다(개선 보고서 F07). 이름을 고정해 그 경로 자체를
                 // 없애고, scripts/check-preload.mjs가 그래도 어긋나면 빌드를 실패시킨다.
                 //
-                // FE-04: 거의 모든 페이지가 쓰는 작은 모듈(상수·flash·toast·폼 오류 composable 등)도
-                // 같은 청크에 넣는다. 따로 두면 각각이 진입 스크립트를 파싱한 뒤에야 발견되는
-                // 2단 워터폴이 되고, 1KB짜리 청크 하나하나가 왕복 한 번이다. 합쳐서 늘어나는 양은
-                // 약 5KB로, runtime 하나를 미리 받는(modulepreload) 이득이 더 크다.
+                // FE-04: 거의 모든 페이지가 쓰는 작은 Vue 모듈(폼 오류 composable 등)도 같은 청크에
+                // 넣는다. 따로 두면 각각이 진입 스크립트를 파싱한 뒤에야 발견되는 2단 워터폴이 되고,
+                // 1KB짜리 청크 하나하나가 왕복 한 번이다.
+                //
+                // FE-03·FE-05: Vue를 쓰지 않는 작은 공용 모듈(core/·ui/의 http·dom·flash·toast 등)은
+                // "core" 청크로 따로 묶는다. runtime에 넣으면 main.js가 모든 페이지에서 Vue
+                // 런타임을 끌어온다. Vue 페이지 템플릿은 runtime과 core를 함께 preload한다.
                 manualChunks(id) {
                     if (id.includes('/node_modules/vue/') || id.includes('/node_modules/@vue/')) {
                         return 'runtime';
                     }
-                    if (SMALL_SHARED_MODULES.some((suffix) => id.endsWith(suffix))) {
+                    if (SMALL_VUE_MODULES.some((suffix) => id.endsWith(suffix))) {
                         return 'runtime';
+                    }
+                    if (CORE_MODULES.some((suffix) => id.endsWith(suffix))) {
+                        return 'core';
                     }
                     return undefined;
                 },

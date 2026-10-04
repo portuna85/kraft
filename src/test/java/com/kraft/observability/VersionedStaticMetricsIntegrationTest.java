@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class VersionedStaticMetricsIntegrationTest {
 
-    private static final Pattern MAIN_JS = Pattern.compile("src=\"(/[^\"/]+/js/app/main\\.js)\"");
+    private static final Pattern MAIN_JS = Pattern.compile("src=\"(/[^\"/]+/js/vue-dist/main\\.js)\"");
 
     @Autowired
     private MockMvc mockMvc;
