@@ -64,6 +64,13 @@ public class PostImage extends BaseEntity {
     @Column(name = "size_bytes", nullable = false)
     private long sizeBytes;
 
+    /** 업로드할 때 서버가 읽은 픽셀 크기(BE-24). 읽지 못했거나 이 컬럼 도입 전 행이면 null이다. */
+    @Column(name = "width")
+    private Integer width;
+
+    @Column(name = "height")
+    private Integer height;
+
     /**
      * 동시 첨부 경쟁을 막는다. 예전에는 조회 후 상태만 바꾸는 방식이라, 같은 미연결 이미지를
      * 서로 다른 두 게시글이 동시에 붙이면 둘 다 검사를 통과해 마지막에 쓴 쪽이 조용히 이겼다.
@@ -74,10 +81,14 @@ public class PostImage extends BaseEntity {
     private long version;
 
     @Builder
-    public PostImage(String fileName, User owner, long sizeBytes) {
+    public PostImage(String fileName, User owner, long sizeBytes, Integer width, Integer height) {
         this.fileName = fileName;
         this.owner = owner;
         this.sizeBytes = sizeBytes;
+        // 0은 "읽지 못함"(PostImageService.Dimensions.UNKNOWN)이다.
+        boolean measured = width != null && height != null && width > 0 && height > 0;
+        this.width = measured ? width : null;
+        this.height = measured ? height : null;
         this.status = PostImageStatus.ORPHAN;
     }
 

@@ -169,6 +169,9 @@ app:
   # X-Kraft-Build 헤더로 내려주고, CI의 배포 후 확인이 방금 푸시한 커밋과 비교한다(OPS-12).
   build-version: "@buildVersion@"
   mail:
+    # 발신 주소(From). 비워 두면 spring.mail.username(SMTP 로그인 계정)을 쓴다. SPF/DMARC가 맞는
+    # 도메인의 주소여야 스팸함으로 덜 간다(BE-45).
+    from: ${MAIL_FROM:}
     # 메일 발송은 DB 트랜잭션 밖에서 처리한다(OutboxMailWorker). 가입·재발송 직후 한 번 보내고,
     # 그때 실패했거나 앱이 내려가 있던 것을 주기 작업이 다시 시도한다.
     enabled: true

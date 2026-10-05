@@ -22,6 +22,8 @@ public final class EmailHasher {
     static final int MIN_PEPPER_LENGTH = 16;
 
     private static volatile byte[] pepper;
+    /** 키를 이미 넣어 둔 Mac. 호출마다 getInstance·init 하는 대신 복제해 쓴다(BE-46) — Mac은 스레드 안전하지 않아 복제본을 쓴다. */
+    private static volatile Mac macPrototype;
 
     /**
      * 기동 시 한 번 설정한다({@link EmailHmacConfiguration}). {@code User}의 JPA 콜백이 정적으로
@@ -32,12 +34,21 @@ public final class EmailHasher {
     public static void configurePepper(String value) {
         if (value == null || value.isBlank()) {
             pepper = null;
+            macPrototype = null;
             return;
         }
         if (value.length() < MIN_PEPPER_LENGTH) {
             throw new IllegalStateException("이메일 해시 pepper는 최소 " + MIN_PEPPER_LENGTH + "자여야 합니다.");
         }
-        pepper = value.getBytes(StandardCharsets.UTF_8);
+        byte[] key = value.getBytes(StandardCharsets.UTF_8);
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(key, "HmacSHA256"));
+            macPrototype = mac;
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("HMAC-SHA256을 사용할 수 없습니다.", e);
+        }
+        pepper = key;
     }
 
     public static boolean hmacConfigured() {
@@ -49,16 +60,15 @@ public final class EmailHasher {
      * 사전 대입 대상이 아니므로 {@link #sha512Hex}를 그대로 쓴다.
      */
     public static String hmacHex(String email) {
-        byte[] key = pepper;
-        if (key == null) {
+        Mac prototype = macPrototype;
+        if (prototype == null) {
             throw new IllegalStateException("app.security.email-hash-pepper가 설정되지 않았습니다.");
         }
         try {
-            Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(key, "HmacSHA256"));
+            Mac mac = (Mac) prototype.clone();
             return HexFormat.of().formatHex(mac.doFinal(email.getBytes(StandardCharsets.UTF_8)));
-        } catch (GeneralSecurityException e) {
-            throw new IllegalStateException("HMAC-SHA256을 사용할 수 없습니다.", e);
+        } catch (CloneNotSupportedException e) {
+            throw new IllegalStateException("HMAC-SHA256을 복제할 수 없습니다.", e);
         }
     }
 

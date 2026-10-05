@@ -10,7 +10,7 @@ import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 import java.io.IOException;
-import java.io.InputStream;
+import java.nio.file.StandardCopyOption;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -77,29 +77,55 @@ public class PostImageService {
     }
 
     public StoredImage store(MultipartFile file) {
+        // 업로드를 바이트로 한 번만 읽어 검증·메타데이터 제거·저장이 같은 버퍼를 쓴다(BE-21) —
+        // 예전에는 MultipartFile 스트림을 단계마다 다시 열었다. 5MB 상한을 넘기 전에는 읽지 않는다.
+        byte[] original = readUpload(file);
         // 검증이 소문자로 정규화한 확장자를 그대로 파일명에 쓴다. 예전에는 검증만 소문자로 하고
         // 저장은 원본 확장자를 썼기 때문에, 휴대폰·카메라가 흔히 만드는 "IMG_0001.JPG"가
         // "uuid.JPG"로 저장됐다(대소문자를 구분하는 파일 시스템에서 문제가 될 수 있다).
-        ValidatedImage validated = validate(file);
+        ValidatedImage validated = validate(file, original);
         String filename = UUID.randomUUID() + "." + validated.extension();
 
         Path target = Path.of(uploadDir).resolve(filename);
-        long storedSize;
+        // GPS 좌표 등 위치·기기 정보가 담긴 메타데이터를 재인코딩 없이 제거한 뒤 저장한다(A-SEC-10).
+        byte[] stripped = ImageMetadataStripper.strip(original, validated.extension());
+        // 최종 경로에 바로 쓰면 도중에 프로세스가 죽을 때 반쯤 쓰인 파일이 공개 URL에 남는다(BE-22).
+        // 같은 디렉터리의 임시 파일에 다 쓴 뒤 원자적으로 옮긴다.
+        Path temp = target.resolveSibling("." + filename + ".tmp");
         try {
             Files.createDirectories(target.getParent());
-            // GPS 좌표 등 위치·기기 정보가 담긴 메타데이터를 재인코딩 없이 제거한 뒤
-            // 저장한다(A-SEC-10). validate()가 이미 5MB 이하임을 확인했으므로 전체를
-            // 메모리에 올려도 된다.
-            byte[] stripped = ImageMetadataStripper.strip(file.getBytes(), validated.extension());
-            Files.write(target, stripped);
-            storedSize = stripped.length;
+            Files.write(temp, stripped);
+            Files.move(temp, target, StandardCopyOption.ATOMIC_MOVE);
         } catch (IOException e) {
+            deleteQuietly(temp);
             // 사용자 입력이 아니라 서버 디스크 문제다(A-BE-12) — 400이 아니라 500으로 나가야
             // 5xx 경보에 잡힌다.
             throw new StorageException("이미지 저장에 실패했습니다.", e);
         }
 
-        return new StoredImage("/images/" + filename, validated.width(), validated.height(), storedSize);
+        return new StoredImage("/images/" + filename, validated.width(), validated.height(), stripped.length);
+    }
+
+    private static void deleteQuietly(Path path) {
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException ignored) {
+            // 임시 파일 정리는 최선 노력이다.
+        }
+    }
+
+    private byte[] readUpload(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessValidationException("업로드할 파일이 없습니다.");
+        }
+        if (file.getSize() > MAX_FILE_SIZE) {
+            throw new BusinessValidationException("파일 크기는 5MB를 초과할 수 없습니다.");
+        }
+        try {
+            return file.getBytes();
+        } catch (IOException e) {
+            throw new BusinessValidationException("이미지 파일을 읽을 수 없습니다.", e);
+        }
     }
 
     /** {@code store()}가 돌려주는 공개 URL의 접두어. */
@@ -155,23 +181,17 @@ public class PostImageService {
     /**
      * 업로드 파일을 검증하고, 저장에 쓸 소문자 확장자와 실제 픽셀 크기를 돌려준다.
      */
-    private ValidatedImage validate(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new BusinessValidationException("업로드할 파일이 없습니다.");
-        }
-        if (file.getSize() > MAX_FILE_SIZE) {
-            throw new BusinessValidationException("파일 크기는 5MB를 초과할 수 없습니다.");
-        }
+    private ValidatedImage validate(MultipartFile file, byte[] data) {
         String extension = extensionOf(file.getOriginalFilename()).toLowerCase(Locale.ROOT);
         // 확장자만 보면 ".jpg"로 이름만 바뀐 HEIC 파일을 걸러내지 못한다(공유·복사 과정에서
         // 실제로 생긴다). 내용까지 확인해 같은 안내로 응답한다.
-        if (HEIF_EXTENSIONS.contains(extension) || isHeif(file)) {
+        if (HEIF_EXTENSIONS.contains(extension) || isHeif(data)) {
             throw new BusinessValidationException(HEIF_MESSAGE);
         }
         if (!ALLOWED_EXTENSIONS.contains(extension)) {
             throw new BusinessValidationException("허용되지 않는 파일 형식입니다: " + extension);
         }
-        Dimensions dimensions = validateRealImage(file, extension);
+        Dimensions dimensions = validateRealImage(data, extension);
         return new ValidatedImage(extension, dimensions.width(), dimensions.height());
     }
 
@@ -188,13 +208,13 @@ public class PostImageService {
      * {@link #validateWebpPixelCount}가 담당한다(F04).</li>
      * </ol>
      */
-    private Dimensions validateRealImage(MultipartFile file, String extension) {
-        byte[] header = readHeader(file, SIGNATURE_HEADER_LENGTH);
+    private Dimensions validateRealImage(byte[] data, String extension) {
+        byte[] header = java.util.Arrays.copyOf(data, Math.min(data.length, SIGNATURE_HEADER_LENGTH));
         if (!matchesSignature(header, extension)) {
             throw new BusinessValidationException(
                     "이미지 파일이 아니거나 확장자와 실제 형식이 다릅니다: " + extension);
         }
-        return validatePixelCount(file, extension);
+        return validatePixelCount(data, extension);
     }
 
     private boolean matchesSignature(byte[] header, String extension) {
@@ -233,12 +253,11 @@ public class PostImageService {
         static final Dimensions UNKNOWN = new Dimensions(0, 0);
     }
 
-    private Dimensions validatePixelCount(MultipartFile file, String extension) {
+    private Dimensions validatePixelCount(byte[] data, String extension) {
         if ("webp".equals(extension)) {
-            return validateWebpPixelCount(file);
+            return validateWebpPixelCount(data);
         }
-        try (InputStream in = file.getInputStream();
-             ImageInputStream input = ImageIO.createImageInputStream(in)) {
+        try (ImageInputStream input = ImageIO.createImageInputStream(new java.io.ByteArrayInputStream(data))) {
             if (input == null) {
                 return Dimensions.UNKNOWN;
             }
@@ -272,13 +291,7 @@ public class PostImageService {
      * 읽어, 이미지 데이터가 없는 헤더만의 파일도 통과했다. 파일 크기는 {@link #validate}가 이미
      * 5MB 이하로 제한했으므로 전체를 메모리로 읽어도 된다.
      */
-    private Dimensions validateWebpPixelCount(MultipartFile file) {
-        byte[] data;
-        try (InputStream in = file.getInputStream()) {
-            data = in.readAllBytes();
-        } catch (IOException e) {
-            throw new BusinessValidationException("이미지 파일을 읽을 수 없습니다.", e);
-        }
+    private Dimensions validateWebpPixelCount(byte[] data) {
         long[] dimensions = WebpStructure.inspect(data);
         long pixels = dimensions[0] * dimensions[1];
         if (pixels > MAX_PIXELS) {
@@ -286,16 +299,6 @@ public class PostImageService {
                     "이미지 크기가 너무 큽니다. 가로×세로 " + MAX_PIXELS / 1_000_000 + "메가픽셀 이하만 올릴 수 있습니다.");
         }
         return new Dimensions((int) dimensions[0], (int) dimensions[1]);
-    }
-
-    private byte[] readHeader(MultipartFile file, int length) {
-        byte[] header = new byte[length];
-        try (InputStream in = file.getInputStream()) {
-            int read = in.readNBytes(header, 0, length);
-            return read < length ? java.util.Arrays.copyOf(header, read) : header;
-        } catch (IOException e) {
-            throw new BusinessValidationException("이미지 파일을 읽을 수 없습니다.", e);
-        }
     }
 
     private boolean startsWith(byte[] header, int... signature) {
@@ -316,15 +319,11 @@ public class PostImageService {
      * 헤더를 읽지 못하거나 12바이트보다 짧으면 판단하지 않고 {@code false}로 넘긴다 —
      * 확장자 검사가 그다음에 이어지므로 여기서 막지 않아도 안전하다.
      */
-    private boolean isHeif(MultipartFile file) {
-        byte[] header = new byte[FTYP_HEADER_LENGTH];
-        try (InputStream in = file.getInputStream()) {
-            if (in.readNBytes(header, 0, FTYP_HEADER_LENGTH) < FTYP_HEADER_LENGTH) {
-                return false;
-            }
-        } catch (IOException e) {
+    private boolean isHeif(byte[] data) {
+        if (data.length < FTYP_HEADER_LENGTH) {
             return false;
         }
+        byte[] header = data;
 
         String boxType = new String(header, 4, 4, StandardCharsets.US_ASCII);
         String brand = new String(header, 8, 4, StandardCharsets.US_ASCII).toLowerCase(Locale.ROOT);

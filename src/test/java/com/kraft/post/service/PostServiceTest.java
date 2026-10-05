@@ -207,6 +207,23 @@ class PostServiceTest {
     }
 
     @Test
+    @DisplayName("update: 새 이미지의 크기는 클라이언트가 보낸 값이 아니라 서버가 측정한 값을 쓴다 (BE-24)")
+    void update_whenPictureChanges_usesServerMeasuredSize() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Post post = postOf(owner, 100L);
+        given(postRepository.findById(100L)).willReturn(Optional.of(post));
+        given(userRepository.findById(1L)).willReturn(Optional.of(owner));
+        given(postImageRegistry.attach("/images/new.png", owner, post))
+                .willReturn(Optional.of(new PostImageRegistry.MeasuredSize(640, 480)));
+
+        postService.update(100L, new PostUpdateRequestDto("제목", "내용", "/images/new.png", 99999, 1, null, null),
+                authOf(owner));
+
+        assertThat(post.getPictureWidth()).isEqualTo(640);
+        assertThat(post.getPictureHeight()).isEqualTo(480);
+    }
+
+    @Test
     @DisplayName("update: picture가 기존과 같으면 삭제를 예약하지 않는다")
     void update_whenPictureUnchanged_doesNotScheduleDeletion() {
         User owner = userWithEmail("owner@example.com", 1L);

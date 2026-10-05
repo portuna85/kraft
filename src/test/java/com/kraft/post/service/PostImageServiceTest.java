@@ -150,15 +150,15 @@ class PostImageServiceTest {
     }
 
     @Test
-    @DisplayName("store: 픽셀 수 검증에 쓴 원본 입력 스트림도 닫는다 (스트림 누수 방지)")
-    void store_closesEveryOpenedInputStream() {
+    @DisplayName("store: 업로드를 한 번만 읽고 열어 둔 입력 스트림이 없다 (BE-21)")
+    void store_readsUploadOnceAndLeavesNoOpenStream() {
         CloseTrackingMultipartFile file =
                 new CloseTrackingMultipartFile("file", "photo.png", "image/png", TestImages.pngBytes(1, 1));
 
         postImageService.store(file);
 
         assertThat(file.allStreamsClosed()).as("getInputStream()으로 연 스트림은 모두 닫혀야 한다").isTrue();
-        assertThat(file.openedStreamCount()).as("실제로 스트림을 열긴 했는지(검증이 스킵되지 않았는지)").isGreaterThan(0);
+        assertThat(file.openedStreamCount()).as("검증·저장이 스트림을 다시 열지 않는다").isZero();
     }
 
     /** {@code getInputStream()}이 돌려준 스트림마다 {@code close()} 호출 여부를 기록한다. */

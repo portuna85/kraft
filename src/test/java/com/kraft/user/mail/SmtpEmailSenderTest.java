@@ -17,7 +17,7 @@ import static org.mockito.Mockito.verify;
 class SmtpEmailSenderTest {
 
     private final JavaMailSender javaMailSender = mock(JavaMailSender.class);
-    private final SmtpEmailSender sender = new SmtpEmailSender(javaMailSender);
+    private final SmtpEmailSender sender = new SmtpEmailSender(javaMailSender, "no-reply@kraft.io.kr", "login@example.com");
 
     @Test
     @DisplayName("받는 사람·제목·본문을 그대로 SMTP 발송기에 넘긴다")
@@ -30,6 +30,19 @@ class SmtpEmailSenderTest {
         assertThat(message.getTo()).containsExactly("user@example.com");
         assertThat(message.getSubject()).isEqualTo("[kraft] 제목");
         assertThat(message.getText()).isEqualTo("본문입니다");
+    }
+
+    @Test
+    @DisplayName("From은 app.mail.from을 쓰고, 비어 있으면 SMTP 로그인 계정으로 물러난다 (BE-45)")
+    void send_setsFromFromConfigOrSmtpUsername() {
+        sender.send("user@example.com", "s", "t");
+        new SmtpEmailSender(javaMailSender, " ", "login@example.com").send("user@example.com", "s", "t");
+        new SmtpEmailSender(javaMailSender, "", "").send("user@example.com", "s", "t");
+
+        ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(javaMailSender, org.mockito.Mockito.times(3)).send(captor.capture());
+        assertThat(captor.getAllValues()).extracting(SimpleMailMessage::getFrom)
+                .containsExactly("no-reply@kraft.io.kr", "login@example.com", null);
     }
 
     @Test

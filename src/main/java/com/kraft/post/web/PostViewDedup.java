@@ -72,10 +72,13 @@ public class PostViewDedup {
         if (shouldCount) {
             viewed.put(postId, now);
         }
-        viewed.entrySet().removeIf(entry -> isStale(entry.getValue(), now));
-        // 갱신한 맵을 다시 심어야 Spring Session JDBC가 변경을 직렬화해 저장한다 — 꺼내 온
-        // 참조를 제자리에서만 바꾸면 커밋 시점에 "바뀌지 않은 속성"으로 보일 수 있다.
-        session.setAttribute(SESSION_ATTRIBUTE, viewed);
+        boolean pruned = viewed.entrySet().removeIf(entry -> isStale(entry.getValue(), now));
+        // 맵이 실제로 바뀐 경우에만 다시 심는다(BE-15) — 조회마다 세션 속성을 쓰면 세션 UPDATE가 매번
+        // 한 번 더 생긴다. 바뀌었을 때는 갱신한 맵을 다시 심어야 Spring Session JDBC가 변경을 직렬화해
+        // 저장한다(꺼내 온 참조를 제자리에서만 바꾸면 "바뀌지 않은 속성"으로 보일 수 있다).
+        if (shouldCount || pruned) {
+            session.setAttribute(SESSION_ATTRIBUTE, viewed);
+        }
         return shouldCount;
     }
 

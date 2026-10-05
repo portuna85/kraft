@@ -29,7 +29,8 @@ final class ImageMetadataStripper {
                 case "jpg", "jpeg" -> stripJpeg(data);
                 case "png" -> stripPng(data);
                 case "webp" -> stripWebp(data);
-                // GIF·(이미 걸러진) HEIC 등은 이 메타데이터를 담는 관례가 없다.
+                case "gif" -> stripGif(data);
+                // (이미 걸러진) HEIC 등은 이 메타데이터를 담는 관례가 없다.
                 default -> data;
             };
         } catch (RuntimeException e) {
@@ -276,5 +277,97 @@ final class ImageMetadataStripper {
         result[6] = (byte) ((riffSize >> 16) & 0xFF);
         result[7] = (byte) ((riffSize >> 24) & 0xFF);
         return result;
+    }
+
+    // ── GIF ─────────────────────────────────────────────────────────────────
+
+    /**
+     * GIF 블록을 훑어 Comment Extension(0x21 0xFE)과, 반복 횟수·애니메이션 버퍼가 아닌
+     * Application Extension(0x21 0xFF — XMP 등 임의 데이터를 담을 수 있다)을 뺀다(BE-23).
+     * 이미지·Graphic Control(프레임 지연)·Plain Text 블록과 {@code NETSCAPE2.0}/{@code ANIMEXTS1.0}
+     * 확장은 그대로 복사하므로 애니메이션은 유지된다. 구조가 예상과 다르면 원본을 돌려준다.
+     */
+    private static byte[] stripGif(byte[] data) {
+        if (data.length < 13 || data[0] != 'G' || data[1] != 'I' || data[2] != 'F') {
+            return data;
+        }
+        ByteArrayOutputStream out = new ByteArrayOutputStream(data.length);
+        int pos = 13;
+        if ((data[10] & 0x80) != 0) {
+            pos += 3 * (1 << ((data[10] & 0x07) + 1)); // Global Color Table
+        }
+        if (pos > data.length) {
+            return data;
+        }
+        out.write(data, 0, pos);
+
+        while (pos < data.length) {
+            int introducer = data[pos] & 0xFF;
+            if (introducer == 0x3B) { // Trailer
+                out.write(data, pos, data.length - pos);
+                return out.toByteArray();
+            }
+            if (introducer == 0x2C) { // Image Descriptor
+                if (pos + 10 > data.length) {
+                    return data;
+                }
+                int end = pos + 10;
+                if ((data[pos + 9] & 0x80) != 0) {
+                    end += 3 * (1 << ((data[pos + 9] & 0x07) + 1)); // Local Color Table
+                }
+                end += 1; // LZW minimum code size
+                end = skipSubBlocks(data, end);
+                if (end < 0) {
+                    return data;
+                }
+                out.write(data, pos, end - pos);
+                pos = end;
+            } else if (introducer == 0x21) { // Extension
+                if (pos + 2 > data.length) {
+                    return data;
+                }
+                int label = data[pos + 1] & 0xFF;
+                int end = skipSubBlocks(data, pos + 2);
+                if (end < 0) {
+                    return data;
+                }
+                if (keepGifExtension(data, pos, label)) {
+                    out.write(data, pos, end - pos);
+                }
+                pos = end;
+            } else {
+                return data;
+            }
+        }
+        // Trailer 없이 끝났다 — 잘린 파일이니 손대지 않는다.
+        return data;
+    }
+
+    /** 데이터 서브블록(길이 1바이트 + 내용, 길이 0이면 끝) 뒤의 위치. 구조가 깨졌으면 -1. */
+    private static int skipSubBlocks(byte[] data, int start) {
+        int pos = start;
+        while (pos < data.length) {
+            int size = data[pos] & 0xFF;
+            pos += 1 + size;
+            if (size == 0) {
+                return pos <= data.length ? pos : -1;
+            }
+        }
+        return -1;
+    }
+
+    private static boolean keepGifExtension(byte[] data, int pos, int label) {
+        if (label == 0xFE) {
+            return false; // Comment
+        }
+        if (label != 0xFF) {
+            return true; // Graphic Control, Plain Text 등
+        }
+        // Application Extension: [0x21][0xFF][0x0B]["NETSCAPE"+"2.0"] ...
+        if (pos + 14 > data.length) {
+            return false;
+        }
+        String id = new String(data, pos + 3, 11, StandardCharsets.US_ASCII);
+        return id.equals("NETSCAPE2.0") || id.equals("ANIMEXTS1.0");
     }
 }

@@ -120,7 +120,8 @@ public class PostService {
         PostImageService.StoredImage stored = postImageService.store(file);
         try {
             // 쿼터는 업로드 원본이 아니라 실제로 디스크에 저장된(메타데이터를 뺀) 크기로 센다.
-            postImageRegistry.validateQuotaAndRegister(stored.url(), user, stored.sizeBytes());
+            postImageRegistry.validateQuotaAndRegister(
+                    stored.url(), user, stored.sizeBytes(), stored.width(), stored.height());
         } catch (RuntimeException e) {
             postImageService.deleteIfExists(stored.url());
             throw e;
@@ -136,7 +137,8 @@ public class PostService {
         CategoryPolicy.requireCanUse(authentication, requestDto.category());
 
         Post post = postRepository.save(requestDto.toEntity(user));
-        postImageRegistry.attach(requestDto.picture(), user, post);
+        postImageRegistry.attach(requestDto.picture(), user, post)
+                .ifPresent(size -> post.updatePictureSize(size.width(), size.height()));
         return post.getId();
     }
 
@@ -163,14 +165,28 @@ public class PostService {
         String newPicture = requestDto.picture();
         boolean pictureChanged = oldPicture == null ? newPicture != null : !oldPicture.equals(newPicture);
 
-        if (pictureChanged && newPicture != null) {
-            postImageRegistry.attach(newPicture, actor, post);
-        }
+        PostImageRegistry.MeasuredSize measured = pictureChanged && newPicture != null
+                ? postImageRegistry.attach(newPicture, actor, post).orElse(null)
+                : null;
 
         // 이미지를 지웠으면(newPicture == null) 크기도 함께 비운다 — picture 없이 크기만
-        // 남으면 다음 열람 때 쓸모없는 값이 된다(A-FE-09).
-        Integer newWidth = newPicture == null ? null : requestDto.pictureWidth();
-        Integer newHeight = newPicture == null ? null : requestDto.pictureHeight();
+        // 남으면 다음 열람 때 쓸모없는 값이 된다(A-FE-09). 새 이미지는 서버가 측정한 크기를 쓰고(BE-24),
+        // 이미지가 그대로면 이미 저장된 크기를 유지한다. 측정값이 없는 옛 이미지만 클라이언트 값에 기댄다.
+        Integer newWidth;
+        Integer newHeight;
+        if (newPicture == null) {
+            newWidth = null;
+            newHeight = null;
+        } else if (measured != null) {
+            newWidth = measured.width();
+            newHeight = measured.height();
+        } else if (!pictureChanged) {
+            newWidth = post.getPictureWidth();
+            newHeight = post.getPictureHeight();
+        } else {
+            newWidth = requestDto.pictureWidth();
+            newHeight = requestDto.pictureHeight();
+        }
         post.update(requestDto.title(), requestDto.content(), newPicture, newWidth, newHeight, requestDto.category());
 
         if (pictureChanged && oldPicture != null) {

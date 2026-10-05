@@ -48,8 +48,13 @@ public class PostImageRegistry {
      * 업로드마다 그 행 전체를 잠그는 비용을 치렀다. User 행은 항상 존재하므로 두 문제 모두
      * 사라진다.
      */
-    @Transactional
     public void validateQuotaAndRegister(String url, User owner, long sizeBytes) {
+        validateQuotaAndRegister(url, owner, sizeBytes, null, null);
+    }
+
+    /** 서버가 측정한 픽셀 크기까지 대장에 남기는 등록(BE-24). */
+    @Transactional
+    public void validateQuotaAndRegister(String url, User owner, long sizeBytes, Integer width, Integer height) {
         userRepository.findByIdForUpdate(owner.getId());
 
         long used = postImageRepository.sumSizeBytesByOwnerId(owner.getId());
@@ -67,6 +72,8 @@ public class PostImageRegistry {
                 .fileName(fileName)
                 .owner(owner)
                 .sizeBytes(sizeBytes)
+                .width(width)
+                .height(height)
                 .build());
         // 이 메서드 안에서는 저장이 성공해도, 반환 이후 이 트랜잭션의 최종 커밋 자체가 실패할
         // 수 있다(개선 보고서 "파일 저장 성공 후 최종 커밋 실패 시 대장 없는 파일") — 그 실패는
@@ -84,9 +91,9 @@ public class PostImageRegistry {
      *                 관리자가 남의 글을 수정할 때도 자기 이미지만 붙일 수 있다.
      */
     @Transactional
-    public void attach(String url, User uploader, Post post) {
+    public Optional<MeasuredSize> attach(String url, User uploader, Post post) {
         if (url == null || url.isBlank()) {
-            return;
+            return Optional.empty();
         }
 
         String fileName = PostImageService.fileNameOf(url);
@@ -111,6 +118,13 @@ public class PostImageRegistry {
         }
 
         image.attachTo(post);
+        return image.getWidth() == null || image.getHeight() == null
+                ? Optional.empty()
+                : Optional.of(new MeasuredSize(image.getWidth(), image.getHeight()));
+    }
+
+    /** 업로드 때 서버가 측정한 픽셀 크기. 게시글의 {@code <img width height>}는 클라이언트 값이 아니라 이 값을 쓴다(BE-24). */
+    public record MeasuredSize(int width, int height) {
     }
 
     /**

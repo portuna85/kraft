@@ -103,4 +103,10 @@ public class Post extends BaseEntity {
         this.pictureHeight = pictureHeight;
         this.category = category != null ? category : this.category;
     }
+
+    /** 서버가 측정한 크기로 클라이언트가 보낸 값을 덮어쓴다(BE-24). */
+    public void updatePictureSize(int width, int height) {
+        this.pictureWidth = width;
+        this.pictureHeight = height;
+    }
 }
