@@ -39,6 +39,10 @@ export function init() {
         : null;
 
     if (toggle && nav) {
+        // 서버는 펼친 채로 내려보낸다. 여기서 접으면서 CSS의 "준비 전 임시 접힘"을 이어받는다(FE-21).
+        nav.hidden = true;
+        document.documentElement.classList.add('js-ready');
+
         // 바깥 메뉴가 닫히면 그 안의 계정 메뉴도 함께 닫는다 — 그렇지 않으면 다음에
         // 바깥 메뉴를 다시 열었을 때 계정 메뉴가 열린 채로 남아 있는 고아 상태가 된다.
         const navDisclosure = createDisclosure(toggle, nav, {

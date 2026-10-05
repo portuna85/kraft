@@ -175,6 +175,15 @@
     word-break: break-all;
 }
 
+/* 모바일: 서버는 내비게이션을 펼친 채로 내려보내므로(JS가 없어도 쓸 수 있다), 스크립트가 있는 환경에서는
+   main.js(site-nav.js)가 접기 전까지 첫 화면에서 번쩍이지 않게 접어 둔다. theme-init.js가 `js`를 달고,
+   site-nav.js가 `js-ready`를 달며 hidden으로 넘겨받는다. 로드가 실패하면 theme-init.js가 `js`를 뗀다. */
+@media (max-width: #{$bp-md - 0.02}) {
+    html.js:not(.js-ready) .kraft-actions {
+        display: none;
+    }
+}
+
 @include from($bp-md) {
     /* 토글이 숨는 구간이므로 닫힘 상태(hidden)를 무시하고 항상 펼쳐 보인다. */
     .kraft-actions[hidden] {

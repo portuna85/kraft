@@ -106,3 +106,26 @@ test.describe('미인증 안내', () => {
         await expect(page.locator('#comment-content')).toHaveCount(0);
     });
 });
+
+/** FE-21: 서버는 모바일 내비게이션을 접지 않고 내려보내고, 스크립트가 준비되면 접는다. */
+test.describe('모바일 내비게이션 초기 상태', () => {
+    test.use({ viewport: { width: 390, height: 800 } });
+
+    test('JS가 준비되면 접힌 채 시작하고 토글로 열린다', async ({ page }) => {
+        await page.goto('/community');
+
+        await expect(page.locator('html')).toHaveClass(/js-ready/);
+        await expect(page.locator('#site-nav')).toBeHidden();
+        await page.locator('#btn-nav-toggle').click();
+        await expect(page.locator('#site-nav')).toBeVisible();
+    });
+
+    test('스크립트를 막으면 내비게이션이 펼쳐져 있다', async ({ browser }) => {
+        const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 800 } });
+        const page = await context.newPage();
+        await page.goto('/login');
+
+        await expect(page.locator('#site-nav')).toBeVisible();
+        await context.close();
+    });
+});

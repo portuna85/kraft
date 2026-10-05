@@ -50,7 +50,7 @@ test('같은 상태를 다시 요청해도 결과가 같다 (멱등)', async ({ 
     await page.evaluate(async () => {
         const token = document.querySelector('meta[name="_csrf"]').content;
         const header = document.querySelector('meta[name="_csrf_header"]').content;
-        const id = document.querySelector('#id').value;
+        const id = document.querySelector('#post-id').value;
         await fetch(`/api/v1/posts/${id}/like`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', [header]: token },

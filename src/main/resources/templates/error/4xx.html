@@ -40,6 +40,8 @@
     </main>
 </div>
 
-<div th:replace="~{layout/footer :: footer}"></div>
+<th:block th:with="slimFooter=true">
+    <div th:replace="~{layout/footer :: footer}"></div>
+</th:block>
 </body>
 </html>

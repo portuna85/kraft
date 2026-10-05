@@ -23,7 +23,7 @@ export function init() {
     let pending = null; // { kind: 'post' | 'comment', id, trigger }
 
     delegate('click', '[data-target-kind="post"]', (trigger) => {
-        pending = { kind: 'post', id: valueOf(byId('id')), trigger };
+        pending = { kind: 'post', id: valueOf(byId('post-id')), trigger };
         open('post', trigger.dataset.targetName);
     });
 

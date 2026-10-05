@@ -54,7 +54,8 @@
                 <p class="text-muted" th:text="'신고자 ' + ${report.reporter}">신고자</p>
 
                 <div class="btn-group-gap">
-                    <button type="button" class="btn btn-sm btn-outline-danger btn-report-resolve">삭제</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger btn-report-resolve"
+                            th:attr="aria-label='신고 ' + ${report.id} + ' 대상 삭제'">삭제</button>
                     <!--/* 기간을 고정(7일)으로 두지 않고 고를 수 있게 한다(개선 보고서 A-BE-16).
                            API는 이미 suspendDays(0~3650)를 받으므로 화면만 넓힌다. */-->
                     <label class="visually-hidden" th:for="'suspend-days-' + ${report.id}">정지 기간</label>
@@ -64,8 +65,10 @@
                         <option value="7" selected>7일</option>
                         <option value="30">30일</option>
                     </select>
-                    <button type="button" class="btn btn-sm btn-danger btn-report-suspend">삭제 + 정지</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary btn-report-reject">반려</button>
+                    <button type="button" class="btn btn-sm btn-danger btn-report-suspend"
+                            th:attr="aria-label='신고 ' + ${report.id} + ' 대상 삭제 및 작성자 정지'">삭제 + 정지</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary btn-report-reject"
+                            th:attr="aria-label='신고 ' + ${report.id} + ' 반려'">반려</button>
                 </div>
             </li>
         </ul>

@@ -22,3 +22,12 @@ test('없는 경로로 들어가면 공통 404 안내와 게시판 복귀 링크
     await backLink.click();
     await expect(page).toHaveURL('/community');
 });
+
+/** FE-41: 오류 페이지는 글·댓글 전용 모달(삭제 확인·신고)을 렌더하지 않는다. 계정 메뉴 모달은 그대로 있다. */
+test('오류 페이지에는 삭제 확인·신고 모달이 없고 계정 메뉴 모달은 남아 있다', async ({ page }) => {
+    await page.goto('/this-path-does-not-exist-anywhere');
+
+    await expect(page.locator('#confirmDeleteModal')).toHaveCount(0);
+    await expect(page.locator('#reportModal')).toHaveCount(0);
+    await expect(page.locator('#changePasswordModal')).toHaveCount(1);
+});

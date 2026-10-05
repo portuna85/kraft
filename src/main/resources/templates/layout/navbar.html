@@ -21,7 +21,7 @@
             <span>메뉴</span>
         </button>
 
-        <nav id="site-nav" class="kraft-actions" aria-label="탐색" hidden>
+        <nav id="site-nav" class="kraft-actions" aria-label="탐색">
             <!-- 번호 추천은 로그인 여부와 무관하게 동일하게 동작하는 공개 기능이라
                  sec:authorize로 가리지 않는다. app.recommend.enabled로 기능을 끄면(운영 준비)
                  컨트롤러가 404가 되므로 링크도 함께 감춘다. -->
@@ -77,7 +77,7 @@
                       이 분기를 타지 않지만, 방어적으로 남겨 둔다 — 폴백 값은 principal name 그대로(숫자
                       id)이지 이메일이 아니다.
                     -->
-                    <span class="kraft-actions__name" id="user"
+                    <span class="kraft-actions__name" id="nav-user-name"
                           th:with="principal=${#authentication.principal}"
                           th:text="${principal instanceof T(com.kraft.config.security.KraftUserDetails)}
                                    ? ${principal.displayName} : ${#authentication.name}"></span>

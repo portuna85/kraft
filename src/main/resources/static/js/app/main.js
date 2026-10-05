@@ -1,5 +1,6 @@
 import * as flash from './ui/flash.js';
 import * as siteNav from './features/site-nav.js';
+import * as themeToggle from './features/theme-toggle.js';
 
 /**
  * 진입점.
@@ -77,5 +78,5 @@ loadIf('#verify-confirm-form', () => import('./features/verify-confirm.js'), 'fe
 // 관리자 "추천 이력 수집" 화면의 "지금 수집" 버튼.
 loadIf('#btn-fetch-now', () => import('./features/admin-fetch.js'), 'features/admin-fetch.js');
 
-// 다크 모드 토글(11단계). 모든 페이지의 헤더에 항상 있다.
-loadIf('#btn-theme-toggle', () => import('./features/theme-toggle.js'), 'features/theme-toggle.js');
+// 다크 모드 토글(11단계). 모든 페이지의 헤더에 항상 있어 동적 import 왕복 없이 정적으로 불러온다(FE-46).
+themeToggle.init();

@@ -69,7 +69,7 @@ export default defineConfig({
         sourcemap: false,
         // 이 프로젝트가 주장하는 지원 하한(iOS 15)을 실제 빌드 설정에 연결한다 — 이전에는
         // 이 값이 없어 "iOS 15 지원"이 코드 어디에도 강제되지 않았다(개선 보고서 F14).
-        // esbuild가 이 기준보다 새 문법을 만나면 변환하거나(가능한 경우) 경고한다. 다만
+        // Vite 8의 변환기(Rolldown/Oxc)가 이 기준보다 새 문법을 만나면 변환하거나(가능한 경우) 경고한다. 다만
         // 이 값은 문법 변환만 다루고 런타임 API(Array.prototype.at() 등)는 폴리필하지
         // 않는다 — 그런 API는 소스에서 직접 걷어냈다.
         target: 'ios15',

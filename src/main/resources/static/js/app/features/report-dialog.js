@@ -22,7 +22,7 @@ export function init() {
     let pending = null; // { targetType: 'POST' | 'COMMENT', targetId, trigger }
 
     delegate('click', '[data-report-kind="post"]', (trigger) => {
-        pending = { targetType: 'POST', targetId: valueOf(byId('id')), trigger };
+        pending = { targetType: 'POST', targetId: valueOf(byId('post-id')), trigger };
         open('게시글');
     });
 

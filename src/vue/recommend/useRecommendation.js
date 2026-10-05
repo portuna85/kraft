@@ -98,7 +98,7 @@ export function useRecommendation() {
             // 403(CSRF·세션 만료)은 http.js가 고정 안내 문구를 채워 준다.
             status.value = 'error';
             errorMessage.value = messageOf(error);
-            liveAnnouncement.value = errorMessage.value;
+            // 오류는 화면의 role="alert"가 낭독하므로 polite 영역에는 싣지 않는다(FE-34).
         }
     }
 

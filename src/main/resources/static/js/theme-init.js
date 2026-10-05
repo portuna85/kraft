@@ -10,6 +10,17 @@
  * 값을 다른 쪽이 못 알아듣는 상황이 생기므로 두 파일을 항상 같이 살펴본다.
  */
 (function () {
+    // 스크립트가 도는 환경이라는 표시(FE-21). 모바일 내비는 서버가 펼친 채로 내려보내고, CSS가 이 클래스가
+    // 있을 때만 main.js가 준비되기 전까지 접어 둔다 — main.js가 끝내 실행되지 않으면(로드 실패) load 시점에
+    // 이 클래스를 떼어 내비게이션이 다시 보이게 한다(예전에는 hidden이라 영영 못 열었다).
+    const html = document.documentElement;
+    html.classList.add('js');
+    window.addEventListener('load', function () {
+        if (!html.classList.contains('js-ready')) {
+            html.classList.remove('js');
+        }
+    });
+
     const STORAGE_KEY = 'kraft:theme'; // 'system' | 'light' | 'dark'
 
     let stored = null;

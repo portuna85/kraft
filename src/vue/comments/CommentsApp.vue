@@ -256,10 +256,10 @@ onUnmounted(() => window.removeEventListener('kraft:comment-deleted', onExternal
   >
     댓글 더 보기
   </button>
+  <!-- 같은 오류를 토스트(assertive)가 이미 낭독하므로 role="alert"를 또 두지 않는다(FE-34). -->
   <p
     v-if="loadError"
     class="comments__load-error"
-    role="alert"
   >
     댓글을 더 불러오지 못했습니다.
     <button

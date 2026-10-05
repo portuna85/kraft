@@ -313,9 +313,9 @@ async function onSubmit() {
       </div>
     </div>
 
-    <!-- 업로드→저장 진행 상태. 평소에는 비어 있고 진행 중에만 보인다. -->
+    <!-- 업로드→저장 진행 상태. aria-live 영역이 나타나는 순간 내용이 채워지면 스크린 리더가 놓칠 수 있어
+         v-show 없이 항상 렌더한다(FE-08, 수정 화면과 같다). 비어 있을 때는 화면에 거의 티가 나지 않는다. -->
     <p
-      v-show="progressText"
       id="post-save-progress"
       class="form-progress"
       aria-live="polite"
