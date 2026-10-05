@@ -1,5 +1,6 @@
 package com.kraft.post.service;
 
+import com.kraft.shared.exception.BusinessValidationException;
 import com.kraft.shared.exception.StorageException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -156,19 +157,19 @@ public class PostImageService {
      */
     private ValidatedImage validate(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("업로드할 파일이 없습니다.");
+            throw new BusinessValidationException("업로드할 파일이 없습니다.");
         }
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new IllegalArgumentException("파일 크기는 5MB를 초과할 수 없습니다.");
+            throw new BusinessValidationException("파일 크기는 5MB를 초과할 수 없습니다.");
         }
         String extension = extensionOf(file.getOriginalFilename()).toLowerCase(Locale.ROOT);
         // 확장자만 보면 ".jpg"로 이름만 바뀐 HEIC 파일을 걸러내지 못한다(공유·복사 과정에서
         // 실제로 생긴다). 내용까지 확인해 같은 안내로 응답한다.
         if (HEIF_EXTENSIONS.contains(extension) || isHeif(file)) {
-            throw new IllegalArgumentException(HEIF_MESSAGE);
+            throw new BusinessValidationException(HEIF_MESSAGE);
         }
         if (!ALLOWED_EXTENSIONS.contains(extension)) {
-            throw new IllegalArgumentException("허용되지 않는 파일 형식입니다: " + extension);
+            throw new BusinessValidationException("허용되지 않는 파일 형식입니다: " + extension);
         }
         Dimensions dimensions = validateRealImage(file, extension);
         return new ValidatedImage(extension, dimensions.width(), dimensions.height());
@@ -190,7 +191,7 @@ public class PostImageService {
     private Dimensions validateRealImage(MultipartFile file, String extension) {
         byte[] header = readHeader(file, SIGNATURE_HEADER_LENGTH);
         if (!matchesSignature(header, extension)) {
-            throw new IllegalArgumentException(
+            throw new BusinessValidationException(
                     "이미지 파일이 아니거나 확장자와 실제 형식이 다릅니다: " + extension);
         }
         return validatePixelCount(file, extension);
@@ -253,7 +254,7 @@ public class PostImageService {
                 int height = reader.getHeight(0);
                 long pixels = (long) width * height;
                 if (pixels > MAX_PIXELS) {
-                    throw new IllegalArgumentException(
+                    throw new BusinessValidationException(
                             "이미지 크기가 너무 큽니다. 가로×세로 " + MAX_PIXELS / 1_000_000 + "메가픽셀 이하만 올릴 수 있습니다.");
                 }
                 return new Dimensions(width, height);
@@ -261,7 +262,7 @@ public class PostImageService {
                 reader.dispose();
             }
         } catch (IOException e) {
-            throw new IllegalArgumentException("이미지 파일을 읽을 수 없습니다.", e);
+            throw new BusinessValidationException("이미지 파일을 읽을 수 없습니다.", e);
         }
     }
 
@@ -276,12 +277,12 @@ public class PostImageService {
         try (InputStream in = file.getInputStream()) {
             data = in.readAllBytes();
         } catch (IOException e) {
-            throw new IllegalArgumentException("이미지 파일을 읽을 수 없습니다.", e);
+            throw new BusinessValidationException("이미지 파일을 읽을 수 없습니다.", e);
         }
         long[] dimensions = WebpStructure.inspect(data);
         long pixels = dimensions[0] * dimensions[1];
         if (pixels > MAX_PIXELS) {
-            throw new IllegalArgumentException(
+            throw new BusinessValidationException(
                     "이미지 크기가 너무 큽니다. 가로×세로 " + MAX_PIXELS / 1_000_000 + "메가픽셀 이하만 올릴 수 있습니다.");
         }
         return new Dimensions((int) dimensions[0], (int) dimensions[1]);
@@ -293,7 +294,7 @@ public class PostImageService {
             int read = in.readNBytes(header, 0, length);
             return read < length ? java.util.Arrays.copyOf(header, read) : header;
         } catch (IOException e) {
-            throw new IllegalArgumentException("이미지 파일을 읽을 수 없습니다.", e);
+            throw new BusinessValidationException("이미지 파일을 읽을 수 없습니다.", e);
         }
     }
 
@@ -332,7 +333,7 @@ public class PostImageService {
 
     private String extensionOf(String filename) {
         if (filename == null || !filename.contains(".")) {
-            throw new IllegalArgumentException("파일 확장자를 확인할 수 없습니다.");
+            throw new BusinessValidationException("파일 확장자를 확인할 수 없습니다.");
         }
         return filename.substring(filename.lastIndexOf('.') + 1);
     }

@@ -1,5 +1,6 @@
 package com.kraft.comment.service;
 
+import com.kraft.shared.exception.BusinessValidationException;
 import com.kraft.comment.domain.Comment;
 import com.kraft.comment.domain.CommentRepository;
 import com.kraft.comment.dto.CommentDeleteResultDto;
@@ -86,10 +87,10 @@ public class CommentService {
         }
         Comment parent = findComment(parentId);
         if (!parent.getPost().getId().equals(postId)) {
-            throw new IllegalArgumentException("다른 게시글의 댓글에는 답글을 달 수 없습니다.");
+            throw new BusinessValidationException("다른 게시글의 댓글에는 답글을 달 수 없습니다.");
         }
         if (parent.getParent() != null) {
-            throw new IllegalArgumentException("답글에는 답글을 달 수 없습니다.");
+            throw new BusinessValidationException("답글에는 답글을 달 수 없습니다.");
         }
         return parent;
     }
@@ -112,7 +113,7 @@ public class CommentService {
         WriteAccessPolicy.requireVerified(findUser(authentication));
         OwnershipPolicy.validateOwner(authentication, comment.getUser(), id);
         if (comment.isDeleted()) {
-            throw new IllegalArgumentException("삭제된 댓글은 수정할 수 없습니다.");
+            throw new BusinessValidationException("삭제된 댓글은 수정할 수 없습니다.");
         }
         VersionCheck.require(Comment.class, comment.getId(), comment.getVersion(), requestDto.version());
         comment.update(requestDto.content());
@@ -142,6 +143,9 @@ public class CommentService {
         long replyCount = commentRepository.countRepliesByParentIdIn(List.of(id)).getOrDefault(id, 0L);
         if (replyCount > 0) {
             comment.softDelete();
+            // 행이 남아도 댓글은 더 이상 보이지 않으므로 대기 중인 신고를 닫는다(BE-11) — 닫지 않으면
+            // 신고 목록이 "대상이 있다"고 보고 내용 없는 미리보기만 보여 준다.
+            eventPublisher.publishEvent(new TargetDeletedEvent(ReportTargetType.COMMENT, List.of(id)));
             return new CommentDeleteResultDto(id, true);
         }
 
@@ -151,9 +155,7 @@ public class CommentService {
         // 그 사이 다른 답글이 달렸을 극히 드문 경쟁까지 방어적으로 커버한다.
         commentRepository.deleteAllByParentId(id);
         commentRepository.delete(comment);
-        // 행이 실제로(하드) 지워졌을 때만 발행한다 — 소프트 삭제는 행이 그대로 남아 실시간
-        // 조회가 여전히 가능하므로 A-BE-01의 대상이 아니다. 관리자가 지운 경우는
-        // TargetDeletedEvent 문서 참고.
+        // 관리자가 지운 경우는 TargetDeletedEvent 문서 참고.
         eventPublisher.publishEvent(new TargetDeletedEvent(ReportTargetType.COMMENT, List.of(id)));
         return new CommentDeleteResultDto(id, false);
     }

@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { getCurrentInstance, onBeforeUnmount, ref } from 'vue';
 import { clearDraft, readDraft, safeLocalStorage, writeDraft } from './draftStorage.js';
 
 const DEFAULT_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7일
@@ -71,11 +71,27 @@ export function useDraftAutosave(storageKey, draft, options = {}) {
         if (timer) {
             clearTimeout(timer);
         }
-        timer = setTimeout(() => {
-            timer = null;
-            writeDraft(storage, storageKey, { ...draft });
-        }, DEBOUNCE_MS);
+        timer = setTimeout(flush, DEBOUNCE_MS);
     }
 
-    return { available, checkAvailable, restore, discard, schedule };
+    /** 대기 중인 저장이 있으면 지금 쓴다. 페이지를 떠나기 직전 마지막 800ms 입력을 잃지 않게 한다(FE-36). */
+    function flush() {
+        if (!timer) {
+            return;
+        }
+        clearTimeout(timer);
+        timer = null;
+        writeDraft(storage, storageKey, { ...draft });
+    }
+
+    // 컴포넌트 밖(단위 테스트)에서 호출될 수 있어 인스턴스가 있을 때만 생명주기에 연결한다.
+    if (getCurrentInstance() && typeof window !== 'undefined') {
+        window.addEventListener('pagehide', flush);
+        onBeforeUnmount(() => {
+            window.removeEventListener('pagehide', flush);
+            flush();
+        });
+    }
+
+    return { available, checkAvailable, restore, discard, schedule, flush };
 }

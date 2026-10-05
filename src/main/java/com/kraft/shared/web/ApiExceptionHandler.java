@@ -1,9 +1,9 @@
 package com.kraft.shared.web;
 
-import com.kraft.post.domain.PostNotFoundException;
 import com.kraft.recommend.domain.RecommendationGenerationLimitException;
 import com.kraft.recommend.domain.RecommendationHistoryNotReadyException;
 import com.kraft.recommend.domain.RecommendationValidationException;
+import com.kraft.shared.exception.BusinessValidationException;
 import com.kraft.shared.exception.NotFoundException;
 import com.kraft.shared.exception.StorageException;
 import lombok.extern.slf4j.Slf4j;
@@ -53,28 +53,24 @@ import java.util.List;
 @RestControllerAdvice(annotations = RestController.class)
 public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
-    /** 서비스가 직접 던지는 검증 실패 메시지는 전부 한글이다 — 이 특징으로 프로그래밍 오류를 가려낸다(A-SEC-05). */
-    private static final java.util.regex.Pattern HANGUL = java.util.regex.Pattern.compile("[\\uAC00-\\uD7A3]");
+    /**
+     * 서비스가 던지는 사용자 입력·상태 검증 실패({@link BusinessValidationException})를 400으로 변환한다
+     * (예: 이메일 중복 가입, 허용되지 않는 파일 형식).
+     */
+    @ExceptionHandler(BusinessValidationException.class)
+    public ProblemDetail handleBusinessValidation(BusinessValidationException e) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
 
     /**
-     * 서비스 계층에서 "대상을 찾을 수 없음", "이미 존재함" 등의 검증 실패를 나타낼 때 사용하는
-     * {@link IllegalArgumentException}을 400으로 변환한다.
-     * (예: 존재하지 않는 게시글/회원 조회, 이메일 중복 가입)
-     * <p>
-     * 다만 이 관례 때문에 Spring {@code Assert}·JDK 파싱 오류·Hibernate 인자 검사처럼 우리
-     * 서비스 코드가 던지지 않은 IAE까지 같은 핸들러에 걸려 "사용자 잘못(400) + 영문 내부
-     * 메시지"로 그대로 나갔다(A-SEC-05). 우리 서비스가 던지는 메시지는 전부 한글이므로, 한글이
-     * 없는 메시지는 프로그래밍 오류로 보고 500 + 일반 문구로 감추고 스택 트레이스를 남긴다.
+     * 그 밖의 {@link IllegalArgumentException}(Spring {@code Assert}·JDK 파싱 오류·Hibernate 인자 검사 등)은
+     * 우리 서비스가 의도한 검증 실패가 아니라 프로그래밍 오류다(A-SEC-05, BE-12). 예전에는 메시지에 한글이
+     * 있는지로 400/500을 갈랐으나, 이제 타입으로 가른다. 일반 문구로 감추고 스택 트레이스를 남긴다.
      */
     @ExceptionHandler(IllegalArgumentException.class)
     public ProblemDetail handleIllegalArgument(IllegalArgumentException e) {
-        String message = e.getMessage();
-        if (message == null || !HANGUL.matcher(message).find()) {
-            log.error("한글 메시지가 없는 IllegalArgumentException입니다 — 검증 실패가 아니라 "
-                    + "프로그래밍 오류일 수 있습니다.", e);
-            return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
-        }
-        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, message);
+        log.error("검증 실패 예외가 아닌 IllegalArgumentException입니다 — 프로그래밍 오류일 수 있습니다.", e);
+        return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
     }
 
     /**
@@ -89,24 +85,18 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     /**
-     * "대상이 없음"은 검증 실패가 아니라 404다. {@link PostNotFoundException}이
-     * {@link IllegalArgumentException}을 상속하는 탓에 API에서도 400으로 나갔는데, 클라이언트가
-     * "요청이 잘못됨"과 "글이 삭제됨"을 구분할 수 없었다. 더 구체적인 타입의 핸들러가 우선하므로
-     * 이 메서드가 위의 {@link #handleIllegalArgument}보다 먼저 선택된다.
-     */
-    @ExceptionHandler(PostNotFoundException.class)
-    public ProblemDetail handleNotFound(PostNotFoundException e) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
-    }
-
-    /**
-     * 게시글 외의 도메인(댓글·신고·회원 등)이 던지는 "대상 없음"을 404로 변환한다(BE-07).
-     * 새 도메인마다 {@link PostNotFoundException} 같은 전용 타입을 만드는 대신, 메시지만
-     * 다르고 뜻은 같은 이 경우들은 {@link NotFoundException} 하나로 묶는다.
+     * "대상 없음"(게시글·댓글·신고·회원 등)을 404로 변환한다(BE-07). {@code PostNotFoundException}도
+     * {@link NotFoundException}을 상속하므로 이 핸들러가 처리한다(BE-29). 메시지 끝의 내부 식별자
+     * ({@code " id=123"})는 로그에만 남기고 응답에서는 자른다(BE-28).
      */
     @ExceptionHandler(NotFoundException.class)
     public ProblemDetail handleNotFound(NotFoundException e) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
+        log.debug("대상을 찾을 수 없습니다: {}", e.getMessage());
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, stripIdentifier(e.getMessage()));
+    }
+
+    private static String stripIdentifier(String message) {
+        return message == null ? "대상을 찾을 수 없습니다." : TRAILING_IDENTIFIER.matcher(message).replaceFirst("");
     }
 
     /**
@@ -232,6 +222,12 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     public ProblemDetail handleEditConflict(OptimisticLockingFailureException e) {
         String className = e instanceof ObjectOptimisticLockingFailureException oe
                 ? oe.getPersistentClassName() : null;
+        if (className != null && className.endsWith(".Report")) {
+            // 두 관리자가 같은 신고를 동시에 처리한 경우(B11, BE-30). 커밋 시점에 나는 실패라 서비스 안에서
+            // 잡을 수 없다.
+            return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
+                    "이미 처리된 신고입니다. 새로고침 후 다시 확인해 주세요.");
+        }
         String subject = className != null && className.endsWith(".Comment") ? "댓글" : "글";
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
                 "다른 곳에서 이미 수정된 " + subject + "입니다. 새로고침 후 다시 시도해 주세요.");

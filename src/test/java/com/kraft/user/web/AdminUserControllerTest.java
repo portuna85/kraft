@@ -1,5 +1,6 @@
 package com.kraft.user.web;
 
+import com.kraft.shared.exception.BusinessValidationException;
 import com.kraft.config.security.SecurityConfig;
 import com.kraft.user.domain.UserRepository;
 import com.kraft.user.dto.SuspendedUserDto;
@@ -113,7 +114,7 @@ class AdminUserControllerTest {
     @Test
     @DisplayName("정지 중이 아닌 계정을 풀면 400 ProblemDetail을 반환한다")
     void lift_whenNotSuspended_returns400BadRequest() throws Exception {
-        willThrow(new IllegalArgumentException("정지 중인 계정이 아닙니다. id=7"))
+        willThrow(new BusinessValidationException("정지 중인 계정이 아닙니다. id=7"))
                 .given(suspensionService).lift(7L);
 
         mockMvc.perform(post("/api/v1/admin/users/7/suspension/lift")

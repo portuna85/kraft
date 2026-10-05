@@ -1,5 +1,6 @@
 package com.kraft.report.service;
 
+import com.kraft.shared.exception.BusinessValidationException;
 import com.kraft.comment.domain.Comment;
 import com.kraft.comment.domain.CommentRepository;
 import com.kraft.comment.service.CommentService;
@@ -84,11 +85,11 @@ public class ReportService {
                 .orElseThrow(() -> new NotFoundException("이미 삭제되었거나 존재하지 않는 대상입니다."));
 
         if (snapshot.author().getId().equals(reporter.getId())) {
-            throw new IllegalArgumentException("자신이 쓴 글은 신고할 수 없습니다. 직접 삭제할 수 있습니다.");
+            throw new BusinessValidationException("자신이 쓴 글은 신고할 수 없습니다. 직접 삭제할 수 있습니다.");
         }
         if (reportRepository.existsByReporterIdAndTargetTypeAndTargetId(
                 reporter.getId(), requestDto.targetType(), requestDto.targetId())) {
-            throw new IllegalArgumentException("이미 신고한 대상입니다. 관리자가 확인하고 있습니다.");
+            throw new BusinessValidationException("이미 신고한 대상입니다. 관리자가 확인하고 있습니다.");
         }
 
         // 접수 시점의 작성자·제목·본문을 함께 저장한다(A-SEC-07) — 작성자가 처리 전에 스스로
@@ -167,7 +168,7 @@ public class ReportService {
     @Transactional
     public void resolve(Long id, Authentication authentication, int suspendDays) {
         if (suspendDays < 0 || suspendDays > MAX_SUSPEND_DAYS) {
-            throw new IllegalArgumentException(
+            throw new BusinessValidationException(
                     "정지 기간은 0에서 %d일 사이여야 합니다: %d".formatted(MAX_SUSPEND_DAYS, suspendDays));
         }
         Report report = findPendingReport(id);
@@ -281,7 +282,7 @@ public class ReportService {
         Report report = reportRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("존재하지 않는 신고입니다. id=" + id));
         if (!report.isPending()) {
-            throw new IllegalArgumentException("이미 처리된 신고입니다. id=" + id);
+            throw new BusinessValidationException("이미 처리된 신고입니다. id=" + id);
         }
         return report;
     }

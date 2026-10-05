@@ -1,5 +1,6 @@
 package com.kraft.post.service;
 
+import com.kraft.shared.exception.BusinessValidationException;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -211,7 +212,7 @@ final class WebpStructure {
         return le24(data, offset) | (data[offset + 3] & 0xFFL) << 24;
     }
 
-    private static IllegalArgumentException invalid() {
-        return new IllegalArgumentException(INVALID_MESSAGE);
+    private static BusinessValidationException invalid() {
+        return new BusinessValidationException(INVALID_MESSAGE);
     }
 }

@@ -56,7 +56,8 @@ const titleInput = ref(/** @type {HTMLInputElement | null} */ (null));
 const contentInput = ref(null);
 const editButton = ref(/** @type {HTMLButtonElement | null} */ (null));
 const fileInput = ref(/** @type {HTMLInputElement | null} */ (null));
-const { fieldErrors, apply: applyFieldErrors } = useFieldErrors();
+const { fieldErrors, apply: applyFieldErrors, clearOnEdit } = useFieldErrors();
+clearOnEdit(draft);
 
 // 글자크기 조절: 3단계(작게/보통/크게), 세션을 넘어 유지하도록 localStorage에 기억한다.
 // localStorage 접근이 막힌 환경(프라이빗 모드 등)에서도 화면은 기본값으로 그대로 동작해야

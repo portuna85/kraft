@@ -5,7 +5,7 @@ import com.kraft.report.domain.ReportTargetType;
 import java.util.List;
 
 /**
- * 게시글·댓글이 <b>작성자 본인의 요청으로</b> 실제로(행 자체가) 지워졌을 때
+ * 게시글·댓글이 <b>작성자 본인의 요청으로</b> 지워졌을 때(행이 지워졌거나, 답글이 있어 소프트 삭제된 경우 모두)
  * {@code PostService.delete}·{@code CommentService.delete}가 발행한다(개선 보고서 A-BE-01).
  * <p>
  * {@link com.kraft.report.service.ReportService}가 이 이벤트를 직접 호출로 받지 않고 이벤트로

@@ -13,20 +13,49 @@ import { API } from '@core/constants.js';
  * 유일한 신호로 남는다 — 여기서 또 알리면 아직 저장하지도 않았는데 놀랄 수 있다.
  */
 const PING_INTERVAL_MS = 10 * 60 * 1000;
+/** 한 화면에서 세션을 붙들어 두는 최대 시간. 방치된 공용 PC의 세션이 끝없이 이어지지 않게 한다(FE-07). */
+const MAX_KEEP_ALIVE_MS = 4 * 60 * 60 * 1000;
+const ACTIVITY_EVENTS = ['keydown', 'input', 'pointerdown'];
 
+/**
+ * 사용자가 실제로 쓰고 있을 때만 핑한다(FE-07) — 마지막 핑 이후 입력이 있었고 탭이 보이는 경우.
+ * 탭이 숨겨졌거나 방치된 글쓰기 화면이 서버의 유휴 타임아웃을 무력화하지 못하게 한다.
+ */
 export function useSessionKeepAlive() {
     /** @type {ReturnType<typeof setInterval> | null} */
     let timer = null;
+    let active = false;
+    let startedAt = 0;
 
-    onMounted(() => {
-        timer = setInterval(() => {
-            api.get(`${API.USERS_ME}/ping`).catch(() => {});
-        }, PING_INTERVAL_MS);
-    });
+    function markActive() {
+        active = true;
+    }
 
-    onUnmounted(() => {
+    function ping() {
+        if (Date.now() - startedAt > MAX_KEEP_ALIVE_MS) {
+            stop();
+            return;
+        }
+        if (!active || document.visibilityState !== 'visible') {
+            return;
+        }
+        active = false;
+        api.get(`${API.USERS_ME}/ping`).catch(() => {});
+    }
+
+    function stop() {
         if (timer !== null) {
             clearInterval(timer);
+            timer = null;
         }
+        ACTIVITY_EVENTS.forEach((name) => document.removeEventListener(name, markActive, true));
+    }
+
+    onMounted(() => {
+        startedAt = Date.now();
+        ACTIVITY_EVENTS.forEach((name) => document.addEventListener(name, markActive, true));
+        timer = setInterval(ping, PING_INTERVAL_MS);
     });
+
+    onUnmounted(stop);
 }

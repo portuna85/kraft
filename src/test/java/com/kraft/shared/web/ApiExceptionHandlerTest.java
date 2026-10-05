@@ -65,7 +65,7 @@ class ApiExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("기존 IllegalArgumentException 매핑은 상속 후에도 그대로 400이다")
+    @DisplayName("BusinessValidationException은 400이다")
     void existingIllegalArgumentMapping_stillReturns400() throws Exception {
         mockMvc.perform(post("/test/illegal-argument"))
                 .andExpect(status().isBadRequest())
@@ -73,9 +73,17 @@ class ApiExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("A-SEC-05: 한글이 없는 IllegalArgumentException은 400 대신 500 + 일반 문구다")
+    @DisplayName("A-SEC-05: 일반 IllegalArgumentException은 400 대신 500 + 일반 문구다")
     void illegalArgumentWithoutKoreanMessage_returns500() throws Exception {
         mockMvc.perform(post("/test/illegal-argument-non-korean"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.detail").value("서버 내부 오류가 발생했습니다."));
+    }
+
+    @Test
+    @DisplayName("BE-12: 한글 메시지여도 BusinessValidationException이 아닌 IllegalArgumentException은 500이다")
+    void plainIllegalArgumentWithKoreanMessage_returns500() throws Exception {
+        mockMvc.perform(post("/test/illegal-argument-korean"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.detail").value("서버 내부 오류가 발생했습니다."));
     }

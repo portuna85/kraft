@@ -1,5 +1,6 @@
 package com.kraft.post.web;
 
+import com.kraft.shared.exception.BusinessValidationException;
 import com.kraft.config.security.SecurityConfig;
 import com.kraft.post.domain.Category;
 import com.kraft.post.domain.Post;
@@ -222,7 +223,7 @@ class PostApiControllerTest {
 
         mockMvc.perform(get("/api/v1/posts/999"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.detail").value("해당 게시글이 없습니다. id=999"))
+                .andExpect(jsonPath("$.detail").value("해당 게시글이 없습니다."))
                 .andExpect(jsonPath("$.status").value(404));
     }
 
@@ -446,7 +447,7 @@ class PostApiControllerTest {
     void uploadImage_withDisallowedExtension_returns400BadRequest() throws Exception {
         MockMultipartFile file = new MockMultipartFile("file", "malware.exe", "application/octet-stream", "x".getBytes());
         given(postService.uploadImage(any(), any(Authentication.class)))
-                .willThrow(new IllegalArgumentException("허용되지 않는 파일 형식입니다: exe"));
+                .willThrow(new BusinessValidationException("허용되지 않는 파일 형식입니다: exe"));
 
         mockMvc.perform(multipart("/api/v1/posts/images").file(file)
                         .with(user("tester@example.com"))

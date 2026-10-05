@@ -1,5 +1,6 @@
 package com.kraft.user.service;
 
+import com.kraft.shared.exception.BusinessValidationException;
 import com.kraft.shared.security.CurrentUser;
 import com.kraft.shared.security.WriteAccessPolicy;
 import com.kraft.shared.transaction.AfterCommit;
@@ -67,15 +68,15 @@ public class UserService {
         // 한다(BE-06) — 이후의 해시·저장이 전부 이 값을 쓴다.
         email = EmailPolicy.normalize(email);
         if (name != null && name.strip().startsWith(WITHDRAWN_NAME_PREFIX)) {
-            throw new IllegalArgumentException("사용할 수 없는 이름입니다. '" + WITHDRAWN_NAME_PREFIX + "'로 시작하는 이름은 탈퇴한 계정 표시에 쓰입니다.");
+            throw new BusinessValidationException("사용할 수 없는 이름입니다. '" + WITHDRAWN_NAME_PREFIX + "'로 시작하는 이름은 탈퇴한 계정 표시에 쓰입니다.");
         }
         if (email.endsWith(WITHDRAWN_EMAIL_DOMAIN)) {
-            throw new IllegalArgumentException("사용할 수 없는 이메일 주소입니다.");
+            throw new BusinessValidationException("사용할 수 없는 이메일 주소입니다.");
         }
         // 닉네임 중복은 공개 정보라(다른 사람 글에 그대로 보인다) 지금처럼 즉시 알려도 된다 —
         // 계정 열거 방지가 필요한 것은 이메일뿐이다.
         if (userRepository.existsByName(name)) {
-            throw new IllegalArgumentException("이미 사용중인 이름입니다. name=" + name);
+            throw new BusinessValidationException("이미 사용중인 이름입니다. name=" + name);
         }
         PasswordBytePolicy.validate(rawPassword);
 
@@ -126,7 +127,7 @@ public class UserService {
                 .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. userId=" + userId));
 
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-            throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
+            throw new BusinessValidationException("현재 비밀번호가 일치하지 않습니다.");
         }
         PasswordBytePolicy.validate(newPassword);
 
@@ -173,7 +174,7 @@ public class UserService {
                 .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. userId=" + userId));
 
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-            throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
+            throw new BusinessValidationException("현재 비밀번호가 일치하지 않습니다.");
         }
 
         emailVerificationTokenRepository.deleteByUserId(userId);

@@ -16,7 +16,7 @@ import { useFieldErrors } from '../shared/useFieldErrors.js';
  * 확인란 불일치 검사는 가입 화면과 같은 규칙을 쓴다 — `usePasswordConfirm`(F05)으로 공유한다.
  */
 const props = defineProps({
-    token: { type: String, required: true },
+    token: { type: String, default: '' },
 });
 
 const form = reactive({ newPassword: '', confirm: '' });
@@ -24,7 +24,8 @@ const saving = ref(false);
 
 const { confirmError, confirmInput, validateMatch } =
     usePasswordConfirm(() => form.newPassword, () => form.confirm);
-const { fieldErrors, apply: applyFieldErrors } = useFieldErrors();
+const { fieldErrors, apply: applyFieldErrors, clearOnEdit } = useFieldErrors();
+clearOnEdit(form);
 /** @type {import('vue').Ref<HTMLInputElement|null>} */
 const newPasswordInput = ref(null);
 
@@ -59,7 +60,23 @@ async function onSubmit() {
 </script>
 
 <template>
+  <!-- 링크에 토큰이 없으면 제출해 봐야 실패하므로 처음부터 안내한다(FE-45). -->
+  <div
+    v-if="!token"
+    id="password-reset-invalid"
+    class="alert alert-warning"
+    role="alert"
+  >
+    <p class="mb-2">
+      재설정 링크가 올바르지 않습니다. 메일의 링크를 그대로 열었는지 확인하거나, 링크를 다시 요청해 주세요.
+    </p>
+    <a
+      href="/forgot-password"
+      class="btn btn-primary"
+    >재설정 링크 다시 요청</a>
+  </div>
   <form
+    v-else
     id="password-reset-form"
     @submit.prevent="onSubmit"
   >

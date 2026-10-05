@@ -1,5 +1,6 @@
 package com.kraft.user.service;
 
+import com.kraft.shared.exception.BusinessValidationException;
 import com.kraft.shared.transaction.AfterCommit;
 import com.kraft.user.domain.EmailHasher;
 import com.kraft.user.domain.EmailMasker;
@@ -85,7 +86,7 @@ public class EmailVerificationService {
         // 참고, B16), 이 메서드 자체도 거부한다 — 호출 경로가 늘어도 같은 규칙이 적용되게 한다.
         // withdraw()는 role을 바꾸지 않으므로 탈퇴한 GUEST도 이 검사 없이는 통과했을 것이다.
         if (user.isWithdrawn()) {
-            throw new IllegalArgumentException("탈퇴한 회원입니다. email=" + EmailMasker.mask(email));
+            throw new BusinessValidationException("탈퇴한 회원입니다. email=" + EmailMasker.mask(email));
         }
 
         issueTokenAndEnqueue(user);
@@ -154,16 +155,16 @@ public class EmailVerificationService {
     public Long verify(String token) {
         String tokenHash = EmailHasher.sha512Hex(token);
         EmailVerificationToken verificationToken = tokenRepository.findByTokenHash(tokenHash)
-                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 인증 링크입니다."));
+                .orElseThrow(() -> new BusinessValidationException("유효하지 않은 인증 링크입니다."));
 
         if (verificationToken.isExpired()) {
             expiredTokenPurger.purge(verificationToken.getId());
-            throw new IllegalArgumentException("인증 링크가 만료되었습니다. 다시 요청해 주세요.");
+            throw new BusinessValidationException("인증 링크가 만료되었습니다. 다시 요청해 주세요.");
         }
 
         int consumed = tokenRepository.deleteByIdAndTokenHash(verificationToken.getId(), tokenHash);
         if (consumed == 0) {
-            throw new IllegalArgumentException("이미 사용되었거나 유효하지 않은 인증 링크입니다.");
+            throw new BusinessValidationException("이미 사용되었거나 유효하지 않은 인증 링크입니다.");
         }
         Long userId = verificationToken.getUser().getId();
         userService.promoteToUser(userId);
@@ -191,7 +192,7 @@ public class EmailVerificationService {
                 .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. userId=" + userId));
 
         if (user.getRole() != Role.GUEST) {
-            throw new IllegalArgumentException("이미 인증된 계정입니다.");
+            throw new BusinessValidationException("이미 인증된 계정입니다.");
         }
         requireResendAllowed(user.getId());
 
@@ -207,7 +208,7 @@ public class EmailVerificationService {
 
         if (now.isBefore(earliestNext)) {
             long waitSeconds = Math.max(1, Duration.between(now, earliestNext).toSeconds());
-            throw new IllegalArgumentException(
+            throw new BusinessValidationException(
                     "인증 메일을 방금 보냈습니다. " + waitSeconds + "초 후에 다시 시도해 주세요.");
         }
     }

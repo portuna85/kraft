@@ -59,7 +59,8 @@ const unsavedGuard = useUnsavedGuard(isDirty);
 const titleInput = ref(/** @type {HTMLInputElement | null} */ (null));
 /** @type {import('vue').Ref<InstanceType<typeof MarkdownToolbar> | null>} */
 const contentInput = ref(null);
-const { fieldErrors, apply: applyFieldErrors } = useFieldErrors();
+const { fieldErrors, apply: applyFieldErrors, clearOnEdit } = useFieldErrors();
+clearOnEdit(draft);
 const LEGACY_DRAFT_KEY = 'kraft:draft:post-save';
 const draftKey = props.userId != null ? `kraft:draft:${props.userId}:post-save` : LEGACY_DRAFT_KEY;
 const autosave = useDraftAutosave(draftKey, draft, {
@@ -324,7 +325,7 @@ async function onSubmit() {
 
     <div class="btn-group-gap">
       <a
-        href="/"
+        href="/community"
         class="btn btn-secondary"
       >취소</a>
       <button

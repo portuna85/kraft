@@ -138,8 +138,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/*/js/**", "/*/css/**", "/*/images/**").permitAll()
                         // 글쓰기 화면은 익명에게도 열려 있고 화면이 안내를 보여준다.
                         .requestMatchers("/posts/save").permitAll()
-                        // E2E 소스셋 전용 경로(운영 코드에는 매핑이 없어 404다).
-                        .requestMatchers("/e2e/**").permitAll()
                         .requestMatchers("/api/v1/users").permitAll()
                         // 비밀번호를 잊은 사람은 로그인할 수 없다. 이 두 경로만 열어 두고,
                         // 실제 경계는 메일로 보낸 1회용 토큰이 잡는다(PasswordResetService).

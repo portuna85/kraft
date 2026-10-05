@@ -1,5 +1,6 @@
 package com.kraft.comment.web;
 
+import com.kraft.shared.exception.BusinessValidationException;
 import com.kraft.comment.dto.CommentDeleteResultDto;
 import com.kraft.comment.dto.CommentPageDto;
 import com.kraft.comment.dto.CommentUpdateRequestDto;
@@ -165,7 +166,7 @@ class CommentApiControllerTest {
     @DisplayName("POST .../comments 는 답글에 답글을 달려는 요청을 400으로 거절한다")
     void saveComment_replyToAReply_returns400BadRequest() throws Exception {
         given(commentService.save(eq(1L), any(), any()))
-                .willThrow(new IllegalArgumentException("답글에는 답글을 달 수 없습니다."));
+                .willThrow(new BusinessValidationException("답글에는 답글을 달 수 없습니다."));
 
         mockMvc.perform(post("/api/v1/posts/1/comments")
                         .with(user("tester@example.com"))

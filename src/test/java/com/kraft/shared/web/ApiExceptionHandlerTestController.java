@@ -1,5 +1,6 @@
 package com.kraft.shared.web;
 
+import com.kraft.shared.exception.BusinessValidationException;
 import com.kraft.shared.exception.StorageException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -49,12 +50,17 @@ public class ApiExceptionHandlerTestController {
 
     @PostMapping("/test/illegal-argument")
     public String illegalArgument() {
-        throw new IllegalArgumentException("잘못된 요청입니다.");
+        throw new BusinessValidationException("잘못된 요청입니다.");
     }
 
     @PostMapping("/test/illegal-argument-non-korean")
     public String illegalArgumentNonKorean() {
         throw new IllegalArgumentException("Assertion failed");
+    }
+
+    @PostMapping("/test/illegal-argument-korean")
+    public String illegalArgumentKorean() {
+        throw new IllegalArgumentException("라이브러리가 던진 한글 메시지");
     }
 
     @PostMapping("/test/storage-failure")

@@ -1,5 +1,6 @@
 package com.kraft.report.web;
 
+import com.kraft.shared.exception.BusinessValidationException;
 import com.kraft.config.security.SecurityConfig;
 import com.kraft.report.domain.ReportReason;
 import com.kraft.report.domain.ReportTargetType;
@@ -119,7 +120,7 @@ class ReportApiControllerTest {
     @Test
     @DisplayName("POST /api/v1/reports 는 이미 신고한 대상이면 400 ProblemDetail을 반환한다")
     void report_whenAlreadyReported_returns400BadRequest() throws Exception {
-        willThrow(new IllegalArgumentException("이미 신고한 대상입니다. 관리자가 확인하고 있습니다."))
+        willThrow(new BusinessValidationException("이미 신고한 대상입니다. 관리자가 확인하고 있습니다."))
                 .given(reportService).report(any(ReportSaveRequestDto.class), any(Authentication.class));
 
         mockMvc.perform(post("/api/v1/reports")

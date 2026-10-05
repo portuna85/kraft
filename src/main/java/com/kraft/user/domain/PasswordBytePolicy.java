@@ -1,5 +1,6 @@
 package com.kraft.user.domain;
 
+import com.kraft.shared.exception.BusinessValidationException;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -36,7 +37,7 @@ public final class PasswordBytePolicy {
         }
         int byteLength = password.getBytes(StandardCharsets.UTF_8).length;
         if (byteLength > MAX_BYTES) {
-            throw new IllegalArgumentException(
+            throw new BusinessValidationException(
                     "비밀번호는 UTF-8 기준 " + MAX_BYTES + "바이트를 넘을 수 없습니다. "
                             + "한글은 1자당 3바이트, 대부분의 이모지는 4바이트를 차지합니다.");
         }

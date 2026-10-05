@@ -118,7 +118,7 @@ class CommentServiceTest {
         given(postRepository.findById(999L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> commentService.save(999L, authOf(1L, "tester@example.com", Role.USER), new CommentSaveRequestDto("내용", null)))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("해당 게시글이 없습니다");
 
         verify(commentRepository, never()).save(any());
@@ -431,11 +431,10 @@ class CommentServiceTest {
 
     /**
      * 답글이 있는 최상위 댓글을 지우면 남의 답글까지 함께 사라졌다(개선 보고서 A-BE-06). 행을
-     * 지우지 않고 내용만 비운다 — 실시간 조회가 여전히 가능하므로 A-BE-01 이벤트도 발행하지
-     * 않는다.
+     * 지우지 않고 내용만 비운다. 대기 중인 신고가 남지 않도록 A-BE-01 이벤트는 발행한다(BE-11).
      */
     @Test
-    @DisplayName("delete: 답글이 있으면 행을 지우지 않고 소프트 삭제하며 이벤트를 발행하지 않는다")
+    @DisplayName("delete: 답글이 있으면 행을 지우지 않고 소프트 삭제하고 신고 정리 이벤트를 발행한다")
     void delete_whenHasReplies_softDeletesAndKeepsRow() {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
@@ -448,7 +447,8 @@ class CommentServiceTest {
         assertThat(comment.isDeleted()).isTrue();
         assertThat(comment.getContent()).isEmpty();
         verify(commentRepository, never()).delete(any());
-        verify(eventPublisher, never()).publishEvent(any());
+        verify(eventPublisher).publishEvent(new com.kraft.report.event.TargetDeletedEvent(
+                com.kraft.report.domain.ReportTargetType.COMMENT, List.of(100L)));
     }
 
     @Test

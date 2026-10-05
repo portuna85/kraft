@@ -1,5 +1,6 @@
 package com.kraft.post.service;
 
+import com.kraft.shared.exception.BusinessValidationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -25,7 +26,7 @@ public final class PostSortPolicy {
     /** 허용되지 않는 정렬 속성이 있으면 예외를 던진다. API 응답은 이를 400으로 변환한다. */
     public static void validate(Sort sort) {
         if (!isAllowed(sort)) {
-            throw new IllegalArgumentException("허용되지 않는 정렬 기준입니다.");
+            throw new BusinessValidationException("허용되지 않는 정렬 기준입니다.");
         }
     }
 

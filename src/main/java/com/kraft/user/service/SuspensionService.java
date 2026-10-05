@@ -1,5 +1,6 @@
 package com.kraft.user.service;
 
+import com.kraft.shared.exception.BusinessValidationException;
 import com.kraft.shared.exception.NotFoundException;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
@@ -47,7 +48,7 @@ public class SuspensionService {
                 .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. id=" + userId));
 
         if (!user.isSuspended()) {
-            throw new IllegalArgumentException("정지 중인 계정이 아닙니다. id=" + userId);
+            throw new BusinessValidationException("정지 중인 계정이 아닙니다. id=" + userId);
         }
 
         user.liftSuspension();

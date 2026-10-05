@@ -1,5 +1,5 @@
 // @ts-check
-import { nextTick, reactive } from 'vue';
+import { nextTick, reactive, watch } from 'vue';
 
 /**
  * 서버 검증 실패(A-BE-07의 `errors[]`)를 입력칸 옆 오류로 옮긴다(A-FE-08).
@@ -49,5 +49,19 @@ export function useFieldErrors() {
         return true;
     }
 
-    return { fieldErrors, apply, clear };
+    /**
+     * 폼 값(reactive)의 각 필드를 지켜보다가 사용자가 고치면 그 필드의 서버 오류만 지운다(FE-37).
+     * 예전에는 다음 `apply`·`clear`까지 오류 표시가 남아, 이미 고친 칸이 계속 붉게 보였다.
+     *
+     * @param {Record<string, unknown>} source
+     */
+    function clearOnEdit(source) {
+        Object.keys(source).forEach((key) => {
+            watch(() => source[key], () => {
+                delete fieldErrors[key];
+            });
+        });
+    }
+
+    return { fieldErrors, apply, clear, clearOnEdit };
 }

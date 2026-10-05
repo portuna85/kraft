@@ -1,5 +1,6 @@
 package com.kraft.user.web;
 
+import com.kraft.shared.exception.BusinessValidationException;
 import com.kraft.config.security.KraftUserDetails;
 import com.kraft.config.security.SecurityConfig;
 import com.kraft.config.security.UserDetailsServiceImpl;
@@ -124,7 +125,7 @@ class UserPageControllerTest {
     @Test
     @DisplayName("POST /users/verify 는 토큰이 유효하지 않으면 실패 메시지와 함께 리다이렉트한다")
     void verifyEmailSubmit_whenTokenInvalid_redirectsWithFailureMessage() throws Exception {
-        willThrow(new IllegalArgumentException("유효하지 않은 인증 링크입니다."))
+        willThrow(new BusinessValidationException("유효하지 않은 인증 링크입니다."))
                 .given(emailVerificationService).verify("invalid-token");
 
         mockMvc.perform(post("/users/verify").param("token", "invalid-token").with(csrf()))

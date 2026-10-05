@@ -31,7 +31,8 @@ const saving = ref(false);
 
 const { confirmError, confirmInput, validateMatch } =
     usePasswordConfirm(() => form.password, () => form.passwordConfirm);
-const { fieldErrors, apply: applyFieldErrors } = useFieldErrors();
+const { fieldErrors, apply: applyFieldErrors, clearOnEdit } = useFieldErrors();
+clearOnEdit(form);
 
 /** @type {import('vue').Ref<HTMLInputElement|null>} */
 const nameInput = ref(null);

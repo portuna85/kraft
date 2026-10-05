@@ -339,7 +339,7 @@ class PostServiceTest {
         given(postRepository.findById(999L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> postService.findById(999L))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("id=999");
     }
 

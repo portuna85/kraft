@@ -1,5 +1,5 @@
 <script setup>
-import { nextTick, ref } from 'vue';
+import { nextTick, reactive, ref } from 'vue';
 import { api, messageOf } from '@core/http.js';
 import { API } from '@core/constants.js';
 import * as flash from '@ui/flash.js';
@@ -19,7 +19,8 @@ const sending = ref(false);
 const sent = ref(false);
 const doneHeading = ref(/** @type {HTMLElement | null} */ (null));
 const emailInput = ref(/** @type {HTMLInputElement | null} */ (null));
-const { fieldErrors, apply: applyFieldErrors } = useFieldErrors();
+const { fieldErrors, apply: applyFieldErrors, clearOnEdit } = useFieldErrors();
+clearOnEdit(reactive({ email }));
 
 async function onSubmit() {
     if (sending.value) {

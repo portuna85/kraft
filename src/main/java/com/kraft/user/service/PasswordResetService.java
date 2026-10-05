@@ -1,5 +1,6 @@
 package com.kraft.user.service;
 
+import com.kraft.shared.exception.BusinessValidationException;
 import com.kraft.shared.transaction.AfterCommit;
 import com.kraft.user.domain.EmailHasher;
 import com.kraft.user.domain.EmailMasker;
@@ -108,18 +109,18 @@ public class PasswordResetService {
     public void reset(String token, String newPassword) {
         String tokenHash = EmailHasher.sha512Hex(token);
         PasswordResetToken resetToken = tokenRepository.findByTokenHash(tokenHash)
-                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 재설정 링크입니다. 다시 요청해 주세요."));
+                .orElseThrow(() -> new BusinessValidationException("유효하지 않은 재설정 링크입니다. 다시 요청해 주세요."));
 
         if (resetToken.isExpired()) {
             // 이 트랜잭션에서 지우면 바로 아래 예외와 함께 삭제까지 롤백된다(F08과 같은 덫).
             // 자기 트랜잭션에서 먼저 커밋하는 쪽에 맡긴다.
             expiredTokenPurger.purgePasswordResetToken(resetToken.getId());
-            throw new IllegalArgumentException("재설정 링크가 만료되었습니다. 다시 요청해 주세요.");
+            throw new BusinessValidationException("재설정 링크가 만료되었습니다. 다시 요청해 주세요.");
         }
 
         int consumed = tokenRepository.deleteByIdAndTokenHash(resetToken.getId(), tokenHash);
         if (consumed == 0) {
-            throw new IllegalArgumentException("이미 사용되었거나 유효하지 않은 재설정 링크입니다. 다시 요청해 주세요.");
+            throw new BusinessValidationException("이미 사용되었거나 유효하지 않은 재설정 링크입니다. 다시 요청해 주세요.");
         }
         userService.resetPassword(resetToken.getUser().getId(), newPassword);
     }

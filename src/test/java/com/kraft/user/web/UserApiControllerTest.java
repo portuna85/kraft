@@ -1,5 +1,6 @@
 package com.kraft.user.web;
 
+import com.kraft.shared.exception.BusinessValidationException;
 import com.kraft.config.security.KraftUserDetails;
 import com.kraft.config.security.SecurityConfig;
 import com.kraft.user.domain.Role;
@@ -177,7 +178,7 @@ class UserApiControllerTest {
     @DisplayName("이름이 중복이면 400 ProblemDetail을 반환한다")
     void signUp_whenNameAlreadyExists_returns400BadRequest() throws Exception {
         given(userService.signUp(any(), any(), any()))
-                .willThrow(new IllegalArgumentException("이미 사용중인 이름입니다. name=dupName"));
+                .willThrow(new BusinessValidationException("이미 사용중인 이름입니다. name=dupName"));
 
         mockMvc.perform(post("/api/v1/users")
                         .with(csrf())
@@ -220,7 +221,7 @@ class UserApiControllerTest {
     void changePassword_whenCurrentPasswordMismatch_returns400BadRequest() throws Exception {
         givenAuthenticatedUser("tester@example.com");
         // changePassword는 void 메서드라 BDDMockito.given이 아니라 willThrow(...).given(...) 형태로 스텁한다.
-        willThrow(new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다."))
+        willThrow(new BusinessValidationException("현재 비밀번호가 일치하지 않습니다."))
                 .given(userService).changePassword(TESTER_ID, "wrong", "New12345!");
 
         mockMvc.perform(put("/api/v1/users/me/password")
@@ -286,7 +287,7 @@ class UserApiControllerTest {
     @DisplayName("POST /api/v1/users/me/verify-email/resend 는 이미 인증된 계정이면 400 ProblemDetail을 반환한다")
     void resendVerificationEmail_whenAlreadyVerified_returns400BadRequest() throws Exception {
         givenAuthenticatedUser("tester@example.com");
-        willThrow(new IllegalArgumentException("이미 인증된 계정입니다."))
+        willThrow(new BusinessValidationException("이미 인증된 계정입니다."))
                 .given(emailVerificationService).resend(TESTER_ID);
 
         mockMvc.perform(post("/api/v1/users/me/verify-email/resend")
@@ -362,7 +363,7 @@ class UserApiControllerTest {
     @Test
     @DisplayName("POST /api/v1/users/password-reset/confirm 은 만료·잘못된 링크면 400 ProblemDetail을 반환한다")
     void confirmPasswordReset_withExpiredToken_returns400BadRequest() throws Exception {
-        willThrow(new IllegalArgumentException("재설정 링크가 만료되었습니다. 다시 요청해 주세요."))
+        willThrow(new BusinessValidationException("재설정 링크가 만료되었습니다. 다시 요청해 주세요."))
                 .given(passwordResetService).reset("expired", "NewPass1!");
 
         mockMvc.perform(post("/api/v1/users/password-reset/confirm")
@@ -429,7 +430,7 @@ class UserApiControllerTest {
     @DisplayName("DELETE /api/v1/users/me 는 현재 비밀번호가 틀리면 400 ProblemDetail을 반환한다")
     void withdraw_whenPasswordDoesNotMatch_returns400BadRequest() throws Exception {
         givenAuthenticatedUser("tester@example.com");
-        willThrow(new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다."))
+        willThrow(new BusinessValidationException("현재 비밀번호가 일치하지 않습니다."))
                 .given(userService).withdraw(TESTER_ID, "WrongPass1!");
 
         mockMvc.perform(delete("/api/v1/users/me")

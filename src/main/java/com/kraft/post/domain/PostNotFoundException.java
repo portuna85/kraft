@@ -1,5 +1,7 @@
 package com.kraft.post.domain;
 
+import com.kraft.shared.exception.NotFoundException;
+
 /**
  * 존재하지 않는 게시글을 조회했을 때 던진다.
  * <p>
@@ -7,7 +9,7 @@ package com.kraft.post.domain;
  * {@code ViewExceptionHandler}가 404 안내 화면으로 변환한다.
  * 다른 입력 검증 오류와 구별하기 위해 게시글 도메인에 별도 타입을 둔다.
  */
-public class PostNotFoundException extends IllegalArgumentException {
+public class PostNotFoundException extends NotFoundException {
 
     public PostNotFoundException(Long id) {
         super("해당 게시글이 없습니다. id=" + id);
