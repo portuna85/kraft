@@ -101,7 +101,8 @@ class CommentServiceTest {
     void save_whenPostAndUserExist_savesCommentAndReturnsId() {
         Post post = postOf(1L);
         User user = userWithEmail("tester@example.com", 1L);
-        given(postRepository.findById(1L)).willReturn(Optional.of(post));
+        given(postRepository.existsById(1L)).willReturn(true);
+        given(postRepository.getReferenceById(1L)).willReturn(post);
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
         Comment saved = commentOf(user, 100L);
         given(commentRepository.saveAndFlush(any(Comment.class))).willReturn(saved);
@@ -115,7 +116,7 @@ class CommentServiceTest {
     @Test
     @DisplayName("save: 게시글이 없으면 IllegalArgumentException")
     void save_whenPostNotFound_throwsIllegalArgumentException() {
-        given(postRepository.findById(999L)).willReturn(Optional.empty());
+        given(postRepository.existsById(999L)).willReturn(false);
 
         assertThatThrownBy(() -> commentService.save(999L, authOf(1L, "tester@example.com", Role.USER), new CommentSaveRequestDto("내용", null)))
                 .isInstanceOf(NotFoundException.class)
@@ -129,7 +130,8 @@ class CommentServiceTest {
     void save_whenUserIsGuest_throwsAccessDeniedExceptionAndDoesNotSave() {
         User guest = User.builder().name("tester").email("guest@example.com").password("encoded").role(Role.GUEST).build();
         ReflectionTestUtils.setField(guest, "id", 1L);
-        given(postRepository.findById(1L)).willReturn(Optional.of(postOf(1L)));
+        given(postRepository.existsById(1L)).willReturn(true);
+        given(postRepository.getReferenceById(1L)).willReturn(postOf(1L));
         given(userRepository.findById(1L)).willReturn(Optional.of(guest));
 
         assertThatThrownBy(() -> commentService.save(1L, authOf(guest), new CommentSaveRequestDto("내용", null)))
@@ -141,7 +143,8 @@ class CommentServiceTest {
     @Test
     @DisplayName("save: 회원이 없으면 NotFoundException")
     void save_whenUserNotFound_throwsIllegalArgumentException() {
-        given(postRepository.findById(1L)).willReturn(Optional.of(postOf(1L)));
+        given(postRepository.existsById(1L)).willReturn(true);
+        given(postRepository.getReferenceById(1L)).willReturn(postOf(1L));
         given(userRepository.findById(999L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> commentService.save(1L, authOf(999L, "nobody@example.com", Role.USER), new CommentSaveRequestDto("내용", null)))
@@ -161,7 +164,8 @@ class CommentServiceTest {
         Post post = postOf(1L);
         User author = userWithEmail("tester@example.com", 1L);
         Comment parent = commentOf(author, 100L);
-        given(postRepository.findById(1L)).willReturn(Optional.of(post));
+        given(postRepository.existsById(1L)).willReturn(true);
+        given(postRepository.getReferenceById(1L)).willReturn(post);
         given(userRepository.findById(1L)).willReturn(Optional.of(author));
         given(commentRepository.findById(100L)).willReturn(Optional.of(parent));
         Comment savedReply = replyOf(author, 200L, parent);
@@ -183,7 +187,8 @@ class CommentServiceTest {
         User author = userWithEmail("tester@example.com", 1L);
         Comment topLevel = commentOf(author, 100L);
         Comment existingReply = replyOf(author, 200L, topLevel);
-        given(postRepository.findById(1L)).willReturn(Optional.of(post));
+        given(postRepository.existsById(1L)).willReturn(true);
+        given(postRepository.getReferenceById(1L)).willReturn(post);
         given(userRepository.findById(1L)).willReturn(Optional.of(author));
         given(commentRepository.findById(200L)).willReturn(Optional.of(existingReply));
 
@@ -200,7 +205,8 @@ class CommentServiceTest {
         User author = userWithEmail("tester@example.com", 1L);
         Comment parentOnAnotherPost = Comment.builder().content("다른 글의 댓글").post(postOf(2L)).user(author).build();
         ReflectionTestUtils.setField(parentOnAnotherPost, "id", 300L);
-        given(postRepository.findById(1L)).willReturn(Optional.of(postOf(1L)));
+        given(postRepository.existsById(1L)).willReturn(true);
+        given(postRepository.getReferenceById(1L)).willReturn(postOf(1L));
         given(userRepository.findById(1L)).willReturn(Optional.of(author));
         given(commentRepository.findById(300L)).willReturn(Optional.of(parentOnAnotherPost));
 

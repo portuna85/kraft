@@ -166,5 +166,22 @@
     "expected": [
       { "type": "p", "children": ["- 첫째", { "type": "br" }, "둘째 줄은 목록이 아님"] }
     ]
+  },
+  {
+    "name": "여는 대괄호가 겹쳐도 첫 닫는 대괄호 기준으로 링크가 만들어진다(검색 캐시 회귀)",
+    "input": "[a [b](https://x.com)",
+    "expected": [
+      { "type": "p", "children": [{ "type": "a", "href": "https://x.com", "children": ["a [b"] }] }
+    ]
+  },
+  {
+    "name": "닫히지 않은 대괄호가 연달아 나와도 글자 그대로 남는다",
+    "input": "[[[[ 끝",
+    "expected": [{ "type": "p", "children": ["[[[[ 끝"] }]
+  },
+  {
+    "name": "공백 때문에 실패한 별표 다음의 별표 쌍은 기울임이 된다(검색 캐시 회귀)",
+    "input": "*a *b* c",
+    "expected": [{ "type": "p", "children": ["*a ", { "type": "em", "children": ["b"] }, " c"] }]
   }
 ]

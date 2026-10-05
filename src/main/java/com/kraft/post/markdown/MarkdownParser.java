@@ -82,7 +82,43 @@ public final class MarkdownParser {
         return node("p", "children", parseInline(String.join("\n", lines)));
     }
 
+    /**
+     * 같은 문자열에서 다음 위치 검색을 되풀이하는 {@code indexOf}를 줄인다(BE-20). 닫히지 않은
+     * {@code [}·{@code `}·{@code *}가 많으면 열린 기호마다 끝까지 스캔해 O(n²)이 되는데, 찾는 위치는 항상
+     * 앞에서 뒤로만 움직이므로 직전 결과를 재사용할 수 있다 — 직전에 {@code from0}부터 찾아 {@code found}를
+     * 얻었다면, 새 {@code from}이 {@code [from0, found]}(없으면 {@code from0} 이후 전부)에 있을 때 결과는 같다.
+     * 결과는 {@code indexOf}와 항상 동일하다.
+     */
+    private static final class NextOccurrence {
+        private final String needle;
+        private int cachedFrom = -1;
+        private int cachedResult;
+
+        NextOccurrence(String needle) {
+            this.needle = needle;
+        }
+
+        int find(String text, int from) {
+            if (cachedFrom >= 0 && from >= cachedFrom && (cachedResult == -1 || from <= cachedResult)) {
+                return cachedResult;
+            }
+            cachedFrom = from;
+            cachedResult = text.indexOf(needle, from);
+            return cachedResult;
+        }
+    }
+
+    /** {@code parseInline} 한 번 안에서 쓰는 검색 캐시 모음. */
+    private static final class InlineScan {
+        final NextOccurrence backtick = new NextOccurrence("`");
+        final NextOccurrence strong = new NextOccurrence("**");
+        final NextOccurrence em = new NextOccurrence("*");
+        final NextOccurrence closeBracket = new NextOccurrence("]");
+        final NextOccurrence closeParen = new NextOccurrence(")");
+    }
+
     private static List<Object> parseInline(String text) {
+        InlineScan scan = new InlineScan();
         List<Object> nodes = new ArrayList<>();
         StringBuilder buffer = new StringBuilder();
 
@@ -99,7 +135,7 @@ public final class MarkdownParser {
             }
 
             if (ch == '`') {
-                int end = text.indexOf('`', i + 1);
+                int end = scan.backtick.find(text, i + 1);
                 if (end != -1 && end > i + 1) {
                     flushBuffer(nodes, buffer);
                     nodes.add(node("code", "text", text.substring(i + 1, end)));
@@ -109,7 +145,7 @@ public final class MarkdownParser {
             }
 
             if (text.startsWith("**", i)) {
-                int end = findDelimiterEnd(text, i, "**", false);
+                int end = findDelimiterEnd(text, i, "**", false, scan.strong);
                 if (end != -1) {
                     flushBuffer(nodes, buffer);
                     nodes.add(node("strong", "children", parseInline(text.substring(i + 2, end))));
@@ -120,7 +156,7 @@ public final class MarkdownParser {
 
             if (ch == '*') {
                 // 단일 *만 숫자 경계를 추가로 막는다("5*3*2" 같은 곱셈 표기 오인 방지).
-                int end = findDelimiterEnd(text, i, "*", true);
+                int end = findDelimiterEnd(text, i, "*", true, scan.em);
                 if (end != -1) {
                     flushBuffer(nodes, buffer);
                     nodes.add(node("em", "children", parseInline(text.substring(i + 1, end))));
@@ -130,7 +166,7 @@ public final class MarkdownParser {
             }
 
             if (ch == '[') {
-                LinkMatch link = tryParseLink(text, i);
+                LinkMatch link = tryParseLink(text, i, scan);
                 if (link != null) {
                     flushBuffer(nodes, buffer);
                     nodes.add(link.node());
@@ -157,11 +193,12 @@ public final class MarkdownParser {
      * {@code **}·{@code *} 강조 구간의 닫는 위치를 찾는다. 조건을 만족하지 않으면
      * -1(글자 그대로 취급).
      */
-    private static int findDelimiterEnd(String text, int start, String delimiter, boolean restrictDigitBoundary) {
+    private static int findDelimiterEnd(String text, int start, String delimiter, boolean restrictDigitBoundary,
+                                        NextOccurrence closer) {
         if (restrictDigitBoundary && isDigit(charAtOrNull(text, start - 1))) {
             return -1;
         }
-        int end = text.indexOf(delimiter, start + delimiter.length());
+        int end = closer.find(text, start + delimiter.length());
         if (end == -1) {
             return -1;
         }
@@ -188,12 +225,12 @@ public final class MarkdownParser {
      * {@code [글자](주소)} 형태를 시도한다. http/https가 아니면 링크로 만들지 않고 null을
      * 돌려준다.
      */
-    private static LinkMatch tryParseLink(String text, int start) {
-        int closeBracket = text.indexOf(']', start + 1);
+    private static LinkMatch tryParseLink(String text, int start, InlineScan scan) {
+        int closeBracket = scan.closeBracket.find(text, start + 1);
         if (closeBracket == -1 || closeBracket + 1 >= text.length() || text.charAt(closeBracket + 1) != '(') {
             return null;
         }
-        int closeParen = text.indexOf(')', closeBracket + 2);
+        int closeParen = scan.closeParen.find(text, closeBracket + 2);
         if (closeParen == -1) {
             return null;
         }

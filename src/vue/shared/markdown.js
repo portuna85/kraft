@@ -69,8 +69,35 @@ function blockToNode(lines) {
  *   | { type: 'a', href: string, children: InlineNode[] }} InlineNode
  */
 
+/**
+ * 같은 문자열에서 다음 위치 검색이 되풀이되는 `indexOf`를 줄인다(FE-25, Java 파서의 NextOccurrence와 같다).
+ * 닫히지 않은 `[`·`` ` ``·`*`가 많으면 열린 기호마다 끝까지 스캔해 O(n²)이 되는데, 찾는 위치는 항상 앞에서
+ * 뒤로만 움직이므로 직전 결과를 재사용한다. 결과는 `indexOf`와 항상 같다.
+ */
+function nextOccurrence(needle) {
+    let cachedFrom = -1;
+    let cachedResult = -1;
+    return {
+        find(text, from) {
+            if (cachedFrom >= 0 && from >= cachedFrom && (cachedResult === -1 || from <= cachedResult)) {
+                return cachedResult;
+            }
+            cachedFrom = from;
+            cachedResult = text.indexOf(needle, from);
+            return cachedResult;
+        },
+    };
+}
+
 /** @returns {InlineNode[]} */
 function parseInline(text) {
+    const scan = {
+        backtick: nextOccurrence('`'),
+        strong: nextOccurrence('**'),
+        em: nextOccurrence('*'),
+        closeBracket: nextOccurrence(']'),
+        closeParen: nextOccurrence(')'),
+    };
     /** @type {InlineNode[]} */
     const nodes = [];
     let buffer = '';
@@ -93,7 +120,7 @@ function parseInline(text) {
         }
 
         if (ch === '`') {
-            const end = text.indexOf('`', i + 1);
+            const end = scan.backtick.find(text, i + 1);
             if (end !== -1 && end > i + 1) {
                 flushBuffer();
                 nodes.push({ type: 'code', text: text.slice(i + 1, end) });
@@ -103,7 +130,7 @@ function parseInline(text) {
         }
 
         if (text.startsWith('**', i)) {
-            const end = findDelimiterEnd(text, i, '**', false);
+            const end = findDelimiterEnd(text, i, '**', false, scan.strong);
             if (end !== -1) {
                 flushBuffer();
                 nodes.push({ type: 'strong', children: parseInline(text.slice(i + 2, end)) });
@@ -116,7 +143,7 @@ function parseInline(text) {
             // 단일 *만 숫자 경계를 추가로 막는다("5*3*2" 같은 곱셈 표기 오인 방지). **는
             // 두 글자라 곱셈과 헷갈릴 일이 없어 문장에 바로 붙는 일반적인 굵게 표기
             // ("**굵게**입니다")까지 막지 않는다.
-            const end = findDelimiterEnd(text, i, '*', true);
+            const end = findDelimiterEnd(text, i, '*', true, scan.em);
             if (end !== -1) {
                 flushBuffer();
                 nodes.push({ type: 'em', children: parseInline(text.slice(i + 1, end)) });
@@ -126,7 +153,7 @@ function parseInline(text) {
         }
 
         if (ch === '[') {
-            const link = tryParseLink(text, i);
+            const link = tryParseLink(text, i, scan);
             if (link) {
                 flushBuffer();
                 nodes.push(link.node);
@@ -148,11 +175,11 @@ function parseInline(text) {
  *  - `restrictDigitBoundary`(단일 `*`에만 적용)가 있으면 여는 기호 바로 앞, 닫는 기호
  *    바로 뒤가 숫자면 안 된다 — "5*3*2" 같은 곱셈 표기를 기울임으로 오인하지 않게 막는다.
  */
-function findDelimiterEnd(text, start, delimiter, restrictDigitBoundary) {
+function findDelimiterEnd(text, start, delimiter, restrictDigitBoundary, closer) {
     if (restrictDigitBoundary && isDigit(start > 0 ? text[start - 1] : null)) {
         return -1;
     }
-    const end = text.indexOf(delimiter, start + delimiter.length);
+    const end = closer.find(text, start + delimiter.length);
     if (end === -1) {
         return -1;
     }
@@ -174,12 +201,12 @@ function isDigit(ch) {
  * `[글자](주소)` 형태를 시도한다. http/https가 아니면 링크로 만들지 않고 null을 돌려준다.
  * @returns {{ node: InlineNode, nextIndex: number } | null}
  */
-function tryParseLink(text, start) {
-    const closeBracket = text.indexOf(']', start + 1);
+function tryParseLink(text, start, scan) {
+    const closeBracket = scan.closeBracket.find(text, start + 1);
     if (closeBracket === -1 || text[closeBracket + 1] !== '(') {
         return null;
     }
-    const closeParen = text.indexOf(')', closeBracket + 2);
+    const closeParen = scan.closeParen.find(text, closeBracket + 2);
     if (closeParen === -1) {
         return null;
     }

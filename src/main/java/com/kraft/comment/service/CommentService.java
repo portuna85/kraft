@@ -68,8 +68,11 @@ public class CommentService {
      */
     @Transactional
     public CommentViewDto save(Long postId, Authentication authentication, CommentSaveRequestDto requestDto) {
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new PostNotFoundException(postId));
+        // 댓글에는 글과의 연관만 필요하다 — TEXT 본문까지 읽는 findById 대신 존재만 확인하고 참조를 쓴다(BE-25).
+        if (!postRepository.existsById(postId)) {
+            throw new PostNotFoundException(postId);
+        }
+        Post post = postRepository.getReferenceById(postId);
         User user = findUser(authentication);
         WriteAccessPolicy.requireVerified(user);
         Comment parent = resolveParent(postId, requestDto.parentId());

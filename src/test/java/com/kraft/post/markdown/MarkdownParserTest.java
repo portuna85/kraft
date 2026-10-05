@@ -84,4 +84,15 @@ class MarkdownParserTest {
             assertThat(millis).as("입력 '%s' 반복 파싱 시간(ms)", unit).isLessThan(2_000);
         }
     }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("닫히지 않은 기호가 아주 많아도 선형 시간에 끝난다 (BE-20)")
+    void unclosedDelimiters_doNotBlowUp() {
+        for (String unit : List.of("[", "`", "*", "**", "[a](")) {
+            String input = unit.repeat(10_000 / unit.length());
+
+            assertThat(org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(
+                    java.time.Duration.ofSeconds(2), () -> MarkdownParser.parse(input))).isNotNull();
+        }
+    }
 }

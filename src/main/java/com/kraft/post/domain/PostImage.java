@@ -29,6 +29,8 @@ import lombok.NoArgsConstructor;
                 // V6__image_quota_and_search_indexes.sql. 엔티티에 선언이 없어 ddl-auto: update로
                 // 만든 기존 DB에는 이 인덱스가 생기지 않았다(개선 보고서 O01).
                 @Index(name = "IX_POST_IMAGES_OWNER", columnList = "owner_id"),
+                // 업로드 쿼터 합계(sumSizeBytesByOwnerId)가 테이블을 다시 읽지 않고 인덱스만으로 계산한다(V40, BE-26).
+                @Index(name = "IX_POST_IMAGES_OWNER_STATUS_SIZE", columnList = "owner_id, status, size_bytes"),
                 // PostImageRepository의 상태 기반 배치 조회·claimExpiredOrphanForDeletion이
                 // status·created_at·id를 함께 쓴다(V23, 개선 보고서 PERF-05).
                 @Index(name = "IX_POST_IMAGES_STATUS_CREATED_AT_ID", columnList = "status, created_at, id"),

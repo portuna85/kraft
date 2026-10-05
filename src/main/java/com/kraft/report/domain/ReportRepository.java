@@ -15,10 +15,10 @@ import java.util.List;
 public interface ReportRepository extends JpaRepository<Report, Long> {
 
     /**
-     * 관리자 화면의 기본 목록. 신고자를 함께 읽어 목록을 그리는 동안 건마다 추가 질의가
+     * 관리자 화면의 기본 목록. 신고자와 대상 작성자(스냅샷에서 이름을 읽는다, BE-19)를 함께 읽어 목록을 그리는 동안 건마다 추가 질의가
      * 나가지 않게 한다.
      */
-    @EntityGraph(attributePaths = "reporter")
+    @EntityGraph(attributePaths = {"reporter", "targetAuthor"})
     Page<Report> findByStatusOrderByIdAsc(ReportStatus status, Pageable pageable);
 
     boolean existsByReporterIdAndTargetTypeAndTargetId(

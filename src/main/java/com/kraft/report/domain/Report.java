@@ -29,6 +29,10 @@ import java.time.LocalDateTime;
                 // findByTargetTypeAndTargetIdAndStatus가 대상 기준으로 훑는다.
                 // UK_REPORT_REPORTER_TARGET은 reporter_id가 맨 앞이라 이 조회에는 못 쓰인다.
                 @Index(name = "IX_REPORTS_TARGET", columnList = "target_type, target_id"),
+                // V27__report_target_snapshot_and_deleted_status.sql. 스냅샷 보관기간 정리가
+                // status로 거르고 handled_at 범위를 훑는다. 엔티티에 없으면 H2 테스트 스키마에는
+                // 운영에 있는 이 인덱스가 빠진다(BE-27).
+                @Index(name = "IX_REPORTS_STATUS_HANDLED_AT", columnList = "status, handled_at"),
         })
 public class Report extends BaseEntity {
 
