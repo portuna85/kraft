@@ -247,9 +247,22 @@ test('편집 화면이 열려 있는 동안 세션 연장 핑을 주기적으로
     await createOwnPost(page, uniqueTitle('세션연장'));
     expect(pingRequests).toHaveLength(0);
 
+    // 입력이 없으면 방치된 화면으로 보고 핑하지 않는다(FE-07).
+    await page.clock.fastForward('10:00');
+    await page.waitForTimeout(300);
+    expect(pingRequests).toHaveLength(0);
+
+    // 입력이 있었고 탭이 보이면 다음 주기에 핑한다.
+    await page.keyboard.press('Shift');
     await page.clock.fastForward('10:00');
     await expect.poll(() => pingRequests.length).toBe(1);
 
+    // 핑한 뒤 새 입력이 없으면 다음 주기는 건너뛴다.
+    await page.clock.fastForward('10:00');
+    await page.waitForTimeout(300);
+    expect(pingRequests).toHaveLength(1);
+
+    await page.keyboard.press('Shift');
     await page.clock.fastForward('10:00');
     await expect.poll(() => pingRequests.length).toBe(2);
 });

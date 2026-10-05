@@ -27,8 +27,12 @@ export function useSessionKeepAlive() {
     let active = false;
     let startedAt = 0;
 
-    function markActive() {
-        active = true;
+    /** @param {Event} event */
+    function markActive(event) {
+        // 스크립트가 만든 합성 이벤트(자동 크기 조절 등)는 사용자가 쓰고 있다는 증거가 아니다.
+        if (event.isTrusted) {
+            active = true;
+        }
     }
 
     function ping() {
