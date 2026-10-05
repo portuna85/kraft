@@ -1,1 +1,0 @@
-function e(){try{return window.localStorage}catch{return null}}function t(t){try{return e()?.getItem(t)??null}catch{return null}}function n(t,n){try{let r=e();return r?(r.setItem(t,n),!0):!1}catch{return!1}}export{e as n,n as r,t};

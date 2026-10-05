@@ -18,6 +18,8 @@ const CORE_MODULES = [
     '/core/httpResponse.js',
     '/core/dom.js',
     '/core/constants.js',
+    '/core/storage.js',
+    '/core/datetime.js',
     '/core/bootstrap-ui.js',
     '/ui/flash.js',
     '/ui/toast.js',
