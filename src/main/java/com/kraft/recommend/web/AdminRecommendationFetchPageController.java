@@ -4,7 +4,7 @@ import com.kraft.recommend.domain.RecommendationFetchAttemptRepository;
 import com.kraft.recommend.domain.RecommendationHistoryState;
 import com.kraft.recommend.domain.RecommendationHistoryStateRepository;
 import com.kraft.recommend.domain.WinningDraw;
-import com.kraft.recommend.domain.WinningDrawRepository;
+import com.kraft.recommend.service.LatestDrawService;
 import com.kraft.recommend.service.RecommendationAutoFetchScheduler;
 import com.kraft.recommend.service.RecommendationFetchStatus;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +38,7 @@ public class AdminRecommendationFetchPageController {
 
     private final RecommendationFetchStatus fetchStatus;
     private final RecommendationHistoryStateRepository stateRepository;
-    private final WinningDrawRepository winningDrawRepository;
+    private final LatestDrawService latestDrawService;
     private final RecommendationFetchAttemptRepository attemptRepository;
 
     @Value("${app.recommend.auto-fetch.enabled:true}")
@@ -48,7 +48,7 @@ public class AdminRecommendationFetchPageController {
     public String fetchStatus(Model model) {
         RecommendationHistoryState state = stateRepository.findById(1).orElse(null);
         Integer verifiedThrough = state == null ? null : state.getVerifiedThroughRound();
-        WinningDraw latestDraw = winningDrawRepository.findTopByOrderByRoundNoDesc().orElse(null);
+        WinningDraw latestDraw = latestDrawService.latest().orElse(null);
 
         model.addAttribute("autoFetchEnabled", autoFetchEnabled);
         model.addAttribute("verifiedThroughRound", verifiedThrough);

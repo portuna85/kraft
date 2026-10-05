@@ -3,7 +3,7 @@ package com.kraft.home.web;
 import com.kraft.config.security.SecurityConfig;
 import com.kraft.post.service.PostService;
 import com.kraft.recommend.domain.WinningDraw;
-import com.kraft.recommend.domain.WinningDrawRepository;
+import com.kraft.recommend.service.LatestDrawService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,7 +38,7 @@ class HomePageControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private WinningDrawRepository winningDrawRepository;
+    private LatestDrawService latestDrawService;
 
     @MockitoBean
     private PostService postService;
@@ -56,7 +56,7 @@ class HomePageControllerTest {
     @Test
     @DisplayName("이력이 없으면 최신 회차 없이 랜딩과 조용한 빈 커뮤니티 안내를 그린다")
     void rendersWithoutLatestDraw() throws Exception {
-        given(winningDrawRepository.findTopByOrderByRoundNoDesc()).willReturn(Optional.empty());
+        given(latestDrawService.latest()).willReturn(Optional.empty());
 
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
@@ -74,7 +74,7 @@ class HomePageControllerTest {
         given(draw.getRoundNo()).willReturn(1243);
         given(draw.numbers()).willReturn(List.of(9, 18, 24, 38, 43, 44));
         given(draw.getBonusNo()).willReturn(35);
-        given(winningDrawRepository.findTopByOrderByRoundNoDesc()).willReturn(Optional.of(draw));
+        given(latestDrawService.latest()).willReturn(Optional.of(draw));
 
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
@@ -94,7 +94,7 @@ class HomePageControllerTest {
         given(draw.getDrawDate()).willReturn(java.time.LocalDate.of(2026, 9, 26));
         given(draw.getFirstPrizeAmount()).willReturn(2_592_525_282L);
         given(draw.getFirstPrizeWinnerCount()).willReturn(12);
-        given(winningDrawRepository.findTopByOrderByRoundNoDesc()).willReturn(Optional.of(draw));
+        given(latestDrawService.latest()).willReturn(Optional.of(draw));
 
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
@@ -107,7 +107,7 @@ class HomePageControllerTest {
     @Test
     @DisplayName("홈에는 WebSite JSON-LD가 한 번 실린다")
     void rendersWebSiteJsonLd() throws Exception {
-        given(winningDrawRepository.findTopByOrderByRoundNoDesc()).willReturn(Optional.empty());
+        given(latestDrawService.latest()).willReturn(Optional.empty());
 
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
@@ -121,19 +121,19 @@ class HomePageControllerTest {
         mockMvc.perform(get("/").queryParam("q", "abc").queryParam("page", "2"))
                 .andExpect(status().isMovedPermanently())
                 .andExpect(header().string("Location", "/community?q=abc&page=2"));
-        verifyNoInteractions(winningDrawRepository);
+        verifyNoInteractions(latestDrawService);
     }
 
     @Test
     @DisplayName("추천 기능이 꺼져 있으면 최신 회차를 조회하지 않고 추천 링크도 그리지 않는다")
     void recommendDisabledHidesDrawAndCta() throws Exception {
         // 기능 플래그는 생성자 값이라 같은 슬라이스에서 끄려면 별도 컨트롤러 인스턴스가 필요하다.
-        HomePageController controller = new HomePageController(winningDrawRepository, postService, insightsService, false);
+        HomePageController controller = new HomePageController(latestDrawService, postService, insightsService, false);
         org.springframework.ui.ExtendedModelMap model = new org.springframework.ui.ExtendedModelMap();
         Object result = controller.home(new org.springframework.mock.web.MockHttpServletRequest(), model);
 
         org.assertj.core.api.Assertions.assertThat(result).isEqualTo("home");
         org.assertj.core.api.Assertions.assertThat(model.get("recommendEnabled")).isEqualTo(false);
-        verifyNoInteractions(winningDrawRepository);
+        verifyNoInteractions(latestDrawService);
     }
 }

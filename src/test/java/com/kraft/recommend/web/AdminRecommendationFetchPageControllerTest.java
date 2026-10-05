@@ -7,7 +7,7 @@ import com.kraft.recommend.domain.RecommendationFetchAttemptRepository;
 import com.kraft.recommend.domain.RecommendationHistoryState;
 import com.kraft.recommend.domain.RecommendationHistoryStateRepository;
 import com.kraft.recommend.domain.WinningDraw;
-import com.kraft.recommend.domain.WinningDrawRepository;
+import com.kraft.recommend.service.LatestDrawService;
 import com.kraft.recommend.service.RecommendationFetchStatus;
 import com.kraft.user.domain.UserRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -49,7 +49,7 @@ class AdminRecommendationFetchPageControllerTest {
     private RecommendationFetchStatus fetchStatus;
 
     @MockitoBean
-    private WinningDrawRepository winningDrawRepository;
+    private LatestDrawService latestDrawService;
 
     @MockitoBean
     private RecommendationFetchAttemptRepository attemptRepository;
@@ -64,7 +64,7 @@ class AdminRecommendationFetchPageControllerTest {
         mockMvc.perform(get("/admin/recommendations").with(user("tester@example.com").roles("USER")))
                 .andExpect(status().isForbidden());
 
-        verifyNoInteractions(stateRepository, fetchStatus, winningDrawRepository, attemptRepository);
+        verifyNoInteractions(stateRepository, fetchStatus, latestDrawService, attemptRepository);
     }
 
     @Test
@@ -93,7 +93,7 @@ class AdminRecommendationFetchPageControllerTest {
         WinningDraw latest = WinningDraw.builder().roundNo(1244).numbers(List.of(1, 13, 18, 26, 34, 38))
                 .updatedAt(LocalDateTime.now()).build();
         latest.applyDetails(new DrawDetails(25, LocalDate.of(2026, 10, 3), null, null));
-        given(winningDrawRepository.findTopByOrderByRoundNoDesc()).willReturn(Optional.of(latest));
+        given(latestDrawService.latest()).willReturn(Optional.of(latest));
         given(attemptRepository.findAllByOrderByIdDesc(any())).willReturn(List.of(
                 RecommendationFetchAttempt.builder().attemptedAt(LocalDateTime.of(2026, 10, 4, 10, 51))
                         .trigger(RecommendationFetchAttempt.Trigger.MANUAL)

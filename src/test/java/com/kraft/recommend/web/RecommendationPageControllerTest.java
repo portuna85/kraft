@@ -5,7 +5,7 @@ import com.kraft.recommend.domain.RecommendationHistoryState;
 import com.kraft.recommend.domain.RecommendationHistoryStateRepository;
 import com.kraft.recommend.domain.WinningDraw;
 import com.kraft.recommend.service.RecommendationFreshness;
-import com.kraft.recommend.domain.WinningDrawRepository;
+import com.kraft.recommend.service.LatestDrawService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,7 +30,7 @@ import static org.mockito.BDDMockito.given;
 class RecommendationPageControllerTest {
 
     @Mock
-    private WinningDrawRepository winningDrawRepository;
+    private LatestDrawService latestDrawService;
 
     @Mock
     private RecommendationHistoryStateRepository stateRepository;
@@ -47,10 +47,10 @@ class RecommendationPageControllerTest {
                 .numbers(List.of(2, 4, 10, 16, 31, 41))
                 .updatedAt(LocalDateTime.now())
                 .build();
-        given(winningDrawRepository.findTopByOrderByRoundNoDesc()).willReturn(Optional.of(latest));
+        given(latestDrawService.latest()).willReturn(Optional.of(latest));
         Model model = new ExtendedModelMap();
 
-        String view = new RecommendationPageController(winningDrawRepository, freshness()).recommend(model);
+        String view = new RecommendationPageController(latestDrawService, freshness()).recommend(model);
 
         assertThat(view).isEqualTo("recommend/recommend");
         assertThat(model.getAttribute("latestRoundNo")).isEqualTo(1242);
@@ -66,10 +66,10 @@ class RecommendationPageControllerTest {
                 .updatedAt(LocalDateTime.now())
                 .build();
         latest.applyDetails(new DrawDetails(9, LocalDate.of(2026, 9, 19), 9, 3_281_029_250L));
-        given(winningDrawRepository.findTopByOrderByRoundNoDesc()).willReturn(Optional.of(latest));
+        given(latestDrawService.latest()).willReturn(Optional.of(latest));
         Model model = new ExtendedModelMap();
 
-        new RecommendationPageController(winningDrawRepository, freshness()).recommend(model);
+        new RecommendationPageController(latestDrawService, freshness()).recommend(model);
 
         assertThat(model.getAttribute("latestRoundDrawDate")).isEqualTo(LocalDate.of(2026, 9, 19));
         assertThat(model.getAttribute("latestRoundBonusNumber")).isEqualTo(9);
@@ -86,10 +86,10 @@ class RecommendationPageControllerTest {
                 .numbers(List.of(1, 2, 3, 4, 5, 6))
                 .updatedAt(LocalDateTime.now())
                 .build();
-        given(winningDrawRepository.findTopByOrderByRoundNoDesc()).willReturn(Optional.of(latest));
+        given(latestDrawService.latest()).willReturn(Optional.of(latest));
         Model model = new ExtendedModelMap();
 
-        new RecommendationPageController(winningDrawRepository, freshness()).recommend(model);
+        new RecommendationPageController(latestDrawService, freshness()).recommend(model);
 
         assertThat(model.containsAttribute("latestRoundDrawDate")).isFalse();
         assertThat(model.containsAttribute("latestRoundBonusNumber")).isFalse();
@@ -101,10 +101,10 @@ class RecommendationPageControllerTest {
     @Test
     @DisplayName("이력이 비어 있으면 최신 회차 속성을 담지 않는다")
     void omitsLatestRound_whenHistoryEmpty() {
-        given(winningDrawRepository.findTopByOrderByRoundNoDesc()).willReturn(Optional.empty());
+        given(latestDrawService.latest()).willReturn(Optional.empty());
         Model model = new ExtendedModelMap();
 
-        new RecommendationPageController(winningDrawRepository, freshness()).recommend(model);
+        new RecommendationPageController(latestDrawService, freshness()).recommend(model);
 
         assertThat(model.containsAttribute("latestRoundNo")).isFalse();
         assertThat(model.containsAttribute("latestRoundNumbers")).isFalse();
@@ -117,7 +117,7 @@ class RecommendationPageControllerTest {
                 .id(1).verifiedThroughRound(1242).verifiedAt(LocalDateTime.now().minusHours(3)).build()));
         Model model = new ExtendedModelMap();
 
-        new RecommendationPageController(winningDrawRepository, freshness()).recommend(model);
+        new RecommendationPageController(latestDrawService, freshness()).recommend(model);
 
         assertThat(model.getAttribute("historyReady")).isEqualTo(true);
         assertThat(model.getAttribute("historyStale")).isEqualTo(false);
@@ -131,7 +131,7 @@ class RecommendationPageControllerTest {
                 .id(1).verifiedThroughRound(1242).verifiedAt(LocalDateTime.now().minusHours(500)).build()));
         Model model = new ExtendedModelMap();
 
-        new RecommendationPageController(winningDrawRepository, freshness()).recommend(model);
+        new RecommendationPageController(latestDrawService, freshness()).recommend(model);
 
         assertThat(model.getAttribute("historyReady")).isEqualTo(true);
         assertThat(model.getAttribute("historyStale")).isEqualTo(true);
@@ -142,7 +142,7 @@ class RecommendationPageControllerTest {
     void marksNotReadyHistory() {
         Model model = new ExtendedModelMap();
 
-        new RecommendationPageController(winningDrawRepository, freshness()).recommend(model);
+        new RecommendationPageController(latestDrawService, freshness()).recommend(model);
 
         assertThat(model.getAttribute("historyReady")).isEqualTo(false);
     }

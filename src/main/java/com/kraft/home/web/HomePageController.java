@@ -6,7 +6,7 @@ import com.kraft.post.dto.PostsListResponseDto;
 import com.kraft.post.service.PostService;
 import com.kraft.recommend.domain.LottoPrizeTax;
 import com.kraft.recommend.domain.WinningDraw;
-import com.kraft.recommend.domain.WinningDrawRepository;
+import com.kraft.recommend.service.LatestDrawService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -34,15 +34,15 @@ public class HomePageController {
     private static final Set<String> LEGACY_BOARD_PARAMS = Set.of("q", "category", "scope", "sort", "page");
     private static final int RECENT_POSTS = 5;
 
-    private final WinningDrawRepository winningDrawRepository;
+    private final LatestDrawService latestDrawService;
     private final PostService postService;
     private final HomeInsightsService insightsService;
     private final boolean recommendEnabled;
 
-    public HomePageController(WinningDrawRepository winningDrawRepository, PostService postService,
+    public HomePageController(LatestDrawService latestDrawService, PostService postService,
                               HomeInsightsService insightsService,
                               @Value("${app.recommend.enabled:true}") boolean recommendEnabled) {
-        this.winningDrawRepository = winningDrawRepository;
+        this.latestDrawService = latestDrawService;
         this.postService = postService;
         this.insightsService = insightsService;
         this.recommendEnabled = recommendEnabled;
@@ -62,7 +62,7 @@ public class HomePageController {
         model.addAttribute("canonicalPath", "/");
         model.addAttribute("recommendEnabled", recommendEnabled);
         if (recommendEnabled) {
-            winningDrawRepository.findTopByOrderByRoundNoDesc()
+            latestDrawService.latest()
                     .ifPresent(draw -> model.addAttribute("latestDraw", LatestDraw.from(draw)));
             DrawInsights insights = insightsService.current();
             if (!insights.isEmpty()) {

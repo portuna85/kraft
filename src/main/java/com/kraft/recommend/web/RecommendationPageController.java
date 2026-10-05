@@ -1,7 +1,7 @@
 package com.kraft.recommend.web;
 
 import com.kraft.recommend.domain.LottoPrizeTax;
-import com.kraft.recommend.domain.WinningDrawRepository;
+import com.kraft.recommend.service.LatestDrawService;
 import com.kraft.recommend.service.RecommendationFreshness;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 @ConditionalOnProperty(prefix = "app.recommend", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class RecommendationPageController {
 
-    private final WinningDrawRepository winningDrawRepository;
+    private final LatestDrawService latestDrawService;
     private final RecommendationFreshness freshness;
 
     @GetMapping("/recommend")
@@ -42,7 +42,7 @@ public class RecommendationPageController {
         model.addAttribute("historyStale", history.stale());
         model.addAttribute("historyVerifiedRound", history.verifiedThroughRound());
         model.addAttribute("historyVerifiedAt", history.verifiedAt());
-        winningDrawRepository.findTopByOrderByRoundNoDesc().ifPresent(draw -> {
+        latestDrawService.latest().ifPresent(draw -> {
             model.addAttribute("latestRoundNo", draw.getRoundNo());
             model.addAttribute("latestRoundNumbers", draw.numbers());
             if (draw.getDrawDate() != null) {
