@@ -370,15 +370,10 @@ jobs:
         run: npx playwright test --project=chromium --shard=${{ matrix.shard }}/${{ strategy.job-total }}
 
       # retries: 1로 두 번째에 통과한 테스트(flaky)는 잡을 실패시키지 않는다. 대신 눈에 띄도록 요약에 적는다(OPS-34).
+      # Playwright 컨테이너에는 jq가 없어 node 스크립트로 JSON 결과를 읽는다.
       - name: Report flaky tests
         if: ${{ !cancelled() && hashFiles('playwright-results.json') != '' }}
-        run: |
-          flaky=$(jq '.stats.flaky' playwright-results.json)
-          echo "### E2E shard ${{ matrix.shard }}: flaky ${flaky}" >> "$GITHUB_STEP_SUMMARY"
-          if [ "$flaky" -gt 0 ]; then
-            jq -r '.. | objects | select(has("tests") and any(.tests[]?; .status == "flaky")) | "- " + .title' playwright-results.json >> "$GITHUB_STEP_SUMMARY" || true
-            echo "::warning::E2E shard ${{ matrix.shard }}에서 flaky 테스트 ${flaky}건 (요약 참고)"
-          fi
+        run: node scripts/report-flaky.mjs "${{ matrix.shard }}"
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
