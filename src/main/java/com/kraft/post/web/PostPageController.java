@@ -142,9 +142,8 @@ public class PostPageController {
                 .stream()
                 .map(c -> new CategoryOptionDto(c.name(), c.getTitle()))
                 .toList();
-        model.addAttribute("postSaveInitialJson", JsonHtmlEmbedding.escapeForHtmlScript(
-                objectMapper.writeValueAsString(
-                        new PostSaveBootstrapDto(categoryOptions, displayNameOf(authentication), userIdOf(authentication)))));
+        JsonHtmlEmbedding.put(model, "postSaveInitialJson", objectMapper,
+                new PostSaveBootstrapDto(categoryOptions, displayNameOf(authentication), userIdOf(authentication)));
         model.addAttribute("pageTitle", "글쓰기");
         return "post/post-save";
     }
@@ -212,8 +211,7 @@ public class PostPageController {
         // 갱신은 클라이언트가 이 값을 들고 낙관적으로 처리하게 한다. 최초 페이지는 최대
         // PAGE_SIZE개만 담고, 전체 개수·다음 페이지 존재 여부를 함께 내려 "더 보기"가
         // 이어받게 한다(개선 보고서 "댓글 전체 로딩").
-        model.addAttribute("commentsJson",
-                JsonHtmlEmbedding.escapeForHtmlScript(objectMapper.writeValueAsString(commentPage)));
+        JsonHtmlEmbedding.put(model, "commentsJson", objectMapper, commentPage);
 
         // 게시글 읽기·편집 영역도 Vue 아일랜드(src/vue/post-edit)로 렌더링된다. 분류 선택지는
         // post-update.html이 예전에 th:each/th:if로 걸러내던 것과 같은 규칙(CategoryPolicy)을
@@ -223,9 +221,8 @@ public class PostPageController {
                 .map(c -> new CategoryOptionDto(c.name(), c.getTitle()))
                 .toList();
         boolean authenticated = OwnershipPolicy.isAuthenticated(authentication);
-        model.addAttribute("postEditInitialJson", JsonHtmlEmbedding.escapeForHtmlScript(
-                objectMapper.writeValueAsString(
-                        new PostEditBootstrapDto(post, categoryOptions, authenticated, userIdOf(authentication)))));
+        JsonHtmlEmbedding.put(model, "postEditInitialJson", objectMapper,
+                new PostEditBootstrapDto(post, categoryOptions, authenticated, userIdOf(authentication)));
 
         // 댓글 아일랜드가 "입력창을 보여줄지"를 정하는 값. 글쓰기 화면과 같은 규칙을 쓴다.
         // 한 번만 조회해 두 속성에 함께 쓴다 — 예전에는 같은 조회를 두 번 했다.

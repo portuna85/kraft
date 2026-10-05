@@ -20,6 +20,16 @@ final class JsonHtmlEmbedding {
     }
 
     /**
+     * 값을 JSON으로 직렬화하고 {@link #escapeForHtmlScript}를 거쳐 모델에 담는다(FE-42). 컨트롤러마다 이스케이프
+     * 호출을 따로 적으면 하나만 잊어도 저장형 XSS가 되므로, {@code th:utext}로 내보낼 JSON은 이 메서드로만
+     * 모델에 넣는다.
+     */
+    static void put(org.springframework.ui.Model model, String attributeName,
+                    tools.jackson.databind.ObjectMapper objectMapper, Object value) {
+        model.addAttribute(attributeName, escapeForHtmlScript(objectMapper.writeValueAsString(value)));
+    }
+
+    /**
      * HTML {@code <script>} 안에 그대로 써도 안전하도록 JSON 문자열을 변환한다.
      * <p>
      * {@code <}, {@code >}, {@code &}를 유니코드 이스케이프로 바꿔 {@code </script>}·HTML

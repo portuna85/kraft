@@ -21,7 +21,27 @@
         }
     });
 
-    const STORAGE_KEY = 'kraft:theme'; // 'system' | 'light' | 'dark'
+    const STORAGE_KEY = 'kraft:theme';
+    const ORDER = ['system', 'light', 'dark'];
+
+    /**
+     * 선택한 테마를 <html>에 반영한다. 'system'이면 data-theme을 떼어 Kraft 자체 토큰(--kraft-*)이 CSS의
+     * prefers-color-scheme 미디어 쿼리를 따르게 하고, Bootstrap은 $color-mode-type: data라 속성 없이는
+     * 미디어 쿼리에 반응하지 않으므로(bootstrap-custom.scss) 지금 시스템 설정을 읽어 data-bs-theme을
+     * 정한다. theme-toggle.js가 같은 함수를 쓴다(window.kraftTheme, FE-31) — 키·순서·적용 로직의 사본을 두지 않는다.
+     */
+    function apply(value) {
+        if (value === 'light' || value === 'dark') {
+            html.setAttribute('data-theme', value);
+            html.setAttribute('data-bs-theme', value);
+            return;
+        }
+        html.removeAttribute('data-theme');
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        html.setAttribute('data-bs-theme', prefersDark ? 'dark' : 'light');
+    }
+
+    window.kraftTheme = { STORAGE_KEY: STORAGE_KEY, ORDER: ORDER, apply: apply };
 
     let stored = null;
     try {
@@ -29,21 +49,5 @@
     } catch {
         // 저장소를 쓸 수 없어도(프라이빗 모드 등) 시스템 설정만으로 계속 동작한다.
     }
-
-    const root = document.documentElement;
-    if (stored === 'light' || stored === 'dark') {
-        root.setAttribute('data-theme', stored);
-        root.setAttribute('data-bs-theme', stored);
-        return;
-    }
-
-    // stored가 'system'이거나 없으면: Kraft 자체 토큰(--kraft-*)은 data-theme을 건드리지
-    // 않아도 CSS의 prefers-color-scheme 미디어 쿼리가 알아서 따라간다(_tokens.scss). 하지만
-    // Bootstrap은 $color-mode-type: data라 [data-bs-theme=dark] 속성 없이는 미디어 쿼리로
-    // 자동 반응하지 않는다(bootstrap-custom.scss) — 지금 이 순간의 시스템 설정을 한 번 읽어
-    // 반영해 둔다. 이후 시스템 설정이 바뀌면 theme-toggle.js의 matchMedia 리스너가 갱신한다
-    // (그 스크립트는 navbar.html의 독립된 테마 토글 버튼과 함께 모든 페이지에 로드된다 —
-    // 계정 메뉴 안이 아니라 항상 보이는 버튼이다).
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    root.setAttribute('data-bs-theme', prefersDark ? 'dark' : 'light');
+    apply(ORDER.indexOf(stored) >= 0 ? stored : 'system');
 })();

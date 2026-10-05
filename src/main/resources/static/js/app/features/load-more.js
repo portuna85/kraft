@@ -1,6 +1,7 @@
 import { byId, qs, qsa, setBusy, setText } from '../core/dom.js';
 import { api, messageOf } from '../core/http.js';
 import { API } from '../core/constants.js';
+import { formatDateTime } from '../core/datetime.js';
 
 /**
  * 목록 "더 보기"(10단계). 기존 페이지 이동은 그대로 두고, JSON API(/api/v1/posts, 새로
@@ -264,15 +265,6 @@ function cssEscape(value) {
     return window.CSS?.escape ? window.CSS.escape(value) : value.replace(/["\\]/g, '\\$&');
 }
 
-/** "2026-09-26T18:05:00" → "2026.09.26 18:05". SSR의 #temporals.format(...)과 같은 모양. */
-function formatDate(iso) {
-    if (!iso) {
-        return '';
-    }
-    const [date, time] = iso.slice(0, 16).split('T');
-    return `${date.replaceAll('-', '.')} ${time ?? ''}`.trim();
-}
-
 /** index.html의 .post-list__item 구조와 같은 모양을 DOM API로만 만든다(innerHTML 사용 안 함). */
 function buildRow(post) {
     const li = document.createElement('li');
@@ -307,7 +299,7 @@ function buildRow(post) {
     date.className = 'post-list__date';
     // index.html과 같은 규칙(A-BE-11): 기본 정렬이 등록순이라 등록일을 보이고, 실제로
     // 수정된 글만 표시를 덧붙인다.
-    date.textContent = formatDate(post.createdAt) + (post.modified ? ' (수정됨)' : '');
+    date.textContent = formatDateTime(post.createdAt) + (post.modified ? ' (수정됨)' : '');
     meta.append(author, date);
 
     const views = document.createElement('span');

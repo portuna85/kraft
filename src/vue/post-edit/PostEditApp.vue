@@ -8,6 +8,7 @@ import { useImageUpload } from '../shared/useImageUpload.js';
 import { useUnsavedGuard } from '../shared/useUnsavedGuard.js';
 import { useDraftAutosave } from '../shared/useDraftAutosave.js';
 import { clearDraft, safeLocalStorage } from '../shared/draftStorage.js';
+import { readItem, writeItem } from '@core/storage.js';
 import { useFieldErrors } from '../shared/useFieldErrors.js';
 import { useSessionKeepAlive } from '../shared/useSessionKeepAlive.js';
 import MarkdownBody from '../shared/MarkdownBody.vue';
@@ -67,18 +68,14 @@ const FONT_SCALES = ['0.875rem', '1rem', '1.125rem'];
 const DEFAULT_FONT_SCALE_INDEX = 1;
 
 function readStoredFontScaleIndex() {
-    try {
-        const raw = window.localStorage.getItem(FONT_SCALE_STORAGE_KEY);
-        if (raw === null) {
-            return DEFAULT_FONT_SCALE_INDEX;
-        }
-        const stored = Number(raw);
-        return Number.isInteger(stored) && stored >= 0 && stored < FONT_SCALES.length
-            ? stored
-            : DEFAULT_FONT_SCALE_INDEX;
-    } catch {
+    const raw = readItem(FONT_SCALE_STORAGE_KEY);
+    if (raw === null) {
         return DEFAULT_FONT_SCALE_INDEX;
     }
+    const stored = Number(raw);
+    return Number.isInteger(stored) && stored >= 0 && stored < FONT_SCALES.length
+        ? stored
+        : DEFAULT_FONT_SCALE_INDEX;
 }
 
 const fontScaleIndex = ref(readStoredFontScaleIndex());
@@ -86,11 +83,8 @@ const postBodyStyle = computed(() => ({ '--kraft-post-font-size': FONT_SCALES[fo
 
 function setFontScaleIndex(index) {
     fontScaleIndex.value = index;
-    try {
-        window.localStorage.setItem(FONT_SCALE_STORAGE_KEY, String(index));
-    } catch {
-        // 저장 실패는 이번 열람에서만 크기가 적용되는 정도로 넘어간다.
-    }
+    // 저장 실패는 이번 열람에서만 크기가 적용되는 정도로 넘어간다.
+    writeItem(FONT_SCALE_STORAGE_KEY, String(index));
 }
 
 /**

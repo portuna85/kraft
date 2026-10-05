@@ -8,24 +8,9 @@
  * 삼킨다.
  */
 
-/**
- * `window.localStorage`에 안전하게 접근한다. `getItem`/`setItem` 호출 실패는 아래
- * 함수들이 각자 try로 감싸지만, **속성 접근 자체**(`window.localStorage`)가 SecurityError로
- * 던지는 환경(서드파티 컨텍스트에서 저장소가 차단된 경우 등)이 있다 — 그 접근이 컴포넌트
- * setup() 도중(useDraftAutosave의 기본 인자 평가) 그대로 터지면 캐치할 try가 없어 Vue
- * 마운트 전체가 실패하고 화면이 빈 채로 남는다(전체 리뷰 2026-09-26 FE-01/02). 이 함수는
- * 그 접근 자체를 감싸 실패 시 null을 돌려주고, 호출자는 null이면 임시 저장을 조용히
- * 건너뛴다.
- *
- * @returns {Storage | null}
- */
-export function safeLocalStorage() {
-    try {
-        return window.localStorage;
-    } catch {
-        return null;
-    }
-}
+// window.localStorage 접근 자체가 던질 수 있어 이 래퍼를 거친다(전체 리뷰 2026-09-26 FE-01/02). 구현은
+// 다른 저장소 사용처와 공유한다(FE-30).
+export { safeLocalStorage } from '../../main/resources/static/js/app/core/storage.js';
 
 /**
  * 저장된 초안을 읽는다. 없거나, 형식이 깨졌거나, ttlMs보다 오래됐으면 null을 반환하고

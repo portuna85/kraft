@@ -1,6 +1,7 @@
 <script setup>
-import { nextTick, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { api, messageOf } from '@core/http.js';
+import { formatDateTime } from '@core/datetime.js';
 import { API } from '@core/constants.js';
 import { showToast } from '@ui/toast.js';
 import { replyAfterId } from './commentState.js';
@@ -165,14 +166,12 @@ async function loadMoreReplies() {
     }
 }
 
-function formatDate(iso) {
-    if (!iso) {
-        return '';
-    }
-    const date = new Date(iso);
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
+/** 버튼 줄에 그릴 것이 하나라도 있는가 — 삭제된 댓글은 답글만 가능하다. */
+const hasActions = computed(() => (
+    props.comment.deleted
+        ? !props.isReply && props.canWrite
+        : props.comment.canManage || props.authenticated
+));
 </script>
 
 <template>
@@ -187,7 +186,7 @@ function formatDate(iso) {
       <div class="comment-list__head">
         <strong>{{ comment.author }}</strong>
         <small class="text-muted">
-          <time :datetime="comment.createdAt">{{ formatDate(comment.createdAt) }}</time>
+          <time :datetime="comment.createdAt">{{ formatDateTime(comment.createdAt) }}</time>
         </small>
       </div>
       <!-- 답글이 있어 행은 남기고 내용만 비운 댓글이다(개선 보고서 A-BE-06). 수정·삭제·신고는
@@ -204,63 +203,35 @@ function formatDate(iso) {
       >
         {{ comment.content }}
       </p>
+      <!-- 행동 버튼 줄은 한 번만 그린다(FE-28). 삭제된 댓글은 답글만, 내 댓글은 수정·삭제, 남의 댓글은 신고를
+           앞에 두고, 답글 버튼은 모두 같은 자리 하나에서 그린다. -->
       <div
-        v-if="comment.deleted"
+        v-if="hasActions"
         class="btn-group-gap comment-actions"
       >
+        <template v-if="!comment.deleted && comment.canManage">
+          <button
+            ref="editButton"
+            type="button"
+            class="btn btn-sm btn-outline-secondary btn-comment-edit"
+            :aria-label="`${comment.author}의 댓글 수정`"
+            @click="startEdit"
+          >
+            수정
+          </button>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-danger btn-comment-delete"
+            data-target-kind="comment"
+            :data-target-name="comment.content"
+            :aria-label="`${comment.author}의 댓글 삭제`"
+          >
+            삭제
+          </button>
+        </template>
+        <!-- 신고는 남의 댓글에만 보인다. 자기 댓글은 서버도 거절한다(직접 지우면 된다). -->
         <button
-          v-if="!isReply && canWrite"
-          ref="replyButton"
-          type="button"
-          class="btn btn-sm btn-outline-secondary btn-comment-reply"
-          :aria-label="`${comment.author}의 댓글에 답글 달기`"
-          @click="startReply"
-        >
-          답글
-        </button>
-      </div>
-      <div
-        v-else-if="comment.canManage"
-        class="btn-group-gap comment-actions"
-      >
-        <button
-          ref="editButton"
-          type="button"
-          class="btn btn-sm btn-outline-secondary btn-comment-edit"
-          :aria-label="`${comment.author}의 댓글 수정`"
-          @click="startEdit"
-        >
-          수정
-        </button>
-        <button
-          type="button"
-          class="btn btn-sm btn-outline-danger btn-comment-delete"
-          data-target-kind="comment"
-          :data-target-name="comment.content"
-          :aria-label="`${comment.author}의 댓글 삭제`"
-        >
-          삭제
-        </button>
-        <!-- 답글은 최상위 댓글에만 보인다 — isReply면 이 버튼 자체를 그리지 않아 3단계(답글의
-             답글)를 UI 단에서도 막는다. 최종 판정은 서버가 한다(CommentService.resolveParent). -->
-        <button
-          v-if="!isReply && canWrite"
-          ref="replyButton"
-          type="button"
-          class="btn btn-sm btn-outline-secondary btn-comment-reply"
-          :aria-label="`${comment.author}의 댓글에 답글 달기`"
-          @click="startReply"
-        >
-          답글
-        </button>
-      </div>
-
-      <!-- 신고는 남의 댓글에만 보인다. 자기 댓글은 서버도 거절한다(직접 지우면 된다). -->
-      <div
-        v-else-if="authenticated"
-        class="btn-group-gap comment-actions"
-      >
-        <button
+          v-else-if="!comment.deleted && authenticated"
           type="button"
           class="btn btn-sm btn-outline-secondary btn-comment-report"
           data-report-kind="comment"
@@ -268,6 +239,8 @@ function formatDate(iso) {
         >
           신고
         </button>
+        <!-- 답글은 최상위 댓글에만 보인다 — isReply면 이 버튼 자체를 그리지 않아 3단계(답글의
+             답글)를 UI 단에서도 막는다. 최종 판정은 서버가 한다(CommentService.resolveParent). -->
         <button
           v-if="!isReply && canWrite"
           ref="replyButton"
