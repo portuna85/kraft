@@ -1,0 +1,107 @@
+# 예전의 정상 커밋 하나를 운영에 다시 올린다(OPS-02). 수동 실행 전용이다 — 배포 사고 때 build 워크플로의 main
+# 푸시(=새 커밋) 없이 이미 테스트를 통과한 jar를 되돌리기 위한 비상 경로다.
+#
+# build 워크플로가 main 푸시마다 올리는 production-jar 아티팩트를 쓴다(보존 30일). 그 기간이 지났거나 해당
+# 커밋의 build 실행이 성공하지 않았다면 이 워크플로는 실패한다. 서버의 deploy-apply.sh가 하는 일(jar 검증,
+# DB 스냅샷, 교체, /readyz 대기, 실패 시 직전 jar로 복구)은 평소 배포와 같다.
+#
+# 주의: 되돌리려는 커밋 이후에 Flyway 마이그레이션이 적용됐다면 옛 jar는 "적용된 마이그레이션을 코드에서 찾을
+# 수 없다"며 기동하지 못할 수 있다. 그 경우 deploy-apply.sh가 직전 jar로 자동 복구하므로 서비스는 유지되지만
+# 되돌리기는 실패로 끝난다 — 스키마가 바뀐 구간을 넘는 롤백은 앞으로 가는 수정 커밋이 안전하다.
+name: redeploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: '다시 배포할 커밋의 전체 SHA(40자). build 워크플로가 성공한 main 커밋이어야 한다.'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  redeploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # 평소 배포와 같은 그룹이라 두 배포가 동시에 서버를 건드리지 않는다.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    environment:
+      name: production
+      url: https://kraft.io.kr
+    steps:
+      - name: Validate input
+        env:
+          SHA: ${{ inputs.sha }}
+        run: |
+          if ! [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::sha는 소문자 16진수 40자여야 합니다: '$SHA'"
+            exit 1
+          fi
+
+      - name: Find the successful build run for that commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ inputs.sha }}
+        run: |
+          run_id=$(gh run list --repo "${{ github.repository }}" --workflow build.yml --branch main \
+            --commit "$SHA" --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          if [ -z "$run_id" ]; then
+            echo "::error::$SHA 에 대해 성공한 build 실행(main)을 찾을 수 없습니다."
+            exit 1
+          fi
+          echo "RUN_ID=$run_id" >> "$GITHUB_ENV"
+
+      - name: Download production jar of that run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download "$RUN_ID" --repo "${{ github.repository }}" --name production-jar
+
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy jar to server
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          SHA: ${{ inputs.sha }}
+        run: |
+          jar_sha256=$(sha256sum kraft.jar | cut -d' ' -f1)
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o ConnectTimeout=10 \
+            "$DEPLOY_USER@$DEPLOY_HOST" "${SHA}-${jar_sha256}" \
+            < kraft.jar
+
+      - name: Smoke test
+        run: |
+          curl -fsS -o /dev/null --connect-timeout 5 --max-time 15 \
+            --retry 5 --retry-delay 3 --retry-all-errors https://kraft.io.kr/
+
+      - name: Verify deployed build
+        env:
+          SHA: ${{ inputs.sha }}
+        run: |
+          for attempt in $(seq 1 10); do
+            actual=$(curl -sS -D - -o /dev/null --connect-timeout 5 --max-time 15 https://kraft.io.kr/healthz \
+              | tr -d '\r' | awk -F': ' 'tolower($1)=="x-kraft-build" {print $2}') || actual=""
+            if [ -n "$actual" ] && [[ "$SHA" == "$actual"* ]]; then
+              echo "배포된 빌드 확인: $actual"
+              exit 0
+            fi
+            echo "시도 $attempt/10: 응답한 빌드='${actual:-없음}', 기대='${SHA:0:7}'"
+            sleep 6
+          done
+          echo "::error::배포 후 /healthz가 ${SHA:0:7}이(가) 아닌 '${actual:-없음}'를 알립니다 — 마이그레이션 때문에 복구됐을 수 있습니다."
+          exit 1

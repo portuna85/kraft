@@ -53,7 +53,7 @@ export default [
     // 지금까지는 코드 주석으로만 피해 왔다(CommentsApp.vue의 .at() 회피 등). languageOptions는
     // 위 블록의 bootstrap 전역 선언과 합쳐지도록 여기서는 plugins·rules만 추가한다.
     {
-        files: ['src/main/resources/static/js/**/*.js'],
+        files: ['src/main/resources/static/js/**/*.js', 'src/vue/**/*.{js,vue}'],
         plugins: { compat },
         rules: { 'compat/compat': 'error' },
     },

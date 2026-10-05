@@ -1,20 +1,27 @@
+import { readFileSync } from 'node:fs';
 import { test as base, expect } from '@playwright/test';
 
+// 시드 계정의 단일 출처(OPS-36). E2eDataInitializer(Java)도 같은 JSON을 읽는다.
+const seed = JSON.parse(
+    readFileSync(new URL('../src/e2e/resources/e2e-accounts.json', import.meta.url), 'utf-8'),
+);
+const pick = ({ email, name }) => ({ email, name });
+
 export const ACCOUNTS = {
-    admin: { email: 'admin@e2e.test', name: '관리자' },
-    user: { email: 'user@e2e.test', name: '테스터' },
-    other: { email: 'other@e2e.test', name: '다른사람' },
-    guest: { email: 'guest@e2e.test', name: '미인증' },
+    admin: pick(seed.accounts.admin),
+    user: pick(seed.accounts.user),
+    other: pick(seed.accounts.other),
+    guest: pick(seed.accounts.guest),
 };
 
 /**
  * 비밀번호 변경 시나리오 전용 계정(OPS-04). ACCOUNTS에 넣지 않는다 — auth.setup.js가 ACCOUNTS를
  * 돌며 로그인 상태를 저장하는데, 이 계정은 비밀번호가 바뀌어 세션이 끊기는 테스트에서만 쓴다.
  */
-export const PASSWORD_CHANGE_ACCOUNT = { email: 'pwchange@e2e.test', name: '비번변경' };
+export const PASSWORD_CHANGE_ACCOUNT = pick(seed.accounts.pwchange);
 
 /** E2eDataInitializer가 모든 시드 계정에 쓰는 공용 비밀번호. */
-export const PASSWORD = 'E2e!pass1';
+export const PASSWORD = seed.password;
 
 export const storageStateFor = (role) => `e2e/.auth/${role}.json`;
 

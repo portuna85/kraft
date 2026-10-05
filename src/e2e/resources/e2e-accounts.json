@@ -1,0 +1,10 @@
+{
+  "password": "E2e!pass1",
+  "accounts": {
+    "admin": { "email": "admin@e2e.test", "name": "관리자", "role": "ADMIN" },
+    "user": { "email": "user@e2e.test", "name": "테스터", "role": "USER" },
+    "other": { "email": "other@e2e.test", "name": "다른사람", "role": "USER" },
+    "guest": { "email": "guest@e2e.test", "name": "미인증", "role": "GUEST" },
+    "pwchange": { "email": "pwchange@e2e.test", "name": "비번변경", "role": "USER" }
+  }
+}

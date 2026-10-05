@@ -10,20 +10,17 @@ import { test, expect, storageStateFor, openAccountMenu } from './fixtures.js';
  * 날짜·글 번호처럼 실행마다 달라지는 부분은 mask로 가린다 — 그러지 않으면 매번 다르다고 나온다.
  */
 
-// 렌더링 차이를 조금 허용한다. 폰트 힌팅 등으로 몇 픽셀은 늘 흔들린다.
-const PIXEL_TOLERANCE = { maxDiffPixelRatio: 0.01 };
-
 test.describe('로그인 전 화면', () => {
     test.use({ storageState: { cookies: [], origins: [] } });
 
     test('로그인 화면', async ({ page }) => {
         await page.goto('/login');
-        await expect(page).toHaveScreenshot('login.png', PIXEL_TOLERANCE);
+        await expect(page).toHaveScreenshot('login.png');
     });
 
     test('회원가입 화면', async ({ page }) => {
         await page.goto('/signup');
-        await expect(page).toHaveScreenshot('signup.png', PIXEL_TOLERANCE);
+        await expect(page).toHaveScreenshot('signup.png');
     });
 });
 
@@ -32,7 +29,7 @@ test.describe('로그인 후 화면', () => {
 
     test('글쓰기 화면 - 폼 컨트롤과 버튼', async ({ page }) => {
         await page.goto('/posts/save');
-        await expect(page).toHaveScreenshot('post-save.png', PIXEL_TOLERANCE);
+        await expect(page).toHaveScreenshot('post-save.png');
     });
 
     test('목록 한 줄의 생김새', async ({ page }) => {
@@ -42,7 +39,6 @@ test.describe('로그인 후 화면', () => {
         const row = page.locator('.post-list__item').first();
         await expect(row).toBeVisible();
         await expect(row).toHaveScreenshot('post-list-row.png', {
-            ...PIXEL_TOLERANCE,
             // 글 번호·최종수정일·조회수는 실행마다 다르다.
             mask: [
                 row.locator('.post-list__no'),
@@ -61,10 +57,7 @@ test.describe('로그인 후 화면', () => {
         // 페이드 인이 끝난 뒤에 찍어야 흔들리지 않는다.
         await page.waitForTimeout(400);
         // 페이지 전체가 아니라 모달만 찍는다 — 뒤 배경의 목록은 실행마다 다르다.
-        await expect(modal.locator('.modal-dialog')).toHaveScreenshot(
-            'modal-change-password.png',
-            PIXEL_TOLERANCE,
-        );
+        await expect(modal.locator('.modal-dialog')).toHaveScreenshot('modal-change-password.png');
     });
 
     test('토스트 알림', async ({ page }) => {
@@ -78,14 +71,11 @@ test.describe('로그인 후 화면', () => {
             bootstrap.Toast.getOrCreateInstance(el, { autohide: false }).show();
         });
         await page.waitForTimeout(400);
-        await expect(page.locator('#toast-container')).toHaveScreenshot(
-            'toast.png',
-            PIXEL_TOLERANCE,
-        );
+        await expect(page.locator('#toast-container')).toHaveScreenshot('toast.png');
     });
 
     test('로그인 실패 알림(alert)', async ({ page }) => {
         await page.goto('/login?error');
-        await expect(page.locator('.alert')).toHaveScreenshot('alert-danger.png', PIXEL_TOLERANCE);
+        await expect(page.locator('.alert')).toHaveScreenshot('alert-danger.png');
     });
 });

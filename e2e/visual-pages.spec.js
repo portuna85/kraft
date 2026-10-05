@@ -10,15 +10,13 @@ import { test, expect, storageStateFor, uniqueTitle } from './fixtures.js';
  * 실행 순서에 흔들리지 않도록 자기 데이터를 만들거나 검색으로 좁혀서 본다.
  */
 
-const PIXEL_TOLERANCE = { maxDiffPixelRatio: 0.01 };
-
 test.describe('공통 레이아웃', () => {
     test.use({ storageState: storageStateFor('user') });
 
     test('헤더 - 넓은 화면', async ({ page }) => {
         await page.setViewportSize({ width: 1280, height: 800 });
         await page.goto('/community');
-        await expect(page.locator('.kraft-topbar')).toHaveScreenshot('header-wide.png', PIXEL_TOLERANCE);
+        await expect(page.locator('.kraft-topbar')).toHaveScreenshot('header-wide.png');
     });
 
     test('헤더 - 좁은 화면에서 메뉴를 펼친 상태', async ({ page }) => {
@@ -26,12 +24,12 @@ test.describe('공통 레이아웃', () => {
         await page.goto('/community');
         await page.locator('#btn-nav-toggle').click();
         await expect(page.locator('#site-nav')).toBeVisible();
-        await expect(page.locator('.kraft-topbar')).toHaveScreenshot('header-narrow-open.png', PIXEL_TOLERANCE);
+        await expect(page.locator('.kraft-topbar')).toHaveScreenshot('header-narrow-open.png');
     });
 
     test('게시판 머리말과 검색 영역', async ({ page }) => {
         await page.goto('/community');
-        await expect(page.locator('.board-head')).toHaveScreenshot('board-head.png', PIXEL_TOLERANCE);
+        await expect(page.locator('.board-head')).toHaveScreenshot('board-head.png');
     });
 });
 
@@ -83,7 +81,6 @@ test.describe('목록 반응형', () => {
         await page.setViewportSize({ width: 768, height: 900 });
         const row = await openSeedPostRow(page);
         await expect(row).toHaveScreenshot('post-list-row-768.png', {
-            ...PIXEL_TOLERANCE,
             mask: [
                 row.locator('.post-list__no'),
                 row.locator('.post-list__date'),
@@ -105,7 +102,6 @@ test.describe('게시글 상세', () => {
         await page.waitForURL(/\/posts\/update\/\d+$/);
 
         await expect(page.locator('#post-view')).toHaveScreenshot('post-view.png', {
-            ...PIXEL_TOLERANCE,
             // 글 번호와 조회수는 실행마다 다르다. 제목도 uniqueTitle의 타임스탬프가 들어가
             // 실행마다 달라지므로 함께 가린다(개선 보고서 "시각 기준과 현재 화면의 불일치").
             mask: [page.locator('.post-byline'), page.locator('#post-title-text')],
@@ -122,7 +118,6 @@ test.describe('게시글 상세', () => {
         await page.locator('#btn-edit').click();
 
         await expect(page.locator('#post-edit')).toHaveScreenshot('post-edit-form.png', {
-            ...PIXEL_TOLERANCE,
             // 제목에 uniqueTitle의 타임스탬프가 들어간다.
             mask: [page.locator('#title')],
         });
@@ -141,7 +136,6 @@ test.describe('게시글 상세', () => {
         await expect(page.locator('.comment-list__content')).toContainText('기준선용 댓글입니다.');
 
         await expect(page.locator('.comment-list')).toHaveScreenshot('comment-list.png', {
-            ...PIXEL_TOLERANCE,
             // 작성 시각이 실행마다 다르다.
             mask: [page.locator('.comment-list__head small')],
         });
@@ -153,7 +147,7 @@ test.describe('빈 상태와 페이지 이동', () => {
 
     test('검색 결과 없음', async ({ page }) => {
         await page.goto('/community?q=zzz-nothing-matches-this-zzz');
-        await expect(page.locator('.empty-state')).toHaveScreenshot('empty-state.png', PIXEL_TOLERANCE);
+        await expect(page.locator('.empty-state')).toHaveScreenshot('empty-state.png');
     });
 
     test('페이지 이동 위젯', async ({ page }) => {
@@ -200,7 +194,6 @@ test.describe('다크 모드', () => {
         await page.goto('/community?q=%EB%8B%A4%EB%A5%B8%20%EC%82%AC%EB%9E%8C%EC%9D%98%20%EA%B8%80');
         await expect(page.locator('html')).toHaveAttribute('data-bs-theme', 'dark');
         await expect(page.locator('#main')).toHaveScreenshot('board-dark.png', {
-            ...PIXEL_TOLERANCE,
             mask: [
                 page.locator('.post-list__no'),
                 page.locator('.post-list__date'),
@@ -211,6 +204,6 @@ test.describe('다크 모드', () => {
 
     test('글쓰기 화면', async ({ page }) => {
         await page.goto('/posts/save');
-        await expect(page).toHaveScreenshot('post-save-dark.png', PIXEL_TOLERANCE);
+        await expect(page).toHaveScreenshot('post-save-dark.png');
     });
 });

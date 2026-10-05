@@ -43,7 +43,16 @@ export default defineConfig({
 
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 1 : 0,
-    reporter: process.env.CI ? [['html', { open: 'never' }], ['github']] : 'list',
+    // CI는 JSON 결과도 남긴다 — retries: 1이 flaky 테스트를 조용히 통과시키지 않도록 e2e 잡이
+    // 이 파일의 stats.flaky를 요약에 적는다(OPS-34). 통과로 치지만 눈에는 보인다.
+    reporter: process.env.CI
+        ? [['html', { open: 'never' }], ['github'], ['json', { outputFile: 'playwright-results.json' }]]
+        : 'list',
+
+    // 스크린샷 비교 허용치(OPS-37). 폰트 힌팅 등으로 몇 픽셀은 늘 흔들려서 모든 비교가 공유한다.
+    expect: {
+        toHaveScreenshot: { maxDiffPixelRatio: 0.01 },
+    },
 
     use: {
         baseURL: BASE_URL,
