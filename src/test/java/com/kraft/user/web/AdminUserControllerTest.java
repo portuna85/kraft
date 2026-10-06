@@ -121,6 +121,6 @@ class AdminUserControllerTest {
                         .with(user("admin@example.com").roles("ADMIN"))
                         .with(csrf()))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("정지 중인 계정이 아닙니다. id=7"));
+                .andExpect(jsonPath("$.detail").value("정지 중인 계정이 아닙니다."));
     }
 }

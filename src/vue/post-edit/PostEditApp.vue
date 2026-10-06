@@ -404,7 +404,7 @@ async function onSubmit() {
       <button
         id="btn-like"
         type="button"
-        class="btn btn-outline-primary"
+        class="btn btn-outline-primary post-like"
         :class="{ 'is-active': liked }"
         :aria-pressed="liked"
         :disabled="liking"

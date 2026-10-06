@@ -1,6 +1,6 @@
 import { byId, on, rawValueOf, setBusy, setText } from '../core/dom.js';
 import { api, messageOf } from '../core/http.js';
-import { API } from '../core/constants.js';
+import { API, PASSWORD } from '../core/constants.js';
 import { modal } from '../core/bootstrap-ui.js';
 import { clearAllDrafts } from '../core/drafts.js';
 import { showToast } from '../ui/toast.js';
@@ -78,6 +78,11 @@ function initChangePassword() {
     if (!element) {
         return;
     }
+
+    // 길이 제한은 서버와 맞춰 둔 PASSWORD 상수 한 곳에서 온다(템플릿에 숫자를 따로 적지 않는다).
+    const newPassword = byId('changeNewPassword');
+    newPassword.minLength = PASSWORD.MIN_LENGTH;
+    newPassword.maxLength = PASSWORD.MAX_LENGTH;
 
     const form = byId('change-password-form');
     on(form, 'submit', (event) => {

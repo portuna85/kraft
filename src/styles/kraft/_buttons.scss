@@ -121,13 +121,6 @@
     --bs-btn-disabled-border-color: var(--kraft-danger);
 }
 
-// 추천(좋아요) 버튼의 눌린 상태. #post.scss에 있던 것을 옮겼다 — 버튼 색은 전부 여기 모은다.
-#btn-like.is-active {
-    background-color: var(--kraft-primary);
-    color: var(--kraft-on-primary);
-    border-color: var(--kraft-primary);
-}
-
 // 버튼 여러 개를 나란히 둘 때 쓰는 간격. _upload.scss(글쓰기 파일)에 있던 것을 옮겼다 —
 // "취소"·"등록" 같은 조합은 글쓰기 화면 밖(신고·탈퇴·댓글 등)에서도 15곳 넘게 쓰인다.
 .btn-group-gap {

@@ -55,11 +55,15 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
     /**
      * 서비스가 던지는 사용자 입력·상태 검증 실패({@link BusinessValidationException})를 400으로 변환한다
-     * (예: 이메일 중복 가입, 허용되지 않는 파일 형식).
+     * (예: 이메일 중복 가입, 허용되지 않는 파일 형식). 메시지 끝의 내부 식별자({@code " id=123"})는
+     * 로그에만 남기고 응답에서는 자른다(BE-28).
      */
     @ExceptionHandler(BusinessValidationException.class)
     public ProblemDetail handleBusinessValidation(BusinessValidationException e) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
+        String message = e.getMessage();
+        log.debug("검증 실패: {}", message);
+        String detail = message == null ? null : TRAILING_IDENTIFIER.matcher(message).replaceFirst("");
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
     }
 
     /**
