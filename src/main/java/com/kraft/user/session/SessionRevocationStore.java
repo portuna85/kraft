@@ -1,11 +1,11 @@
 package com.kraft.user.session;
 
+import com.kraft.shared.transaction.StuckRequeue;
 import com.kraft.user.domain.User;
 import com.kraft.user.service.SessionRevoker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -78,12 +78,6 @@ public class SessionRevocationStore {
                 }, () -> log.info("이미 다른 워커가 재선점했거나 끝난 태스크라 건너뜁니다. taskId={}", id));
     }
 
-    /** 한 번에 조회·처리하는 최대 개수(B11). {@code OutboxMailStore.REQUEUE_BATCH_SIZE}와 같은 값이다. */
-    static final int REQUEUE_BATCH_SIZE = 200;
-
-    /** 한 번의 requeueStuck 호출에서 최대 이만큼의 배치만 돈다. 남은 적체는 다음 호출이 이어받는다. */
-    private static final int MAX_REQUEUE_BATCHES = 25;
-
     /**
      * 처리 도중 프로세스가 죽으면 그 태스크는 PROCESSING인 채로 남아 아무도 다시 집지 않는다.
      * 오래된 것은 PENDING으로 되돌리고 소유권 표시도 비운다. 대량 적체를 한 번에 전부
@@ -92,23 +86,13 @@ public class SessionRevocationStore {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int requeueStuck(LocalDateTime threshold) {
-        int total = 0;
-        for (int batch = 0; batch < MAX_REQUEUE_BATCHES; batch++) {
-            List<SessionRevocationTask> stuck = taskRepository.findByStatusAndUpdatedAtBefore(
-                    SessionRevocationTaskStatus.PROCESSING, threshold, PageRequest.of(0, REQUEUE_BATCH_SIZE));
-            if (stuck.isEmpty()) {
-                break;
-            }
-            stuck.forEach(task -> {
-                task.markFailed("처리 도중 중단되어 다시 대기열에 넣었습니다.", maxAttempts);
-                task.releaseOwnership();
-            });
-            total += stuck.size();
-            if (stuck.size() < REQUEUE_BATCH_SIZE) {
-                break;
-            }
-        }
-        return total;
+        return StuckRequeue.run(
+                page -> taskRepository.findByStatusAndUpdatedAtBefore(
+                        SessionRevocationTaskStatus.PROCESSING, threshold, page),
+                task -> {
+                    task.markFailed("처리 도중 중단되어 다시 대기열에 넣었습니다.", maxAttempts);
+                    task.releaseOwnership();
+                });
     }
 
     /** 보관 기한이 지난 DONE/FAILED 행을 지운다. */

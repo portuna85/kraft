@@ -3,6 +3,7 @@ package com.kraft.user.mail;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.kraft.shared.transaction.StuckRequeue;
 import com.kraft.user.domain.EmailHasher;
 import com.kraft.user.domain.EmailVerificationToken;
 import com.kraft.user.domain.EmailVerificationTokenRepository;
@@ -458,7 +459,7 @@ class OutboxMailTransactionTest {
     @Test
     @DisplayName("B10: 정체된 메일이 한 배치를 꽉 채우면 다음 배치를 이어서 처리한다")
     void requeueStuck_whenBacklogFillsABatch_continuesToNextBatch() {
-        int batchSize = (int) ReflectionTestUtils.getField(OutboxMailStore.class, "REQUEUE_BATCH_SIZE");
+        int batchSize = StuckRequeue.BATCH_SIZE;
         int total = batchSize + 1;
         for (int i = 0; i < total; i++) {
             queueOne();
