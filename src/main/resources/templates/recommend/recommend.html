@@ -7,13 +7,9 @@
 <head th:replace="~{layout/header :: header}"></head>
 <body>
 
-<a class="skip-link" href="#main">본문 바로가기</a>
-<div th:replace="~{layout/navbar :: topbar}"></div>
-
-<div class="kraft-shell">
-    <main id="main" class="kraft-main kraft-main--recommend">
+<th:block th:replace="~{layout/page :: page('kraft-main--recommend', ~{::content})}">
+    <th:block th:fragment="content">
         <h1 class="page-title">번호 추천</h1>
-        <div th:replace="~{layout/footer :: flash}"></div>
 
         <!--/* 최신 회차 당첨번호는 서버가 직접 렌더링한다(RecommendationPageController) — 다음
                추첨 전까지 바뀌지 않는 정적 정보라 Vue·API 왕복이 필요 없다. 추첨일·보너스
@@ -74,9 +70,9 @@
             <link rel="modulepreload" th:href="@{/js/vue-dist/chunks/core.js}" />
             <script type="module" th:src="@{/js/vue-dist/recommend.js}" data-mount-fallback="recommend-app"></script>
         </div>
-    </main>
-</div>
+    </th:block>
+</th:block>
 
-<div th:replace="~{layout/footer :: footer}"></div>
+
 </body>
 </html>

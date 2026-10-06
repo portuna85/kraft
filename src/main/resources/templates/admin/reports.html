@@ -7,12 +7,8 @@
 <head th:replace="~{layout/header :: header}"></head>
 <body>
 
-<a class="skip-link" href="#main">본문 바로가기</a>
-<div th:replace="~{layout/navbar :: topbar}"></div>
-
-<div class="kraft-shell">
-    <main id="main" class="kraft-main">
-        <div th:replace="~{layout/footer :: flash}"></div>
+<th:block th:replace="~{layout/page :: page('', ~{::content})}">
+    <th:block th:fragment="content">
 
         <div class="board-head">
             <div class="board-head__text">
@@ -88,9 +84,9 @@
                th:href="@{/admin/reports(page=${pageWindow.next})}">다음</a>
             <span class="pager__step is-disabled" th:unless="${pageWindow.hasNext}" aria-hidden="true">다음</span>
         </nav>
-    </main>
-</div>
+    </th:block>
+</th:block>
 
-<div th:replace="~{layout/footer :: footer}"></div>
+
 </body>
 </html>

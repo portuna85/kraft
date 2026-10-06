@@ -6,11 +6,8 @@
 <head th:replace="~{layout/header :: header}"></head>
 <body>
 
-<a class="skip-link" href="#main">본문 바로가기</a>
-<div th:replace="~{layout/navbar :: topbar}"></div>
-
-<div class="kraft-shell">
-    <main id="main" class="kraft-main kraft-main--account">
+<th:block th:replace="~{layout/page :: page('kraft-main--account', ~{::content})}">
+    <th:block th:fragment="content">
         <h1 class="page-title">이메일 인증</h1>
         <div class="card-kraft">
             <!-- GET은 토큰을 소비하지 않는다(전체 리뷰 2026-09-26 A-FE-04) — 메일 보안
@@ -28,9 +25,9 @@
             <p id="verify-token-missing" class="text-muted" role="alert" hidden>
                 인증 링크가 올바르지 않습니다. 인증 메일의 링크를 다시 열어 주세요.</p>
         </div>
-    </main>
-</div>
+    </th:block>
+</th:block>
 
-<div th:replace="~{layout/footer :: footer}"></div>
+
 </body>
 </html>

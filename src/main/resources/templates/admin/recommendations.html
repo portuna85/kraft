@@ -17,12 +17,8 @@
 <head th:replace="~{layout/header :: header}"></head>
 <body>
 
-<a class="skip-link" href="#main">본문 바로가기</a>
-<div th:replace="~{layout/navbar :: topbar}"></div>
-
-<div class="kraft-shell">
-    <main id="main" class="kraft-main">
-        <div th:replace="~{layout/footer :: flash}"></div>
+<th:block th:replace="~{layout/page :: page('', ~{::content})}">
+    <th:block th:fragment="content">
 
         <div class="board-head">
             <div class="board-head__text">
@@ -111,9 +107,9 @@
         <div class="empty-state" th:if="${#lists.isEmpty(attempts)}">
             <p class="empty-state__text">아직 수집 시도 기록이 없습니다.</p>
         </div>
-    </main>
-</div>
+    </th:block>
+</th:block>
 
-<div th:replace="~{layout/footer :: footer}"></div>
+
 </body>
 </html>

@@ -5,12 +5,8 @@
 <head th:replace="~{layout/header :: header}"></head>
 <body>
 
-<a class="skip-link" href="#main">본문 바로가기</a>
-<div th:replace="~{layout/navbar :: topbar}"></div>
-
-<div class="kraft-shell">
-    <main id="main" class="kraft-main kraft-main--narrow">
-        <div th:replace="~{layout/footer :: flash}"></div>
+<th:block th:replace="~{layout/page :: page('kraft-main--narrow', ~{::content})}">
+    <th:block th:fragment="content">
 
         <h1 class="page-title">게시글 등록</h1>
 
@@ -44,9 +40,9 @@
         <div class="card-kraft" sec:authorize="isAnonymous()">
             <p>로그인 후 게시글을 작성할 수 있습니다.</p>
         </div>
-    </main>
-</div>
+    </th:block>
+</th:block>
 
-<div th:replace="~{layout/footer :: footer}"></div>
+
 </body>
 </html>

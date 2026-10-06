@@ -6,12 +6,9 @@
 <head th:replace="~{layout/header :: header}"></head>
 <body>
 
-<a class="skip-link" href="#main">본문 바로가기</a>
-<div th:replace="~{layout/navbar :: topbar}"></div>
-
-<div class="kraft-shell">
-    <main id="main" class="kraft-main kraft-main--home">
-        <div th:replace="~{layout/footer :: flash}"></div>
+<th:block th:with="afterMain=~{::seo-jsonld}">
+<th:block th:replace="~{layout/page :: page('kraft-main--home', ~{::content})}">
+    <th:block th:fragment="content">
 
         <!--/* 첫 화면은 서비스가 무엇인지 먼저 말한다. 게시판은 /community로 옮겼고 아래 "최근
                커뮤니티"가 들어가는 길이다. 추천이 당첨 확률을 높인다고 읽히는 문구는 쓰지 않는다. */-->
@@ -163,18 +160,18 @@
                 <li>작성한 글과 댓글은 작성자 본인과 관리자만 수정·삭제할 수 있습니다.</li>
             </ul>
         </section>
-    </main>
-</div>
-
-<!--/* 검색 엔진용 사이트 설명(JSON-LD). 실행되는 스크립트가 아니라 CSP와 무관하고, 값은 인라인 JS
-       직렬화가 따옴표·꺾쇠를 이스케이프한다. */-->
-<script type="application/ld+json" th:inline="javascript">
-{"@context": "https://schema.org", "@type": "WebSite", "name": "Kraft",
- "url": /*[[${siteBaseUrl}]]*/ "https://example.test",
- "inLanguage": "ko",
- "description": /*[[${pageDescription}]]*/ "설명"}
-</script>
-
-<div th:replace="~{layout/footer :: footer}"></div>
+    </th:block>
+    <th:block th:fragment="seo-jsonld">
+        <!--/* 검색 엔진용 사이트 설명(JSON-LD). 실행되는 스크립트가 아니라 CSP와 무관하고, 값은 인라인 JS
+               직렬화가 따옴표·꺾쇠를 이스케이프한다. */-->
+        <script type="application/ld+json" th:inline="javascript">
+        {"@context": "https://schema.org", "@type": "WebSite", "name": "Kraft",
+         "url": /*[[${siteBaseUrl}]]*/ "https://example.test",
+         "inLanguage": "ko",
+         "description": /*[[${pageDescription}]]*/ "설명"}
+        </script>
+    </th:block>
+</th:block>
+</th:block>
 </body>
 </html>

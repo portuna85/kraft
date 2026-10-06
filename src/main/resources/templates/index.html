@@ -14,13 +14,9 @@
 <head th:replace="~{layout/header :: header}"></head>
 <body>
 
-<a class="skip-link" href="#main">본문 바로가기</a>
-<div th:replace="~{layout/navbar :: topbar}"></div>
-
-<div class="kraft-shell kraft-shell--with-aside">
-    <main id="main" class="kraft-main">
-        <div th:replace="~{layout/footer :: flash}"></div>
-
+<th:block th:with="shellClass='kraft-shell--with-aside', aside=~{::board-aside}">
+<th:block th:replace="~{layout/page :: page('', ~{::content})}">
+    <th:block th:fragment="content">
         <!-- 글쓰기 버튼은 헤더 오른쪽 한 곳에만 둔다(layout/navbar :: topbar). -->
         <div class="board-head">
             <div class="board-head__text">
@@ -168,8 +164,8 @@
             <span class="pager__step is-disabled" th:unless="${pageWindow.hasNext}" data-role="next"
                   aria-hidden="true">다음</span>
         </nav>
-    </main>
-
+    </th:block>
+    <th:block th:fragment="board-aside">
     <!-- 인기글은 목록과 같은 줄의 보조 열에 둔다(992px 이상). DOM을 한 벌만 두기 위해 좁은
          화면에서는 이 aside 전체가 목록·페이지 이동 아래로 내려간다 — 화면 순서와 키보드
          순서가 같아지도록 CSS order로 끌어올리지 않는다. -->
@@ -191,8 +187,8 @@
             <li>작성한 글과 댓글은 작성자 본인과 관리자만 수정·삭제할 수 있습니다.</li>
         </ul>
     </aside>
-</div>
-
-<div th:replace="~{layout/footer :: footer}"></div>
+    </th:block>
+</th:block>
+</th:block>
 </body>
 </html>

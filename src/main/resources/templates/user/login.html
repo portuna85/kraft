@@ -5,14 +5,10 @@
 <head th:replace="~{layout/header :: header}"></head>
 <body>
 
-<a class="skip-link" href="#main">본문 바로가기</a>
-<div th:replace="~{layout/navbar :: topbar}"></div>
-
-<div class="kraft-shell">
-    <main id="main" class="kraft-main kraft-main--account">
+<th:block th:replace="~{layout/page :: page('kraft-main--account', ~{::content})}">
+    <th:block th:fragment="content">
         <h1 class="page-title">로그인</h1>
         <p class="page-lead text-muted">가입한 이메일과 비밀번호로 로그인하세요.</p>
-        <div th:replace="~{layout/footer :: flash}"></div>
         <div class="card-kraft">
             <div class="alert alert-danger"
                  th:if="${param.error != null and (param.error[0] == null or param.error[0] != 'throttled')}">
@@ -46,9 +42,9 @@
                 <a id="link-forgot-password" href="/forgot-password">비밀번호를 잊으셨나요?</a>
             </p>
         </div>
-    </main>
-</div>
+    </th:block>
+</th:block>
 
-<div th:replace="~{layout/footer :: footer}"></div>
+
 </body>
 </html>

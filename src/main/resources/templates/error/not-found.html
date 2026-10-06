@@ -4,21 +4,16 @@
 <head th:replace="~{layout/header :: header}"></head>
 <body>
 
-<a class="skip-link" href="#main">본문 바로가기</a>
-<div th:replace="~{layout/navbar :: topbar}"></div>
-
-<div class="kraft-shell">
-    <main id="main" class="kraft-main kraft-main--narrow">
+<th:block th:with="noFlash=true, slimFooter=true">
+<th:block th:replace="~{layout/page :: page('kraft-main--narrow', ~{::content})}">
+    <th:block th:fragment="content">
         <div class="card-kraft empty-state">
             <h1 class="page-title">게시글을 찾을 수 없습니다.</h1>
             <p class="page-lead text-muted">요청한 게시글이 삭제되었거나 존재하지 않습니다.</p>
             <a href="/community" class="btn btn-outline-primary">게시판으로 돌아가기</a>
         </div>
-    </main>
-</div>
-
-<th:block th:with="slimFooter=true">
-    <div th:replace="~{layout/footer :: footer}"></div>
+    </th:block>
+</th:block>
 </th:block>
 </body>
 </html>
