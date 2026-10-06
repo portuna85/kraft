@@ -101,7 +101,7 @@ jobs:
           distribution: temurin
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           # 후처리의 캐시 정리가 별도 Gradle/JVM을 띄워 약 25초를 쓴다.
           # 캐시 저장·복원은 유지하고 매 push의 추가 정리 실행만 생략한다.
@@ -171,7 +171,7 @@ jobs:
           distribution: temurin
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           cache-cleanup: never
 
@@ -312,7 +312,7 @@ jobs:
           distribution: temurin
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           # test 잡이 공통 의존성·컴파일 캐시를 저장한다. E2E 시작 전 중복 저장을 피한다.
           cache-read-only: true
