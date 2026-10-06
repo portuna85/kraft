@@ -25,12 +25,4 @@ public final class LottoBitmask {
         }
         return mask;
     }
-
-    public static boolean intersects(long a, long b) {
-        return (a & b) != 0L;
-    }
-
-    public static boolean contains(long mask, int number) {
-        return (mask & bit(number)) != 0L;
-    }
 }

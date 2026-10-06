@@ -73,11 +73,3 @@
 .lotto-ball--bonus {
     box-shadow: 0 0 0 2px var(--kraft-surface), 0 0 0 3px var(--kraft-text-muted);
 }
-
-.lotto-ball--selected {
-    box-shadow: 0 0 0 2px var(--kraft-surface), 0 0 0 4px var(--kraft-primary);
-}
-
-.lotto-ball--muted {
-    opacity: 0.45;
-}

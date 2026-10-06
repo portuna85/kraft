@@ -31,7 +31,6 @@ export default defineConfig({
      *   npm run visual:update   (Docker 필요, build/libs/kraft-e2e.jar 필요 → ./gradlew bootE2eJar)
      *   npm run visual:check    (갱신 없이 비교만)
      * 로컬(Windows 등)에서 chromium 프로젝트로 직접 돌리면 `-linux` 기준선과 폰트가 달라 실패한다.
-     * mobile-webkit의 `-win32` 기준선은 로컬 전용 도구라 그대로 둔다.
      */
     testIgnore: process.env.CI && !process.env.VISUAL ? [/visual.*\.spec\.js/] : [],
 
