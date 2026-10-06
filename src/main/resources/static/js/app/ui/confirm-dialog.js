@@ -1,4 +1,4 @@
-import { byId, on, setText, buttonById } from '../core/dom.js';
+import { byId, must, on, setText, buttonById } from '../core/dom.js';
 import { modal } from '../core/bootstrap-ui.js';
 import { messageOf } from '../core/http.js';
 import { showToast } from './toast.js';
@@ -54,7 +54,7 @@ function bindListenersOnce() {
 }
 
 async function onConfirmClick() {
-    const button = buttonById('btn-confirm-delete');
+    const button = must(buttonById('btn-confirm-delete'), 'btn-confirm-delete');
     if (!pending || button.disabled) {
         return;
     }
@@ -123,7 +123,7 @@ export function confirmAction({ title, message, confirmLabel = '확인', trigger
 
     setText(byId('confirmDeleteModalLabel'), title);
     setText(byId('confirmDeleteMessage'), message);
-    const confirmButton = buttonById('btn-confirm-delete');
+    const confirmButton = must(buttonById('btn-confirm-delete'), 'btn-confirm-delete');
     confirmButton.textContent = confirmLabel;
     // 이전 대상의 요청이 아직 진행 중이더라도, 서로 다른 대상이면 동시에 처리해도 무방하다 —
     // 새로 연 대화상자는 그 요청과 독립적으로 곧바로 확인할 수 있어야 한다.

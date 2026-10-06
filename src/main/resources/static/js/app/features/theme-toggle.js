@@ -46,7 +46,7 @@ export function init() {
 
 function readStored(theme) {
     const raw = readItem(theme.STORAGE_KEY);
-    return theme.ORDER.includes(raw) ? raw : 'system';
+    return raw !== null && theme.ORDER.includes(raw) ? raw : 'system';
 }
 
 function persist(theme, value) {

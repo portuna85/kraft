@@ -62,7 +62,7 @@ export function init() {
             }
             if (account?.isOpen()) {
                 account.setOpen(false);
-                accountToggle.focus();
+                accountToggle?.focus();
             } else if (navDisclosure.isOpen()) {
                 navDisclosure.setOpen(false);
                 // 닫은 뒤 포커스를 토글로 되돌려야 키보드 사용자가 맥락을 잃지 않는다.
@@ -73,7 +73,7 @@ export function init() {
         on(document, 'keydown', /** @param {KeyboardEvent} event */ (event) => {
             if (event.key === 'Escape' && !document.body.classList.contains('modal-open') && account.isOpen()) {
                 account.setOpen(false);
-                accountToggle.focus();
+                accountToggle?.focus();
             }
         });
     }

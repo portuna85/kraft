@@ -1,4 +1,4 @@
-import { byId, on, rawValueOf, setBusy, setText, buttonById, formById, inputById } from '../core/dom.js';
+import { byId, must, on, rawValueOf, setBusy, setText, buttonById, formById, inputById } from '../core/dom.js';
 import { api, messageOf } from '../core/http.js';
 import { API, PASSWORD } from '../core/constants.js';
 import { modal } from '../core/bootstrap-ui.js';
@@ -80,11 +80,11 @@ function initChangePassword() {
     }
 
     // 길이 제한은 서버와 맞춰 둔 PASSWORD 상수 한 곳에서 온다(템플릿에 숫자를 따로 적지 않는다).
-    const newPassword = inputById('changeNewPassword');
+    const newPassword = must(inputById('changeNewPassword'), 'changeNewPassword');
     newPassword.minLength = PASSWORD.MIN_LENGTH;
     newPassword.maxLength = PASSWORD.MAX_LENGTH;
 
-    const form = formById('change-password-form');
+    const form = must(formById('change-password-form'), 'change-password-form');
     on(form, 'submit', (event) => {
         event.preventDefault();
         changePassword(changePasswordGeneration);
@@ -96,23 +96,23 @@ function initChangePassword() {
         form.reset();
         hideModalError();
     });
-    on(element, 'shown.bs.modal', () => inputById('currentPassword').focus());
+    on(element, 'shown.bs.modal', () => inputById('currentPassword')?.focus());
 }
 
 function showModalError(message) {
-    const box = byId('change-password-error');
+    const box = must(byId('change-password-error'), 'change-password-error');
     setText(box, message);
     box.hidden = false;
 }
 
 function hideModalError() {
-    const box = byId('change-password-error');
+    const box = must(byId('change-password-error'), 'change-password-error');
     setText(box, '');
     box.hidden = true;
 }
 
 async function changePassword(openedAt) {
-    const button = buttonById('btn-change-password');
+    const button = must(buttonById('btn-change-password'), 'btn-change-password');
     // disabled 버튼은 클릭은 막아도 같은 폼 안 입력창에서 Enter를 누른 submit까지 막지는
     // 않는다 — 이미 진행 중이면 함수 자체가 재진입을 거부해야 한다(개선 보고서 F10).
     if (button.disabled) {
@@ -154,7 +154,7 @@ function initWithdraw() {
         return;
     }
 
-    const form = formById('withdraw-form');
+    const form = must(formById('withdraw-form'), 'withdraw-form');
     on(form, 'submit', (event) => {
         event.preventDefault();
         withdraw(withdrawGeneration);
@@ -165,23 +165,23 @@ function initWithdraw() {
         form.reset();
         hideWithdrawError();
     });
-    on(element, 'shown.bs.modal', () => inputById('withdrawPassword').focus());
+    on(element, 'shown.bs.modal', () => inputById('withdrawPassword')?.focus());
 }
 
 function showWithdrawError(message) {
-    const box = byId('withdraw-error');
+    const box = must(byId('withdraw-error'), 'withdraw-error');
     setText(box, message);
     box.hidden = false;
 }
 
 function hideWithdrawError() {
-    const box = byId('withdraw-error');
+    const box = must(byId('withdraw-error'), 'withdraw-error');
     setText(box, '');
     box.hidden = true;
 }
 
 async function withdraw(openedAt) {
-    const button = buttonById('btn-confirm-withdraw');
+    const button = must(buttonById('btn-confirm-withdraw'), 'btn-confirm-withdraw');
     // changePassword()와 같은 이유(개선 보고서 F10).
     if (button.disabled) {
         return;

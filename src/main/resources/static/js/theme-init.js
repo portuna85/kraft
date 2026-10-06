@@ -49,5 +49,5 @@
     } catch {
         // 저장소를 쓸 수 없어도(프라이빗 모드 등) 시스템 설정만으로 계속 동작한다.
     }
-    apply(ORDER.indexOf(stored) >= 0 ? stored : 'system');
+    apply(stored !== null && ORDER.indexOf(stored) >= 0 ? stored : 'system');
 })();

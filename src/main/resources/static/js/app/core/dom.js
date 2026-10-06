@@ -139,3 +139,20 @@ export const formById = (id) => /** @type {HTMLFormElement | null} */ (document.
 
 /** @param {string} id @returns {HTMLInputElement | null} */
 export const inputById = (id) => /** @type {HTMLInputElement | null} */ (document.getElementById(id));
+
+/**
+ * 이 화면에 반드시 있어야 하는 요소를 꺼낸다. 없으면 어디서 빠졌는지 알 수 있게 던진다 — 예전에는 null에
+ * 접근하는 순간 이유를 알 수 없는 TypeError가 났다. 요소가 없을 수 있는 곳(다른 페이지와 공유하는 코드)에는
+ * 쓰지 않는다.
+ *
+ * @template T
+ * @param {T | null | undefined} element
+ * @param {string} what 오류 메시지에 쓸 요소 설명(보통 id)
+ * @returns {T}
+ */
+export function must(element, what) {
+    if (!element) {
+        throw new Error(`필요한 요소가 없습니다: ${what}`);
+    }
+    return element;
+}
