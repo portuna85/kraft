@@ -1,4 +1,4 @@
-import { byId, on, setText } from '../core/dom.js';
+import { byId, on, setText, buttonById } from '../core/dom.js';
 import { modal } from '../core/bootstrap-ui.js';
 
 /**
@@ -20,7 +20,7 @@ function bindListenersOnce() {
     }
     listenersBound = true;
 
-    on(byId('btn-confirm-delete'), 'click', () => {
+    on(buttonById('btn-confirm-delete'), 'click', () => {
         settle(true);
         modal('#confirmDeleteModal').hide();
     });
@@ -62,7 +62,7 @@ export function confirmAction({ title, message, confirmLabel = '확인' }) {
 
     setText(byId('confirmDeleteModalLabel'), title);
     setText(byId('confirmDeleteMessage'), message);
-    const confirmButton = byId('btn-confirm-delete');
+    const confirmButton = buttonById('btn-confirm-delete');
     confirmButton.textContent = confirmLabel;
     confirmButton.disabled = false;
 

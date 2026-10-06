@@ -231,7 +231,7 @@ function markLoadedPageNumbers(pager, startPage, lastLoadedPage) {
  * 둔 채 page만 바꾼다). 더 불러올 페이지가 없으면 기존 "이전 없음"과 같은 비활성 모양으로
  * 바꾼다. */
 function updateNextStep(pager, lastLoadedPage, isLast) {
-    const nextEl = qs('[data-role="next"]', pager);
+    const nextEl = /** @type {HTMLAnchorElement | null} */ (qs('[data-role="next"]', pager));
     if (!nextEl) {
         return;
     }

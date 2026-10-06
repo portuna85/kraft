@@ -18,7 +18,7 @@
 export const byId = (id) => /** @type {T | null} */ (document.getElementById(id));
 
 /**
- * @template {Element} [T=Element]
+ * @template {HTMLElement} [T=HTMLElement]
  * @param {string} selector
  * @param {ParentNode} [root=document]
  * @returns {T | null}
@@ -26,7 +26,7 @@ export const byId = (id) => /** @type {T | null} */ (document.getElementById(id)
 export const qs = (selector, root = document) => /** @type {T | null} */ (root.querySelector(selector));
 
 /**
- * @template {Element} [T=Element]
+ * @template {HTMLElement} [T=HTMLElement]
  * @param {string} selector
  * @param {ParentNode} [root=document]
  * @returns {T[]}
@@ -53,7 +53,7 @@ export function on(target, type, handler, options) {
  * 이벤트 위임. 댓글 목록처럼 나중에 다시 그려지는 영역은 document에 한 번만 걸어 둔다.
  * handler는 선택자에 맞는 요소를 첫 인자로 받는다.
  *
- * @template {Element} [T=Element]
+ * @template {HTMLElement} [T=HTMLElement]
  * @template {Event} [E=Event]
  * @param {string} type
  * @param {string} selector
@@ -130,3 +130,12 @@ export function formatFileSize(bytes) {
     }
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
+
+/** @param {string} id @returns {HTMLButtonElement | null} */
+export const buttonById = (id) => /** @type {HTMLButtonElement | null} */ (document.getElementById(id));
+
+/** @param {string} id @returns {HTMLFormElement | null} */
+export const formById = (id) => /** @type {HTMLFormElement | null} */ (document.getElementById(id));
+
+/** @param {string} id @returns {HTMLInputElement | null} */
+export const inputById = (id) => /** @type {HTMLInputElement | null} */ (document.getElementById(id));

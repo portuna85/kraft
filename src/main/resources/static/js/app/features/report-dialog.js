@@ -1,4 +1,4 @@
-import { byId, delegate, on, setText, valueOf } from '../core/dom.js';
+import { byId, delegate, on, setText, valueOf, buttonById, formById } from '../core/dom.js';
 import { api, messageOf } from '../core/http.js';
 import { modal } from '../core/bootstrap-ui.js';
 import { API } from '../core/constants.js';
@@ -27,7 +27,7 @@ export function init() {
     });
 
     delegate('click', '[data-report-kind="comment"]', (trigger) => {
-        const item = trigger.closest('.comment-list__item');
+        const item = /** @type {HTMLElement | null} */ (trigger.closest('.comment-list__item'));
         pending = { targetType: 'COMMENT', targetId: item?.dataset.commentId, trigger };
         open('댓글');
     });
@@ -46,13 +46,13 @@ export function init() {
         pending = null;
     });
 
-    on(byId('report-form'), 'submit', async (event) => {
+    on(formById('report-form'), 'submit', async (event) => {
         event.preventDefault();
         if (!pending) {
             return;
         }
 
-        const button = byId('btn-confirm-report');
+        const button = buttonById('btn-confirm-report');
         // 버튼 disabled는 일반 클릭 재진입은 막지만, 이 핸들러 자체는 그 상태를 확인하지
         // 않았다 — form.requestSubmit()처럼 버튼을 거치지 않는 제출 경로나 동일 이벤트
         // 루프 안의 연속 호출까지는 막지 못한다(F02). 함수 초입에서 직접 확인한다.
@@ -90,8 +90,8 @@ export function init() {
 
 function open(targetTitle) {
     generation += 1;
-    byId('btn-confirm-report').disabled = false;
-    byId('report-form').reset();
+    buttonById('btn-confirm-report').disabled = false;
+    formById('report-form').reset();
     setText(byId('reportModalLabel'), `${targetTitle} 신고`);
     setText(byId('report-target-hint'), `이 ${targetTitle}을(를) 신고합니다. 관리자가 확인한 뒤 처리합니다.`);
     modal('#reportModal').show();

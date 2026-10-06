@@ -3,20 +3,30 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "checkJs": false,
+    "checkJs": true,
+    "strict": false,
     "allowJs": true,
     "types": [
       "bootstrap"
     ],
     "paths": {
-      "@core/*": ["./src/main/resources/static/js/app/core/*"],
-      "@ui/*": ["./src/main/resources/static/js/app/ui/*"]
+      "@core/*": [
+        "./src/main/resources/static/js/app/core/*"
+      ],
+      "@ui/*": [
+        "./src/main/resources/static/js/app/ui/*"
+      ]
     }
   },
   "include": [
     "types/**/*",
     "src/main/resources/static/js/**/*",
-    "e2e/**/*",
     "src/vue/**/*.js"
+  ],
+  "exclude": [
+    "src/main/resources/static/js/vue-dist/**",
+    "src/main/resources/static/js/vendor/**",
+    "**/*.test.js",
+    "src/vue/vite.config.js"
   ]
 }

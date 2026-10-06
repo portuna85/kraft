@@ -1,4 +1,4 @@
-import { byId } from '../core/dom.js';
+import { byId, formById, inputById } from '../core/dom.js';
 
 /**
  * 이메일 인증 확인 화면. 메일 링크의 토큰은 URL 프래그먼트(#token=...)로 온다(BE-04) —
@@ -10,8 +10,8 @@ import { byId } from '../core/dom.js';
  * 버튼을 막고 안내를 보여준다.
  */
 export function init() {
-    const input = byId('verify-token');
-    const form = byId('verify-confirm-form');
+    const input = inputById('verify-token');
+    const form = formById('verify-confirm-form');
     const missing = byId('verify-token-missing');
     if (!input || !form || !missing) {
         return;

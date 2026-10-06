@@ -35,7 +35,7 @@ window.kraftVueMountFailed = function (mountPointId) {
 };
 
 document.addEventListener('error', function (event) {
-    const target = event.target;
+    const target = /** @type {HTMLElement | null} */ (event.target);
     if (target && target.tagName === 'SCRIPT' && target.dataset && target.dataset.mountFallback) {
         window.kraftVueMountFailed(target.dataset.mountFallback);
     }

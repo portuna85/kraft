@@ -39,8 +39,9 @@ export function init() {
     delegate('click', '.btn-report-suspend', async (trigger) => {
         const { isPost, name } = targetOf(trigger);
         // 기간은 같은 줄의 select에서 고른다(A-BE-16) — 더 이상 버튼에 고정돼 있지 않다.
-        const item = trigger.closest('.report-list__item');
-        const suspendDays = Number(item?.querySelector('.report-suspend-days')?.value ?? 7);
+        const item = /** @type {HTMLElement | null} */ (trigger.closest('.report-list__item'));
+        const daysInput = /** @type {HTMLInputElement | null} */ (item?.querySelector('.report-suspend-days') ?? null);
+        const suspendDays = Number(daysInput?.value ?? 7);
         const confirmed = await confirmAction({
             title: '삭제 + 정지',
             message: name
@@ -61,7 +62,7 @@ function rowButtons(item) {
 }
 
 function targetOf(trigger) {
-    const item = trigger.closest('.report-list__item');
+    const item = /** @type {HTMLElement | null} */ (trigger.closest('.report-list__item'));
     const isPost = item?.dataset.targetKey?.startsWith('POST:') ?? false;
     return { isPost, name: truncate(item?.dataset.targetName, isPost ? 40 : 30) };
 }
@@ -73,7 +74,7 @@ function setRowDisabled(item, disabled) {
 }
 
 async function handle(trigger, action, suspendDays = 0) {
-    const item = trigger.closest('.report-list__item');
+    const item = /** @type {HTMLElement | null} */ (trigger.closest('.report-list__item'));
     const id = item?.dataset.reportId;
     if (!id || trigger.disabled) {
         return;
@@ -94,7 +95,7 @@ async function handle(trigger, action, suspendDays = 0) {
  * 정지 해제(/admin/users). 신고 목록과 같은 카드·같은 처리 방식이라 여기 함께 둔다.
  */
 async function liftSuspension(trigger) {
-    const item = trigger.closest('.report-list__item');
+    const item = /** @type {HTMLElement | null} */ (trigger.closest('.report-list__item'));
     const id = item?.dataset.userId;
     if (!id || trigger.disabled) {
         return;

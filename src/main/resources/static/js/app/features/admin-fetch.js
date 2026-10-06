@@ -1,4 +1,4 @@
-import { byId, on } from '../core/dom.js';
+import { on, buttonById } from '../core/dom.js';
 import { api, messageOf } from '../core/http.js';
 import { API } from '../core/constants.js';
 import { showToast } from '../ui/toast.js';
@@ -23,7 +23,7 @@ const TOAST_TYPE = {
 };
 
 export function init() {
-    const button = byId('btn-fetch-now');
+    const button = buttonById('btn-fetch-now');
     if (!button) {
         return;
     }

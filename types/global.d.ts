@@ -21,5 +21,11 @@ declare global {
          * (개선 보고서 F12, src/vue/shared/mountIsland.js).
          */
         kraftVueMountFailed?: (mountPointId: string) => void;
+        /** theme-init.js(head, 동기)가 올려주는 전역. 테마 키·순서와 적용 함수를 노출한다. */
+        kraftTheme?: {
+            STORAGE_KEY: string;
+            ORDER: string[];
+            apply: (mode: string) => void;
+        };
     }
 }

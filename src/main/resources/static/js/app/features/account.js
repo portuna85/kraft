@@ -1,4 +1,4 @@
-import { byId, on, rawValueOf, setBusy, setText } from '../core/dom.js';
+import { byId, on, rawValueOf, setBusy, setText, buttonById, formById, inputById } from '../core/dom.js';
 import { api, messageOf } from '../core/http.js';
 import { API, PASSWORD } from '../core/constants.js';
 import { modal } from '../core/bootstrap-ui.js';
@@ -39,8 +39,8 @@ function bindFocusReturn(elementId) {
 }
 
 function initLogout() {
-    const button = byId('btn-logout');
-    const form = byId('logout-form');
+    const button = buttonById('btn-logout');
+    const form = formById('logout-form');
     if (!button || !form) {
         return;
     }
@@ -80,11 +80,11 @@ function initChangePassword() {
     }
 
     // 길이 제한은 서버와 맞춰 둔 PASSWORD 상수 한 곳에서 온다(템플릿에 숫자를 따로 적지 않는다).
-    const newPassword = byId('changeNewPassword');
+    const newPassword = inputById('changeNewPassword');
     newPassword.minLength = PASSWORD.MIN_LENGTH;
     newPassword.maxLength = PASSWORD.MAX_LENGTH;
 
-    const form = byId('change-password-form');
+    const form = formById('change-password-form');
     on(form, 'submit', (event) => {
         event.preventDefault();
         changePassword(changePasswordGeneration);
@@ -96,7 +96,7 @@ function initChangePassword() {
         form.reset();
         hideModalError();
     });
-    on(element, 'shown.bs.modal', () => byId('currentPassword').focus());
+    on(element, 'shown.bs.modal', () => inputById('currentPassword').focus());
 }
 
 function showModalError(message) {
@@ -112,7 +112,7 @@ function hideModalError() {
 }
 
 async function changePassword(openedAt) {
-    const button = byId('btn-change-password');
+    const button = buttonById('btn-change-password');
     // disabled 버튼은 클릭은 막아도 같은 폼 안 입력창에서 Enter를 누른 submit까지 막지는
     // 않는다 — 이미 진행 중이면 함수 자체가 재진입을 거부해야 한다(개선 보고서 F10).
     if (button.disabled) {
@@ -123,8 +123,8 @@ async function changePassword(openedAt) {
 
     try {
         await api.put(`${API.USERS_ME}/password`, {
-            currentPassword: rawValueOf(byId('currentPassword')),
-            newPassword: rawValueOf(byId('changeNewPassword')),
+            currentPassword: rawValueOf(inputById('currentPassword')),
+            newPassword: rawValueOf(inputById('changeNewPassword')),
         });
         // 서버가 이미 이 계정의 모든 세션을 폐기했다 — 초안도 함께 지운다(A-FE-03).
         clearAllDrafts();
@@ -154,7 +154,7 @@ function initWithdraw() {
         return;
     }
 
-    const form = byId('withdraw-form');
+    const form = formById('withdraw-form');
     on(form, 'submit', (event) => {
         event.preventDefault();
         withdraw(withdrawGeneration);
@@ -165,7 +165,7 @@ function initWithdraw() {
         form.reset();
         hideWithdrawError();
     });
-    on(element, 'shown.bs.modal', () => byId('withdrawPassword').focus());
+    on(element, 'shown.bs.modal', () => inputById('withdrawPassword').focus());
 }
 
 function showWithdrawError(message) {
@@ -181,7 +181,7 @@ function hideWithdrawError() {
 }
 
 async function withdraw(openedAt) {
-    const button = byId('btn-confirm-withdraw');
+    const button = buttonById('btn-confirm-withdraw');
     // changePassword()와 같은 이유(개선 보고서 F10).
     if (button.disabled) {
         return;
@@ -191,7 +191,7 @@ async function withdraw(openedAt) {
 
     try {
         await api.del(API.USERS_ME, {
-            currentPassword: rawValueOf(byId('withdrawPassword')),
+            currentPassword: rawValueOf(inputById('withdrawPassword')),
         });
         // 탈퇴 계정의 초안은 되찾을 계정 자체가 없다 — 지운다(A-FE-03).
         clearAllDrafts();
@@ -215,7 +215,7 @@ async function withdraw(openedAt) {
  * 남을 "이전 폼 상태" 자체가 없다. setBusy(false)만 재진입을 허용하면 충분하다.
  */
 function initResendVerification() {
-    const button = byId('btn-confirm-resend');
+    const button = buttonById('btn-confirm-resend');
     if (!button) {
         return;
     }

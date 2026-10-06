@@ -1,4 +1,4 @@
-import { byId, delegate, on, setText, valueOf } from '../core/dom.js';
+import { byId, delegate, on, setText, valueOf, buttonById } from '../core/dom.js';
 import { api, messageOf } from '../core/http.js';
 import { modal } from '../core/bootstrap-ui.js';
 import { API } from '../core/constants.js';
@@ -28,7 +28,7 @@ export function init() {
     });
 
     delegate('click', '[data-target-kind="comment"]', (trigger) => {
-        const item = trigger.closest('.comment-list__item');
+        const item = /** @type {HTMLElement | null} */ (trigger.closest('.comment-list__item'));
         pending = { kind: 'comment', id: item?.dataset.commentId, trigger };
         open('comment', trigger.dataset.targetName);
     });
@@ -47,8 +47,8 @@ export function init() {
         pending = null;
     });
 
-    on(byId('btn-confirm-delete'), 'click', async () => {
-        const button = byId('btn-confirm-delete');
+    on(buttonById('btn-confirm-delete'), 'click', async () => {
+        const button = buttonById('btn-confirm-delete');
         if (!pending || button.disabled) {
             return;
         }
@@ -99,7 +99,7 @@ function open(kind, targetName) {
     generation += 1;
     // 이전 대상의 요청이 아직 진행 중이더라도, 서로 다른 대상이면 동시에 처리해도 무방하다 —
     // 새로 연 대화상자는 그 요청과 독립적으로 곧바로 확인할 수 있어야 한다.
-    byId('btn-confirm-delete').disabled = false;
+    buttonById('btn-confirm-delete').disabled = false;
     const isPost = kind === 'post';
     const name = truncate(targetName, isPost ? 40 : 30);
     setText(byId('confirmDeleteModalLabel'), isPost ? '게시글 삭제' : '댓글 삭제');
