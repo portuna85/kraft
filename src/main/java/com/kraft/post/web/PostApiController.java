@@ -7,6 +7,7 @@ import com.kraft.post.dto.PostLikeResponseDto;
 import com.kraft.post.dto.PostResponseDto;
 import com.kraft.post.dto.PostSaveRequestDto;
 import com.kraft.post.dto.PostUpdateRequestDto;
+import com.kraft.post.service.PostQueryService;
 import com.kraft.post.service.PostService;
 import com.kraft.post.service.PostSortPolicy;
 import com.kraft.shared.web.RateLimitResponses;
@@ -27,6 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class PostApiController {
 
     private final PostService postService;
+    private final PostQueryService postQueryService;
     private final WriteRateLimiters rateLimiters;
 
     /**
@@ -55,7 +57,7 @@ public class PostApiController {
 
     @GetMapping("/api/v1/posts/{id}")
     public PostResponseDto findById(@PathVariable Long id) {
-        return postService.findById(id);
+        return postQueryService.findById(id);
     }
 
     /**
@@ -72,7 +74,7 @@ public class PostApiController {
             return RateLimitResponses.tooManyRequests("SEARCH_RATE_LIMITED", 60);
         }
         PostSortPolicy.validate(pageable.getSort());
-        return ResponseEntity.ok(postService.findAllDesc(pageable, q, category, SearchScope.isContent(scope)));
+        return ResponseEntity.ok(postQueryService.findAllDesc(pageable, q, category, SearchScope.isContent(scope)));
     }
 
     /**

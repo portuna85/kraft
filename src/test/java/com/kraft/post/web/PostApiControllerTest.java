@@ -10,6 +10,7 @@ import com.kraft.post.dto.PostSaveRequestDto;
 import com.kraft.post.dto.PostsPageResponseDto;
 import com.kraft.post.dto.PostUpdateRequestDto;
 import com.kraft.post.service.PostImageService;
+import com.kraft.post.service.PostQueryService;
 import com.kraft.post.service.PostService;
 import com.kraft.shared.web.WriteRateLimiters;
 import org.junit.jupiter.api.BeforeEach;
@@ -67,6 +68,9 @@ class PostApiControllerTest {
     private PostService postService;
 
     @MockitoBean
+    private PostQueryService postQueryService;
+
+    @MockitoBean
     private WriteRateLimiters rateLimiters;
 
     /** A-SEC-06 제한기는 이 슬라이스의 관심사가 아니다 — 기본으로 항상 통과시킨다. */
@@ -80,7 +84,7 @@ class PostApiControllerTest {
     @Test
     @DisplayName("GET /api/v1/posts 는 인증 없이도 호출할 수 있다")
     void listPosts_isAccessibleWithoutAuthentication() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
+        given(postQueryService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
 
         mockMvc.perform(get("/api/v1/posts"))
@@ -96,7 +100,7 @@ class PostApiControllerTest {
     @Test
     @DisplayName("BE-08: 검색 응답은 totalElements·totalPages가 null이고 page·last는 그대로다")
     void listPosts_searchResponseHasNullTotals() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), eq("공지"), any(), anyBoolean()))
+        given(postQueryService.findAllDesc(any(Pageable.class), eq("공지"), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 2, 10, null, null, false, false));
 
         mockMvc.perform(get("/api/v1/posts").param("q", "공지").param("page", "2"))
@@ -111,32 +115,32 @@ class PostApiControllerTest {
     @Test
     @DisplayName("GET /api/v1/posts?q=...&category=... 는 검색어·분류를 서비스에 그대로 전달하고, scope가 없으면 제목만(false) 검색한다")
     void listPosts_passesSearchKeywordAndCategoryToService() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), eq("공지"), eq(Category.NOTICE), eq(false)))
+        given(postQueryService.findAllDesc(any(Pageable.class), eq("공지"), eq(Category.NOTICE), eq(false)))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
 
         mockMvc.perform(get("/api/v1/posts").param("q", "공지").param("category", "NOTICE"))
                 .andExpect(status().isOk());
 
-        verify(postService).findAllDesc(any(Pageable.class), eq("공지"), eq(Category.NOTICE), eq(false));
+        verify(postQueryService).findAllDesc(any(Pageable.class), eq("공지"), eq(Category.NOTICE), eq(false));
     }
 
     @Test
     @DisplayName("A-BE-02 2단계: GET /api/v1/posts?scope=all 은 제목+내용 검색(true)으로 전달한다")
     void listPosts_withScopeAll_searchesContentToo() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), eq("공지"), any(), eq(true)))
+        given(postQueryService.findAllDesc(any(Pageable.class), eq("공지"), any(), eq(true)))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
 
         mockMvc.perform(get("/api/v1/posts").param("q", "공지").param("scope", "all"))
                 .andExpect(status().isOk());
 
-        verify(postService).findAllDesc(any(Pageable.class), eq("공지"), any(), eq(true));
+        verify(postQueryService).findAllDesc(any(Pageable.class), eq("공지"), any(), eq(true));
     }
 
     /** A-SEC-06: q 없는 일반 목록 열람은 검색 제한기를 건드리지 않는다. */
     @Test
     @DisplayName("GET /api/v1/posts 는 q가 없으면 검색 속도 제한을 검사하지 않는다")
     void listPosts_withoutKeyword_skipsSearchRateLimit() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
+        given(postQueryService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
 
         mockMvc.perform(get("/api/v1/posts")).andExpect(status().isOk());
@@ -153,7 +157,7 @@ class PostApiControllerTest {
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.code").value("SEARCH_RATE_LIMITED"));
 
-        verify(postService, never()).findAllDesc(any(), any(), any(), anyBoolean());
+        verify(postQueryService, never()).findAllDesc(any(), any(), any(), anyBoolean());
     }
 
     @Test
@@ -162,13 +166,13 @@ class PostApiControllerTest {
         mockMvc.perform(get("/api/v1/posts").param("sort", "content,desc"))
                 .andExpect(status().isBadRequest());
 
-        verify(postService, never()).findAllDesc(any(Pageable.class), any(), any(), anyBoolean());
+        verify(postQueryService, never()).findAllDesc(any(Pageable.class), any(), any(), anyBoolean());
     }
 
     @Test
     @DisplayName("F12: GET /api/v1/posts?sort=viewCount,desc 는 허용된 정렬이라 그대로 처리된다")
     void listPosts_withAllowedSort_isProcessed() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
+        given(postQueryService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
 
         mockMvc.perform(get("/api/v1/posts").param("sort", "viewCount,desc"))
@@ -218,7 +222,7 @@ class PostApiControllerTest {
     @Test
     @DisplayName("GET /api/v1/posts/{id} 는 없는 글이면 404 ProblemDetail을 반환한다")
     void getPost_whenPostNotFound_returns404NotFound() throws Exception {
-        given(postService.findById(999L))
+        given(postQueryService.findById(999L))
                 .willThrow(new PostNotFoundException(999L));
 
         mockMvc.perform(get("/api/v1/posts/999"))

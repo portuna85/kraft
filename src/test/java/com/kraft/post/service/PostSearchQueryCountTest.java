@@ -33,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PostSearchQueryCountTest {
 
     @Autowired
-    private PostService postService;
+    private PostQueryService postQueryService;
 
     @Autowired
     private PostRepository postRepository;
@@ -79,7 +79,7 @@ class PostSearchQueryCountTest {
     void keywordSearch_runsWithoutCountQuery() {
         statistics.clear();
 
-        var result = postService.findAllDesc(PageRequest.of(0, 10), "검색 대상", null);
+        var result = postQueryService.findAllDesc(PageRequest.of(0, 10), "검색 대상", null);
 
         assertThat(statistics.getPrepareStatementCount()).isEqualTo(2L);
         assertThat(result.content()).hasSize(10);
@@ -91,7 +91,7 @@ class PostSearchQueryCountTest {
     @Test
     @DisplayName("BE-08: 검색 결과의 마지막 페이지는 last=true다")
     void keywordSearch_lastPageIsMarkedLast() {
-        var result = postService.findAllDesc(PageRequest.of(1, 10), "검색 대상", null);
+        var result = postQueryService.findAllDesc(PageRequest.of(1, 10), "검색 대상", null);
 
         assertThat(result.content()).hasSize(2);
         assertThat(result.last()).isTrue();
@@ -103,7 +103,7 @@ class PostSearchQueryCountTest {
     void listWithoutKeyword_stillCountsTotal() {
         statistics.clear();
 
-        var result = postService.findAllDesc(PageRequest.of(0, 10));
+        var result = postQueryService.findAllDesc(PageRequest.of(0, 10));
 
         assertThat(statistics.getPrepareStatementCount()).isEqualTo(3L);
         assertThat(result.totalElements()).isEqualTo(13L);

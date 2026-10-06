@@ -42,6 +42,9 @@ class PostViewCountIsolationTest {
     private PostService postService;
 
     @Autowired
+    private PostQueryService postQueryService;
+
+    @Autowired
     private PostRepository postRepository;
 
     @Autowired
@@ -99,7 +102,7 @@ class PostViewCountIsolationTest {
 
             // 이제 열람이 조회수를 올린다. 예전에는 이 시점에 stale의 제목·본문·분류가 함께
             // UPDATE에 실려 방금 저장한 내용을 되돌렸다.
-            postService.findByIdForView(id, owner);
+            postQueryService.findByIdForView(id, owner);
         });
 
         Post result = postRepository.findById(id).orElseThrow();
@@ -128,7 +131,7 @@ class PostViewCountIsolationTest {
             assertThat(editing.getViewCount()).isZero();
 
             // 그 사이 별도 트랜잭션이 조회수를 올리고 커밋한다.
-            requiresNew.executeWithoutResult(inner -> postService.findByIdForView(id, owner));
+            requiresNew.executeWithoutResult(inner -> postQueryService.findByIdForView(id, owner));
 
             // 이제 편집이 저장된다. update()가 같은 영속성 컨텍스트의 위 "editing" 인스턴스를
             // 그대로 재사용하므로(1차 캐시), 이 시점에도 그 인스턴스의 viewCount는 여전히 0이다.
@@ -148,9 +151,9 @@ class PostViewCountIsolationTest {
         Long id = savePost("제목", "내용", Category.FREE);
         LocalDateTime before = postRepository.findById(id).orElseThrow().getUpdatedAt();
 
-        postService.findByIdForView(id, owner);
-        postService.findByIdForView(id, owner);
-        postService.findByIdForView(id, owner);
+        postQueryService.findByIdForView(id, owner);
+        postQueryService.findByIdForView(id, owner);
+        postQueryService.findByIdForView(id, owner);
 
         Post result = postRepository.findById(id).orElseThrow();
         assertThat(result.getUpdatedAt()).isEqualTo(before);
@@ -163,7 +166,7 @@ class PostViewCountIsolationTest {
         Long id = savePost("제목", "내용", Category.FREE);
 
         for (int i = 0; i < 5; i++) {
-            postService.findByIdForView(id, owner);
+            postQueryService.findByIdForView(id, owner);
         }
 
         assertThat(postRepository.findById(id).orElseThrow().getViewCount()).isEqualTo(5L);
@@ -173,7 +176,7 @@ class PostViewCountIsolationTest {
     @DisplayName("F02: 편집을 시작한 뒤 다른 곳에서 저장되면 충돌로 거절한다")
     void update_withStaleVersion_isRejected() {
         Long id = savePost("제목", "내용", Category.FREE);
-        Long versionAtEditStart = postService.findByIdForView(id, owner).version();
+        Long versionAtEditStart = postQueryService.findByIdForView(id, owner).version();
 
         postService.update(id, new PostUpdateRequestDto("먼저 저장", "내용", null, null, null, null, versionAtEditStart), owner);
 
@@ -188,8 +191,8 @@ class PostViewCountIsolationTest {
     @DisplayName("열람으로 조회수만 올라간 경우에는 편집 충돌로 보지 않는다")
     void update_afterViewsOnly_stillSucceeds() {
         Long id = savePost("제목", "내용", Category.FREE);
-        Long version = postService.findByIdForView(id, owner).version();
-        postService.findByIdForView(id, owner);
+        Long version = postQueryService.findByIdForView(id, owner).version();
+        postQueryService.findByIdForView(id, owner);
 
         postService.update(id, new PostUpdateRequestDto("수정됨", "내용", null, null, null, null, version), owner);
 

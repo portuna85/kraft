@@ -25,7 +25,7 @@ import org.springframework.security.core.Authentication;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 게시글 상세 조회({@link PostService#findByIdForView})가 SQL을 몇 번 내는지 고정한다(BE-05).
+ * 게시글 상세 조회({@link PostQueryService#findByIdForView})가 SQL을 몇 번 내는지 고정한다(BE-05).
  * <p>
  * 예전에는 조회수 UPDATE, 게시글, 작성자(지연 로딩), 추천 exists, 추천 count가 따로 나갔다.
  * 지금은 조회수 UPDATE, 게시글+작성자(JOIN FETCH), 추천 집계 — 3개다. 누가 이 경로에 쿼리를
@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PostDetailQueryCountTest {
 
     @Autowired
-    private PostService postService;
+    private PostQueryService postQueryService;
 
     @Autowired
     private PostRepository postRepository;
@@ -87,7 +87,7 @@ class PostDetailQueryCountTest {
         Authentication auth = TestAuthentication.of(viewer);
         statistics.clear();
 
-        var view = postService.findByIdForView(postId, auth);
+        var view = postQueryService.findByIdForView(postId, auth);
 
         assertThat(statistics.getPrepareStatementCount()).isEqualTo(3L);
         assertThat(view.likeCount()).isEqualTo(2L);
@@ -101,7 +101,7 @@ class PostDetailQueryCountTest {
     void detailForAnonymous_usesThreeStatements() {
         statistics.clear();
 
-        var view = postService.findByIdForView(postId, null);
+        var view = postQueryService.findByIdForView(postId, null);
 
         assertThat(statistics.getPrepareStatementCount()).isEqualTo(3L);
         assertThat(view.likeCount()).isEqualTo(2L);
@@ -114,7 +114,7 @@ class PostDetailQueryCountTest {
         User stranger = userRepository.save(User.builder()
                 .name("stranger").email("stranger@example.com").password("encoded").role(Role.USER).build());
 
-        var view = postService.findByIdForView(postId, TestAuthentication.of(stranger));
+        var view = postQueryService.findByIdForView(postId, TestAuthentication.of(stranger));
 
         assertThat(view.likeCount()).isEqualTo(2L);
         assertThat(view.likedByMe()).isFalse();
@@ -125,7 +125,7 @@ class PostDetailQueryCountTest {
     void recentPosts_doNotRunCountQuery() {
         statistics.clear();
 
-        var recent = postService.findRecent(5);
+        var recent = postQueryService.findRecent(5);
 
         assertThat(recent).hasSize(1);
         assertThat(recent.get(0).title()).isEqualTo("제목");

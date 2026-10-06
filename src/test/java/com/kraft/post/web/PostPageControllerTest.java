@@ -10,7 +10,7 @@ import com.kraft.post.dto.PostRowDto;
 import com.kraft.post.dto.PostsListResponseDto;
 import com.kraft.post.dto.PostsPageResponseDto;
 import com.kraft.post.dto.PostViewDto;
-import com.kraft.post.service.PostService;
+import com.kraft.post.service.PostQueryService;
 import com.kraft.shared.web.WriteRateLimiters;
 import com.kraft.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,7 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
- * {@link PostPageController} 화면 계층 테스트. {@code PostService}/{@code CommentService}는 모킹하고,
+ * {@link PostPageController} 화면 계층 테스트. {@code PostQueryService}/{@code CommentService}는 모킹하고,
  * 실제 {@link SecurityConfig}를 임포트해 CSRF 메타 태그가 필요한 헤더 fragment까지 렌더링되는
  * 실제 요청 흐름을 재현한다.
  * <p>
@@ -61,7 +61,7 @@ class PostPageControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private PostService postService;
+    private PostQueryService postQueryService;
 
     @MockitoBean
     private CommentService commentService;
@@ -89,9 +89,9 @@ class PostPageControllerTest {
     @Test
     @DisplayName("GET / 는 목록을 모델에 담아 index 뷰를 렌더링한다")
     void index_rendersIndexViewWithPostsModel() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
+        given(postQueryService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
-        given(postService.findPopular(5)).willReturn(List.of());
+        given(postQueryService.findPopular(5)).willReturn(List.of());
 
         mockMvc.perform(get("/community"))
                 .andExpect(status().isOk())
@@ -102,9 +102,9 @@ class PostPageControllerTest {
     @Test
     @DisplayName("[회귀 방지] GET /?page=-1 은 500이 아니라 정상 렌더링된다")
     void index_withNegativePage_rendersSuccessfullyWithoutServerError() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
+        given(postQueryService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
-        given(postService.findPopular(5)).willReturn(List.of());
+        given(postQueryService.findPopular(5)).willReturn(List.of());
 
         mockMvc.perform(get("/community").param("page", "-1"))
                 .andExpect(status().isOk())
@@ -114,9 +114,9 @@ class PostPageControllerTest {
     @Test
     @DisplayName("[회귀 방지] GET /?page=999 (범위 초과, 글이 하나도 없음) 도 500이 아니라 정상 렌더링된다")
     void index_withOutOfRangePage_rendersSuccessfullyWithoutServerError() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
+        given(postQueryService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 999, 10, 0L, 0, true, true));
-        given(postService.findPopular(5)).willReturn(List.of());
+        given(postQueryService.findPopular(5)).willReturn(List.of());
 
         mockMvc.perform(get("/community").param("page", "999"))
                 .andExpect(status().isOk())
@@ -133,7 +133,7 @@ class PostPageControllerTest {
     @Test
     @DisplayName("F09: 글은 있지만 범위를 넘는 page를 요청하면 유효한 마지막 페이지로 보낸다")
     void index_withOutOfRangePageButPostsExist_redirectsToLastValidPage() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), eq("키워드"), eq(Category.NOTICE), anyBoolean()))
+        given(postQueryService.findAllDesc(any(Pageable.class), eq("키워드"), eq(Category.NOTICE), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 5, 10, 42L, 5, false, true));
 
         mockMvc.perform(get("/community").param("page", "5").param("q", "키워드").param("category", "NOTICE"))
@@ -152,9 +152,9 @@ class PostPageControllerTest {
         PostsListResponseDto row = new PostsListResponseDto(new PostRowDto(
                 1L, "검색 결과 글", "작성자", LocalDateTime.of(2026, 10, 1, 9, 0),
                 LocalDateTime.of(2026, 10, 1, 9, 0), Category.FREE, 0L), 0L);
-        given(postService.findAllDesc(any(Pageable.class), eq("검색"), any(), anyBoolean()))
+        given(postQueryService.findAllDesc(any(Pageable.class), eq("검색"), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(row), 1, 10, null, null, false, false));
-        given(postService.findPopular(5)).willReturn(List.of());
+        given(postQueryService.findPopular(5)).willReturn(List.of());
 
         mockMvc.perform(get("/community").param("q", "검색").param("page", "1"))
                 .andExpect(status().isOk())
@@ -173,9 +173,9 @@ class PostPageControllerTest {
         PostsListResponseDto row = new PostsListResponseDto(new PostRowDto(
                 1L, "검색 결과 글", "작성자", LocalDateTime.of(2026, 10, 1, 9, 0),
                 LocalDateTime.of(2026, 10, 1, 9, 0), Category.FREE, 0L), 0L);
-        given(postService.findAllDesc(any(Pageable.class), eq("검색"), any(), anyBoolean()))
+        given(postQueryService.findAllDesc(any(Pageable.class), eq("검색"), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(row), 0, 10, null, null, true, true));
-        given(postService.findPopular(5)).willReturn(List.of());
+        given(postQueryService.findPopular(5)).willReturn(List.of());
 
         mockMvc.perform(get("/community").param("q", "검색"))
                 .andExpect(status().isOk())
@@ -186,9 +186,9 @@ class PostPageControllerTest {
     @Test
     @DisplayName("BE-08: 검색 결과가 없으면(총 건수 없음) '검색 조건에 맞는 게시글이 없습니다'를 보여준다")
     void index_emptySearchWithoutTotals_showsNoMatchMessage() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), eq("없는검색어"), any(), anyBoolean()))
+        given(postQueryService.findAllDesc(any(Pageable.class), eq("없는검색어"), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, null, null, true, true));
-        given(postService.findPopular(5)).willReturn(List.of());
+        given(postQueryService.findPopular(5)).willReturn(List.of());
 
         mockMvc.perform(get("/community").param("q", "없는검색어"))
                 .andExpect(status().isOk())
@@ -203,7 +203,7 @@ class PostPageControllerTest {
     @Test
     @DisplayName("BE-08: 검색 결과가 빈 범위 밖 page는 검색 조건을 유지한 채 첫 페이지로 보낸다")
     void index_searchBeyondLastPage_redirectsToFirstPageKeepingFilters() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), eq("키워드"), eq(Category.NOTICE), anyBoolean()))
+        given(postQueryService.findAllDesc(any(Pageable.class), eq("키워드"), eq(Category.NOTICE), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 7, 10, null, null, false, true));
 
         mockMvc.perform(get("/community").param("page", "7").param("q", "키워드").param("category", "NOTICE"))
@@ -218,7 +218,7 @@ class PostPageControllerTest {
     @Test
     @DisplayName("BE-08: 검색어 없는 목록의 범위 밖 page는 기존처럼 마지막 페이지로 보낸다(총 건수가 있다)")
     void index_listWithTotals_stillRedirectsToLastPage() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
+        given(postQueryService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 9, 10, 25L, 3, false, true));
 
         mockMvc.perform(get("/community").param("page", "9"))
@@ -229,7 +229,7 @@ class PostPageControllerTest {
     @Test
     @DisplayName("9단계: 범위를 넘는 page를 정렬과 함께 요청해도 리다이렉트 URL이 sort를 유지한다")
     void index_withOutOfRangePageAndSort_redirectKeepsSort() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
+        given(postQueryService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 5, 10, 42L, 5, false, true));
 
         mockMvc.perform(get("/community").param("page", "5").param("sort", "viewCount,desc"))
@@ -240,9 +240,9 @@ class PostPageControllerTest {
     @Test
     @DisplayName("GET /?q=키워드&category=NOTICE 는 검색어·분류를 서비스에 그대로 전달한다")
     void index_passesSearchKeywordAndCategoryToService() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), eq("키워드"), eq(Category.NOTICE), anyBoolean()))
+        given(postQueryService.findAllDesc(any(Pageable.class), eq("키워드"), eq(Category.NOTICE), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
-        given(postService.findPopular(5)).willReturn(List.of());
+        given(postQueryService.findPopular(5)).willReturn(List.of());
 
         mockMvc.perform(get("/community").param("q", "키워드").param("category", "NOTICE"))
                 .andExpect(status().isOk())
@@ -254,23 +254,23 @@ class PostPageControllerTest {
     @Test
     @DisplayName("A-BE-02 2단계: GET /?q=...&scope=all 은 제목+내용 검색으로 전달하고 searchContent 모델 값도 true다")
     void index_withScopeAll_searchesContentTooAndExposesModelFlag() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), eq("키워드"), any(), eq(true)))
+        given(postQueryService.findAllDesc(any(Pageable.class), eq("키워드"), any(), eq(true)))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
-        given(postService.findPopular(5)).willReturn(List.of());
+        given(postQueryService.findPopular(5)).willReturn(List.of());
 
         mockMvc.perform(get("/community").param("q", "키워드").param("scope", "all"))
                 .andExpect(status().isOk())
                 .andExpect(model().attribute("searchContent", true));
 
-        org.mockito.Mockito.verify(postService).findAllDesc(any(Pageable.class), eq("키워드"), any(), eq(true));
+        org.mockito.Mockito.verify(postQueryService).findAllDesc(any(Pageable.class), eq("키워드"), any(), eq(true));
     }
 
     @Test
     @DisplayName("A-BE-02 2단계: scope 파라미터가 없으면 제목만(false)으로 검색하고 모델 값도 false다")
     void index_withoutScope_defaultsToTitleOnly() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), eq("키워드"), any(), eq(false)))
+        given(postQueryService.findAllDesc(any(Pageable.class), eq("키워드"), any(), eq(false)))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
-        given(postService.findPopular(5)).willReturn(List.of());
+        given(postQueryService.findPopular(5)).willReturn(List.of());
 
         mockMvc.perform(get("/community").param("q", "키워드"))
                 .andExpect(status().isOk())
@@ -281,9 +281,9 @@ class PostPageControllerTest {
     @Test
     @DisplayName("GET / 는 q가 없으면 검색 속도 제한을 검사하지 않는다")
     void index_withoutKeyword_skipsSearchRateLimit() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
+        given(postQueryService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
-        given(postService.findPopular(5)).willReturn(List.of());
+        given(postQueryService.findPopular(5)).willReturn(List.of());
 
         mockMvc.perform(get("/community")).andExpect(status().isOk());
 
@@ -298,15 +298,15 @@ class PostPageControllerTest {
         mockMvc.perform(get("/community").param("q", "키워드"))
                 .andExpect(status().isTooManyRequests());
 
-        org.mockito.Mockito.verify(postService, org.mockito.Mockito.never()).findAllDesc(any(), any(), any(), anyBoolean());
+        org.mockito.Mockito.verify(postQueryService, org.mockito.Mockito.never()).findAllDesc(any(), any(), any(), anyBoolean());
     }
 
     @Test
     @DisplayName("F12: GET /?sort=content,desc 는 허용되지 않는 정렬을 무시하고 기본 정렬로 렌더링한다")
     void index_withDisallowedSort_ignoresSortAndRendersWithDefault() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
+        given(postQueryService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
-        given(postService.findPopular(5)).willReturn(List.of());
+        given(postQueryService.findPopular(5)).willReturn(List.of());
 
         mockMvc.perform(get("/community").param("sort", "content,desc"))
                 .andExpect(status().isOk())
@@ -320,9 +320,9 @@ class PostPageControllerTest {
     @Test
     @DisplayName("9단계: GET /?sort=viewCount,desc 는 화면이 되돌려 쓸 currentSort를 모델에 담는다")
     void index_withAllowedSort_setsCurrentSortModelAttribute() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
+        given(postQueryService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
-        given(postService.findPopular(5)).willReturn(List.of());
+        given(postQueryService.findPopular(5)).willReturn(List.of());
 
         mockMvc.perform(get("/community").param("sort", "viewCount,desc"))
                 .andExpect(status().isOk())
@@ -333,9 +333,9 @@ class PostPageControllerTest {
     @Test
     @DisplayName("9단계: 정렬을 지정하지 않으면 currentSort는 null이다(기본 최신순을 URL에 노출하지 않는다)")
     void index_withoutSortParam_currentSortIsNull() throws Exception {
-        given(postService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
+        given(postQueryService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
-        given(postService.findPopular(5)).willReturn(List.of());
+        given(postQueryService.findPopular(5)).willReturn(List.of());
 
         mockMvc.perform(get("/community"))
                 .andExpect(status().isOk())
@@ -353,7 +353,7 @@ class PostPageControllerTest {
     @Test
     @DisplayName("GET /posts/update/{id} 는 조회한 게시글과 댓글 목록을 모델에 담아 렌더링한다")
     void postsUpdate_rendersUpdateViewWithPostAndComments() throws Exception {
-        given(postService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
+        given(postQueryService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
                 .willReturn(new PostViewDto(1L, "제목", "내용", null, null, null, "작성자", false, Category.FREE, 0L, 0L, false, 0L));
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(List.of(), 0L, false));
@@ -367,7 +367,7 @@ class PostPageControllerTest {
     @Test
     @DisplayName("GET /posts/update/{id} 는 본문을 마크다운으로 해석해 그린다(13단계, SSR)")
     void postsUpdate_rendersMarkdownContentAsHtml() throws Exception {
-        given(postService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
+        given(postQueryService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
                 .willReturn(new PostViewDto(1L, "제목", "**굵게** 본문", null, null, null, "작성자", false, Category.FREE, 0L, 0L, false, 0L));
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(List.of(), 0L, false));
@@ -395,7 +395,7 @@ class PostPageControllerTest {
     @Test
     @DisplayName("GET /posts/update/{id} 는 본문에 HTML 태그가 있어도 해석하지 않고 이스케이프해 보여준다")
     void postsUpdate_escapesHtmlTagsInMarkdownContent() throws Exception {
-        given(postService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
+        given(postQueryService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
                 .willReturn(new PostViewDto(1L, "제목", "<script>alert(1)</script>", null, null, null, "작성자", false, Category.FREE, 0L, 0L, false, 0L));
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(List.of(), 0L, false));
@@ -415,7 +415,7 @@ class PostPageControllerTest {
     @Test
     @DisplayName("GET /posts/update/{id} 는 관련 게시글 조회를 조회한 글의 분류·id로 위임한다")
     void postsUpdate_delegatesRelatedPostsLookupToPostCategoryAndId() throws Exception {
-        given(postService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
+        given(postQueryService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
                 .willReturn(new PostViewDto(1L, "제목", "내용", null, null, null, "작성자", false, Category.QNA, 0L, 0L, false, 0L));
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(List.of(), 0L, false));
@@ -423,7 +423,7 @@ class PostPageControllerTest {
         mockMvc.perform(get("/posts/update/1"))
                 .andExpect(status().isOk());
 
-        org.mockito.BDDMockito.then(postService).should().findRelated(Category.QNA, 1L, 5);
+        org.mockito.BDDMockito.then(postQueryService).should().findRelated(Category.QNA, 1L, 5);
     }
 
     @Test
@@ -431,7 +431,7 @@ class PostPageControllerTest {
             "PostNotFoundException은 ApiExceptionHandler(REST 컨트롤러 전용)의 범위 밖이지만, " +
             "ViewExceptionHandler가 화면 컨트롤러 전용으로 404 + error/not-found 뷰로 변환한다.")
     void postsUpdate_whenPostNotFound_rendersNotFoundViewWith404() throws Exception {
-        given(postService.findByIdForView(eq(999L), nullable(Authentication.class), anyBoolean()))
+        given(postQueryService.findByIdForView(eq(999L), nullable(Authentication.class), anyBoolean()))
                 .willThrow(new PostNotFoundException(999L));
 
         mockMvc.perform(get("/posts/update/999"))
@@ -475,7 +475,7 @@ class PostPageControllerTest {
     @Test
     @DisplayName("GET /posts/update/{id} 는 편집 충돌 감지용 버전을 Vue 초기 상태(JSON)로 내려준다")
     void postsUpdate_rendersVersionForConflictDetection() throws Exception {
-        given(postService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
+        given(postQueryService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
                 .willReturn(new PostViewDto(1L, "제목", "내용", null, null, null, "작성자", true, Category.FREE, 0L, 0L, false, 7L));
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(List.of(), 0L, false));
@@ -491,7 +491,7 @@ class PostPageControllerTest {
     @Test
     @DisplayName("F12: 편집 취소가 분류를 되돌릴 수 있도록 원본 분류를 Vue 초기 상태(JSON)로 내려준다")
     void postsUpdate_rendersOriginalCategoryForCancel() throws Exception {
-        given(postService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
+        given(postQueryService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
                 .willReturn(new PostViewDto(1L, "제목", "내용", null, null, null, "작성자", true, Category.QNA, 0L, 0L, false, 0L));
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(List.of(), 0L, false));
@@ -508,7 +508,7 @@ class PostPageControllerTest {
     @DisplayName("제목·댓글에 </script>가 있어도 script 태그를 탈출하지 못한다 (저장형 XSS 방지)")
     void postsUpdate_escapesScriptClosingSequenceInEmbeddedJson() throws Exception {
         String payload = "</script><script>alert(1)</script>";
-        given(postService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
+        given(postQueryService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
                 .willReturn(new PostViewDto(1L, payload, "내용", null, null, null, "작성자", true, Category.FREE, 0L, 0L, false, 0L));
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(

@@ -8,6 +8,7 @@ import com.kraft.post.domain.PostLike;
 import com.kraft.support.TestAuthentication;
 import com.kraft.post.domain.PostRepository;
 import com.kraft.post.dto.PostSaveRequestDto;
+import com.kraft.post.service.PostQueryService;
 import com.kraft.post.service.PostService;
 import com.kraft.recommend.domain.RecommendationHistoryState;
 import com.kraft.recommend.domain.WinningDraw;
@@ -87,6 +88,9 @@ class MariaDbMigrationTest extends MariaDbIntegrationTest {
 
     @Autowired
     private PostService postService;
+
+    @Autowired
+    private PostQueryService postQueryService;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -205,7 +209,7 @@ class MariaDbMigrationTest extends MariaDbIntegrationTest {
         assertThat(saved.getVersion()).isNotNull();
 
         // 조회수 증가는 별도 UPDATE 한 문장이다(F02). 운영 DB에서도 같은 SQL이 도는지 본다.
-        postService.findByIdForView(id, auth);
+        postQueryService.findByIdForView(id, auth);
         assertThat(postRepository.findById(id).orElseThrow().getViewCount()).isEqualTo(1L);
     }
 

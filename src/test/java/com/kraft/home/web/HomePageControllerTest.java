@@ -1,7 +1,7 @@
 package com.kraft.home.web;
 
 import com.kraft.config.security.SecurityConfig;
-import com.kraft.post.service.PostService;
+import com.kraft.post.service.PostQueryService;
 import com.kraft.recommend.domain.WinningDraw;
 import com.kraft.recommend.service.LatestDrawService;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,7 +41,7 @@ class HomePageControllerTest {
     private LatestDrawService latestDrawService;
 
     @MockitoBean
-    private PostService postService;
+    private PostQueryService postQueryService;
 
     @MockitoBean
     private com.kraft.home.service.HomeInsightsService insightsService;
@@ -50,7 +50,7 @@ class HomePageControllerTest {
     void emptyBoard() {
         given(insightsService.current())
                 .willReturn(com.kraft.home.service.DrawInsights.of(List.of(List.of(1, 2, 3, 4, 5, 6)), 30));
-        given(postService.findRecent(anyInt())).willReturn(List.of());
+        given(postQueryService.findRecent(anyInt())).willReturn(List.of());
     }
 
     @Test
@@ -128,7 +128,7 @@ class HomePageControllerTest {
     @DisplayName("추천 기능이 꺼져 있으면 최신 회차를 조회하지 않고 추천 링크도 그리지 않는다")
     void recommendDisabledHidesDrawAndCta() throws Exception {
         // 기능 플래그는 생성자 값이라 같은 슬라이스에서 끄려면 별도 컨트롤러 인스턴스가 필요하다.
-        HomePageController controller = new HomePageController(latestDrawService, postService, insightsService, false);
+        HomePageController controller = new HomePageController(latestDrawService, postQueryService, insightsService, false);
         org.springframework.ui.ExtendedModelMap model = new org.springframework.ui.ExtendedModelMap();
         Object result = controller.home(new org.springframework.mock.web.MockHttpServletRequest(), model);
 

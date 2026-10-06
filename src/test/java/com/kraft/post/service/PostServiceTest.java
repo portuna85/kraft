@@ -81,11 +81,13 @@ class PostServiceTest {
     private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     private PostService postService;
+    private PostQueryService postQueryService;
 
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
         postService = new PostService(postRepository, userRepository, commentRepository, postImageService,
                 postLikeRepository, postImageRegistry, postImageCleaner, postLikeWriter, eventPublisher);
+        postQueryService = new PostQueryService(postRepository, userRepository, commentRepository, postLikeRepository);
     }
 
     private static User userWithEmail(String email, Long id) {
@@ -355,7 +357,7 @@ class PostServiceTest {
     void findById_whenNotFound_throwsIllegalArgumentException() {
         given(postRepository.findById(999L)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> postService.findById(999L))
+        assertThatThrownBy(() -> postQueryService.findById(999L))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("id=999");
     }
@@ -374,7 +376,7 @@ class PostServiceTest {
         Page<PostRowDto> page = new PageImpl<>(List.of(row), pageable, 1);
         given(postRepository.search(null, null, false, idDescOf(pageable))).willReturn(page);
 
-        PostsPageResponseDto result = postService.findAllDesc(pageable);
+        PostsPageResponseDto result = postQueryService.findAllDesc(pageable);
 
         assertThat(result.totalElements()).isEqualTo(1);
         assertThat(result.totalPages()).isEqualTo(1);
@@ -395,7 +397,7 @@ class PostServiceTest {
         given(postRepository.searchWithoutCount("공지", Category.NOTICE, false, idDescOf(pageable))).willReturn(slice);
         given(commentRepository.countByPostIdIn(List.of(1L))).willReturn(Map.of(1L, 3L));
 
-        PostsPageResponseDto result = postService.findAllDesc(pageable, "공지", Category.NOTICE);
+        PostsPageResponseDto result = postQueryService.findAllDesc(pageable, "공지", Category.NOTICE);
 
         assertThat(result.content().get(0).commentCount()).isEqualTo(3L);
     }
@@ -412,7 +414,7 @@ class PostServiceTest {
         Slice<PostRowDto> slice = new SliceImpl<>(List.of(rowOf(owner, 1L)), pageable, true);
         given(postRepository.searchWithoutCount("공지", null, false, idDescOf(pageable))).willReturn(slice);
 
-        PostsPageResponseDto result = postService.findAllDesc(pageable, "공지", null);
+        PostsPageResponseDto result = postQueryService.findAllDesc(pageable, "공지", null);
 
         assertThat(result.totalElements()).isNull();
         assertThat(result.totalPages()).isNull();
@@ -429,7 +431,7 @@ class PostServiceTest {
         given(postRepository.search(null, null, false, idDescOf(pageable)))
                 .willReturn(new PageImpl<>(List.of(), pageable, 0));
 
-        PostsPageResponseDto result = postService.findAllDesc(pageable);
+        PostsPageResponseDto result = postQueryService.findAllDesc(pageable);
 
         assertThat(result.totalElements()).isZero();
         assertThat(result.totalPages()).isZero();
@@ -443,7 +445,7 @@ class PostServiceTest {
         Page<PostRowDto> page = new PageImpl<>(List.of(), pageable, 0);
         given(postRepository.search(null, null, false, idDescOf(pageable))).willReturn(page);
 
-        postService.findAllDesc(pageable, "   ", null);
+        postQueryService.findAllDesc(pageable, "   ", null);
 
         verify(postRepository).search(null, null, false, idDescOf(pageable));
     }
@@ -457,7 +459,7 @@ class PostServiceTest {
         Slice<PostRowDto> slice = new SliceImpl<>(List.of(), pageable, false);
         given(postRepository.searchWithoutCount(truncated, null, false, idDescOf(pageable))).willReturn(slice);
 
-        postService.findAllDesc(pageable, tooLong, null);
+        postQueryService.findAllDesc(pageable, tooLong, null);
 
         verify(postRepository).searchWithoutCount(truncated, null, false, idDescOf(pageable));
     }
@@ -474,7 +476,7 @@ class PostServiceTest {
         Slice<PostRowDto> slice = new SliceImpl<>(List.of(), pageable, false);
         given(postRepository.searchWithoutCount("100\\%\\_할인\\\\", null, false, idDescOf(pageable))).willReturn(slice);
 
-        postService.findAllDesc(pageable, "100%_할인\\", null);
+        postQueryService.findAllDesc(pageable, "100%_할인\\", null);
 
         verify(postRepository).searchWithoutCount("100\\%\\_할인\\\\", null, false, idDescOf(pageable));
     }
@@ -490,7 +492,7 @@ class PostServiceTest {
         Page<PostRowDto> page = new PageImpl<>(List.of(), pageable, 0);
         given(postRepository.search(null, null, false, idDescOf(pageable))).willReturn(page);
 
-        postService.findAllDesc(pageable, "a", null);
+        postQueryService.findAllDesc(pageable, "a", null);
 
         verify(postRepository).search(null, null, false, idDescOf(pageable));
     }
@@ -502,7 +504,7 @@ class PostServiceTest {
         Slice<PostRowDto> slice = new SliceImpl<>(List.of(), pageable, false);
         given(postRepository.searchWithoutCount("ab", null, false, idDescOf(pageable))).willReturn(slice);
 
-        postService.findAllDesc(pageable, "ab", null);
+        postQueryService.findAllDesc(pageable, "ab", null);
 
         verify(postRepository).searchWithoutCount("ab", null, false, idDescOf(pageable));
     }
@@ -521,7 +523,7 @@ class PostServiceTest {
         Page<PostRowDto> page = new PageImpl<>(List.of(), expectedEffective, 0);
         given(postRepository.search(null, null, false, expectedEffective)).willReturn(page);
 
-        postService.findAllDesc(requested);
+        postQueryService.findAllDesc(requested);
 
         verify(postRepository).search(null, null, false, expectedEffective);
     }
@@ -533,7 +535,7 @@ class PostServiceTest {
         PostRowDto row = rowOf(owner, 1L);
         given(postRepository.findTopByViewCountDesc(any(), eq(PageRequest.of(0, 5)))).willReturn(List.of(row));
 
-        List<PostsListResponseDto> result = postService.findPopular(5);
+        List<PostsListResponseDto> result = postQueryService.findPopular(5);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).commentCount()).isZero();
@@ -548,7 +550,7 @@ class PostServiceTest {
         given(postRepository.findPinnedNotices(PageRequest.of(0, 5))).willReturn(List.of(row));
         given(commentRepository.countByPostIdIn(List.of(1L))).willReturn(Map.of(1L, 3L));
 
-        List<PostsListResponseDto> result = postService.findPinnedNotices(5);
+        List<PostsListResponseDto> result = postQueryService.findPinnedNotices(5);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).commentCount()).isEqualTo(3L);
@@ -561,7 +563,7 @@ class PostServiceTest {
         PostRowDto row = rowOf(owner, 2L);
         given(postRepository.findRelated(Category.FREE, 1L, PageRequest.of(0, 5))).willReturn(List.of(row));
 
-        List<PostRowDto> result = postService.findRelated(Category.FREE, 1L, 5);
+        List<PostRowDto> result = postQueryService.findRelated(Category.FREE, 1L, 5);
 
         assertThat(result).containsExactly(row);
     }
@@ -574,7 +576,7 @@ class PostServiceTest {
         given(postRepository.findByIdWithUser(100L)).willReturn(Optional.of(post));
         given(postLikeRepository.summarize(100L, 1L)).willReturn(likeSummary(3L, 1L));
 
-        var result = postService.findByIdForView(100L, authOf(owner));
+        var result = postQueryService.findByIdForView(100L, authOf(owner));
 
         // 조회수 증가는 전용 UPDATE 한 문장이다. 엔티티를 바꿔 변경 감지에 맡기면 제목·본문까지
         // 함께 UPDATE에 실려 겹친 편집을 되돌린다(F02). 실제 증가분은 PostViewCountIsolationTest가
@@ -596,7 +598,7 @@ class PostServiceTest {
         given(postRepository.findRecent(org.springframework.data.domain.PageRequest.of(0, 5))).willReturn(List.of(row));
         given(commentRepository.countByPostIdIn(List.of(1L))).willReturn(Map.of(1L, 3L));
 
-        var result = postService.findRecent(5);
+        var result = postQueryService.findRecent(5);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).commentCount()).isEqualTo(3L);
@@ -611,7 +613,7 @@ class PostServiceTest {
         given(postRepository.findByIdWithUser(100L)).willReturn(Optional.of(post));
         given(postLikeRepository.summarize(100L, PostLikeRepository.NO_USER_ID)).willReturn(likeSummary(0L, 0L));
 
-        var result = postService.findByIdForView(100L, null);
+        var result = postQueryService.findByIdForView(100L, null);
 
         assertThat(result.likedByMe()).isFalse();
         // 익명은 어떤 회원 id와도 일치하지 않는 값으로 한 번만 센다(BE-05).
@@ -627,7 +629,7 @@ class PostServiceTest {
         given(postRepository.findByIdWithUser(100L)).willReturn(Optional.of(post));
         given(postLikeRepository.summarize(100L, 1L)).willReturn(likeSummary(2L, 0L));
 
-        var result = postService.findByIdForView(100L, authOf(owner));
+        var result = postQueryService.findByIdForView(100L, authOf(owner));
 
         assertThat(result.likeCount()).isEqualTo(2L);
         assertThat(result.likedByMe()).isFalse();
@@ -643,7 +645,7 @@ class PostServiceTest {
         given(postRepository.findByIdWithUser(100L)).willReturn(Optional.of(post));
         given(postLikeRepository.summarize(100L, PostLikeRepository.NO_USER_ID)).willReturn(likeSummary(0L, 0L));
 
-        postService.findByIdForView(100L, null, false);
+        postQueryService.findByIdForView(100L, null, false);
 
         verify(postRepository, never()).increaseViewCount(any());
     }

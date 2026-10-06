@@ -11,7 +11,7 @@ import com.kraft.post.dto.PostsPageResponseDto;
 import com.kraft.post.dto.PostViewDto;
 import com.kraft.post.markdown.MarkdownParser;
 import com.kraft.post.service.CategoryPolicy;
-import com.kraft.post.service.PostService;
+import com.kraft.post.service.PostQueryService;
 import com.kraft.post.service.PostSortPolicy;
 import com.kraft.shared.security.OwnershipPolicy;
 import com.kraft.shared.web.PageWindow;
@@ -41,7 +41,7 @@ import java.util.Optional;
 @Controller
 public class PostPageController {
 
-    private final PostService postService;
+    private final PostQueryService postQueryService;
     private final CommentService commentService;
     private final ObjectMapper objectMapper;
     private final UserService userService;
@@ -68,7 +68,7 @@ public class PostPageController {
         }
         Pageable sanitized = PostSortPolicy.sanitize(pageable);
         boolean searchContent = SearchScope.isContent(scope);
-        PostsPageResponseDto postsPage = postService.findAllDesc(sanitized, q, category, searchContent);
+        PostsPageResponseDto postsPage = postQueryService.findAllDesc(sanitized, q, category, searchContent);
         // 화면(검색 폼·페이지 이동 링크)이 되돌려 붙일 수 있는 형태(예: "viewCount,desc").
         // 허용되지 않는 정렬은 sanitize가 이미 비웠으므로 여기서는 항상 안전하다. 정렬을
         // 지정하지 않았으면(기본 최신순) null이라 템플릿이 sort 파라미터 자체를 만들지 않는다.
@@ -104,11 +104,11 @@ public class PostPageController {
         model.addAttribute("pageWindow", totalPages != null
                 ? PageWindow.of(postsPage.page(), totalPages)
                 : PageWindow.simple(postsPage.page(), !postsPage.last()));
-        model.addAttribute("popularPosts", postService.findPopular(5));
+        model.addAttribute("popularPosts", postQueryService.findPopular(5));
         // 검색·분류로 좁히지 않은 첫 페이지에만 공지를 고정한다(A-BE-05) — 검색 결과나 분류별
         // 목록, 2페이지 이후에 공지가 끼어들면 "이 조건에 맞는 글"이라는 목록의 의미가 흐려진다.
         boolean showPinned = (q == null || q.isBlank()) && category == null && pageable.getPageNumber() == 0;
-        model.addAttribute("pinnedPosts", showPinned ? postService.findPinnedNotices(5) : List.of());
+        model.addAttribute("pinnedPosts", showPinned ? postQueryService.findPinnedNotices(5) : List.of());
         model.addAttribute("q", q);
         model.addAttribute("category", category);
         model.addAttribute("currentSort", currentSort);
@@ -196,7 +196,7 @@ public class PostPageController {
                                HttpServletRequest request, HttpServletResponse response) {
         // 새로고침·봇·재방문이 매번 조회수를 올리지 않게 한다(전체 리뷰 2026-09-26 A-BE-04).
         boolean countView = postViewDedup.shouldCount(request, response, id, authentication);
-        PostViewDto post = postService.findByIdForView(id, authentication, countView);
+        PostViewDto post = postQueryService.findByIdForView(id, authentication, countView);
         CommentPageDto commentPage = commentService.findInitialPageForView(id, authentication);
         model.addAttribute("post", post);
         model.addAttribute("comments", commentPage.comments());
@@ -205,7 +205,7 @@ public class PostPageController {
         // 보였다. Vue 쪽 렌더링(MarkdownBody.vue)과 같은 파서 로직을 옮긴
         // MarkdownParser(src/main/java/com/kraft/post/markdown)를 쓴다.
         model.addAttribute("postBody", MarkdownParser.parse(post.content()));
-        model.addAttribute("relatedPosts", postService.findRelated(post.category(), id, 5));
+        model.addAttribute("relatedPosts", postQueryService.findRelated(post.category(), id, 5));
         // 댓글 영역은 Vue 아일랜드로 렌더링된다. canManage는 서버만 판정할 수 있으므로(공개
         // REST 응답에는 없는 화면 전용 필드), 초기 렌더에서 그대로 JSON으로 내려 이후 목록
         // 갱신은 클라이언트가 이 값을 들고 낙관적으로 처리하게 한다. 최초 페이지는 최대

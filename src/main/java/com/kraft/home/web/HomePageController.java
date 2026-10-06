@@ -3,7 +3,7 @@ package com.kraft.home.web;
 import com.kraft.home.service.DrawInsights;
 import com.kraft.home.service.HomeInsightsService;
 import com.kraft.post.dto.PostsListResponseDto;
-import com.kraft.post.service.PostService;
+import com.kraft.post.service.PostQueryService;
 import com.kraft.recommend.domain.LottoPrizeTax;
 import com.kraft.recommend.domain.WinningDraw;
 import com.kraft.recommend.service.LatestDrawService;
@@ -35,15 +35,15 @@ public class HomePageController {
     private static final int RECENT_POSTS = 5;
 
     private final LatestDrawService latestDrawService;
-    private final PostService postService;
+    private final PostQueryService postQueryService;
     private final HomeInsightsService insightsService;
     private final boolean recommendEnabled;
 
-    public HomePageController(LatestDrawService latestDrawService, PostService postService,
+    public HomePageController(LatestDrawService latestDrawService, PostQueryService postQueryService,
                               HomeInsightsService insightsService,
                               @Value("${app.recommend.enabled:true}") boolean recommendEnabled) {
         this.latestDrawService = latestDrawService;
-        this.postService = postService;
+        this.postQueryService = postQueryService;
         this.insightsService = insightsService;
         this.recommendEnabled = recommendEnabled;
     }
@@ -69,7 +69,7 @@ public class HomePageController {
                 model.addAttribute("insights", insights);
             }
         }
-        List<PostsListResponseDto> recentPosts = postService.findRecent(RECENT_POSTS);
+        List<PostsListResponseDto> recentPosts = postQueryService.findRecent(RECENT_POSTS);
         model.addAttribute("recentPosts", recentPosts);
         return "home";
     }
