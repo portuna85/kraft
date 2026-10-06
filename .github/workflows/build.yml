@@ -125,7 +125,7 @@ jobs:
       # 리포트에는 어설션 메시지만 있고, 서버 쪽 예외 스택은 이 로그에만 있다.
       - name: Upload test logs
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: test-logs
           path: build/test-logs
@@ -134,7 +134,7 @@ jobs:
 
       - name: Upload test report
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: test-report
           path: |
@@ -148,7 +148,7 @@ jobs:
       # (deploy 잡의 if 조건) 그때는 이 아티팩트를 만들 이유가 없다.
       - name: Upload production jar
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: production-jar
           path: build/libs/kraft.jar
@@ -216,7 +216,7 @@ jobs:
 
       - name: Upload docker test logs
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: docker-test-logs
           path: build/test-logs
@@ -225,7 +225,7 @@ jobs:
 
       - name: Upload docker test report
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: docker-test-report
           path: build/reports/tests/test
@@ -321,7 +321,7 @@ jobs:
         run: ./gradlew bootE2eJar --no-daemon --console=plain
 
       - name: Upload E2E jar
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: e2e-jar
           path: build/libs/kraft-e2e.jar
@@ -377,7 +377,7 @@ jobs:
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: playwright-report-${{ matrix.shard }}
           path: playwright-report
@@ -386,7 +386,7 @@ jobs:
       # 실패했을 때 trace로 클릭 단위 재생이 가능하다.
       - name: Upload traces
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: playwright-traces-${{ matrix.shard }}
           path: test-results
@@ -434,7 +434,7 @@ jobs:
 
       - name: Upload visual diff
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: playwright-visual-diff
           path: test-results
