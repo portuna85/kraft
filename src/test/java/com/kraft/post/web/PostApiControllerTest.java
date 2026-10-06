@@ -420,7 +420,7 @@ class PostApiControllerTest {
     void uploadImage_whenAuthenticatedAndValid_returns200AndUrl() throws Exception {
         MockMultipartFile file = new MockMultipartFile("file", "photo.png", "image/png", "img".getBytes());
         given(postService.uploadImage(any(), any(Authentication.class)))
-                .willReturn(new PostImageService.StoredImage("/images/generated-uuid.png", 64, 48));
+                .willReturn(new PostImageService.StoredImage("/images/generated-uuid.png", 64, 48, 0L));
 
         mockMvc.perform(multipart("/api/v1/posts/images").file(file)
                         .with(user("tester@example.com"))

@@ -47,11 +47,4 @@ public class RecommendationHistoryState {
         this.verifiedAt = verifiedAt;
     }
 
-    /**
-     * V20 마이그레이션 트리거가 하는 일을 애플리케이션 계층에서 흉내낸다 — 실제 운영에서는
-     * DB 트리거가 이 값을 올리므로 이 메서드는 테스트·로컬 시드 전용이다(HIST-04/05).
-     */
-    public void bumpVersionForTesting() {
-        this.version = (this.version == null ? 0L : this.version) + 1;
-    }
 }

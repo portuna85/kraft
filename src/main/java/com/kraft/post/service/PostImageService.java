@@ -70,10 +70,6 @@ public class PostImageService {
      * 하므로, 여기서 읽는 크기는 이미 그 축소가 끝난 뒤의(즉 실제로 저장되는) 크기다.
      */
     public record StoredImage(String url, int width, int height, long sizeBytes) {
-        /** 저장 크기를 따로 알릴 필요가 없는 호출(테스트 등)용 — 0으로 둔다. */
-        public StoredImage(String url, int width, int height) {
-            this(url, width, height, 0L);
-        }
     }
 
     public StoredImage store(MultipartFile file) {

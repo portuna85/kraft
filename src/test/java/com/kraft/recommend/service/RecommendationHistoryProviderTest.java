@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * {@link RecommendationHistoryProvider} 통합 테스트. 실제 트리거는 MariaDB에서만 동작하므로
- * (V20 마이그레이션), 여기서는 {@link RecommendationHistoryState#bumpVersionForTesting()}으로
+ * (V20 마이그레이션), 여기서는 {@code version}을 직접 올려
  * 트리거의 결과(version 증가)만 흉내낸다.
  */
 @DataJpaTest
@@ -84,7 +84,8 @@ class RecommendationHistoryProviderTest {
 
         RecommendationHistorySnapshot snapshot = provider.currentReadySnapshot();
 
-        state.bumpVersionForTesting();
+        // 운영에서는 V20의 DB 트리거가 version을 올린다 — 그 일을 테스트가 직접 한다(HIST-04/05).
+        org.springframework.test.util.ReflectionTestUtils.setField(state, "version", 4L);
         em.persistAndFlush(state);
 
         assertThatThrownBy(() -> provider.verifyUnchanged(snapshot))

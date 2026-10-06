@@ -15,7 +15,9 @@ import com.kraft.user.mail.OutboxMailWorker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -55,6 +57,8 @@ public class PasswordResetService {
     private final OutboxMailStore outboxMailStore;
     private final OutboxMailWorker outboxMailWorker;
     private final ExpiredTokenPurger expiredTokenPurger;
+    /** 해시 계산을 끝낸 뒤 토큰 소비와 비밀번호 변경만 짧은 트랜잭션으로 묶는 데 쓴다(BE-09). */
+    private final TransactionTemplate transactionTemplate;
 
     /**
      * 재설정 링크를 보낸다. 가입하지 않은 주소나 제한에 걸린 요청은 <b>아무 일도 하지 않고</b>
@@ -105,24 +109,31 @@ public class PasswordResetService {
      * 두 번 들어오면 {@code deleteByIdAndToken}의 DB 행 잠금이 정확히 하나만 성공시킨다 —
      * 이긴 쪽만 비밀번호를 바꿔, 두 요청 모두 성공한 것처럼 보이는 경쟁을 막는다.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void reset(String token, String newPassword) {
         String tokenHash = EmailHasher.sha512Hex(token);
         PasswordResetToken resetToken = tokenRepository.findByTokenHash(tokenHash)
                 .orElseThrow(() -> new BusinessValidationException("유효하지 않은 재설정 링크입니다. 다시 요청해 주세요."));
 
         if (resetToken.isExpired()) {
-            // 이 트랜잭션에서 지우면 바로 아래 예외와 함께 삭제까지 롤백된다(F08과 같은 덫).
-            // 자기 트랜잭션에서 먼저 커밋하는 쪽에 맡긴다.
+            // 삭제를 자기 트랜잭션에서 먼저 커밋하는 쪽에 맡긴다 — 같은 트랜잭션에서 지우면 바로 아래
+            // 예외와 함께 삭제까지 롤백된다(F08과 같은 덫).
             expiredTokenPurger.purgePasswordResetToken(resetToken.getId());
             throw new BusinessValidationException("재설정 링크가 만료되었습니다. 다시 요청해 주세요.");
         }
 
-        int consumed = tokenRepository.deleteByIdAndTokenHash(resetToken.getId(), tokenHash);
-        if (consumed == 0) {
-            throw new BusinessValidationException("이미 사용되었거나 유효하지 않은 재설정 링크입니다. 다시 요청해 주세요.");
-        }
-        userService.resetPassword(resetToken.getUser().getId(), newPassword);
+        // BCrypt는 트랜잭션 밖에서 계산한다(BE-09). 토큰이 유효한 요청만 이 비용을 낸다.
+        String encodedPassword = userService.encodeNewPassword(newPassword);
+        Long tokenId = resetToken.getId();
+        Long userId = resetToken.getUser().getId();
+
+        transactionTemplate.executeWithoutResult(status -> {
+            int consumed = tokenRepository.deleteByIdAndTokenHash(tokenId, tokenHash);
+            if (consumed == 0) {
+                throw new BusinessValidationException("이미 사용되었거나 유효하지 않은 재설정 링크입니다. 다시 요청해 주세요.");
+            }
+            userService.resetPasswordEncoded(userId, encodedPassword);
+        });
     }
 
     private boolean requestedTooRecently(Long userId) {

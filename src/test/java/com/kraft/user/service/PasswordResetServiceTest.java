@@ -16,6 +16,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
@@ -64,7 +66,8 @@ class PasswordResetServiceTest {
     @BeforeEach
     void setUp() {
         passwordResetService = new PasswordResetService(tokenRepository, userRepository, userService,
-                outboxMailStore, outboxMailWorker, expiredTokenPurger);
+                outboxMailStore, outboxMailWorker, expiredTokenPurger,
+                new TransactionTemplate(org.mockito.Mockito.mock(PlatformTransactionManager.class)));
     }
 
     private static User userWithId(Long id, String email) {
@@ -155,12 +158,13 @@ class PasswordResetServiceTest {
         ReflectionTestUtils.setField(token, "id", 99L);
         given(tokenRepository.findByTokenHash(tokenHash)).willReturn(Optional.of(token));
         given(tokenRepository.deleteByIdAndTokenHash(99L, tokenHash)).willReturn(1);
+        given(userService.encodeNewPassword("NewPass1!")).willReturn("encodedNew");
 
         passwordResetService.reset("valid-token", "NewPass1!");
 
         // 메일함에 남은 링크를 두 번째로 눌러도 아무 일이 없어야 한다.
         verify(tokenRepository).deleteByIdAndTokenHash(99L, tokenHash);
-        verify(userService).resetPassword(7L, "NewPass1!");
+        verify(userService).resetPasswordEncoded(7L, "encodedNew");
     }
 
     @Test
@@ -182,7 +186,7 @@ class PasswordResetServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("이미 사용되었거나");
 
-        verify(userService, never()).resetPassword(anyLong(), anyString());
+        verify(userService, never()).resetPasswordEncoded(anyLong(), anyString());
     }
 
     @Test
@@ -194,7 +198,7 @@ class PasswordResetServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("유효하지 않은 재설정 링크");
 
-        verify(userService, never()).resetPassword(anyLong(), anyString());
+        verify(userService, never()).resetPasswordEncoded(anyLong(), anyString());
     }
 
     @Test
@@ -214,7 +218,7 @@ class PasswordResetServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("만료");
 
-        verify(userService, never()).resetPassword(anyLong(), anyString());
+        verify(userService, never()).resetPasswordEncoded(anyLong(), anyString());
         // 이 트랜잭션에서 지우면 뒤따르는 예외와 함께 삭제도 롤백된다(F08과 같은 덫).
         verify(expiredTokenPurger).purgePasswordResetToken(42L);
         verify(tokenRepository, never()).delete(expired);

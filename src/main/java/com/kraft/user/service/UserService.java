@@ -185,11 +185,28 @@ public class UserService {
      */
     @Transactional
     public void resetPassword(Long userId, String newPassword) {
+        resetPasswordEncoded(userId, encodeNewPassword(newPassword));
+    }
+
+    /**
+     * 새 비밀번호를 검증하고 해시한다. BCrypt(약 100ms)를 트랜잭션 밖에서 계산하려는 호출자
+     * (재설정 서비스)가 쓴다(BE-09) — 그동안 DB 커넥션을 쥐고 있지 않게 하려고 트랜잭션 없이 실행한다.
+     */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public String encodeNewPassword(String newPassword) {
+        PasswordBytePolicy.validate(newPassword);
+        return passwordEncoder.encode(newPassword);
+    }
+
+    /**
+     * {@link #encodeNewPassword}로 미리 해시한 값을 저장하고 세션을 폐기한다. 호출자의 트랜잭션에
+     * 참여한다 — 토큰 소비와 함께 커밋되거나 함께 사라져야 한다.
+     */
+    @Transactional
+    public void resetPasswordEncoded(Long userId, String encodedPassword) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. id=" + userId));
-        PasswordBytePolicy.validate(newPassword);
-
-        user.changePassword(passwordEncoder.encode(newPassword));
+        user.changePassword(encodedPassword);
         revokeSessionsAfterCommit(user);
     }
 
