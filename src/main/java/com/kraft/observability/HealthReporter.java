@@ -14,7 +14,6 @@ import com.kraft.user.session.SessionRevocationTaskStatus;
 import com.zaxxer.hikari.HikariDataSource;
 import com.zaxxer.hikari.HikariPoolMXBean;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 
 import javax.sql.DataSource;
@@ -54,85 +53,16 @@ public class HealthReporter {
     private final DataSource dataSource;
     private final Path uploadDir;
     private final AlertMailer alertMailer;
-
-    @Value("${app.metrics.enabled:true}")
-    private boolean enabled;
-
-    @Value("${app.metrics.min-requests:20}")
-    private int minRequests;
-
-    @Value("${app.metrics.error-rate:0.1}")
-    private double errorRate;
-
-    @Value("${app.metrics.server-errors:0}")
-    private long serverErrors;
-
-    @Value("${app.metrics.avg-response-ms:1000}")
-    private long avgMillis;
-
-    @Value("${app.metrics.pool-usage:0.8}")
-    private double poolUsage;
-
-    @Value("${app.metrics.disk-free-bytes:1073741824}")
-    private long diskFreeBytes;
-
-    @Value("${app.metrics.mail-pending:20}")
-    private long mailPending;
-
-    @Value("${app.metrics.mail-failed:0}")
-    private long mailFailed;
-
-    /** 신고는 사람이 처리한다. 하루치가 쌓이도록 아무도 보지 않았다면 그것이 알릴 일이다. */
-    @Value("${app.metrics.reports-pending:20}")
-    private long reportsPending;
-
-    /** 평균이 정상이어도 이만큼 넘게 느린 요청이 있으면 알린다(O05). */
-    @Value("${app.metrics.slow-requests:5}")
-    private long slowRequests;
-
-    /** 재시도를 모두 소진해 사람이 봐야 하는 세션 폐기 태스크 수 상한(O03). */
-    @Value("${app.metrics.session-revocation-failed:0}")
-    private long sessionRevocationFailed;
-
-    /** 삭제 예약됐지만 아직 실제로 지우지 못한 이미지 파일 수 상한(O03). */
-    @Value("${app.metrics.image-delete-backlog:200}")
-    private long imageDeleteBacklog;
-
-    /**
-     * 추천 이력 검증 기준(verifiedAt)이 이만큼(시간) 지나면 알린다(O03). 매주 토요일 밤
-     * 자동 수집이 실패하거나 꺼져 있으면 이 값이 계속 커진다. 기본값(200시간 ≈ 8.3일)은
-     * 주 1회 수집이 한 번 밀려도 곧바로 울리지 않을 만큼의 여유다 — 실측 후 조정 대상이다.
-     */
-    @Value("${app.metrics.recommendation-history-stale-hours:200}")
-    private long recommendationHistoryStaleHours;
-
+    private final MetricsProperties properties;
     /**
      * recommendationHistoryAgeHours의 -1을 "측정 실패"와 "기능이 꺼져 있어 이력이 애초에
      * 없음"으로 구분하는 데 쓴다(개선 보고서 OBS-01). {@code app.recommend.enabled}와 같은
      * 프로퍼티를 읽는다 — {@code RecommendationApiController}·{@code RecommendationPageController}가
      * 이 값으로 빈 등록 여부를 결정하는 것과 같다.
      */
-    @Value("${app.recommend.enabled:true}")
-    private boolean recommendEnabled;
-
-    /** 자동 수집의 연속 실패 수(없으면 측정하지 않는다). 테스트가 직접 만드는 생성자와 호환되도록 세터로 받는다. */
-    private RecommendationFetchStatus recommendationFetchStatus;
-
-    public void setRecommendationFetchStatus(RecommendationFetchStatus status) {
-        this.recommendationFetchStatus = status;
-    }
-
-    public HealthReporter(RequestMetrics requestMetrics,
-                          OutboxMailRepository outboxMailRepository,
-                          ReportRepository reportRepository,
-                          SessionRevocationTaskRepository sessionRevocationTaskRepository,
-                          PostImageRepository postImageRepository,
-                          RecommendationHistoryStateRepository recommendationHistoryStateRepository,
-                          DataSource dataSource,
-                          String uploadDir) {
-        this(requestMetrics, outboxMailRepository, reportRepository, sessionRevocationTaskRepository,
-                postImageRepository, recommendationHistoryStateRepository, dataSource, uploadDir, AlertMailer.disabled());
-    }
+    private final boolean recommendEnabled;
+    /** 자동 수집의 연속 실패 수(없으면 측정하지 않는다). */
+    private final RecommendationFetchStatus recommendationFetchStatus;
 
     public HealthReporter(RequestMetrics requestMetrics,
                           OutboxMailRepository outboxMailRepository,
@@ -142,7 +72,10 @@ public class HealthReporter {
                           RecommendationHistoryStateRepository recommendationHistoryStateRepository,
                           DataSource dataSource,
                           String uploadDir,
-                          AlertMailer alertMailer) {
+                          AlertMailer alertMailer,
+                          MetricsProperties properties,
+                          boolean recommendEnabled,
+                          RecommendationFetchStatus recommendationFetchStatus) {
         this.requestMetrics = requestMetrics;
         this.outboxMailRepository = outboxMailRepository;
         this.reportRepository = reportRepository;
@@ -152,12 +85,15 @@ public class HealthReporter {
         this.dataSource = dataSource;
         this.uploadDir = Path.of(uploadDir).toAbsolutePath();
         this.alertMailer = alertMailer;
+        this.properties = properties;
+        this.recommendEnabled = recommendEnabled;
+        this.recommendationFetchStatus = recommendationFetchStatus;
     }
 
     @Scheduled(initialDelayString = "${app.metrics.initial-delay-ms:60000}",
             fixedDelayString = "${app.metrics.interval-ms:300000}")
     public void report() {
-        if (!enabled) {
+        if (!properties.enabled()) {
             return;
         }
         try {
@@ -182,9 +118,7 @@ public class HealthReporter {
     }
 
     HealthThresholds thresholds() {
-        return new HealthThresholds(minRequests, errorRate, serverErrors, avgMillis,
-                poolUsage, diskFreeBytes, mailPending, mailFailed, reportsPending, slowRequests,
-                sessionRevocationFailed, imageDeleteBacklog, recommendationHistoryStaleHours);
+        return properties.thresholds();
     }
 
     HealthSnapshot collect() {

@@ -22,7 +22,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
@@ -75,6 +74,13 @@ class HealthReporterTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    /** 풀(DataSource)이 없는 보고기를 기본 설정으로 조립한다. */
+    private HealthReporter reporter(RequestMetrics metrics, OutboxMailRepository outboxMails) {
+        return new HealthReporter(metrics, outboxMails, reportRepository, sessionRevocationTaskRepository,
+                postImageRepository, recommendationHistoryStateRepository, null, "uploads/images",
+                AlertMailer.disabled(), MetricsProperties.defaults(), true, null);
+    }
 
     private ListAppender<ILoggingEvent> logs;
     private Logger observability;
@@ -176,8 +182,7 @@ class HealthReporterTest {
 
         OutboxMailRepository failing = mock(OutboxMailRepository.class);
         given(failing.countByStatus(any())).willThrow(new RuntimeException("DB가 응답하지 않습니다"));
-        HealthReporter broken = new HealthReporter(requestMetrics, failing, reportRepository, sessionRevocationTaskRepository, postImageRepository, recommendationHistoryStateRepository, null, "uploads/images");
-        ReflectionTestUtils.setField(broken, "enabled", true);
+        HealthReporter broken = reporter(requestMetrics, failing);
 
         assertThatCode(broken::report).doesNotThrowAnyException();
 
@@ -203,8 +208,7 @@ class HealthReporterTest {
     void unexpectedFailureOutsideCollectIsLogged() {
         RequestMetrics failingMetrics = mock(RequestMetrics.class);
         given(failingMetrics.drain()).willThrow(new RuntimeException("지표 수집기 자체가 깨졌습니다"));
-        HealthReporter broken = new HealthReporter(failingMetrics, outboxMailRepository, reportRepository, sessionRevocationTaskRepository, postImageRepository, recommendationHistoryStateRepository, null, "uploads/images");
-        ReflectionTestUtils.setField(broken, "enabled", true);
+        HealthReporter broken = reporter(failingMetrics, outboxMailRepository);
 
         assertThatCode(broken::report).doesNotThrowAnyException();
 
@@ -220,7 +224,7 @@ class HealthReporterTest {
     @Test
     @DisplayName("커넥션 풀 정보를 읽을 수 없으면 그 항목만 빼고 보고한다")
     void unknownPoolIsSkippedRatherThanFailing() {
-        HealthReporter noPool = new HealthReporter(requestMetrics, outboxMailRepository, reportRepository, sessionRevocationTaskRepository, postImageRepository, recommendationHistoryStateRepository, null, "uploads/images");
+        HealthReporter noPool = reporter(requestMetrics, outboxMailRepository);
 
         HealthSnapshot snapshot = noPool.collect();
 

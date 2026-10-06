@@ -8,6 +8,7 @@ import com.kraft.user.mail.EmailSender;
 import com.kraft.user.mail.OutboxMailRepository;
 import com.kraft.user.session.SessionRevocationTaskRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,6 +27,7 @@ import java.time.Duration;
  * 통째로 제외되므로, 여기 모아 두면 관측 장치가 웹 슬라이스에 끼어들지 않는다.
  */
 @Configuration
+@EnableConfigurationProperties(MetricsProperties.class)
 public class ObservabilityConfig {
 
     @Bean
@@ -73,12 +75,12 @@ public class ObservabilityConfig {
                                          DataSource dataSource,
                                          @Value("${app.upload.dir}") String uploadDir,
                                          AlertMailer alertMailer,
+                                         MetricsProperties properties,
+                                         @Value("${app.recommend.enabled:true}") boolean recommendEnabled,
                                          RecommendationFetchStatus recommendationFetchStatus) {
-        HealthReporter reporter = new HealthReporter(metrics, outboxMailRepository, reportRepository,
+        return new HealthReporter(metrics, outboxMailRepository, reportRepository,
                 sessionRevocationTaskRepository, postImageRepository, recommendationHistoryStateRepository,
-                dataSource, uploadDir, alertMailer);
-        reporter.setRecommendationFetchStatus(recommendationFetchStatus);
-        return reporter;
+                dataSource, uploadDir, alertMailer, properties, recommendEnabled, recommendationFetchStatus);
     }
 
     /**
