@@ -20,6 +20,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -72,7 +74,7 @@ class UserServiceTest {
     void setUp() {
         userService = new UserService(userRepository, passwordEncoder, sessionRevocationStore, sessionRevocationWorker,
                 emailVerificationTokenRepository, passwordResetTokenRepository, outboxMailRepository, outboxMailStore,
-                outboxMailWorker);
+                outboxMailWorker, new TransactionTemplate(org.mockito.Mockito.mock(PlatformTransactionManager.class)));
     }
 
     @Test

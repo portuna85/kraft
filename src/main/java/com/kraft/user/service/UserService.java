@@ -23,7 +23,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -55,14 +57,19 @@ public class UserService {
     private final OutboxMailRepository outboxMailRepository;
     private final OutboxMailStore outboxMailStore;
     private final OutboxMailWorker outboxMailWorker;
+    /** 해시 계산을 끝낸 뒤 짧은 쓰기 트랜잭션만 여는 데 쓴다(BE-09). */
+    private final TransactionTemplate transactionTemplate;
 
     /**
      * @return 새로 계정을 만들었으면 {@code true}. 이미 가입된 이메일이면 {@code false}를
      * 돌려주지만, 호출한 쪽(컨트롤러)은 이 값과 무관하게 <b>같은 응답</b>을 내려야 한다(A-SEC-01) —
      * 응답이 갈리면 그 자체로 이메일 가입 여부를 확인하는 도구가 된다({@code PasswordResetService}가
      * 항상 204를 주는 것과 같은 이유).
+     * <p>
+     * BCrypt 해시(약 100ms)는 트랜잭션 밖에서 계산한다(BE-09) — 그동안 DB 커넥션을 쥐고 있지 않게
+     * 하려는 것이다. 그래서 이 메서드 자체는 트랜잭션 없이 실행하고, 쓰기만 짧은 트랜잭션으로 묶는다.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public boolean signUp(String name, String email, String rawPassword) {
         // 대소문자·앞뒤 공백만 다른 이메일이 별개 계정으로 가입되지 않도록 정규화부터
         // 한다(BE-06) — 이후의 해시·저장이 전부 이 값을 쓴다.
@@ -84,6 +91,12 @@ public class UserService {
         // 응답이 빠르면 "이미 가입된 주소"라는 사실이 시간으로 드러났다.
         String encodedPassword = passwordEncoder.encode(rawPassword);
 
+        final String normalizedEmail = email;
+        return Boolean.TRUE.equals(
+                transactionTemplate.execute(status -> saveNewUser(name, normalizedEmail, encodedPassword)));
+    }
+
+    private boolean saveNewUser(String name, String email, String encodedPassword) {
         Optional<User> existing = userRepository.findByEmailHmac(EmailHasher.hmacHex(email));
         if (existing.isPresent()) {
             // 쿨다운·시간당 예산 안에서만 큐에 넣는다(P0-4) — 남의 주소로 가입을 반복해 그 메일함을
@@ -121,18 +134,45 @@ public class UserService {
      * API 직접 호출이나 후속 요청 실패에 무력했고 다른 기기의 세션도 남겼다(개선 보고서 F04).
      * 커밋 이후로 미루는 이유는, 변경이 롤백되면 세션도 그대로 유지되어야 하기 때문이다.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void changePassword(Long userId, String currentPassword, String newPassword) {
+        String verifiedHash = verifiedPasswordHash(userId, currentPassword);
+        PasswordBytePolicy.validate(newPassword);
+        String newHash = passwordEncoder.encode(newPassword);
+
+        transactionTemplate.executeWithoutResult(status -> {
+            User user = reloadIfUnchanged(userId, verifiedHash);
+            user.changePassword(newHash);
+            revokeSessionsAfterCommit(user);
+        });
+    }
+
+    /**
+     * 현재 비밀번호를 확인하고, 확인에 쓴 저장 해시를 돌려준다. 읽기와 BCrypt 비교는 트랜잭션 밖이다(BE-09) —
+     * 쓰기 트랜잭션에서 {@link #reloadIfUnchanged}가 이 해시가 그대로인지 다시 확인한다.
+     */
+    private String verifiedPasswordHash(Long userId, String currentPassword) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. userId=" + userId));
-
-        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+        String storedHash = user.getPassword();
+        if (!passwordEncoder.matches(currentPassword, storedHash)) {
             throw new BusinessValidationException("현재 비밀번호가 일치하지 않습니다.");
         }
-        PasswordBytePolicy.validate(newPassword);
+        return storedHash;
+    }
 
-        user.changePassword(passwordEncoder.encode(newPassword));
-        revokeSessionsAfterCommit(user);
+    /**
+     * 쓰기 트랜잭션 안에서 회원을 다시 읽고, 비밀번호 확인 이후 그 해시가 바뀌지 않았는지 본다.
+     * 확인과 쓰기 사이에 다른 요청이 비밀번호를 바꿨다면(예전에는 한 트랜잭션이라 생기지 않던 틈)
+     * 옛 비밀번호로 얻은 승인을 쓰지 못하게 거절한다.
+     */
+    private User reloadIfUnchanged(Long userId, String verifiedHash) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. userId=" + userId));
+        if (!verifiedHash.equals(user.getPassword())) {
+            throw new BusinessValidationException("현재 비밀번호가 일치하지 않습니다.");
+        }
+        return user;
     }
 
     /**
@@ -168,26 +208,23 @@ public class UserService {
      * 세션 principal은 이미 불변 회원 id다(BE-04, A-QA-03) — {@link #changePassword}와 같은
      * 이유로 이메일이 아니라 id를 받는다.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void withdraw(Long userId, String currentPassword) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. userId=" + userId));
+        String verifiedHash = verifiedPasswordHash(userId, currentPassword);
+        // 아무도 맞힐 수 없는 값. 익명 주소를 알아내도 로그인할 수 없다.
+        String unusableHash = passwordEncoder.encode(UUID.randomUUID().toString());
 
-        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-            throw new BusinessValidationException("현재 비밀번호가 일치하지 않습니다.");
-        }
+        transactionTemplate.executeWithoutResult(status -> {
+            User user = reloadIfUnchanged(userId, verifiedHash);
 
-        emailVerificationTokenRepository.deleteByUserId(userId);
-        passwordResetTokenRepository.deleteByUserId(userId);
-        outboxMailRepository.deleteByUserId(userId);
+            emailVerificationTokenRepository.deleteByUserId(userId);
+            passwordResetTokenRepository.deleteByUserId(userId);
+            outboxMailRepository.deleteByUserId(userId);
 
-        user.withdraw(
-                replacementEmail(userId),
-                replacementName(userId),
-                // 아무도 맞힐 수 없는 값. 익명 주소를 알아내도 로그인할 수 없다.
-                passwordEncoder.encode(UUID.randomUUID().toString()));
+            user.withdraw(replacementEmail(userId), replacementName(userId), unusableHash);
 
-        revokeSessionsAfterCommit(user);
+            revokeSessionsAfterCommit(user);
+        });
     }
 
     /**

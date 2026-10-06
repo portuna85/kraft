@@ -62,7 +62,8 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     public ProblemDetail handleBusinessValidation(BusinessValidationException e) {
         String message = e.getMessage();
         log.debug("검증 실패: {}", message);
-        String detail = message == null ? null : TRAILING_IDENTIFIER.matcher(message).replaceFirst("");
+        // 사용자가 입력한 값(name= 등)은 그대로 둔다 — 내부 식별자(id=, userId=)만 자른다.
+        String detail = message == null ? null : TRAILING_INTERNAL_ID.matcher(message).replaceFirst("");
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
     }
 
@@ -201,6 +202,8 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
      * 통일된다.
      */
     /** 메시지 끝의 {@code " id=123"}·{@code " fileName=..."} 같은 내부 식별자를 잘라낸다(A-SEC-05). */
+    private static final java.util.regex.Pattern TRAILING_INTERNAL_ID =
+            java.util.regex.Pattern.compile("\\s+(?:[a-z]+)?[iI]d=\\S+$");
     private static final java.util.regex.Pattern TRAILING_IDENTIFIER = java.util.regex.Pattern.compile("\\s+\\w+=\\S+$");
 
     @ExceptionHandler(AccessDeniedException.class)
