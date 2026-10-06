@@ -1,22 +1,23 @@
 <script setup>
 import { computed, nextTick, reactive, ref, watch } from 'vue';
-import { api, messageOf } from '@core/http.js';
-import { API, POST } from '@core/constants.js';
+import { api } from '@core/http.js';
+import { API } from '@core/constants.js';
 import * as flash from '@ui/flash.js';
-import { showToast } from '@ui/toast.js';
 import { useImageUpload } from '../shared/useImageUpload.js';
 import { useUnsavedGuard } from '../shared/useUnsavedGuard.js';
 import { useDraftAutosave } from '../shared/useDraftAutosave.js';
 import { clearDraft, safeLocalStorage } from '../shared/draftStorage.js';
-import { readItem, writeItem } from '@core/storage.js';
 import { useFieldErrors } from '../shared/useFieldErrors.js';
+import { usePostSubmit } from '../shared/usePostSubmit.js';
 import { useSessionKeepAlive } from '../shared/useSessionKeepAlive.js';
-import MarkdownBody from '../shared/MarkdownBody.vue';
-import MarkdownToolbar from '../shared/MarkdownToolbar.vue';
+import PostFormFields from '../shared/PostFormFields.vue';
 import DraftRestoreBanner from '../shared/DraftRestoreBanner.vue';
+import PostView from './PostView.vue';
 
 /**
- * 게시글 읽기·편집·추천 상태를 관리한다. 추천은 서버가 반환한 상태만 반영한다.
+ * 게시글 보기와 편집 전환(FE-12). 읽기 화면은 PostView, 입력 칸은 PostFormFields, 사진 업로드부터
+ * 오류 안내까지의 제출 흐름은 usePostSubmit이 맡고(등록 화면과 공유), 여기에는 편집 상태·초안·
+ * 이탈 방지·수정 요청만 남는다.
  */
 const props = defineProps({
     post: { type: /** @type {import('vue').PropType<import('../shared/types.js').PostViewDto>} */ (Object), required: true },
@@ -27,10 +28,6 @@ const props = defineProps({
     // Vue가 타입 검사를 건너뛴다) 아래에서 초안 기능을 끈다.
     userId: { type: Number, default: null },
 });
-
-// 로그인 후 이 글로 돌아오게 한다(FE-16) — navbar의 로그인 링크와 같은 규칙
-// (NavModelAdvice.currentPath)이다. 예전에는 href="/login"만 써서 로그인 뒤 홈으로 떨어졌다.
-const loginHref = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
 
 const mode = ref('view'); // 'view' | 'edit'
 // 편집 폼은 처음 편집을 누를 때 마운트한다(FE-23). 글을 읽기만 하는 방문자(작성자 본인 포함)에게
@@ -46,90 +43,13 @@ const draft = reactive({ ...original });
 const version = ref(props.post.version);
 const progressText = ref(/** @type {string | null} */ (null));
 const saving = ref(false);
-const liked = ref(props.post.likedByMe);
-const likeCount = ref(props.post.likeCount);
-const liking = ref(false);
 
 const picture = useImageUpload({ initialUrl: props.post.picture });
 
-const titleInput = ref(/** @type {HTMLInputElement | null} */ (null));
-/** @type {import('vue').Ref<InstanceType<typeof MarkdownToolbar> | null>} */
-const contentInput = ref(null);
-const editButton = ref(/** @type {HTMLButtonElement | null} */ (null));
-const fileInput = ref(/** @type {HTMLInputElement | null} */ (null));
+const postView = ref(/** @type {InstanceType<typeof PostView> | null} */ (null));
+const form = ref(/** @type {InstanceType<typeof PostFormFields> | null} */ (null));
 const { fieldErrors, apply: applyFieldErrors, clearOnEdit } = useFieldErrors();
 clearOnEdit(draft);
-
-// 글자크기 조절: 3단계(작게/보통/크게), 세션을 넘어 유지하도록 localStorage에 기억한다.
-// localStorage 접근이 막힌 환경(프라이빗 모드 등)에서도 화면은 기본값으로 그대로 동작해야
-// 하므로 읽기·쓰기 모두 조용히 실패를 삼킨다.
-const FONT_SCALE_STORAGE_KEY = 'kraft:post-font-scale';
-const FONT_SCALES = ['0.875rem', '1rem', '1.125rem'];
-const DEFAULT_FONT_SCALE_INDEX = 1;
-
-function readStoredFontScaleIndex() {
-    const raw = readItem(FONT_SCALE_STORAGE_KEY);
-    if (raw === null) {
-        return DEFAULT_FONT_SCALE_INDEX;
-    }
-    const stored = Number(raw);
-    return Number.isInteger(stored) && stored >= 0 && stored < FONT_SCALES.length
-        ? stored
-        : DEFAULT_FONT_SCALE_INDEX;
-}
-
-const fontScaleIndex = ref(readStoredFontScaleIndex());
-const postBodyStyle = computed(() => ({ '--kraft-post-font-size': FONT_SCALES[fontScaleIndex.value] }));
-
-function setFontScaleIndex(index) {
-    fontScaleIndex.value = index;
-    // 저장 실패는 이번 열람에서만 크기가 적용되는 정도로 넘어간다.
-    writeItem(FONT_SCALE_STORAGE_KEY, String(index));
-}
-
-/**
- * navigator.share가 있으면(iOS Safari·Android Chrome) 네이티브 공유 시트를 먼저 띄운다
- * (A-FE-14) — 메시지 앱으로 바로 보내기 같은, 클립보드 복사보다 나은 경로를 그 플랫폼이
- * 이미 제공하기 때문이다. 없는 브라우저(대부분의 데스크톱)는 기존 클립보드 복사로 물러선다.
- * 사용자가 공유 시트를 취소하면 AbortError가 나는데, 이때는 클립보드로도 대신 복사하지
- * 않는다 — 취소는 "공유하지 않겠다"는 의사 표시라 조용히 끝나는 것이 맞고, 그런데도 뭔가
- * 복사됐다는 토스트가 뜨면 오히려 혼란스럽다.
- */
-async function shareLink() {
-    if (navigator.share) {
-        try {
-            await navigator.share({ title: props.post.title, url: window.location.href });
-        } catch (error) {
-            if (error?.name !== 'AbortError') {
-                showToast('공유에 실패했습니다. 주소창의 URL을 직접 복사해 주세요.', 'danger');
-            }
-        }
-        return;
-    }
-
-    try {
-        await navigator.clipboard.writeText(window.location.href);
-        showToast('링크를 복사했습니다.', 'success');
-    } catch {
-        showToast('링크 복사에 실패했습니다. 주소창의 URL을 직접 복사해 주세요.', 'danger');
-    }
-}
-
-async function setLike() {
-    if (liking.value) {
-        return;
-    }
-    liking.value = true;
-    try {
-        const result = await api.put(`${API.POSTS}/${props.post.id}/like`, { liked: !liked.value });
-        liked.value = result.liked;
-        likeCount.value = result.likeCount;
-    } catch (error) {
-        showToast(messageOf(error), 'danger');
-    } finally {
-        liking.value = false;
-    }
-}
 
 // 과거에 분류 필드가 여기서 빠져 있던 적이 있다(F12 회귀). 필드를 하나씩 나열하는 대신
 // original/draft의 키를 순회해서, 필드가 늘어나도 비교에서 빠지는 일이 구조적으로 없게 한다.
@@ -138,10 +58,6 @@ const isDirty = computed(() =>
     || picture.removedExisting.value
     || picture.hasFile.value,
 );
-
-function categoryTitle(value) {
-    return props.categoryOptions.find((option) => option.value === value)?.title ?? value;
-}
 
 /**
  * 편집 중 브라우저 탭을 닫거나 다른 주소로 이동하면(뒤로 가기 포함) 입력한 내용이 그대로
@@ -182,12 +98,12 @@ function restoreDraft() {
             draft.category = stored.category;
         }
     });
-    titleInput.value?.focus();
+    form.value?.titleInput?.focus();
 }
 
 function discardDraft() {
     autosave.discard();
-    titleInput.value?.focus();
+    form.value?.titleInput?.focus();
 }
 
 async function startEdit() {
@@ -203,7 +119,7 @@ async function startEdit() {
         clearDraft(safeLocalStorage(), LEGACY_DRAFT_KEY);
     }
     await nextTick();
-    titleInput.value?.focus();
+    form.value?.titleInput?.focus();
 }
 
 async function cancelEdit() {
@@ -213,254 +129,66 @@ async function cancelEdit() {
     draft.title = original.title;
     draft.content = original.content;
     draft.category = original.category;
-    clearPicture();
+    form.value?.clearPicture();
     picture.removedExisting.value = false;
     mode.value = 'view';
     autosave.discard();
     await nextTick();
-    editButton.value?.focus();
+    postView.value?.focusEditButton();
 }
 
-function onFileChange(event) {
-    picture.onFileSelected(event.target.files?.[0] ?? null);
-}
+const { submit } = usePostSubmit({
+    saving,
+    progressText,
+    picture,
+    applyFieldErrors,
+    fieldRefs: {
+        title: computed(() => form.value?.titleInput ?? null),
+        content: computed(() => form.value?.contentInput ?? null),
+    },
+    verb: '저장',
+});
 
-function clearPicture() {
-    picture.clear();
-    // 파일 입력의 값을 비워야 같은 파일을 다시 골라도 change 이벤트가 또 일어난다.
-    if (fileInput.value) {
-        fileInput.value.value = '';
-    }
-}
-
-// PostSaveApp.vue의 onSubmit과 진행 문구·재시도 안내 문구가 비슷하게 반복된다 — 의도적으로
-// 유지하는 이유는 그 파일의 같은 주석 참고(업로드 재사용은 useImageUpload.js에 이미 공유,
-// 여기 남은 차이는 PUT·버전 충돌 처리).
-async function onSubmit() {
-    if (saving.value) {
-        return;
-    }
-    saving.value = true;
-
-    // 업로드를 기다리는 동안 입력을 잠그지만(:disabled="saving"), PostSaveApp과 동일하게
+function onSubmit() {
+    // 업로드를 기다리는 동안 입력을 잠그지만(:disabled="saving"), 등록 화면과 동일하게
     // 제출 시점 값을 한 번 더 스냅샷으로 고정해 둔다 — 최종 요청은 항상 이 스냅샷을 쓴다(F02).
     const snapshot = { title: draft.title, content: draft.content, category: draft.category, version: version.value };
 
-    let pictureUrl;
-    let pictureWidth;
-    let pictureHeight;
-    try {
-        if (picture.hasFile.value) {
-            progressText.value = '이미지 업로드 중…';
-            pictureUrl = await picture.resolveUrl();
-            if (!pictureUrl) {
-                // 파일을 골랐는데 URL이 없다 = 업로드 중 선택이 바뀌었다(FE-02). 그대로 보내면
-                // 기존 사진이 지워지거나 사진 없이 저장되므로 멈추고 다시 확인하게 한다.
-                progressText.value = null;
-                saving.value = false;
-                flash.showError('선택한 이미지가 바뀌었습니다. 이미지를 확인한 뒤 다시 "저장"을 눌러 주세요.');
-                return;
-            }
-            pictureWidth = picture.uploadedWidth.value;
-            pictureHeight = picture.uploadedHeight.value;
-        } else if (picture.removedExisting.value) {
-            pictureUrl = null;
-            pictureWidth = null;
-            pictureHeight = null;
-        } else {
-            pictureUrl = props.post.picture || null;
-            pictureWidth = props.post.pictureWidth ?? null;
-            pictureHeight = props.post.pictureHeight ?? null;
-        }
-    } catch (error) {
-        progressText.value = null;
-        saving.value = false;
-        flash.showError(`이미지 업로드에 실패했습니다. ${messageOf(error)}`);
-        return;
-    }
-
-    progressText.value = '게시글 저장 중…';
-    try {
-        await api.put(`${API.POSTS}/${props.post.id}`, {
-            title: snapshot.title,
-            content: snapshot.content,
-            picture: pictureUrl,
-            pictureWidth,
-            pictureHeight,
-            category: snapshot.category,
-            // 편집을 시작할 때 받아간 버전. 그 사이 다른 곳에서 저장됐으면 서버가 409로 거절한다.
-            version: snapshot.version,
-        });
-        picture.revokePreview();
-        flash.set('POST_UPDATED');
-        unsavedGuard.allowNavigation();
-        autosave.discard();
-        // 목록으로 튕기지 않고 같은 글(이 화면 자신의 URL)을 새로고침한다(전체 리뷰
-        // 2026-09-26 A-FE-02) — 서버가 다시 그린 화면이 방금 저장한 제목·본문·버전을
-        // 그대로 보여준다.
-        window.location.href = `/posts/update/${props.post.id}`;
-    } catch (error) {
-        progressText.value = null;
-        saving.value = false;
-        // A-FE-12: 편집 중 세션이 끊기면 저장 시점에야 403/로그인 리다이렉트로 드러난다.
-        // 자동 임시 저장이 내용을 지키고 있다는 사실부터 알린다.
-        if (error?.kind === 'forbidden' || error?.kind === 'auth') {
-            flash.showError('로그인이 만료되었습니다. 작성 중인 내용은 임시 저장되어 있으니, 다시 로그인한 뒤 이어서 쓸 수 있습니다.');
-            return;
-        }
-        const handledByField = await applyFieldErrors(error, { title: titleInput, content: contentInput });
-        if (handledByField) {
-            return;
-        }
-        const retryHint = pictureUrl
-            ? ' 이미지는 이미 업로드되어 있으니 다시 "저장"을 누르면 같은 이미지로 재시도합니다.'
-            : '';
-        flash.showError(`게시글 저장에 실패했습니다. ${messageOf(error)}${retryHint}`);
-    }
+    return submit({
+        // 새 파일을 고르지 않았으면 기존 사진을 지웠는지, 그대로 두는지에 따라 정한다.
+        fallbackPicture: () => picture.removedExisting.value
+            ? { picture: null, pictureWidth: null, pictureHeight: null }
+            : {
+                picture: props.post.picture || null,
+                pictureWidth: props.post.pictureWidth ?? null,
+                pictureHeight: props.post.pictureHeight ?? null,
+            },
+        // 편집을 시작할 때 받아간 버전(snapshot.version)을 함께 보낸다. 그 사이 다른 곳에서
+        // 저장됐으면 서버가 409로 거절한다.
+        send: (pictureFields) => api.put(`${API.POSTS}/${props.post.id}`, { ...snapshot, ...pictureFields }),
+        onSuccess: () => {
+            picture.revokePreview();
+            flash.set('POST_UPDATED');
+            unsavedGuard.allowNavigation();
+            autosave.discard();
+            // 목록으로 튕기지 않고 같은 글(이 화면 자신의 URL)을 새로고침한다(전체 리뷰
+            // 2026-09-26 A-FE-02) — 서버가 다시 그린 화면이 방금 저장한 제목·본문·버전을
+            // 그대로 보여준다.
+            window.location.href = `/posts/update/${props.post.id}`;
+        },
+    });
 }
 </script>
 
 <template>
-  <article
+  <PostView
     v-show="mode === 'view'"
-    id="post-view"
-  >
-    <span class="post-category">{{ categoryTitle(post.category) }}</span>
-    <h1
-      id="post-title-text"
-      class="post-title"
-    >
-      {{ post.title }}
-    </h1>
-    <p class="post-byline">
-      <span>{{ post.author }}</span> · 글 번호 <span>{{ post.id }}</span>
-      · 조회 <span>{{ post.viewCount }}</span>
-    </p>
-
-    <div
-      class="post-font-controls"
-      role="group"
-      aria-label="글자 크기 조절"
-    >
-      <button
-        v-for="(item, index) in [
-          { label: '가-', name: '글자 작게' },
-          { label: '가', name: '글자 보통' },
-          { label: '가+', name: '글자 크게' },
-        ]"
-        :key="item.label"
-        type="button"
-        class="btn btn-sm btn-outline-secondary post-font-controls__btn"
-        :class="{ 'is-active': fontScaleIndex === index }"
-        :aria-pressed="fontScaleIndex === index"
-        :aria-label="item.name"
-        @click="setFontScaleIndex(index)"
-      >
-        {{ item.label }}
-      </button>
-    </div>
-
-    <div
-      id="post-content-text"
-      class="post-body post-body--md"
-      :style="postBodyStyle"
-    >
-      <MarkdownBody :source="post.content" />
-    </div>
-
-    <div
-      v-if="post.picture"
-      class="post-image"
-    >
-      <!-- 상세 본문 이미지는 대개 첫 화면(LCP 후보)이다(A-FE-09). 크기를 알면(V32 이후
-           저장된 글) eager+높은 우선순위로 바꾸고 width/height로 레이아웃 이동(CLS)을
-           막는다 — 크기를 모르는 옛 글은 이전 동작(lazy, 속성 없음) 그대로 둔다. -->
-      <img
-        :src="post.picture"
-        :width="post.pictureWidth ?? undefined"
-        :height="post.pictureHeight ?? undefined"
-        alt="게시글 첨부 이미지"
-        :loading="post.pictureWidth ? 'eager' : 'lazy'"
-        :fetchpriority="post.pictureWidth ? 'high' : undefined"
-        decoding="async"
-      >
-    </div>
-
-    <div class="btn-group-gap post-actions">
-      <button
-        id="btn-share"
-        type="button"
-        class="btn btn-sm btn-outline-secondary"
-        @click="shareLink"
-      >
-        공유
-      </button>
-    </div>
-
-    <div
-      v-if="authenticated"
-      class="btn-group-gap post-actions"
-    >
-      <button
-        id="btn-like"
-        type="button"
-        class="btn btn-outline-primary post-like"
-        :class="{ 'is-active': liked }"
-        :aria-pressed="liked"
-        :disabled="liking"
-        @click="setLike"
-      >
-        추천 <span id="like-count">{{ likeCount }}</span>
-      </button>
-    </div>
-    <p
-      v-else
-      v-once
-      class="post-actions"
-    >
-      추천 <span>{{ post.likeCount }}</span>개 ·
-      <a :href="loginHref">로그인 후 추천할 수 있습니다.</a>
-    </p>
-
-    <!-- 신고는 남의 글에만 보인다. 자기 글은 서버도 거절한다(직접 지우면 된다). -->
-    <div
-      v-if="authenticated && !post.canManagePost"
-      class="btn-group-gap post-actions"
-    >
-      <button
-        id="btn-report-post"
-        type="button"
-        class="btn btn-sm btn-outline-secondary"
-        data-report-kind="post"
-      >
-        신고
-      </button>
-    </div>
-
-    <div
-      v-if="post.canManagePost"
-      class="btn-group-gap post-actions"
-    >
-      <button
-        id="btn-edit"
-        ref="editButton"
-        type="button"
-        class="btn btn-outline-primary"
-        @click="startEdit"
-      >
-        수정
-      </button>
-      <button
-        id="btn-delete-post"
-        type="button"
-        class="btn btn-outline-danger"
-        data-target-kind="post"
-        :data-target-name="post.title"
-      >
-        삭제
-      </button>
-    </div>
-  </article>
+    ref="postView"
+    :post="post"
+    :category-options="categoryOptions"
+    :authenticated="authenticated"
+    @edit="startEdit"
+  />
 
   <form
     v-if="post.canManagePost && editMounted"
@@ -476,139 +204,47 @@ async function onSubmit() {
       @discard="discardDraft"
     />
 
-    <div class="mb-3">
-      <label for="title">제목</label>
-      <input
-        id="title"
-        ref="titleInput"
-        v-model="draft.title"
-        type="text"
-        class="form-control"
-        :class="{ 'is-invalid': fieldErrors.title }"
-        :aria-invalid="fieldErrors.title ? 'true' : undefined"
-        maxlength="255"
-        aria-describedby="edit-title-error"
-        required
-        :disabled="saving"
-      >
-      <div
-        id="edit-title-error"
-        class="invalid-feedback"
-      >
-        {{ fieldErrors.title }}
-      </div>
-    </div>
-    <div class="mb-3">
-      <label for="edit-category">분류</label>
-      <select
-        id="edit-category"
-        v-model="draft.category"
-        class="form-select"
-        :disabled="saving"
-      >
-        <option
-          v-for="option in categoryOptions"
-          :key="option.value"
-          :value="option.value"
-        >
-          {{ option.title }}
-        </option>
-      </select>
-    </div>
-    <div class="mb-3">
-      <label for="content">내용</label>
-      <MarkdownToolbar
-        id="content"
-        ref="contentInput"
-        v-model="draft.content"
-        :maxlength="POST.CONTENT_MAX_LENGTH"
-        :disabled="saving"
-        :invalid="!!fieldErrors.content"
-        :describedby="fieldErrors.content ? 'edit-content-error' : undefined"
-      />
-      <div
-        v-if="fieldErrors.content"
-        id="edit-content-error"
-        class="invalid-feedback d-block"
-      >
-        {{ fieldErrors.content }}
-      </div>
-    </div>
-    <div class="mb-3">
-      <label for="edit-picture">사진</label>
-      <input
-        id="edit-picture"
-        ref="fileInput"
-        type="file"
-        class="form-control"
-        accept="image/jpeg,image/png,image/gif,image/webp"
-        aria-describedby="edit-picture-help"
-        :disabled="saving || picture.uploading.value"
-        @change="onFileChange"
-      >
-      <small
-        id="edit-picture-help"
-        class="form-text text-muted"
-      >JPG, JPEG, PNG, GIF, WEBP · 최대 5MB · 1개. 새 파일을 선택하면 기존 이미지를 대체합니다.</small>
-    </div>
-
-    <!-- 기존 이미지(교체할 파일을 아직 선택하지 않았을 때만 표시). -->
-    <div
-      v-if="picture.showExistingPreview.value"
-      id="edit-picture-current"
-      class="picture-preview"
+    <PostFormFields
+      ref="form"
+      v-model:title="draft.title"
+      v-model:category="draft.category"
+      v-model:content="draft.content"
+      id-prefix="edit-"
+      :category-options="categoryOptions"
+      :field-errors="fieldErrors"
+      :saving="saving"
+      :picture="picture"
+      picture-help="JPG, JPEG, PNG, GIF, WEBP · 최대 5MB · 1개. 새 파일을 선택하면 기존 이미지를 대체합니다."
     >
-      <img
-        class="picture-preview__image"
-        :src="post.picture ?? undefined"
-        alt="현재 첨부된 이미지"
-      >
-      <div class="picture-preview__meta">
-        <p class="picture-preview__name">
-          현재 이미지
-        </p>
-        <button
-          id="btn-edit-picture-remove"
-          type="button"
-          class="btn btn-sm btn-outline-danger"
-          :disabled="saving || picture.uploading.value"
-          @click="picture.removeExisting()"
+      <!-- 기존 이미지(교체할 파일을 아직 선택하지 않았을 때만 표시). -->
+      <template #picture-current>
+        <div
+          v-if="picture.showExistingPreview.value"
+          id="edit-picture-current"
+          class="picture-preview"
         >
-          이미지 삭제
-        </button>
-      </div>
-    </div>
-
-    <!-- 새로 선택한 파일의 로컬 미리보기. -->
-    <div
-      v-show="picture.hasFile.value"
-      id="edit-picture-preview"
-      class="picture-preview"
-    >
-      <img
-        id="edit-picture-preview-image"
-        class="picture-preview__image"
-        :src="picture.previewUrl.value ?? undefined"
-        alt="선택한 이미지 미리보기"
-      >
-      <div class="picture-preview__meta">
-        <p
-          id="edit-picture-preview-name"
-          class="picture-preview__name"
-        >
-          {{ picture.fileLabel.value }}
-        </p>
-        <button
-          id="btn-edit-picture-clear"
-          type="button"
-          class="btn btn-sm btn-outline-secondary"
-          :disabled="saving || picture.uploading.value"
-          @click="clearPicture"
-        >
-          선택 해제
-        </button>
-      </div>
-    </div>
+          <img
+            class="picture-preview__image"
+            :src="post.picture ?? undefined"
+            alt="현재 첨부된 이미지"
+          >
+          <div class="picture-preview__meta">
+            <p class="picture-preview__name">
+              현재 이미지
+            </p>
+            <button
+              id="btn-edit-picture-remove"
+              type="button"
+              class="btn btn-sm btn-outline-danger"
+              :disabled="saving || picture.uploading.value"
+              @click="picture.removeExisting()"
+            >
+              이미지 삭제
+            </button>
+          </div>
+        </div>
+      </template>
+    </PostFormFields>
 
     <!-- v-show(display:none) 대신 항상 렌더링한 채 텍스트만 바꾼다(FE-16) — 라이브 리전이
          display:none 상태였다가 나타나는 것과 동시에 내용이 채워지면, 스크린 리더 구현에
