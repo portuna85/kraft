@@ -31,6 +31,8 @@ export const UPLOAD_MESSAGES = {
         + "아이폰 [설정] > [카메라] > [포맷]을 '높은 호환성'으로 바꾸면 JPG로 저장됩니다.",
     NOT_ALLOWED: 'JPG, JPEG, PNG, GIF, WEBP 형식만 첨부할 수 있습니다.',
     TOO_LARGE: '파일 크기는 5MB를 초과할 수 없습니다.',
+    /** 글쓰기·수정 폼의 사진 입력 아래 도움말. 형식·크기는 위 값과 같아야 한다(UploadPolicySyncTest). */
+    HELP: 'JPG, JPEG, PNG, GIF, WEBP · 최대 5MB · 1개',
 };
 
 export const API = {

@@ -7,7 +7,7 @@ public final class LottoBallColor {
     }
 
     public static String cssClass(int n) {
-        return "recommend__latest-ball--" + colorName(n);
+        return "lotto-ball--" + colorName(n);
     }
 
     /** 홈처럼 공용 {@code lotto-ball--*} 클래스를 쓰는 화면이 접미사만 가져다 쓴다. */

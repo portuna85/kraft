@@ -100,13 +100,13 @@ watch(status, async (next) => {
         >
           <span class="visually-hidden">추천 {{ item.position }}: {{ item.numbers.join(', ') }}</span>
           <ul
-            class="recommend__latest-balls"
+            class="lotto-balls"
             aria-hidden="true"
           >
             <li
               v-for="n in item.numbers"
               :key="n"
-              class="recommend__latest-ball"
+              class="lotto-ball"
               :class="ballColorClass(n)"
             >
               {{ n }}

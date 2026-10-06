@@ -74,6 +74,31 @@ class UploadPolicySyncTest {
         assertThat(js).containsExactlyInAnyOrderElementsOf(java);
     }
 
+    /**
+     * 화면 문구에 적힌 "최대 NMB"·허용 형식이 실제 제한과 같다(FE-18). 문구는 Thymeleaf 안내(홈·게시판)와
+     * 폼 도움말·오류 메시지(constants.js)에 있어 값이 바뀌면 문구만 낡기 쉽다.
+     */
+    @Test
+    @DisplayName("화면 안내 문구의 최대 크기와 형식이 실제 제한과 같다")
+    void uiCopyMatchesLimits() throws IOException {
+        long mb = Long.parseLong(captureOf(JAVA_SERVICE, "MAX_FILE_SIZE\\s*=\\s*(\\d+)\\s*\\*\\s*1024\\s*\\*\\s*1024"));
+        List<String> extensions = quotedWordsIn(captureOf(JAVA_SERVICE, "ALLOWED_EXTENSIONS\\s*=\\s*Set\\.of\\(([^)]*)\\)"));
+        String sizeText = "최대 " + mb + "MB";
+        String tooLarge = "파일 크기는 " + mb + "MB를 초과할 수 없습니다.";
+
+        String constants = Files.readString(JS_CONSTANTS, StandardCharsets.UTF_8);
+        assertThat(constants).contains(tooLarge).contains(sizeText);
+        assertThat(Files.readString(Path.of("src/main/resources/templates/index.html"), StandardCharsets.UTF_8))
+                .contains(sizeText);
+        assertThat(Files.readString(Path.of("src/main/resources/templates/home.html"), StandardCharsets.UTF_8))
+                .contains(sizeText);
+
+        // 문구에 나열한 형식(JPG, JPEG, PNG, GIF, WEBP)이 허용 확장자와 같다.
+        List<String> listed = Arrays.stream(captureOf(JS_CONSTANTS, "HELP:\\s*'([^·]*)·").split(","))
+                .map(String::trim).map(String::toLowerCase).toList();
+        assertThat(listed).containsExactlyInAnyOrderElementsOf(extensions);
+    }
+
     private static String captureOf(Path file, String regex) throws IOException {
         String source = Files.readString(file, StandardCharsets.UTF_8);
         Matcher matcher = Pattern.compile(regex).matcher(source);

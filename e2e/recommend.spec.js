@@ -52,7 +52,7 @@ test('생성 버튼을 누르면 정확히 한 번 요청하고 결과를 보여
     await page.locator('#btn-recommend-generate').click();
 
     await expect(page.getByRole('heading', { name: '추천 결과' })).toBeVisible();
-    await expect(page.locator('.recommend__item .recommend__latest-ball')).toHaveText(['3', '12', '19', '28', '34', '43']);
+    await expect(page.locator('.recommend__item .lotto-ball')).toHaveText(['3', '12', '19', '28', '34', '43']);
     expect(requestCount).toBe(1);
 
     // 성공 후 포커스가 결과 제목으로 이동한다.
@@ -94,7 +94,7 @@ test('시드된 이력으로 서버가 실제 추천을 만들어 보여준다(�
     const items = page.locator('.recommend__item');
     await expect(items).toHaveCount(5);
     for (const item of await items.all()) {
-        await expect(item.locator('.recommend__latest-ball')).toHaveCount(6);
+        await expect(item.locator('.lotto-ball')).toHaveCount(6);
     }
 });
 
@@ -154,7 +154,7 @@ test('재시도가 실패해도 이전 결과가 남는다', async ({ page }) =>
     await page.locator('#btn-recommend-generate').click();
 
     await expect(page.locator('.recommend__error')).toContainText('일시적인 오류');
-    await expect(page.locator('.recommend__item .recommend__latest-ball')).toHaveCount(6);
+    await expect(page.locator('.recommend__item .lotto-ball')).toHaveCount(6);
 });
 
 test.describe('모바일 메뉴', () => {

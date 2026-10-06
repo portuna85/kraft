@@ -20,14 +20,14 @@
             <p th:if="${latestRoundDrawDate != null}" class="recommend__latest-date"
                th:text="${#temporals.format(latestRoundDrawDate, 'yyyy.MM.dd')} + ' 추첨'"></p>
 
-            <ul class="recommend__latest-balls">
-                <li th:each="n : ${latestRoundNumbers}" class="recommend__latest-ball"
+            <ul class="lotto-balls">
+                <li th:each="n : ${latestRoundNumbers}" class="lotto-ball"
                     th:classappend="${T(com.kraft.recommend.domain.LottoBallColor).cssClass(n)}"
                     th:text="${n}"></li>
-                <li th:if="${latestRoundBonusNumber != null}" class="recommend__latest-ball-plus"
+                <li th:if="${latestRoundBonusNumber != null}" class="lotto-ball-plus"
                     aria-hidden="true">+</li>
                 <li th:if="${latestRoundBonusNumber != null}"
-                    class="recommend__latest-ball recommend__latest-ball--bonus"
+                    class="lotto-ball lotto-ball--bonus"
                     th:classappend="${T(com.kraft.recommend.domain.LottoBallColor).cssClass(latestRoundBonusNumber)}">
                     <span class="visually-hidden">보너스 </span><span th:text="${latestRoundBonusNumber}"></span>
                 </li>

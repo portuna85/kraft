@@ -36,11 +36,11 @@ const FIXED_REQUEST = Object.freeze({
  * @returns {string}
  */
 export function ballColorClass(n) {
-    if (n <= 10) return 'recommend__latest-ball--yellow';
-    if (n <= 20) return 'recommend__latest-ball--blue';
-    if (n <= 30) return 'recommend__latest-ball--red';
-    if (n <= 40) return 'recommend__latest-ball--gray';
-    return 'recommend__latest-ball--green';
+    if (n <= 10) return 'lotto-ball--yellow';
+    if (n <= 20) return 'lotto-ball--blue';
+    if (n <= 30) return 'lotto-ball--red';
+    if (n <= 40) return 'lotto-ball--gray';
+    return 'lotto-ball--green';
 }
 
 /**

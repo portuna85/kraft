@@ -2,11 +2,9 @@
 
 /* ==========================================================================
    로또 구슬 — 홈·번호 추천이 함께 쓴다.
-   ".lotto-ball*"가 공용 이름이고, ".recommend__latest-ball*"는 기존 마크업(Thymeleaf·Vue·e2e)이
-   그대로 쓰도록 같은 규칙에 묶어 둔 별칭이다. 마크업을 옮기면 별칭을 지운다.
+   ".lotto-ball*"가 공용 이름이다.
    ========================================================================== */
-.lotto-balls,
-.recommend__latest-balls {
+.lotto-balls {
     display: flex;
     flex-wrap: wrap;
     gap: var(--kraft-space-2);
@@ -14,8 +12,7 @@
     list-style: none;
 }
 
-.lotto-ball,
-.recommend__latest-ball {
+.lotto-ball {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -36,43 +33,36 @@
 // 글자색: 노랑·파랑·초록은 밝은 배경이라 어두운 글자, 빨강·회색은 배경을 4.5:1 이상 나오게
 // 어둡게 두고 흰 글자로 고정한다(다크 모드에서 --kraft-on-primary가 어두워져 안 보이던 문제,
 // 13단계). 하이라이트는 글자 자리(중앙)보다 바깥이라 대비에 영향이 작다.
-.lotto-ball,
-.recommend__latest-ball {
+.lotto-ball {
     box-shadow: inset 0 -3px 5px rgba(0, 0, 0, 0.22), 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.lotto-ball--yellow,
-.recommend__latest-ball--yellow {
+.lotto-ball--yellow {
     background: radial-gradient(circle at 32% 26%, #ffe680 0%, #fbc400 50%, #d29a00 100%);
     color: #4a3800;
 }
 
-.lotto-ball--blue,
-.recommend__latest-ball--blue {
+.lotto-ball--blue {
     background: radial-gradient(circle at 32% 26%, #b5e6fa 0%, #58b9e8 50%, #2f8fc0 100%);
     color: #0b3d54;
 }
 
-.lotto-ball--red,
-.recommend__latest-ball--red {
+.lotto-ball--red {
     background: radial-gradient(circle at 32% 26%, #e85a5a 0%, #c62828 50%, #8f1414 100%);
     color: #fff;
 }
 
-.lotto-ball--gray,
-.recommend__latest-ball--gray {
+.lotto-ball--gray {
     background: radial-gradient(circle at 32% 26%, #9ca3af 0%, #6b7280 50%, #3f4652 100%);
     color: #fff;
 }
 
-.lotto-ball--green,
-.recommend__latest-ball--green {
+.lotto-ball--green {
     background: radial-gradient(circle at 32% 26%, #d8f27e 0%, #b0d840 50%, #7aac10 100%);
     color: #2c3d05;
 }
 
-.lotto-ball-plus,
-.recommend__latest-ball-plus {
+.lotto-ball-plus {
     display: flex;
     align-items: center;
     font-weight: 700;
@@ -80,8 +70,7 @@
     padding: 0 var(--kraft-space-1);
 }
 
-.lotto-ball--bonus,
-.recommend__latest-ball--bonus {
+.lotto-ball--bonus {
     box-shadow: 0 0 0 2px var(--kraft-surface), 0 0 0 3px var(--kraft-text-muted);
 }
 

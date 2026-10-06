@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { api } from '@core/http.js';
-import { API } from '@core/constants.js';
+import { API, UPLOAD_MESSAGES } from '@core/constants.js';
 import * as flash from '@ui/flash.js';
 import { useImageUpload } from '../shared/useImageUpload.js';
 import { useUnsavedGuard } from '../shared/useUnsavedGuard.js';
@@ -155,7 +155,7 @@ function onSubmit() {
       :picture="picture"
       title-placeholder="제목을 입력하세요"
       content-placeholder="내용을 입력하세요"
-      picture-help="JPG, JPEG, PNG, GIF, WEBP · 최대 5MB · 1개"
+      :picture-help="UPLOAD_MESSAGES.HELP"
     >
       <!-- 닉네임을 보여준다. 값은 서버가 principal에서 꺼내 내려준 것이고, 저장 요청에는
            담지 않는다 — 작성자는 서버가 로그인 계정으로 정한다. 입력할 것이 없는 값이라

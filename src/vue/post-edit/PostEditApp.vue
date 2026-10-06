@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, reactive, ref, watch } from 'vue';
 import { api } from '@core/http.js';
-import { API } from '@core/constants.js';
+import { API, UPLOAD_MESSAGES } from '@core/constants.js';
 import * as flash from '@ui/flash.js';
 import { useImageUpload } from '../shared/useImageUpload.js';
 import { useUnsavedGuard } from '../shared/useUnsavedGuard.js';
@@ -214,7 +214,7 @@ function onSubmit() {
       :field-errors="fieldErrors"
       :saving="saving"
       :picture="picture"
-      picture-help="JPG, JPEG, PNG, GIF, WEBP · 최대 5MB · 1개. 새 파일을 선택하면 기존 이미지를 대체합니다."
+      :picture-help="`${UPLOAD_MESSAGES.HELP}. 새 파일을 선택하면 기존 이미지를 대체합니다.`"
     >
       <!-- 기존 이미지(교체할 파일을 아직 선택하지 않았을 때만 표시). -->
       <template #picture-current>
