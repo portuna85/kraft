@@ -130,6 +130,13 @@ class MariaDbMigrationTest extends MariaDbIntegrationTest {
         assertThat(indexExists("posts", "IX_POSTS_CATEGORY_ID")).isTrue();
         assertThat(indexExists("posts", "IX_POSTS_UPDATED_AT_ID")).isTrue();
         assertThat(indexExists("posts", "IX_POSTS_CATEGORY_UPDATED_AT_ID")).isTrue();
+        assertThat(columnExists("posts", "deleted_at")).isTrue();
+        assertThat(columnExists("posts", "blinded_at")).isTrue();
+        assertThat(columnExists("posts", "pinned_until")).isTrue();
+        assertThat(columnExists("comments", "blinded_at")).isTrue();
+        assertThat(indexExists("posts", "IX_POSTS_VISIBLE")).isTrue();
+        assertThat(indexExists("posts", "IX_POSTS_CATEGORY_VISIBLE")).isTrue();
+        assertThat(indexExists("posts", "IX_POSTS_PINNED_UNTIL")).isTrue();
     }
 
     @Test

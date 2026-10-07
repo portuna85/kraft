@@ -70,6 +70,13 @@ public class Comment extends BaseEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    /**
+     * null이 아니면 관리자가 숨긴 댓글이다(V41). {@code Post.blindedAt}과 같은 이유로
+     * {@code updatable = false} — 바꿀 때는 {@code CommentRepository}의 전용 UPDATE만 쓴다.
+     */
+    @Column(name = "blinded_at", updatable = false)
+    private LocalDateTime blindedAt;
+
     @Builder
     public Comment(String content, Post post, User user, Comment parent) {
         this.content = content;
@@ -84,6 +91,10 @@ public class Comment extends BaseEntity {
 
     public boolean isDeleted() {
         return deletedAt != null;
+    }
+
+    public boolean isBlinded() {
+        return blindedAt != null;
     }
 
     /**

@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 /**
  * 로그인 후 사용자가 작성한 게시글
  *
@@ -26,6 +28,11 @@ import lombok.NoArgsConstructor;
         // 읽히게 한다(BE-07).
         @Index(name = "IX_POSTS_UPDATED_AT_ID", columnList = "updated_at DESC, id DESC"),
         @Index(name = "IX_POSTS_CATEGORY_UPDATED_AT_ID", columnList = "category, updated_at DESC, id DESC"),
+        // V41__posts_visibility_and_pin.sql. 목록 COUNT가 deleted_at·blinded_at 조건을 더해도
+        // 인덱스만 읽게 한다.
+        @Index(name = "IX_POSTS_VISIBLE", columnList = "deleted_at, blinded_at"),
+        @Index(name = "IX_POSTS_CATEGORY_VISIBLE", columnList = "category, deleted_at, blinded_at"),
+        @Index(name = "IX_POSTS_PINNED_UNTIL", columnList = "pinned_until"),
 })
 public class Post extends BaseEntity {
 
@@ -81,6 +88,25 @@ public class Post extends BaseEntity {
     @Column(nullable = false)
     private Long version;
 
+    /**
+     * null이 아니면 소프트 삭제된 글이다. 보관 기간이 지나면 {@code PostService.purge}가 행을 지운다.
+     * <p>
+     * 아래 세 상태 컬럼은 {@code viewCount}와 같은 이유로 {@code updatable = false}다(COR-04) —
+     * 일반 UPDATE에 실리면 편집 flush가 관리자의 숨김·고정·복구를 옛 값으로 되돌리고, 상태만
+     * 바꿔도 version·updatedAt이 올라 열려 있던 편집 탭이 가짜 충돌을 받는다. 바꿀 때는
+     * {@code PostRepository}의 전용 UPDATE만 쓴다.
+     */
+    @Column(name = "deleted_at", updatable = false)
+    private LocalDateTime deletedAt;
+
+    /** null이 아니면 관리자가 숨긴 글이다. 신고 처리가 삭제 대신 이 값을 채운다. */
+    @Column(name = "blinded_at", updatable = false)
+    private LocalDateTime blindedAt;
+
+    /** 이 시각 전까지 목록 상단에 고정된다. null이면 고정되지 않은 글이다. */
+    @Column(name = "pinned_until", updatable = false)
+    private LocalDateTime pinnedUntil;
+
     @Builder
     public Post(String title, String content, String picture, Integer pictureWidth, Integer pictureHeight,
                 User user, Category category) {
@@ -102,6 +128,18 @@ public class Post extends BaseEntity {
         this.pictureWidth = pictureWidth;
         this.pictureHeight = pictureHeight;
         this.category = category != null ? category : this.category;
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
+
+    public boolean isBlinded() {
+        return blindedAt != null;
+    }
+
+    public boolean isPinnedAt(LocalDateTime now) {
+        return pinnedUntil != null && pinnedUntil.isAfter(now);
     }
 
     /** 서버가 측정한 크기로 클라이언트가 보낸 값을 덮어쓴다(BE-24). */
