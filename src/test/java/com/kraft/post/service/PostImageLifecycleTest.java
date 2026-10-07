@@ -223,15 +223,45 @@ class PostImageLifecycleTest {
     }
 
     @Test
-    @DisplayName("F05: 게시글 삭제가 커밋되면 붙어 있던 이미지 파일도 정리된다")
-    void delete_afterCommit_removesImageFile() {
+    @DisplayName("F05: 게시글 삭제는 이미지를 그대로 두고, 보관 기간 뒤 영구 삭제가 커밋되면 파일도 정리된다")
+    void delete_keepsImageUntilPurge_thenRemovesImageFile() {
         String url = postService.uploadImage(imageFile(), alice).url();
         Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", url, null, null, null));
 
         postService.delete(postId, alice);
 
+        // 소프트 삭제 직후: 복구할 수 있도록 파일과 대장 행이 그대로다.
+        assertThat(fileOf(url)).exists();
+        assertThat(imageStatusOf(url)).isEqualTo(PostImageStatus.ATTACHED);
+        assertThat(postRepository.findById(postId).orElseThrow().isDeleted()).isTrue();
+
+        // 보관 기간 안에는 영구 삭제가 아무것도 하지 않는다.
+        assertThat(postService.purge(postId, LocalDateTime.now().minusDays(30))).isFalse();
+        assertThat(fileOf(url)).exists();
+
+        // 보관 기간이 지나면 행과 파일이 함께 사라진다.
+        jdbcTemplate.update("UPDATE posts SET deleted_at = ? WHERE id = ?", LocalDateTime.now().minusDays(31), postId);
+        assertThat(postService.purge(postId, LocalDateTime.now().minusDays(30))).isTrue();
+
+        assertThat(postRepository.findById(postId)).isEmpty();
         assertThat(fileOf(url)).doesNotExist();
         assertThat(postImageRepository.findByFileName(fileNameOf(url))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("소프트 삭제된 글의 이미지는 업로드 쿼터에서 빠지고, 복구하면 다시 센다")
+    void quota_excludesImagesOfSoftDeletedPosts() {
+        String url = postService.uploadImage(imageFile(), alice).url();
+        Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", url, null, null, null));
+        long used = postImageRepository.sumSizeBytesByOwnerId(aliceUser.getId());
+        assertThat(used).isPositive();
+
+        postService.delete(postId, alice);
+        assertThat(postImageRepository.sumSizeBytesByOwnerId(aliceUser.getId())).isZero();
+
+        Integer restored = transactionTemplate.execute(status -> postRepository.restore(postId));
+        assertThat(restored).isEqualTo(1);
+        assertThat(postImageRepository.sumSizeBytesByOwnerId(aliceUser.getId())).isEqualTo(used);
     }
 
     @Test

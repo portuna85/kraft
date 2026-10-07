@@ -69,7 +69,7 @@ public class CommentService {
     @Transactional
     public CommentViewDto save(Long postId, Authentication authentication, CommentSaveRequestDto requestDto) {
         // 댓글에는 글과의 연관만 필요하다 — TEXT 본문까지 읽는 findById 대신 존재만 확인하고 참조를 쓴다(BE-25).
-        if (!postRepository.existsById(postId)) {
+        if (!postRepository.existsVisibleById(postId)) {
             throw new PostNotFoundException(postId);
         }
         Post post = postRepository.getReferenceById(postId);
@@ -113,6 +113,7 @@ public class CommentService {
     @Transactional
     public CommentViewDto update(Long id, CommentUpdateRequestDto requestDto, Authentication authentication) {
         Comment comment = findComment(id);
+        requirePostVisible(comment, authentication);
         WriteAccessPolicy.requireVerified(findUser(authentication));
         OwnershipPolicy.validateOwner(authentication, comment.getUser(), id);
         if (comment.isDeleted()) {
@@ -136,6 +137,7 @@ public class CommentService {
     @Transactional
     public CommentDeleteResultDto delete(Long id, Authentication authentication) {
         Comment comment = findComment(id);
+        requirePostVisible(comment, authentication);
         OwnershipPolicy.validateOwner(authentication, comment.getUser(), id);
         if (comment.isDeleted()) {
             // 이미 삭제된 댓글에 대한 재요청(예: 관리자가 사용자보다 늦게 신고를 처리)은
@@ -173,6 +175,11 @@ public class CommentService {
 
     /** 커서({@code afterId}) 이후 다음 페이지. {@code afterId}는 마지막으로 받은 댓글의 id다. */
     public CommentPageDto findNextPageForView(Long postId, Long afterId, Authentication authentication) {
+        // 삭제된 글의 댓글은 API로도 읽을 수 없다(관리자 제외). 최초 페이지는 글 상세가 이미 글의
+        // 삭제 여부를 판정한 뒤 부르므로 여기서 다시 묻지 않는다(쿼리 수를 늘리지 않는다).
+        if (!OwnershipPolicy.isAdmin(authentication) && !postRepository.existsVisibleById(postId)) {
+            throw new PostNotFoundException(postId);
+        }
         return pageForView(postId, afterId, authentication);
     }
 
@@ -225,6 +232,7 @@ public class CommentService {
      * 빈 페이지를 돌려준다(읽기 전용 조회라 별도의 404로 구분하지 않는다).
      */
     public CommentPageDto findRepliesPage(Long parentId, Long afterId, Authentication authentication) {
+        commentRepository.findById(parentId).ifPresent(parent -> requirePostVisible(parent, authentication));
         List<Comment> fetched = commentRepository.findRepliesByParentIdAsc(
                 parentId, afterId, PageRequest.of(0, REPLIES_PAGE_SIZE + 1));
         boolean hasMore = fetched.size() > REPLIES_PAGE_SIZE;
@@ -236,6 +244,16 @@ public class CommentService {
         // "답글 더 보기"는 항상 후속 페이지다 — 최초 답글 수는 이미 withInitialReplies가 배치로
         // 계산해 부모 댓글에 실어 보냈고, 화면도 이 값을 읽지 않는다(A-BE-13).
         return new CommentPageDto(views, null, hasMore);
+    }
+
+    /**
+     * 소프트 삭제된 글 아래의 댓글은 관리자만 만질 수 있다. 일반 사용자에게는 글과 함께 사라진 것과
+     * 같으므로 글이 없는 것으로 답한다.
+     */
+    private void requirePostVisible(Comment comment, Authentication authentication) {
+        if (comment.getPost() != null && comment.getPost().isDeleted() && !OwnershipPolicy.isAdmin(authentication)) {
+            throw new PostNotFoundException(comment.getPost().getId());
+        }
     }
 
     private Comment findComment(Long id) {

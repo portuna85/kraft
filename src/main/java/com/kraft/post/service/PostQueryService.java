@@ -95,12 +95,19 @@ public class PostQueryService {
         // UPDATE가 영속성 컨텍스트를 비우므로 이 조회는 항상 DB를 다시 읽는다.
         Post post = postRepository.findByIdWithUser(id)
                 .orElseThrow(() -> new PostNotFoundException(id));
+        // 소프트 삭제된 글은 관리자만 열 수 있다(복구하려면 내용을 봐야 한다). 판정은 메모리에서 하므로
+        // 쿼리 수가 늘지 않는다.
+        boolean admin = OwnershipPolicy.isAdmin(authentication);
+        if (post.isDeleted() && !admin) {
+            throw new PostNotFoundException(id);
+        }
         Long userId = currentUserId(authentication);
         PostLikeRepository.LikeSummary likes = postLikeRepository.summarize(
                 id, userId != null ? userId : PostLikeRepository.NO_USER_ID);
         boolean likedByMe = userId != null && likes.getMine() > 0;
-        return new PostViewDto(post, OwnershipPolicy.canManage(authentication, post.getUser()),
-                likes.getTotal(), likedByMe);
+        // 삭제된 글에는 수정·삭제 버튼을 보이지 않는다 — 할 수 있는 일은 관리자의 복구뿐이다.
+        boolean canManage = !post.isDeleted() && OwnershipPolicy.canManage(authentication, post.getUser());
+        return new PostViewDto(post, canManage, likes.getTotal(), likedByMe, admin);
     }
 
     public PostsPageResponseDto findAllDesc(Pageable pageable) {
@@ -247,8 +254,10 @@ public class PostQueryService {
         return CurrentUser.userIdOrNull(authentication, userRepository);
     }
 
+    /** 공개 REST 조회는 삭제되지 않은 글만 돌려준다. */
     private Post findPost(Long id) {
         return postRepository.findById(id)
+                .filter(post -> !post.isDeleted())
                 .orElseThrow(() -> new PostNotFoundException(id));
     }
 

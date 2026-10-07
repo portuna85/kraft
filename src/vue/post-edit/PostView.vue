@@ -5,6 +5,7 @@ import { API } from '@core/constants.js';
 import { readItem, writeItem } from '@core/storage.js';
 import { showToast } from '@ui/toast.js';
 import MarkdownBody from '../shared/MarkdownBody.vue';
+import PostAdminBar from './PostAdminBar.vue';
 
 /**
  * 게시글 읽기 화면(FE-12): 본문·글자 크기·공유·추천·신고/수정/삭제 버튼. 편집 폼은 PostEditApp이 맡고,
@@ -107,6 +108,7 @@ defineExpose({ focusEditButton: () => editButton.value?.focus() });
 
 <template>
   <article id="post-view">
+    <PostAdminBar :post="post" />
     <span class="post-category">{{ categoryTitle(post.category) }}</span>
     <h1
       id="post-title-text"
@@ -179,8 +181,9 @@ defineExpose({ focusEditButton: () => editButton.value?.focus() });
       </button>
     </div>
 
+    <!-- 삭제된 글(관리자에게만 열린다)에는 추천·신고·수정·삭제를 두지 않는다 — 복구만 할 수 있다. -->
     <div
-      v-if="authenticated"
+      v-if="authenticated && !post.deleted"
       class="btn-group-gap post-actions"
     >
       <button
@@ -196,7 +199,7 @@ defineExpose({ focusEditButton: () => editButton.value?.focus() });
       </button>
     </div>
     <p
-      v-else
+      v-else-if="!authenticated"
       v-once
       class="post-actions"
     >
@@ -206,7 +209,7 @@ defineExpose({ focusEditButton: () => editButton.value?.focus() });
 
     <!-- 신고는 남의 글에만 보인다. 자기 글은 서버도 거절한다(직접 지우면 된다). -->
     <div
-      v-if="authenticated && !post.canManagePost"
+      v-if="authenticated && !post.canManagePost && !post.deleted"
       class="btn-group-gap post-actions"
     >
       <button

@@ -44,9 +44,13 @@ public interface PostImageRepository extends JpaRepository<PostImage, Long> {
 
     /**
      * 한 계정이 현재 차지하고 있는 저장량(바이트). 삭제 예약된 파일은 곧 사라지므로 제외한다.
+     * 소프트 삭제된 글의 이미지도 뺀다 — 복구를 위해 ATTACHED로 남아 있지만 사용자 눈에는 이미 지운
+     * 글이라, 그대로 세면 "게시글을 정리하세요"는 안내와 실제 쿼터가 보관 기간 동안 어긋난다. 글에
+     * 붙지 않은 이미지(post가 null)는 그대로 센다.
      */
-    @Query("SELECT COALESCE(SUM(i.sizeBytes), 0) FROM PostImage i "
-            + "WHERE i.owner.id = :ownerId AND i.status <> com.kraft.post.domain.PostImageStatus.PENDING_DELETE")
+    @Query("SELECT COALESCE(SUM(i.sizeBytes), 0) FROM PostImage i LEFT JOIN i.post p "
+            + "WHERE i.owner.id = :ownerId AND i.status <> com.kraft.post.domain.PostImageStatus.PENDING_DELETE "
+            + "AND (p IS NULL OR p.deletedAt IS NULL)")
     long sumSizeBytesByOwnerId(@Param("ownerId") Long ownerId);
 
     /**

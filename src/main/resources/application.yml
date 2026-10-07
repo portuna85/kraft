@@ -216,6 +216,15 @@ app:
     snapshot-purge-initial-delay-ms: 1800000
     snapshot-purge-interval-ms: 86400000
 
+  post:
+    # 소프트 삭제된 글을 이 기간이 지나면 영구 삭제한다(PostPurger). 그 사이에는 관리자가 복구할 수
+    # 있다. 코드 기본값과 같은 값을 명시적으로 적어 둔다.
+    purge-retention-days: 30
+    purge-enabled: true
+    purge-batch-size: 100
+    purge-initial-delay-ms: 1800000
+    purge-interval-ms: 86400000
+
   session-revocation:
     # 비밀번호 변경·재설정·탈퇴 커밋 직후 세션 폐기를 영속 태스크로 남긴다(B06). 대부분은
     # 커밋 직후 빠른 경로에서 바로 끝나고, 실패하거나 그 직후 프로세스가 죽은 것만 이 주기

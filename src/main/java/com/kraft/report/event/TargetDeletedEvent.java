@@ -5,8 +5,10 @@ import com.kraft.report.domain.ReportTargetType;
 import java.util.List;
 
 /**
- * 게시글·댓글이 <b>작성자 본인의 요청으로</b> 지워졌을 때(행이 지워졌거나, 답글이 있어 소프트 삭제된 경우 모두)
+ * 게시글·댓글이 <b>작성자 본인의 요청으로</b> 지워졌을 때(행이 지워졌거나, 소프트 삭제된 경우 모두)
  * {@code PostService.delete}·{@code CommentService.delete}가 발행한다(개선 보고서 A-BE-01).
+ * 게시글은 이 시점에 소프트 삭제되므로 보관 기간 뒤의 영구 삭제({@code PostService.purge})는 다시
+ * 발행하지 않는다.
  * <p>
  * {@link com.kraft.report.service.ReportService}가 이 이벤트를 직접 호출로 받지 않고 이벤트로
  * 받는 이유는 순환 의존 때문이다 — {@code ReportService}는 신고 처리 시 대상을 지우려고 이미

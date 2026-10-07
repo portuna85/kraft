@@ -289,7 +289,7 @@ public class ReportService {
 
     private Optional<User> targetAuthorOf(ReportTargetType targetType, Long targetId) {
         if (targetType == ReportTargetType.POST) {
-            return postRepository.findById(targetId).map(Post::getUser);
+            return postRepository.findById(targetId).filter(post -> !post.isDeleted()).map(Post::getUser);
         }
         return commentRepository.findById(targetId).map(Comment::getUser);
     }
@@ -300,7 +300,9 @@ public class ReportService {
 
     private Optional<TargetSnapshot> snapshotOf(ReportTargetType targetType, Long targetId) {
         if (targetType == ReportTargetType.POST) {
+            // 소프트 삭제된 글은 없는 대상으로 본다 — 이미 목록에서 사라졌고 신고할 수 없다.
             return postRepository.findById(targetId)
+                    .filter(post -> !post.isDeleted())
                     .map(post -> new TargetSnapshot(post.getUser(), post.getTitle(), shorten(post.getContent(), SNAPSHOT_LENGTH)));
         }
         return commentRepository.findById(targetId)

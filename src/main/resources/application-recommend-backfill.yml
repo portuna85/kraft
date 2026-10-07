@@ -35,3 +35,5 @@ app:
   report:
     # 무관한 스케줄러를 섞지 않는다는 이 파일의 원칙과 같다.
     snapshot-purge-enabled: false
+  post:
+    purge-enabled: false

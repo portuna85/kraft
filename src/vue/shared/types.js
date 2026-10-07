@@ -61,6 +61,8 @@
  * @property {number} likeCount
  * @property {boolean} likedByMe
  * @property {number} version
+ * @property {boolean} deleted
+ * @property {boolean} canModerate
  */
 
 export {};

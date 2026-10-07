@@ -22,10 +22,23 @@ public record PostViewDto(
         long likeCount,
         boolean likedByMe,
         /** 수정 요청이 그대로 돌려보낼 낙관적 잠금 버전. 편집 충돌 감지에 쓴다. */
-        Long version
+        Long version,
+        /** 소프트 삭제된 글이다. 관리자만 이 글을 열 수 있어, 화면이 "삭제됨" 표시와 복구 버튼을 그린다. */
+        boolean deleted,
+        /** 관리자 권한. 복구 같은 관리 버튼 노출에 쓴다 — 서버가 판정한 값만 믿는다. */
+        boolean canModerate
 ) {
 
-    public PostViewDto(Post entity, boolean canManagePost, long likeCount, boolean likedByMe) {
+    /** 삭제·관리 정보 없이 만드는 편의 생성자(테스트와 일반 화면 DTO가 쓴다). */
+    public PostViewDto(Long id, String title, String content, String picture, Integer pictureWidth,
+                       Integer pictureHeight, String author, boolean canManagePost, Category category,
+                       long viewCount, long likeCount, boolean likedByMe, Long version) {
+        this(id, title, content, picture, pictureWidth, pictureHeight, author, canManagePost, category,
+                viewCount, likeCount, likedByMe, version, false, false);
+    }
+
+    public PostViewDto(Post entity, boolean canManagePost, long likeCount, boolean likedByMe,
+                       boolean canModerate) {
         this(
                 entity.getId(),
                 entity.getTitle(),
@@ -39,7 +52,9 @@ public record PostViewDto(
                 entity.getViewCount(),
                 likeCount,
                 likedByMe,
-                entity.getVersion()
+                entity.getVersion(),
+                entity.isDeleted(),
+                canModerate
         );
     }
 }

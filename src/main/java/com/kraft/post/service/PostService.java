@@ -20,6 +20,7 @@ import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.Authentication;
@@ -28,6 +29,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RequiredArgsConstructor
@@ -171,34 +173,54 @@ public class PostService {
         return id;
     }
 
-    @CacheEvict(value = "pinnedNotices", allEntries = true)
+    /**
+     * 게시글을 소프트 삭제한다 — {@code deletedAt}만 남기고 댓글·추천·이미지는 그대로 둔다. 관리자가
+     * 복구할 수 있고, 보관 기간이 지나면 {@link #purge}가 행과 딸린 것들을 지운다.
+     * <p>
+     * 글이 목록에서 사라지는 순간 그 글과 아래 댓글에 걸린 대기 신고도 닫아야 하므로, 지우기 전에 댓글
+     * id를 알아 두고 {@link TargetDeletedEvent}를 발행한다(A-BE-01). 관리자가 신고를 처리하며 지운
+     * 경우는 이 이벤트가 아무 일도 하지 않는다 — 그 경로는 {@code ReportService.resolve()}가 관련 신고를
+     * 이미 RESOLVED로 직접 처리해, 이 이벤트가 커밋 직전에 실행될 때는 더 이상 PENDING이 아니다
+     * ({@code TargetDeletedEvent} 문서 참고).
+     */
+    @Caching(evict = {
+            @CacheEvict(value = "pinnedNotices", allEntries = true),
+            @CacheEvict(value = "popularPosts", allEntries = true)
+    })
     @Transactional
     public void delete(Long id, Authentication authentication) {
         Post post = findPost(id);
         validateOwner(post, authentication);
-        removePermanently(post);
+
+        List<Long> commentIds = commentRepository.findIdsByPostId(id);
+        // 0이면 그 사이 다른 요청이 먼저 지운 것이다 — 없는 글로 본다.
+        if (postRepository.softDelete(id, LocalDateTime.now()) == 0) {
+            throw new PostNotFoundException(id);
+        }
+
+        eventPublisher.publishEvent(new TargetDeletedEvent(ReportTargetType.POST, List.of(id)));
+        if (!commentIds.isEmpty()) {
+            eventPublisher.publishEvent(new TargetDeletedEvent(ReportTargetType.COMMENT, commentIds));
+        }
     }
 
     /**
-     * 소유권을 묻지 않고 게시글을 영구 삭제한다. 소프트 삭제 보관 기간이 끝난 글을 치우는 쪽
-     * (이후 단계)이 부르므로, 호출자가 삭제해도 되는 글인지 먼저 판단해야 한다.
-     * 같은 클래스 안의 {@link #delete}도 같은 본문({@link #removePermanently})을 쓴다 — 프록시를
-     * 거치지 않는 자기 호출로 {@code @Transactional}·{@code @CacheEvict}가 빠지는 일을 피한다.
+     * 소프트 삭제된 지 {@code threshold}가 지난 글을 영구 삭제한다. 소유권을 묻지 않으므로 호출자
+     * ({@code PostPurger})가 대상을 고른다. 행을 잠근 뒤 다시 확인해, 그 사이 복구됐거나 아직 보관
+     * 기간 안인 글은 건너뛴다. 신고는 소프트 삭제 때 이미 닫았으므로 이벤트를 다시 발행하지 않는다.
+     *
+     * @return 실제로 지웠으면 true
      */
-    @CacheEvict(value = "pinnedNotices", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(value = "pinnedNotices", allEntries = true),
+            @CacheEvict(value = "popularPosts", allEntries = true)
+    })
     @Transactional
-    public void purge(Long id) {
-        removePermanently(findPost(id));
-    }
-
-    private void removePermanently(Post post) {
-        Long id = post.getId();
-
-        // 지우기 전에 그 아래 모든 댓글(최상위+답글) id를 알아 둔다(A-BE-01) — 게시글과 함께
-        // 사라지는 댓글에 걸린 대기 신고도 함께 닫아야 하는데, 지운 뒤에는 조회할 수 없다.
-        // 게시글 자체가 사라지므로 댓글은 답글 유무와 무관하게(A-BE-06의 소프트 삭제 규칙과
-        // 달리) 전부 하드 삭제된다 — 아래에서도 동일하게 처리한다.
-        List<Long> deletedCommentIds = commentRepository.findIdsByPostId(id);
+    public boolean purge(Long id, LocalDateTime threshold) {
+        Post post = postRepository.findByIdForPurge(id).orElse(null);
+        if (post == null || post.getDeletedAt() == null || !post.getDeletedAt().isBefore(threshold)) {
+            return false;
+        }
 
         // 삭제 예약이 post_id를 비워야 FK 제약(FK_POST_IMAGES_POST)이 게시글 삭제를 막지 않는다.
         List<Long> deletedImageIds = postImageRegistry.markPostImagesForDeletion(id);
@@ -210,15 +232,8 @@ public class PostService {
         postLikeRepository.deleteAllByPostId(id);
         postRepository.delete(post);
 
-        // 관리자가 신고를 처리하며 지운 경우는 이 이벤트가 아무 일도 하지 않는다 — 그 경로는
-        // ReportService.resolve()가 관련 신고를 이미 RESOLVED로 직접 처리해, 이 이벤트가
-        // 커밋 직전에 실행될 때는 더 이상 PENDING이 아니다(TargetDeletedEvent 문서 참고).
-        eventPublisher.publishEvent(new TargetDeletedEvent(ReportTargetType.POST, List.of(id)));
-        if (!deletedCommentIds.isEmpty()) {
-            eventPublisher.publishEvent(new TargetDeletedEvent(ReportTargetType.COMMENT, deletedCommentIds));
-        }
-
         cleanUpAfterCommit(deletedImageIds);
+        return true;
     }
 
     /**
@@ -303,8 +318,10 @@ public class PostService {
         return CurrentUser.require(authentication, userRepository);
     }
 
+    /** 삭제되지 않은 글만 찾는다. 소프트 삭제된 글은 수정·추천·삭제의 대상이 아니다. */
     private Post findPost(Long id) {
         return postRepository.findById(id)
+                .filter(post -> !post.isDeleted())
                 .orElseThrow(() -> new PostNotFoundException(id));
     }
 

@@ -8,6 +8,7 @@ import com.kraft.comment.dto.CommentSaveRequestDto;
 import com.kraft.comment.dto.CommentUpdateRequestDto;
 import com.kraft.comment.dto.CommentViewDto;
 import com.kraft.post.domain.Post;
+import com.kraft.post.domain.PostNotFoundException;
 import com.kraft.post.domain.PostRepository;
 import com.kraft.support.TestAuthentication;
 import com.kraft.user.domain.Role;
@@ -101,7 +102,7 @@ class CommentServiceTest {
     void save_whenPostAndUserExist_savesCommentAndReturnsId() {
         Post post = postOf(1L);
         User user = userWithEmail("tester@example.com", 1L);
-        given(postRepository.existsById(1L)).willReturn(true);
+        given(postRepository.existsVisibleById(1L)).willReturn(true);
         given(postRepository.getReferenceById(1L)).willReturn(post);
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
         Comment saved = commentOf(user, 100L);
@@ -116,7 +117,7 @@ class CommentServiceTest {
     @Test
     @DisplayName("save: 게시글이 없으면 IllegalArgumentException")
     void save_whenPostNotFound_throwsIllegalArgumentException() {
-        given(postRepository.existsById(999L)).willReturn(false);
+        given(postRepository.existsVisibleById(999L)).willReturn(false);
 
         assertThatThrownBy(() -> commentService.save(999L, authOf(1L, "tester@example.com", Role.USER), new CommentSaveRequestDto("내용", null)))
                 .isInstanceOf(NotFoundException.class)
@@ -130,7 +131,7 @@ class CommentServiceTest {
     void save_whenUserIsGuest_throwsAccessDeniedExceptionAndDoesNotSave() {
         User guest = User.builder().name("tester").email("guest@example.com").password("encoded").role(Role.GUEST).build();
         ReflectionTestUtils.setField(guest, "id", 1L);
-        given(postRepository.existsById(1L)).willReturn(true);
+        given(postRepository.existsVisibleById(1L)).willReturn(true);
         given(postRepository.getReferenceById(1L)).willReturn(postOf(1L));
         given(userRepository.findById(1L)).willReturn(Optional.of(guest));
 
@@ -143,7 +144,7 @@ class CommentServiceTest {
     @Test
     @DisplayName("save: 회원이 없으면 NotFoundException")
     void save_whenUserNotFound_throwsIllegalArgumentException() {
-        given(postRepository.existsById(1L)).willReturn(true);
+        given(postRepository.existsVisibleById(1L)).willReturn(true);
         given(postRepository.getReferenceById(1L)).willReturn(postOf(1L));
         given(userRepository.findById(999L)).willReturn(Optional.empty());
 
@@ -164,7 +165,7 @@ class CommentServiceTest {
         Post post = postOf(1L);
         User author = userWithEmail("tester@example.com", 1L);
         Comment parent = commentOf(author, 100L);
-        given(postRepository.existsById(1L)).willReturn(true);
+        given(postRepository.existsVisibleById(1L)).willReturn(true);
         given(postRepository.getReferenceById(1L)).willReturn(post);
         given(userRepository.findById(1L)).willReturn(Optional.of(author));
         given(commentRepository.findById(100L)).willReturn(Optional.of(parent));
@@ -187,7 +188,7 @@ class CommentServiceTest {
         User author = userWithEmail("tester@example.com", 1L);
         Comment topLevel = commentOf(author, 100L);
         Comment existingReply = replyOf(author, 200L, topLevel);
-        given(postRepository.existsById(1L)).willReturn(true);
+        given(postRepository.existsVisibleById(1L)).willReturn(true);
         given(postRepository.getReferenceById(1L)).willReturn(post);
         given(userRepository.findById(1L)).willReturn(Optional.of(author));
         given(commentRepository.findById(200L)).willReturn(Optional.of(existingReply));
@@ -205,7 +206,7 @@ class CommentServiceTest {
         User author = userWithEmail("tester@example.com", 1L);
         Comment parentOnAnotherPost = Comment.builder().content("다른 글의 댓글").post(postOf(2L)).user(author).build();
         ReflectionTestUtils.setField(parentOnAnotherPost, "id", 300L);
-        given(postRepository.existsById(1L)).willReturn(true);
+        given(postRepository.existsVisibleById(1L)).willReturn(true);
         given(postRepository.getReferenceById(1L)).willReturn(postOf(1L));
         given(userRepository.findById(1L)).willReturn(Optional.of(author));
         given(commentRepository.findById(300L)).willReturn(Optional.of(parentOnAnotherPost));
@@ -508,6 +509,7 @@ class CommentServiceTest {
     @Test
     @DisplayName("F13: findNextPageForView는 afterId 커서를 그대로 리포지토리에 전달한다")
     void findNextPageForView_passesAfterIdCursorToRepository() {
+        given(postRepository.existsVisibleById(1L)).willReturn(true);
         given(commentRepository.findPageByPostIdAsc(1L, 20L, PageRequest.of(0, 21))).willReturn(List.of());
 
         CommentPageDto result = commentService.findNextPageForView(1L, 20L, authOf(1L, "owner@example.com", Role.USER));
@@ -518,5 +520,56 @@ class CommentServiceTest {
         assertThat(result.totalCount()).isNull();
         verify(commentRepository).findPageByPostIdAsc(1L, 20L, PageRequest.of(0, 21));
         verify(commentRepository, never()).countByPostId(any());
+    }
+
+    @Test
+    @DisplayName("update: 소프트 삭제된 글 아래의 댓글은 작성자도 수정할 수 없다(글이 없는 것으로 답한다)")
+    void update_whenPostDeleted_throwsPostNotFound() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Comment comment = commentOf(owner, 5L);
+        ReflectionTestUtils.setField(comment.getPost(), "deletedAt", java.time.LocalDateTime.now());
+        given(commentRepository.findById(5L)).willReturn(Optional.of(comment));
+
+        assertThatThrownBy(() -> commentService.update(5L, new CommentUpdateRequestDto("새 내용", 0L), authOf(owner)))
+                .isInstanceOf(PostNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("delete: 관리자는 소프트 삭제된 글 아래의 댓글도 지울 수 있다")
+    void delete_whenPostDeletedAndAdmin_allowed() {
+        User author = userWithEmail("owner@example.com", 1L);
+        Comment comment = commentOf(author, 5L);
+        ReflectionTestUtils.setField(comment.getPost(), "deletedAt", java.time.LocalDateTime.now());
+        given(commentRepository.findById(5L)).willReturn(Optional.of(comment));
+        given(commentRepository.countRepliesByParentIdIn(List.of(5L))).willReturn(Map.of());
+
+        commentService.delete(5L, authOf(9L, "admin@example.com", Role.ADMIN));
+
+        verify(commentRepository).delete(comment);
+    }
+
+    @Test
+    @DisplayName("findNextPageForView: 삭제된 글의 댓글 페이지는 일반 사용자에게 글이 없는 것으로 답하고 관리자는 읽는다")
+    void findNextPageForView_whenPostDeleted_onlyAdminReads() {
+        given(postRepository.existsVisibleById(1L)).willReturn(false);
+
+        assertThatThrownBy(() -> commentService.findNextPageForView(1L, 20L, authOf(1L, "u@example.com", Role.USER)))
+                .isInstanceOf(PostNotFoundException.class);
+
+        given(commentRepository.findPageByPostIdAsc(1L, 20L, PageRequest.of(0, 21))).willReturn(List.of());
+        assertThat(commentService.findNextPageForView(1L, 20L, authOf(9L, "admin@example.com", Role.ADMIN)).comments())
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("findRepliesPage: 삭제된 글 아래 부모의 답글 페이지는 일반 사용자에게 글이 없는 것으로 답한다")
+    void findRepliesPage_whenPostDeleted_throwsPostNotFound() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Comment parent = commentOf(owner, 5L);
+        ReflectionTestUtils.setField(parent.getPost(), "deletedAt", java.time.LocalDateTime.now());
+        given(commentRepository.findById(5L)).willReturn(Optional.of(parent));
+
+        assertThatThrownBy(() -> commentService.findRepliesPage(5L, null, authOf(1L, "u@example.com", Role.USER)))
+                .isInstanceOf(PostNotFoundException.class);
     }
 }

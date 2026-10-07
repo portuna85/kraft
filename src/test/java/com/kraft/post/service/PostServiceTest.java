@@ -5,12 +5,15 @@ import com.kraft.shared.exception.NotFoundException;
 import com.kraft.post.domain.Category;
 import com.kraft.post.domain.Post;
 import com.kraft.post.domain.PostLikeRepository;
+import com.kraft.post.domain.PostNotFoundException;
 import com.kraft.post.domain.PostRepository;
 import com.kraft.post.dto.PostRowDto;
 import com.kraft.post.dto.PostSaveRequestDto;
 import com.kraft.post.dto.PostsListResponseDto;
 import com.kraft.post.dto.PostsPageResponseDto;
 import com.kraft.post.dto.PostUpdateRequestDto;
+import com.kraft.report.domain.ReportTargetType;
+import com.kraft.report.event.TargetDeletedEvent;
 import com.kraft.support.TestAuthentication;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
@@ -33,6 +36,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -318,38 +322,111 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("delete: 작성자 본인이면 댓글을 먼저 지우고 게시글을 삭제한다 (comments.post_id FK 위반 방지)")
-    void delete_whenAuthor_deletesCommentsFirstThenDeletesPost() {
+    @DisplayName("delete: 작성자 본인이면 소프트 삭제만 하고 댓글·추천·이미지는 그대로 둔다")
+    void delete_whenAuthor_softDeletesAndKeepsChildren() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
+        given(commentRepository.findIdsByPostId(100L)).willReturn(List.of(7L, 8L));
+        given(postRepository.softDelete(eq(100L), any())).willReturn(1);
 
         postService.delete(100L, authOf(owner));
 
-        var inOrder = org.mockito.Mockito.inOrder(commentRepository, postRepository);
-        inOrder.verify(commentRepository).deleteAllByPostId(100L);
-        inOrder.verify(postRepository).delete(post);
+        verify(postRepository).softDelete(eq(100L), any());
+        verify(postRepository, never()).delete(any(Post.class));
+        verify(commentRepository, never()).deleteAllByPostId(any());
+        verify(postLikeRepository, never()).deleteAllByPostId(any());
+        verify(postImageRegistry, never()).markPostImagesForDeletion(any());
+        // 글이 사라지는 순간 글과 아래 댓글의 대기 신고를 닫는다(A-BE-01).
+        verify(eventPublisher).publishEvent(new TargetDeletedEvent(ReportTargetType.POST, List.of(100L)));
+        verify(eventPublisher).publishEvent(new TargetDeletedEvent(ReportTargetType.COMMENT, List.of(7L, 8L)));
     }
 
     @Test
-    @DisplayName("delete: 게시글에 붙은 이미지의 삭제를 예약하고, 커밋 후 그 이미지만 정리한다")
-    void delete_whenPostHasImage_schedulesImageDeletionAndTriggersCleanup() {
+    @DisplayName("delete: 이미 소프트 삭제된 글은 없는 글로 본다")
+    void delete_whenAlreadyDeleted_throwsNotFound() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
-        ReflectionTestUtils.setField(post, "picture", "/images/old.png");
+        ReflectionTestUtils.setField(post, "deletedAt", LocalDateTime.now());
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> postService.delete(100L, authOf(owner)))
+                .isInstanceOf(PostNotFoundException.class);
+
+        verify(postRepository, never()).softDelete(any(), any());
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
+    }
+
+    @Test
+    @DisplayName("delete: 그 사이 다른 요청이 먼저 지웠으면(UPDATE 0건) 없는 글로 본다")
+    void delete_whenSoftDeleteRaced_throwsNotFound() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Post post = postOf(owner, 100L);
+        given(postRepository.findById(100L)).willReturn(Optional.of(post));
+        given(postRepository.softDelete(eq(100L), any())).willReturn(0);
+
+        assertThatThrownBy(() -> postService.delete(100L, authOf(owner)))
+                .isInstanceOf(PostNotFoundException.class);
+
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
+    }
+
+    @Test
+    @DisplayName("update: 소프트 삭제된 글은 수정할 수 없다")
+    void update_whenDeleted_throwsNotFound() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Post post = postOf(owner, 100L);
+        ReflectionTestUtils.setField(post, "deletedAt", LocalDateTime.now());
+        given(postRepository.findById(100L)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> postService.update(100L,
+                new PostUpdateRequestDto("제목", "내용", null, null, null, Category.FREE, 0L), authOf(owner)))
+                .isInstanceOf(PostNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("purge: 보관 기간이 지난 글은 댓글·추천을 먼저 지우고 이미지는 삭제 예약한 뒤 행을 지운다")
+    void purge_whenRetentionPassed_deletesChildrenThenPost() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Post post = postOf(owner, 100L);
+        ReflectionTestUtils.setField(post, "deletedAt", LocalDateTime.now().minusDays(31));
+        given(postRepository.findByIdForPurge(100L)).willReturn(Optional.of(post));
         given(postImageRegistry.markPostImagesForDeletion(100L)).willReturn(List.of(55L));
 
-        postService.delete(100L, authOf(owner));
+        boolean purged = postService.purge(100L, LocalDateTime.now().minusDays(30));
 
-        // 예약이 post_id를 비워야 게시글 DELETE가 FK에 걸리지 않는다.
-        var inOrder = org.mockito.Mockito.inOrder(postImageRegistry, postRepository);
+        assertThat(purged).isTrue();
+        // 예약이 post_id를 비워야 게시글 DELETE가 FK에 걸리지 않고, 댓글·추천이 남아 있어도 걸린다.
+        var inOrder = org.mockito.Mockito.inOrder(postImageRegistry, commentRepository, postLikeRepository, postRepository);
         inOrder.verify(postImageRegistry).markPostImagesForDeletion(100L);
+        inOrder.verify(commentRepository).deleteRepliesByPostId(100L);
+        inOrder.verify(commentRepository).deleteAllByPostId(100L);
+        inOrder.verify(postLikeRepository).deleteAllByPostId(100L);
         inOrder.verify(postRepository).delete(post);
-        // 트랜잭션 밖에서 호출했으므로 AfterCommit이 즉시 실행된다. 이번 요청이 표시한
-        // id만 넘긴다 — 시스템 전체의 삭제 대기열을 매번 훑지 않는다.
+        // 트랜잭션 밖에서 호출했으므로 AfterCommit이 즉시 실행된다. 이번 호출이 표시한 id만 넘긴다.
         verify(postImageCleaner).cleanPendingDeletionsFor(List.of(55L));
-        verify(postImageService, never()).deleteIfExists(any());
+        // 신고는 소프트 삭제 때 이미 닫았다.
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
+    }
+
+    @Test
+    @DisplayName("purge: 삭제된 적 없거나 보관 기간 안이면(복구 경쟁 포함) 건드리지 않는다")
+    void purge_whenNotDeletedOrWithinRetention_doesNothing() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Post visible = postOf(owner, 100L);
+        Post recent = postOf(owner, 101L);
+        ReflectionTestUtils.setField(recent, "deletedAt", LocalDateTime.now().minusDays(1));
+        given(postRepository.findByIdForPurge(100L)).willReturn(Optional.of(visible));
+        given(postRepository.findByIdForPurge(101L)).willReturn(Optional.of(recent));
+        given(postRepository.findByIdForPurge(102L)).willReturn(Optional.empty());
+
+        LocalDateTime threshold = LocalDateTime.now().minusDays(30);
+        assertThat(postService.purge(100L, threshold)).isFalse();
+        assertThat(postService.purge(101L, threshold)).isFalse();
+        assertThat(postService.purge(102L, threshold)).isFalse();
+
+        verify(postRepository, never()).delete(any(Post.class));
+        verify(postImageRegistry, never()).markPostImagesForDeletion(any());
     }
 
     @Test
@@ -603,6 +680,47 @@ class PostServiceTest {
         assertThat(result).hasSize(1);
         assertThat(result.get(0).commentCount()).isEqualTo(3L);
         verify(postRepository, never()).search(any(), any(), anyBoolean(), any());
+    }
+
+    @Test
+    @DisplayName("findByIdForView: 소프트 삭제된 글은 작성자를 포함한 일반 사용자에게 없는 글이다")
+    void findByIdForView_whenDeletedAndNotAdmin_throwsNotFound() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Post post = postOf(owner, 100L);
+        ReflectionTestUtils.setField(post, "deletedAt", LocalDateTime.now());
+        given(postRepository.findByIdWithUser(100L)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> postQueryService.findByIdForView(100L, authOf(owner)))
+                .isInstanceOf(PostNotFoundException.class);
+        assertThatThrownBy(() -> postQueryService.findByIdForView(100L, null))
+                .isInstanceOf(PostNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("findByIdForView: 관리자는 삭제된 글을 열 수 있고 수정·삭제 버튼 대신 삭제됨 표시를 받는다")
+    void findByIdForView_whenDeletedAndAdmin_showsDeletedWithoutManageButtons() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        User admin = userWithEmail("admin@example.com", 9L, Role.ADMIN);
+        Post post = postOf(owner, 100L);
+        ReflectionTestUtils.setField(post, "deletedAt", LocalDateTime.now());
+        given(postRepository.findByIdWithUser(100L)).willReturn(Optional.of(post));
+        given(postLikeRepository.summarize(100L, 9L)).willReturn(likeSummary(0L, 0L));
+
+        var result = postQueryService.findByIdForView(100L, authOf(admin));
+
+        assertThat(result.deleted()).isTrue();
+        assertThat(result.canModerate()).isTrue();
+        assertThat(result.canManagePost()).isFalse();
+    }
+
+    @Test
+    @DisplayName("findById(공개 REST): 소프트 삭제된 글은 돌려주지 않는다")
+    void findById_whenDeleted_throwsNotFound() {
+        Post post = postOf(userWithEmail("owner@example.com", 1L), 100L);
+        ReflectionTestUtils.setField(post, "deletedAt", LocalDateTime.now());
+        given(postRepository.findById(100L)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> postQueryService.findById(100L)).isInstanceOf(PostNotFoundException.class);
     }
 
     @Test

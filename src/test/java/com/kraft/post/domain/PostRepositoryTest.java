@@ -362,4 +362,89 @@ class PostRepositoryTest {
 
         assertThat(saved.getUpdatedAt()).isAfter(createdUpdatedAt);
     }
+
+    @Test
+    @DisplayName("소프트 삭제된 글은 목록·검색·인기글·공지·sitemap·최근 글·관련 글·조회수에서 모두 빠지고, 복구하면 돌아온다")
+    void softDeletedPosts_areExcludedEverywhereAndRestorable() {
+        Post kept = postRepository.save(Post.builder().title("남는 공지").content("c").user(user).category(Category.NOTICE).build());
+        Post gone = postRepository.save(Post.builder().title("지운 공지").content("c").user(user).category(Category.NOTICE).build());
+        em.flush();
+
+        assertThat(postRepository.softDelete(gone.getId(), LocalDateTime.now())).isEqualTo(1);
+        // 이미 삭제된 글은 다시 삭제되지 않는다.
+        assertThat(postRepository.softDelete(gone.getId(), LocalDateTime.now())).isZero();
+        em.clear();
+
+        Sort idDesc = Sort.by(Sort.Direction.DESC, "id");
+        Page<PostRowDto> page = postRepository.search(null, null, false, PageRequest.of(0, 10, idDesc));
+        assertThat(page.getContent()).extracting(PostRowDto::id).containsExactly(kept.getId());
+        // COUNT 쿼리도 같은 조건을 쓴다 — 총 건수가 지운 글을 세면 페이지 번호가 어긋난다.
+        assertThat(page.getTotalElements()).isEqualTo(1);
+        assertThat(postRepository.searchWithoutCount("지운", null, false, PageRequest.of(0, 10, idDesc))).isEmpty();
+        assertThat(postRepository.findTopByViewCountDesc(LocalDateTime.now().minusDays(1), PageRequest.of(0, 10)))
+                .extracting(PostRowDto::id).containsExactly(kept.getId());
+        assertThat(postRepository.findPinnedNotices(PageRequest.of(0, 10)))
+                .extracting(PostRowDto::id).containsExactly(kept.getId());
+        assertThat(postRepository.findSitemapRows(PageRequest.of(0, 10)))
+                .extracting(PostRepository.SitemapRow::getId).containsExactly(kept.getId());
+        assertThat(postRepository.findRecent(PageRequest.of(0, 10)))
+                .extracting(PostRowDto::id).containsExactly(kept.getId());
+        assertThat(postRepository.findRelated(Category.NOTICE, kept.getId(), PageRequest.of(0, 10))).isEmpty();
+        assertThat(postRepository.findAllByIdInWithUser(List.of(kept.getId(), gone.getId())))
+                .extracting(Post::getId).containsExactly(kept.getId());
+        assertThat(postRepository.existsVisibleById(gone.getId())).isFalse();
+        assertThat(postRepository.existsVisibleById(kept.getId())).isTrue();
+        // 삭제된 글은 조회수도 오르지 않는다.
+        assertThat(postRepository.increaseViewCount(gone.getId())).isZero();
+        assertThat(postRepository.increaseViewCount(kept.getId())).isEqualTo(1);
+        // 관리자 상세가 읽는 쿼리는 삭제된 행도 돌려준다.
+        assertThat(postRepository.findByIdWithUser(gone.getId()).orElseThrow().isDeleted()).isTrue();
+
+        assertThat(postRepository.restore(gone.getId())).isEqualTo(1);
+        assertThat(postRepository.restore(gone.getId())).isZero();
+        em.clear();
+        assertThat(postRepository.search(null, null, false, PageRequest.of(0, 10, idDesc)).getContent())
+                .extracting(PostRowDto::id).containsExactly(gone.getId(), kept.getId());
+    }
+
+    @Test
+    @DisplayName("softDelete·restore는 version과 updatedAt을 바꾸지 않는다 — 열려 있던 편집 탭이 가짜 충돌을 받지 않는다")
+    void softDelete_doesNotTouchVersionOrUpdatedAt() {
+        Post post = postRepository.save(Post.builder().title("제목").content("c").user(user).build());
+        em.flush();
+        em.clear();
+        Post before = postRepository.findById(post.getId()).orElseThrow();
+        Long version = before.getVersion();
+        LocalDateTime updatedAt = before.getUpdatedAt();
+        em.clear();
+
+        postRepository.softDelete(post.getId(), LocalDateTime.now());
+        postRepository.restore(post.getId());
+        em.clear();
+
+        Post after = postRepository.findById(post.getId()).orElseThrow();
+        assertThat(after.getVersion()).isEqualTo(version);
+        assertThat(after.getUpdatedAt()).isEqualTo(updatedAt);
+    }
+
+    @Test
+    @DisplayName("findIdsDeletedBefore: 보관 기간이 지난 삭제 글만 id 커서 순서로 돌려준다")
+    void findIdsDeletedBefore_returnsOnlyExpiredAfterCursor() {
+        Post old1 = postRepository.save(Post.builder().title("a").content("c").user(user).build());
+        Post old2 = postRepository.save(Post.builder().title("b").content("c").user(user).build());
+        Post recent = postRepository.save(Post.builder().title("c").content("c").user(user).build());
+        postRepository.save(Post.builder().title("d").content("c").user(user).build());
+        em.flush();
+        LocalDateTime now = LocalDateTime.now();
+        postRepository.softDelete(old1.getId(), now.minusDays(31));
+        postRepository.softDelete(old2.getId(), now.minusDays(40));
+        postRepository.softDelete(recent.getId(), now.minusDays(1));
+        em.clear();
+
+        LocalDateTime threshold = now.minusDays(30);
+        assertThat(postRepository.findIdsDeletedBefore(threshold, 0L, PageRequest.of(0, 10)))
+                .containsExactly(old1.getId(), old2.getId());
+        assertThat(postRepository.findIdsDeletedBefore(threshold, old1.getId(), PageRequest.of(0, 10)))
+                .containsExactly(old2.getId());
+    }
 }

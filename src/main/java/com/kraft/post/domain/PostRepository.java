@@ -1,10 +1,12 @@
 package com.kraft.post.domain;
 
 import com.kraft.post.dto.PostRowDto;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -15,13 +17,22 @@ import java.util.Optional;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
 
+    /**
+     * 일반 사용자에게 보여줄 글의 조건. 목록·검색·인기글·공지·관련 글·sitemap·조회수 증가가 모두 이
+     * 조건을 거친다 — 소프트 삭제된 글이 어느 한 곳에서라도 새면 지운 글이 목록에 남는다.
+     * {@code @SQLRestriction}을 쓰지 않는 이유는 복구·영구 삭제·관리자 상세가 숨겨진 행을 일부러
+     * 읽어야 하고, to-one 지연 로딩이 걸러진 행을 가리킬 수 있어서다. 이 조건을 빠뜨리지 않았는지는
+     * {@code PostRepositoryVisibilityGuardTest}가 지킨다. 끝에 공백이 있어 바로 이어 붙인다.
+     */
+    String VISIBLE = "p.deletedAt IS NULL ";
+
     /** {@link #search}·{@link #searchWithoutCount}가 공유하는 SELECT. 두 쿼리가 어긋나지 않게 한 곳에 둔다. */
     String SEARCH_SELECT = "SELECT new com.kraft.post.dto.PostRowDto("
             + "p.id, p.title, u.name, p.createdAt, p.updatedAt, p.category, p.viewCount) "
             + "FROM Post p JOIN p.user u ";
 
     /** 검색 조건(분류 AND (제목 OR [본문])). COUNT 쿼리도 같은 조건을 쓴다. */
-    String SEARCH_WHERE = "WHERE (:category IS NULL OR p.category = :category) "
+    String SEARCH_WHERE = "WHERE " + VISIBLE + "AND (:category IS NULL OR p.category = :category) "
             + "AND (:keyword IS NULL "
             + "     OR LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\' "
             + "     OR (:searchContent = true AND LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\'))";
@@ -89,7 +100,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      */
     @Query("SELECT new com.kraft.post.dto.PostRowDto("
             + "p.id, p.title, u.name, p.createdAt, p.updatedAt, p.category, p.viewCount) "
-            + "FROM Post p JOIN p.user u WHERE p.createdAt >= :since "
+            + "FROM Post p JOIN p.user u WHERE " + VISIBLE + "AND p.createdAt >= :since "
             + "ORDER BY p.viewCount DESC, p.id DESC")
     List<PostRowDto> findTopByViewCountDesc(@Param("since") LocalDateTime since, Pageable pageable);
 
@@ -100,7 +111,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      */
     @Query("SELECT new com.kraft.post.dto.PostRowDto("
             + "p.id, p.title, u.name, p.createdAt, p.updatedAt, p.category, p.viewCount) "
-            + "FROM Post p JOIN p.user u WHERE p.category = com.kraft.post.domain.Category.NOTICE "
+            + "FROM Post p JOIN p.user u WHERE " + VISIBLE + "AND p.category = com.kraft.post.domain.Category.NOTICE "
             + "ORDER BY p.id DESC")
     List<PostRowDto> findPinnedNotices(Pageable pageable);
 
@@ -111,14 +122,14 @@ public interface PostRepository extends JpaRepository<Post, Long> {
         LocalDateTime getUpdatedAt();
     }
 
-    @Query("SELECT p.id AS id, p.updatedAt AS updatedAt FROM Post p ORDER BY p.id")
+    @Query("SELECT p.id AS id, p.updatedAt AS updatedAt FROM Post p WHERE " + VISIBLE + "ORDER BY p.id")
     List<SitemapRow> findSitemapRows(Pageable pageable);
 
     /**
      * 여러 id를 한 번에 조회한다(N+1 방지). 신고 목록이 페이지 안의 게시글 대상들을 한 번에
      * 묶어 조회할 때 쓴다(개선 보고서 "신고 목록의 대상별 조회").
      */
-    @Query("SELECT p FROM Post p JOIN FETCH p.user WHERE p.id IN :ids")
+    @Query("SELECT p FROM Post p JOIN FETCH p.user WHERE p.id IN :ids AND p.deletedAt IS NULL")
     List<Post> findAllByIdInWithUser(@Param("ids") List<Long> ids);
 
     /**
@@ -131,7 +142,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      * 조회수를 그대로 갖게 한다.
      */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("UPDATE Post p SET p.viewCount = p.viewCount + 1 WHERE p.id = :id")
+    @Query("UPDATE Post p SET p.viewCount = p.viewCount + 1 WHERE p.id = :id AND p.deletedAt IS NULL")
     int increaseViewCount(@Param("id") Long id);
 
     /**
@@ -147,7 +158,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      */
     @Query("SELECT new com.kraft.post.dto.PostRowDto("
             + "p.id, p.title, u.name, p.createdAt, p.updatedAt, p.category, p.viewCount) "
-            + "FROM Post p JOIN p.user u ORDER BY p.id DESC")
+            + "FROM Post p JOIN p.user u WHERE " + VISIBLE + "ORDER BY p.id DESC")
     List<PostRowDto> findRecent(Pageable pageable);
 
     /**
@@ -156,7 +167,39 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query("SELECT new com.kraft.post.dto.PostRowDto("
             + "p.id, p.title, u.name, p.createdAt, p.updatedAt, p.category, p.viewCount) "
             + "FROM Post p JOIN p.user u "
-            + "WHERE p.category = :category AND p.id <> :excludeId "
+            + "WHERE " + VISIBLE + "AND p.category = :category AND p.id <> :excludeId "
             + "ORDER BY p.id DESC")
     List<PostRowDto> findRelated(@Param("category") Category category, @Param("excludeId") Long excludeId, Pageable pageable);
+
+    /** 일반 사용자에게 보이는 글인지(삭제되지 않았는지). 댓글 저장처럼 존재 여부만 필요한 곳이 쓴다. */
+    @Query("SELECT COUNT(p) > 0 FROM Post p WHERE p.id = :id AND " + VISIBLE)
+    boolean existsVisibleById(@Param("id") Long id);
+
+    /**
+     * 소프트 삭제한다. {@code updatable = false}인 컬럼이라 엔티티로는 바꿀 수 없고, 이 전용 UPDATE만
+     * 쓴다({@code Post.deletedAt} 주석). version·updatedAt을 건드리지 않는다. 이미 삭제된 글이면 0을
+     * 돌려준다. {@code clearAutomatically}는 쓰지 않는다 — 신고 처리가 미리 읽어 둔 엔티티를 떼어 낸다.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("UPDATE Post p SET p.deletedAt = :now WHERE p.id = :id AND p.deletedAt IS NULL")
+    int softDelete(@Param("id") Long id, @Param("now") LocalDateTime now);
+
+    /** 소프트 삭제를 되돌린다. 삭제된 글이 아니면 0을 돌려준다. */
+    @Modifying(flushAutomatically = true)
+    @Query("UPDATE Post p SET p.deletedAt = NULL WHERE p.id = :id AND p.deletedAt IS NOT NULL")
+    int restore(@Param("id") Long id);
+
+    /**
+     * {@code threshold} 이전에 삭제된 글의 id를 커서({@code afterId}) 뒤부터 id 순으로 돌려준다.
+     * 영구 삭제 작업이 묶음마다 이어 받는다 — 한 건이 실패해도 같은 행을 계속 다시 읽지 않도록 offset이
+     * 아니라 커서로 나아간다.
+     */
+    @Query("SELECT p.id FROM Post p WHERE p.deletedAt < :threshold AND p.id > :afterId ORDER BY p.id")
+    List<Long> findIdsDeletedBefore(@Param("threshold") LocalDateTime threshold,
+                                    @Param("afterId") Long afterId, Pageable pageable);
+
+    /** 영구 삭제 직전에 행을 잠가 읽는다 — 그 사이 관리자가 복구하는 경쟁을 막는다. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Post p WHERE p.id = :id")
+    Optional<Post> findByIdForPurge(@Param("id") Long id);
 }
