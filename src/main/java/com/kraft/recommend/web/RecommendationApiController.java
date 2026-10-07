@@ -33,7 +33,7 @@ public class RecommendationApiController {
                                         HttpServletRequest httpRequest) {
         // 본문이 없거나 빈 객체({}))면 모든 필드가 null인 요청과 동일하게 취급한다(02문서 4절).
         RecommendRequestDto normalizedRequest = request == null
-                ? new RecommendRequestDto(null, null, null, null)
+                ? new RecommendRequestDto(null)
                 : request;
 
         String clientKey = httpRequest.getRemoteAddr();

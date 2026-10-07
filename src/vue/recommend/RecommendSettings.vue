@@ -1,9 +1,9 @@
 <script setup>
-import { COUNT_OPTIONS, STRATEGIES } from './recommendRequest.js';
+import { COUNT_OPTIONS } from './recommendRequest.js';
 import RecommendIcon from './RecommendIcon.vue';
 
 /**
- * 번호 추천 화면의 왼쪽 카드("01 / 설정"): 추천 방식, 추천 개수, 생성 버튼. 상태는 부모(useRecommendation)가 들고
+ * 번호 추천 화면의 왼쪽 카드("01 / 설정"): 추천 개수, 생성 버튼. 상태는 부모(useRecommendation)가 들고
  * 있고, 이 컴포넌트는 고른 값을 v-model로 올리고 제출만 알린다.
  */
 defineProps({
@@ -11,7 +11,6 @@ defineProps({
     historyRound: { type: Number, default: null },
     generating: { type: Boolean, default: false },
 });
-const strategy = defineModel('strategy', { type: String, required: true });
 const count = defineModel('count', { type: Number, required: true });
 defineEmits(['submit']);
 </script>
@@ -46,41 +45,6 @@ defineEmits(['submit']);
       class="recommend__form"
       @submit.prevent="$emit('submit')"
     >
-      <fieldset class="recommend__modes">
-        <legend class="visually-hidden">
-          추천 방식
-        </legend>
-        <label
-          v-for="(option, index) in STRATEGIES"
-          :key="option.value"
-          class="recommend-mode"
-        >
-          <input
-            v-model="strategy"
-            type="radio"
-            class="visually-hidden"
-            name="recommend-strategy"
-            :value="option.value"
-          >
-          <span class="recommend-mode__body">
-            <span
-              class="recommend-mode__check"
-              aria-hidden="true"
-            >
-              <RecommendIcon name="check" />
-            </span>
-            <span class="recommend-mode__text">
-              <span class="recommend-mode__title">{{ option.title }}</span>
-              <span class="recommend-mode__desc">{{ option.description }}</span>
-            </span>
-            <span
-              v-if="index === 0"
-              class="recommend-mode__tag"
-            >기본</span>
-          </span>
-        </label>
-      </fieldset>
-
       <div class="recommend__field">
         <label
           class="recommend__label"

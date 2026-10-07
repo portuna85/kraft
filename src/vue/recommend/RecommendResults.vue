@@ -161,7 +161,7 @@ const copyEverything = () => copy(formatAll(props.result?.items ?? []), 'all', '
         새로운 조합을 기다리고 있어요
       </p>
       <p class="recommend__empty-hint">
-        추천 방식과 개수를 고르고<br>번호 추천받기를 눌러보세요.
+        개수를 고르고<br>번호 추천받기를 눌러보세요.
       </p>
     </div>
   </section>

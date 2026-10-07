@@ -3,9 +3,7 @@ import assert from 'node:assert/strict';
 import {
     COUNT_OPTIONS,
     DEFAULT_COUNT,
-    DEFAULT_STRATEGY,
     GENERATION_LIMIT_CODE,
-    STRATEGIES,
     buildRequest,
     describeFailure,
     formatAll,
@@ -13,32 +11,10 @@ import {
     letterOf,
 } from './recommendRequest.js';
 
-test('기본값은 예전 화면이 고정으로 보내던 조건(공동 당첨 위험 완화, 5개)이다', () => {
-    assert.equal(DEFAULT_STRATEGY, 'reduce_shared_winner_risk');
+test('기본 개수는 5이고, 요청은 개수만 싣는다', () => {
     assert.equal(DEFAULT_COUNT, 5);
-    assert.deepEqual(buildRequest({ strategy: DEFAULT_STRATEGY, count: DEFAULT_COUNT }), {
-        strategy: 'reduce_shared_winner_risk',
-        count: 5,
-        lockedNumbers: [],
-        excludedNumbers: [],
-    });
-});
-
-test('요청은 고른 전략과 개수를 그대로 싣는다', () => {
-    const body = buildRequest({ strategy: 'balanced', count: 3 });
-    assert.equal(body.strategy, 'balanced');
-    assert.equal(body.count, 3);
-});
-
-test('추천 방식은 API가 받는 전략 3가지를 모두 갖고, 첫 항목이 기본값이다', () => {
-    assert.deepEqual(
-        STRATEGIES.map((option) => option.value),
-        ['reduce_shared_winner_risk', 'balanced', 'random'],
-    );
-    assert.equal(STRATEGIES[0].value, DEFAULT_STRATEGY);
-    for (const option of STRATEGIES) {
-        assert.ok(option.title && option.description, `${option.value}에 문구가 있어야 한다`);
-    }
+    assert.deepEqual(buildRequest({ count: DEFAULT_COUNT }), { count: 5 });
+    assert.deepEqual(buildRequest({ count: 3 }), { count: 3 });
 });
 
 test('개수 선택지는 API 범위 1~10과 같다', () => {
@@ -49,7 +25,7 @@ test('개수 선택지는 API 범위 1~10과 같다', () => {
 test('생성 한도 오류에는 사용자가 할 수 있는 다음 행동을 덧붙인다', () => {
     const message = describeFailure(GENERATION_LIMIT_CODE, '조건을 만족하는 조합을 모두 만들지 못했습니다.');
     assert.match(message, /^조건을 만족하는 조합을 모두 만들지 못했습니다\./);
-    assert.match(message, /개수를 줄이거나 조건을 완화해 보세요/);
+    assert.match(message, /개수를 줄여 보세요/);
 });
 
 test('그 밖의 오류 문구는 서버 문구 그대로다', () => {

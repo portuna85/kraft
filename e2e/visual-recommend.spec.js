@@ -10,8 +10,7 @@ import { test, expect } from './fixtures.js';
 test.use({ storageState: { cookies: [], origins: [] }, viewport: { width: 1280, height: 900 } });
 
 const RESPONSE = {
-    strategy: 'reduce_shared_winner_risk',
-    algorithmVersion: 'reduce-shared-winner-risk-v1',
+    algorithmVersion: 'uniform-random-v1',
     historyThroughRound: 30,
     historicalExclusionApplied: true,
     exclusionPolicyVersion: 'historical-first-prize-v1',
@@ -21,7 +20,7 @@ const RESPONSE = {
         [5, 11, 24, 33, 38, 45],
         [2, 9, 17, 26, 35, 40],
         [4, 14, 21, 29, 36, 44],
-    ].map((numbers, index) => ({ position: index + 1, numbers, score: null, explanationCodes: [] })),
+    ].map((numbers, index) => ({ position: index + 1, numbers })),
 };
 
 async function openWithResults(page) {

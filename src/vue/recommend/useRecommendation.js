@@ -4,7 +4,6 @@ import { api, messageOf } from '@core/http.js';
 import { API } from '@core/constants.js';
 import {
     DEFAULT_COUNT,
-    DEFAULT_STRATEGY,
     HISTORY_NOT_READY_CODE,
     buildRequest,
     describeFailure,
@@ -14,12 +13,9 @@ import {
  * @typedef {Object} RecommendationItem
  * @property {number} position
  * @property {number[]} numbers
- * @property {number|null} score
- * @property {string[]} explanationCodes
  */
 /**
  * @typedef {Object} RecommendationResponse
- * @property {string} strategy
  * @property {string} algorithmVersion
  * @property {number} historyThroughRound
  * @property {boolean} historicalExclusionApplied
@@ -28,12 +24,11 @@ import {
  */
 
 /**
- * 번호 추천 화면의 상태와 생성 흐름을 담는다. 추천 방식·개수는 화면이 고른 값을 그대로 요청에 싣는다
+ * 번호 추천 화면의 상태와 생성 흐름을 담는다. 추천 개수는 화면이 고른 값을 그대로 요청에 싣는다
  * ({@link buildRequest}). 응답 순서 번호로, 늦게 도착한 이전 요청의 결과를 무시한다.
  */
 export function useRecommendation() {
     const status = ref('idle'); // idle | generating | ready | history-not-ready | error
-    const strategy = ref(DEFAULT_STRATEGY);
     const count = ref(DEFAULT_COUNT);
     /** @type {import('vue').Ref<RecommendationResponse|null>} */
     const result = ref(null);
@@ -58,7 +53,6 @@ export function useRecommendation() {
         try {
             /** @type {RecommendationResponse} */
             const response = await api.post(API.NUMBERS_RECOMMEND, buildRequest({
-                strategy: strategy.value,
                 count: Number(count.value),
             }));
 
@@ -94,7 +88,6 @@ export function useRecommendation() {
 
     return {
         status,
-        strategy,
         count,
         result,
         errorMessage,

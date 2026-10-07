@@ -9,12 +9,7 @@ import { test, expect } from './fixtures.js';
  */
 test.use({ storageState: { cookies: [], origins: [] } });
 
-const DEFAULT_BODY = {
-    strategy: 'reduce_shared_winner_risk',
-    count: 5,
-    lockedNumbers: [],
-    excludedNumbers: [],
-};
+const DEFAULT_BODY = { count: 5 };
 
 /** count개 조합을 담은 성공 응답. 번호는 조합마다 달라 복사 내용을 가릴 수 있다. */
 function successResponse(count = 1) {
@@ -26,16 +21,13 @@ function successResponse(count = 1) {
         [4, 14, 21, 29, 36, 44],
     ];
     return {
-        strategy: 'reduce_shared_winner_risk',
-        algorithmVersion: 'reduce-shared-winner-risk-v1',
+        algorithmVersion: 'uniform-random-v1',
         historyThroughRound: 120,
         historicalExclusionApplied: true,
         exclusionPolicyVersion: 'historical-first-prize-v1',
         items: sets.slice(0, count).map((numbers, index) => ({
             position: index + 1,
             numbers,
-            score: 5,
-            explanationCodes: ['ODD_EVEN_BALANCED'],
         })),
     };
 }
@@ -138,7 +130,7 @@ test('이력이 준비되지 않으면 안내 문구를 보여준다', async ({ 
     await expect(page.locator('.recommend__notice')).toContainText('추천 이력이 아직 준비되지 않았습니다.');
 });
 
-test('추천 방식 3가지와 개수 선택이 있고, 기본값은 예전과 같은 조건이다', async ({ page }) => {
+test('추천 방식 선택은 없고 개수 선택만 있으며, 기본 요청은 5개다', async ({ page }) => {
     let body;
     await page.route('**/api/v1/numbers/recommend', async (route) => {
         body = route.request().postDataJSON();
@@ -146,9 +138,8 @@ test('추천 방식 3가지와 개수 선택이 있고, 기본값은 예전과 �
     });
 
     await page.goto('/recommend');
-    const radios = page.getByRole('radio');
-    await expect(radios).toHaveCount(3);
-    await expect(page.getByRole('radio', { name: /공동 당첨 위험 완화/ })).toBeChecked();
+    await expect(page.getByRole('radio')).toHaveCount(0);
+    await expect(page.getByText(/1등 당첨 조합 제외/).first()).toBeVisible();
     await expect(page.locator('#recommend-count')).toHaveValue('5');
 
     await page.locator('#btn-recommend-generate').focus();
@@ -158,7 +149,7 @@ test('추천 방식 3가지와 개수 선택이 있고, 기본값은 예전과 �
     expect(body).toEqual(DEFAULT_BODY);
 });
 
-test('고른 추천 방식과 개수가 요청에 그대로 실린다', async ({ page }) => {
+test('고른 개수가 요청에 그대로 실린다', async ({ page }) => {
     let body;
     await page.route('**/api/v1/numbers/recommend', async (route) => {
         body = route.request().postDataJSON();
@@ -166,22 +157,11 @@ test('고른 추천 방식과 개수가 요청에 그대로 실린다', async ({
     });
 
     await page.goto('/recommend');
-    // 사용자는 보이지 않는 라디오 입력이 아니라 카드를 누른다.
-    await page.locator('.recommend-mode', { hasText: '균형 조합' }).click();
-    await expect(page.getByRole('radio', { name: /균형 조합/ })).toBeChecked();
     await page.locator('#recommend-count').selectOption('3');
     await page.locator('#btn-recommend-generate').click();
 
     await expect(page.locator('.recommend__item')).toHaveCount(3);
-    expect(body).toEqual({ strategy: 'balanced', count: 3, lockedNumbers: [], excludedNumbers: [] });
-});
-
-test('추천 방식은 방향키로 고를 수 있다(라디오 그룹)', async ({ page }) => {
-    await page.goto('/recommend');
-    await page.getByRole('radio', { name: /공동 당첨 위험 완화/ }).focus();
-    await page.keyboard.press('ArrowDown');
-
-    await expect(page.getByRole('radio', { name: /균형 조합/ })).toBeChecked();
+    expect(body).toEqual({ count: 3 });
 });
 
 test('결과 행에는 A, B, C… 라벨이 붙고 숫자는 보조기기에 읽힌다', async ({ page }) => {

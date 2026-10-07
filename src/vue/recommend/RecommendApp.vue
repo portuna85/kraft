@@ -17,7 +17,6 @@ defineProps({
 
 const {
     status,
-    strategy,
     count,
     result,
     errorMessage,
@@ -40,7 +39,6 @@ watch(status, async (next) => {
 <template>
   <div class="recommend">
     <RecommendSettings
-      v-model:strategy="strategy"
       v-model:count="count"
       :history-round="historyRound"
       :generating="status === 'generating'"

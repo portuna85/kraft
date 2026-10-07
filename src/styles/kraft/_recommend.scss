@@ -119,98 +119,13 @@
     flex: none;
 }
 
-/* ---- 설정: 추천 방식 카드(라디오) ---- */
-.recommend__modes {
-    display: grid;
-    gap: var(--kraft-space-2);
-    margin: 0;
-    padding: 0;
-    border: 0;
-}
-
-.recommend-mode {
-    display: block;
-    cursor: pointer;
-}
-
-.recommend-mode__body {
-    display: flex;
-    align-items: center;
-    gap: var(--kraft-space-3);
-    padding: var(--kraft-space-3) var(--kraft-space-4);
-    border: 1px solid var(--kraft-border);
-    border-radius: var(--kraft-radius);
-    background-color: var(--kraft-surface);
-}
-
-.recommend-mode:hover .recommend-mode__body {
-    background-color: var(--kraft-surface-subtle);
-}
-
-// 선택 상태는 색만으로 전달하지 않는다 — 체크 원의 채움과 아이콘, 테두리가 함께 바뀐다.
-.recommend-mode input:checked + .recommend-mode__body {
-    background-color: var(--kraft-accent-soft-bg);
-    border-color: var(--kraft-primary);
-}
-
-.recommend-mode input:focus-visible + .recommend-mode__body {
-    outline: 2px solid var(--kraft-primary);
-    outline-offset: 2px;
-}
-
-.recommend-mode__check {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex: none;
-    width: 26px;
-    height: 26px;
-    border: 2px solid var(--kraft-control-border);
-    border-radius: 50%;
-    color: transparent;
-}
-
-.recommend-mode__check .recommend__icon {
-    width: 14px;
-    height: 14px;
-    stroke-width: 3;
-}
-
-.recommend-mode input:checked + .recommend-mode__body .recommend-mode__check {
-    background-color: var(--kraft-primary);
-    border-color: var(--kraft-primary);
-    color: var(--kraft-on-primary);
-}
-
-.recommend-mode__text {
-    display: grid;
-    min-width: 0;
-    flex: 1;
-}
-
-.recommend-mode__title {
-    font-weight: 700;
-}
-
-.recommend-mode input:checked + .recommend-mode__body .recommend-mode__title {
-    color: var(--kraft-accent-soft-text);
-}
-
-.recommend-mode__desc {
-    color: var(--kraft-text-muted);
-    font-size: $fs-xs;
-}
-
-.recommend-mode__tag {
-    flex: none;
-    color: var(--kraft-text-muted);
-    font-size: $fs-2xs;
-    font-weight: 600;
-}
-
 /* ---- 설정: 개수·안내·버튼 ---- */
 .recommend__field {
     margin-top: var(--kraft-space-5);
+}
+
+.recommend__field:first-child {
+    margin-top: 0;
 }
 
 .recommend__label {

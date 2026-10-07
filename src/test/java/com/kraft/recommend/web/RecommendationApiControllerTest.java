@@ -54,12 +54,12 @@ class RecommendationApiControllerTest {
     void recommend_withCsrfAndNoAuthentication_returns200() throws Exception {
         given(rateLimiter.tryAcquire(any())).willReturn(true);
         given(recommendationService.recommend(any())).willReturn(new RecommendResponseDto(
-                "random", "uniform-random-v1", 100, true, "historical-first-prize-v1",
-                List.of(new RecommendationItemDto(1, List.of(1, 2, 3, 4, 5, 6), null, List.of()))));
+                "uniform-random-v1", 100, true, "historical-first-prize-v1",
+                List.of(new RecommendationItemDto(1, List.of(1, 2, 3, 4, 5, 6)))));
 
         mockMvc.perform(post("/api/v1/numbers/recommend").with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.strategy").value("random"))
+                .andExpect(jsonPath("$.algorithmVersion").value("uniform-random-v1"))
                 .andExpect(jsonPath("$.items[0].numbers[0]").value(1));
     }
 
@@ -68,14 +68,14 @@ class RecommendationApiControllerTest {
     void recommend_whenValidationFails_returns400WithCode() throws Exception {
         given(rateLimiter.tryAcquire(any())).willReturn(true);
         given(recommendationService.recommend(any()))
-                .willThrow(new RecommendationValidationException("INVALID_RECOMMENDATION_STRATEGY", "지원하지 않는 전략입니다."));
+                .willThrow(new RecommendationValidationException("INVALID_RECOMMENDATION_REQUEST", "count는 1~10 사이여야 합니다."));
 
         mockMvc.perform(post("/api/v1/numbers/recommend")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"strategy\":\"maximizePrize\"}"))
+                        .content("{\"count\":5}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_RECOMMENDATION_STRATEGY"));
+                .andExpect(jsonPath("$.code").value("INVALID_RECOMMENDATION_REQUEST"));
     }
 
     @Test

@@ -6,7 +6,6 @@ import com.kraft.recommend.domain.RecommendationHistoryState;
 import com.kraft.recommend.domain.RecommendationHistoryStateRepository;
 import com.kraft.recommend.domain.WinningDraw;
 import com.kraft.recommend.domain.WinningDrawRepository;
-import com.kraft.recommend.dto.RecommendRequestDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,9 +26,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * B14/P3(방어적 복사)가 각 타입의 생성자 안에서 끝나는 게 아니라, 실제 저장·조회·검증·생성
  * 경로를 통째로 거치는 동안에도 지켜지는지 확인한다. 각 타입은 이미 단위 테스트가 있지만
- * ({@link LottoNumbers}, {@link RecommendationHistorySnapshot}, {@link ImportedDraw},
- * {@link NormalizedRecommendationRequest}), 여기서는 Mock 없이 실제 JPA 저장소와 실제 협력
- * 객체(Importer → Provider → Validator → CandidateGenerator)를 그대로 이어 붙여 두 가지를
+ * ({@link LottoNumbers}, {@link RecommendationHistorySnapshot}, {@link ImportedDraw}),
+ * 여기서는 Mock 없이 실제 JPA 저장소와 실제 협력
+ * 객체(Importer → Provider → CandidateGenerator)를 그대로 이어 붙여 두 가지를
  * 검증한다: (1) 호출부가 원본을 나중에 바꿔도 이미 저장·캐시된 값은 영향받지 않는지,
  * (2) 돌려받은 값을 직접 바꾸려 하면 실제로 막히는지.
  */
@@ -48,7 +47,6 @@ class B14DefensiveCopyIntegrationTest {
     private RecommendationHistoryImporter importer;
     private RecommendationHistoryProvider provider;
 
-    private final RecommendationRequestValidator validator = new RecommendationRequestValidator();
     private final RecommendationCandidateGenerator generator =
             new RecommendationCandidateGenerator(() -> new Random(42L));
 
@@ -95,21 +93,11 @@ class B14DefensiveCopyIntegrationTest {
     }
 
     @Test
-    @DisplayName("검증된 요청의 고정·제외 번호 집합은 바꿀 수 없고, 후보 생성기가 실제로 반환한 조합도 마찬가지다")
-    void normalizedRequestAndGeneratedCandidates_areBothImmutable() {
-        RecommendRequestDto dto = new RecommendRequestDto(
-                3, "random", new ArrayList<>(List.of(1, 2)), new ArrayList<>(List.of(3, 4, 5)));
-
-        NormalizedRecommendationRequest request = validator.validate(dto);
-
-        assertThatThrownBy(() -> request.lockedNumbers().add(10))
-                .isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(() -> request.excludedNumbers().add(10))
-                .isInstanceOf(UnsupportedOperationException.class);
-
+    @DisplayName("후보 생성기가 실제로 반환한 조합은 바깥에서 바꿀 수 없다")
+    void generatedCandidates_areImmutable() {
         RecommendationHistorySnapshot emptyHistory =
                 new RecommendationHistorySnapshot(Set.of(), 1, 1, 1, 1L, Instant.now());
-        List<LottoNumbers> generated = generator.generateRandom(request, emptyHistory, Long.MAX_VALUE);
+        List<LottoNumbers> generated = generator.generate(3, emptyHistory);
 
         assertThat(generated).isNotEmpty();
         for (LottoNumbers combo : generated) {
