@@ -186,6 +186,7 @@ class CommentApiControllerTest {
         mockMvc.perform(put("/api/v1/comments/1")
                         .with(user("intruder@example.com"))
                         .with(csrf())
+                        .header("If-Match", "\"0\"")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"해킹\",\"version\":0}"))
                 .andExpect(status().isForbidden())
@@ -255,5 +256,18 @@ class CommentApiControllerTest {
                 .andExpect(status().isPreconditionFailed())
                 .andExpect(jsonPath("$.code").value("EDIT_CONFLICT"))
                 .andExpect(jsonPath("$.detail").value("다른 곳에서 이미 수정된 댓글입니다. 새로고침 후 다시 시도해 주세요."));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/comments/{id} 는 옛 화면처럼 본문 version만 보내면 428이다 — 새로고침 안내가 뜬다")
+    void updateComment_withOnlyBodyVersion_returns428() throws Exception {
+        mockMvc.perform(put("/api/v1/comments/1")
+                        .with(user("tester@example.com")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\":\"수정\",\"version\":3}"))
+                .andExpect(status().isPreconditionRequired())
+                .andExpect(jsonPath("$.code").value("VERSION_REQUIRED"));
+
+        verify(commentService, never()).update(any(), any(), any(), any());
     }
 }

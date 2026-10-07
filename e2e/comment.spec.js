@@ -507,9 +507,9 @@ test('F02·F03 회귀: 새 답글을 쓴 뒤 답글 더 보기로 빠짐없이 �
     await expect(page.locator('#comments-heading')).toContainText('댓글 22개');
 });
 
-// 평가 보고서 2026-09-25 F11: 수정 요청은 version이 필수다. 방금 이 화면에서 단 답글도 등록
+// 평가 보고서 2026-09-25 F11: 수정 요청은 기준 버전(If-Match)이 필수다. 방금 이 화면에서 단 답글도 등록
 // 응답의 version을 들고 있어, 새로고침 없이 곧바로 수정할 수 있어야 한다.
-test('F11: 방금 단 답글을 새로고침 없이 바로 수정할 수 있다(version 포함)', async ({ page }) => {
+test('F11: 방금 단 답글을 새로고침 없이 바로 수정할 수 있다(If-Match 포함)', async ({ page }) => {
     await openOwnPost(page);
     await page.locator('#comment-content').fill('부모 댓글');
     await page.locator('#btn-comment-save').click();
@@ -528,10 +528,9 @@ test('F11: 방금 단 답글을 새로고침 없이 바로 수정할 수 있다(
     await reply.locator('.btn-comment-save').click();
 
     const request = await putBody;
-    const version = request.postDataJSON().version;
-    expect(version).toEqual(expect.any(Number));
-    // 같은 버전을 If-Match로도 보낸다(기준 버전은 헤더가 우선이고 본문은 전환기 폴백이다).
-    expect(request.headers()['if-match']).toBe(`"${version}"`);
+    // 기준 버전은 If-Match 헤더로만 보낸다 — 본문에는 version이 없다.
+    expect(request.headers()['if-match']).toMatch(/^"\d+"$/);
+    expect(request.postDataJSON()).not.toHaveProperty('version');
     await expect(reply.locator('.comment-list__content')).toHaveText('수정 후 답글');
 });
 

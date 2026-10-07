@@ -98,7 +98,7 @@ class PostViewCountIsolationTest {
 
             // 그 사이 별도 트랜잭션이 제목·본문·분류를 저장하고 커밋한다.
             requiresNew.executeWithoutResult(inner ->
-                    postService.update(id, new PostUpdateRequestDto("새 제목", "새 내용", null, null, null, Category.QNA, null), owner));
+                    postService.update(id, new PostUpdateRequestDto("새 제목", "새 내용", null, null, null, Category.QNA), null, owner));
 
             // 이제 열람이 조회수를 올린다. 예전에는 이 시점에 stale의 제목·본문·분류가 함께
             // UPDATE에 실려 방금 저장한 내용을 되돌렸다.
@@ -135,7 +135,7 @@ class PostViewCountIsolationTest {
 
             // 이제 편집이 저장된다. update()가 같은 영속성 컨텍스트의 위 "editing" 인스턴스를
             // 그대로 재사용하므로(1차 캐시), 이 시점에도 그 인스턴스의 viewCount는 여전히 0이다.
-            postService.update(id, new PostUpdateRequestDto("새 제목", "새 내용", null, null, null, Category.QNA, version), owner);
+            postService.update(id, new PostUpdateRequestDto("새 제목", "새 내용", null, null, null, Category.QNA), version, owner);
         });
 
         Post result = postRepository.findById(id).orElseThrow();
@@ -178,10 +178,10 @@ class PostViewCountIsolationTest {
         Long id = savePost("제목", "내용", Category.FREE);
         Long versionAtEditStart = postQueryService.findByIdForView(id, owner).version();
 
-        postService.update(id, new PostUpdateRequestDto("먼저 저장", "내용", null, null, null, null, versionAtEditStart), owner);
+        postService.update(id, new PostUpdateRequestDto("먼저 저장", "내용", null, null, null, null), versionAtEditStart, owner);
 
         assertThatThrownBy(() -> postService.update(id,
-                new PostUpdateRequestDto("나중 저장", "내용", null, null, null, null, versionAtEditStart), owner))
+                new PostUpdateRequestDto("나중 저장", "내용", null, null, null, null), versionAtEditStart, owner))
                 .isInstanceOf(OptimisticLockingFailureException.class);
 
         assertThat(postRepository.findById(id).orElseThrow().getTitle()).isEqualTo("먼저 저장");
@@ -194,7 +194,7 @@ class PostViewCountIsolationTest {
         Long version = postQueryService.findByIdForView(id, owner).version();
         postQueryService.findByIdForView(id, owner);
 
-        postService.update(id, new PostUpdateRequestDto("수정됨", "내용", null, null, null, null, version), owner);
+        postService.update(id, new PostUpdateRequestDto("수정됨", "내용", null, null, null, null), version, owner);
 
         assertThat(postRepository.findById(id).orElseThrow().getTitle()).isEqualTo("수정됨");
     }

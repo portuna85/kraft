@@ -153,7 +153,9 @@ const { submit } = usePostSubmit({
 function onSubmit() {
     // 업로드를 기다리는 동안 입력을 잠그지만(:disabled="saving"), 등록 화면과 동일하게
     // 제출 시점 값을 한 번 더 스냅샷으로 고정해 둔다 — 최종 요청은 항상 이 스냅샷을 쓴다(F02).
-    const snapshot = { title: draft.title, content: draft.content, category: draft.category, version: version.value };
+    const snapshot = { title: draft.title, content: draft.content, category: draft.category };
+    // 기준 버전은 요청 본문이 아니라 If-Match 헤더로만 보낸다 — 이 값도 제출 시점에 고정해 둔다.
+    const baseVersion = version.value;
 
     return submit({
         // 새 파일을 고르지 않았으면 기존 사진을 지웠는지, 그대로 두는지에 따라 정한다.
@@ -164,13 +166,12 @@ function onSubmit() {
                 pictureWidth: props.post.pictureWidth ?? null,
                 pictureHeight: props.post.pictureHeight ?? null,
             },
-        // 편집을 시작할 때 받아간 버전(snapshot.version)을 If-Match로 보내 "이 버전을 기준으로 고친다"고
-        // 밝힌다. 그 사이 다른 곳에서 저장됐으면 서버가 412로 거절한다(저장 시점에 겹치면 409). 본문에도
-        // version을 함께 싣는다 — 배포 전후로 서버를 되돌려도 동작하게 하는 전환기 폴백이다.
+        // 편집을 시작할 때 받아간 버전(baseVersion)을 If-Match로 보내 "이 버전을 기준으로 고친다"고
+        // 밝힌다. 그 사이 다른 곳에서 저장됐으면 서버가 412로 거절한다(저장 시점에 겹치면 409).
         send: (pictureFields) => api.put(
             `${API.POSTS}/${props.post.id}`,
             { ...snapshot, ...pictureFields },
-            { headers: ifMatchHeaders(snapshot.version) },
+            { headers: ifMatchHeaders(baseVersion) },
         ),
         onSuccess: () => {
             picture.revokePreview();

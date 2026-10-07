@@ -26,21 +26,19 @@ public final class EntityTags {
     }
 
     /**
-     * 수정 요청의 기준 버전을 정한다. {@code If-Match} 헤더가 있으면 그것이 우선이고, 없으면 전환기 폴백으로
-     * 본문 {@code version}을 쓴다(배포 전에 열어 둔 탭의 옛 화면이 아직 본문 버전만 보낸다). 둘 다 없으면
-     * 428이다.
+     * 수정 요청의 기준 버전을 {@code If-Match} 헤더에서 읽는다. 헤더가 없으면 428이다 — 기준 없이 받으면 오래된
+     * 화면이 다른 사람의 저장을 말없이 덮어쓴다. 배포 직전까지 열려 있던 옛 화면은 헤더 없이 본문
+     * {@code version}만 보내는데, 그 요청도 428로 거절되고 화면에는 새로고침 안내가 뜬다(본문 {@code version}은
+     * 더 이상 읽지 않는다).
      *
      * @return 기준 버전. {@code If-Match: *}는 "존재하기만 하면 된다"는 뜻이라 {@code null}(검사 생략)이다.
-     * @throws PreconditionRequiredException 헤더도 본문 버전도 없을 때
+     * @throws PreconditionRequiredException 헤더가 없거나 비어 있을 때
      */
-    public static Long expectedVersion(String ifMatch, Long bodyVersion) {
-        if (ifMatch != null && !ifMatch.isBlank()) {
-            return parse(ifMatch);
+    public static Long expectedVersion(String ifMatch) {
+        if (ifMatch == null || ifMatch.isBlank()) {
+            throw new PreconditionRequiredException("수정할 대상의 버전 정보가 필요합니다. 화면을 새로고침한 뒤 다시 시도하세요.");
         }
-        if (bodyVersion != null) {
-            return bodyVersion;
-        }
-        throw new PreconditionRequiredException("수정할 대상의 버전 정보가 필요합니다. 화면을 새로고침한 뒤 다시 시도하세요.");
+        return parse(ifMatch);
     }
 
     /** {@code "3"}, {@code W/"3"}를 3으로 읽는다. {@code *}는 null, 그 밖의 형식은 {@link #NO_MATCH}다. */

@@ -129,17 +129,9 @@ public class PostService {
      * 정지된 계정도 이 경로로 자신의 기존 글을 계속 바꿀 수 있었다 — 생성·업로드만 작성
      * 정책을 검사하고 수정은 소유권만 봤기 때문이다. 삭제는 의도적으로 그대로 둔다 —
      * 정지된 사용자도 자신의 글을 지우는 것까지 막지는 않는다.
-     */
-    @CacheEvict(value = "pinnedPosts", allEntries = true)
-    @Transactional
-    public Long update(Long id, PostUpdateRequestDto requestDto, Authentication authentication) {
-        return update(id, requestDto, requestDto.version(), authentication).id();
-    }
-
-    /**
-     * 기준 버전을 따로 받는 수정. 컨트롤러가 {@code If-Match} 헤더(없으면 본문 버전)에서 정한 값을 넘긴다.
-     * 저장 직후 flush해 확정된 새 버전을 돌려준다 — 응답 ETag가 이 값이고, 변경이 없어 UPDATE가 나가지 않은
-     * 경우에도 지금 DB의 버전이 그대로 담긴다.
+     * <p>
+     * 기준 버전은 컨트롤러가 {@code If-Match} 헤더에서 읽어 넘긴다. 저장 직후 flush해 확정된 새 버전을 돌려준다 —
+     * 응답 ETag가 이 값이고, 변경이 없어 UPDATE가 나가지 않은 경우에도 지금 DB의 버전이 그대로 담긴다.
      *
      * @param expectedVersion 이 버전을 기준으로 고친다는 뜻. {@code null}이면 검사하지 않는다.
      */

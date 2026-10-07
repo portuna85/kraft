@@ -71,7 +71,7 @@ public class CommentApiController {
                                                   @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch,
                                                   Authentication authentication) {
         CommentViewDto saved = commentService.update(
-                id, requestDto, EntityTags.expectedVersion(ifMatch, requestDto.version()), authentication);
+                id, requestDto, EntityTags.expectedVersion(ifMatch), authentication);
         return ResponseEntity.ok().eTag(EntityTags.of(saved.version())).body(saved);
     }
 

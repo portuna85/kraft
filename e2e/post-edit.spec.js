@@ -114,8 +114,7 @@ test('제목·본문·분류를 바꿔 저장하면 반영된다', async ({ page
 });
 
 /**
- * 수정 요청은 "이 버전을 기준으로 고친다"를 If-Match 헤더로 밝힌다. 본문 version은 배포 전후로 서버를 되돌려도
- * 동작하게 하는 전환기 폴백이라 함께 실려야 한다.
+ * 수정 요청은 "이 버전을 기준으로 고친다"를 If-Match 헤더로만 밝힌다. 본문에는 version이 없다.
  */
 test('저장 요청이 편집을 시작할 때의 글 버전을 If-Match로 보낸다', async ({ page }) => {
     await createOwnPost(page, uniqueTitle('조건부'));
@@ -126,9 +125,8 @@ test('저장 요청이 편집을 시작할 때의 글 버전을 If-Match로 보�
     await page.locator('#btn-update').click();
 
     const request = await putRequest;
-    const version = request.postDataJSON().version;
-    expect(version).toEqual(expect.any(Number));
-    expect(request.headers()['if-match']).toBe(`"${version}"`);
+    expect(request.headers()['if-match']).toMatch(/^"\d+"$/);
+    expect(request.postDataJSON()).not.toHaveProperty('version');
     await page.waitForURL(/\/posts\/update\/\d+$/);
     await expect(page.locator('#flash')).toContainText('글이 수정되었습니다.');
 });

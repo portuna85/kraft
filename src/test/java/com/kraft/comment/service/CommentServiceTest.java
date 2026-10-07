@@ -303,7 +303,7 @@ class CommentServiceTest {
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
 
-        CommentViewDto result = commentService.update(100L, new CommentUpdateRequestDto("수정된 댓글", null),
+        CommentViewDto result = commentService.update(100L, new CommentUpdateRequestDto("수정된 댓글"), null,
                 authOf(owner));
 
         assertThat(result.id()).isEqualTo(100L);
@@ -323,7 +323,7 @@ class CommentServiceTest {
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
 
-        commentService.update(100L, new CommentUpdateRequestDto("수정된 댓글", 5L),
+        commentService.update(100L, new CommentUpdateRequestDto("수정된 댓글"), 5L,
                 authOf(owner));
 
         assertThat(comment.getContent()).isEqualTo("수정된 댓글");
@@ -343,7 +343,7 @@ class CommentServiceTest {
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
 
-        assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("수정된 댓글", 4L),
+        assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("수정된 댓글"), 4L,
                 authOf(owner)))
                 .isInstanceOf(org.springframework.orm.ObjectOptimisticLockingFailureException.class);
 
@@ -359,7 +359,7 @@ class CommentServiceTest {
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
         given(userRepository.findById(2L)).willReturn(Optional.of(intruder));
 
-        assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("해킹", null),
+        assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("해킹"), null,
                 authOf(intruder)))
                 .isInstanceOf(AccessDeniedException.class);
 
@@ -376,7 +376,7 @@ class CommentServiceTest {
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
         given(userRepository.findById(2L)).willReturn(Optional.of(admin));
 
-        commentService.update(100L, new CommentUpdateRequestDto("관리자 수정", null),
+        commentService.update(100L, new CommentUpdateRequestDto("관리자 수정"), null,
                 authOf(admin));
 
         assertThat(comment.getContent()).isEqualTo("관리자 수정");
@@ -391,7 +391,7 @@ class CommentServiceTest {
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
 
-        assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("수정 시도", null),
+        assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("수정 시도"), null,
                 authOf(owner)))
                 .isInstanceOf(AccessDeniedException.class);
 
@@ -483,7 +483,7 @@ class CommentServiceTest {
         given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
         given(userRepository.findById(any())).willReturn(Optional.of(owner));
 
-        assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("수정 시도", null),
+        assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("수정 시도"), null,
                 authOf(owner)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("삭제된 댓글");
@@ -530,7 +530,7 @@ class CommentServiceTest {
         ReflectionTestUtils.setField(comment.getPost(), "deletedAt", java.time.LocalDateTime.now());
         given(commentRepository.findById(5L)).willReturn(Optional.of(comment));
 
-        assertThatThrownBy(() -> commentService.update(5L, new CommentUpdateRequestDto("새 내용", 0L), authOf(owner)))
+        assertThatThrownBy(() -> commentService.update(5L, new CommentUpdateRequestDto("새 내용"), 0L, authOf(owner)))
                 .isInstanceOf(PostNotFoundException.class);
     }
 
@@ -611,7 +611,7 @@ class CommentServiceTest {
         given(commentRepository.findById(5L)).willReturn(Optional.of(comment));
         given(userRepository.findById(1L)).willReturn(Optional.of(author));
 
-        assertThatThrownBy(() -> commentService.update(5L, new CommentUpdateRequestDto("새 내용", 0L), authOf(author)))
+        assertThatThrownBy(() -> commentService.update(5L, new CommentUpdateRequestDto("새 내용"), 0L, authOf(author)))
                 .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
         assertThatThrownBy(() -> commentService.delete(5L, authOf(author)))
                 .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
@@ -653,7 +653,7 @@ class CommentServiceTest {
         ReflectionTestUtils.setField(comment.getPost(), "blindedAt", java.time.LocalDateTime.now());
         given(commentRepository.findById(5L)).willReturn(Optional.of(comment));
 
-        assertThatThrownBy(() -> commentService.update(5L, new CommentUpdateRequestDto("새 내용", 0L), authOf(owner)))
+        assertThatThrownBy(() -> commentService.update(5L, new CommentUpdateRequestDto("새 내용"), 0L, authOf(owner)))
                 .isInstanceOf(PostNotFoundException.class);
     }
 }

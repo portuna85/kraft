@@ -125,14 +125,10 @@ async function save() {
     const requestVersion = props.comment.version;
     saving.value = true;
     try {
-        const saved = await api.put(`${API.COMMENTS}/${props.comment.id}`, {
-            content,
-            // 편집을 시작할 때 받아간 버전. 서버는 기준 버전 없는 수정을 받지 않는다(F11) — 방금 이
-            // 화면에서 만든 댓글·답글도 등록 응답(CommentViewDto)의 version을 그대로 들고 있다.
-            // 본문 version은 배포 전후로 서버를 되돌려도 동작하게 하는 전환기 폴백이다.
-            version: requestVersion,
-        }, {
-            // 같은 값을 If-Match로도 보낸다. 그 사이 다른 곳에서 저장됐으면 서버가 412로 거절한다(B12).
+        const saved = await api.put(`${API.COMMENTS}/${props.comment.id}`, { content }, {
+            // 편집을 시작할 때 받아간 버전을 If-Match로 보낸다. 서버는 기준 버전 없는 수정을 받지 않는다(F11) —
+            // 방금 이 화면에서 만든 댓글·답글도 등록 응답(CommentViewDto)의 version을 그대로 들고 있다. 그 사이
+            // 다른 곳에서 저장됐으면 서버가 412로 거절한다(B12).
             headers: ifMatchHeaders(requestVersion),
         });
         // 서버가 실제로 반영한 version을 그대로 쓴다(개선 보고서 COR-05) — 예전에는

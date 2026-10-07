@@ -54,7 +54,7 @@ public class PostApiController {
                                         @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch,
                                         Authentication authentication) {
         PostService.PostUpdateResult result = postService.update(
-                id, requestDto, EntityTags.expectedVersion(ifMatch, requestDto.version()), authentication);
+                id, requestDto, EntityTags.expectedVersion(ifMatch), authentication);
         return ResponseEntity.ok().eTag(EntityTags.of(result.version())).body(result.id());
     }
 

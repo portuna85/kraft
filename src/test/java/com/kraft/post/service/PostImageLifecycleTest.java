@@ -274,7 +274,7 @@ class PostImageLifecycleTest {
         // 이미지를 교체한 뒤 같은 트랜잭션을 롤백시킨다. 예전에는 update()가 커밋 전에 파일을
         // 지웠기 때문에, DB는 기존 이미지를 가리키는 상태로 되돌아오는데 파일은 이미 없었다.
         transactionTemplate.executeWithoutResult(status -> {
-            postService.update(postId, new PostUpdateRequestDto("제목", "내용", newUrl, null, null, null, null), alice);
+            postService.update(postId, new PostUpdateRequestDto("제목", "내용", newUrl, null, null, null), null, alice);
             status.setRollbackOnly();
         });
 
@@ -290,7 +290,7 @@ class PostImageLifecycleTest {
         Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", oldUrl, null, null, null));
         String newUrl = postService.uploadImage(imageFile(), alice).url();
 
-        postService.update(postId, new PostUpdateRequestDto("제목", "내용", newUrl, null, null, null, null), alice);
+        postService.update(postId, new PostUpdateRequestDto("제목", "내용", newUrl, null, null, null), null, alice);
 
         assertThat(fileOf(oldUrl)).doesNotExist();
         assertThat(fileOf(newUrl)).exists();
@@ -425,7 +425,7 @@ class PostImageLifecycleTest {
         jdbcTemplate.update("UPDATE post_images SET status = 'PENDING_DELETE' WHERE file_name = ?",
                 fileNameOf(unrelatedUrl));
 
-        postService.update(postId, new PostUpdateRequestDto("제목", "내용", newUrl, null, null, null, null), alice);
+        postService.update(postId, new PostUpdateRequestDto("제목", "내용", newUrl, null, null, null), null, alice);
 
         // 이번 요청이 표시한 것만 곧바로 지워진다.
         assertThat(fileOf(oldUrl)).doesNotExist();

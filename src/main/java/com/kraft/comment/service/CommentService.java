@@ -104,21 +104,12 @@ public class CommentService {
      * 정지된 계정도 이 경로로 자신의 기존 댓글을 계속 바꿀 수 있었다 — 작성만 작성 정책을
      * 검사하고 수정은 소유권만 봤기 때문이다. 삭제는 의도적으로 그대로 둔다 — 정지된
      * 사용자도 자신의 댓글을 지우는 것까지 막지는 않는다.
-     */
-    /**
+     * <p>
      * 확정된 version을 응답에 실어 돌려준다(개선 보고서 COR-05) — 예전에는 id만 돌려줘서,
      * 화면이 "받았던 version + 1"로 다음 버전을 추측했다. 내용이 실제로 바뀌지 않으면
      * Hibernate가 UPDATE 자체를 내지 않아 버전이 그대로인데, 그 추측은 +1로 어긋나 바로 다음
-     * 정상 수정이 가짜 409를 받았다. flush로 실제 반영 여부와 무관하게 지금 DB가 들고 있는
-     * version을 그 자리에서 읽는다.
-     */
-    @Transactional
-    public CommentViewDto update(Long id, CommentUpdateRequestDto requestDto, Authentication authentication) {
-        return update(id, requestDto, requestDto.version(), authentication);
-    }
-
-    /**
-     * 기준 버전을 따로 받는 수정. 컨트롤러가 {@code If-Match} 헤더(없으면 본문 버전)에서 정한 값을 넘긴다.
+     * 정상 수정이 가짜 충돌을 받았다. flush로 실제 반영 여부와 무관하게 지금 DB가 들고 있는
+     * version을 그 자리에서 읽는다. 기준 버전은 컨트롤러가 {@code If-Match} 헤더에서 읽어 넘긴다.
      *
      * @param expectedVersion 이 버전을 기준으로 고친다는 뜻. {@code null}이면 검사하지 않는다.
      */

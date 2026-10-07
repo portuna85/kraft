@@ -6,8 +6,8 @@ package com.kraft.shared.domain;
  * {@code ApiExceptionHandler}가 412로 변환한다 — 이 검사를 통과한 뒤 저장 시점(flush)에 겹친 저장이 있었다면
  * JPA가 던지는 낙관적 잠금 예외가 409로 나간다.
  * <p>
- * 기준 버전이 없는 요청은 컨트롤러가 428로 거절한다({@code EntityTags.expectedVersion}). null은 API를 거치지
- * 않는 내부 호출과 {@code If-Match: *}만 해당하며 그때는 검사하지 않는다.
+ * 기준 버전이 없는 요청은 컨트롤러가 428로 거절한다({@code EntityTags.expectedVersion}). null은 {@code If-Match: *}와
+ * 서비스를 직접 부르는 내부 호출만 해당하며 그때는 검사하지 않는다.
  */
 public final class VersionCheck {
 

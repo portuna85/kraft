@@ -332,6 +332,7 @@ class PostApiControllerTest {
         mockMvc.perform(put("/api/v1/posts/1")
                         .with(user("intruder@example.com"))
                         .with(csrf())
+                        .header("If-Match", "\"0\"")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"해킹\",\"content\":\"해킹\",\"version\":0}"))
                 .andExpect(status().isForbidden())
@@ -347,13 +348,14 @@ class PostApiControllerTest {
         mockMvc.perform(put("/api/v1/posts/1")
                         .with(user("tester@example.com"))
                         .with(csrf())
+                        .header("If-Match", "\"0\"")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"제목\",\"content\":\"내용\",\"picture\":\"/images/new.png\",\"version\":0}"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("1"));
 
         var captor = org.mockito.ArgumentCaptor.forClass(PostUpdateRequestDto.class);
-        // If-Match가 없으면 전환기 폴백으로 본문 version(0)이 기준 버전이다.
+        // 기준 버전은 If-Match 헤더에서 읽는다(본문의 옛 version 필드는 무시된다).
         verify(postService).update(eq(1L), captor.capture(), eq(0L), any(Authentication.class));
         assertThat(captor.getValue().picture()).isEqualTo("/images/new.png");
     }
@@ -487,6 +489,7 @@ class PostApiControllerTest {
         mockMvc.perform(put("/api/v1/posts/1")
                         .with(user("tester@example.com"))
                         .with(csrf())
+                        .header("If-Match", "\"1\"")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"제목\",\"content\":\"내용\",\"version\":1}"))
                 .andExpect(status().isConflict())
@@ -516,8 +519,8 @@ class PostApiControllerTest {
     }
 
     @Test
-    @DisplayName("PUT /api/v1/posts/{id} 는 If-Match가 본문 version보다 우선하고, 약한 표기(W/)와 *도 받는다")
-    void updatePost_ifMatchTakesPrecedenceOverBodyVersion() throws Exception {
+    @DisplayName("PUT /api/v1/posts/{id} 는 If-Match만 기준으로 삼고(본문 version은 무시), 약한 표기(W/)와 *도 받는다")
+    void updatePost_usesOnlyIfMatch() throws Exception {
         given(postService.update(any(), any(PostUpdateRequestDto.class), any(), any(Authentication.class)))
                 .willReturn(new PostService.PostUpdateResult(1L, 9L));
 
@@ -527,6 +530,7 @@ class PostApiControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"제목\",\"content\":\"내용\",\"version\":2}"))
                 .andExpect(status().isOk());
+        // 본문의 version(2)이 아니라 헤더(7)가 기준이다.
         verify(postService).update(eq(1L), any(PostUpdateRequestDto.class), eq(7L), any(Authentication.class));
 
         // If-Match: * 는 존재하기만 하면 된다는 뜻이라 버전 검사를 건너뛴다(null).
@@ -537,6 +541,20 @@ class PostApiControllerTest {
                         .content(UPDATE_BODY_WITHOUT_VERSION))
                 .andExpect(status().isOk());
         verify(postService).update(eq(2L), any(PostUpdateRequestDto.class), isNull(), any(Authentication.class));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/posts/{id} 는 옛 화면처럼 본문 version만 보내면 428이다 — 새로고침 안내가 뜬다")
+    void updatePost_withOnlyBodyVersion_returns428() throws Exception {
+        mockMvc.perform(put("/api/v1/posts/1")
+                        .with(user("tester@example.com")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"제목\",\"content\":\"내용\",\"version\":3}"))
+                .andExpect(status().isPreconditionRequired())
+                .andExpect(jsonPath("$.code").value("VERSION_REQUIRED"))
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("새로고침")));
+
+        verify(postService, never()).update(any(), any(), any(), any());
     }
 
     @Test

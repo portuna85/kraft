@@ -132,6 +132,7 @@ class SessionRevocationAccountIsolationTest {
         int updateStatus = mockMvc.perform(put("/api/v1/posts/" + postId)
                         .cookie(oldSession)
                         .with(csrf())
+                        .header("If-Match", "\"0\"")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"가로채기\",\"content\":\"가로채기 내용\",\"version\":0}"))
                 .andReturn().getResponse().getStatus();
