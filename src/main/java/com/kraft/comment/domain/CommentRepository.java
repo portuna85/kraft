@@ -182,4 +182,18 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
         Long getCount();
     }
+
+    /**
+     * 관리자가 댓글을 숨긴다(신고 처리). {@code Comment.blindedAt}이 {@code updatable = false}라 엔티티로는
+     * 바꿀 수 없고, 이 전용 UPDATE만 쓴다. {@code clearAutomatically}는 쓰지 않는다 — 신고 처리가 미리 읽어
+     * 둔 엔티티를 떼어 낸다. 이미 숨겨졌으면 0을 돌려준다.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("UPDATE Comment c SET c.blindedAt = :now WHERE c.id = :id AND c.blindedAt IS NULL")
+    int blind(@Param("id") Long id, @Param("now") java.time.LocalDateTime now);
+
+    /** 숨김을 푼다. 숨겨진 댓글이 아니면 0을 돌려준다. */
+    @Modifying(flushAutomatically = true)
+    @Query("UPDATE Comment c SET c.blindedAt = NULL WHERE c.id = :id AND c.blindedAt IS NOT NULL")
+    int unblind(@Param("id") Long id);
 }

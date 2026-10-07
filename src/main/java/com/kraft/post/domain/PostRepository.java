@@ -19,12 +19,14 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     /**
      * 일반 사용자에게 보여줄 글의 조건. 목록·검색·인기글·공지·관련 글·sitemap·조회수 증가가 모두 이
-     * 조건을 거친다 — 소프트 삭제된 글이 어느 한 곳에서라도 새면 지운 글이 목록에 남는다.
+     * 조건을 거친다 — 소프트 삭제되거나 관리자가 숨긴 글이 어느 한 곳에서라도 새면 목록에 남는다.
+     * 숨김은 관리자 여부와 무관하게 목록에서 뺀다: 목록·인기글·공지는 사용자 구분 없이 캐시를 공유하기
+     * 때문이다. 관리자는 신고 화면이나 주소로 들어간다.
      * {@code @SQLRestriction}을 쓰지 않는 이유는 복구·영구 삭제·관리자 상세가 숨겨진 행을 일부러
      * 읽어야 하고, to-one 지연 로딩이 걸러진 행을 가리킬 수 있어서다. 이 조건을 빠뜨리지 않았는지는
      * {@code PostRepositoryVisibilityGuardTest}가 지킨다. 끝에 공백이 있어 바로 이어 붙인다.
      */
-    String VISIBLE = "p.deletedAt IS NULL ";
+    String VISIBLE = "p.deletedAt IS NULL AND p.blindedAt IS NULL ";
 
     /** {@link #search}·{@link #searchWithoutCount}가 공유하는 SELECT. 두 쿼리가 어긋나지 않게 한 곳에 둔다. */
     String SEARCH_SELECT = "SELECT new com.kraft.post.dto.PostRowDto("
@@ -142,7 +144,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      * 조회수를 그대로 갖게 한다.
      */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("UPDATE Post p SET p.viewCount = p.viewCount + 1 WHERE p.id = :id AND p.deletedAt IS NULL")
+    @Query("UPDATE Post p SET p.viewCount = p.viewCount + 1 WHERE p.id = :id AND " + VISIBLE)
     int increaseViewCount(@Param("id") Long id);
 
     /**
@@ -183,6 +185,19 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Modifying(flushAutomatically = true)
     @Query("UPDATE Post p SET p.deletedAt = :now WHERE p.id = :id AND p.deletedAt IS NULL")
     int softDelete(@Param("id") Long id, @Param("now") LocalDateTime now);
+
+    /**
+     * 관리자가 글을 숨긴다(신고 처리). {@link #softDelete}와 같은 이유로 전용 UPDATE만 쓴다. 이미 숨겨졌거나
+     * 삭제된 글이면 0을 돌려준다.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("UPDATE Post p SET p.blindedAt = :now WHERE p.id = :id AND p.deletedAt IS NULL AND p.blindedAt IS NULL")
+    int blind(@Param("id") Long id, @Param("now") LocalDateTime now);
+
+    /** 숨김을 푼다. 숨겨진 글이 아니면 0을 돌려준다. */
+    @Modifying(flushAutomatically = true)
+    @Query("UPDATE Post p SET p.blindedAt = NULL WHERE p.id = :id AND p.deletedAt IS NULL AND p.blindedAt IS NOT NULL")
+    int unblind(@Param("id") Long id);
 
     /** 소프트 삭제를 되돌린다. 삭제된 글이 아니면 0을 돌려준다. */
     @Modifying(flushAutomatically = true)

@@ -440,6 +440,19 @@ class PostPageControllerTest {
     }
 
     @Test
+    @DisplayName("관리자가 숨긴 글의 읽기 화면은 404지만 \"관리자가 숨긴 글\" 안내를 보여준다")
+    void postsUpdate_whenPostHidden_rendersHiddenNoticeWith404() throws Exception {
+        given(postQueryService.findByIdForView(eq(999L), nullable(Authentication.class), anyBoolean()))
+                .willThrow(new com.kraft.post.domain.PostHiddenException(999L));
+
+        mockMvc.perform(get("/posts/update/999"))
+                .andExpect(status().isNotFound())
+                .andExpect(view().name("error/not-found"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .content().string(org.hamcrest.Matchers.containsString("관리자가 숨긴 글입니다.")));
+    }
+
+    @Test
     @DisplayName("GET /posts/save 는 일반 사용자에게 공지(NOTICE) 분류 옵션을 보여주지 않는다")
     void postsSave_hidesNoticeOptionFromNonAdmin() throws Exception {
         // 등록 폼은 Vue 아일랜드(src/vue/post-save)로 렌더링된다. 고를 수 있는 분류는

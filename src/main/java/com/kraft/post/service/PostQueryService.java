@@ -3,6 +3,7 @@ package com.kraft.post.service;
 import com.kraft.comment.domain.CommentRepository;
 import com.kraft.post.domain.Category;
 import com.kraft.post.domain.Post;
+import com.kraft.post.domain.PostHiddenException;
 import com.kraft.post.domain.PostLikeRepository;
 import com.kraft.post.domain.PostNotFoundException;
 import com.kraft.post.domain.PostRepository;
@@ -100,6 +101,10 @@ public class PostQueryService {
         boolean admin = OwnershipPolicy.isAdmin(authentication);
         if (post.isDeleted() && !admin) {
             throw new PostNotFoundException(id);
+        }
+        // 관리자가 숨긴 글도 관리자만 연다. 상태 코드는 404지만 안내 문구는 다르다(PostHiddenException).
+        if (post.isBlinded() && !admin) {
+            throw new PostHiddenException(id);
         }
         Long userId = currentUserId(authentication);
         PostLikeRepository.LikeSummary likes = postLikeRepository.summarize(
@@ -254,10 +259,10 @@ public class PostQueryService {
         return CurrentUser.userIdOrNull(authentication, userRepository);
     }
 
-    /** 공개 REST 조회는 삭제되지 않은 글만 돌려준다. */
+    /** 공개 REST 조회는 삭제되지 않고 숨겨지지 않은 글만 돌려준다. */
     private Post findPost(Long id) {
         return postRepository.findById(id)
-                .filter(post -> !post.isDeleted())
+                .filter(post -> !post.isDeleted() && !post.isBlinded())
                 .orElseThrow(() -> new PostNotFoundException(id));
     }
 

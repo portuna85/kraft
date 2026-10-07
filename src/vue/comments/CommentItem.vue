@@ -166,12 +166,32 @@ async function loadMoreReplies() {
     }
 }
 
-/** 버튼 줄에 그릴 것이 하나라도 있는가 — 삭제된 댓글은 답글만 가능하다. */
+// 관리자가 숨긴 댓글을 관리자가 아닌 사람이 보는 경우 — 서버가 내용을 비워 보낸다.
+const masked = computed(() => props.comment.blinded && !props.comment.canModerate);
+
+/** 버튼 줄에 그릴 것이 하나라도 있는가 — 삭제되거나 숨겨진(가려진) 댓글은 답글만 가능하다. */
 const hasActions = computed(() => (
-    props.comment.deleted
+    props.comment.deleted || masked.value
         ? !props.isReply && props.canWrite
         : props.comment.canManage || props.authenticated
 ));
+
+const unblinding = ref(false);
+
+/** 신고 처리로 숨긴 댓글의 숨김을 푼다(관리자). 서버가 새로 렌더링한 화면으로 다시 불러온다. */
+async function unblind() {
+    if (unblinding.value) {
+        return;
+    }
+    unblinding.value = true;
+    try {
+        await api.post(`${API.ADMIN_COMMENTS}/${props.comment.id}/unblind`);
+        window.location.reload();
+    } catch (error) {
+        showToast(messageOf(error), 'danger');
+        unblinding.value = false;
+    }
+}
 </script>
 
 <template>
@@ -198,10 +218,19 @@ const hasActions = computed(() => (
         삭제된 댓글입니다.
       </p>
       <p
+        v-else-if="masked"
+        class="comment-list__content comment-list__content--deleted text-muted"
+      >
+        관리자가 숨긴 댓글입니다.
+      </p>
+      <p
         v-else
         class="comment-list__content"
       >
-        {{ comment.content }}
+        <small
+          v-if="comment.blinded"
+          class="text-muted me-1"
+        >[숨김]</small>{{ comment.content }}
       </p>
       <!-- 행동 버튼 줄은 한 번만 그린다(FE-28). 삭제된 댓글은 답글만, 내 댓글은 수정·삭제, 남의 댓글은 신고를
            앞에 두고, 답글 버튼은 모두 같은 자리 하나에서 그린다. -->
@@ -231,13 +260,23 @@ const hasActions = computed(() => (
         </template>
         <!-- 신고는 남의 댓글에만 보인다. 자기 댓글은 서버도 거절한다(직접 지우면 된다). -->
         <button
-          v-else-if="!comment.deleted && authenticated"
+          v-else-if="!comment.deleted && !masked && authenticated"
           type="button"
           class="btn btn-sm btn-outline-secondary btn-comment-report"
           data-report-kind="comment"
           :aria-label="`${comment.author}의 댓글 신고`"
         >
           신고
+        </button>
+        <button
+          v-if="comment.blinded && comment.canModerate"
+          type="button"
+          class="btn btn-sm btn-outline-secondary btn-comment-unblind"
+          :disabled="unblinding"
+          :aria-label="`${comment.author}의 댓글 숨김 해제`"
+          @click="unblind"
+        >
+          숨김 해제
         </button>
         <!-- 답글은 최상위 댓글에만 보인다 — isReply면 이 버튼 자체를 그리지 않아 3단계(답글의
              답글)를 UI 단에서도 막는다. 최종 판정은 서버가 한다(CommentService.resolveParent). -->

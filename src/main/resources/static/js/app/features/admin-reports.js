@@ -6,15 +6,16 @@ import { showToast } from '../ui/toast.js';
 import { confirmAction } from '../ui/confirm-dialog.js';
 
 /**
- * 관리자 화면의 처리 버튼들 — 신고 목록의 삭제·반려와 정지 회원 목록의 해제.
+ * 관리자 화면의 처리 버튼들 — 신고 목록의 숨기기·반려와 정지 회원 목록의 해제.
  *
  * 처리에 성공하면 현재 페이지를 다시 불러온다. 로컬에서 줄만 지우면 "처리 대기" 카운트·
  * 페이지 수가 서버 상태와 어긋날 수 있다(F05) — post-edit/post-save가 성공 후
  * window.location.href로 전체 이동하는 것과 같은 관례다.
  *
- * 되돌릴 수 없는 삭제·삭제+정지는 첫 클릭에 바로 실행되지 않는다(개선 보고서 SEC-05·
- * FE-C1) — confirmAction으로 한 번 더 확인한다. 반려·정지 해제는 되돌릴 수 있으므로(다시
- * 신고하거나 다시 정지할 수 있음) 확인을 요구하지 않는다.
+ * 숨기기·숨기기+정지는 첫 클릭에 바로 실행되지 않는다(개선 보고서 SEC-05·FE-C1) —
+ * confirmAction으로 한 번 더 확인한다. 숨김은 글·댓글 화면의 "숨김 해제"로 되돌릴 수 있지만,
+ * 그 순간 모두에게서 사라지고 정지는 즉시 걸리므로 한 번 확인한다. 반려·정지 해제는 되돌릴 수
+ * 있으므로(다시 신고하거나 다시 정지할 수 있음) 확인을 요구하지 않는다.
  */
 export function init() {
     if (!qs('.report-list')) {
@@ -25,12 +26,12 @@ export function init() {
     delegate('click', '.btn-report-resolve', async (trigger) => {
         const { isPost, name } = targetOf(trigger);
         const confirmed = await confirmAction({
-            title: isPost ? '게시글 삭제' : '댓글 삭제',
+            title: isPost ? '게시글 숨기기' : '댓글 숨기기',
             message: name
-                ? `${isPost ? '게시글' : '댓글'} "${name}"을(를) 삭제하시겠습니까? 되돌릴 수 없습니다.`
+                ? `${isPost ? '게시글' : '댓글'} "${name}"을(를) 숨기시겠습니까? 모두에게서 보이지 않게 되며, 관리자가 나중에 숨김을 풀 수 있습니다.`
                 // 대상이 이미 삭제된 신고는 targetName이 없다 — 일반 문구로 물러선다.
-                : '이 신고 대상을 삭제하시겠습니까? 되돌릴 수 없습니다.',
-            confirmLabel: '삭제',
+                : '이 신고 대상을 숨기시겠습니까? 모두에게서 보이지 않게 되며, 관리자가 나중에 숨김을 풀 수 있습니다.',
+            confirmLabel: '숨기기',
         });
         if (confirmed) {
             handle(trigger, 'resolve');
@@ -43,11 +44,11 @@ export function init() {
         const daysInput = /** @type {HTMLInputElement | null} */ (item?.querySelector('.report-suspend-days') ?? null);
         const suspendDays = Number(daysInput?.value ?? 7);
         const confirmed = await confirmAction({
-            title: '삭제 + 정지',
+            title: '숨기기 + 정지',
             message: name
-                ? `${isPost ? '게시글' : '댓글'} "${name}"을(를) 삭제하고 작성자를 ${suspendDays}일 정지하시겠습니까? 되돌릴 수 없습니다.`
-                : `이 신고 대상을 삭제하고 작성자를 ${suspendDays}일 정지하시겠습니까? 되돌릴 수 없습니다.`,
-            confirmLabel: '삭제 + 정지',
+                ? `${isPost ? '게시글' : '댓글'} "${name}"을(를) 숨기고 작성자를 ${suspendDays}일 정지하시겠습니까?`
+                : `이 신고 대상을 숨기고 작성자를 ${suspendDays}일 정지하시겠습니까?`,
+            confirmLabel: '숨기기 + 정지',
         });
         if (confirmed) {
             handle(trigger, 'resolve', suspendDays);
@@ -56,7 +57,7 @@ export function init() {
     delegate('click', '.btn-report-reject', (trigger) => handle(trigger, 'reject'));
 }
 
-/** 같은 줄의 나머지 처리 버튼도 함께 잠가, 요청이 도는 동안 이중 클릭(예: 삭제+반려 동시 클릭)을 막는다. */
+/** 같은 줄의 나머지 처리 버튼도 함께 잠가, 요청이 도는 동안 이중 클릭(예: 숨기기+반려 동시 클릭)을 막는다. */
 function rowButtons(item) {
     return item ? Array.from(item.querySelectorAll('button')) : [];
 }

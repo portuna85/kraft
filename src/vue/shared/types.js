@@ -23,6 +23,8 @@
  * @property {number} version 수정 요청에 그대로 돌려보내는 낙관적 잠금 버전
  * @property {boolean} deleted 답글이 있어 행은 남기고 내용만 비운 것이다(A-BE-06). true면
  *   content는 항상 빈 문자열
+ * @property {boolean} blinded 관리자가 숨긴 댓글이다. 관리자가 아니면 content는 항상 빈 문자열
+ * @property {boolean} canModerate 관리자 권한(숨김 해제 버튼 노출용)
  * @property {number | string | null} [replyCursor] 화면 전용: 서버 페이지로 마지막에 받은 답글 id(commentState.js)
  */
 
@@ -62,6 +64,7 @@
  * @property {boolean} likedByMe
  * @property {number} version
  * @property {boolean} deleted
+ * @property {boolean} blinded
  * @property {boolean} canModerate
  */
 

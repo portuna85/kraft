@@ -128,7 +128,7 @@ class PostDeleteWithRepliesMariaDbTest extends MariaDbIntegrationTest {
     }
 
     @Test
-    @DisplayName("COR-01 회귀: 신고 처리로 답글이 달린 게시글을 지워도 FK 위반이 나지 않는다")
+    @DisplayName("COR-01 회귀: 신고 처리는 글을 숨기기만 하고, 그 글을 지워 영구 삭제해도 FK 위반이 나지 않는다")
     void reportResolve_withParentsAndReplies_succeedsWithoutForeignKeyViolation() {
         Post post = seedPostWithParentsAndReplies();
         Long postId = post.getId();
@@ -143,7 +143,14 @@ class PostDeleteWithRepliesMariaDbTest extends MariaDbIntegrationTest {
 
         assertThatCode(() -> reportService.resolve(report.getId(), adminAuth)).doesNotThrowAnyException();
 
-        assertThat(postRepository.findById(postId).orElseThrow().isDeleted()).isTrue();
+        // 신고 처리는 삭제가 아니라 숨김이다 — 글과 댓글이 그대로 남는다.
+        Post handled = postRepository.findById(postId).orElseThrow();
+        assertThat(handled.isBlinded()).isTrue();
+        assertThat(handled.isDeleted()).isFalse();
+        assertThat(commentRepository.countByPostId(postId)).isEqualTo(9);
+
+        // 숨겨진 글도 관리자가 지우면 소프트 삭제되고, 보관 기간 뒤 영구 삭제가 FK 순서를 지킨다.
+        assertThatCode(() -> postService.delete(postId, adminAuth)).doesNotThrowAnyException();
         assertThat(postService.purge(postId, afterRetention())).isTrue();
         assertThat(postRepository.findById(postId)).isEmpty();
         assertThat(commentRepository.countByPostId(postId)).isZero();

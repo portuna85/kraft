@@ -263,4 +263,30 @@ class CommentRepositoryTest {
 
         assertThat(saved.getCreatedAt()).isNotNull();
     }
+
+    @Test
+    @DisplayName("blind·unblind: 댓글 하나만 숨기고 version·내용은 그대로 두며, 이미 숨겼거나 안 숨긴 댓글은 0건이다")
+    void blindAndUnblind_touchOnlyBlindedAt() {
+        Comment target = commentRepository.save(Comment.builder().content("대상").post(post).user(user).build());
+        Comment other = commentRepository.save(Comment.builder().content("다른 댓글").post(post).user(user).build());
+        em.flush();
+        em.clear();
+        Long version = commentRepository.findById(target.getId()).orElseThrow().getVersion();
+        em.clear();
+
+        assertThat(commentRepository.blind(target.getId(), java.time.LocalDateTime.now())).isEqualTo(1);
+        assertThat(commentRepository.blind(target.getId(), java.time.LocalDateTime.now())).isZero();
+        em.clear();
+
+        Comment hidden = commentRepository.findById(target.getId()).orElseThrow();
+        assertThat(hidden.isBlinded()).isTrue();
+        assertThat(hidden.getContent()).isEqualTo("대상");
+        assertThat(hidden.getVersion()).isEqualTo(version);
+        assertThat(commentRepository.findById(other.getId()).orElseThrow().isBlinded()).isFalse();
+
+        assertThat(commentRepository.unblind(target.getId())).isEqualTo(1);
+        assertThat(commentRepository.unblind(target.getId())).isZero();
+        em.clear();
+        assertThat(commentRepository.findById(target.getId()).orElseThrow().isBlinded()).isFalse();
+    }
 }

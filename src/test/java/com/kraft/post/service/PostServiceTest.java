@@ -5,6 +5,7 @@ import com.kraft.shared.exception.NotFoundException;
 import com.kraft.post.domain.Category;
 import com.kraft.post.domain.Post;
 import com.kraft.post.domain.PostLikeRepository;
+import com.kraft.post.domain.PostHiddenException;
 import com.kraft.post.domain.PostNotFoundException;
 import com.kraft.post.domain.PostRepository;
 import com.kraft.post.dto.PostRowDto;
@@ -721,6 +722,98 @@ class PostServiceTest {
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
 
         assertThatThrownBy(() -> postQueryService.findById(100L)).isInstanceOf(PostNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("findByIdForView: 관리자가 숨긴 글은 작성자를 포함한 일반 사용자에게 열리지 않는다(PostHiddenException)")
+    void findByIdForView_whenBlindedAndNotAdmin_throwsHidden() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Post post = postOf(owner, 100L);
+        ReflectionTestUtils.setField(post, "blindedAt", LocalDateTime.now());
+        given(postRepository.findByIdWithUser(100L)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> postQueryService.findByIdForView(100L, authOf(owner)))
+                .isInstanceOf(PostHiddenException.class)
+                // 상태 코드는 없는 글과 같다 — 화면·REST 모두 PostNotFoundException 처리를 따른다.
+                .isInstanceOf(PostNotFoundException.class);
+        assertThatThrownBy(() -> postQueryService.findByIdForView(100L, null))
+                .isInstanceOf(PostHiddenException.class);
+    }
+
+    @Test
+    @DisplayName("findByIdForView: 관리자는 숨긴 글을 열 수 있고 blinded 표시와 관리 권한을 받는다")
+    void findByIdForView_whenBlindedAndAdmin_showsBlinded() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        User admin = userWithEmail("admin@example.com", 9L, Role.ADMIN);
+        Post post = postOf(owner, 100L);
+        ReflectionTestUtils.setField(post, "blindedAt", LocalDateTime.now());
+        given(postRepository.findByIdWithUser(100L)).willReturn(Optional.of(post));
+        given(postLikeRepository.summarize(100L, 9L)).willReturn(likeSummary(0L, 0L));
+
+        var result = postQueryService.findByIdForView(100L, authOf(admin));
+
+        assertThat(result.blinded()).isTrue();
+        assertThat(result.deleted()).isFalse();
+        assertThat(result.canModerate()).isTrue();
+        // 관리자는 숨긴 글도 고치거나 지울 수 있다.
+        assertThat(result.canManagePost()).isTrue();
+    }
+
+    @Test
+    @DisplayName("findById(공개 REST): 숨긴 글은 돌려주지 않는다")
+    void findById_whenBlinded_throwsNotFound() {
+        Post post = postOf(userWithEmail("owner@example.com", 1L), 100L);
+        ReflectionTestUtils.setField(post, "blindedAt", LocalDateTime.now());
+        given(postRepository.findById(100L)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> postQueryService.findById(100L)).isInstanceOf(PostNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("update·delete: 숨긴 글은 작성자도 고치거나 지울 수 없다(403) — 신고된 내용을 없애는 일을 막는다")
+    void updateAndDelete_whenBlindedAndAuthor_areForbidden() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Post post = postOf(owner, 100L);
+        ReflectionTestUtils.setField(post, "blindedAt", LocalDateTime.now());
+        given(postRepository.findById(100L)).willReturn(Optional.of(post));
+        given(userRepository.findById(1L)).willReturn(Optional.of(owner));
+
+        assertThatThrownBy(() -> postService.update(100L,
+                new PostUpdateRequestDto("제목", "내용", null, null, null, Category.FREE, 0L), authOf(owner)))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> postService.delete(100L, authOf(owner)))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(postRepository, never()).softDelete(any(), any());
+    }
+
+    @Test
+    @DisplayName("delete: 관리자는 숨긴 글도 지울 수 있다")
+    void delete_whenBlindedAndAdmin_softDeletes() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        User admin = userWithEmail("admin@example.com", 9L, Role.ADMIN);
+        Post post = postOf(owner, 100L);
+        ReflectionTestUtils.setField(post, "blindedAt", LocalDateTime.now());
+        given(postRepository.findById(100L)).willReturn(Optional.of(post));
+        given(postRepository.softDelete(eq(100L), any())).willReturn(1);
+
+        postService.delete(100L, authOf(admin));
+
+        verify(postRepository).softDelete(eq(100L), any());
+    }
+
+    @Test
+    @DisplayName("setLike: 숨긴 글에는 추천할 수 없다 — 열 수 없는 글이다")
+    void setLike_whenBlinded_throwsHidden() {
+        User viewer = userWithEmail("viewer@example.com", 2L);
+        Post post = postOf(userWithEmail("owner@example.com", 1L), 100L);
+        ReflectionTestUtils.setField(post, "blindedAt", LocalDateTime.now());
+        given(postRepository.findById(100L)).willReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> postService.setLike(100L, true, authOf(viewer)))
+                .isInstanceOf(PostHiddenException.class);
+
+        verify(postLikeWriter, never()).insert(any(), any());
     }
 
     @Test

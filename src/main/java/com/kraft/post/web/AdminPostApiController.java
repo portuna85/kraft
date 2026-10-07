@@ -23,4 +23,11 @@ public class AdminPostApiController {
         postModerationService.restore(id);
         return ResponseEntity.noContent().build();
     }
+
+    /** 신고 처리로 숨겨진 글의 숨김을 푼다. */
+    @PostMapping("/api/v1/admin/posts/{id}/unblind")
+    public ResponseEntity<Void> unblind(@PathVariable Long id) {
+        postModerationService.unblindPost(id);
+        return ResponseEntity.noContent().build();
+    }
 }

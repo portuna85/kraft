@@ -45,6 +45,7 @@ export const API = {
     USERS_ME: '/api/v1/users/me',
     PASSWORD_RESET: '/api/v1/users/password-reset',
     ADMIN_POSTS: '/api/v1/admin/posts',
+    ADMIN_COMMENTS: '/api/v1/admin/comments',
     ADMIN_REPORTS: '/api/v1/admin/reports',
     ADMIN_USERS: '/api/v1/admin/users',
     ADMIN_RECOMMENDATION_FETCH: '/api/v1/admin/recommendations/fetch',

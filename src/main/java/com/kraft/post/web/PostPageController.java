@@ -227,8 +227,9 @@ public class PostPageController {
         // 댓글 아일랜드가 "입력창을 보여줄지"를 정하는 값. 글쓰기 화면과 같은 규칙을 쓴다.
         // 한 번만 조회해 두 속성에 함께 쓴다 — 예전에는 같은 조회를 두 번 했다.
         String writeBlockReason = writeBlockReasonOf(authentication);
-        // 삭제된 글(관리자만 열 수 있다)에는 댓글을 달 수 없다 — 서버도 거절한다.
-        model.addAttribute("canWriteComment", authenticated && writeBlockReason == null && !post.deleted());
+        // 삭제되거나 숨겨진 글(관리자만 열 수 있다)에는 댓글을 달 수 없다 — 서버도 거절한다.
+        model.addAttribute("canWriteComment",
+                authenticated && writeBlockReason == null && !post.deleted() && !post.blinded());
         model.addAttribute("writeBlockReason", writeBlockReason);
 
         model.addAttribute("pageTitle", post.title());

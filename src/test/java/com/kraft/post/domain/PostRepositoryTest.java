@@ -447,4 +447,67 @@ class PostRepositoryTest {
         assertThat(postRepository.findIdsDeletedBefore(threshold, old1.getId(), PageRequest.of(0, 10)))
                 .containsExactly(old2.getId());
     }
+
+    @Test
+    @DisplayName("숨긴 글은 목록·검색·인기글·공지·sitemap·최근 글·관련 글·조회수에서 빠지고, 숨김을 풀면 돌아온다")
+    void blindedPosts_areExcludedEverywhereAndUnblindable() {
+        Post kept = postRepository.save(Post.builder().title("남는 공지").content("c").user(user).category(Category.NOTICE).build());
+        Post hidden = postRepository.save(Post.builder().title("숨긴 공지").content("c").user(user).category(Category.NOTICE).build());
+        em.flush();
+
+        assertThat(postRepository.blind(hidden.getId(), LocalDateTime.now())).isEqualTo(1);
+        // 이미 숨겨진 글은 다시 숨겨지지 않는다.
+        assertThat(postRepository.blind(hidden.getId(), LocalDateTime.now())).isZero();
+        em.clear();
+
+        Sort idDesc = Sort.by(Sort.Direction.DESC, "id");
+        Page<PostRowDto> page = postRepository.search(null, null, false, PageRequest.of(0, 10, idDesc));
+        assertThat(page.getContent()).extracting(PostRowDto::id).containsExactly(kept.getId());
+        assertThat(page.getTotalElements()).isEqualTo(1);
+        assertThat(postRepository.searchWithoutCount("숨긴", null, false, PageRequest.of(0, 10, idDesc))).isEmpty();
+        assertThat(postRepository.findTopByViewCountDesc(LocalDateTime.now().minusDays(1), PageRequest.of(0, 10)))
+                .extracting(PostRowDto::id).containsExactly(kept.getId());
+        assertThat(postRepository.findPinnedNotices(PageRequest.of(0, 10)))
+                .extracting(PostRowDto::id).containsExactly(kept.getId());
+        assertThat(postRepository.findSitemapRows(PageRequest.of(0, 10)))
+                .extracting(PostRepository.SitemapRow::getId).containsExactly(kept.getId());
+        assertThat(postRepository.findRecent(PageRequest.of(0, 10)))
+                .extracting(PostRowDto::id).containsExactly(kept.getId());
+        assertThat(postRepository.findRelated(Category.NOTICE, kept.getId(), PageRequest.of(0, 10))).isEmpty();
+        assertThat(postRepository.existsVisibleById(hidden.getId())).isFalse();
+        assertThat(postRepository.increaseViewCount(hidden.getId())).isZero();
+        // 관리자 상세와 신고 목록은 숨긴 글도 읽는다.
+        assertThat(postRepository.findByIdWithUser(hidden.getId()).orElseThrow().isBlinded()).isTrue();
+        assertThat(postRepository.findAllByIdInWithUser(List.of(hidden.getId()))).hasSize(1);
+
+        assertThat(postRepository.unblind(hidden.getId())).isEqualTo(1);
+        assertThat(postRepository.unblind(hidden.getId())).isZero();
+        em.clear();
+        assertThat(postRepository.search(null, null, false, PageRequest.of(0, 10, idDesc)).getContent())
+                .extracting(PostRowDto::id).containsExactly(hidden.getId(), kept.getId());
+    }
+
+    @Test
+    @DisplayName("blind·unblind는 version과 updatedAt을 바꾸지 않고, 삭제된 글은 숨기지 않는다")
+    void blind_doesNotTouchVersionOrUpdatedAt_andIgnoresDeletedPosts() {
+        Post post = postRepository.save(Post.builder().title("제목").content("c").user(user).build());
+        Post deleted = postRepository.save(Post.builder().title("삭제됨").content("c").user(user).build());
+        em.flush();
+        em.clear();
+        Post before = postRepository.findById(post.getId()).orElseThrow();
+        Long version = before.getVersion();
+        LocalDateTime updatedAt = before.getUpdatedAt();
+        em.clear();
+
+        postRepository.blind(post.getId(), LocalDateTime.now());
+        postRepository.unblind(post.getId());
+        postRepository.softDelete(deleted.getId(), LocalDateTime.now());
+        em.clear();
+
+        Post after = postRepository.findById(post.getId()).orElseThrow();
+        assertThat(after.getVersion()).isEqualTo(version);
+        assertThat(after.getUpdatedAt()).isEqualTo(updatedAt);
+        // 삭제된 글은 숨김 대상이 아니다 — 삭제가 이미 더 강한 상태다.
+        assertThat(postRepository.blind(deleted.getId(), LocalDateTime.now())).isZero();
+    }
 }

@@ -6,7 +6,7 @@ import com.kraft.comment.domain.CommentRepository;
 import com.kraft.comment.service.CommentService;
 import com.kraft.post.domain.Post;
 import com.kraft.post.domain.PostRepository;
-import com.kraft.post.service.PostService;
+import com.kraft.post.service.PostModerationService;
 import com.kraft.report.domain.Report;
 import com.kraft.report.domain.ReportRepository;
 import com.kraft.report.domain.ReportStatus;
@@ -38,10 +38,11 @@ import java.util.stream.Collectors;
 /**
  * 신고 접수와 처리.
  *
- * <h3>왜 대상을 지우는 쪽을 다시 만들지 않는가</h3>
- * 처리(삭제)는 {@link PostService}·{@link CommentService}의 기존 삭제를 그대로 부른다. 그쪽은
- * 이미 소유권 검사(관리자 통과), 이미지 정리 예약, 커밋 후 파일 정리까지 맡고 있다. 여기서
- * 저장소를 직접 지우면 그 뒷정리가 통째로 빠진다.
+ * <h3>처리는 삭제가 아니라 숨김이다</h3>
+ * 신고를 받아들이면 대상을 지우지 않고 숨긴다({@link PostModerationService#blindPost},
+ * {@link CommentService#blind}). 내용이 그대로 남아 관리자가 잘못 판단했을 때 되돌릴 수 있고,
+ * 반복하는 사람을 제재할 때 근거도 남는다. 이미지·댓글·추천 같은 딸린 것은 건드리지 않는다 —
+ * 지우는 일은 작성자 본인의 삭제(소프트 삭제 뒤 영구 삭제)가 맡는다.
  *
  * <h3>한 대상에 쌓인 신고</h3>
  * 인기 있는 스팸 글은 여러 사람이 신고한다. 하나를 처리하면 같은 대상의 나머지 대기 신고도
@@ -70,7 +71,7 @@ public class ReportService {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
-    private final PostService postService;
+    private final PostModerationService postModerationService;
     private final CommentService commentService;
 
     /**
@@ -82,7 +83,7 @@ public class ReportService {
     public Long report(ReportSaveRequestDto requestDto, Authentication authentication) {
         User reporter = findUser(authentication);
         TargetSnapshot snapshot = snapshotOf(requestDto.targetType(), requestDto.targetId())
-                .orElseThrow(() -> new NotFoundException("이미 삭제되었거나 존재하지 않는 대상입니다."));
+                .orElseThrow(() -> new NotFoundException("이미 삭제·숨김 처리되었거나 존재하지 않는 대상입니다."));
 
         if (snapshot.author().getId().equals(reporter.getId())) {
             throw new BusinessValidationException("자신이 쓴 글은 신고할 수 없습니다. 직접 삭제할 수 있습니다.");
@@ -145,21 +146,20 @@ public class ReportService {
         return reportRepository.countByStatus(ReportStatus.PENDING);
     }
 
-    /** 대상만 지우고 작성자는 건드리지 않는다. */
+    /** 대상만 숨기고 작성자는 건드리지 않는다. */
     @Transactional
     public void resolve(Long id, Authentication authentication) {
         resolve(id, authentication, 0);
     }
 
     /**
-     * 신고를 받아들여 대상을 지우고, 필요하면 작성자를 그만큼 정지한다.
+     * 신고를 받아들여 대상을 숨기고, 필요하면 작성자를 그만큼 정지한다.
      * <p>
-     * 지우기만 해서는 반복하는 사람을 막지 못한다 — 같은 사람이 곧바로 다시 쓸 수 있기 때문이다.
+     * 숨기기만 해서는 반복하는 사람을 막지 못한다 — 같은 사람이 곧바로 다시 쓸 수 있기 때문이다.
      * 정지는 작성만 막고 읽기·로그인은 그대로 둔다. 기간이 지나면 저절로 풀린다.
      * <p>
-     * 작성자를 <b>지우기 전에</b> 찾아 둔다. 대상을 먼저 지우면 누구를 정지해야 할지 알 수 없다.
-     * 대상이 이미 없으면 지우는 단계만 건너뛰고 기록은 남긴다 — 관리자가 다른 경로로 먼저
-     * 지웠을 수 있다.
+     * 작성자를 <b>숨기기 전에</b> 찾아 둔다. 대상이 이미 없으면(작성자가 스스로 지웠음) 숨기는 단계만
+     * 건너뛰고 기록은 남긴다. 이미 숨겨진 대상은 그대로 두고 신고만 처리한 것으로 닫는다.
      *
      * @param suspendDays 0이면 정지하지 않는다. 음수이거나 {@link #MAX_SUSPEND_DAYS}를
      *                    넘으면 거절한다(O05) — 음수를 조용히 건너뛰면 관리자가 잘못된 입력을
@@ -173,19 +173,17 @@ public class ReportService {
         }
         Report report = findPendingReport(id);
         User admin = findUser(authentication);
-        // 한 번만 조회해 아래 삭제 여부 판정에도 재사용한다(BE-16) — 예전에는 여기와
-        // deleteTarget() 안에서 같은 대상을 각각 한 번씩, 총 두 번 조회했다.
+        // 한 번만 조회해 아래 숨김 여부 판정에도 재사용한다(BE-16).
         Optional<User> targetAuthor = targetAuthorOf(report.getTargetType(), report.getTargetId());
-        // 대상을 지우기 전에 그 아래 딸린 댓글 id를 먼저 기록해 둔다(BE-16) — 지운 뒤에는
-        // 조회할 수 없다. 게시글이면 그 댓글 전체, 최상위 댓글이면 그 답글이 함께 지워진다.
+        // 글을 숨기면 그 아래 댓글도 함께 안 보이므로 그 댓글에 걸린 대기 신고도 같이 닫는다(BE-16).
+        // 댓글을 숨길 때는 답글이 계속 보이므로 답글의 신고를 닫지 않는다.
         List<Long> cascadedCommentIds = cascadedCommentIdsFor(report);
 
         if (targetAuthor.isPresent()) {
-            // 관리자 권한으로 기존 삭제 경로를 그대로 탄다(이미지 정리·소유권 검사 포함).
             if (report.getTargetType() == ReportTargetType.POST) {
-                postService.delete(report.getTargetId(), authentication);
+                postModerationService.blindPost(report.getTargetId());
             } else {
-                commentService.delete(report.getTargetId(), authentication);
+                commentService.blind(report.getTargetId());
             }
         }
         if (suspendDays > 0) {
@@ -201,7 +199,7 @@ public class ReportService {
         resolveOthersOnSameTarget(report, admin);
         resolveCascadedReports(cascadedCommentIds, admin);
 
-        log.info("신고를 처리했습니다(대상 삭제{}). reportId={}, targetType={}, targetId={}",
+        log.info("신고를 처리했습니다(대상 숨김{}). reportId={}, targetType={}, targetId={}",
                 suspendDays > 0 ? ", 작성자 " + suspendDays + "일 정지" : "",
                 report.getId(), report.getTargetType(), report.getTargetId());
     }
@@ -210,10 +208,10 @@ public class ReportService {
         if (report.getTargetType() == ReportTargetType.POST) {
             return commentRepository.findIdsByPostId(report.getTargetId());
         }
-        return commentRepository.findIdsByParentId(report.getTargetId());
+        return List.of();
     }
 
-    /** 대상 삭제로 함께 사라진 댓글·답글에 걸린 대기 신고를 마저 닫는다(BE-16). */
+    /** 글이 숨겨져 함께 안 보이게 된 댓글에 걸린 대기 신고를 마저 닫는다(BE-16). */
     private void resolveCascadedReports(List<Long> cascadedCommentIds, User admin) {
         if (cascadedCommentIds.isEmpty()) {
             return;
@@ -231,11 +229,10 @@ public class ReportService {
 
     /**
      * 관리자가 판단하기 전에 작성자 본인이 대상을 지워 사라진 신고를 닫는다(A-BE-01).
-     * {@code PostService.delete}·{@code CommentService.delete}가 실제로 행을 지웠을 때만
-     * {@link #onTargetDeleted}를 통해 호출된다 — 관리자가 신고를 처리하며 지운 경우는 이미
-     * {@link #resolve(Long, Authentication, int)}가 그 자리에서 관련 신고를 {@code RESOLVED}로
-     * 직접 처리하므로, 이 메서드가 실행되는 시점(커밋 직전)에는 더 이상 {@code PENDING}이
-     * 아니라 걸리지 않는다 — 그래서 admin 삭제와 본인 삭제가 서로 다른 상태로 남는다.
+     * {@code PostService.delete}·{@code CommentService.delete}가 실제로 지웠을 때만
+     * {@link #onTargetDeleted}를 통해 호출된다. 신고 처리는 이제 삭제가 아니라 숨김이라 이 경로를
+     * 타지 않는다 — 처리된 신고는 {@code RESOLVED}, 본인 삭제로 사라진 신고는 {@code TARGET_DELETED}로
+     * 남아 서로 구별된다.
      */
     @Transactional
     public void closeForDeletedTargets(ReportTargetType targetType, List<Long> targetIds) {
@@ -302,10 +299,11 @@ public class ReportService {
         if (targetType == ReportTargetType.POST) {
             // 소프트 삭제된 글은 없는 대상으로 본다 — 이미 목록에서 사라졌고 신고할 수 없다.
             return postRepository.findById(targetId)
-                    .filter(post -> !post.isDeleted())
+                    .filter(post -> !post.isDeleted() && !post.isBlinded())
                     .map(post -> new TargetSnapshot(post.getUser(), post.getTitle(), shorten(post.getContent(), SNAPSHOT_LENGTH)));
         }
         return commentRepository.findById(targetId)
+                .filter(comment -> !comment.isBlinded())
                 .map(comment -> new TargetSnapshot(comment.getUser(), null, shorten(comment.getContent(), SNAPSHOT_LENGTH)));
     }
 

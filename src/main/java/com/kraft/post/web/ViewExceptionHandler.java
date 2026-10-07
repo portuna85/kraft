@@ -1,5 +1,6 @@
 package com.kraft.post.web;
 
+import com.kraft.post.domain.PostHiddenException;
 import com.kraft.post.domain.PostNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.ui.Model;
@@ -21,6 +22,18 @@ public class ViewExceptionHandler {
     @ExceptionHandler(PostNotFoundException.class)
     public String handlePostNotFound(Model model) {
         model.addAttribute("pageTitle", "페이지를 찾을 수 없음");
+        return "error/not-found";
+    }
+
+    /**
+     * 관리자가 숨긴 글. 상태 코드는 없는 글과 같지만 안내 문구가 다르다 — 사용자가 "내가 지웠나?"로
+     * 헷갈리지 않게 한다. 더 가까운 타입이라 {@link #handlePostNotFound}보다 먼저 선택된다.
+     */
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(PostHiddenException.class)
+    public String handlePostHidden(Model model) {
+        model.addAttribute("pageTitle", "숨겨진 게시글");
+        model.addAttribute("hiddenByAdmin", true);
         return "error/not-found";
     }
 }

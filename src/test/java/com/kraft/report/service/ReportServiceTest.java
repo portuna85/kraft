@@ -4,7 +4,7 @@ import com.kraft.comment.domain.Comment;
 import com.kraft.comment.domain.CommentRepository;
 import com.kraft.post.domain.Post;
 import com.kraft.post.domain.PostRepository;
-import com.kraft.post.service.PostService;
+import com.kraft.post.service.PostModerationService;
 import com.kraft.report.domain.Report;
 import com.kraft.report.domain.ReportReason;
 import com.kraft.report.domain.ReportRepository;
@@ -42,10 +42,10 @@ import static org.mockito.Mockito.verify;
 
 /**
  * {@link ReportService} 단위 테스트. 접수 단계에서 거절해야 하는 세 가지(없는 대상, 자기 글,
- * 이미 신고한 대상)와, 처리가 <b>기존 삭제 경로를 그대로 부르는지</b>를 고정한다.
+ * 이미 신고한 대상)와, 처리가 대상을 <b>지우지 않고 숨기는지</b>를 고정한다.
  * <p>
- * 후자가 중요한 이유: 여기서 저장소를 직접 지우면 이미지 정리 예약·커밋 후 파일 삭제 같은
- * 뒷정리가 통째로 빠진다. 그래서 "무엇을 호출했는가"가 이 클래스에서는 의미 있는 검증이다.
+ * 후자가 중요한 이유: 숨김은 되돌릴 수 있고 근거가 남지만 삭제는 그렇지 않다. 그래서 "무엇을
+ * 호출했는가"(숨김이지 삭제가 아니다)가 이 클래스에서는 의미 있는 검증이다.
  */
 @ExtendWith(MockitoExtension.class)
 class ReportServiceTest {
@@ -63,7 +63,7 @@ class ReportServiceTest {
     private UserRepository userRepository;
 
     @Mock
-    private PostService postService;
+    private PostModerationService postModerationService;
 
     @Mock
     private CommentService commentService;
@@ -75,7 +75,7 @@ class ReportServiceTest {
     @BeforeEach
     void setUp() {
         reportService = new ReportService(reportRepository, postRepository, commentRepository,
-                userRepository, postService, commentService);
+                userRepository, postModerationService, commentService);
     }
 
     private static User userWithId(Long id, String email) {
@@ -151,8 +151,8 @@ class ReportServiceTest {
     }
 
     @Test
-    @DisplayName("resolve: 게시글 신고를 받아들이면 기존 삭제 경로로 지운다(뒷정리를 다시 만들지 않는다)")
-    void resolve_deletesPostThroughPostService() {
+    @DisplayName("resolve: 게시글 신고를 받아들이면 지우지 않고 숨긴다")
+    void resolve_blindsPost() {
         User admin = userWithId(9L, "admin@example.com");
         Report report = Report.builder()
                 .reporter(userWithId(1L, REPORTER_EMAIL))
@@ -170,14 +170,80 @@ class ReportServiceTest {
         Authentication adminAuth = authOf(admin);
         reportService.resolve(5L, adminAuth);
 
-        verify(postService).delete(10L, adminAuth);
+        verify(postModerationService).blindPost(10L);
         org.assertj.core.api.Assertions.assertThat(report.getStatus()).isEqualTo(ReportStatus.RESOLVED);
         org.assertj.core.api.Assertions.assertThat(report.getHandledBy()).isSameAs(admin);
     }
 
     @Test
-    @DisplayName("resolve: 대상이 이미 지워졌으면 삭제는 건너뛰고 기록만 남긴다")
-    void resolve_whenTargetAlreadyGone_skipsDeletion() {
+    @DisplayName("resolve: 댓글 신고를 받아들이면 댓글만 숨기고, 계속 보이는 답글에 걸린 신고는 닫지 않는다")
+    void resolve_blindsCommentAndKeepsReplyReportsOpen() {
+        User admin = userWithId(9L, "admin@example.com");
+        Report report = Report.builder()
+                .reporter(userWithId(1L, REPORTER_EMAIL))
+                .targetType(ReportTargetType.COMMENT).targetId(77L).reason(ReportReason.ABUSE).build();
+        ReflectionTestUtils.setField(report, "id", 6L);
+        com.kraft.comment.domain.Comment comment = com.kraft.comment.domain.Comment.builder()
+                .content("문제의 댓글").user(userWithId(2L, "author@example.com")).build();
+        given(reportRepository.findById(6L)).willReturn(Optional.of(report));
+        given(userRepository.findById(any())).willReturn(Optional.of(admin));
+        given(commentRepository.findById(77L)).willReturn(Optional.of(comment));
+        given(reportRepository.findByTargetTypeAndTargetIdAndStatus(
+                ReportTargetType.COMMENT, 77L, ReportStatus.PENDING)).willReturn(List.of(report));
+
+        reportService.resolve(6L, authOf(admin));
+
+        verify(commentService).blind(77L);
+        // 댓글을 숨겨도 답글은 그대로 보이므로 답글의 대기 신고를 같이 닫지 않는다.
+        verify(commentRepository, never()).findIdsByParentId(any());
+        verify(reportRepository, never()).findByTargetTypeAndTargetIdInAndStatus(any(), any(), any());
+        org.assertj.core.api.Assertions.assertThat(report.getStatus()).isEqualTo(ReportStatus.RESOLVED);
+    }
+
+    @Test
+    @DisplayName("resolve: 글을 숨기면 그 아래 댓글에 걸린 대기 신고도 함께 닫는다")
+    void resolve_blindingPostClosesReportsOnItsComments() {
+        User admin = userWithId(9L, "admin@example.com");
+        Report report = Report.builder()
+                .reporter(userWithId(1L, REPORTER_EMAIL))
+                .targetType(ReportTargetType.POST).targetId(10L).reason(ReportReason.SPAM).build();
+        Report commentReport = Report.builder()
+                .reporter(userWithId(3L, "another@example.com"))
+                .targetType(ReportTargetType.COMMENT).targetId(70L).reason(ReportReason.ABUSE).build();
+        ReflectionTestUtils.setField(report, "id", 5L);
+        given(reportRepository.findById(5L)).willReturn(Optional.of(report));
+        given(userRepository.findById(any())).willReturn(Optional.of(admin));
+        given(postRepository.findById(10L)).willReturn(Optional.of(postBy(userWithId(2L, "other@example.com"))));
+        given(commentRepository.findIdsByPostId(10L)).willReturn(List.of(70L));
+        given(reportRepository.findByTargetTypeAndTargetIdAndStatus(
+                ReportTargetType.POST, 10L, ReportStatus.PENDING)).willReturn(List.of(report));
+        given(reportRepository.findByTargetTypeAndTargetIdInAndStatus(
+                ReportTargetType.COMMENT, List.of(70L), ReportStatus.PENDING)).willReturn(List.of(commentReport));
+
+        reportService.resolve(5L, authOf(admin));
+
+        org.assertj.core.api.Assertions.assertThat(commentReport.getStatus()).isEqualTo(ReportStatus.RESOLVED);
+    }
+
+    @Test
+    @DisplayName("report: 이미 숨겨진 글은 신고를 접수하지 않는다")
+    void report_whenTargetIsBlinded_isRejected() {
+        User reporter = userWithId(1L, REPORTER_EMAIL);
+        givenReporter(reporter);
+        Post blinded = postBy(userWithId(2L, "other@example.com"));
+        ReflectionTestUtils.setField(blinded, "blindedAt", java.time.LocalDateTime.now());
+        given(postRepository.findById(10L)).willReturn(Optional.of(blinded));
+
+        assertThatThrownBy(() -> reportService.report(
+                new ReportSaveRequestDto(ReportTargetType.POST, 10L, ReportReason.SPAM, null), authOf(reporter)))
+                .isInstanceOf(com.kraft.shared.exception.NotFoundException.class);
+
+        verify(reportRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("resolve: 대상이 이미 지워졌으면 숨기기는 건너뛰고 기록만 남긴다")
+    void resolve_whenTargetAlreadyGone_skipsBlinding() {
         User admin = userWithId(9L, "admin@example.com");
         Report report = Report.builder()
                 .reporter(userWithId(1L, REPORTER_EMAIL))
@@ -194,7 +260,7 @@ class ReportServiceTest {
 
         reportService.resolve(6L, authOf(admin));
 
-        verify(commentService, never()).delete(anyLong(), any());
+        verify(commentService, never()).blind(anyLong());
         org.assertj.core.api.Assertions.assertThat(report.getStatus()).isEqualTo(ReportStatus.RESOLVED);
     }
 
@@ -248,10 +314,10 @@ class ReportServiceTest {
 
         reportService.resolve(5L, authOf(admin));
 
-        // 이미 지운 글이 목록에 남아 있으면 관리자가 같은 판단을 반복하게 된다.
+        // 이미 숨긴 글이 목록에 남아 있으면 관리자가 같은 판단을 반복하게 된다.
         org.assertj.core.api.Assertions.assertThat(other.getStatus()).isEqualTo(ReportStatus.RESOLVED);
-        // 삭제는 한 번만 부른다.
-        verify(postService).delete(anyLong(), any());
+        // 숨기기는 한 번만 부른다.
+        verify(postModerationService).blindPost(anyLong());
     }
 
     @Test
@@ -287,7 +353,7 @@ class ReportServiceTest {
 
         reportService.reject(5L, authOf(admin));
 
-        verify(postService, never()).delete(anyLong(), any());
+        verify(postModerationService, never()).blindPost(anyLong());
         org.assertj.core.api.Assertions.assertThat(report.getStatus()).isEqualTo(ReportStatus.REJECTED);
     }
 
@@ -306,7 +372,7 @@ class ReportServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("이미 처리된 신고");
 
-        verify(postService, never()).delete(anyLong(), any());
+        verify(postModerationService, never()).blindPost(anyLong());
     }
 
     @Test

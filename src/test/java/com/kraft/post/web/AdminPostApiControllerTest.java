@@ -67,4 +67,31 @@ class AdminPostApiControllerTest {
                         .with(csrf()))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    @DisplayName("숨김 해제는 관리자만 할 수 있다 — 일반 회원은 403이고 서비스는 호출되지 않는다")
+    void unblind_whenNotAdmin_returns403() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/posts/5/unblind")
+                        .with(user("tester@example.com").roles("USER"))
+                        .with(csrf()))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(postModerationService);
+    }
+
+    @Test
+    @DisplayName("관리자가 숨김을 풀면 204이고, 숨겨진 글이 아니면 404다")
+    void unblind_whenAdmin_returns204_orNotFound() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/posts/5/unblind")
+                        .with(user("admin@example.com").roles("ADMIN"))
+                        .with(csrf()))
+                .andExpect(status().isNoContent());
+        verify(postModerationService).unblindPost(5L);
+
+        willThrow(new PostNotFoundException(6L)).given(postModerationService).unblindPost(6L);
+        mockMvc.perform(post("/api/v1/admin/posts/6/unblind")
+                        .with(user("admin@example.com").roles("ADMIN"))
+                        .with(csrf()))
+                .andExpect(status().isNotFound());
+    }
 }

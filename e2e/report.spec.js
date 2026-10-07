@@ -12,6 +12,7 @@ async function writePost(page, title) {
     await page.locator('#btn-save').click();
     // 등록 후 목록이 아니라 방금 쓴 글로 바로 이동한다(전체 리뷰 2026-09-26 A-FE-02).
     await page.waitForURL(/\/posts\/update\/\d+$/);
+    return page.url();
 }
 
 async function reportOpenPost(page, reason, detail) {
@@ -131,11 +132,11 @@ test.describe('신고 접수', () => {
 });
 
 test.describe('관리자 처리', () => {
-    test('신고를 처리하면 대상 글이 사라지고 목록에서도 빠진다', async ({ openAs }) => {
-        const title = uniqueTitle('삭제될글');
+    test('신고를 처리하면 대상 글이 숨겨져 목록에서 빠지고, 관리자가 숨김을 풀면 돌아온다', async ({ openAs }) => {
+        const title = uniqueTitle('숨겨질글');
 
         const authorPage = await openAs('user');
-        await writePost(authorPage, title);
+        const postUrl = await writePost(authorPage, title);
         await authorPage.close();
 
         const reporterPage = await openAs('other');
@@ -152,10 +153,10 @@ test.describe('관리자 처리', () => {
         const row = adminPage.locator('.report-list__item').filter({ hasText: title });
         await expect(row).toBeVisible();
 
-        // 삭제는 되돌릴 수 없어 확인 대화상자를 한 번 더 거친다(개선 보고서 SEC-05).
+        // 숨기면 모두에게서 사라지므로 확인 대화상자를 한 번 더 거친다(개선 보고서 SEC-05).
         await row.locator('.btn-report-resolve').click();
         await expect(adminPage.locator('#confirmDeleteModal')).toBeVisible();
-        // 삭제 확인 문구에 대상을 명시한다(문서 5.5) — 어느 글을 지우는지 모달 안에서 알 수 있다.
+        // 확인 문구에 대상을 명시한다(문서 5.5) — 어느 글을 숨기는지 모달 안에서 알 수 있다.
         await expect(adminPage.locator('#confirmDeleteMessage')).toContainText(title);
         await adminPage.locator('#btn-confirm-delete').click();
         // 처리에 성공하면 현재 페이지를 다시 불러온다(F05) — 로컬에서 줄만 지우면 "처리 대기"
@@ -163,13 +164,83 @@ test.describe('관리자 처리', () => {
         // toHaveCount가 재시도하며 기다린다.
         await expect(adminPage.locator('.report-list__item').filter({ hasText: title })).toHaveCount(0);
 
-        // 글도 실제로 사라졌다.
+        // 글은 지워지지 않고 숨겨졌다 — 관리자에게도 목록에서는 빠진다(목록 캐시는 사용자를 가리지 않는다).
         await adminPage.goto(`/community?q=${encodeURIComponent(title)}`);
         await expect(adminPage.locator('.post-list__item').filter({ hasText: title })).toHaveCount(0);
+
+        // 작성자도 열 수 없다. 상태 코드는 404지만 지웠다는 말이 아니라 관리자가 숨겼다고 알려 준다.
+        const authorAgain = await openAs('user');
+        const response = await authorAgain.goto(postUrl);
+        expect(response.status()).toBe(404);
+        await expect(authorAgain.locator('.page-title')).toContainText('관리자가 숨긴 글입니다');
+        await authorAgain.close();
+
+        // 관리자는 내용을 보고 숨김을 풀 수 있다.
+        await adminPage.goto(postUrl);
+        await expect(adminPage.locator('#post-title-text')).toHaveText(title);
+        await expect(adminPage.locator('#post-admin-bar')).toContainText('숨겨진 글');
+        await adminPage.locator('#btn-unblind-post').click();
+        await expect(adminPage.locator('#post-admin-bar')).toHaveCount(0);
+
+        await adminPage.goto(`/community?q=${encodeURIComponent(title)}`);
+        await expect(adminPage.locator('.post-list__item').filter({ hasText: title })).toHaveCount(1);
         await adminPage.close();
     });
 
-    test('신고 삭제 확인 대화상자에서 취소하면 요청이 가지 않고 목록도 그대로다', async ({ openAs }) => {
+    test('댓글 신고를 처리하면 댓글이 가려지고(관리자에게는 원문+해제 버튼), 해제하면 돌아온다', async ({ openAs }) => {
+        const title = uniqueTitle('댓글숨김');
+        const commentText = `숨겨질 댓글 ${Date.now()}`;
+
+        const authorPage = await openAs('user');
+        await writePost(authorPage, title);
+        await authorPage.close();
+
+        const commenterPage = await openAs('other');
+        await openPostByTitle(commenterPage, title);
+        await commenterPage.locator('#comment-content').fill(commentText);
+        await commenterPage.locator('#btn-comment-save').click();
+        await expect(commenterPage.locator('.comment-list__content')).toContainText(commentText);
+        await commenterPage.close();
+
+        // 글 작성자(user)가 other의 댓글을 신고한다.
+        const reporterPage = await openAs('user');
+        await openPostByTitle(reporterPage, title);
+        await reporterPage.locator('.comment-list__item').filter({ hasText: commentText })
+            .locator('.btn-comment-report').click();
+        await reporterPage.locator('#report-reason').selectOption('ABUSE');
+        await reporterPage.locator('#btn-confirm-report').click();
+        await expect(reporterPage.locator('#app-toast')).toContainText('신고가 접수되었습니다');
+        await reporterPage.close();
+
+        const adminPage = await openAs();
+        await login(adminPage, ACCOUNTS.admin.email);
+        await adminPage.goto('/admin/reports');
+        const row = adminPage.locator('.report-list__item').filter({ hasText: commentText });
+        await row.locator('.btn-report-resolve').click();
+        await adminPage.locator('#btn-confirm-delete').click();
+        await expect(adminPage.locator('.report-list__item').filter({ hasText: commentText })).toHaveCount(0);
+
+        // 댓글 작성자를 포함한 일반 사용자에게는 자리표시만 보이고, 원문과 관리 버튼은 오지 않는다.
+        const commenterAgain = await openAs('other');
+        await openPostByTitle(commenterAgain, title);
+        const masked = commenterAgain.locator('.comment-list__item').filter({ hasText: '관리자가 숨긴 댓글입니다.' });
+        await expect(masked).toHaveCount(1);
+        await expect(commenterAgain.getByText(commentText)).toHaveCount(0);
+        await expect(masked.locator('.btn-comment-edit, .btn-comment-delete, .btn-comment-report')).toHaveCount(0);
+        await commenterAgain.close();
+
+        // 관리자는 원문과 숨김 표시, 해제 버튼을 본다.
+        await openPostByTitle(adminPage, title);
+        const adminView = adminPage.locator('.comment-list__item').filter({ hasText: commentText });
+        await expect(adminView).toContainText('[숨김]');
+        await adminView.locator('.btn-comment-unblind').click();
+        await expect(adminPage.locator('.comment-list__item').filter({ hasText: commentText })
+            .locator('.btn-comment-unblind')).toHaveCount(0);
+        await expect(adminPage.locator('.comment-list__item').filter({ hasText: commentText })).not.toContainText('[숨김]');
+        await adminPage.close();
+    });
+
+    test('신고 숨기기 확인 대화상자에서 취소하면 요청이 가지 않고 목록도 그대로다', async ({ openAs }) => {
         const title = uniqueTitle('취소하면그대로');
 
         const authorPage = await openAs('user');
@@ -199,7 +270,7 @@ test.describe('관리자 처리', () => {
         await adminPage.locator('#btn-cancel-delete').click();
         await expect(modal).toBeHidden();
 
-        expect(requested, '취소하면 삭제 요청 자체가 나가지 않아야 한다').toBe(false);
+        expect(requested, '취소하면 처리 요청 자체가 나가지 않아야 한다').toBe(false);
         await expect(row).toBeVisible();
         await adminPage.close();
     });
@@ -235,7 +306,7 @@ test.describe('관리자 처리', () => {
         await expect(adminPage.locator('#confirmDeleteModal')).toBeVisible();
         await adminPage.locator('#btn-confirm-delete').click();
 
-        // 삭제 요청이 도는 동안 같은 줄의 반려 버튼도 잠겨야 한다 — 그렇지 않으면 삭제와
+        // 처리 요청이 도는 동안 같은 줄의 반려 버튼도 잠겨야 한다 — 그렇지 않으면 숨기기와
         // 반려를 동시에 눌러 서로 다른 처리가 겹치는 경쟁이 생긴다.
         await expect(row.locator('.btn-report-resolve')).toBeDisabled();
         await expect(row.locator('.btn-report-reject')).toBeDisabled();

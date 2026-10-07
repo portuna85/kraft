@@ -572,4 +572,88 @@ class CommentServiceTest {
         assertThatThrownBy(() -> commentService.findRepliesPage(5L, null, authOf(1L, "u@example.com", Role.USER)))
                 .isInstanceOf(PostNotFoundException.class);
     }
+
+    private static Comment blindedCommentOf(User owner, Long id) {
+        Comment comment = commentOf(owner, id);
+        ReflectionTestUtils.setField(comment, "blindedAt", java.time.LocalDateTime.now());
+        return comment;
+    }
+
+    @Test
+    @DisplayName("숨긴 댓글: 일반 사용자에게는 내용이 비고 관리 권한이 없으며, 관리자에게는 원문과 관리 권한이 보인다")
+    void blindedComment_isMaskedForNonAdminAndVisibleToAdmin() {
+        User author = userWithEmail("author@example.com", 1L);
+        Comment comment = blindedCommentOf(author, 5L);
+        given(commentRepository.findPageByPostIdAsc(1L, null, PageRequest.of(0, 21))).willReturn(List.of(comment));
+        given(commentRepository.countRepliesByParentIdIn(List.of(5L))).willReturn(Map.of());
+        given(commentRepository.findInitialRepliesGroupedByParentIdIn(List.of(5L), 20)).willReturn(Map.of());
+
+        // 작성자 본인도 일반 사용자와 같다 — 숨긴 내용을 다시 볼 수 없다.
+        CommentViewDto asAuthor = commentService.findInitialPageForView(1L, authOf(author)).comments().get(0);
+        assertThat(asAuthor.blinded()).isTrue();
+        assertThat(asAuthor.content()).isEmpty();
+        assertThat(asAuthor.canManage()).isFalse();
+        assertThat(asAuthor.canModerate()).isFalse();
+
+        CommentViewDto asAdmin = commentService.findInitialPageForView(1L, authOf(9L, "admin@example.com", Role.ADMIN))
+                .comments().get(0);
+        assertThat(asAdmin.blinded()).isTrue();
+        assertThat(asAdmin.content()).isEqualTo("원래 댓글");
+        assertThat(asAdmin.canManage()).isTrue();
+        assertThat(asAdmin.canModerate()).isTrue();
+    }
+
+    @Test
+    @DisplayName("update·delete: 숨긴 댓글은 작성자도 고치거나 지울 수 없다(403)")
+    void updateAndDelete_whenBlindedAndAuthor_areForbidden() {
+        User author = userWithEmail("author@example.com", 1L);
+        Comment comment = blindedCommentOf(author, 5L);
+        given(commentRepository.findById(5L)).willReturn(Optional.of(comment));
+        given(userRepository.findById(1L)).willReturn(Optional.of(author));
+
+        assertThatThrownBy(() -> commentService.update(5L, new CommentUpdateRequestDto("새 내용", 0L), authOf(author)))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        assertThatThrownBy(() -> commentService.delete(5L, authOf(author)))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+
+        verify(commentRepository, never()).delete(any(Comment.class));
+    }
+
+    @Test
+    @DisplayName("blind: 댓글을 숨기고, 이미 소프트 삭제된 댓글은 건드리지 않는다")
+    void blind_blindsComment_andSkipsSoftDeleted() {
+        User author = userWithEmail("author@example.com", 1L);
+        Comment live = commentOf(author, 5L);
+        Comment softDeleted = commentOf(author, 6L);
+        softDeleted.softDelete();
+        given(commentRepository.findById(5L)).willReturn(Optional.of(live));
+        given(commentRepository.findById(6L)).willReturn(Optional.of(softDeleted));
+
+        commentService.blind(5L);
+        commentService.blind(6L);
+
+        verify(commentRepository).blind(org.mockito.ArgumentMatchers.eq(5L), any());
+        verify(commentRepository, never()).blind(org.mockito.ArgumentMatchers.eq(6L), any());
+    }
+
+    @Test
+    @DisplayName("unblind: 숨겨진 댓글이 아니면 댓글이 없는 것으로 답한다")
+    void unblind_whenNotBlinded_throwsNotFound() {
+        given(commentRepository.unblind(5L)).willReturn(0);
+
+        assertThatThrownBy(() -> commentService.unblind(5L))
+                .isInstanceOf(com.kraft.shared.exception.NotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("update: 숨긴 글 아래의 댓글은 작성자도 수정할 수 없다(글이 없는 것으로 답한다)")
+    void update_whenPostBlinded_throwsPostNotFound() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Comment comment = commentOf(owner, 5L);
+        ReflectionTestUtils.setField(comment.getPost(), "blindedAt", java.time.LocalDateTime.now());
+        given(commentRepository.findById(5L)).willReturn(Optional.of(comment));
+
+        assertThatThrownBy(() -> commentService.update(5L, new CommentUpdateRequestDto("새 내용", 0L), authOf(owner)))
+                .isInstanceOf(PostNotFoundException.class);
+    }
 }

@@ -3,6 +3,7 @@ package com.kraft.post.service;
 import com.kraft.comment.domain.CommentRepository;
 import com.kraft.post.domain.Post;
 import com.kraft.post.domain.PostLikeRepository;
+import com.kraft.post.domain.PostHiddenException;
 import com.kraft.post.domain.PostNotFoundException;
 import com.kraft.post.domain.PostRepository;
 import com.kraft.post.dto.PostLikeResponseDto;
@@ -23,6 +24,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -135,6 +137,7 @@ public class PostService {
         User actor = findUser(authentication);
         WriteAccessPolicy.requireVerified(actor);
         validateOwner(post, authentication);
+        requireNotBlindedUnlessAdmin(post, authentication);
         VersionCheck.require(Post.class, post.getId(), post.getVersion(), requestDto.version());
         CategoryPolicy.requireCanUse(authentication, requestDto.category());
 
@@ -191,6 +194,7 @@ public class PostService {
     public void delete(Long id, Authentication authentication) {
         Post post = findPost(id);
         validateOwner(post, authentication);
+        requireNotBlindedUnlessAdmin(post, authentication);
 
         List<Long> commentIds = commentRepository.findIdsByPostId(id);
         // 0이면 그 사이 다른 요청이 먼저 지운 것이다 — 없는 글로 본다.
@@ -262,6 +266,10 @@ public class PostService {
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public PostLikeResponseDto setLike(Long id, boolean liked, Authentication authentication) {
         Post post = findPost(id);
+        // 숨겨진 글은 관리자 말고는 열 수 없으므로 추천도 없는 글로 본다.
+        if (post.isBlinded() && !OwnershipPolicy.isAdmin(authentication)) {
+            throw new PostHiddenException(id);
+        }
         User user = findUser(authentication);
 
         if (liked) {
@@ -316,6 +324,16 @@ public class PostService {
 
     private User findUser(Authentication authentication) {
         return CurrentUser.require(authentication, userRepository);
+    }
+
+    /**
+     * 관리자가 숨긴 글은 작성자도 고치거나 지울 수 없다 — 숨김 상태는 관리자만 바꾼다. 작성자가 신고된
+     * 내용을 지우거나 고쳐 증거를 없애는 일을 막는다(관리자가 지우는 것은 그대로 허용한다).
+     */
+    private void requireNotBlindedUnlessAdmin(Post post, Authentication authentication) {
+        if (post.isBlinded() && !OwnershipPolicy.isAdmin(authentication)) {
+            throw new AccessDeniedException("관리자가 숨긴 글은 수정·삭제할 수 없습니다. id=" + post.getId());
+        }
     }
 
     /** 삭제되지 않은 글만 찾는다. 소프트 삭제된 글은 수정·추천·삭제의 대상이 아니다. */

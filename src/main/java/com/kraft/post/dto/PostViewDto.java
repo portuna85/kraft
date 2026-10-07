@@ -25,6 +25,8 @@ public record PostViewDto(
         Long version,
         /** 소프트 삭제된 글이다. 관리자만 이 글을 열 수 있어, 화면이 "삭제됨" 표시와 복구 버튼을 그린다. */
         boolean deleted,
+        /** 관리자가 숨긴 글이다(신고 처리). 관리자만 이 글을 열 수 있어, 화면이 숨김 표시와 해제 버튼을 그린다. */
+        boolean blinded,
         /** 관리자 권한. 복구 같은 관리 버튼 노출에 쓴다 — 서버가 판정한 값만 믿는다. */
         boolean canModerate
 ) {
@@ -34,7 +36,7 @@ public record PostViewDto(
                        Integer pictureHeight, String author, boolean canManagePost, Category category,
                        long viewCount, long likeCount, boolean likedByMe, Long version) {
         this(id, title, content, picture, pictureWidth, pictureHeight, author, canManagePost, category,
-                viewCount, likeCount, likedByMe, version, false, false);
+                viewCount, likeCount, likedByMe, version, false, false, false);
     }
 
     public PostViewDto(Post entity, boolean canManagePost, long likeCount, boolean likedByMe,
@@ -54,6 +56,7 @@ public record PostViewDto(
                 likedByMe,
                 entity.getVersion(),
                 entity.isDeleted(),
+                entity.isBlinded(),
                 canModerate
         );
     }

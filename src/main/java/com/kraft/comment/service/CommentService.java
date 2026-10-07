@@ -23,10 +23,12 @@ import com.kraft.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -77,7 +79,7 @@ public class CommentService {
         WriteAccessPolicy.requireVerified(user);
         Comment parent = resolveParent(postId, requestDto.parentId());
         Comment saved = commentRepository.saveAndFlush(requestDto.toEntity(post, user, parent));
-        return new CommentViewDto(saved, OwnershipPolicy.canManage(authentication, saved.getUser()));
+        return viewOf(saved, authentication);
     }
 
     /**
@@ -119,10 +121,11 @@ public class CommentService {
         if (comment.isDeleted()) {
             throw new BusinessValidationException("삭제된 댓글은 수정할 수 없습니다.");
         }
+        requireNotBlindedUnlessAdmin(comment, authentication);
         VersionCheck.require(Comment.class, comment.getId(), comment.getVersion(), requestDto.version());
         comment.update(requestDto.content());
         commentRepository.flush();
-        return new CommentViewDto(comment, OwnershipPolicy.canManage(authentication, comment.getUser()));
+        return viewOf(comment, authentication);
     }
 
     /**
@@ -139,6 +142,7 @@ public class CommentService {
         Comment comment = findComment(id);
         requirePostVisible(comment, authentication);
         OwnershipPolicy.validateOwner(authentication, comment.getUser(), id);
+        requireNotBlindedUnlessAdmin(comment, authentication);
         if (comment.isDeleted()) {
             // 이미 삭제된 댓글에 대한 재요청(예: 관리자가 사용자보다 늦게 신고를 처리)은
             // 조용히 넘어간다 — 화면은 어느 쪽이든 "삭제됨"으로 보여준다.
@@ -219,11 +223,10 @@ public class CommentService {
                                                Map<Long, List<Comment>> repliesByParent) {
         long replyCount = replyCounts.getOrDefault(comment.getId(), 0L);
         List<CommentViewDto> replies = repliesByParent.getOrDefault(comment.getId(), List.of()).stream()
-                .map(reply -> new CommentViewDto(reply, OwnershipPolicy.canManage(authentication, reply.getUser())))
+                .map(reply -> viewOf(reply, authentication))
                 .toList();
         boolean hasMoreReplies = replyCount > replies.size();
-        return new CommentViewDto(comment, OwnershipPolicy.canManage(authentication, comment.getUser()))
-                .withReplies(replies, replyCount, hasMoreReplies);
+        return viewOf(comment, authentication).withReplies(replies, replyCount, hasMoreReplies);
     }
 
     /**
@@ -239,7 +242,7 @@ public class CommentService {
         List<Comment> page = hasMore ? fetched.subList(0, REPLIES_PAGE_SIZE) : fetched;
 
         List<CommentViewDto> views = page.stream()
-                .map(reply -> new CommentViewDto(reply, OwnershipPolicy.canManage(authentication, reply.getUser())))
+                .map(reply -> viewOf(reply, authentication))
                 .toList();
         // "답글 더 보기"는 항상 후속 페이지다 — 최초 답글 수는 이미 withInitialReplies가 배치로
         // 계산해 부모 댓글에 실어 보냈고, 화면도 이 값을 읽지 않는다(A-BE-13).
@@ -251,8 +254,47 @@ public class CommentService {
      * 같으므로 글이 없는 것으로 답한다.
      */
     private void requirePostVisible(Comment comment, Authentication authentication) {
-        if (comment.getPost() != null && comment.getPost().isDeleted() && !OwnershipPolicy.isAdmin(authentication)) {
-            throw new PostNotFoundException(comment.getPost().getId());
+        Post post = comment.getPost();
+        if (post != null && (post.isDeleted() || post.isBlinded()) && !OwnershipPolicy.isAdmin(authentication)) {
+            throw new PostNotFoundException(post.getId());
+        }
+    }
+
+    /**
+     * 관리자가 숨긴 댓글은 작성자도 고치거나 지울 수 없다 — 숨김 상태는 관리자만 바꾼다. 신고된 내용을
+     * 작성자가 지우거나 고쳐 증거를 없애는 일을 막는다.
+     */
+    private void requireNotBlindedUnlessAdmin(Comment comment, Authentication authentication) {
+        if (comment.isBlinded() && !OwnershipPolicy.isAdmin(authentication)) {
+            throw new AccessDeniedException("관리자가 숨긴 댓글은 수정·삭제할 수 없습니다. id=" + comment.getId());
+        }
+    }
+
+    /** 보는 사람에 맞춘 화면용 DTO. 숨겨진 댓글은 관리자가 아니면 내용이 비워진다. */
+    private CommentViewDto viewOf(Comment comment, Authentication authentication) {
+        return new CommentViewDto(comment, OwnershipPolicy.canManage(authentication, comment.getUser()),
+                OwnershipPolicy.isAdmin(authentication), List.of(), 0L, false);
+    }
+
+    /**
+     * 댓글을 숨긴다(신고 처리가 부른다). 내용은 그대로 두고 {@link #unblind}로 되돌릴 수 있다. 이미
+     * 소프트 삭제된 댓글은 숨길 것이 없고, 이미 숨겨졌으면 조용히 넘어간다 — 같은 대상에 신고가 여럿이거나
+     * 다른 관리자가 먼저 처리했을 수 있다.
+     */
+    @Transactional
+    public void blind(Long id) {
+        Comment comment = findComment(id);
+        if (comment.isDeleted()) {
+            return;
+        }
+        commentRepository.blind(id, LocalDateTime.now());
+    }
+
+    /** 숨김을 푼다. 숨겨진 댓글이 아니면 댓글이 없는 것으로 답한다. */
+    @Transactional
+    public void unblind(Long id) {
+        if (commentRepository.unblind(id) == 0) {
+            throw new NotFoundException("숨겨진 댓글이 아닙니다. id=" + id);
         }
     }
 

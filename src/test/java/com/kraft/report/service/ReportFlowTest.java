@@ -145,14 +145,16 @@ class ReportFlowTest {
     }
 
     @Test
-    @DisplayName("처리하면 대상 글이 소프트 삭제되고 대기 목록에서도 빠진다")
+    @DisplayName("처리하면 대상 글이 삭제되지 않고 숨겨지며 대기 목록에서도 빠진다")
     void resolvingDeletesTargetAndClearsPendingList() {
         reportThePost(reporter, ReportReason.ABUSE);
         Long reportId = reportRepository.findAll().get(0).getId();
 
         reportService.resolve(reportId, authOf(admin));
 
-        assertThat(postRepository.findById(post.getId()).orElseThrow().isDeleted()).isTrue();
+        Post handled = postRepository.findById(post.getId()).orElseThrow();
+        assertThat(handled.isBlinded()).isTrue();
+        assertThat(handled.isDeleted()).isFalse();
         assertThat(reportService.findPending(PageRequest.of(0, 20)).getContent()).isEmpty();
         assertThat(reportRepository.findById(reportId).orElseThrow().getStatus())
                 .isEqualTo(ReportStatus.RESOLVED);
@@ -315,15 +317,16 @@ class ReportFlowTest {
         assertThat(t2.isAlive()).as("t2가 타임아웃 안에 끝나야 한다").isFalse();
 
         assertThat(results).containsExactlyInAnyOrder(true, false);
-        // 대상은 이긴 쪽의 처리 결과와 일관되어야 한다 — resolve가 이겼으면 지워지고, reject가
+        // 대상은 이긴 쪽의 처리 결과와 일관되어야 한다 — resolve가 이겼으면 숨겨지고, reject가
         // 이겼으면 남아 있다. 둘 다 절반씩 실행됐다는 증거가 없어야 한다(예: 정지가 반쯤 적용).
         Report finalState = reportRepository.findById(reportId).orElseThrow();
-        boolean postExists = postRepository.findById(post.getId()).filter(p -> !p.isDeleted()).isPresent();
+        boolean postVisible = postRepository.findById(post.getId())
+                .filter(p -> !p.isDeleted() && !p.isBlinded()).isPresent();
         if (finalState.getStatus() == ReportStatus.RESOLVED) {
-            assertThat(postExists).isFalse();
+            assertThat(postVisible).isFalse();
         } else {
             assertThat(finalState.getStatus()).isEqualTo(ReportStatus.REJECTED);
-            assertThat(postExists).isTrue();
+            assertThat(postVisible).isTrue();
         }
     }
 
