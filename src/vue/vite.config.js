@@ -16,6 +16,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const CORE_MODULES = [
     '/core/http.js',
     '/core/httpResponse.js',
+    '/core/etag.js',
     '/core/dom.js',
     '/core/constants.js',
     '/core/storage.js',

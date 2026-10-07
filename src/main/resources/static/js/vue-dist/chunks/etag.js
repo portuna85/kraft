@@ -1,1 +1,0 @@
-function e(e){return`"${e}"`}function t(t){return{"If-Match":e(t)}}export{t};
