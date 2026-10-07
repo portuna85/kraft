@@ -176,6 +176,23 @@ public class PostService {
     public void delete(Long id, Authentication authentication) {
         Post post = findPost(id);
         validateOwner(post, authentication);
+        removePermanently(post);
+    }
+
+    /**
+     * 소유권을 묻지 않고 게시글을 영구 삭제한다. 소프트 삭제 보관 기간이 끝난 글을 치우는 쪽
+     * (이후 단계)이 부르므로, 호출자가 삭제해도 되는 글인지 먼저 판단해야 한다.
+     * 같은 클래스 안의 {@link #delete}도 같은 본문({@link #removePermanently})을 쓴다 — 프록시를
+     * 거치지 않는 자기 호출로 {@code @Transactional}·{@code @CacheEvict}가 빠지는 일을 피한다.
+     */
+    @CacheEvict(value = "pinnedNotices", allEntries = true)
+    @Transactional
+    public void purge(Long id) {
+        removePermanently(findPost(id));
+    }
+
+    private void removePermanently(Post post) {
+        Long id = post.getId();
 
         // 지우기 전에 그 아래 모든 댓글(최상위+답글) id를 알아 둔다(A-BE-01) — 게시글과 함께
         // 사라지는 댓글에 걸린 대기 신고도 함께 닫아야 하는데, 지운 뒤에는 조회할 수 없다.
