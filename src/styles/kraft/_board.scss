@@ -141,8 +141,8 @@
     display: inline-block;
     padding: 1px 8px;
     border-radius: 999px;
-    background-color: var(--kraft-accent-bg);
-    color: var(--kraft-accent-text);
+    background-color: var(--kraft-warn-bg);
+    color: var(--kraft-warn-text);
     font-size: $fs-2xs;
     font-weight: 600;
     margin-right: var(--kraft-space-2);
@@ -212,8 +212,8 @@
 }
 
 .board-filter-summary__chip {
-    background-color: var(--kraft-accent-bg);
-    color: var(--kraft-accent-text);
+    background-color: var(--kraft-warn-bg);
+    color: var(--kraft-warn-text);
     border-radius: 999px;
     padding: 1px 8px;
     font-weight: 600;
@@ -249,7 +249,7 @@
 
 // PlayForum 비교(문서 4.3): 순번에도 기존 강조색 토큰을 반복시킨다.
 .popular-posts__item::marker {
-    color: var(--kraft-accent-text);
+    color: var(--kraft-warn-text);
     font-weight: 700;
 }
 

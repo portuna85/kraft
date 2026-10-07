@@ -8,7 +8,13 @@
     border: 1px solid var(--kraft-border);
     border-radius: var(--kraft-radius-surface);
     box-shadow: var(--kraft-shadow-surface);
-    padding: var(--kraft-space-6);
+    padding: var(--kraft-space-5);
+}
+
+@include from($bp-md) {
+    .card-kraft {
+        padding: var(--kraft-card-pad);
+    }
 }
 
 /* Bootstrap 5에는 .form-group이 없어 .mb-3로 바꿨다(간격 유틸리티가 그 역할을 한다).
@@ -26,10 +32,17 @@
 .form-control,
 .form-select {
     min-height: 44px;
+    border-radius: var(--kraft-radius-control);
+}
+
+// 텍스트 입력과 셀렉트는 WCAG 1.4.11(컨트롤 3:1)을 위해 진한 테두리를 쓴다. 셀렉트는 예전에 Bootstrap
+// 기본 연회색을 그대로 썼다.
+.form-control,
+.form-select {
+    border-color: var(--kraft-control-border);
 }
 
 .form-control {
-    border-color: var(--kraft-control-border);
     font-size: 1rem;
 }
 

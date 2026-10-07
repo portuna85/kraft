@@ -2,7 +2,8 @@ import { byId } from '../core/dom.js';
 import { readItem, writeItem } from '../core/storage.js';
 
 /**
- * 다크 모드 토글(11단계). 시스템 → 밝게 → 어둡게를 순환하는 3단계 버튼이다.
+ * 다크 모드 토글(11단계). 시스템 → 밝게 → 어둡게를 순환하는 3단계 버튼이다. 화면에는 현재 상태의
+ * 아이콘(CSS가 data-state로 고른다)만 보이고, 접근 가능한 이름은 버튼 안의 .visually-hidden 글자다.
  *
  * theme-init.js(별도 파일, defer 없이 head에서 동기 실행)가 첫 페인트 전에 같은 저장
  * 키(kraft:theme)로 <html>의 data-theme·data-bs-theme을 이미 정해 둔 상태에서 시작한다 —
@@ -55,5 +56,8 @@ function persist(theme, value) {
 }
 
 function render(button, value) {
-    button.textContent = LABELS[value];
+    button.dataset.state = value;
+    // 아이콘 svg를 지우지 않도록 보이지 않는 이름 글자만 바꾼다. 그 요소가 없는 마크업이면 버튼 글자 자체를 바꾼다.
+    const label = button.querySelector('.visually-hidden');
+    (label ?? button).textContent = LABELS[value];
 }

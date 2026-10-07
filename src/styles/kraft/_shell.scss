@@ -4,7 +4,7 @@
    본문 셸 그리드
    ========================================================================== */
 .kraft-shell {
-    max-width: 1280px;
+    max-width: var(--kraft-container);
     margin: 0 auto;
     padding: var(--kraft-space-4);
     display: grid;
@@ -14,7 +14,7 @@
 
 @include from($bp-md) {
     .kraft-shell {
-        padding: var(--kraft-space-6);
+        padding: var(--kraft-space-8);
     }
 }
 
@@ -84,7 +84,8 @@
     line-height: 1.6;
 }
 
-/* 사이트 공통 푸터. 본문 셸 아래에 얇은 구분선과 한두 줄 안내만 둔다. */
+/* 사이트 공통 푸터. 본문 셸 아래에 얇은 구분선과 한두 줄 안내만 둔다. 768px 이상에서는 왼쪽 워드마크,
+   오른쪽 안내, 그 아래 링크의 배치다. 안쪽 폭은 셸의 본문 폭(컨테이너 - 좌우 gutter 32px)과 같다. */
 .kraft-footer {
     border-top: 1px solid var(--kraft-border);
     margin-top: var(--kraft-space-8);
@@ -94,17 +95,58 @@
 }
 
 .kraft-footer__inner {
-    max-width: 1280px;
+    max-width: calc(var(--kraft-container) - 2 * var(--kraft-space-8));
     margin: 0 auto;
 }
 
 .kraft-footer__brand {
-    font-weight: 700;
+    color: var(--kraft-text);
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
     margin-bottom: var(--kraft-space-1);
+}
+
+.kraft-footer__dot {
+    color: var(--kraft-primary);
 }
 
 .kraft-footer__note {
     margin-bottom: var(--kraft-space-2);
+}
+
+@include from($bp-md) {
+    .kraft-footer {
+        padding-left: var(--kraft-space-8);
+        padding-right: var(--kraft-space-8);
+    }
+
+    .kraft-footer__inner {
+        display: grid;
+        grid-template-columns: max-content minmax(0, 1fr);
+        grid-template-areas:
+            "brand note"
+            "links links";
+        column-gap: var(--kraft-space-8);
+        align-items: baseline;
+    }
+
+    .kraft-footer__brand {
+        grid-area: brand;
+        margin-bottom: 0;
+    }
+
+    .kraft-footer__note {
+        grid-area: note;
+        justify-self: end;
+        max-width: 60ch;
+        margin-bottom: 0;
+        text-align: right;
+    }
+
+    .kraft-footer__links {
+        grid-area: links;
+    }
 }
 
 .kraft-footer__links {

@@ -9,8 +9,8 @@
     display: inline-block;
     padding: 1px 8px;
     border-radius: 999px;
-    background-color: var(--kraft-accent-bg);
-    color: var(--kraft-accent-text);
+    background-color: var(--kraft-warn-bg);
+    color: var(--kraft-warn-text);
     font-size: $fs-2xs;
     font-weight: 600;
     margin-bottom: var(--kraft-space-2);
@@ -97,9 +97,9 @@
 
 .post-font-controls__btn {
     &.is-active {
-        background-color: var(--kraft-accent-bg);
-        color: var(--kraft-accent-text);
-        border-color: var(--kraft-accent-text);
+        background-color: var(--kraft-warn-bg);
+        color: var(--kraft-warn-text);
+        border-color: var(--kraft-warn-text);
     }
 }
 
@@ -122,9 +122,9 @@
 // 주지 않으므로(자체 활성 클래스는 .active), 이 규칙이 없으면 추천을 눌러도 시각적으로
 // "선택됨"이 보이지 않는다. .post-font-controls__btn.is-active와 같은 토큰 조합을 쓴다.
 .post-like.is-active {
-    background-color: var(--kraft-accent-bg);
-    color: var(--kraft-accent-text);
-    border-color: var(--kraft-accent-text);
+    background-color: var(--kraft-warn-bg);
+    color: var(--kraft-warn-text);
+    border-color: var(--kraft-warn-text);
 }
 
 .post-edit {

@@ -27,6 +27,7 @@
     // 이미 같은 팔레트 색으로 outline을 그리므로, 여기서는 그 하나만 남기고 box-shadow 링은
     // 끈다 — 켜 두면 버튼에서만 두 겹(파랑 그림자 + 보라 outline)이 겹쳐 보였다.
     --bs-btn-focus-box-shadow: none;
+    --bs-btn-border-radius: var(--kraft-radius-control);
 }
 
 // "sm"인데 lg와 같은 44px여서 밀도를 해치던 것을 목록 안 보조 동작에 맞는 높이로 낮춘다.
@@ -50,21 +51,22 @@
     --bs-btn-disabled-border-color: var(--kraft-primary);
 }
 
-// 가장 많이 쓰는 조합(화면 곳곳의 "취소" 버튼, 12곳)인데 지금까지 커스텀이 하나도 없어서
-// Bootstrap 기본 회색(#6c757d) 그대로였다. 여기서 처음 팔레트에 편입한다.
+// 가장 많이 쓰는 조합(화면 곳곳의 "취소" 버튼, 12곳)이다. 예전에는 진한 회색 채움이었지만 새 디자인에서는
+// 주 버튼(인디고 채움)과 겹치지 않는 부드러운 채움(--kraft-secondary-soft-*)이다. hover·active는 테두리색
+// 계열로 한 단계 짙게 한다. 글자 대비는 라이트 약 9.9:1, 다크 약 10.1:1이다.
 .btn-secondary {
-    --bs-btn-color: var(--kraft-on-secondary);
-    --bs-btn-bg: var(--kraft-secondary);
-    --bs-btn-border-color: var(--kraft-secondary);
-    --bs-btn-hover-color: var(--kraft-on-secondary);
-    --bs-btn-hover-bg: var(--kraft-secondary-dark);
-    --bs-btn-hover-border-color: var(--kraft-secondary-dark);
-    --bs-btn-active-color: var(--kraft-on-secondary);
-    --bs-btn-active-bg: var(--kraft-secondary-dark);
-    --bs-btn-active-border-color: var(--kraft-secondary-dark);
-    --bs-btn-disabled-color: var(--kraft-on-secondary);
-    --bs-btn-disabled-bg: var(--kraft-secondary);
-    --bs-btn-disabled-border-color: var(--kraft-secondary);
+    --bs-btn-color: var(--kraft-secondary-soft-text);
+    --bs-btn-bg: var(--kraft-secondary-soft-bg);
+    --bs-btn-border-color: var(--kraft-secondary-soft-bg);
+    --bs-btn-hover-color: var(--kraft-secondary-soft-text);
+    --bs-btn-hover-bg: var(--kraft-border);
+    --bs-btn-hover-border-color: var(--kraft-border);
+    --bs-btn-active-color: var(--kraft-secondary-soft-text);
+    --bs-btn-active-bg: var(--kraft-border);
+    --bs-btn-active-border-color: var(--kraft-border);
+    --bs-btn-disabled-color: var(--kraft-secondary-soft-text);
+    --bs-btn-disabled-bg: var(--kraft-secondary-soft-bg);
+    --bs-btn-disabled-border-color: var(--kraft-secondary-soft-bg);
 }
 
 .btn-danger {
