@@ -41,23 +41,6 @@ public class PostModerationService {
         }
     }
 
-    /**
-     * 글을 숨긴다(신고 처리가 부른다). 삭제와 달리 내용과 댓글이 그대로 남고 {@link #unblindPost}로 되돌릴
-     * 수 있다. 이미 숨겨진 글은 조용히 넘어간다 — 같은 대상에 신고가 여럿이거나 다른 관리자가 먼저
-     * 처리했을 수 있다. 없거나 삭제된 글이면 글이 없는 것으로 답한다.
-     */
-    @Caching(evict = {
-            @CacheEvict(value = "pinnedPosts", allEntries = true),
-            @CacheEvict(value = "popularPosts", allEntries = true)
-    })
-    @Transactional
-    public void blindPost(Long id) {
-        if (postRepository.blind(id, LocalDateTime.now()) == 0
-                && postRepository.findById(id).filter(post -> !post.isDeleted()).isEmpty()) {
-            throw new PostNotFoundException(id);
-        }
-    }
-
     /** 숨김을 푼다. 숨겨진 글이 아니면(없거나 삭제됐거나 이미 풀림) 글이 없는 것으로 답한다. */
     @Caching(evict = {
             @CacheEvict(value = "pinnedPosts", allEntries = true),

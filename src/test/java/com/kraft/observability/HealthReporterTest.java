@@ -6,7 +6,6 @@ import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
 import com.kraft.user.mail.OutboxMailKind;
-import com.kraft.report.domain.ReportRepository;
 import com.kraft.user.mail.OutboxMailRepository;
 import com.kraft.user.mail.OutboxMailStore;
 import com.kraft.user.session.SessionRevocationTaskRepository;
@@ -58,9 +57,6 @@ class HealthReporterTest {
     private OutboxMailRepository outboxMailRepository;
 
     @Autowired
-    private ReportRepository reportRepository;
-
-    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -77,7 +73,7 @@ class HealthReporterTest {
 
     /** 풀(DataSource)이 없는 보고기를 기본 설정으로 조립한다. */
     private HealthReporter reporter(RequestMetrics metrics, OutboxMailRepository outboxMails) {
-        return new HealthReporter(metrics, outboxMails, reportRepository, sessionRevocationTaskRepository,
+        return new HealthReporter(metrics, outboxMails, sessionRevocationTaskRepository,
                 postImageRepository, recommendationHistoryStateRepository, null, "uploads/images",
                 AlertMailer.disabled(), MetricsProperties.defaults(), true, null);
     }
@@ -110,7 +106,7 @@ class HealthReporterTest {
     @Test
     @DisplayName("정상일 때는 INFO로 평소 수치를 남긴다")
     void healthyStateIsLoggedAtInfo() {
-        healthReporter.report(new HealthSnapshot(100, 1, 0, 90, 300, 1, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0, true));
+        healthReporter.report(new HealthSnapshot(100, 1, 0, 90, 300, 1, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, true));
 
         ILoggingEvent event = onlyEvent();
         assertThat(event.getLevel()).isEqualTo(Level.INFO);
@@ -124,7 +120,7 @@ class HealthReporterTest {
     @Test
     @DisplayName("기준을 넘기면 ERROR로 올려 무엇이 넘었는지 함께 남긴다")
     void breachIsEscalatedToError() {
-        healthReporter.report(new HealthSnapshot(100, 40, 3, 90, 300, 1, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0, true));
+        healthReporter.report(new HealthSnapshot(100, 40, 3, 90, 300, 1, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, true));
 
         ILoggingEvent event = onlyEvent();
         assertThat(event.getLevel()).as("ERROR라야 kraft-error.log에 모인다").isEqualTo(Level.ERROR);

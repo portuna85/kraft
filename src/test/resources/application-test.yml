@@ -91,8 +91,6 @@ app:
   session-revocation:
     drain-initial-delay-ms: 3600000
     retention-initial-delay-ms: 3600000
-  report:
-    snapshot-purge-initial-delay-ms: 3600000
   post:
     purge-initial-delay-ms: 3600000
   recommend:

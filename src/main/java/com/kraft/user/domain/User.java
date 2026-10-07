@@ -23,9 +23,6 @@ import java.time.LocalDateTime;
         @UniqueConstraint(name = "UK_USER_EMAIL_HMAC", columnNames = "email_hmac"),
         @UniqueConstraint(name = "UK_USER_NAME", columnNames = "name")
 }, indexes = {
-        // V11__user_suspension.sql. 엔티티에 선언이 없어 ddl-auto: update로 만든 기존 DB에는
-        // 이 인덱스가 생기지 않았다(개선 보고서 O01).
-        @Index(name = "IX_USERS_SUSPENDED_UNTIL", columnList = "suspended_until"),
         // V9__user_withdrawal.sql의 IX_USERS_WITHDRAWN_AT(withdrawn_at)는 V25에서 지웠다 —
         // withdrawnAt을 거르는 쿼리(UserRepository.findGuestsMissingVerificationMail)가 실제로는
         // role=GUEST를 선두 조건으로 쓰는 IX_USERS_ROLE_CREATED_AT을 타고, 이 컬럼 단독으로
@@ -72,31 +69,17 @@ public class User extends BaseEntity {
     private LocalDateTime withdrawnAt;
 
     /**
-     * 정지가 풀리는 시각. null이거나 이미 지났으면 정지 중이 아니다.
-     * <p>
-     * 기간을 시각으로 두고 매번 현재 시각과 비교한다 — 해제 배치가 필요 없고, 배치가 멈춰서
-     * 정지가 안 풀리는 일도 없다.
-     */
-    @Column(name = "suspended_until")
-    private LocalDateTime suspendedUntil;
-
-    /** 정지 사유. 정지된 사람에게 그대로 보여준다. */
-    @Column(name = "suspension_reason", length = 200)
-    private String suspensionReason;
-
-    /**
-     * 로그인 연속 실패 횟수(A-SEC-08, V29). 성공하면 0으로 돌아간다. 정지({@link #suspendedUntil})와는
-     * 다른 축이다 — 정지는 글쓰기만 막고 로그인은 그대로 두지만, 이건 로그인 자체를 막는다.
+     * 로그인 연속 실패 횟수(A-SEC-08, V29). 성공하면 0으로 돌아간다. 로그인 자체를 막는다.
      */
     @Column(name = "failed_login_attempts", nullable = false)
     private int failedLoginAttempts;
 
-    /** 로그인이 잠기는 시각. null이거나 이미 지났으면 잠긴 게 아니다({@link #isSuspended}와 같은 패턴). */
+    /** 로그인이 잠기는 시각. null이거나 이미 지났으면 잠긴 게 아니다(시각과 비교해 저절로 풀린다). */
     @Column(name = "locked_until")
     private LocalDateTime lockedUntil;
 
     /**
-     * 비밀번호 변경·정지·탈퇴가 같은 행을 동시에 바꿀 때 나중에 flush되는 쪽이 앞선 변경을
+     * 비밀번호 변경·탈퇴가 같은 행을 동시에 바꿀 때 나중에 flush되는 쪽이 앞선 변경을
      * 조용히 덮어쓰지 않도록 한다(B07). {@code PostImage.version}과 같은 목적이다.
      */
     @Version
@@ -140,22 +123,6 @@ public class User extends BaseEntity {
 
     public boolean isWithdrawn() {
         return withdrawnAt != null;
-    }
-
-    /** 이 시각까지 글·댓글을 쓸 수 없게 한다. 읽기와 로그인은 그대로 둔다. */
-    public void suspendUntil(LocalDateTime until, String reason) {
-        this.suspendedUntil = until;
-        this.suspensionReason = reason;
-    }
-
-    /** 기간이 남았는지 지금 판정한다. 만료된 정지는 아무것도 하지 않아도 저절로 풀린다. */
-    public boolean isSuspended() {
-        return suspendedUntil != null && LocalDateTime.now().isBefore(suspendedUntil);
-    }
-
-    /** 관리자가 기간을 다 채우기 전에 푼다. 사유는 기록에서 지우지 않는다. */
-    public void liftSuspension() {
-        this.suspendedUntil = null;
     }
 
     /** 기간이 남았는지 지금 판정한다. 만료된 잠금은 아무것도 하지 않아도 저절로 풀린다. */

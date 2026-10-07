@@ -20,7 +20,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -55,14 +54,11 @@ class CommentServiceTest {
     @Mock
     private UserRepository userRepository;
 
-    @Mock
-    private ApplicationEventPublisher eventPublisher;
-
     private CommentService commentService;
 
     @BeforeEach
     void setUp() {
-        commentService = new CommentService(commentRepository, postRepository, userRepository, eventPublisher);
+        commentService = new CommentService(commentRepository, postRepository, userRepository);
     }
 
     private static User userWithEmail(String email, Long id) {
@@ -383,22 +379,6 @@ class CommentServiceTest {
     }
 
     @Test
-    @DisplayName("update: 정지된 작성자는 자신의 댓글도 수정할 수 없다")
-    void update_whenAuthorIsSuspended_throwsAccessDeniedExceptionAndDoesNotModify() {
-        User owner = userWithEmail("owner@example.com", 1L);
-        owner.suspendUntil(java.time.LocalDateTime.now().plusDays(1), "규정 위반");
-        Comment comment = commentOf(owner, 100L);
-        given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
-        given(userRepository.findById(1L)).willReturn(Optional.of(owner));
-
-        assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("수정 시도"), null,
-                authOf(owner)))
-                .isInstanceOf(AccessDeniedException.class);
-
-        assertThat(comment.getContent()).isEqualTo("원래 댓글");
-    }
-
-    @Test
     @DisplayName("delete: 작성자가 아니면 AccessDeniedException이고 delete가 호출되지 않는다")
     void delete_whenNotAuthor_throwsAccessDeniedExceptionAndDoesNotDelete() {
         User owner = userWithEmail("owner@example.com", 1L);
@@ -432,16 +412,14 @@ class CommentServiceTest {
         inOrder.verify(commentRepository).delete(comment);
         assertThat(result.softDeleted()).isFalse();
         assertThat(result.id()).isEqualTo(100L);
-        verify(eventPublisher).publishEvent(new com.kraft.report.event.TargetDeletedEvent(
-                com.kraft.report.domain.ReportTargetType.COMMENT, List.of(100L)));
     }
 
     /**
      * 답글이 있는 최상위 댓글을 지우면 남의 답글까지 함께 사라졌다(개선 보고서 A-BE-06). 행을
-     * 지우지 않고 내용만 비운다. 대기 중인 신고가 남지 않도록 A-BE-01 이벤트는 발행한다(BE-11).
+     * 지우지 않고 내용만 비운다.
      */
     @Test
-    @DisplayName("delete: 답글이 있으면 행을 지우지 않고 소프트 삭제하고 신고 정리 이벤트를 발행한다")
+    @DisplayName("delete: 답글이 있으면 행을 지우지 않고 소프트 삭제한다")
     void delete_whenHasReplies_softDeletesAndKeepsRow() {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
@@ -454,8 +432,6 @@ class CommentServiceTest {
         assertThat(comment.isDeleted()).isTrue();
         assertThat(comment.getContent()).isEmpty();
         verify(commentRepository, never()).delete(any());
-        verify(eventPublisher).publishEvent(new com.kraft.report.event.TargetDeletedEvent(
-                com.kraft.report.domain.ReportTargetType.COMMENT, List.of(100L)));
     }
 
     @Test
@@ -471,7 +447,6 @@ class CommentServiceTest {
         assertThat(result.softDeleted()).isTrue();
         verify(commentRepository, never()).delete(any());
         verify(commentRepository, never()).countRepliesByParentIdIn(any());
-        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -617,23 +592,6 @@ class CommentServiceTest {
                 .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
 
         verify(commentRepository, never()).delete(any(Comment.class));
-    }
-
-    @Test
-    @DisplayName("blind: 댓글을 숨기고, 이미 소프트 삭제된 댓글은 건드리지 않는다")
-    void blind_blindsComment_andSkipsSoftDeleted() {
-        User author = userWithEmail("author@example.com", 1L);
-        Comment live = commentOf(author, 5L);
-        Comment softDeleted = commentOf(author, 6L);
-        softDeleted.softDelete();
-        given(commentRepository.findById(5L)).willReturn(Optional.of(live));
-        given(commentRepository.findById(6L)).willReturn(Optional.of(softDeleted));
-
-        commentService.blind(5L);
-        commentService.blind(6L);
-
-        verify(commentRepository).blind(org.mockito.ArgumentMatchers.eq(5L), any());
-        verify(commentRepository, never()).blind(org.mockito.ArgumentMatchers.eq(6L), any());
     }
 
     @Test

@@ -77,10 +77,6 @@ app:
     # 원칙은 다른 항목들과 같다.
     auto-fetch:
       enabled: false
-  report:
-    # 신고 스냅샷 정리도 같은 이유로 끈다 — users 테이블과 무관하지만, 이 창에는 무관한
-    # 스케줄러를 섞지 않는다.
-    snapshot-purge-enabled: false
   post:
     # 소프트 삭제된 글 영구 삭제도 같은 이유로 끈다.
     purge-enabled: false

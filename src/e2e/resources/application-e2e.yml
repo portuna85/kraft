@@ -51,7 +51,7 @@ app:
     min-response-millis: 0
     rate-limit:
       enabled: false
-  # 같은 이유(A-SEC-06) — 여러 spec이 게시글·댓글·신고·업로드·검색을 반복한다.
+  # 같은 이유(A-SEC-06) — 여러 spec이 게시글·댓글·업로드·검색을 반복한다.
   write:
     rate-limit:
       enabled: false
@@ -61,9 +61,6 @@ app:
     cleanup-enabled: false
   verification:
     purge-enabled: false
-  report:
-    # e2e는 짧게 도니 90일 보관기간에 걸릴 일이 없지만, 다른 주기 작업과 같은 원칙으로 끈다.
-    snapshot-purge-enabled: false
   security:
     email-encryption-key: e2e-only-key-not-a-secret
     email-hash-pepper: e2e-only-hash-pepper-not-a-secret

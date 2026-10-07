@@ -13,8 +13,6 @@ import com.kraft.post.dto.PostSaveRequestDto;
 import com.kraft.post.dto.PostsListResponseDto;
 import com.kraft.post.dto.PostsPageResponseDto;
 import com.kraft.post.dto.PostUpdateRequestDto;
-import com.kraft.report.domain.ReportTargetType;
-import com.kraft.report.event.TargetDeletedEvent;
 import com.kraft.support.TestAuthentication;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
@@ -82,16 +80,13 @@ class PostServiceTest {
     @Mock
     private PostLikeWriter postLikeWriter;
 
-    @Mock
-    private org.springframework.context.ApplicationEventPublisher eventPublisher;
-
     private PostService postService;
     private PostQueryService postQueryService;
 
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
         postService = new PostService(postRepository, userRepository, commentRepository, postImageService,
-                postLikeRepository, postImageRegistry, postImageCleaner, postLikeWriter, eventPublisher);
+                postLikeRepository, postImageRegistry, postImageCleaner, postLikeWriter);
         postQueryService = new PostQueryService(postRepository, userRepository, commentRepository, postLikeRepository);
     }
 
@@ -265,22 +260,6 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("update: 정지된 작성자는 자신의 글도 수정할 수 없다")
-    void update_whenAuthorIsSuspended_throwsAccessDeniedExceptionAndDoesNotModify() {
-        User owner = userWithEmail("owner@example.com", 1L);
-        owner.suspendUntil(java.time.LocalDateTime.now().plusDays(1), "규정 위반");
-        Post post = postOf(owner, 100L);
-        given(postRepository.findById(100L)).willReturn(Optional.of(post));
-        given(userRepository.findById(1L)).willReturn(Optional.of(owner));
-
-        assertThatThrownBy(() -> postService.update(100L, new PostUpdateRequestDto("수정 시도", "내용", null, null, null, null), null,
-                authOf(owner)))
-                .isInstanceOf(AccessDeniedException.class);
-
-        assertThat(post.getTitle()).isEqualTo("원래 제목");
-    }
-
-    @Test
     @DisplayName("update: ROLE_ADMIN이면 작성자가 아니어도 수정할 수 있다")
     void update_whenAdmin_updatesEvenIfNotAuthor() {
         User owner = userWithEmail("owner@example.com", 1L);
@@ -330,7 +309,6 @@ class PostServiceTest {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
         given(postRepository.findById(100L)).willReturn(Optional.of(post));
-        given(commentRepository.findIdsByPostId(100L)).willReturn(List.of(7L, 8L));
         given(postRepository.softDelete(eq(100L), any())).willReturn(1);
 
         postService.delete(100L, authOf(owner));
@@ -340,9 +318,6 @@ class PostServiceTest {
         verify(commentRepository, never()).deleteAllByPostId(any());
         verify(postLikeRepository, never()).deleteAllByPostId(any());
         verify(postImageRegistry, never()).markPostImagesForDeletion(any());
-        // 글이 사라지는 순간 글과 아래 댓글의 대기 신고를 닫는다(A-BE-01).
-        verify(eventPublisher).publishEvent(new TargetDeletedEvent(ReportTargetType.POST, List.of(100L)));
-        verify(eventPublisher).publishEvent(new TargetDeletedEvent(ReportTargetType.COMMENT, List.of(7L, 8L)));
     }
 
     @Test
@@ -357,7 +332,6 @@ class PostServiceTest {
                 .isInstanceOf(PostNotFoundException.class);
 
         verify(postRepository, never()).softDelete(any(), any());
-        verify(eventPublisher, never()).publishEvent(any(Object.class));
     }
 
     @Test
@@ -371,7 +345,6 @@ class PostServiceTest {
         assertThatThrownBy(() -> postService.delete(100L, authOf(owner)))
                 .isInstanceOf(PostNotFoundException.class);
 
-        verify(eventPublisher, never()).publishEvent(any(Object.class));
     }
 
     @Test
@@ -408,8 +381,6 @@ class PostServiceTest {
         inOrder.verify(postRepository).delete(post);
         // 트랜잭션 밖에서 호출했으므로 AfterCommit이 즉시 실행된다. 이번 호출이 표시한 id만 넘긴다.
         verify(postImageCleaner).cleanPendingDeletionsFor(List.of(55L));
-        // 신고는 소프트 삭제 때 이미 닫았다.
-        verify(eventPublisher, never()).publishEvent(any(Object.class));
     }
 
     @Test

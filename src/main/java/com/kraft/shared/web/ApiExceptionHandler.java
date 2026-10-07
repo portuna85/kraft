@@ -259,12 +259,6 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     public ProblemDetail handleEditConflict(OptimisticLockingFailureException e) {
         String className = e instanceof ObjectOptimisticLockingFailureException oe
                 ? oe.getPersistentClassName() : null;
-        if (className != null && className.endsWith(".Report")) {
-            // 두 관리자가 같은 신고를 동시에 처리한 경우(B11, BE-30). 커밋 시점에 나는 실패라 서비스 안에서
-            // 잡을 수 없다.
-            return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
-                    "이미 처리된 신고입니다. 새로고침 후 다시 확인해 주세요.");
-        }
         String subject = className != null && className.endsWith(".Comment") ? "댓글" : "글";
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
                 "다른 곳에서 이미 수정된 " + subject + "입니다. 새로고침 후 다시 시도해 주세요.");

@@ -11,8 +11,6 @@ import com.kraft.comment.dto.CommentViewDto;
 import com.kraft.post.domain.Post;
 import com.kraft.post.domain.PostNotFoundException;
 import com.kraft.post.domain.PostRepository;
-import com.kraft.report.domain.ReportTargetType;
-import com.kraft.report.event.TargetDeletedEvent;
 import com.kraft.shared.domain.VersionCheck;
 import com.kraft.shared.exception.NotFoundException;
 import com.kraft.shared.security.CurrentUser;
@@ -21,14 +19,12 @@ import com.kraft.shared.security.WriteAccessPolicy;
 import com.kraft.user.domain.User;
 import com.kraft.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -58,7 +54,6 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
     private final UserRepository userRepository;
-    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 응답에 확정된 id·createdAt·version을 모두 실어 돌려준다(개선 보고서 COR-05·COR-08).
@@ -146,7 +141,7 @@ public class CommentService {
         OwnershipPolicy.validateOwner(authentication, comment.getUser(), id);
         requireNotBlindedUnlessAdmin(comment, authentication);
         if (comment.isDeleted()) {
-            // 이미 삭제된 댓글에 대한 재요청(예: 관리자가 사용자보다 늦게 신고를 처리)은
+            // 이미 삭제된 댓글에 대한 재요청(예: 다른 탭에서 먼저 지운 경우)은
             // 조용히 넘어간다 — 화면은 어느 쪽이든 "삭제됨"으로 보여준다.
             return new CommentDeleteResultDto(id, true);
         }
@@ -154,9 +149,6 @@ public class CommentService {
         long replyCount = commentRepository.countRepliesByParentIdIn(List.of(id)).getOrDefault(id, 0L);
         if (replyCount > 0) {
             comment.softDelete();
-            // 행이 남아도 댓글은 더 이상 보이지 않으므로 대기 중인 신고를 닫는다(BE-11) — 닫지 않으면
-            // 신고 목록이 "대상이 있다"고 보고 내용 없는 미리보기만 보여 준다.
-            eventPublisher.publishEvent(new TargetDeletedEvent(ReportTargetType.COMMENT, List.of(id)));
             return new CommentDeleteResultDto(id, true);
         }
 
@@ -166,8 +158,6 @@ public class CommentService {
         // 그 사이 다른 답글이 달렸을 극히 드문 경쟁까지 방어적으로 커버한다.
         commentRepository.deleteAllByParentId(id);
         commentRepository.delete(comment);
-        // 관리자가 지운 경우는 TargetDeletedEvent 문서 참고.
-        eventPublisher.publishEvent(new TargetDeletedEvent(ReportTargetType.COMMENT, List.of(id)));
         return new CommentDeleteResultDto(id, false);
     }
 
@@ -276,20 +266,6 @@ public class CommentService {
     private CommentViewDto viewOf(Comment comment, Authentication authentication) {
         return new CommentViewDto(comment, OwnershipPolicy.canManage(authentication, comment.getUser()),
                 OwnershipPolicy.isAdmin(authentication), List.of(), 0L, false);
-    }
-
-    /**
-     * 댓글을 숨긴다(신고 처리가 부른다). 내용은 그대로 두고 {@link #unblind}로 되돌릴 수 있다. 이미
-     * 소프트 삭제된 댓글은 숨길 것이 없고, 이미 숨겨졌으면 조용히 넘어간다 — 같은 대상에 신고가 여럿이거나
-     * 다른 관리자가 먼저 처리했을 수 있다.
-     */
-    @Transactional
-    public void blind(Long id) {
-        Comment comment = findComment(id);
-        if (comment.isDeleted()) {
-            return;
-        }
-        commentRepository.blind(id, LocalDateTime.now());
     }
 
     /** 숨김을 푼다. 숨겨진 댓글이 아니면 댓글이 없는 것으로 답한다. */

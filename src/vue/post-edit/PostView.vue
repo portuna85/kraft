@@ -207,21 +207,6 @@ defineExpose({ focusEditButton: () => editButton.value?.focus() });
       <a :href="loginHref">로그인 후 추천할 수 있습니다.</a>
     </p>
 
-    <!-- 신고는 남의 글에만 보인다. 자기 글은 서버도 거절한다(직접 지우면 된다). -->
-    <div
-      v-if="authenticated && !post.canManagePost && !post.deleted"
-      class="btn-group-gap post-actions"
-    >
-      <button
-        id="btn-report-post"
-        type="button"
-        class="btn btn-sm btn-outline-secondary"
-        data-report-kind="post"
-      >
-        신고
-      </button>
-    </div>
-
     <div
       v-if="post.canManagePost"
       class="btn-group-gap post-actions"

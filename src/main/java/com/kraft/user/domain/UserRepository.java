@@ -1,7 +1,6 @@
 package com.kraft.user.domain;
 
 import jakarta.persistence.LockModeType;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -55,25 +54,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT u FROM User u WHERE u.id = :id")
     Optional<User> findByIdForUpdate(@Param("id") Long id);
-
-    /**
-     * 관리자 화면의 "정지 중인 회원" 목록 전용 projection. 이메일 암호문 등 화면에 쓰지 않는
-     * 컬럼까지 포함한 User 전체를 로딩하지 않는다(개선 보고서 "인덱스·암호화·주석의 유지보수
-     * 경계"). getter 이름은 User 엔티티의 필드명과 정확히 일치해야 Spring Data가 인식한다.
-     */
-    interface SuspendedUserProjection {
-        Long getId();
-
-        String getName();
-
-        LocalDateTime getSuspendedUntil();
-
-        String getSuspensionReason();
-    }
-
-    /** 관리자 화면의 "정지 중인 회원". 곧 풀리는 순서로 본다. */
-    Page<SuspendedUserProjection> findBySuspendedUntilAfterOrderBySuspendedUntilAsc(
-            LocalDateTime now, Pageable pageable);
 
     /**
      * B08의 최후 수단이 쓴다. 가입 직후 인증 메일 대기열 등록이(토큰 저장 실패, 최종 커밋 실패

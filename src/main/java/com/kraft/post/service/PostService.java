@@ -9,8 +9,6 @@ import com.kraft.post.domain.PostRepository;
 import com.kraft.post.dto.PostLikeResponseDto;
 import com.kraft.post.dto.PostSaveRequestDto;
 import com.kraft.post.dto.PostUpdateRequestDto;
-import com.kraft.report.domain.ReportTargetType;
-import com.kraft.report.event.TargetDeletedEvent;
 import com.kraft.shared.domain.VersionCheck;
 import com.kraft.shared.security.CurrentUser;
 import com.kraft.shared.security.OwnershipPolicy;
@@ -22,7 +20,6 @@ import com.kraft.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -47,7 +44,6 @@ public class PostService {
     private final PostImageRegistry postImageRegistry;
     private final PostImageCleaner postImageCleaner;
     private final PostLikeWriter postLikeWriter;
-    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 이미지를 저장하고 업로더를 대장에 기록한다. 업로드 권한을 글쓰기 권한과 같게 맞춘다 —
@@ -190,12 +186,6 @@ public class PostService {
     /**
      * 게시글을 소프트 삭제한다 — {@code deletedAt}만 남기고 댓글·추천·이미지는 그대로 둔다. 관리자가
      * 복구할 수 있고, 보관 기간이 지나면 {@link #purge}가 행과 딸린 것들을 지운다.
-     * <p>
-     * 글이 목록에서 사라지는 순간 그 글과 아래 댓글에 걸린 대기 신고도 닫아야 하므로, 지우기 전에 댓글
-     * id를 알아 두고 {@link TargetDeletedEvent}를 발행한다(A-BE-01). 관리자가 신고를 처리하며 지운
-     * 경우는 이 이벤트가 아무 일도 하지 않는다 — 그 경로는 {@code ReportService.resolve()}가 관련 신고를
-     * 이미 RESOLVED로 직접 처리해, 이 이벤트가 커밋 직전에 실행될 때는 더 이상 PENDING이 아니다
-     * ({@code TargetDeletedEvent} 문서 참고).
      */
     @Caching(evict = {
             @CacheEvict(value = "pinnedPosts", allEntries = true),
@@ -207,22 +197,16 @@ public class PostService {
         validateOwner(post, authentication);
         requireNotBlindedUnlessAdmin(post, authentication);
 
-        List<Long> commentIds = commentRepository.findIdsByPostId(id);
         // 0이면 그 사이 다른 요청이 먼저 지운 것이다 — 없는 글로 본다.
         if (postRepository.softDelete(id, LocalDateTime.now()) == 0) {
             throw new PostNotFoundException(id);
-        }
-
-        eventPublisher.publishEvent(new TargetDeletedEvent(ReportTargetType.POST, List.of(id)));
-        if (!commentIds.isEmpty()) {
-            eventPublisher.publishEvent(new TargetDeletedEvent(ReportTargetType.COMMENT, commentIds));
         }
     }
 
     /**
      * 소프트 삭제된 지 {@code threshold}가 지난 글을 영구 삭제한다. 소유권을 묻지 않으므로 호출자
      * ({@code PostPurger})가 대상을 고른다. 행을 잠근 뒤 다시 확인해, 그 사이 복구됐거나 아직 보관
-     * 기간 안인 글은 건너뛴다. 신고는 소프트 삭제 때 이미 닫았으므로 이벤트를 다시 발행하지 않는다.
+     * 기간 안인 글은 건너뛴다.
      *
      * @return 실제로 지웠으면 true
      */

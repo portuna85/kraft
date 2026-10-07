@@ -21,15 +21,15 @@ import static org.mockito.Mockito.verify;
 class AlertMailerTest {
 
     private static final HealthThresholds LIMITS = new HealthThresholds(
-            20, 0.1, 0, 1000, 0.8, 1_073_741_824L, 20, 0, 20, 5, 0, 200, 200);
+            20, 0.1, 0, 1000, 0.8, 1_073_741_824L, 20, 0, 5, 0, 200, 200);
 
     private static HealthSnapshot breach() {
         // 오류율만 넘긴 스냅숏.
-        return new HealthSnapshot(100, 30, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0, true);
+        return new HealthSnapshot(100, 30, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, true);
     }
 
     private static HealthSnapshot healthy() {
-        return new HealthSnapshot(100, 2, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, 0, true);
+        return new HealthSnapshot(100, 2, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 0, true);
     }
 
     @Test

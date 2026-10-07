@@ -18,11 +18,10 @@
     padding: 0;
 }
 
-// .report-list__item(_reports.scss)과 속성이 완전히 같은 카드 모양이다 — 신고 목록도
-// "무엇을 · 왜 · 누가 · 언제"를 같은 카드에 담기로 하면서 그대로 베껴 왔기 때문이다.
-// 한 곳에서만 선언하고 신고 쪽은 이 셀렉터에 합류한다.
+// .admin-list__item(_admin-list.scss)과 속성이 완전히 같은 카드 모양이다.
+// 한 곳에서만 선언하고 관리자 목록은 이 셀렉터에 합류한다.
 .comment-list__item,
-.report-list__item {
+.admin-list__item {
     border: 1px solid var(--kraft-border);
     border-radius: var(--kraft-radius);
     padding: var(--kraft-space-4);
@@ -30,7 +29,7 @@
 }
 
 .comment-list__item:last-child,
-.report-list__item:last-child {
+.admin-list__item:last-child {
     margin-bottom: 0;
 }
 

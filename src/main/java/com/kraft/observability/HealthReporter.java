@@ -5,8 +5,6 @@ import com.kraft.post.domain.PostImageStatus;
 import com.kraft.recommend.domain.RecommendationHistoryState;
 import com.kraft.recommend.domain.RecommendationHistoryStateRepository;
 import com.kraft.recommend.service.RecommendationFetchStatus;
-import com.kraft.report.domain.ReportRepository;
-import com.kraft.report.domain.ReportStatus;
 import com.kraft.user.mail.OutboxMailRepository;
 import com.kraft.user.mail.OutboxMailStatus;
 import com.kraft.user.session.SessionRevocationTaskRepository;
@@ -34,8 +32,7 @@ import java.util.List;
  *
  * <h3>수집하는 것</h3>
  * HTTP 오류율·응답 지연({@link RequestMetrics}), DB 커넥션 풀, 업로드 디스크 여유,
- * 메일 대기열, 미처리 신고. 앞의 것들은 "막히면 사용자가 곧바로 겪는" 것이고, 마지막 하나는
- * 앱이 아니라 사람이 멈춘 신호다 — 신고가 쌓이는 동안 문제가 된 글은 그대로 보인다.
+ * 메일 대기열. "막히면 사용자가 곧바로 겪는" 것들이다.
  * <p>
  * 세션 폐기 실패 건수·이미지 삭제 backlog·추천 이력 최신성도 같은 이유로 담는다(O03) —
  * 셋 다 주기 작업이 있지만 그 작업 자체가 막히거나 계속 실패해도 기존 지표에는 드러나지
@@ -46,7 +43,6 @@ public class HealthReporter {
 
     private final RequestMetrics requestMetrics;
     private final OutboxMailRepository outboxMailRepository;
-    private final ReportRepository reportRepository;
     private final SessionRevocationTaskRepository sessionRevocationTaskRepository;
     private final PostImageRepository postImageRepository;
     private final RecommendationHistoryStateRepository recommendationHistoryStateRepository;
@@ -66,7 +62,6 @@ public class HealthReporter {
 
     public HealthReporter(RequestMetrics requestMetrics,
                           OutboxMailRepository outboxMailRepository,
-                          ReportRepository reportRepository,
                           SessionRevocationTaskRepository sessionRevocationTaskRepository,
                           PostImageRepository postImageRepository,
                           RecommendationHistoryStateRepository recommendationHistoryStateRepository,
@@ -78,7 +73,6 @@ public class HealthReporter {
                           RecommendationFetchStatus recommendationFetchStatus) {
         this.requestMetrics = requestMetrics;
         this.outboxMailRepository = outboxMailRepository;
-        this.reportRepository = reportRepository;
         this.sessionRevocationTaskRepository = sessionRevocationTaskRepository;
         this.postImageRepository = postImageRepository;
         this.recommendationHistoryStateRepository = recommendationHistoryStateRepository;
@@ -140,7 +134,6 @@ public class HealthReporter {
                 usableSpace(),
                 safeCount("발송 대기 메일 수", () -> outboxMailRepository.countByStatus(OutboxMailStatus.PENDING)),
                 safeCount("발송 포기 메일 수", () -> outboxMailRepository.countByStatus(OutboxMailStatus.FAILED)),
-                safeCount("미처리 신고 수", () -> reportRepository.countByStatus(ReportStatus.PENDING)),
                 http.slowRequests(),
                 safeCount("세션 폐기 실패 수", () -> sessionRevocationTaskRepository.countByStatus(SessionRevocationTaskStatus.FAILED)),
                 safeCount("이미지 삭제 backlog", () -> postImageRepository.countByStatus(PostImageStatus.PENDING_DELETE)),

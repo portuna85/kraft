@@ -66,7 +66,7 @@ export const test = base.extend({
 
     /**
      * 다른 역할(user·other·admin…)로 로그인한 새 브라우저 컨텍스트의 페이지를 연다(OPS-16). 여러 역할이
-     * 함께 등장하는 스펙(신고·댓글·정지)이 `browser.newContext`를 직접 부르면 컨텍스트를 닫지 않아
+     * 함께 등장하는 스펙이 `browser.newContext`를 직접 부르면 컨텍스트를 닫지 않아
      * 샤드가 끝날 때까지 쌓이고, 기본 page와 달리 JS 오류 감시도 받지 못했다. 여기서 연 컨텍스트는
      * 테스트가 끝나면 모두 닫히고, 같은 오류 감시가 붙는다.
      *
@@ -119,7 +119,7 @@ export async function login(page, email, password = PASSWORD) {
 }
 
 /**
- * 계정 관련 버튼·링크(인증 메일 재발송·비밀번호 변경·신고 처리·로그아웃·회원 탈퇴)는
+ * 계정 관련 버튼·링크(인증 메일 재발송·비밀번호 변경·로그아웃·회원 탈퇴)는
  * 이제 닉네임 펼침 메뉴(#account-menu) 안에 있다(layout/navbar.html, site-nav.js).
  * 그 안의 버튼·링크를 누르기 전에 이 함수를 불러야 한다.
  *

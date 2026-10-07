@@ -207,15 +207,6 @@ app:
     sweep-initial-delay-ms: 600000
     sweep-interval-ms: 1800000
 
-  report:
-    # 처리 완료된 신고의 대상 스냅샷(A-SEC-07)을 이 기간이 지나면 비운다(ReportSnapshotPurger).
-    # 처리 중(PENDING)인 신고는 대상으로 삼지 않는다 — 코드 기본값과 같은 값을 명시적으로
-    # 적어 둔다.
-    snapshot-retention-days: 90
-    snapshot-purge-enabled: true
-    snapshot-purge-initial-delay-ms: 1800000
-    snapshot-purge-interval-ms: 86400000
-
   post:
     # 소프트 삭제된 글을 이 기간이 지나면 영구 삭제한다(PostPurger). 그 사이에는 관리자가 복구할 수
     # 있다. 코드 기본값과 같은 값을 명시적으로 적어 둔다.
@@ -257,9 +248,6 @@ app:
     disk-free-bytes: 1073741824
     mail-pending: 20
     mail-failed: 0
-    # 미처리 신고. 다른 항목과 달리 앱이 아니라 사람이 멈춘 신호다 — 쌓이는 동안 신고된 글은
-    # 그대로 보인다. 5분마다 울리지 않도록 하루치 정도로 넉넉히 잡는다.
-    reports-pending: 20
     # 평균·최댓값만으로는 소수의 느린 요청이 묻힌다(O05). 이 절대 ms를 넘는 요청 수를 따로
     # 세고(slow-request-ms), 그 건수가 이 기준(slow-requests)을 넘으면 알린다.
     slow-request-ms: 3000
@@ -332,7 +320,6 @@ app:
       post-per-minute: 3
       post-per-hour: 20
       comment-per-minute: 10
-      report-per-minute: 5
       upload-per-minute: 10
       search-per-minute: 60
       report-interval-ms: 600000

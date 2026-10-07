@@ -39,7 +39,7 @@ public class GlobalH2CleanupExtension implements BeforeEachCallback {
 
     /** 자식 → 부모 순서. comments는 자기 참조(답글)라 한 문장으로 전부 지우면 순서 문제가 없다. */
     private static final String[] TABLES_IN_DELETE_ORDER = {
-            "comments", "post_likes", "post_images", "reports",
+            "comments", "post_likes", "post_images",
             "email_verification_tokens", "password_reset_tokens",
             "outbox_mails", "session_revocation_tasks",
             // 추천 이력과 수집 시도 기록, Spring Session(속성이 세션을 FK로 가리킨다)도 비운다(OPS-08) —

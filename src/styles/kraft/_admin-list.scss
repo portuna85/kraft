@@ -1,10 +1,9 @@
 /* ==========================================================================
-   신고 처리(관리자 화면)
+   관리자 화면의 카드 목록(추천 이력 수집 현황)
 
-   목록 한 줄이 "무엇을 · 왜 · 누가 · 언제"를 한눈에 보여줘야 관리자가 건마다 상세로
-   들어가지 않는다. 댓글 목록과 같은 카드 모양을 쓴다.
+   한 줄이 "무엇을 · 언제 · 결과"를 한눈에 보여준다. 댓글 목록과 같은 카드 모양을 쓴다.
    ========================================================================== */
-.report-list {
+.admin-list {
     list-style: none;
     margin: 0 0 var(--kraft-space-4);
     padding: 0;
@@ -13,7 +12,7 @@
 // 카드 모양(테두리·radius·padding·margin)은 _comments.scss의 .comment-list__item과
 // 완전히 같아 그쪽에서 함께 선언한다.
 
-.report-list__head {
+.admin-list__head {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -21,13 +20,13 @@
     margin-bottom: var(--kraft-space-2);
 }
 
-.report-list__target {
+.admin-list__target {
     overflow-wrap: anywhere;
     margin-bottom: var(--kraft-space-1);
 }
 
-/* 신고자가 적은 내용은 그대로 보여주되, 본문과 구분되게 한 단 들여 쓴다. */
-.report-list__detail {
+/* 부가 설명은 본문과 구분되게 한 단 들여 쓴다. */
+.admin-list__detail {
     border-left: 3px solid var(--kraft-border);
     padding-left: var(--kraft-space-3);
     color: var(--kraft-text-muted);

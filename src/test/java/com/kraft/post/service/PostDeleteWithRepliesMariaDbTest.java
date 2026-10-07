@@ -5,11 +5,6 @@ import com.kraft.comment.domain.CommentRepository;
 import com.kraft.post.domain.Post;
 import com.kraft.post.domain.PostLikeRepository;
 import com.kraft.post.domain.PostRepository;
-import com.kraft.report.domain.Report;
-import com.kraft.report.domain.ReportRepository;
-import com.kraft.report.domain.ReportReason;
-import com.kraft.report.domain.ReportTargetType;
-import com.kraft.report.service.ReportService;
 import com.kraft.support.TestAuthentication;
 import com.kraft.user.domain.Role;
 import com.kraft.user.domain.User;
@@ -41,9 +36,6 @@ class PostDeleteWithRepliesMariaDbTest extends MariaDbIntegrationTest {
     private PostService postService;
 
     @Autowired
-    private ReportService reportService;
-
-    @Autowired
     private PostPurger postPurger;
 
     @Autowired
@@ -61,9 +53,6 @@ class PostDeleteWithRepliesMariaDbTest extends MariaDbIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
-    @Autowired
-    private ReportRepository reportRepository;
-
     private User author;
     private Authentication authorAuth;
     private Authentication adminAuth;
@@ -71,7 +60,6 @@ class PostDeleteWithRepliesMariaDbTest extends MariaDbIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        reportRepository.deleteAll();
         postLikeRepository.deleteAll();
         commentRepository.deleteAll();
         postRepository.deleteAll();
@@ -122,35 +110,6 @@ class PostDeleteWithRepliesMariaDbTest extends MariaDbIntegrationTest {
         assertThat(commentRepository.countByPostId(postId)).isEqualTo(9);
 
         // 영구 삭제: 자기참조 FK(FK_COMMENTS_PARENT) 순서와 FOR UPDATE 경로를 실제 InnoDB로 확인한다.
-        assertThat(postService.purge(postId, afterRetention())).isTrue();
-        assertThat(postRepository.findById(postId)).isEmpty();
-        assertThat(commentRepository.countByPostId(postId)).isZero();
-    }
-
-    @Test
-    @DisplayName("COR-01 회귀: 신고 처리는 글을 숨기기만 하고, 그 글을 지워 영구 삭제해도 FK 위반이 나지 않는다")
-    void reportResolve_withParentsAndReplies_succeedsWithoutForeignKeyViolation() {
-        Post post = seedPostWithParentsAndReplies();
-        Long postId = post.getId();
-        User commenter = userRepository.findById(commenterId).orElseThrow();
-        Report report = reportRepository.save(Report.builder()
-                .reporter(commenter)
-                .targetType(ReportTargetType.POST)
-                .targetId(postId)
-                .reason(ReportReason.SPAM)
-                .detail("스팸")
-                .build());
-
-        assertThatCode(() -> reportService.resolve(report.getId(), adminAuth)).doesNotThrowAnyException();
-
-        // 신고 처리는 삭제가 아니라 숨김이다 — 글과 댓글이 그대로 남는다.
-        Post handled = postRepository.findById(postId).orElseThrow();
-        assertThat(handled.isBlinded()).isTrue();
-        assertThat(handled.isDeleted()).isFalse();
-        assertThat(commentRepository.countByPostId(postId)).isEqualTo(9);
-
-        // 숨겨진 글도 관리자가 지우면 소프트 삭제되고, 보관 기간 뒤 영구 삭제가 FK 순서를 지킨다.
-        assertThatCode(() -> postService.delete(postId, adminAuth)).doesNotThrowAnyException();
         assertThat(postService.purge(postId, afterRetention())).isTrue();
         assertThat(postRepository.findById(postId)).isEmpty();
         assertThat(commentRepository.countByPostId(postId)).isZero();

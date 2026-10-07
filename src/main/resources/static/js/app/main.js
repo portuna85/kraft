@@ -61,13 +61,6 @@ loadIf('#btn-logout, #changePasswordModal, #withdrawModal, #resendVerificationMo
 // post-update.html이 서버에서 항상 먼저 렌더링하므로 이 셀렉터만은 확실히 존재한다(F06).
 loadIf('[data-target-kind], #comments-heading, #post-app, #comments-app', () => import('./features/delete-confirm.js'), 'features/delete-confirm.js');
 
-// 게시글·댓글 공용 신고 모달. 트리거 버튼도 마찬가지로 Vue 아일랜드가 그리므로 같은 이유로
-// 안정된 마운트 지점도 함께 본다(F06).
-loadIf('[data-report-kind], #post-app, #comments-app', () => import('./features/report-dialog.js'), 'features/report-dialog.js');
-
-// 관리자 신고·정지 회원 처리 버튼. 목록이 비어 있으면 .report-list 자체가 렌더링되지 않는다.
-loadIf('.report-list', () => import('./features/admin-reports.js'), 'features/admin-reports.js');
-
 // 목록 "더 보기"(10단계). 마지막 페이지거나 글이 없으면 index.html이 버튼 자체를 렌더링하지
 // 않는다.
 loadIf('#btn-load-more', () => import('./features/load-more.js'), 'features/load-more.js');

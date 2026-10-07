@@ -17,7 +17,6 @@ import { replyAfterId } from './commentState.js';
  */
 const props = defineProps({
     comment: { type: /** @type {import('vue').PropType<import('../shared/types.js').CommentViewDto>} */ (Object), required: true },
-    // 신고 버튼은 로그인한 사람에게만 보인다. 목록이 이 값을 그대로 내려준다.
     authenticated: { type: Boolean, required: true },
     // 답글 자신이면 true — "답글" 버튼과 중첩 답글 목록을 그리지 않는다.
     isReply: { type: Boolean, default: false },
@@ -178,7 +177,7 @@ const hasActions = computed(() => (
 
 const unblinding = ref(false);
 
-/** 신고 처리로 숨긴 댓글의 숨김을 푼다(관리자). 서버가 새로 렌더링한 화면으로 다시 불러온다. */
+/** 숨긴 댓글의 숨김을 푼다(관리자). 서버가 새로 렌더링한 화면으로 다시 불러온다. */
 async function unblind() {
     if (unblinding.value) {
         return;
@@ -258,16 +257,6 @@ async function unblind() {
             삭제
           </button>
         </template>
-        <!-- 신고는 남의 댓글에만 보인다. 자기 댓글은 서버도 거절한다(직접 지우면 된다). -->
-        <button
-          v-else-if="!comment.deleted && !masked && authenticated"
-          type="button"
-          class="btn btn-sm btn-outline-secondary btn-comment-report"
-          data-report-kind="comment"
-          :aria-label="`${comment.author}의 댓글 신고`"
-        >
-          신고
-        </button>
         <button
           v-if="comment.blinded && comment.canModerate"
           type="button"

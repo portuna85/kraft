@@ -11,8 +11,8 @@
    bootstrap.custom.css 72KB가 통째로 재생성되어 리뷰 불가능한 diff가 되고, 링크·입력
    포커스·알림 색까지 함께 움직이기 때문이다.
 
-   클래스 이름은 하나도 바꾸지 않는다 — #btn-save, .btn-comment-edit, .btn-report-resolve,
-   .btn-lift-suspension 등이 E2E 선택자다.
+   클래스 이름은 하나도 바꾸지 않는다 — #btn-save, .btn-comment-edit,
+   등이 E2E 선택자다.
    ========================================================================== */
 .btn {
     // Bootstrap .btn은 display:inline-block이라 min-height만 주면 박스는 커져도 글자는

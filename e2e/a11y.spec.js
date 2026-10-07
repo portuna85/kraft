@@ -57,8 +57,8 @@ test.describe('로그인한 화면', () => {
 test.describe('관리자 화면', () => {
     test.use({ storageState: storageStateFor('admin') });
 
-    test('신고 목록', async ({ page }) => {
-        await page.goto('/admin/reports');
+    test('추천 이력 수집', async ({ page }) => {
+        await page.goto('/admin/recommendations');
         await scan(page);
     });
 });

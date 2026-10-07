@@ -3,7 +3,6 @@ package com.kraft.observability;
 import com.kraft.post.domain.PostImageRepository;
 import com.kraft.recommend.domain.RecommendationHistoryStateRepository;
 import com.kraft.recommend.service.RecommendationFetchStatus;
-import com.kraft.report.domain.ReportRepository;
 import com.kraft.user.mail.EmailSender;
 import com.kraft.user.mail.OutboxMailRepository;
 import com.kraft.user.session.SessionRevocationTaskRepository;
@@ -68,7 +67,6 @@ public class ObservabilityConfig {
     @Bean
     public HealthReporter healthReporter(RequestMetrics metrics,
                                          OutboxMailRepository outboxMailRepository,
-                                         ReportRepository reportRepository,
                                          SessionRevocationTaskRepository sessionRevocationTaskRepository,
                                          PostImageRepository postImageRepository,
                                          RecommendationHistoryStateRepository recommendationHistoryStateRepository,
@@ -78,7 +76,7 @@ public class ObservabilityConfig {
                                          MetricsProperties properties,
                                          @Value("${app.recommend.enabled:true}") boolean recommendEnabled,
                                          RecommendationFetchStatus recommendationFetchStatus) {
-        return new HealthReporter(metrics, outboxMailRepository, reportRepository,
+        return new HealthReporter(metrics, outboxMailRepository,
                 sessionRevocationTaskRepository, postImageRepository, recommendationHistoryStateRepository,
                 dataSource, uploadDir, alertMailer, properties, recommendEnabled, recommendationFetchStatus);
     }

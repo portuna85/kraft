@@ -268,7 +268,7 @@ test('생성 한도 오류에는 개수를 줄이라는 안내가 덧붙는다',
     await page.locator('#btn-recommend-generate').click();
 
     await expect(page.locator('.recommend__error')).toContainText('조건에 맞는 조합을 모두 만들지 못했습니다.');
-    await expect(page.locator('.recommend__error')).toContainText('개수를 줄이거나 조건을 완화해 보세요');
+    await expect(page.locator('.recommend__error')).toContainText('개수를 줄여 보세요');
 });
 
 test.describe('모바일', () => {

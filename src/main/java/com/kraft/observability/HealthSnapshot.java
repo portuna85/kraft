@@ -22,7 +22,6 @@ import java.util.stream.Collectors;
  *                      직접 남긴다(개선 보고서 OBS-01). 예전에는 이 -1이 임계값 비교만 건너뛰고
  *                      끝나, 관측 자체가 실패한 주기가 "이상 없음"과 로그상 구분되지 않았다.
  * @param mailFailed    재시도를 모두 소진한 메일. {@code -1}의 뜻은 mailPending과 같다
- * @param reportsPending 관리자가 아직 처리하지 않은 신고. {@code -1}의 뜻은 mailPending과 같다
  * @param slowRequests  고정 임계값(RequestMetrics의 slowThresholdMillis, 기본 3000ms)을 넘은
  *                      요청 수(O05). 평균·최댓값만으로는 소수의 느린 요청이 다수의 빠른 요청에
  *                      묻힌다 — 이 값은 그 소수를 직접 센다.
@@ -51,7 +50,6 @@ public record HealthSnapshot(
         long diskFreeBytes,
         long mailPending,
         long mailFailed,
-        long reportsPending,
         long slowRequests,
         long sessionRevocationFailed,
         long imageDeleteBacklog,
@@ -65,11 +63,11 @@ public record HealthSnapshot(
     /** 수집 연속 실패 수를 모르는(측정하지 않는) 호출용. */
     public HealthSnapshot(long requests, long errors, long serverErrors, long avgMillis, long maxMillis,
                           int poolActive, int poolTotal, int poolPending, long diskFreeBytes,
-                          long mailPending, long mailFailed, long reportsPending, long slowRequests,
+                          long mailPending, long mailFailed, long slowRequests,
                           long sessionRevocationFailed, long imageDeleteBacklog,
                           long recommendationHistoryAgeHours, boolean recommendEnabled) {
         this(requests, errors, serverErrors, avgMillis, maxMillis, poolActive, poolTotal, poolPending,
-                diskFreeBytes, mailPending, mailFailed, reportsPending, slowRequests, sessionRevocationFailed,
+                diskFreeBytes, mailPending, mailFailed, slowRequests, sessionRevocationFailed,
                 imageDeleteBacklog, recommendationHistoryAgeHours, recommendEnabled, 0);
     }
 
@@ -143,13 +141,6 @@ public record HealthSnapshot(
         } else if (mailFailed > limits.mailFailed()) {
             found.add(new Breach("MAIL_FAILED", "발송 포기 메일 %d통 (기준 %d통)".formatted(mailFailed, limits.mailFailed())));
         }
-        // 다른 항목과 성격이 다르다. 앱은 멀쩡한데 사람이 보고 있지 않다는 뜻이고, 그동안
-        // 신고된 글은 그대로 보인다.
-        if (reportsPending == -1) {
-            found.add(new Breach("REPORTS_PENDING", "측정 불가: 미처리 신고 수"));
-        } else if (reportsPending > limits.reportsPending()) {
-            found.add(new Breach("REPORTS_PENDING", "미처리 신고 %d건 (기준 %d건)".formatted(reportsPending, limits.reportsPending())));
-        }
         if (slowRequests > limits.slowRequests()) {
             found.add(new Breach("SLOW_REQUESTS",
                     "느린 요청 %d건 (기준 %d건, 최대 %dms)".formatted(slowRequests, limits.slowRequests(), maxMillis)));
@@ -186,11 +177,11 @@ public record HealthSnapshot(
     /** 주기마다 남기는 한 줄. 넘긴 항목이 없어도 이 줄은 남아 평소 수치를 알 수 있게 한다. */
     public String summary() {
         return ("요청=%d 오류=%d(%.1f%%) 5xx=%d 평균=%dms 최대=%dms 느린요청=%d "
-                + "DB풀=%d/%d 대기=%d 디스크여유=%s 메일대기=%d 메일실패=%d 미처리신고=%d "
+                + "DB풀=%d/%d 대기=%d 디스크여유=%s 메일대기=%d 메일실패=%d "
                 + "세션폐기실패=%d 이미지삭제backlog=%d 추천이력나이=%d시간")
                 .formatted(requests, errors, errorRate() * 100, serverErrors, avgMillis, maxMillis, slowRequests,
                         poolActive, poolTotal, poolPending, diskFreeSummary(), mailPending, mailFailed,
-                        reportsPending, sessionRevocationFailed, imageDeleteBacklog, recommendationHistoryAgeHours);
+                        sessionRevocationFailed, imageDeleteBacklog, recommendationHistoryAgeHours);
     }
 
     /**

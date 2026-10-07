@@ -12,7 +12,6 @@ import com.kraft.post.service.PostQueryService;
 import com.kraft.post.service.PostService;
 import com.kraft.recommend.domain.RecommendationHistoryState;
 import com.kraft.recommend.domain.WinningDraw;
-import com.kraft.report.domain.Report;
 import com.kraft.user.domain.EmailVerificationToken;
 import com.kraft.user.domain.PasswordResetToken;
 import com.kraft.user.domain.Role;
@@ -264,7 +263,7 @@ class MariaDbMigrationTest extends MariaDbIntegrationTest {
     void allDeclaredEntityIndexesExistInDatabase() {
         List<Class<?>> entities = List.of(
                 Comment.class, Post.class, PostImage.class, PostLike.class,
-                RecommendationHistoryState.class, WinningDraw.class, Report.class,
+                RecommendationHistoryState.class, WinningDraw.class,
                 EmailVerificationToken.class, PasswordResetToken.class, User.class,
                 OutboxMail.class, SessionRevocationTask.class);
 

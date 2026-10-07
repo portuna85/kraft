@@ -10,7 +10,7 @@
         <div class="card-kraft empty-state">
             <h1 class="page-title" th:text="${hiddenByAdmin} ? '관리자가 숨긴 글입니다.' : '게시글을 찾을 수 없습니다.'">게시글을 찾을 수 없습니다.</h1>
             <p class="page-lead text-muted"
-               th:text="${hiddenByAdmin} ? '신고 처리로 이 글은 더 이상 공개되지 않습니다.' : '요청한 게시글이 삭제되었거나 존재하지 않습니다.'">요청한 게시글이 삭제되었거나 존재하지 않습니다.</p>
+               th:text="${hiddenByAdmin} ? '관리자가 이 글을 숨겼습니다.' : '요청한 게시글이 삭제되었거나 존재하지 않습니다.'">요청한 게시글이 삭제되었거나 존재하지 않습니다.</p>
             <a href="/community" class="btn btn-outline-primary">게시판으로 돌아가기</a>
         </div>
     </th:block>
