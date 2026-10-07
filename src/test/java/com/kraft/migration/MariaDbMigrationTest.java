@@ -139,6 +139,17 @@ class MariaDbMigrationTest extends MariaDbIntegrationTest {
     }
 
     @Test
+    @DisplayName("V43: 신고 테이블과 정지 컬럼·인덱스가 지워졌다")
+    void v43_dropsReportsAndSuspension() {
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'reports'",
+                Long.class)).isZero();
+        assertThat(columnExists("users", "suspended_until")).isFalse();
+        assertThat(columnExists("users", "suspension_reason")).isFalse();
+        assertThat(indexExists("users", "IX_USERS_SUSPENDED_UNTIL")).isFalse();
+    }
+
+    @Test
     @DisplayName("V42: 삭제되지 않은 최신 공지 5개만 먼저 고정하고, 다른 분류와 그보다 오래된 공지는 건드리지 않는다")
     void v42_pinsOnlyLatestFiveLiveNotices() throws Exception {
         User author = userRepository.save(User.builder()

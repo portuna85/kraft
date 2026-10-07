@@ -136,7 +136,7 @@ class MariaDbUpgradeRehearsalTest {
         // outbox_mails 기대 목록에서도 함께 뺐다. V25(BE-11)가 같은 이유로 IX_COMMENTS_POST(다른
         // 인덱스가 왼쪽 접두사로 포함), IX_OUTBOX_MAILS_STATUS_NEXT_ATTEMPT(IX_OUTBOX_MAILS_STATUS_ID가
         // claim 쿼리를 이미 커버), IX_USERS_WITHDRAWN_AT(단독으로 쓰는 쿼리가 없음)를 마저 지웠다. 신고·정지 기능을 걷어내면서
-        // 엔티티에서 reports 테이블과 users.suspended_until도 빠졌다(DB의 테이블·컬럼은 남긴다).
+        // 엔티티에서 reports 테이블과 users.suspended_until도 빠졌다(V43이 DB의 테이블·컬럼도 지웠다).
         Map<String, List<String>> expectedIndexesByTable = Map.of(
                 "users", List.of("IX_USERS_ROLE_CREATED_AT"),
                 "posts", List.of("IX_POSTS_CATEGORY_ID", "IX_POSTS_VIEW_COUNT"),
