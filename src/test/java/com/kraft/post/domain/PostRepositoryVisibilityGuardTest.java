@@ -18,9 +18,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class PostRepositoryVisibilityGuardTest {
 
-    /** 숨겨진 행을 일부러 읽는 쿼리. 관리자 상세·영구 삭제가 쓴다. */
+    /**
+     * 숨겨진 행을 일부러 읽거나 바꾸는 쿼리. 관리자 상세·영구 삭제가 읽고, {@code unpin}은 삭제·숨김 상태와 무관하게
+     * 고정을 풀어야 해서 {@code deletedAt} 조건을 두지 않는다.
+     */
     private static final Set<String> READS_HIDDEN_ROWS = Set.of(
-            "findByIdWithUser", "findByIdForPurge", "findIdsDeletedBefore");
+            "findByIdWithUser", "findByIdForPurge", "findIdsDeletedBefore", "unpin");
 
     @Test
     @DisplayName("Post를 읽거나 바꾸는 @Query는 deletedAt 조건을 갖거나 숨겨진 행을 읽는 쿼리로 허용돼 있어야 한다")

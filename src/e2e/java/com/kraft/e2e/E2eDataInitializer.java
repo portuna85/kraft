@@ -25,6 +25,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
@@ -82,6 +83,9 @@ public class E2eDataInitializer implements ApplicationRunner {
     /** 시드 당첨 이력의 회차 수. 1..N이 비는 곳 없이 이어져야 추천 이력이 "준비됨"이 된다. */
     static final int SEEDED_ROUNDS = 30;
 
+    /** 시드 공지의 고정 기한. 테스트가 도는 동안 풀리지 않도록 아주 먼 미래로 둔다(V42와 같은 값). */
+    private static final LocalDateTime PINNED_UNTIL = LocalDateTime.of(2099, 12, 31, 23, 59, 59);
+
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
@@ -92,9 +96,11 @@ public class E2eDataInitializer implements ApplicationRunner {
         saveUser(seed, "guest");
         saveUser(seed, "pwchange");
 
-        Post notice = savePost(admin, "공지 게시글", "관리자가 쓴 공지입니다.", Category.NOTICE);
-        Post mine = savePost(user, "테스터의 글", "테스터가 쓴 자유 게시글입니다.", Category.FREE);
-        savePost(other, "다른 사람의 글", "소유권 검사를 확인하는 글입니다.", Category.QNA);
+        // 목록 상단 고정은 pinned_until이 있는 글만 된다(V42). 운영은 마이그레이션이 최신 공지를 고정해 두지만
+        // 이 프로파일은 Flyway 없이 스키마를 만들므로 시드가 직접 고정해 둔다.
+        Post notice = savePost(admin, "공지 게시글", "관리자가 쓴 공지입니다.", Category.NOTICE, PINNED_UNTIL);
+        Post mine = savePost(user, "테스터의 글", "테스터가 쓴 자유 게시글입니다.", Category.FREE, null);
+        savePost(other, "다른 사람의 글", "소유권 검사를 확인하는 글입니다.", Category.QNA, null);
 
         commentRepository.save(Comment.builder().content("첫 댓글입니다.").post(mine).user(user).build());
         commentRepository.save(Comment.builder().content("다른 사람의 댓글입니다.").post(notice).user(other).build());
@@ -132,12 +138,13 @@ public class E2eDataInitializer implements ApplicationRunner {
                 .build());
     }
 
-    private Post savePost(User author, String title, String content, Category category) {
+    private Post savePost(User author, String title, String content, Category category, LocalDateTime pinnedUntil) {
         return postRepository.save(Post.builder()
                 .title(title)
                 .content(content)
                 .user(author)
                 .category(category)
+                .pinnedUntil(pinnedUntil)
                 .build());
     }
 }

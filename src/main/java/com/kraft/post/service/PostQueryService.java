@@ -197,20 +197,24 @@ public class PostQueryService {
                 .toList();
     }
 
+    /** 목록 상단에 한 번에 고정하는 글 수의 상한. 관리자가 이보다 많이 고정하지 못하게 서비스도 같은 값을 쓴다. */
+    public static final int PINNED_LIMIT = 5;
+
     /**
-     * 목록 첫 페이지 상단에 고정할 최근 공지 최대 {@code limit}개(A-BE-05). 공지는 관리자만
-     * 쓸 수 있지만({@code CategoryPolicy}) 목록에서는 일반 글과 똑같이 최신순으로 섞여, 오래되면
-     * 뒤 페이지로 밀려 사실상 보이지 않았다.
+     * 목록 첫 페이지 상단에 고정할 글 최대 {@code limit}개(A-BE-05) — 관리자가 기한({@code pinned_until})을
+     * 정해 고정한 글 중 아직 기한이 남은 것이다. 고정하지 않으면 공지도 일반 글과 똑같이 최신순으로 섞여,
+     * 오래되면 뒤 페이지로 밀려 사실상 보이지 않는다.
      * <p>
      * 일반 목록 행과 같은 모양(post-list__item)으로 보여주므로 댓글 수도 실제 값을 담는다
      * (findPopular의 인기글 위젯과 달리 여기는 "0건"이 눈에 띄게 어색하다).
      * <p>
-     * {@link #findPopular}와 같은 이유로 짧게 캐시한다. 글을 쓰거나 고치거나 지울 때는 이 캐시를
-     * 비운다(BE-16) — 지운 공지가 최대 45초 동안 목록 위에 남아 404 링크가 되지 않게 한다.
+     * {@link #findPopular}와 같은 이유로 짧게 캐시한다. 글을 쓰거나 고치거나 지우거나 고정·숨김을 바꿀 때는 이
+     * 캐시를 비운다(BE-16) — 지운 글이 최대 45초 동안 목록 위에 남아 404 링크가 되지 않게 한다. 기한이 지나 풀리는
+     * 고정은 비울 계기가 없으므로 캐시 유효시간(45초) 안에 저절로 반영된다.
      */
-    @Cacheable("pinnedNotices")
-    public List<PostsListResponseDto> findPinnedNotices(int limit) {
-        List<PostRowDto> rows = postRepository.findPinnedNotices(PageRequest.of(0, limit));
+    @Cacheable("pinnedPosts")
+    public List<PostsListResponseDto> findPinned(int limit) {
+        List<PostRowDto> rows = postRepository.findPinned(LocalDateTime.now(), PageRequest.of(0, limit));
         Map<Long, Long> commentCounts = commentRepository.countByPostIdIn(rows.stream().map(PostRowDto::id).toList());
         return rows.stream()
                 .map(row -> new PostsListResponseDto(row, commentCounts.getOrDefault(row.id(), 0L)))

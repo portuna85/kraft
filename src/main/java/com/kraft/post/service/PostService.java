@@ -108,7 +108,7 @@ public class PostService {
         return stored;
     }
 
-    @CacheEvict(value = "pinnedNotices", allEntries = true)
+    @CacheEvict(value = "pinnedPosts", allEntries = true)
     @Transactional
     public Long save(Authentication authentication, PostSaveRequestDto requestDto) {
         User user = findUser(authentication);
@@ -130,7 +130,7 @@ public class PostService {
      * 정책을 검사하고 수정은 소유권만 봤기 때문이다. 삭제는 의도적으로 그대로 둔다 —
      * 정지된 사용자도 자신의 글을 지우는 것까지 막지는 않는다.
      */
-    @CacheEvict(value = "pinnedNotices", allEntries = true)
+    @CacheEvict(value = "pinnedPosts", allEntries = true)
     @Transactional
     public Long update(Long id, PostUpdateRequestDto requestDto, Authentication authentication) {
         Post post = findPost(id);
@@ -187,7 +187,7 @@ public class PostService {
      * ({@code TargetDeletedEvent} 문서 참고).
      */
     @Caching(evict = {
-            @CacheEvict(value = "pinnedNotices", allEntries = true),
+            @CacheEvict(value = "pinnedPosts", allEntries = true),
             @CacheEvict(value = "popularPosts", allEntries = true)
     })
     @Transactional
@@ -216,7 +216,7 @@ public class PostService {
      * @return 실제로 지웠으면 true
      */
     @Caching(evict = {
-            @CacheEvict(value = "pinnedNotices", allEntries = true),
+            @CacheEvict(value = "pinnedPosts", allEntries = true),
             @CacheEvict(value = "popularPosts", allEntries = true)
     })
     @Transactional

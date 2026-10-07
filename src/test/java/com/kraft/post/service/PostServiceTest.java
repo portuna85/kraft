@@ -621,14 +621,14 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("findPinnedNotices: 최근 공지를 댓글 수와 함께 반환한다(A-BE-05)")
-    void findPinnedNotices_returnsRecentNoticesWithCommentCounts() {
+    @DisplayName("findPinned: 고정된 글을 댓글 수와 함께 반환한다(A-BE-05)")
+    void findPinned_returnsPinnedPostsWithCommentCounts() {
         User owner = userWithEmail("owner@example.com", 1L);
         PostRowDto row = rowOf(owner, 1L);
-        given(postRepository.findPinnedNotices(PageRequest.of(0, 5))).willReturn(List.of(row));
+        given(postRepository.findPinned(any(LocalDateTime.class), eq(PageRequest.of(0, 5)))).willReturn(List.of(row));
         given(commentRepository.countByPostIdIn(List.of(1L))).willReturn(Map.of(1L, 3L));
 
-        List<PostsListResponseDto> result = postQueryService.findPinnedNotices(5);
+        List<PostsListResponseDto> result = postQueryService.findPinned(5);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).commentCount()).isEqualTo(3L);
@@ -695,6 +695,28 @@ class PostServiceTest {
                 .isInstanceOf(PostNotFoundException.class);
         assertThatThrownBy(() -> postQueryService.findByIdForView(100L, null))
                 .isInstanceOf(PostNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("findByIdForView: 고정 중인 글은 기한을, 기한이 지난 글은 null을 내려준다")
+    void findByIdForView_exposesPinnedUntilOnlyWhileActive() {
+        User owner = userWithEmail("owner@example.com", 1L);
+        Post active = postOf(owner, 100L);
+        Post expired = postOf(owner, 101L);
+        LocalDateTime until = LocalDateTime.now().plusDays(2).withNano(0);
+        ReflectionTestUtils.setField(active, "pinnedUntil", until);
+        ReflectionTestUtils.setField(expired, "pinnedUntil", LocalDateTime.now().minusMinutes(1));
+        given(postRepository.findByIdWithUser(100L)).willReturn(Optional.of(active));
+        given(postRepository.findByIdWithUser(101L)).willReturn(Optional.of(expired));
+        given(postLikeRepository.summarize(any(), any())).willReturn(likeSummary(0L, 0L));
+
+        var activeView = postQueryService.findByIdForView(100L, null);
+        var expiredView = postQueryService.findByIdForView(101L, null);
+
+        // 서버 시간대(KST) 오프셋을 실어 보낸다 — 오프셋이 없으면 브라우저가 자기 시간대로 해석한다.
+        assertThat(activeView.pinnedUntil().toLocalDateTime()).isEqualTo(until);
+        assertThat(activeView.pinnedUntil().getOffset().getTotalSeconds()).isEqualTo(9 * 3600);
+        assertThat(expiredView.pinnedUntil()).isNull();
     }
 
     @Test

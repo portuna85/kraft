@@ -107,9 +107,14 @@ public class Post extends BaseEntity {
     @Column(name = "pinned_until", updatable = false)
     private LocalDateTime pinnedUntil;
 
+    /**
+     * {@code pinnedUntil}은 시드 데이터와 테스트가 처음부터 고정된 글을 만들 때만 쓴다. 운영에서 고정하고
+     * 푸는 일은 {@code PostRepository.pin}·{@code unpin}의 전용 UPDATE가 맡는다(상태 컬럼은
+     * {@code updatable = false}다).
+     */
     @Builder
     public Post(String title, String content, String picture, Integer pictureWidth, Integer pictureHeight,
-                User user, Category category) {
+                User user, Category category, LocalDateTime pinnedUntil) {
         this.title = title;
         this.content = content;
         this.picture = picture;
@@ -117,6 +122,7 @@ public class Post extends BaseEntity {
         this.pictureHeight = pictureHeight;
         this.user = user;
         this.category = category != null ? category : Category.FREE;
+        this.pinnedUntil = pinnedUntil;
         this.viewCount = 0L;
     }
 

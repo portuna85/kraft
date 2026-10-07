@@ -107,15 +107,38 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     List<PostRowDto> findTopByViewCountDesc(@Param("since") LocalDateTime since, Pageable pageable);
 
     /**
-     * 목록 상단에 고정할 최근 공지(A-BE-05). 별도 쿼리로 두는 이유는 {@link #search}의
-     * {@code totalElements}·페이지 계산을 흐트러뜨리지 않기 위해서다 — 정렬 로직에 섞으면
-     * "몇 번째 페이지에 공지가 몇 개 끼어 있는가"를 계산해야 하는 문제가 생긴다.
+     * 목록 상단에 고정할 글(A-BE-05) — 관리자가 {@code pinned_until}을 정해 둔 글 중 아직 기한이 남은 것을
+     * 최신순으로 뽑는다. 예전에는 최신 공지(NOTICE) 몇 개를 자동으로 고정했지만, 이제 분류와 무관하게 관리자가
+     * 고른다. 별도 쿼리로 두는 이유는 {@link #search}의 {@code totalElements}·페이지 계산을 흐트러뜨리지
+     * 않기 위해서다 — 정렬 로직에 섞으면 "몇 번째 페이지에 고정 글이 몇 개 끼어 있는가"를 계산해야 하는
+     * 문제가 생긴다.
      */
     @Query("SELECT new com.kraft.post.dto.PostRowDto("
             + "p.id, p.title, u.name, p.createdAt, p.updatedAt, p.category, p.viewCount) "
-            + "FROM Post p JOIN p.user u WHERE " + VISIBLE + "AND p.category = com.kraft.post.domain.Category.NOTICE "
+            + "FROM Post p JOIN p.user u WHERE " + VISIBLE + "AND p.pinnedUntil > :now "
             + "ORDER BY p.id DESC")
-    List<PostRowDto> findPinnedNotices(Pageable pageable);
+    List<PostRowDto> findPinned(@Param("now") LocalDateTime now, Pageable pageable);
+
+    /**
+     * 글을 {@code until}까지 고정한다. 다른 상태 컬럼과 같은 이유로 전용 UPDATE만 쓴다 — version·updatedAt을
+     * 건드리지 않아 고정만으로 "(수정됨)"이 붙거나 열려 있던 편집 탭이 가짜 충돌을 받지 않는다. 보이지 않는
+     * (삭제·숨김) 글이면 0을 돌려준다.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("UPDATE Post p SET p.pinnedUntil = :until WHERE p.id = :id AND " + VISIBLE)
+    int pin(@Param("id") Long id, @Param("until") LocalDateTime until);
+
+    /**
+     * 고정을 푼다. 삭제·숨김 상태와 무관하게 푼다 — 숨긴 글의 고정도 풀 수 있어야 한다. 고정된 글이 아니면
+     * 0을 돌려준다.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("UPDATE Post p SET p.pinnedUntil = NULL WHERE p.id = :id AND p.pinnedUntil IS NOT NULL")
+    int unpin(@Param("id") Long id);
+
+    /** 지금 고정 중인 글 수({@code excludeId}는 뺀다 — 이미 고정된 글의 기한을 바꾸는 경우). */
+    @Query("SELECT COUNT(p) FROM Post p WHERE " + VISIBLE + "AND p.pinnedUntil > :now AND p.id <> :excludeId")
+    long countPinnedExcluding(@Param("excludeId") Long excludeId, @Param("now") LocalDateTime now);
 
     /** sitemap용 최소 프로젝션 — 본문(TEXT)과 작성자를 읽지 않는다. */
     interface SitemapRow {

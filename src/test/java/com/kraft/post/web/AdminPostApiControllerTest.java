@@ -94,4 +94,84 @@ class AdminPostApiControllerTest {
                         .with(csrf()))
                 .andExpect(status().isNotFound());
     }
+
+    private static final String PIN_BODY = "{\"pinnedUntil\":\"" + java.time.LocalDateTime.now().plusDays(3).withNano(0) + "\"}";
+
+    @Test
+    @DisplayName("고정은 관리자만 할 수 있다 — 일반 회원은 403이고 서비스는 호출되지 않는다")
+    void pin_whenNotAdmin_returns403() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/admin/posts/5/pin")
+                        .with(user("tester@example.com").roles("USER"))
+                        .with(csrf())
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(PIN_BODY))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/v1/admin/posts/5/pin")
+                        .with(user("tester@example.com").roles("USER"))
+                        .with(csrf()))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(postModerationService);
+    }
+
+    @Test
+    @DisplayName("관리자가 고정하면 204이고 글 id와 기한이 서비스에 전달된다")
+    void pin_whenAdmin_returns204() throws Exception {
+        java.time.LocalDateTime until = java.time.LocalDateTime.now().plusDays(3).withNano(0);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/admin/posts/5/pin")
+                        .with(user("admin@example.com").roles("ADMIN"))
+                        .with(csrf())
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"pinnedUntil\":\"" + until + "\"}"))
+                .andExpect(status().isNoContent());
+
+        verify(postModerationService).pin(5L, until);
+    }
+
+    @Test
+    @DisplayName("과거 기한이거나 기한이 없으면 400이고 서비스는 호출되지 않는다")
+    void pin_withPastOrMissingDeadline_returns400() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/admin/posts/5/pin")
+                        .with(user("admin@example.com").roles("ADMIN"))
+                        .with(csrf())
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"pinnedUntil\":\"2020-01-01T00:00:00\"}"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/admin/posts/5/pin")
+                        .with(user("admin@example.com").roles("ADMIN"))
+                        .with(csrf())
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(postModerationService);
+    }
+
+    @Test
+    @DisplayName("서비스가 거절한 고정(개수 초과·기한 상한)은 400 ProblemDetail로 전달된다")
+    void pin_whenServiceRejects_returns400WithDetail() throws Exception {
+        willThrow(new com.kraft.shared.exception.BusinessValidationException("고정은 최대 5개까지입니다."))
+                .given(postModerationService).pin(org.mockito.ArgumentMatchers.eq(5L), org.mockito.ArgumentMatchers.any());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/admin/posts/5/pin")
+                        .with(user("admin@example.com").roles("ADMIN"))
+                        .with(csrf())
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(PIN_BODY))
+                .andExpect(status().isBadRequest())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.detail").value("고정은 최대 5개까지입니다."));
+    }
+
+    @Test
+    @DisplayName("관리자가 고정을 풀면 204다")
+    void unpin_whenAdmin_returns204() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/v1/admin/posts/5/pin")
+                        .with(user("admin@example.com").roles("ADMIN"))
+                        .with(csrf()))
+                .andExpect(status().isNoContent());
+
+        verify(postModerationService).unpin(5L);
+    }
 }

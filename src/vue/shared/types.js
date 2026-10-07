@@ -66,6 +66,7 @@
  * @property {boolean} deleted
  * @property {boolean} blinded
  * @property {boolean} canModerate
+ * @property {string | null} pinnedUntil 고정 중이면 그 기한(오프셋 포함 ISO-8601), 아니면 null
  */
 
 export {};

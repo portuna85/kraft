@@ -366,8 +366,10 @@ class PostRepositoryTest {
     @Test
     @DisplayName("소프트 삭제된 글은 목록·검색·인기글·공지·sitemap·최근 글·관련 글·조회수에서 모두 빠지고, 복구하면 돌아온다")
     void softDeletedPosts_areExcludedEverywhereAndRestorable() {
-        Post kept = postRepository.save(Post.builder().title("남는 공지").content("c").user(user).category(Category.NOTICE).build());
-        Post gone = postRepository.save(Post.builder().title("지운 공지").content("c").user(user).category(Category.NOTICE).build());
+        Post kept = postRepository.save(Post.builder().title("남는 공지").content("c").user(user).category(Category.NOTICE)
+                .pinnedUntil(LocalDateTime.now().plusDays(1)).build());
+        Post gone = postRepository.save(Post.builder().title("지운 공지").content("c").user(user).category(Category.NOTICE)
+                .pinnedUntil(LocalDateTime.now().plusDays(1)).build());
         em.flush();
 
         assertThat(postRepository.softDelete(gone.getId(), LocalDateTime.now())).isEqualTo(1);
@@ -383,7 +385,7 @@ class PostRepositoryTest {
         assertThat(postRepository.searchWithoutCount("지운", null, false, PageRequest.of(0, 10, idDesc))).isEmpty();
         assertThat(postRepository.findTopByViewCountDesc(LocalDateTime.now().minusDays(1), PageRequest.of(0, 10)))
                 .extracting(PostRowDto::id).containsExactly(kept.getId());
-        assertThat(postRepository.findPinnedNotices(PageRequest.of(0, 10)))
+        assertThat(postRepository.findPinned(LocalDateTime.now(), PageRequest.of(0, 10)))
                 .extracting(PostRowDto::id).containsExactly(kept.getId());
         assertThat(postRepository.findSitemapRows(PageRequest.of(0, 10)))
                 .extracting(PostRepository.SitemapRow::getId).containsExactly(kept.getId());
@@ -451,8 +453,10 @@ class PostRepositoryTest {
     @Test
     @DisplayName("숨긴 글은 목록·검색·인기글·공지·sitemap·최근 글·관련 글·조회수에서 빠지고, 숨김을 풀면 돌아온다")
     void blindedPosts_areExcludedEverywhereAndUnblindable() {
-        Post kept = postRepository.save(Post.builder().title("남는 공지").content("c").user(user).category(Category.NOTICE).build());
-        Post hidden = postRepository.save(Post.builder().title("숨긴 공지").content("c").user(user).category(Category.NOTICE).build());
+        Post kept = postRepository.save(Post.builder().title("남는 공지").content("c").user(user).category(Category.NOTICE)
+                .pinnedUntil(LocalDateTime.now().plusDays(1)).build());
+        Post hidden = postRepository.save(Post.builder().title("숨긴 공지").content("c").user(user).category(Category.NOTICE)
+                .pinnedUntil(LocalDateTime.now().plusDays(1)).build());
         em.flush();
 
         assertThat(postRepository.blind(hidden.getId(), LocalDateTime.now())).isEqualTo(1);
@@ -467,7 +471,7 @@ class PostRepositoryTest {
         assertThat(postRepository.searchWithoutCount("숨긴", null, false, PageRequest.of(0, 10, idDesc))).isEmpty();
         assertThat(postRepository.findTopByViewCountDesc(LocalDateTime.now().minusDays(1), PageRequest.of(0, 10)))
                 .extracting(PostRowDto::id).containsExactly(kept.getId());
-        assertThat(postRepository.findPinnedNotices(PageRequest.of(0, 10)))
+        assertThat(postRepository.findPinned(LocalDateTime.now(), PageRequest.of(0, 10)))
                 .extracting(PostRowDto::id).containsExactly(kept.getId());
         assertThat(postRepository.findSitemapRows(PageRequest.of(0, 10)))
                 .extracting(PostRepository.SitemapRow::getId).containsExactly(kept.getId());
@@ -509,5 +513,81 @@ class PostRepositoryTest {
         assertThat(after.getUpdatedAt()).isEqualTo(updatedAt);
         // 삭제된 글은 숨김 대상이 아니다 — 삭제가 이미 더 강한 상태다.
         assertThat(postRepository.blind(deleted.getId(), LocalDateTime.now())).isZero();
+    }
+
+    @Test
+    @DisplayName("findPinned: 기한이 남은 글만 분류와 무관하게 최신순으로, 최대 limit개 돌려준다")
+    void findPinned_returnsOnlyActivePinsNewestFirst() {
+        LocalDateTime now = LocalDateTime.now();
+        Post expired = postRepository.save(Post.builder().title("기한 지남").content("c").user(user)
+                .pinnedUntil(now.minusMinutes(1)).build());
+        Post freePinned = postRepository.save(Post.builder().title("자유 고정").content("c").user(user)
+                .category(Category.FREE).pinnedUntil(now.plusDays(1)).build());
+        // 공지라고 자동으로 고정되지 않는다 — 관리자가 고른 글만 고정된다.
+        postRepository.save(Post.builder().title("고정 안 된 공지").content("c").user(user)
+                .category(Category.NOTICE).build());
+        Post noticePinned = postRepository.save(Post.builder().title("공지 고정").content("c").user(user)
+                .category(Category.NOTICE).pinnedUntil(now.plusDays(2)).build());
+        em.flush();
+        em.clear();
+
+        assertThat(postRepository.findPinned(now, PageRequest.of(0, 10)))
+                .extracting(PostRowDto::id).containsExactly(noticePinned.getId(), freePinned.getId());
+        assertThat(postRepository.findPinned(now, PageRequest.of(0, 1)))
+                .extracting(PostRowDto::id).containsExactly(noticePinned.getId());
+        assertThat(expired.getId()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("pin·unpin: 보이는 글만 고정하고 version·updatedAt은 그대로 두며, 숨기거나 삭제한 글도 고정은 풀 수 있다")
+    void pinAndUnpin_touchOnlyPinnedUntil() {
+        Post post = postRepository.save(Post.builder().title("제목").content("c").user(user).build());
+        Post deleted = postRepository.save(Post.builder().title("삭제됨").content("c").user(user).build());
+        Post hidden = postRepository.save(Post.builder().title("숨김").content("c").user(user)
+                .pinnedUntil(LocalDateTime.now().plusDays(1)).build());
+        em.flush();
+        em.clear();
+        Post before = postRepository.findById(post.getId()).orElseThrow();
+        Long version = before.getVersion();
+        LocalDateTime updatedAt = before.getUpdatedAt();
+        em.clear();
+
+        // DB가 마이크로초로 저장하므로 비교가 어긋나지 않게 초 단위로 맞춘다.
+        LocalDateTime until = LocalDateTime.now().plusDays(3).withNano(0);
+        assertThat(postRepository.pin(post.getId(), until)).isEqualTo(1);
+        postRepository.softDelete(deleted.getId(), LocalDateTime.now());
+        postRepository.blind(hidden.getId(), LocalDateTime.now());
+        // 삭제·숨긴 글은 고정할 수 없다.
+        assertThat(postRepository.pin(deleted.getId(), until)).isZero();
+        assertThat(postRepository.pin(hidden.getId(), until)).isZero();
+        em.clear();
+
+        Post pinned = postRepository.findById(post.getId()).orElseThrow();
+        assertThat(pinned.getPinnedUntil()).isEqualTo(until);
+        assertThat(pinned.getVersion()).isEqualTo(version);
+        assertThat(pinned.getUpdatedAt()).isEqualTo(updatedAt);
+
+        assertThat(postRepository.unpin(post.getId())).isEqualTo(1);
+        assertThat(postRepository.unpin(post.getId())).isZero();
+        // 숨긴 글의 고정도 풀 수 있다.
+        assertThat(postRepository.unpin(hidden.getId())).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("countPinnedExcluding: 보이는 글 중 기한이 남은 고정만 세고, 기한을 바꾸려는 글 자신은 뺀다")
+    void countPinnedExcluding_countsOnlyVisibleActivePins() {
+        LocalDateTime now = LocalDateTime.now();
+        Post a = postRepository.save(Post.builder().title("a").content("c").user(user).pinnedUntil(now.plusDays(1)).build());
+        postRepository.save(Post.builder().title("b").content("c").user(user).pinnedUntil(now.plusDays(1)).build());
+        postRepository.save(Post.builder().title("만료").content("c").user(user).pinnedUntil(now.minusDays(1)).build());
+        Post deleted = postRepository.save(Post.builder().title("삭제").content("c").user(user)
+                .pinnedUntil(now.plusDays(1)).build());
+        em.flush();
+        postRepository.softDelete(deleted.getId(), now);
+        em.clear();
+
+        // 삭제된 글과 만료된 글은 세지 않는다.
+        assertThat(postRepository.countPinnedExcluding(-1L, now)).isEqualTo(2);
+        assertThat(postRepository.countPinnedExcluding(a.getId(), now)).isEqualTo(1);
     }
 }

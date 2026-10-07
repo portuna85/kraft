@@ -140,6 +140,38 @@ class MariaDbMigrationTest extends MariaDbIntegrationTest {
     }
 
     @Test
+    @DisplayName("V42: 삭제되지 않은 최신 공지 5개만 먼저 고정하고, 다른 분류와 그보다 오래된 공지는 건드리지 않는다")
+    void v42_pinsOnlyLatestFiveLiveNotices() throws Exception {
+        User author = userRepository.save(User.builder()
+                .name("v42-author").email("v42@example.com")
+                .password(passwordEncoder.encode("Password123!")).role(Role.ADMIN).build());
+        jdbcTemplate.update("UPDATE posts SET pinned_until = NULL");
+        List<Post> notices = new java.util.ArrayList<>();
+        for (int i = 0; i < 7; i++) {
+            notices.add(postRepository.save(
+                    Post.builder().title("공지" + i).content("c").user(author).category(Category.NOTICE).build()));
+        }
+        Post free = postRepository.save(Post.builder().title("자유").content("c").user(author).category(Category.FREE).build());
+        // 가장 최신 공지는 삭제된 상태다 — 고정 대상에서 빠지고 그 다음 최신이 대신 들어온다.
+        Long deletedId = notices.get(6).getId();
+        jdbcTemplate.update("UPDATE posts SET deleted_at = NOW(6) WHERE id = ?", deletedId);
+
+        // Flyway가 이미 실행한 마이그레이션이지만 UPDATE뿐이라 같은 SQL을 다시 돌려도 결과가 같다.
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V42__pin_latest_notices.sql"))
+                .execute(jdbcTemplate.getDataSource());
+
+        List<Long> pinned = jdbcTemplate.queryForList(
+                "SELECT id FROM posts WHERE pinned_until IS NOT NULL ORDER BY id DESC", Long.class);
+        assertThat(pinned).containsExactly(
+                notices.get(5).getId(), notices.get(4).getId(), notices.get(3).getId(),
+                notices.get(2).getId(), notices.get(1).getId());
+        assertThat(pinned).doesNotContain(deletedId, notices.get(0).getId(), free.getId());
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT pinned_until FROM posts WHERE id = ?", java.sql.Timestamp.class, notices.get(5).getId())
+                .toLocalDateTime().getYear()).isEqualTo(2099);
+    }
+
+    @Test
     @DisplayName("BE-07: sort=updatedAt 목록은 updated_at 인덱스로 정렬하고 filesort를 하지 않는다")
     void updatedAtSort_usesIndexWithoutFilesort() {
         User author = userRepository.save(User.builder()
