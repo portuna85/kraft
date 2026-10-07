@@ -214,7 +214,9 @@ tasks.withType<Test> {
     // Spring이 각 테스트 JVM의 worker 번호를 해석한다. 롤링 로그 파일 충돌을 막는다.
     systemProperty("logging.file.path",
         layout.buildDirectory.dir("test-logs").get().asFile.absolutePath + "/\${org.gradle.test.worker:single}")
-    jvmArgs("-javaagent:${mockitoAgent.asPath}")
+    // 시간은 KST로 고정한다(KraftApplication.ZONE_ID). main()을 거치지 않는 테스트 JVM도 같은
+    // 시간대로 돌려, 개발 PC의 시간대와 무관하게 시각 비교 테스트가 같은 결과를 내게 한다.
+    jvmArgs("-javaagent:${mockitoAgent.asPath}", "-Duser.timezone=Asia/Seoul")
 }
 
 /**

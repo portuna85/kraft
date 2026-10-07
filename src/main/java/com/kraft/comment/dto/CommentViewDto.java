@@ -1,5 +1,6 @@
 package com.kraft.comment.dto;
 
+import com.kraft.KraftApplication;
 import com.kraft.comment.domain.Comment;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -63,7 +64,7 @@ public record CommentViewDto(
                 entity.getContent(),
                 entity.getUser() != null ? entity.getUser().getName() : null,
                 entity.getCreatedAt() != null
-                        ? entity.getCreatedAt().atZone(ZoneId.systemDefault()).toOffsetDateTime()
+                        ? entity.getCreatedAt().atZone(ZoneId.of(KraftApplication.ZONE_ID)).toOffsetDateTime()
                         : null,
                 canManage,
                 replies,
