@@ -38,6 +38,7 @@ function csrfHeaders() {
  * @property {unknown} [json]
  * @property {FormData} [formData]
  * @property {number} [timeoutMs]
+ * @property {Record<string, string>} [headers] 요청마다 덧붙이는 헤더(예: 수정 요청의 `If-Match`)
  */
 
 /**
@@ -45,7 +46,7 @@ function csrfHeaders() {
  * @param {RequestOptions} [options]
  * @returns {Promise<any>}
  */
-async function request(url, { method = 'GET', json, formData, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
+async function request(url, { method = 'GET', json, formData, timeoutMs = DEFAULT_TIMEOUT_MS, headers: extraHeaders } = {}) {
     /** @type {Record<string, string>} */
     const headers = { Accept: 'application/json' };
     let body;
@@ -70,7 +71,7 @@ async function request(url, { method = 'GET', json, formData, timeoutMs = DEFAUL
     try {
         const response = await fetch(url, {
             method,
-            headers: { ...headers, ...(method === 'GET' ? {} : csrfHeaders()) },
+            headers: { ...headers, ...extraHeaders, ...(method === 'GET' ? {} : csrfHeaders()) },
             body,
             credentials: 'same-origin',
             redirect: 'follow',
@@ -103,8 +104,9 @@ export const api = {
     /**
      * @param {string} url
      * @param {unknown} [json]
+     * @param {{ headers?: Record<string, string> }} [options] 수정 요청의 `If-Match` 같은 조건부 헤더
      */
-    put: (url, json) => request(url, { method: 'PUT', json }),
+    put: (url, json, options = {}) => request(url, { method: 'PUT', json, ...options }),
     // 본문 있는 DELETE는 드물지만 표준이 금지하지 않는다. 회원 탈퇴가 현재 비밀번호를 함께
     // 보낸다 — 되돌릴 수 없는 작업이라 서버가 한 번 더 확인한다.
     /**

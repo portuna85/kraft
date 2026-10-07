@@ -145,4 +145,24 @@ class ApiExceptionHandlerTest {
         org.assertj.core.api.Assertions.assertThat(notNull.getStatus()).isEqualTo(500);
         org.assertj.core.api.Assertions.assertThat(unknown.getStatus()).isEqualTo(409);
     }
+
+    @Test
+    @DisplayName("If-Match 불일치는 412+EDIT_CONFLICT, 기준 버전 없음은 428+VERSION_REQUIRED로 바뀌고 댓글·글 문구가 갈린다")
+    void preconditionExceptions_areMappedTo412And428() {
+        ApiExceptionHandler handler = new ApiExceptionHandler();
+
+        var post = handler.handlePreconditionFailed(
+                new com.kraft.shared.domain.PreconditionFailedException(com.kraft.post.domain.Post.class, 1L));
+        var comment = handler.handlePreconditionFailed(
+                new com.kraft.shared.domain.PreconditionFailedException(com.kraft.comment.domain.Comment.class, 2L));
+        var required = handler.handlePreconditionRequired(
+                new com.kraft.shared.exception.PreconditionRequiredException("버전이 필요합니다."));
+
+        org.assertj.core.api.Assertions.assertThat(post.getStatus()).isEqualTo(412);
+        org.assertj.core.api.Assertions.assertThat(post.getProperties()).containsEntry("code", "EDIT_CONFLICT");
+        org.assertj.core.api.Assertions.assertThat(post.getDetail()).contains("글");
+        org.assertj.core.api.Assertions.assertThat(comment.getDetail()).contains("댓글");
+        org.assertj.core.api.Assertions.assertThat(required.getStatus()).isEqualTo(428);
+        org.assertj.core.api.Assertions.assertThat(required.getProperties()).containsEntry("code", "VERSION_REQUIRED");
+    }
 }

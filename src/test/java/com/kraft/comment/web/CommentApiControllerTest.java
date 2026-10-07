@@ -180,7 +180,7 @@ class CommentApiControllerTest {
     @Test
     @DisplayName("PUT /api/v1/comments/{id} 는 작성자가 아니면 403 ProblemDetail")
     void updateComment_whenNotAuthor_returns403Forbidden() throws Exception {
-        given(commentService.update(eq(1L), any(CommentUpdateRequestDto.class), any(Authentication.class)))
+        given(commentService.update(eq(1L), any(CommentUpdateRequestDto.class), any(), any(Authentication.class)))
                 .willThrow(new AccessDeniedException("작성자 본인 또는 관리자만 수정·삭제할 수 있습니다. id=1"));
 
         mockMvc.perform(put("/api/v1/comments/1")
@@ -193,17 +193,17 @@ class CommentApiControllerTest {
     }
 
     @Test
-    @DisplayName("F11: PUT /api/v1/comments/{id} 에 version이 없으면 400이고 서비스는 호출되지 않는다")
-    void updateComment_withoutVersion_returns400() throws Exception {
+    @DisplayName("F11: PUT /api/v1/comments/{id} 에 기준 버전(If-Match도 본문 version도)이 없으면 428이고 서비스는 호출되지 않는다")
+    void updateComment_withoutAnyVersion_returns428() throws Exception {
         mockMvc.perform(put("/api/v1/comments/1")
                         .with(user("tester@example.com"))
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"수정\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("수정할 댓글의 버전 정보가 필요합니다. 화면을 새로고침한 뒤 다시 시도하세요."));
+                .andExpect(status().isPreconditionRequired())
+                .andExpect(jsonPath("$.code").value("VERSION_REQUIRED"));
 
-        verify(commentService, never()).update(any(), any(), any());
+        verify(commentService, never()).update(any(), any(), any(), any());
     }
 
     @Test
@@ -219,5 +219,41 @@ class CommentApiControllerTest {
                 .andExpect(jsonPath("$.softDeleted").value(false));
 
         verify(commentService).delete(eq(1L), any(Authentication.class));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/comments/{id} 는 If-Match를 기준 버전으로 쓰고 응답에 저장 뒤 새 버전을 ETag로 싣는다")
+    void updateComment_withIfMatch_usesHeaderVersionAndReturnsNewEtag() throws Exception {
+        given(commentService.update(eq(1L), any(CommentUpdateRequestDto.class), any(), any(Authentication.class)))
+                .willReturn(new CommentViewDto(1L, 1L, null, "수정", "tester", OffsetDateTime.now(), true,
+                        List.of(), 0L, false, 5L, false));
+
+        mockMvc.perform(put("/api/v1/comments/1")
+                        .with(user("tester@example.com")).with(csrf())
+                        .header("If-Match", "\"4\"")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\":\"수정\"}"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("ETag", "\"5\""))
+                .andExpect(jsonPath("$.version").value(5));
+
+        verify(commentService).update(eq(1L), any(CommentUpdateRequestDto.class), eq(4L), any(Authentication.class));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/comments/{id} 는 기준 버전이 지금 버전과 다르면 412와 EDIT_CONFLICT 코드를 반환한다")
+    void updateComment_whenPreconditionFails_returns412() throws Exception {
+        given(commentService.update(eq(1L), any(CommentUpdateRequestDto.class), any(), any(Authentication.class)))
+                .willThrow(new com.kraft.shared.domain.PreconditionFailedException(
+                        com.kraft.comment.domain.Comment.class, 1L));
+
+        mockMvc.perform(put("/api/v1/comments/1")
+                        .with(user("tester@example.com")).with(csrf())
+                        .header("If-Match", "\"1\"")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\":\"수정\"}"))
+                .andExpect(status().isPreconditionFailed())
+                .andExpect(jsonPath("$.code").value("EDIT_CONFLICT"))
+                .andExpect(jsonPath("$.detail").value("다른 곳에서 이미 수정된 댓글입니다. 새로고침 후 다시 시도해 주세요."));
     }
 }

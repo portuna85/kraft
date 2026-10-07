@@ -29,4 +29,11 @@ class VersionCheckTest {
                 .isInstanceOf(ObjectOptimisticLockingFailureException.class)
                 .satisfies(e -> assertThat(((ObjectOptimisticLockingFailureException) e).getIdentifier()).isEqualTo(7L));
     }
+
+    @Test
+    @DisplayName("버전이 다르면 If-Match 불일치 예외(PreconditionFailedException)이고, 낙관적 락 예외의 하위 타입이다")
+    void differentVersion_throwsPreconditionFailed() {
+        assertThatThrownBy(() -> VersionCheck.require(String.class, 7L, 3L, 2L))
+                .isInstanceOf(PreconditionFailedException.class);
+    }
 }

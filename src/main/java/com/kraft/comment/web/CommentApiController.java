@@ -6,10 +6,12 @@ import com.kraft.comment.dto.CommentSaveRequestDto;
 import com.kraft.comment.dto.CommentUpdateRequestDto;
 import com.kraft.comment.dto.CommentViewDto;
 import com.kraft.comment.service.CommentService;
+import com.kraft.shared.web.EntityTags;
 import com.kraft.shared.web.RateLimitResponses;
 import com.kraft.shared.web.WriteRateLimiters;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -59,10 +61,18 @@ public class CommentApiController {
         return commentService.findRepliesPage(parentId, afterId, authentication);
     }
 
+    /**
+     * 글 수정과 같은 계약이다 — 기준 버전은 {@code If-Match}(목록의 각 댓글이 들고 있는 {@code version})로
+     * 보내고, 다르면 412, 없으면 428이다. 응답의 ETag는 저장 뒤의 새 버전이다.
+     */
     @PutMapping("/api/v1/comments/{id}")
-    public CommentViewDto update(@PathVariable Long id, @Valid @RequestBody CommentUpdateRequestDto requestDto,
-                                  Authentication authentication) {
-        return commentService.update(id, requestDto, authentication);
+    public ResponseEntity<CommentViewDto> update(@PathVariable Long id,
+                                                  @Valid @RequestBody CommentUpdateRequestDto requestDto,
+                                                  @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch,
+                                                  Authentication authentication) {
+        CommentViewDto saved = commentService.update(
+                id, requestDto, EntityTags.expectedVersion(ifMatch, requestDto.version()), authentication);
+        return ResponseEntity.ok().eTag(EntityTags.of(saved.version())).body(saved);
     }
 
     @DeleteMapping("/api/v1/comments/{id}")

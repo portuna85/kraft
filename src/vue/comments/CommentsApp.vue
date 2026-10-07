@@ -155,7 +155,7 @@ function onUpdated({ id, content, version }) {
         target.content = content;
         // 성공한 저장이 올린 새 버전을 반영해 둔다(B12/F02) — 그렇지 않으면 같은 댓글을
         // 새로고침 없이 다시 수정할 때 이미 반영된 자신의 편집을 낡은 버전으로 오인해
-        // 불필요한 409가 난다.
+        // 불필요한 충돌(412)이 난다.
         if (version !== undefined) {
             target.version = version;
         }

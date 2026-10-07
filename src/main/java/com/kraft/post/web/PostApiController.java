@@ -10,6 +10,7 @@ import com.kraft.post.dto.PostUpdateRequestDto;
 import com.kraft.post.service.PostQueryService;
 import com.kraft.post.service.PostService;
 import com.kraft.post.service.PostSortPolicy;
+import com.kraft.shared.web.EntityTags;
 import com.kraft.shared.web.RateLimitResponses;
 import com.kraft.shared.web.WriteRateLimiters;
 import jakarta.validation.Valid;
@@ -17,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -43,10 +45,17 @@ public class PostApiController {
         return ResponseEntity.ok(postService.save(authentication, requestDto));
     }
 
+    /**
+     * 수정은 어느 버전을 기준으로 고치는지 {@code If-Match}로 밝혀야 한다 — 다르면 412, 아무 기준도 없으면 428이다.
+     * 응답의 ETag는 저장 뒤의 새 버전이라 화면이 다음 수정의 기준으로 쓸 수 있다.
+     */
     @PutMapping("/api/v1/posts/{id}")
-    public Long update(@PathVariable Long id, @Valid @RequestBody PostUpdateRequestDto requestDto,
-                        Authentication authentication) {
-        return postService.update(id, requestDto, authentication);
+    public ResponseEntity<Long> update(@PathVariable Long id, @Valid @RequestBody PostUpdateRequestDto requestDto,
+                                        @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch,
+                                        Authentication authentication) {
+        PostService.PostUpdateResult result = postService.update(
+                id, requestDto, EntityTags.expectedVersion(ifMatch, requestDto.version()), authentication);
+        return ResponseEntity.ok().eTag(EntityTags.of(result.version())).body(result.id());
     }
 
     @DeleteMapping("/api/v1/posts/{id}")
@@ -55,9 +64,11 @@ public class PostApiController {
         return id;
     }
 
+    /** ETag는 글의 버전이다 — 수정 요청의 {@code If-Match}로 그대로 돌려보낼 수 있다. */
     @GetMapping("/api/v1/posts/{id}")
-    public PostResponseDto findById(@PathVariable Long id) {
-        return postQueryService.findById(id);
+    public ResponseEntity<PostResponseDto> findById(@PathVariable Long id) {
+        PostResponseDto body = postQueryService.findById(id);
+        return ResponseEntity.ok().eTag(EntityTags.of(body.version())).body(body);
     }
 
     /**

@@ -23,6 +23,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -324,7 +326,7 @@ class PostApiControllerTest {
     @Test
     @DisplayName("PUT /api/v1/posts/{id} 는 작성자가 아니면 403 ProblemDetail")
     void updatePost_whenNotAuthor_returns403Forbidden() throws Exception {
-        given(postService.update(eq(1L), any(PostUpdateRequestDto.class), any(Authentication.class)))
+        given(postService.update(eq(1L), any(PostUpdateRequestDto.class), any(), any(Authentication.class)))
                 .willThrow(new AccessDeniedException("작성자 본인 또는 관리자만 수정·삭제할 수 있습니다. id=1"));
 
         mockMvc.perform(put("/api/v1/posts/1")
@@ -339,7 +341,8 @@ class PostApiControllerTest {
     @Test
     @DisplayName("PUT /api/v1/posts/{id} 는 picture를 포함한 요청 본문을 그대로 서비스에 전달한다")
     void updatePost_passesPictureAndRequestBodyToService() throws Exception {
-        given(postService.update(eq(1L), any(PostUpdateRequestDto.class), any(Authentication.class))).willReturn(1L);
+        given(postService.update(eq(1L), any(PostUpdateRequestDto.class), any(), any(Authentication.class)))
+                .willReturn(new PostService.PostUpdateResult(1L, 1L));
 
         mockMvc.perform(put("/api/v1/posts/1")
                         .with(user("tester@example.com"))
@@ -350,7 +353,8 @@ class PostApiControllerTest {
                 .andExpect(content().string("1"));
 
         var captor = org.mockito.ArgumentCaptor.forClass(PostUpdateRequestDto.class);
-        verify(postService).update(eq(1L), captor.capture(), any(Authentication.class));
+        // If-Match가 없으면 전환기 폴백으로 본문 version(0)이 기준 버전이다.
+        verify(postService).update(eq(1L), captor.capture(), eq(0L), any(Authentication.class));
         assertThat(captor.getValue().picture()).isEqualTo("/images/new.png");
     }
 
@@ -367,21 +371,22 @@ class PostApiControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("제목은 255자 이하로 입력하세요."));
 
-        verify(postService, never()).update(any(), any(), any());
+        verify(postService, never()).update(any(), any(), any(), any());
     }
 
     @Test
-    @DisplayName("F11: PUT /api/v1/posts/{id} 에 version이 없으면 400이고 서비스는 호출되지 않는다")
-    void updatePost_withoutVersion_returns400() throws Exception {
+    @DisplayName("F11: PUT /api/v1/posts/{id} 에 기준 버전(If-Match도 본문 version도)이 없으면 428이고 서비스는 호출되지 않는다")
+    void updatePost_withoutAnyVersion_returns428() throws Exception {
         mockMvc.perform(put("/api/v1/posts/1")
                         .with(user("tester@example.com"))
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"제목\",\"content\":\"내용\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("수정할 글의 버전 정보가 필요합니다. 화면을 새로고침한 뒤 다시 시도하세요."));
+                .andExpect(status().isPreconditionRequired())
+                .andExpect(jsonPath("$.code").value("VERSION_REQUIRED"))
+                .andExpect(jsonPath("$.detail").value("수정할 대상의 버전 정보가 필요합니다. 화면을 새로고침한 뒤 다시 시도하세요."));
 
-        verify(postService, never()).update(any(), any(), any());
+        verify(postService, never()).update(any(), any(), any(), any());
     }
 
     @Test
@@ -476,7 +481,7 @@ class PostApiControllerTest {
     @Test
     @DisplayName("PUT /api/v1/posts/{id} 는 편집 충돌이면 409 ProblemDetail을 반환한다")
     void updatePost_whenEditConflict_returns409Conflict() throws Exception {
-        given(postService.update(eq(1L), any(PostUpdateRequestDto.class), any(Authentication.class)))
+        given(postService.update(eq(1L), any(PostUpdateRequestDto.class), any(), any(Authentication.class)))
                 .willThrow(new ObjectOptimisticLockingFailureException(Post.class, 1L));
 
         mockMvc.perform(put("/api/v1/posts/1")
@@ -486,5 +491,79 @@ class PostApiControllerTest {
                         .content("{\"title\":\"제목\",\"content\":\"내용\",\"version\":1}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail").value("다른 곳에서 이미 수정된 글입니다. 새로고침 후 다시 시도해 주세요."));
+    }
+
+    private static final String UPDATE_BODY_WITHOUT_VERSION = "{\"title\":\"제목\",\"content\":\"내용\"}";
+
+    @Test
+    @DisplayName("PUT /api/v1/posts/{id} 는 If-Match 헤더를 기준 버전으로 쓰고, 응답에 저장 뒤 새 버전을 ETag로 싣는다")
+    void updatePost_withIfMatch_usesHeaderVersionAndReturnsNewEtag() throws Exception {
+        given(postService.update(eq(1L), any(PostUpdateRequestDto.class), any(), any(Authentication.class)))
+                .willReturn(new PostService.PostUpdateResult(1L, 4L));
+
+        // 정상 수정은 200이어야 한다 — 요청 If-Match("3")와 응답 ETag("4")가 다르다고 Spring이 412로 막지 않는다.
+        mockMvc.perform(put("/api/v1/posts/1")
+                        .with(user("tester@example.com"))
+                        .with(csrf())
+                        .header("If-Match", "\"3\"")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(UPDATE_BODY_WITHOUT_VERSION))
+                .andExpect(status().isOk())
+                .andExpect(header().string("ETag", "\"4\""))
+                .andExpect(content().string("1"));
+
+        verify(postService).update(eq(1L), any(PostUpdateRequestDto.class), eq(3L), any(Authentication.class));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/posts/{id} 는 If-Match가 본문 version보다 우선하고, 약한 표기(W/)와 *도 받는다")
+    void updatePost_ifMatchTakesPrecedenceOverBodyVersion() throws Exception {
+        given(postService.update(any(), any(PostUpdateRequestDto.class), any(), any(Authentication.class)))
+                .willReturn(new PostService.PostUpdateResult(1L, 9L));
+
+        mockMvc.perform(put("/api/v1/posts/1")
+                        .with(user("tester@example.com")).with(csrf())
+                        .header("If-Match", "W/\"7\"")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"제목\",\"content\":\"내용\",\"version\":2}"))
+                .andExpect(status().isOk());
+        verify(postService).update(eq(1L), any(PostUpdateRequestDto.class), eq(7L), any(Authentication.class));
+
+        // If-Match: * 는 존재하기만 하면 된다는 뜻이라 버전 검사를 건너뛴다(null).
+        mockMvc.perform(put("/api/v1/posts/2")
+                        .with(user("tester@example.com")).with(csrf())
+                        .header("If-Match", "*")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(UPDATE_BODY_WITHOUT_VERSION))
+                .andExpect(status().isOk());
+        verify(postService).update(eq(2L), any(PostUpdateRequestDto.class), isNull(), any(Authentication.class));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/posts/{id} 는 기준 버전이 지금 버전과 다르면 412와 EDIT_CONFLICT 코드를 반환한다")
+    void updatePost_whenPreconditionFails_returns412() throws Exception {
+        given(postService.update(eq(1L), any(PostUpdateRequestDto.class), any(), any(Authentication.class)))
+                .willThrow(new com.kraft.shared.domain.PreconditionFailedException(Post.class, 1L));
+
+        mockMvc.perform(put("/api/v1/posts/1")
+                        .with(user("tester@example.com")).with(csrf())
+                        .header("If-Match", "\"1\"")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(UPDATE_BODY_WITHOUT_VERSION))
+                .andExpect(status().isPreconditionFailed())
+                .andExpect(jsonPath("$.code").value("EDIT_CONFLICT"))
+                .andExpect(jsonPath("$.detail").value("다른 곳에서 이미 수정된 글입니다. 새로고침 후 다시 시도해 주세요."));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/posts/{id} 는 글의 버전을 ETag로 싣는다")
+    void getPost_returnsVersionAsEtag() throws Exception {
+        given(postQueryService.findById(1L)).willReturn(
+                new com.kraft.post.dto.PostResponseDto(1L, "제목", "내용", null, "작성자", Category.FREE, 0L, 7L));
+
+        mockMvc.perform(get("/api/v1/posts/1"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("ETag", "\"7\""))
+                .andExpect(jsonPath("$.version").value(7));
     }
 }

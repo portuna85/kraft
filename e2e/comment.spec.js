@@ -527,7 +527,11 @@ test('F11: 방금 단 답글을 새로고침 없이 바로 수정할 수 있다(
     await reply.locator('.comment-edit__textarea').fill('수정 후 답글');
     await reply.locator('.btn-comment-save').click();
 
-    expect((await putBody).postDataJSON().version).toEqual(expect.any(Number));
+    const request = await putBody;
+    const version = request.postDataJSON().version;
+    expect(version).toEqual(expect.any(Number));
+    // 같은 버전을 If-Match로도 보낸다(기준 버전은 헤더가 우선이고 본문은 전환기 폴백이다).
+    expect(request.headers()['if-match']).toBe(`"${version}"`);
     await expect(reply.locator('.comment-list__content')).toHaveText('수정 후 답글');
 });
 

@@ -3,6 +3,7 @@ import { computed, nextTick, ref } from 'vue';
 import { api, messageOf } from '@core/http.js';
 import { formatDateTime } from '@core/datetime.js';
 import { API } from '@core/constants.js';
+import { ifMatchHeaders } from '@core/etag.js';
 import { showToast } from '@ui/toast.js';
 import { replyAfterId } from './commentState.js';
 
@@ -126,14 +127,17 @@ async function save() {
     try {
         const saved = await api.put(`${API.COMMENTS}/${props.comment.id}`, {
             content,
-            // 편집을 시작할 때 받아간 버전. 그 사이 다른 곳에서 저장됐으면 서버가 409로
-            // 거절한다(B12). 서버는 버전을 필수로 받는다(F11) — 방금 이 화면에서 만든
-            // 댓글·답글도 등록 응답(CommentViewDto)의 version을 그대로 들고 있다.
+            // 편집을 시작할 때 받아간 버전. 서버는 기준 버전 없는 수정을 받지 않는다(F11) — 방금 이
+            // 화면에서 만든 댓글·답글도 등록 응답(CommentViewDto)의 version을 그대로 들고 있다.
+            // 본문 version은 배포 전후로 서버를 되돌려도 동작하게 하는 전환기 폴백이다.
             version: requestVersion,
+        }, {
+            // 같은 값을 If-Match로도 보낸다. 그 사이 다른 곳에서 저장됐으면 서버가 412로 거절한다(B12).
+            headers: ifMatchHeaders(requestVersion),
         });
         // 서버가 실제로 반영한 version을 그대로 쓴다(개선 보고서 COR-05) — 예전에는
         // "성공했으니 +1"로 추측했는데, 내용이 실제로 바뀌지 않으면 DB의 버전이 그대로라
-        // 그 추측이 어긋나 다음 정상 수정이 가짜 409를 받았다.
+        // 그 추측이 어긋나 다음 정상 수정이 가짜 충돌(412)을 받았다.
         emit('updated', { id: props.comment.id, content: saved.content, version: saved.version });
         editing.value = false;
         await returnFocusToEditButton();

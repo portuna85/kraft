@@ -133,12 +133,26 @@ public class PostService {
     @CacheEvict(value = "pinnedPosts", allEntries = true)
     @Transactional
     public Long update(Long id, PostUpdateRequestDto requestDto, Authentication authentication) {
+        return update(id, requestDto, requestDto.version(), authentication).id();
+    }
+
+    /**
+     * 기준 버전을 따로 받는 수정. 컨트롤러가 {@code If-Match} 헤더(없으면 본문 버전)에서 정한 값을 넘긴다.
+     * 저장 직후 flush해 확정된 새 버전을 돌려준다 — 응답 ETag가 이 값이고, 변경이 없어 UPDATE가 나가지 않은
+     * 경우에도 지금 DB의 버전이 그대로 담긴다.
+     *
+     * @param expectedVersion 이 버전을 기준으로 고친다는 뜻. {@code null}이면 검사하지 않는다.
+     */
+    @CacheEvict(value = "pinnedPosts", allEntries = true)
+    @Transactional
+    public PostUpdateResult update(Long id, PostUpdateRequestDto requestDto, Long expectedVersion,
+                                    Authentication authentication) {
         Post post = findPost(id);
         User actor = findUser(authentication);
         WriteAccessPolicy.requireVerified(actor);
         validateOwner(post, authentication);
         requireNotBlindedUnlessAdmin(post, authentication);
-        VersionCheck.require(Post.class, post.getId(), post.getVersion(), requestDto.version());
+        VersionCheck.require(Post.class, post.getId(), post.getVersion(), expectedVersion);
         CategoryPolicy.requireCanUse(authentication, requestDto.category());
 
         String oldPicture = post.getPicture();
@@ -173,7 +187,12 @@ public class PostService {
             Long deletedImageId = postImageRegistry.markForDeletion(oldPicture).orElse(null);
             cleanUpAfterCommit(deletedImageId == null ? List.of() : List.of(deletedImageId));
         }
-        return id;
+        postRepository.flush();
+        return new PostUpdateResult(id, post.getVersion());
+    }
+
+    /** 수정 결과. {@code version}은 저장 뒤 확정된 새 버전이다. */
+    public record PostUpdateResult(Long id, Long version) {
     }
 
     /**

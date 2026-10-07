@@ -2,6 +2,7 @@
 import { computed, nextTick, reactive, ref, watch } from 'vue';
 import { api } from '@core/http.js';
 import { API, UPLOAD_MESSAGES } from '@core/constants.js';
+import { ifMatchHeaders } from '@core/etag.js';
 import * as flash from '@ui/flash.js';
 import { useImageUpload } from '../shared/useImageUpload.js';
 import { useUnsavedGuard } from '../shared/useUnsavedGuard.js';
@@ -163,9 +164,14 @@ function onSubmit() {
                 pictureWidth: props.post.pictureWidth ?? null,
                 pictureHeight: props.post.pictureHeight ?? null,
             },
-        // 편집을 시작할 때 받아간 버전(snapshot.version)을 함께 보낸다. 그 사이 다른 곳에서
-        // 저장됐으면 서버가 409로 거절한다.
-        send: (pictureFields) => api.put(`${API.POSTS}/${props.post.id}`, { ...snapshot, ...pictureFields }),
+        // 편집을 시작할 때 받아간 버전(snapshot.version)을 If-Match로 보내 "이 버전을 기준으로 고친다"고
+        // 밝힌다. 그 사이 다른 곳에서 저장됐으면 서버가 412로 거절한다(저장 시점에 겹치면 409). 본문에도
+        // version을 함께 싣는다 — 배포 전후로 서버를 되돌려도 동작하게 하는 전환기 폴백이다.
+        send: (pictureFields) => api.put(
+            `${API.POSTS}/${props.post.id}`,
+            { ...snapshot, ...pictureFields },
+            { headers: ifMatchHeaders(snapshot.version) },
+        ),
         onSuccess: () => {
             picture.revokePreview();
             flash.set('POST_UPDATED');

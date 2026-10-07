@@ -114,6 +114,17 @@ public class CommentService {
      */
     @Transactional
     public CommentViewDto update(Long id, CommentUpdateRequestDto requestDto, Authentication authentication) {
+        return update(id, requestDto, requestDto.version(), authentication);
+    }
+
+    /**
+     * 기준 버전을 따로 받는 수정. 컨트롤러가 {@code If-Match} 헤더(없으면 본문 버전)에서 정한 값을 넘긴다.
+     *
+     * @param expectedVersion 이 버전을 기준으로 고친다는 뜻. {@code null}이면 검사하지 않는다.
+     */
+    @Transactional
+    public CommentViewDto update(Long id, CommentUpdateRequestDto requestDto, Long expectedVersion,
+                                  Authentication authentication) {
         Comment comment = findComment(id);
         requirePostVisible(comment, authentication);
         WriteAccessPolicy.requireVerified(findUser(authentication));
@@ -122,7 +133,7 @@ public class CommentService {
             throw new BusinessValidationException("삭제된 댓글은 수정할 수 없습니다.");
         }
         requireNotBlindedUnlessAdmin(comment, authentication);
-        VersionCheck.require(Comment.class, comment.getId(), comment.getVersion(), requestDto.version());
+        VersionCheck.require(Comment.class, comment.getId(), comment.getVersion(), expectedVersion);
         comment.update(requestDto.content());
         commentRepository.flush();
         return viewOf(comment, authentication);

@@ -113,6 +113,67 @@ test('제목·본문·분류를 바꿔 저장하면 반영된다', async ({ page
     await expect(page.locator('#post-title-text')).toHaveText(newTitle);
 });
 
+/**
+ * 수정 요청은 "이 버전을 기준으로 고친다"를 If-Match 헤더로 밝힌다. 본문 version은 배포 전후로 서버를 되돌려도
+ * 동작하게 하는 전환기 폴백이라 함께 실려야 한다.
+ */
+test('저장 요청이 편집을 시작할 때의 글 버전을 If-Match로 보낸다', async ({ page }) => {
+    await createOwnPost(page, uniqueTitle('조건부'));
+
+    const putRequest = page.waitForRequest((r) => r.method() === 'PUT' && /\/api\/v1\/posts\/\d+$/.test(r.url()));
+    await page.locator('#btn-edit').click();
+    await page.locator('#content').fill('If-Match 확인용 본문입니다.');
+    await page.locator('#btn-update').click();
+
+    const request = await putRequest;
+    const version = request.postDataJSON().version;
+    expect(version).toEqual(expect.any(Number));
+    expect(request.headers()['if-match']).toBe(`"${version}"`);
+    await page.waitForURL(/\/posts\/update\/\d+$/);
+    await expect(page.locator('#flash')).toContainText('글이 수정되었습니다.');
+});
+
+/**
+ * 편집을 시작한 뒤 다른 곳(다른 탭·기기)에서 먼저 저장하면, 나중 저장이 말없이 덮어쓰지 않고 412로 거절돼
+ * 충돌 안내가 뜬다. 거절된 요청은 서버의 글을 바꾸지 않는다.
+ */
+test('편집을 시작한 뒤 다른 곳에서 먼저 저장되면 충돌 안내가 뜨고 덮어쓰지 않는다', async ({ page }) => {
+    const title = uniqueTitle('충돌');
+    await createOwnPost(page, title);
+    const postId = page.url().match(/\/posts\/update\/(\d+)$/)[1];
+
+    await page.locator('#btn-edit').click();
+
+    // 다른 곳에서의 저장을 흉내 낸다 — 현재 버전(ETag)을 읽어 그 기준으로 먼저 고친다.
+    const otherSave = await page.evaluate(async (id) => {
+        const token = document.querySelector('meta[name="_csrf"]').content;
+        const header = document.querySelector('meta[name="_csrf_header"]').content;
+        const current = await fetch(`/api/v1/posts/${id}`);
+        const etag = current.headers.get('ETag');
+        const res = await fetch(`/api/v1/posts/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'If-Match': etag, [header]: token },
+            body: JSON.stringify({ title: '다른 곳에서 먼저 수정', content: '먼저 저장된 본문' }),
+        });
+        return { status: res.status, etag: res.headers.get('ETag'), previous: etag };
+    }, postId);
+    expect(otherSave.status).toBe(200);
+    // 저장하면 ETag(버전)가 바뀐다.
+    expect(otherSave.etag).not.toBe(otherSave.previous);
+
+    await page.locator('#content').fill('이 화면이 늦게 저장하려는 본문');
+    await page.locator('#btn-update').click();
+
+    // 저장 실패는 화면 상단 알림(#flash)에 서버가 준 문구 그대로 보인다.
+    await expect(page.locator('#flash')).toContainText('다른 곳에서 이미 수정된 글입니다');
+    // 저장이 막혔을 뿐 화면은 편집 상태로 남아 다시 시도할 수 있다.
+    await expect(page.locator('#btn-update')).toBeEnabled();
+
+    const stored = await page.evaluate(async (id) => (await fetch(`/api/v1/posts/${id}`)).json(), postId);
+    expect(stored.title).toBe('다른 곳에서 먼저 수정');
+    expect(stored.content).toBe('먼저 저장된 본문');
+});
+
 test('바꾼 것이 없으면 취소할 때 묻지 않는다', async ({ page }) => {
     await createOwnPost(page, uniqueTitle('편집'));
 

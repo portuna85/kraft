@@ -4,7 +4,9 @@ import com.kraft.recommend.domain.RecommendationGenerationLimitException;
 import com.kraft.recommend.domain.RecommendationHistoryNotReadyException;
 import com.kraft.recommend.domain.RecommendationValidationException;
 import com.kraft.shared.exception.BusinessValidationException;
+import com.kraft.shared.domain.PreconditionFailedException;
 import com.kraft.shared.exception.NotFoundException;
+import com.kraft.shared.exception.PreconditionRequiredException;
 import com.kraft.shared.exception.StorageException;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.exception.ConstraintViolationException;
@@ -213,6 +215,34 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         String message = e.getMessage() == null ? "권한이 없습니다."
                 : TRAILING_IDENTIFIER.matcher(e.getMessage()).replaceFirst("");
         return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, message);
+    }
+
+    /**
+     * 수정 요청의 기준 버전({@code If-Match})이 지금 버전과 달라 거절된 경우를 412로 변환한다. 요청이 오기 전에
+     * 이미 다른 곳에서 저장이 일어났다는 뜻이라 화면은 새로고침을 안내한다. 저장 시점에 겹친 저장은 아래
+     * {@link #handleEditConflict}의 409다 — 더 구체적인 타입이라 이 핸들러가 먼저 선택된다.
+     * <p>
+     * 화면이 코드로 충돌을 알아볼 수 있게 {@code code: EDIT_CONFLICT}를 싣는다.
+     */
+    @ExceptionHandler(PreconditionFailedException.class)
+    public ProblemDetail handlePreconditionFailed(PreconditionFailedException e) {
+        String className = e.getPersistentClassName();
+        String subject = className != null && className.endsWith(".Comment") ? "댓글" : "글";
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.PRECONDITION_FAILED,
+                "다른 곳에서 이미 수정된 " + subject + "입니다. 새로고침 후 다시 시도해 주세요.");
+        problem.setProperty("code", "EDIT_CONFLICT");
+        return problem;
+    }
+
+    /**
+     * 수정 요청에 기준 버전이 전혀 없는 경우를 428로 변환한다. 조건 없이 덮어쓰면 오래된 화면이 다른 사람의
+     * 저장을 말없이 지운다.
+     */
+    @ExceptionHandler(PreconditionRequiredException.class)
+    public ProblemDetail handlePreconditionRequired(PreconditionRequiredException e) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.PRECONDITION_REQUIRED, e.getMessage());
+        problem.setProperty("code", "VERSION_REQUIRED");
+        return problem;
     }
 
     /**
