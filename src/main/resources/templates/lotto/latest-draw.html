@@ -1,0 +1,45 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<!--/*@thymesVar id="draw" type="com.kraft.recommend.dto.LatestDrawView"*/-->
+<body>
+
+<!--/*
+    최신 회차 당첨 결과 조각. 홈과 번호 추천 화면이 함께 쓴다(예전에는 두 템플릿에 거의 같은 블록이 따로 있어
+    라벨("세후 예상"/"세후 예상 금액")과 클래스 접두사가 화면마다 달랐다).
+
+    값은 모두 DB에서 온다. 추첨일·보너스·당첨금은 null일 수 있어(V21 이전 회차) 각각 있을 때만 그린다.
+    세후 금액은 원천징수 세율로 계산한 표시용 추정치다(LottoPrizeTax) — "실수령액"은 확정액으로 읽혀 "세후 예상
+    금액"으로 쓴다(평가 보고서 2026-09-25 §6). 호출하는 쪽이 draw가 null이면 이 조각을 부르지 않는다.
+*/-->
+<section th:fragment="latestDraw(draw)" class="latest-draw" aria-labelledby="latest-draw-title">
+    <h2 id="latest-draw-title" class="latest-draw__title">
+        최신 <span class="latest-draw__num" th:text="${draw.roundNo}">1</span>회 당첨 결과
+    </h2>
+    <p th:if="${draw.drawDate != null}" class="latest-draw__date"
+       th:text="${#temporals.format(draw.drawDate, 'yyyy.MM.dd')} + ' 추첨'"></p>
+
+    <ul class="lotto-balls" aria-label="당첨번호">
+        <li th:each="n : ${draw.numbers}" class="lotto-ball"
+            th:classappend="${T(com.kraft.recommend.domain.LottoBallColor).cssClass(n)}"
+            th:text="${n}"></li>
+        <li th:if="${draw.bonusNo != null}" class="lotto-ball-plus" aria-hidden="true">+</li>
+        <li th:if="${draw.bonusNo != null}" class="lotto-ball lotto-ball--bonus"
+            th:classappend="${T(com.kraft.recommend.domain.LottoBallColor).cssClass(draw.bonusNo)}">
+            <span class="visually-hidden">보너스 </span><span th:text="${draw.bonusNo}"></span>
+        </li>
+    </ul>
+
+    <dl th:if="${draw.firstPrizeAmount != null}" class="latest-draw__prize">
+        <dt>1등 당첨금</dt>
+        <dd>
+            <span th:text="${#numbers.formatInteger(draw.firstPrizeAmount, 0, 'COMMA')} + '원'"></span>
+            <span th:if="${draw.winnerCount != null}" th:text="'(' + ${draw.winnerCount} + '명)'"></span>
+        </dd>
+        <dt th:if="${draw.takeHomeAmount != null}">세후 예상 금액</dt>
+        <dd th:if="${draw.takeHomeAmount != null}"
+            th:text="${#numbers.formatInteger(draw.takeHomeAmount, 0, 'COMMA')} + '원'"></dd>
+    </dl>
+</section>
+
+</body>
+</html>

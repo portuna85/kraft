@@ -1,9 +1,31 @@
 @use "tokens" as *;
 
 /* ==========================================================================
-   로또 구슬 — 홈·번호 추천이 함께 쓴다.
-   ".lotto-ball*"가 공용 이름이다.
+   로또 공 — 홈·번호 추천이 함께 쓴다.
+   ".lotto-ball*"가 공용 이름이다. 최신 회차 카드(.latest-draw)도 여기 둔다 — 두 화면이 같은 조각
+   (templates/lotto/latest-draw.html)을 쓰기 때문이다.
    ========================================================================== */
+
+// 구간별 공 색. 라이트·다크에서 값이 같다(참고 디자인도 같다). 참고 사이트의 색 중 파랑·빨강·회색·초록은
+// 흰 글자를 올리면 3.4~4.4:1이라 16px 굵은 글자 기준(4.5:1)에 못 미쳐, 눈으로는 거의 같게 조금만 진하게
+// 했다(파랑 #4784d8→#3b73c4, 빨강 #d76878→#be4a5d, 회색 #737e95→#667189, 초록 #398663→#2f7a58).
+// 노랑은 어두운 글자라 참고 값 그대로 7.8:1이다. 공은 aria-hidden이거나 숫자가 따로 읽혀 axe가 대비를 보지
+// 않으므로, 이 값은 ballColor.test.js가 4.5:1(글자)·3:1(다크 카드 위 윤곽)을 검사한다.
+// 서버 쪽 구간 경계는 LottoBallColor.java, 화면 쪽은 src/vue/recommend/ballColor.js이고
+// LottoBallColorJsSyncTest가 둘을 맞춘다.
+:root {
+    --kraft-ball-yellow-bg: #e9b23e;
+    --kraft-ball-yellow-fg: #322500;
+    --kraft-ball-blue-bg: #3b73c4;
+    --kraft-ball-blue-fg: #ffffff;
+    --kraft-ball-red-bg: #be4a5d;
+    --kraft-ball-red-fg: #ffffff;
+    --kraft-ball-gray-bg: #667189;
+    --kraft-ball-gray-fg: #ffffff;
+    --kraft-ball-green-bg: #2f7a58;
+    --kraft-ball-green-fg: #ffffff;
+}
+
 .lotto-balls {
     display: flex;
     flex-wrap: wrap;
@@ -12,54 +34,45 @@
     list-style: none;
 }
 
+// 평면 색 38px, 16px/700. 그림자·그라데이션은 쓰지 않는다. 색 변형이 없는 공(예: 선택기 안)은 주색이다.
 .lotto-ball {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 36px;
-    height: 36px;
+    min-width: 38px;
+    height: 38px;
     padding: 0 var(--kraft-space-2);
     border-radius: 999px;
     background-color: var(--kraft-primary);
     color: var(--kraft-on-primary);
     font-weight: 700;
-    font-size: $fs-sm;
+    font-size: 1rem;
     font-variant-numeric: tabular-nums;
 }
 
-// 동행복권 공식 배색(1~10 노랑·11~20 파랑·21~30 빨강·31~40 회색·41~45 초록) 근사값 +
-// 광택 구슬 그라데이션(좌상단 하이라이트 → 기본색 → 가장자리 어두운 톤)과 안쪽 그림자.
-//
-// 글자색: 노랑·파랑·초록은 밝은 배경이라 어두운 글자, 빨강·회색은 배경을 4.5:1 이상 나오게
-// 어둡게 두고 흰 글자로 고정한다(다크 모드에서 --kraft-on-primary가 어두워져 안 보이던 문제,
-// 13단계). 하이라이트는 글자 자리(중앙)보다 바깥이라 대비에 영향이 작다.
-.lotto-ball {
-    box-shadow: inset 0 -3px 5px rgba(0, 0, 0, 0.22), 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
 .lotto-ball--yellow {
-    background: radial-gradient(circle at 32% 26%, #ffe680 0%, #fbc400 50%, #d29a00 100%);
-    color: #4a3800;
+    background-color: var(--kraft-ball-yellow-bg);
+    color: var(--kraft-ball-yellow-fg);
 }
 
 .lotto-ball--blue {
-    background: radial-gradient(circle at 32% 26%, #b5e6fa 0%, #58b9e8 50%, #2f8fc0 100%);
-    color: #0b3d54;
+    background-color: var(--kraft-ball-blue-bg);
+    color: var(--kraft-ball-blue-fg);
 }
 
 .lotto-ball--red {
-    background: radial-gradient(circle at 32% 26%, #e85a5a 0%, #c62828 50%, #8f1414 100%);
-    color: #fff;
+    background-color: var(--kraft-ball-red-bg);
+    color: var(--kraft-ball-red-fg);
 }
 
 .lotto-ball--gray {
-    background: radial-gradient(circle at 32% 26%, #9ca3af 0%, #6b7280 50%, #3f4652 100%);
-    color: #fff;
+    background-color: var(--kraft-ball-gray-bg);
+    color: var(--kraft-ball-gray-fg);
 }
 
 .lotto-ball--green {
-    background: radial-gradient(circle at 32% 26%, #d8f27e 0%, #b0d840 50%, #7aac10 100%);
-    color: #2c3d05;
+    background-color: var(--kraft-ball-green-bg);
+    color: var(--kraft-ball-green-fg);
 }
 
 .lotto-ball-plus {
@@ -72,4 +85,55 @@
 
 .lotto-ball--bonus {
     box-shadow: 0 0 0 2px var(--kraft-surface), 0 0 0 3px var(--kraft-text-muted);
+}
+
+/* 최신 회차 카드. 홈과 번호 추천 화면이 같은 조각을 쓴다. */
+.latest-draw {
+    border: 1px solid var(--kraft-border);
+    border-radius: var(--kraft-radius-surface);
+    background-color: var(--kraft-surface);
+    padding: var(--kraft-space-5);
+    margin-bottom: var(--kraft-space-6);
+}
+
+@include from($bp-md) {
+    .latest-draw {
+        padding: var(--kraft-card-pad);
+    }
+}
+
+.latest-draw__title {
+    font-size: $fs-card-title;
+    font-weight: 700;
+    margin-bottom: var(--kraft-space-3);
+}
+
+.latest-draw__num,
+.latest-draw__date,
+.latest-draw__prize dd {
+    font-variant-numeric: tabular-nums;
+}
+
+.latest-draw__date {
+    font-size: $fs-xs;
+    color: var(--kraft-text-muted);
+    margin: calc(-1 * var(--kraft-space-2)) 0 var(--kraft-space-3);
+}
+
+.latest-draw__prize {
+    margin: var(--kraft-space-3) 0 0;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--kraft-space-1) var(--kraft-space-3);
+    font-size: $fs-sm;
+}
+
+.latest-draw__prize dt {
+    color: var(--kraft-text-muted);
+}
+
+.latest-draw__prize dd {
+    margin: 0;
+    font-weight: 700;
+    overflow-wrap: anywhere;
 }

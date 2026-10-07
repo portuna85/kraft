@@ -1,6 +1,7 @@
 <script setup>
 import { nextTick, ref, watch } from 'vue';
-import { ballColorClass, useRecommendation } from './useRecommendation.js';
+import { ballColorClass } from './ballColor.js';
+import { useRecommendation } from './useRecommendation.js';
 
 /**
  * 번호 추천 화면.

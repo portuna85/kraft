@@ -46,12 +46,6 @@
     color: var(--kraft-text-muted);
 }
 
-.form-progress {
-    margin-top: var(--kraft-space-3);
-    color: var(--kraft-text-muted);
-    font-size: $fs-sm;
-}
-
 // 자동 임시 저장 복원 배너. .picture-preview와 같은 표면(연한 배경 + 테두리)이지만, "행동이
 // 필요한 안내"라는 점을 구분하려고 왼쪽에 강조색 선을 하나 더 준다.
 .draft-banner {

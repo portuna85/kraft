@@ -101,7 +101,9 @@ class HomePageControllerTest {
                 .andExpect(content().string(containsString("2026.09.26 추첨")))
                 .andExpect(content().string(containsString("2,592,525,282원")))
                 .andExpect(content().string(containsString("(12명)")))
-                .andExpect(content().string(containsString("세후 예상")));
+                // 번호 추천 화면과 같은 조각이라 라벨도 같다.
+                .andExpect(content().string(containsString("<dt>세후 예상 금액</dt>")))
+                .andExpect(content().string(containsString("class=\"latest-draw\"")));
     }
 
     @Test

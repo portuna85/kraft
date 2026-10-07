@@ -4,6 +4,7 @@ import com.kraft.recommend.domain.DrawDetails;
 import com.kraft.recommend.domain.RecommendationHistoryState;
 import com.kraft.recommend.domain.RecommendationHistoryStateRepository;
 import com.kraft.recommend.domain.WinningDraw;
+import com.kraft.recommend.dto.LatestDrawView;
 import com.kraft.recommend.service.RecommendationFreshness;
 import com.kraft.recommend.service.LatestDrawService;
 import org.junit.jupiter.api.DisplayName;
@@ -23,8 +24,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 
 /**
- * 최신 회차 당첨번호를 모델에 담아 서버가 직접 렌더링하는지 확인한다({@code recommend.html}이
- * {@code latestRoundNo}·{@code latestRoundNumbers}를 읽는다).
+ * 최신 회차 당첨번호를 모델에 담아 서버가 직접 렌더링하는지 확인한다. 홈과 같은 조각
+ * ({@code lotto/latest-draw.html})이 읽는 {@code latestDraw}({@link LatestDrawView}) 하나를 담는다.
  */
 @ExtendWith(MockitoExtension.class)
 class RecommendationPageControllerTest {
@@ -53,8 +54,9 @@ class RecommendationPageControllerTest {
         String view = new RecommendationPageController(latestDrawService, freshness()).recommend(model);
 
         assertThat(view).isEqualTo("recommend/recommend");
-        assertThat(model.getAttribute("latestRoundNo")).isEqualTo(1242);
-        assertThat(model.getAttribute("latestRoundNumbers")).isEqualTo(List.of(2, 4, 10, 16, 31, 41));
+        LatestDrawView draw = (LatestDrawView) model.getAttribute("latestDraw");
+        assertThat(draw.roundNo()).isEqualTo(1242);
+        assertThat(draw.numbers()).isEqualTo(List.of(2, 4, 10, 16, 31, 41));
     }
 
     @Test
@@ -71,15 +73,16 @@ class RecommendationPageControllerTest {
 
         new RecommendationPageController(latestDrawService, freshness()).recommend(model);
 
-        assertThat(model.getAttribute("latestRoundDrawDate")).isEqualTo(LocalDate.of(2026, 9, 19));
-        assertThat(model.getAttribute("latestRoundBonusNumber")).isEqualTo(9);
-        assertThat(model.getAttribute("latestRoundFirstPrizeAmount")).isEqualTo(3_281_029_250L);
-        assertThat(model.getAttribute("latestRoundFirstPrizeWinnerCount")).isEqualTo(9);
-        assertThat(model.getAttribute("latestRoundTakeHomeAmount")).isNotNull();
+        LatestDrawView draw = (LatestDrawView) model.getAttribute("latestDraw");
+        assertThat(draw.drawDate()).isEqualTo(LocalDate.of(2026, 9, 19));
+        assertThat(draw.bonusNo()).isEqualTo(9);
+        assertThat(draw.firstPrizeAmount()).isEqualTo(3_281_029_250L);
+        assertThat(draw.winnerCount()).isEqualTo(9);
+        assertThat(draw.takeHomeAmount()).isNotNull();
     }
 
     @Test
-    @DisplayName("본번호는 있지만 부가 정보가 없으면(과거 데이터) 관련 속성을 담지 않는다")
+    @DisplayName("본번호는 있지만 부가 정보가 없으면(과거 데이터) 그 값만 null이라 조각이 해당 블록을 생략한다")
     void omitsPrizeDetails_whenLegacyRoundHasNone() {
         WinningDraw latest = WinningDraw.builder()
                 .roundNo(1)
@@ -91,11 +94,12 @@ class RecommendationPageControllerTest {
 
         new RecommendationPageController(latestDrawService, freshness()).recommend(model);
 
-        assertThat(model.containsAttribute("latestRoundDrawDate")).isFalse();
-        assertThat(model.containsAttribute("latestRoundBonusNumber")).isFalse();
-        assertThat(model.containsAttribute("latestRoundFirstPrizeAmount")).isFalse();
-        assertThat(model.containsAttribute("latestRoundFirstPrizeWinnerCount")).isFalse();
-        assertThat(model.containsAttribute("latestRoundTakeHomeAmount")).isFalse();
+        LatestDrawView draw = (LatestDrawView) model.getAttribute("latestDraw");
+        assertThat(draw.drawDate()).isNull();
+        assertThat(draw.bonusNo()).isNull();
+        assertThat(draw.firstPrizeAmount()).isNull();
+        assertThat(draw.winnerCount()).isNull();
+        assertThat(draw.takeHomeAmount()).isNull();
     }
 
     @Test
@@ -106,8 +110,7 @@ class RecommendationPageControllerTest {
 
         new RecommendationPageController(latestDrawService, freshness()).recommend(model);
 
-        assertThat(model.containsAttribute("latestRoundNo")).isFalse();
-        assertThat(model.containsAttribute("latestRoundNumbers")).isFalse();
+        assertThat(model.containsAttribute("latestDraw")).isFalse();
     }
 
     @Test

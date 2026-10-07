@@ -4,8 +4,7 @@ import com.kraft.home.service.DrawInsights;
 import com.kraft.home.service.HomeInsightsService;
 import com.kraft.post.dto.PostsListResponseDto;
 import com.kraft.post.service.PostQueryService;
-import com.kraft.recommend.domain.LottoPrizeTax;
-import com.kraft.recommend.domain.WinningDraw;
+import com.kraft.recommend.dto.LatestDrawView;
 import com.kraft.recommend.service.LatestDrawService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
@@ -63,7 +62,7 @@ public class HomePageController {
         model.addAttribute("recommendEnabled", recommendEnabled);
         if (recommendEnabled) {
             latestDrawService.latest()
-                    .ifPresent(draw -> model.addAttribute("latestDraw", LatestDraw.from(draw)));
+                    .ifPresent(draw -> model.addAttribute("latestDraw", LatestDrawView.from(draw)));
             DrawInsights insights = insightsService.current();
             if (!insights.isEmpty()) {
                 model.addAttribute("insights", insights);
@@ -78,16 +77,5 @@ public class HomePageController {
         String query = request.getQueryString();
         return query != null && !query.isBlank()
                 && request.getParameterMap().keySet().stream().anyMatch(LEGACY_BOARD_PARAMS::contains);
-    }
-
-    /** 화면이 그대로 쓰는 최신 회차 값. 없는 값은 null이라 템플릿이 그 조각을 건너뛴다. */
-    public record LatestDraw(int roundNo, List<Integer> numbers, java.time.LocalDate drawDate, Integer bonusNo,
-                             Long firstPrizeAmount, Long takeHomeAmount, Integer winnerCount) {
-
-        static LatestDraw from(WinningDraw draw) {
-            Long prize = draw.getFirstPrizeAmount();
-            return new LatestDraw(draw.getRoundNo(), draw.numbers(), draw.getDrawDate(), draw.getBonusNo(),
-                    prize, prize == null ? null : LottoPrizeTax.afterTax(prize), draw.getFirstPrizeWinnerCount());
-        }
     }
 }

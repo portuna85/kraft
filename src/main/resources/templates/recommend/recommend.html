@@ -2,8 +2,7 @@
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <!--/*@thymesVar id="pageTitle" type="java.lang.String"*/-->
 <!--/*@thymesVar id="historyReady" type="java.lang.Boolean"*/-->
-<!--/*@thymesVar id="latestRoundNo" type="java.lang.Integer"*/-->
-<!--/*@thymesVar id="latestRoundNumbers" type="java.util.List"*/-->
+<!--/*@thymesVar id="latestDraw" type="com.kraft.recommend.dto.LatestDrawView"*/-->
 <head th:replace="~{layout/header :: header}"></head>
 <body>
 
@@ -11,41 +10,13 @@
     <th:block th:fragment="content">
         <h1 class="page-title">번호 추천</h1>
 
-        <!--/* 최신 회차 당첨번호는 서버가 직접 렌더링한다(RecommendationPageController) — 다음
-               추첨 전까지 바뀌지 않는 정적 정보라 Vue·API 왕복이 필요 없다. 추첨일·보너스
-               번호·1등 당첨금·세후 예상 금액은 V21 이후 반영된 회차에만 있다(과거 회차는 null이라
+        <!--/* 최신 회차 당첨번호는 서버가 직접 렌더링한다(RecommendationPageController) — 다음 추첨 전까지
+               바뀌지 않는 정적 정보라 Vue·API 왕복이 필요 없다. 홈과 같은 조각을 쓴다(lotto/latest-draw.html).
+               추첨일·보너스 번호·1등 당첨금·세후 예상 금액은 V21 이후 반영된 회차에만 있다(과거 회차는 null이라
                해당 블록만 조용히 생략된다). */-->
-        <section th:if="${latestRoundNo != null}" class="recommend__latest" aria-label="최신 회차 당첨번호">
-            <p class="recommend__latest-heading">최신 <strong th:text="${latestRoundNo}"></strong>회 당첨번호</p>
-            <p th:if="${latestRoundDrawDate != null}" class="recommend__latest-date"
-               th:text="${#temporals.format(latestRoundDrawDate, 'yyyy.MM.dd')} + ' 추첨'"></p>
-
-            <ul class="lotto-balls">
-                <li th:each="n : ${latestRoundNumbers}" class="lotto-ball"
-                    th:classappend="${T(com.kraft.recommend.domain.LottoBallColor).cssClass(n)}"
-                    th:text="${n}"></li>
-                <li th:if="${latestRoundBonusNumber != null}" class="lotto-ball-plus"
-                    aria-hidden="true">+</li>
-                <li th:if="${latestRoundBonusNumber != null}"
-                    class="lotto-ball lotto-ball--bonus"
-                    th:classappend="${T(com.kraft.recommend.domain.LottoBallColor).cssClass(latestRoundBonusNumber)}">
-                    <span class="visually-hidden">보너스 </span><span th:text="${latestRoundBonusNumber}"></span>
-                </li>
-            </ul>
-
-            <dl th:if="${latestRoundFirstPrizeAmount != null}" class="recommend__latest-prize">
-                <dt>1등 당첨금</dt>
-                <dd>
-                    <span th:text="${#numbers.formatInteger(latestRoundFirstPrizeAmount, 0, 'COMMA')} + '원'"></span>
-                    <span th:if="${latestRoundFirstPrizeWinnerCount != null}"
-                          th:text="'(' + ${latestRoundFirstPrizeWinnerCount} + '명)'"></span>
-                </dd>
-                <!--/* 원천징수 세율로 계산한 표시용 추정치다(LottoPrizeTax) — "실수령액"은 확정액으로
-                       읽혀 바꿨다(평가 보고서 2026-09-25 §6). */-->
-                <dt th:if="${latestRoundTakeHomeAmount != null}">세후 예상 금액</dt>
-                <dd th:if="${latestRoundTakeHomeAmount != null}" th:text="${#numbers.formatInteger(latestRoundTakeHomeAmount, 0, 'COMMA')} + '원'"></dd>
-            </dl>
-        </section>
+        <th:block th:if="${latestDraw != null}">
+            <th:block th:replace="~{lotto/latest-draw :: latestDraw(${latestDraw})}"></th:block>
+        </th:block>
 
         <!--/* 제외 검증의 기준 — 이력이 어느 회차까지, 언제 확인됐는지와 지연 여부. 이력이 준비되지
                않았으면 생성이 거절되므로(503) 그 사실을 미리 알린다(RecommendationFreshness). */-->

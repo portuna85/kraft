@@ -42,43 +42,11 @@
     margin-bottom: var(--kraft-space-3);
 }
 
-.home-latest,
 .home-recommend,
 .home-insights,
 .home-community,
 .home-guide {
     margin-bottom: var(--kraft-space-6);
-}
-
-.home-latest {
-    border: 1px solid var(--kraft-border);
-    border-radius: var(--kraft-radius-surface);
-    background-color: var(--kraft-surface);
-    padding: var(--kraft-space-4);
-}
-
-.home-latest__date {
-    font-size: $fs-xs;
-    color: var(--kraft-text-muted);
-    margin: calc(-1 * var(--kraft-space-2)) 0 var(--kraft-space-3);
-}
-
-.home-latest__prize {
-    margin: var(--kraft-space-3) 0 0;
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: var(--kraft-space-1) var(--kraft-space-3);
-    font-size: $fs-sm;
-}
-
-.home-latest__prize dt {
-    color: var(--kraft-text-muted);
-}
-
-.home-latest__prize dd {
-    margin: 0;
-    font-weight: 700;
-    overflow-wrap: anywhere;
 }
 
 .home-recommend__strategies {

@@ -1,6 +1,6 @@
 package com.kraft.recommend.web;
 
-import com.kraft.recommend.domain.LottoPrizeTax;
+import com.kraft.recommend.dto.LatestDrawView;
 import com.kraft.recommend.service.LatestDrawService;
 import com.kraft.recommend.service.RecommendationFreshness;
 import lombok.RequiredArgsConstructor;
@@ -42,23 +42,8 @@ public class RecommendationPageController {
         model.addAttribute("historyStale", history.stale());
         model.addAttribute("historyVerifiedRound", history.verifiedThroughRound());
         model.addAttribute("historyVerifiedAt", history.verifiedAt());
-        latestDrawService.latest().ifPresent(draw -> {
-            model.addAttribute("latestRoundNo", draw.getRoundNo());
-            model.addAttribute("latestRoundNumbers", draw.numbers());
-            if (draw.getDrawDate() != null) {
-                model.addAttribute("latestRoundDrawDate", draw.getDrawDate());
-            }
-            if (draw.getBonusNo() != null) {
-                model.addAttribute("latestRoundBonusNumber", draw.getBonusNo());
-            }
-            if (draw.getFirstPrizeAmount() != null) {
-                model.addAttribute("latestRoundFirstPrizeAmount", draw.getFirstPrizeAmount());
-                model.addAttribute("latestRoundTakeHomeAmount", LottoPrizeTax.afterTax(draw.getFirstPrizeAmount()));
-            }
-            if (draw.getFirstPrizeWinnerCount() != null) {
-                model.addAttribute("latestRoundFirstPrizeWinnerCount", draw.getFirstPrizeWinnerCount());
-            }
-        });
+        // 홈과 같은 조각(templates/lotto/latest-draw.html)이 읽는 값이다. 없는 값은 null이라 그 조각만 생략된다.
+        latestDrawService.latest().ifPresent(draw -> model.addAttribute("latestDraw", LatestDrawView.from(draw)));
         return "recommend/recommend";
     }
 }

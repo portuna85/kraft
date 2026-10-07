@@ -30,20 +30,6 @@ const FIXED_REQUEST = Object.freeze({
 });
 
 /**
- * 동행복권 배색(1~10 노랑·11~20 파랑·21~30 빨강·31~40 회색·41~45 초록). 서버의
- * LottoBallColor.cssClass와 같은 구간이라 최신 회차 구슬과 결과 구슬이 같은 모양이 된다.
- * @param {number} n
- * @returns {string}
- */
-export function ballColorClass(n) {
-    if (n <= 10) return 'lotto-ball--yellow';
-    if (n <= 20) return 'lotto-ball--blue';
-    if (n <= 30) return 'lotto-ball--red';
-    if (n <= 40) return 'lotto-ball--gray';
-    return 'lotto-ball--green';
-}
-
-/**
  * 번호 추천 화면의 상태와 생성 흐름을 담는다. 응답 순서 번호로, 늦게 도착한 이전 요청의
  * 결과를 무시한다.
  */

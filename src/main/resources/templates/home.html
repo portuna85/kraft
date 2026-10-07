@@ -25,36 +25,11 @@
             </div>
         </section>
 
-        <!--/* 최신 회차 값은 모두 DB에서 온다. 추첨일·보너스·당첨금은 null일 수 있어(V21 이전 회차)
-               각각 있을 때만 그린다. 이력이 비었거나 추천 기능이 꺼져 있으면 섹션 자체가 없다. */-->
-        <section th:if="${latestDraw != null}" class="home-latest" aria-labelledby="home-latest-title">
-            <h2 id="home-latest-title" class="home-section__title">
-                최신 <span class="home-num" th:text="${latestDraw.roundNo}">1</span>회 당첨 결과
-            </h2>
-            <p th:if="${latestDraw.drawDate != null}" class="home-latest__date home-num"
-               th:text="${#temporals.format(latestDraw.drawDate, 'yyyy.MM.dd')} + ' 추첨'"></p>
-
-            <ul class="lotto-balls" aria-label="당첨번호">
-                <li th:each="n : ${latestDraw.numbers}" class="lotto-ball"
-                    th:classappend="'lotto-ball--' + ${T(com.kraft.recommend.domain.LottoBallColor).colorName(n)}"
-                    th:text="${n}"></li>
-                <li th:if="${latestDraw.bonusNo != null}" class="lotto-ball-plus" aria-hidden="true">+</li>
-                <li th:if="${latestDraw.bonusNo != null}" class="lotto-ball lotto-ball--bonus"
-                    th:classappend="'lotto-ball--' + ${T(com.kraft.recommend.domain.LottoBallColor).colorName(latestDraw.bonusNo)}">
-                    <span class="visually-hidden">보너스 </span><span th:text="${latestDraw.bonusNo}"></span>
-                </li>
-            </ul>
-
-            <dl th:if="${latestDraw.firstPrizeAmount != null}" class="home-latest__prize">
-                <dt>1등 당첨금</dt>
-                <dd class="home-num">
-                    <span th:text="${#numbers.formatInteger(latestDraw.firstPrizeAmount, 0, 'COMMA')} + '원'"></span>
-                    <span th:if="${latestDraw.winnerCount != null}" th:text="'(' + ${latestDraw.winnerCount} + '명)'"></span>
-                </dd>
-                <dt th:if="${latestDraw.takeHomeAmount != null}">세후 예상</dt>
-                <dd class="home-num" th:if="${latestDraw.takeHomeAmount != null}" th:text="${#numbers.formatInteger(latestDraw.takeHomeAmount, 0, 'COMMA')} + '원'"></dd>
-            </dl>
-        </section>
+        <!--/* 최신 회차. 홈과 번호 추천 화면이 같은 조각을 쓴다(lotto/latest-draw.html). 이력이 비었거나 추천
+               기능이 꺼져 있으면 latestDraw가 없어 섹션 자체가 없다. */-->
+        <th:block th:if="${latestDraw != null}">
+            <th:block th:replace="~{lotto/latest-draw :: latestDraw(${latestDraw})}"></th:block>
+        </th:block>
 
         <section th:if="${recommendEnabled}" class="home-recommend" aria-labelledby="home-recommend-title">
             <h2 id="home-recommend-title" class="home-section__title">번호 추천</h2>
