@@ -47,8 +47,9 @@ docker exec -w /work -e CI=1 -e VISUAL=1 -e PATH="/opt/jdk/bin:/usr/local/sbin:/
     "$name" npx playwright test --project=chromium visual $flags || status=$?
 
 if [ "$mode" = update ]; then
-    # 새로 만든 리눅스 기준선만 가져온다.
-    for dir in e2e/visual.spec.js-snapshots e2e/visual-pages.spec.js-snapshots; do
+    # 새로 만든 리눅스 기준선만 가져온다. 폴더를 하나씩 적어 두면 새 시각 스펙(예: visual-recommend)의 기준선이
+    # 조용히 빠진다 — 컨테이너 안의 *-snapshots 폴더를 전부 훑는다.
+    for dir in $(docker exec "$name" bash -c 'cd /work && ls -d e2e/*-snapshots' | tr -d '\r'); do
         mkdir -p "$dir"
         docker exec "$name" bash -c "ls /work/$dir/*-linux.png" | tr -d '\r' | while read -r f; do
             docker cp "$name:$f" "$dir/"

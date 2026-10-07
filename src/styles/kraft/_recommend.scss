@@ -2,13 +2,273 @@
 
 /* ==========================================================================
    번호 추천 화면
+   참고 디자인: 히어로(eyebrow·h1·부제) 아래 "01 / 설정"과 "02 / 결과" 두 카드가 나란히 놓인다. 카드는 1px
+   테두리에 그림자가 없다(.card-kraft). 좁은 화면(<992px)에서는 위아래로 쌓인다.
    ========================================================================== */
 .kraft-main--recommend {
-    max-width: 720px;
-    margin: 0 auto;
     width: 100%;
 }
 
+/* ---- 히어로 ---- */
+.recommend__hero {
+    margin-bottom: var(--kraft-space-8);
+}
+
+.recommend__eyebrow {
+    margin: 0 0 var(--kraft-space-2);
+    color: var(--kraft-primary);
+    font-size: $fs-eyebrow;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+}
+
+// .page-title의 >=lg 크기(1.75rem)보다 명시도를 높여 히어로 크기가 늘 이기게 한다.
+.recommend__hero .page-title {
+    margin: 0 0 var(--kraft-space-3);
+    font-size: $fs-hero;
+    font-weight: 760;
+    letter-spacing: -0.07em;
+    line-height: 1.35;
+}
+
+.recommend__lead {
+    margin: 0;
+    color: var(--kraft-text-muted);
+}
+
+/* ---- 최신 회차: 이 화면에서는 카드가 아니라 한 줄 띠로 쓴다(홈은 같은 조각을 큰 카드로 쓴다) ---- */
+.recommend__latest .latest-draw {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--kraft-space-3) var(--kraft-space-6);
+    padding: var(--kraft-space-4) var(--kraft-space-5);
+    margin-bottom: var(--kraft-space-6);
+}
+
+.recommend__latest .latest-draw__title,
+.recommend__latest .latest-draw__date,
+.recommend__latest .lotto-balls,
+.recommend__latest .latest-draw__prize {
+    margin: 0;
+}
+
+.recommend__latest .latest-draw__prize {
+    margin-left: auto;
+}
+
+/* 이력 기준이 늦어졌다는 안내(RecommendationFreshness). 이력이 없으면 생성이 막히므로 같은 모양으로 알린다. */
+.recommend__history {
+    margin: 0 0 var(--kraft-space-6);
+    padding: var(--kraft-space-3) var(--kraft-space-4);
+    border-radius: var(--kraft-radius);
+}
+
+.recommend__history--stale {
+    background-color: var(--kraft-warn-bg);
+    color: var(--kraft-warn-text);
+}
+
+/* ---- 두 카드 ---- */
+.recommend {
+    display: grid;
+    gap: var(--kraft-space-6);
+}
+
+@include from($bp-lg) {
+    .recommend {
+        // 설정이 결과보다 조금 좁다(참고 디자인에서 490 : 542 ≈ 0.95 : 1.05).
+        grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+        align-items: start;
+    }
+}
+
+.recommend-card__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--kraft-space-3);
+    margin-bottom: var(--kraft-space-6);
+}
+
+.recommend-card__step {
+    margin: 0 0 var(--kraft-space-1);
+    color: var(--kraft-text-muted);
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+}
+
+.recommend-card__title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.recommend-card__mark {
+    width: 22px;
+    height: 22px;
+    color: var(--kraft-primary);
+    flex: none;
+}
+
+.recommend__icon {
+    width: 1.1em;
+    height: 1.1em;
+    flex: none;
+}
+
+/* ---- 설정: 추천 방식 카드(라디오) ---- */
+.recommend__modes {
+    display: grid;
+    gap: var(--kraft-space-2);
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.recommend-mode {
+    display: block;
+    cursor: pointer;
+}
+
+.recommend-mode__body {
+    display: flex;
+    align-items: center;
+    gap: var(--kraft-space-3);
+    padding: var(--kraft-space-3) var(--kraft-space-4);
+    border: 1px solid var(--kraft-border);
+    border-radius: var(--kraft-radius);
+    background-color: var(--kraft-surface);
+}
+
+.recommend-mode:hover .recommend-mode__body {
+    background-color: var(--kraft-surface-subtle);
+}
+
+// 선택 상태는 색만으로 전달하지 않는다 — 체크 원의 채움과 아이콘, 테두리가 함께 바뀐다.
+.recommend-mode input:checked + .recommend-mode__body {
+    background-color: var(--kraft-accent-soft-bg);
+    border-color: var(--kraft-primary);
+}
+
+.recommend-mode input:focus-visible + .recommend-mode__body {
+    outline: 2px solid var(--kraft-primary);
+    outline-offset: 2px;
+}
+
+.recommend-mode__check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 26px;
+    height: 26px;
+    border: 2px solid var(--kraft-control-border);
+    border-radius: 50%;
+    color: transparent;
+}
+
+.recommend-mode__check .recommend__icon {
+    width: 14px;
+    height: 14px;
+    stroke-width: 3;
+}
+
+.recommend-mode input:checked + .recommend-mode__body .recommend-mode__check {
+    background-color: var(--kraft-primary);
+    border-color: var(--kraft-primary);
+    color: var(--kraft-on-primary);
+}
+
+.recommend-mode__text {
+    display: grid;
+    min-width: 0;
+    flex: 1;
+}
+
+.recommend-mode__title {
+    font-weight: 700;
+}
+
+.recommend-mode input:checked + .recommend-mode__body .recommend-mode__title {
+    color: var(--kraft-accent-soft-text);
+}
+
+.recommend-mode__desc {
+    color: var(--kraft-text-muted);
+    font-size: $fs-xs;
+}
+
+.recommend-mode__tag {
+    flex: none;
+    color: var(--kraft-text-muted);
+    font-size: $fs-2xs;
+    font-weight: 600;
+}
+
+/* ---- 설정: 개수·안내·버튼 ---- */
+.recommend__field {
+    margin-top: var(--kraft-space-5);
+}
+
+.recommend__label {
+    display: block;
+    margin-bottom: var(--kraft-space-2);
+    font-size: $fs-sm;
+    font-weight: 600;
+}
+
+.recommend__field .form-select {
+    min-height: 47px;
+    font-size: 1rem;
+}
+
+.recommend__info {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--kraft-space-2);
+    margin: var(--kraft-space-5) 0;
+    color: var(--kraft-text-muted);
+    font-size: $fs-xs;
+}
+
+.recommend__info .recommend__icon {
+    margin-top: 2px;
+    color: var(--kraft-primary);
+}
+
+.recommend__info p {
+    margin: 0;
+}
+
+.recommend__info small {
+    display: block;
+    font-size: inherit;
+}
+
+.recommend__cta {
+    width: 100%;
+    min-height: 54px;
+    gap: var(--kraft-space-2);
+    border-radius: var(--kraft-radius-control);
+    font-size: 1rem;
+    font-weight: 650;
+}
+
+.recommend__cta .recommend__icon {
+    width: 18px;
+    height: 18px;
+}
+
+.recommend__disclaimer {
+    margin: var(--kraft-space-3) 0 0;
+    color: var(--kraft-text-muted);
+    font-size: $fs-xs;
+}
+
+/* ---- 결과 ---- */
 .recommend__notice,
 .recommend__error {
     border-radius: var(--kraft-radius);
@@ -26,29 +286,154 @@
     color: var(--kraft-danger-dark);
 }
 
-.recommend__history-basis {
+.recommend__empty {
+    padding: var(--kraft-space-12) 0;
+    text-align: center;
+}
+
+.recommend__empty-tile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    background-color: var(--kraft-accent-soft-bg);
+    color: var(--kraft-primary);
+}
+
+.recommend__empty-tile .recommend__icon {
+    width: 28px;
+    height: 28px;
+}
+
+.recommend__empty-title {
+    margin: var(--kraft-space-4) 0 var(--kraft-space-2);
+    font-weight: 600;
+}
+
+.recommend__empty-hint {
+    margin: 0;
     color: var(--kraft-text-muted);
-    font-size: $fs-xs;
-    margin-bottom: var(--kraft-space-4);
+    font-size: $fs-sm;
+}
+
+.recommend__copy-all {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--kraft-space-1);
+    border: 0;
+    background-color: transparent;
+    color: var(--kraft-accent-soft-text);
+    font-size: $fs-sm;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.recommend__copy-all:hover,
+.recommend__copy-all:focus {
+    background-color: var(--kraft-accent-soft-bg);
+    color: var(--kraft-accent-soft-text);
 }
 
 .recommend__items {
     display: grid;
     gap: var(--kraft-space-3);
+    margin: 0;
     padding-left: 0;
     list-style: none;
 }
 
 .recommend__item {
-    border: 1px solid var(--kraft-border);
-    border-radius: var(--kraft-radius);
+    display: grid;
+    grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--kraft-space-3);
     padding: var(--kraft-space-3) var(--kraft-space-4);
+    border-radius: var(--kraft-radius);
+    background-color: var(--kraft-surface-subtle);
+}
+
+.recommend__letter {
+    color: var(--kraft-text-muted);
+    font-weight: 700;
 }
 
 .recommend__item .lotto-balls {
+    justify-content: center;
     margin: 0;
 }
 
+.recommend__copy {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    padding: 0;
+    border: 0;
+    background-color: transparent;
+    color: var(--kraft-text-muted);
+}
+
+.recommend__copy:hover,
+.recommend__copy:focus {
+    background-color: var(--kraft-border);
+    color: var(--kraft-text);
+}
+
+.recommend__history-basis {
+    display: flex;
+    align-items: center;
+    gap: var(--kraft-space-2);
+    margin: var(--kraft-space-4) 0 0;
+    color: var(--kraft-text-muted);
+    font-size: $fs-xs;
+}
+
+.recommend__history-basis .recommend__icon {
+    color: var(--kraft-primary);
+}
+
+// 결과 공이 차례로 나타난다. 움직임을 줄이도록 설정한 사용자에게는 적용하지 않는다.
+@keyframes recommend-pop {
+    from {
+        opacity: 0;
+        transform: scale(0.6);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .recommend__item .lotto-ball {
+        animation: recommend-pop 0.22s ease-out both;
+    }
+
+    .recommend__item .lotto-ball:nth-child(2) {
+        animation-delay: 0.04s;
+    }
+
+    .recommend__item .lotto-ball:nth-child(3) {
+        animation-delay: 0.08s;
+    }
+
+    .recommend__item .lotto-ball:nth-child(4) {
+        animation-delay: 0.12s;
+    }
+
+    .recommend__item .lotto-ball:nth-child(5) {
+        animation-delay: 0.16s;
+    }
+
+    .recommend__item .lotto-ball:nth-child(6) {
+        animation-delay: 0.2s;
+    }
+}
+
 .recommend__noscript {
+    margin: 0;
     color: var(--kraft-danger-dark);
 }
