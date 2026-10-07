@@ -38,11 +38,6 @@
                th:classappend="${currentPath == '/recommend'} ? 'is-current'"
                th:attr="aria-current=${currentPath == '/recommend'} ? 'page' : null">번호 추천</a>
 
-            <!-- 통계는 별도 페이지가 아니라 홈의 "과거 기록 살펴보기" 섹션이다. 이 섹션은 번호 추천
-                 기능과 같은 조건에서만 의미가 있으므로 같은 스위치를 따른다. -->
-            <a th:if="${@environment.getProperty('app.recommend.enabled', 'true')} == 'true'"
-               href="/#home-insights-title" class="kraft-actions__link">통계</a>
-
             <a href="/community" class="kraft-actions__link"
                th:classappend="${currentPath != null and (currentPath == '/community' or #strings.startsWith(currentPath, '/community?'))} ? 'is-current'"
                th:attr="aria-current=${currentPath != null and (currentPath == '/community' or #strings.startsWith(currentPath, '/community?'))} ? 'page' : null">커뮤니티</a>

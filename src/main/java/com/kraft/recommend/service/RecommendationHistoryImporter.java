@@ -7,7 +7,6 @@ import com.kraft.recommend.domain.RecommendationImportException;
 import com.kraft.recommend.domain.WinningDraw;
 import com.kraft.recommend.domain.WinningDrawRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,7 +33,6 @@ public class RecommendationHistoryImporter {
 
     private final WinningDrawRepository winningDrawRepository;
     private final RecommendationHistoryStateRepository stateRepository;
-    private final ApplicationEventPublisher events;
 
     @Transactional
     public Result importHistory(List<ImportedDraw> draws, int verifiedThroughRound, String sourceReference) {
@@ -85,9 +83,6 @@ public class RecommendationHistoryImporter {
                             + "반영됐지만(inserted=" + inserted + ", updated=" + updated + "), 검증 구간은 "
                             + "바뀌지 않았습니다. 의도적으로 구간을 줄여야 한다면 별도 운영 절차를 따르세요.");
         }
-
-        // 커밋 뒤에 받는 쪽(HomeInsightsService)이 이력 기반 캐시를 비운다(BE-17).
-        events.publishEvent(new RecommendationHistoryChanged(verifiedThroughRound));
 
         return new Result(inserted, updated, verifiedThroughRound);
     }

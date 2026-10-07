@@ -34,7 +34,7 @@ class VersionedStaticMetricsIntegrationTest {
     @Test
     @DisplayName("화면이 참조하는 /{버전}/js/... 요청은 세지 않고, 화면 요청은 센다")
     void versionedJsFromTemplate_isNotCounted() throws Exception {
-        String html = mockMvc.perform(get("/")).andReturn().getResponse().getContentAsString();
+        String html = mockMvc.perform(get("/recommend")).andReturn().getResponse().getContentAsString();
         Matcher matcher = MAIN_JS.matcher(html);
         assertThat(matcher.find()).as("footer가 버전이 붙은 main.js를 참조해야 한다").isTrue();
         String versionedJs = matcher.group(1);

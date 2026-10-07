@@ -271,11 +271,20 @@ test('생성 한도 오류에는 개수를 줄이라는 안내가 덧붙는다',
     await expect(page.locator('.recommend__error')).toContainText('개수를 줄여 보세요');
 });
 
+test('사이트 입구(/)는 번호 추천으로 이동하고, 옛 게시판 주소는 /community로 이동한다', async ({ page }) => {
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/recommend$/);
+    await expect(page.locator('#btn-recommend-generate')).toBeVisible();
+
+    await page.goto('/?q=abc');
+    await expect(page).toHaveURL(/\/community\?q=abc$/);
+});
+
 test.describe('모바일', () => {
     test.use({ viewport: { width: 390, height: 844 } });
 
     test('메뉴를 열면 번호 추천 링크가 보인다', async ({ page }) => {
-        await page.goto('/');
+        await page.goto('/recommend');
 
         await page.locator('#btn-nav-toggle').click();
         await expect(page.locator('#site-nav').getByRole('link', { name: '번호 추천' })).toBeVisible();

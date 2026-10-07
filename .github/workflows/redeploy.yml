@@ -87,7 +87,7 @@ jobs:
       - name: Smoke test
         run: |
           curl -fsS -o /dev/null --connect-timeout 5 --max-time 15 \
-            --retry 5 --retry-delay 3 --retry-all-errors https://kraft.io.kr/
+            --retry 5 --retry-delay 3 --retry-all-errors https://kraft.io.kr/recommend
 
       - name: Verify deployed build
         env:

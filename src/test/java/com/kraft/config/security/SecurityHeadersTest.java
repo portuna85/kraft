@@ -30,7 +30,7 @@ class SecurityHeadersTest {
     @Test
     @DisplayName("SEC-05: 응답에 CSP가 self 기준으로 붙는다")
     void response_hasContentSecurityPolicy() throws Exception {
-        mockMvc.perform(get("/"))
+        mockMvc.perform(get("/recommend"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Security-Policy", containsString("default-src 'self'")))
                 .andExpect(header().string("Content-Security-Policy", containsString("script-src 'self'")))
@@ -43,7 +43,7 @@ class SecurityHeadersTest {
     @Test
     @DisplayName("A-SEC-12: 쓰지 않는 브라우저 기능을 Permissions-Policy로 막는다")
     void response_hasPermissionsPolicy() throws Exception {
-        mockMvc.perform(get("/"))
+        mockMvc.perform(get("/recommend"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Permissions-Policy", containsString("camera=()")))
                 .andExpect(header().string("Permissions-Policy", containsString("microphone=()")))
@@ -54,7 +54,7 @@ class SecurityHeadersTest {
     @Test
     @DisplayName("A-SEC-12: 다른 오리진 탭과 window 참조를 격리한다")
     void response_hasCrossOriginOpenerPolicy() throws Exception {
-        mockMvc.perform(get("/"))
+        mockMvc.perform(get("/recommend"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Cross-Origin-Opener-Policy", "same-origin"));
     }
@@ -62,7 +62,7 @@ class SecurityHeadersTest {
     @Test
     @DisplayName("SEC-05: 응답에 Referrer-Policy가 strict-origin-when-cross-origin으로 붙는다")
     void response_hasReferrerPolicy() throws Exception {
-        mockMvc.perform(get("/"))
+        mockMvc.perform(get("/recommend"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Referrer-Policy", "strict-origin-when-cross-origin"));
     }
@@ -75,7 +75,7 @@ class SecurityHeadersTest {
     @Test
     @DisplayName("SEC-05: HTTPS가 아닌 요청에도 HSTS가 붙는다(프록시 뒤에서도 항상 적용)")
     void response_hasHstsEvenOverPlainHttp() throws Exception {
-        mockMvc.perform(get("/"))
+        mockMvc.perform(get("/recommend"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Strict-Transport-Security", containsString("max-age=31536000")))
                 .andExpect(header().string("Strict-Transport-Security", containsString("includeSubDomains")));

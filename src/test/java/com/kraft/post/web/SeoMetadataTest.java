@@ -104,7 +104,7 @@ class SeoMetadataTest {
             postRepository.save(Post.builder().title("목록 " + i).content("내용").user(author).build());
         }
 
-        assertThat(page("/", null)).contains("<link rel=\"canonical\" href=\"" + base + "/\"");
+        assertThat(page("/recommend", null)).contains("<link rel=\"canonical\" href=\"" + base + "/recommend\"");
         assertThat(page("/community", null)).contains("<link rel=\"canonical\" href=\"" + base + "/community\"");
         assertThat(page("/community?category=QNA", null))
                 .contains("<link rel=\"canonical\" href=\"" + base + "/community?category=QNA\"");
@@ -119,7 +119,6 @@ class SeoMetadataTest {
             mockMvc.perform(get(path)).andExpect(header().string("X-Robots-Tag", "noindex, nofollow"));
         }
         mockMvc.perform(get("/api/v1/posts")).andExpect(header().string("X-Robots-Tag", "noindex, nofollow"));
-        mockMvc.perform(get("/")).andExpect(header().doesNotExist("X-Robots-Tag"));
         mockMvc.perform(get("/community")).andExpect(header().doesNotExist("X-Robots-Tag"));
         mockMvc.perform(get("/posts/update/" + postId)).andExpect(header().doesNotExist("X-Robots-Tag"));
         mockMvc.perform(get("/recommend")).andExpect(header().doesNotExist("X-Robots-Tag"));

@@ -40,7 +40,7 @@ class RecommendationHistoryImporterTest {
 
     @BeforeEach
     void setUp() {
-        importer = new RecommendationHistoryImporter(winningDrawRepository, stateRepository, event -> { });
+        importer = new RecommendationHistoryImporter(winningDrawRepository, stateRepository);
         em.persistAndFlush(RecommendationHistoryState.builder().id(1).version(0L).verifiedThroughRound(0).build());
     }
 

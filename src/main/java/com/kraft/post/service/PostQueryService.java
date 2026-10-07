@@ -119,18 +119,6 @@ public class PostQueryService {
         return findAllDesc(pageable, null, null, false);
     }
 
-    /**
-     * 최신순 앞쪽 {@code limit}개만(홈의 최근 글). 전체 건수가 필요 없는 호출은 이쪽을 쓴다 —
-     * {@link #findAllDesc}는 {@code Page}라 매번 {@code COUNT(*)}를 실행한다(BE-06).
-     */
-    public List<PostsListResponseDto> findRecent(int limit) {
-        List<PostRowDto> rows = postRepository.findRecent(PageRequest.of(0, limit));
-        Map<Long, Long> commentCounts = commentRepository.countByPostIdIn(rows.stream().map(PostRowDto::id).toList());
-        return rows.stream()
-                .map(row -> new PostsListResponseDto(row, commentCounts.getOrDefault(row.id(), 0L)))
-                .toList();
-    }
-
     /** 검색 범위를 지정하지 않는 호출은 기본값(제목만, A-BE-02 2단계)으로 좁힌다. */
     public PostsPageResponseDto findAllDesc(Pageable pageable, String keyword, Category category) {
         return findAllDesc(pageable, keyword, category, false);

@@ -533,7 +533,7 @@ jobs:
         if: env.SKIP_DEPLOY != '1'
         run: |
           curl -fsS -o /dev/null --connect-timeout 5 --max-time 15 \
-            --retry 5 --retry-delay 3 --retry-all-errors https://kraft.io.kr/
+            --retry 5 --retry-delay 3 --retry-all-errors https://kraft.io.kr/recommend
 
       # 위 스모크 테스트는 "도메인이 응답한다"만 본다 — 배포가 조용히 실패해 옛 jar가 계속 떠
       # 있어도 통과한다(OPS-12). /healthz의 X-Kraft-Build 헤더가 방금 푸시한 커밋인지 확인한다.

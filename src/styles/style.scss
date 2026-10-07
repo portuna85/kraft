@@ -22,7 +22,6 @@
 @use "kraft/post";      // 게시글 읽기·편집 화면
 @use "kraft/comments";  // 댓글 목록과 인라인 편집
 @use "kraft/lotto-ball"; // 로또 구슬(홈·번호 추천 공용)
-@use "kraft/home";      // 홈(랜딩)
 @use "kraft/recommend"; // 번호 추천 화면
 @use "kraft/admin-list"; // 관리자 카드 목록(추천 이력 수집)
 @use "kraft/feedback";  // 지속 메시지(flash)와 토스트 위치

@@ -222,7 +222,7 @@ class MariaDbMigrationTest extends MariaDbIntegrationTest {
         var schema = new ResourceDatabasePopulator(new ClassPathResource("db/migration/V3__spring_session.sql"));
         schema.execute(jdbcTemplate.getDataSource());
         schema.execute(jdbcTemplate.getDataSource());
-        mockMvc.perform(get("/").cookie(session))
+        mockMvc.perform(get("/recommend").cookie(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("migration-tester")));
     }

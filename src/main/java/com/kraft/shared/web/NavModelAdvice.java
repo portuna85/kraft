@@ -1,6 +1,5 @@
 package com.kraft.shared.web;
 
-import com.kraft.home.web.HomePageController;
 import com.kraft.post.web.PostPageController;
 import com.kraft.recommend.web.RecommendationPageController;
 import com.kraft.user.web.UserPageController;
@@ -15,7 +14,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
  */
 @ControllerAdvice(assignableTypes = {
         PostPageController.class, UserPageController.class,
-        RecommendationPageController.class, HomePageController.class})
+        RecommendationPageController.class})
 public class NavModelAdvice {
 
     /**

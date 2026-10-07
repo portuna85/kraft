@@ -90,8 +90,6 @@ class UploadPolicySyncTest {
         assertThat(constants).contains(tooLarge).contains(sizeText);
         assertThat(Files.readString(Path.of("src/main/resources/templates/index.html"), StandardCharsets.UTF_8))
                 .contains(sizeText);
-        assertThat(Files.readString(Path.of("src/main/resources/templates/home.html"), StandardCharsets.UTF_8))
-                .contains(sizeText);
 
         // 문구에 나열한 형식(JPG, JPEG, PNG, GIF, WEBP)이 허용 확장자와 같다.
         List<String> listed = Arrays.stream(captureOf(JS_CONSTANTS, "HELP:\\s*'([^·]*)·").split(","))

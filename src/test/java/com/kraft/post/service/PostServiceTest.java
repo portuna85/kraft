@@ -642,21 +642,6 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("findRecent: 앞쪽 N개만 읽고 Page(COUNT)를 거치지 않으며 댓글 수를 한 번에 묶어 담는다")
-    void findRecent_readsTopRowsWithoutCountAndAttachesCommentCounts() {
-        User owner = userWithEmail("owner@example.com", 1L);
-        PostRowDto row = rowOf(owner, 1L);
-        given(postRepository.findRecent(org.springframework.data.domain.PageRequest.of(0, 5))).willReturn(List.of(row));
-        given(commentRepository.countByPostIdIn(List.of(1L))).willReturn(Map.of(1L, 3L));
-
-        var result = postQueryService.findRecent(5);
-
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).commentCount()).isEqualTo(3L);
-        verify(postRepository, never()).search(any(), any(), anyBoolean(), any());
-    }
-
-    @Test
     @DisplayName("findByIdForView: 소프트 삭제된 글은 작성자를 포함한 일반 사용자에게 없는 글이다")
     void findByIdForView_whenDeletedAndNotAdmin_throwsNotFound() {
         User owner = userWithEmail("owner@example.com", 1L);

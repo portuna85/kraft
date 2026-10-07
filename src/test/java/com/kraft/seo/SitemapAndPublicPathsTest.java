@@ -38,7 +38,7 @@ class SitemapAndPublicPathsTest {
     private PostRepository postRepository;
 
     @Test
-    @DisplayName("sitemap에는 홈·추천·게시글만 들어 있다")
+    @DisplayName("sitemap에는 추천·커뮤니티·게시글만 들어 있다")
     void sitemap_listsPublicUrlsOnly() throws Exception {
         User author = userRepository.save(User.builder()
                 .name("sm-" + UUID.randomUUID().toString().substring(0, 8))
@@ -81,7 +81,7 @@ class SitemapAndPublicPathsTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/", "/recommend", "/login", "/signup", "/forgot-password", "/healthz",
+    @ValueSource(strings = {"/recommend", "/login", "/signup", "/forgot-password", "/healthz",
             "/robots.txt", "/sitemap.xml", "/posts/save"})
     @DisplayName("공개 경로는 익명에게 열려 있고 세션을 만들지 않는다")
     void publicPaths_openAndSessionless(String path) throws Exception {

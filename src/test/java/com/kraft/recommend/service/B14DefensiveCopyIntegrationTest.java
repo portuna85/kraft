@@ -52,7 +52,7 @@ class B14DefensiveCopyIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        importer = new RecommendationHistoryImporter(winningDrawRepository, stateRepository, event -> { });
+        importer = new RecommendationHistoryImporter(winningDrawRepository, stateRepository);
         provider = new RecommendationHistoryProvider(winningDrawRepository, stateRepository);
     }
 

@@ -19,7 +19,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -118,18 +117,5 @@ class PostDetailQueryCountTest {
 
         assertThat(view.likeCount()).isEqualTo(2L);
         assertThat(view.likedByMe()).isFalse();
-    }
-
-    @Test
-    @DisplayName("BE-06: 홈의 최근 글은 COUNT 없이 글 1개 + 댓글 수 1개 쿼리로 읽는다")
-    void recentPosts_doNotRunCountQuery() {
-        statistics.clear();
-
-        var recent = postQueryService.findRecent(5);
-
-        assertThat(recent).hasSize(1);
-        assertThat(recent.get(0).title()).isEqualTo("제목");
-        assertThat(statistics.getPrepareStatementCount()).isEqualTo(2L);
-        assertThat(postRepository.findRecent(PageRequest.of(0, 5))).hasSize(1);
     }
 }

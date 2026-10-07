@@ -178,15 +178,6 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     Optional<Post> findByIdWithUser(@Param("id") Long id);
 
     /**
-     * 홈의 "최근 글"처럼 앞쪽 N개만 필요한 곳용. {@link #search}는 {@code Page}를 돌려주어
-     * 쓰지 않는 {@code COUNT(*)}를 매번 실행했다(BE-06).
-     */
-    @Query("SELECT new com.kraft.post.dto.PostRowDto("
-            + "p.id, p.title, u.name, p.createdAt, p.updatedAt, p.category, p.viewCount) "
-            + "FROM Post p JOIN p.user u WHERE " + VISIBLE + "ORDER BY p.id DESC")
-    List<PostRowDto> findRecent(Pageable pageable);
-
-    /**
      * 상세 화면 하단의 관련 게시글. 같은 분류에서 현재 글을 제외하고 최신순으로 뽑는다.
      */
     @Query("SELECT new com.kraft.post.dto.PostRowDto("

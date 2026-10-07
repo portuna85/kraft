@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * </ul>
  * 두 응답 모두 본문이 없다 — 실패 원인(자격 증명·호스트·드라이버 메시지)은 로그에만 남긴다.
  * 외부 HTTP 호출이나 추천 생성처럼 비싼 작업은 readiness에 넣지 않는다. 외부 스모크 테스트
- * ({@code build.yml}의 "Smoke test")는 이 엔드포인트가 아니라 홈({@code /})을 찌른다.
+ * ({@code build.yml}의 "Smoke test")는 이 엔드포인트가 아니라 번호 추천 화면({@code /recommend})을 찌른다.
  * {@code SecurityConfig}가 모든 요청을 permitAll로 열어두므로 별도 보안 설정은 필요 없다.
  * <p>
  * {@code /readyz}는 루프백에서만 응답한다(전체 리뷰 2026-09-26 A-SEC-04) — 배포 스크립트가
