@@ -175,20 +175,25 @@ const hasActions = computed(() => (
         : props.comment.canManage || props.authenticated
 ));
 
-const unblinding = ref(false);
+const moderating = ref(false);
 
-/** 숨긴 댓글의 숨김을 푼다(관리자). 서버가 새로 렌더링한 화면으로 다시 불러온다. */
-async function unblind() {
-    if (unblinding.value) {
+/**
+ * 댓글을 숨기거나('blind') 숨김을 푼다('unblind'). 관리자만 쓰고, 성공하면 서버가 새로 렌더링한 화면으로 다시
+ * 불러온다.
+ *
+ * @param {'blind' | 'unblind'} action
+ */
+async function moderate(action) {
+    if (moderating.value) {
         return;
     }
-    unblinding.value = true;
+    moderating.value = true;
     try {
-        await api.post(`${API.ADMIN_COMMENTS}/${props.comment.id}/unblind`);
+        await api.post(`${API.ADMIN_COMMENTS}/${props.comment.id}/${action}`);
         window.location.reload();
     } catch (error) {
         showToast(messageOf(error), 'danger');
-        unblinding.value = false;
+        moderating.value = false;
     }
 }
 </script>
@@ -258,12 +263,22 @@ async function unblind() {
           </button>
         </template>
         <button
+          v-if="comment.canModerate && !comment.blinded && !comment.deleted"
+          type="button"
+          class="btn btn-sm btn-outline-secondary btn-comment-blind"
+          :disabled="moderating"
+          :aria-label="`${comment.author}의 댓글 숨기기`"
+          @click="moderate('blind')"
+        >
+          숨기기
+        </button>
+        <button
           v-if="comment.blinded && comment.canModerate"
           type="button"
           class="btn btn-sm btn-outline-secondary btn-comment-unblind"
-          :disabled="unblinding"
+          :disabled="moderating"
           :aria-label="`${comment.author}의 댓글 숨김 해제`"
-          @click="unblind"
+          @click="moderate('unblind')"
         >
           숨김 해제
         </button>

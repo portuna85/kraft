@@ -25,6 +25,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -266,6 +267,19 @@ public class CommentService {
     private CommentViewDto viewOf(Comment comment, Authentication authentication) {
         return new CommentViewDto(comment, OwnershipPolicy.canManage(authentication, comment.getUser()),
                 OwnershipPolicy.isAdmin(authentication), List.of(), 0L, false);
+    }
+
+    /**
+     * 댓글을 숨긴다. 내용은 그대로 두고 {@link #unblind}로 되돌릴 수 있다. 이미 소프트 삭제된 댓글은 숨길 것이
+     * 없고, 이미 숨겨졌으면 조용히 넘어간다 — 두 관리자가 겹쳐 눌러도 같은 결과다.
+     */
+    @Transactional
+    public void blind(Long id) {
+        Comment comment = findComment(id);
+        if (comment.isDeleted()) {
+            return;
+        }
+        commentRepository.blind(id, LocalDateTime.now());
     }
 
     /** 숨김을 푼다. 숨겨진 댓글이 아니면 댓글이 없는 것으로 답한다. */

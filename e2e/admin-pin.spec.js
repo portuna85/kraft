@@ -47,3 +47,69 @@ test('관리자가 글을 고정하면 목록 상단에 나타나고, 해제하�
     await page.goto('/community');
     await expect(page.locator('.post-list--pinned .post-list__item').filter({ hasText: title })).toHaveCount(0);
 });
+
+/** user가 글을 쓰고(선택적으로 댓글도 남기고) 그 글 주소를 돌려준다. 작성자 페이지는 닫는다. */
+async function writePostAsUser(openAs, title, commentText = null) {
+    const authorPage = await openAs('user');
+    await authorPage.goto('/posts/save');
+    await authorPage.locator('#title').fill(title);
+    await authorPage.locator('#content').fill('숨김 시나리오용 본문입니다.');
+    await authorPage.locator('#btn-save').click();
+    await authorPage.waitForURL(/\/posts\/update\/\d+$/);
+    if (commentText) {
+        await authorPage.locator('#comment-content').fill(commentText);
+        await authorPage.locator('#btn-comment-save').click();
+        await expect(authorPage.locator('.comment-list__content')).toContainText(commentText);
+    }
+    const postUrl = authorPage.url();
+    await authorPage.close();
+    return postUrl;
+}
+
+test('관리자가 글을 숨기면 작성자에게는 숨김 안내가 보이고, 숨김을 풀면 다시 보인다', async ({ page, openAs }) => {
+    const title = uniqueTitle('숨김');
+    const postUrl = await writePostAsUser(openAs, title);
+
+    await page.goto(postUrl);
+    await page.locator('#btn-blind-post').click();
+    // 관리자는 원문과 함께 숨김 표시·해제 버튼을 본다.
+    await expect(page.locator('#post-admin-bar')).toContainText('관리자가 숨긴 글입니다');
+    await expect(page.locator('#btn-unblind-post')).toBeVisible();
+
+    const authorView = await openAs('user');
+    await authorView.goto(postUrl);
+    await expect(authorView.getByRole('heading', { name: '관리자가 숨긴 글입니다.' })).toBeVisible();
+    await authorView.close();
+
+    await page.locator('#btn-unblind-post').click();
+    await expect(page.locator('#post-admin-bar')).toHaveCount(0);
+
+    const restored = await openAs('user');
+    await restored.goto(postUrl);
+    await expect(restored.locator('#post-app')).toContainText(title);
+    await restored.close();
+});
+
+test('관리자가 댓글을 숨기면 작성자에게는 가려지고, 숨김을 풀면 다시 보인다', async ({ page, openAs }) => {
+    const comment = `숨김 댓글 ${Date.now()}`;
+    const postUrl = await writePostAsUser(openAs, uniqueTitle('댓글숨김'), comment);
+    const item = (p) => p.locator('.comment-list__item').filter({ hasText: comment });
+
+    await page.goto(postUrl);
+    await page.locator('.comment-list__item').filter({ hasText: comment }).locator('.btn-comment-blind').click();
+    await expect(page.locator('.btn-comment-unblind')).toBeVisible();
+
+    const authorView = await openAs('user');
+    await authorView.goto(postUrl);
+    await expect(authorView.locator('.comment-list')).toContainText('관리자가 숨긴 댓글입니다.');
+    await expect(authorView.locator('.comment-list')).not.toContainText(comment);
+    await authorView.close();
+
+    await page.locator('.btn-comment-unblind').click();
+    await expect(page.locator('.btn-comment-blind').first()).toBeVisible();
+
+    const restored = await openAs('user');
+    await restored.goto(postUrl);
+    await expect(item(restored)).toContainText(comment);
+    await restored.close();
+});

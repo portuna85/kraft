@@ -6,8 +6,8 @@ import { formatDateTime } from '@core/datetime.js';
 import { showToast } from '@ui/toast.js';
 
 /**
- * 관리자에게만 보이는 게시글 상태 줄 — 소프트 삭제된 글의 "삭제됨" 표시와 복구 버튼, 관리자 숨김
- * 숨겨진 글의 "숨김" 표시와 숨김 해제 버튼, 그리고 보통 글의 기한 고정을 맡는다. 노출 여부
+ * 관리자에게만 보이는 게시글 상태 줄 — 소프트 삭제된 글의 "삭제됨" 표시와 복구 버튼, 숨겨진 글의 "숨김"
+ * 표시와 숨김 해제 버튼, 그리고 보통 글의 기한 고정과 숨기기를 맡는다. 노출 여부
  * (post.canModerate)는 서버가 판정한 값이고, 모든 API도 서버가 관리자인지 다시 확인한다. 삭제된 글은
  * 복구가 먼저다(삭제된 글의 숨김은 풀 수 없고 고정할 수도 없다).
  */
@@ -122,6 +122,15 @@ const unpin = () => run(() => api.del(`${API.ADMIN_POSTS}/${props.post.id}/pin`)
       @click="unpin"
     >
       고정 해제
+    </button>
+    <button
+      id="btn-blind-post"
+      type="button"
+      class="btn btn-sm btn-outline-secondary"
+      :disabled="busy"
+      @click="change('blind')"
+    >
+      숨기기
     </button>
   </div>
 </template>

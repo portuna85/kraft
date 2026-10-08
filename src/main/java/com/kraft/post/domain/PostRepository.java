@@ -201,7 +201,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     int softDelete(@Param("id") Long id, @Param("now") LocalDateTime now);
 
     /**
-     * 관리자가 글을 숨긴다(신고 처리). {@link #softDelete}와 같은 이유로 전용 UPDATE만 쓴다. 이미 숨겨졌거나
+     * 관리자가 글을 숨긴다. {@link #softDelete}와 같은 이유로 전용 UPDATE만 쓴다. 이미 숨겨졌거나
      * 삭제된 글이면 0을 돌려준다.
      */
     @Modifying(flushAutomatically = true)

@@ -595,6 +595,23 @@ class CommentServiceTest {
     }
 
     @Test
+    @DisplayName("blind: 댓글을 숨기고, 이미 소프트 삭제된 댓글은 건드리지 않는다")
+    void blind_blindsComment_andSkipsSoftDeleted() {
+        User author = userWithEmail("author@example.com", 1L);
+        Comment live = commentOf(author, 5L);
+        Comment softDeleted = commentOf(author, 6L);
+        softDeleted.softDelete();
+        given(commentRepository.findById(5L)).willReturn(Optional.of(live));
+        given(commentRepository.findById(6L)).willReturn(Optional.of(softDeleted));
+
+        commentService.blind(5L);
+        commentService.blind(6L);
+
+        verify(commentRepository).blind(org.mockito.ArgumentMatchers.eq(5L), any());
+        verify(commentRepository, never()).blind(org.mockito.ArgumentMatchers.eq(6L), any());
+    }
+
+    @Test
     @DisplayName("unblind: 숨겨진 댓글이 아니면 댓글이 없는 것으로 답한다")
     void unblind_whenNotBlinded_throwsNotFound() {
         given(commentRepository.unblind(5L)).willReturn(0);

@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 
 /**
  * 관리자만 하는 게시글 상태 변경(복구·숨김·숨김 해제·고정). 호출 경로가 {@code /api/v1/admin/**}라 권한은
- * {@code SecurityConfig}가 판정한다 — 이 서비스는 권한을 다시 묻지 않는다({@code ReportService}와 같은 관례).
+ * {@code SecurityConfig}가 판정한다 — 이 서비스는 권한을 다시 묻지 않는다.
  * <p>
  * 클래스 기본값이 읽기 전용이 아니라, 쓰기 메서드마다 {@code @Transactional}을 명시한다.
  */
@@ -37,6 +37,22 @@ public class PostModerationService {
     @Transactional
     public void restore(Long id) {
         if (postRepository.restore(id) == 0) {
+            throw new PostNotFoundException(id);
+        }
+    }
+
+    /**
+     * 글을 숨긴다. 삭제와 달리 내용과 댓글이 그대로 남고 {@link #unblindPost}로 되돌릴 수 있다. 이미 숨겨진
+     * 글은 조용히 넘어간다(두 관리자가 겹쳐 눌러도 같은 결과다). 없거나 삭제된 글이면 글이 없는 것으로 답한다.
+     */
+    @Caching(evict = {
+            @CacheEvict(value = "pinnedPosts", allEntries = true),
+            @CacheEvict(value = "popularPosts", allEntries = true)
+    })
+    @Transactional
+    public void blindPost(Long id) {
+        if (postRepository.blind(id, LocalDateTime.now()) == 0
+                && postRepository.findById(id).filter(post -> !post.isDeleted()).isEmpty()) {
             throw new PostNotFoundException(id);
         }
     }

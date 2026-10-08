@@ -36,6 +36,39 @@ class AdminCommentApiControllerTest {
     private UserRepository userRepository;
 
     @Test
+    @DisplayName("숨기기는 관리자만 할 수 있다 — 일반 회원은 403이고 서비스는 호출되지 않는다")
+    void blind_whenNotAdmin_returns403() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/comments/5/blind")
+                        .with(user("tester@example.com").roles("USER"))
+                        .with(csrf()))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(commentService);
+    }
+
+    @Test
+    @DisplayName("관리자가 댓글을 숨기면 204다")
+    void blind_whenAdmin_returns204() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/comments/5/blind")
+                        .with(user("admin@example.com").roles("ADMIN"))
+                        .with(csrf()))
+                .andExpect(status().isNoContent());
+
+        verify(commentService).blind(5L);
+    }
+
+    @Test
+    @DisplayName("없는 댓글이면 404다")
+    void blind_whenMissing_returns404() throws Exception {
+        willThrow(new NotFoundException("해당 댓글이 없습니다. id=5")).given(commentService).blind(5L);
+
+        mockMvc.perform(post("/api/v1/admin/comments/5/blind")
+                        .with(user("admin@example.com").roles("ADMIN"))
+                        .with(csrf()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     @DisplayName("숨김 해제는 관리자만 할 수 있다 — 일반 회원은 403이고 서비스는 호출되지 않는다")
     void unblind_whenNotAdmin_returns403() throws Exception {
         mockMvc.perform(post("/api/v1/admin/comments/5/unblind")

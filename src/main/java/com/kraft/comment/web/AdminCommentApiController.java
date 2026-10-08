@@ -17,7 +17,14 @@ public class AdminCommentApiController {
 
     private final CommentService commentService;
 
-    /** 신고 처리로 숨겨진 댓글의 숨김을 푼다. */
+    /** 댓글을 숨긴다. 내용은 그대로 남고 관리자만 볼 수 있으며 숨김 해제로 되돌린다. */
+    @PostMapping("/api/v1/admin/comments/{id}/blind")
+    public ResponseEntity<Void> blind(@PathVariable Long id) {
+        commentService.blind(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** 숨겨진 댓글의 숨김을 푼다. */
     @PostMapping("/api/v1/admin/comments/{id}/unblind")
     public ResponseEntity<Void> unblind(@PathVariable Long id) {
         commentService.unblind(id);
