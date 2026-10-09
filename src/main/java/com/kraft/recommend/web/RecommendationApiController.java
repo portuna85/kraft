@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 공개·비저장 번호 추천 생성 API(02문서 4절). 로그인 여부와 무관하게 동일하게 동작하고,
+     * 공개·비저장 번호 추천 생성 API. 로그인 여부와 무관하게 동일하게 동작하고,
  * {@code SecurityConfig}에서 이 경로 하나만 {@code permitAll}이다.
  * <p>
  * {@code app.recommend.enabled=false}면 이 컨트롤러 빈이 등록되지 않아 이 경로는 404가 된다.
@@ -31,7 +31,7 @@ public class RecommendationApiController {
     @PostMapping("/api/v1/numbers/recommend")
     public ResponseEntity<?> recommend(@Valid @RequestBody(required = false) RecommendRequestDto request,
                                         HttpServletRequest httpRequest) {
-        // 본문이 없거나 빈 객체({}))면 모든 필드가 null인 요청과 동일하게 취급한다(02문서 4절).
+        // 본문이 없거나 빈 객체({})면 모든 필드가 null인 요청과 동일하게 취급한다.
         RecommendRequestDto normalizedRequest = request == null
                 ? new RecommendRequestDto(null)
                 : request;

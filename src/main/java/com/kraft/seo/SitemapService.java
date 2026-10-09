@@ -17,7 +17,7 @@ import java.util.List;
 @Service
 public class SitemapService {
 
-    /** sitemap 한 파일의 프로토콜 상한(50,000 URL)에서 홈·추천 몫을 뺀 게시글 수. */
+    /** sitemap 한 파일의 프로토콜 상한(50,000 URL)에서 목록·추천 페이지 몫을 뺀 게시글 수. */
     static final int MAX_POSTS = 49_990;
 
     private static final Duration TTL = Duration.ofMinutes(10);

@@ -9,9 +9,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 
 /**
- * 추천 화면에 보여줄 "이력이 어디까지, 언제 확인됐는가"(P1-3). 제외 검증은 이 이력에 의존하므로
- * 사용자가 검증 기준을 알 수 있어야 한다. 지연 판정은 운영 경보와 같은 임계값
- * ({@code app.metrics.recommendation-history-stale-hours})을 쓴다.
+ * 추천 화면에 보여줄 "이력이 어디까지, 언제 확인됐는가". 제외 검증은 이 이력에 의존하므로 사용자가 검증 기준을 알 수 있어야 한다. 지연 판정은 운영 경보와 같은 임계값({@code app.metrics.recommendation-history-stale-hours})을 쓴다.
  */
 @Component
 public class RecommendationFreshness {

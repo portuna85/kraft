@@ -10,7 +10,7 @@ public final class LottoBallColor {
         return "lotto-ball--" + colorName(n);
     }
 
-    /** 홈처럼 공용 {@code lotto-ball--*} 클래스를 쓰는 화면이 접미사만 가져다 쓴다. */
+    /** 공용 {@code lotto-ball--*} 클래스를 쓰는 화면이 접미사만 가져다 쓴다. */
     public static String colorName(int n) {
         if (n <= 10) {
             return "yellow";
