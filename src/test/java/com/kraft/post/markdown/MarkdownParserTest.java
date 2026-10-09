@@ -15,13 +15,10 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * {@link MarkdownParser}가 {@code src/vue/shared/markdown.js}(Vue 클라이언트 렌더링이
- * 쓰는 파서)와 같은 결과를 내는지 확인한다(13단계, 본문 SSR).
+ * {@link MarkdownParser}가 {@code src/vue/shared/markdown.js}(Vue 클라이언트 렌더링이 쓰는 파서)와 같은 결과를 내는지 확인한다(본문 SSR).
  * <p>
- * {@code src/test/resources/markdown/cases.json} 공용 픽스처를 이 테스트와
- * {@code src/vue/shared/markdown-cases.test.js}(node --test, {@code npm run test:unit})가
- * 각자의 JSON 파서로 읽어 같은 입력에 대해 같은 AST를 기대한다 — 로직을 한쪽만 고치면 두
- * 테스트 중 하나가 반드시 깨진다.
+ * {@code src/test/resources/markdown/cases.json} 공용 픽스처를 이 테스트와 {@code src/vue/shared/markdown-cases.test.js}(node --test, {@code npm run test:unit})가 각자의 JSON 파서로 읽어 같은 입력에 대해 같은 AST를 기대한다 —
+ * 로직을 한쪽만 고치면 두 테스트 중 하나가 반드시 깨진다.
  */
 class MarkdownParserTest {
 
@@ -66,11 +63,7 @@ class MarkdownParserTest {
                 List.of(Map.of("type", "p", "children", List.of("`닫히지 않은 코드"))));
     }
 
-    /**
-     * 본문은 10,000자로 제한된다(ContentPolicy). 그 한도 안에서 닫히지 않는 구분자를 잔뜩 넣어도
-     * 상세 화면 SSR이 눈에 띄게 느려지지 않는지(P2-3) 최악 입력으로 고정한다 — 파서는 구분자마다
-     * 닫는 위치를 다시 찾으므로 입력 길이의 제곱에 비례하지만, 한도 안에서는 무시할 만하다.
-     */
+    /** 본문은 10,000자로 제한된다(ContentPolicy). 그 한도 안에서 닫히지 않는 구분자를 잔뜩 넣어도 상세 화면 SSR이 눈에 띄게 느려지지 않는지 최악 입력으로 고정한다 — 파서는 구분자마다 닫는 위치를 다시 찾으므로 입력 길이의 제곱에 비례하지만 한도 안에서는 무시할 만하다. */
     @org.junit.jupiter.api.Test
     void worstCaseInputsWithinContentLimit_parseQuickly() {
         int limit = com.kraft.shared.domain.ContentPolicy.POST_CONTENT_MAX_LENGTH;

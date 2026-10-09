@@ -20,13 +20,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * 회원 탈퇴를 실제 DB로 검증한다.
- * <p>
- * 이 기능에서 값이 맞는지보다 중요한 것은 <b>탈퇴 뒤에 무엇이 남는가</b>이다. 글은 남아야 하고
- * (남의 댓글이 달린 대화가 통째로 사라지면 안 된다), 그 사람을 가리키는 값은 남으면 안 되며,
- * 원래 주소는 다시 쓸 수 있어야 한다. 단위 테스트는 호출만 보므로 이 셋을 증명하지 못한다.
- */
+/** 회원 탈퇴를 실제 DB로 검증한다. 값이 맞는지보다 중요한 것은 <b>탈퇴 뒤에 무엇이 남는가</b>이다. 글은 남아야 하고(남의 댓글이 달린 대화가 통째로 사라지면 안 된다), 그 사람을 가리키는 값은 남으면 안 되며, 원래 주소는 다시 쓸 수 있어야 한다. 단위 테스트는 호출만 보므로 이 셋을 증명하지 못한다. */
 @SpringBootTest
 class WithdrawalFlowTest {
 
@@ -73,8 +67,7 @@ class WithdrawalFlowTest {
 
         Post reloaded = postRepository.findById(post.getId()).orElseThrow();
         assertThat(reloaded.getTitle()).isEqualTo("탈퇴해도 남을 글");
-        // 작성자 연결은 그대로 남고, 그 회원의 이름만 익명으로 바뀐다. (OSIV가 꺼져 있어
-        // 트랜잭션 밖에서 post.getUser()를 따라가면 프록시를 초기화할 수 없으므로 id로 읽는다.)
+        // 작성자 연결은 그대로 남고 그 회원의 이름만 익명으로 바뀐다. (OSIV가 꺼져 있어 트랜잭션 밖에서 post.getUser()를 따라가면 프록시를 초기화할 수 없으므로 id로 읽는다.)
         User author = userRepository.findById(user.getId()).orElseThrow();
         assertThat(author.getName()).isEqualTo("탈퇴한 사용자" + user.getId());
         assertThat(author.isWithdrawn()).isTrue();
@@ -106,11 +99,7 @@ class WithdrawalFlowTest {
                 .isNotEqualTo(email);
     }
 
-    /**
-     * 탈퇴 대체 이름은 "탈퇴한 사용자{id}"로 예측 가능하다. 예약어
-     * 가입 제한이 생기기 전에 누군가 그 이름으로 가입해 두었다면(기존 데이터), 예전에는 이름
-     * 유일성 제약에 걸려 탈퇴 자체가 실패했다.
-     */
+    /** 탈퇴 대체 이름은 "탈퇴한 사용자{id}"로 예측 가능하다. 예약어 가입 제한이 생기기 전에 누군가 그 이름으로 가입해 두었다면(기존 데이터) 이름 유일성 제약에 걸려 탈퇴 자체가 실패하지 않아야 한다. */
     @Test
     @DisplayName("다른 계정이 대체 이름을 이미 쓰고 있어도 탈퇴된다")
     void withdraw_whenReplacementNameTaken_stillSucceeds() {

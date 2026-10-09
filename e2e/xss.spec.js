@@ -3,11 +3,8 @@ import { test, expect, storageStateFor, uniqueTitle } from './fixtures.js';
 test.use({ storageState: storageStateFor('user') });
 
 /**
- * 제목·본문·댓글은 Vue 아일랜드의 초기 상태로 {@code <script type="application/json">}에
- * 그대로 끼워져 내려간다(post-save.html, post-update.html). 그 값에 {@code </script>}가
- * 있으면 브라우저가 HTML을 파싱하는 시점에 script 요소가 거기서 끝나 버려, 뒤에 오는 내용이
- * 그대로 실행 가능한 HTML/스크립트가 될 수 있었다. 서버가 `<` 형태로 이스케이프해
- * 막았는지, 화면에는 페이로드가 그대로 "글자"로만 보이는지 확인한다.
+ * 제목·본문·댓글은 Vue 아일랜드의 초기 상태로 {@code <script type="application/json">}에 그대로 끼워져 내려간다(post-save.html, post-update.html). 그 값에 {@code </script>}가 있으면 브라우저가 HTML을 파싱하는 시점에 script 요소가 거기서 끝나 버려 뒤에 오는 내용이 실행 가능한 HTML/스크립트가 될 수 있다.
+ * 서버가 `<` 형태로 이스케이프해 막았는지, 화면에는 페이로드가 그대로 "글자"로만 보이는지 확인한다.
  */
 test('제목·본문·댓글에 </script>가 있어도 스크립트가 실행되지 않고 글자 그대로 보인다', async ({ page }) => {
     const payload = '</script><img src=x onerror="window.__xssFired = true">';
@@ -38,11 +35,7 @@ test('제목·본문·댓글에 </script>가 있어도 스크립트가 실행되
     await expect(page.locator('#post-content-text')).toHaveText(payload);
 });
 
-/**
- * 12단계(가벼운 마크다운): `[글자](주소)` 링크 문법은 http/https만 실제 링크로 만들고
- * (markdown.js의 tryParseLink), 그 외 스킴은 평문으로 남긴다. `javascript:` 스킴으로 클릭
- * 시 실행을 유도하는 경로가 막혀 있는지 확인한다.
- */
+/** 링크 문법 `[글자](주소)`은 http/https만 실제 링크로 만들고(markdown.js의 tryParseLink) 그 외 스킴은 평문으로 남긴다. `javascript:` 스킴으로 클릭 시 실행을 유도하는 경로가 막혀 있는지 확인한다. */
 test('마크다운 링크 문법에 javascript: 스킴을 넣어도 평문으로만 보이고 링크가 되지 않는다', async ({ page }) => {
     const title = uniqueTitle('마크다운XSS');
     const payload = '[클릭](javascript:window.__xssFired = true)';

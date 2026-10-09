@@ -30,8 +30,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 커밋 후 세션 폐기가 실패해도 이미 커밋된 비밀번호 변경이 실패 응답으로 보이지 않는지
- * 검증한다.
+ * 커밋 후 세션 폐기가 실패해도 이미 커밋된 비밀번호 변경이 실패 응답으로 보이지 않는지 검증한다.
  * <p>
  * {@link SessionRevoker}를 별도로 mock으로 대체해야 하므로 {@link PasswordChangeSessionRevocationTest}와
  * 다른 스프링 컨텍스트를 쓴다 — 그 클래스는 실제 세션 폐기 동작 자체를 검증하므로 대역을 쓸 수 없다.
@@ -89,8 +88,7 @@ class PasswordChangeAfterCommitFailureTest {
 
         Cookie session = login();
 
-        // 예전에는 AfterCommit 콜백의 예외가 그대로 전파되어 500이 됐다 — DB는 이미
-        // 커밋됐는데 클라이언트는 실패로 알고 옛 비밀번호로 재시도할 수 있었다.
+        // AfterCommit 콜백의 예외가 그대로 전파되면 500이 된다 — DB는 이미 커밋됐는데 클라이언트는 실패로 알고 옛 비밀번호로 재시도할 수 있다.
         mockMvc.perform(put("/api/v1/users/me/password")
                         .cookie(session)
                         .with(csrf())

@@ -38,11 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * {@link CommentApiController} 웹 계층 테스트. {@link CommentService}는 {@code @MockitoBean}으로
- * 대체하고, 실제 {@link SecurityConfig}를 {@code @Import}해 {@code PostApiControllerTest}와 동일한
- * 방식으로 CSRF/인증/인가 규칙, {@code ApiExceptionHandler}의 응답 형식을 검증한다.
- */
+/** {@link CommentApiController} 웹 계층 테스트. {@link CommentService}는 {@code @MockitoBean}으로 대체하고, 실제 {@link SecurityConfig}를 {@code @Import}해 {@code PostApiControllerTest}와 같은 방식으로 CSRF/인증/인가 규칙, {@code ApiExceptionHandler}의 응답 형식을 검증한다. */
 @WebMvcTest(CommentApiController.class)
 @Import(SecurityConfig.class)
 class CommentApiControllerTest {
@@ -157,11 +153,7 @@ class CommentApiControllerTest {
                 .andExpect(jsonPath("$.parentId").value(10));
     }
 
-    /**
-     * 2단계 댓글: 답글에 다시 답글을 달면(3단계) 서비스가 {@code IllegalArgumentException}을
-     * 던지고, {@code ApiExceptionHandler}가 이를 그대로 400 ProblemDetail로 바꾼다 — 새
-     * 예외 핸들러가 필요 없다는 것까지 함께 확인한다.
-     */
+    /** 2단계 댓글: 답글에 다시 답글을 달면(3단계) 서비스가 {@code IllegalArgumentException}을 던지고, {@code ApiExceptionHandler}가 이를 그대로 400 ProblemDetail로 바꾼다 — 새 예외 핸들러가 필요 없다는 것까지 함께 확인한다. */
     @Test
     @DisplayName("POST .../comments 는 답글에 답글을 달려는 요청을 400으로 거절한다")
     void saveComment_replyToAReply_returns400BadRequest() throws Exception {

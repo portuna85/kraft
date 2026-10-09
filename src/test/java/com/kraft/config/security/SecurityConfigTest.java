@@ -21,10 +21,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * {@link SecurityConfig}의 로그인/로그아웃 리다이렉트 정책 통합 테스트. 실제 필터 체인·
- * {@code UserDetailsService}가 필요해 {@code @SpringBootTest}로 전체 컨텍스트를 띄운다.
- */
+/** {@link SecurityConfig}의 로그인/로그아웃 리다이렉트 정책 통합 테스트. 실제 필터 체인·{@code UserDetailsService}가 필요해 {@code @SpringBootTest}로 전체 컨텍스트를 띄운다. */
 @SpringBootTest
 @AutoConfigureMockMvc
 class SecurityConfigTest {
@@ -151,15 +148,13 @@ class SecurityConfigTest {
                         .with(user("tester@example.com"))
                         .with(csrf()))
                 .andExpect(status().is3xxRedirection())
-                // 원본 Referer 문자열이 아니라 경로만 쓴다 — 오리진 판정과 실제 이동 대상이
-                // 어긋날 여지를 남기지 않기 위해서다(SafeRedirect.sameOriginPathOf).
+                // 원본 Referer 문자열이 아니라 경로만 쓴다 — 오리진 판정과 실제 이동 대상이 어긋날 여지를 남기지 않기 위해서다(SafeRedirect.sameOriginPathOf).
                 .andExpect(redirectedUrl("/posts/update/1?x=1"));
     }
 
     @ParameterizedTest
     @ValueSource(strings = {
-            // 예전의 startsWith("/") && !startsWith("//") 검사를 통과하던 값이다.
-            // 브라우저는 역슬래시를 "/"와 같게 읽어 attacker.example을 호스트로 삼는다.
+            // startsWith("/") && !startsWith("//") 검사로는 통과하는 값이다 — 브라우저는 역슬래시를 "/"와 같게 읽어 attacker.example을 호스트로 삼는다.
             "/\\attacker.example/path",
             "//evil.example.com",
             "http://evil.example.com/"

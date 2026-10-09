@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** sitemap·robots·색인 제어(P1-1), 공개 경로 화이트리스트(P1-7), 익명 세션 미생성(P1-6). */
+/** sitemap·robots·색인 제어, 공개 경로 화이트리스트, 익명 세션 미생성. */
 @SpringBootTest
 @AutoConfigureMockMvc
 class SitemapAndPublicPathsTest {

@@ -125,7 +125,7 @@ class ApiExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("P2-3: 유니크 위반은 409 '이미 사용 중', FK 위반은 409 '대상이 삭제·변경됨', NOT NULL은 500")
+    @DisplayName("유니크 위반은 409 '이미 사용 중', FK 위반은 409 '대상이 삭제·변경됨', NOT NULL은 500")
     void dataIntegrityViolation_isMappedByKind() {
         ApiExceptionHandler handler = new ApiExceptionHandler();
 

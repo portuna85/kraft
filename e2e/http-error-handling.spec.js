@@ -2,11 +2,7 @@ import { test, expect, storageStateFor, uniqueTitle } from './fixtures.js';
 
 test.use({ storageState: storageStateFor('user') });
 
-/**
- * http.js의 응답 해석·타임아웃 경로를 검증한다. 예전에는 Content-Type이 JSON이라고 주장하는데 실제로는 깨진 본문이면 JSON.parse가
- * 그대로 던져 원시 SyntaxError가 호출부까지 새어 나갔고, 타임아웃 자체가 없어 응답이 오지
- * 않는 요청은 화면에서 영원히 멈췄다.
- */
+/** http.js의 응답 해석·타임아웃 경로를 검증한다. Content-Type이 JSON이라고 주장하는데 본문이 깨져 있으면 JSON.parse가 던진 원시 SyntaxError가 호출부까지 새지 않고 오류 메시지로 보여야 하고, 응답이 오지 않는 요청은 타임아웃으로 끝나야 한다(화면에서 영원히 멈추면 안 된다). */
 test('깨진 JSON 응답은 한국어 오류 메시지로 보여주고 처리되지 않은 JS 오류를 내지 않는다', async ({ page }) => {
     const title = uniqueTitle('오류처리');
 
@@ -33,9 +29,7 @@ test('깨진 JSON 응답은 한국어 오류 메시지로 보여주고 처리되
 test('응답이 오지 않으면 타임아웃 메시지를 보여준다', async ({ page }) => {
     const title = uniqueTitle('타임아웃');
 
-    // 실제 15초를 기다리지 않도록, 응답을 요청 자체가 타임아웃보다 훨씬 오래 지연시킨다.
-    // 브라우저 컨텍스트를 벗어나 실제 기본 타임아웃(15초)까지 기다리는 대신, 라우트를 그냥
-    // 영원히 보류해 AbortController가 먼저 개입하는지 확인한다.
+    // 실제 15초를 기다리지 않도록 라우트를 그냥 영원히 보류해 AbortController가 먼저 개입하는지 확인한다(브라우저 컨텍스트를 벗어나 기본 타임아웃까지 기다리지 않는다).
     await page.route('**/api/v1/posts', async (route) => {
         if (route.request().method() !== 'POST') {
             await route.continue();

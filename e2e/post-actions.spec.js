@@ -11,10 +11,7 @@ async function createOwnPost(page, title) {
     await page.waitForURL(/\/posts\/update\/\d+$/);
 }
 
-/**
- * 추천은 "뒤집어라"가 아니라 "이 상태로 만들어라"를 보낸다. 화면은 낙관적으로 미리
- * 바꾸지 않고 서버가 돌려준 최종 상태만 반영한다.
- */
+/** 추천은 "뒤집어라"가 아니라 "이 상태로 만들어라"를 보낸다. 화면은 낙관적으로 미리 바꾸지 않고 서버가 돌려준 최종 상태만 반영한다. */
 test('추천을 눌렀다 다시 누르면 원래대로 돌아온다', async ({ page }) => {
     await createOwnPost(page, uniqueTitle('추천'));
 
@@ -70,7 +67,7 @@ test('게시글 삭제: 취소하면 그대로, 확인하면 목록으로 돌아
     const modal = page.locator('#confirmDeleteModal');
     await expect(modal).toBeVisible();
     await expect(page.locator('#confirmDeleteModalLabel')).toContainText('게시글 삭제');
-    // 삭제 확인 문구에 대상을 명시한다(문서 5.2) — 어느 글을 지우는지 모달 안에서 알 수 있다.
+    // 삭제 확인 문구에 대상을 명시한다 — 어느 글을 지우는지 모달 안에서 알 수 있다.
     await expect(page.locator('#confirmDeleteMessage')).toContainText(title);
 
     await page.locator('#btn-cancel-delete').click();
@@ -84,10 +81,7 @@ test('게시글 삭제: 취소하면 그대로, 확인하면 목록으로 돌아
     await expect(page.locator('#flash')).toContainText('글이 삭제되었습니다.');
 });
 
-/**
- * 문서 5.5: 찾을 수 없는 페이지는 상황 설명과 게시판 복귀 링크를 제공해야 한다.
- * 예전에는 설명 문구만 있고 복귀 링크가 없었다.
- */
+/** 찾을 수 없는 페이지는 상황 설명과 게시판 복귀 링크를 제공해야 한다. */
 test('삭제된 글 주소로 들어가면 설명과 게시판 복귀 링크가 있는 404 화면이 뜬다', async ({ page }) => {
     await createOwnPost(page, uniqueTitle('404용'));
     const deletedPostUrl = page.url();

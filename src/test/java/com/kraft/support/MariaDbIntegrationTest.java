@@ -20,11 +20,8 @@ import java.util.List;
 /**
  * 실제 MariaDB로 도는 {@code @SpringBootTest}들의 공용 기반 클래스.
  * <p>
- * 예전에는 클래스마다 컨테이너를 따로 띄우고 컨텍스트도 따로 만들어, 같은 일(컨테이너 기동 +
- * Flyway 전체 마이그레이션 + 컨텍스트 기동)을 클래스 수만큼 반복했다(클래스당 약 8초). 이제
- * 컨테이너를 컨텍스트의 빈으로 두고(아래 {@link ContainerConfig}), 이 클래스를 상속하는
- * 테스트가 모두 같은 {@code @SpringBootTest} 설정을 쓰게 해 Spring의 컨텍스트 캐시로 한 번만
- * 만든다 — 컨테이너 생명주기도 그 컨텍스트가 소유하므로 한 번만 뜬다.
+ * 컨테이너를 컨텍스트의 빈으로 두고(아래 {@link ContainerConfig}) 이 클래스를 상속하는 테스트가 모두 같은 {@code @SpringBootTest} 설정을 쓰게 해, 컨테이너 기동 + Flyway 전체 마이그레이션 + 컨텍스트 기동(클래스당 약 8초)을
+ * Spring의 컨텍스트 캐시로 한 번만 치른다. 컨테이너 생명주기도 그 컨텍스트가 소유한다.
  * <p>
  * <b>하위 클래스는 {@code @SpringBootTest}·{@code @MockitoBean}·{@code @TestPropertySource}
  * 등 컨텍스트를 바꾸는 애너테이션을 더하지 않는다</b> — 더하면 캐시 키가 달라져 컨텍스트가

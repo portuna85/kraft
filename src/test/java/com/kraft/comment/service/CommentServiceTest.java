@@ -38,10 +38,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-/**
- * {@link CommentService} 단위 테스트. {@link PostService}와 동일한 방식으로 Mockito만
- * 사용해 {@link PostRepository}, {@link UserRepository}, {@link CommentRepository}를 모킹한다.
- */
+/** {@link CommentService} 단위 테스트. {@link PostService}와 같은 방식으로 Mockito만 사용해 {@link PostRepository}, {@link UserRepository}, {@link CommentRepository}를 모킹한다. */
 @ExtendWith(MockitoExtension.class)
 class CommentServiceTest {
 
@@ -151,10 +148,7 @@ class CommentServiceTest {
         verify(commentRepository, never()).save(any());
     }
 
-    /**
-     * 2단계 댓글: parentId가 있으면 그 댓글을 부모로 저장한다. 실제로 저장을 호출한 인자의
-     * parent가 정확히 그 댓글인지까지 확인한다 — id만 맞고 엉뚱한 엔티티가 실려 가면 안 된다.
-     */
+    /** 2단계 댓글: parentId가 있으면 그 댓글을 부모로 저장한다. 저장을 호출한 인자의 parent가 정확히 그 댓글인지까지 확인한다 — id만 맞고 엉뚱한 엔티티가 실려 가면 안 된다. */
     @Test
     @DisplayName("save: parentId가 있으면 그 댓글을 부모로 하는 답글로 저장한다")
     void save_withParentId_savesAsReplyToThatComment() {
@@ -236,11 +230,8 @@ class CommentServiceTest {
     }
 
     /**
-     * 회귀: 예전에는 한 페이지 전체(여러 부모 합산)에서 가져오는 답글 총량에 500이라는
-     * 상한 하나를 뒀다 — 한 부모가 답글을 아주 많이 갖고 있으면 그 부모가 상한을 혼자 다 써서,
-     * 같은 페이지의 다른 부모는 새로고침을 해도 자신의 답글에 영영 도달하지 못했다. 지금은
-     * 부모마다 따로 조회하므로(부모별 최대 20개 + hasMoreReplies) 한 부모의 답글 수가 다른
-     * 부모의 조회에 영향을 주지 않는다.
+     * 회귀: 한 페이지 전체(여러 부모 합산)에서 가져오는 답글 총량에 상한 하나를 두면, 한 부모가 답글을 아주 많이 가질 때 그 부모가 상한을 혼자 다 써 같은 페이지의 다른 부모는 자신의 답글에 영영 도달하지 못한다.
+     * 부모마다 따로 조회하므로(부모별 최대 20개 + hasMoreReplies) 한 부모의 답글 수가 다른 부모의 조회에 영향을 주지 않는다.
      */
     @Test
     @DisplayName("한 부모의 답글이 아주 많아도(옛 전역 상한을 혼자 넘는 규모) 다른 부모는 자신의 답글을 그대로 받는다")
@@ -251,7 +242,7 @@ class CommentServiceTest {
         Comment replyB = replyOf(owner, 201L, parentB);
         given(commentRepository.findPageByPostIdAsc(1L, null, PageRequest.of(0, 21)))
                 .willReturn(List.of(parentA, parentB));
-        // A는 답글이 600개다 — 예전 전역 상한(500)을 혼자 넘는 규모.
+        // A는 답글이 600개다 — 한 부모가 전역 상한(500)을 혼자 넘는 규모.
         given(commentRepository.countRepliesByParentIdIn(List.of(100L, 101L)))
                 .willReturn(Map.of(100L, 600L, 101L, 1L));
         List<Comment> firstTwentyOfA = IntStream.range(0, 20)
@@ -306,10 +297,7 @@ class CommentServiceTest {
         assertThat(comment.getContent()).isEqualTo("수정된 댓글");
     }
 
-    /**
-     * 화면이 받아간 버전과 지금 버전이 같으면 저장을 허용한다 — VersionCheck과
-     * 같은 계약.
-     */
+    /** 화면이 받아간 버전과 지금 버전이 같으면 저장을 허용한다 — VersionCheck과 같은 계약. */
     @Test
     @DisplayName("받아간 버전과 현재 버전이 같으면 저장을 허용한다")
     void update_whenVersionMatches_updatesContent() {
@@ -325,11 +313,7 @@ class CommentServiceTest {
         assertThat(comment.getContent()).isEqualTo("수정된 댓글");
     }
 
-    /**
-     * 화면이 받아간 버전이 지금 버전과 다르면(그 사이 다른 곳에서 먼저 저장됨)
-     * ObjectOptimisticLockingFailureException을 던지고 내용은 바뀌지 않는다 —
-     * ApiExceptionHandler가 이를 409로 변환한다.
-     */
+    /** 화면이 받아간 버전이 지금 버전과 다르면(그 사이 다른 곳에서 먼저 저장됨) ObjectOptimisticLockingFailureException을 던지고 내용은 바뀌지 않는다 — ApiExceptionHandler가 이를 409로 변환한다. */
     @Test
     @DisplayName("받아간 버전이 현재 버전과 다르면 충돌로 거절하고 내용은 바뀌지 않는다")
     void update_whenVersionMismatches_throwsOptimisticLockingFailureAndDoesNotModify() {
@@ -392,11 +376,7 @@ class CommentServiceTest {
         verify(commentRepository, never()).deleteAllByParentId(any());
     }
 
-    /**
-     * 답글이 없으면(또는 답글 자신이면) 지금까지처럼 행 자체를 지운다. 2단계 댓글: DB에
-     * cascade를 걸지 않았으므로(Comment.parent 주석 참고) 최상위 댓글을 지우기 전에 그 답글을
-     * 먼저 명시적으로 지워야 FK 위반이 나지 않는다.
-     */
+    /** 답글이 없으면(또는 답글 자신이면) 행 자체를 지운다. DB에 cascade를 걸지 않았으므로(Comment.parent 주석 참고) 최상위 댓글을 지우기 전에 그 답글을 먼저 명시적으로 지워야 FK 위반이 나지 않는다. */
     @Test
     @DisplayName("delete: 답글이 없으면 행 자체를 지우고 이벤트를 발행한다")
     void delete_whenNoReplies_hardDeletesAndPublishesEvent() {
@@ -414,10 +394,7 @@ class CommentServiceTest {
         assertThat(result.id()).isEqualTo(100L);
     }
 
-    /**
-     * 답글이 있는 최상위 댓글을 지우면 남의 답글까지 함께 사라졌다. 행을
-     * 지우지 않고 내용만 비운다.
-     */
+    /** 답글이 있는 최상위 댓글을 지워도 남의 답글이 함께 사라지면 안 된다 — 행을 지우지 않고 내용만 비운다. */
     @Test
     @DisplayName("delete: 답글이 있으면 행을 지우지 않고 소프트 삭제한다")
     void delete_whenHasReplies_softDeletesAndKeepsRow() {

@@ -21,11 +21,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * {@link CommentRepository} 통합 테스트. {@code @DataJpaTest}는 Entity/Repository 관련 빈만
- * 스캔하므로, {@code @EnableJpaAuditing}이 선언된 {@link JpaConfig}는 별도로 {@code @Import}해야
- * 감사 필드({@code createdAt})가 실제로 채워지는지 검증할 수 있다(PostRepositoryTest와 동일 패턴).
- */
+/** {@link CommentRepository} 통합 테스트. {@code @DataJpaTest}는 Entity/Repository 관련 빈만 스캔하므로 {@code @EnableJpaAuditing}이 선언된 {@link JpaConfig}는 별도로 {@code @Import}해야 감사 필드({@code createdAt})가 채워지는지 검증할 수 있다(PostRepositoryTest와 같은 패턴). */
 @DataJpaTest
 @Import({JpaConfig.class, EmailAttributeConverter.class})
 class CommentRepositoryTest {
@@ -74,10 +70,7 @@ class CommentRepositoryTest {
     void deletePost_succeedsWithoutForeignKeyViolation_whenCommentsDeletedFirst() {
         commentRepository.save(Comment.builder().content("댓글").post(post).user(user).build());
         em.flush();
-        // 벌크 JPQL DELETE는 영속성 컨텍스트(1차 캐시)를 갱신하지 않는다 — DB에서는 이미 지워진
-        // Comment를 세션이 여전히 "관리 중"으로 들고 있으면, 뒤이은 post 삭제 flush에서
-        // Hibernate가 그 엔티티의 연관관계를 다시 점검하다 엉뚱한 오류를 낸다. 비워서 실제
-        // 운영 코드(PostService.delete)처럼 남겨 둔 엔티티 없이 진행한다.
+        // 벌크 JPQL DELETE는 영속성 컨텍스트(1차 캐시)를 갱신하지 않는다 — DB에서는 이미 지워진 Comment를 세션이 계속 "관리 중"으로 들고 있으면 뒤이은 post 삭제 flush에서 Hibernate가 그 엔티티의 연관관계를 다시 점검하다 엉뚱한 오류를 낸다. 비워서 운영 코드(PostService.delete)처럼 남겨 둔 엔티티 없이 진행한다.
         em.clear();
 
         commentRepository.deleteAllByPostId(post.getId());
@@ -95,10 +88,7 @@ class CommentRepositoryTest {
         em.flush();
         em.clear();
 
-        // PostService.delete()와 같은 순서 — 답글을 먼저 지우지 않고 deleteAllByPostId만
-        // 실행하면 H2에서는 통과하더라도, 실제 운영 DB(MariaDB/InnoDB)에서는 부모 행이 자신의
-        // 답글보다 먼저 삭제되며 FK_COMMENTS_PARENT 위반이 날 수 있다
-        // (PostDeleteWithRepliesMariaDbTest에서 실제 MariaDB로 확인).
+        // PostService.delete()와 같은 순서 — 답글을 먼저 지우지 않고 deleteAllByPostId만 실행하면 H2에서는 통과하더라도 운영 DB(MariaDB/InnoDB)에서는 부모 행이 자신의 답글보다 먼저 삭제되며 FK_COMMENTS_PARENT 위반이 날 수 있다(PostDeleteWithRepliesMariaDbTest에서 실제 MariaDB로 확인).
         commentRepository.deleteRepliesByPostId(post.getId());
         commentRepository.deleteAllByPostId(post.getId());
         postRepository.delete(post);
@@ -165,10 +155,7 @@ class CommentRepositoryTest {
         assertThat(page).extracting(Comment::getId).containsExactly(second.getId(), third.getId());
     }
 
-    /**
-     * 2단계 댓글: DB에 cascade를 걸지 않았으므로(Comment.parent 주석 참고) 최상위 댓글을
-     * 지우기 전에 답글을 먼저 이 메서드로 지워야 한다. 다른 부모의 답글은 건드리지 않는다.
-     */
+    /** 2단계 댓글: DB에 cascade를 걸지 않았으므로(Comment.parent 주석 참고) 최상위 댓글을 지우기 전에 답글을 먼저 이 메서드로 지워야 한다. 다른 부모의 답글은 건드리지 않는다. */
     @Test
     @DisplayName("2단계: deleteAllByParentId는 그 부모의 답글만 지우고 다른 부모의 답글은 남긴다")
     void deleteAllByParentId_deletesOnlyRepliesOfGivenParent() {

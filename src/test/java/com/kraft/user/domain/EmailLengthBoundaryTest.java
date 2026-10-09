@@ -24,18 +24,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * 이메일 길이 경계를 가입부터 로그인·세션 저장까지 한 번에 통과시켜 검증한다.
  * <p>
- * 예전에는 세 경계가 서로 달랐다: 입력 검증에는 길이 제한이 없었고, 암호화 컬럼
- * {@code users.email VARCHAR(500)}은 hex 암호문({@code 평문 × 2 + 64}) 때문에 218자까지만
- * 받았으며, 세션의 {@code PRINCIPAL_NAME}은 100자였다. 그 결과 101~218자 이메일은
- * <b>가입은 성공하는데 로그인 세션 저장에서 실패하는</b> 계정이 됐다.
+ * 입력 검증에 길이 제한이 없고 암호화 컬럼 {@code users.email VARCHAR(500)}은 hex 암호문({@code 평문 × 2 + 64}) 때문에 218자까지만 받으며 세션의 {@code PRINCIPAL_NAME}은 100자이면,
+ * 101~218자 이메일은 <b>가입은 성공하는데 로그인 세션 저장에서 실패하는</b> 계정이 된다. 그래서 {@link EmailPolicy#MAX_LENGTH}(가장 좁은 경계)를 제품 정책으로 삼아 가입 시점에 거부한다.
+ * 이 테스트는 "정책 상한 길이는 끝까지 동작하고, 한 자만 넘으면 가입 단계에서 명확한 400"임을 확인한다.
  * <p>
- * 이제 {@link EmailPolicy#MAX_LENGTH}(가장 좁은 경계)를 제품 정책으로 삼아 가입 시점에
- * 거부한다. 이 테스트는 "정책 상한 길이는 끝까지 동작하고, 한 자만 넘으면 가입 단계에서
- * 명확한 400"임을 확인한다.
- * <p>
- * BE-04부터 세션 principal(따라서 {@code PRINCIPAL_NAME})은 이메일이 아니라 회원 id의
- * 문자열이다 — 그 컬럼의 100자 제한은 더 이상 이메일 길이에 직접 걸리지 않지만, 이미 정한
- * 정책값({@code MAX_LENGTH})은 그대로 유지한다(변경하려면 별도 검토가 필요).
+ * 세션 principal(따라서 {@code PRINCIPAL_NAME})은 이메일이 아니라 회원 id의 문자열이라 그 컬럼의 100자 제한은 더 이상 이메일 길이에 직접 걸리지 않지만, 이미 정한 정책값({@code MAX_LENGTH})은 그대로 유지한다(변경하려면 별도 검토가 필요).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -81,9 +74,7 @@ class EmailLengthBoundaryTest {
 
         signUp(email).andExpect(status().isOk());
 
-        // 예전에는 여기(세션 저장)에서 PRINCIPAL_NAME 컬럼 제한에 걸렸다. 지금은 principal이
-        // 회원 id라 그 제한과 무관해졌지만, 로그인·세션 저장 자체가 여전히 끝까지
-        // 동작하는지는 계속 확인한다.
+        // principal이 회원 id라 PRINCIPAL_NAME 제한과는 무관하지만, 로그인·세션 저장 자체가 끝까지 동작하는지는 계속 확인한다.
         Cookie session = login(email);
         Long userId = userRepository.findByEmailHmac(EmailHasher.hmacHex(email)).orElseThrow().getId();
         assertThat(sessionRepository.findByPrincipalName(String.valueOf(userId))).hasSize(1);
@@ -93,8 +84,7 @@ class EmailLengthBoundaryTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"제목\",\"content\":\"내용\"}"))
-                // GUEST(이메일 미인증)라 글쓰기는 막히지만, 그것은 인증이 아니라 권한 문제다 —
-                // 세션이 살아 있다는 뜻이므로 로그인 리다이렉트(302)가 아니어야 한다.
+                // GUEST(이메일 미인증)라 글쓰기는 막히지만 그것은 인증이 아니라 권한 문제다 — 세션이 살아 있다는 뜻이므로 로그인 리다이렉트(302)가 아니어야 한다.
                 .andExpect(status().isForbidden());
     }
 
@@ -130,11 +120,8 @@ class EmailLengthBoundaryTest {
     }
 
     /**
-     * 정확히 {@code length}자이면서 {@code @Email} 검증을 통과하는 주소를 만든다.
-     * <p>
-     * 단순히 "a"를 길게 이어 붙이면 안 된다 — {@code @Email}은 local part를 64자로,
-     * 도메인 라벨 하나를 63자로 제한하므로 그런 문자열은 길이가 아니라 <b>형식</b> 위반으로
-     * 걸린다. 그러면 길이 정책을 검증하는 게 아니라 형식 검증을 검증하게 된다.
+     * 정확히 {@code length}자이면서 {@code @Email} 검증을 통과하는 주소를 만든다. 단순히 "a"를 길게 이어 붙이면 안 된다 — {@code @Email}은 local part를 64자로, 도메인 라벨 하나를 63자로 제한하므로
+     * 그런 문자열은 길이가 아니라 <b>형식</b> 위반으로 걸려, 길이 정책이 아니라 형식 검증을 검증하게 된다.
      */
     private static String emailOfLength(int length) {
         String local = "a".repeat(Math.min(64, length - 6));

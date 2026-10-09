@@ -24,10 +24,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 검색 목록이 SQL을 몇 번 내는지 고정한다.
  * <p>
- * 검색어가 있으면 {@code LIKE '%kw%'}가 인덱스를 못 타서 COUNT가 매칭 여부와 상관없이 항상
- * 테이블 전체를 읽는다. 그래서 검색은 COUNT를 세지 않고 결과 쿼리와 댓글 수 쿼리, 2문장이다
- * (예전에는 COUNT를 포함해 3문장). 검색어 없는 목록은 총 건수·번호 이동이 필요해 COUNT를
- * 그대로 센다 — 이 숫자가 바뀌면 누가 어느 쪽 경로를 건드렸는지 여기서 드러난다.
+ * 검색어가 있으면 {@code LIKE '%kw%'}가 인덱스를 못 타서 COUNT가 매칭 여부와 상관없이 항상 테이블 전체를 읽는다. 그래서 검색은 COUNT를 세지 않고 결과 쿼리와 댓글 수 쿼리, 2문장이다. 검색어 없는 목록은 총 건수·번호 이동이 필요해 COUNT를 그대로 센다 —
+ * 이 숫자가 바뀌면 누가 어느 쪽 경로를 건드렸는지 여기서 드러난다.
  */
 @SpringBootTest(properties = "spring.jpa.properties.hibernate.generate_statistics=true")
 class PostSearchQueryCountTest {

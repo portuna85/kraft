@@ -19,19 +19,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * 문자 수(72자)와 실제 인코더가 다루는 바이트 수는 다르다 — DTO의
- * {@code @Size(max = 72)}는 문자 수만 보고, 실제로 저장에 쓰이는
- * {@code PasswordEncoderFactories.createDelegatingPasswordEncoder()}(BCrypt)는 72
- * <b>바이트</b>를 기준으로 다룬다. 한글 72자는 UTF-8로 216바이트라 이 경계를 훨씬 넘는다.
+ * 문자 수(72자)와 실제 인코더가 다루는 바이트 수는 다르다 — DTO의 {@code @Size(max = 72)}는 문자 수만 보고, 저장에 쓰이는 {@code PasswordEncoderFactories.createDelegatingPasswordEncoder()}(BCrypt)는
+ * 72 <b>바이트</b>를 기준으로 다룬다. 한글 72자는 UTF-8로 216바이트라 이 경계를 훨씬 넘는다.
  * <p>
- * 예전에는 DTO 검증을 통과한 입력을 인코더가 {@code IllegalArgumentException("password
- * cannot be more than 72 bytes")}로 거절했다 — 영문 원문 메시지가 그대로 노출됐다. 이제
- * {@code PasswordBytePolicy}가 인코더를 부르기 전에 UTF-8 바이트 수를 먼저 검사해, 같은
- * 상황에서 명확한 한국어 오류로 미리 거절한다(encoder 자체는 바꾸지 않는다 — 교체는 기존
- * 해시 호환성·rehash 정책이 필요한 별도 작업).
+ * DTO 검증을 통과한 입력을 인코더가 {@code IllegalArgumentException("password cannot be more than 72 bytes")}로 거절하면 영문 원문 메시지가 그대로 노출된다. 그래서 {@code PasswordBytePolicy}가 인코더를 부르기 전에 UTF-8 바이트 수를 먼저 검사해
+ * 명확한 한국어 오류로 미리 거절한다(encoder 자체는 바꾸지 않는다 — 교체는 기존 해시 호환성·rehash 정책이 필요한 별도 작업).
  * <p>
- * 이 경계를 넘지 않는 멀티바이트 입력(이모지 포함, 72바이트 이내)은 가입→변경→재설정 전
- * 과정에서 여전히 일관되게 동작해야 한다.
+ * 이 경계를 넘지 않는 멀티바이트 입력(이모지 포함, 72바이트 이내)은 가입→변경→재설정 전 과정에서 여전히 일관되게 동작해야 한다.
  */
 @SpringBootTest
 class PasswordMultibyteBoundaryTest {
@@ -79,9 +73,7 @@ class PasswordMultibyteBoundaryTest {
                 .as("한글 72자는 72바이트를 훨씬 넘는다 — 이 테스트가 실제로 경계를 넘는 입력을 쓰는지 확인")
                 .isGreaterThan(72);
 
-        // DTO의 @Size(max=72)는 문자 수만 보므로 이 입력을 통과시키지만, PasswordBytePolicy가
-        // 인코더를 부르기 전에 UTF-8 바이트 수로 먼저 거절한다 — 인코더의 영문 원문 메시지가
-        // 아니라 한국어 오류로 signUp이 실패한다.
+        // DTO의 @Size(max=72)는 문자 수만 보므로 이 입력을 통과시키지만, PasswordBytePolicy가 인코더를 부르기 전에 UTF-8 바이트 수로 먼저 거절한다 — 인코더의 영문 원문 메시지가 아니라 한국어 오류로 signUp이 실패한다.
         assertThatThrownBy(() -> userService.signUp("multibyte-tester", email, KOREAN_72))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("UTF-8")

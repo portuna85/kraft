@@ -14,10 +14,7 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * {@code record()}·{@code drain()}이 동시에 돌아도 필드 다섯 개가 서로 다른 주기로 쪼개지지
- * 않는지 검증한다. 예전 구현(독립된
- * {@code LongAdder} 다섯 개를 하나씩 sumThenReset)은 이 시나리오에서 {@code errors}가
- * {@code requests}보다 큰 스냅숏을 만들어낼 수 있었다.
+ * {@code record()}·{@code drain()}이 동시에 돌아도 필드 다섯 개가 서로 다른 주기로 쪼개지지 않는지 검증한다. 독립된 {@code LongAdder} 다섯 개를 하나씩 sumThenReset하는 구현은 이 시나리오에서 {@code errors}가 {@code requests}보다 큰 스냅숏을 만들어낼 수 있다.
  */
 class RequestMetricsConcurrencyTest {
 
@@ -93,18 +90,11 @@ class RequestMetricsConcurrencyTest {
     }
 
     /**
-     * HealthReporter.collect()가 주기마다 drain()으로 비우므로, "동시 기록이 도는 동안
-     * 여러 번 드레인한 스냅숏을 모두 더한 값"이 "그동안 실제로 기록을 시도한 건수"와 거의
-     * 같아야 관측치를 믿을 수 있다 — 위쪽 테스트들은 개별 스냅숏의 내부 일관성
-     * (errors&lt;=requests)만 보고, 드레인 여러 번에 걸쳐 건수 자체가 새거나 겹치지 않는지는
-     * 보지 않았다.
+     * HealthReporter.collect()가 주기마다 drain()으로 비우므로, "동시 기록이 도는 동안 여러 번 드레인한 스냅숏을 모두 더한 값"이 "그동안 실제로 기록을 시도한 건수"와 거의 같아야 관측치를 믿을 수 있다 —
+     * 위쪽 테스트들은 개별 스냅숏의 내부 일관성(errors&lt;=requests)만 보고, 드레인 여러 번에 걸쳐 건수 자체가 새거나 겹치지 않는지는 보지 않는다.
      * <p>
-     * 정확히 같지는 않다 — {@link RequestMetrics} 클래스 주석의 "남아 있는 허용 오차"에 적은
-     * 대로, record()가 counters.get()으로 묶음을 읽은 직후 drain()이 그 묶음을 떼어 가면 그
-     * 한 건은 조용히 사라진다. 여기서 직접 이 손실 폭을 측정해 두 가지를 함께 고정한다:
-     * 합계가 실제 기록 수를 <b>넘는 일은 없어야 하고</b>(그러면 이중 집계다 — 있어서는 안
-     * 된다), 손실은 표본 대비 아주 작은 비율 안에 머물러야 한다(그러지 않으면 더는 "드문"
-     * 손실이 아니라 관측치를 믿을 수 없다).
+     * 정확히 같지는 않다 — {@link RequestMetrics} 클래스 주석의 "허용 오차"에 적은 대로, record()가 묶음을 읽은 직후 drain()이 그 묶음을 떼어 가면 그 한 건이 사라질 수 있다.
+     * 여기서 이 손실 폭을 측정해 두 가지를 함께 고정한다: 합계가 실제 기록 수를 <b>넘는 일은 없어야 하고</b>(그러면 이중 집계다), 손실은 표본 대비 아주 작은 비율 안에 머물러야 한다(아니면 더는 "드문" 손실이 아니라 관측치를 믿을 수 없다).
      */
     @Test
     @DisplayName("record가 도는 동안 여러 번 드레인해도 합계는 실제로 기록한 건수와 거의 같고 절대 넘지 않는다")

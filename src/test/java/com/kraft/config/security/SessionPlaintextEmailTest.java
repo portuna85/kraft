@@ -28,9 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * 로그인 세션을 JDBC 세션 테이블에 저장할 때 이메일 원문이 남지 않는지 실제 저장 바이트로 확인한다.
  * <p>
- * 예전에는 {@link KraftUserDetails}가 이메일을 필드로 들고 있어, 직렬화된 SecurityContext
- * ({@code SPRING_SESSION_ATTRIBUTES.ATTRIBUTE_BYTES})에 이메일이 평문으로 들어갔다 —
- * {@code users.email}을 컬럼 암호화해도 세션 테이블·그 백업을 읽을 수 있으면 복원됐다.
+ * {@link KraftUserDetails}가 이메일을 필드로 들고 있으면 직렬화된 SecurityContext({@code SPRING_SESSION_ATTRIBUTES.ATTRIBUTE_BYTES})에 이메일이 평문으로 들어가, {@code users.email}을 컬럼 암호화해도 세션 테이블·그 백업을 읽을 수 있으면 복원된다.
  * principal 이름이 회원 id라는 것만 보는 검사는 객체 내부 필드를 놓치므로, 저장된 BLOB 자체를 본다.
  */
 @SpringBootTest

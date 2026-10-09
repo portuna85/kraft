@@ -40,12 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * {@link UserApiController} 웹 계층 테스트. {@code /api/v1/users}는 {@link SecurityConfig}에서
- * permitAll이므로 인증 없이도 호출 가능하지만, CSRF 보호는 그대로 적용됨을 함께 검증한다.
- * {@code /api/v1/users/me/password}는 정확한 문자열(`/api/v1/users`)에만 걸리는 permitAll
- * 규칙에 매치되지 않아 `/api/v1/**` authenticated 규칙으로 떨어짐을 검증한다.
- */
+/** {@link UserApiController} 웹 계층 테스트. {@code /api/v1/users}는 {@link SecurityConfig}에서 permitAll이므로 인증 없이도 호출 가능하지만 CSRF 보호는 그대로 적용됨을 함께 검증한다. {@code /api/v1/users/me/password}는 정확한 문자열(`/api/v1/users`)에만 걸리는 permitAll 규칙에 매치되지 않아 `/api/v1/**` authenticated 규칙으로 떨어짐을 검증한다. */
 @WebMvcTest(UserApiController.class)
 @Import(SecurityConfig.class)
 class UserApiControllerTest {
@@ -67,12 +62,7 @@ class UserApiControllerTest {
 
     private static final Long TESTER_ID = 1L;
 
-    /**
-     * 세션 principal은 회원 id다 — {@code CurrentUser.require}는 principal이
-     * {@link KraftUserDetails}가 아니면 미인증으로 본다. 그래서
-     * {@code with(user("tester@example.com"))}처럼 문자열 username만으로 인증을 흉내 내면
-     * 안 되고, 운영과 같은 모양의 principal을 직접 만들어 써야 한다.
-     */
+    /** 세션 principal은 회원 id다 — {@code CurrentUser.require}는 principal이 {@link KraftUserDetails}가 아니면 미인증으로 본다. 그래서 {@code with(user("tester@example.com"))}처럼 문자열 username만으로 인증을 흉내 내면 안 되고 운영과 같은 모양의 principal을 직접 만들어 써야 한다. */
     private static RequestPostProcessor authenticatedTester() {
         return user(new KraftUserDetails(TESTER_ID, "encoded", "tester",
                 List.of(new SimpleGrantedAuthority(Role.USER.getKey()))));

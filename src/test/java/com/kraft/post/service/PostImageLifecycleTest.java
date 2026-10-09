@@ -38,11 +38,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * 이미지 소유권과 파일 생명주기를 실제 DB·실제 파일로 검증한다.
- * <p>
- * 기존 {@code PostServiceTest}는 mock 리포지토리를 쓰기 때문에 커밋·롤백과 디스크 상태를
- * 관찰하지 못한다 — 바로 그 공백에서 두 결함이 살아 있었다. 여기서는 트랜잭션을 실제로
- * 커밋·롤백시키고 파일이 남았는지 사라졌는지를 직접 확인한다.
+ * 이미지 소유권과 파일 생명주기를 실제 DB·실제 파일로 검증한다. {@code PostServiceTest}는 mock 리포지토리를 써서 커밋·롤백과 디스크 상태를 관찰하지 못하므로,
+ * 여기서는 트랜잭션을 실제로 커밋·롤백시키고 파일이 남았는지 사라졌는지를 직접 확인한다.
  */
 @SpringBootTest
 class PostImageLifecycleTest {
@@ -85,10 +82,7 @@ class PostImageLifecycleTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    /**
-     * 겹친 트랜잭션을 만들기 위한 별도 템플릿. 기본 전파(REQUIRED)로는 바깥 트랜잭션에
-     * 참여해 같은 영속성 컨텍스트를 쓰므로 "다른 트랜잭션이 먼저 커밋했다"를 재현할 수 없다.
-     */
+    /** 겹친 트랜잭션을 만들기 위한 별도 템플릿. 기본 전파(REQUIRED)로는 바깥 트랜잭션에 참여해 같은 영속성 컨텍스트를 쓰므로 "다른 트랜잭션이 먼저 커밋했다"를 재현할 수 없다. */
     private TransactionTemplate requiresNew;
 
     private Authentication alice;
@@ -134,8 +128,7 @@ class PostImageLifecycleTest {
         String url = postService.uploadImage(imageFile(), alice).url();
         Long alicePost = postService.save(alice, new PostSaveRequestDto("앨리스 글", "내용", url, null, null, null));
 
-        // 밥이 같은 URL로 자기 글을 만들려는 시도 자체가 막힌다. 예전에는 이 글이 만들어졌고,
-        // 밥이 그 글을 지우면 앨리스의 파일이 사라졌다.
+        // 밥이 같은 URL로 자기 글을 만들려는 시도 자체가 막혀야 한다(만들어지면 밥이 그 글을 지울 때 앨리스의 파일이 사라진다).
         assertThatThrownBy(() -> postService.save(bob, new PostSaveRequestDto("밥 글", "내용", url, null, null, null)))
                 .isInstanceOf(AccessDeniedException.class);
 
@@ -195,9 +188,7 @@ class PostImageLifecycleTest {
         // 업로드 디렉터리는 이 클래스의 테스트들이 함께 쓰므로 절대 개수가 아니라 증감을 본다.
         int filesBefore = uploadedFileCount();
 
-        // 용량 검사와 등록이 한 트랜잭션에서 원자적으로 일어나므로, 파일은 검사보다 먼저
-        // 디스크에 쓰이지만 등록이 실패하면 곧바로 보상 삭제된다 — 대장 없는 파일이 남지
-        // 않는다.
+        // 용량 검사와 등록이 한 트랜잭션에서 원자적으로 일어나므로, 파일은 검사보다 먼저 디스크에 쓰이지만 등록이 실패하면 곧바로 보상 삭제된다 — 대장 없는 파일이 남지 않는다.
         assertThatThrownBy(() -> postService.uploadImage(imageFile(), alice))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("저장 공간을 모두 사용했습니다");
@@ -271,8 +262,7 @@ class PostImageLifecycleTest {
         Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", oldUrl, null, null, null));
         String newUrl = postService.uploadImage(imageFile(), alice).url();
 
-        // 이미지를 교체한 뒤 같은 트랜잭션을 롤백시킨다. 예전에는 update()가 커밋 전에 파일을
-        // 지웠기 때문에, DB는 기존 이미지를 가리키는 상태로 되돌아오는데 파일은 이미 없었다.
+        // 이미지를 교체한 뒤 같은 트랜잭션을 롤백시킨다 — update()가 커밋 전에 파일을 지우면 DB는 기존 이미지를 가리키는데 파일은 이미 없다.
         transactionTemplate.executeWithoutResult(status -> {
             postService.update(postId, new PostUpdateRequestDto("제목", "내용", newUrl, null, null, null), null, alice);
             status.setRollbackOnly();
@@ -345,8 +335,7 @@ class PostImageLifecycleTest {
             requiresNew.executeWithoutResult(inner ->
                     postImageRegistry.attach(url, aliceUser, postRepository.findById(postBId).orElseThrow()));
 
-            // 바깥 트랜잭션이 이제야 커밋을 시도한다 — 손에 쥔 버전이 이미 낡았으므로 실패해야
-            // 한다. 예전에는 잠금이 없어 이 시나리오가 조용히 성공하고 postA가 이겼다.
+            // 바깥 트랜잭션이 이제야 커밋을 시도한다 — 손에 쥔 버전이 이미 낡았으므로 실패해야 한다(잠금이 없으면 조용히 성공하고 postA가 이긴다).
         })).isInstanceOf(OptimisticLockingFailureException.class);
 
         assertThat(imageStatusOf(url)).isEqualTo(PostImageStatus.ATTACHED);
@@ -354,11 +343,8 @@ class PostImageLifecycleTest {
     }
 
     /**
-     * {@code validateQuotaAndRegister}가 이제 계정의 {@code PostImage} 행이 아니라 User
-     * 행 자체를 잠근다(B07의 {@code findByIdForUpdate}, NOWAIT 없이 블로킹). 그래서 더는 같은
-     * 스레드에서 바깥 트랜잭션이 커밋되지 않은 채 안쪽 트랜잭션을 동기 호출하는 방식(다른 테스트의
-     * 낙관적 잠금 검증 패턴)을 쓸 수 없다 — 안쪽이 바깥의 잠금을 기다리며 그대로 멈춘다(자기
-     * 교착). 실제로 동시에 도는 두 스레드로 검증한다.
+     * {@code validateQuotaAndRegister}는 계정의 {@code PostImage} 행이 아니라 User 행 자체를 잠근다({@code findByIdForUpdate}, NOWAIT 없이 블로킹).
+     * 그래서 같은 스레드에서 바깥 트랜잭션을 커밋하지 않은 채 안쪽 트랜잭션을 동기 호출하는 방식(다른 테스트의 낙관적 잠금 검증 패턴)은 안쪽이 바깥의 잠금을 기다리며 자기 교착에 빠지므로 쓸 수 없다. 실제로 동시에 도는 두 스레드로 검증한다.
      */
     @Test
     @DisplayName("같은 계정의 동시 업로드는 용량 검사·등록이 직렬화되어 한도를 넘지 않는다")
@@ -368,10 +354,7 @@ class PostImageLifecycleTest {
         assertConcurrentRegistrationsAreSerialized();
     }
 
-    /**
-     * 예전에는 잠글 기존 {@code PostImage} 행이 없으면(첫 업로드) 동시 경쟁을 막지 못했다.
-     * User 행은 항상 존재하므로 이미지가 하나도 없는 계정의 첫 업로드 두 건도 직렬화되어야 한다.
-     */
+    /** 잠글 기존 {@code PostImage} 행이 없는 첫 업로드도 동시 경쟁이 막혀야 한다. User 행은 항상 존재하므로 이미지가 하나도 없는 계정의 첫 업로드 두 건도 직렬화된다. */
     @Test
     @DisplayName("이미지가 하나도 없는 계정의 첫 업로드 두 건도 직렬화된다")
     void validateQuotaAndRegister_firstUploadsForOwnerWithNoImages_areSerialized() throws InterruptedException {
@@ -379,8 +362,7 @@ class PostImageLifecycleTest {
     }
 
     private void assertConcurrentRegistrationsAreSerialized() throws InterruptedException {
-        // 두 번 다 등록되면 한도(50MiB)를 넘는 크기로 골라, 직렬화가 깨지면(둘 다 같은 used=0을
-        // 보고 통과) 검증이 실제로 실패하게 만든다.
+        // 두 번 다 등록되면 한도(50MiB)를 넘는 크기로 골라, 직렬화가 깨지면(둘 다 같은 used=0을 보고 통과) 검증이 실제로 실패하게 만든다.
         long eachSize = PostImageRegistry.MAX_BYTES_PER_USER / 2 + 1024;
         List<Boolean> results = new java.util.concurrent.CopyOnWriteArrayList<>();
 
@@ -419,8 +401,7 @@ class PostImageLifecycleTest {
         Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", oldUrl, null, null, null));
         String newUrl = postService.uploadImage(imageFile(), alice).url();
 
-        // 이 요청과 무관하게 이미 삭제 대기 중인 이미지가 있다고 가정한다 — 시스템 전체의
-        // 밀린 삭제 대기열을 흉내 낸다.
+        // 이 요청과 무관하게 이미 삭제 대기 중인 이미지가 있다고 가정한다 — 시스템 전체의 밀린 삭제 대기열을 흉내 낸다.
         String unrelatedUrl = postService.uploadImage(imageFile(), alice).url();
         jdbcTemplate.update("UPDATE post_images SET status = 'PENDING_DELETE' WHERE file_name = ?",
                 fileNameOf(unrelatedUrl));
@@ -441,10 +422,7 @@ class PostImageLifecycleTest {
     void uploadImage_whenTransactionDoesNotCommit_deletesTheStoredFile() {
         var urlRef = new java.util.concurrent.atomic.AtomicReference<String>();
 
-        // uploadImage() 안에서는 파일 저장·대장 등록 모두 정상 끝난다. 그런데도 바깥
-        // 트랜잭션이 커밋되지 않으면(여기서는 강제 rollback-only로 흉내 낸다), 대장 행은 DB
-        // 롤백으로 자연히 사라지지만 이미 디스크에 쓴 파일은 그렇지 않다 — OnRollback으로
-        // 등록한 보상이 이것까지 지워야 한다.
+        // uploadImage() 안에서는 파일 저장·대장 등록이 모두 정상 끝나지만, 바깥 트랜잭션이 커밋되지 않으면(여기서는 강제 rollback-only) 대장 행은 롤백으로 사라져도 디스크에 쓴 파일은 남는다 — OnRollback으로 등록한 보상이 이것까지 지워야 한다.
         transactionTemplate.executeWithoutResult(status -> {
             urlRef.set(postService.uploadImage(imageFile(), alice).url());
             status.setRollbackOnly();
@@ -479,14 +457,11 @@ class PostImageLifecycleTest {
         Long imageId = postImageRepository.findByFileName(fileNameOf(url)).orElseThrow().getId();
         LocalDateTime threshold = LocalDateTime.now().minus(PostImageCleaner.ORPHAN_TTL);
 
-        // 정리 작업이 만료된 ORPHAN 대상을 조회한 시점을 흉내 낸다 — 아직 파일을 지우기 전
-        // 조건부 선점(claim)을 하지 않았다. 그 사이 다른 트랜잭션이 먼저 이 이미지를 게시글에
-        // 연결하고 커밋한다.
+        // 정리 작업이 만료된 ORPHAN 대상을 조회한 시점을 흉내 낸다(아직 파일을 지우기 전 조건부 선점을 하지 않았다). 그 사이 다른 트랜잭션이 먼저 이 이미지를 게시글에 연결하고 커밋한다.
         requiresNew.executeWithoutResult(inner ->
                 postImageRegistry.attach(url, aliceUser, postRepository.findById(postId).orElseThrow()));
 
-        // 정리 작업이 이제야 파일을 지우기 전 조건부 선점을 시도한다 — 이미 ATTACHED로 바뀌어
-        // ORPHAN 조건에 맞지 않으므로 0행이어야 하고, 파일을 지우면 안 된다.
+        // 정리 작업이 이제야 파일을 지우기 전 조건부 선점을 시도한다 — 이미 ATTACHED로 바뀌어 ORPHAN 조건에 맞지 않으므로 0행이어야 하고 파일을 지우면 안 된다.
         int claimed = transactionTemplate.execute(status ->
                 postImageRepository.claimExpiredOrphanForDeletion(imageId, threshold));
 
@@ -496,12 +471,8 @@ class PostImageLifecycleTest {
     }
 
     /**
-     * 회귀: 위 테스트와 반대 순서다. attach가 만료된 ORPHAN 이미지를 먼저 읽어 옛
-     * version을 쥔 채로, 그 사이 정리 작업의 <b>선점(claim)만</b> 먼저 커밋된다(파일은 아직
-     * 지우지 않는다 — 선점과 삭제가 서로 다른 트랜잭션인 것 자체가 COR-06의 요점이다).
-     * {@code claimExpiredOrphanForDeletion}이 version을 함께 올리지 않았다면, attach의
-     * UPDATE는 행이 여전히 존재하므로(아직 삭제 전) 그 버전 불일치를 못 보고 그대로 성공해
-     * "곧 지워질 이미지"를 게시글에 붙은 것처럼 남겼을 것이다.
+     * 회귀: 위 테스트와 반대 순서다. attach가 만료된 ORPHAN 이미지를 먼저 읽어 옛 version을 쥔 채로, 그 사이 정리 작업의 <b>선점(claim)만</b> 먼저 커밋된다(선점과 삭제는 서로 다른 트랜잭션이라 파일은 아직 지우지 않았다).
+     * {@code claimExpiredOrphanForDeletion}이 version을 함께 올리지 않으면 attach의 UPDATE는 행이 여전히 존재해 버전 불일치를 못 보고 성공해, "곧 지워질 이미지"를 게시글에 붙은 것처럼 남긴다.
      */
     @Test
     @DisplayName("회귀: attach가 만료된 이미지를 먼저 읽어 두어도, 그 사이 정리 작업의 선점이 먼저 커밋되면 충돌로 실패한다")
@@ -516,26 +487,20 @@ class PostImageLifecycleTest {
             // attach가 이 이미지를 먼저 읽어(version=0, 아직 ORPHAN) 붙인다. 아직 커밋 전이다.
             postImageRegistry.attach(url, aliceUser, postRepository.findById(postId).orElseThrow());
 
-            // 그 사이 정리 작업의 선점 단계만 독립된 트랜잭션으로 먼저 커밋된다 — attach가
-            // 손에 쥔 version은 이제 낡았다. 파일은 아직 그대로다.
+            // 그 사이 정리 작업의 선점 단계만 독립된 트랜잭션으로 먼저 커밋된다 — attach가 손에 쥔 version은 이제 낡았다. 파일은 아직 그대로다.
             requiresNew.executeWithoutResult(inner ->
                     postImageRepository.claimExpiredOrphanForDeletion(imageId, threshold));
 
             // attach 쪽 바깥 트랜잭션이 이제야 커밋을 시도한다 — 실패해야 한다.
         })).isInstanceOf(OptimisticLockingFailureException.class);
 
-        // 정리 작업은 선점만 했을 뿐 아직 파일을 지우지 않았다 — 이 실패는 오직 version
-        // 불일치 때문이어야 한다(행이 사라져서가 아니라).
+        // 정리 작업은 선점만 했을 뿐 아직 파일을 지우지 않았다 — 이 실패는 오직 version 불일치 때문이어야 한다(행이 사라져서가 아니라).
         assertThat(fileOf(url)).exists();
         assertThat(imageStatusOf(url)).isEqualTo(PostImageStatus.PENDING_DELETE);
     }
 
     /**
-     * {@code clean()}의 self-invocation 문제(같은 객체 안에서 부르면 REQUIRES_NEW가
-     * 프록시를 거치지 않아 무효화되던 것)를 고치면서, 배치 조회도 id 커서로 바꿨다(추가
-     * 발견 사항) — 실패한 행이 항상 같은 페이지 맨 앞에 걸려 뒤쪽 정상 행을 굶기지 않게
-     * 하기 위해서다. 한 배치(200건)를 넘는 실제 대기열을 실제 DB로 처리해, 두 번째 배치까지
-     * 이어서 정상적으로 커밋되는지 확인한다.
+     * {@code clean()}의 배치 조회는 id 커서로 넘어가므로 실패한 행이 항상 같은 페이지 맨 앞에 걸려 뒤쪽 정상 행을 굶기지 않는다. 한 배치(200건)를 넘는 실제 대기열을 실제 DB로 처리해, 두 번째 배치까지 이어서 정상적으로 커밋되는지 확인한다.
      */
     @Test
     @DisplayName("한 배치를 넘는 삭제 대기열도 다음 배치로 이어서 전부 처리한다")

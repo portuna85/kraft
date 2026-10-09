@@ -33,7 +33,7 @@ test.describe('비밀번호 변경', () => {
         await page.getByRole('button', { name: '비밀번호 변경' }).click();
         await expect(page.locator('#changePasswordModal')).toBeVisible();
 
-        // 예전에는 "변경하기"가 type=button이라 Enter가 아무 일도 하지 않았다.
+        // "변경하기"가 진짜 submit이라 Enter로도 제출된다.
         await page.locator('#currentPassword').press('Enter');
         expect(requested, 'required가 제출 자체를 막는다').toBe(false);
 
@@ -45,11 +45,7 @@ test.describe('비밀번호 변경', () => {
         expect(requested, 'Enter가 실제로 폼을 제출했다').toBe(true);
     });
 
-    /**
-     * 요청이 진행 중일 때 모달을 닫고 다시 열면 폼이 reset된다. 그 늦은 응답(실패)이
-     * 도착했을 때, 이미 새로 연(비어 있는) 폼 위에 낡은 오류를 덮어씌우면 안 된다 — 사용자는
-     * 이 시도를 아직 한 번도 제출하지 않았다.
-     */
+    /** 요청이 진행 중일 때 모달을 닫고 다시 열면 폼이 reset된다. 그 늦은 응답(실패)이 도착했을 때 이미 새로 연(비어 있는) 폼 위에 낡은 오류를 덮어씌우면 안 된다 — 사용자는 이 시도를 아직 한 번도 제출하지 않았다. */
     test('재열기 후에는 이전 시도의 늦은 실패 응답이 새 폼에 나타나지 않는다', async ({ page }) => {
         let releaseFirst;
         const gate = new Promise((resolve) => {
@@ -87,20 +83,14 @@ test.describe('비밀번호 변경', () => {
         await expect(modal).toBeVisible();
     });
 
-    /**
-     * 문서 5.4: 모달의 열기·닫기·Escape·포커스 복귀를 검증한다. account.js는 이 모달에
-     * Escape나 hide 이벤트를 따로 걸지 않으므로(byId 바인딩뿐), Bootstrap 5 기본 동작이
-     * 그대로 살아 있는지 확인한다.
-     */
+    /** 모달의 열기·닫기·Escape·포커스 복귀를 검증한다. account.js는 이 모달에 Escape나 hide 이벤트를 따로 걸지 않으므로(byId 바인딩뿐) Bootstrap 5 기본 동작이 그대로 살아 있는지 확인한다. */
     test('Escape로 닫히고 포커스가 트리거로 돌아온다', async ({ page }) => {
         await page.goto('/');
         await openAccountMenu(page);
         const trigger = page.getByRole('button', { name: '비밀번호 변경' });
         await trigger.click();
         await expect(page.locator('#changePasswordModal')).toBeVisible();
-        // 페이드 전환이 끝나고 shown.bs.modal이 첫 입력으로 포커스를 옮길 때까지 기다린다 —
-        // 그 전에 Escape를 누르면 포커스가 아직 모달 바깥 트리거에 있어 Bootstrap의 keydown
-        // 리스너(모달 엘리먼트에 걸려 있다)까지 이벤트가 번지지(bubble) 않는다.
+        // 페이드 전환이 끝나고 shown.bs.modal이 첫 입력으로 포커스를 옮길 때까지 기다린다 — 그 전에 Escape를 누르면 포커스가 아직 모달 바깥 트리거에 있어 Bootstrap의 keydown 리스너(모달 엘리먼트에 걸려 있다)까지 이벤트가 번지지(bubble) 않는다.
         await expect(page.locator('#currentPassword')).toBeFocused();
 
         await page.keyboard.press('Escape');
@@ -110,10 +100,8 @@ test.describe('비밀번호 변경', () => {
 });
 
 test.describe('비밀번호 변경 성공', () => {
-    // 이 스펙은 비밀번호를 실제로 바꾸므로 다른 계정과 섞이면 안 된다 — 전용 시드 계정
-    // (PASSWORD_CHANGE_ACCOUNT)을 쓴다. admin을 쓰면 변경과 복원 사이에서 실패했을 때 같은
-    // 샤드의 나머지 테스트가 admin 로그인에 줄줄이 실패했다.
-    // storageState 없이 새로 로그인해 쓰고, 끝에서 원래대로 되돌린다.
+    // 이 스펙은 비밀번호를 실제로 바꾸므로 전용 시드 계정(PASSWORD_CHANGE_ACCOUNT)을 쓴다 — admin을 쓰면 변경과 복원 사이에서 실패했을 때 같은 샤드의 나머지 테스트가 admin 로그인에 줄줄이 실패한다.
+    // storageState 없이 새로 로그인해 쓰고 끝에서 원래대로 되돌린다.
     test.use({ storageState: { cookies: [], origins: [] } });
 
     test('변경하면 모든 세션이 끊기고 로그인 화면으로 간다', async ({ page }) => {
@@ -147,11 +135,7 @@ test.describe('비밀번호 앞뒤 공백', () => {
     // 가입부터 시작하므로 로그인 상태 없이 돈다.
     test.use({ storageState: { cookies: [], origins: [] } });
 
-    /**
-     * 예전에는 회원가입·재설정은 비밀번호 원문을 그대로 보내는데, 비밀번호 변경·탈퇴 모달만
-     * dom.js의 trim하는 valueOf()로 값을 읽었다. 그래서 앞뒤 공백을 포함해 가입한 비밀번호를
-     * "현재 비밀번호"로 그대로 입력해도 trim된 값과 비교되어 거절됐다. 이제는 어디서도 trim하지 않아야 한다.
-     */
+    /** 회원가입·재설정은 비밀번호 원문을 그대로 보내므로 비밀번호 변경·탈퇴 모달도 trim하지 않고 읽어야 한다 — trim된 값과 비교하면 앞뒤 공백을 포함해 가입한 비밀번호를 "현재 비밀번호"로 그대로 입력해도 거절된다. */
     test('공백을 포함해 가입한 비밀번호를 그대로 입력해도 비밀번호 변경이 통과한다', async ({ page }) => {
         const email = `${uniqueTitle('space').toLowerCase()}@e2e.test`;
         const paddedPassword = `  ${PASSWORD}  `;
@@ -205,9 +189,7 @@ test.describe('인증 메일 재발송', () => {
         const modal = page.locator('#resendVerificationModal');
         await trigger.click();
         await expect(modal).toBeVisible();
-        // 이 모달은 계정.js가 따로 포커스를 옮기지 않으므로, 전환이 끝나면 Bootstrap이 모달
-        // 컨테이너 자체에 포커스를 준다 — 그 전에 Escape를 누르면 이벤트가 아직 모달 바깥
-        // 트리거에서 발생해 Bootstrap의 keydown 리스너까지 번지지 않는다.
+        // 이 모달은 account.js가 따로 포커스를 옮기지 않으므로 전환이 끝나면 Bootstrap이 모달 컨테이너 자체에 포커스를 준다 — 그 전에 Escape를 누르면 이벤트가 아직 모달 바깥 트리거에서 발생해 Bootstrap의 keydown 리스너까지 번지지 않는다.
         await expect(modal).toBeFocused();
 
         await page.keyboard.press('Escape');

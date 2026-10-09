@@ -14,12 +14,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
-/**
- * {@link DhLotteryClient}가 성공/아직 추첨 전/신뢰할 수 없는 응답(홈페이지로 리다이렉트되는
- * 등)을 올바르게 구분하는지, 그리고 한 번 받은 배치를 캐시해 같은 배치에 속한 회차는 다시
- * 요청하지 않는지 확인한다. 실제 네트워크를 쓰지 않고 {@link MockRestServiceServer}로
- * 응답을 흉내낸다.
- */
+/** {@link DhLotteryClient}가 성공/아직 추첨 전/신뢰할 수 없는 응답(홈페이지로 리다이렉트되는 등)을 올바르게 구분하는지, 그리고 한 번 받은 배치를 캐시해 같은 배치에 속한 회차는 다시 요청하지 않는지 확인한다. 실제 네트워크를 쓰지 않고 {@link MockRestServiceServer}로 응답을 흉내낸다. */
 class DhLotteryClientTest {
 
     private static final String BASE_URL = "https://www.dhlottery.co.kr";
@@ -185,10 +180,7 @@ class DhLotteryClientTest {
         assertThat(outcome).isInstanceOf(DhLotteryClient.FetchOutcome.Unavailable.class);
     }
 
-    /**
-     * 번호 필드는 nullable Integer다. null 필드가 있는 행 하나 때문에 fetchRound 전체가
-     * (예외를 던지지 않는다는 계약을 어기고) NPE로 죽지 않고, 그 행만 건너뛰어야 한다.
-     */
+    /** 번호 필드는 nullable Integer다. null 필드가 있는 행 하나 때문에 fetchRound 전체가 (예외를 던지지 않는다는 계약을 어기고) NPE로 죽지 않고 그 행만 건너뛰어야 한다. */
     @Test
     @DisplayName("번호 필드가 null인 행이 있어도 예외 없이 Unavailable로 분류하고, 같은 배치의 다른 회차는 그대로 쓸 수 있다")
     void unavailable_whenANumberFieldIsNull_doesNotThrowAndKeepsOtherRoundsUsable() {

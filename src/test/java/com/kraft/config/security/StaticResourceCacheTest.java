@@ -21,12 +21,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * 정적 자원(CSS·JS)이 페이지 응답과 다른 캐시 헤더를 받는지 확인한다.
  * <p>
- * 예전에는 {@code SecurityConfig}의 단일 필터 체인이 모든 응답에
- * {@code Cache-Control: no-store}를 붙여, {@code application.yml}의
- * {@code spring.web.resources.cache} 설정이 있어도 브라우저가 CSS·JS를 매 페이지 이동마다
- * 다시 받았다. {@code staticResourceChain}이 그 경로에서만 캐시 헤더 라이터를 끄는 것을
- * 이 테스트가 고정한다 — 반대로 HTML 응답은 여전히 {@code no-store}여야 로그인 여부에 따라
- * 다른 화면이 캐시되는 사고가 나지 않는다.
+ * {@code SecurityConfig}의 단일 필터 체인이 모든 응답에 {@code Cache-Control: no-store}를 붙이면 {@code application.yml}의 {@code spring.web.resources.cache} 설정이 있어도 브라우저가 CSS·JS를 매 페이지 이동마다 다시 받는다.
+ * {@code staticResourceChain}이 그 경로에서만 캐시 헤더 라이터를 끄는 것을 이 테스트가 고정한다 — 반대로 HTML 응답은 여전히 {@code no-store}여야 로그인 여부에 따라 다른 화면이 캐시되는 사고가 나지 않는다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -38,10 +34,7 @@ class StaticResourceCacheTest {
     @Value("${app.upload.dir}")
     private String uploadDir;
 
-    /**
-     * 업로드 이미지는 365일 immutable이 아니라 하루 public으로 캐시한다 — 모더레이션으로 지운
-     * 이미지가 브라우저·프록시에 1년 남지 않게 한다. 실제 업로드 디렉터리에 파일을 하나 두고 요청한다.
-     */
+    /** 업로드 이미지는 365일 immutable이 아니라 하루 public으로 캐시한다 — 모더레이션으로 지운 이미지가 브라우저·프록시에 1년 남지 않게 한다. 실제 업로드 디렉터리에 파일을 하나 두고 요청한다. */
     @Test
     @DisplayName("업로드 이미지는 1일 public으로 캐시하고 immutable이 아니다")
     void uploadedImage_hasShortPublicCache() throws Exception {

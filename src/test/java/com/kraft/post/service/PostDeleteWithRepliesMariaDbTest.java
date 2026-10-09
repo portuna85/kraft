@@ -24,11 +24,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 /**
- * 답글이 있는 게시글 삭제와 자기참조 FK의 회귀 테스트. 게시글 삭제는 소프트 삭제가 되었으므로
- * 자기참조 FK 순서는 보관 기간 뒤의 영구 삭제({@code PostService.purge})에서 확인한다. H2는
- * {@code FK_COMMENTS_PARENT} 위반을 문장 끝에서만 검사해 삭제 순서 문제를 재현하지 못하므로
- * (CommentRepositoryTest), 실제 InnoDB로 답글이 달린 게시글을 두 경로(작성자 삭제, 관리자의
- * 신고 처리)로 지워 FK 위반이 나지 않는지 확인한다. Docker가 없으면 건너뛴다.
+ * 답글이 있는 게시글 삭제와 자기참조 FK의 회귀 테스트. 게시글 삭제는 소프트 삭제이므로 자기참조 FK 순서는 보관 기간 뒤의 영구 삭제({@code PostService.purge})에서 확인한다.
+ * H2는 {@code FK_COMMENTS_PARENT} 위반을 문장 끝에서만 검사해 삭제 순서 문제를 재현하지 못하므로(CommentRepositoryTest), 실제 InnoDB로 답글이 달린 게시글을 두 경로(작성자 삭제, 보관 기간이 지난 글의 PostPurger 영구 삭제)로 지워 FK 위반이 나지 않는지 확인한다. Docker가 없으면 건너뛴다.
  */
 class PostDeleteWithRepliesMariaDbTest extends MariaDbIntegrationTest {
 

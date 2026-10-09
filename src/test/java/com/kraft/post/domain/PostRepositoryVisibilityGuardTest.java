@@ -11,17 +11,10 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * {@code Post}를 읽는 JPQL이 소프트 삭제된 행을 거르는지 지킨다. {@code @SQLRestriction}을 쓰지 않고
- * 쿼리마다 {@code PostRepository.VISIBLE}을 붙이는 방식이라, 새 쿼리가 그 조건을 빠뜨리면 지운 글이
- * 목록·검색·sitemap에 다시 나타난다 — 그 실수를 컴파일이나 평소 테스트로는 잡기 어렵다.
- */
+/** {@code Post}를 읽는 JPQL이 소프트 삭제된 행을 거르는지 지킨다. {@code @SQLRestriction}을 쓰지 않고 쿼리마다 {@code PostRepository.VISIBLE}을 붙이는 방식이라, 새 쿼리가 그 조건을 빠뜨리면 지운 글이 목록·검색·sitemap에 다시 나타난다 — 컴파일이나 평소 테스트로는 잡기 어려운 실수다. */
 class PostRepositoryVisibilityGuardTest {
 
-    /**
-     * 숨겨진 행을 일부러 읽거나 바꾸는 쿼리. 관리자 상세·영구 삭제가 읽고, {@code unpin}은 삭제·숨김 상태와 무관하게
-     * 고정을 풀어야 해서 {@code deletedAt} 조건을 두지 않는다.
-     */
+    /** 숨겨진 행을 일부러 읽거나 바꾸는 쿼리. 관리자 상세·영구 삭제가 읽고, {@code unpin}은 삭제·숨김 상태와 무관하게 고정을 풀어야 해서 {@code deletedAt} 조건을 두지 않는다. */
     private static final Set<String> READS_HIDDEN_ROWS = Set.of(
             "findByIdWithUser", "findByIdForPurge", "findIdsDeletedBefore", "unpin");
 

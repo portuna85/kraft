@@ -12,13 +12,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * {@link UserRepository} 통합 테스트. 실제 H2에 대해 실행되어, {@link User#email}이 AES로
- * 암호화되어 저장되고(EmailAttributeConverter), 조회·중복확인·유니크 제약은 SHA-512 해시를 담은
- * {@code email_hash} 컬럼(3.9절)을 통해 이뤄짐을 검증한다. {@code @DataJpaTest}는 JPA 관련 빈만
- * 스캔하므로 {@link EmailAttributeConverter}(Spring 빈으로 등록되어야 {@code @Value} 키 주입이
- * 됨)를 명시적으로 {@code @Import}해야 한다.
- */
+/** {@link UserRepository} 통합 테스트. 실제 H2에 대해 실행되어, {@link User#email}이 AES로 암호화되어 저장되고(EmailAttributeConverter) 조회·중복확인·유니크 제약은 SHA-512 해시를 담은 {@code email_hash} 컬럼을 통해 이뤄짐을 검증한다. {@code @DataJpaTest}는 JPA 관련 빈만 스캔하므로 {@link EmailAttributeConverter}(Spring 빈으로 등록되어야 {@code @Value} 키 주입이 됨)를 명시적으로 {@code @Import}해야 한다. */
 @DataJpaTest
 @Import(EmailAttributeConverter.class)
 class UserRepositoryTest {
@@ -83,8 +77,7 @@ class UserRepositoryTest {
     @Test
     @DisplayName("name 유니크 제약: 이메일이 달라도 같은 이름은 두 번 저장되지 않는다")
     void save_duplicateName_violatesUniqueConstraint() {
-        // existsByName() 사전 검사와 INSERT 사이의 경쟁은 DB 제약만이 막을 수 있다. 예전에는
-        // 이 제약이 없어 서로 다른 이메일이 같은 이름을 갖는 상태가 실제로 저장됐다.
+        // existsByName() 사전 검사와 INSERT 사이의 경쟁은 DB 제약만이 막을 수 있다 — 제약이 없으면 서로 다른 이메일이 같은 이름을 갖는 상태가 실제로 저장된다.
         userRepository.saveAndFlush(user("같은닉네임", "one@example.com"));
 
         assertThatThrownBy(() -> userRepository.saveAndFlush(user("같은닉네임", "two@example.com")))

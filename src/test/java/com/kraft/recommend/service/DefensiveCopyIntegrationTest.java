@@ -24,13 +24,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * 방어적 복사가 각 타입의 생성자 안에서 끝나는 게 아니라, 실제 저장·조회·검증·생성
- * 경로를 통째로 거치는 동안에도 지켜지는지 확인한다. 각 타입은 이미 단위 테스트가 있지만
- * ({@link LottoNumbers}, {@link RecommendationHistorySnapshot}, {@link ImportedDraw}),
- * 여기서는 Mock 없이 실제 JPA 저장소와 실제 협력
- * 객체(Importer → Provider → CandidateGenerator)를 그대로 이어 붙여 두 가지를
- * 검증한다: (1) 호출부가 원본을 나중에 바꿔도 이미 저장·캐시된 값은 영향받지 않는지,
- * (2) 돌려받은 값을 직접 바꾸려 하면 실제로 막히는지.
+ * 방어적 복사가 각 타입의 생성자 안에서 끝나는 게 아니라, 실제 저장·조회·검증·생성 경로를 통째로 거치는 동안에도 지켜지는지 확인한다. 각 타입은 이미 단위 테스트가 있지만({@link LottoNumbers}, {@link RecommendationHistorySnapshot}, {@link ImportedDraw}),
+ * 여기서는 Mock 없이 실제 JPA 저장소와 실제 협력 객체(Importer → Provider → CandidateGenerator)를 그대로 이어 붙여 두 가지를 검증한다: (1) 호출부가 원본을 나중에 바꿔도 이미 저장·캐시된 값은 영향받지 않는지, (2) 돌려받은 값을 직접 바꾸려 하면 실제로 막히는지.
  */
 @DataJpaTest
 class DefensiveCopyIntegrationTest {
@@ -63,8 +58,7 @@ class DefensiveCopyIntegrationTest {
         List<Integer> mutableSource = new ArrayList<>(List.of(1, 2, 3, 4, 5, 6));
         ImportedDraw draw = new ImportedDraw(1, mutableSource);
 
-        // 생성자를 통과한 뒤 호출부가 원본을 바꾼다 — 캐시된 List를 재사용하다 실수로 건드리는
-        // 상황을 흉내낸다. 방어적 복사가 없다면 이 변조가 그대로 DB에 반영됐을 것이다.
+        // 생성자를 통과한 뒤 호출부가 원본을 바꾼다 — 캐시된 List를 재사용하다 실수로 건드리는 상황을 흉내낸다. 방어적 복사가 없다면 이 변조가 그대로 DB에 반영된다.
         mutableSource.set(0, 99);
         mutableSource.add(7);
 
@@ -86,8 +80,7 @@ class DefensiveCopyIntegrationTest {
         assertThatThrownBy(() -> snapshot.winningMasks().add(999L))
                 .isInstanceOf(UnsupportedOperationException.class);
 
-        // version이 그대로면 provider가 같은 캐시 인스턴스를 돌려준다(refresh:66-69) — 방금
-        // 던진 변조 시도가 내부 Set을 실제로 건드렸다면 여기서 크기가 늘어나 있을 것이다.
+        // version이 그대로면 provider가 같은 캐시 인스턴스를 돌려준다 — 방금 던진 변조 시도가 내부 Set을 실제로 건드렸다면 여기서 크기가 늘어나 있을 것이다.
         RecommendationHistorySnapshot cachedAgain = provider.currentReadySnapshot();
         assertThat(cachedAgain.winningMasks()).hasSize(1);
     }

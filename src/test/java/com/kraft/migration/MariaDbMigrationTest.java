@@ -52,24 +52,18 @@ import static org.hamcrest.Matchers.containsString;
 /**
  * 운영과 같은 MariaDB에서 Flyway 마이그레이션 전체를 실제로 실행해 검증한다.
  * <p>
- * 나머지 테스트는 전부 H2 + {@code ddl-auto: create-drop}이라 <b>{@code db/migration}의 SQL을
- * 한 번도 실행하지 않는다</b> — Hibernate가 엔티티 매핑으로 스키마를 직접 만들기 때문이다.
- * 그래서 마이그레이션에 오타가 있거나 엔티티와 어긋나도 테스트는 전부 통과하고, 운영 배포에서
- * 처음 드러난다.
+ * 나머지 테스트는 전부 H2 + {@code ddl-auto: create-drop}이라 <b>{@code db/migration}의 SQL을 한 번도 실행하지 않는다</b> — Hibernate가 엔티티 매핑으로 스키마를 직접 만들기 때문이다.
+ * 그래서 마이그레이션에 오타가 있거나 엔티티와 어긋나도 테스트는 전부 통과하고, 운영 배포에서 처음 드러난다.
  * <p>
  * 여기서 확인하는 것은 네 가지다:
  * <ol>
  * <li>빈 DB에서 db/migration의 모든 마이그레이션이 순서대로 성공한다.</li>
- * <li>{@code ddl-auto: validate}가 통과한다 — 컨텍스트가 뜨는 것 자체가 "마이그레이션이 만든
- * 스키마와 엔티티 매핑이 일치한다"는 증거다. MariaDB 네이티브 ENUM의 <b>값 순서</b>처럼
- * H2에서는 드러나지 않는 불일치가 여기서 잡힌다.</li>
+ * <li>{@code ddl-auto: validate}가 통과한다 — 컨텍스트가 뜨는 것 자체가 "마이그레이션이 만든 스키마와 엔티티 매핑이 일치한다"는 증거다. MariaDB 네이티브 ENUM의 <b>값 순서</b>처럼 H2에서는 드러나지 않는 불일치가 여기서 잡힌다.</li>
  * <li>V3이 만든 Spring Session 테이블에 실제 로그인 세션이 저장된다.</li>
  * <li>운영 프로파일과 같은 경로로 게시글·이미지 대장·댓글을 읽고 쓸 수 있다.</li>
  * </ol>
  * <p>
- * Docker가 없으면 클래스 전체를 건너뛴다({@code disabledWithoutDocker}). 그래야
- * Docker 없이도 {@code gradlew test}가 그대로 돈다. CI(ubuntu-latest)에는
- * Docker가 있으므로 실제로 실행된다.
+ * Docker가 없으면 클래스 전체를 건너뛴다({@code disabledWithoutDocker}). 그래야 Docker 없이도 {@code gradlew test}가 그대로 돈다. CI(ubuntu-latest)에는 Docker가 있으므로 실제로 실행된다.
  */
 class MariaDbMigrationTest extends MariaDbIntegrationTest {
 
@@ -101,8 +95,7 @@ class MariaDbMigrationTest extends MariaDbIntegrationTest {
                 "SELECT version, description, success FROM flyway_schema_history "
                         + "WHERE version IS NOT NULL ORDER BY installed_rank");
 
-        // 기대값을 손으로 적지 않고 db/migration의 파일 목록에서 읽는다. 마이그레이션을 더할
-        // 때마다 이 테스트를 같이 고쳐야 했고, 실제로 V7을 추가하면서 깨졌다.
+        // 기대값을 손으로 적지 않고 db/migration의 파일 목록에서 읽는다 — 마이그레이션을 더할 때마다 이 테스트를 같이 고쳐야 하는 일을 없앤다.
         assertThat(history).extracting(row -> row.get("version").toString())
                 .containsExactlyElementsOf(migrationVersionsOnDisk());
         assertThat(history).allSatisfy(row ->
@@ -112,8 +105,7 @@ class MariaDbMigrationTest extends MariaDbIntegrationTest {
     @Test
     @DisplayName("마이그레이션이 만든 스키마가 엔티티 매핑과 일치한다(ddl-auto: validate 통과)")
     void schemaMatchesEntityMappings() {
-        // 이 테스트가 실행된다는 것은 validate를 켠 컨텍스트가 떴다는 뜻이다. 그에 더해,
-        // H2에서는 드러나지 않는 MariaDB 네이티브 ENUM의 값 순서를 직접 확인한다.
+        // 이 테스트가 실행된다는 것은 validate를 켠 컨텍스트가 떴다는 뜻이다. 그에 더해 H2에서는 드러나지 않는 MariaDB 네이티브 ENUM의 값 순서를 직접 확인한다.
         assertThat(columnTypeOf("users", "role")).isEqualTo("enum('ADMIN','GUEST','USER')");
         assertThat(columnTypeOf("posts", "category")).isEqualTo("enum('FREE','NOTICE','QNA')");
         assertThat(columnTypeOf("post_images", "status"))
@@ -223,7 +215,7 @@ class MariaDbMigrationTest extends MariaDbIntegrationTest {
                 .getCookie("SESSION");
 
         assertThat(session).isNotNull();
-        // principal 이름은 이제 회원 id의 문자열이다.
+        // principal 이름은 회원 id의 문자열이다.
         Long sessions = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM SPRING_SESSION WHERE PRINCIPAL_NAME = ?",
                 Long.class, String.valueOf(userId));
@@ -263,11 +255,8 @@ class MariaDbMigrationTest extends MariaDbIntegrationTest {
     }
 
     /**
-     * 엔티티 {@code @Table(indexes = ...)}에 선언한 인덱스가 실제 DB에도 있는지 확인한다.
-     * H2 + {@code ddl-auto: create-drop}으로 도는 다른 테스트는
-     * Hibernate가 엔티티 매핑으로 직접 인덱스까지 만들어 주므로, 마이그레이션 SQL에 같은
-     * 인덱스를 빠뜨려도 드러나지 않는다 — 이 클래스의 다른 테스트들처럼 실제 마이그레이션
-     * SQL로 만든 스키마를 봐야 잡을 수 있다.
+     * 엔티티 {@code @Table(indexes = ...)}에 선언한 인덱스가 실제 DB에도 있는지 확인한다. H2 + {@code ddl-auto: create-drop}으로 도는 다른 테스트는 Hibernate가 인덱스까지 직접 만들어 주므로 마이그레이션 SQL에 같은 인덱스를 빠뜨려도 드러나지 않는다 —
+     * 실제 마이그레이션 SQL로 만든 스키마를 봐야 잡을 수 있다.
      */
     @Test
     @DisplayName("엔티티에 선언한 인덱스가 마이그레이션으로 만든 스키마에도 모두 있다")

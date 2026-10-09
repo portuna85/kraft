@@ -49,10 +49,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-/**
- * {@link PostService} 단위 테스트. Spring 컨텍스트 없이 Mockito로 {@link PostRepository},
- * {@link UserRepository}를 모킹해 빠르게 검증한다.
- */
+/** {@link PostService} 단위 테스트. Spring 컨텍스트 없이 Mockito로 {@link PostRepository}, {@link UserRepository}를 모킹해 빠르게 검증한다. */
 @ExtendWith(MockitoExtension.class)
 class PostServiceTest {
 
@@ -453,10 +450,7 @@ class PostServiceTest {
         assertThat(result.content().get(0).commentCount()).isEqualTo(3L);
     }
 
-    /**
-     * 검색어가 있으면 COUNT를 세지 않는다(LIKE '%kw%'는 인덱스를 못 타서 COUNT가 항상 전체
-     * 스캔이다). 전체 건수는 null이고 다음 페이지 유무만 안다.
-     */
+    /** 검색어가 있으면 COUNT를 세지 않는다(LIKE '%kw%'는 인덱스를 못 타서 COUNT가 항상 전체 스캔이다). 전체 건수는 null이고 다음 페이지 유무만 안다. */
     @Test
     @DisplayName("findAllDesc: 검색어가 있으면 COUNT 없는 쿼리를 쓰고 전체 건수·페이지 수는 null이다")
     void findAllDesc_withKeyword_usesCountlessQueryAndLeavesTotalsNull() {
@@ -515,11 +509,7 @@ class PostServiceTest {
         verify(postRepository).searchWithoutCount(truncated, null, false, idDescOf(pageable));
     }
 
-    /**
-     * 이스케이프하지 않으면 사용자가 입력한 {@code %}·{@code _}가 그대로
-     * LIKE 와일드카드로 해석된다 — {@code q=%}는 전체 목록과 같아지고 {@code q=_}는 모든
-     * 글과 일치한다. PostRepository.search의 {@code ESCAPE '\'}와 짝을 이룬다.
-     */
+    /** 이스케이프하지 않으면 사용자가 입력한 {@code %}·{@code _}가 LIKE 와일드카드로 해석된다 — {@code q=%}는 전체 목록과 같아지고 {@code q=_}는 모든 글과 일치한다. PostRepository.search의 {@code ESCAPE '\'}와 짝을 이룬다. */
     @Test
     @DisplayName("findAllDesc: 검색어의 %·_·\\는 리포지토리에 전달하기 전에 이스케이프한다")
     void findAllDesc_escapesLikeWildcardsInKeyword() {
@@ -532,10 +522,7 @@ class PostServiceTest {
         verify(postRepository).searchWithoutCount("100\\%\\_할인\\\\", null, false, idDescOf(pageable));
     }
 
-    /**
-     * 1글자 검색어는 선행 와일드카드 LIKE에서 사실상 전체 스캔과 같은 대량의
-     * 행을 매치시킨다 — 검색어가 없는 것으로 보고 전체 목록을 보여준다.
-     */
+    /** 1글자 검색어는 선행 와일드카드 LIKE에서 사실상 전체 스캔과 같은 대량의 행을 매치시킨다 — 검색어가 없는 것으로 보고 전체 목록을 보여준다. */
     @Test
     @DisplayName("findAllDesc: 2자 미만 검색어는 null로 정규화해 전체 목록을 보여준다")
     void findAllDesc_normalizesTooShortKeywordToNull() {
@@ -560,11 +547,7 @@ class PostServiceTest {
         verify(postRepository).searchWithoutCount("ab", null, false, idDescOf(pageable));
     }
 
-    /**
-     * viewCount·updatedAt 정렬을 요청하면 그 컬럼이 주 정렬로 리포지토리에 전달되고,
-     * id 내림차순이 동점 처리로 끝에 붙어야 한다 — 예전에는 리포지토리 JPQL의 고정
-     * ORDER BY p.id DESC가 항상 먼저라 이 정렬이 반환 순서에 전혀 반영되지 않았다.
-     */
+    /** viewCount·updatedAt 정렬을 요청하면 그 컬럼이 주 정렬로 리포지토리에 전달되고, id 내림차순이 동점 처리로 끝에 붙어야 한다. */
     @Test
     @DisplayName("findAllDesc: viewCount 정렬 요청은 id 내림차순 동점 처리를 덧붙여 리포지토리에 전달된다")
     void findAllDesc_withViewCountSort_appendsIdTieBreaker() {
@@ -629,9 +612,7 @@ class PostServiceTest {
 
         var result = postQueryService.findByIdForView(100L, authOf(owner));
 
-        // 조회수 증가는 전용 UPDATE 한 문장이다. 엔티티를 바꿔 변경 감지에 맡기면 제목·본문까지
-        // 함께 UPDATE에 실려 겹친 편집을 되돌린다. 실제 증가분은 PostViewCountIsolationTest가
-        // 진짜 DB로 검증한다 — mock 리포지토리로는 관찰할 수 없는 지점이다.
+        // 조회수 증가는 전용 UPDATE 한 문장이다. 엔티티를 바꿔 변경 감지에 맡기면 제목·본문까지 UPDATE에 실려 겹친 편집을 되돌린다. 실제 증가분은 PostViewCountIsolationTest가 진짜 DB로 검증한다(mock 리포지토리로는 관찰할 수 없다).
         var inOrder = org.mockito.Mockito.inOrder(postRepository);
         inOrder.verify(postRepository).increaseViewCount(100L);
         inOrder.verify(postRepository).findByIdWithUser(100L);
@@ -892,10 +873,8 @@ class PostServiceTest {
     }
 
     /**
-     * 무엇이 "중복이라 흡수해도 되는 예외"인지는 {@code PostLikeWriter.isDuplicateLikeConstraint}가
-     * 실제 제약 이름을 보고 판단한다(PostLikeWriterTest가 실제 DB로 검증). PostService는 그
-     * 판정 결과를 그대로 따를 뿐이므로, 여기서는 판정이 false일 때 예외가 삼켜지지 않고
-     * 전파되는지만 확인한다 — FK 위반을 "이미 추천됨"으로 위장하지 않는다는 뜻이다.
+     * "중복이라 흡수해도 되는 예외"인지는 {@code PostLikeWriter.isDuplicateLikeConstraint}가 실제 제약 이름을 보고 판단한다(PostLikeWriterTest가 실제 DB로 검증). PostService는 그 판정을 그대로 따르므로,
+     * 여기서는 판정이 false일 때 예외가 삼켜지지 않고 전파되는지만 확인한다 — FK 위반을 "이미 추천됨"으로 위장하지 않는다.
      */
     @Test
     @DisplayName("중복 제약이 아닌 실패는 PostService가 그대로 전파한다")

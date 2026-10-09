@@ -18,12 +18,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * B08의 최후 수단을 검증한다. 가입 트랜잭션의 최종 커밋 실패는 실제로 재현하기 어려우므로
- * (커밋 성공 후 어떤 흔적도 남지 않는 실패라 스파이로 흉내 낼 지점이 없다), 그 결과 상태 —
- * "GUEST 계정은 있는데 토큰도 아웃박스 메일도 하나도 없다" — 를 직접 만들어 스윕이 그 상태를
- * 찾아 복구하는지 확인한다.
- */
+/** 가입 트랜잭션의 최종 커밋 실패는 실제로 재현하기 어려우므로(커밋 성공 후 어떤 흔적도 남지 않는 실패라 스파이로 흉내 낼 지점이 없다) 그 결과 상태 — "GUEST 계정은 있는데 토큰도 아웃박스 메일도 하나도 없다" — 를 직접 만들어 스윕이 그 상태를 찾아 복구하는지 확인한다. */
 @SpringBootTest
 class GuestVerificationSweeperTest {
 
@@ -50,8 +45,7 @@ class GuestVerificationSweeperTest {
         tokenRepository.deleteAll();
         outboxMailRepository.deleteAll();
         userRepository.deleteAll();
-        // sweeper는 싱글턴 빈이라 sweeper를 끄는 테스트가 enabled를 꺼 둔 채로 남기면 실행 순서에 따라
-        // 다른 테스트까지 영향을 받는다 — 매번 켜진 상태로 시작한다(PostImageCleanerTest와 같은 관례).
+        // sweeper는 싱글턴 빈이라 sweeper를 끄는 테스트가 enabled를 꺼 둔 채로 남기면 실행 순서에 따라 다른 테스트까지 영향을 받는다 — 매번 켜진 상태로 시작한다(PostImageCleanerTest와 같은 관례).
         ReflectionTestUtils.setField(sweeper, "enabled", true);
     }
 
@@ -82,8 +76,7 @@ class GuestVerificationSweeperTest {
     void sweep_leavesAccountsThatAlreadyHaveAMailAlone() {
         User already = saveGuest(LocalDateTime.now().minusMinutes(20));
 
-        // 정상 경로로 한 번 보낸 것과 같은 상태를 만든다 — 토큰·아웃박스 행이 이미 있으므로
-        // 스윕의 조회 대상이 아니어야 한다.
+        // 정상 경로로 한 번 보낸 것과 같은 상태를 만든다 — 토큰·아웃박스 행이 이미 있으므로 스윕의 조회 대상이 아니어야 한다.
         emailVerificationService.sendVerificationEmail(already.getEmail());
         long tokenCountBefore = tokenRepository.count();
         long mailCountBefore = outboxMailRepository.count();
@@ -94,11 +87,7 @@ class GuestVerificationSweeperTest {
         assertThat(outboxMailRepository.count()).isEqualTo(mailCountBefore);
     }
 
-    /**
-     * withdraw()는 role을 바꾸지 않으므로, 탈퇴한 GUEST도 유예시간·토큰/아웃박스 없음
-     * 조건만으로는 걸러지지 않을 뻔했다. withdrawnAt IS NULL 조건이 없으면 sweeper가 탈퇴
-     * 계정의 placeholder 이메일로 인증 메일을 다시 큐에 넣을 수 있었다.
-     */
+    /** withdraw()는 role을 바꾸지 않으므로 탈퇴한 GUEST도 유예시간·토큰/아웃박스 없음 조건만으로는 걸러지지 않는다. withdrawnAt IS NULL 조건이 없으면 sweeper가 탈퇴 계정의 placeholder 이메일로 인증 메일을 다시 큐에 넣을 수 있다. */
     @Test
     @DisplayName("탈퇴한 GUEST는 유예시간이 지나도 다시 건드리지 않는다")
     void sweep_ignoresWithdrawnGuests() {
@@ -112,10 +101,7 @@ class GuestVerificationSweeperTest {
         assertThat(outboxMailRepository.findAll()).noneMatch(m -> m.getUser().getId().equals(withdrawn.getId()));
     }
 
-    /**
-     * rekey 프로파일이 이 스위치를 끈다 — 아직 옛 키로 남은 GUEST 행이 섞이면 email
-     * 복호화가 엔티티 로딩 시점에 실패하므로, 키 교체 중에는 아예 조회 자체가 돌면 안 된다.
-     */
+    /** rekey 프로파일이 이 스위치를 끈다 — 아직 옛 키로 남은 GUEST 행이 섞이면 email 복호화가 엔티티 로딩 시점에 실패하므로, 키 교체 중에는 조회 자체가 돌면 안 된다. */
     @Test
     @DisplayName("스위치를 끄면 저장소를 건드리지 않고 그대로 돌아간다")
     void sweep_whenDisabled_doesNothing() {

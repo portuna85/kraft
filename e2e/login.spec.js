@@ -2,10 +2,7 @@ import { test, expect } from './fixtures.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
-/**
- * 이메일·비밀번호에 required가 없어 빈 값도 서버로 제출됐다. 브라우저 검증이 먼저
- * 막는지 확인한다.
- */
+/** 이메일·비밀번호에 required가 있어 브라우저 검증이 빈 값 제출을 먼저 막는지 확인한다. */
 test('이메일·비밀번호가 비어 있으면 브라우저 검증이 막고 요청 자체가 나가지 않는다', async ({ page }) => {
     let requested = false;
     page.on('request', (request) => {

@@ -27,13 +27,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * 조회수 갱신이 게시글 본문·최종수정일을 오염시키지 않는지, 그리고 편집 충돌이 감지되는지
- * 실제 DB로 검증한다.
+ * 조회수 갱신이 게시글 본문·최종수정일을 오염시키지 않는지, 그리고 편집 충돌이 감지되는지 실제 DB로 검증한다.
  * <p>
- * 예전에는 상세 조회가 엔티티를 읽어 {@code increaseViewCount()}로 필드를 바꾸고 변경 감지에
- * 맡겼다. Hibernate는 그 UPDATE에 제목·본문·분류를 함께 실었기 때문에, 조회 트랜잭션이 읽어둔
- * 옛 값이 그 사이 커밋된 편집 내용을 덮어썼다. 감사 필드 {@code updatedAt}도 열람만으로 바뀌어
- * 목록의 "최종수정일"이 실제 수정 시각과 달라졌다.
+ * 상세 조회가 엔티티를 읽어 필드를 바꾸고 변경 감지에 맡기면, Hibernate는 그 UPDATE에 제목·본문·분류를 함께 실어 조회 트랜잭션이 읽어둔 옛 값이 그 사이 커밋된 편집 내용을 덮어쓴다.
+ * 감사 필드 {@code updatedAt}도 열람만으로 바뀌어 목록의 "최종수정일"이 실제 수정 시각과 달라진다.
  */
 @SpringBootTest
 class PostViewCountIsolationTest {
@@ -62,10 +59,7 @@ class PostViewCountIsolationTest {
     @Autowired
     private TransactionTemplate transactionTemplate;
 
-    /**
-     * 겹친 트랜잭션을 만들기 위한 별도 템플릿. 기본 전파(REQUIRED)로는 바깥 트랜잭션에
-     * 참여해 같은 영속성 컨텍스트를 쓰므로 "다른 트랜잭션이 먼저 저장했다"를 재현할 수 없다.
-     */
+    /** 겹친 트랜잭션을 만들기 위한 별도 템플릿. 기본 전파(REQUIRED)로는 바깥 트랜잭션에 참여해 같은 영속성 컨텍스트를 쓰므로 "다른 트랜잭션이 먼저 저장했다"를 재현할 수 없다. */
     private TransactionTemplate requiresNew;
 
     private Authentication owner;
@@ -100,8 +94,7 @@ class PostViewCountIsolationTest {
             requiresNew.executeWithoutResult(inner ->
                     postService.update(id, new PostUpdateRequestDto("새 제목", "새 내용", null, null, null, Category.QNA), null, owner));
 
-            // 이제 열람이 조회수를 올린다. 예전에는 이 시점에 stale의 제목·본문·분류가 함께
-            // UPDATE에 실려 방금 저장한 내용을 되돌렸다.
+            // 이제 열람이 조회수를 올린다. 전체 컬럼 UPDATE였다면 이 시점에 stale의 제목·본문·분류가 함께 실려 방금 저장한 내용을 되돌린다.
             postQueryService.findByIdForView(id, owner);
         });
 
@@ -113,10 +106,8 @@ class PostViewCountIsolationTest {
     }
 
     /**
-     * 회귀: 위 테스트와 반대 순서다. 편집이 게시글을 먼저 읽어 옛 조회수(0)를 쥔 채로,
-     * 그 사이 다른 트랜잭션이 조회수를 올리고 커밋한 뒤에야 편집이 flush된다.
-     * {@code Post.viewCount}에 {@code updatable = false}가 없다면, 편집의 전체 컬럼 UPDATE가
-     * 편집 시작 시점의 옛 조회수를 그대로 실어 방금 커밋된 증가를 되돌렸을 것이다.
+     * 회귀: 위 테스트와 반대 순서다. 편집이 게시글을 먼저 읽어 옛 조회수(0)를 쥔 채로, 그 사이 다른 트랜잭션이 조회수를 올리고 커밋한 뒤에야 편집이 flush된다.
+     * {@code Post.viewCount}에 {@code updatable = false}가 없다면 편집의 전체 컬럼 UPDATE가 옛 조회수를 그대로 실어 방금 커밋된 증가를 되돌린다.
      */
     @Test
     @DisplayName("회귀: 편집이 옛 조회수를 쥐고 있어도, 그 사이 커밋된 조회수 증가를 되돌리지 않는다")
@@ -133,8 +124,7 @@ class PostViewCountIsolationTest {
             // 그 사이 별도 트랜잭션이 조회수를 올리고 커밋한다.
             requiresNew.executeWithoutResult(inner -> postQueryService.findByIdForView(id, owner));
 
-            // 이제 편집이 저장된다. update()가 같은 영속성 컨텍스트의 위 "editing" 인스턴스를
-            // 그대로 재사용하므로(1차 캐시), 이 시점에도 그 인스턴스의 viewCount는 여전히 0이다.
+            // 이제 편집이 저장된다. update()가 같은 영속성 컨텍스트의 위 "editing" 인스턴스를 재사용하므로(1차 캐시) 이 시점에도 그 인스턴스의 viewCount는 여전히 0이다.
             postService.update(id, new PostUpdateRequestDto("새 제목", "새 내용", null, null, null, Category.QNA), version, owner);
         });
 

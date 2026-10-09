@@ -69,10 +69,7 @@ test('아이폰 HEIC는 이유를 설명하며 막는다', async ({ page }) => {
 });
 
 /**
- * 업로드 응답을 기다리는 동안 파일 입력·선택 해제를 다시 누를 수 있으면, 그 사이 사용자가
- * 파일을 바꾸거나 지운 뒤 늦게 도착한 응답이 엉뚱한 파일의 URL로 캐시를 덮어쓸 수 있다.
- * 입력을
- * 잠그면 그 경쟁 자체가 UI에서 일어나지 않는다.
+ * 업로드 응답을 기다리는 동안 파일 입력·선택 해제를 다시 누를 수 있으면, 그 사이 사용자가 파일을 바꾸거나 지운 뒤 늦게 도착한 응답이 엉뚱한 파일의 URL로 캐시를 덮어쓸 수 있다. 입력을 잠그면 그 경쟁 자체가 UI에서 일어나지 않는다.
  */
 test('업로드 응답을 기다리는 동안에는 사진 입력과 선택 해제를 다시 누를 수 없다', async ({ page }) => {
     const title = uniqueTitle('업로드중');
@@ -112,8 +109,7 @@ test('이미지를 붙여 글을 등록하면 상세에 그 이미지가 보인�
     await page.waitForURL(/\/posts\/update\/\d+$/);
     const img = page.locator('.post-image img');
     await expect(img).toHaveAttribute('src', /^\/images\//);
-    // 서버가 검증 때 읽은 실제 픽셀 크기(1×1 고정 픽스처)가 CLS 방지용
-    // width/height로 그대로 내려온다 — eager 로딩·높은 우선순위로도 바뀐다.
+    // 서버가 검증 때 읽은 실제 픽셀 크기(1×1 고정 픽스처)가 CLS 방지용 width/height로 내려온다 — eager 로딩·높은 우선순위로도 바뀐다.
     await expect(img).toHaveAttribute('width', '1');
     await expect(img).toHaveAttribute('height', '1');
     await expect(img).toHaveAttribute('loading', 'eager');
@@ -143,11 +139,8 @@ test('이미지를 그대로 두고 제목만 고치면 크기 정보가 그대�
 /**
  * 5MB를 훌쩍 넘는 원본도 브라우저에서 축소된 뒤 통과한다.
  *
- * 업로드 파일은 무압축 BMP(가로세로 3000×2000, 약 18MB)다. 확장자는 .png로 속이지만
- * 문제가 되지 않는다 — 브라우저의 createImageBitmap은 파일 이름이 아니라 실제 바이트로
- * 형식을 판별하므로 BMP로 정상 디코딩되고, 축소 결과는 canvas.toBlob이 새로 만든 진짜
- * PNG라 서버 검증(매직 바이트)도 통과한다. 2048px가 넘는 원본이라 축소 경로를 반드시
- * 타는 크기로 골랐다.
+ * 업로드 파일은 무압축 BMP(가로세로 3000×2000, 약 18MB)다. 확장자는 .png로 속이지만 문제가 되지 않는다 — 브라우저의 createImageBitmap은 파일 이름이 아니라 실제 바이트로 형식을 판별하므로 BMP로 정상 디코딩되고,
+ * 축소 결과는 canvas.toBlob이 새로 만든 진짜 PNG라 서버 검증(매직 바이트)도 통과한다. 2048px가 넘는 원본이라 축소 경로를 반드시 타는 크기로 골랐다.
  */
 function hugeBmpDisguisedAsPng() {
     const width = 3000;
@@ -201,11 +194,7 @@ test('가로세로 2048px를 넘는 큰 이미지는 브라우저에서 축소�
     await expect(page.locator('.post-image img')).toHaveAttribute('src', /^\/images\//);
 });
 
-/**
- * "업로드는 성공했는데 저장이 실패한" 경우 같은 파일을 다시 올리지 않고 이미 받은 URL로
- * 재시도한다. 이 동작은 postEdit/postForm 양쪽에 복사되어 있어 리팩터링에서 깨지기 쉬운데,
- * 업로드 요청 수를 세는 것 말고는 확인할 방법이 없다.
- */
+/** "업로드는 성공했는데 저장이 실패한" 경우 같은 파일을 다시 올리지 않고 이미 받은 URL로 재시도한다. 리팩터링에서 깨지기 쉬운 동작인데 업로드 요청 수를 세는 것 말고는 확인할 방법이 없다. */
 test('저장이 실패한 뒤 다시 눌러도 이미지를 재업로드하지 않는다', async ({ page }) => {
     const title = uniqueTitle('재시도');
 
@@ -241,10 +230,7 @@ test('저장이 실패한 뒤 다시 눌러도 이미지를 재업로드하지 �
     expect(uploadCount, '이미 올린 이미지를 다시 올리면 안 된다').toBe(1);
 });
 
-/**
- * 파일을 고른 직후 축소가 끝나기 전에는 file이 비어 있어, 그 사이 제출하면 사진 없이
- * 저장됐다. 축소 중에는 제출 버튼을 막고, 끝나면 풀어야 한다.
- */
+/** 파일을 고른 직후 축소가 끝나기 전에는 file이 비어 있어, 그 사이 제출하면 사진 없이 저장된다. 축소 중에는 제출 버튼을 막고 끝나면 풀어야 한다. */
 test('이미지 축소가 끝나기 전에는 등록 버튼이 잠기고 끝나면 풀린다', async ({ page }) => {
     // 모바일처럼 느린 축소를 흉내 낸다 — 테스트가 풀어 줄 때까지 createImageBitmap을 보류한다.
     await page.addInitScript(() => {

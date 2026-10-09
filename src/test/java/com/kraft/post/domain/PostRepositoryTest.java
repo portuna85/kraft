@@ -23,10 +23,8 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * {@link PostRepository} 통합 테스트. {@code @DataJpaTest}는 Entity/Repository 관련
- * 빈만 스캔하므로, {@code @EnableJpaAuditing}이 선언된 {@link JpaConfig}는 기본적으로
- * 포함되지 않는다 — {@code @Import}로 명시해 감사 필드({@code createdAt}/{@code updatedAt})까지
- * 실제로 채워지는지 검증한다(P1-2 회귀 방지).
+ * {@link PostRepository} 통합 테스트. {@code @DataJpaTest}는 Entity/Repository 관련 빈만 스캔하므로 {@code @EnableJpaAuditing}이 선언된 {@link JpaConfig}는 기본으로 포함되지 않는다 —
+ * {@code @Import}로 명시해 감사 필드({@code createdAt}/{@code updatedAt})까지 실제로 채워지는지 검증한다.
  */
 @DataJpaTest
 @Import({JpaConfig.class, EmailAttributeConverter.class})
@@ -50,10 +48,8 @@ class PostRepositoryTest {
     }
 
     /**
-     * search 자체는 고정 ORDER BY를 두지 않고 pageable의 Sort에 정렬을 전적으로
-     * 맡긴다 — 실제 정렬 보정({@code PostSortPolicy.effectiveSort})은
-     * {@code PostService.findAllDesc}가 담당하므로, 이 리포지토리 테스트는 그 서비스가
-     * 넘기는 것과 같은 형태(id 내림차순 Sort)를 직접 전달한다.
+     * search 자체는 고정 ORDER BY를 두지 않고 pageable의 Sort에 정렬을 전적으로 맡긴다 — 정렬 보정({@code PostSortPolicy.effectiveSort})은 {@code PostService.findAllDesc}가 담당하므로,
+     * 이 테스트는 그 서비스가 넘기는 것과 같은 형태(id 내림차순 Sort)를 직접 전달한다.
      */
     @Test
     @DisplayName("search: id 내림차순 Sort를 주면 그 순서로, 작성자 이름이 함께 조회된다")
@@ -81,8 +77,7 @@ class PostRepositoryTest {
 
         Page<PostRowDto> page = postRepository.search(null, null, false, PageRequest.of(0, 10));
 
-        // PostRowDto에는 content 필드 자체가 없다 — 컴파일 시점에 이미 응답에 본문이 없음을
-        // 보장하며, 이 테스트는 그 계약이 유지되는지 회귀로 지킨다.
+        // PostRowDto에는 content 필드 자체가 없다 — 컴파일 시점에 이미 응답에 본문이 없음을 보장하며, 이 테스트는 그 계약이 유지되는지 지킨다.
         assertThat(page.getContent()).hasSize(1);
         assertThat(page.getContent().get(0).title()).isEqualTo("제목");
     }
@@ -109,10 +104,7 @@ class PostRepositoryTest {
         assertThat(secondPage.isLast()).isTrue();
     }
 
-    /**
-     * COUNT 없는 검색은 같은 조건에서 {@code search}와 같은 행을 같은 순서로 돌려줘야 한다
-     * (WHERE 절은 두 쿼리가 상수를 공유하지만, 실제 DB 결과로 한 번 더 못 박는다).
-     */
+    /** COUNT 없는 검색은 같은 조건에서 {@code search}와 같은 행을 같은 순서로 돌려줘야 한다(WHERE 절은 두 쿼리가 상수를 공유하지만, 실제 DB 결과로 한 번 더 못 박는다). */
     @Test
     @DisplayName("searchWithoutCount: 제목·본문 범위, 분류, 이스케이프 조건에서 search와 같은 행을 같은 순서로 돌려준다")
     void searchWithoutCount_returnsSameRowsAsSearch() {
@@ -170,18 +162,14 @@ class PostRepositoryTest {
         assertThat(exactFit.hasNext()).as("정확히 size개면 다음 페이지가 없다").isFalse();
     }
 
-    /**
-     * viewCount 정렬 + id 동점 처리를 실제 DB로 확인한다. 예전에는 리포지토리의 고정
-     * {@code ORDER BY p.id DESC}가 먼저라 이 Sort가 반환 순서에 전혀 반영되지 않았다.
-     */
+    /** viewCount 정렬 + id 동점 처리를 실제 DB로 확인한다(리포지토리의 고정 ORDER BY가 앞서면 이 Sort가 반환 순서에 반영되지 않는다). */
     @Test
     @DisplayName("search: viewCount 내림차순 Sort를 주면 조회수 순서로 반환한다")
     void search_withViewCountSort_ordersByViewCountDesc() {
         Post low = postRepository.save(Post.builder().title("낮음").content("c").user(user).build());
         Post high = postRepository.save(Post.builder().title("높음").content("c").user(user).build());
         Post mid = postRepository.save(Post.builder().title("중간").content("c").user(user).build());
-        // view_count는 이제 엔티티 UPDATE에서 빠지므로(updatable=false)
-        // 실제 운영 경로와 같은 전용 원자적 UPDATE로 조회수를 올린다.
+        // view_count는 엔티티 UPDATE에서 빠지므로(updatable=false) 실제 운영 경로와 같은 전용 원자적 UPDATE로 조회수를 올린다.
         postRepository.increaseViewCount(high.getId());
         postRepository.increaseViewCount(high.getId());
         postRepository.increaseViewCount(mid.getId());
@@ -225,11 +213,7 @@ class PostRepositoryTest {
         assertThat(page.getContent()).extracting(PostRowDto::id).containsExactly(titleMatch.getId());
     }
 
-    /**
-     * 이스케이프된 {@code \%}·{@code \_}는 리터럴 문자로만 매치돼야 한다 —
-     * PostService.normalize가 이스케이프해 넘기는 값을 이 쿼리의 {@code ESCAPE '\'}가
-     * 실제로 해석하는지 확인한다(리포지토리 자체는 이스케이프하지 않고 그대로 LIKE에 싣는다).
-     */
+    /** 이스케이프된 {@code \%}·{@code \_}는 리터럴 문자로만 매치돼야 한다 — PostService.normalize가 이스케이프해 넘기는 값을 이 쿼리의 {@code ESCAPE '\'}가 해석하는지 확인한다(리포지토리 자체는 이스케이프하지 않는다). */
     @Test
     @DisplayName("search: 이스케이프된 %·_는 와일드카드가 아니라 리터럴 문자로만 매치한다")
     void search_withEscapedWildcards_matchesOnlyLiteralCharacters() {
@@ -239,8 +223,7 @@ class PostRepositoryTest {
         em.flush();
         em.clear();
 
-        // PostService.escapeLikeWildcards("100% ")와 같은 결과 — 실제 서비스 계층 없이
-        // 리포지토리가 받는 값 그대로를 검증한다.
+        // PostService.escapeLikeWildcards("100% ")와 같은 결과 — 서비스 계층 없이 리포지토리가 받는 값 그대로를 검증한다.
         Page<PostRowDto> page = postRepository.search("100\\% ", null, false, PageRequest.of(0, 10));
 
         assertThat(page.getContent()).extracting(PostRowDto::id)
@@ -266,8 +249,7 @@ class PostRepositoryTest {
         Post low = postRepository.save(Post.builder().title("낮음").content("c").user(user).build());
         Post high = postRepository.save(Post.builder().title("높음").content("c").user(user).build());
         Post mid = postRepository.save(Post.builder().title("중간").content("c").user(user).build());
-        // view_count는 이제 엔티티 UPDATE에서 빠지므로(updatable=false)
-        // 실제 운영 경로와 같은 전용 원자적 UPDATE로 조회수를 올린다.
+        // view_count는 엔티티 UPDATE에서 빠지므로(updatable=false) 실제 운영 경로와 같은 전용 원자적 UPDATE로 조회수를 올린다.
         postRepository.increaseViewCount(high.getId());
         postRepository.increaseViewCount(high.getId());
         postRepository.increaseViewCount(mid.getId());
@@ -290,8 +272,7 @@ class PostRepositoryTest {
         Post recent = postRepository.save(Post.builder().title("최근 글").content("c").user(user).build());
         postRepository.increaseViewCount(recent.getId());
         em.flush();
-        // BaseEntity.createdAt은 @CreatedDate라 직접 세팅할 수 없으니, 네이티브 UPDATE로
-        // "옛 글"의 작성일만 기준 시각보다 앞으로 옮긴다.
+        // BaseEntity.createdAt은 @CreatedDate라 직접 세팅할 수 없으니, 네이티브 UPDATE로 "옛 글"의 작성일만 기준 시각보다 앞으로 옮긴다.
         em.getEntityManager().createNativeQuery("UPDATE posts SET created_at = :ts WHERE id = :id")
                 .setParameter("ts", LocalDateTime.now().minusDays(30))
                 .setParameter("id", old.getId())
@@ -476,7 +457,7 @@ class PostRepositoryTest {
         assertThat(postRepository.findRelated(Category.NOTICE, kept.getId(), PageRequest.of(0, 10))).isEmpty();
         assertThat(postRepository.existsVisibleById(hidden.getId())).isFalse();
         assertThat(postRepository.increaseViewCount(hidden.getId())).isZero();
-        // 관리자 상세와 신고 목록은 숨긴 글도 읽는다.
+        // 관리자 상세는 숨긴 글도 읽는다.
         assertThat(postRepository.findByIdWithUser(hidden.getId()).orElseThrow().isBlinded()).isTrue();
         assertThat(postRepository.findAllByIdInWithUser(List.of(hidden.getId()))).hasSize(1);
 

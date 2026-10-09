@@ -29,19 +29,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * 비밀번호를 바꾸면 서버가 그 계정의 세션을 실제로 폐기하는지 검증한다.
  * <p>
- * 예전에는 서버가 비밀번호 해시만 갱신하고, 로그아웃은 화면의 JS가 이어서 호출하는
- * {@code /logout}에 맡겨져 있었다. 그래서 실제 로그인으로 받은 세션 쿠키로 비밀번호를 바꾼 뒤
- * <b>같은 쿠키로 새 글을 쓸 수 있었다</b> — 세션을 탈취당한 상태에서 비밀번호를 바꿔도 접근
- * 회수가 되지 않는다는 뜻이다. 다른 기기의 세션은 애초에 끊기지 않았다.
+ * 서버가 비밀번호 해시만 갱신하고 로그아웃을 화면 JS가 이어서 호출하는 {@code /logout}에 맡기면, 실제 로그인으로 받은 세션 쿠키로 비밀번호를 바꾼 뒤 <b>같은 쿠키로 새 글을 쓸 수 있다</b> — 세션을 탈취당한 상태에서 비밀번호를 바꿔도 접근 회수가 되지 않고 다른 기기의 세션도 끊기지 않는다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
 class PasswordChangeSessionRevocationTest {
 
-    // 세션 테이블(SPRING_SESSION)은 테스트 클래스끼리 공유하는 H2에 있다. 다른 테스트가 남긴
-    // 세션이 principal 이름으로 섞이지 않도록 이 클래스 전용 이메일을 쓰고, 매번 비우고 시작한다.
-    // principal 이름은 이제 회원 id다 — userId는 setUp에서 계정을 만든 뒤에만 알 수
-    // 있으므로, 세션 정리는 매번 만든 계정의 id를 조회해서 한다.
+    // 세션 테이블(SPRING_SESSION)은 테스트 클래스끼리 공유하는 H2에 있다. 다른 테스트가 남긴 세션이 섞이지 않도록 이 클래스 전용 이메일을 쓰고 매번 비우고 시작하며, principal 이름은 회원 id라 setUp에서 만든 계정의 id를 조회해 정리한다.
     private static final String EMAIL = "password-change@example.com";
     private static final String PASSWORD = "Password123!";
     private Long userId;
@@ -72,8 +66,7 @@ class PasswordChangeSessionRevocationTest {
 
     @BeforeEach
     void setUp() {
-        // users를 참조하는 것들을 먼저 지운다. 하나라도 빠뜨리면 FK 위반으로 깨지는데,
-        // 그 시점이 테스트 실행 순서에 좌우되어 관계없는 변경에서 갑자기 드러난다.
+        // users를 참조하는 것들을 먼저 지운다. 하나라도 빠뜨리면 FK 위반으로 깨지는데, 그 시점이 테스트 실행 순서에 좌우되어 관계없는 변경에서 갑자기 드러난다.
         postRepository.deleteAll();
         outboxMailRepository.deleteAll();
         tokenRepository.deleteAll();
@@ -85,8 +78,7 @@ class PasswordChangeSessionRevocationTest {
                 .password(passwordEncoder.encode(PASSWORD))
                 .role(Role.USER)
                 .build()).getId();
-        // 이전 실행에서 이 id가 재사용됐을 가능성은 없다(IDENTITY 증가) — 그래도 다른 테스트가
-        // 남긴 세션과 섞이지 않도록 비우고 시작한다.
+        // id가 재사용될 가능성은 없지만(IDENTITY 증가) 다른 테스트가 남긴 세션과 섞이지 않도록 비우고 시작한다.
         sessionRepository.findByPrincipalName(String.valueOf(userId)).keySet().forEach(sessionRepository::deleteById);
     }
 
@@ -156,11 +148,7 @@ class PasswordChangeSessionRevocationTest {
         assertThat(canWritePost(login("NewPassword123!"))).isTrue();
     }
 
-    /**
-     * 실제 폼 로그인으로 세션을 만들고, 브라우저가 들고 다니는 것과 같은 SESSION 쿠키를
-     * 돌려준다. 세션 저장소가 Spring Session JDBC라 세션 상태는 서블릿 컨테이너가 아니라
-     * DB에 있으므로, 후속 요청은 이 쿠키로 세션을 되찾아야 한다.
-     */
+    /** 실제 폼 로그인으로 세션을 만들고 브라우저가 들고 다니는 것과 같은 SESSION 쿠키를 돌려준다. 세션 저장소가 Spring Session JDBC라 세션 상태는 서블릿 컨테이너가 아니라 DB에 있으므로, 후속 요청은 이 쿠키로 세션을 되찾아야 한다. */
     private Cookie login() throws Exception {
         return login(PASSWORD);
     }

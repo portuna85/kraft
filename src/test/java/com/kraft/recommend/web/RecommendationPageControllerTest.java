@@ -24,8 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 
 /**
- * 최신 회차 당첨번호를 모델에 담아 서버가 직접 렌더링하는지 확인한다. 홈과 같은 조각
- * ({@code lotto/latest-draw.html})이 읽는 {@code latestDraw}({@link LatestDrawView}) 하나를 담는다.
+ * 최신 회차 당첨번호를 모델에 담아 서버가 직접 렌더링하는지 확인한다. {@code lotto/latest-draw.html} 조각이 읽는 {@code latestDraw}({@link LatestDrawView}) 하나를 담는다.
  */
 @ExtendWith(MockitoExtension.class)
 class RecommendationPageControllerTest {

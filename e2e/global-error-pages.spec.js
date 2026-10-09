@@ -1,16 +1,9 @@
 import { test, expect, storageStateFor } from './fixtures.js';
 
-// 기본이 authenticated(P1-7)라 익명이 없는 경로를 요청하면 404 대신 로그인으로 간다 — 404 화면은
-// 로그인한 사용자 기준으로 확인한다.
+// 로그인 기본값이 authenticated라 익명이 없는 경로를 요청하면 404 대신 로그인으로 간다 — 404 화면은 로그인한 사용자 기준으로 확인한다.
 test.use({ storageState: storageStateFor('user') });
 
-/**
- * 13단계: 게시글 삭제 후 접근(PostNotFoundException → error/not-found)이 아니라, 애초에
- * 어떤 컨트롤러에도 매핑되지 않은 경로를 요청했을 때의 전역 404 화면(error/4xx.html)을
- * 확인한다. 이 흐름은 실제 서블릿 컨테이너의 /error 재디스패치를 거치므로 MockMvc로는
- * 재현되지 않는다(GlobalErrorPageTest의 주석 참고) — 실제 서버로 띄우는 e2e가 유일한
- * 종단 검증이다.
- */
+/** 게시글 삭제 후 접근(PostNotFoundException → error/not-found)이 아니라, 어떤 컨트롤러에도 매핑되지 않은 경로를 요청했을 때의 전역 404 화면(error/4xx.html)을 확인한다. 이 흐름은 실제 서블릿 컨테이너의 /error 재디스패치를 거치므로 MockMvc로는 재현되지 않는다(GlobalErrorPageTest의 주석 참고) — 실제 서버로 띄우는 e2e가 유일한 종단 검증이다. */
 test('없는 경로로 들어가면 공통 404 안내와 게시판 복귀 링크가 뜬다', async ({ page }) => {
     const response = await page.goto('/this-path-does-not-exist-anywhere');
 

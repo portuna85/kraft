@@ -1,13 +1,10 @@
 import { test, expect, storageStateFor, uniqueTitle } from './fixtures.js';
 
 /**
- * 목록 상단 고정은 관리자가 글마다 기한을 정해 한다(pinned_until). 공지(NOTICE)라고 자동으로 고정되지 않는다.
- * user가 글을 쓰고, admin이 상세 화면에서 고정·해제한다.
+ * 목록 상단 고정은 관리자가 글마다 기한을 정해 한다(pinned_until). 공지(NOTICE)라고 자동으로 고정되지 않는다. user가 글을 쓰고, admin이 상세 화면에서 고정·해제한다.
  *
- * 기본 page를 관리자 상태로 쓰고 작성자는 openAs('user')로 연다 — 이 스펙에서 새로 로그인하지 않는다.
- * 새 로그인(login 헬퍼)을 이 위치(board.spec.js보다 앞)에서 하면 이후 스펙들이 쓰는 저장된 로그인 상태가
- * 풀리는 것이 관찰된다(서버가 아니라 Playwright 컨텍스트 쪽 현상이다). 관리자 상태는 admin-fetch.spec.js도 같은
- * 순서에서 그대로 쓴다.
+ * 기본 page를 관리자 상태로 쓰고 작성자는 openAs('user')로 연다 — 이 스펙에서 새로 로그인하지 않는다. 새 로그인(login 헬퍼)을 board.spec.js보다 앞에서 하면 이후 스펙들이 쓰는 저장된 로그인 상태가 풀리는 것이 관찰된다(서버가 아니라 Playwright 컨텍스트 쪽 현상이다).
+ * 관리자 상태는 admin-fetch.spec.js도 같은 순서에서 그대로 쓴다.
  */
 test.use({ storageState: storageStateFor('admin') });
 

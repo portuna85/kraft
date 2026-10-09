@@ -18,8 +18,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * {@link CategoryPolicy} 단위 테스트. 공지(NOTICE)를 관리자 전용으로 제한하는 정책이다 —
- * 예전에는 서버에 이 제한이 없어 일반 사용자도 NOTICE로 글을 쓸 수 있었다.
+ * {@link CategoryPolicy} 단위 테스트. 공지(NOTICE)를 관리자 전용으로 제한하는 정책이다 — 서버에 이 제한이 없으면 일반 사용자도 NOTICE로 글을 쓸 수 있다.
  */
 class CategoryPolicyTest {
 

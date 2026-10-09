@@ -25,12 +25,7 @@ import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 
-/**
- * 배치 하나(최대 {@code PostImageCleaner.CLEANUP_BATCH_SIZE}행) 안의 조회·삭제·실패 처리를
- * 본다. 여러 배치를 몇 번 반복하는지는 {@link PostImageCleaner}(id 커서 진행, 상한)의 책임이고
- * 여기서는 다루지 않는다 — "무엇이 지워지는가"는 실제 파일·DB로 도는 {@link PostImageLifecycleTest}가
- * 본다.
- */
+/** 배치 하나(최대 {@code PostImageCleaner.CLEANUP_BATCH_SIZE}행) 안의 조회·삭제·실패 처리를 본다. 여러 배치를 몇 번 반복하는지는 {@link PostImageCleaner}(id 커서 진행, 상한)의 책임이고 여기서는 다루지 않으며, "무엇이 지워지는가"는 실제 파일·DB로 도는 {@link PostImageLifecycleTest}가 본다. */
 @ExtendWith(MockitoExtension.class)
 class PostImageCleanupBatchRunnerTest {
 

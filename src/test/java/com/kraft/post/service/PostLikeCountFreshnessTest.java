@@ -20,12 +20,7 @@ import com.kraft.support.MariaDbIntegrationTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * {@code setLike}를 감싼 트랜잭션이 REQUIRES_NEW로 커밋되는 추천 INSERT보다 먼저
- * REPEATABLE READ 스냅샷을 잡아 두어도, 최종 응답의 {@code likeCount}가 방금 커밋된 추천을
- * 반영하는지 실제 MariaDB로 확인한다. H2는 기본 격리 수준이 달라 이 경쟁을 재현하지 못한다.
- * Docker가 없으면 건너뛴다.
- */
+/** {@code setLike}를 감싼 트랜잭션이 REQUIRES_NEW로 커밋되는 추천 INSERT보다 먼저 REPEATABLE READ 스냅샷을 잡아 두어도, 최종 응답의 {@code likeCount}가 방금 커밋된 추천을 반영하는지 실제 MariaDB로 확인한다. H2는 기본 격리 수준이 달라 이 경쟁을 재현하지 못한다. Docker가 없으면 건너뛴다. */
 class PostLikeCountFreshnessTest extends MariaDbIntegrationTest {
 
     @Autowired
@@ -66,9 +61,7 @@ class PostLikeCountFreshnessTest extends MariaDbIntegrationTest {
         Long postId = post.getId();
 
         PostLikeResponseDto result = transactionTemplate.execute(status -> {
-            // 바깥 트랜잭션의 REPEATABLE READ 스냅샷을 이 조회 시점에 고정시킨다 — setLike 내부의
-            // REQUIRES_NEW INSERT는 이보다 나중에 별도 커밋되므로, 고정 전 방식(같은 스냅샷에서
-            // count 조회)이었다면 이 커밋을 보지 못했을 것이다.
+            // 바깥 트랜잭션의 REPEATABLE READ 스냅샷을 이 조회 시점에 고정시킨다 — setLike 내부의 REQUIRES_NEW INSERT는 이보다 나중에 별도 커밋되므로, 같은 스냅샷에서 count를 조회했다면 이 커밋을 보지 못한다.
             postRepository.findById(postId);
 
             return postService.setLike(postId, true, liker);
@@ -78,13 +71,7 @@ class PostLikeCountFreshnessTest extends MariaDbIntegrationTest {
         assertThat(result.likeCount()).isEqualTo(1L);
     }
 
-    /**
-     * 회귀: {@code PostLikeWriter.delete}를 REQUIRES_NEW로 만들기 전에는, setLike를 감싼
-     * 바깥 트랜잭션 안에서 직접 지웠다 — 그 트랜잭션이 아직 커밋 전인 상태에서
-     * {@code countByPostId}(REQUIRES_NEW, 별도 트랜잭션)가 그 삭제를 보지 못해, 추천을
-     * 취소해도 응답의 likeCount가 그대로 1로 남았다. E2E("추천을 눌렀다 다시 누르면
-     * 원래대로 돌아온다")가 실제로 이 순서로 실패해 드러났다.
-     */
+    /** 회귀: {@code PostLikeWriter.delete}가 REQUIRES_NEW가 아니라 setLike를 감싼 바깥 트랜잭션 안에서 직접 지우면, 그 트랜잭션이 아직 커밋 전인 상태에서 {@code countByPostId}(REQUIRES_NEW, 별도 트랜잭션)가 그 삭제를 보지 못해 추천을 취소해도 응답의 likeCount가 그대로 1로 남는다. E2E("추천을 눌렀다 다시 누르면 원래대로 돌아온다")가 이 순서로 실패해 드러났다. */
     @Test
     @DisplayName("회귀: 추천을 취소하면 최종 추천 수는 그 삭제를 즉시 반영한다")
     void setLike_toFalse_reflectsTheDeleteImmediately() {

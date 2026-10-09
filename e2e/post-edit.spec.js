@@ -13,11 +13,8 @@ async function createOwnPost(page, title) {
 }
 
 /**
- * navigator.share가 있으면 그 시트를 먼저 띄우고, 없으면 클립보드 복사로
- * 물러선다. Playwright의 chromium 프로젝트(channel: 'chromium', 전체 데스크톱 빌드)는
- * navigator.share를 이미 구현하고 있으므로, "없는 브라우저" 경로를 보려면 명시적으로
- * 지워야 한다 — 실제 실행에서 지우지 않으면(사용자 제스처 밖 자동화 호출이라) 거절되어
- * 클립보드 대신 실패 토스트가 뜬다.
+ * navigator.share가 있으면 그 시트를 먼저 띄우고, 없으면 클립보드 복사로 물러선다. Playwright의 chromium 프로젝트(channel: 'chromium', 전체 데스크톱 빌드)는 navigator.share를 이미 구현하고 있으므로,
+ * "없는 브라우저" 경로를 보려면 명시적으로 지워야 한다 — 지우지 않으면(사용자 제스처 밖 자동화 호출이라) 거절되어 클립보드 대신 실패 토스트가 뜬다.
  */
 test.describe('공유 버튼', () => {
     test('navigator.share가 없으면 클립보드로 복사한다', async ({ page, context }) => {
@@ -44,9 +41,7 @@ test.describe('공유 버튼', () => {
             };
         });
         await createOwnPost(page, uniqueTitle('공유'));
-        // 클립보드를 미리 알아볼 수 있는 값으로 채워, 공유 시트 경로에서는 이 값이 그대로
-        // 남는지(=클립보드에 쓰지 않았는지) 확인한다. 페이지가 뜬 뒤에 써야 한다 — 탐색
-        // 전(about:blank)에는 Clipboard API 자체가 없다.
+        // 클립보드를 미리 알아볼 수 있는 값으로 채워, 공유 시트 경로에서는 이 값이 그대로 남는지(=클립보드에 쓰지 않았는지) 확인한다. 페이지가 뜬 뒤에 써야 한다 — 탐색 전(about:blank)에는 Clipboard API 자체가 없다.
         await page.evaluate(() => navigator.clipboard.writeText('untouched'));
 
         await page.locator('#btn-share').click();
@@ -81,8 +76,7 @@ test('회귀 방지: 분류만 바꾸고 취소하면 확인을 묻고 분류가
 
     await page.locator('#edit-category').selectOption('QNA');
 
-    // 예전에는 분류가 변경 감지에서 빠져 있어 확인창 없이 그냥 닫혔고, 바뀐 분류가 남아
-    // 다음 저장에 딸려 들어갔다.
+    // 분류가 변경 감지에 포함되어야 한다 — 빠지면 확인창 없이 그냥 닫혀 바뀐 분류가 남아 다음 저장에 딸려 들어간다.
     let dialogMessage = null;
     page.once('dialog', (dialog) => {
         dialogMessage = dialog.message();
@@ -113,9 +107,7 @@ test('제목·본문·분류를 바꿔 저장하면 반영된다', async ({ page
     await expect(page.locator('#post-title-text')).toHaveText(newTitle);
 });
 
-/**
- * 수정 요청은 "이 버전을 기준으로 고친다"를 If-Match 헤더로만 밝힌다. 본문에는 version이 없다.
- */
+/** 수정 요청은 "이 버전을 기준으로 고친다"를 If-Match 헤더로만 밝힌다. 본문에는 version이 없다. */
 test('저장 요청이 편집을 시작할 때의 글 버전을 If-Match로 보낸다', async ({ page }) => {
     await createOwnPost(page, uniqueTitle('조건부'));
 
@@ -131,10 +123,7 @@ test('저장 요청이 편집을 시작할 때의 글 버전을 If-Match로 보�
     await expect(page.locator('#flash')).toContainText('글이 수정되었습니다.');
 });
 
-/**
- * 편집을 시작한 뒤 다른 곳(다른 탭·기기)에서 먼저 저장하면, 나중 저장이 말없이 덮어쓰지 않고 412로 거절돼
- * 충돌 안내가 뜬다. 거절된 요청은 서버의 글을 바꾸지 않는다.
- */
+/** 편집을 시작한 뒤 다른 곳(다른 탭·기기)에서 먼저 저장하면, 나중 저장이 말없이 덮어쓰지 않고 412로 거절돼 충돌 안내가 뜬다. 거절된 요청은 서버의 글을 바꾸지 않는다. */
 test('편집을 시작한 뒤 다른 곳에서 먼저 저장되면 충돌 안내가 뜨고 덮어쓰지 않는다', async ({ page }) => {
     const title = uniqueTitle('충돌');
     await createOwnPost(page, title);
@@ -209,9 +198,7 @@ test('저장 중에는 취소·제목·본문·분류가 모두 비활성 상태
     await page.locator('#content').fill('저장 지연 중 상태 확인용 본문입니다.');
     await page.locator('#btn-update').click();
 
-    // 응답이 지연되는 동안 취소·제목·본문·분류가 전부 비활성 상태여야 한다 — 그렇지 않으면
-    // 저장 진행 중 취소해 view로 돌아간 뒤 지연 응답이 이미 사라진 폼에 오류를 표시하는
-    // 경쟁이 생긴다.
+    // 응답이 지연되는 동안 취소·제목·본문·분류가 전부 비활성 상태여야 한다 — 아니면 저장 진행 중 취소해 view로 돌아간 뒤 지연 응답이 이미 사라진 폼에 오류를 표시하는 경쟁이 생긴다.
     await expect(page.locator('#btn-cancel-edit')).toBeDisabled();
     await expect(page.locator('#title')).toBeDisabled();
     await expect(page.locator('#content')).toBeDisabled();
@@ -256,10 +243,7 @@ test('다른 사람의 글에는 수정·삭제 버튼이 보이지 않는다', 
     await expect(page.locator('#btn-delete-post')).toHaveCount(0);
 });
 
-/**
- * 본문은 서버가 먼저 HTML로 그린다. JS 없이도 읽을 수 있어야 하고,
- * Vue가 마운트한 뒤에는 그 내용을 교체해 제목·본문이 한 번만 보여야 하며, 편집도 그대로 된다.
- */
+/** 본문은 서버가 먼저 HTML로 그린다. JS 없이도 읽을 수 있어야 하고, Vue가 마운트한 뒤에는 그 내용을 교체해 제목·본문이 한 번만 보여야 하며, 편집도 그대로 된다. */
 test('JS 없이도 본문을 읽을 수 있고, 마운트 뒤에는 한 번만 보이며 편집이 된다', async ({ page, browser }) => {
     const title = uniqueTitle('서버렌더');
     await createOwnPost(page, title);
@@ -278,21 +262,14 @@ test('JS 없이도 본문을 읽을 수 있고, 마운트 뒤에는 한 번만 �
     await expect(page.locator('#post-title-text')).toHaveText(title);
     await expect(page.locator('[data-ssr-content]')).toHaveCount(0);
     await expect(page.locator('#post-app h1')).toHaveCount(1);
-    // 마운트 뒤 읽기 화면에 정확히 한 번 보인다. page.getByText(...)로 페이지 전체를
-    // 뒤지지 않는 이유(12단계 이후): 편집 폼(MarkdownToolbar.vue의 textarea)이 같은
-    // 내용으로 미리 채워진 채 DOM에 항상 남아 있다(required 검증을 유지하려는 의도 —
-    // MarkdownToolbar.vue 주석 참고) — 그 자체는 정상이라 이 텍스트 검색과는 무관하다.
+    // 마운트 뒤 읽기 화면에 정확히 한 번 보인다. page.getByText(...)로 페이지 전체를 뒤지지 않는 이유: 편집 폼(MarkdownToolbar.vue의 textarea)이 같은 내용으로 미리 채워진 채 DOM에 항상 남아 있다(required 검증을 유지하려는 의도 — MarkdownToolbar.vue 주석 참고).
     await expect(page.locator('#post-content-text')).toHaveText('편집 테스트용 본문입니다.');
 
     await page.locator('#btn-edit').click();
     await expect(page.locator('#edit-category')).toBeVisible();
 });
 
-/**
- * 세션 만료를 막기 위해 10분마다 가벼운 GET(/api/v1/users/me/ping)을 보낸다.
- * page.clock으로 실제 10분을 기다리지 않고 타이머만 앞으로 돌린다 — setInterval이 실제로
- * 등록됐는지, 주기가 맞는지를 확인하는 것이 목적이고 네트워크 자체는 그대로 나간다.
- */
+/** 세션 만료를 막기 위해 10분마다 가벼운 GET(/api/v1/users/me/ping)을 보낸다. page.clock으로 실제 10분을 기다리지 않고 타이머만 앞으로 돌린다 — setInterval이 실제로 등록됐는지, 주기가 맞는지를 확인하는 것이 목적이고 네트워크 자체는 그대로 나간다. */
 test('편집 화면이 열려 있는 동안 세션 연장 핑을 주기적으로 보낸다', async ({ page }) => {
     await page.clock.install();
 

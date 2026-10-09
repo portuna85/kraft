@@ -26,9 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 게시글 상세 조회({@link PostQueryService#findByIdForView})가 SQL을 몇 번 내는지 고정한다.
  * <p>
- * 예전에는 조회수 UPDATE, 게시글, 작성자(지연 로딩), 추천 exists, 추천 count가 따로 나갔다.
- * 지금은 조회수 UPDATE, 게시글+작성자(JOIN FETCH), 추천 집계 — 3개다. 누가 이 경로에 쿼리를
- * 다시 끼워 넣으면 여기서 숫자로 드러난다. 홈의 최근 글은 COUNT 없이 1개(+댓글 수 1개)다.
+ * 조회수 UPDATE, 게시글+작성자(JOIN FETCH), 추천 집계 — 3개다. 지연 로딩이나 exists/count가 따로 나가면 늘어나므로, 누가 이 경로에 쿼리를 다시 끼워 넣으면 여기서 숫자로 드러난다.
  */
 @SpringBootTest(properties = "spring.jpa.properties.hibernate.generate_statistics=true")
 class PostDetailQueryCountTest {

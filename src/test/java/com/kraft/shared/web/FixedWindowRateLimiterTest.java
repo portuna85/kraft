@@ -56,7 +56,7 @@ class FixedWindowRateLimiterTest {
         }
         assertThat(limiter.trackedClientCount()).isEqualTo(100);
 
-        // 예전에는 가득 찬 동안 모든 새 키가 거절됐다.
+        // 가득 찬 동안에도 새 키가 거절되면 안 된다.
         assertThat(limiter.tryAcquire("real-user")).isTrue();
 
         assertThat(limiter.trackedClientCount()).isLessThanOrEqualTo(100);

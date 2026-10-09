@@ -4,12 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * {@link EmailHasher#sha512Hex}의 출력 계약을 고정한다. 예전에는 이 메서드를 직접 테스트하지
- * 않고 {@code UserRepositoryTest} 등에서 조회 키를 만드는 용도로만 간접 사용했다.
- * {@code String.format} 반복을 {@link java.util.HexFormat}로 바꾸면서 출력 형태(소문자·128자·구분자 없음)가 그대로인지 알려진
- * SHA-512 테스트 벡터로 고정해 둔다.
- */
+/** {@link EmailHasher#sha512Hex}의 출력 계약을 고정한다. {@code String.format} 반복을 {@link java.util.HexFormat}으로 바꿔도 출력 형태(소문자·128자·구분자 없음)가 그대로인지 알려진 SHA-512 테스트 벡터로 확인한다. */
 class EmailHasherTest {
 
     @Test

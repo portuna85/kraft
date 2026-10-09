@@ -22,17 +22,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * {@link PostImageService}의 WEBP 검증. JDK ImageIO에는 WEBP 디코더가 없어 컨테이너 구조를
- * 직접 검사하는 경로({@link WebpStructure})를 탄다.
+ * {@link PostImageService}의 WEBP 검증. JDK ImageIO에는 WEBP 디코더가 없어 컨테이너 구조를 직접 검사하는 경로({@link WebpStructure})를 탄다.
  * <p>
- * 허용 쪽은 <b>실제 인코더가 만든 파일</b>로 확인한다. {@code src/test/resources/images/webp/}의
- * 파일은 Chromium canvas({@code toDataURL('image/webp')})가 인코딩한 손실·무손실·알파 이미지다.
- * 여기서 이미지 청크만 떼어 단순 형식으로 다시 감싼 파일과, 같은 VP8 프레임 2개로 만든
- * 애니메이션도 있다. 모두 Chromium {@code createImageBitmap}으로 64×48 디코딩을 확인한 뒤
- * 넣었다.
+ * 허용 쪽은 <b>실제 인코더가 만든 파일</b>로 확인한다. {@code src/test/resources/images/webp/}의 파일은 Chromium canvas({@code toDataURL('image/webp')})가 인코딩한 손실·무손실·알파 이미지다.
+ * 여기서 이미지 청크만 떼어 단순 형식으로 다시 감싼 파일과, 같은 VP8 프레임 2개로 만든 애니메이션도 있다. 모두 Chromium {@code createImageBitmap}으로 64×48 디코딩을 확인한 뒤 넣었다.
  * <p>
- * 거절 쪽은 명세의 바이트 배치를 손으로 만든다. 예전 검사는 앞 30바이트의 치수만 읽어, 이미지
- * 데이터 없는 헤더만의 파일을 받아들였다.
+ * 거절 쪽은 명세의 바이트 배치를 손으로 만든다. 앞 30바이트의 치수만 읽는 검사는 이미지 데이터 없는 헤더만의 파일을 받아들이기 때문이다.
  */
 class PostImageServiceWebpTest {
 

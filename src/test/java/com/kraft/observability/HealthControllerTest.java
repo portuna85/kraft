@@ -25,10 +25,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-/**
- * readiness 판정 규칙. 배포·롤백 성공 판정에 쓰이므로 DB에 붙지
- * 못하거나 응답이 멈춘 상태를 200으로 돌려주면 안 된다.
- */
+/** readiness 판정 규칙. 배포·롤백 성공 판정에 쓰이므로 DB에 붙지 못하거나 응답이 멈춘 상태를 200으로 돌려주면 안 된다. */
 class HealthControllerTest {
 
     private final DataSource dataSource = mock(DataSource.class);
@@ -114,16 +111,14 @@ class HealthControllerTest {
         ExecutorService callers = Executors.newFixedThreadPool(2);
         try {
             Future<ResponseEntity<Void>> first = callers.submit(() -> controller.readyz(loopbackRequest()));
-            // 두 번째 요청이 첫 번째 검사가 아직 끝나지 않은 시점에 들어오도록, 커넥션 호출이
-            // 시작될 때까지는 기다리되 끝나기 전에(래치를 아직 풀지 않은 채) 제출한다.
+            // 두 번째 요청이 첫 번째 검사가 아직 끝나지 않은 시점에 들어오도록, 커넥션 호출이 시작될 때까지는 기다리되 끝나기 전에(래치를 아직 풀지 않은 채) 제출한다.
             connectionCallStarted.await(1, TimeUnit.SECONDS);
             java.util.concurrent.atomic.AtomicReference<Thread> secondThread = new java.util.concurrent.atomic.AtomicReference<>();
             Future<ResponseEntity<Void>> second = callers.submit(() -> {
                 secondThread.set(Thread.currentThread());
                 return controller.readyz(loopbackRequest());
             });
-            // 두 번째 요청이 진행 중인 검사를 기다리는 상태(future.get)에 들어갈 때까지 기다린다. 고정 sleep 대신
-            // 스레드 상태를 본다.
+            // 두 번째 요청이 진행 중인 검사를 기다리는 상태(future.get)에 들어갈 때까지 기다린다. 고정 sleep 대신 스레드 상태를 본다.
             org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(5)).until(() ->
                     secondThread.get() != null && secondThread.get().getState() == Thread.State.TIMED_WAITING);
             releaseConnection.countDown();

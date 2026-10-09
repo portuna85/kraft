@@ -16,16 +16,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
- * {@code BasicErrorController}가 {@code templates/error/4xx.html}·{@code error/5xx.html}로
- * 응답하는지 확인한다(13단계, 전역 오류 화면 — 지금까지는 게시글을 찾을 수 없을 때
- * (ViewExceptionHandler → error/not-found)만 안내 화면이 있었고, 403·잘못된 요청·서버
- * 오류 등 나머지는 Spring 기본 whitelabel 페이지가 그대로 나가고 있었다).
- * <p>
+ * {@code BasicErrorController}가 {@code templates/error/4xx.html}·{@code error/5xx.html}로 응답하는지 확인한다(전역 오류 화면 — 403·잘못된 요청·서버 오류 등이 Spring 기본 whitelabel 페이지로 나가지 않게 한다).
  * 실제 "핸들러 없음" 404가 컨테이너 수준에서 {@code /error}로 재디스패치되는 과정은
- * MockMvc의 목(mock) 서블릿 환경에서 재현되지 않는다 — 그래서 {@code DefaultErrorAttributes}가
- * 읽는 요청 속성({@code jakarta.servlet.error.*})을 직접 채운 뒤 {@code /error}를 호출해
- * {@code BasicErrorController}만 떼어 검증한다. 이는 Spring 자체 문서가 권장하는 커스텀
- * 오류 페이지 테스트 방식이다.
+ * 실제 "핸들러 없음" 404가 컨테이너 수준에서 {@code /error}로 재디스패치되는 과정은 MockMvc의 목(mock) 서블릿 환경에서 재현되지 않는다 — 그래서 {@code DefaultErrorAttributes}가 읽는 요청 속성({@code jakarta.servlet.error.*})을 직접 채운 뒤 {@code /error}를 호출해
+ * {@code BasicErrorController}만 떼어 검증한다. 이는 Spring 자체 문서가 권장하는 커스텀 오류 페이지 테스트 방식이다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc

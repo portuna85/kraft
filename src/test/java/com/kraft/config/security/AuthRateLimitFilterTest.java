@@ -18,14 +18,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * {@link AuthRateLimitFilter} 통합 테스트. 기본 test 프로파일은 다른
- * MockMvc 테스트가 흔들리지 않도록 이 제한기를 꺼 두므로(application-test.yml), 이 클래스만
- * {@code @TestPropertySource}로 다시 켜고 한도를 작게 잡아 검증한다.
+ * {@link AuthRateLimitFilter} 통합 테스트. 기본 test 프로파일은 다른 MockMvc 테스트가 흔들리지 않도록 이 제한기를 꺼 두므로(application-test.yml), 이 클래스만 {@code @TestPropertySource}로 다시 켜고 한도를 작게 잡아 검증한다.
  * <p>
- * {@link AuthRateLimitFilter}는 싱글턴 빈이라 메모리 카운터가 테스트 메서드 사이에 그대로
- * 남는다 — 특히 로그인 IP 제한기는 모든 로그인 테스트가 같은 MockMvc 기본 IP(127.0.0.1)를
- * 공유해 서로의 한도를 갉아먹는다. 예전에는 메서드마다 컨텍스트를 새로 띄워 초기화했지만(7번,
- * 약 4초), 이제 {@code @BeforeEach}에서 제한기만 {@link AuthRateLimitFilter#reset()}으로 비운다.
+ * {@link AuthRateLimitFilter}는 싱글턴 빈이라 메모리 카운터가 테스트 메서드 사이에 그대로 남는다 — 특히 로그인 IP 제한기는 모든 로그인 테스트가 같은 MockMvc 기본 IP(127.0.0.1)를 공유해 서로의 한도를 갉아먹는다.
+ * 그래서 메서드마다 컨텍스트를 새로 띄우지 않고 {@code @BeforeEach}에서 제한기만 {@link AuthRateLimitFilter#reset()}으로 비운다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -130,7 +126,7 @@ class AuthRateLimitFilterTest {
     }
 
     @Test
-    @DisplayName("P2-3: 이메일 인증 확인 POST도 같은 IP의 반복 시도를 한도에서 429로 막는다")
+    @DisplayName("이메일 인증 확인 POST도 같은 IP의 반복 시도를 한도에서 429로 막는다")
     void verifyConfirm_exceedingLimit_returns429() throws Exception {
         for (int i = 0; i < 2; i++) {
             int status = mockMvc.perform(post("/users/verify").param("token", "not-a-real-token").with(csrf()))

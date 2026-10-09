@@ -20,10 +20,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * {@link RecommendationHistoryImporter} 검증 로직 테스트. 실제 트리거(V20)는 MariaDB에서만
- * 동작하므로, 여기서는 검증 순서와 "아무것도 쓰지 않음"(전체 실패 시)만 H2로 확인한다.
- */
+/** {@link RecommendationHistoryImporter} 검증 로직 테스트. 실제 트리거(V20)는 MariaDB에서만 동작하므로 여기서는 검증 순서와 "아무것도 쓰지 않음"(전체 실패 시)만 H2로 확인한다. */
 @DataJpaTest
 class RecommendationHistoryImporterTest {
 
@@ -63,11 +60,7 @@ class RecommendationHistoryImporterTest {
         assertThat(state.getSourceReference()).isEqualTo("test-source");
     }
 
-    /**
-     * 더 앞서 나간 검증 구간(예: 자동 수집이 이미 5회차까지 검증)을, 그보다 늦게 끝난
-     * 백필(예: 3회차 기준으로 시작한 작업)이 조용히 되돌리면 안 된다. draws 반영 자체는
-     * 되더라도 검증 구간만은 지켜야 하므로 예외로 알린다.
-     */
+    /** 더 앞서 나간 검증 구간(예: 자동 수집이 이미 5회차까지 검증)을 그보다 늦게 끝난 백필(예: 3회차 기준으로 시작한 작업)이 조용히 되돌리면 안 된다. draws 반영 자체는 되더라도 검증 구간만은 지켜야 하므로 예외로 알린다. */
     @Test
     @DisplayName("검증 구간을 이미 기록된 것보다 뒤로 되돌리려 하면 거부하고 검증 구간은 그대로 유지된다")
     void verifiedThroughRoundRegression_rejectedAndStateUnchanged() {

@@ -8,10 +8,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * 로그에 남길 이메일을 가리는 규칙. 경계를 고정해 두지 않으면 "가린 줄 알았는데 다 남는"
- * 경우가 생긴다 — 한 글자짜리 local part가 대표적이다.
- */
+/** 로그에 남길 이메일을 가리는 규칙. 경계를 고정해 두지 않으면 "가린 줄 알았는데 다 남는" 경우가 생긴다 — 한 글자짜리 local part가 대표적이다. */
 class EmailMaskerTest {
 
     @Test
@@ -20,10 +17,7 @@ class EmailMaskerTest {
         assertThat(EmailMasker.mask("someone@example.com")).isEqualTo("s***@example.com");
     }
 
-    /**
-     * 첫 글자만 남기는 규칙을 한 글자 주소에 그대로 적용하면 <b>전부 남는다.</b>
-     * 가장 놓치기 쉬운 경계라 따로 고정한다.
-     */
+    /** 첫 글자만 남기는 규칙을 한 글자 주소에 그대로 적용하면 <b>전부 남는다.</b> 가장 놓치기 쉬운 경계라 따로 고정한다. */
     @Test
     @DisplayName("한 글자짜리 주소는 첫 글자도 남기지 않는다")
     void hidesSingleCharacterLocalPartEntirely() {

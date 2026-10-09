@@ -24,10 +24,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
 
-/**
- * B02의 최후 수단인 디스크-대장 대조를 실제 파일로 검증한다. 대장 조회는 mock으로 대신해,
- * "어떤 파일이 대장에 있는가"를 테스트가 직접 통제한다.
- */
+/** 최후 수단인 디스크-대장 대조를 실제 파일로 검증한다. 대장 조회는 mock으로 대신해 "어떤 파일이 대장에 있는가"를 테스트가 직접 통제한다. */
 class OrphanFileReconcilerTest {
 
     @TempDir
@@ -50,8 +47,7 @@ class OrphanFileReconcilerTest {
         Path recentlyOrphaned = createFile("recently-orphaned.png", Instant.now());
         Path registered = createFile("registered.png", Instant.now().minus(OrphanFileReconciler.GRACE_PERIOD.plusMinutes(1)));
 
-        // 파일마다 existsByFileName을 따로 묻지 않고 청크 단위로 findFileNamesIn을 한 번
-        // 부른다 — 대장에 있는 파일명만 돌려준다(대상에 없는 orphaned.png는 빠진다).
+        // 파일마다 existsByFileName을 따로 묻지 않고 청크 단위로 findFileNamesIn을 한 번 부른다 — 대장에 있는 파일명만 돌려준다(대상에 없는 orphaned.png는 빠진다).
         given(postImageRepository.findFileNamesIn(anyList())).willReturn(List.of("registered.png"));
 
         int deleted = reconciler.reconcileNow(Instant.now().minus(OrphanFileReconciler.GRACE_PERIOD));
@@ -73,11 +69,7 @@ class OrphanFileReconcilerTest {
     }
 
     /**
-     * 청크 크기(500)를 넘는 후보도 한 번의 주기에서 전부 처리한다 — 예전에도
-     * 여러 청크로 나눠 처리하긴 했지만, 그 청크 목록 자체를 만들기 전에 후보 전체를
-     * {@code Stream.toList()}로 한 번에 메모리에 모았다. 이번엔 지연 반복자로 스트림을
-     * 훑으므로, 청크 경계(500)를 넘나드는 파일 수에서도 정확히 다 지워지고 findFileNamesIn이
-     * 청크 수만큼(3번) 불려야 한다.
+     * 청크 크기(500)를 넘는 후보도 한 번의 주기에서 전부 처리한다. 후보 전체를 {@code Stream.toList()}로 메모리에 모으지 않고 지연 반복자로 스트림을 훑으므로, 청크 경계(500)를 넘나드는 파일 수에서도 정확히 다 지워지고 findFileNamesIn이 청크 수만큼(3번) 불려야 한다.
      */
     @Test
     @DisplayName("청크 경계(500)를 넘는 후보도 지연 스트림으로 전부 대조한다")
@@ -102,11 +94,7 @@ class OrphanFileReconcilerTest {
         verify(postImageRepository, times(3)).findFileNamesIn(anyList());
     }
 
-    /**
-     * 한 주기가 볼 파일 수를 {@code maxFilesPerRun}으로 제한한다 — 정리가 한동안
-     * 막혀 후보가 아주 많이 쌓여도, 이번 주기가 상한을 넘는 나머지는 건드리지 않고 다음
-     * 주기로 미룬다.
-     */
+    /** 한 주기가 볼 파일 수를 {@code maxFilesPerRun}으로 제한한다 — 정리가 한동안 막혀 후보가 아주 많이 쌓여도 이번 주기가 상한을 넘는 나머지는 건드리지 않고 다음 주기로 미룬다. */
     @Test
     @DisplayName("maxFilesPerRun을 넘는 후보는 이번 주기에서 건드리지 않는다")
     void reconcileNow_boundsWorkByMaxFilesPerRun() throws IOException {

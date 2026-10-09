@@ -15,10 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * {@link SecurityConfig}가 붙이는 CSP·Referrer-Policy·HSTS를 확인한다.
  * <p>
- * 이 앱은 전 화면이 자체 호스팅 CSS·JS만 쓴다 — 외부 CDN·폰트도, 인라인 스크립트·스타일도
- * 없다(이후로 jQuery·Bootstrap도 직접 서빙한다. 마운트 실패 안내도 이 작업에서 인라인
- * {@code <script>}에서 {@code /js/mount-failure.js}로 뺐다). 그래서 {@code default-src 'self'}
- * 하나로 거의 모든 지시어를 막을 수 있다.
+ * 이 앱은 전 화면이 자체 호스팅 CSS·JS만 쓴다 — 외부 CDN·폰트도, 인라인 스크립트·스타일도 없다(마운트 실패 안내도 인라인 {@code <script>}가 아니라 {@code /js/mount-failure.js}다). 그래서 {@code default-src 'self'} 하나로 거의 모든 지시어를 막을 수 있다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -67,11 +64,7 @@ class SecurityHeadersTest {
                 .andExpect(header().string("Referrer-Policy", "strict-origin-when-cross-origin"));
     }
 
-    /**
-     * TLS는 리버스 프록시가 종단한다. {@code server.forward-headers-strategy}(native)가 켜져
-     * 있어도 이 앱은 기본 매처(isSecure) 대신 HSTS를 항상 붙인다(기본 매처를 그대로 썼다면
-     * 이 테스트가 실패해야 정상이다: MockMvc 요청은 HTTPS가 아니다).
-     */
+    /** TLS는 리버스 프록시가 종단한다. {@code server.forward-headers-strategy}(native)가 켜져 있어도 이 앱은 기본 매처(isSecure) 대신 HSTS를 항상 붙인다(기본 매처를 그대로 썼다면 MockMvc 요청이 HTTPS가 아니라 이 테스트가 실패해야 정상이다). */
     @Test
     @DisplayName("HTTPS가 아닌 요청에도 HSTS가 붙는다(프록시 뒤에서도 항상 적용)")
     void response_hasHstsEvenOverPlainHttp() throws Exception {

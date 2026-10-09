@@ -48,11 +48,7 @@ const PNG_1X1 = Buffer.from(
     'base64',
 );
 
-/**
- * 이미지 업로드 응답을 기다리는 동안 제목·본문·분류가 계속 활성 상태이면, 그 사이 바꾼 값이
- * 최종 등록 요청에 들어간다. 입력을 잠그고 제출 시점 값을 스냅샷으로
- * 고정해야 한다.
- */
+/** 이미지 업로드 응답을 기다리는 동안 제목·본문·분류가 계속 활성 상태이면 그 사이 바꾼 값이 최종 등록 요청에 들어간다. 입력을 잠그고 제출 시점 값을 스냅샷으로 고정해야 한다. */
 test('이미지 업로드를 기다리는 동안 입력이 잠기고, 그 사이 바꾼 값은 요청에 들어가지 않는다', async ({ page }) => {
     const submittedTitle = uniqueTitle('업로드중원본');
 
@@ -91,10 +87,7 @@ test('이미지 업로드를 기다리는 동안 입력이 잠기고, 그 사이
     await expect(page.locator('#post-title-text')).toHaveText(submittedTitle);
 });
 
-/**
- * 본문 서버 검증 오류가 textarea 자체에 연결되어야 한다. 예전에는 aria-invalid가
- * MarkdownToolbar의 루트 div에 붙어, 스크린리더가 입력칸과 오류를 이어 읽지 못했다.
- */
+/** 본문 서버 검증 오류가 textarea 자체에 연결되어야 한다 — aria-invalid가 MarkdownToolbar의 루트 div에 붙으면 스크린리더가 입력칸과 오류를 이어 읽지 못한다. */
 test('본문 서버 검증 오류가 textarea의 aria-invalid·aria-describedby에 연결된다', async ({ page }) => {
     await page.route('**/api/v1/posts', async (route) => {
         if (route.request().method() !== 'POST') {

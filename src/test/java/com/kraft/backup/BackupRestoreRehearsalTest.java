@@ -40,16 +40,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * 백업·복구 절차를 실제로 밟아 본다.
- *
- * <h3>왜 필요한가</h3>
- * 백업 명령은 문서에 있었지만 <b>그것으로 정말 복구되는지는 아무도 확인하지 않았다.</b>
- * 백업이 쓸모없다는 사실을 장애 당일에 알게 되는 것이 가장 나쁜 결과다.
+ * 백업·복구 절차를 실제로 밟아 본다. 복구되는지 확인하지 않은 백업은 장애 당일에야 쓸모없다는 사실이 드러난다.
  * <p>
- * 백업은 "세 가지를 같은 시점으로 함께" 보관해야 한다 — DB 덤프, {@code uploads/images/},
- * 그리고 {@code EMAIL_ENCRYPTION_KEY}. 여기서는 그 주장을 <b>실행되는 형태</b>로 바꾼다.
- * 셋을 모두 갖추면 복구되고, <b>하나라도 빠지면 어떻게 망가지는지</b>를 함께 고정한다.
- * 후자가 없으면 "왜 세 개나 챙겨야 하는가"가 설득되지 않는다.
+ * 백업은 "세 가지를 같은 시점으로 함께" 보관해야 한다 — DB 덤프, {@code uploads/images/}, 그리고 {@code EMAIL_ENCRYPTION_KEY}. 여기서는 그 주장을 <b>실행되는 형태</b>로 바꾼다.
+ * 셋을 모두 갖추면 복구되고, <b>하나라도 빠지면 어떻게 망가지는지</b>를 함께 고정한다. 후자가 없으면 "왜 세 개나 챙겨야 하는가"가 설득되지 않는다.
  */
 @Tag("docker")
 @Testcontainers(disabledWithoutDocker = true)
@@ -97,11 +91,7 @@ class BackupRestoreRehearsalTest {
     }
 
     /**
-     * 키를 백업 대상에 넣는 이유를 고정한다.
-     * <p>
-     * 키를 잃으면 <b>DB 복구 자체는 성공한다</b> — SQL로 보면 행이 그대로 있다. 그런데 앱은
-     * 그 회원을 <b>읽어 올 수조차 없다.</b> 복호화가 엔티티를 만드는 시점에 일어나므로
-     * 조회가 통째로 실패한다. 덤프만 잘 보관해도 소용이 없다는 뜻이다.
+     * 키를 백업 대상에 넣는 이유를 고정한다. 키를 잃으면 <b>DB 복구 자체는 성공한다</b>(SQL로 보면 행이 그대로 있다). 그런데 복호화가 엔티티를 만드는 시점에 일어나므로 앱은 그 회원을 <b>읽어 올 수조차 없다</b> — 덤프만 잘 보관해도 소용이 없다.
      */
     @Test
     @DisplayName("키를 빠뜨리면 DB를 되돌려도 저장된 이메일을 읽을 수 없다")
@@ -121,18 +111,14 @@ class BackupRestoreRehearsalTest {
         withApp(uploads, context -> {
             UserRepository users = context.getBean(UserRepository.class);
 
-            // 그런데 앱은 이 회원을 읽어 올 수조차 없다. 복호화는 엔티티를 만드는 시점에
-            // 일어나므로, 조회가 통째로 실패한다.
+            // 그런데 앱은 이 회원을 읽어 올 수조차 없다. 복호화는 엔티티를 만드는 시점에 일어나므로 조회가 통째로 실패한다.
             assertThatThrownBy(() -> users.findByEmailHmac(EmailHasher.hmacHex(seeded.email())))
                     .as("키가 없으면 행이 남아 있어도 쓸 수 없다 — 그래서 키도 함께 백업한다")
                     .hasRootCauseInstanceOf(javax.crypto.AEADBadTagException.class);
         }, "completely-different-key-2222");
     }
 
-    /**
-     * "DB만 되돌리면 {@code post_images} 행은 있는데 파일이 없는 상태가 될 수 있다"는 점을
-     * 그대로 확인한다. 이 상태는 앱이 오류를 내지 않아 더 위험하다 — 글은 열리고 이미지만 깨진다.
-     */
+    /** "DB만 되돌리면 {@code post_images} 행은 있는데 파일이 없는 상태가 될 수 있다"는 점을 확인한다. 앱이 오류를 내지 않아 더 위험하다 — 글은 열리고 이미지만 깨진다. */
     @Test
     @DisplayName("업로드 파일을 빠뜨리면 DB에는 이미지가 있는데 파일이 없다")
     void restoringWithoutTheUploadedFilesLeavesDanglingImageRows() {
@@ -185,12 +171,8 @@ class BackupRestoreRehearsalTest {
     }
 
     /**
-     * deploy/backup.sh의 덤프 명령과 같은 모양(gzip 압축)으로 맞춘다.
-     * <p>
-     * 완전히 같지는 않다 — 운영은 {@code docker compose exec} 컨테이너 안에서 root 계정을
-     * {@code MYSQL_PWD}로 쓰는데, 이 테스트는 Testcontainers가 만든 앱 계정(-p 인자)을 그대로
-     * 쓴다([확인 필요]) — {@code MariaDBContainer}가 root 자격 증명을 별도로 노출하지
-     * 않아, 트리거 {@code DEFINER}·권한 차이까지 이 테스트가 검증하지는 못한다.
+     * deploy/backup.sh의 덤프 명령과 같은 모양(gzip 압축)으로 맞춘다. 완전히 같지는 않다 — 운영은 {@code docker compose exec} 컨테이너 안에서 root 계정을 {@code MYSQL_PWD}로 쓰는데,
+     * 이 테스트는 Testcontainers가 만든 앱 계정(-p 인자)을 쓴다. {@code MariaDBContainer}가 root 자격 증명을 별도로 노출하지 않아 트리거 {@code DEFINER}·권한 차이까지는 검증하지 못한다.
      */
     private Path backupDatabase() {
         exec("mariadb-dump -u" + mariadb.getUsername() + " -p" + mariadb.getPassword()
@@ -242,10 +224,7 @@ class BackupRestoreRehearsalTest {
         }
     }
 
-    /**
-     * 앱을 띄워 작업을 시키고 닫는다. 기본은 운영과 같은 {@code validate}다 — 복구된 스키마가
-     * 엔티티와 맞는지까지 함께 확인된다.
-     */
+    /** 앱을 띄워 작업을 시키고 닫는다. 기본은 운영과 같은 {@code validate}라 복구된 스키마가 엔티티와 맞는지까지 함께 확인된다. */
     private void withApp(Path uploads, java.util.function.Consumer<ConfigurableApplicationContext> work,
                          String encryptionKey, String... extraArgs) {
         String[] args = new String[extraArgs.length + 9];
@@ -273,8 +252,7 @@ class BackupRestoreRehearsalTest {
                 "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()",
                 String.class);
 
-        // FOREIGN_KEY_CHECKS는 세션 변수다. DriverManagerDataSource는 호출마다 새 커넥션을
-        // 열기 때문에 한 커넥션 안에서 끝내야 한다.
+        // FOREIGN_KEY_CHECKS는 세션 변수다. DriverManagerDataSource는 호출마다 새 커넥션을 열기 때문에 한 커넥션 안에서 끝내야 한다.
         jdbc.execute((ConnectionCallback<Void>) connection -> {
             try (Statement statement = connection.createStatement()) {
                 statement.execute("SET FOREIGN_KEY_CHECKS = 0");

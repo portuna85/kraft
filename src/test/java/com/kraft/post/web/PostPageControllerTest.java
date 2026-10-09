@@ -44,14 +44,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
- * {@link PostPageController} 화면 계층 테스트. {@code PostQueryService}/{@code CommentService}는 모킹하고,
- * 실제 {@link SecurityConfig}를 임포트해 CSRF 메타 태그가 필요한 헤더 fragment까지 렌더링되는
- * 실제 요청 흐름을 재현한다.
+ * {@link PostPageController} 화면 계층 테스트. {@code PostQueryService}/{@code CommentService}는 모킹하고, 실제 {@link SecurityConfig}를 임포트해 CSRF 메타 태그가 필요한 헤더 fragment까지 렌더링되는 실제 요청 흐름을 재현한다.
  * <p>
- * {@code page=-1} 테스트는 과거 실제로 500을 유발했던 버그(08장 8.6절)의 회귀 방지 테스트다:
- * {@code @RequestParam int page}로 직접 받던 시절에는 음수 페이지가 {@code PageRequest.of(-1, ...)}
- * 에서 {@code IllegalArgumentException}을 던졌으나, {@code Pageable}을 {@code @PageableDefault}로
- * 직접 받도록 고친 뒤에는 Spring Data가 안전하게 0으로 보정한다.
+ * {@code page=-1} 테스트는 500을 유발했던 버그의 회귀 방지 테스트다: {@code @RequestParam int page}로 직접 받으면 음수 페이지가 {@code PageRequest.of(-1, ...)}에서 {@code IllegalArgumentException}을 던지지만,
+ * {@code Pageable}을 {@code @PageableDefault}로 받으면 Spring Data가 안전하게 0으로 보정한다.
  */
 @WebMvcTest(PostPageController.class)
 @Import(SecurityConfig.class)
@@ -76,10 +72,7 @@ class PostPageControllerTest {
     @MockitoBean
     private PostViewDedup postViewDedup;
 
-    /**
-     * 검색 제한기·중복 방문 판정은 이 슬라이스의 관심사가 아니다 — 기본으로
-     * 항상 통과(=조회수를 센다)시킨다.
-     */
+    /** 검색 제한기·중복 방문 판정은 이 슬라이스의 관심사가 아니다 — 기본으로 항상 통과(=조회수를 센다)시킨다. */
     @BeforeEach
     void allowAllRateLimits() {
         given(rateLimiters.tryAcquireSearch(any())).willReturn(true);
@@ -124,11 +117,8 @@ class PostPageControllerTest {
     }
 
     /**
-     * PageWindow는 표시용 페이지 번호를 [0, totalPages-1]로 보정하지만, 실제 조회는
-     * 요청받은 원래 page 그대로 돈다 — 글이 있는데도 범위를 넘는 page를 요청하면(예: 처리 중
-     * 다른 글이 지워져 페이지 수가 줄어든 경우) 빈 목록과, 그중 어느 것도 "현재"로 표시되지
-     * 않는 페이지네이션이 동시에 보였다. 검색어·분류를 유지한 채 유효한 마지막 페이지로
-     * 보내는지 확인한다.
+     * PageWindow는 표시용 페이지 번호를 [0, totalPages-1]로 보정하지만 실제 조회는 요청받은 원래 page 그대로 돈다 — 글이 있는데도 범위를 넘는 page를 요청하면(예: 다른 글이 지워져 페이지 수가 줄어든 경우)
+     * 빈 목록과 "현재"로 표시되는 페이지가 하나도 없는 페이지네이션이 동시에 보인다. 검색어·분류를 유지한 채 유효한 마지막 페이지로 보내는지 확인한다.
      */
     @Test
     @DisplayName("글은 있지만 범위를 넘는 page를 요청하면 유효한 마지막 페이지로 보낸다")
@@ -142,10 +132,7 @@ class PostPageControllerTest {
                         containsString("page=4")));
     }
 
-    /**
-     * 검색어가 있으면 전체 건수를 세지 않는다(totalElements/totalPages == null). 화면은 총 건수
-     * 없이도 렌더링되어야 하고, 번호 목록 대신 이전·다음과 "N페이지"만 보여야 한다.
-     */
+    /** 검색어가 있으면 전체 건수를 세지 않는다(totalElements/totalPages == null). 화면은 총 건수 없이도 렌더링되어야 하고, 번호 목록 대신 이전·다음과 "N페이지"만 보여야 한다. */
     @Test
     @DisplayName("검색 결과(총 건수 없음)는 총 개수·번호 목록 없이 이전·다음과 N페이지만 그린다")
     void index_searchResultsWithoutTotals_rendersPrevNextOnly() throws Exception {
@@ -196,10 +183,7 @@ class PostPageControllerTest {
                 .andExpect(content().string(not(containsString("아직 게시글이 없습니다"))));
     }
 
-    /**
-     * 총 페이지 수를 모르므로 "마지막 페이지"로 보낼 수 없다 — 빈 결과인 범위 밖 페이지는
-     * 검색어·분류·정렬을 유지한 채 첫 페이지(page 생략)로 보낸다.
-     */
+    /** 총 페이지 수를 모르므로 "마지막 페이지"로 보낼 수 없다 — 빈 결과인 범위 밖 페이지는 검색어·분류·정렬을 유지한 채 첫 페이지(page 생략)로 보낸다. */
     @Test
     @DisplayName("검색 결과가 빈 범위 밖 page는 검색 조건을 유지한 채 첫 페이지로 보낸다")
     void index_searchBeyondLastPage_redirectsToFirstPageKeepingFilters() throws Exception {
@@ -210,8 +194,7 @@ class PostPageControllerTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(header().string("Location", not(containsString("page="))))
                 .andExpect(header().string("Location", containsString("category=NOTICE")))
-                // 한글은 퍼센트 인코딩되어야 한다("키워드"). 인코딩하지 않으면 실제 서버가 Location 헤더를
-                // 만들지 못해 리다이렉트가 일어나지 않는다.
+                // 한글은 퍼센트 인코딩되어야 한다("키워드"). 인코딩하지 않으면 실제 서버가 Location 헤더를 만들지 못해 리다이렉트가 일어나지 않는다.
                 .andExpect(header().string("Location", containsString("q=%ED%82%A4%EC%9B%8C%EB%93%9C")));
     }
 
@@ -227,7 +210,7 @@ class PostPageControllerTest {
     }
 
     @Test
-    @DisplayName("9단계: 범위를 넘는 page를 정렬과 함께 요청해도 리다이렉트 URL이 sort를 유지한다")
+    @DisplayName("범위를 넘는 page를 정렬과 함께 요청해도 리다이렉트 URL이 sort를 유지한다")
     void index_withOutOfRangePageAndSort_redirectKeepsSort() throws Exception {
         given(postQueryService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 5, 10, 42L, 5, false, true));
@@ -311,14 +294,12 @@ class PostPageControllerTest {
         mockMvc.perform(get("/community").param("sort", "content,desc"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("index"))
-                // 허용되지 않는 정렬은 무시되므로 화면이 되돌려 쓸 currentSort도 비어 있어야
-                // 한다 — 검색 폼의 정렬 select가 "최신 등록순"으로 남고, 페이지 링크에도
-                // sort=content,desc가 실리지 않는다.
+                // 허용되지 않는 정렬은 무시되므로 화면이 되돌려 쓸 currentSort도 비어 있어야 한다 — 검색 폼의 정렬 select가 "최신 등록순"으로 남고 페이지 링크에도 sort=content,desc가 실리지 않는다.
                 .andExpect(model().attribute("currentSort", org.hamcrest.Matchers.nullValue()));
     }
 
     @Test
-    @DisplayName("9단계: GET /?sort=viewCount,desc 는 화면이 되돌려 쓸 currentSort를 모델에 담는다")
+    @DisplayName("GET /?sort=viewCount,desc 는 화면이 되돌려 쓸 currentSort를 모델에 담는다")
     void index_withAllowedSort_setsCurrentSortModelAttribute() throws Exception {
         given(postQueryService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
@@ -331,7 +312,7 @@ class PostPageControllerTest {
     }
 
     @Test
-    @DisplayName("9단계: 정렬을 지정하지 않으면 currentSort는 null이다(기본 최신순을 URL에 노출하지 않는다)")
+    @DisplayName("정렬을 지정하지 않으면 currentSort는 null이다(기본 최신순을 URL에 노출하지 않는다)")
     void index_withoutSortParam_currentSortIsNull() throws Exception {
         given(postQueryService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
@@ -365,7 +346,7 @@ class PostPageControllerTest {
     }
 
     @Test
-    @DisplayName("GET /posts/update/{id} 는 본문을 마크다운으로 해석해 그린다(13단계, SSR)")
+    @DisplayName("GET /posts/update/{id} 는 본문을 마크다운으로 해석해 그린다(SSR)")
     void postsUpdate_rendersMarkdownContentAsHtml() throws Exception {
         given(postQueryService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
                 .willReturn(new PostViewDto(1L, "제목", "**굵게** 본문", null, null, null, "작성자", false, Category.FREE, 0L, 0L, false, 0L));
@@ -376,19 +357,14 @@ class PostPageControllerTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-        // post-initial-data(Vue 하이드레이션용 원문 JSON)·meta description에는 원문 그대로
-        // "**굵게**"가 남는다(의도된 동작 — Vue가 그 JSON을 마크다운으로 다시 해석하고,
-        // 메타 설명은 검색엔진·링크 미리보기용 평문 발췌라 이번 범위 밖이다). 이 테스트가
-        // 보려는 것은 서버가 먼저 그리는 post-ssr 본문 하나뿐이므로 그 구간만 뽑아 확인한다.
+        // post-initial-data(Vue 하이드레이션용 원문 JSON)·meta description에는 원문 그대로 "**굵게**"가 남는다(의도된 동작 — Vue가 그 JSON을 마크다운으로 다시 해석하고, 메타 설명은 검색엔진·링크 미리보기용 평문 발췌다).
+        // 이 테스트가 보려는 것은 서버가 먼저 그리는 post-ssr 본문 하나뿐이므로 그 구간만 뽑아 확인한다.
         String ssrBody = content.substring(content.indexOf("post-ssr"), content.indexOf("</article>"));
         String normalizedBody = normalizedWhitespace(ssrBody);
 
-        // 템플릿 소스의 줄바꿈·들여쓰기가 th:text 주변에도 그대로 남아 "<strong>굵게</strong>"처럼
-        // 붙어 나오지 않는다(개행·공백이 낀 채로 렌더링됨) — 태그 인접 여부만 볼 때는
-        // 공백을 지우고 비교한다. 실제 브라우저에서는 인라인 요소 사이 공백이 시각적으로
-        // 문제되지 않는다.
+        // 템플릿 소스의 줄바꿈·들여쓰기가 th:text 주변에 그대로 남아 "<strong>굵게</strong>"처럼 붙어 나오지 않는다 — 태그 인접 여부만 볼 때는 공백을 지우고 비교한다(브라우저에서는 인라인 요소 사이 공백이 문제되지 않는다).
         assertThat(normalizedBody).contains("<strong>굵게</strong>");
-        // 저장 형식은 지금과 똑같은 평문이다 — 마크다운 문법 문자 자체는 본문에 남지 않는다.
+        // 마크다운 문법 문자 자체는 렌더링된 본문에 남지 않는다.
         assertThat(normalizedBody).doesNotContain("**굵게**");
     }
 
@@ -455,9 +431,7 @@ class PostPageControllerTest {
     @Test
     @DisplayName("GET /posts/save 는 일반 사용자에게 공지(NOTICE) 분류 옵션을 보여주지 않는다")
     void postsSave_hidesNoticeOptionFromNonAdmin() throws Exception {
-        // 등록 폼은 Vue 아일랜드(src/vue/post-save)로 렌더링된다. 고를 수 있는 분류는
-        // #post-save-initial-data 스크립트의 JSON으로 내려가며, 실제 경계는 저장 요청에서
-        // CategoryPolicy가 다시 잡는다.
+        // 등록 폼은 Vue 아일랜드(src/vue/post-save)로 렌더링된다. 고를 수 있는 분류는 #post-save-initial-data 스크립트의 JSON으로 내려가며, 실제 경계는 저장 요청에서 CategoryPolicy가 다시 잡는다.
         mockMvc.perform(get("/posts/save").with(user("tester@example.com").roles("USER")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("id=\"post-save-initial-data\"")))
@@ -477,8 +451,7 @@ class PostPageControllerTest {
     @Test
     @DisplayName("GET /posts/save 는 로그인하지 않은 방문자에게 등록 폼 아일랜드를 렌더링하지 않는다")
     void postsSave_doesNotMountFormForAnonymous() throws Exception {
-        // 폼을 보여줄지는 템플릿의 sec:authorize가 정한다. 마운트 지점이 없으면 mount.js도
-        // 조용히 아무 일도 하지 않지만, 애초에 번들을 싣지도 않는다.
+        // 폼을 보여줄지는 템플릿의 sec:authorize가 정한다. 마운트 지점이 없으면 번들도 싣지 않는다.
         mockMvc.perform(get("/posts/save"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(not(containsString("id=\"post-save-app\""))))
@@ -493,8 +466,7 @@ class PostPageControllerTest {
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(List.of(), 0L, false));
 
-        // 게시글 편집은 Vue 아일랜드(src/vue/post-edit)로 렌더링된다. 버전은 #post-initial-data
-        // 스크립트의 JSON에 담겨 내려가고, 저장 요청이 그대로 돌려보내 서버가 충돌을 판별한다.
+        // 게시글 편집은 Vue 아일랜드(src/vue/post-edit)로 렌더링된다. 버전은 #post-initial-data 스크립트의 JSON에 담겨 내려가고, 저장 요청이 그대로 돌려보내 서버가 충돌을 판별한다.
         mockMvc.perform(get("/posts/update/1").with(user("tester@example.com").roles("USER")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("id=\"post-initial-data\"")))
@@ -509,8 +481,7 @@ class PostPageControllerTest {
         given(commentService.findInitialPageForView(eq(1L), nullable(Authentication.class)))
                 .willReturn(new CommentPageDto(List.of(), 0L, false));
 
-        // 이 값이 없어서 cancelEdit()이 분류만 복원하지 못했다 — 변경 감지에서도 빠져 있었다
-        // (지금은 Vue의 original/draft 키 순회 비교가 이 회귀를 구조적으로 막는다).
+        // 변경 감지가 분류 필드를 빠뜨리면 cancelEdit()이 분류만 복원하지 못한다 — 지금은 Vue의 original/draft 키 순회 비교가 이를 구조적으로 막는다.
         mockMvc.perform(get("/posts/update/1").with(user("tester@example.com").roles("USER")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("id=\"post-initial-data\"")))

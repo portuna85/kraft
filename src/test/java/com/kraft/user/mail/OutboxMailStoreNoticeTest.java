@@ -12,7 +12,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** 안내 메일(계정 존재·로그인 경고)이 회원당 쿨다운 안에서 한 통만 큐에 들어가는지(P0-4). */
+/** 안내 메일(계정 존재·로그인 경고)이 회원당 쿨다운 안에서 한 통만 큐에 들어가는지. */
 @SpringBootTest
 class OutboxMailStoreNoticeTest {
 

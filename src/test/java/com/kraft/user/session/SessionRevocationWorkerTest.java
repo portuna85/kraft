@@ -21,10 +21,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
 
-/**
- * 비밀번호 변경·재설정·탈퇴 커밋 직후의 빠른 경로가 실패해도, 영속 태스크가 남아 주기 작업이
- * 결국 세션 폐기를 완수하는지 검증한다.
- */
+/** 비밀번호 변경·재설정·탈퇴 커밋 직후의 빠른 경로가 실패해도, 영속 태스크가 남아 주기 작업이 결국 세션 폐기를 완수하는지 검증한다. */
 @SpringBootTest
 class SessionRevocationWorkerTest {
 
@@ -123,11 +120,8 @@ class SessionRevocationWorkerTest {
         String email = user.getEmail();
         Long taskId = store.enqueue(user);
 
-        // 실제 탈퇴처럼 계정의 이메일을 먼저 익명 주소로 바꿔 커밋하고(원래 이메일 자리를
-        // 비워야 email_hash 유니크 제약과 부딪히지 않는다), 그 뒤 같은 이메일로 새 계정이
-        // 재가입했다고 가정한다. 세션 principal이 이제 회원 id라 revokeAll은 애초에
-        // 이메일이 아니라 원래 계정의 불변 id로만 조회하므로, 재가입한 새 계정의 세션과
-        // 섞일 여지가 구조적으로 없다.
+        // 실제 탈퇴처럼 계정의 이메일을 먼저 익명 주소로 바꿔 커밋하고(원래 이메일 자리를 비워야 email_hash 유니크 제약과 부딪히지 않는다), 그 뒤 같은 이메일로 새 계정이 재가입했다고 가정한다.
+        // 세션 principal이 회원 id라 revokeAll은 이메일이 아니라 원래 계정의 불변 id로만 조회하므로 재가입한 새 계정의 세션과 섞일 여지가 구조적으로 없다.
         user.withdraw("withdrawn-" + user.getId() + "@kraft.invalid", "탈퇴한 사용자", "encoded");
         userRepository.save(user);
         userRepository.save(User.builder()
@@ -142,10 +136,7 @@ class SessionRevocationWorkerTest {
         verify(sessionRevoker).revokeAll(String.valueOf(user.getId()), user.getId());
     }
 
-    /**
-     * 이메일 키 교체(rekey) 창에서 이 워커가 끼어들지 않도록 application-rekey.yml이
-     * 이 플래그를 끈다. OutboxMailWorker의 whenDisabled_drainDoesNothing과 같은 패턴이다.
-     */
+    /** 이메일 키 교체(rekey) 창에서 이 워커가 끼어들지 않도록 application-rekey.yml이 이 플래그를 끈다. OutboxMailWorker의 whenDisabled_drainDoesNothing과 같은 패턴이다. */
     @Test
     @DisplayName("enabled가 false면 예약 실행과 attemptNow 모두 아무 것도 처리하지 않는다")
     void whenDisabled_nothingIsProcessed() {

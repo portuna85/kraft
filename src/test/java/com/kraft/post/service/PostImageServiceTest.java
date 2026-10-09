@@ -21,10 +21,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * {@link PostImageService} 단위 테스트. 실제 파일 시스템에 쓰기 때문에 매 테스트마다
- * JUnit5의 {@code @TempDir}로 격리된 임시 디렉터리를 사용한다.
- */
+/** {@link PostImageService} 단위 테스트. 실제 파일 시스템에 쓰기 때문에 매 테스트마다 JUnit5의 {@code @TempDir}로 격리된 임시 디렉터리를 사용한다. */
 class PostImageServiceTest {
 
     private PostImageService postImageService;
@@ -59,7 +56,7 @@ class PostImageServiceTest {
     }
 
     @Test
-    @DisplayName("P2-3: store가 돌려주는 sizeBytes는 실제로 디스크에 저장된 파일 크기다(쿼터 기준)")
+    @DisplayName("store가 돌려주는 sizeBytes는 실제로 디스크에 저장된 파일 크기다(쿼터 기준)")
     void store_returnsStoredSizeUsedForQuota() throws Exception {
         MockMultipartFile file = new MockMultipartFile("file", "photo.png", "image/png", TestImages.pngBytes(64, 32));
 
@@ -103,9 +100,7 @@ class PostImageServiceTest {
     @Test
     @DisplayName("저장 파일에서 EXIF(GPS 등) 메타데이터가 사라진다")
     void store_stripsExifMetadataFromSavedFile() throws IOException {
-        // ImageIO가 만든 순수 JPEG(EXIF 없음) 바로 뒤(SOI 다음)에 GPS 태그가 든 APP1을
-        // 끼워 넣는다 — JPEG는 SOI 뒤 마커 순서를 엄격히 강제하지 않고, PostImageService의
-        // 서명 검사도 앞 3바이트(FF D8 FF)만 본다.
+        // ImageIO가 만든 순수 JPEG(EXIF 없음) 바로 뒤(SOI 다음)에 GPS 태그가 든 APP1을 끼워 넣는다 — JPEG는 SOI 뒤 마커 순서를 엄격히 강제하지 않고 PostImageService의 서명 검사도 앞 3바이트(FF D8 FF)만 본다.
         byte[] plain = TestImages.jpegFile("photo.jpg").getBytes();
         byte[] exifApp1 = exifApp1WithGpsPointer();
         byte[] withExif = new byte[2 + exifApp1.length + (plain.length - 2)];
@@ -249,7 +244,7 @@ class PostImageServiceTest {
     @Test
     @DisplayName("store: 확장자만 .png인 일반 텍스트는 내용 검사에서 거부한다")
     void store_withTextContentNamedPng_isRejected() {
-        // 예전에는 확장자만 봤기 때문에 이 파일이 그대로 저장됐다.
+        // 확장자만 보면 이 파일이 그대로 저장되므로 내용 검사에서 거부해야 한다.
         MockMultipartFile file = new MockMultipartFile(
                 "file", "not-an-image.png", "text/plain", "이건 그냥 텍스트입니다".getBytes(StandardCharsets.UTF_8));
 

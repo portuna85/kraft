@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * {@code outbox_mails.token}은 발송 전까지만 평문으로 있어야 한다(V24의 알려진 한계, P2-4). 끝난 행
+ * {@code outbox_mails.token}은 발송 전까지만 평문으로 있어야 한다(V24의 알려진 한계). 끝난 행
  * (SENT/FAILED/STALE)에 평문이 보관 기간 동안 남지 않는다는 불변 조건을 고정한다.
  */
 class OutboxMailTokenClearingTest {

@@ -33,13 +33,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-/**
- * {@link PasswordResetService} 단위 테스트.
- * <p>
- * 이 기능에서 가장 지키기 어려운 성질은 "요청 단계가 아무것도 알려주지 않는다"이다. 가입하지
- * 않은 주소와 가입한 주소의 동작이 조금이라도 갈리면(예외, 다른 응답, 다른 소요 시간) 그것만으로
- * 계정 존재 여부를 확인할 수 있다. 앞의 세 테스트가 그 성질을 고정한다.
- */
+/** {@link PasswordResetService} 단위 테스트. 이 기능에서 가장 지키기 어려운 성질은 "요청 단계가 아무것도 알려주지 않는다"이다. 가입하지 않은 주소와 가입한 주소의 동작이 조금이라도 갈리면(예외, 다른 응답, 다른 소요 시간) 그것만으로 계정 존재 여부를 확인할 수 있다. 앞의 세 테스트가 그 성질을 고정한다. */
 @ExtendWith(MockitoExtension.class)
 class PasswordResetServiceTest {
 
@@ -107,8 +101,7 @@ class PasswordResetServiceTest {
         assertThat(saved.getValue().getExpiresAt())
                 .isBetween(LocalDateTime.now().plusMinutes(29), LocalDateTime.now().plusMinutes(31));
 
-        // 대기열에는 평문 토큰이 실린다(발송 본문에 필요하다). 저장된 조회 테이블 행에는
-        // 그 해시만 있으므로, 둘을 직접 비교하는 대신 같은 값에서 나온 것인지 확인한다.
+        // 대기열에는 평문 토큰이 실린다(발송 본문에 필요하다). 저장된 조회 테이블 행에는 그 해시만 있으므로, 둘을 직접 비교하는 대신 같은 값에서 나온 것인지 확인한다.
         ArgumentCaptor<String> enqueuedToken = ArgumentCaptor.forClass(String.class);
         verify(outboxMailStore).enqueue(eq(user), enqueuedToken.capture(), eq(OutboxMailKind.PASSWORD_RESET));
         assertThat(EmailHasher.sha512Hex(enqueuedToken.getValue())).isEqualTo(saved.getValue().getTokenHash());
@@ -133,8 +126,7 @@ class PasswordResetServiceTest {
     @Test
     @DisplayName("request: 요청 제한은 메일 종류별로 본다 — 방금 받은 인증 메일이 재설정 요청을 막지 않는다")
     void request_cooldownIsPerMailKind() {
-        // 가입 직후에는 인증 메일이 막 나간 상태다. 종류를 가리지 않고 제한하면 그 사람은
-        // 비밀번호를 잊어도 1분 동안 아무 반응 없는 화면만 보게 된다.
+        // 가입 직후에는 인증 메일이 막 나간 상태다. 종류를 가리지 않고 제한하면 그 사람은 비밀번호를 잊어도 1분 동안 아무 반응 없는 화면만 보게 된다.
         User user = userWithId(7L, "user@example.com");
         given(userRepository.findByEmailHmac(EmailHasher.hmacHex("user@example.com")))
                 .willReturn(Optional.of(user));
@@ -219,7 +211,7 @@ class PasswordResetServiceTest {
                 .hasMessageContaining("만료");
 
         verify(userService, never()).resetPasswordEncoded(anyLong(), anyString());
-        // 이 트랜잭션에서 지우면 뒤따르는 예외와 함께 삭제도 롤백된다(F08과 같은 덫).
+        // 이 트랜잭션에서 지우면 뒤따르는 예외와 함께 삭제도 롤백된다.
         verify(expiredTokenPurger).purgePasswordResetToken(42L);
         verify(tokenRepository, never()).delete(expired);
     }

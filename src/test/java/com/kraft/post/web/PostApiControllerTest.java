@@ -52,13 +52,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * {@link PostApiController} 웹 계층 테스트. {@link PostService}는 {@code @MockitoBean}으로
- * 대체하고, 실제 {@link SecurityConfig}를 {@code @Import}해 인증/CSRF/인가 규칙이 문서에
- * 기록된 그대로 동작하는지 확인한다. {@link com.kraft.shared.web.ApiExceptionHandler}는
- * {@code @RestController} 대상 {@code @RestControllerAdvice}라 별도 {@code @Import}
- * 없이도 이 슬라이스에 함께 적용된다.
- */
+/** {@link PostApiController} 웹 계층 테스트. {@link PostService}는 {@code @MockitoBean}으로 대체하고, 실제 {@link SecurityConfig}를 {@code @Import}해 인증/CSRF/인가 규칙이 그대로 동작하는지 확인한다. {@link com.kraft.shared.web.ApiExceptionHandler}는 {@code @RestController} 대상 {@code @RestControllerAdvice}라 별도 {@code @Import} 없이도 이 슬라이스에 함께 적용된다. */
 @WebMvcTest(PostApiController.class)
 @Import(SecurityConfig.class)
 class PostApiControllerTest {
@@ -95,10 +89,7 @@ class PostApiControllerTest {
                 .andExpect(jsonPath("$.first").value(true));
     }
 
-    /**
-     * 검색 응답은 전체 건수를 세지 않는다. 모르는 값은 0이 아니라 null이어야 클라이언트가
-     * "결과 0건"과 구분한다. "더 보기"(load-more.js)가 쓰는 page·last는 그대로 있다.
-     */
+    /** 검색 응답은 전체 건수를 세지 않는다. 모르는 값은 0이 아니라 null이어야 클라이언트가 "결과 0건"과 구분한다. "더 보기"(load-more.js)가 쓰는 page·last는 그대로 있다. */
     @Test
     @DisplayName("검색 응답은 totalElements·totalPages가 null이고 page·last는 그대로다")
     void listPosts_searchResponseHasNullTotals() throws Exception {

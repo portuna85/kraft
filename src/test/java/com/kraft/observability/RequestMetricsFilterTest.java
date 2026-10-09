@@ -37,10 +37,7 @@ class RequestMetricsFilterTest {
         assertThat(snapshot.serverErrors()).as("5xx만").isEqualTo(1);
     }
 
-    /**
-     * 정적 자원은 수가 압도적이고 대부분 304로 끝난다. 함께 세면 실제 화면·API의 오류율이
-     * 묻혀 오류율을 보는 목적 자체가 사라진다.
-     */
+    /** 정적 자원은 수가 압도적이고 대부분 304로 끝난다. 함께 세면 실제 화면·API의 오류율이 묻혀 오류율을 보는 목적 자체가 사라진다. */
     @Test
     @DisplayName("CSS·JS·이미지는 통계에 넣지 않는다")
     void staticResourcesAreNotCounted() throws Exception {
@@ -53,11 +50,7 @@ class RequestMetricsFilterTest {
         assertThat(metrics.drain().requests()).isEqualTo(1);
     }
 
-    /**
-     * 템플릿이 실제로 내보내는 JS 주소는 고정 버전이 앞에 붙은
-     * {@code /{버전}/js/...}다. 설정된 그 버전만 정적 자원으로 보고, 모양만 비슷한 다른 경로의
-     * 앱 요청·오류는 계속 센다.
-     */
+    /** 템플릿이 실제로 내보내는 JS 주소는 고정 버전이 앞에 붙은 {@code /{버전}/js/...}다. 설정된 그 버전만 정적 자원으로 보고, 모양만 비슷한 다른 경로의 앱 요청·오류는 계속 센다. */
     @Test
     @DisplayName("설정된 버전이 붙은 JS는 세지 않고, 다른 접두어·앱 오류는 센다")
     void versionedStaticResourcesAreNotCounted() throws Exception {
@@ -86,10 +79,7 @@ class RequestMetricsFilterTest {
         return response;
     }
 
-    /**
-     * 값을 읽어 가면 초기화한다. 누적으로 남기면 오래 켜져 있을수록 평균이 둔해져
-     * "지금 느려졌는지"를 읽을 수 없다.
-     */
+    /** 값을 읽어 가면 초기화한다. 누적으로 남기면 오래 켜져 있을수록 평균이 둔해져 "지금 느려졌는지"를 읽을 수 없다. */
     @Test
     @DisplayName("한 번 읽어 간 통계는 다음 주기로 넘어가지 않는다")
     void drainResetsForTheNextPeriod() throws Exception {

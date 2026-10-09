@@ -49,7 +49,7 @@ class RecommendPagePrizeLabelTest {
 
         assertThat(html).contains("<dt>세후 예상 금액</dt>");
         assertThat(html).doesNotContain("실수령액");
-        // 홈과 같은 조각(lotto/latest-draw.html)이 그린다 — 클래스 접두사와 라벨이 화면마다 달라지지 않는다.
+        // lotto/latest-draw.html 조각이 그린다 — 클래스 접두사와 라벨이 화면마다 달라지지 않는다.
         assertThat(html).contains("class=\"latest-draw\"");
     }
 }

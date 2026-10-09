@@ -15,10 +15,8 @@ import java.util.regex.Pattern;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 공 색 구간이 서버({@link LottoBallColor})와 화면({@code src/vue/recommend/ballColor.js})에서 어긋나지 않았는지
- * 확인한다. 서버는 첫 화면의 최신 회차 공을, 화면은 생성된 조합을 그리므로 같은 규칙이 두 언어에 있어야 한다
- * ({@code UploadPolicySyncTest}와 같은 방식 — 한쪽만 고치면 즉시 깨진다). 예전에는 두 구현을 대조하는 것이
- * 없어서 어긋나도 아무도 몰랐다.
+ * 공 색 구간이 서버({@link LottoBallColor})와 화면({@code src/vue/recommend/ballColor.js})에서 어긋나지 않았는지 확인한다. 서버는 최신 회차 공을, 화면은 생성된 조합을 그리므로 같은 규칙이 두 언어에 있어야 한다
+ * ({@code UploadPolicySyncTest}와 같은 방식 — 한쪽만 고치면 즉시 깨진다).
  */
 class LottoBallColorJsSyncTest {
 

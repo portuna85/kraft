@@ -15,25 +15,13 @@ import java.util.Set;
 /**
  * 매 테스트 메서드 전에 관련 테이블을 FK 안전한 순서로 전부 비운다.
  * <p>
- * H2가 컨텍스트마다 무작위 이름({@code jdbc:h2:mem:kraft-${random.uuid}})을 쓰게 되면서,
- * 같은 Spring 테스트 설정을 공유해 컨텍스트 캐시를 재사용하는 클래스들은 여전히 물리적으로
- * 같은 DB를 공유한다 — 그 자체는 의도한 동작이다(컨텍스트를 매번 새로 띄우면 스위트가
- * 훨씬 느려진다). 문제는 각 클래스가 {@code @BeforeEach}에서 자신이 아는 테이블만
- * {@code deleteAll()}해 왔다는 것이다 — 예전에는 고정된 이름 하나(kraft)를 스위트 전체가
- * 공유해, 컨텍스트가 캐시에서 밀려날 때(커넥션 풀이 닫히며 H2 인메모리 DB 자체가 사라짐)
- * 마침 전체가 우연히 초기화되는 일이 잦아 이 허술함이 드러나지 않았다. 컨텍스트마다 DB를
- * 진짜로 분리하자 그 "우연한 전체 초기화"가 사라지고, 한 클래스가 남긴 행(예: 답글이 달린
- * 게시글)을 다른 클래스가 {@code userRepository.deleteAll()}로 지우려다 FK 위반으로 실패하는
- * 사례가 실제로 나왔다.
+ * H2가 컨텍스트마다 무작위 이름({@code jdbc:h2:mem:kraft-${random.uuid}})을 쓰므로, 같은 Spring 테스트 설정을 공유해 컨텍스트 캐시를 재사용하는 클래스들은 물리적으로 같은 DB를 공유한다(컨텍스트를 매번 새로 띄우면 스위트가 훨씬 느려지므로 의도한 동작이다).
+ * 그런데 각 클래스가 {@code @BeforeEach}에서 자신이 아는 테이블만 {@code deleteAll()}하면, 한 클래스가 남긴 행(예: 답글이 달린 게시글)을 다른 클래스가 {@code userRepository.deleteAll()}로 지우려다 FK 위반으로 실패한다.
  * <p>
- * 각 테스트 클래스의 정리 코드를 일일이 넓히는 대신, JUnit5 자동 감지
- * ({@code src/test/resources/junit-platform.properties}와
- * {@code META-INF/services/org.junit.jupiter.api.extension.Extension})로 모든 테스트에
- * 공통 적용한다 — 새 테스트 클래스가 어떤 테이블을 건드리든 이 안전망 밖으로 빠지지 않는다.
+ * 각 테스트 클래스의 정리 코드를 넓히는 대신 JUnit5 자동 감지({@code src/test/resources/junit-platform.properties}와 {@code META-INF/services/org.junit.jupiter.api.extension.Extension})로 모든 테스트에 공통 적용한다 —
+ * 새 테스트 클래스가 어떤 테이블을 건드리든 이 안전망 밖으로 빠지지 않는다.
  * <p>
- * Spring 컨텍스트가 없는 테스트(순수 단위 테스트)나, MariaDB Testcontainers로 도는 테스트
- * (스스로 컨테이너를 관리하고 스키마 검증 자체가 테스트 대상이라 건드리면 안 된다)는
- * 건너뛴다.
+ * Spring 컨텍스트가 없는 테스트(순수 단위 테스트)나, MariaDB Testcontainers로 도는 테스트(스스로 컨테이너를 관리하고 스키마 검증 자체가 테스트 대상이라 건드리면 안 된다)는 건너뛴다.
  */
 public class GlobalH2CleanupExtension implements BeforeEachCallback {
 
@@ -42,8 +30,7 @@ public class GlobalH2CleanupExtension implements BeforeEachCallback {
             "comments", "post_likes", "post_images",
             "email_verification_tokens", "password_reset_tokens",
             "outbox_mails", "session_revocation_tasks",
-            // 추천 이력과 수집 시도 기록, Spring Session(속성이 세션을 FK로 가리킨다)도 비운다 —
-            // 빠져 있으면 한 클래스가 남긴 회차·세션이 다른 클래스의 기대를 흔든다.
+            // 추천 이력과 수집 시도 기록, Spring Session(속성이 세션을 FK로 가리킨다)도 비운다 — 빠져 있으면 한 클래스가 남긴 회차·세션이 다른 클래스의 기대를 흔든다.
             "recommendation_fetch_attempts", "recommendation_winning_draws", "recommendation_history_state",
             "SPRING_SESSION_ATTRIBUTES", "SPRING_SESSION",
             "posts", "users",
@@ -77,8 +64,7 @@ public class GlobalH2CleanupExtension implements BeforeEachCallback {
             try {
                 jdbcTemplate.execute("DELETE FROM " + table);
             } catch (DataAccessException e) {
-                // 이 컨텍스트의 스키마에 그 테이블이 없는 경우(슬라이스 테스트)만 건너뛴다. 예전에는 모든
-                // 예외를 삼켜, 테이블 이름이 틀리거나 FK 위반이 나도 정리가 조용히 아무것도 하지 않았다.
+                // 이 컨텍스트의 스키마에 그 테이블이 없는 경우(슬라이스 테스트)만 건너뛴다 — 모든 예외를 삼키면 테이블 이름이 틀리거나 FK 위반이 나도 정리가 조용히 아무것도 하지 않는다.
                 if (!isTableNotFound(e)) {
                     throw e;
                 }

@@ -21,11 +21,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * 만료된 인증 토큰이 <b>실제로 DB에서 사라지는지</b> 진짜 트랜잭션으로 검증한다.
  * <p>
- * 예전에는 {@code verify()}가 만료 토큰을 지운 직후 예외를 던졌고, 쓰기 트랜잭션에서 런타임
- * 예외가 나가면 Spring 기본 롤백 규칙에 따라 그 삭제까지 되돌아갔다. 그래서 "만료 토큰은
- * 지운다"는 정책이 한 번도 지켜지지 않았다. 기존 단위 테스트는 {@code delete()} <b>호출 여부</b>만
- * 확인했기 때문에 이것을 놓쳤다 — 그래서 여기서는 호출이 아니라 트랜잭션이 끝난 뒤의
- * DB 상태를 본다.
+ * {@code verify()}가 만료 토큰을 지운 직후 예외를 던지면 쓰기 트랜잭션에서 런타임 예외가 나가므로 Spring 기본 롤백 규칙에 따라 그 삭제까지 되돌아가 "만료 토큰은 지운다"는 정책이 지켜지지 않는다.
+ * 단위 테스트는 {@code delete()} <b>호출 여부</b>만 확인해 이것을 놓치므로, 여기서는 호출이 아니라 트랜잭션이 끝난 뒤의 DB 상태를 본다.
  */
 @SpringBootTest
 class ExpiredTokenPurgeTest {
@@ -44,10 +41,7 @@ class ExpiredTokenPurgeTest {
 
     private User user;
 
-    /**
-     * 회원 테이블을 통째로 비우지 않는다. 다른 테스트 클래스가 남긴 게시글이 회원을 참조하고
-     * 있어 FK에 걸리기 때문이다. 이 테스트만의 회원을 매번 새로 만들어 서로 간섭하지 않게 한다.
-     */
+    /** 회원 테이블을 통째로 비우지 않는다 — 다른 테스트 클래스가 남긴 게시글이 회원을 참조하고 있어 FK에 걸린다. 이 테스트만의 회원을 매번 새로 만들어 서로 간섭하지 않게 한다. */
     @BeforeEach
     void setUp() {
         tokenRepository.deleteAll();
@@ -69,7 +63,7 @@ class ExpiredTokenPurgeTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("만료되었습니다");
 
-        // 예전에는 예외가 트랜잭션을 롤백시켜 이 토큰이 그대로 남아 있었다.
+        // 예외가 나가도 삭제가 롤백되지 않아 토큰이 사라져 있어야 한다.
         assertThat(tokenRepository.findByTokenHash(EmailHasher.sha512Hex(token))).isEmpty();
         // 만료 검사 자체는 계속 동작하므로 권한이 올라가지도 않는다.
         assertThat(userRepository.findById(user.getId()).orElseThrow().getRole()).isEqualTo(Role.GUEST);

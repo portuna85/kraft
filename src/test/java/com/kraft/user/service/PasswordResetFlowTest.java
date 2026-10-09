@@ -21,11 +21,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * 비밀번호 재설정을 <b>진짜 트랜잭션과 DB 상태</b>로 검증한다. 단위 테스트는 "무엇을 호출했는가"만
- * 보므로, 이 기능에서 정작 중요한 두 가지를 놓친다: 비밀번호가 실제로 바뀌었는가, 그리고 만료
- * 토큰의 삭제가 뒤따르는 예외와 함께 롤백되지 않는가(F08과 같은 덫).
- */
+/** 비밀번호 재설정을 <b>진짜 트랜잭션과 DB 상태</b>로 검증한다. 단위 테스트는 "무엇을 호출했는가"만 보므로 이 기능에서 정작 중요한 두 가지를 놓친다: 비밀번호가 실제로 바뀌었는가, 그리고 만료 토큰의 삭제가 뒤따르는 예외와 함께 롤백되지 않는가. */
 @SpringBootTest
 class PasswordResetFlowTest {
 
@@ -83,8 +79,7 @@ class PasswordResetFlowTest {
                 .singleElement()
                 .satisfies(mail -> {
                     assertThat(mail.getKind()).isEqualTo(OutboxMailKind.PASSWORD_RESET);
-                    // 대기열의 평문 토큰을 해시한 값이 저장된 해시와 같아야 메일의 링크가
-                    // 실제로 동작한다(SEC-04로 저장 테이블에는 평문이 없다).
+                    // 대기열의 평문 토큰을 해시한 값이 저장된 해시와 같아야 메일의 링크가 실제로 동작한다(저장 테이블에는 평문이 없다).
                     assertThat(EmailHasher.sha512Hex(mail.getToken()))
                             .isEqualTo(tokenRepository.findAll().get(0).getTokenHash());
                 });

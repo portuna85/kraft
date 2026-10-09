@@ -2,10 +2,7 @@ import { test, expect, storageStateFor, uniqueTitle } from './fixtures.js';
 
 test.use({ storageState: storageStateFor('user') });
 
-/**
- * 초기 부트스트랩 JSON이 없거나 깨졌거나 모양이 다르면, mount.js가 검증 없이 넘겨
- * Vue 컴포넌트가 곧바로 죽어 마운트 지점이 빈 채 남았다. 이제는 그 자리에 최소 안내를 남긴다.
- */
+/** 초기 부트스트랩 JSON이 없거나 깨졌거나 모양이 다르면 Vue 컴포넌트가 곧바로 죽어 마운트 지점이 빈 채 남을 수 있다 — mount.js가 검증해 그 자리에 최소 안내를 남긴다. */
 test('게시글 상세의 초기 JSON이 깨지면 빈 화면 대신 안내가 뜬다', async ({ page }) => {
     const title = uniqueTitle('마운트실패');
     await page.goto('/posts/save');
@@ -65,11 +62,7 @@ test('댓글의 초기 JSON이 깨지면 댓글 영역에만 안내가 뜨고 �
     await expect(page.locator('#comments-app .flash--danger')).toContainText('새로고침해 주세요');
 });
 
-/**
- * 진입 스크립트 자체(또는 그 스크립트가 정적으로 import하는 공유 청크)가 404 등으로
- * 못 오면 mount.js 코드 자체가 실행되지 않는다 — try/catch로 잡을 수 없는 경로다. 모듈
- * 스크립트의 onerror가 같은 안내를 남기는지 확인한다.
- */
+/** 진입 스크립트 자체(또는 그 스크립트가 정적으로 import하는 공유 청크)가 404 등으로 못 오면 mount.js 코드 자체가 실행되지 않는다 — try/catch로 잡을 수 없는 경로다. 모듈 스크립트의 onerror가 같은 안내를 남기는지 확인한다. */
 test('추천 화면의 진입 스크립트가 404면 빈 화면 대신 안내가 뜬다', async ({ page }) => {
     await page.route('**/js/vue-dist/recommend.js', (route) => route.fulfill({ status: 404, body: 'not found' }));
 

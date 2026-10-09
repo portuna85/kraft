@@ -37,11 +37,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
- * {@link EmailVerificationService} 단위 테스트.
- * <p>
- * 메일 본문과 baseUrl은 더 이상 이 서비스의 관심사가 아니다 — 서비스는 대기열에 넣기만 하고
- * 링크 생성과 발송은 {@link OutboxMailWorker}가 한다. 그래서 여기서는 "같은 토큰이 대기열에
- * 들어갔는가"까지만 확인한다.
+ * {@link EmailVerificationService} 단위 테스트. 메일 본문과 baseUrl은 이 서비스의 관심사가 아니다 — 서비스는 대기열에 넣기만 하고 링크 생성과 발송은 {@link OutboxMailWorker}가 하므로, 여기서는 "같은 토큰이 대기열에 들어갔는가"까지만 확인한다.
  */
 @ExtendWith(MockitoExtension.class)
 class EmailVerificationServiceTest {
@@ -71,9 +67,7 @@ class EmailVerificationServiceTest {
     void setUp() {
         emailVerificationService = new EmailVerificationService(tokenRepository, userRepository, userService,
                 outboxMailStore, outboxMailWorker, expiredTokenPurger);
-        // 운영에서는 Spring이 self(@Lazy @Autowired)를 프록시로 채운다. 순수 Mockito
-        // 단위 테스트에는 그 주입이 없으므로 자기 자신을 가리키게 해 NPE 대신 실제 로직을
-        // 태우게 한다 — 트랜잭션 경계 자체는 이 계층에서 검증 대상이 아니다.
+        // 운영에서는 Spring이 self(@Lazy @Autowired)를 프록시로 채운다. 순수 Mockito 단위 테스트에는 그 주입이 없으므로 자기 자신을 가리키게 해 NPE 대신 실제 로직을 태운다 — 트랜잭션 경계 자체는 이 계층에서 검증 대상이 아니다.
         ReflectionTestUtils.setField(emailVerificationService, "self", emailVerificationService);
     }
 
@@ -111,18 +105,13 @@ class EmailVerificationServiceTest {
         assertThat(savedToken.getUser()).isEqualTo(user);
         assertThat(savedToken.getExpiresAt()).isAfter(LocalDateTime.now());
 
-        // SMTP는 여기서 부르지 않는다. 같은 트랜잭션에서 대기열에 같은(평문) 토큰이 들어가야
-        // 하고, 그 해시가 저장된 조회 테이블 행의 해시와 같아야 한다.
+        // SMTP는 여기서 부르지 않는다. 같은 트랜잭션에서 대기열에 같은(평문) 토큰이 들어가야 하고, 그 해시가 저장된 조회 테이블 행의 해시와 같아야 한다.
         ArgumentCaptor<String> enqueuedToken = ArgumentCaptor.forClass(String.class);
         verify(outboxMailStore).enqueue(eq(user), enqueuedToken.capture(), eq(OutboxMailKind.VERIFY_EMAIL));
         assertThat(EmailHasher.sha512Hex(enqueuedToken.getValue())).isEqualTo(savedToken.getTokenHash());
     }
 
-    /**
-     * withdraw()는 role을 바꾸지 않으므로, 탈퇴한 계정도 findByEmailHmac로는 여전히
-     * 조회된다. 이 메서드 자체가 탈퇴 여부를 거부해야, 조회 조건(UserRepository.
-     * findGuestsMissingVerificationMail)의 필터링에만 기대지 않는다.
-     */
+    /** withdraw()는 role을 바꾸지 않으므로 탈퇴한 계정도 findByEmailHmac로는 여전히 조회된다. 이 메서드 자체가 탈퇴 여부를 거부해야, 조회 조건(UserRepository.findGuestsMissingVerificationMail)의 필터링에만 기대지 않는다. */
     @Test
     @DisplayName("sendVerificationEmail: 탈퇴한 계정이면 IllegalArgumentException")
     void sendVerificationEmail_whenUserWithdrawn_throwsIllegalArgumentException() {
@@ -148,11 +137,7 @@ class EmailVerificationServiceTest {
         verify(tokenRepository, never()).save(any());
     }
 
-    /**
-     * 이 경로가 이메일이 로그에 남을 수 있는 거의 유일한 자리다. 주소를 그대로 남기면
-     * 암호화해 저장한 값이 로그 파일에는 평문으로 쌓인다.
-     * 로그는 DB보다 다루기 쉽고 오래 남으며 종종 그대로 복사되어 나간다.
-     */
+    /** 이 경로가 이메일이 로그에 남을 수 있는 거의 유일한 자리다. 주소를 그대로 남기면 암호화해 저장한 값이 로그 파일에는 평문으로 쌓이고, 로그는 DB보다 다루기 쉽고 오래 남으며 종종 그대로 복사되어 나간다. */
     @Test
     @DisplayName("sendVerificationEmailSafely: 실패를 로그로 남기되 주소는 가린다")
     void sendVerificationEmailSafely_masksTheAddressInTheLog() {
@@ -204,8 +189,7 @@ class EmailVerificationServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("만료되었습니다");
 
-        // 이 트랜잭션에서 직접 지우면 이어지는 예외가 삭제까지 롤백시킨다.
-        // "실제로 DB에서 사라지는지"는 ExpiredTokenPurgeTest가 진짜 트랜잭션으로 검증한다.
+        // 이 트랜잭션에서 직접 지우면 이어지는 예외가 삭제까지 롤백시킨다. "실제로 DB에서 사라지는지"는 ExpiredTokenPurgeTest가 진짜 트랜잭션으로 검증한다.
         verify(expiredTokenPurger).purge(42L);
         verify(tokenRepository, never()).delete(any());
         verify(userService, never()).promoteToUser(any());

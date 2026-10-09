@@ -23,11 +23,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
-/**
- * {@code chunk-size}만큼 모아 커밋하고, 도중에 막히면 이미 커밋된 청크는 남긴 채 멈추는지
- * 확인한다. {@link RecommendationBackfillRunner#backfill()}(package-private)을 직접 호출해
- * {@code run()}이 감싸는 {@code System.exit}를 거치지 않는다.
- */
+/** {@code chunk-size}만큼 모아 커밋하고, 도중에 막히면 이미 커밋된 청크는 남긴 채 멈추는지 확인한다. {@link RecommendationBackfillRunner#backfill()}(package-private)을 직접 호출해 {@code run()}이 감싸는 {@code System.exit}를 거치지 않는다. */
 @ExtendWith(MockitoExtension.class)
 class RecommendationBackfillRunnerTest {
 
@@ -134,11 +130,7 @@ class RecommendationBackfillRunnerTest {
         Mockito.verifyNoInteractions(dhLotteryClient);
     }
 
-    /**
-     * 예전에는 대기 중 인터럽트를 받아도 플래그만 다시 세우고 반복문을 계속 돌았다 —
-     * 종료 신호를 받고도 다음 회차 요청을 계속 내보냈다. 지금은 인터럽트를 받으면 그 자리에서
-     * 멈추고 이미 커밋된 청크까지만 반영한 채 종료코드 1을 남겨야 한다.
-     */
+    /** 대기 중 인터럽트를 받으면 플래그만 다시 세우고 반복문을 계속 돌면 안 된다 — 그 자리에서 멈추고 이미 커밋된 청크까지만 반영한 채 종료코드 1을 남겨야 한다. */
     @Test
     @DisplayName("대기 중 인터럽트를 받으면 그 자리에서 멈추고 종료코드 1을 남긴다")
     void interruptedWhileSleeping_stopsImmediately() throws InterruptedException {
@@ -148,8 +140,7 @@ class RecommendationBackfillRunnerTest {
                 .willReturn(new RecommendationHistoryImporter.Result(1, 0, 0));
 
         RecommendationBackfillRunner runner = runner(5, 1);
-        // 매 회차 커밋 뒤 sleep(requestDelayMs)을 부르므로, 요청 간격을 길게 두고 그 대기를
-        // 현재 스레드에 인터럽트를 걸어 끊는다.
+        // 매 회차 커밋 뒤 sleep(requestDelayMs)을 부르므로, 요청 간격을 길게 두고 그 대기를 현재 스레드에 인터럽트를 걸어 끊는다.
         ReflectionTestUtils.setField(runner, "requestDelayMs", 60_000L);
 
         int[] exitCode = new int[1];

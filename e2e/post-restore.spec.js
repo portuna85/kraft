@@ -1,9 +1,6 @@
 import { test, expect, storageStateFor, uniqueTitle } from './fixtures.js';
 
-/**
- * 게시글은 지워도 곧바로 사라지지 않고 소프트 삭제된다. 일반 사용자에게는 404지만 관리자는 열어 볼 수
- * 있고, 복구하면 다시 보통 글로 돌아온다. 두 역할이 필요하므로 user가 쓰고 지운 뒤 admin이 복구한다.
- */
+/** 게시글은 지워도 곧바로 사라지지 않고 소프트 삭제된다. 일반 사용자에게는 404지만 관리자는 열어 볼 수 있고, 복구하면 다시 보통 글로 돌아온다. 두 역할이 필요하므로 user가 쓰고 지운 뒤 admin이 복구한다. */
 test.use({ storageState: storageStateFor('user') });
 
 test('삭제한 글은 관리자만 열 수 있고, 복구하면 목록과 수정 버튼이 돌아온다', async ({ page, openAs }) => {
@@ -27,7 +24,7 @@ test('삭제한 글은 관리자만 열 수 있고, 복구하면 목록과 수�
     await adminPage.goto(postUrl);
     await expect(adminPage.locator('#post-title-text')).toHaveText(title);
     await expect(adminPage.locator('#post-admin-bar')).toContainText('삭제된 글입니다');
-    // 삭제된 글에는 추천·신고·수정·삭제를 두지 않는다.
+    // 삭제된 글에는 추천·수정·삭제를 두지 않는다.
     await expect(adminPage.locator('#btn-like')).toHaveCount(0);
     await expect(adminPage.locator('#btn-edit')).toHaveCount(0);
     await expect(adminPage.locator('#btn-delete-post')).toHaveCount(0);

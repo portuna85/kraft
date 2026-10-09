@@ -31,12 +31,10 @@ import java.util.Map;
 import java.util.stream.IntStream;
 
 /**
- * E2E가 기대는 고정 데이터를 만든다. H2 인메모리 + {@code create-drop}이므로 매 기동마다
- * 같은 상태에서 시작한다.
+ * E2E가 기대는 고정 데이터를 만든다. H2 인메모리 + {@code create-drop}이므로 매 기동마다 같은 상태에서 시작한다.
  * <p>
- * 이 시더가 필요한 이유는 <b>이메일 인증 때문</b>이다. 회원가입으로 만든 계정은 GUEST라
- * 글을 쓸 수 없고, USER로 올리려면 메일로 받은 링크를 눌러야 한다. 대부분의 시나리오는
- * "이미 인증을 마친 사용자"에서 시작해야 하므로 여기서 직접 만든다.
+ * 이 시더가 필요한 이유는 <b>이메일 인증 때문</b>이다. 회원가입으로 만든 계정은 GUEST라 글을 쓸 수 없고 USER로 올리려면 메일로 받은 링크를 눌러야 하는데,
+ * 대부분의 시나리오는 "이미 인증을 마친 사용자"에서 시작해야 하므로 여기서 직접 만든다.
  * <p>
  * {@code @Profile("e2e")}라 운영·로컬에서는 빈 자체가 만들어지지 않는다.
  */
@@ -47,12 +45,9 @@ import java.util.stream.IntStream;
 public class E2eDataInitializer implements ApplicationRunner {
 
     /**
-     * 시드 계정의 단일 출처. Playwright 쪽 e2e/fixtures.js도 같은 파일을 읽는다 — 이메일·이름·비밀번호를
-     * JS와 Java에 따로 적어 두면 한쪽만 바뀌어 로그인이 조용히 어긋난다. 비밀번호는 정책(8자 이상,
-     * 대·소문자·특수문자)을 만족해야 한다.
+     * 시드 계정의 단일 출처. Playwright 쪽 e2e/fixtures.js도 같은 파일을 읽는다 — 이메일·이름·비밀번호를 JS와 Java에 따로 적어 두면 한쪽만 바뀌어 로그인이 조용히 어긋난다. 비밀번호는 정책(8자 이상, 대·소문자·특수문자)을 만족해야 한다.
      * <p>
-     * pwchange는 비밀번호 변경 시나리오 전용이다. 비밀번호를 실제로 바꾸고 모든 세션을 끊는 테스트가
-     * admin을 쓰면, 변경과 복원 사이에서 실패했을 때 같은 샤드의 나머지 테스트가 줄줄이 로그인에 실패했다.
+     * pwchange는 비밀번호 변경 시나리오 전용이다. 비밀번호를 실제로 바꾸고 모든 세션을 끊는 테스트가 admin을 쓰면, 변경과 복원 사이에서 실패했을 때 같은 샤드의 나머지 테스트가 줄줄이 로그인에 실패한다.
      */
     private static final String ACCOUNTS_RESOURCE = "e2e-accounts.json";
 
@@ -96,8 +91,7 @@ public class E2eDataInitializer implements ApplicationRunner {
         saveUser(seed, "guest");
         saveUser(seed, "pwchange");
 
-        // 목록 상단 고정은 pinned_until이 있는 글만 된다(V42). 운영은 마이그레이션이 최신 공지를 고정해 두지만
-        // 이 프로파일은 Flyway 없이 스키마를 만들므로 시드가 직접 고정해 둔다.
+        // 목록 상단 고정은 pinned_until이 있는 글만 된다(V42). 운영은 마이그레이션이 최신 공지를 고정해 두지만 이 프로파일은 Flyway 없이 스키마를 만들므로 시드가 직접 고정해 둔다.
         Post notice = savePost(admin, "공지 게시글", "관리자가 쓴 공지입니다.", Category.NOTICE, PINNED_UNTIL);
         Post mine = savePost(user, "테스터의 글", "테스터가 쓴 자유 게시글입니다.", Category.FREE, null);
         savePost(other, "다른 사람의 글", "소유권 검사를 확인하는 글입니다.", Category.QNA, null);
@@ -112,10 +106,8 @@ public class E2eDataInitializer implements ApplicationRunner {
     }
 
     /**
-     * 당첨 이력 1..{@value #SEEDED_ROUNDS}회를 실제 수입 경로(RecommendationHistoryImporter)로 넣는다.
-     * 이 프로파일은 Flyway 없이 엔티티로 스키마를 만들어 V20이 심는 상태 행이 없으므로 먼저 만든다. 이력이
-     * 없으면 /recommend가 항상 503이라 성공 경로를 라우트 가로채기로만 검증할 수 있었다.
-     * 번호는 회차마다 결정적으로 달라지되 항상 서로 다른 6개(1~42)다.
+     * 당첨 이력 1..{@value #SEEDED_ROUNDS}회를 실제 수입 경로(RecommendationHistoryImporter)로 넣는다. 이 프로파일은 Flyway 없이 엔티티로 스키마를 만들어 V20이 심는 상태 행이 없으므로 먼저 만든다.
+     * 이력이 없으면 /recommend가 항상 503이라 성공 경로를 검증할 수 없다. 번호는 회차마다 결정적으로 달라지되 항상 서로 다른 6개(1~42)다.
      */
     private void seedWinningHistory() {
         historyStateRepository.save(RecommendationHistoryState.builder().id(1).version(0L).verifiedThroughRound(0).build());

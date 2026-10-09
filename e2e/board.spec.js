@@ -3,10 +3,8 @@ import { test, expect, storageStateFor, uniqueTitle } from './fixtures.js';
 test.use({ storageState: storageStateFor('user') });
 
 /**
- * "더 보기"(10단계) 테스트가 쓸 만큼(기본 페이지 크기 10보다 많이) 검색으로 좁혀지는 글을
- * API로 만든다. CSRF는 static 리소스 체인(/css, /js, /images)만 꺼져 있고 나머지(로그인
- * 폼·이 API 포함)는 그대로 걸려 있다 — page.request는 폼을 거치지 않으므로 메타 태그의
- * 토큰을 직접 읽어 헤더에 실어야 한다(core/http.js의 csrfHeaders()와 같은 방식).
+ * "더 보기" 테스트가 쓸 만큼(기본 페이지 크기 10보다 많이) 검색으로 좁혀지는 글을 API로 만든다. CSRF는 static 리소스 체인(/css, /js, /images)만 꺼져 있고 나머지(로그인 폼·이 API 포함)는 걸려 있다 —
+ * page.request는 폼을 거치지 않으므로 메타 태그의 토큰을 직접 읽어 헤더에 실어야 한다(core/http.js의 csrfHeaders()와 같은 방식).
  */
 async function createPosts(page, count, titlePrefix) {
     await page.goto('/community');
@@ -26,10 +24,7 @@ async function createPosts(page, count, titlePrefix) {
     }
 }
 
-/**
- * 목록 화면의 빈 상태. 검색이 빗나간 것과 게시판이 비어 있는 것은 사용자가 할 일이 다르다
- * (조건을 지운다 / 첫 글을 쓴다). 예전에는 둘 다 "아직 게시글이 없습니다"였다.
- */
+/** 목록 화면의 빈 상태. 검색이 빗나간 것과 게시판이 비어 있는 것은 사용자가 할 일이 다르다(조건을 지운다 / 첫 글을 쓴다). */
 test('검색 결과가 없으면 게시판이 빈 것처럼 안내하지 않는다', async ({ page }) => {
     await page.goto('/community?q=zzz-nothing-matches-this-zzz');
 
@@ -42,10 +37,7 @@ test('검색 결과가 없으면 게시판이 빈 것처럼 안내하지 않는�
     await expect(page.locator('.post-list__item').first()).toBeVisible();
 });
 
-/**
- * 목록의 열 제목은 aria-hidden(그리드 레이아웃용 시각적 헤더)이고 조회수·댓글수는
- * 숫자만 렌더링돼, 그 숫자가 무엇을 뜻하는지 스크린리더가 읽어줄 텍스트가 없었다.
- */
+/** 목록의 열 제목은 aria-hidden(그리드 레이아웃용 시각적 헤더)이고 조회수·댓글수는 숫자만 렌더링되므로, 그 숫자가 무엇을 뜻하는지 스크린리더가 읽어줄 텍스트가 필요하다. */
 test('조회수·댓글수 옆에 스크린리더용 이름표가 붙는다', async ({ page }) => {
     await page.goto('/community');
 
@@ -54,11 +46,7 @@ test('조회수·댓글수 옆에 스크린리더용 이름표가 붙는다', as
     await expect(item.locator('.post-list__comments')).toContainText(/댓글\s*\d+/);
 });
 
-/**
- * 기본 정렬이 등록순(id)이므로 날짜 열도 등록일을 보인다 — 수정 시각을 보이면
- * 오래된 글을 고쳤을 때 "최신 등록순" 중간에 오늘 날짜가 찍혀 순서가 뒤섞여 보인다.
- * 실제로 수정된 글만 "(수정됨)"이 붙는다.
- */
+/** 기본 정렬이 등록순(id)이므로 날짜 열도 등록일을 보인다 — 수정 시각을 보이면 오래된 글을 고쳤을 때 "최신 등록순" 중간에 오늘 날짜가 찍혀 순서가 뒤섞여 보인다. 실제로 수정된 글만 "(수정됨)"이 붙는다. */
 test('등록만 하고 수정하지 않은 글에는 "(수정됨)"이 붙지 않는다', async ({ page }) => {
     const title = uniqueTitle('날짜표시');
     await page.goto('/posts/save');
@@ -84,8 +72,7 @@ test('글을 수정하면 목록 날짜 옆에 "(수정됨)"이 붙는다', asyn
     await page.locator('#content').fill('수정된 본문입니다.');
     await page.locator('#btn-update').click();
     await page.waitForURL(/\/posts\/update\/\d+$/);
-    // 새로고침 이동이 끝났다는 것을 화면 렌더로 확인한 뒤에 다음 페이지로 이동한다 —
-    // 그러지 않으면 아직 끝나지 않은 이전 이동과 겹쳐 다음 goto가 중단될 수 있다.
+    // 새로고침 이동이 끝났다는 것을 화면 렌더로 확인한 뒤에 다음 페이지로 이동한다 — 아니면 아직 끝나지 않은 이전 이동과 겹쳐 다음 goto가 중단될 수 있다.
     await expect(page.locator('#flash')).toContainText('글이 수정되었습니다.');
 
     await page.goto(`/community?q=${encodeURIComponent(title)}`);
@@ -93,11 +80,7 @@ test('글을 수정하면 목록 날짜 옆에 "(수정됨)"이 붙는다', asyn
     await expect(row.locator('.post-list__date')).toContainText('(수정됨)');
 });
 
-/**
- * 시드 데이터의 "공지 게시글"(NOTICE)이 검색·분류로 좁히지 않은 첫 페이지에서만
- * 별도 고정 영역(.post-list--pinned)에 보인다. 본목록에서도 여전히 최신순 자리 그대로
- * 보인다 — 고정은 "복제해서 보여주는 것"이지 본목록에서 빼는 것이 아니다.
- */
+/** 시드 데이터의 "공지 게시글"(NOTICE)은 검색·분류로 좁히지 않은 첫 페이지에서만 별도 고정 영역(.post-list--pinned)에 보인다. 본목록에서도 최신순 자리 그대로 보인다 — 고정은 "복제해서 보여주는 것"이지 본목록에서 빼는 것이 아니다. */
 test.describe('공지 고정', () => {
     test('검색·분류 없는 첫 페이지에는 고정 영역에 공지가 보인다', async ({ page }) => {
         await page.goto('/community');
@@ -115,8 +98,7 @@ test.describe('공지 고정', () => {
     });
 
     test('2페이지에는 고정 영역이 없다', async ({ page }) => {
-        // 2페이지가 실제로 존재해야 한다 — 이 스펙만 따로 돌리면 시드 글 몇 개뿐이라 2페이지가
-        // 없어 page=1 요청이 마지막 유효 페이지(0쪽)로 리다이렉트되어 버린다(PostPageController).
+        // 2페이지가 실제로 존재해야 한다 — 이 스펙만 따로 돌리면 시드 글이 몇 개뿐이라 page=1 요청이 마지막 유효 페이지(0쪽)로 리다이렉트된다(PostPageController).
         await createPosts(page, 15, uniqueTitle('공지고정-2페이지'));
 
         await page.goto('/community?page=1');
@@ -126,12 +108,8 @@ test.describe('공지 고정', () => {
 });
 
 /**
- * 992~1199px 구간은 픽셀 기준 이미지 대신 규칙으로 고정한다. 이 폭에서 오른쪽 안내
- * (.kraft-aside)가 본문 아래로 떨어지면 폭이 남는데도 한 줄만 쓰는 셈이 된다 — 2열 전환을
- * 1200px에서 992px로 낮춘 것이 바로 이 구간을 겨냥한 것이다.
- *
- * 픽셀 비교로 고정하지 않는 이유는 pager 위젯과 같다(위 테스트 참고) — 구체적인 값보다
- * "안내가 본문과 같은 줄에서 시작하는가"라는 규칙 자체가 중요하다.
+ * 992~1199px 구간은 픽셀 기준 이미지 대신 규칙으로 고정한다. 이 폭에서 오른쪽 안내(.kraft-aside)가 본문 아래로 떨어지면 폭이 남는데도 한 줄만 쓰는 셈이 된다.
+ * 픽셀 비교로 고정하지 않는 이유는 pager 위젯과 같다 — 구체적인 값보다 "안내가 본문과 같은 줄에서 시작하는가"라는 규칙 자체가 중요하다.
  */
 test('992~1199px에서는 안내가 본문 옆에 남고 아래로 떨어지지 않는다', async ({ page }) => {
     await page.setViewportSize({ width: 1024, height: 900 });
@@ -148,11 +126,7 @@ test('992~1199px에서는 안내가 본문 옆에 남고 아래로 떨어지지 
     expect(asideBox.x).toBeGreaterThan(mainBox.x);
 });
 
-/**
- * 검색·분류 조건이 걸려 있다는 사실이 검색 폼만 봐서는 드러나지 않았다(분류 select의
- * is-active 테두리만으로는 눈에 잘 띄지 않는다). 조건이 있을 때만 요약을 보여주고,
- * 초기화하면 조건 없는 목록으로 돌아간다.
- */
+/** 검색·분류 조건이 걸려 있다는 사실이 검색 폼만 봐서는 드러나지 않는다(분류 select의 is-active 테두리만으로는 눈에 잘 띄지 않는다). 조건이 있을 때만 요약을 보여주고, 초기화하면 조건 없는 목록으로 돌아간다. */
 test('검색 조건이 있으면 적용된 조건 요약이 보이고, 초기화하면 사라진다', async ({ page }) => {
     await page.goto('/community?q=zzz-nothing-matches-this-zzz');
 
@@ -171,11 +145,7 @@ test('검색·분류 조건이 없으면 적용된 조건 요약이 보이지 �
     await expect(page.locator('.board-filter-summary')).toHaveCount(0);
 });
 
-/**
- * 9단계: 서버는 이미 id/viewCount/updatedAt 정렬을 지원한다(PostSortPolicy). 화면에서
- * 조회순을 고르면 URL에 sort가 실리고, 조건 요약에 칩으로 보이고, 초기화하면 기본
- * 정렬(최신 등록순)로 돌아간다.
- */
+/** 서버는 id/viewCount/updatedAt 정렬을 지원한다(PostSortPolicy). 화면에서 조회순을 고르면 URL에 sort가 실리고, 조건 요약에 칩으로 보이고, 초기화하면 기본 정렬(최신 등록순)로 돌아간다. */
 test('정렬을 조회순으로 바꾸면 URL에 반영되고 조건 요약에 칩으로 보인다', async ({ page }) => {
     await page.goto('/community');
     await expect(page.locator('#search-sort')).toHaveValue('');
@@ -196,8 +166,7 @@ test('정렬을 조회순으로 바꾸면 URL에 반영되고 조건 요약에 �
 });
 
 test('정렬을 고른 채 페이지를 이동해도 정렬이 유지된다', async ({ page }) => {
-    // size=1로 강제로 여러 페이지를 만든다 — 기본 크기(10)면 시드 글 수에 따라 페이지가
-    // 하나뿐일 수 있어 pager 자체가 렌더링되지 않는다.
+    // size=1로 강제로 여러 페이지를 만든다 — 기본 크기(10)면 시드 글 수에 따라 페이지가 하나뿐일 수 있어 pager 자체가 렌더링되지 않는다.
     await page.goto('/community?sort=updatedAt,desc&page=0&size=1');
 
     const nextLink = page.getByRole('link', { name: '다음' });
@@ -208,14 +177,7 @@ test('정렬을 고른 채 페이지를 이동해도 정렬이 유지된다', as
     await expect(page.locator('#search-sort')).toHaveValue('updatedAt,desc');
 });
 
-/**
- * 10단계: "더 보기"는 JSON API(/api/v1/posts, 새 API 아님)로 다음 페이지를 이어 붙인다.
- * 페이지 이동(pager)과 공존하며, JS가 로드돼야 버튼이 보인다(index.html의 hidden 초기값).
- */
-/**
- * 검색어가 있으면 전체 건수를 세지 않는다(LIKE '%kw%'는 인덱스를 못 타서 COUNT가 항상 전체
- * 스캔이다). 화면은 총 개수·번호 목록 없이 이전·다음과 "N페이지"만 보여 준다.
- */
+/** 검색어가 있으면 전체 건수를 세지 않는다(LIKE '%kw%'는 인덱스를 못 타서 COUNT가 항상 전체 스캔이다). 화면은 총 개수·번호 목록 없이 이전·다음과 "N페이지"만 보여 준다. */
 test.describe('검색 결과(전체 건수를 세지 않음)', () => {
     test('총 개수와 번호 목록 없이 이전·다음으로 이동한다', async ({ page }) => {
         const prefix = uniqueTitle('검색이동');
@@ -264,6 +226,7 @@ test.describe('검색 결과(전체 건수를 세지 않음)', () => {
     });
 });
 
+/** "더 보기"는 JSON API(/api/v1/posts)로 다음 페이지를 이어 붙인다. 페이지 이동(pager)과 공존하며 JS가 로드돼야 버튼이 보인다(index.html의 hidden 초기값). */
 test.describe('더 보기', () => {
     test('버튼을 누르면 다음 페이지를 이어 붙이고, 마지막이면 버튼이 사라진다', async ({ page }) => {
         const prefix = uniqueTitle('더보기');
@@ -317,8 +280,7 @@ test.describe('더 보기', () => {
         await page.goto(`/community?q=${encodeURIComponent(prefix)}`);
 
         let requestCount = 0;
-        // Playwright의 문자열 glob 패턴에서 "?"는 "임의의 문자 한 개"를 뜻하는 특수문자라
-        // 실제 물음표(쿼리스트링 구분자)에 쓸 수 없다 — 정규식으로 지정한다.
+        // Playwright의 문자열 glob 패턴에서 "?"는 "임의의 문자 한 개"라 실제 물음표(쿼리스트링 구분자)에 쓸 수 없다 — 정규식으로 지정한다.
         await page.route(/\/api\/v1\/posts\?/, (route) => {
             requestCount += 1;
             if (requestCount === 1) {
@@ -341,9 +303,7 @@ test.describe('더 보기', () => {
     });
 
     /**
-     * 13단계: 더 보기로 실제 화면에 붙은 범위를 pager(번호·"다음"·상태 문구)에 반영한다.
-     * 예전에는 pager가 서버가 처음 그린 1페이지에 멈춰 있어, 더 보기를 여러 번 눌러도
-     * "다음"을 누르면 이미 화면에 있는 페이지로 되돌아갔다.
+     * 더 보기로 실제 화면에 붙은 범위를 pager(번호·"다음"·상태 문구)에 반영한다. 반영하지 않으면 pager가 서버가 처음 그린 1페이지에 멈춰, 더 보기를 여러 번 눌러도 "다음"이 이미 화면에 있는 페이지로 되돌아간다.
      */
     test('검색 결과에서 더 보기를 두 번 눌러 마지막 페이지까지 불러오면 pager가 "N–M페이지"로 그 범위를 알린다', async ({ page }) => {
         const prefix = uniqueTitle('페이저갱신');
@@ -371,8 +331,7 @@ test.describe('더 보기', () => {
     });
 
     /**
-     * 검색어 없는 목록은 총 건수와 번호 pager를 그대로 유지한다(BE-08은 검색만 COUNT를 뺀다).
-     * 글 수는 다른 스펙이 공유 DB에 만든 글에 따라 달라지므로 구체적인 숫자 대신 형태만 본다.
+     * 검색어 없는 목록은 총 건수와 번호 pager를 그대로 유지한다(검색만 COUNT를 뺀다). 글 수는 다른 스펙이 공유 DB에 만든 글에 따라 달라지므로 구체적인 숫자 대신 형태만 본다.
      */
     test('검색 아닌 목록은 더 보기 후에도 번호 pager와 "N–M / 전체"를 유지한다', async ({ page }) => {
         await createPosts(page, 11, uniqueTitle('번호페이저'));
@@ -391,8 +350,7 @@ test.describe('더 보기', () => {
     });
 
     /**
-     * 정렬 기준(조회순 등)에 따라 목록 순서가 바뀔 수 있어, 이미 화면에 있는 글이 다음
-     * 페이지 응답에 다시 섞여 들어올 수 있다 — 중복 없이 걸러야 한다.
+     * 정렬 기준(조회순 등)에 따라 목록 순서가 바뀔 수 있어, 이미 화면에 있는 글이 다음 페이지 응답에 다시 섞여 들어올 수 있다 — 중복 없이 걸러야 한다.
      */
     test('이미 붙은 글이 다음 페이지 응답에 다시 섞여 와도 중복으로 붙지 않는다', async ({ page }) => {
         const prefix = uniqueTitle('중복방지');
@@ -420,9 +378,7 @@ test.describe('더 보기', () => {
     });
 
     /**
-     * bfcache가 없는 새로고침(page.reload는 항상 새 탐색이라 bfcache를 타지 않는다 —
-     * bfcache가 있었다면 이 모듈이 다시 실행되지 않고 DOM이 그대로 남아 애초에 문제가 없다)
-     * 뒤에도 sessionStorage에 남긴 상태로 이어 붙인 행이 네트워크 없이 되살아난다.
+     * bfcache가 없는 새로고침(page.reload는 항상 새 탐색) 뒤에도 sessionStorage에 남긴 상태로 이어 붙인 행이 네트워크 없이 되살아난다(bfcache가 있으면 DOM이 그대로라 애초에 문제가 없다).
      */
     test('더 보기로 불러온 뒤 새로고침해도 불러온 글이 그대로 남는다', async ({ page }) => {
         const prefix = uniqueTitle('새로고침복원');

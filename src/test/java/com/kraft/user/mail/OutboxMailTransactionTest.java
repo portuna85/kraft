@@ -42,11 +42,7 @@ import static org.mockito.BDDMockito.willThrow;
 /**
  * 메일 발송이 DB 트랜잭션 밖에서 일어나는지, 실패해도 재시도되는지를 실제 DB로 검증한다.
  * <p>
- * 예전에는 회원가입 트랜잭션 안에서 SMTP를 그대로 호출했다. 연결·읽기·쓰기 타임아웃이 각각
- * 5초라 메일 서버가 굼뜨면 DB 커넥션 하나를 최대 15초 붙잡았다.
- * <p>
- * 대부분의 테스트는 {@code store.enqueue()}로 대기열에만 넣고 발송을 직접 부른다.
- * {@code sendVerificationEmail()}을 쓰면 커밋 직후 {@code @Async} 발송이 함께 돌아
+ * 대부분의 테스트는 {@code store.enqueue()}로 대기열에만 넣고 발송을 직접 부른다. {@code sendVerificationEmail()}을 쓰면 커밋 직후 {@code @Async} 발송이 함께 돌아
  * "누가 먼저 집었는가"가 매번 달라지기 때문이다. 그 비동기 경로는 마지막 테스트가 따로 본다.
  */
 @SpringBootTest
@@ -76,11 +72,7 @@ class OutboxMailTransactionTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    /**
-     * 겹친 트랜잭션을 만들기 위한 별도 템플릿. 기본 전파(REQUIRED)로는 바깥 트랜잭션에
-     * 참여해 같은 커넥션·잠금을 공유하므로 "다른 트랜잭션이 아직 커밋 전이라 행이 잠겨 있다"를
-     * 재현할 수 없다.
-     */
+    /** 겹친 트랜잭션을 만들기 위한 별도 템플릿. 기본 전파(REQUIRED)로는 바깥 트랜잭션에 참여해 같은 커넥션·잠금을 공유하므로 "다른 트랜잭션이 아직 커밋 전이라 행이 잠겨 있다"를 재현할 수 없다. */
     private TransactionTemplate requiresNew;
 
     /** 진짜 SMTP 대신 대역을 쓴다. 발송 시점의 트랜잭션 상태를 들여다보기 위해서다. */
@@ -112,10 +104,8 @@ class OutboxMailTransactionTest {
     /**
      * 발송 흐름만 보고 싶을 때 쓴다. 비동기 발송이 함께 돌지 않는다.
      * <p>
-     * 실제 운영에서는 {@code EmailVerificationService}가 토큰 저장과 아웃박스 등록을 같은
-     * 트랜잭션에서 함께 한다. {@code load()}가 발송 직전 토큰이 유효한지 확인하므로,
-     * 이 헬퍼도 짝이 되는 토큰 행을 함께 만들어야 "토큰이 유효하지 않다"는 이유로 발송이
-     * 조용히 건너뛰어지는 것을 막을 수 있다.
+     * 운영에서는 {@code EmailVerificationService}가 토큰 저장과 아웃박스 등록을 같은 트랜잭션에서 함께 한다. {@code load()}가 발송 직전 토큰이 유효한지 확인하므로,
+     * 이 헬퍼도 짝이 되는 토큰 행을 함께 만들어야 "토큰이 유효하지 않다"는 이유로 발송이 조용히 건너뛰어지지 않는다.
      */
     private void queueOne() {
         String token = UUID.randomUUID().toString();
@@ -125,11 +115,8 @@ class OutboxMailTransactionTest {
     }
 
     /**
-     * 이 테스트가 이 작업의 핵심 주장을 고정한다.
-     * <p>
-     * "커밋 후에 보내면 되지 않나"로는 부족하다. Spring은 {@code afterCommit} 콜백을 커넥션을
-     * 반납하는 {@code cleanupAfterCompletion}보다 먼저 실행하므로, 그 안에서 SMTP를 기다리면
-     * 커넥션은 여전히 잡혀 있다. 그래서 발송은 아예 다른 실행 흐름이어야 한다.
+     * 이 테스트가 핵심 주장을 고정한다 — "커밋 후에 보내면 되지 않나"로는 부족하다. Spring은 {@code afterCommit} 콜백을 커넥션을 반납하는 {@code cleanupAfterCompletion}보다 먼저 실행하므로,
+     * 그 안에서 SMTP를 기다리면 커넥션은 여전히 잡혀 있다. 그래서 발송은 아예 다른 실행 흐름이어야 한다.
      */
     @Test
     @DisplayName("발송 시점에는 어떤 트랜잭션에도 속해 있지 않다")
@@ -192,11 +179,8 @@ class OutboxMailTransactionTest {
     }
 
     /**
-     * 실제 SMTP 실패(MailSendException 등)는 종종 수신자 주소를 메시지 안에 그대로
-     * 담는다("Failed messages: ...: user@example.com: 550 ..." 꼴). {@code OutboxMailWorker.send}는
-     * 그 메시지를 그대로 {@code log.warn(..., e)}에 넘기고 {@code lastError}에도 그대로 저장했다 —
-     * 다른 곳(GuestVerificationSweeper 등)은 이미 EmailMasker로 가리는데 여기만 빠져 있었다.
-     * 로그·DB 어느 쪽에도 원문 주소가 남지 않는지 실제로 예외를 던져서 확인한다.
+     * 실제 SMTP 실패(MailSendException 등)는 종종 수신자 주소를 메시지 안에 그대로 담는다("Failed messages: ...: user@example.com: 550 ..." 꼴).
+     * 그 메시지가 {@code log.warn}과 {@code lastError}에 그대로 남지 않도록(EmailMasker로 가린다) 실제로 예외를 던져 로그·DB 어느 쪽에도 원문 주소가 없는지 확인한다.
      */
     @Test
     @DisplayName("발송 실패 메시지에 수신자 주소가 그대로 있어도 로그·lastError에는 가려서 남는다")
@@ -231,8 +215,7 @@ class OutboxMailTransactionTest {
     @Test
     @DisplayName("재시도 기회를 다 쓰면 FAILED로 끝나고 더는 집히지 않는다")
     void exhaustedRetriesEndAsFailed() {
-        // 계속 실패하는 메일이 영원히 대기열을 돌면, 주기 작업이 매번 그 행부터 집어 뒤에 쌓인
-        // 정상 메일을 늦춘다. 그래서 정해진 횟수에서 포기하고 사람이 볼 상태로 남긴다.
+        // 계속 실패하는 메일이 영원히 대기열을 돌면 주기 작업이 매번 그 행부터 집어 뒤에 쌓인 정상 메일을 늦춘다. 그래서 정해진 횟수에서 포기하고 사람이 볼 상태로 남긴다.
         willThrow(new RuntimeException("주소가 존재하지 않습니다"))
                 .given(emailSender).send(anyString(), anyString(), anyString());
 
@@ -315,9 +298,7 @@ class OutboxMailTransactionTest {
         }
         ReflectionTestUtils.setField(outboxMailWorker, "batchSize", perBatch);
 
-        // 가입 직후의 drainAsync와 예약 실행 drainScheduled가 겹쳐 도는 상황을 흉내 낸다.
-        // 서로 다른 메일을 집으므로 claimBatch의 행 잠금은 둘을 막지 못한다 — 동시 발송 총량을
-        // 막는 것은 두 호출이 공유하는 Semaphore여야 한다.
+        // 가입 직후의 drainAsync와 예약 실행 drainScheduled가 겹쳐 도는 상황을 흉내 낸다. 서로 다른 메일을 집으므로 claimBatch의 행 잠금은 둘을 막지 못한다 — 동시 발송 총량을 막는 것은 두 호출이 공유하는 Semaphore여야 한다.
         java.util.concurrent.CountDownLatch startTogether = new java.util.concurrent.CountDownLatch(2);
         Runnable drainAfterBothReady = () -> {
             startTogether.countDown();
@@ -335,11 +316,8 @@ class OutboxMailTransactionTest {
         t1.join();
         t2.join();
 
-        // H2는 (status, id) 인덱스가 있으면 FOR UPDATE SKIP LOCKED + LIMIT를 MariaDB와 다르게
-        // 처리해, 잠긴 행을 건너뛰고 나머지를 마저 채우지 않고 그 배치에서 그냥 적게 반환할 때가
-        // 있다(H2 전용 구현 특성). 운영 DB(MariaDB)는 이 문제가 없지만, 이 테스트는 "동시 발송
-        // 총량이 한도를 넘지 않는가"만 보면 되므로, 실제 예약 작업처럼 남은 메일을 다음 주기가
-        // 마저 집는 것까지 흉내 내 최종적으로 전부 SENT가 되는지 확인한다.
+        // H2는 (status, id) 인덱스가 있으면 FOR UPDATE SKIP LOCKED + LIMIT를 MariaDB와 다르게 처리해, 잠긴 행을 건너뛰고 나머지를 채우지 않은 채 그 배치에서 적게 반환할 때가 있다(H2 전용 특성; 운영 DB는 해당 없음).
+        // 이 테스트는 "동시 발송 총량이 한도를 넘지 않는가"만 보므로, 실제 예약 작업처럼 남은 메일을 다음 주기가 마저 집는 것까지 흉내 내 최종적으로 전부 SENT가 되는지 확인한다.
         for (int attempt = 0; attempt < 5 && hasPendingMails(); attempt++) {
             outboxMailWorker.drain();
         }
@@ -408,8 +386,7 @@ class OutboxMailTransactionTest {
         assertThat(outboxMailRepository.findById(id).orElseThrow().getStatus())
                 .isEqualTo(OutboxMailStatus.SENT);
 
-        // old-owner가 뒤늦게 살아나 자신이 원래 집었던 결과를 보고하려 한다 — 이미 소유권이
-        // 없으므로(new-owner) 이 호출은 아무 효과가 없어야 한다.
+        // old-owner가 뒤늦게 살아나 자신이 원래 집었던 결과를 보고하려 한다 — 이미 소유권이 없으므로(new-owner) 이 호출은 아무 효과가 없어야 한다.
         outboxMailStore.markFailed(id, "old-owner가 뒤늦게 실패로 덮으려 함", "old-owner");
 
         assertThat(outboxMailRepository.findById(id).orElseThrow().getStatus())
@@ -418,12 +395,8 @@ class OutboxMailTransactionTest {
     }
 
     /**
-     * 회귀: 예전에는 {@code OutboxMailWorker}가 인스턴스 생성 시점에 만든 토큰 하나를
-     * 모든 {@code drain()} 호출이 공유했다. 그러면 재큐잉으로 소유권이 비워진 행을 <b>같은
-     * 워커 인스턴스</b>가 다시 집었을 때 새 시도도 예전과 똑같은 토큰을 쓰게 되어,
-     * {@link #staleOwnerCannotOverwriteResultAfterRequeue}가 검증하는 "다른 소유자"라는
-     * 전제 자체가 실제 운영에서는 성립하지 않았다. 이제 {@code drain()}이 호출마다 새
-     * UUID를 만드는지 직접 확인한다.
+     * 회귀: {@code OutboxMailWorker} 인스턴스 하나의 토큰을 모든 {@code drain()} 호출이 공유하면, 재큐잉으로 소유권이 비워진 행을 <b>같은 워커 인스턴스</b>가 다시 집을 때 새 시도도 이전과 같은 토큰을 쓰게 된다.
+     * 그러면 {@link #staleOwnerCannotOverwriteResultAfterRequeue}가 검증하는 "다른 소유자"라는 전제가 운영에서 성립하지 않는다. {@code drain()}이 호출마다 새 UUID를 만드는지 직접 확인한다.
      */
     @Test
     @DisplayName("drain()을 두 번 부르면 서로 다른 임대 토큰을 쓴다")
@@ -508,10 +481,7 @@ class OutboxMailTransactionTest {
         List<Long> outerIds = requiresNew.execute(status -> {
             List<Long> claimed = outboxMailStore.claimBatch(3, "outer-owner");
 
-            // 바깥 트랜잭션이 아직 커밋 전이라 방금 집은 행은 잠긴 채다. 이 시점에 독립된
-            // 트랜잭션이 같은 대상을 다시 선점하려 하면 SKIP LOCKED가 그 행들을 건너뛰어
-            // 빈 목록을 돌려줘야 한다 — 예전 SELECT-then-UPDATE 방식이라면 잠금이 없어
-            // 같은 행을 다시 집었을 것이다.
+            // 바깥 트랜잭션이 아직 커밋 전이라 방금 집은 행은 잠긴 채다. 이 시점에 독립된 트랜잭션이 같은 대상을 다시 선점하려 하면 SKIP LOCKED가 그 행들을 건너뛰어 빈 목록을 돌려줘야 한다(잠금이 없으면 같은 행을 다시 집는다).
             List<Long> innerIds = requiresNew.execute(inner -> outboxMailStore.claimBatch(3, "inner-owner"));
 
             assertThat(innerIds).as("잠긴 행은 건너뛰어야 한다").isEmpty();
@@ -561,9 +531,7 @@ class OutboxMailTransactionTest {
         Long id = outboxMailRepository.findAll().stream()
                 .filter(mail -> mail.getStatus() == OutboxMailStatus.PENDING)
                 .findFirst().orElseThrow().getId();
-        // markSent는 status=SENDING인 행만 반영한다. claimBatch를
-        // 쓰면 다른 PENDING 행(이 테스트의 "최근" 메일 등)까지 함께 집힐 수 있어, 이 id 하나만
-        // 직접 SENDING으로 표시해 둔다.
+        // markSent는 status=SENDING인 행만 반영한다. claimBatch를 쓰면 다른 PENDING 행(이 테스트의 "최근" 메일 등)까지 함께 집힐 수 있어, 이 id 하나만 직접 SENDING으로 표시해 둔다.
         String ownerToken = UUID.randomUUID().toString();
         transactionTemplate.executeWithoutResult(
                 status -> outboxMailRepository.markSendingByIds(List.of(id), LocalDateTime.now(), ownerToken));
@@ -571,10 +539,7 @@ class OutboxMailTransactionTest {
         return id;
     }
 
-    /**
-     * updatedAt은 {@code @LastModifiedDate} 감사 필드라 엔티티를 통해서는 "지금"만 넣을 수
-     * 있다. 오래전에 종료된 것처럼 만들려고 JDBC로 직접 갱신한다.
-     */
+    /** updatedAt은 {@code @LastModifiedDate} 감사 필드라 엔티티를 통해서는 "지금"만 넣을 수 있다. 오래전에 종료된 것처럼 만들려고 JDBC로 직접 갱신한다. */
     private void backdateUpdatedAt(Long id, LocalDateTime updatedAt) {
         jdbcTemplate.update("UPDATE outbox_mails SET updated_at = ? WHERE id = ?", updatedAt, id);
     }

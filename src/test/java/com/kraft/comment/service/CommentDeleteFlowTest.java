@@ -79,7 +79,7 @@ class CommentDeleteFlowTest {
         Comment reloadedParent = commentRepository.findById(parent.getId()).orElseThrow();
         assertThat(reloadedParent.isDeleted()).isTrue();
         assertThat(reloadedParent.getContent()).isEmpty();
-        // 답글은 지워지지 않는다 — 이 개선 이전에는 부모와 함께 하드 삭제됐다.
+        // 답글은 지워지지 않는다 — 부모와 함께 하드 삭제되면 안 된다.
         assertThat(commentRepository.findById(reply.getId())).isPresent();
     }
 

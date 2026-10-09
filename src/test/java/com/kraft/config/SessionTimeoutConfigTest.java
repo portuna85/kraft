@@ -20,8 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 세션 타임아웃(2시간)이 실제로 적용되는지 확인한다.
  * <p>
- * 예전에는 {@code spring.servlet.session.timeout}에 두어 어떤 프로퍼티에도 바인딩되지 않았고,
- * 실제 만료는 기본값 30분이었다. {@code ProdProfileConfigTest}와 같은 유형의 실수라
+ * {@code spring.servlet.session.timeout}처럼 잘못된 경로에 두면 어떤 프로퍼티에도 바인딩되지 않아 실제 만료가 기본값 30분이 된다. {@code ProdProfileConfigTest}와 같은 유형의 실수라
  * 설정 경로와 실제 세션 값을 모두 본다.
  */
 // MOCK 환경에서는 Boot가 WAR 배포용 SessionTimeout(컨테이너 값)을 골라 null이 된다. 운영과 같은

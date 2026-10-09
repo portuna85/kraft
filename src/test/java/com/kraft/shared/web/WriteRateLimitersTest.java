@@ -10,12 +10,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * 게시글·댓글·업로드·검색의 계정(검색은 IP) 기준 속도
- * 제한. 창 길이(분·시간)까지 실제로 기다리는 테스트는 하지 않는다 — 그 규칙은
- * {@link FixedWindowRateLimiter} 자체의 테스트가 이미 검증한다. 여기서는 "몇 번째부터
- * 막히는가"와 "관리자는 예외인가"만 확인한다.
- */
+/** 게시글·댓글·업로드·검색의 계정(검색은 IP) 기준 속도 제한. 창 길이(분·시간)까지 실제로 기다리는 테스트는 하지 않는다 — 그 규칙은 {@link FixedWindowRateLimiter} 자체의 테스트가 검증한다. 여기서는 "몇 번째부터 막히는가"와 "관리자는 예외인가"만 확인한다. */
 class WriteRateLimitersTest {
 
     private static Authentication userAuth(String userId) {

@@ -17,12 +17,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * {@code insert}는 유니크 제약 위반이든 FK 위반이든 아무것도 삼키지 않고 그대로 던진다
- * (같은 트랜잭션 안에서 삼키면 rollback-only 때문에 {@code UnexpectedRollbackException}이
- * 난다). "삼켜도 되는 예외인가"는 {@code isDuplicateLikeConstraint}가 실제 DB 제약 이름으로
- * 판정하며, 그 판정을 실제 DB로 검증한다.
- */
+/** {@code insert}는 유니크 제약 위반이든 FK 위반이든 아무것도 삼키지 않고 그대로 던진다(같은 트랜잭션 안에서 삼키면 rollback-only 때문에 {@code UnexpectedRollbackException}이 난다). "삼켜도 되는 예외인가"는 {@code isDuplicateLikeConstraint}가 실제 DB 제약 이름으로 판정하며, 그 판정을 실제 DB로 검증한다. */
 @SpringBootTest
 class PostLikeWriterTest {
 
@@ -73,8 +68,7 @@ class PostLikeWriterTest {
     @Test
     @DisplayName("부모 게시글이 막 삭제된 뒤의 FK 위반은 그대로 올라오고, isDuplicateLikeConstraint는 false다")
     void insert_whenParentPostDeletedConcurrently_throwsAndIsNotRecognizedAsDuplicate() {
-        // 다른 요청이 이 게시글을 동시에 지운 상황을 흉내 낸다. 추천 삭제 없이 게시글 행만
-        // 직접 지워, insert가 참조할 부모 행이 사라지게 한다.
+        // 다른 요청이 이 게시글을 동시에 지운 상황을 흉내 낸다. 추천 삭제 없이 게시글 행만 직접 지워 insert가 참조할 부모 행이 사라지게 한다.
         jdbcTemplate.update("DELETE FROM posts WHERE id = ?", post.getId());
 
         assertThatThrownBy(() -> postLikeWriter.insert(post, liker))

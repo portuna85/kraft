@@ -8,8 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 임계 판정만 따로 본다. 수집(DB·디스크·풀)과 분리돼 있어 여기서는 값만 넣어 확인한다.
  * <p>
- * 이 테스트가 지키는 것은 "언제 사람을 부를지"다. 너무 예민하면 아무도 로그를 안 보게 되고,
- * 너무 둔하면 있으나 마나 하다.
+ * 이 테스트가 지키는 것은 "언제 사람을 부를지"다. 너무 예민하면 아무도 로그를 안 보게 되고, 너무 둔하면 있으나 마나 하다.
  */
 class HealthSnapshotTest {
 
@@ -37,10 +36,7 @@ class HealthSnapshotTest {
                 .contains("기준 10.0%");
     }
 
-    /**
-     * 표본이 적으면 비율이 요동친다. 2건 중 1건 실패는 50%지만 경보할 일이 아니다 —
-     * 봇 하나가 404를 맞은 새벽마다 깨우는 알림은 곧 무시된다.
-     */
+    /** 표본이 적으면 비율이 요동친다. 2건 중 1건 실패는 50%지만 경보할 일이 아니다 — 봇 하나가 404를 맞은 새벽마다 깨우는 알림은 곧 무시된다. */
     @Test
     @DisplayName("요청이 적으면 오류율이 높아도 경보하지 않는다")
     void errorRateNeedsEnoughSamples() {
@@ -100,7 +96,7 @@ class HealthSnapshotTest {
         assertThat(snapshot.breaches(LIMITS)).isEmpty();
     }
 
-    /** 정수 나눗셈이 -1/1048576을 0으로 내려 예전엔 "0MB"로 보였다 — 진짜 0바이트와 구분되지 않았다. */
+    /** 정수 나눗셈이 -1/1048576을 0으로 내리면 "0MB"로 보여 진짜 0바이트와 구분되지 않는다. */
     @Test
     @DisplayName("디스크 측정이 실패했으면(-1) summary에 '측정불가'로 남는다")
     void diskMeasurementUnavailableShowsAsUnmeasurableInSummary() {
@@ -119,9 +115,7 @@ class HealthSnapshotTest {
                 .anyMatch(line -> line.startsWith("발송 포기 메일 3통"));
     }
 
-    /**
-     * 재시도를 모두 소진한 세션 폐기 태스크는 mailFailed와 같은 성격 — 사람이 봐야 낫는다.
-     */
+    /** 재시도를 모두 소진한 세션 폐기 태스크는 mailFailed와 같은 성격 — 사람이 봐야 낫는다. */
     @Test
     @DisplayName("세션 폐기 실패가 쌓이면 남긴다")
     void sessionRevocationFailedIsReported() {
@@ -148,11 +142,7 @@ class HealthSnapshotTest {
         assertThat(snapshot.breaches(LIMITS)).anyMatch(line -> line.startsWith("추천 이력 검증 기준이 300시간째"));
     }
 
-    /**
-     * 상태 행이 없거나 한 번도 검증되지 않았으면(-1) 기능이 켜져 있는 한 "이력이
-     * 아직 준비되지 않음"을 남긴다 — 예전에는 이 -1을 조용히 건너뛰어, 자동 수집이 계속
-     * 실패해도 로그상 정상과 구분되지 않았다.
-     */
+    /** 상태 행이 없거나 한 번도 검증되지 않았으면(-1) 기능이 켜져 있는 한 "이력이 아직 준비되지 않음"을 남긴다 — 조용히 건너뛰면 자동 수집이 계속 실패해도 로그상 정상과 구분되지 않는다. */
     @Test
     @DisplayName("추천 기능이 켜진 채 이력 나이가 -1이면 '추천 이력 미준비'를 남긴다")
     void recommendationHistoryUnavailableWhileEnabledIsReported() {
@@ -170,10 +160,7 @@ class HealthSnapshotTest {
         assertThat(snapshot.breaches(LIMITS)).isEmpty();
     }
 
-    /**
-     * 메일·세션·이미지 집계가 DB 조회 실패로 -1이면, 예전처럼 조용히 건너뛰지
-     * 않고 각각 "측정 불가: <항목>"을 남긴다 — 관측 자체가 실패했다는 것도 알아야 할 상태다.
-     */
+    /** 메일·세션·이미지 집계가 DB 조회 실패로 -1이면 조용히 건너뛰지 않고 각각 "측정 불가: <항목>"을 남긴다 — 관측 자체가 실패했다는 것도 알아야 할 상태다. */
     @Test
     @DisplayName("메일·세션·이미지 집계가 실패하면(-1) 각각 측정 불가로 남긴다")
     void dbAggregateMeasurementFailuresAreReportedIndividually() {
@@ -207,11 +194,7 @@ class HealthSnapshotTest {
         assertThat(idle.summary()).contains("요청=0");
     }
 
-    /**
-     * {@link AlertMailer}가 같은 문제로 반복 발송하지 않으려면 수치가 바뀌어도
-     * 안정적인 식별자가 필요하다 — breaches()의 문장은 매번 다른 수치를 담아 그 용도로 쓸 수
-     * 없다.
-     */
+    /** {@link AlertMailer}가 같은 문제로 반복 발송하지 않으려면 수치가 바뀌어도 안정적인 식별자가 필요하다 — breaches()의 문장은 매번 다른 수치를 담아 그 용도로 쓸 수 없다. */
     @Test
     @DisplayName("breachKinds는 수치와 무관하게 안정된 식별자를 돌려준다")
     void breachKindsAreStableAcrossDifferentValues() {
