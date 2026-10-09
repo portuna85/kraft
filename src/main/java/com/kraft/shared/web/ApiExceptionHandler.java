@@ -42,7 +42,7 @@ import java.util.List;
  * {@code Content-Type: application/problem+json}을 자동으로 설정하므로 별도 래퍼 클래스나
  * 신규 의존성이 필요 없다.
  * <p>
- * {@link ResponseEntityExceptionHandler}를 상속한다(개선 보고서 OBS-04) — 상속 전에는 전용
+ * {@link ResponseEntityExceptionHandler}를 상속한다 — 상속 전에는 전용
  * 핸들러가 없는 표준 MVC 예외(필수 파라미터·멀티파트 파트 누락, 지원하지 않는 HTTP 메서드·
  * 미디어 타입 등)가 죄다 {@link #handleUnexpected}(500)에 걸렸다. 클라이언트 잘못으로 인한
  * 4xx 요청이 서버 오류로 집계되고 5xx 알림까지 울렸다. 이 부모 클래스는 그런 예외들을 이미
@@ -251,7 +251,7 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
      * 이 예외를 던진다. 예전에는 나중 저장이 먼저 저장을 말없이 덮어썼다.
      * <p>
      * 실제로 던져지는 것은 {@link ObjectOptimisticLockingFailureException}이라 어느 엔티티가
-     * 충돌했는지 {@code getPersistentClassName()}으로 알 수 있다(개선 보고서 BE-21) — 예전에는
+     * 충돌했는지 {@code getPersistentClassName()}으로 알 수 있다 — 예전에는
      * 이 이름을 무시하고 "글"로만 고정 안내해, 댓글 수정 충돌에도 "이미 수정된 글입니다"라고
      * 잘못 안내했다.
      */

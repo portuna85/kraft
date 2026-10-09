@@ -13,7 +13,7 @@ import java.sql.SQLException;
 import java.util.Set;
 
 /**
- * 매 테스트 메서드 전에 관련 테이블을 FK 안전한 순서로 전부 비운다(개선 보고서 TST-01/TST-04).
+ * 매 테스트 메서드 전에 관련 테이블을 FK 안전한 순서로 전부 비운다.
  * <p>
  * H2가 컨텍스트마다 무작위 이름({@code jdbc:h2:mem:kraft-${random.uuid}})을 쓰게 되면서,
  * 같은 Spring 테스트 설정을 공유해 컨텍스트 캐시를 재사용하는 클래스들은 여전히 물리적으로

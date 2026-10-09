@@ -14,7 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * 배포 스크립트는 로그인 없이 {@code /readyz}를 찌른다 — 실제 보안 필터 체인과 DataSource로
- * 익명 접근·200·빈 본문을 확인한다(평가 보고서 2026-09-25 F04).
+ * 익명 접근·200·빈 본문을 확인한다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc

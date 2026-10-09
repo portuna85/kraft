@@ -38,7 +38,7 @@ import java.util.function.UnaryOperator;
 public class UserService {
 
     /**
-     * 탈퇴한 계정의 대체 이름·이메일 공간(평가 보고서 2026-09-25 F10). 새 가입은 이 공간을 쓸 수
+     * 탈퇴한 계정의 대체 이름·이메일 공간. 새 가입은 이 공간을 쓸 수
      * 없다 — 예전에는 누군가 "탈퇴한 사용자123"이나 "withdrawn-123@kraft.invalid"로 먼저 가입해
      * 두면 123번 회원의 탈퇴가 유일성 제약에 걸려 실패했다. {@code .invalid}는 실제로 존재할 수
      * 없는 예약 최상위 도메인(RFC 2606)이라 정상 사용자가 막히지 않는다.
@@ -131,7 +131,7 @@ public class UserService {
      * <p>
      * 변경이 <b>커밋된 뒤</b> 이 계정의 모든 세션을 서버에서 폐기하도록 영속 태스크를 남긴다
      * ({@link #revokeSessionsAfterCommit}). 브라우저 JS의 후속 로그아웃에 맡기던 예전 방식은
-     * API 직접 호출이나 후속 요청 실패에 무력했고 다른 기기의 세션도 남겼다(개선 보고서 F04).
+     * API 직접 호출이나 후속 요청 실패에 무력했고 다른 기기의 세션도 남겼다.
      * 커밋 이후로 미루는 이유는, 변경이 롤백되면 세션도 그대로 유지되어야 하기 때문이다.
      */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -284,7 +284,7 @@ public class UserService {
      * 경로와 같은 {@link WriteAccessPolicy}가 하므로 두 경로가 갈라지지 않는다.
      * <p>
      * 회원은 principal의 불변 id로 찾는다({@link CurrentUser}) — principal은 이메일을 들고 있지
-     * 않다(평가 보고서 2026-09-25 F01). 미인증이거나 계정을 찾지 못하면 빈 값이다.
+     * 않다. 미인증이거나 계정을 찾지 못하면 빈 값이다.
      */
     public Optional<String> writeBlockReason(Authentication authentication) {
         return Optional.ofNullable(CurrentUser.userIdOrNull(authentication, userRepository))

@@ -12,8 +12,8 @@ import java.util.Set;
  * <p>
  * {@code PostRepository.search}는 JPQL에 고정 {@code ORDER BY}를 두지 않고 {@link Pageable}의
  * {@link Sort}에 정렬을 전적으로 맡긴다(B10, {@link #effectiveSort} 참고). 검증 없이 받으면
- * {@code ?sort=content,desc}처럼 인덱스 없는 TEXT 컬럼 정렬을 클라이언트가 강제할 수 있다
- * (개선 보고서 "검색과 깊은 페이지의 비용"). 허용 목록은 {@code Post} 엔티티에서 정렬이
+ * {@code ?sort=content,desc}처럼 인덱스 없는 TEXT 컬럼 정렬을 클라이언트가 강제할 수 있다.
+ * 허용 목록은 {@code Post} 엔티티에서 정렬이
  * 안전한 컬럼만 둔다.
  */
 public final class PostSortPolicy {

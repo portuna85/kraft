@@ -6,7 +6,7 @@
 # main/resources/application-local.yml이 바뀌기 전의 원래 로컬(H2) 설정과 동일하다.
 spring:
   datasource:
-    # 이름을 고정하지 않고 컨텍스트마다 새 무작위 DB를 쓴다(개선 보고서 TST-01) — 예전에는
+    # 이름을 고정하지 않고 컨텍스트마다 새 무작위 DB를 쓴다 — 예전에는
     # 모든 Spring 테스트 컨텍스트가 같은 이름(kraft)의 H2 DB 하나를 공유했다 — 서로 다른
     # 컨텍스트(예: @DataJpaTest 슬라이스와 @SpringBootTest)가 같은 세션에서 같은 스키마를
     # create-drop으로 만들고 지우기를 반복하며 겹쳐, 가끔 "Table USERS not found" 같은
@@ -56,8 +56,8 @@ app:
     email-encryption-key: local-dev-only-email-key-do-not-use-in-prod
     email-hash-pepper: test-only-hash-pepper-0123456789
 
-  # 로그인·가입 등을 반복하는 MockMvc 테스트가 이 제한기 때문에 흔들리지 않도록 꺼 둔다
-  # (개선 보고서 SEC-01). 필터 자체를 검증하는 테스트는 @TestPropertySource로 개별적으로
+  # 로그인·가입 등을 반복하는 MockMvc 테스트가 이 제한기 때문에 흔들리지 않도록 꺼 둔다.
+  # 필터 자체를 검증하는 테스트는 @TestPropertySource로 개별적으로
   # 다시 켠다(AuthRateLimitFilterTest).
   auth:
     min-response-millis: 0
@@ -96,6 +96,6 @@ app:
   recommend:
     # 이 스케줄러는 절대 시각(cron)으로 도는 탓에 위 initial-delay 요령을 쓸 수 없다 —
     # 실행 시각과 우연히 겹치면 테스트 스위트 도중 외부 동행복권 사이트로 실제 요청을
-    # 보낸다(개선 보고서 OBS-05).
+    # 보낸다.
     auto-fetch:
       enabled: false

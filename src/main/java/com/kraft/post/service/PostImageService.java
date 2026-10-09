@@ -194,8 +194,8 @@ public class PostImageService {
     /**
      * 확장자가 아니라 <b>내용</b>이 실제로 그 이미지 형식인지 확인한다.
      * <p>
-     * 예전에는 일반 텍스트를 {@code not-an-image.png}로 올려도 그대로 저장됐다
-     * (개선 보고서 F06). 두 단계로 막는다:
+     * 예전에는 일반 텍스트를 {@code not-an-image.png}로 올려도 그대로 저장됐다.
+     * 두 단계로 막는다:
      * <ol>
      * <li>매직 바이트(파일 시그니처)가 확장자와 맞는지 — 이름만 바꾼 파일을 걸러낸다.</li>
      * <li>실제 크기를 읽어 픽셀 수 상한을 넘는지 — 파일은 작지만 압축을 풀면 거대한
@@ -233,8 +233,7 @@ public class PostImageService {
      * 원본 {@code InputStream}을 {@code ImageInputStream}과 별도로 try-with-resources에 넣는다
      * — {@code ImageIO.createImageInputStream()}이 돌려주는 래퍼(보통
      * {@code MemoryCacheImageInputStream})의 {@code close()}는 자기 내부 버퍼만 닫고 감싼
-     * 원본 스트림은 닫지 않는다. 예전에는 원본 스트림을 변수 없이 바로 넘겨 그 스트림이 누수됐다
-     * (개선 보고서 "이미지 입력 스트림 소유권").
+     * 원본 스트림은 닫지 않는다. 예전에는 원본 스트림을 변수 없이 바로 넘겨 그 스트림이 누수됐다.
      * <p>
      * WEBP는 표준 JDK ImageIO에 디코더가 없어({@code readers.hasNext()}가 false) 이 경로를
      * 타지 않는다 — {@link #validateWebpPixelCount}가 컨테이너 헤더를 직접 읽어 같은 상한을
@@ -283,7 +282,7 @@ public class PostImageService {
 
     /**
      * WEBP는 JDK ImageIO에 디코더가 없어 {@link WebpStructure}가 RIFF 컨테이너 구조를 파일 끝까지
-     * 검사하고 캔버스 크기를 읽는다(평가 보고서 2026-09-25 F06). 예전에는 앞 30바이트의 치수 필드만
+     * 검사하고 캔버스 크기를 읽는다. 예전에는 앞 30바이트의 치수 필드만
      * 읽어, 이미지 데이터가 없는 헤더만의 파일도 통과했다. 파일 크기는 {@link #validate}가 이미
      * 5MB 이하로 제한했으므로 전체를 메모리로 읽어도 된다.
      */

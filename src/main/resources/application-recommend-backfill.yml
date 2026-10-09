@@ -1,7 +1,7 @@
 # 추천 이력 백필 전용 프로파일. --spring.profiles.active=recommend-backfill 로만 활성화된다.
 # RecommendationBackfillRunner의 실행 방법은 그 클래스의 javadoc을 본다.
 #
-# 한 번 수행하고 종료 코드를 남기며 내려간다. 서비스로 남지 않는다(개선 보고서 OBS-05).
+# 한 번 수행하고 종료 코드를 남기며 내려간다. 서비스로 남지 않는다.
 server:
   port: -1
 

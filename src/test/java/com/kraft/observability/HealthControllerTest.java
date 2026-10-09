@@ -26,7 +26,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
- * readiness 판정 규칙(평가 보고서 2026-09-25 F04). 배포·롤백 성공 판정에 쓰이므로 DB에 붙지
+ * readiness 판정 규칙. 배포·롤백 성공 판정에 쓰이므로 DB에 붙지
  * 못하거나 응답이 멈춘 상태를 200으로 돌려주면 안 된다.
  */
 class HealthControllerTest {

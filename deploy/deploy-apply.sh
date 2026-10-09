@@ -15,7 +15,7 @@
 set -euo pipefail
 
 # 배포 전 DB 스냅샷(아래 3번)에는 비밀번호 해시·암호화된 이메일이 들어 있다. 기본 권한
-# (보통 0644)이면 같은 서버의 다른 로컬 계정도 읽을 수 있다(개선 보고서 OPS-01) — 이
+# (보통 0644)이면 같은 서버의 다른 로컬 계정도 읽을 수 있다 — 이
 # 스크립트가 만드는 모든 파일을 소유자만 읽고 쓸 수 있게 강제한다.
 umask 077
 
@@ -42,7 +42,7 @@ REQUIRED_JAVA_MAJOR=25
 LOCK_FILE="$APP_DIR/deploy.lock"
 LOG=/opt/kraft/deploy.log
 # /readyz는 템플릿 렌더링 없이 컨텍스트 기동과 DB 커넥션 검증(제한 시간 2초)만 본다 — DB에
-# 붙지 못하면 503이다(평가 보고서 2026-09-25 F04). 예전에는 무조건 200인 /healthz를 써서, DB에
+# 붙지 못하면 503이다. 예전에는 무조건 200인 /healthz를 써서, DB에
 # 연결하지 못하는 jar도 배포·롤백 성공으로 기록될 수 있었다. 예전에 썼던 GET /(게시글 목록
 # 전체 렌더)보다는 여전히 가볍다(OPS-G5) — 이 루프가 재시작마다 최대 30회 반복된다.
 HEALTH_URL=http://127.0.0.1:8080/readyz
@@ -104,7 +104,7 @@ log "───── 배포 시작 (ref=$REF) ─────"
 
 # 1. jar 수신. 상한을 넘는 바이트는 애초에 디스크에 받지 않는다 — 예전에는 cat으로 전부
 #    받은 뒤에야 크기를 검사해서, 손상되었거나 악의적인 대용량 전송이 그 사이 디스크를
-#    가득 채울 수 있었다(개선 보고서 OPS-01). head -c는 상한+1바이트만 받고 나머지는
+#    가득 채울 수 있었다. head -c는 상한+1바이트만 받고 나머지는
 #    버린다(+1은 "정확히 상한"과 "상한을 넘음"을 아래 크기 검사로 구분하기 위함).
 FREE_KB=$(df -Pk "$APP_DIR" | awk 'NR==2 {print $4}')
 [ "${FREE_KB:-0}" -ge "$MIN_FREE_KB" ]     || fail "디스크 여유가 부족하다(${FREE_KB:-0}KB, 필요 ${MIN_FREE_KB}KB). 배포 전에 정리해야 한다"
@@ -125,7 +125,7 @@ log "수신 완료: ${SIZE} 바이트"
 UNZIP_LISTING=$(unzip -l "$INCOMING" 2>/dev/null) || fail "압축이 깨졌다"
 [[ "$UNZIP_LISTING" == *"BOOT-INF/"* ]] || fail "Spring Boot 실행 jar가 아니다"
 # unzip -l은 중앙 디렉터리 목차만 읽는다 — 항목 이름은 멀쩡해 보여도 각 파일의 압축 데이터
-# 자체가 전송 중 깨졌을 수 있다(개선 보고서 "배포 스크립트의 검증·재시도 공백"). -t는 모든
+# 자체가 전송 중 깨졌을 수 있다. -t는 모든
 # 항목을 실제로 풀어 CRC를 대조하므로 그런 손상까지 여기서 걸러낸다.
 unzip -t "$INCOMING" >/dev/null 2>&1 || fail "CRC 무결성 검사 실패 — 항목이 손상되었다"
 # 위 검사는 "jar로서 온전한가"만 본다. CI가 만든 바로 그 파일인지는 SHA-256으로 대조한다(OPS-13) —
@@ -162,7 +162,7 @@ STAMP=$(date +%Y%m%d-%H%M%S)
 mkdir -p "$BACKUP_DIR"
 # db 이름·root 비밀번호 모두 호스트 .env를 grep하지 않고, 컨테이너 자신에게 이미 주입되어
 # 있는 환경변수(docker-compose.yml의 MARIADB_DATABASE·MARIADB_ROOT_PASSWORD)를 그대로
-# 쓴다 — backup.sh와 같은 이유다(개선 보고서 OPS-01). 비밀번호가 이 스크립트의 -p 인자로
+# 쓴다 — backup.sh와 같은 이유다. 비밀번호가 이 스크립트의 -p 인자로
 # 넘어가지 않아 ps에 노출되지 않고, .env를 다시 읽는 grep|cut 파이프가 pipefail 아래에서
 # 조용히 실패하는 경로도 없앤다.
 if (cd "$APP_DIR" && docker compose --env-file .env exec -T mariadb \
@@ -252,7 +252,7 @@ fi
 log "헬스체크 실패. 이전 jar로 되돌린다"
 if [ -f "$PREVIOUS" ]; then
     # 실패한 jar를 그냥 지우지 않고 남겨 둔다 — 왜 헬스체크에 실패했는지 나중에 jar 자체를
-    # 들여다볼 수 있어야 한다(개선 보고서 OPS-01). 다만 무한히 쌓이지는 않게, 배포 전
+    # 들여다볼 수 있어야 한다. 다만 무한히 쌓이지는 않게, 배포 전
     # 스냅샷과 같은 기준(최근 10개)으로 오래된 것부터 지운다(OPS-G2) — 실패 jar 하나가
     # 수십MB라 방치하면 디스크를 채운다.
     mv "$JAR" "$APP_DIR/kraft.jar.failed-$STAMP"

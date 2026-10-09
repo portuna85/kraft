@@ -15,7 +15,7 @@ import * as flash from '@ui/flash.js';
  *  - 고르지 않았으면 `fallbackPicture()`가 정한 값을 쓴다(등록: 사진 없음, 수정: 기존 사진 유지·삭제).
  *
  * 폼 값의 스냅샷은 호출한 쪽이 `submit`을 부르기 전에 떠 둔다 — 업로드를 기다리는 동안 입력을 잠그지만
- * 최종 요청은 항상 제출 시점의 값을 써야 한다(개선 보고서 F02·F03).
+ * 최종 요청은 항상 제출 시점의 값을 써야 한다.
  *
  * @param {object} options
  * @param {import('vue').Ref<boolean>} options.saving

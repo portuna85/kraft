@@ -40,7 +40,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * 백업·복구 절차를 실제로 밟아 본다 (개선 보고서 "백업·복구" 공백).
+ * 백업·복구 절차를 실제로 밟아 본다.
  *
  * <h3>왜 필요한가</h3>
  * 백업 명령은 문서에 있었지만 <b>그것으로 정말 복구되는지는 아무도 확인하지 않았다.</b>

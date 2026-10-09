@@ -44,8 +44,7 @@ public interface SessionRevocationTaskRepository extends JpaRepository<SessionRe
      * 지금도 이 {@code ownerToken}이 소유한 PROCESSING 행일 때만 값을 꺼낸다.
      * <p>
      * 비관적 쓰기 잠금을 잡아 {@link #findByStatusAndUpdatedAtBefore}(requeueStuck 전용,
-     * 마찬가지로 잠근다)와 서로 배타적으로 돈다(개선 보고서 BE-20,
-     * {@code OutboxMailRepository.findSendingByIdAndOwnerTokenForUpdate}와 같은 COR-03 패턴) —
+     * 마찬가지로 잠근다)와 서로 배타적으로 돈다 —
      * 마침 처리 결과를 반영하는 도중인 행을 재큐잉이 동시에 건드리지 않는다.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)

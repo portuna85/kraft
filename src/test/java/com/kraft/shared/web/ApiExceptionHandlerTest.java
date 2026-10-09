@@ -17,7 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * {@link ApiExceptionHandler}가 {@code ResponseEntityExceptionHandler}를 상속한 뒤에도 전용
  * 핸들러가 없는 표준 MVC 예외가 catch-all(500)이 아니라 제 상태 코드로 응답하는지, 기존
- * 매핑은 그대로 유지되는지 확인한다(개선 보고서 OBS-04). 실제 도메인 컨트롤러 대신
+ * 매핑은 그대로 유지되는지 확인한다. 실제 도메인 컨트롤러 대신
  * {@link ApiExceptionHandlerTestController}가 이 예외들만 일으키는 더미 컨트롤러 역할을 한다 —
  * 보안 필터는 이 테스트의 관심사가 아니므로 꺼 둔다.
  */

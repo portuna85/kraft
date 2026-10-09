@@ -18,7 +18,7 @@ import java.util.List;
  * <ul>
  * <li>{@link PostImageStatus#PENDING_DELETE} — 게시글 수정·삭제로 삭제가 예약된 파일.
  * 예약은 DB 커밋으로 확정되고 실제 삭제는 그 뒤에 일어나므로, 커밋 직후 프로세스가 죽어도
- * 예약이 DB에 남아 다음 주기에 다시 시도된다(개선 보고서 F05).</li>
+ * 예약이 DB에 남아 다음 주기에 다시 시도된다.</li>
  * <li>{@link PostImageStatus#ORPHAN} 중 만료된 것 — 업로드만 하고 글을 저장하지 않은 파일.
  * 이 정리가 없으면 업로드 반복만으로 디스크가 찬다.</li>
  * </ul>
@@ -108,7 +108,7 @@ public class PostImageCleaner {
      * {@link #MAX_BATCHES_PER_CYCLE}배치) 지운다.
      * <p>
      * 배치마다 선점({@code claimExpiredOrphansBatch})과 실제 삭제({@code cleanPendingDeletionsFor})를
-     * 서로 다른 트랜잭션으로 나눠 부른다(개선 보고서 COR-06) — 둘 다 이 클래스가 주입받은
+     * 서로 다른 트랜잭션으로 나눠 부른다 — 둘 다 이 클래스가 주입받은
      * {@link PostImageCleanupBatchRunner}의 프록시를 거치는 외부 호출이라, 각자의
      * {@code REQUIRES_NEW}가 실제로 독립된 트랜잭션을 연다. 선점이 먼저 커밋되므로, 뒤이은
      * 삭제가 실패해도 그 행은 PENDING_DELETE로 남아 대장 없는 파일이 생기지 않는다.

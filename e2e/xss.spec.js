@@ -6,8 +6,7 @@ test.use({ storageState: storageStateFor('user') });
  * 제목·본문·댓글은 Vue 아일랜드의 초기 상태로 {@code <script type="application/json">}에
  * 그대로 끼워져 내려간다(post-save.html, post-update.html). 그 값에 {@code </script>}가
  * 있으면 브라우저가 HTML을 파싱하는 시점에 script 요소가 거기서 끝나 버려, 뒤에 오는 내용이
- * 그대로 실행 가능한 HTML/스크립트가 될 수 있었다(개선 보고서 "JSON을 HTML script에 넣는 경계
- * 검증 부족" — 확인해 보니 실제로 저장형 XSS였다). 서버가 `<` 형태로 이스케이프해
+ * 그대로 실행 가능한 HTML/스크립트가 될 수 있었다. 서버가 `<` 형태로 이스케이프해
  * 막았는지, 화면에는 페이로드가 그대로 "글자"로만 보이는지 확인한다.
  */
 test('제목·본문·댓글에 </script>가 있어도 스크립트가 실행되지 않고 글자 그대로 보인다', async ({ page }) => {

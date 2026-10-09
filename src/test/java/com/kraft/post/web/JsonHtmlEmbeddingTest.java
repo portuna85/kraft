@@ -6,8 +6,7 @@ import tools.jackson.databind.ObjectMapper;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * JSON을 {@code <script>} 안에 그대로 써도 안전한지 검증한다(개선 보고서 "JSON을 HTML script에
- * 넣는 경계 검증 부족"). 실제 공격 재현은 {@code PostPageController}를 통한 렌더링 테스트와
+ * JSON을 {@code <script>} 안에 그대로 써도 안전한지 검증한다. 실제 공격 재현은 {@code PostPageController}를 통한 렌더링 테스트와
  * e2e가 맡고, 여기서는 변환 함수 자체의 계약(탈출 문자열을 남기지 않는다 / 원문을 그대로
  * 복원할 수 있다)을 고정한다.
  */

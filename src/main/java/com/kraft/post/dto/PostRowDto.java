@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * <p>
  * {@link com.kraft.post.domain.PostRepository#search}와 {@code findTopByViewCountDesc}가
  * 이 타입으로 직접 SELECT해, 목록에 쓰지 않는 {@code content}(TEXT)와 작성자 이메일 등을 실어
- * 나르지 않는다(개선 보고서 "게시판 목록의 불필요한 열과 집계").
+ * 나르지 않는다.
  */
 public record PostRowDto(
         Long id,

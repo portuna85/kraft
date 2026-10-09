@@ -12,7 +12,7 @@ import java.util.List;
  * <p>
  * {@code parentId}가 null이면 최상위 댓글이고, {@code replies}에 처음 로드된 답글 일부가
  * 실린다. {@code replyCount}는 그 부모의 실제 총 답글 수이고, {@code hasMoreReplies}가
- * true면 {@code replies}에 다 담지 못한 답글이 더 있다는 뜻이다(개선 보고서 COR-05) — 화면은
+ * true면 {@code replies}에 다 담지 못한 답글이 더 있다는 뜻이다 — 화면은
  * 이때 {@code GET /api/v1/comments/{parentId}/replies}로 이어서 받아 온다. 답글 자신은
  * 2단계까지만 허용하므로 답글 항목의 {@code replies}·{@code replyCount}·{@code hasMoreReplies}는
  * 항상 빈 값이다.
@@ -24,7 +24,7 @@ public record CommentViewDto(
         String content,
         String author,
         /**
-         * 서버 시간대의 오프셋을 실어 보낸다(개선 보고서 COR-08). {@code Comment.createdAt}은
+         * 서버 시간대의 오프셋을 실어 보낸다. {@code Comment.createdAt}은
          * DB·서버 저장용 {@code LocalDateTime}이라 오프셋이 없다 — 그 값을 오프셋 없이 그대로
          * JSON으로 내려보내면, 클라이언트의 {@code new Date(iso)}가 그 문자열을 "브라우저의"
          * 로컬 시간으로 해석한다. 반면 화면이 새 댓글을 즉시 반영할 때 직접 만든
@@ -43,7 +43,7 @@ public record CommentViewDto(
          */
         Long version,
         /**
-         * 답글이 있어 행은 남기고 내용만 비운 것이다(개선 보고서 A-BE-06). true면
+         * 답글이 있어 행은 남기고 내용만 비운 것이다. true면
          * {@code content}는 항상 빈 문자열이고, 화면은 "삭제된 댓글입니다"로 바꿔 보여주며
          * 수정·삭제·신고 버튼을 숨긴다.
          */

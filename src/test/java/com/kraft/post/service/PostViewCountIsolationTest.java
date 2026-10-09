@@ -27,8 +27,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * 조회수 갱신이 게시글 본문·최종수정일을 오염시키지 않는지 실제 DB로 검증한다
- * (개선 보고서 F02·F11)와, 편집 충돌이 감지되는지 확인한다.
+ * 조회수 갱신이 게시글 본문·최종수정일을 오염시키지 않는지, 그리고 편집 충돌이 감지되는지
+ * 실제 DB로 검증한다.
  * <p>
  * 예전에는 상세 조회가 엔티티를 읽어 {@code increaseViewCount()}로 필드를 바꾸고 변경 감지에
  * 맡겼다. Hibernate는 그 UPDATE에 제목·본문·분류를 함께 실었기 때문에, 조회 트랜잭션이 읽어둔

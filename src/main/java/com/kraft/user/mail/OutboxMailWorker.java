@@ -73,7 +73,7 @@ public class OutboxMailWorker {
     private int retentionDays;
 
     /**
-     * {@code cleanupOldTerminal}만의 별도 스위치(개선 보고서 OBS-05). {@code enabled}와 무관하게
+     * {@code cleanupOldTerminal}만의 별도 스위치. {@code enabled}와 무관하게
      * 항상 돌게 만든 것은 의도한 설계이지만({@link #cleanupOldTerminal} 참고), 그 사실이
      * {@code app.mail.enabled: false}만 보고 "메일 관련 예약 작업을 전부 껐다"고 오해하기
      * 쉽게 만든다. 정리만 따로 끄고 싶을 때(또는 그 반대로 검사할 때) 이 플래그를 쓴다.
@@ -84,7 +84,7 @@ public class OutboxMailWorker {
     /**
      * 한 배치 안에서 동시에 SMTP로 보내는 최대 개수. 예전에는 배치 전체를 순차로 보내
      * 사실상 동시성이 1이었다 — 느린 메일 서버 하나가 뒤 순서 메일의 임대 시간을 모두
-     * 잡아먹었다(개선 보고서 "메일 임대·재시도·실행량 제한").
+     * 잡아먹었다.
      */
     @Value("${app.mail.max-concurrent-sends:5}")
     private int maxConcurrentSends;
@@ -146,7 +146,7 @@ public class OutboxMailWorker {
      * 각 발송은 서로 다른 메일이라 순서를 지킬 이유가 없고, 이 메서드는 배치 전체가 끝날
      * 때까지 기다린 뒤 반환한다(호출자가 "이번 배치는 끝났다"고 가정할 수 있어야 한다).
      * <p>
-     * 임대 토큰은 호출마다 새로 만든다(개선 보고서 COR-03) — 예전에는 이 워커 인스턴스가
+     * 임대 토큰은 호출마다 새로 만든다 — 예전에는 이 워커 인스턴스가
      * 생성될 때 만든 토큰 하나를 모든 drain() 호출이 공유했다. 그러면 정체 재큐잉이 어떤 행의
      * 소유권을 비운 뒤, 같은 워커 인스턴스가 곧바로 그 행을 다시 집으면 새 시도도 똑같은
      * (예전과 동일한) 토큰을 쓰게 되어, 그사이 뒤늦게 도착한 이전 시도의 결과가 "지금도 내

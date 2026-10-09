@@ -13,7 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * {@link SecurityConfig}가 붙이는 CSP·Referrer-Policy·HSTS를 확인한다(개선 보고서 SEC-05).
+ * {@link SecurityConfig}가 붙이는 CSP·Referrer-Policy·HSTS를 확인한다.
  * <p>
  * 이 앱은 전 화면이 자체 호스팅 CSS·JS만 쓴다 — 외부 CDN·폰트도, 인라인 스크립트·스타일도
  * 없다(F08 이후로 jQuery·Bootstrap도 직접 서빙한다. 마운트 실패 안내도 이 작업에서 인라인

@@ -28,8 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * <b>이미 데이터가 있는 기존 DB</b>를 운영 설정으로 넘기는 절차를 실제 MariaDB에서 리허설한다
- * (개선 보고서 "마이그레이션 전환" 공백).
+ * <b>이미 데이터가 있는 기존 DB</b>를 운영 설정으로 넘기는 절차를 실제 MariaDB에서 리허설한다.
  * <p>
  * {@link MariaDbMigrationTest}와 역할이 다르다. 그쪽은 <b>빈 DB</b>에서 V1~V7이 순서대로
  * 성공하는지를 본다. 하지만 실제 첫 배포에서 마주치는 DB는 비어 있지 않다 — {@code local}

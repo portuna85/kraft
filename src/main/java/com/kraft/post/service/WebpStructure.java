@@ -4,8 +4,7 @@ import com.kraft.shared.exception.BusinessValidationException;
 import java.nio.charset.StandardCharsets;
 
 /**
- * WEBP 파일의 RIFF 컨테이너 구조를 파일 끝까지 검사하고 캔버스 크기를 돌려준다
- * (평가 보고서 2026-09-25 F06).
+ * WEBP 파일의 RIFF 컨테이너 구조를 파일 끝까지 검사하고 캔버스 크기를 돌려준다.
  * <p>
  * 예전에는 앞 30바이트의 치수 필드만 읽어, 이미지 비트스트림이 전혀 없는 30바이트짜리 헤더도
  * 정상 업로드로 받아들였다. JDK ImageIO에는 WEBP 디코더가 없고, 50메가픽셀까지 허용하는

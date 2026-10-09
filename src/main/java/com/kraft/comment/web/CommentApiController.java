@@ -35,7 +35,7 @@ public class CommentApiController {
 
     /**
      * 상세 화면 "더 보기"가 쓰는 커서 페이지. {@code canManage}는 화면 전용 필드라 인증 정보로
-     * 요청자별 권한을 판정한다(개선 보고서 "댓글 전체 로딩").
+     * 요청자별 권한을 판정한다.
      * <p>
      * 예전에는 익명 GET으로 게시글의 댓글·답글 전체를 한 번에 반환하는 별도 API
      * ({@code GET /api/v1/posts/{postId}/comments}, {@code findByPostId})가 있었다(B08) —
@@ -50,7 +50,7 @@ public class CommentApiController {
     }
 
     /**
-     * "답글 더 보기"(개선 보고서 COR-05) — 최초 페이지·다른 부모가 답글 개수 상한을 먼저 써도
+     * "답글 더 보기" — 최초 페이지·다른 부모가 답글 개수 상한을 먼저 써도
      * 이 부모의 남은 답글에 항상 도달할 수 있어야 한다. 게시글 목록 GET과 같은 이유로 익명도
      * 볼 수 있게 연다(SecurityConfig).
      */

@@ -7,8 +7,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 /**
  * {@link AfterCommit}과 반대로, 트랜잭션이 <b>커밋 이외의 상태로 끝났을 때만</b> 보상 작업을
  * 실행한다. 파일 저장처럼 DB 트랜잭션에 참여하지 않는 부수 작업을 먼저 해 두고, 그 뒤에 이어지는
- * DB 등록이 성공해도 <b>바깥 트랜잭션의 최종 커밋 자체</b>가 실패할 수 있다(개선 보고서 "파일
- * 저장 성공 후 최종 커밋 실패 시 대장 없는 파일"). 메서드 안의 {@code catch}로는 이 실패를 잡을
+ * DB 등록이 성공해도 <b>바깥 트랜잭션의 최종 커밋 자체</b>가 실패할 수 있다. 메서드 안의 {@code catch}로는 이 실패를 잡을
  * 수 없다 — 커밋은 메서드가 반환한 뒤, 트랜잭션 프록시가 처리하기 때문이다.
  * <p>
  * 다만 Spring이 커밋 실패를 항상 {@code STATUS_ROLLED_BACK}으로 알려주지는 않는다 — 커밋

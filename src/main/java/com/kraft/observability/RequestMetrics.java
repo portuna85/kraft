@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.LongAdder;
  * {@code count}·{@code errors}·{@code serverErrors}·{@code totalMillis}·{@code maxMillis}를
  * 예전에는 필드 다섯 개로 따로 두고 {@code drain()}에서 하나씩 {@code sumThenReset()}했다.
  * 그 사이에 {@code record()}가 끼어들면 한 요청의 기여가 두 드레인 구간에 걸쳐 쪼개질 수
- * 있었다(개선 보고서 "지표 스냅숏의 비원자성과 평균 중심 관측") — 예를 들어 count는 이번
+ * 있었다 — 예를 들어 count는 이번
  * 구간에 반영됐는데 errors는 다음 구간으로 넘어가는 식이다. 다섯 필드를 하나의 불변 묶음
  * ({@link Counters})으로 만들고 {@link AtomicReference}로 통째로 교체하면, {@code drain()}이
  * "이 시점까지의 전체 묶음"을 원자적으로 떼어 갈 수 있다. {@code record()}는 그 순간 잡은

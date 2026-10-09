@@ -52,7 +52,7 @@ public class HealthReporter {
     private final MetricsProperties properties;
     /**
      * recommendationHistoryAgeHours의 -1을 "측정 실패"와 "기능이 꺼져 있어 이력이 애초에
-     * 없음"으로 구분하는 데 쓴다(개선 보고서 OBS-01). {@code app.recommend.enabled}와 같은
+     * 없음"으로 구분하는 데 쓴다. {@code app.recommend.enabled}와 같은
      * 프로퍼티를 읽는다 — {@code RecommendationApiController}·{@code RecommendationPageController}가
      * 이 값으로 빈 등록 여부를 결정하는 것과 같다.
      */
@@ -120,8 +120,7 @@ public class HealthReporter {
         // 무엇이 실패하든 이 HTTP 스냅숏은 이미 확보되어 있어야 한다. 예전에는 DB 집계
         // 조회를 이 메서드 안에서 예외 없이 그대로 불러, 그 조회 하나가 실패하면(DB 순단 등)
         // collect() 전체가 예외로 끝나 report()의 catch까지 올라가고, 이미 드레인해 비워
-        // 버린 HTTP 스냅숏은 어디에도 기록되지 못한 채 통째로 사라졌다(개선 보고서 "관측
-        // 수집 실패 시 스냅숏 유실"). DB 집계 각각을 개별로 감싸, 실패한 필드만 diskFreeBytes와
+        // 버린 HTTP 스냅숏은 어디에도 기록되지 못한 채 통째로 사라졌다. DB 집계 각각을 개별로 감싸, 실패한 필드만 diskFreeBytes와
         // 같은 "-1=측정 불가" 관례로 표시하고 HTTP 스냅숏은 그대로 남긴다.
         RequestMetrics.Snapshot http = requestMetrics.drain();
         HikariPoolMXBean pool = pool();
@@ -182,9 +181,8 @@ public class HealthReporter {
      * 거슬러 올라간다 — 첫 업로드 전에는 만들어지지 않기 때문이다.
      * <p>
      * 측정 자체가 불가능하면(존재하는 상위 경로를 하나도 못 찾음) {@code -1}을 돌려준다. 예전엔
-     * 이 경우도 0을 돌려줬는데, 0은 "디스크가 실제로 가득 찼다"는 것과 구분이 안 됐다
-     * (개선 보고서 "관측값의 경계와 의미") — {@link HealthSnapshot}의 판정이 {@code > 0}이라
-     * 정작 가장 위험한 진짜 0바이트 상태를 조용히 건너뛰었다. {@code File.getUsableSpace()}
+     * 이 경우도 0을 돌려줬는데, 0은 "디스크가 실제로 가득 찼다"는 것과 구분이 안 됐다 — {@link HealthSnapshot}의 판정이
+     * {@code > 0}이라 정작 가장 위험한 진짜 0바이트 상태를 조용히 건너뛰었다. {@code File.getUsableSpace()}
      * 자체도 JDK 차원에서 "0바이트"와 "조회 실패"를 구분하지 않는다는 잔여 한계는 남는다 —
      * 이 메서드가 할 수 있는 것은 최소한 "상위 경로를 못 찾은" 경우만이라도 구분하는 것이다.
      */

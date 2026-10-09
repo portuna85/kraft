@@ -11,7 +11,7 @@ import { applyDelete, applyRepliesPage, applyReplyCreated, applySoftDelete, init
  * 댓글 목록 전체. 서버가 최초 렌더링 시 canManage까지 계산해 내려준 목록(initialComments)을
  * 그대로 초기 상태로 쓰고, 이후 생성·수정·삭제는 각 요청의 응답을 받은 뒤에야 로컬 상태를
  * 채운다 — 응답 전에 미리 반영하는 낙관적 갱신이 아니라, 성공이 확인된 결과로 다시 조회하지
- * 않고 그 자리에서 패치하는 것이다(개선 보고서 F14, 용어 정정). 새로고침하면 서버가 다시
+ * 않고 그 자리에서 패치하는 것이다. 새로고침하면 서버가 다시
  * 정확한 canManage를 계산해 주므로 정합성 문제는 없다.
  */
 const props = defineProps({
@@ -43,14 +43,14 @@ const loadError = ref(false);
 // 삭제로 배열에서 항목이 빠져도 "다음 페이지"의 기준은 항상 마지막으로 받아 온 댓글의 id여야
 // 한다 — comments 배열 자체에서 매번 다시 구하면 삭제 직후 잘못된 커서를 보낼 수 있다.
 // Array.prototype.at()은 iOS 15.4부터 지원된다 — 이 프로젝트의 지원 하한(iOS 15)과 어긋나므로
-// (개선 보고서 F14) 인덱스로 직접 접근한다.
+// 인덱스로 직접 접근한다.
 const lastLoadedId = ref(props.initialComments[props.initialComments.length - 1]?.id ?? null);
 const newContent = ref('');
 const saving = ref(false);
 
 // 등록·답글·삭제처럼 totalCount를 로컬에서 증감시키는 동작이 있을 때마다 올린다. loadMore()가
 // 응답을 받은 시점에 이 값이 요청 시작 때와 다르면, 그 사이 등록/답글/삭제가 있었다는 뜻이므로
-// 이미 정확한 로컬 totalCount를 낡은 page.totalCount로 덮어쓰지 않는다(개선 보고서 F01).
+// 이미 정확한 로컬 totalCount를 낡은 page.totalCount로 덮어쓰지 않는다.
 const mutationSeq = ref(0);
 // 삭제된 댓글·답글 id. 삭제 요청과 겹쳐 진행 중이던 "더 보기"/"답글 더 보기" 응답에 그
 // 항목이 다시 들어있어도 되살아나지 않게 막고, 같은 삭제 알림이 두 번 와도 한 번만 센다.
@@ -115,8 +115,7 @@ async function save() {
         const saved = await api.post(`${API.POSTS}/${props.postId}/comments`, {
             content,
         });
-        // 서버가 확정한 id·author·createdAt·version을 그대로 쓴다(개선 보고서 COR-05·
-        // COR-08) — 예전에는 시각을 직접 만들어(new Date().toISOString(), UTC) 반영했는데,
+        // 서버가 확정한 id·author·createdAt·version을 그대로 쓴다 — 예전에는 시각을 직접 만들어(new Date().toISOString(), UTC) 반영했는데,
         // 새로고침 후 서버가 돌려주는 값과 표시가 달랐다. version이 없어 새로고침 전에 이
         // 댓글을 바로 수정하면 낡은 화면 검사를 건너뛰는 문제도 있었다.
         mergeComments([saved]);
@@ -178,7 +177,7 @@ function onReplied({ parentId, reply }) {
 }
 
 /**
- * 답글 더 보기 응답을 그 부모의 replies에 합친다(개선 보고서 COR-05, CommentItem이 emit).
+ * 답글 더 보기 응답을 그 부모의 replies에 합친다.
  * 중복·삭제된 답글을 거르고 부모의 답글 커서를 서버 페이지 기준으로 전진시킨다(F02).
  */
 function onMoreRepliesLoaded({ parentId, replies, hasMore }) {

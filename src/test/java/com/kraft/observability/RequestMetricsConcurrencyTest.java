@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * {@code record()}·{@code drain()}이 동시에 돌아도 필드 다섯 개가 서로 다른 주기로 쪼개지지
- * 않는지 검증한다(개선 보고서 "지표 스냅숏의 비원자성과 평균 중심 관측"). 예전 구현(독립된
+ * 않는지 검증한다. 예전 구현(독립된
  * {@code LongAdder} 다섯 개를 하나씩 sumThenReset)은 이 시나리오에서 {@code errors}가
  * {@code requests}보다 큰 스냅숏을 만들어낼 수 있었다.
  */

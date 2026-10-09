@@ -16,7 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * 템플릿이 실제로 내보내는 버전 JS 주소가 요청 지표에서 빠지는지, 실제 리소스 체인·필터
- * 등록으로 확인한다(평가 보고서 2026-09-25 F12). 버전 문자열을 테스트에 적지 않고 화면에서
+ * 등록으로 확인한다. 버전 문자열을 테스트에 적지 않고 화면에서
  * 읽어 온다 — 설정과 필터가 서로 다른 값을 보면 여기서 드러난다.
  */
 @SpringBootTest

@@ -22,8 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 이메일 길이 경계를 가입부터 로그인·세션 저장까지 한 번에 통과시켜 검증한다
- * (개선 보고서 F07).
+ * 이메일 길이 경계를 가입부터 로그인·세션 저장까지 한 번에 통과시켜 검증한다.
  * <p>
  * 예전에는 세 경계가 서로 달랐다: 입력 검증에는 길이 제한이 없었고, 암호화 컬럼
  * {@code users.email VARCHAR(500)}은 hex 암호문({@code 평문 × 2 + 64}) 때문에 218자까지만

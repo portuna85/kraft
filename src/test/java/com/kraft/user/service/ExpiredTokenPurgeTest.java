@@ -19,8 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * 만료된 인증 토큰이 <b>실제로 DB에서 사라지는지</b> 진짜 트랜잭션으로 검증한다
- * (개선 보고서 F08).
+ * 만료된 인증 토큰이 <b>실제로 DB에서 사라지는지</b> 진짜 트랜잭션으로 검증한다.
  * <p>
  * 예전에는 {@code verify()}가 만료 토큰을 지운 직후 예외를 던졌고, 쓰기 트랜잭션에서 런타임
  * 예외가 나가면 Spring 기본 롤백 규칙에 따라 그 삭제까지 되돌아갔다. 그래서 "만료 토큰은

@@ -51,8 +51,7 @@ export async function parse(response) {
     const isJson = contentType.includes('json');
     // Content-Type이 JSON이라고 해도 본문이 실제로 유효한 JSON이라는 보장은 없다(끊긴 응답,
     // 프록시가 끼워 넣은 오류 페이지 등). 이전에는 이 JSON.parse가 그대로 던져 ApiError로
-    // 분류되지 못한 채 호출부까지 원시 SyntaxError로 새어 나갔다(개선 보고서 "프런트엔드
-    // 오류 분류와 타입 검사 범위").
+    // 분류되지 못한 채 호출부까지 원시 SyntaxError로 새어 나갔다.
     let body = null;
     if (isJson && text) {
         try {

@@ -30,7 +30,7 @@ import java.util.List;
  *   --app.recommend.backfill.request-delay-ms=300
  * </pre>
  * {@code prod}를 함께 켜야 데이터소스가 잡힌다 — {@code application-recommend-backfill.yml}은
- * 이 실행 동안 다른 주기 작업을 끄는 것만 담당한다(개선 보고서 OBS-05).
+ * 이 실행 동안 다른 주기 작업을 끄는 것만 담당한다.
  *
  * 동행복권의 회차 조회 주소는 비공식·내부용이라 중간에 봇 차단 등으로 막힐 수 있다. 그래서
  * 전체를 한 트랜잭션으로 묶지 않고 {@code chunk-size} 회차씩 끊어 커밋한다 — 막히더라도
@@ -76,7 +76,7 @@ public class RecommendationBackfillRunner implements ApplicationRunner {
     /** package-private: 테스트가 {@code System.exit}를 거치지 않고 종료 코드만 직접 확인한다. */
     int backfill() {
         // 잘못된 인자로 몇 시간짜리 백필을 돌리다 뒤늦게 실패를 알아채는 일이 없게, 시작 전에
-        // 검사한다(개선 보고서 OBS-05).
+        // 검사한다.
         if (chunkSize <= 0) {
             log.error("chunk-size는 1 이상이어야 합니다. 입력값={}", chunkSize);
             return 1;
@@ -166,7 +166,7 @@ public class RecommendationBackfillRunner implements ApplicationRunner {
     /**
      * @return 정상적으로 다 쉬었으면(또는 쉴 필요가 없었으면) true, 인터럽트로 중단됐으면 false.
      * 예전에는 인터럽트를 받아도 플래그만 다시 세우고 반복문을 계속 돌았다 — 종료 신호(예:
-     * 배포 중 프로세스 강제 종료)를 받고도 다음 회차 요청을 계속 내보냈다(개선 보고서 OBS-05).
+     * 배포 중 프로세스 강제 종료)를 받고도 다음 회차 요청을 계속 내보냈다.
      */
     private boolean sleep(long millis) {
         if (millis <= 0) {

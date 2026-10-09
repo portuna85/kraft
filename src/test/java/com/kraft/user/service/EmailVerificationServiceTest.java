@@ -150,7 +150,7 @@ class EmailVerificationServiceTest {
 
     /**
      * 이 경로가 이메일이 로그에 남을 수 있는 거의 유일한 자리다. 주소를 그대로 남기면
-     * 암호화해 저장한 값이 로그 파일에는 평문으로 쌓인다(개선 보고서 "로그에 남는 이메일 최소화").
+     * 암호화해 저장한 값이 로그 파일에는 평문으로 쌓인다.
      * 로그는 DB보다 다루기 쉽고 오래 남으며 종종 그대로 복사되어 나간다.
      */
     @Test
@@ -204,7 +204,7 @@ class EmailVerificationServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("만료되었습니다");
 
-        // 이 트랜잭션에서 직접 지우면 이어지는 예외가 삭제까지 롤백시킨다(개선 보고서 F08).
+        // 이 트랜잭션에서 직접 지우면 이어지는 예외가 삭제까지 롤백시킨다.
         // "실제로 DB에서 사라지는지"는 ExpiredTokenPurgeTest가 진짜 트랜잭션으로 검증한다.
         verify(expiredTokenPurger).purge(42L);
         verify(tokenRepository, never()).delete(any());

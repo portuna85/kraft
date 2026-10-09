@@ -103,7 +103,7 @@ public class PostApiController {
 
     /**
      * 추천 상태를 요청한 값으로 맞춘다. 토글이 아니라 원하는 최종 상태를 받으므로 같은 요청이
-     * 여러 번 도달해도 결과가 같다(개선 보고서 F10).
+     * 여러 번 도달해도 결과가 같다.
      */
     @PutMapping("/api/v1/posts/{id}/like")
     public PostLikeResponseDto setLike(@PathVariable Long id,

@@ -70,7 +70,7 @@ public class EmailVerificationService {
      * <p>
      * 예전에는 여기서 SMTP를 그대로 호출했다. 연결·읽기·쓰기 타임아웃이 각각 5초라 메일 서버가
      * 굼뜨면 <b>DB 커넥션 하나를 최대 15초 붙잡은 채</b> 기다렸고, 동시에 몇 명만 가입해도
-     * 커넥션 풀이 말랐다(개선 보고서 "메일 안정성").
+     * 커넥션 풀이 말랐다.
      * <p>
      * 발송을 단순히 {@code afterCommit}으로 미루는 것으로는 부족하다 — Spring은 그 콜백을
      * 커넥션을 반납하는 {@code cleanupAfterCompletion}<b>보다 먼저</b> 실행하므로 커넥션은 여전히
@@ -142,7 +142,7 @@ public class EmailVerificationService {
     /**
      * 만료된 토큰은 {@link ExpiredTokenPurger}가 <b>별도 트랜잭션에서</b> 지운다. 여기서 바로
      * {@code tokenRepository.delete()}를 부르면, 이어지는 예외가 이 쓰기 트랜잭션을 롤백시키면서
-     * 삭제까지 되돌려 만료 토큰이 그대로 남았다(개선 보고서 F08).
+     * 삭제까지 되돌려 만료 토큰이 그대로 남았다.
      * <p>
      * 소비(삭제)를 승격보다 먼저, 그리고 <b>조건부로</b> 한다(B07). 같은 토큰이 동시에 두 번
      * 들어오면 {@code deleteByIdAndToken}의 DB 행 잠금이 정확히 하나만 성공시킨다 — 이긴

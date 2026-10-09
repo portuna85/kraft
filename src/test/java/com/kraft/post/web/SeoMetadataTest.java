@@ -22,7 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 검색·링크 미리보기 메타데이터, 서버 렌더링 본문, 색인 정책(평가 보고서 2026-09-25 F08).
+ * 검색·링크 미리보기 메타데이터, 서버 렌더링 본문, 색인 정책.
  */
 @SpringBootTest
 @AutoConfigureMockMvc

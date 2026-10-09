@@ -40,8 +40,7 @@ import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.BDDMockito.willThrow;
 
 /**
- * 메일 발송이 DB 트랜잭션 밖에서 일어나는지, 실패해도 재시도되는지를 실제 DB로 검증한다
- * (개선 보고서 "메일 안정성").
+ * 메일 발송이 DB 트랜잭션 밖에서 일어나는지, 실패해도 재시도되는지를 실제 DB로 검증한다.
  * <p>
  * 예전에는 회원가입 트랜잭션 안에서 SMTP를 그대로 호출했다. 연결·읽기·쓰기 타임아웃이 각각
  * 5초라 메일 서버가 굼뜨면 DB 커넥션 하나를 최대 15초 붙잡았다.
@@ -562,7 +561,7 @@ class OutboxMailTransactionTest {
         Long id = outboxMailRepository.findAll().stream()
                 .filter(mail -> mail.getStatus() == OutboxMailStatus.PENDING)
                 .findFirst().orElseThrow().getId();
-        // markSent(개선 보고서 COR-03 이후)는 status=SENDING인 행만 반영한다. claimBatch를
+        // markSent는 status=SENDING인 행만 반영한다. claimBatch를
         // 쓰면 다른 PENDING 행(이 테스트의 "최근" 메일 등)까지 함께 집힐 수 있어, 이 id 하나만
         // 직접 SENDING으로 표시해 둔다.
         String ownerToken = UUID.randomUUID().toString();

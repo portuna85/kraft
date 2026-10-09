@@ -1,7 +1,7 @@
 // @ts-check
 
 /**
- * 댓글·답글 목록의 로컬 상태 변경 규칙(평가 보고서 2026-09-25 F02·F03). 화면(CommentsApp.vue·
+ * 댓글·답글 목록의 로컬 상태 변경 규칙. 화면(CommentsApp.vue·
  * CommentItem.vue)은 요청과 알림만 맡고, 목록·개수·커서를 어떻게 바꿀지는 여기서 정한다 —
  * 브라우저 없이 `node --test`로 조합 시나리오를 검사할 수 있게 순수 함수로 분리했다.
  * <p>
@@ -104,7 +104,7 @@ export function applyRepliesPage(parent, page, hasMore, deletedIds) {
 }
 
 /**
- * 답글이 있어 행을 지우지 않고 내용만 비운 최상위 댓글을 목록에 반영한다(개선 보고서 A-BE-06).
+ * 답글이 있어 행을 지우지 않고 내용만 비운 최상위 댓글을 목록에 반영한다.
  * 행은 그대로 두고 답글도 그대로 둔다 — {@link applyDelete}와 달리 아무것도 제거하지 않고
  * 전체 개수도 바뀌지 않는다.
  * <p>

@@ -59,7 +59,7 @@ public interface PostImageRepository extends JpaRepository<PostImage, Long> {
      * 실제로 지우기 전에 "지금도 여전히 ORPHAN인가"를 이 원자적 UPDATE로 다시 확인한다.
      * 반환값이 0이면 이미 상태가 바뀐 것이므로 그 이미지는 건드리지 않고 건너뛴다.
      * <p>
-     * {@code version}도 함께 올린다(개선 보고서 COR-06) — 이 UPDATE 이전에 이미 엔티티를 읽어
+     * {@code version}도 함께 올린다 — 이 UPDATE 이전에 이미 엔티티를 읽어
      * 둔 attach 트랜잭션(예: {@code PostImageRegistry.attach}가 이 이미지를 findByFileName으로
      * 이미 들고 있는 경우)이 있다면, 그 트랜잭션이 나중에 flush될 때 낙관적 잠금이 버전 불일치로
      * 실패해야 한다. version을 그대로 두면 벌크 UPDATE가 영속성 컨텍스트를 갱신하지 않는다는
@@ -73,7 +73,7 @@ public interface PostImageRepository extends JpaRepository<PostImage, Long> {
     int claimExpiredOrphanForDeletion(@Param("id") Long id, @Param("threshold") LocalDateTime threshold);
 
     /**
-     * {@link #claimExpiredOrphanForDeletion}의 배치판(개선 보고서 BE-24) — 한 배치(최대
+     * {@link #claimExpiredOrphanForDeletion}의 배치판 — 한 배치(최대
      * {@code PostImageCleaner.CLEANUP_BATCH_SIZE}건)를 건당 UPDATE 대신 한 번의 UPDATE로
      * 선점한다. 이 UPDATE만으로는 그 사이 다른 트랜잭션이 연결(ATTACHED로 전이)해 조건에서
      * 빠진 id를 구분할 수 없으므로, 호출하는 쪽이 {@link #findIdsByIdInAndStatus}로 실제로

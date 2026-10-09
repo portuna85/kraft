@@ -13,7 +13,7 @@ import java.util.Collection;
  * {@code SPRING_SESSION.PRINCIPAL_NAME}과 직렬화된 SecurityContext에 이 값을 평문으로 저장해
  * {@code User.email}의 컬럼 암호화(EmailAttributeConverter)를 우회하는 경로가 됐다.
  * <p>
- * 같은 이유로 <b>이메일을 필드로 들고 다니지 않는다</b>(평가 보고서 2026-09-25 F01) — 이 객체
+ * 같은 이유로 <b>이메일을 필드로 들고 다니지 않는다</b> — 이 객체
  * 전체가 {@code SPRING_SESSION_ATTRIBUTES.ATTRIBUTE_BYTES}에 직렬화되므로, 필드로 두면 principal
  * 이름을 id로 바꾼 것과 무관하게 세션 BLOB에 이메일 원문이 남았다. 이메일이 필요한 호출부는
  * {@code CurrentUser.require(...)}로 DB에서 회원을 읽어 쓴다. 화면에는 {@code displayName}을

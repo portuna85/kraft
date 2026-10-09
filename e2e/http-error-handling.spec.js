@@ -3,8 +3,7 @@ import { test, expect, storageStateFor, uniqueTitle } from './fixtures.js';
 test.use({ storageState: storageStateFor('user') });
 
 /**
- * http.js의 응답 해석·타임아웃 경로를 검증한다(개선 보고서 "프런트엔드 오류 분류와 타입 검사
- * 범위"). 예전에는 Content-Type이 JSON이라고 주장하는데 실제로는 깨진 본문이면 JSON.parse가
+ * http.js의 응답 해석·타임아웃 경로를 검증한다. 예전에는 Content-Type이 JSON이라고 주장하는데 실제로는 깨진 본문이면 JSON.parse가
  * 그대로 던져 원시 SyntaxError가 호출부까지 새어 나갔고, 타임아웃 자체가 없어 응답이 오지
  * 않는 요청은 화면에서 영원히 멈췄다.
  */

@@ -22,7 +22,7 @@ public interface OutboxMailRepository extends JpaRepository<OutboxMail, Long> {
      * 변경(UPDATE)까지 같은 트랜잭션 안에서 끝내야 한다.
      */
     /**
-     * {@code now}는 자바에서 넘긴다(개선 보고서 COR-07) — 예전에는 DB의 {@code CURRENT_TIMESTAMP}를
+     * {@code now}는 자바에서 넘긴다 — 예전에는 DB의 {@code CURRENT_TIMESTAMP}를
      * 썼는데, JVM과 DB의 시간대 설정이 다르면(운영 DB가 UTC인 경우 등) 백오프가 몇 시간씩
      * 밀리거나 무시될 수 있었다. {@code nextAttemptAt}을 쓸 때도 자바 시각을 저장하므로
      * ({@link OutboxMail#markFailed}), 비교도 같은 시계로 해야 앞뒤가 맞는다.
@@ -52,7 +52,7 @@ public interface OutboxMailRepository extends JpaRepository<OutboxMail, Long> {
     Optional<OutboxMail> findByIdAndOwnerTokenAndStatus(Long id, String ownerToken, OutboxMailStatus status);
 
     /**
-     * markSent/markFailed 전용(개선 보고서 COR-03). {@code ownerToken}뿐 아니라
+     * markSent/markFailed 전용. {@code ownerToken}뿐 아니라
      * {@code status = SENDING}까지 함께 확인하고 비관적 쓰기 잠금을 잡는다 — 이 잠금이
      * {@link #findByStatusAndUpdatedAtBefore}(requeueStuck 전용, 마찬가지로 잠근다)와 서로를
      * 기다리게 해, 한 행을 "재큐잉하며 소유권을 비우는 것"과 "결과를 반영하는 것"이 동시에
@@ -79,7 +79,7 @@ public interface OutboxMailRepository extends JpaRepository<OutboxMail, Long> {
      * 가져온다(B10) — 호출하는 쪽({@code OutboxMailStore.requeueStuck})이 여러 번 나눠 부른다.
      * <p>
      * 비관적 쓰기 잠금을 잡아 {@link #findSendingByIdAndOwnerTokenForUpdate}(markSent/
-     * markFailed 전용)와 서로 배타적으로 돈다(개선 보고서 COR-03) — 마침 발송 결과를 반영하는
+     * markFailed 전용)와 서로 배타적으로 돈다 — 마침 발송 결과를 반영하는
      * 도중인 행을 재큐잉이 동시에 건드리지 않는다.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -90,7 +90,7 @@ public interface OutboxMailRepository extends JpaRepository<OutboxMail, Long> {
 
     /**
      * 탈퇴할 때 쓴다 — 없는 계정으로 갈 메일을 대기열에 남겨 둘 이유가 없다. 파생 삭제 대신
-     * 한 문장으로 지운다(개선 보고서 "파생 delete 메서드의 엔티티별 삭제").
+     * 한 문장으로 지운다.
      */
     @Modifying(flushAutomatically = true)
     @Query("DELETE FROM OutboxMail o WHERE o.user.id = :userId")

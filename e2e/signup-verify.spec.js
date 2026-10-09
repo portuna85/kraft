@@ -7,7 +7,7 @@ function newEmail() {
     return `${uniqueTitle('signup').toLowerCase()}@e2e.test`;
 }
 
-// 평가 보고서 2026-09-25 F07: 이 값은 작성자 이름으로 모두에게 공개된다는 점을 가입 전에 알린다.
+// 이 값은 작성자 이름으로 모두에게 공개된다는 점을 가입 전에 알린다.
 test('이름 칸은 공개 닉네임으로 안내되고, 공개 범위 설명이 입력란에 연결돼 있다', async ({ page }) => {
     await page.goto('/signup');
 

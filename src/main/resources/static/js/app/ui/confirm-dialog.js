@@ -5,7 +5,7 @@ import { showToast } from './toast.js';
 
 /**
  * 공용 #confirmDeleteModal로 확인을 받는 단 하나의 컨트롤러(FE-14). 되돌릴 수 없는 조작
- * (관리자 삭제·삭제+정지, 게시글·댓글 삭제) 전에 쓴다(개선 보고서 SEC-05·FE-C1).
+ * (관리자 삭제·삭제+정지, 게시글·댓글 삭제) 전에 쓴다.
  *
  * 예전에는 delete-confirm.js가 같은 모달 DOM에 자기만의 pending·generation·포커스 복귀 로직과
  * 확인 버튼 핸들러를 따로 달았다. 어느 화면에서 어느 쪽이 로드되는지(main.js의 loadIf)에 기대어
@@ -34,7 +34,7 @@ let listenersBound = false;
 // 모달을 열 때마다 올린다. 확인 버튼을 누른 시점의 값을 스냅샷 떠 두면, run이 끝났을 때 사용자가
 // 이미 모달을 닫고 다른 대상을 열었는지(세대가 바뀌었는지) 구분할 수 있다 — run 자체는 호출부가
 // 만든 클로저라 항상 맞는 대상에 실행되지만, "지금 화면에 보이는 모달을 닫아도 되는가"는 이 세대로만
-// 판단해야 한다(개선 보고서 F10).
+// 판단해야 한다.
 let generation = 0;
 
 function bindListenersOnce() {

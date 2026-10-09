@@ -51,7 +51,7 @@ public class SecurityConfig {
     }
 
     /**
-     * 로그인·가입·비밀번호 재설정·인증 메일 재발송의 요청 제한(개선 보고서 SEC-01). 별도 빈으로
+     * 로그인·가입·비밀번호 재설정·인증 메일 재발송의 요청 제한. 별도 빈으로
      * 두어 {@code @Scheduled}(허용/거부 집계 보고)가 Spring에 의해 실행되게 한다.
      */
     @Bean
@@ -71,7 +71,7 @@ public class SecurityConfig {
      * 일반 {@code Filter} 빈은 Spring Boot가 서블릿 컨테이너에도 자동 등록한다(기본
      * urlPatterns {@code /*}) — 아래 {@link #filterChain}이 이미 이 필터를 보안 체인의 정확한
      * 위치(UsernamePasswordAuthenticationFilter 앞)에 등록하므로, 서블릿 컨테이너 등록은
-     * 같은 요청을 한 번 더(순서 보장 없이) 태우기만 할 뿐이다(개선 보고서 BE-30).
+     * 같은 요청을 한 번 더(순서 보장 없이) 태우기만 할 뿐이다.
      * {@code OncePerRequestFilter}라 두 번째 실행은 조용히 no-op이지만, 의도치 않은 이중
      * 등록 자체를 막는다.
      */
@@ -144,7 +144,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/users/password-reset", "/api/v1/users/password-reset/confirm")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/posts/**").permitAll()
-                        // 답글 더 보기(개선 보고서 COR-05)도 게시글 목록·상세 GET과 같은
+                        // 답글 더 보기도 게시글 목록·상세 GET과 같은
                         // 이유로 익명 열람을 허용한다 — 댓글 자체가 로그인 없이도 보이므로,
                         // 그 뒤에 숨어 있던 답글만 로그인해야 볼 수 있으면 어색하다.
                         .requestMatchers(HttpMethod.GET, "/api/v1/comments/*/replies").permitAll()
@@ -174,7 +174,7 @@ public class SecurityConfig {
                         // 이 앱은 전 화면이 자체 호스팅 CSS·JS만 쓴다(외부 CDN·폰트·인라인
                         // 스크립트·인라인 스타일이 전혀 없다 — F08 이후로 jQuery·Bootstrap도
                         // 직접 서빙한다) — 그래서 'self' 하나로 거의 모든 지시어를 막을 수
-                        // 있다(개선 보고서 SEC-05). img-src에 data:와 blob:을 더한다 —
+                        // 있다. img-src에 data:와 blob:을 더한다 —
                         // favicon이 data: URI이고, 이미지 첨부 미리보기(useImageUpload.js)가
                         // 업로드 전 로컬 파일을 URL.createObjectURL로 만든 blob: URL로 보여준다
                         // (E2E post-image.spec.js가 이 CSP 위반을 실제로 잡아냈다). frame-ancestors는
@@ -220,7 +220,7 @@ public class SecurityConfig {
                                 .maxAgeInSeconds(31536000)
                                 .requestMatcher(request -> true))
                         // 검색 결과에 나올 이유가 없는 화면(로그인·가입·비밀번호·인증·관리자·
-                        // 글쓰기)과 API 응답은 색인하지 않게 한다(평가 보고서 2026-09-25 F08).
+                        // 글쓰기)과 API 응답은 색인하지 않게 한다.
                         // 템플릿 meta 대신 헤더로 붙이는 이유: 모델을 거치지 않는 응답(JSON·오류)
                         // 에도 같은 규칙이 적용되고, 경로 목록이 이 한 곳에 모인다.
                         .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(

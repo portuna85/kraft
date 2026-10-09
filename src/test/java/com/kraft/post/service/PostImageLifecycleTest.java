@@ -38,7 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * 이미지 소유권(개선 보고서 F01)과 파일 생명주기(F05)를 실제 DB·실제 파일로 검증한다.
+ * 이미지 소유권과 파일 생명주기(F05)를 실제 DB·실제 파일로 검증한다.
  * <p>
  * 기존 {@code PostServiceTest}는 mock 리포지토리를 쓰기 때문에 커밋·롤백과 디스크 상태를
  * 관찰하지 못한다 — 바로 그 공백에서 두 결함이 살아 있었다. 여기서는 트랜잭션을 실제로
@@ -197,7 +197,7 @@ class PostImageLifecycleTest {
 
         // 용량 검사와 등록이 한 트랜잭션에서 원자적으로 일어나므로, 파일은 검사보다 먼저
         // 디스크에 쓰이지만 등록이 실패하면 곧바로 보상 삭제된다 — 대장 없는 파일이 남지
-        // 않는다(개선 보고서 "파일 저장 성공 후 DB 롤백 시 대장 없는 파일").
+        // 않는다.
         assertThatThrownBy(() -> postService.uploadImage(imageFile(), alice))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("저장 공간을 모두 사용했습니다");

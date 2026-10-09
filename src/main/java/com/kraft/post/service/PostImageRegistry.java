@@ -41,7 +41,7 @@ public class PostImageRegistry {
      * <p>
      * 예전에는 용량 검사({@code validateQuota})와 등록({@code register})이 서로 다른 트랜잭션
      * 호출로 나뉘어 있어, 같은 계정의 동시 업로드 두 건이 모두 검사를 통과한 뒤 각자 등록될 수
-     * 있었다(개선 보고서 "업로드 용량 검사 경쟁"). 지금은 같은 트랜잭션 안에서 계정 행 자체를
+     * 있었다. 지금은 같은 트랜잭션 안에서 계정 행 자체를
      * 먼저 잠그고(B07이 추가한 {@link UserRepository#findByIdForUpdate}) 그 안에서 검사·등록까지
      * 끝낸다(B03). 이전에는 이 계정의 기존 {@code PostImage} 행을 전부 잠갔는데, 이미지가 없는
      * 계정은 잠글 행이 없어 첫 업로드 두 건이 경쟁을 통과할 수 있었고, 이미지가 많은 계정은 매
@@ -76,7 +76,7 @@ public class PostImageRegistry {
                 .height(height)
                 .build());
         // 이 메서드 안에서는 저장이 성공해도, 반환 이후 이 트랜잭션의 최종 커밋 자체가 실패할
-        // 수 있다(개선 보고서 "파일 저장 성공 후 최종 커밋 실패 시 대장 없는 파일") — 그 실패는
+        // 수 있다 — 그 실패는
         // 여기 catch로 잡을 수 없다. BE-23로 파일 쓰기가 이 트랜잭션 밖(PostService.uploadImage)
         // 으로 옮겨가면서, 그 보상도 이 트랜잭션을 실제로 갖고 있는 여기로 함께 옮겼다.
         OnRollback.run(() -> postImageService.deleteIfExists(url));

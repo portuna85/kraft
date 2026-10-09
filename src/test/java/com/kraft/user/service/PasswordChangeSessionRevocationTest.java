@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 비밀번호를 바꾸면 서버가 그 계정의 세션을 실제로 폐기하는지 검증한다(개선 보고서 F04).
+ * 비밀번호를 바꾸면 서버가 그 계정의 세션을 실제로 폐기하는지 검증한다.
  * <p>
  * 예전에는 서버가 비밀번호 해시만 갱신하고, 로그아웃은 화면의 JS가 이어서 호출하는
  * {@code /logout}에 맡겨져 있었다. 그래서 실제 로그인으로 받은 세션 쿠키로 비밀번호를 바꾼 뒤

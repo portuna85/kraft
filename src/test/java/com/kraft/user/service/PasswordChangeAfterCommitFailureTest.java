@@ -31,7 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * 커밋 후 세션 폐기가 실패해도 이미 커밋된 비밀번호 변경이 실패 응답으로 보이지 않는지
- * 검증한다(개선 보고서 "커밋 후 실패가 이미 커밋된 변경을 실패 응답으로 보이게 함").
+ * 검증한다.
  * <p>
  * {@link SessionRevoker}를 별도로 mock으로 대체해야 하므로 {@link PasswordChangeSessionRevocationTest}와
  * 다른 스프링 컨텍스트를 쓴다 — 그 클래스는 실제 세션 폐기 동작 자체를 검증하므로 대역을 쓸 수 없다.

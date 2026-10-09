@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
  * <p>
  * 이 토큰은 <b>쓰는 즉시 지운다</b>. 메일함에 남은 링크를 두 번째로 눌러도 아무 일이 없어야 한다.
  * <p>
- * 평문이 아니라 {@link EmailHasher#sha512Hex}로 구한 해시만 저장한다(개선 보고서 SEC-04) —
+ * 평문이 아니라 {@link EmailHasher#sha512Hex}로 구한 해시만 저장한다 —
  * {@link EmailVerificationToken}과 같은 이유다. 이 토큰은 특히 그 자체로 "새 비밀번호 설정"
  * 권한이라 평문 유출의 위험이 더 크다.
  */
@@ -27,10 +27,10 @@ import java.time.LocalDateTime;
         uniqueConstraints = @UniqueConstraint(name = "UK_PASSWORD_RESET_TOKEN_HASH", columnNames = "token_hash"),
         indexes = {
                 // V13__password_reset_tokens_expires_at_index.sql. 엔티티에 선언이 없어
-                // ddl-auto: update로 만든 기존 DB에는 이 인덱스가 생기지 않았다(개선 보고서 O01).
+                // ddl-auto: update로 만든 기존 DB에는 이 인덱스가 생기지 않았다.
                 @Index(name = "IX_PASSWORD_RESET_TOKENS_EXPIRES_AT", columnList = "expires_at"),
                 // V8__password_reset.sql. 엔티티에 선언이 없어 ddl-auto: update로 만든 기존
-                // DB에는 이 인덱스가 생기지 않았다(개선 보고서 O01). deleteByUserId(재발급 시
+                // DB에는 이 인덱스가 생기지 않았다. deleteByUserId(재발급 시
                 // 옛 링크 무효화)가 이 FK로 지운다.
                 @Index(name = "IX_PASSWORD_RESET_TOKENS_USER", columnList = "user_id"),
         })

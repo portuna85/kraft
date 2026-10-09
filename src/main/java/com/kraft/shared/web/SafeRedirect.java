@@ -14,7 +14,7 @@ import java.util.Locale;
  * 브라우저의 URL 해석 규칙과 다르다 — {@code /\attacker.example/path}는 이 검사를 통과하지만
  * WHATWG URL 파서는 {@code //}와 똑같이 취급해 외부 호스트로 읽는다. Referer도
  * {@code startsWith(baseUrl)}로 비교해서 {@code http://localhost.attacker.example/}가
- * {@code http://localhost}와 같은 오리진으로 인정됐다(개선 보고서 F03).
+ * {@code http://localhost}와 같은 오리진으로 인정됐다.
  */
 public final class SafeRedirect {
 

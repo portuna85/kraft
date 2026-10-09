@@ -18,7 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * {@link AuthRateLimitFilter} 통합 테스트(개선 보고서 SEC-01). 기본 test 프로파일은 다른
+ * {@link AuthRateLimitFilter} 통합 테스트. 기본 test 프로파일은 다른
  * MockMvc 테스트가 흔들리지 않도록 이 제한기를 꺼 두므로(application-test.yml), 이 클래스만
  * {@code @TestPropertySource}로 다시 켜고 한도를 작게 잡아 검증한다.
  * <p>

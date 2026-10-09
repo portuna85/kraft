@@ -20,7 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * 1등 당첨금의 세후 금액은 원천징수 세율로 계산한 추정치다(LottoPrizeTax). 확정액처럼 읽히는
- * "실수령액" 대신 "세후 예상 금액"으로 표시하는지 실제 렌더링으로 확인한다(평가 보고서 2026-09-25 §6).
+ * "실수령액" 대신 "세후 예상 금액"으로 표시하는지 실제 렌더링으로 확인한다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc

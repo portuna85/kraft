@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
 /**
- * 공개 화면의 canonical·og:url에 쓸 대표 주소(평가 보고서 2026-09-25 F08).
+ * 공개 화면의 canonical·og:url에 쓸 대표 주소.
  * <p>
  * 요청의 Host 헤더가 아니라 설정값({@code app.base-url}, 운영은 {@code APP_BASE_URL})을 쓴다.
  * Host는 클라이언트가 보낸 값이라, 그대로 쓰면 임의의 도메인을 대표 주소로 선언하는 페이지를

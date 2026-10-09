@@ -47,7 +47,7 @@ public class SessionRevocationWorker {
     private int retentionDays;
 
     /**
-     * {@code cleanupOldTerminal}만의 별도 스위치(개선 보고서 OBS-05). {@code enabled}와 무관하게
+     * {@code cleanupOldTerminal}만의 별도 스위치. {@code enabled}와 무관하게
      * 항상 돌게 만든 것은 의도한 설계이지만({@link #cleanupOldTerminal} 참고), 그 사실이
      * {@code app.session-revocation.enabled: false}만 보고 "이 워커의 예약 작업을 전부 껐다"고
      * 오해하기 쉽게 만든다. 정리만 따로 끄고 싶을 때 이 플래그를 쓴다.
@@ -65,8 +65,7 @@ public class SessionRevocationWorker {
      * {@code claimSpecific}/{@code processOne}이 여는 {@code REQUIRES_NEW} 커넥션은 이
      * 메서드가 실행되는 짧은 시간만 추가로 물린다.
      * <p>
-     * 소유 토큰은 호출마다 새로 만든다(개선 보고서 BE-20, {@code OutboxMailWorker.drain}과 같은
-     * COR-03 패턴) — 이 워커 인스턴스가 생성될 때 만든 토큰 하나를 모든 호출이 공유하면, 정체
+     * 소유 토큰은 호출마다 새로 만든다 — 이 워커 인스턴스가 생성될 때 만든 토큰 하나를 모든 호출이 공유하면, 정체
      * 재큐잉이 어떤 행의 소유권을 비운 뒤 같은 인스턴스가 곧바로 그 행을 다시 집을 때 새 시도도
      * 똑같은 토큰을 쓰게 되어, 뒤늦게 도착한 이전 시도의 결과가 "지금도 내 토큰"으로 오인되어
      * 새 시도를 덮어쓸 수 있었다.

@@ -60,8 +60,7 @@ async function request(url, { method = 'GET', json, formData, timeoutMs = DEFAUL
         body = formData;
     }
 
-    // 예전에는 타임아웃이 아예 없어 응답이 오지 않는 요청이 화면에서 영원히 멈췄다(개선
-    // 보고서 "프런트엔드 오류 분류와 타입 검사 범위"). AbortController로 일정 시간 뒤 요청을
+    // 예전에는 타임아웃이 아예 없어 응답이 오지 않는 요청이 화면에서 영원히 멈췄다. AbortController로 일정 시간 뒤 요청을
     // 스스로 취소한다. 헤더만 오고 본문이 멈추는 경우도 있으므로, 타이머는 parse()의 본문
     // 읽기가 끝날 때까지 살려 둔다 — signal은 fetch뿐 아니라 아직 소비하지 않은 응답 본문
     // 스트림에도 적용되므로, abort 시 parse() 내부의 response.text()도 함께 중단된다.

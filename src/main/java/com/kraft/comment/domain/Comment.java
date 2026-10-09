@@ -19,10 +19,10 @@ import java.time.LocalDateTime;
 @Table(name = "comments", indexes = {
         // V6__image_quota_and_search_indexes.sql의 IX_COMMENTS_POST(post_id)는 V25에서
         // 지웠다 — 아래 POST_PARENT_ID가 왼쪽 접두사로 post_id를 이미 포함해 남는 쓰기
-        // 비용만 만들었다(개선 보고서 BE-11).
+        // 비용만 만들었다.
         @Index(name = "IX_COMMENTS_PARENT", columnList = "parent_id"),
         // CommentRepository.findPageByPostIdAsc가 post_id = ? AND parent_id IS NULL을 id
-        // 순으로 훑는다(V23, 개선 보고서 PERF-05).
+        // 순으로 훑는다(V23).
         @Index(name = "IX_COMMENTS_POST_PARENT_ID", columnList = "post_id, parent_id, id"),
 })
 public class Comment extends BaseEntity {
@@ -63,7 +63,7 @@ public class Comment extends BaseEntity {
     private Long version;
 
     /**
-     * null이 아니면 소프트 삭제된 것이다(개선 보고서 A-BE-06) — 답글이 있는 최상위 댓글을
+     * null이 아니면 소프트 삭제된 것이다 — 답글이 있는 최상위 댓글을
      * 지우면 행을 그대로 두고 이 시각만 남긴다({@link #softDelete()}). 답글이 없으면(또는
      * 답글 자신이면) 지금처럼 행 자체를 지우므로 이 필드를 거치지 않는다.
      */

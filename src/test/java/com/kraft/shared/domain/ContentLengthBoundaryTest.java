@@ -23,8 +23,7 @@ import java.nio.charset.StandardCharsets;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 게시글·댓글 본문 길이 정책이 {@code TEXT} 컬럼의 실제 용량 안에 들어가는지 검증한다
- * (개선 보고서 F07의 본문 길이 항목).
+ * 게시글·댓글 본문 길이 정책이 {@code TEXT} 컬럼의 실제 용량 안에 들어가는지 검증한다.
  * <p>
  * 예전에는 본문에 최대 길이 검증이 아예 없었다. {@code TEXT}는 문자 수가 아니라 65,535
  * <b>바이트</b>를 담으므로 "몇 자까지 되는가"가 내용에 따라 달라졌고, 경계를 넘는 본문은 입력

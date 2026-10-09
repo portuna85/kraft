@@ -23,9 +23,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * B09: {@code setLike}를 감싼 트랜잭션이 REQUIRES_NEW로 커밋되는 추천 INSERT보다 먼저
  * REPEATABLE READ 스냅샷을 잡아 두어도, 최종 응답의 {@code likeCount}가 방금 커밋된 추천을
- * 반영하는지 실제 MariaDB로 확인한다. H2는 기본 격리 수준이 달라 이 경쟁을 재현하지 못한다
- * (개선 보고서 "H2 테스트의 잠금 오류 유형이 MariaDB의 타임아웃·교착 결과와 같다고 가정하지
- * 않는다"와 같은 이유). Docker가 없으면 건너뛴다.
+ * 반영하는지 실제 MariaDB로 확인한다. H2는 기본 격리 수준이 달라 이 경쟁을 재현하지 못한다.
+ * Docker가 없으면 건너뛴다.
  */
 class PostLikeCountFreshnessTest extends MariaDbIntegrationTest {
 

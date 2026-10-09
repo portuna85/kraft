@@ -1,4 +1,4 @@
-// 댓글·답글 로컬 상태 규칙의 조합 시나리오(평가 보고서 2026-09-25 F02·F03). `npm run test:unit`.
+// 댓글·답글 로컬 상태 규칙의 조합 시나리오. `npm run test:unit`.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { applyDelete, applyRepliesPage, applyReplyCreated, applySoftDelete, initReplyCursor, replyAfterId } from './commentState.js';

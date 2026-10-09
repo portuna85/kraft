@@ -21,10 +21,9 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * 생존(liveness)과 준비(readiness)를 나눈 경량 헬스 엔드포인트.
  * <ul>
- *   <li>{@code /healthz} — 애플리케이션 컨텍스트가 떠서 요청을 받을 수 있는지만 본다(개선 보고서
- *       OPS-G5). DB 등 외부 의존성은 보지 않는다.</li>
+ *   <li>{@code /healthz} — 애플리케이션 컨텍스트가 떠서 요청을 받을 수 있는지만 본다. DB 등 외부 의존성은 보지 않는다.</li>
  *   <li>{@code /readyz} — 여기에 더해 DB 커넥션을 얻어 검증까지 되는지 제한 시간 안에 본다.
- *       준비되면 200, 아니면 503(평가 보고서 2026-09-25 F04). 배포 스크립트
+ *       준비되면 200, 아니면 503. 배포 스크립트
  *       ({@code deploy/deploy-apply.sh}의 {@code wait_for_health})가 새 jar와 롤백한 jar의 성공
  *       판정에 쓴다 — 예전에는 무조건 200인 {@code /healthz}로 판정해, DB에 붙지 못하는 jar도
  *       배포 성공으로 기록될 수 있었다.</li>

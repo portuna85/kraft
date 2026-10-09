@@ -55,7 +55,7 @@ import static org.hamcrest.Matchers.containsString;
  * 나머지 테스트는 전부 H2 + {@code ddl-auto: create-drop}이라 <b>{@code db/migration}의 SQL을
  * 한 번도 실행하지 않는다</b> — Hibernate가 엔티티 매핑으로 스키마를 직접 만들기 때문이다.
  * 그래서 마이그레이션에 오타가 있거나 엔티티와 어긋나도 테스트는 전부 통과하고, 운영 배포에서
- * 처음 드러난다(개선 보고서 "운영 DB 검증" 공백).
+ * 처음 드러난다.
  * <p>
  * 여기서 확인하는 것은 네 가지다:
  * <ol>
@@ -263,8 +263,8 @@ class MariaDbMigrationTest extends MariaDbIntegrationTest {
     }
 
     /**
-     * 엔티티 {@code @Table(indexes = ...)}에 선언한 인덱스가 실제 DB에도 있는지 확인한다
-     * (개선 보고서 PERF-05). H2 + {@code ddl-auto: create-drop}으로 도는 다른 테스트는
+     * 엔티티 {@code @Table(indexes = ...)}에 선언한 인덱스가 실제 DB에도 있는지 확인한다.
+     * H2 + {@code ddl-auto: create-drop}으로 도는 다른 테스트는
      * Hibernate가 엔티티 매핑으로 직접 인덱스까지 만들어 주므로, 마이그레이션 SQL에 같은
      * 인덱스를 빠뜨려도 드러나지 않는다 — 이 클래스의 다른 테스트들처럼 실제 마이그레이션
      * SQL로 만든 스키마를 봐야 잡을 수 있다.

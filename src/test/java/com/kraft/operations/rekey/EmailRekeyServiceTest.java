@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * 이메일 암호화 키 교체를 실제 DB 행으로 검증한다 (개선 보고서 "자격 증명 관리" 공백).
+ * 이메일 암호화 키 교체를 실제 DB 행으로 검증한다.
  * <p>
  * 지금까지 키를 바꿀 방법이 아예 없었다. {@code application-prod.yml}은 "운영 중 절대
  * 변경하지 않는다"고 적혀 있었지만, <b>키가 유출되면 바꿔야 한다</b>. 손으로 바꾸면

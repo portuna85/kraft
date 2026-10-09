@@ -60,7 +60,7 @@ function initLogout() {
  * 비밀번호 변경 모달. 별도 화면이 없어졌으므로 어느 화면에서든 헤더의 "비밀번호 변경"으로 열린다.
  *
  * 폼의 submit에 건다 — 예전처럼 버튼 click에만 걸면 Enter로 제출할 수 없고 required·minlength도
- * 걸리지 않는다(개선 보고서 사용성 항목). 제출 버튼은 모달 푸터에 있어 form 속성으로 연결된다.
+ * 걸리지 않는다. 제출 버튼은 모달 푸터에 있어 form 속성으로 연결된다.
  *
  * 오류는 화면 이동이 없으니 배너가 아니라 모달 안에서 보여준다(모달이 #flash를 덮는다).
  * 성공하면 로그인 화면으로 보낸다 — 로그아웃을 여기서 하지 않는 이유는 서버가 변경을 커밋한 뒤
@@ -69,7 +69,7 @@ function initLogout() {
  */
 // 모달을 열 때마다 올린다. 요청 시작 시점의 값을 스냅샷 떠 두면, 응답이 왔을 때 사용자가
 // 이미 모달을 닫고 다시 열어(폼을 reset한) 새 시도를 시작했는지 구분할 수 있다 — 낡은 실패를
-// 방금 새로 연 폼 위에 덮어씌우지 않는다(개선 보고서 F10). 성공 시의 이동은 세대와 무관하게
+// 방금 새로 연 폼 위에 덮어씌우지 않는다. 성공 시의 이동은 세대와 무관하게
 // 항상 실행한다 — 서버가 이미 세션을 폐기했으므로 화면 상태와 무관하게 반드시 옮겨야 한다.
 let changePasswordGeneration = 0;
 
@@ -114,7 +114,7 @@ function hideModalError() {
 async function changePassword(openedAt) {
     const button = must(buttonById('btn-change-password'), 'btn-change-password');
     // disabled 버튼은 클릭은 막아도 같은 폼 안 입력창에서 Enter를 누른 submit까지 막지는
-    // 않는다 — 이미 진행 중이면 함수 자체가 재진입을 거부해야 한다(개선 보고서 F10).
+    // 않는다 — 이미 진행 중이면 함수 자체가 재진입을 거부해야 한다.
     if (button.disabled) {
         return;
     }
@@ -145,7 +145,7 @@ async function changePassword(openedAt) {
  * 보여주고(모달이 #flash를 덮는다), 성공하면 서버가 이미 세션을 폐기했으므로 로그인 화면으로
  * 보낸다. 탈퇴 안내는 그 화면에서 flash로 한 번 보인다.
  */
-// changePasswordGeneration과 같은 이유(개선 보고서 F10).
+// changePasswordGeneration과 같은 이유.
 let withdrawGeneration = 0;
 
 function initWithdraw() {
@@ -182,7 +182,7 @@ function hideWithdrawError() {
 
 async function withdraw(openedAt) {
     const button = must(buttonById('btn-confirm-withdraw'), 'btn-confirm-withdraw');
-    // changePassword()와 같은 이유(개선 보고서 F10).
+    // changePassword()와 같은 이유.
     if (button.disabled) {
         return;
     }

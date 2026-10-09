@@ -86,7 +86,7 @@ public class OutboxMailStore {
      * <p>
      * 발송 직전 토큰이 여전히 유효한지도 함께 확인한다. 탈퇴·재발급으로 토큰 테이블의 행이
      * 이미 지워졌거나 만료되었다면 이 아웃박스 행은 더 이상 보낼 이유가 없는 옛 링크다 —
-     * 재시도하지 않고 즉시 FAILED로 남긴다(개선 보고서 "메일 임대·재시도·실행량 제한").
+     * 재시도하지 않고 즉시 FAILED로 남긴다.
      * <p>
      * {@code ownerToken}이 지금도 이 행의 소유자와 같을 때만 값을 꺼낸다(B05). 정체
      * 재큐잉({@link #requeueStuck})이 이 행을 다른 워커에게 넘긴 뒤에도 원래 워커가 뒤늦게
@@ -126,8 +126,7 @@ public class OutboxMailStore {
     }
 
     /**
-     * {@code ownerToken}과 {@code status=SENDING}이 지금도 유지될 때만 반영한다(B05, 개선
-     * 보고서 COR-03) — 재선점되었거나 그 사이 재큐잉으로 상태가 바뀐 행의 결과를 덮지 않는다.
+     * {@code ownerToken}과 {@code status=SENDING}이 지금도 유지될 때만 반영한다(B05) — 재선점되었거나 그 사이 재큐잉으로 상태가 바뀐 행의 결과를 덮지 않는다.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markSent(Long id, String ownerToken) {
@@ -137,8 +136,7 @@ public class OutboxMailStore {
     }
 
     /**
-     * {@code ownerToken}과 {@code status=SENDING}이 지금도 유지될 때만 반영한다(B05, 개선
-     * 보고서 COR-03) — 재선점되었거나 그 사이 재큐잉으로 상태가 바뀐 행의 결과를 덮지 않는다.
+     * {@code ownerToken}과 {@code status=SENDING}이 지금도 유지될 때만 반영한다(B05) — 재선점되었거나 그 사이 재큐잉으로 상태가 바뀐 행의 결과를 덮지 않는다.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markFailed(Long id, String error, String ownerToken) {

@@ -17,7 +17,7 @@ import java.util.Locale;
 
 /**
  * 로그인·가입·비밀번호 재설정·인증 메일 재발송에 IP(로그인은 계정도 함께)별 분당 요청 제한을
- * 적용한다(개선 보고서 SEC-01). 추천 제한기와 같은 {@link FixedWindowRateLimiter}를 재사용한다.
+ * 적용한다. 추천 제한기와 같은 {@link FixedWindowRateLimiter}를 재사용한다.
  * {@code UsernamePasswordAuthenticationFilter}보다 먼저 등록해, 무차별 대입 시도가 인증 로직까지
  * 가지 않고 여기서 먼저 걸리게 한다({@code SecurityConfig}).
  * <p>

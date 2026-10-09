@@ -88,7 +88,7 @@ class PostImageCleanupBatchRunner {
      * 여전히 ORPHAN인가"를 원자적으로 다시 확인해, 그 사이 연결된 이미지는 건드리지 않고 건너뛴다.
      * id 커서를 쓰는 이유는 위 {@link #cleanPendingDeletionsBatch}와 같다(B06).
      * <p>
-     * <b>여기서는 선점만 하고 파일은 지우지 않는다</b>(개선 보고서 COR-06). 예전에는 이 메서드
+     * <b>여기서는 선점만 하고 파일은 지우지 않는다</b>. 예전에는 이 메서드
      * 하나가 선점과 파일 삭제를 모두 한 트랜잭션(REQUIRES_NEW) 안에서 했다 — 배치 마지막에 그
      * 트랜잭션의 커밋 자체가 실패하면, 이미 디스크에서 지운 파일(되돌릴 수 없다)의 선점만
      * 통째로 ORPHAN으로 롤백되어 대장 없는 파일이 남았다. 이제 선점은 이 메서드가 짧게 커밋하고,
@@ -103,7 +103,7 @@ class PostImageCleanupBatchRunner {
         if (page.isEmpty()) {
             return OrphanClaimResult.empty(afterId);
         }
-        // 건당 UPDATE 최대 200회 대신 한 번의 UPDATE로 배치 전체를 선점한다(개선 보고서 BE-24).
+        // 건당 UPDATE 최대 200회 대신 한 번의 UPDATE로 배치 전체를 선점한다.
         // 조건에서 빠진(그 사이 다른 트랜잭션이 연결한) id는 아래 재조회로 걸러진다.
         List<Long> pageIds = page.stream().map(PostImage::getId).toList();
         postImageRepository.claimExpiredOrphansForDeletion(pageIds, threshold);

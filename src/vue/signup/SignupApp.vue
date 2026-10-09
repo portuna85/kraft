@@ -10,7 +10,7 @@ import { useFieldErrors } from '../shared/useFieldErrors.js';
  * 회원가입 폼.
  *
  * 예전에는 "가입하기"가 type=button이고 JS가 click에만 걸려 있어, Enter로 제출할 수도 없고
- * required·type=email 같은 브라우저 기본 검증도 전혀 걸리지 않았다(개선 보고서 사용성 항목).
+ * required·type=email 같은 브라우저 기본 검증도 전혀 걸리지 않았다.
  * 여기서는 진짜 submit을 쓴다 — 브라우저가 필수·형식·길이를 먼저 잡고, 통과한 뒤에야
  * onSubmit이 돈다.
  *
@@ -82,7 +82,7 @@ async function onSubmit() {
     @submit.prevent="onSubmit"
   >
     <div class="mb-3">
-      <!-- 이 값은 게시글·댓글 작성자로 누구에게나 보인다(평가 보고서 2026-09-25 F07). 예전
+      <!-- 이 값은 게시글·댓글 작성자로 누구에게나 보인다. 예전
            라벨 "이름"은 실명을 넣으라는 뜻으로 읽힐 수 있었다. -->
       <label for="name">공개 닉네임</label>
       <input

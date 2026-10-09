@@ -9,8 +9,8 @@ import java.time.Instant;
 
 /**
  * {@code POST /api/v1/numbers/recommend} 전용 IP당 분당 요청 제한(02문서 6절). 실제 카운팅
- * 로직은 {@link FixedWindowRateLimiter}로 옮겨 로그인·가입 등 다른 경로에서도 재사용한다
- * (개선 보고서 SEC-01, {@code com.kraft.config.security.AuthRateLimitFilter}). 단일 인스턴스
+ * 로직은 {@link FixedWindowRateLimiter}로 옮겨 로그인·가입 등 다른 경로에서도 재사용한다.
+ * 단일 인스턴스
  * 메모리 카운터이며, 추천 도입을 이유로 Redis 등 공유 저장소를 선행 도입하지 않는다. 다중
  * 인스턴스에서 공유 제한이 필요해지면 그때 검토한다.
  * <p>

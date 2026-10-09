@@ -13,8 +13,7 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
     Optional<PasswordResetToken> findByTokenHash(String tokenHash);
 
     /**
-     * 재발급할 때 이 회원의 옛 링크를 무효로 만든다. 파생 삭제 대신 한 문장으로 지운다
-     * (개선 보고서 "파생 delete 메서드의 엔티티별 삭제").
+     * 재발급할 때 이 회원의 옛 링크를 무효로 만든다. 파생 삭제 대신 한 문장으로 지운다.
      */
     @Modifying(flushAutomatically = true)
     @Query("DELETE FROM PasswordResetToken t WHERE t.user.id = :userId")

@@ -48,7 +48,7 @@ async function startReply() {
 
 // 취소·저장 성공 모두 폼을 닫는다 — 게시글 편집처럼 그 트리거 버튼으로 포커스를 되돌리지
 // 않으면, 방금까지 포커스를 갖고 있던 입력창·저장 버튼이 v-show로 숨겨진 채 여전히 활성
-// 요소로 남는다(개선 보고서 F09).
+// 요소로 남는다.
 async function returnFocusToReplyButton() {
     await nextTick();
     replyButton.value?.focus();
@@ -73,7 +73,7 @@ async function saveReply() {
             content,
             parentId: props.comment.id,
         });
-        // 서버가 확정한 id·createdAt·version을 그대로 쓴다(개선 보고서 COR-05·COR-08) —
+        // 서버가 확정한 id·createdAt·version을 그대로 쓴다 —
         // 직접 만든 시각은 새로고침 전후로 다르게 보였고, version이 없으면 그 답글을
         // 새로고침 전에 다시 수정할 때 서버 검사를 건너뛰었다.
         emit('replied', {
@@ -103,7 +103,7 @@ async function returnFocusToEditButton() {
 
 async function cancelEdit() {
     // 저장 요청이 진행 중일 때 취소하면 폼은 사라지지만 응답은 그대로 도착해, 이미 취소한
-    // 내용으로 되돌아온다(개선 보고서 "저장 중 댓글 변경과 동적 삭제 모듈 누락"). 버튼은
+    // 내용으로 되돌아온다. 버튼은
     // saving일 때 비활성화되지만, 방어적으로 여기서도 막는다.
     if (saving.value) {
         return;
@@ -130,7 +130,7 @@ async function save() {
             // 다른 곳에서 저장됐으면 서버가 412로 거절한다(B12).
             headers: ifMatchHeaders(requestVersion),
         });
-        // 서버가 실제로 반영한 version을 그대로 쓴다(개선 보고서 COR-05) — 예전에는
+        // 서버가 실제로 반영한 version을 그대로 쓴다 — 예전에는
         // "성공했으니 +1"로 추측했는데, 내용이 실제로 바뀌지 않으면 DB의 버전이 그대로라
         // 그 추측이 어긋나 다음 정상 수정이 가짜 충돌(412)을 받았다.
         emit('updated', { id: props.comment.id, content: saved.content, version: saved.version });
@@ -143,7 +143,7 @@ async function save() {
     }
 }
 
-// 답글 더 보기(개선 보고서 COR-05). 최초 페이지는 부모 하나당 답글을 일부만(서버 상수
+// 답글 더 보기. 최초 페이지는 부모 하나당 답글을 일부만(서버 상수
 // INITIAL_REPLIES_PER_PARENT) 내려준다 — comment.hasMoreReplies가 true면 이어서 부른다.
 const loadingMoreReplies = ref(false);
 
@@ -213,7 +213,7 @@ async function moderate(action) {
           <time :datetime="comment.createdAt">{{ formatDateTime(comment.createdAt) }}</time>
         </small>
       </div>
-      <!-- 답글이 있어 행은 남기고 내용만 비운 댓글이다(개선 보고서 A-BE-06). 수정·삭제·신고는
+      <!-- 답글이 있어 행은 남기고 내용만 비운 댓글이다. 수정·삭제·신고는
            숨기고, 답글은 계속 달 수 있게 둔다(대화가 이어질 수 있어야 한다). -->
       <p
         v-if="comment.deleted"
@@ -298,7 +298,7 @@ async function moderate(action) {
     </div>
 
     <!-- 열렸을 때만 마운트한다(v-show가 아니라 v-if) — 답글 폼은 열림 여부와 무관하게 항상
-         DOM에 있었다(개선 보고서 F11). draftContent/replyContent는 컴포넌트 setup 스코프의
+         DOM에 있었다. draftContent/replyContent는 컴포넌트 setup 스코프의
          ref라 폼이 사라져도 값 자체는 남는다. -->
     <form
       v-if="!isReply && replying"

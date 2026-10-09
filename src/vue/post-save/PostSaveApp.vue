@@ -111,8 +111,7 @@ const { submit } = usePostSubmit({
 
 function onSubmit() {
     // 업로드를 기다리는 동안 입력을 잠그지만(:disabled="saving"), 편집 화면과 동일하게 제출
-    // 시점 값을 한 번 더 스냅샷으로 고정해 둔다 — 최종 요청은 항상 이 스냅샷을 쓴다(개선
-    // 보고서 F03).
+    // 시점 값을 한 번 더 스냅샷으로 고정해 둔다 — 최종 요청은 항상 이 스냅샷을 쓴다.
     const snapshot = { title: draft.title, content: draft.content, category: draft.category };
 
     return submit({

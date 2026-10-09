@@ -26,8 +26,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 로그인 세션을 JDBC 세션 테이블에 저장할 때 이메일 원문이 남지 않는지 실제 저장 바이트로 확인한다
- * (평가 보고서 2026-09-25 F01).
+ * 로그인 세션을 JDBC 세션 테이블에 저장할 때 이메일 원문이 남지 않는지 실제 저장 바이트로 확인한다.
  * <p>
  * 예전에는 {@link KraftUserDetails}가 이메일을 필드로 들고 있어, 직렬화된 SecurityContext
  * ({@code SPRING_SESSION_ATTRIBUTES.ATTRIBUTE_BYTES})에 이메일이 평문으로 들어갔다 —

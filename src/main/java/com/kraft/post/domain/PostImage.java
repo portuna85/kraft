@@ -10,8 +10,7 @@ import lombok.NoArgsConstructor;
 /**
  * 업로드된 이미지 파일 한 개의 대장(臺帳). {@code Post.picture}는 클라이언트가 요청 본문에
  * 그대로 실어 보내는 문자열이라 그것만으로는 "누가 올린 파일인지"를 알 수 없었다 — 그래서
- * 자기 게시글에 다른 사람의 이미지 URL을 넣고 그 글을 지우면 남의 파일이 사라졌다
- * (개선 보고서 F01).
+ * 자기 게시글에 다른 사람의 이미지 URL을 넣고 그 글을 지우면 남의 파일이 사라졌다.
  * <p>
  * 이 엔티티가 파일명·업로더·연결된 게시글·상태를 기록해 두 가지를 가능하게 한다:
  * <ul>
@@ -27,12 +26,12 @@ import lombok.NoArgsConstructor;
         uniqueConstraints = @UniqueConstraint(name = "UK_POST_IMAGE_FILE_NAME", columnNames = "file_name"),
         indexes = {
                 // V6__image_quota_and_search_indexes.sql. 엔티티에 선언이 없어 ddl-auto: update로
-                // 만든 기존 DB에는 이 인덱스가 생기지 않았다(개선 보고서 O01).
+                // 만든 기존 DB에는 이 인덱스가 생기지 않았다.
                 @Index(name = "IX_POST_IMAGES_OWNER", columnList = "owner_id"),
                 // 업로드 쿼터 합계(sumSizeBytesByOwnerId)가 테이블을 다시 읽지 않고 인덱스만으로 계산한다(V40, BE-26).
                 @Index(name = "IX_POST_IMAGES_OWNER_STATUS_SIZE", columnList = "owner_id, status, size_bytes"),
                 // PostImageRepository의 상태 기반 배치 조회·claimExpiredOrphanForDeletion이
-                // status·created_at·id를 함께 쓴다(V23, 개선 보고서 PERF-05).
+                // status·created_at·id를 함께 쓴다(V23).
                 @Index(name = "IX_POST_IMAGES_STATUS_CREATED_AT_ID", columnList = "status, created_at, id"),
         })
 public class PostImage extends BaseEntity {

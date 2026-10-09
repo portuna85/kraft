@@ -211,8 +211,7 @@ export function useImageUpload({ initialUrl = null } = {}) {
      * 업로드 시작 시점의 파일을 {@code fileAtStart}로 고정해 둔다 — {@code await} 도중 사용자가
      * 파일을 바꾸거나 선택을 해제하면 그 사이 {@code file.value}가 달라지는데, 응답이 온 뒤
      * 그 달라진 값을 기준으로 캐시를 쓰면 A의 응답이 B의 URL로 잘못 기억되거나 이미 취소된
-     * 파일의 URL이 화면에 반영될 수 있었다(개선 보고서 "업로드 중 파일 교체로 URL 캐시가
-     * 다른 파일에 연결될 수 있다"). 응답이 왔을 때 선택이 이미 바뀌었으면 캐시에 쓰지 않고
+     * 파일의 URL이 화면에 반영될 수 있었다. 응답이 왔을 때 선택이 이미 바뀌었으면 캐시에 쓰지 않고
      * 그 응답을 버린다.
      */
     async function resolveUrl() {

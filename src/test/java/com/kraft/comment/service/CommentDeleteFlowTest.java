@@ -21,7 +21,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 댓글 삭제를 실제 DB로 검증한다(개선 보고서 A-BE-06). 단위 테스트(CommentServiceTest)는
+ * 댓글 삭제를 실제 DB로 검증한다. 단위 테스트(CommentServiceTest)는
  * 답글 수 조회를 모킹하지만, 여기서는 실제 답글 행이 DB에 살아남는지·{@code deleted_at}이
  * 실제로 저장되는지를 본다.
  */

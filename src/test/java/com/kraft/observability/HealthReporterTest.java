@@ -34,8 +34,7 @@ import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 /**
- * 실제 DataSource·DB·디스크를 대상으로 상태를 모으고, 기준을 넘겼을 때 ERROR로 올리는지 본다
- * (개선 보고서 "관측 지표·알림" 공백).
+ * 실제 DataSource·DB·디스크를 대상으로 상태를 모으고, 기준을 넘겼을 때 ERROR로 올리는지 본다.
  * <p>
  * Actuator를 되돌리지 않은 이유는 {@link HealthReporter} 주석에 있다 — 헬스 프로브를 찌를
  * 오케스트레이터가 없어 커밋 {@code 1080614}에서 제거됐고, 지금도 사정은 같다.

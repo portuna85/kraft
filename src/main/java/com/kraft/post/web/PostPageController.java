@@ -210,7 +210,7 @@ public class PostPageController {
         // REST 응답에는 없는 화면 전용 필드), 초기 렌더에서 그대로 JSON으로 내려 이후 목록
         // 갱신은 클라이언트가 이 값을 들고 낙관적으로 처리하게 한다. 최초 페이지는 최대
         // PAGE_SIZE개만 담고, 전체 개수·다음 페이지 존재 여부를 함께 내려 "더 보기"가
-        // 이어받게 한다(개선 보고서 "댓글 전체 로딩").
+        // 이어받게 한다.
         JsonHtmlEmbedding.put(model, "commentsJson", objectMapper, commentPage);
 
         // 게시글 읽기·편집 영역도 Vue 아일랜드(src/vue/post-edit)로 렌더링된다. 분류 선택지는

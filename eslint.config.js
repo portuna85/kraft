@@ -13,7 +13,7 @@ import compat from 'eslint-plugin-compat';
 export default [
     {
         // vue-dist는 Vite가 만든 산출물, vendor는 그대로 복사해 온 외부 라이브러리라
-        // (개선 보고서 F08) 둘 다 사람이 손대지 않는다 — 검사 대상에서 뺀다.
+        // 둘 다 사람이 손대지 않는다 — 검사 대상에서 뺀다.
         ignores: [
             'node_modules/**',
             'build/**',
@@ -130,7 +130,7 @@ export default [
         rules: {
             // eslint-plugin-vue의 flat/recommended는 vue/* 규칙만 준다 — <script> 안의 순수 JS
             // 로직(미정의 변수, 미사용 변수)은 core 규칙이 없으면 검사되지 않는다. .js 블록과
-            // 같은 규칙 세트를 맞춘다(개선 보고서 F08).
+            // 같은 규칙 세트를 맞춘다.
             ...js.configs.recommended.rules,
             'no-var': 'error',
             'prefer-const': 'error',

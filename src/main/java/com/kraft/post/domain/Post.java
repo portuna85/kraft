@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Table(name = "posts", indexes = {
         // V6__image_quota_and_search_indexes.sql. 엔티티에 선언이 없어 ddl-auto: update로
-        // 만든 기존 DB에는 이 인덱스들이 생기지 않았다(개선 보고서 O01).
+        // 만든 기존 DB에는 이 인덱스들이 생기지 않았다.
         @Index(name = "IX_POSTS_CATEGORY_ID", columnList = "category, id"),
         @Index(name = "IX_POSTS_VIEW_COUNT", columnList = "view_count DESC, id DESC"),
         // V31__posts_created_at_view_count_index.sql. 인기글이 "최근 글 중 조회수 상위"로
@@ -70,7 +70,7 @@ public class Post extends BaseEntity {
 
     /**
      * {@code updatable = false} — Hibernate가 만드는 일반 UPDATE(예: {@link #update})에서
-     * 이 컬럼을 아예 빼도록 강제한다(개선 보고서 COR-04). 조회수는 오직
+     * 이 컬럼을 아예 빼도록 강제한다. 조회수는 오직
      * {@code PostRepository.increaseViewCount}의 전용 원자적 UPDATE로만 바뀐다. 이 플래그가
      * 없으면, 편집 화면이 옛 조회수를 들고 있는 동안 다른 트랜잭션이 조회수를 올려 커밋하고,
      * 그 뒤 편집이 flush되는 순서에서 편집의 전체 컬럼 UPDATE가 그 증가분을 그대로 덮어쓸 수

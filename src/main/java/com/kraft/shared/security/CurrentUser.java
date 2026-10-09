@@ -9,7 +9,7 @@ import org.springframework.security.core.Authentication;
 import java.util.Optional;
 
 /**
- * 인증된 principal에서 현재 사용자를 얻는다(개선 보고서 COR-02). {@link KraftUserDetails}가
+ * 인증된 principal에서 현재 사용자를 얻는다. {@link KraftUserDetails}가
  * 담고 있는 불변 userId를 쓴다 — 이메일은 탈퇴 후 재사용될 수 있다. 세션 폐기가 지연된
  * 옛 세션이 남아 있는 채로 같은 이메일로 새 계정이 가입하면, 이메일로 다시 조회하는 방식은
  * 그 사이 가입한 새 계정을 옛 세션의 주인으로 착각한다 — userId는 로그인 시점에 세션에 고정된

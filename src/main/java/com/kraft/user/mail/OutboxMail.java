@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
  * <p>
  * 예전에는 회원가입 트랜잭션 안에서 SMTP를 그대로 호출했다. {@code application.yml}의 연결·읽기·
  * 쓰기 타임아웃이 각각 5초라, 메일 서버가 굼뜨면 <b>DB 커넥션 하나를 최대 15초 붙잡은 채</b>
- * 기다렸다. 동시에 몇 명만 가입해도 커넥션 풀이 마르는 구조였다(개선 보고서 "메일 안정성").
+ * 기다렸다. 동시에 몇 명만 가입해도 커넥션 풀이 마르는 구조였다.
  * <p>
  * 이제 트랜잭션 안에서는 이 행을 만들기만 하고, 실제 발송은 {@code OutboxMailWorker}가
  * <b>어떤 트랜잭션에도 속하지 않은 채</b> 수행한다. 덤으로 재시도와 발송 상태가 생긴다.
@@ -31,15 +31,15 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Table(name = "outbox_mails", indexes = {
         // 엔티티에 선언이 없어 ddl-auto: update로 만든 기존 DB에는 이 인덱스들이 생기지
-        // 않았다(개선 보고서 O01).
+        // 않았다.
         @Index(name = "IX_OUTBOX_MAILS_STATUS_ID", columnList = "status, id"), // V7
         @Index(name = "IX_OUTBOX_MAILS_STATUS_UPDATED", columnList = "status, updated_at"), // V7
         // V7의 IX_OUTBOX_MAILS_USER(user_id, id)는 V23에서 지웠다 — 아래 USER_KIND가 왼쪽
-        // 접두사로 이미 포함해 남는 쓰기 비용만 만들었다(개선 보고서 PERF-05).
+        // 접두사로 이미 포함해 남는 쓰기 비용만 만들었다.
         @Index(name = "IX_OUTBOX_MAILS_USER_KIND", columnList = "user_id, kind, id"), // V14
         // V15의 IX_OUTBOX_MAILS_STATUS_NEXT_ATTEMPT(status, next_attempt_at)는 V25에서
         // 지웠다 — claim 쿼리는 next_attempt_at을 필터로만 쓰고 실제 정렬은 id라, 위의
-        // STATUS_ID(status, id)가 이미 이 쿼리를 커버한다(개선 보고서 BE-11).
+        // STATUS_ID(status, id)가 이미 이 쿼리를 커버한다.
 })
 public class OutboxMail extends BaseEntity {
 
@@ -53,8 +53,8 @@ public class OutboxMail extends BaseEntity {
 
     /**
      * 본문에 실을 인증 토큰. 토큰 테이블의 행이 지워져도 이 값으로 링크를 만든다. 발송이
-     * 끝나면(SENT/FAILED) {@code markSent}/{@code markFailed}/{@code markStale}이 비운다
-     * (개선 보고서 SEC-04) — 더는 필요 없는 평문을 이 테이블의 보관 기간(기본 30일,
+     * 끝나면(SENT/FAILED) {@code markSent}/{@code markFailed}/{@code markStale}이 비운다.
+     * 더는 필요 없는 평문을 이 테이블의 보관 기간(기본 30일,
      * OutboxMailWorker.retentionDays) 동안 그대로 남겨 둘 이유가 없다. PENDING으로 돌아가
      * 재시도할 때는(다음 시도에서 다시 필요하므로) 비우지 않는다.
      */

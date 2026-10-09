@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * {@link PasswordResetTokenRepository} 통합 테스트. {@code deleteByUserId}·
  * {@code deleteByExpiresAtBefore}를 파생 삭제에서 벌크 JPQL DELETE로 바꿨으므로
- * (개선 보고서 "파생 delete 메서드의 엔티티별 삭제") 그 동작을 직접 검증한다.
+ * 그 동작을 직접 검증한다.
  */
 @DataJpaTest
 @Import(EmailAttributeConverter.class)

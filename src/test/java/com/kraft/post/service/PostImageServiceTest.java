@@ -249,7 +249,7 @@ class PostImageServiceTest {
     @Test
     @DisplayName("store: 확장자만 .png인 일반 텍스트는 내용 검사에서 거부한다")
     void store_withTextContentNamedPng_isRejected() {
-        // 예전에는 확장자만 봤기 때문에 이 파일이 그대로 저장됐다(개선 보고서 F06).
+        // 예전에는 확장자만 봤기 때문에 이 파일이 그대로 저장됐다.
         MockMultipartFile file = new MockMultipartFile(
                 "file", "not-an-image.png", "text/plain", "이건 그냥 텍스트입니다".getBytes(StandardCharsets.UTF_8));
 

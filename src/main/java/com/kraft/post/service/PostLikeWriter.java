@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>
  * "이미 눌렀는지 확인 → 없으면 INSERT"는 두 요청이 겹치면 둘 다 "없음"을 읽고 둘 다 INSERT를
  * 시도할 수 있다. 복합 유니크 제약({@code UK_POST_LIKE_POST_USER})이 중복 저장 자체는 막지만,
- * 진 쪽은 제약 위반 예외를 받는다(개선 보고서 F10).
+ * 진 쪽은 제약 위반 예외를 받는다.
  * <p>
  * 이때 그 예외를 호출한 트랜잭션 안에서 그냥 잡으면 안 된다 — 제약 위반이 난 트랜잭션은 이미
  * rollback-only로 표시되어, 잡고 넘어가도 커밋 시점에 {@code UnexpectedRollbackException}이

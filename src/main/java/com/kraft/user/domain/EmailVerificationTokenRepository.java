@@ -13,7 +13,7 @@ public interface EmailVerificationTokenRepository extends JpaRepository<EmailVer
     Optional<EmailVerificationToken> findByTokenHash(String tokenHash);
 
     /**
-     * 파생 삭제 대신 한 문장으로 지운다(개선 보고서 "파생 delete 메서드의 엔티티별 삭제") —
+     * 파생 삭제 대신 한 문장으로 지운다 —
      * 예전 주석의 "한 번에"는 실제로는 건별 조회·삭제였다.
      */
     @Modifying(flushAutomatically = true)

@@ -8,8 +8,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 새 비밀번호에 최대 길이(72자)를 추가한 것을 검증한다(개선 보고서 "비밀번호 공백 처리
- * 불일치와 길이 정책"). 이 DTO 검증은 문자 수만 본다 — 실제로 설치된 인코더는 72
+ * 새 비밀번호에 최대 길이(72자)를 추가한 것을 검증한다. 이 DTO 검증은 문자 수만 본다 — 실제로 설치된 인코더는 72
  * <b>바이트</b> 기준이라, 한글·이모지 등 멀티바이트 문자가 섞이면 이 검증을 통과한 72자
  * 입력도 실제로는 {@code UserService}의 {@code PasswordBytePolicy} 검사에서 거절될 수
  * 있다(B15, {@code PasswordMultibyteBoundaryTest} 참고). 이 클래스는 문자 수 기준

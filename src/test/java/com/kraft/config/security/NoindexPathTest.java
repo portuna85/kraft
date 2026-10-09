@@ -7,7 +7,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** X-Robots-Tag를 붙일 경로 판정(평가 보고서 2026-09-25 F08). 접두어만 같은 다른 경로는 막지 않는다. */
+/** X-Robots-Tag를 붙일 경로 판정. 접두어만 같은 다른 경로는 막지 않는다. */
 class NoindexPathTest {
 
     @ParameterizedTest(name = "{0} → {1}")
