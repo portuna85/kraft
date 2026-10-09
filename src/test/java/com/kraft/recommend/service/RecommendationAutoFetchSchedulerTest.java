@@ -60,12 +60,12 @@ class RecommendationAutoFetchSchedulerTest {
     }
 
     /**
-     * B14: 앱이 여러 주 내려가 있었다면 검증 구간이 여러 회차 뒤처질 수 있다. 예전에는
+     * 앱이 여러 주 내려가 있었다면 검증 구간이 여러 회차 뒤처질 수 있다. 예전에는
      * 실행 한 번에 회차 하나만 시도해, 밀린 만큼 따라잡는 데 그만큼의 예약 주기가 그대로
      * 걸렸다. 이제 한 번의 실행 안에서 연속으로 성공하는 한 계속 다음 회차를 이어서 시도한다.
      */
     @Test
-    @DisplayName("B14: 연속으로 성공하는 동안은 한 번의 실행에서 여러 회차를 이어서 따라잡는다")
+    @DisplayName("연속으로 성공하는 동안은 한 번의 실행에서 여러 회차를 이어서 따라잡는다")
     void catchesUpMultipleRoundsInOneRun_untilNotYetDrawn() {
         given(stateRepository.findById(1)).willReturn(Optional.of(
                 RecommendationHistoryState.builder().id(1).version(3L).verifiedThroughRound(10).build()));
@@ -88,11 +88,11 @@ class RecommendationAutoFetchSchedulerTest {
     }
 
     /**
-     * B14: 한 번에 과도한 요청을 보내지 않도록 연속 시도 횟수에 상한을 둔다 — 모든 회차가
+     * 한 번에 과도한 요청을 보내지 않도록 연속 시도 횟수에 상한을 둔다 — 모든 회차가
      * 계속 성공하더라도 이 상한을 넘어서는 요청은 다음 예약 실행이 이어받는다.
      */
     @Test
-    @DisplayName("B14: 연속 성공이 계속돼도 한 실행에서 시도하는 회차 수는 상한을 넘지 않는다")
+    @DisplayName("연속 성공이 계속돼도 한 실행에서 시도하는 회차 수는 상한을 넘지 않는다")
     void catchUp_stopsAtMaxRoundsPerRunEvenIfAllSucceed() {
         given(stateRepository.findById(1)).willReturn(Optional.of(
                 RecommendationHistoryState.builder().id(1).version(3L).verifiedThroughRound(10).build()));

@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * B15: 문자 수(72자)와 실제 인코더가 다루는 바이트 수는 다르다 — DTO의
+ * 문자 수(72자)와 실제 인코더가 다루는 바이트 수는 다르다 — DTO의
  * {@code @Size(max = 72)}는 문자 수만 보고, 실제로 저장에 쓰이는
  * {@code PasswordEncoderFactories.createDelegatingPasswordEncoder()}(BCrypt)는 72
  * <b>바이트</b>를 기준으로 다룬다. 한글 72자는 UTF-8로 216바이트라 이 경계를 훨씬 넘는다.
@@ -73,7 +73,7 @@ class PasswordMultibyteBoundaryTest {
     }
 
     @Test
-    @DisplayName("B15: DTO 검증을 통과하는 72자 한글 비밀번호(216바이트)는 인코더 대신 명확한 한국어 오류로 미리 거절한다")
+    @DisplayName("DTO 검증을 통과하는 72자 한글 비밀번호(216바이트)는 인코더 대신 명확한 한국어 오류로 미리 거절한다")
     void koreanPassword72Chars_exceedsEncoderByteLimit_signUpRejectsWithClearKoreanMessage() {
         assertThat(KOREAN_72.getBytes(StandardCharsets.UTF_8).length)
                 .as("한글 72자는 72바이트를 훨씬 넘는다 — 이 테스트가 실제로 경계를 넘는 입력을 쓰는지 확인")
@@ -92,7 +92,7 @@ class PasswordMultibyteBoundaryTest {
     }
 
     @Test
-    @DisplayName("B12: 72바이트 경계 안쪽의 멀티바이트(이모지 포함) 비밀번호는 가입·변경·재설정 전 과정이 일관된다")
+    @DisplayName("72바이트 경계 안쪽의 멀티바이트(이모지 포함) 비밀번호는 가입·변경·재설정 전 과정이 일관된다")
     void multibytePasswordWithinByteLimit_worksAcrossSignupAndChange() {
         String initial = "이모지🙂" + "a".repeat(59); // 72바이트 경계 안쪽
         assertThat(initial.getBytes(StandardCharsets.UTF_8).length).isLessThanOrEqualTo(72);

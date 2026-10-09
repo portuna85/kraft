@@ -11,14 +11,13 @@ spring:
     driver-class-name: org.mariadb.jdbc.Driver
     hikari:
       # 기본값(풀 10, 대기 30초)은 after-commit 콜백이 커밋 스레드가 반납하기 전에 두 번째
-      # 커넥션을 잡는 경로(BE-09, AfterCommit 참고)와 가상 스레드(동시 요청에 플랫폼 스레드
+      # 커넥션을 잡는 경로(AfterCommit 참고)와 가상 스레드(동시 요청에 플랫폼 스레드
       # 상한이 없음)가 겹치면 버스트 시 전부가 서로를 기다리며 풀을 고갈시킬 수 있다.
       # 대기 시간을 줄여 그런 정체를 30초가 아니라 5초 안에 실패로 드러낸다.
       maximum-pool-size: 20
       connection-timeout: 5000
       # max-lifetime(기본 30분)이 운영 MariaDB의 wait_timeout보다 짧아야, 서버가 먼저 끊어
-      # 버린 죽은 커넥션을 Hikari가 살아있다고 믿고 내줬다가 실패하는 일이 없다(BE-29,
-      # [확인 필요]). 운영 DB에서 SHOW VARIABLES LIKE 'wait_timeout'으로 확인한 뒤, 그 값보다
+      # 버린 죽은 커넥션을 Hikari가 살아있다고 믿고 내줬다가 실패하는 일이 없다([확인 필요]). 운영 DB에서 SHOW VARIABLES LIKE 'wait_timeout'으로 확인한 뒤, 그 값보다
       # 충분히 짧게 이 항목을 명시하는 것을 권장한다 — 기본값(30분)이 이미 더 짧다면 변경 불필요.
 
   jpa:
@@ -41,7 +40,7 @@ spring:
     # 운영 DB는 이미 Flyway가 baseline을 마쳤고 flyway_schema_history가 있다(V38까지 적용됨). 예전에는
     # 스키마가 있는 기존 DB에 처음 연결할 때를 위해 baseline-on-migrate를 켜 뒀지만, 켜 둔 채로
     # DB_URL이 잘못된 DB(이미 스키마가 있고 이력 테이블은 없는 다른 DB)를 가리키면 그 DB를 V1로
-    # baseline 처리하고 V2부터 적용해 버린다(OPS-14). 이제 이력 테이블이 없으면 기동에 실패한다.
+    # baseline 처리하고 V2부터 적용해 버린다. 이제 이력 테이블이 없으면 기동에 실패한다.
     # 완전히 새로 만드는 빈 DB는 baseline 없이 V1부터 그대로 실행되므로 영향이 없다.
     baseline-on-migrate: false
 
@@ -59,10 +58,10 @@ server:
   servlet:
     session:
       cookie:
-        # server.forward-headers-strategy(BE-01)로 request.isSecure()가 프록시 뒤에서도
+        # server.forward-headers-strategy로 request.isSecure()가 프록시 뒤에서도
         # 실제 프로토콜을 반영하게 됐으므로, 세션 쿠키에 Secure를 강제해도 로컬 개발
         # (application.yml, HTTP)에는 영향이 없다. 이 속성은 spring.servlet이 아니라
-        # server.servlet 아래여야 바인딩된다(전체 리뷰 2026-09-26 SEC-01 — 예전에는
+        # server.servlet 아래여야 바인딩된다(— 예전에는
         # spring.servlet.session.cookie.secure로 잘못 놓여 있어 어떤 프로퍼티에도 매핑되지
         # 않고 조용히 무시됐다).
         secure: true
@@ -73,7 +72,7 @@ app:
   # 눈에 띄게 실패한다).
   base-url: ${APP_BASE_URL}
   metrics:
-    # 상태 이상 메일을 받을 관리자 주소(A-OPS-02). base-url과 달리 기본값을 빈 문자열로
+    # 상태 이상 메일을 받을 관리자 주소. base-url과 달리 기본값을 빈 문자열로
     # 두어, 설정하지 않아도 기동은 그대로 되고 알림만 조용히 꺼진다 — 이 주소가 없다고
     # 서비스를 막을 이유는 없다. 실제로 알림을 받으려면 METRICS_ALERT_EMAIL 환경변수를
     # 채운다.

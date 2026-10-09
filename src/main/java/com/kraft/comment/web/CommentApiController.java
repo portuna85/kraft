@@ -23,7 +23,7 @@ public class CommentApiController {
     private final CommentService commentService;
     private final WriteRateLimiters rateLimiters;
 
-    /** 이메일 인증만 통과하면 무제한으로 빠르게 쓸 수 있었다(전체 리뷰 2026-09-26 A-SEC-06). */
+    /** 이메일 인증만 통과하면 무제한으로 빠르게 쓸 수 있었다. */
     @PostMapping("/api/v1/posts/{postId}/comments")
     public ResponseEntity<?> save(@PathVariable Long postId, @Valid @RequestBody CommentSaveRequestDto requestDto,
                                    Authentication authentication) {
@@ -38,7 +38,7 @@ public class CommentApiController {
      * 요청자별 권한을 판정한다.
      * <p>
      * 예전에는 익명 GET으로 게시글의 댓글·답글 전체를 한 번에 반환하는 별도 API
-     * ({@code GET /api/v1/posts/{postId}/comments}, {@code findByPostId})가 있었다(B08) —
+     * ({@code GET /api/v1/posts/{postId}/comments}, {@code findByPostId})가 있었다 —
      * 이 커서 API와 별개로 존재했고, 프런트엔드 어디서도 호출하지 않았다. 답글이 많이 달린
      * 공개 게시글을 대상으로 익명 요청 한 번에 무제한 양을 응답할 수 있어 폐기했다.
      */

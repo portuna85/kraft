@@ -50,13 +50,13 @@ class GuestVerificationSweeperTest {
         tokenRepository.deleteAll();
         outboxMailRepository.deleteAll();
         userRepository.deleteAll();
-        // sweeper는 싱글턴 빈이라 O07 테스트가 enabled를 꺼 둔 채로 남기면 실행 순서에 따라
+        // sweeper는 싱글턴 빈이라 sweeper를 끄는 테스트가 enabled를 꺼 둔 채로 남기면 실행 순서에 따라
         // 다른 테스트까지 영향을 받는다 — 매번 켜진 상태로 시작한다(PostImageCleanerTest와 같은 관례).
         ReflectionTestUtils.setField(sweeper, "enabled", true);
     }
 
     @Test
-    @DisplayName("B08: 가입 후 인증 메일이 한 번도 큐에 들어가지 못한 GUEST 계정을 찾아 다시 큐에 넣는다")
+    @DisplayName("가입 후 인증 메일이 한 번도 큐에 들어가지 못한 GUEST 계정을 찾아 다시 큐에 넣는다")
     void sweep_recoversGuestMissingVerificationMail() {
         User stale = saveGuest(LocalDateTime.now().minusMinutes(20));
 
@@ -67,7 +67,7 @@ class GuestVerificationSweeperTest {
     }
 
     @Test
-    @DisplayName("B08: 가입한 지 얼마 안 된 계정은(유예시간 안) 건드리지 않는다")
+    @DisplayName("가입한 지 얼마 안 된 계정은(유예시간 안) 건드리지 않는다")
     void sweep_ignoresRecentlyCreatedGuests() {
         User recent = saveGuest(LocalDateTime.now());
 
@@ -78,7 +78,7 @@ class GuestVerificationSweeperTest {
     }
 
     @Test
-    @DisplayName("B08: 이미 정상적으로 메일이 나간 계정은 다시 건드리지 않는다")
+    @DisplayName("이미 정상적으로 메일이 나간 계정은 다시 건드리지 않는다")
     void sweep_leavesAccountsThatAlreadyHaveAMailAlone() {
         User already = saveGuest(LocalDateTime.now().minusMinutes(20));
 
@@ -95,12 +95,12 @@ class GuestVerificationSweeperTest {
     }
 
     /**
-     * B16: withdraw()는 role을 바꾸지 않으므로, 탈퇴한 GUEST도 유예시간·토큰/아웃박스 없음
+     * withdraw()는 role을 바꾸지 않으므로, 탈퇴한 GUEST도 유예시간·토큰/아웃박스 없음
      * 조건만으로는 걸러지지 않을 뻔했다. withdrawnAt IS NULL 조건이 없으면 sweeper가 탈퇴
      * 계정의 placeholder 이메일로 인증 메일을 다시 큐에 넣을 수 있었다.
      */
     @Test
-    @DisplayName("B16: 탈퇴한 GUEST는 유예시간이 지나도 다시 건드리지 않는다")
+    @DisplayName("탈퇴한 GUEST는 유예시간이 지나도 다시 건드리지 않는다")
     void sweep_ignoresWithdrawnGuests() {
         User withdrawn = saveGuest(LocalDateTime.now().minusMinutes(20));
         withdrawn.withdraw("withdrawn-" + withdrawn.getId() + "@kraft.invalid", "탈퇴한 사용자", "encoded");
@@ -113,11 +113,11 @@ class GuestVerificationSweeperTest {
     }
 
     /**
-     * O07: rekey 프로파일이 이 스위치를 끈다 — 아직 옛 키로 남은 GUEST 행이 섞이면 email
+     * rekey 프로파일이 이 스위치를 끈다 — 아직 옛 키로 남은 GUEST 행이 섞이면 email
      * 복호화가 엔티티 로딩 시점에 실패하므로, 키 교체 중에는 아예 조회 자체가 돌면 안 된다.
      */
     @Test
-    @DisplayName("O07: 스위치를 끄면 저장소를 건드리지 않고 그대로 돌아간다")
+    @DisplayName("스위치를 끄면 저장소를 건드리지 않고 그대로 돌아간다")
     void sweep_whenDisabled_doesNothing() {
         User stale = saveGuest(LocalDateTime.now().minusMinutes(20));
         ReflectionTestUtils.setField(sweeper, "enabled", false);

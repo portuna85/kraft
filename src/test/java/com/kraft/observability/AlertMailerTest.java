@@ -15,8 +15,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
- * HealthReporter가 상태 이상을 발견했을 때 AlertMailer가 실제로 메일을 보내는 조건만 본다
- * (A-OPS-02) — 발송 성공 여부(EmailSender 내부)는 이 클래스의 관심사가 아니다.
+ * HealthReporter가 상태 이상을 발견했을 때 AlertMailer가 실제로 메일을 보내는 조건만 본다.
+ * 발송 성공 여부(EmailSender 내부)는 이 클래스의 관심사가 아니다.
  */
 class AlertMailerTest {
 

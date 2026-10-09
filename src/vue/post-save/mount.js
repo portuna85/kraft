@@ -11,7 +11,7 @@ mountIsland({
     mountPoint,
     component: PostSaveApp,
     props: () => {
-        // 같은 이유(F12) — PostSaveApp이 곧바로 categoryOptions[0]을 참조한다.
+        // 같은 이유 — PostSaveApp이 곧바로 categoryOptions[0]을 참조한다.
         const initial = parsePageData('post-save-initial-data',
             (parsed) => parsed && Array.isArray(parsed.categoryOptions) && typeof parsed.author === 'string');
         if (!initial) {

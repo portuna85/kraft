@@ -22,7 +22,7 @@ public final class EmailHasher {
     static final int MIN_PEPPER_LENGTH = 16;
 
     private static volatile byte[] pepper;
-    /** 키를 이미 넣어 둔 Mac. 호출마다 getInstance·init 하는 대신 복제해 쓴다(BE-46) — Mac은 스레드 안전하지 않아 복제본을 쓴다. */
+    /** 키를 이미 넣어 둔 Mac. 호출마다 getInstance·init 하는 대신 복제해 쓴다 — Mac은 스레드 안전하지 않아 복제본을 쓴다. */
     private static volatile Mac macPrototype;
 
     /**

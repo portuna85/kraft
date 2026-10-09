@@ -20,7 +20,7 @@
  * @property {number} [replyCount]        서버 기준 이 부모의 전체 답글 수(로드 여부와 무관)
  * @property {boolean} [hasMoreReplies]   서버에 아직 받지 않은 답글이 있는지
  * @property {number|string|null} [replyCursor] 서버 페이지로 마지막에 받은 답글 id — "답글 더 보기"의 afterId
- * @property {boolean} [deleted] 답글이 있어 행은 남기고 내용만 비운 것이다(A-BE-06)
+ * @property {boolean} [deleted] 답글이 있어 행은 남기고 내용만 비운 것이다
  * @property {string} [content] 댓글 내용 — applySoftDelete가 빈 문자열로 바꾼다
  */
 
@@ -30,7 +30,7 @@ const byId = (/** @type {ReplyLike} */ a, /** @type {ReplyLike} */ b) => Number(
  * 서버가 내려준 초기 답글로 부모의 답글 커서를 잡는다. 이미 잡혀 있으면 두지 않는다.
  * <p>
  * 커서를 replies 배열에서 매번 다시 구하면 안 된다 — 이 화면에서 새로 쓴 답글(가장 큰 id)이
- * 배열 끝에 붙는 순간 커서가 그 id로 건너뛰어, 아직 받지 않은 그 사이 답글을 영영 못 받는다(F02).
+ * 배열 끝에 붙는 순간 커서가 그 id로 건너뛰어, 아직 받지 않은 그 사이 답글을 영영 못 받는다.
  *
  * @param {ParentComment} parent
  */
@@ -53,7 +53,7 @@ export function replyAfterId(parent) {
 }
 
 /**
- * 이 화면에서 등록에 성공한 답글을 부모에 붙인다. 커서는 움직이지 않는다(F02).
+ * 이 화면에서 등록에 성공한 답글을 부모에 붙인다. 커서는 움직이지 않는다.
  *
  * @param {ParentComment} parent
  * @param {ReplyLike} reply
@@ -131,7 +131,7 @@ export function applySoftDelete(comments, id) {
  * <p>
  * 최상위 댓글이면 서버가 그 답글까지 지우므로 1 + 서버 기준 답글 수(replyCount)를 뺀다 — 일부만
  * 로드됐을 수 있는 replies.length가 아니다. 답글이면 부모의 replyCount도 함께 줄인다 — 그러지
- * 않으면 이어서 부모를 지울 때 이미 뺀 답글을 한 번 더 빼 개수가 음수가 됐다(F03).
+ * 않으면 이어서 부모를 지울 때 이미 뺀 답글을 한 번 더 빼 개수가 음수가 됐다.
  * 이미 반영한 삭제가 다시 오면 0을 돌려준다.
  *
  * @param {ParentComment[]} comments 최상위 댓글 목록

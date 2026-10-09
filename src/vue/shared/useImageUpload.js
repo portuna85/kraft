@@ -35,14 +35,14 @@ import * as flash from '@ui/flash.js';
  * 안내 문구를 비슷하게 반복하는 것은 남아 있는 중복이지만, 그 둘은 POST/PUT과 버전
  * 충돌 처리가 달라 억지로 합치지 않기로 했다(각 파일의 onSubmit 주석 참고).
  */
-/** 이보다 긴 변을 가진 이미지만 줄인다(A-FE-06). 이미 작은 이미지를 다시 인코딩할 이유는 없다. */
+/** 이보다 긴 변을 가진 이미지만 줄인다. 이미 작은 이미지를 다시 인코딩할 이유는 없다. */
 const MAX_DIMENSION = 2048;
 const RESIZE_QUALITY = 0.85;
 
 /**
  * 캔버스로 다시 그려 축소한다. 세 가지 효과를 동시에 얻는다: 5MB 초과로 거절되는 사례를
  * 줄이고, 상세 화면이 원본 해상도를 그대로 서빙하지 않게 하고, 브라우저가 다시 인코딩하는
- * 과정에서 EXIF가 빠져 서버 쪽 제거(A-SEC-10)의 이중 방어가 된다.
+ * 과정에서 EXIF가 빠져 서버 쪽 제거의 이중 방어가 된다.
  *
  * 원본과 같은 포맷으로 다시 인코딩한다(PNG→PNG, WEBP→WEBP) — 항상 JPEG로 바꾸면 투명
  * 배경이 있는 PNG의 알파가 사라지는데, 그걸 피하려고 알파 채널 유무를 따로 검사하는 대신
@@ -107,14 +107,14 @@ export function useImageUpload({ initialUrl = null } = {}) {
     const removedExisting = ref(false);
     /** @type {import('vue').Ref<string|null>} */
     const uploadedUrl = ref(null);
-    // 업로드 응답의 실제 픽셀 크기(A-FE-09) — resolveUrl()이 채운다. uploadedUrl과 항상 짝을
+    // 업로드 응답의 실제 픽셀 크기 — resolveUrl()이 채운다. uploadedUrl과 항상 짝을
     // 이루므로 uploadedForFile 캐시 판정도 그대로 재사용한다(따로 무효화할 필요가 없다).
     /** @type {import('vue').Ref<number|null>} */
     const uploadedWidth = ref(null);
     /** @type {import('vue').Ref<number|null>} */
     const uploadedHeight = ref(null);
     const uploading = ref(false);
-    // 파일을 골랐지만 축소가 아직 끝나지 않아 file이 비어 있는 구간(FE-02). 이 동안 제출하면
+    // 파일을 골랐지만 축소가 아직 끝나지 않아 file이 비어 있는 구간. 이 동안 제출하면
     // hasFile이 false라 사진 없이 저장되므로, 화면이 제출 버튼을 막을 수 있게 밖으로 노출한다.
     const processing = ref(false);
     /** @type {File|null} */
@@ -147,7 +147,7 @@ export function useImageUpload({ initialUrl = null } = {}) {
 
     /**
      * 파일 입력의 change 이벤트에서 선택된 File(또는 선택 해제 시 null)을 넘겨받는다.
-     * 형식 검증을 통과하면 축소를 시도한 뒤(A-FE-06) 그 결과로 크기를 검사한다 — 축소
+     * 형식 검증을 통과하면 축소를 시도한 뒤 그 결과로 크기를 검사한다 — 축소
      * 덕분에 5MB를 넘던 원본도 통과할 수 있다.
      * @param {File|null} selectedFile
      */

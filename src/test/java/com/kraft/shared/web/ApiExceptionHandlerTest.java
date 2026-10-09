@@ -29,28 +29,28 @@ class ApiExceptionHandlerTest {
     private MockMvc mockMvc;
 
     @Test
-    @DisplayName("OBS-04: 필수 쿼리 파라미터가 없으면 catch-all(500)이 아니라 400이다")
+    @DisplayName("필수 쿼리 파라미터가 없으면 catch-all(500)이 아니라 400이다")
     void missingRequestParam_returns400() throws Exception {
         mockMvc.perform(get("/test/missing-param"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    @DisplayName("OBS-04: 필수 멀티파트 파트가 없으면 400이다")
+    @DisplayName("필수 멀티파트 파트가 없으면 400이다")
     void missingRequestPart_returns400() throws Exception {
         mockMvc.perform(multipart("/test/missing-part"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    @DisplayName("OBS-04: 지원하지 않는 HTTP 메서드는 405다")
+    @DisplayName("지원하지 않는 HTTP 메서드는 405다")
     void unsupportedMethod_returns405() throws Exception {
         mockMvc.perform(post("/test/method-not-allowed"))
                 .andExpect(status().isMethodNotAllowed());
     }
 
     @Test
-    @DisplayName("OBS-04: 지원하지 않는 Content-Type은 415다")
+    @DisplayName("지원하지 않는 Content-Type은 415다")
     void unsupportedMediaType_returns415() throws Exception {
         mockMvc.perform(post("/test/media-type").contentType(MediaType.TEXT_PLAIN).content("x"))
                 .andExpect(status().isUnsupportedMediaType());
@@ -73,7 +73,7 @@ class ApiExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("A-SEC-05: 일반 IllegalArgumentException은 400 대신 500 + 일반 문구다")
+    @DisplayName("일반 IllegalArgumentException은 400 대신 500 + 일반 문구다")
     void illegalArgumentWithoutKoreanMessage_returns500() throws Exception {
         mockMvc.perform(post("/test/illegal-argument-non-korean"))
                 .andExpect(status().isInternalServerError())
@@ -81,7 +81,7 @@ class ApiExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("BE-12: 한글 메시지여도 BusinessValidationException이 아닌 IllegalArgumentException은 500이다")
+    @DisplayName("한글 메시지여도 BusinessValidationException이 아닌 IllegalArgumentException은 500이다")
     void plainIllegalArgumentWithKoreanMessage_returns500() throws Exception {
         mockMvc.perform(post("/test/illegal-argument-korean"))
                 .andExpect(status().isInternalServerError())
@@ -89,7 +89,7 @@ class ApiExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("A-BE-12: 디스크 저장 실패(StorageException)는 400이 아니라 500이다")
+    @DisplayName("디스크 저장 실패(StorageException)는 400이 아니라 500이다")
     void storageException_returns500() throws Exception {
         mockMvc.perform(post("/test/storage-failure"))
                 .andExpect(status().isInternalServerError())
@@ -97,7 +97,7 @@ class ApiExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("A-SEC-05: AccessDeniedException 메시지 끝의 내부 id는 응답에서 잘린다")
+    @DisplayName("AccessDeniedException 메시지 끝의 내부 id는 응답에서 잘린다")
     void accessDenied_stripsTrailingInternalId() throws Exception {
         mockMvc.perform(post("/test/access-denied"))
                 .andExpect(status().isForbidden())
@@ -105,7 +105,7 @@ class ApiExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("A-BE-07: 검증 실패는 필드명 없는 detail과 errors[] 배열을 함께 준다")
+    @DisplayName("검증 실패는 필드명 없는 detail과 errors[] 배열을 함께 준다")
     void validationFailure_returnsDetailAndFieldErrors() throws Exception {
         mockMvc.perform(post("/test/validation")
                         .contentType(MediaType.APPLICATION_JSON)

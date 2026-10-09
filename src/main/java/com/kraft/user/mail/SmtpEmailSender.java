@@ -18,7 +18,7 @@ public class SmtpEmailSender implements EmailSender {
     private final String from;
 
     /**
-     * From 주소는 {@code app.mail.from}, 없으면 SMTP 로그인 계정({@code spring.mail.username})을 쓴다(BE-45).
+     * From 주소는 {@code app.mail.from}, 없으면 SMTP 로그인 계정({@code spring.mail.username})을 쓴다.
      * 지정하지 않으면 SMTP 서버가 임의의 기본 발신자를 붙여 SPF/DMARC 정렬에 불리하다.
      */
     public SmtpEmailSender(JavaMailSender javaMailSender,

@@ -29,7 +29,7 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     /**
      * 한 부모의 답글을 id 커서로 가져온다. 예전에는 페이지 전체(여러 부모
-     * 합산)에서 가져오는 답글 총량에만 상한을 뒀다(B08) — 한 부모에 답글이 상한을 넘거나, 그
+     * 합산)에서 가져오는 답글 총량에만 상한을 뒀다 — 한 부모에 답글이 상한을 넘거나, 그
      * 상한을 다른 부모가 먼저 다 써 버리면 남은 답글에 새로고침으로도 영원히 도달할 수 없었다.
      * 부모별로 커서를 따로 두면 그 상한 자체가 없어진다 — 대신 이 메서드를 처음 페이지 로드
      * 때는 최상위 댓글 하나당 한 번씩 부르고({@code CommentService.pageForView}), "답글 더
@@ -41,7 +41,7 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
                                             Pageable pageable);
 
     /**
-     * 여러 부모의 "최초 답글"을 한 번에 가져온다(BE-08) — {@code CommentService.pageForView}가
+     * 여러 부모의 "최초 답글"을 한 번에 가져온다 — {@code CommentService.pageForView}가
      * 예전에는 최상위 댓글마다(최대 {@link #findRepliesByParentIdAsc}) 따로 호출해 페이지당
      * 최대 20회의 추가 쿼리를 냈다. MariaDB의 {@code ROW_NUMBER() OVER (PARTITION BY ...)}로
      * 부모별 상위 {@code limitPerParent}개의 id만 한 번에 뽑고, 실제 엔티티(+user)는

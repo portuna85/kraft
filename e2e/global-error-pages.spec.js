@@ -23,7 +23,7 @@ test('없는 경로로 들어가면 공통 404 안내와 게시판 복귀 링크
     await expect(page).toHaveURL('/community');
 });
 
-/** FE-41: 오류 페이지는 글·댓글 전용 모달(삭제 확인)을 렌더하지 않는다. 계정 메뉴 모달은 그대로 있다. */
+/** 오류 페이지는 글·댓글 전용 모달(삭제 확인)을 렌더하지 않는다. 계정 메뉴 모달은 그대로 있다. */
 test('오류 페이지에는 삭제 확인 모달이 없고 계정 메뉴 모달은 남아 있다', async ({ page }) => {
     await page.goto('/this-path-does-not-exist-anywhere');
 

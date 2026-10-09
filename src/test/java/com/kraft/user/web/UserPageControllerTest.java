@@ -79,7 +79,7 @@ class UserPageControllerTest {
     }
 
     @Test
-    @DisplayName("GET /users/password-reset 은 토큰을 요구하지 않고 화면만 보여준다(A-SEC-11: 토큰은 URL 프래그먼트로 온다)")
+    @DisplayName("GET /users/password-reset 은 토큰을 요구하지 않고 화면만 보여준다(토큰은 URL 프래그먼트로 온다)")
     void passwordReset_rendersViewWithoutRequiringTokenParam() throws Exception {
         // 토큰은 브라우저가 서버로 보내지 않는 프래그먼트(#token=...)에 있다 — 이 요청 자체에는
         // 토큰이 실리지 않는다. 화면(Vue)이 location.hash에서 직접 읽는다.
@@ -89,7 +89,7 @@ class UserPageControllerTest {
     }
 
     @Test
-    @DisplayName("GET /users/verify 는 토큰을 소비하지 않고 확인 화면만 보여준다(A-FE-04)")
+    @DisplayName("GET /users/verify 는 토큰을 소비하지 않고 확인 화면만 보여준다")
     void verifyEmailConfirm_doesNotConsumeToken() throws Exception {
         mockMvc.perform(get("/users/verify").param("token", "some-token"))
                 .andExpect(status().isOk())
@@ -99,7 +99,7 @@ class UserPageControllerTest {
         verifyNoInteractions(emailVerificationService);
     }
 
-    /** BE-04: 새 메일은 토큰을 프래그먼트로 보내므로 서버가 받는 요청에는 token이 없다. */
+    /** 새 메일은 토큰을 프래그먼트로 보내므로 서버가 받는 요청에는 token이 없다. */
     @Test
     @DisplayName("GET /users/verify 는 token 쿼리가 없어도(프래그먼트 링크) 확인 화면을 보여준다")
     void verifyEmailConfirm_withoutQueryToken_stillRenders() throws Exception {
@@ -135,7 +135,7 @@ class UserPageControllerTest {
                 .andExpect(flash().attribute("message", "유효하지 않은 인증 링크입니다."));
     }
 
-    /** A-BE-08: 지금 요청의 세션이 방금 승격된 바로 그 계정이면 권한을 즉시 갱신한다. */
+    /** 지금 요청의 세션이 방금 승격된 바로 그 계정이면 권한을 즉시 갱신한다. */
     @Test
     @DisplayName("POST /users/verify 는 같은 계정으로 로그인한 세션의 권한을 즉시 갱신한다")
     void verifyEmailSubmit_whenSameAccountLoggedIn_refreshesSessionAuthorities() throws Exception {
@@ -154,7 +154,7 @@ class UserPageControllerTest {
         verify(userDetailsService).loadUserById(1L);
     }
 
-    /** BE-02: 갱신된 principal이 BCrypt 해시를 들고 세션에 직렬화되지 않는다. */
+    /** 갱신된 principal이 BCrypt 해시를 들고 세션에 직렬화되지 않는다. */
     @Test
     @DisplayName("POST /users/verify 로 갱신한 세션 principal에는 비밀번호 해시가 남지 않는다")
     void verifyEmailSubmit_whenSessionRefreshed_erasesPasswordHash() throws Exception {

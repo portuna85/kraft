@@ -13,7 +13,7 @@ import { useFieldErrors } from '../shared/useFieldErrors.js';
  * 서버가 판정한다 — 화면을 여는 것만으로 토큰이 소모되면 메일 미리보기나 링크 검사기가 대신
  * 눌러 버릴 수 있다.
  *
- * 확인란 불일치 검사는 가입 화면과 같은 규칙을 쓴다 — `usePasswordConfirm`(F05)으로 공유한다.
+ * 확인란 불일치 검사는 가입 화면과 같은 규칙을 쓴다 — `usePasswordConfirm`으로 공유한다.
  */
 const props = defineProps({
     token: { type: String, default: '' },
@@ -60,7 +60,7 @@ async function onSubmit() {
 </script>
 
 <template>
-  <!-- 링크에 토큰이 없으면 제출해 봐야 실패하므로 처음부터 안내한다(FE-45). -->
+  <!-- 링크에 토큰이 없으면 제출해 봐야 실패하므로 처음부터 안내한다. -->
   <div
     v-if="!token"
     id="password-reset-invalid"

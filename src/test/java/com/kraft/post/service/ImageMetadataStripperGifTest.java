@@ -8,7 +8,7 @@ import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** GIF 메타데이터 제거(BE-23). 코멘트·XMP 확장은 빼고 애니메이션 확장과 프레임은 남긴다. */
+/** GIF 메타데이터 제거. 코멘트·XMP 확장은 빼고 애니메이션 확장과 프레임은 남긴다. */
 class ImageMetadataStripperGifTest {
 
     private static final byte[] HEADER = {'G', 'I', 'F', '8', '9', 'a', 1, 0, 1, 0, 0, 0, 0};

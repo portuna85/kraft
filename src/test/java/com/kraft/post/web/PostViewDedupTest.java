@@ -18,8 +18,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * {@link PostViewDedup}이 새로고침·봇·재방문을 조회수 집계에서 걸러내는지 확인한다
- * (전체 리뷰 2026-09-26 A-BE-04 1단계).
+ * {@link PostViewDedup}이 새로고침·봇·재방문을 조회수 집계에서 걸러내는지 확인한다.
  */
 class PostViewDedupTest {
 

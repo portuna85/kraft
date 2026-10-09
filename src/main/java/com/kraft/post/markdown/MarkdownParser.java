@@ -83,7 +83,7 @@ public final class MarkdownParser {
     }
 
     /**
-     * 같은 문자열에서 다음 위치 검색을 되풀이하는 {@code indexOf}를 줄인다(BE-20). 닫히지 않은
+     * 같은 문자열에서 다음 위치 검색을 되풀이하는 {@code indexOf}를 줄인다. 닫히지 않은
      * {@code [}·{@code `}·{@code *}가 많으면 열린 기호마다 끝까지 스캔해 O(n²)이 되는데, 찾는 위치는 항상
      * 앞에서 뒤로만 움직이므로 직전 결과를 재사용할 수 있다 — 직전에 {@code from0}부터 찾아 {@code found}를
      * 얻었다면, 새 {@code from}이 {@code [from0, found]}(없으면 {@code from0} 이후 전부)에 있을 때 결과는 같다.

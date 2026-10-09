@@ -10,8 +10,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import java.util.List;
 
 /**
- * 테스트에서 로그인한 사용자를 흉내 낼 {@link Authentication}을 만든다(전체 리뷰 2026-09-26
- * A-QA-02).
+ * 테스트에서 로그인한 사용자를 흉내 낼 {@link Authentication}을 만든다.
  * <p>
  * 예전에는 테스트가 이메일 문자열을 그대로 principal로 넣은
  * {@code new UsernamePasswordAuthenticationToken(email, ...)}을 흔히 썼다. 운영 로그인은

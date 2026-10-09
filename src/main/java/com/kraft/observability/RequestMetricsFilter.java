@@ -19,7 +19,7 @@ import java.io.IOException;
  * 실제 화면·API의 오류율이 묻혀 버린다 — 오류율을 보는 목적 자체가 사라진다.
  * <p>
  * 템플릿이 실제로 내보내는 JS 주소는 {@code /js/...}가 아니라 고정 버전이 앞에 붙은
- * {@code /{버전}/js/...}다({@code spring.web.resources.chain.strategy.fixed}, FE-01). 예전에는
+ * {@code /{버전}/js/...}다({@code spring.web.resources.chain.strategy.fixed}). 예전에는
  * 이 형태를 놓쳐 첫 방문의 JS 요청이 전부 앱 요청으로 섞였다.
  * 설정된 그 버전 하나만 인정한다 — 임의의 {@code /무엇/js/}를 빼면 앱 경로의 오류까지 지표에서
  * 사라질 수 있다.

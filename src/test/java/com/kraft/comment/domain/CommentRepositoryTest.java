@@ -138,7 +138,7 @@ class CommentRepositoryTest {
     }
 
     @Test
-    @DisplayName("F13: findPageByPostIdAsc: afterId가 null이면 처음부터 id 오름차순으로 pageable 개수만큼 반환한다")
+    @DisplayName("findPageByPostIdAsc: afterId가 null이면 처음부터 id 오름차순으로 pageable 개수만큼 반환한다")
     void findPageByPostIdAsc_withNullAfterId_returnsFromBeginning() {
         Comment first = commentRepository.save(Comment.builder().content("1").post(post).user(user).build());
         Comment second = commentRepository.save(Comment.builder().content("2").post(post).user(user).build());
@@ -152,7 +152,7 @@ class CommentRepositoryTest {
     }
 
     @Test
-    @DisplayName("F13: findPageByPostIdAsc: afterId 이후 댓글만 id 오름차순으로 반환한다")
+    @DisplayName("findPageByPostIdAsc: afterId 이후 댓글만 id 오름차순으로 반환한다")
     void findPageByPostIdAsc_withAfterId_returnsOnlyLaterComments() {
         Comment first = commentRepository.save(Comment.builder().content("1").post(post).user(user).build());
         Comment second = commentRepository.save(Comment.builder().content("2").post(post).user(user).build());
@@ -221,9 +221,9 @@ class CommentRepositoryTest {
                 .as("JOIN FETCH로 작성자가 함께 와야 지연로딩 예외가 없다").isEqualTo("tester");
     }
 
-    /** COR-05: afterId 커서 이후의 답글만 가져온다 — "답글 더 보기"가 이 커서로 이어받는다. */
+    /** afterId 커서 이후의 답글만 가져온다 — "답글 더 보기"가 이 커서로 이어받는다. */
     @Test
-    @DisplayName("COR-05: findRepliesByParentIdAsc는 afterId보다 큰 답글만 가져온다")
+    @DisplayName("findRepliesByParentIdAsc는 afterId보다 큰 답글만 가져온다")
     void findRepliesByParentIdAsc_withAfterId_returnsOnlyLaterReplies() {
         Comment parent = commentRepository.save(Comment.builder().content("부모").post(post).user(user).build());
         Comment reply1 = commentRepository.save(

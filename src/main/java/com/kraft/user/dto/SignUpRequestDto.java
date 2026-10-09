@@ -12,7 +12,7 @@ public record SignUpRequestDto(
         @NotBlank(message = "이름은 필수입니다.")
         @Size(max = 50, message = "이름은 50자 이하로 입력하세요.")
         // 제어 문자·폭 0 문자·방향 제어 문자(유니코드 Cc·Cf·Zl·Zp)는 눈에 보이지 않아 다른 사람 이름을 사칭하는 데
-        // 쓰일 수 있다(BE-47).
+        // 쓰일 수 있다.
         @Pattern(regexp = "^[^\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]*$", message = "이름에 보이지 않는 문자나 제어 문자를 쓸 수 없습니다.")
         String name,
 

@@ -100,9 +100,9 @@ class HealthSnapshotTest {
         assertThat(snapshot.breaches(LIMITS)).isEmpty();
     }
 
-    /** OBS-01: 정수 나눗셈이 -1/1048576을 0으로 내려 예전엔 "0MB"로 보였다 — 진짜 0바이트와 구분되지 않았다. */
+    /** 정수 나눗셈이 -1/1048576을 0으로 내려 예전엔 "0MB"로 보였다 — 진짜 0바이트와 구분되지 않았다. */
     @Test
-    @DisplayName("OBS-01: 디스크 측정이 실패했으면(-1) summary에 '측정불가'로 남는다")
+    @DisplayName("디스크 측정이 실패했으면(-1) summary에 '측정불가'로 남는다")
     void diskMeasurementUnavailableShowsAsUnmeasurableInSummary() {
         HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, -1L, 0, 0, 0, 0, 0, 0, true);
 
@@ -120,28 +120,28 @@ class HealthSnapshotTest {
     }
 
     /**
-     * O03: 재시도를 모두 소진한 세션 폐기 태스크는 mailFailed와 같은 성격 — 사람이 봐야 낫는다.
+     * 재시도를 모두 소진한 세션 폐기 태스크는 mailFailed와 같은 성격 — 사람이 봐야 낫는다.
      */
     @Test
-    @DisplayName("O03: 세션 폐기 실패가 쌓이면 남긴다")
+    @DisplayName("세션 폐기 실패가 쌓이면 남긴다")
     void sessionRevocationFailedIsReported() {
         HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 3, 0, 0, true);
 
         assertThat(snapshot.breaches(LIMITS)).anyMatch(line -> line.startsWith("세션 폐기 실패 3건"));
     }
 
-    /** O03: 정리 주기가 막혔거나 계속 실패하면 삭제 예약 파일이 쌓인다. */
+    /** 정리 주기가 막혔거나 계속 실패하면 삭제 예약 파일이 쌓인다. */
     @Test
-    @DisplayName("O03: 이미지 삭제 backlog가 쌓이면 남긴다")
+    @DisplayName("이미지 삭제 backlog가 쌓이면 남긴다")
     void imageDeleteBacklogIsReported() {
         HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 250, 0, true);
 
         assertThat(snapshot.breaches(LIMITS)).anyMatch(line -> line.startsWith("이미지 삭제 backlog 250건"));
     }
 
-    /** O03: 자동 수집이 꺼져 있거나 매주 실패하면 검증 기준이 오래 갱신되지 않는다. */
+    /** 자동 수집이 꺼져 있거나 매주 실패하면 검증 기준이 오래 갱신되지 않는다. */
     @Test
-    @DisplayName("O03: 추천 이력 검증 기준이 오래 갱신되지 않으면 남긴다")
+    @DisplayName("추천 이력 검증 기준이 오래 갱신되지 않으면 남긴다")
     void recommendationHistoryStaleIsReported() {
         HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, 300, true);
 
@@ -149,21 +149,21 @@ class HealthSnapshotTest {
     }
 
     /**
-     * OBS-01: 상태 행이 없거나 한 번도 검증되지 않았으면(-1) 기능이 켜져 있는 한 "이력이
+     * 상태 행이 없거나 한 번도 검증되지 않았으면(-1) 기능이 켜져 있는 한 "이력이
      * 아직 준비되지 않음"을 남긴다 — 예전에는 이 -1을 조용히 건너뛰어, 자동 수집이 계속
      * 실패해도 로그상 정상과 구분되지 않았다.
      */
     @Test
-    @DisplayName("OBS-01: 추천 기능이 켜진 채 이력 나이가 -1이면 '추천 이력 미준비'를 남긴다")
+    @DisplayName("추천 기능이 켜진 채 이력 나이가 -1이면 '추천 이력 미준비'를 남긴다")
     void recommendationHistoryUnavailableWhileEnabledIsReported() {
         HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, -1, true);
 
         assertThat(snapshot.breaches(LIMITS)).containsExactly("추천 이력 미준비");
     }
 
-    /** O03/OBS-01: 기능이 꺼져 있으면 이력이 애초에 없는 게 정상이라 -1이어도 남기지 않는다. */
+    /** 기능이 꺼져 있으면 이력이 애초에 없는 게 정상이라 -1이어도 남기지 않는다. */
     @Test
-    @DisplayName("O03: 추천 기능이 꺼져 있으면 이력 나이가 -1이어도 경보하지 않는다")
+    @DisplayName("추천 기능이 꺼져 있으면 이력 나이가 -1이어도 경보하지 않는다")
     void recommendationHistoryUnavailableWhileDisabledIsNotReported() {
         HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 50_000_000_000L, 0, 0, 0, 0, 0, -1, false);
 
@@ -171,11 +171,11 @@ class HealthSnapshotTest {
     }
 
     /**
-     * OBS-01: 메일·세션·이미지 집계가 DB 조회 실패로 -1이면, 예전처럼 조용히 건너뛰지
+     * 메일·세션·이미지 집계가 DB 조회 실패로 -1이면, 예전처럼 조용히 건너뛰지
      * 않고 각각 "측정 불가: <항목>"을 남긴다 — 관측 자체가 실패했다는 것도 알아야 할 상태다.
      */
     @Test
-    @DisplayName("OBS-01: 메일·세션·이미지 집계가 실패하면(-1) 각각 측정 불가로 남긴다")
+    @DisplayName("메일·세션·이미지 집계가 실패하면(-1) 각각 측정 불가로 남긴다")
     void dbAggregateMeasurementFailuresAreReportedIndividually() {
         HealthSnapshot snapshot = new HealthSnapshot(100, 0, 0, 120, 400, 2, 10, 0, 50_000_000_000L,
                 -1, -1, 0, -1, -1, 0, true);
@@ -208,7 +208,7 @@ class HealthSnapshotTest {
     }
 
     /**
-     * A-OPS-02: {@link AlertMailer}가 같은 문제로 반복 발송하지 않으려면 수치가 바뀌어도
+     * {@link AlertMailer}가 같은 문제로 반복 발송하지 않으려면 수치가 바뀌어도
      * 안정적인 식별자가 필요하다 — breaches()의 문장은 매번 다른 수치를 담아 그 용도로 쓸 수
      * 없다.
      */

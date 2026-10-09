@@ -39,7 +39,7 @@ public class WebConfig implements WebMvcConfigurer {
                 .addResourceLocations(location)
                 // 업로드 파일명은 PostImageService가 매번 새 UUID로 짓는다(교체할 파일도 새
                 // 이름을 받는다) — 같은 URL이 다른 내용으로 바뀌는 일은 없다. 그래도 365일
-                // immutable로 캐시하지 않는다(BE-14): 모더레이션으로 글·이미지를 지워도 브라우저와
+                // immutable로 캐시하지 않는다: 모더레이션으로 글·이미지를 지워도 브라우저와
                 // 프록시 캐시에는 그 이미지가 최대 1년 남는다. 하루면 같은 방문자의 반복 요청은
                 // 충분히 줄이면서, 지운 이미지가 남는 기간을 짧게 둔다. 365일 immutable은 빌드마다
                 // 경로가 바뀌는 정적 산출물(/js, /css)에만 쓴다. SecurityConfig의 staticResourceChain이

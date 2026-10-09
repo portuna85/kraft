@@ -47,7 +47,7 @@ export default [
             'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
         },
     },
-    // FE-21: 이 앱이 주장하는 지원 하한(iOS 15, package.json의 browserslist)을 순수 JS에도
+    // 이 앱이 주장하는 지원 하한(iOS 15, package.json의 browserslist)을 순수 JS에도
     // 강제한다. Vue 산출물은 vite.config.js의 target: 'ios15'가 esbuild 변환으로 이미 맞추지만,
     // 이 폴더는 번들링 없이 그대로 서빙되므로 새 문법·런타임 API를 걸러 줄 도구가 없었다 —
     // 지금까지는 코드 주석으로만 피해 왔다(CommentsApp.vue의 .at() 회피 등). languageOptions는
@@ -58,7 +58,7 @@ export default [
         rules: { 'compat/compat': 'error' },
     },
 
-    // Playwright 설정·스펙과 빌드 검사 스크립트(둘 다 Node에서 돈다, F03).
+    // Playwright 설정·스펙과 빌드 검사 스크립트(둘 다 Node에서 돈다).
     {
         files: ['e2e/**/*.js', 'playwright.config.js', 'eslint.config.js', 'scripts/**/*.mjs'],
         ...js.configs.recommended,

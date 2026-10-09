@@ -1,4 +1,4 @@
-// 자동 임시 저장 composable의 flush 동작 테스트(FE-36). `npm run test:unit`.
+// 자동 임시 저장 composable의 flush 동작 테스트. `npm run test:unit`.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { reactive } from 'vue';

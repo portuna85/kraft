@@ -5,7 +5,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.util.Optional;
 
 /**
- * 목록 화면이 범위를 넘는 {@code page}를 받았을 때 마지막 페이지로 보내는 리다이렉트(F09).
+ * 목록 화면이 범위를 넘는 {@code page}를 받았을 때 마지막 페이지로 보내는 리다이렉트.
  * 항목이 처리되며 줄어드는 목록(신고 대기·정지 회원)은 북마크해 둔 페이지 번호가 나중에 범위를
  * 넘을 수 있고, 그대로 두면 빈 목록과 "현재"가 없는 페이지 이동 링크만 보인다.
  * <p>

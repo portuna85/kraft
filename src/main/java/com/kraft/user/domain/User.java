@@ -68,7 +68,7 @@ public class User extends BaseEntity {
     private LocalDateTime withdrawnAt;
 
     /**
-     * 로그인 연속 실패 횟수(A-SEC-08, V29). 성공하면 0으로 돌아간다. 로그인 자체를 막는다.
+     * 로그인 연속 실패 횟수(V29). 성공하면 0으로 돌아간다. 로그인 자체를 막는다.
      */
     @Column(name = "failed_login_attempts", nullable = false)
     private int failedLoginAttempts;
@@ -79,7 +79,7 @@ public class User extends BaseEntity {
 
     /**
      * 비밀번호 변경·탈퇴가 같은 행을 동시에 바꿀 때 나중에 flush되는 쪽이 앞선 변경을
-     * 조용히 덮어쓰지 않도록 한다(B07). {@code PostImage.version}과 같은 목적이다.
+     * 조용히 덮어쓰지 않도록 한다. {@code PostImage.version}과 같은 목적이다.
      */
     @Version
     private long version;

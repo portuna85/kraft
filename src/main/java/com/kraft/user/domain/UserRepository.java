@@ -46,7 +46,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     int resetFailedLogins(@Param("id") Long id);
 
     /**
-     * 이메일 인증·비밀번호 재설정의 재발급 쿨다운 검사를 계정 단위로 직렬화한다(B07). 검사
+     * 이메일 인증·비밀번호 재설정의 재발급 쿨다운 검사를 계정 단위로 직렬화한다. 검사
      * (마지막 발송 시각 조회)와 실행(토큰 재발급·대기열 등록)을 하나의 원자적 구간으로 묶어,
      * 같은 계정에 대한 두 동시 요청이 같은 "마지막 발송 시각"을 동시에 읽고 둘 다 쿨다운을
      * 통과하는 경쟁을 막는다.
@@ -60,7 +60,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * 등으로) 한 번도 성공하지 못한 GUEST 계정을 찾는다. 유예시간을 두는 이유는, 가입 트랜잭션이
      * 아직 진행 중이거나 방금 커밋된 계정까지 대상으로 삼으면 안 되기 때문이다.
      * <p>
-     * {@code withdrawnAt IS NULL}로 탈퇴 계정을 제외한다(B16) — {@code User.withdraw()}는
+     * {@code withdrawnAt IS NULL}로 탈퇴 계정을 제외한다 — {@code User.withdraw()}는
      * role을 바꾸지 않으므로 탈퇴한 GUEST도 이 조건에 그대로 걸린다. 탈퇴는 인증 토큰·outbox
      * 행을 지우므로(대상 조건의 NOT EXISTS를 통과), 탈퇴 후에도 인증 메일이 없다는 이유로
      * sweeper가 placeholder 이메일(users.email)로 다시 발송을 시도할 수 있었다.

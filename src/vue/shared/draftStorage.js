@@ -8,8 +8,8 @@
  * 삼킨다.
  */
 
-// window.localStorage 접근 자체가 던질 수 있어 이 래퍼를 거친다(전체 리뷰 2026-09-26 FE-01/02). 구현은
-// 다른 저장소 사용처와 공유한다(FE-30).
+// window.localStorage 접근 자체가 던질 수 있어 이 래퍼를 거친다. 구현은
+// 다른 저장소 사용처와 공유한다.
 export { safeLocalStorage } from '../../main/resources/static/js/app/core/storage.js';
 
 /**

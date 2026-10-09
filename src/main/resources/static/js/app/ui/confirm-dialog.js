@@ -4,7 +4,7 @@ import { messageOf } from '../core/http.js';
 import { showToast } from './toast.js';
 
 /**
- * 공용 #confirmDeleteModal로 확인을 받는 단 하나의 컨트롤러(FE-14). 되돌릴 수 없는 조작
+ * 공용 #confirmDeleteModal로 확인을 받는 단 하나의 컨트롤러. 되돌릴 수 없는 조작
  * (관리자 삭제·삭제+정지, 게시글·댓글 삭제) 전에 쓴다.
  *
  * 예전에는 delete-confirm.js가 같은 모달 DOM에 자기만의 pending·generation·포커스 복귀 로직과
@@ -93,7 +93,7 @@ function settle(result) {
     resolve(outcome ?? result);
     // 키보드 사용자가 확인 대화상자를 닫은 뒤 원래 누르던 버튼으로 되돌아가야 위치를 잃지 않는다.
     // 그사이 목록이 다시 그려지거나 대상이 지워져 트리거가 사라졌을 수 있다(댓글 삭제 성공 경로는
-    // 모달이 완전히 닫히기 전에 그 댓글을 목록에서 지운다, F09) — 사라진 요소에 focus()는 조용히
+    // 모달이 완전히 닫히기 전에 그 댓글을 목록에서 지운다) — 사라진 요소에 focus()는 조용히
     // 무시되어 포커스가 body로 떨어지므로, 늘 존재하는 대체 위치가 있으면 거기로 옮긴다.
     if (trigger && document.contains(trigger)) {
         trigger.focus();

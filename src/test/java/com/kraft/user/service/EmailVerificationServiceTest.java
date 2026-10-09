@@ -71,7 +71,7 @@ class EmailVerificationServiceTest {
     void setUp() {
         emailVerificationService = new EmailVerificationService(tokenRepository, userRepository, userService,
                 outboxMailStore, outboxMailWorker, expiredTokenPurger);
-        // 운영에서는 Spring이 self(BE-19, @Lazy @Autowired)를 프록시로 채운다. 순수 Mockito
+        // 운영에서는 Spring이 self(@Lazy @Autowired)를 프록시로 채운다. 순수 Mockito
         // 단위 테스트에는 그 주입이 없으므로 자기 자신을 가리키게 해 NPE 대신 실제 로직을
         // 태우게 한다 — 트랜잭션 경계 자체는 이 계층에서 검증 대상이 아니다.
         ReflectionTestUtils.setField(emailVerificationService, "self", emailVerificationService);
@@ -112,19 +112,19 @@ class EmailVerificationServiceTest {
         assertThat(savedToken.getExpiresAt()).isAfter(LocalDateTime.now());
 
         // SMTP는 여기서 부르지 않는다. 같은 트랜잭션에서 대기열에 같은(평문) 토큰이 들어가야
-        // 하고, 그 해시가 저장된 조회 테이블 행의 해시와 같아야 한다(SEC-04).
+        // 하고, 그 해시가 저장된 조회 테이블 행의 해시와 같아야 한다.
         ArgumentCaptor<String> enqueuedToken = ArgumentCaptor.forClass(String.class);
         verify(outboxMailStore).enqueue(eq(user), enqueuedToken.capture(), eq(OutboxMailKind.VERIFY_EMAIL));
         assertThat(EmailHasher.sha512Hex(enqueuedToken.getValue())).isEqualTo(savedToken.getTokenHash());
     }
 
     /**
-     * B16: withdraw()는 role을 바꾸지 않으므로, 탈퇴한 계정도 findByEmailHmac로는 여전히
+     * withdraw()는 role을 바꾸지 않으므로, 탈퇴한 계정도 findByEmailHmac로는 여전히
      * 조회된다. 이 메서드 자체가 탈퇴 여부를 거부해야, 조회 조건(UserRepository.
      * findGuestsMissingVerificationMail)의 필터링에만 기대지 않는다.
      */
     @Test
-    @DisplayName("B16: sendVerificationEmail: 탈퇴한 계정이면 IllegalArgumentException")
+    @DisplayName("sendVerificationEmail: 탈퇴한 계정이면 IllegalArgumentException")
     void sendVerificationEmail_whenUserWithdrawn_throwsIllegalArgumentException() {
         User user = userWithId(1L, "withdrawn@example.com");
         user.withdraw("withdrawn-1@kraft.invalid", "탈퇴한 사용자", "encoded");
@@ -273,7 +273,7 @@ class EmailVerificationServiceTest {
     void resend_whenUserAlreadyVerified_throwsIllegalArgumentException() {
         User verifiedUser = User.builder().name("tester").email("tester@example.com").password("encoded").role(Role.USER).build();
         ReflectionTestUtils.setField(verifiedUser, "id", 1L);
-        // resend는 쿨다운 검사를 계정 단위로 직렬화하려고 잠금 조회 결과를 실제로 쓴다(BE-15).
+        // resend는 쿨다운 검사를 계정 단위로 직렬화하려고 잠금 조회 결과를 실제로 쓴다.
         given(userRepository.findByIdForUpdate(1L)).willReturn(Optional.of(verifiedUser));
 
         assertThatThrownBy(() -> emailVerificationService.resend(1L))
@@ -288,7 +288,7 @@ class EmailVerificationServiceTest {
     @DisplayName("resend: GUEST 회원이면 기존 토큰을 지우고 새 토큰으로 메일을 다시 대기열에 넣는다")
     void resend_whenUserIsGuest_deletesOldTokenAndResendsEmail() {
         User user = userWithId(1L, "tester@example.com");
-        // resend는 쿨다운 검사를 계정 단위로 직렬화하려고 잠금 조회 결과를 실제로 쓴다(BE-15).
+        // resend는 쿨다운 검사를 계정 단위로 직렬화하려고 잠금 조회 결과를 실제로 쓴다.
         given(userRepository.findByIdForUpdate(1L)).willReturn(Optional.of(user));
 
         emailVerificationService.resend(1L);

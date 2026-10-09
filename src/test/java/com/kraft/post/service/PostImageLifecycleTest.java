@@ -38,7 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * 이미지 소유권과 파일 생명주기(F05)를 실제 DB·실제 파일로 검증한다.
+ * 이미지 소유권과 파일 생명주기를 실제 DB·실제 파일로 검증한다.
  * <p>
  * 기존 {@code PostServiceTest}는 mock 리포지토리를 쓰기 때문에 커밋·롤백과 디스크 상태를
  * 관찰하지 못한다 — 바로 그 공백에서 두 결함이 살아 있었다. 여기서는 트랜잭션을 실제로
@@ -116,7 +116,7 @@ class PostImageLifecycleTest {
     }
 
     @Test
-    @DisplayName("F01: 남이 올린 이미지를 자기 게시글에 붙일 수 없다")
+    @DisplayName("남이 올린 이미지를 자기 게시글에 붙일 수 없다")
     void save_withAnotherUsersImage_isRejected() {
         String url = postService.uploadImage(imageFile(), alice).url();
 
@@ -129,7 +129,7 @@ class PostImageLifecycleTest {
     }
 
     @Test
-    @DisplayName("F01: 남의 이미지를 붙인 글을 지워서 그 파일을 없앨 수 없다 — 재현했던 경로 전체")
+    @DisplayName("남의 이미지를 붙인 글을 지워서 그 파일을 없앨 수 없다 — 재현했던 경로 전체")
     void delete_cannotRemoveAnotherUsersImageFile() {
         String url = postService.uploadImage(imageFile(), alice).url();
         Long alicePost = postService.save(alice, new PostSaveRequestDto("앨리스 글", "내용", url, null, null, null));
@@ -144,7 +144,7 @@ class PostImageLifecycleTest {
     }
 
     @Test
-    @DisplayName("F01: 이미 다른 게시글이 쓰는 이미지는 재사용할 수 없다")
+    @DisplayName("이미 다른 게시글이 쓰는 이미지는 재사용할 수 없다")
     void save_withImageAlreadyAttachedToAnotherPost_isRejected() {
         String url = postService.uploadImage(imageFile(), alice).url();
         postService.save(alice, new PostSaveRequestDto("첫 글", "내용", url, null, null, null));
@@ -155,7 +155,7 @@ class PostImageLifecycleTest {
     }
 
     @Test
-    @DisplayName("F01: 업로드 기록이 없는 이미지 주소는 거부한다")
+    @DisplayName("업로드 기록이 없는 이미지 주소는 거부한다")
     void save_withUnknownImageUrl_isRejected() {
         assertThatThrownBy(() -> postService.save(alice,
                 new PostSaveRequestDto("제목", "내용", "/images/never-uploaded.png", null, null, null)))
@@ -164,7 +164,7 @@ class PostImageLifecycleTest {
     }
 
     @Test
-    @DisplayName("F06: 이메일 인증 전(GUEST)이면 업로드할 수 없다")
+    @DisplayName("이메일 인증 전(GUEST)이면 업로드할 수 없다")
     void uploadImage_whenGuest_isRejected() {
         assertThatThrownBy(() -> postService.uploadImage(imageFile(), authOf(guestUser)))
                 .isInstanceOf(AccessDeniedException.class);
@@ -173,7 +173,7 @@ class PostImageLifecycleTest {
     }
 
     @Test
-    @DisplayName("F06: 확장자만 이미지인 파일은 내용 검사에서 거부하고 대장에도 남기지 않는다")
+    @DisplayName("확장자만 이미지인 파일은 내용 검사에서 거부하고 대장에도 남기지 않는다")
     void uploadImage_withTextContentNamedPng_isRejected() {
         var notAnImage = new MockMultipartFile("file", "not-an-image.png", "image/png",
                 "이건 그냥 텍스트입니다".getBytes(java.nio.charset.StandardCharsets.UTF_8));
@@ -186,7 +186,7 @@ class PostImageLifecycleTest {
     }
 
     @Test
-    @DisplayName("F05/F06: 계정별 저장량 한도를 넘으면 대장 등록을 거부하고, 이미 쓴 파일도 곧바로 지운다")
+    @DisplayName("계정별 저장량 한도를 넘으면 대장 등록을 거부하고, 이미 쓴 파일도 곧바로 지운다")
     void uploadImage_overQuota_leavesNoOrphanFile() {
         postService.uploadImage(imageFile(), alice);
         // 이미 한도를 다 쓴 상태로 만든다.
@@ -212,7 +212,7 @@ class PostImageLifecycleTest {
     }
 
     @Test
-    @DisplayName("F06: 다른 사람의 저장량은 내 한도에 영향을 주지 않는다")
+    @DisplayName("다른 사람의 저장량은 내 한도에 영향을 주지 않는다")
     void uploadImage_quotaIsPerUser() {
         postService.uploadImage(imageFile(), alice);
         jdbcTemplate.update("UPDATE post_images SET size_bytes = ? WHERE owner_id = "
@@ -223,7 +223,7 @@ class PostImageLifecycleTest {
     }
 
     @Test
-    @DisplayName("F05: 게시글 삭제는 이미지를 그대로 두고, 보관 기간 뒤 영구 삭제가 커밋되면 파일도 정리된다")
+    @DisplayName("게시글 삭제는 이미지를 그대로 두고, 보관 기간 뒤 영구 삭제가 커밋되면 파일도 정리된다")
     void delete_keepsImageUntilPurge_thenRemovesImageFile() {
         String url = postService.uploadImage(imageFile(), alice).url();
         Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", url, null, null, null));
@@ -265,7 +265,7 @@ class PostImageLifecycleTest {
     }
 
     @Test
-    @DisplayName("F05: 이미지 교체 트랜잭션이 롤백되면 기존 이미지 파일이 그대로 남는다")
+    @DisplayName("이미지 교체 트랜잭션이 롤백되면 기존 이미지 파일이 그대로 남는다")
     void update_whenTransactionRollsBack_keepsOldImageFile() {
         String oldUrl = postService.uploadImage(imageFile(), alice).url();
         Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", oldUrl, null, null, null));
@@ -284,7 +284,7 @@ class PostImageLifecycleTest {
     }
 
     @Test
-    @DisplayName("F05: 이미지 교체가 커밋되면 기존 파일만 정리되고 새 파일은 남는다")
+    @DisplayName("이미지 교체가 커밋되면 기존 파일만 정리되고 새 파일은 남는다")
     void update_afterCommit_removesOnlyOldImageFile() {
         String oldUrl = postService.uploadImage(imageFile(), alice).url();
         Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", oldUrl, null, null, null));
@@ -298,7 +298,7 @@ class PostImageLifecycleTest {
     }
 
     @Test
-    @DisplayName("F05: 커밋 직후 정리가 실행되지 못했어도 예약이 DB에 남아 다음 정리가 마저 치운다")
+    @DisplayName("커밋 직후 정리가 실행되지 못했어도 예약이 DB에 남아 다음 정리가 마저 치운다")
     void cleanPendingDeletions_picksUpReservationsLeftBehind() {
         String url = postService.uploadImage(imageFile(), alice).url();
 
@@ -331,7 +331,7 @@ class PostImageLifecycleTest {
     }
 
     @Test
-    @DisplayName("F03/F04: 같은 이미지를 서로 다른 두 게시글에 거의 동시에 붙이면 나중에 커밋한 쪽이 충돌로 실패한다")
+    @DisplayName("같은 이미지를 서로 다른 두 게시글에 거의 동시에 붙이면 나중에 커밋한 쪽이 충돌로 실패한다")
     void attach_concurrentAttachToDifferentPosts_conflictsOnOptimisticLock() {
         String url = postService.uploadImage(imageFile(), alice).url();
         Long postAId = postService.save(alice, new PostSaveRequestDto("A", "내용", null, null, null, null));
@@ -354,14 +354,14 @@ class PostImageLifecycleTest {
     }
 
     /**
-     * B03: {@code validateQuotaAndRegister}가 이제 계정의 {@code PostImage} 행이 아니라 User
+     * {@code validateQuotaAndRegister}가 이제 계정의 {@code PostImage} 행이 아니라 User
      * 행 자체를 잠근다(B07의 {@code findByIdForUpdate}, NOWAIT 없이 블로킹). 그래서 더는 같은
      * 스레드에서 바깥 트랜잭션이 커밋되지 않은 채 안쪽 트랜잭션을 동기 호출하는 방식(다른 테스트의
      * 낙관적 잠금 검증 패턴)을 쓸 수 없다 — 안쪽이 바깥의 잠금을 기다리며 그대로 멈춘다(자기
      * 교착). 실제로 동시에 도는 두 스레드로 검증한다.
      */
     @Test
-    @DisplayName("B03: 같은 계정의 동시 업로드는 용량 검사·등록이 직렬화되어 한도를 넘지 않는다")
+    @DisplayName("같은 계정의 동시 업로드는 용량 검사·등록이 직렬화되어 한도를 넘지 않는다")
     void validateQuotaAndRegister_concurrentUploadsForSameOwner_areSerialized() throws InterruptedException {
         // 기존 행이 하나 있는 계정에서도 직렬화되는지 확인한다.
         postService.uploadImage(imageFile(), alice);
@@ -369,11 +369,11 @@ class PostImageLifecycleTest {
     }
 
     /**
-     * B03: 예전에는 잠글 기존 {@code PostImage} 행이 없으면(첫 업로드) 동시 경쟁을 막지 못했다.
+     * 예전에는 잠글 기존 {@code PostImage} 행이 없으면(첫 업로드) 동시 경쟁을 막지 못했다.
      * User 행은 항상 존재하므로 이미지가 하나도 없는 계정의 첫 업로드 두 건도 직렬화되어야 한다.
      */
     @Test
-    @DisplayName("B03: 이미지가 하나도 없는 계정의 첫 업로드 두 건도 직렬화된다")
+    @DisplayName("이미지가 하나도 없는 계정의 첫 업로드 두 건도 직렬화된다")
     void validateQuotaAndRegister_firstUploadsForOwnerWithNoImages_areSerialized() throws InterruptedException {
         assertConcurrentRegistrationsAreSerialized();
     }
@@ -413,7 +413,7 @@ class PostImageLifecycleTest {
     }
 
     @Test
-    @DisplayName("F06: 커밋 후 정리는 이번 요청이 표시한 이미지만 치우고 다른 삭제 대기 이미지는 건드리지 않는다")
+    @DisplayName("커밋 후 정리는 이번 요청이 표시한 이미지만 치우고 다른 삭제 대기 이미지는 건드리지 않는다")
     void update_cleanUpAfterCommit_touchesOnlyThisRequestsImage() {
         String oldUrl = postService.uploadImage(imageFile(), alice).url();
         Long postId = postService.save(alice, new PostSaveRequestDto("제목", "내용", oldUrl, null, null, null));
@@ -437,7 +437,7 @@ class PostImageLifecycleTest {
     }
 
     @Test
-    @DisplayName("B02: 등록까지 끝난 뒤 트랜잭션이 커밋되지 않으면 저장한 파일도 함께 없어진다")
+    @DisplayName("등록까지 끝난 뒤 트랜잭션이 커밋되지 않으면 저장한 파일도 함께 없어진다")
     void uploadImage_whenTransactionDoesNotCommit_deletesTheStoredFile() {
         var urlRef = new java.util.concurrent.atomic.AtomicReference<String>();
 
@@ -456,7 +456,7 @@ class PostImageLifecycleTest {
     }
 
     @Test
-    @DisplayName("B01: 삭제가 예약된 이미지는 다시 연결할 수 없다")
+    @DisplayName("삭제가 예약된 이미지는 다시 연결할 수 없다")
     void attach_toImageMarkedForDeletion_isRejected() {
         String url = postService.uploadImage(imageFile(), alice).url();
         Long postId = postService.save(alice, new PostSaveRequestDto("원본", "내용", null, null, null, null));
@@ -471,7 +471,7 @@ class PostImageLifecycleTest {
     }
 
     @Test
-    @DisplayName("B01: 정리 작업이 대상을 고른 뒤 다른 트랜잭션이 먼저 연결하면 파일을 지우지 않고 건너뛴다")
+    @DisplayName("정리 작업이 대상을 고른 뒤 다른 트랜잭션이 먼저 연결하면 파일을 지우지 않고 건너뛴다")
     void cleanExpiredOrphans_skipsImageAttachedBetweenSelectAndClaim() {
         String url = postService.uploadImage(imageFile(), alice).url();
         backdate(url, LocalDateTime.now().minusHours(25));
@@ -496,7 +496,7 @@ class PostImageLifecycleTest {
     }
 
     /**
-     * COR-06 회귀: 위 테스트와 반대 순서다. attach가 만료된 ORPHAN 이미지를 먼저 읽어 옛
+     * 회귀: 위 테스트와 반대 순서다. attach가 만료된 ORPHAN 이미지를 먼저 읽어 옛
      * version을 쥔 채로, 그 사이 정리 작업의 <b>선점(claim)만</b> 먼저 커밋된다(파일은 아직
      * 지우지 않는다 — 선점과 삭제가 서로 다른 트랜잭션인 것 자체가 COR-06의 요점이다).
      * {@code claimExpiredOrphanForDeletion}이 version을 함께 올리지 않았다면, attach의
@@ -504,7 +504,7 @@ class PostImageLifecycleTest {
      * "곧 지워질 이미지"를 게시글에 붙은 것처럼 남겼을 것이다.
      */
     @Test
-    @DisplayName("COR-06 회귀: attach가 만료된 이미지를 먼저 읽어 두어도, 그 사이 정리 작업의 선점이 먼저 커밋되면 충돌로 실패한다")
+    @DisplayName("회귀: attach가 만료된 이미지를 먼저 읽어 두어도, 그 사이 정리 작업의 선점이 먼저 커밋되면 충돌로 실패한다")
     void attach_whenCleanupClaimsExpiredOrphanInBetween_conflictsOnOptimisticLock() {
         String url = postService.uploadImage(imageFile(), alice).url();
         backdate(url, LocalDateTime.now().minus(PostImageCleaner.ORPHAN_TTL).minusMinutes(1));
@@ -531,14 +531,14 @@ class PostImageLifecycleTest {
     }
 
     /**
-     * B06: {@code clean()}의 self-invocation 문제(같은 객체 안에서 부르면 REQUIRES_NEW가
+     * {@code clean()}의 self-invocation 문제(같은 객체 안에서 부르면 REQUIRES_NEW가
      * 프록시를 거치지 않아 무효화되던 것)를 고치면서, 배치 조회도 id 커서로 바꿨다(추가
      * 발견 사항) — 실패한 행이 항상 같은 페이지 맨 앞에 걸려 뒤쪽 정상 행을 굶기지 않게
      * 하기 위해서다. 한 배치(200건)를 넘는 실제 대기열을 실제 DB로 처리해, 두 번째 배치까지
      * 이어서 정상적으로 커밋되는지 확인한다.
      */
     @Test
-    @DisplayName("B06: 한 배치를 넘는 삭제 대기열도 다음 배치로 이어서 전부 처리한다")
+    @DisplayName("한 배치를 넘는 삭제 대기열도 다음 배치로 이어서 전부 처리한다")
     void cleanPendingDeletions_processesMoreThanOneBatch() {
         int total = PostImageCleaner.CLEANUP_BATCH_SIZE + 5;
         for (int i = 0; i < total; i++) {

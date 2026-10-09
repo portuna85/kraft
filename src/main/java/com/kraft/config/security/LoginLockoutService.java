@@ -17,7 +17,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 
 /**
- * 로그인 연속 실패에 대한 계정 단위 누적 방어(전체 리뷰 2026-09-26 A-SEC-08). 지금까지는
+ * 로그인 연속 실패에 대한 계정 단위 누적 방어. 지금까지는
  * {@code AuthRateLimitFilter}가 분당 요청 횟수만 막아, IP를 바꿔가며 시도하면 하루
  * 14,400회까지 시도할 수 있었다 — 이건 IP와 무관하게 <b>계정</b>에 실패를 쌓는다.
  * <p>

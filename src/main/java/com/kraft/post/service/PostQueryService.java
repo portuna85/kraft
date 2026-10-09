@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 게시글 조회 전용 서비스(BE-42). 목록·검색·인기글·공지·관련 글·상세 화면용 조회를 맡는다.
+ * 게시글 조회 전용 서비스. 목록·검색·인기글·공지·관련 글·상세 화면용 조회를 맡는다.
  * 쓰기(저장·수정·삭제·추천·이미지 업로드)는 {@link PostService}가 맡는다 — 예전에는 한 클래스가
  * 둘 다 들고 있어 의존성이 9개까지 늘었다. 상세 조회({@link #findByIdForView})만 조회수를 올리는
  * 원자적 UPDATE를 함께 실행하므로 쓰기 트랜잭션으로 연다.
@@ -65,7 +65,7 @@ public class PostQueryService {
     /**
      * 상세 화면용 조회. 항상 조회수를 올린다 — 호출자가 중복 방문 여부를 판단하지 않는
      * 내부·테스트 호출에 쓴다. 실제 컨트롤러 경로는 {@link #findByIdForView(Long, Authentication, boolean)}로
-     * 중복 방문 여부(A-BE-04)를 넘긴다.
+     * 중복 방문 여부를 넘긴다.
      */
     @Transactional
     public PostViewDto findByIdForView(Long id, Authentication authentication) {
@@ -82,7 +82,7 @@ public class PostQueryService {
      * 되돌리고 최종수정일까지 바꿨다. 순서를 이렇게 두면 늘어난 조회수가
      * 그대로 화면에 반영된다.
      * <p>
-     * {@code countView}가 false면 조회수를 올리지 않는다 — {@code PostViewDedup}(A-BE-04)가
+     * {@code countView}가 false면 조회수를 올리지 않는다 — {@code PostViewDedup}가
      * 같은 방문자가 짧은 시간 안에 같은 글을 다시 열었다고 판단했을 때 컨트롤러가 넘기는 값이다.
      * 새로고침·봇·링크 미리보기·재방문이 매번 1씩 올리던 것을 줄인다.
      */
@@ -92,7 +92,7 @@ public class PostQueryService {
             postRepository.increaseViewCount(id);
         }
 
-        // 작성자를 같은 쿼리로 가져오고(BE-05), 추천 수·내가 눌렀는지도 한 번에 센다. 조회수
+        // 작성자를 같은 쿼리로 가져오고, 추천 수·내가 눌렀는지도 한 번에 센다. 조회수
         // UPDATE가 영속성 컨텍스트를 비우므로 이 조회는 항상 DB를 다시 읽는다.
         Post post = postRepository.findByIdWithUser(id)
                 .orElseThrow(() -> new PostNotFoundException(id));
@@ -119,7 +119,7 @@ public class PostQueryService {
         return findAllDesc(pageable, null, null, false);
     }
 
-    /** 검색 범위를 지정하지 않는 호출은 기본값(제목만, A-BE-02 2단계)으로 좁힌다. */
+    /** 검색 범위를 지정하지 않는 호출은 기본값(제목만)으로 좁힌다. */
     public PostsPageResponseDto findAllDesc(Pageable pageable, String keyword, Category category) {
         return findAllDesc(pageable, keyword, category, false);
     }
@@ -129,12 +129,12 @@ public class PostQueryService {
      * 목록에 필요한 댓글 수는 게시글마다 따로 조회하지 않고, 이 페이지에 담긴 게시글
      * ID로 한 번에 묶어 조회한다(N+1 방지).
      * <p>
-     * 정렬은 여기서 {@code PostSortPolicy.effectiveSort}로 보정한다(B10) — 호출자
+     * 정렬은 여기서 {@code PostSortPolicy.effectiveSort}로 보정한다 — 호출자
      * (SSR/REST 두 컨트롤러)가 이미 허용 목록으로 걸러 둔 Sort를, id 동점 처리를 포함한
      * 실제 정렬로 바꿔 리포지토리에 넘긴다. 두 컨트롤러가 각자 이 변환을 반복하지 않도록
      * 여기 한 곳에만 둔다.
      * <p>
-     * {@code searchContent}가 false면 제목만 검색한다(A-BE-02 2단계, 기본값) — 본문(TEXT)
+     * {@code searchContent}가 false면 제목만 검색한다(기본값) — 본문(TEXT)
      * 까지 뒤지는 선행 와일드카드 LIKE가 이 검색에서 가장 비용이 큰 부분이라, 사용자가
      * "제목+내용"을 직접 고를 때만 켠다.
      */
@@ -151,7 +151,7 @@ public class PostQueryService {
                     new PostsListResponseDto(row, commentCounts.getOrDefault(row.id(), 0L))));
         }
         // 검색어 있음: LIKE '%kw%'는 인덱스를 못 타서 COUNT가 항상 전체 스캔이다. 세지 않고 다음
-        // 페이지가 있는지만 안다(BE-08).
+        // 페이지가 있는지만 안다.
         Slice<PostRowDto> slice = postRepository.searchWithoutCount(normalized, category, searchContent, effective);
         Map<Long, Long> commentCounts = commentCountsOf(slice);
         return new PostsPageResponseDto(slice.map(row ->
@@ -162,17 +162,17 @@ public class PostQueryService {
      * 최근 {@link #POPULAR_WINDOW}(7일) 이내에 작성된 글 중 조회수 기준 상위 {@code limit}개
      * (인기글). 목록 화면 상단의 별도 섹션에 쓰인다.
      * <p>
-     * 누적 조회수만 보면 오래전에 조회수를 많이 쌓은 글이 자리를 영영 독점한다(A-BE-10) —
+     * 누적 조회수만 보면 오래전에 조회수를 많이 쌓은 글이 자리를 영영 독점한다 —
      * 최근 글로 후보를 좁혀 새 글도 인기글에 오를 수 있게 한다.
      * <p>
      * 인기글 템플릿은 제목·조회수만 보여주고 댓글 수는 쓰지 않는다(index.html 확인). 예전에는
      * 여기서도 목록과 같은 댓글 수 집계 쿼리를 돌렸다 — 화면에 쓰이지 않는 값을 매번 계산한 것이다.
      * <p>
-     * 홈 화면 진입마다 매번 다시 계산하지 않고 짧게 캐시한다(BE-25, TTL·크기는
+     * 홈 화면 진입마다 매번 다시 계산하지 않고 짧게 캐시한다(TTL·크기는
      * application.yml의 spring.cache.caffeine.spec). 새 글의 조회수가 인기글 순위에 반영되는
      * 데 최대 캐시 유효시간만큼 지연이 생길 수 있지만, 실시간성이 중요한 값이 아니다.
      */
-    /** 인기글 후보를 이 기간 이내에 작성된 글로 좁힌다(A-BE-10). */
+    /** 인기글 후보를 이 기간 이내에 작성된 글로 좁힌다. */
     private static final Duration POPULAR_WINDOW = Duration.ofDays(7);
 
     @Cacheable("popularPosts")
@@ -188,7 +188,7 @@ public class PostQueryService {
     public static final int PINNED_LIMIT = 5;
 
     /**
-     * 목록 첫 페이지 상단에 고정할 글 최대 {@code limit}개(A-BE-05) — 관리자가 기한({@code pinned_until})을
+     * 목록 첫 페이지 상단에 고정할 글 최대 {@code limit}개 — 관리자가 기한({@code pinned_until})을
      * 정해 고정한 글 중 아직 기한이 남은 것이다. 고정하지 않으면 공지도 일반 글과 똑같이 최신순으로 섞여,
      * 오래되면 뒤 페이지로 밀려 사실상 보이지 않는다.
      * <p>
@@ -196,7 +196,7 @@ public class PostQueryService {
      * (findPopular의 인기글 위젯과 달리 여기는 "0건"이 눈에 띄게 어색하다).
      * <p>
      * {@link #findPopular}와 같은 이유로 짧게 캐시한다. 글을 쓰거나 고치거나 지우거나 고정·숨김을 바꿀 때는 이
-     * 캐시를 비운다(BE-16) — 지운 글이 최대 45초 동안 목록 위에 남아 404 링크가 되지 않게 한다. 기한이 지나 풀리는
+     * 캐시를 비운다 — 지운 글이 최대 45초 동안 목록 위에 남아 404 링크가 되지 않게 한다. 기한이 지나 풀리는
      * 고정은 비울 계기가 없으므로 캐시 유효시간(45초) 안에 저절로 반영된다.
      */
     @Cacheable("pinnedPosts")

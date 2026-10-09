@@ -10,8 +10,8 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 
 /**
- * 게시글·댓글·업로드 작성과 검색에 계정(또는 IP) 기준 속도 제한을 건다(전체 리뷰
- * 2026-09-26 A-SEC-06). 로그인·가입 등은 이미 {@code AuthRateLimitFilter}가 지키지만,
+ * 게시글·댓글·업로드 작성과 검색에 계정(또는 IP) 기준 속도 제한을 건다.
+ * 로그인·가입 등은 이미 {@code AuthRateLimitFilter}가 지키지만,
  * 인증을 마친 계정은 이 제한이 생기기 전까지 무제한으로 빠르게 쓸 수 있었다 — 이메일 인증만
  * 통과하면 스팸 봇 하나로 게시판 전체를 덮을 수 있었다.
  * <p>

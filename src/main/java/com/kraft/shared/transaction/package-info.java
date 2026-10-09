@@ -1,5 +1,5 @@
 /**
- * 트랜잭션 전파 규칙(A-QA-05).
+ * 트랜잭션 전파 규칙.
  * <p>
  * 이 프로젝트에는 한 서비스 안에서도 전파 방식이 섞여 있다 — {@code PostService}(클래스
  * {@code readOnly=true} 기본 + 메서드별 {@code SUPPORTS}·{@code NOT_SUPPORTED}·

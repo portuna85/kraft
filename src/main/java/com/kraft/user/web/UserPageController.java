@@ -55,7 +55,7 @@ public class UserPageController {
      * 쓴 셈이 되면 안 되고(메일 미리보기·링크 검사기가 대신 눌러 버린다), 판정은 새 비밀번호와
      * 함께 오는 저장 요청에서 한 번만 한다.
      * <p>
-     * 토큰은 쿼리 문자열이 아니라 URL 프래그먼트(#token=...)로 온다(A-SEC-11) — 브라우저가
+     * 토큰은 쿼리 문자열이 아니라 URL 프래그먼트(#token=...)로 온다 — 브라우저가
      * 프래그먼트를 서버로 보내지 않으므로 이 메서드는 토큰 값을 아예 받지 않는다. 화면
      * (Vue의 password-reset/mount.js)이 {@code location.hash}에서 직접 읽는다.
      */
@@ -68,11 +68,11 @@ public class UserPageController {
     /**
      * 메일의 인증 링크가 여는 화면. 여기서는 토큰을 소비하지 않는다 — 화면을 그리는 것만으로
      * 인증이 끝나 버리면, 사용자보다 먼저 링크를 여는 메일 보안 스캐너·미리보기가 토큰을 대신
-     * 써 버린다(전체 리뷰 2026-09-26 A-FE-04). "이메일 인증 완료하기" 버튼을 누른 사용자의
+     * 써 버린다. "이메일 인증 완료하기" 버튼을 누른 사용자의
      * 명시적 POST에서만 실제로 소비한다.
      * <p>
      * 새 메일의 토큰은 URL 프래그먼트(#token=...)로 와서 서버는 볼 수 없다 — 화면의
-     * {@code verify-confirm.js}가 location.hash에서 읽어 폼에 채운다(BE-04). 쿼리 문자열은
+     * {@code verify-confirm.js}가 location.hash에서 읽어 폼에 채운다. 쿼리 문자열은
      * 이 변경 전에 발송된 메일의 옛 링크(24시간 유효)를 위한 하위 호환이다.
      */
     @GetMapping("/users/verify")
@@ -114,8 +114,7 @@ public class UserPageController {
     }
 
     /**
-     * 인증 성공이 지금 이 요청의 세션 권한에도 곧바로 반영되게 한다(전체 리뷰 2026-09-26
-     * A-BE-08) — 그러지 않으면 로그인한 GUEST가 이 화면에서 인증을 마쳐도 "인증 메일
+     * 인증 성공이 지금 이 요청의 세션 권한에도 곧바로 반영되게 한다 — 그러지 않으면 로그인한 GUEST가 이 화면에서 인증을 마쳐도 "인증 메일
      * 재발송" 같은 GUEST 전용 메뉴가 로그아웃 전까지 계속 보인다.
      * <p>
      * 지금 세션이 방금 승격된 바로 그 계정일 때만 갱신한다 — 다른 기기·다른 계정의 세션은
@@ -130,7 +129,7 @@ public class UserPageController {
         UserDetails refreshed = userDetailsService.loadUserById(verifiedUserId);
         // 일반 로그인은 AuthenticationManager가 인증 뒤 credentials를 지우지만 이 경로는 그 단계를
         // 거치지 않는다 — 지우지 않으면 DB에서 다시 읽은 BCrypt 해시가 principal 그대로 JDBC
-        // 세션 테이블에 직렬화된다(BE-02).
+        // 세션 테이블에 직렬화된다.
         if (refreshed instanceof CredentialsContainer container) {
             container.eraseCredentials();
         }

@@ -22,7 +22,7 @@ import org.springframework.data.domain.PageRequest;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 검색 목록이 SQL을 몇 번 내는지 고정한다(BE-08).
+ * 검색 목록이 SQL을 몇 번 내는지 고정한다.
  * <p>
  * 검색어가 있으면 {@code LIKE '%kw%'}가 인덱스를 못 타서 COUNT가 매칭 여부와 상관없이 항상
  * 테이블 전체를 읽는다. 그래서 검색은 COUNT를 세지 않고 결과 쿼리와 댓글 수 쿼리, 2문장이다
@@ -75,7 +75,7 @@ class PostSearchQueryCountTest {
     }
 
     @Test
-    @DisplayName("BE-08: 검색어가 있으면 COUNT 없이 SQL 2개(결과, 댓글 수)이고 다음 페이지 유무만 안다")
+    @DisplayName("검색어가 있으면 COUNT 없이 SQL 2개(결과, 댓글 수)이고 다음 페이지 유무만 안다")
     void keywordSearch_runsWithoutCountQuery() {
         statistics.clear();
 
@@ -89,7 +89,7 @@ class PostSearchQueryCountTest {
     }
 
     @Test
-    @DisplayName("BE-08: 검색 결과의 마지막 페이지는 last=true다")
+    @DisplayName("검색 결과의 마지막 페이지는 last=true다")
     void keywordSearch_lastPageIsMarkedLast() {
         var result = postQueryService.findAllDesc(PageRequest.of(1, 10), "검색 대상", null);
 

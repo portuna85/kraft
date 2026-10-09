@@ -23,12 +23,12 @@ import DraftRestoreBanner from '../shared/DraftRestoreBanner.vue';
  * 거르지 않는 이유는 편집 화면과 같다 — 실제 경계는 저장 요청에서 서버가 잡는다.
  *
  * 입력 칸은 PostFormFields, 사진 업로드부터 오류 안내까지의 제출 흐름은 usePostSubmit이
- * 편집 화면과 함께 쓴다(FE-12). 여기에 남은 것은 등록 요청 자체와 초안·이탈 방지다.
+ * 편집 화면과 함께 쓴다. 여기에 남은 것은 등록 요청 자체와 초안·이탈 방지다.
  */
 const props = defineProps({
     categoryOptions: { type: /** @type {import('vue').PropType<import('../shared/types.js').CategoryOption[]>} */ (Array), required: true },
     author: { type: String, required: true },
-    // 자동 임시 저장 키를 계정별로 분리하는 데만 쓴다(전체 리뷰 2026-09-26 A-FE-03). 이
+    // 자동 임시 저장 키를 계정별로 분리하는 데만 쓴다. 이
     // 화면은 로그인이 필수라 실제로는 항상 값이 있다. null이면(value == null이라 Vue가 타입
     // 검사를 건너뛴다) 아래에서 사용자 구분 없는 키로 물러서지 않고 그냥 초안 기능을 끈다.
     userId: { type: Number, default: null },
@@ -45,7 +45,7 @@ const saving = ref(false);
 const picture = useImageUpload();
 const form = ref(/** @type {InstanceType<typeof PostFormFields> | null} */ (null));
 
-// 새 글 작성에는 예전에 이탈 방지가 아예 없었다(FE-18) — 다 쓴 글을 실수로 새로고침하거나
+// 새 글 작성에는 예전에 이탈 방지가 아예 없었다 — 다 쓴 글을 실수로 새로고침하거나
 // 탭을 닫으면 아무 경고 없이 사라졌다. PostEditApp과 같은 규칙: 제목·내용·분류 중 하나라도
 // 비어 있지 않거나 사진을 선택했으면 "작성 중"으로 본다.
 const isDirty = computed(() =>
@@ -56,7 +56,7 @@ const unsavedGuard = useUnsavedGuard(isDirty);
 // 자동 임시 저장(이탈 경고를 대체하지 않고 나란히 쓴다 — useDraftAutosave.js 참고). 사진은
 // 직렬화할 수 없어 제목·분류·내용만 담는다.
 //
-// 키에 회원 id를 넣는다(전체 리뷰 2026-09-26 A-FE-03) — 예전 키(kraft:draft:post-save)는
+// 키에 회원 id를 넣는다 — 예전 키(kraft:draft:post-save)는
 // 사용자 구분이 없어, 공용 PC에서 A가 쓰다 만 초안이 그 브라우저로 로그인한 B의 글쓰기
 // 화면에 그대로 떴다. userId가 없으면(이 화면은 로그인이 필수라 실제로는 일어나지 않는다)
 // storage를 null로 둬 초안 기능 자체를 건너뛴다.
@@ -123,7 +123,7 @@ function onSubmit() {
             flash.set('POST_SAVED');
             unsavedGuard.allowNavigation();
             autosave.discard();
-            // 목록 첫 페이지가 아니라 방금 쓴 글로 이동한다(전체 리뷰 2026-09-26 A-FE-02) —
+            // 목록 첫 페이지가 아니라 방금 쓴 글로 이동한다 —
             // 등록 API가 새 글 id를 그대로 돌려준다.
             window.location.href = `/posts/update/${newPostId}`;
         },
@@ -167,7 +167,7 @@ function onSubmit() {
     </PostFormFields>
 
     <!-- 업로드→저장 진행 상태. aria-live 영역이 나타나는 순간 내용이 채워지면 스크린 리더가 놓칠 수 있어
-         v-show 없이 항상 렌더한다(FE-08, 수정 화면과 같다). 비어 있을 때는 화면에 거의 티가 나지 않는다. -->
+         v-show 없이 항상 렌더한다(수정 화면과 같다). 비어 있을 때는 화면에 거의 티가 나지 않는다. -->
     <p
       id="post-save-progress"
       class="form-progress"

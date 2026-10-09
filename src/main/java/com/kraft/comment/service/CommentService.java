@@ -65,7 +65,7 @@ public class CommentService {
      */
     @Transactional
     public CommentViewDto save(Long postId, Authentication authentication, CommentSaveRequestDto requestDto) {
-        // 댓글에는 글과의 연관만 필요하다 — TEXT 본문까지 읽는 findById 대신 존재만 확인하고 참조를 쓴다(BE-25).
+        // 댓글에는 글과의 연관만 필요하다 — TEXT 본문까지 읽는 findById 대신 존재만 확인하고 참조를 쓴다.
         if (!postRepository.existsVisibleById(postId)) {
             throw new PostNotFoundException(postId);
         }
@@ -195,7 +195,7 @@ public class CommentService {
 
         List<Long> topLevelIds = page.stream().map(Comment::getId).toList();
         Map<Long, Long> replyCounts = commentRepository.countRepliesByParentIdIn(topLevelIds);
-        // 부모마다 따로 부르지 않고(BE-08) 이 페이지의 최상위 댓글 전체를 대상으로 한 번에
+        // 부모마다 따로 부르지 않고 이 페이지의 최상위 댓글 전체를 대상으로 한 번에
         // 가져온다 — 최대 페이지당 20회이던 쿼리가 이 한 번으로 줄어든다.
         Map<Long, List<Comment>> repliesByParent =
                 commentRepository.findInitialRepliesGroupedByParentIdIn(topLevelIds, INITIAL_REPLIES_PER_PARENT);
@@ -204,7 +204,7 @@ public class CommentService {
                 .map(comment -> withInitialReplies(comment, authentication, replyCounts, repliesByParent))
                 .toList();
         // afterId가 있으면 "더 보기"로 이어받는 후속 페이지다 — 전체 개수는 최초 페이지에서
-        // 이미 받았으므로 다시 세지 않는다(A-BE-13). 화면이 로컬로 유지한 값을 그대로 쓴다.
+        // 이미 받았으므로 다시 세지 않는다. 화면이 로컬로 유지한 값을 그대로 쓴다.
         Long totalCount = afterId == null ? commentRepository.countByPostId(postId) : null;
         return new CommentPageDto(views, totalCount, hasMore);
     }
@@ -236,7 +236,7 @@ public class CommentService {
                 .map(reply -> viewOf(reply, authentication))
                 .toList();
         // "답글 더 보기"는 항상 후속 페이지다 — 최초 답글 수는 이미 withInitialReplies가 배치로
-        // 계산해 부모 댓글에 실어 보냈고, 화면도 이 값을 읽지 않는다(A-BE-13).
+        // 계산해 부모 댓글에 실어 보냈고, 화면도 이 값을 읽지 않는다.
         return new CommentPageDto(views, null, hasMore);
     }
 

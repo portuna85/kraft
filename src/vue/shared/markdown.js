@@ -70,7 +70,7 @@ function blockToNode(lines) {
  */
 
 /**
- * 같은 문자열에서 다음 위치 검색이 되풀이되는 `indexOf`를 줄인다(FE-25, Java 파서의 NextOccurrence와 같다).
+ * 같은 문자열에서 다음 위치 검색이 되풀이되는 `indexOf`를 줄인다(Java 파서의 NextOccurrence와 같다).
  * 닫히지 않은 `[`·`` ` ``·`*`가 많으면 열린 기호마다 끝까지 스캔해 O(n²)이 되는데, 찾는 위치는 항상 앞에서
  * 뒤로만 움직이므로 직전 결과를 재사용한다. 결과는 `indexOf`와 항상 같다.
  */

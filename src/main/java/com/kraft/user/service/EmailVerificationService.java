@@ -50,7 +50,7 @@ public class EmailVerificationService {
     private final ExpiredTokenPurger expiredTokenPurger;
 
     /**
-     * 자기 자신의 프록시(BE-19). {@link #sendVerificationEmailSafely}가 self-invocation으로
+     * 자기 자신의 프록시. {@link #sendVerificationEmailSafely}가 self-invocation으로
      * {@link #sendVerificationEmail}을 직접 부르면 그 메서드의 {@code @Transactional}이
      * 적용되지 않고(프록시를 거치지 않으므로) 호출자의 트랜잭션(또는 무트랜잭션)을 그대로
      * 쓴다 — 과거에는 둘 다 같은 트랜잭션을 썼는데, 안에서 DB 예외가 나면 그 트랜잭션이
@@ -83,7 +83,7 @@ public class EmailVerificationService {
                 .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
 
         // 탈퇴 계정은 조회 조건에서도 걸러야 하지만(UserRepository.findGuestsMissingVerificationMail
-        // 참고, B16), 이 메서드 자체도 거부한다 — 호출 경로가 늘어도 같은 규칙이 적용되게 한다.
+        // 참고), 이 메서드 자체도 거부한다 — 호출 경로가 늘어도 같은 규칙이 적용되게 한다.
         // withdraw()는 role을 바꾸지 않으므로 탈퇴한 GUEST도 이 검사 없이는 통과했을 것이다.
         if (user.isWithdrawn()) {
             throw new BusinessValidationException("탈퇴한 회원입니다. email=" + EmailMasker.mask(email));
@@ -94,10 +94,9 @@ public class EmailVerificationService {
 
     /**
      * 토큰을 만들어 저장하고 메일을 대기열에 넣는 실제 동작. 이미 회원을 손에 쥔 호출자
-     * ({@link #resend})는 {@link #sendVerificationEmail}처럼 이메일로 다시 찾을 필요가 없다
-     * (A-QA-03) — 여기로 바로 들어온다.
+     * ({@link #resend})는 {@link #sendVerificationEmail}처럼 이메일로 다시 찾을 필요가 없다 — 여기로 바로 들어온다.
      * <p>
-     * 평문 token은 이 메서드를 벗어나지 않는다(SEC-04) — 조회 테이블에는 해시만 남고,
+     * 평문 token은 이 메서드를 벗어나지 않는다 — 조회 테이블에는 해시만 남고,
      * 메일 본문 링크를 만들 유일한 평문 사본은 outbox_mails에 실려 발송될 때까지만 산다.
      */
     private void issueTokenAndEnqueue(User user) {
@@ -123,7 +122,7 @@ public class EmailVerificationService {
      * 이 메서드가 막아 주는 것이 이제 SMTP 오류는 아니다. 발송은 대기열에 들어간 뒤 별도 흐름에서
      * 일어나므로 여기까지 올라오지 않는다. 남은 것은 토큰·대기열 저장이 실패하는 경우다.
      * <p>
-     * {@code @Transactional}을 붙이지 않는다(BE-19) — {@link #self}를 통해 부르는
+     * {@code @Transactional}을 붙이지 않는다 — {@link #self}를 통해 부르는
      * {@link #sendVerificationEmail}이 자신의 독립된 새 트랜잭션을 열게 하기 위해서다. 예전에는
      * 이 메서드도 {@code @Transactional}이었는데, 내부에서 {@code sendVerificationEmail(email)}을
      * self-invocation(프록시를 거치지 않는 직접 호출)으로 불러 같은 트랜잭션을 공유했다. 그
@@ -144,12 +143,12 @@ public class EmailVerificationService {
      * {@code tokenRepository.delete()}를 부르면, 이어지는 예외가 이 쓰기 트랜잭션을 롤백시키면서
      * 삭제까지 되돌려 만료 토큰이 그대로 남았다.
      * <p>
-     * 소비(삭제)를 승격보다 먼저, 그리고 <b>조건부로</b> 한다(B07). 같은 토큰이 동시에 두 번
+     * 소비(삭제)를 승격보다 먼저, 그리고 <b>조건부로</b> 한다. 같은 토큰이 동시에 두 번
      * 들어오면 {@code deleteByIdAndToken}의 DB 행 잠금이 정확히 하나만 성공시킨다 — 이긴
      * 쪽만 승격을 실행해, 두 요청 모두 성공한 것처럼 보이는 경쟁을 막는다.
      *
      * @return 승격된 회원의 id. 호출자({@code UserPageController})가 지금 요청의 세션이 같은
-     *         계정이면 권한을 즉시 갱신하는 데 쓴다(전체 리뷰 2026-09-26 A-BE-08).
+     *         계정이면 권한을 즉시 갱신하는 데 쓴다.
      */
     @Transactional
     public Long verify(String token) {
@@ -180,13 +179,13 @@ public class EmailVerificationService {
      * 지우므로 <b>먼저 도착한 링크들이 전부 무효가 된다</b> — 받는 사람은 여러 통을 받고 그중
      * 마지막 하나만 동작하는 상황이 된다. 발송 비용보다 이 혼란이 더 문제다.
      * <p>
-     * 세션 principal은 이미 불변 회원 id다(BE-04, A-QA-03) — 예전에는 컨트롤러가 그 id로
+     * 세션 principal은 이미 불변 회원 id다 — 예전에는 컨트롤러가 그 id로
      * 회원을 찾아 이메일을 복호화한 뒤, 여기서 그 이메일을 다시 정규화·해시해 같은 회원을
      * 한 번 더 찾았다. id를 바로 받으면 그 왕복 없이 아래의 쿨다운 잠금 조회 하나로 끝난다.
      */
     @Transactional
     public void resend(Long userId) {
-        // 쿨다운 검사와 재발급을 계정 단위로 직렬화한다(B07) — 그래야 두 동시 요청이 같은
+        // 쿨다운 검사와 재발급을 계정 단위로 직렬화한다 — 그래야 두 동시 요청이 같은
         // "마지막 발송 시각"을 동시에 읽고 둘 다 쿨다운을 통과하는 경쟁이 없어진다.
         User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. userId=" + userId));

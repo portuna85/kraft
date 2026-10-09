@@ -18,10 +18,10 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 세션 타임아웃(2시간)이 실제로 적용되는지 확인한다(BE-01).
+ * 세션 타임아웃(2시간)이 실제로 적용되는지 확인한다.
  * <p>
  * 예전에는 {@code spring.servlet.session.timeout}에 두어 어떤 프로퍼티에도 바인딩되지 않았고,
- * 실제 만료는 기본값 30분이었다. {@code ProdProfileConfigTest}(SEC-01)와 같은 유형의 실수라
+ * 실제 만료는 기본값 30분이었다. {@code ProdProfileConfigTest}와 같은 유형의 실수라
  * 설정 경로와 실제 세션 값을 모두 본다.
  */
 // MOCK 환경에서는 Boot가 WAR 배포용 SessionTimeout(컨테이너 값)을 골라 null이 된다. 운영과 같은
@@ -35,7 +35,7 @@ class SessionTimeoutConfigTest {
     private SessionRepository<? extends Session> sessionRepository;
 
     @Test
-    @DisplayName("BE-01: 타임아웃은 server.servlet.session.timeout에만 있고 spring.servlet 아래에는 없다")
+    @DisplayName("타임아웃은 server.servlet.session.timeout에만 있고 spring.servlet 아래에는 없다")
     void timeout_isBoundUnderServerServlet() throws Exception {
         String classpathYaml = "application.yml";
         List<PropertySource<?>> sources = new YamlPropertySourceLoader()
@@ -52,7 +52,7 @@ class SessionTimeoutConfigTest {
     }
 
     @Test
-    @DisplayName("BE-01: 새로 만든 세션의 maxInactiveInterval이 2시간이다")
+    @DisplayName("새로 만든 세션의 maxInactiveInterval이 2시간이다")
     void newSession_hasTwoHourInactiveInterval() {
         Session session = sessionRepository.createSession();
 

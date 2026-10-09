@@ -11,9 +11,8 @@ app:
   # 섞지 않는다.
   mail:
     enabled: false
-    # 발송과 별개로 보관기간 정리는 enabled와 무관하게 항상 돈다(OutboxMailWorker,
-    # OBS-05) — 이 파일의 원칙(무관한 스케줄러를 섞지 않는다)대로 이 창에서는 따로 끈다
-    # (전체 리뷰 2026-09-26 OPS-02).
+    # 발송과 별개로 보관기간 정리는 enabled와 무관하게 항상 돈다(OutboxMailWorker) — 이 파일의 원칙(무관한 스케줄러를 섞지 않는다)대로
+    # 이 창에서는 따로 끈다.
     retention-enabled: false
   upload:
     cleanup-enabled: false
@@ -25,7 +24,7 @@ app:
     purge-enabled: false
   session-revocation:
     enabled: false
-    # 같은 이유로 세션 폐기 태스크의 보관기간 정리도 끈다(SessionRevocationWorker, OBS-05).
+    # 같은 이유로 세션 폐기 태스크의 보관기간 정리도 끈다(SessionRevocationWorker).
     retention-enabled: false
   recommend:
     # 이 실행 자체가 이력을 채우는 작업이다 — 매주 자동 수집 스케줄이 같은 테이블을 향해

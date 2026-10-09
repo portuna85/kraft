@@ -6,7 +6,7 @@ server:
     enabled: true
     mime-types: text/html,text/css,text/javascript,application/javascript,application/json,image/svg+xml
     min-response-size: 1024
-  # TLS는 앞단 리버스 프록시가 종단하고 이 앱은 평문 HTTP로 프록시와만 통신한다(BE-01).
+  # TLS는 앞단 리버스 프록시가 종단하고 이 앱은 평문 HTTP로 프록시와만 통신한다.
   # native 전략은 톰캣의 RemoteIpValve를 구성해 X-Forwarded-For/-Proto 등을 remoteip.internal-proxies
   # 에 해당하는 발신지에서만 신뢰한다 — 그래야 request.getRemoteAddr()/isSecure()가 실제
   # 클라이언트 값을 반환하고, AuthRateLimitFilter 등의 "IP당" 제한이 실제 IP 단위로 걸린다.
@@ -16,11 +16,11 @@ server:
   forward-headers-strategy: native
   servlet:
     session:
-      # 기본값(30분)에 기대지 않고 명시한다(A-FE-12) — 긴 글을 쓰는 동안 세션이 끊겨 "등록"
+      # 기본값(30분)에 기대지 않고 명시한다 — 긴 글을 쓰는 동안 세션이 끊겨 "등록"
       # 시점에야 403으로 실패하는 사례가 있었다. 자동 임시 저장이 내용을 지키긴 하지만, 그
       # 전에 세션이 오래 버티는 편이 사용자에게 더 낫다.
       # server.servlet 아래여야 한다 — spring.servlet.session.timeout은 존재하지 않는
-      # 프로퍼티라 조용히 무시되어 실제로는 30분이었다(BE-01). Spring Session JDBC도
+      # 프로퍼티라 조용히 무시되어 실제로는 30분이었다. Spring Session JDBC도
       # 이 값을 기본 maxInactiveInterval로 쓴다.
       timeout: 2h
   tomcat:
@@ -34,11 +34,11 @@ spring:
   profiles:
     default: local
 
-  # 인기글(BE-25)처럼 요청마다 다시 계산할 필요가 없는 값을 짧게 캐시한다. 이 스펙은 모든
+  # 인기글처럼 요청마다 다시 계산할 필요가 없는 값을 짧게 캐시한다. 이 스펙은 모든
   # 캐시의 기본값이다 — popularPosts·pinnedPosts가 그대로 따른다. maximumSize는 캐시 이름이
   # 몇 개 안 돼 작게 잡아도 충분하다. expireAfterWrite 45초는 "너무 낡은 인기글을 보여주지 않는다"와
   # "트래픽이 몰려도 DB를 매번 두드리지 않는다" 사이의 절충값이다. 고정 글(pinnedPosts)은 글을
-  # 쓰거나 고칠 때 바로 비운다(BE-16).
+  # 쓰거나 고칠 때 바로 비운다.
   cache:
     caffeine:
       spec: maximumSize=500,expireAfterWrite=45s
@@ -48,7 +48,7 @@ spring:
     properties:
       hibernate:
         # IN(:ids) 목록 크기가 요청마다 달라지면(예: countRepliesByParentIdIn) 쿼리 플랜 캐시가
-        # 매번 새 SQL로 어긋난다 — 패딩을 켜면 크기를 2의 거듭제곱 등으로 맞춰 재사용한다(BE-17).
+        # 매번 새 SQL로 어긋난다 — 패딩을 켜면 크기를 2의 거듭제곱 등으로 맞춰 재사용한다.
         query:
           in_clause_parameter_padding: true
         # 지연 로딩된 연관(post.user 등)을 엔티티마다 한 번씩 조회하는 대신 배치로 묶는
@@ -71,7 +71,7 @@ spring:
     # 만들므로 여기서 끈 채로 둔다 — 두 스키마 관리자가 같은 DB를 동시에 건드리면 예측하기
     # 어려워지기 때문이다(예전 local은 create-drop이라 Flyway가 만든 테이블을 Hibernate가
     # 다시 지웠다). local(Docker MariaDB)과 운영(application-prod.yml)은 각자
-    # spring.flyway.enabled: true로 이 기본값을 덮어써 Flyway + validate 경로를 쓴다(B05) —
+    # spring.flyway.enabled: true로 이 기본값을 덮어써 Flyway + validate 경로를 쓴다 —
     # 두 환경 모두 같은 DB 엔진이라 스키마 관리 방식도 동일해야 한다.
     enabled: false
 
@@ -80,7 +80,7 @@ spring:
 
   web:
     resources:
-      # 정적 자원을 URL 버전으로 구분해 장기 캐시를 건다(FE-01). /js/**는 빌드마다 바뀌는
+      # 정적 자원을 URL 버전으로 구분해 장기 캐시를 건다. /js/**는 빌드마다 바뀌는
       # 고정 버전 문자열(build.gradle.kts의 buildVersion, 보통 git 커밋 SHA)을 경로 접두사로
       # 받는다 — Vue 산출물은 리뷰 가능한 diff를 위해 파일명 자체에 해시를 넣지 않으므로,
       # 상대 경로 import가 그대로 살아 있는 경로 버전 방식을 쓴다(콘텐츠 해시 방식은 JS
@@ -90,7 +90,7 @@ spring:
       # 붙은 URL로 치환한다 — 하드코딩된 href="/js/..."는 이 메커니즘을 타지 않는다.
       chain:
         enabled: true
-        # 빌드가 만든 .gz(build.gradle.kts의 processResources, FE-24)를 클라이언트가 gzip을 받을 때 그대로
+        # 빌드가 만든 .gz(build.gradle.kts의 processResources)를 클라이언트가 gzip을 받을 때 그대로
         # 내려준다. 없는 파일은 원본을 보내고, server.compression이 필요하면 동적으로 압축한다.
         compressed: true
         strategy:
@@ -155,7 +155,7 @@ spring:
       shutdown:
         # 재배포 때 systemctl restart가 이미 진행 중인 예약 작업(outbox 발송, 이미지 정리
         # 배치 등)을 SIGTERM으로 그대로 끊지 않고, 진행 중인 작업이 끝날 때까지 잠깐
-        # 기다리게 한다(BE-29). deploy/kraft.service의 TimeoutStopSec(30s)보다 짧게 잡아,
+        # 기다리게 한다. deploy/kraft.service의 TimeoutStopSec(30s)보다 짧게 잡아,
         # 이 대기가 다 차기 전에 systemd의 강제 종료(SIGKILL)로 넘어가지 않게 한다.
         await-termination: true
         await-termination-period: 25s
@@ -169,11 +169,11 @@ spring:
 
 app:
   # 이 jar를 만든 커밋(build.gradle.kts의 buildVersion, 보통 짧은 git SHA). /healthz가
-  # X-Kraft-Build 헤더로 내려주고, CI의 배포 후 확인이 방금 푸시한 커밋과 비교한다(OPS-12).
+  # X-Kraft-Build 헤더로 내려주고, CI의 배포 후 확인이 방금 푸시한 커밋과 비교한다.
   build-version: "@buildVersion@"
   mail:
     # 발신 주소(From). 비워 두면 spring.mail.username(SMTP 로그인 계정)을 쓴다. SPF/DMARC가 맞는
-    # 도메인의 주소여야 스팸함으로 덜 간다(BE-45).
+    # 도메인의 주소여야 스팸함으로 덜 간다.
     from: ${MAIL_FROM:}
     # 메일 발송은 DB 트랜잭션 밖에서 처리한다(OutboxMailWorker). 가입·재발송 직후 한 번 보내고,
     # 그때 실패했거나 앱이 내려가 있던 것을 주기 작업이 다시 시도한다.
@@ -199,7 +199,7 @@ app:
     purge-initial-delay-ms: 900000
     purge-interval-ms: 86400000
     # 가입 직후 인증 메일 대기열 등록의 최종 커밋이 실패해 메일이 한 번도 큐에 들어가지
-    # 못한 GUEST 계정을 찾아 복구하는 최후 수단(B08, GuestVerificationSweeper). 가입 직후
+    # 못한 GUEST 계정을 찾아 복구하는 최후 수단(GuestVerificationSweeper). 가입 직후
     # 진행 중인 트랜잭션을 건드리지 않도록 유예시간을 둔다.
     sweep-grace-minutes: 10
     sweep-batch-size: 50
@@ -216,7 +216,7 @@ app:
     purge-interval-ms: 86400000
 
   session-revocation:
-    # 비밀번호 변경·재설정·탈퇴 커밋 직후 세션 폐기를 영속 태스크로 남긴다(B06). 대부분은
+    # 비밀번호 변경·재설정·탈퇴 커밋 직후 세션 폐기를 영속 태스크로 남긴다. 대부분은
     # 커밋 직후 빠른 경로에서 바로 끝나고, 실패하거나 그 직후 프로세스가 죽은 것만 이 주기
     # 작업이 다시 집는다. outbox_mails와 같은 claim/재시도 구조를 그대로 쓴다.
     max-attempts: 5
@@ -247,11 +247,11 @@ app:
     disk-free-bytes: 1073741824
     mail-pending: 20
     mail-failed: 0
-    # 평균·최댓값만으로는 소수의 느린 요청이 묻힌다(O05). 이 절대 ms를 넘는 요청 수를 따로
+    # 평균·최댓값만으로는 소수의 느린 요청이 묻힌다. 이 절대 ms를 넘는 요청 수를 따로
     # 세고(slow-request-ms), 그 건수가 이 기준(slow-requests)을 넘으면 알린다.
     slow-request-ms: 3000
     slow-requests: 5
-    # 기준을 넘기면 관리자에게 메일로도 알린다(A-OPS-02, AlertMailer). 비워 두면(기본값)
+    # 기준을 넘기면 관리자에게 메일로도 알린다(AlertMailer). 비워 두면(기본값)
     # 로그만 남기고 메일은 보내지 않는다 — 로컬은 이 기본값 그대로 둔다. 운영 주소는
     # application-prod.yml에서 채운다. 같은 종류(예: 오류율 초과)는 이 간격(기본 1시간)에
     # 한 번만 보낸다 — 반복해서 울리는 같은 문제로 메일함을 채우지 않기 위해서다.
@@ -309,8 +309,8 @@ app:
 
   write:
     rate-limit:
-      # 게시글·댓글·신고·업로드·검색에 적용하는 계정(검색은 IP) 기준 속도 제한(전체 리뷰
-      # 2026-09-26 A-SEC-06). 로그인·가입은 위 auth.rate-limit이 이미 지키지만, 인증을 마친
+      # 게시글·댓글·신고·업로드·검색에 적용하는 계정(검색은 IP) 기준 속도 제한.
+      # 로그인·가입은 위 auth.rate-limit이 이미 지키지만, 인증을 마친
       # 계정은 이 제한이 생기기 전까지 무제한으로 빠르게 쓸 수 있었다. 실측 전 초기값이며,
       # WriteRateLimiters.reportAndCleanup의 허용/거부 집계가 조정 근거가 된다.
       enabled: true
@@ -325,7 +325,7 @@ app:
   # (application-prod.yml 참고).
   base-url: http://localhost:8080
 
-# 요청 상관관계 id를 로그 줄마다 남긴다(BE-28, RequestIdFilter). 전체 패턴을 새로 쓰는 대신
+# 요청 상관관계 id를 로그 줄마다 남긴다(RequestIdFilter). 전체 패턴을 새로 쓰는 대신
 # LOG_LEVEL_PATTERN만 이 값으로 바꿔치기한다 — logback-spring.xml의 모든 appender가 이미
 # ${FILE_LOG_PATTERN}을 통해 이 값을 참조하므로, 콘솔·파일 모두 한 곳만 바꾸면 함께 반영된다.
 # 요청과 무관한 로그(예약 작업 등)는 MDC가 비어 있어 대괄호 안이 빈 채로 찍힌다.

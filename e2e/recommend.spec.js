@@ -2,7 +2,7 @@ import { test, expect } from './fixtures.js';
 
 /**
  * 번호 추천 화면. e2e 프로파일은 당첨 이력 1~30회를 시드한다(E2eDataInitializer) — 서버가 실제로
- * 추천을 만들어 돌려주는 경로를 한 번은 가로채기 없이 검증하고(OPS-15), 나머지는 응답 모양을
+ * 추천을 만들어 돌려주는 경로를 한 번은 가로채기 없이 검증하고, 나머지는 응답 모양을
  * 결정론적으로 고정하려고 라우트를 가로챈다. 이력이 준비되지 않은 503은 가로채서 만든다.
  *
  * 이 기능은 로그인 여부와 무관하게 동일하게 동작하므로 익명 상태에서 검증한다.
@@ -45,7 +45,7 @@ test('진입 시 자동으로 생성 요청을 보내지 않고, 결과 자리�
 
     await page.goto('/recommend');
     // 화면이 완전히 마운트된 뒤(버튼이 보이고 네트워크가 조용해진 뒤)에도 요청이 없어야 한다. 고정 500ms 대기 대신
-    // 마운트·네트워크 안정을 기다린다(OPS-17).
+    // 마운트·네트워크 안정을 기다린다.
     await expect(page.locator('#btn-recommend-generate')).toBeVisible();
     await page.waitForLoadState('networkidle');
 
@@ -234,7 +234,7 @@ test.describe('복사', () => {
     });
 });
 
-/** F02: 재시도가 실패해도 화면에 남은 이전 결과는 사라지지 않는다. */
+/** 재시도가 실패해도 화면에 남은 이전 결과는 사라지지 않는다. */
 test('재시도가 실패해도 이전 결과가 남는다', async ({ page }) => {
     let requestCount = 0;
     await page.route('**/api/v1/numbers/recommend', async (route) => {

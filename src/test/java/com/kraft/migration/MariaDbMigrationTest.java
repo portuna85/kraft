@@ -182,7 +182,7 @@ class MariaDbMigrationTest extends MariaDbIntegrationTest {
     }
 
     @Test
-    @DisplayName("BE-07: sort=updatedAt 목록은 updated_at 인덱스로 정렬하고 filesort를 하지 않는다")
+    @DisplayName("sort=updatedAt 목록은 updated_at 인덱스로 정렬하고 filesort를 하지 않는다")
     void updatedAtSort_usesIndexWithoutFilesort() {
         User author = userRepository.save(User.builder()
                 .name("explain-author").email("explain@example.com")
@@ -223,7 +223,7 @@ class MariaDbMigrationTest extends MariaDbIntegrationTest {
                 .getCookie("SESSION");
 
         assertThat(session).isNotNull();
-        // principal 이름은 이제 회원 id의 문자열이다(BE-04).
+        // principal 이름은 이제 회원 id의 문자열이다.
         Long sessions = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM SPRING_SESSION WHERE PRINCIPAL_NAME = ?",
                 Long.class, String.valueOf(userId));
@@ -257,7 +257,7 @@ class MariaDbMigrationTest extends MariaDbIntegrationTest {
         // @Version이 붙은 컬럼은 NOT NULL이라 INSERT 시점에 값이 들어가야 한다.
         assertThat(saved.getVersion()).isNotNull();
 
-        // 조회수 증가는 별도 UPDATE 한 문장이다(F02). 운영 DB에서도 같은 SQL이 도는지 본다.
+        // 조회수 증가는 별도 UPDATE 한 문장이다. 운영 DB에서도 같은 SQL이 도는지 본다.
         postQueryService.findByIdForView(id, auth);
         assertThat(postRepository.findById(id).orElseThrow().getViewCount()).isEqualTo(1L);
     }

@@ -11,7 +11,7 @@ import java.util.Set;
  * 게시글 목록의 {@code sort} 파라미터 허용 목록.
  * <p>
  * {@code PostRepository.search}는 JPQL에 고정 {@code ORDER BY}를 두지 않고 {@link Pageable}의
- * {@link Sort}에 정렬을 전적으로 맡긴다(B10, {@link #effectiveSort} 참고). 검증 없이 받으면
+ * {@link Sort}에 정렬을 전적으로 맡긴다({@link #effectiveSort} 참고). 검증 없이 받으면
  * {@code ?sort=content,desc}처럼 인덱스 없는 TEXT 컬럼 정렬을 클라이언트가 강제할 수 있다.
  * 허용 목록은 {@code Post} 엔티티에서 정렬이
  * 안전한 컬럼만 둔다.
@@ -48,7 +48,7 @@ public final class PostSortPolicy {
     }
 
     /**
-     * 실제 정렬에 쓸 {@link Sort}를 만든다(B10). {@code PostRepository.search}는 예전에
+     * 실제 정렬에 쓸 {@link Sort}를 만든다. {@code PostRepository.search}는 예전에
      * {@code ORDER BY p.id DESC}를 JPQL에 직접 박아 두고 있었는데, Spring Data가 여기서 만든
      * Sort를 그 <b>뒤에</b> 덧붙인다 — id가 고유해 동점이 나지 않으므로 viewCount·updatedAt을
      * 요청해도 반환 순서가 전혀 바뀌지 않았다. 이제 리포지토리 JPQL에서 고정 ORDER BY를

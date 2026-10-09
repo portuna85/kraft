@@ -1,4 +1,4 @@
-// 토스트 큐(FE-35) 테스트: 오류 토스트가 떠 있는 동안 도착한 알림이 그 위를 덮지 않고 줄을 서는지. `npm run test:unit`.
+// 토스트 큐 테스트: 오류 토스트가 떠 있는 동안 도착한 알림이 그 위를 덮지 않고 줄을 서는지. `npm run test:unit`.
 //
 // Bootstrap과 DOM은 흉내만 낸다. toast.js는 byId()로 요소를 찾고 window.bootstrap.Toast로 보여 주므로,
 // 필요한 만큼의 가짜 요소와 Toast 구현만 둔다.

@@ -56,14 +56,14 @@ class CommentApiControllerTest {
     @MockitoBean
     private WriteRateLimiters rateLimiters;
 
-    /** A-SEC-06 제한기는 이 슬라이스의 관심사가 아니다 — 기본으로 항상 통과시킨다. */
+    /** 쓰기 속도 제한기는 이 슬라이스의 관심사가 아니다 — 기본으로 항상 통과시킨다. */
     @BeforeEach
     void allowAllRateLimits() {
         given(rateLimiters.tryAcquireComment(any())).willReturn(true);
     }
 
     @Test
-    @DisplayName("F13: GET .../comments/page 는 인증 없이도 afterId 커서를 그대로 서비스에 전달한다")
+    @DisplayName("GET .../comments/page 는 인증 없이도 afterId 커서를 그대로 서비스에 전달한다")
     void pageComments_isAccessibleWithoutAuthenticationAndPassesAfterIdCursor() throws Exception {
         given(commentService.findNextPageForView(eq(1L), eq(20L), any()))
                 .willReturn(new CommentPageDto(List.of(), 30L, true));
@@ -194,7 +194,7 @@ class CommentApiControllerTest {
     }
 
     @Test
-    @DisplayName("F11: PUT /api/v1/comments/{id} 에 기준 버전(If-Match도 본문 version도)이 없으면 428이고 서비스는 호출되지 않는다")
+    @DisplayName("PUT /api/v1/comments/{id} 에 기준 버전(If-Match도 본문 version도)이 없으면 428이고 서비스는 호출되지 않는다")
     void updateComment_withoutAnyVersion_returns428() throws Exception {
         mockMvc.perform(put("/api/v1/comments/1")
                         .with(user("tester@example.com"))

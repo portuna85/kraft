@@ -5,7 +5,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 
 /**
- * 속도 제한 초과 응답을 한 모양으로 만드는 순수 정적 유틸리티(전체 리뷰 2026-09-26 A-SEC-06).
+ * 속도 제한 초과 응답을 한 모양으로 만드는 순수 정적 유틸리티.
  * {@code RecommendationApiController}가 먼저 쓰던 모양(ProblemDetail + {@code code} 확장
  * 속성 + {@code Retry-After})을 그대로 따른다 — 여러 컨트롤러(게시글·댓글·신고·업로드)가
  * 같은 모양의 429를 반복해 만들지 않도록 한 곳에 모은다.

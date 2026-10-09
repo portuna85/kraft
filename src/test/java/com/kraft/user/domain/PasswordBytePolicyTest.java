@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** {@link PasswordBytePolicy}의 UTF-8 바이트 경계 판정(B15). */
+/** {@link PasswordBytePolicy}의 UTF-8 바이트 경계 판정. */
 class PasswordBytePolicyTest {
 
     @Test

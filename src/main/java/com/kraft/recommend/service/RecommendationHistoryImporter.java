@@ -46,7 +46,7 @@ public class RecommendationHistoryImporter {
         LocalDateTime now = LocalDateTime.now();
         int inserted = 0;
         int updated = 0;
-        // 회차마다 findById를 부르면 전체 백필(약 1,200회차)에서 쿼리가 그만큼 나간다(BE-18) —
+        // 회차마다 findById를 부르면 전체 백필(약 1,200회차)에서 쿼리가 그만큼 나간다 —
         // 한 번에 읽어 둔다. 관리되는 인스턴스라 아래 변경 감지는 그대로 동작한다.
         Map<Integer, WinningDraw> existingByRound = new HashMap<>();
         winningDrawRepository.findAllById(validated.stream().map(ValidatedDraw::roundNo).toList())
@@ -71,7 +71,7 @@ public class RecommendationHistoryImporter {
             }
         }
 
-        // 이 UPDATE는 검증 구간을 뒤로 되돌리는 값이면 0행을 갱신한다(B14) — 더 앞서 나간
+        // 이 UPDATE는 검증 구간을 뒤로 되돌리는 값이면 0행을 갱신한다 — 더 앞서 나간
         // 다른 수입(예: 늦게 끝난 백필보다 먼저 완료된 자동 수집)의 검증 구간을 조용히
         // 되돌리지 않는다. 여기서 멈추지 않으면 draws는 이미 반영됐는데 검증 구간만 뒤로
         // 밀린 채 아무 일도 없었던 것처럼 보고될 수 있다.
@@ -136,7 +136,7 @@ public class RecommendationHistoryImporter {
             validated.add(new ValidatedDraw(draw.roundNo(), numbers.numbers(), draw.details()));
         }
 
-        // 회차마다 existsById를 부르는 대신 구간 전체를 한 번에 조회한다(B11) — 왕복 수가
+        // 회차마다 existsById를 부르는 대신 구간 전체를 한 번에 조회한다 — 왕복 수가
         // verifiedThroughRound에 비례해 늘어나지 않는다.
         Set<Integer> existingRounds = new HashSet<>(winningDrawRepository.findRoundNosBetween(1, verifiedThroughRound));
         for (int round = 1; round <= verifiedThroughRound; round++) {

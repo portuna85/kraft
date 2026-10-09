@@ -101,7 +101,7 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("signUp: 이메일이 이미 있으면 저장 대신 안내 메일을 큐에 넣고 false를 돌려준다(A-SEC-01 계정 열거 방지)")
+    @DisplayName("signUp: 이메일이 이미 있으면 저장 대신 안내 메일을 큐에 넣고 false를 돌려준다(계정 열거 방지)")
     void signUp_whenEmailAlreadyExists_queuesNoticeMailAndReturnsFalseWithoutSaving() {
         User existing = User.builder().name("dupOwner").email("dup@example.com")
                 .password("encoded").role(Role.USER).build();

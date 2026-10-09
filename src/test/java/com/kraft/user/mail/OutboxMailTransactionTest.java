@@ -113,7 +113,7 @@ class OutboxMailTransactionTest {
      * 발송 흐름만 보고 싶을 때 쓴다. 비동기 발송이 함께 돌지 않는다.
      * <p>
      * 실제 운영에서는 {@code EmailVerificationService}가 토큰 저장과 아웃박스 등록을 같은
-     * 트랜잭션에서 함께 한다. {@code load()}가 발송 직전 토큰이 유효한지 확인하므로(F08),
+     * 트랜잭션에서 함께 한다. {@code load()}가 발송 직전 토큰이 유효한지 확인하므로,
      * 이 헬퍼도 짝이 되는 토큰 행을 함께 만들어야 "토큰이 유효하지 않다"는 이유로 발송이
      * 조용히 건너뛰어지는 것을 막을 수 있다.
      */
@@ -166,7 +166,7 @@ class OutboxMailTransactionTest {
     }
 
     @Test
-    @DisplayName("F08: 발송이 실패하면 원인을 남기고, 다음 재시도 시각(backoff) 전에는 다시 집지 않는다")
+    @DisplayName("발송이 실패하면 원인을 남기고, 다음 재시도 시각(backoff) 전에는 다시 집지 않는다")
     void failedSendIsRetriedOnlyAfterBackoff() {
         willThrow(new RuntimeException("메일 서버가 응답하지 않습니다"))
                 .given(emailSender).send(anyString(), anyString(), anyString());
@@ -192,14 +192,14 @@ class OutboxMailTransactionTest {
     }
 
     /**
-     * O07: 실제 SMTP 실패(MailSendException 등)는 종종 수신자 주소를 메시지 안에 그대로
+     * 실제 SMTP 실패(MailSendException 등)는 종종 수신자 주소를 메시지 안에 그대로
      * 담는다("Failed messages: ...: user@example.com: 550 ..." 꼴). {@code OutboxMailWorker.send}는
      * 그 메시지를 그대로 {@code log.warn(..., e)}에 넘기고 {@code lastError}에도 그대로 저장했다 —
      * 다른 곳(GuestVerificationSweeper 등)은 이미 EmailMasker로 가리는데 여기만 빠져 있었다.
      * 로그·DB 어느 쪽에도 원문 주소가 남지 않는지 실제로 예외를 던져서 확인한다.
      */
     @Test
-    @DisplayName("O07: 발송 실패 메시지에 수신자 주소가 그대로 있어도 로그·lastError에는 가려서 남는다")
+    @DisplayName("발송 실패 메시지에 수신자 주소가 그대로 있어도 로그·lastError에는 가려서 남는다")
     void failureMessageContainingRecipientAddress_isMaskedInLogAndLastError() {
         String rawEmail = user.getEmail();
         willThrow(new RuntimeException("Failed messages: " + rawEmail + ": 550 mailbox not found"))
@@ -256,7 +256,7 @@ class OutboxMailTransactionTest {
     }
 
     @Test
-    @DisplayName("F08: 발송 직전 인증 토큰이 재발급으로 사라졌으면 보내지 않고 즉시 FAILED로 남긴다")
+    @DisplayName("발송 직전 인증 토큰이 재발급으로 사라졌으면 보내지 않고 즉시 FAILED로 남긴다")
     void skipsSendWhenTokenNoLongerValid() {
         queueOne();
         tokenRepository.deleteAll();
@@ -271,7 +271,7 @@ class OutboxMailTransactionTest {
     }
 
     @Test
-    @DisplayName("F08: 한 배치의 동시 발송 수는 max-concurrent-sends를 넘지 않는다")
+    @DisplayName("한 배치의 동시 발송 수는 max-concurrent-sends를 넘지 않는다")
     void drain_limitsConcurrentSendsToConfiguredMaximum() throws InterruptedException {
         int total = 12;
         int maxConcurrent = (int) ReflectionTestUtils.getField(outboxMailWorker, "maxConcurrentSends");
@@ -296,7 +296,7 @@ class OutboxMailTransactionTest {
     }
 
     @Test
-    @DisplayName("B04: drain 두 번이 겹쳐도 전체 동시 발송 수는 max-concurrent-sends를 넘지 않는다")
+    @DisplayName("drain 두 번이 겹쳐도 전체 동시 발송 수는 max-concurrent-sends를 넘지 않는다")
     void concurrentDrainCalls_shareTheSameConcurrencyLimit() throws InterruptedException {
         int perBatch = 8;
         int maxConcurrent = (int) ReflectionTestUtils.getField(outboxMailWorker, "maxConcurrentSends");
@@ -371,7 +371,7 @@ class OutboxMailTransactionTest {
     }
 
     @Test
-    @DisplayName("B05: 발송 직전 토큰이 만료되었지만 아직 purge되지 않았으면 보내지 않고 FAILED로 남긴다")
+    @DisplayName("발송 직전 토큰이 만료되었지만 아직 purge되지 않았으면 보내지 않고 FAILED로 남긴다")
     void skipsSendWhenTokenExpiredButNotYetPurged() {
         queueOne();
         Long tokenId = tokenRepository.findAll().get(0).getId();
@@ -388,7 +388,7 @@ class OutboxMailTransactionTest {
     }
 
     @Test
-    @DisplayName("B05: 정체로 재큐잉되어 소유권이 넘어간 뒤에는, 원래 워커의 뒤늦은 발송 결과가 새 소유자의 처리를 덮지 않는다")
+    @DisplayName("정체로 재큐잉되어 소유권이 넘어간 뒤에는, 원래 워커의 뒤늦은 발송 결과가 새 소유자의 처리를 덮지 않는다")
     void staleOwnerCannotOverwriteResultAfterRequeue() {
         queueOne();
         List<Long> claimedByOldOwner = outboxMailStore.claimBatch(10, "old-owner");
@@ -418,7 +418,7 @@ class OutboxMailTransactionTest {
     }
 
     /**
-     * COR-03 회귀: 예전에는 {@code OutboxMailWorker}가 인스턴스 생성 시점에 만든 토큰 하나를
+     * 회귀: 예전에는 {@code OutboxMailWorker}가 인스턴스 생성 시점에 만든 토큰 하나를
      * 모든 {@code drain()} 호출이 공유했다. 그러면 재큐잉으로 소유권이 비워진 행을 <b>같은
      * 워커 인스턴스</b>가 다시 집었을 때 새 시도도 예전과 똑같은 토큰을 쓰게 되어,
      * {@link #staleOwnerCannotOverwriteResultAfterRequeue}가 검증하는 "다른 소유자"라는
@@ -426,7 +426,7 @@ class OutboxMailTransactionTest {
      * UUID를 만드는지 직접 확인한다.
      */
     @Test
-    @DisplayName("COR-03: drain()을 두 번 부르면 서로 다른 임대 토큰을 쓴다")
+    @DisplayName("drain()을 두 번 부르면 서로 다른 임대 토큰을 쓴다")
     void drain_usesAFreshOwnerTokenOnEveryCall() {
         queueOne();
         outboxMailWorker.drain();
@@ -456,7 +456,7 @@ class OutboxMailTransactionTest {
     }
 
     @Test
-    @DisplayName("B10: 정체된 메일이 한 배치를 꽉 채우면 다음 배치를 이어서 처리한다")
+    @DisplayName("정체된 메일이 한 배치를 꽉 채우면 다음 배치를 이어서 처리한다")
     void requeueStuck_whenBacklogFillsABatch_continuesToNextBatch() {
         int batchSize = StuckRequeue.BATCH_SIZE;
         int total = batchSize + 1;
@@ -499,7 +499,7 @@ class OutboxMailTransactionTest {
     }
 
     @Test
-    @DisplayName("F01: 커밋 전인 선점은 다른 선점 시도가 같은 행을 집지 못하게 막는다")
+    @DisplayName("커밋 전인 선점은 다른 선점 시도가 같은 행을 집지 못하게 막는다")
     void claimBatch_holdsRowLockUntilCommit_soConcurrentClaimSkipsLockedRows() {
         for (int i = 0; i < 3; i++) {
             queueOne();
@@ -524,7 +524,7 @@ class OutboxMailTransactionTest {
     }
 
     @Test
-    @DisplayName("F08: enabled=false면 drain이 아무 것도 집지 않는다")
+    @DisplayName("enabled=false면 drain이 아무 것도 집지 않는다")
     void whenDisabled_drainDoesNothing() {
         queueOne();
         ReflectionTestUtils.setField(outboxMailWorker, "enabled", false);
@@ -538,7 +538,7 @@ class OutboxMailTransactionTest {
     }
 
     @Test
-    @DisplayName("F08: 보관 기한이 지난 SENT/FAILED만 정리하고 PENDING·최근 건은 남긴다")
+    @DisplayName("보관 기한이 지난 SENT/FAILED만 정리하고 PENDING·최근 건은 남긴다")
     void deleteOldTerminal_removesOnlyStaleTerminalMails() {
         queueOne(); // PENDING, 최근
         Long staleSentId = enqueueAndMarkSent();

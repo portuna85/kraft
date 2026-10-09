@@ -10,11 +10,11 @@
     <th:block th:fragment="content">
         <h1 class="page-title">이메일 인증</h1>
         <div class="card-kraft">
-            <!-- GET은 토큰을 소비하지 않는다(전체 리뷰 2026-09-26 A-FE-04) — 메일 보안
+            <!-- GET은 토큰을 소비하지 않는다 — 메일 보안
                  스캐너·미리보기가 이 화면을 대신 열어도 인증이 끝나지 않는다. 실제 소비는
                  사용자가 이 버튼을 눌러야만 일어나는 POST에서 한 번만 한다. -->
             <p>아래 버튼을 눌러 이메일 인증을 완료해 주세요.</p>
-            <!-- 새 메일의 토큰은 URL 프래그먼트(#token=)로 와서 서버가 볼 수 없다(BE-04).
+            <!-- 새 메일의 토큰은 URL 프래그먼트(#token=)로 와서 서버가 볼 수 없다.
                  features/verify-confirm.js가 읽어 아래 hidden input을 채운다. 옛 ?token= 링크는
                  서버가 이미 값을 채워 렌더한다. -->
             <form id="verify-confirm-form" th:action="@{/users/verify}" method="post">

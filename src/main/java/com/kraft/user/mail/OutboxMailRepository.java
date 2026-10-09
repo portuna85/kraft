@@ -46,7 +46,7 @@ public interface OutboxMailRepository extends JpaRepository<OutboxMail, Long> {
                           @Param("ownerToken") String ownerToken);
 
     /**
-     * 지금도 이 {@code ownerToken}이 소유한 SENDING 행일 때만 값을 꺼낸다(B05). 정체
+     * 지금도 이 {@code ownerToken}이 소유한 SENDING 행일 때만 값을 꺼낸다. 정체
      * 재큐잉이 소유권을 비운 뒤에는 원래 워커가 이 id로 조회해도 빈 값을 받는다.
      */
     Optional<OutboxMail> findByIdAndOwnerTokenAndStatus(Long id, String ownerToken, OutboxMailStatus status);
@@ -76,7 +76,7 @@ public interface OutboxMailRepository extends JpaRepository<OutboxMail, Long> {
     /**
      * SENDING인 채로 오래 남은 것을 다시 집을 수 있게 한다. 발송 도중 프로세스가 죽으면
      * 그 메일은 영영 PENDING으로 돌아오지 못한다. 적체 전체가 아니라 {@code pageable}만큼만
-     * 가져온다(B10) — 호출하는 쪽({@code OutboxMailStore.requeueStuck})이 여러 번 나눠 부른다.
+     * 가져온다 — 호출하는 쪽({@code OutboxMailStore.requeueStuck})이 여러 번 나눠 부른다.
      * <p>
      * 비관적 쓰기 잠금을 잡아 {@link #findSendingByIdAndOwnerTokenForUpdate}(markSent/
      * markFailed 전용)와 서로 배타적으로 돈다 — 마침 발송 결과를 반영하는

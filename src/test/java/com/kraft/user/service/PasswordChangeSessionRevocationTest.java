@@ -40,7 +40,7 @@ class PasswordChangeSessionRevocationTest {
 
     // 세션 테이블(SPRING_SESSION)은 테스트 클래스끼리 공유하는 H2에 있다. 다른 테스트가 남긴
     // 세션이 principal 이름으로 섞이지 않도록 이 클래스 전용 이메일을 쓰고, 매번 비우고 시작한다.
-    // principal 이름은 이제 회원 id다(BE-04) — userId는 setUp에서 계정을 만든 뒤에만 알 수
+    // principal 이름은 이제 회원 id다 — userId는 setUp에서 계정을 만든 뒤에만 알 수
     // 있으므로, 세션 정리는 매번 만든 계정의 id를 조회해서 한다.
     private static final String EMAIL = "password-change@example.com";
     private static final String PASSWORD = "Password123!";
@@ -91,7 +91,7 @@ class PasswordChangeSessionRevocationTest {
     }
 
     @Test
-    @DisplayName("F04: 비밀번호를 바꾸면 변경에 쓴 그 세션으로 더는 글을 쓸 수 없다")
+    @DisplayName("비밀번호를 바꾸면 변경에 쓴 그 세션으로 더는 글을 쓸 수 없다")
     void changePassword_revokesTheSessionUsedForTheChange() throws Exception {
         Cookie session = login();
 
@@ -109,7 +109,7 @@ class PasswordChangeSessionRevocationTest {
     }
 
     @Test
-    @DisplayName("F04: 다른 기기의 세션도 함께 폐기된다")
+    @DisplayName("다른 기기의 세션도 함께 폐기된다")
     void changePassword_revokesSessionsOnOtherDevices() throws Exception {
         Cookie phone = login();
         Cookie laptop = login();
@@ -127,7 +127,7 @@ class PasswordChangeSessionRevocationTest {
     }
 
     @Test
-    @DisplayName("F04: 현재 비밀번호가 틀려 변경이 실패하면 세션은 그대로 유지된다")
+    @DisplayName("현재 비밀번호가 틀려 변경이 실패하면 세션은 그대로 유지된다")
     void changePassword_whenCurrentPasswordIsWrong_keepsSession() throws Exception {
         Cookie session = login();
 
@@ -142,7 +142,7 @@ class PasswordChangeSessionRevocationTest {
     }
 
     @Test
-    @DisplayName("F04: 새 비밀번호로 다시 로그인하면 정상적으로 쓸 수 있다")
+    @DisplayName("새 비밀번호로 다시 로그인하면 정상적으로 쓸 수 있다")
     void changePassword_allowsLoginWithNewPassword() throws Exception {
         Cookie session = login();
 

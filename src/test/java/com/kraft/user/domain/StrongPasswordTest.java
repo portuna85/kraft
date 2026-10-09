@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** 세 DTO가 공유하는 비밀번호 형식 제약(BE-32). */
+/** 세 DTO가 공유하는 비밀번호 형식 제약. */
 class StrongPasswordTest {
 
     private record Plain(@StrongPassword String password) {

@@ -23,7 +23,7 @@ const props = defineProps({
     maxlength: { type: Number, default: POST.CONTENT_MAX_LENGTH },
     placeholder: { type: String, default: '' },
     // 서버 검증 오류가 이 필드를 가리킬 때 부모가 넘긴다. 예전에는 aria-invalid를 attr로
-    // 넘겨 루트 div에 붙었다(FE-01) — textarea에 직접 걸리도록 명시적인 prop으로 받는다.
+    // 넘겨 루트 div에 붙었다 — textarea에 직접 걸리도록 명시적인 prop으로 받는다.
     invalid: { type: Boolean, default: false },
     // 오류 메시지 요소의 id. 서식 도움말(hintId)과 함께 aria-describedby에 합쳐진다.
     describedby: { type: String, default: undefined },
@@ -111,7 +111,7 @@ function onInvalid() {
     });
 }
 
-// 서버 검증 오류(A-FE-08)가 이 필드를 가리킬 때 부모가 포커스를 옮길 수 있게 한다 —
+// 서버 검증 오류가 이 필드를 가리킬 때 부모가 포커스를 옮길 수 있게 한다 —
 // onInvalid와 같은 이유로 먼저 작성 모드로 돌아와야 실제로 보이는 textarea에 포커스가 간다.
 defineExpose({
     focus() {
@@ -187,7 +187,7 @@ defineExpose({
       @keydown="onTextareaKeydown"
       @invalid="onInvalid"
     />
-    <!-- v-show가 아니라 v-if다(FE-23) — 숨겨 둔 채로도 키 입력마다 parseMarkdown이 돌았다. 미리보기를
+    <!-- v-show가 아니라 v-if다 — 숨겨 둔 채로도 키 입력마다 parseMarkdown이 돌았다. 미리보기를
          켤 때만 렌더링(=파싱)한다. -->
     <div
       v-if="mode === 'preview'"

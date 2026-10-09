@@ -24,11 +24,11 @@ import org.springframework.security.core.Authentication;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 게시글 상세 조회({@link PostQueryService#findByIdForView})가 SQL을 몇 번 내는지 고정한다(BE-05).
+ * 게시글 상세 조회({@link PostQueryService#findByIdForView})가 SQL을 몇 번 내는지 고정한다.
  * <p>
  * 예전에는 조회수 UPDATE, 게시글, 작성자(지연 로딩), 추천 exists, 추천 count가 따로 나갔다.
  * 지금은 조회수 UPDATE, 게시글+작성자(JOIN FETCH), 추천 집계 — 3개다. 누가 이 경로에 쿼리를
- * 다시 끼워 넣으면 여기서 숫자로 드러난다. 홈의 최근 글(BE-06)은 COUNT 없이 1개(+댓글 수 1개)다.
+ * 다시 끼워 넣으면 여기서 숫자로 드러난다. 홈의 최근 글은 COUNT 없이 1개(+댓글 수 1개)다.
  */
 @SpringBootTest(properties = "spring.jpa.properties.hibernate.generate_statistics=true")
 class PostDetailQueryCountTest {
@@ -81,7 +81,7 @@ class PostDetailQueryCountTest {
     }
 
     @Test
-    @DisplayName("BE-05: 로그인 사용자의 상세 조회는 SQL 3개(조회수 UPDATE, 게시글+작성자, 추천 집계)다")
+    @DisplayName("로그인 사용자의 상세 조회는 SQL 3개(조회수 UPDATE, 게시글+작성자, 추천 집계)다")
     void detailForLoggedInUser_usesThreeStatements() {
         Authentication auth = TestAuthentication.of(viewer);
         statistics.clear();
@@ -96,7 +96,7 @@ class PostDetailQueryCountTest {
     }
 
     @Test
-    @DisplayName("BE-05: 익명 상세 조회도 SQL 3개이고 likedByMe는 false다")
+    @DisplayName("익명 상세 조회도 SQL 3개이고 likedByMe는 false다")
     void detailForAnonymous_usesThreeStatements() {
         statistics.clear();
 
@@ -108,7 +108,7 @@ class PostDetailQueryCountTest {
     }
 
     @Test
-    @DisplayName("BE-05: 내가 누르지 않은 글이면 likedByMe는 false다")
+    @DisplayName("내가 누르지 않은 글이면 likedByMe는 false다")
     void likedByMe_isFalseWhenNotLikedByViewer() {
         User stranger = userRepository.save(User.builder()
                 .name("stranger").email("stranger@example.com").password("encoded").role(Role.USER).build());

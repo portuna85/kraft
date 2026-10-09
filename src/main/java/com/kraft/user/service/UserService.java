@@ -57,22 +57,22 @@ public class UserService {
     private final OutboxMailRepository outboxMailRepository;
     private final OutboxMailStore outboxMailStore;
     private final OutboxMailWorker outboxMailWorker;
-    /** 해시 계산을 끝낸 뒤 짧은 쓰기 트랜잭션만 여는 데 쓴다(BE-09). */
+    /** 해시 계산을 끝낸 뒤 짧은 쓰기 트랜잭션만 여는 데 쓴다. */
     private final TransactionTemplate transactionTemplate;
 
     /**
      * @return 새로 계정을 만들었으면 {@code true}. 이미 가입된 이메일이면 {@code false}를
-     * 돌려주지만, 호출한 쪽(컨트롤러)은 이 값과 무관하게 <b>같은 응답</b>을 내려야 한다(A-SEC-01) —
+     * 돌려주지만, 호출한 쪽(컨트롤러)은 이 값과 무관하게 <b>같은 응답</b>을 내려야 한다 —
      * 응답이 갈리면 그 자체로 이메일 가입 여부를 확인하는 도구가 된다({@code PasswordResetService}가
      * 항상 204를 주는 것과 같은 이유).
      * <p>
-     * BCrypt 해시(약 100ms)는 트랜잭션 밖에서 계산한다(BE-09) — 그동안 DB 커넥션을 쥐고 있지 않게
+     * BCrypt 해시(약 100ms)는 트랜잭션 밖에서 계산한다 — 그동안 DB 커넥션을 쥐고 있지 않게
      * 하려는 것이다. 그래서 이 메서드 자체는 트랜잭션 없이 실행하고, 쓰기만 짧은 트랜잭션으로 묶는다.
      */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public boolean signUp(String name, String email, String rawPassword) {
         // 대소문자·앞뒤 공백만 다른 이메일이 별개 계정으로 가입되지 않도록 정규화부터
-        // 한다(BE-06) — 이후의 해시·저장이 전부 이 값을 쓴다.
+        // 한다 — 이후의 해시·저장이 전부 이 값을 쓴다.
         email = EmailPolicy.normalize(email);
         if (name != null && name.strip().startsWith(WITHDRAWN_NAME_PREFIX)) {
             throw new BusinessValidationException("사용할 수 없는 이름입니다. '" + WITHDRAWN_NAME_PREFIX + "'로 시작하는 이름은 탈퇴한 계정 표시에 쓰입니다.");
@@ -124,7 +124,7 @@ public class UserService {
      * 회원정보 변경은 비밀번호 변경만 가능하다는 기획 의도(User.java 클래스 주석)에 따라,
      * 반드시 현재 비밀번호를 확인한 뒤에만 새 비밀번호로 바꾼다.
      * <p>
-     * 세션 principal은 이미 불변 회원 id다(BE-04, A-QA-03) — 호출한 쪽(컨트롤러)이
+     * 세션 principal은 이미 불변 회원 id다 — 호출한 쪽(컨트롤러)이
      * {@code CurrentUser}로 이미 찾아 둔 회원의 id를 그대로 넘긴다. 예전에는 여기서 이메일을
      * 다시 정규화·해시해 같은 회원을 한 번 더 찾았는데, 컨트롤러가 이미 복호화한 이메일을
      * 다시 암호화 컬럼 조회 경로로 되돌리는 낭비였다.
@@ -148,7 +148,7 @@ public class UserService {
     }
 
     /**
-     * 현재 비밀번호를 확인하고, 확인에 쓴 저장 해시를 돌려준다. 읽기와 BCrypt 비교는 트랜잭션 밖이다(BE-09) —
+     * 현재 비밀번호를 확인하고, 확인에 쓴 저장 해시를 돌려준다. 읽기와 BCrypt 비교는 트랜잭션 밖이다 —
      * 쓰기 트랜잭션에서 {@link #reloadIfUnchanged}가 이 해시가 그대로인지 다시 확인한다.
      */
     private String verifiedPasswordHash(Long userId, String currentPassword) {
@@ -190,7 +190,7 @@ public class UserService {
 
     /**
      * 새 비밀번호를 검증하고 해시한다. BCrypt(약 100ms)를 트랜잭션 밖에서 계산하려는 호출자
-     * (재설정 서비스)가 쓴다(BE-09) — 그동안 DB 커넥션을 쥐고 있지 않게 하려고 트랜잭션 없이 실행한다.
+     * (재설정 서비스)가 쓴다 — 그동안 DB 커넥션을 쥐고 있지 않게 하려고 트랜잭션 없이 실행한다.
      */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public String encodeNewPassword(String newPassword) {
@@ -222,7 +222,7 @@ public class UserService {
      * 남아 있던 링크들은 함께 지운다 — 없는 계정으로 가는 메일이고, 지우지 않으면 탈퇴 후에도
      * 옛 링크로 무언가 할 수 있는 길이 남는다.
      * <p>
-     * 세션 principal은 이미 불변 회원 id다(BE-04, A-QA-03) — {@link #changePassword}와 같은
+     * 세션 principal은 이미 불변 회원 id다 — {@link #changePassword}와 같은
      * 이유로 이메일이 아니라 id를 받는다.
      */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -246,7 +246,7 @@ public class UserService {
 
     /**
      * 탈퇴 표시 이름. 기본은 "탈퇴한 사용자{id}"다. 예약어 제한이 생기기 전에 가입한 다른 계정이
-     * 그 이름을 이미 쓰고 있으면(F10) 짧은 무작위 접미사를 붙인다 — 새 가입만 막고 기존 충돌
+     * 그 이름을 이미 쓰고 있으면 짧은 무작위 접미사를 붙인다 — 새 가입만 막고 기존 충돌
      * 데이터를 그대로 두면 그 회원은 영영 탈퇴할 수 없다.
      */
     private String replacementName(Long userId) {
@@ -254,7 +254,7 @@ public class UserService {
         return firstUnused(base, candidate -> userRepository.existsByName(candidate), suffix -> base + "-" + suffix);
     }
 
-    /** 탈퇴 대체 이메일. 이름과 같은 이유로 충돌하면 접미사를 붙인다(F10). */
+    /** 탈퇴 대체 이메일. 이름과 같은 이유로 충돌하면 접미사를 붙인다. */
     private String replacementEmail(Long userId) {
         String local = "withdrawn-" + userId;
         return firstUnused(local + WITHDRAWN_EMAIL_DOMAIN,
@@ -301,7 +301,7 @@ public class UserService {
 
     /**
      * 세션 폐기를 영속 태스크로 남기고(같은 트랜잭션에서 커밋), 커밋 직후 곧바로 한 번 처리를
-     * 시도한다(B06). 예전에는 {@code AfterCommit}에서 즉시 폐기만 시도하고 실패하면 그냥
+     * 시도한다. 예전에는 {@code AfterCommit}에서 즉시 폐기만 시도하고 실패하면 그냥
      * 로그로만 남겼다 — 세션 저장소 장애나 그 직후 프로세스 종료로 폐기가 유실되면 복구할
      * 방법이 없었다. 태스크가 DB에 남아 있으므로 실패해도 {@link SessionRevocationWorker}의
      * 주기 작업이 최종적으로 완수한다.

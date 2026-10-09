@@ -14,11 +14,11 @@ public interface PostImageRepository extends JpaRepository<PostImage, Long> {
 
     Optional<PostImage> findByFileName(String fileName);
 
-    /** 관측용 집계(O03) — 삭제 예약됐지만 아직 실제로 지우지 못한 파일 수(정리 주기의 backlog). */
+    /** 관측용 집계 — 삭제 예약됐지만 아직 실제로 지우지 못한 파일 수(정리 주기의 backlog). */
     long countByStatus(PostImageStatus status);
 
     /**
-     * 후보 파일명 중 실제로 대장에 있는 것만 돌려준다(B11). {@code OrphanFileReconciler}가
+     * 후보 파일명 중 실제로 대장에 있는 것만 돌려준다. {@code OrphanFileReconciler}가
      * 파일마다 따로 존재 여부를 묻지 않고 청크 단위로 이 메서드를 한 번씩만 불러, 파일 수만큼
      * 쿼리가 늘지 않게 한다.
      */
@@ -30,7 +30,7 @@ public interface PostImageRepository extends JpaRepository<PostImage, Long> {
     List<PostImage> findAllByIdInAndStatus(List<Long> ids, PostImageStatus status);
 
     /**
-     * id 커서 방식 배치 조회(B06, B10). 대상 전체가 아니라 {@code pageable}만큼만 가져오고, 호출하는
+     * id 커서 방식 배치 조회. 대상 전체가 아니라 {@code pageable}만큼만 가져오고, 호출하는
      * 쪽({@code PostImageCleanupBatchRunner})이 여러 번 나눠 부른다. 매 배치를 같은 페이지(0)로
      * 다시 부르면 계속 실패해 상태가 그대로인 행이 항상 맨 앞에 걸려 뒤쪽의 정상 행이 한 주기
      * (최대 25배치) 동안 전혀 처리되지 못할 수 있다. id가 이전 배치의 마지막 id보다 큰 것만
@@ -38,7 +38,7 @@ public interface PostImageRepository extends JpaRepository<PostImage, Long> {
      */
     List<PostImage> findAllByStatusAndIdGreaterThanOrderByIdAsc(PostImageStatus status, Long id, Pageable pageable);
 
-    /** {@link #findAllByStatusAndIdGreaterThanOrderByIdAsc}와 같은 이유로 ORPHAN 정리에도 커서를 쓴다(B06). */
+    /** {@link #findAllByStatusAndIdGreaterThanOrderByIdAsc}와 같은 이유로 ORPHAN 정리에도 커서를 쓴다. */
     List<PostImage> findAllByStatusAndCreatedAtBeforeAndIdGreaterThanOrderByIdAsc(
             PostImageStatus status, LocalDateTime threshold, Long id, Pageable pageable);
 
@@ -54,7 +54,7 @@ public interface PostImageRepository extends JpaRepository<PostImage, Long> {
     long sumSizeBytesByOwnerId(@Param("ownerId") Long ownerId);
 
     /**
-     * 만료된 ORPHAN 이미지를 파일 삭제 전에 조건부로 선점한다(B01). 정리 작업이 대상을 조회한
+     * 만료된 ORPHAN 이미지를 파일 삭제 전에 조건부로 선점한다. 정리 작업이 대상을 조회한
      * 뒤에도 다른 트랜잭션이 그 사이 게시글에 연결(ATTACHED로 전이)했을 수 있으므로, 파일을
      * 실제로 지우기 전에 "지금도 여전히 ORPHAN인가"를 이 원자적 UPDATE로 다시 확인한다.
      * 반환값이 0이면 이미 상태가 바뀐 것이므로 그 이미지는 건드리지 않고 건너뛴다.

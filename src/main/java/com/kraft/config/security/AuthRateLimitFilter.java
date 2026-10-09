@@ -74,7 +74,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         if (LOGIN_PATH.equals(path)) {
             boolean ipOk = loginIpLimiter.tryAcquire(ip);
             boolean accountOk = true;
-            // IP 제한에 이미 걸렸으면 계정 리미터는 건드리지 않는다(BE-02) — 그렇지 않으면
+            // IP 제한에 이미 걸렸으면 계정 리미터는 건드리지 않는다 — 그렇지 않으면
             // 클라이언트가 매 요청 다른 username을 보내는 것만으로 계정 리미터의 맵을
             // 무제한으로 키운 뒤 IP 창이 풀리는 순간 쌓아 둔 이름 중 아무거나로 재시도할 수 있다.
             if (ipOk) {
@@ -124,7 +124,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         response.getWriter().write(objectMapper.writeValueAsString(problem));
     }
 
-    /** 다섯 제한기의 상태를 모두 처음으로 되돌린다. 테스트가 메서드 사이에 카운터를 남기지 않게 한다(OPS-10). */
+    /** 다섯 제한기의 상태를 모두 처음으로 되돌린다. 테스트가 메서드 사이에 카운터를 남기지 않게 한다. */
     public void reset() {
         loginIpLimiter.reset();
         loginAccountLimiter.reset();

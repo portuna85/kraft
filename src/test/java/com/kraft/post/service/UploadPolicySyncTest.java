@@ -43,7 +43,7 @@ class UploadPolicySyncTest {
     }
 
     @Test
-    @DisplayName("본문 최대 길이가 화면과 서버에서 같다(FE-19)")
+    @DisplayName("본문 최대 길이가 화면과 서버에서 같다")
     void postContentMaxLengthMatches() throws IOException {
         int js = Integer.parseInt(captureOf(JS_CONSTANTS, "CONTENT_MAX_LENGTH:\\s*([\\d_]+)").replace("_", ""));
 
@@ -75,7 +75,7 @@ class UploadPolicySyncTest {
     }
 
     /**
-     * 화면 문구에 적힌 "최대 NMB"·허용 형식이 실제 제한과 같다(FE-18). 문구는 Thymeleaf 안내(홈·게시판)와
+     * 화면 문구에 적힌 "최대 NMB"·허용 형식이 실제 제한과 같다. 문구는 Thymeleaf 안내(홈·게시판)와
      * 폼 도움말·오류 메시지(constants.js)에 있어 값이 바뀌면 문구만 낡기 쉽다.
      */
     @Test

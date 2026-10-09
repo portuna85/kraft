@@ -3,7 +3,7 @@
 /**
  * fetch `Response`를 해석해 `ApiError`로 분류하는 순수 로직. `http.js`가 모듈 로드 시점에
  * DOM(`document`)을 건드리는 것과 달리 이 파일은 순수하다 — `node --test`로 직접
- * 단위 테스트할 수 있게 일부러 분리했다(A-QA-08).
+ * 단위 테스트할 수 있게 일부러 분리했다.
  */
 
 const LOGIN_REQUIRED = '로그인이 필요합니다. 다시 로그인해 주세요.';

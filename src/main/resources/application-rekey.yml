@@ -49,25 +49,24 @@ app:
   mail:
     enabled: false
     # 발송 자체와 별개로 outbox_mails 보관기간 정리는 enabled 플래그와 무관하게 항상 돈다
-    # (OutboxMailWorker.cleanupOldTerminal, OBS-05). "무관한 스케줄러를 한 실행에 섞지
-    # 않는다"는 이 파일의 원칙을 지키려면 이 창에서는 이것도 따로 꺼야 한다(전체 리뷰
-    # 2026-09-26 OPS-02).
+    # (OutboxMailWorker.cleanupOldTerminal). "무관한 스케줄러를 한 실행에 섞지
+    # 않는다"는 이 파일의 원칙을 지키려면 이 창에서는 이것도 따로 꺼야 한다.
     retention-enabled: false
   upload:
     cleanup-enabled: false
     reconcile-enabled: false
   metrics:
     enabled: false
-  # GuestVerificationSweeper는 User 엔티티를 읽으면서 email을 즉시 복호화한다(O07) — 아직
+  # GuestVerificationSweeper는 User 엔티티를 읽으면서 email을 즉시 복호화한다 — 아직
   # 옛 키로 남은 GUEST 행이 섞이면 rekeyAll이 미처 돌기 전에 복호화 실패로 멈출 수 있다.
-  # SessionRevocationWorker도 같은 이유로 끈다(O02) — 키 교체 창에서 계정 상태가 바뀌는 중에
+  # SessionRevocationWorker도 같은 이유로 끈다 — 키 교체 창에서 계정 상태가 바뀌는 중에
   # 세션 폐기 태스크가 끼어들 이유가 없다. 이 워커는 다음 평소 기동부터 다시 켜진다.
   verification:
     sweep-enabled: false
     purge-enabled: false
   session-revocation:
     enabled: false
-    # cleanupOldTerminal도 enabled와 무관하게 항상 돈다(SessionRevocationWorker, OBS-05).
+    # cleanupOldTerminal도 enabled와 무관하게 항상 돈다(SessionRevocationWorker).
     # 그 자체로 위험하지는 않지만(상태·시각 기준 bulk delete다), 무관한 스케줄러를 한 실행에
     # 섞지 않는다는 원칙대로 이 창에서는 끈다.
     retention-enabled: false

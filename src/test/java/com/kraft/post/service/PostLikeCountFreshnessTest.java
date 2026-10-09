@@ -21,7 +21,7 @@ import com.kraft.support.MariaDbIntegrationTest;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * B09: {@code setLike}를 감싼 트랜잭션이 REQUIRES_NEW로 커밋되는 추천 INSERT보다 먼저
+ * {@code setLike}를 감싼 트랜잭션이 REQUIRES_NEW로 커밋되는 추천 INSERT보다 먼저
  * REPEATABLE READ 스냅샷을 잡아 두어도, 최종 응답의 {@code likeCount}가 방금 커밋된 추천을
  * 반영하는지 실제 MariaDB로 확인한다. H2는 기본 격리 수준이 달라 이 경쟁을 재현하지 못한다.
  * Docker가 없으면 건너뛴다.
@@ -61,7 +61,7 @@ class PostLikeCountFreshnessTest extends MariaDbIntegrationTest {
     }
 
     @Test
-    @DisplayName("B09: 바깥 트랜잭션이 미리 스냅샷을 잡아 두어도 최종 추천 수는 방금 커밋된 추천을 반영한다")
+    @DisplayName("바깥 트랜잭션이 미리 스냅샷을 잡아 두어도 최종 추천 수는 방금 커밋된 추천을 반영한다")
     void setLike_reflectsJustCommittedLike_evenWhenOuterSnapshotIsEarlier() {
         Long postId = post.getId();
 
@@ -79,14 +79,14 @@ class PostLikeCountFreshnessTest extends MariaDbIntegrationTest {
     }
 
     /**
-     * B09 회귀: {@code PostLikeWriter.delete}를 REQUIRES_NEW로 만들기 전에는, setLike를 감싼
+     * 회귀: {@code PostLikeWriter.delete}를 REQUIRES_NEW로 만들기 전에는, setLike를 감싼
      * 바깥 트랜잭션 안에서 직접 지웠다 — 그 트랜잭션이 아직 커밋 전인 상태에서
      * {@code countByPostId}(REQUIRES_NEW, 별도 트랜잭션)가 그 삭제를 보지 못해, 추천을
      * 취소해도 응답의 likeCount가 그대로 1로 남았다. E2E("추천을 눌렀다 다시 누르면
      * 원래대로 돌아온다")가 실제로 이 순서로 실패해 드러났다.
      */
     @Test
-    @DisplayName("B09 회귀: 추천을 취소하면 최종 추천 수는 그 삭제를 즉시 반영한다")
+    @DisplayName("회귀: 추천을 취소하면 최종 추천 수는 그 삭제를 즉시 반영한다")
     void setLike_toFalse_reflectsTheDeleteImmediately() {
         Long postId = post.getId();
         postService.setLike(postId, true, liker);

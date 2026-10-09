@@ -17,7 +17,7 @@ class OutboxMailLinkTest {
     }
 
     @Test
-    @DisplayName("이메일 인증 링크는 토큰을 쿼리 문자열이 아니라 프래그먼트에 싣는다(BE-04)")
+    @DisplayName("이메일 인증 링크는 토큰을 쿼리 문자열이 아니라 프래그먼트에 싣는다")
     void verifyEmail_putsTokenInFragment() {
         String body = body(OutboxMailKind.VERIFY_EMAIL, "abc123");
 
@@ -26,7 +26,7 @@ class OutboxMailLinkTest {
     }
 
     @Test
-    @DisplayName("비밀번호 재설정 링크도 프래그먼트를 쓴다(A-SEC-11)")
+    @DisplayName("비밀번호 재설정 링크도 프래그먼트를 쓴다")
     void passwordReset_putsTokenInFragment() {
         assertThat(body(OutboxMailKind.PASSWORD_RESET, "abc123"))
                 .contains("https://kraft.example/users/password-reset#token=abc123");

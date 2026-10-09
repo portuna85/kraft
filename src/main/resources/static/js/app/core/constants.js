@@ -50,13 +50,13 @@ export const API = {
 
 /**
  * 가입·비밀번호 변경·재설정 세 DTO(SignUpRequestDto, ChangePasswordRequestDto,
- * PasswordResetConfirmDto)가 공통으로 쓰는 @Size(min=8, max=72)와 맞춘 값이다(F05). 여기서는
+ * PasswordResetConfirmDto)가 공통으로 쓰는 @Size(min=8, max=72)와 맞춘 값이다. 여기서는
  * 왕복을 줄이는 편의일 뿐이고, 실제 바이트 기준 판정은 서버의 PasswordBytePolicy가 최종
  * 결정한다 — 문자 수 72와 UTF-8 바이트 수 72는 다르다(한글 1자=3바이트).
  */
 export const POST = {
     /**
-     * 본문 최대 길이. 서버의 ContentPolicy.POST_CONTENT_MAX_LENGTH와 맞춘 값이다(FE-19) — textarea의
+     * 본문 최대 길이. 서버의 ContentPolicy.POST_CONTENT_MAX_LENGTH와 맞춘 값이다 — textarea의
      * maxlength와 마크다운 툴바의 자르기가 모두 이 값 하나를 쓴다. 한쪽만 고치면
      * UploadPolicySyncTest가 실패한다.
      */

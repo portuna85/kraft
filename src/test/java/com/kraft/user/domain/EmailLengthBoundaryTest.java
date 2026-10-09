@@ -74,7 +74,7 @@ class EmailLengthBoundaryTest {
     }
 
     @Test
-    @DisplayName("F07: 정책 상한 길이의 이메일은 가입·로그인·세션 저장·글쓰기까지 전부 동작한다")
+    @DisplayName("정책 상한 길이의 이메일은 가입·로그인·세션 저장·글쓰기까지 전부 동작한다")
     void maxLengthEmail_worksThroughSignupLoginAndSession() throws Exception {
         String email = emailOfLength(EmailPolicy.MAX_LENGTH);
         assertThat(email).hasSize(EmailPolicy.MAX_LENGTH);
@@ -82,7 +82,7 @@ class EmailLengthBoundaryTest {
         signUp(email).andExpect(status().isOk());
 
         // 예전에는 여기(세션 저장)에서 PRINCIPAL_NAME 컬럼 제한에 걸렸다. 지금은 principal이
-        // 회원 id라(BE-04) 그 제한과 무관해졌지만, 로그인·세션 저장 자체가 여전히 끝까지
+        // 회원 id라 그 제한과 무관해졌지만, 로그인·세션 저장 자체가 여전히 끝까지
         // 동작하는지는 계속 확인한다.
         Cookie session = login(email);
         Long userId = userRepository.findByEmailHmac(EmailHasher.hmacHex(email)).orElseThrow().getId();
@@ -99,7 +99,7 @@ class EmailLengthBoundaryTest {
     }
 
     @Test
-    @DisplayName("F07: 정책 상한 길이 이메일의 암호문이 users.email 컬럼 안에 들어간다")
+    @DisplayName("정책 상한 길이 이메일의 암호문이 users.email 컬럼 안에 들어간다")
     void maxLengthEmail_cipherTextFitsInColumn() {
         String cipher = emailAttributeConverter.convertToDatabaseColumn(emailOfLength(EmailPolicy.MAX_LENGTH));
 
@@ -109,7 +109,7 @@ class EmailLengthBoundaryTest {
     }
 
     @Test
-    @DisplayName("F07: 정책 상한을 한 자 넘으면 가입 단계에서 400으로 거부한다")
+    @DisplayName("정책 상한을 한 자 넘으면 가입 단계에서 400으로 거부한다")
     void tooLongEmail_isRejectedAtSignup() throws Exception {
         signUp(emailOfLength(EmailPolicy.MAX_LENGTH + 1))
                 .andExpect(status().isBadRequest())
@@ -120,7 +120,7 @@ class EmailLengthBoundaryTest {
     }
 
     @Test
-    @DisplayName("F07: 예전에 '가입은 되고 로그인은 안 되던' 길이(101~218자)는 이제 가입 자체가 막힌다")
+    @DisplayName("예전에 '가입은 되고 로그인은 안 되던' 길이(101~218자)는 이제 가입 자체가 막힌다")
     void previouslyUnusableLengths_areRejectedAtSignup() throws Exception {
         for (int length : new int[]{101, 150, 218, 219}) {
             signUp(emailOfLength(length)).andExpect(status().isBadRequest());

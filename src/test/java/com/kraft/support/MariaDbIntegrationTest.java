@@ -18,7 +18,7 @@ import java.sql.Statement;
 import java.util.List;
 
 /**
- * 실제 MariaDB로 도는 {@code @SpringBootTest}들의 공용 기반 클래스(OPS-06).
+ * 실제 MariaDB로 도는 {@code @SpringBootTest}들의 공용 기반 클래스.
  * <p>
  * 예전에는 클래스마다 컨테이너를 따로 띄우고 컨텍스트도 따로 만들어, 같은 일(컨테이너 기동 +
  * Flyway 전체 마이그레이션 + 컨텍스트 기동)을 클래스 수만큼 반복했다(클래스당 약 8초). 이제
@@ -39,7 +39,7 @@ import java.util.List;
  * <p>
  * Docker가 없으면 클래스 전체를 건너뛴다({@code disabledWithoutDocker}) — 그래서
  * Docker 없이도 {@code gradlew test}가 그대로 돈다. {@code @Tag("docker")}는 Gradle이 이 테스트들을
- * 빠른 H2 테스트와 따로 돌릴 수 있게 한다(OPS-07).
+ * 빠른 H2 테스트와 따로 돌릴 수 있게 한다.
  */
 @Tag("docker")
 @Testcontainers(disabledWithoutDocker = true)

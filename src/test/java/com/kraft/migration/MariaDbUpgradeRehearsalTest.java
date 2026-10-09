@@ -112,7 +112,7 @@ class MariaDbUpgradeRehearsalTest {
     }
 
     /**
-     * O01: {@code ddl-auto: validate}가 통과한다고 해서(위 세 테스트) 기존 DB에 마이그레이션의
+     * {@code ddl-auto: validate}가 통과한다고 해서(위 세 테스트) 기존 DB에 마이그레이션의
      * 모든 인덱스가 있다는 뜻은 아니다 — Hibernate의 스키마 검증은 테이블·컬럼·타입만 보고
      * <b>인덱스는 보지 않는다</b>. V6/V11/V13/V14/V15가 raw SQL로만 추가한 인덱스는 예전에
      * 엔티티에 선언이 없어, {@code ddl-auto: update}로 만든 "기존 DB"(이 테스트가 흉내 내는
@@ -125,14 +125,14 @@ class MariaDbUpgradeRehearsalTest {
      * "기존 DB를 baseline만 하고 끝내도 된다"는 전제가 실제로 성립한다.
      */
     @Test
-    @DisplayName("O01: ddl-auto:update로 만든 기존 DB에도 raw SQL 마이그레이션이 선언한 인덱스가 전부 있다")
+    @DisplayName("ddl-auto:update로 만든 기존 DB에도 raw SQL 마이그레이션이 선언한 인덱스가 전부 있다")
     void existingDevDatabaseHasAllIndexesThatRawMigrationsDeclare() {
         String url = existingDevDatabase();
         JdbcTemplate jdbc = jdbc(url);
 
-        // V23(PERF-05)이 엔티티에서 IX_OUTBOX_MAILS_USER 선언을 지웠으므로(IX_OUTBOX_MAILS_USER_KIND가
+        // V23이 엔티티에서 IX_OUTBOX_MAILS_USER 선언을 지웠으므로(IX_OUTBOX_MAILS_USER_KIND가
         // 왼쪽 접두사로 이미 포함) ddl-auto: update로 만든 이 DB에도 더는 생기지 않는다 — 그래서
-        // outbox_mails 기대 목록에서도 함께 뺐다. V25(BE-11)가 같은 이유로 IX_COMMENTS_POST(다른
+        // outbox_mails 기대 목록에서도 함께 뺐다. V25가 같은 이유로 IX_COMMENTS_POST(다른
         // 인덱스가 왼쪽 접두사로 포함), IX_OUTBOX_MAILS_STATUS_NEXT_ATTEMPT(IX_OUTBOX_MAILS_STATUS_ID가
         // claim 쿼리를 이미 커버), IX_USERS_WITHDRAWN_AT(단독으로 쓰는 쿼리가 없음)를 마저 지웠다. 신고·정지 기능을 걷어내면서
         // 엔티티에서 reports 테이블과 users.suspended_until도 빠졌다(V43이 DB의 테이블·컬럼도 지웠다).

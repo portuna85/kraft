@@ -108,7 +108,7 @@ class PasswordResetServiceTest {
                 .isBetween(LocalDateTime.now().plusMinutes(29), LocalDateTime.now().plusMinutes(31));
 
         // 대기열에는 평문 토큰이 실린다(발송 본문에 필요하다). 저장된 조회 테이블 행에는
-        // 그 해시만 있으므로(SEC-04), 둘을 직접 비교하는 대신 같은 값에서 나온 것인지 확인한다.
+        // 그 해시만 있으므로, 둘을 직접 비교하는 대신 같은 값에서 나온 것인지 확인한다.
         ArgumentCaptor<String> enqueuedToken = ArgumentCaptor.forClass(String.class);
         verify(outboxMailStore).enqueue(eq(user), enqueuedToken.capture(), eq(OutboxMailKind.PASSWORD_RESET));
         assertThat(EmailHasher.sha512Hex(enqueuedToken.getValue())).isEqualTo(saved.getValue().getTokenHash());

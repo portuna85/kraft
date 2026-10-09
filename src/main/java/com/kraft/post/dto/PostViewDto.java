@@ -17,7 +17,7 @@ public record PostViewDto(
         String title,
         String content,
         String picture,
-        /** picture의 실제 픽셀 크기(A-FE-09). picture가 없거나 V32 이전에 저장된 글이면 null. */
+        /** picture의 실제 픽셀 크기. picture가 없거나 V32 이전에 저장된 글이면 null. */
         Integer pictureWidth,
         Integer pictureHeight,
         String author,

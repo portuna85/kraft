@@ -89,7 +89,7 @@ class PageWindowTest {
     }
 
     @Test
-    @DisplayName("simple: 전체 페이지를 모르면 번호 목록 없이 이전·다음만 계산한다(BE-08)")
+    @DisplayName("simple: 전체 페이지를 모르면 번호 목록 없이 이전·다음만 계산한다")
     void simple_hasNoNumberedPagesAndOnlyPrevNext() {
         PageWindow middle = PageWindow.simple(2, true);
 

@@ -54,7 +54,7 @@ public class Comment extends BaseEntity {
     private Comment parent;
 
     /**
-     * 동시 편집 충돌을 감지한다(B12). 두 탭이 같은 댓글을 각각 편집해 저장하면, 이 필드가
+     * 동시 편집 충돌을 감지한다. 두 탭이 같은 댓글을 각각 편집해 저장하면, 이 필드가
      * 없던 예전에는 나중에 flush되는 쪽이 앞선 내용을 조용히 덮어썼다. {@code Post.version}과
      * 같은 방식이다 — 클라이언트가 받아간 시점의 버전과 다르면 저장을 거부한다
      * ({@code CommentService.update} 참고).
@@ -98,8 +98,8 @@ public class Comment extends BaseEntity {
     }
 
     /**
-     * 답글이 있어 행을 지울 수 없을 때 대신 부른다(A-BE-06). 내용을 비워 원문이 남지 않게
-     * 한다 — 신고에 걸려 있던 내용은 신고 접수 시점의 스냅샷(A-SEC-07)에 별도로 남는다.
+     * 답글이 있어 행을 지울 수 없을 때 대신 부른다. 내용을 비워 원문이 남지 않게
+     * 한다 — 신고에 걸려 있던 내용은 신고 접수 시점의 스냅샷에 별도로 남는다.
      */
     public void softDelete() {
         this.content = "";

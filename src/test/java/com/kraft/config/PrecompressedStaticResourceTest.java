@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 /**
- * 빌드가 만든 .gz를 클라이언트가 gzip을 받을 때 그대로 내려주는지(FE-24). 요청마다 CPU로 압축하지
+ * 빌드가 만든 .gz를 클라이언트가 gzip을 받을 때 그대로 내려주는지. 요청마다 CPU로 압축하지
  * 않고 레벨 9로 미리 압축한 파일을 쓴다 — build.gradle.kts의 processResources와
  * application.yml의 {@code spring.web.resources.chain.compressed}가 함께 있어야 동작한다.
  */

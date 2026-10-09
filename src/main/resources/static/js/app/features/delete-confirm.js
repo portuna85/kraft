@@ -6,7 +6,7 @@ import { confirmAction } from '../ui/confirm-dialog.js';
 import * as flash from '../ui/flash.js';
 
 /**
- * 게시글과 댓글이 함께 쓰는 삭제 확인. 모달·포커스 복귀·세대 판단은 공용 confirmAction이 맡고(FE-14),
+ * 게시글과 댓글이 함께 쓰는 삭제 확인. 모달·포커스 복귀·세대 판단은 공용 confirmAction이 맡고,
  * 이 모듈은 어떤 대상을 어떻게 지우는지만 안다.
  *
  * 댓글 목록은 다시 그려질 수 있어 버튼에 직접 걸지 않고 document 위임을 쓴다.
@@ -53,7 +53,7 @@ async function deleteTarget(kind, id) {
     }
     // 댓글 목록은 Vue 아일랜드(src/vue/comments)가 그리므로 새로고침하지 않는다.
     // 이동이 없으니 showNow로 즉시 배너를 띄우고, 목록 갱신은 이벤트로 알린다.
-    // softDeleted면(답글이 남아 있어 행을 지우지 않음, A-BE-06) 목록에서 통째로
+    // softDeleted면(답글이 남아 있어 행을 지우지 않음) 목록에서 통째로
     // 지우지 않고 "삭제된 댓글입니다"로 바꿔야 하므로 그 구분을 함께 실어 보낸다.
     flash.showNow('COMMENT_DELETED');
     window.dispatchEvent(new CustomEvent('kraft:comment-deleted', {

@@ -59,7 +59,7 @@ public class PostService {
      * 놓치는 경우(커밋 직후 프로세스 종료 등)의 최후 수단은 별도의 주기적 디스크-대장 대조가
      * 맡는다.
      * <p>
-     * 이 메서드는 {@code SUPPORTS}로 돈다(BE-23) — 파일 형식 검증(ImageIO 디코드 포함)과
+     * 이 메서드는 {@code SUPPORTS}로 돈다 — 파일 형식 검증(ImageIO 디코드 포함)과
      * 디스크 쓰기({@code postImageService.store})는 DB를 전혀 쓰지 않는데, 평범한
      * {@code @Transactional}로 감싸면 그 시간만큼 DB 커넥션이 아무 일도 안 하며 붙잡혀
      * 있었다. 실제 DB 작업(쿼터 검사 + 등록)은 {@code validateQuotaAndRegister}가 맡는다.
@@ -150,7 +150,7 @@ public class PostService {
                 : null;
 
         // 이미지를 지웠으면(newPicture == null) 크기도 함께 비운다 — picture 없이 크기만
-        // 남으면 다음 열람 때 쓸모없는 값이 된다(A-FE-09). 새 이미지는 서버가 측정한 크기를 쓰고(BE-24),
+        // 남으면 다음 열람 때 쓸모없는 값이 된다. 새 이미지는 서버가 측정한 크기를 쓰고,
         // 이미지가 그대로면 이미 저장된 크기를 유지한다. 측정값이 없는 옛 이미지만 클라이언트 값에 기댄다.
         Integer newWidth;
         Integer newHeight;
@@ -247,7 +247,7 @@ public class PostService {
      * 성공으로 처리한다.
      * <p>
      * 이 메서드 자체는 아무것도 쓰지 않는다 — 실제 쓰기(insert/delete)와 최신 개수 조회는
-     * {@link PostLikeWriter}가 전부 REQUIRES_NEW로 독립 수행한다(B09). 그런데도 이 메서드가
+     * {@link PostLikeWriter}가 전부 REQUIRES_NEW로 독립 수행한다. 그런데도 이 메서드가
      * (클래스 기본값인 readOnly 트랜잭션이라도) 자신의 트랜잭션을 열면, findPost·findUser가
      * 커넥션 하나를 쥔 채로 그 REQUIRES_NEW 호출들이 <b>추가</b> 커넥션을 요구한다 — 동시
      * 좋아요 요청이 몰리면 요청 하나가 커넥션을 최대 2개씩 동시에 물고 있는 셈이라 풀 압박이
@@ -268,13 +268,13 @@ public class PostService {
         if (liked) {
             addLikeIfAbsent(post, user);
         } else {
-            // REQUIRES_NEW로 지운다(B09 회귀 수정) — 이 메서드(바깥 트랜잭션) 안에서 그냥
+            // REQUIRES_NEW로 지운다(회귀 수정) — 이 메서드(바깥 트랜잭션) 안에서 그냥
             // 지우면, 아직 커밋 전인 상태에서 뒤이은 countByPostId(REQUIRES_NEW)가 별도
             // 트랜잭션이라 이 DELETE를 보지 못해 추천 취소 뒤에도 개수가 그대로 남았다.
             postLikeWriter.delete(id, user.getId());
         }
 
-        // postLikeWriter.countByPostId도 새 트랜잭션에서 읽는다(B09) — 이 메서드의 트랜잭션이
+        // postLikeWriter.countByPostId도 새 트랜잭션에서 읽는다 — 이 메서드의 트랜잭션이
         // 이미 잡아 둔 REPEATABLE READ 스냅샷은 REQUIRES_NEW로 방금 커밋된 추천을 못 볼 수 있다.
         return new PostLikeResponseDto(liked, postLikeWriter.countByPostId(id));
     }
@@ -282,7 +282,7 @@ public class PostService {
     /**
      * 검사와 INSERT 사이에 같은 추천이 들어와 유니크 제약에 걸리면 원하던 최종 상태와
      * 같으므로 그대로 둔다. 그 외의 원인(부모 게시글이 막 삭제된 경우의 FK 위반 등)은
-     * "이미 추천됨"으로 위장하지 않고 다시 던진다(B09) — {@code PostLikeWriter.insert}
+     * "이미 추천됨"으로 위장하지 않고 다시 던진다 — {@code PostLikeWriter.insert}
      * 자체는 아무것도 삼키지 않으므로(REQUIRES_NEW 트랜잭션 경계 안에서 삼키면
      * {@code UnexpectedRollbackException}이 난다), 그 경계 밖인 여기서 판단한다.
      */

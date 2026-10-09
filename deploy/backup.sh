@@ -24,7 +24,7 @@ umask 077
 APP_DIR=/opt/kraft/app
 UPLOAD_DIR="$APP_DIR/uploads/images"
 BACKUP_DIR="$APP_DIR/backups/full"
-# BACKUP_DIR 밖에 둔다(OPS-G1) — 안에 두면 "오래된 백업 정리"의 ls -1 "$BACKUP_DIR" | sort -r
+# BACKUP_DIR 밖에 둔다 — 안에 두면 "오래된 백업 정리"의 ls -1 "$BACKUP_DIR" | sort -r
 # 목록에 이 파일도 걸려(파일명이 숫자보다 사전식으로 앞선다) KEEP_MIN개 중 하나를 락 파일이
 # 차지하게 되어, 실제로 보장되는 백업 개수가 하나 줄어든다.
 LOCK_FILE="$APP_DIR/backup.lock"
@@ -111,7 +111,7 @@ if ! (cd "$APP_DIR" && docker compose --env-file .env exec -T mariadb \
 fi
 [ -s "$TMP_DEST/db.sql.gz" ] || fail "덤프가 비어 있다"
 # gzip 스트림이 중간에 잘리면(예: 덤프 도중 컨테이너 재시작) -s(비어 있지 않음) 검사는
-# 통과하지만 압축 무결성은 깨져 있다(OPS-G4) — 압축까지 마친 뒤 그 자체를 검증한다.
+# 통과하지만 압축 무결성은 깨져 있다 — 압축까지 마친 뒤 그 자체를 검증한다.
 gzip -t "$TMP_DEST/db.sql.gz" || fail "덤프 파일이 손상되었다(gzip 무결성 검사 실패) — 잘렸을 수 있다"
 log "DB 덤프 완료: $(stat -c%s "$TMP_DEST/db.sql.gz") 바이트(gzip)"
 

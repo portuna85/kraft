@@ -23,7 +23,7 @@ public interface PostLikeRepository extends JpaRepository<PostLike, Long> {
     long countByPostId(Long postId);
 
     /**
-     * 상세 화면이 필요한 추천 수와 "내가 눌렀는지"를 한 번에 센다(BE-05) — 예전에는 exists와
+     * 상세 화면이 필요한 추천 수와 "내가 눌렀는지"를 한 번에 센다 — 예전에는 exists와
      * count가 따로 나갔다. {@code userId}에 존재하지 않는 id(익명이면 {@link #NO_USER_ID})를
      * 넘기면 {@code mine}은 0이다.
      */

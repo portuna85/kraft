@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 토큰 소비·재발급의 동시성을 실제 스레드·실제 DB 행 잠금으로 검증한다(B07).
+ * 토큰 소비·재발급의 동시성을 실제 스레드·실제 DB 행 잠금으로 검증한다.
  * <p>
  * 두 요청을 같은 스레드에서 트랜잭션 템플릿으로 중첩 호출하는 방식({@code PostImageLifecycleTest}가
  * 낙관적 잠금 검증에 쓰는 방식)은 여기서 쓸 수 없다 — 토큰 소비의 조건부 DELETE와 재발급의
@@ -66,7 +66,7 @@ class TokenConcurrencyTest {
     }
 
     @Test
-    @DisplayName("B07: 같은 인증 토큰을 동시에 두 번 소비하면 정확히 한쪽만 성공하고, 승격은 한 번만 일어난다")
+    @DisplayName("같은 인증 토큰을 동시에 두 번 소비하면 정확히 한쪽만 성공하고, 승격은 한 번만 일어난다")
     void verify_concurrentConsumptionOfSameToken_onlyOneSucceeds() throws InterruptedException {
         String token = saveEmailToken(LocalDateTime.now().plusHours(1));
 
@@ -81,7 +81,7 @@ class TokenConcurrencyTest {
     }
 
     @Test
-    @DisplayName("B07: 같은 비밀번호 재설정 토큰을 동시에 두 번 소비하면 정확히 한쪽만 성공한다")
+    @DisplayName("같은 비밀번호 재설정 토큰을 동시에 두 번 소비하면 정확히 한쪽만 성공한다")
     void reset_concurrentConsumptionOfSameToken_onlyOneSucceeds() throws InterruptedException {
         String token = savePasswordResetToken(LocalDateTime.now().plusMinutes(10));
 
@@ -121,7 +121,7 @@ class TokenConcurrencyTest {
         t2.start();
         t1.join(10_000);
         t2.join(10_000);
-        // 타임아웃 안에 안 끝났으면(교착 등) 여기서 바로 드러낸다(OPS-B1).
+        // 타임아웃 안에 안 끝났으면(교착 등) 여기서 바로 드러낸다.
         if (t1.isAlive() || t2.isAlive()) {
             throw new AssertionError("동시 실행 스레드가 타임아웃 안에 끝나지 않았습니다.");
         }

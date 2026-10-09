@@ -11,14 +11,14 @@ package com.kraft.user.mail;
 public enum OutboxMailKind {
 
     /**
-     * 이미 가입된 이메일로 다시 가입을 시도했다는 안내(전체 리뷰 2026-09-26 A-SEC-01). 가입
+     * 이미 가입된 이메일로 다시 가입을 시도했다는 안내. 가입
      * API는 이 경우에도 신규 가입과 같은 응답을 주므로(계정 열거 방지), 계정 주인에게만
      * 이 메일로 알린다. 링크·토큰이 없다 — {@code OutboxMail.token}은 이 종류에서 항상 null이다.
      */
     ACCOUNT_EXISTS,
 
     /**
-     * 로그인 연속 실패가 임계를 넘었다는 알림(전체 리뷰 2026-09-26 A-SEC-08). 링크·토큰이
+     * 로그인 연속 실패가 임계를 넘었다는 알림. 링크·토큰이
      * 없다 — {@code OutboxMail.token}은 이 종류에서 항상 null이다.
      */
     LOGIN_ATTEMPTS_WARNING,

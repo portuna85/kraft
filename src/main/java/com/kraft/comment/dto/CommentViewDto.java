@@ -38,7 +38,7 @@ public record CommentViewDto(
         long replyCount,
         boolean hasMoreReplies,
         /**
-         * 편집 충돌 감지에 쓰는 낙관적 잠금 버전(B12). 저장 요청의 {@code version}에 이 값을
+         * 편집 충돌 감지에 쓰는 낙관적 잠금 버전. 저장 요청의 {@code version}에 이 값을
          * 그대로 실어 보내면, 그 사이 다른 저장이 있었을 때 서버가 409로 거절한다.
          */
         Long version,

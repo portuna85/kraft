@@ -18,12 +18,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 검증된 당첨 회차의 본번호 6개(V20__recommendation_history.sql). 이력 제외 판정(HIST-01,
- * {@link #mask()})은 본번호 6개만 쓴다 — 동일 조합이 여러 회차에 나올 수 있으므로 번호 조합에는
+ * 검증된 당첨 회차의 본번호 6개(V20__recommendation_history.sql). 이력 제외 판정({@link #mask()})은 본번호 6개만 쓴다 — 동일 조합이 여러 회차에 나올 수 있으므로 번호 조합에는
  * UNIQUE 제약을 두지 않는다.
  * <p>
  * 보너스 번호·추첨일·1등 당첨자 수·1등 1인당 당첨금(V21__recommendation_winning_draw_details.sql)은
- * 번호 추천 화면이 최신 회차를 보여줄 때만 쓰는 순수 표시용 부가 정보다 — HIST-01 판정에는
+ * 번호 추천 화면이 최신 회차를 보여줄 때만 쓰는 순수 표시용 부가 정보다 — 이력 제외 판정에는
  * 전혀 관여하지 않으며, 없어도(과거에 반영된 회차처럼 전부 null이어도) 추천 기능은 그대로
  * 동작한다.
  * <p>
@@ -110,7 +109,7 @@ public class WinningDraw implements Persistable<Integer> {
     }
 
     /**
-     * 같은 회차의 정정을 반영한다(HIST-05, {@code RecommendationHistoryImporter}). 관리되는
+     * 같은 회차의 정정을 반영한다({@code RecommendationHistoryImporter}). 관리되는
      * 엔티티 인스턴스 자신의 필드를 직접 바꾼다 — 새 detached 인스턴스를 만들어
      * {@code repository.save()}(merge)로 반영하면, 이미 영속성 컨텍스트에 있는 같은 PK의 관리
      * 인스턴스와 별개로 다뤄져 변경이 감지되지 않고 조용히 유실될 수 있다(로컬 실측으로 확인).
@@ -129,14 +128,14 @@ public class WinningDraw implements Persistable<Integer> {
     }
 
     /**
-     * 화면 표시 전용 부가 정보를 반영한다(HIST-01 판정과 무관). {@code details}가 null이면
+     * 화면 표시 전용 부가 정보를 반영한다(판정과 무관). {@code details}가 null이면
      * 아무것도 하지 않는다 — 부가 정보를 못 받아온 반영(details 없는 {@code ImportedDraw})이
      * 이미 알고 있던 부가 정보를 조용히 지우지 않게 하기 위함이다.
      * <p>
      * {@code DhLotteryClient}는 자동 수집 경로에서 범위를 벗어난 보너스 번호를 이미
      * null로 거른다({@code buildDetails} 참고) — 그러나 운영자가 직접 넣는 수동/CSV 반영
      * 경로는 그 방어를 거치지 않는다. 필드 각각은 여전히 null(과거 자료 호환)을 허용하되,
-     * 값이 있으면 최소한의 정합성(범위·중복·음수)을 여기서도 확인한다(B14) — DB CHECK
+     * 값이 있으면 최소한의 정합성(범위·중복·음수)을 여기서도 확인한다 — DB CHECK
      * 제약 추가는 운영 마이그레이션 검토가 필요해 이번 범위에 포함하지 않는다.
      */
     public void applyDetails(DrawDetails details) {

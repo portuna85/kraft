@@ -59,7 +59,7 @@ class RequestMetricsFilterTest {
      * 앱 요청·오류는 계속 센다.
      */
     @Test
-    @DisplayName("F12: 설정된 버전이 붙은 JS는 세지 않고, 다른 접두어·앱 오류는 센다")
+    @DisplayName("설정된 버전이 붙은 JS는 세지 않고, 다른 접두어·앱 오류는 센다")
     void versionedStaticResourcesAreNotCounted() throws Exception {
         RequestMetrics versioned = new RequestMetrics();
         RequestMetricsFilter versionedFilter = new RequestMetricsFilter(versioned, "428dd13");

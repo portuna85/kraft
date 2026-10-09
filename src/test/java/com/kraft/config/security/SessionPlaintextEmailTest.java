@@ -70,7 +70,7 @@ class SessionPlaintextEmailTest {
     }
 
     @Test
-    @DisplayName("F01: 로그인 후 저장된 세션 속성 바이트에 이메일 원문이 없다")
+    @DisplayName("로그인 후 저장된 세션 속성 바이트에 이메일 원문이 없다")
     void storedSessionAttributes_doNotContainPlaintextEmail() throws Exception {
         login();
 
@@ -88,7 +88,7 @@ class SessionPlaintextEmailTest {
     }
 
     @Test
-    @DisplayName("F01: 이메일 없는 principal로도 글쓰기·글 상세 화면(작성 가능 여부 판정)이 동작한다")
+    @DisplayName("이메일 없는 principal로도 글쓰기·글 상세 화면(작성 가능 여부 판정)이 동작한다")
     void sessionWithoutEmail_stillAuthorizesAndRendersPostPage() throws Exception {
         Cookie session = login();
 

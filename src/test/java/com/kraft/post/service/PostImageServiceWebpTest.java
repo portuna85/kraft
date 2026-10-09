@@ -58,7 +58,7 @@ class PostImageServiceWebpTest {
     }
 
     @Test
-    @DisplayName("F06: 이미지 데이터 없이 30바이트 VP8X 헤더만 있는 파일은 거절한다")
+    @DisplayName("이미지 데이터 없이 30바이트 VP8X 헤더만 있는 파일은 거절한다")
     void headerOnlyVp8x_isRejected() {
         byte[] headerOnly = riff(chunk("VP8X", vp8xPayload(0, 100, 100)));
 
@@ -66,7 +66,7 @@ class PostImageServiceWebpTest {
     }
 
     @Test
-    @DisplayName("F06: 파일 끝이 잘리면(RIFF 크기와 실제 길이 불일치) 거절한다")
+    @DisplayName("파일 끝이 잘리면(RIFF 크기와 실제 길이 불일치) 거절한다")
     void truncatedFile_isRejected() {
         byte[] real = fixture("lossy");
 
@@ -75,7 +75,7 @@ class PostImageServiceWebpTest {
     }
 
     @Test
-    @DisplayName("F06: RIFF 크기 필드가 실제보다 크거나, 뒤에 다른 데이터가 붙으면 거절한다")
+    @DisplayName("RIFF 크기 필드가 실제보다 크거나, 뒤에 다른 데이터가 붙으면 거절한다")
     void riffSizeMismatch_isRejected() {
         byte[] real = fixture("simple-lossy");
         byte[] trailing = Arrays.copyOf(real, real.length + 4);
@@ -87,13 +87,13 @@ class PostImageServiceWebpTest {
     }
 
     @Test
-    @DisplayName("F06: VP8 청크의 첫 파티션이 청크 안에 없으면(헤더만 남은 프레임) 거절한다")
+    @DisplayName("VP8 청크의 첫 파티션이 청크 안에 없으면(헤더만 남은 프레임) 거절한다")
     void vp8WithoutPartitionData_isRejected() {
         assertRejected(riff(chunk("VP8 ", vp8Payload(100, 100, 500, 0))), WebpStructure.INVALID_MESSAGE);
     }
 
     @Test
-    @DisplayName("F06: VP8 시작 코드가 틀리거나 크기가 0이면 거절한다")
+    @DisplayName("VP8 시작 코드가 틀리거나 크기가 0이면 거절한다")
     void vp8BadStartCodeOrZeroSize_isRejected() {
         byte[] badStart = vp8Payload(100, 100, 4, 4);
         badStart[3] = 0;
@@ -103,13 +103,13 @@ class PostImageServiceWebpTest {
     }
 
     @Test
-    @DisplayName("F06: VP8L 헤더 5바이트뿐이고 비트스트림이 없으면 거절한다")
+    @DisplayName("VP8L 헤더 5바이트뿐이고 비트스트림이 없으면 거절한다")
     void vp8lHeaderOnly_isRejected() {
         assertRejected(riff(chunk("VP8L", vp8lPayload(100, 100, 0))), WebpStructure.INVALID_MESSAGE);
     }
 
     @Test
-    @DisplayName("F06: VP8X 캔버스 크기가 실제 이미지 크기와 다르면 거절한다")
+    @DisplayName("VP8X 캔버스 크기가 실제 이미지 크기와 다르면 거절한다")
     void vp8xCanvasMismatch_isRejected() {
         byte[] file = riff(chunk("VP8X", vp8xPayload(0, 200, 200)), chunk("VP8L", vp8lPayload(100, 100, 16)));
 
@@ -117,7 +117,7 @@ class PostImageServiceWebpTest {
     }
 
     @Test
-    @DisplayName("F06: 애니메이션 플래그가 있는데 프레임(ANMF)이 없으면 거절한다")
+    @DisplayName("애니메이션 플래그가 있는데 프레임(ANMF)이 없으면 거절한다")
     void animatedWithoutFrames_isRejected() {
         byte[] file = riff(chunk("VP8X", vp8xPayload(0x02, 100, 100)), chunk("ANIM", new byte[6]));
 

@@ -90,7 +90,7 @@ public class OutboxMailWorker {
     private int maxConcurrentSends;
 
     /**
-     * {@code drain()} 호출마다 새로 만들지 않고 이 인스턴스가 사는 동안 하나를 공유한다(B04).
+     * {@code drain()} 호출마다 새로 만들지 않고 이 인스턴스가 사는 동안 하나를 공유한다.
      * 예전에는 배치마다 새 Semaphore를 만들어, 가입 직후의 {@code drainAsync}와 예약 실행
      * {@code drainScheduled}가 겹치면 각자 5개씩 동시에 보내 프로세스 전체의 동시 발송 수가
      * {@code maxConcurrentSends}를 넘을 수 있었다. claimBatch의 행 잠금은 같은 메일을 두 번
@@ -99,7 +99,7 @@ public class OutboxMailWorker {
     private Semaphore sendPermits;
 
     /**
-     * O05: {@code maxConcurrentSends=0}이면 {@link Semaphore}가 영원히 획득되지 않아 모든
+     * {@code maxConcurrentSends=0}이면 {@link Semaphore}가 영원히 획득되지 않아 모든
      * 배치가 조용히 멈춘다(예외도, 로그도 없다) — 발송이 끊긴 원인을 찾기 훨씬 어렵다.
      * {@code batchSize}는 {@code claimBatch}의 SQL {@code LIMIT}에 그대로 들어가므로 음수는
      * DB 드라이버 예외로 이어진다. 둘 다 기동 시점에 막아 실행 중 조용히 멈추거나 늦게
@@ -129,7 +129,7 @@ public class OutboxMailWorker {
         if (!enabled) {
             return;
         }
-        // 정체 재처리는 예약 경로에서만 한다(BE-22) — 예전에는 drain() 안에 있어 가입·재발송
+        // 정체 재처리는 예약 경로에서만 한다 — 예전에는 drain() 안에 있어 가입·재발송
         // 폭주 시 겹쳐 도는 drainAsync 호출마다 매번 잠금 스캔(requeueStuck)이 함께 돌았다.
         // 정체 재처리는 "발송 도중 프로세스가 죽어 SENDING인 채 남은 것"을 되돌리는 안전망일
         // 뿐이라 빈도가 중요하지 않다 — 예약 주기 한 번이면 충분하다.
@@ -153,7 +153,7 @@ public class OutboxMailWorker {
      * 토큰"으로 오인되어 새 시도를 덮어쓸 수 있었다. 매번 새 UUID를 쓰면 이 창이 사라진다.
      * <p>
      * 겹쳐 도는 drain() 호출 자체는 막지 않는다(가입 폭주 시 흔함) — {@link #sendPermits}가
-     * 이미 모든 drain 호출이 공유하는 총 동시성 상한이라, 겹쳐도 안전하고(B04) 서로 다른
+     * 이미 모든 drain 호출이 공유하는 총 동시성 상한이라, 겹쳐도 안전하고 서로 다른
      * 메일을 나눠 처리해 오히려 전체 처리량에 도움이 된다.
      */
     public void drain() {
@@ -195,7 +195,7 @@ public class OutboxMailWorker {
     /**
      * 종료된 지 오래된 SENT/FAILED 행을 지운다. 발송 자체와는 다른 관심사이므로
      * {@code enabled} 플래그와 무관하게 항상 돈다 — 발송을 끄더라도 이력 정리는 계속되어야
-     * 테이블이 무한정 자라지 않는다. {@code retentionEnabled}로만 따로 끌 수 있다(OBS-05).
+     * 테이블이 무한정 자라지 않는다. {@code retentionEnabled}로만 따로 끌 수 있다.
      */
     @Scheduled(initialDelayString = "${app.mail.retention-initial-delay-ms:60000}",
             fixedDelayString = "${app.mail.retention-interval-ms:86400000}")
@@ -219,8 +219,8 @@ public class OutboxMailWorker {
             //
             // 실제 SMTP 실패 메시지는 종종 수신자 주소를 그대로 담는다(예:
             // "Failed messages: ...: user@example.com: 550 ...") — 여기서 알고 있는 수신자
-            // 주소(mail.to())만 정확히 가려서 로그·lastError 어느 쪽에도 원문이 남지 않게 한다
-            // (O07). 메시지의 나머지 진단 정보(도메인·오류 코드 등)는 그대로 둔다.
+            // 주소(mail.to())만 정확히 가려서 로그·lastError 어느 쪽에도 원문이 남지 않게 한다.
+            // 메시지의 나머지 진단 정보(도메인·오류 코드 등)는 그대로 둔다.
             String maskedMessage = maskRecipient(e.getMessage(), mail.to());
             // e를 그대로 로거에 넘기지 않는다 — SLF4J가 예외 자체의(가려지지 않은) 메시지를
             // 스택 트레이스 첫 줄에 그대로 찍는다. 대신 예외 타입 + 가린 메시지만 남긴다.
@@ -252,13 +252,13 @@ public class OutboxMailWorker {
      */
     private String body(OutboxMailKind kind, String token) {
         return switch (kind) {
-            // 비밀번호 재설정과 같은 이유로 프래그먼트(#)에 싣는다(BE-04) — 쿼리 문자열은 프록시·
+            // 비밀번호 재설정과 같은 이유로 프래그먼트(#)에 싣는다 — 쿼리 문자열은 프록시·
             // 접근 로그·브라우저 기록에 남는다. 이미 발송된 옛 ?token= 링크는 24시간 동안 계속
             // 열리므로 UserPageController가 쿼리도 함께 받는다.
             case VERIFY_EMAIL -> "아래 링크를 클릭해 이메일 인증을 완료해 주세요:\n"
                     + BaseUrl.normalize(baseUrl) + "/users/verify#token=" + token
                     + "\n\n이 링크는 24시간 동안 유효합니다.";
-            // 토큰을 쿼리 문자열이 아니라 프래그먼트(#)로 싣는다(A-SEC-11) — 프래그먼트는
+            // 토큰을 쿼리 문자열이 아니라 프래그먼트(#)로 싣는다 — 프래그먼트는
             // 브라우저가 서버·프록시로 전송하지 않으므로 nginx 접근 로그에 1회용 토큰이
             // 남지 않는다. PasswordResetApp.vue가 location.hash에서 읽는다.
             case PASSWORD_RESET -> "아래 링크에서 새 비밀번호를 정해 주세요:\n"

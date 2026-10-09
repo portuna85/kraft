@@ -7,12 +7,12 @@ async function createOwnPost(page, title) {
     await page.locator('#title').fill(title);
     await page.locator('#content').fill('추천·삭제 테스트용 글입니다.');
     await page.locator('#btn-save').click();
-    // 등록 후 목록이 아니라 방금 쓴 글로 바로 이동한다(전체 리뷰 2026-09-26 A-FE-02).
+    // 등록 후 목록이 아니라 방금 쓴 글로 바로 이동한다.
     await page.waitForURL(/\/posts\/update\/\d+$/);
 }
 
 /**
- * 추천은 "뒤집어라"가 아니라 "이 상태로 만들어라"를 보낸다(F10). 화면은 낙관적으로 미리
+ * 추천은 "뒤집어라"가 아니라 "이 상태로 만들어라"를 보낸다. 화면은 낙관적으로 미리
  * 바꾸지 않고 서버가 돌려준 최종 상태만 반영한다.
  */
 test('추천을 눌렀다 다시 누르면 원래대로 돌아온다', async ({ page }) => {

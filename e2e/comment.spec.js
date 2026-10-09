@@ -8,7 +8,7 @@ async function openOwnPost(page) {
     await page.locator('#title').fill(title);
     await page.locator('#content').fill('댓글 테스트용 글입니다.');
     await page.locator('#btn-save').click();
-    // 등록 후 목록이 아니라 방금 쓴 글로 바로 이동한다(전체 리뷰 2026-09-26 A-FE-02).
+    // 등록 후 목록이 아니라 방금 쓴 글로 바로 이동한다.
     await page.waitForURL(/\/posts\/update\/\d+$/);
 }
 
@@ -77,7 +77,7 @@ test('댓글을 인라인으로 수정할 수 있다 (위임 핸들러)', async 
 });
 
 /**
- * F13: 등록·답글에는 required가 있는데 수정 textarea에만 빠져 있어, 내용을 지우고 저장하면
+ * 등록·답글에는 required가 있는데 수정 textarea에만 빠져 있어, 내용을 지우고 저장하면
  * 빈 수정 요청이 그대로 서버로 나갔다.
  */
 test('댓글 수정에서 내용을 비우고 저장하면 브라우저 검증이 막는다', async ({ page }) => {
@@ -331,14 +331,14 @@ test('댓글 삭제: 취소하면 그대로, 확인하면 지워진다', async (
     await expect(page.locator('#flash')).toContainText('댓글이 삭제되었습니다.');
     await expect(page.locator('.comment-list__content')).toHaveCount(0);
 
-    // F09: 삭제 성공 경로는 모달이 닫히기 전에 그 댓글의 삭제 버튼(trigger)이 이미 DOM에서
+    // 삭제 성공 경로는 모달이 닫히기 전에 그 댓글의 삭제 버튼(trigger)이 이미 DOM에서
     // 사라진다 — 사라진 요소에 focus()는 조용히 무시되어 포커스가 body로 떨어졌었다. 댓글
     // 영역 제목으로 옮겨가는지 확인한다.
     await expect(page.locator('#comments-heading')).toBeFocused();
 });
 
 /**
- * F10: 댓글 A의 삭제 요청이 진행 중일 때 모달을 닫고 댓글 B를 새로 연다. 두 가지를 확인한다 —
+ * 댓글 A의 삭제 요청이 진행 중일 때 모달을 닫고 댓글 B를 새로 연다. 두 가지를 확인한다 —
  * ①B의 확인 버튼이 A의 disabled 상태에 갇혀 있으면 안 된다(서로 다른 대상이므로 동시에
  * 진행해도 무방하다). ②A의 응답이, 지금 화면에 떠 있는 B의(아직 확인하지 않은) 대화상자를
  * 사용자 모르게 닫아버리면 안 된다 — 실제 삭제 자체는 세대와 무관하게 반영되어야 한다.
@@ -433,11 +433,11 @@ test('2단계 댓글: 답글을 달면 최상위 댓글 아래 중첩되어 보�
 });
 
 /**
- * COR-05 회귀: 서버는 최초 페이지에서 최상위 댓글 하나당 답글을 20개까지만 내려준다. 예전
+ * 회귀: 서버는 최초 페이지에서 최상위 댓글 하나당 답글을 20개까지만 내려준다. 예전
  * 전역 상한(페이지 전체 500개) 방식은 답글이 많은 부모가 그 상한을 혼자 다 쓰면 나머지가
  * 영원히 숨겨졌다 — 지금은 부모별 상한이라 "답글 더 보기"로 항상 나머지에 도달할 수 있다.
  */
-test('COR-05 회귀: 답글이 21개면 새로고침 후 20개만 보이고, 답글 더 보기로 나머지에 도달한다', async ({ page }) => {
+test('회귀: 답글이 21개면 새로고침 후 20개만 보이고, 답글 더 보기로 나머지에 도달한다', async ({ page }) => {
     test.slow();
     await openOwnPost(page);
     await page.locator('#comment-content').fill('답글이 많이 달릴 부모 댓글');
@@ -466,7 +466,7 @@ test('COR-05 회귀: 답글이 21개면 새로고침 후 20개만 보이고, 답
  * "답글 더 보기"가 화면 배열의 마지막 id(새 답글)를 커서로 보내 아직 받지 않은 21번째 답글을
  * 건너뛰었다. 또 답글 삭제가 부모의 답글 수를 줄이지 않아, 이어서 부모를 지우면 개수가 음수가 됐다.
  */
-test('F02·F03 회귀: 새 답글을 쓴 뒤 답글 더 보기로 빠짐없이 받고, 답글·부모 삭제 후 개수가 0이다', async ({ page }) => {
+test('회귀: 새 답글을 쓴 뒤 답글 더 보기로 빠짐없이 받고, 답글·부모 삭제 후 개수가 0이다', async ({ page }) => {
     test.slow();
     await openOwnPost(page);
     await page.locator('#comment-content').fill('커서 회귀용 부모 댓글');
@@ -498,7 +498,7 @@ test('F02·F03 회귀: 새 답글을 쓴 뒤 답글 더 보기로 빠짐없이 �
     await expect(page.locator('#flash')).toContainText('댓글이 삭제되었습니다.');
     await expect(page.locator('#comments-heading')).toContainText('댓글 22개');
 
-    // 부모에는 아직 답글 21개가 남아 있어 소프트 삭제된다(A-BE-06) — 행이 남으므로
+    // 부모에는 아직 답글 21개가 남아 있어 소프트 삭제된다 — 행이 남으므로
     // 개수는 줄지 않는다(하드 삭제였다면 22개가 통째로 빠져 0개가 됐을 것이다).
     await parent.locator(':scope > .comment-view .btn-comment-delete').click();
     await page.locator('#btn-confirm-delete').click();
@@ -507,7 +507,7 @@ test('F02·F03 회귀: 새 답글을 쓴 뒤 답글 더 보기로 빠짐없이 �
 
 // 수정 요청은 기준 버전(If-Match)이 필수다. 방금 이 화면에서 단 답글도 등록
 // 응답의 version을 들고 있어, 새로고침 없이 곧바로 수정할 수 있어야 한다.
-test('F11: 방금 단 답글을 새로고침 없이 바로 수정할 수 있다(If-Match 포함)', async ({ page }) => {
+test('방금 단 답글을 새로고침 없이 바로 수정할 수 있다(If-Match 포함)', async ({ page }) => {
     await openOwnPost(page);
     await page.locator('#comment-content').fill('부모 댓글');
     await page.locator('#btn-comment-save').click();
@@ -537,7 +537,7 @@ test('F11: 방금 단 답글을 새로고침 없이 바로 수정할 수 있다(
  * 댓글의 작성자 한 사람의 선택이 남이 쓴 답글까지 지웠다. 지금은 답글이 있으면 행을
  * 지우지 않고 내용만 "삭제된 댓글입니다"로 바꾸며, 답글은 그대로 남는다.
  */
-test('A-BE-06: 답글이 있는 최상위 댓글을 지우면 행은 남고 답글은 살아남는다', async ({ page }) => {
+test('답글이 있는 최상위 댓글을 지우면 행은 남고 답글은 살아남는다', async ({ page }) => {
     await openOwnPost(page);
     await page.locator('#comment-content').fill('삭제될 최상위 댓글입니다.');
     await page.locator('#btn-comment-save').click();
@@ -566,7 +566,7 @@ test('A-BE-06: 답글이 있는 최상위 댓글을 지우면 행은 남고 답�
 });
 
 /** 답글이 없는 최상위 댓글은 지금까지처럼 행 자체가 사라진다. */
-test('A-BE-06: 답글이 없는 최상위 댓글을 지우면 지금처럼 행 자체가 사라진다', async ({ page }) => {
+test('답글이 없는 최상위 댓글을 지우면 지금처럼 행 자체가 사라진다', async ({ page }) => {
     await openOwnPost(page);
     await page.locator('#comment-content').fill('답글 없이 지워질 댓글입니다.');
     await page.locator('#btn-comment-save').click();
@@ -581,7 +581,7 @@ test('A-BE-06: 답글이 없는 최상위 댓글을 지우면 지금처럼 행 �
 });
 
 /**
- * COR-08 회귀: 예전에는 서버가 내려주는 기존 댓글의 createdAt이 오프셋 없는 LocalDateTime
+ * 회귀: 예전에는 서버가 내려주는 기존 댓글의 createdAt이 오프셋 없는 LocalDateTime
  * 문자열이고, CommentsApp.vue가 새로 단 댓글에 낙관적으로 채우는 값은
  * new Date().toISOString()(UTC, 'Z' 포함)이었다. CommentItem.vue의 formatDate()는
  * new Date(iso)로 파싱한 뒤 브라우저 로컬 시간대로 표시하는데, 오프셋 없는 문자열은
@@ -595,7 +595,7 @@ test('A-BE-06: 답글이 없는 최상위 댓글을 지우면 지금처럼 행 �
  * 시간대와 크게 다른 시간대(태평양 Kiritimati, UTC+14)로 브라우저만 강제해도 두 표시가
  * 같아야 한다.
  */
-test('COR-08 회귀: 서버 시간대와 다른 브라우저에서도 새로 단 댓글과 새로고침 후 같은 댓글의 표시 시각이 같다', async ({ browser }) => {
+test('회귀: 서버 시간대와 다른 브라우저에서도 새로 단 댓글과 새로고침 후 같은 댓글의 표시 시각이 같다', async ({ browser }) => {
     const context = await browser.newContext({
         storageState: storageStateFor('user'),
         timezoneId: 'Pacific/Kiritimati', // UTC+14 — 서버 프로세스의 실제 시간대와 겹칠 일이 없다.
@@ -613,14 +613,14 @@ test('COR-08 회귀: 서버 시간대와 다른 브라우저에서도 새로 단
     await page.reload();
     const afterReload = await timestamp.textContent();
 
-    expect(justPosted, '같은 댓글이면 새로고침 전후로 같은 시각을 보여줘야 한다(COR-08)')
+    expect(justPosted, '같은 댓글이면 새로고침 전후로 같은 시각을 보여줘야 한다')
         .toBe(afterReload);
 
     await context.close();
 });
 
 /**
- * F01: "더 보기" 응답이 지연되는 동안 새 댓글을 등록해 totalCount를 로컬에서 22로 올려도,
+ * "더 보기" 응답이 지연되는 동안 새 댓글을 등록해 totalCount를 로컬에서 22로 올려도,
  * 늦게 도착한 페이지 응답의 totalCount(21)로 되돌아가면 안 된다. mutationSeq가 이 되돌림을
  * 막는다(useRecommendation과 같은 종류의 "응답 순서 뒤집기" 재현).
  */
@@ -656,7 +656,7 @@ test('더 보기 응답이 지연되는 동안 등록한 댓글의 개수가 되
 });
 
 /**
- * F01: 같은 경쟁을 답글 등록으로 재현한다 — 답글도 totalCount를 증감하므로 같은 mutationSeq
+ * 같은 경쟁을 답글 등록으로 재현한다 — 답글도 totalCount를 증감하므로 같은 mutationSeq
  * 가드를 거친다.
  */
 test('더 보기 응답이 지연되는 동안 등록한 답글의 개수가 되돌아가지 않는다', async ({ page }) => {
@@ -690,7 +690,7 @@ test('더 보기 응답이 지연되는 동안 등록한 답글의 개수가 되
 });
 
 /**
- * F09: 수정 취소·저장 성공 모두 폼을 닫지만, 그 순간까지 포커스를 갖고 있던 입력창·저장
+ * 수정 취소·저장 성공 모두 폼을 닫지만, 그 순간까지 포커스를 갖고 있던 입력창·저장
  * 버튼은 v-show로 숨겨진다. 트리거였던 "수정" 버튼으로 포커스를 되돌리지 않으면 숨겨진
  * 요소가 활성 요소로 남는다.
  */
@@ -719,7 +719,7 @@ test('댓글 수정 취소·저장 후 포커스가 수정 버튼으로 돌아�
     await expect(editButton).toBeFocused();
 });
 
-/** F09: 답글도 같은 규칙 — 답글 버튼에서 시작해 취소·등록 후 그 버튼으로 돌아온다. */
+/** 답글도 같은 규칙 — 답글 버튼에서 시작해 취소·등록 후 그 버튼으로 돌아온다. */
 test('답글 취소·등록 후 포커스가 답글 버튼으로 돌아온다', async ({ page }) => {
     await openOwnPost(page);
     await page.locator('#comment-content').fill('답글 포커스 검증용 댓글');
@@ -746,7 +746,7 @@ test('답글 취소·등록 후 포커스가 답글 버튼으로 돌아온다', 
 });
 
 /**
- * F11: 각 최상위 댓글은 열림 여부와 무관하게 수정·답글 폼을 항상 DOM에 유지했다(v-show).
+ * 각 최상위 댓글은 열림 여부와 무관하게 수정·답글 폼을 항상 DOM에 유지했다(v-show).
  * 최상위 댓글 3개짜리 fixture에서 새 댓글 입력까지 textarea 7개가 나온 것이 이 때문이다.
  * v-if로 바꿔 닫혀 있을 때는 아예 마운트하지 않는지 확인한다.
  */

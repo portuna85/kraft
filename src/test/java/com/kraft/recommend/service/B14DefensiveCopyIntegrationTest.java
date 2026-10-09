@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * B14/P3(방어적 복사)가 각 타입의 생성자 안에서 끝나는 게 아니라, 실제 저장·조회·검증·생성
+ * 방어적 복사가 각 타입의 생성자 안에서 끝나는 게 아니라, 실제 저장·조회·검증·생성
  * 경로를 통째로 거치는 동안에도 지켜지는지 확인한다. 각 타입은 이미 단위 테스트가 있지만
  * ({@link LottoNumbers}, {@link RecommendationHistorySnapshot}, {@link ImportedDraw}),
  * 여기서는 Mock 없이 실제 JPA 저장소와 실제 협력

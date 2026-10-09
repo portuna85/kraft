@@ -60,7 +60,7 @@ test('clear()는 모든 필드 오류를 지운다', async () => {
     assert.deepEqual({ ...fieldErrors }, {});
 });
 
-test('clearOnEdit: 폼 값을 고치면 그 필드의 오류만 지운다(FE-37)', async () => {
+test('clearOnEdit: 폼 값을 고치면 그 필드의 오류만 지운다', async () => {
     const { reactive: r, nextTick: tick } = await import('vue');
     const { fieldErrors, apply, clearOnEdit } = useFieldErrors();
     const form = r({ title: '', content: '' });

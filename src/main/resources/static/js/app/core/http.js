@@ -10,7 +10,7 @@ import { ApiError, parse } from './httpResponse.js';
  * 한 군데라도 여기를 우회해 fetch를 직접 부르면 그 요청만 조용히 403이 된다.
  *
  * 응답 해석(`parse`)과 `ApiError`는 DOM에 의존하지 않는 순수 로직이라 `httpResponse.js`로
- * 분리돼 있다(A-QA-08) — 이 파일은 모듈 로드 시점에 `document`를 읽으므로 `node --test`로
+ * 분리돼 있다 — 이 파일은 모듈 로드 시점에 `document`를 읽으므로 `node --test`로
  * 직접 임포트할 수 없다.
  */
 

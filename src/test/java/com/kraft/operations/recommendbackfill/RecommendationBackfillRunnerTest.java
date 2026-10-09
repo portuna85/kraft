@@ -110,9 +110,9 @@ class RecommendationBackfillRunnerTest {
         verify(dhLotteryClient, Mockito.never()).fetchRound(anyInt());
     }
 
-    /** OBS-05: 잘못된 인자로 몇 시간짜리 백필을 돌리다 뒤늦게 실패를 알아채면 안 된다. */
+    /** 잘못된 인자로 몇 시간짜리 백필을 돌리다 뒤늦게 실패를 알아채면 안 된다. */
     @Test
-    @DisplayName("OBS-05: chunk-size가 0 이하면 조회 없이 즉시 종료코드 1을 남긴다")
+    @DisplayName("chunk-size가 0 이하면 조회 없이 즉시 종료코드 1을 남긴다")
     void nonPositiveChunkSize_failsFastWithoutFetching() {
         RecommendationBackfillRunner runner = runner(10, 0);
 
@@ -123,7 +123,7 @@ class RecommendationBackfillRunnerTest {
     }
 
     @Test
-    @DisplayName("OBS-05: request-delay-ms가 음수면 조회 없이 즉시 종료코드 1을 남긴다")
+    @DisplayName("request-delay-ms가 음수면 조회 없이 즉시 종료코드 1을 남긴다")
     void negativeRequestDelay_failsFastWithoutFetching() {
         RecommendationBackfillRunner runner = runner(10, 5);
         ReflectionTestUtils.setField(runner, "requestDelayMs", -1L);
@@ -135,12 +135,12 @@ class RecommendationBackfillRunnerTest {
     }
 
     /**
-     * OBS-05: 예전에는 대기 중 인터럽트를 받아도 플래그만 다시 세우고 반복문을 계속 돌았다 —
+     * 예전에는 대기 중 인터럽트를 받아도 플래그만 다시 세우고 반복문을 계속 돌았다 —
      * 종료 신호를 받고도 다음 회차 요청을 계속 내보냈다. 지금은 인터럽트를 받으면 그 자리에서
      * 멈추고 이미 커밋된 청크까지만 반영한 채 종료코드 1을 남겨야 한다.
      */
     @Test
-    @DisplayName("OBS-05: 대기 중 인터럽트를 받으면 그 자리에서 멈추고 종료코드 1을 남긴다")
+    @DisplayName("대기 중 인터럽트를 받으면 그 자리에서 멈추고 종료코드 1을 남긴다")
     void interruptedWhileSleeping_stopsImmediately() throws InterruptedException {
         given(stateRepository.findById(1)).willReturn(Optional.empty());
         given(dhLotteryClient.fetchRound(1)).willReturn(successOf(1));
@@ -155,7 +155,7 @@ class RecommendationBackfillRunnerTest {
         int[] exitCode = new int[1];
         Thread worker = new Thread(() -> exitCode[0] = runner.backfill());
         worker.start();
-        // sleep(60000)에 실제로 진입할 때까지 기다린다 — 고정 대기 대신 스레드 상태를 본다(OPS-35).
+        // sleep(60000)에 실제로 진입할 때까지 기다린다 — 고정 대기 대신 스레드 상태를 본다.
         org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(5))
                 .until(() -> worker.getState() == Thread.State.TIMED_WAITING);
         worker.interrupt();

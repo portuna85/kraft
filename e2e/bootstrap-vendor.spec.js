@@ -3,7 +3,7 @@ import { test, expect, storageStateFor, openAccountMenu } from './fixtures.js';
 test.use({ storageState: storageStateFor('user') });
 
 /**
- * F08: Bootstrap JS를 CDN 대신 이 서버가 직접 제공한다. cdnjs.cloudflare.com으로 가는
+ * Bootstrap JS를 CDN 대신 이 서버가 직접 제공한다. cdnjs.cloudflare.com으로 가는
  * 요청을 전부 막아도(CDN 장애를 흉내 낸다) 모달·토스트가 그대로 동작해야 한다 — 예전에는
  * CSS만 자체 호스팅이고 JS는 CDN이라, CDN이 죽으면 모달 없이는 열 수도 닫을 수도 없었다.
  * <p>

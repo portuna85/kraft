@@ -39,11 +39,11 @@ class StaticResourceCacheTest {
     private String uploadDir;
 
     /**
-     * BE-14: 업로드 이미지는 365일 immutable이 아니라 하루 public으로 캐시한다 — 모더레이션으로 지운
+     * 업로드 이미지는 365일 immutable이 아니라 하루 public으로 캐시한다 — 모더레이션으로 지운
      * 이미지가 브라우저·프록시에 1년 남지 않게 한다. 실제 업로드 디렉터리에 파일을 하나 두고 요청한다.
      */
     @Test
-    @DisplayName("업로드 이미지는 1일 public으로 캐시하고 immutable이 아니다(BE-14)")
+    @DisplayName("업로드 이미지는 1일 public으로 캐시하고 immutable이 아니다")
     void uploadedImage_hasShortPublicCache() throws Exception {
         Path dir = Path.of(uploadDir);
         Files.createDirectories(dir);

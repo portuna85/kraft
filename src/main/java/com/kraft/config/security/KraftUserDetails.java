@@ -9,7 +9,7 @@ import java.util.Collection;
  * 화면에 보여줄 이름(가입 시 입력한 닉네임)을 함께 들고 다니는 {@link org.springframework.security.core.userdetails.UserDetails}.
  * <p>
  * 로그인 아이디({@code getUsername()}, 곧 {@code Authentication.getName()})는 <b>불변 회원
- * 번호(id)의 문자열</b>이다(BE-04) — 예전에는 이메일을 그대로 썼는데, Spring Session JDBC가
+ * 번호(id)의 문자열</b>이다 — 예전에는 이메일을 그대로 썼는데, Spring Session JDBC가
  * {@code SPRING_SESSION.PRINCIPAL_NAME}과 직렬화된 SecurityContext에 이 값을 평문으로 저장해
  * {@code User.email}의 컬럼 암호화(EmailAttributeConverter)를 우회하는 경로가 됐다.
  * <p>
@@ -31,7 +31,7 @@ public class KraftUserDetails extends org.springframework.security.core.userdeta
     private final String displayName;
 
     /**
-     * @param userId 불변 회원 번호(B02). 로그인 성공 시 세션에도 심어 {@code SessionRevoker}가
+     * @param userId 불변 회원 번호. 로그인 성공 시 세션에도 심어 {@code SessionRevoker}가
      *               대상 계정을 구분한다({@code config.security.SecurityConfig#redirectAwareSuccessHandler} 참고).
      */
     public KraftUserDetails(Long userId, String password, String displayName,
@@ -42,7 +42,7 @@ public class KraftUserDetails extends org.springframework.security.core.userdeta
     /**
      * @param accountNonLocked false면 비밀번호를 확인하기도 전에
      *                          {@link org.springframework.security.authentication.LockedException}로
-     *                          거절된다(A-SEC-08, {@code LoginLockoutService}).
+     *                          거절된다({@code LoginLockoutService}).
      */
     public KraftUserDetails(Long userId, String password, String displayName, boolean accountNonLocked,
                             Collection<? extends GrantedAuthority> authorities) {

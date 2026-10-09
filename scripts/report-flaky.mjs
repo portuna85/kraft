@@ -1,5 +1,5 @@
 // Playwright JSON 결과(playwright-results.json)에서 flaky(재시도 끝에 통과한) 테스트를 찾아 GitHub 실행 요약에
-// 적고 경고를 남긴다(OPS-34). retries: 1이 불안정한 테스트를 조용히 통과시키지 않게 하려는 것이다.
+// 적고 경고를 남긴다. retries: 1이 불안정한 테스트를 조용히 통과시키지 않게 하려는 것이다.
 // 사용: node scripts/report-flaky.mjs <샤드 번호> [결과 파일]
 import { appendFileSync, readFileSync } from 'node:fs';
 

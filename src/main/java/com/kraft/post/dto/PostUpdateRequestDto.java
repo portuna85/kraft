@@ -19,7 +19,7 @@ public record PostUpdateRequestDto(
         @Size(max = 500, message = "이미지 경로가 올바르지 않습니다.")
         String picture,
 
-        // PostSaveRequestDto와 같은 이유(A-FE-09) — CLS 방지용 힌트일 뿐 서버가 picture와의
+        // PostSaveRequestDto와 같은 이유 — CLS 방지용 힌트일 뿐 서버가 picture와의
         // 정합성을 검증하지 않는다.
         @Positive(message = "이미지 폭은 양수여야 합니다.")
         Integer pictureWidth,

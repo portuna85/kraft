@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { test, expect, storageStateFor, openPostByTitle } from './fixtures.js';
 
 /**
- * 접근성 자동 검사(A-FE-13). 기능·시각 회귀만 보던 e2e에 axe-core 스캔을 더한다.
+ * 접근성 자동 검사. 기능·시각 회귀만 보던 e2e에 axe-core 스캔을 더한다.
  *
  * `serious`·`critical` 위반만 실패시킨다(`withTags`) — `minor`·`moderate`까지 막으면
  * 관련 없는 색상·문구 변경이 접근성과 무관한 이유로 CI를 막을 수 있어, 급한 것만 걸러 사람이

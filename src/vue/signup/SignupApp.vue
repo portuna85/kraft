@@ -52,7 +52,7 @@ async function onSubmit() {
 
     saving.value = true;
     // 버튼이 비활성화되는 동안에도 입력란 자체는 잠그지 않으므로, 응답을 기다리는 사이
-    // 사용자가 값을 고치더라도 이번 요청은 제출 시점 스냅샷을 그대로 쓴다(F02).
+    // 사용자가 값을 고치더라도 이번 요청은 제출 시점 스냅샷을 그대로 쓴다.
     const snapshot = { name: form.name, email: form.email, password: form.password };
     try {
         await api.post(API.USERS, {
@@ -63,8 +63,8 @@ async function onSubmit() {
         flash.set('SIGNUP_DONE');
         window.location.href = '/login';
     } catch (error) {
-        // 필드별 오류(A-BE-07)가 있으면 입력칸 옆에서 알린다. 이메일 중복처럼 필드 하나로
-        // 좁혀지지 않는 서버 판정에는 errors가 없으므로 그때만 배너로 보여준다(A-FE-08).
+        // 필드별 오류가 있으면 입력칸 옆에서 알린다. 이메일 중복처럼 필드 하나로
+        // 좁혀지지 않는 서버 판정에는 errors가 없으므로 그때만 배너로 보여준다.
         const handledByField = await applyFieldErrors(error, {
             name: nameInput, email: emailInput, password: passwordInput,
         });

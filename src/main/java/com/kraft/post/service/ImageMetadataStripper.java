@@ -4,8 +4,8 @@ import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 
 /**
- * 업로드된 이미지에서 위치·기기 정보가 담길 수 있는 메타데이터를 재인코딩 없이 제거한다
- * (전체 리뷰 2026-09-26 A-SEC-10). 휴대폰 JPEG의 EXIF에는 GPS 좌표·기기 모델·촬영 시각이
+ * 업로드된 이미지에서 위치·기기 정보가 담길 수 있는 메타데이터를 재인코딩 없이 제거한다.
+ * 휴대폰 JPEG의 EXIF에는 GPS 좌표·기기 모델·촬영 시각이
  * 들어 있는데, 예전에는 검증만 하고 원본 바이트를 그대로 저장·공개해 누구나 다운로드해
  * 확인할 수 있었다.
  * <p>
@@ -283,7 +283,7 @@ final class ImageMetadataStripper {
 
     /**
      * GIF 블록을 훑어 Comment Extension(0x21 0xFE)과, 반복 횟수·애니메이션 버퍼가 아닌
-     * Application Extension(0x21 0xFF — XMP 등 임의 데이터를 담을 수 있다)을 뺀다(BE-23).
+     * Application Extension(0x21 0xFF — XMP 등 임의 데이터를 담을 수 있다)을 뺀다.
      * 이미지·Graphic Control(프레임 지연)·Plain Text 블록과 {@code NETSCAPE2.0}/{@code ANIMEXTS1.0}
      * 확장은 그대로 복사하므로 애니메이션은 유지된다. 구조가 예상과 다르면 원본을 돌려준다.
      */

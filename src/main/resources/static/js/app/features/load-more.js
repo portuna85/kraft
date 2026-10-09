@@ -15,7 +15,7 @@ import { formatDateTime } from '../core/datetime.js';
  * 더 눌러도 "다음"을 누르면 이미 화면에 있는 페이지로 다시 이동했다. 정렬 기준에 따라
  * 순서가 바뀔 수 있는 데이터(조회순 등)에 대비해 이미 붙은 글 id는 건너뛴다(중복 방지).
  *
- * A-FE-07: 더 보기로 불러온 행은 DOM에만 있고 URL·기록에 흔적이 없어, 글을 열었다가
+ * 더 보기로 불러온 행은 DOM에만 있고 URL·기록에 흔적이 없어, 글을 열었다가
  * 뒤로 가면(bfcache가 없는 경우 — 있으면 DOM이 그대로 남아 이 모듈 자체가 다시 실행되지
  * 않는다) 서버가 처음 그린 1페이지로 돌아가 다시 눌러야 했다. 불러온 글 데이터를
  * sessionStorage에 같은 검색 조건 키로 남겨 두고, 이 모듈이 다시 실행될 때(=bfcache가
@@ -195,7 +195,7 @@ function updateStatusText(pager, startPage, lastLoadedPage, totalPages) {
     const start = startPage + 1;
     const end = lastLoadedPage + 1;
     const range = start === end ? `${start}` : `${start}–${end}`;
-    // 전체 페이지 수를 모르는 검색 결과(BE-08)는 서버가 data-total-pages를 0으로 둔다 — "/ 전체" 없이
+    // 전체 페이지 수를 모르는 검색 결과는 서버가 data-total-pages를 0으로 둔다 — "/ 전체" 없이
     // 지금까지 본 범위만 알린다.
     statusEl.textContent = totalPages > 0 ? `${range} / ${totalPages}` : `${range}페이지`;
 }
@@ -297,7 +297,7 @@ function buildRow(post) {
     author.textContent = post.author;
     const date = document.createElement('span');
     date.className = 'post-list__date';
-    // index.html과 같은 규칙(A-BE-11): 기본 정렬이 등록순이라 등록일을 보이고, 실제로
+    // index.html과 같은 규칙: 기본 정렬이 등록순이라 등록일을 보이고, 실제로
     // 수정된 글만 표시를 덧붙인다.
     date.textContent = formatDateTime(post.createdAt) + (post.modified ? ' (수정됨)' : '');
     meta.append(author, date);

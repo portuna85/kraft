@@ -37,7 +37,7 @@ public class PostLikeWriter {
      * rollback-only로 표시되기 때문이다. 같은 트랜잭션 안에서 예외를 잡고 "정상 반환"해도
      * 커밋 시점에 {@code UnexpectedRollbackException}이 난다 — 호출한 쪽(REQUIRES_NEW 바깥,
      * 이미 롤백된 트랜잭션의 경계 밖)에서 판단해야 한다. {@link #isDuplicateLikeConstraint}로
-     * 유니크 제약(중복 추천)인지 FK 등 다른 원인인지 구분한다(B09) — 예전에는 모든
+     * 유니크 제약(중복 추천)인지 FK 등 다른 원인인지 구분한다 — 예전에는 모든
      * {@code DataIntegrityViolationException}을 중복으로 취급해, 부모 게시글이 막 삭제되어
      * 생긴 FK 위반까지 "이미 추천됨"으로 위장해 조용히 성공 처리했다.
      */
@@ -63,7 +63,7 @@ public class PostLikeWriter {
     /**
      * 추천 수를 새 트랜잭션에서 읽는다. {@link #insert}·{@link #delete}는 REQUIRES_NEW로
      * 별도 커밋되므로, 호출한 쪽의(더 먼저 시작된) 트랜잭션이 REPEATABLE READ 스냅샷을 이미
-     * 잡아 두었다면 방금 커밋된 변경을 못 볼 수 있다(B09). 이 메서드는 항상 새 스냅샷에서
+     * 잡아 두었다면 방금 커밋된 변경을 못 볼 수 있다. 이 메서드는 항상 새 스냅샷에서
      * 읽어 최신 값을 보장한다.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)

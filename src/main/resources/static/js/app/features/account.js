@@ -48,7 +48,7 @@ function initLogout() {
     // requestSubmit()이 아니라 submit()을 쓴다 — 전자는 Safari 16+이고 이 프로젝트의 지원
     // 범위는 iOS 15부터다. 이 폼에는 submit 핸들러도 검증할 입력도 없어 차이가 없다.
     on(button, 'click', () => {
-        // 이 계정의 초안을 지운다(A-FE-03) — 다음에 이 브라우저로 로그인하는 사람이 볼 수
+        // 이 계정의 초안을 지운다 — 다음에 이 브라우저로 로그인하는 사람이 볼 수
         // 없게 한다. 서버 요청(폼 제출) 전에 해도 안전하다 — 실패해도 로그아웃은 어차피
         // 진행되고, 초안은 지워져도 큰 손실이 아니다.
         clearAllDrafts();
@@ -126,7 +126,7 @@ async function changePassword(openedAt) {
             currentPassword: rawValueOf(inputById('currentPassword')),
             newPassword: rawValueOf(inputById('changeNewPassword')),
         });
-        // 서버가 이미 이 계정의 모든 세션을 폐기했다 — 초안도 함께 지운다(A-FE-03).
+        // 서버가 이미 이 계정의 모든 세션을 폐기했다 — 초안도 함께 지운다.
         clearAllDrafts();
         flash.set('PASSWORD_CHANGED');
         window.location.href = '/login';
@@ -193,7 +193,7 @@ async function withdraw(openedAt) {
         await api.del(API.USERS_ME, {
             currentPassword: rawValueOf(inputById('withdrawPassword')),
         });
-        // 탈퇴 계정의 초안은 되찾을 계정 자체가 없다 — 지운다(A-FE-03).
+        // 탈퇴 계정의 초안은 되찾을 계정 자체가 없다 — 지운다.
         clearAllDrafts();
         flash.set('ACCOUNT_WITHDRAWN');
         window.location.href = '/login';
@@ -209,7 +209,7 @@ async function withdraw(openedAt) {
  * 인증 메일 재발송 모달. 버튼을 누르는 즉시 메일이 나가던 것을 한 번 확인받도록 바꿨다 —
  * 재발송은 이전 토큰을 무효로 만들기 때문이다.
  * <p>
- * changePassword·withdraw와 달리 generation 가드를 두지 않는다(F05 검토 결과). 그 둘의
+ * changePassword·withdraw와 달리 generation 가드를 두지 않는다(검토 결과). 그 둘의
  * generation은 "모달을 닫고 다시 열었는데 이전 시도의 오류가 새 폼 위에 남는 것"을 막는데,
  * 이 모달은 입력 필드가 없고 오류를 모달 안이 아니라 전역 토스트로만 보여줘 다시 열어도
  * 남을 "이전 폼 상태" 자체가 없다. setBusy(false)만 재진입을 허용하면 충분하다.

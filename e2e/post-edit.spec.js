@@ -8,12 +8,12 @@ async function createOwnPost(page, title) {
     await page.locator('#title').fill(title);
     await page.locator('#content').fill('편집 테스트용 본문입니다.');
     await page.locator('#btn-save').click();
-    // 등록 후 목록이 아니라 방금 쓴 글로 바로 이동한다(전체 리뷰 2026-09-26 A-FE-02).
+    // 등록 후 목록이 아니라 방금 쓴 글로 바로 이동한다.
     await page.waitForURL(/\/posts\/update\/\d+$/);
 }
 
 /**
- * A-FE-14: navigator.share가 있으면 그 시트를 먼저 띄우고, 없으면 클립보드 복사로
+ * navigator.share가 있으면 그 시트를 먼저 띄우고, 없으면 클립보드 복사로
  * 물러선다. Playwright의 chromium 프로젝트(channel: 'chromium', 전체 데스크톱 빌드)는
  * navigator.share를 이미 구현하고 있으므로, "없는 브라우저" 경로를 보려면 명시적으로
  * 지워야 한다 — 실제 실행에서 지우지 않으면(사용자 제스처 밖 자동화 호출이라) 거절되어
@@ -73,7 +73,7 @@ test.describe('공유 버튼', () => {
     });
 });
 
-test('F12 회귀 방지: 분류만 바꾸고 취소하면 확인을 묻고 분류가 되돌아온다', async ({ page }) => {
+test('회귀 방지: 분류만 바꾸고 취소하면 확인을 묻고 분류가 되돌아온다', async ({ page }) => {
     await createOwnPost(page, uniqueTitle('편집'));
 
     await page.locator('#btn-edit').click();
@@ -107,7 +107,7 @@ test('제목·본문·분류를 바꿔 저장하면 반영된다', async ({ page
     await page.locator('#edit-category').selectOption('QNA');
     await page.locator('#btn-update').click();
 
-    // 목록으로 튕기지 않고 같은 글을 새로고침해서 보여준다(전체 리뷰 2026-09-26 A-FE-02).
+    // 목록으로 튕기지 않고 같은 글을 새로고침해서 보여준다.
     await page.waitForURL(/\/posts\/update\/\d+$/);
     await expect(page.locator('#flash')).toContainText('글이 수정되었습니다.');
     await expect(page.locator('#post-title-text')).toHaveText(newTitle);
@@ -188,7 +188,7 @@ test('바꾼 것이 없으면 취소할 때 묻지 않는다', async ({ page }) 
     expect(asked).toBe(false);
 });
 
-test('F04: 저장 중에는 취소·제목·본문·분류가 모두 비활성 상태다', async ({ page }) => {
+test('저장 중에는 취소·제목·본문·분류가 모두 비활성 상태다', async ({ page }) => {
     const title = uniqueTitle('편집');
     await createOwnPost(page, title);
 
@@ -260,7 +260,7 @@ test('다른 사람의 글에는 수정·삭제 버튼이 보이지 않는다', 
  * 본문은 서버가 먼저 HTML로 그린다. JS 없이도 읽을 수 있어야 하고,
  * Vue가 마운트한 뒤에는 그 내용을 교체해 제목·본문이 한 번만 보여야 하며, 편집도 그대로 된다.
  */
-test('F08: JS 없이도 본문을 읽을 수 있고, 마운트 뒤에는 한 번만 보이며 편집이 된다', async ({ page, browser }) => {
+test('JS 없이도 본문을 읽을 수 있고, 마운트 뒤에는 한 번만 보이며 편집이 된다', async ({ page, browser }) => {
     const title = uniqueTitle('서버렌더');
     await createOwnPost(page, title);
     const postUrl = page.url();
@@ -289,7 +289,7 @@ test('F08: JS 없이도 본문을 읽을 수 있고, 마운트 뒤에는 한 번
 });
 
 /**
- * A-FE-12: 세션 만료를 막기 위해 10분마다 가벼운 GET(/api/v1/users/me/ping)을 보낸다.
+ * 세션 만료를 막기 위해 10분마다 가벼운 GET(/api/v1/users/me/ping)을 보낸다.
  * page.clock으로 실제 10분을 기다리지 않고 타이머만 앞으로 돌린다 — setInterval이 실제로
  * 등록됐는지, 주기가 맞는지를 확인하는 것이 목적이고 네트워크 자체는 그대로 나간다.
  */
@@ -306,7 +306,7 @@ test('편집 화면이 열려 있는 동안 세션 연장 핑을 주기적으로
     await createOwnPost(page, uniqueTitle('세션연장'));
     expect(pingRequests).toHaveLength(0);
 
-    // 입력이 없으면 방치된 화면으로 보고 핑하지 않는다(FE-07).
+    // 입력이 없으면 방치된 화면으로 보고 핑하지 않는다.
     await page.clock.fastForward('10:00');
     await page.waitForTimeout(300);
     expect(pingRequests).toHaveLength(0);

@@ -14,14 +14,14 @@ package com.kraft.observability;
  * @param mailPending      아직 보내지 못한 메일 수 상한. 주기 작업이 도는데도 줄지 않으면 SMTP가
  *                         죽어 있는 것이다.
  * @param mailFailed       재시도를 모두 소진한 메일 수 상한. 이건 사람이 봐야 낫는다.
- * @param slowRequests     고정 임계값(ms)을 넘은 요청 수 상한(O05). 평균이 정상 범위여도 이
+ * @param slowRequests     고정 임계값(ms)을 넘은 요청 수 상한. 평균이 정상 범위여도 이
  *                         값이 늘면 일부 요청만 유독 느려지고 있다는 뜻이다.
- * @param sessionRevocationFailed 재시도를 모두 소진한 세션 폐기 태스크 수 상한(O03). 이건
+ * @param sessionRevocationFailed 재시도를 모두 소진한 세션 폐기 태스크 수 상한. 이건
  *                         사람이 봐야 낫는다 — mailFailed와 같은 성격이다.
- * @param imageDeleteBacklog 삭제 예약됐지만 아직 못 지운 이미지 파일 수 상한(O03). 정리
+ * @param imageDeleteBacklog 삭제 예약됐지만 아직 못 지운 이미지 파일 수 상한. 정리
  *                         주기가 막혔거나 계속 실패하고 있다는 신호다.
  * @param recommendationHistoryStaleHours 추천 이력 검증 기준이 갱신되지 않은 채 지날 수
- *                         있는 최대 시간(O03). 자동 수집이 꺼져 있거나 매주 실패하고 있다는
+ *                         있는 최대 시간. 자동 수집이 꺼져 있거나 매주 실패하고 있다는
  *                         신호다.
  */
 public record HealthThresholds(

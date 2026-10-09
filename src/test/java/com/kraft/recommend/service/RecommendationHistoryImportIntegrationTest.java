@@ -43,7 +43,7 @@ class RecommendationHistoryImportIntegrationTest extends MariaDbIntegrationTest 
         assertThat(afterImport.roundCount()).isEqualTo(2);
         assertThat(afterImport.verifiedThroughRound()).isEqualTo(2);
         // 트리거가 두 번(회차 2건 INSERT) 증가시키고, 메타데이터 갱신 자체도 한 번 더 올린다
-        // (HIST-04/05 — updateVerificationMetadata가 항상 version을 +1 한다).
+        // (updateVerificationMetadata가 항상 version을 +1 한다).
         assertThat(afterImport.version()).isEqualTo(3L);
 
         importer.importHistory(List.of(new ImportedDraw(1, List.of(2, 3, 4, 5, 6, 7))), 2, "integration-test-v2");

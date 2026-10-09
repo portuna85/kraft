@@ -203,12 +203,12 @@ class EmailRekeyServiceTest {
     }
 
     /**
-     * B13: 이미 새 키로 읽히는 행이라도 건너뛰기 전에 email_hmac와 대조해야 한다 — 그렇지
+     * 이미 새 키로 읽히는 행이라도 건너뛰기 전에 email_hmac와 대조해야 한다 — 그렇지
      * 않으면 새 키로 우연히 복호화는 되지만 내용이 다른 행(수동 복구 실수 등)을 "이미 완료"로
      * 잘못 간주하고 조용히 지나친다.
      */
     @Test
-    @DisplayName("B13: 이미 새 키로 읽히지만 email_hmac와 어긋나는 행을 만나면 멈춘다")
+    @DisplayName("이미 새 키로 읽히지만 email_hmac와 어긋나는 행을 만나면 멈춘다")
     void stopsWhenAnAlreadyNewKeyRowDoesNotMatchTheStoredHash() {
         long id = givenUserEncryptedWithOldKey("already-new-but-wrong@example.com");
         jdbcTemplate.update("UPDATE users SET email = ? WHERE id = ?",
@@ -221,11 +221,11 @@ class EmailRekeyServiceTest {
     }
 
     /**
-     * B13: rekeyAll이 끝난 뒤의 별도 검증 패스. rekeyAll 자체가 이미 행마다 해시를 대조하므로
+     * rekeyAll이 끝난 뒤의 별도 검증 패스. rekeyAll 자체가 이미 행마다 해시를 대조하므로
      * 정상 실행 뒤에는 전부 일치해야 한다.
      */
     @Test
-    @DisplayName("B13: 교체 완료 후 검증 패스는 전체 행이 새 키와 일치함을 확인한다")
+    @DisplayName("교체 완료 후 검증 패스는 전체 행이 새 키와 일치함을 확인한다")
     void verifyAllConfirmsEveryRowAfterASuccessfulRun() {
         List<String> emails = List.of("verify-a@example.com", "verify-b@example.com");
         emails.forEach(this::givenUserEncryptedWithOldKey);
@@ -239,7 +239,7 @@ class EmailRekeyServiceTest {
     }
 
     @Test
-    @DisplayName("B13: 검증 패스는 새 키로 읽히지 않거나 해시가 어긋나는 행을 불일치로 센다")
+    @DisplayName("검증 패스는 새 키로 읽히지 않거나 해시가 어긋나는 행을 불일치로 센다")
     void verifyAllCountsRowsThatDoNotMatch() {
         long stillOldKey = givenUserEncryptedWithOldKey("never-converted@example.com");
 

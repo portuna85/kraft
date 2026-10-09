@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.LongAdder;
  * "이 시점까지의 전체 묶음"을 원자적으로 떼어 갈 수 있다. {@code record()}는 그 순간 잡은
  * 묶음의 LongAdder에 그대로 더하므로 여전히 잠금이 없다.
  * <p>
- * <b>남아 있는 허용 오차(O04)</b>: {@code record()}가 {@code counters.get()}으로 묶음을 읽은
+ * <b>남아 있는 허용 오차</b>: {@code record()}가 {@code counters.get()}으로 묶음을 읽은
  * 직후, 그 필드에 더하기 전에 {@code drain()}의 {@code getAndSet()}이 끼어들어 같은 묶음을
  * 이미 떼어 가 합계까지 낼 수 있다. 이 경우 그 한 건의 기록은 방금 떼어진(더는 아무도 다시
  * 읽지 않는) 옛 묶음에 더해지므로 그 주기의 집계에서 조용히 사라진다. 잠금을 쓰지 않는
@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.LongAdder;
  */
 public class RequestMetrics {
 
-    /** 평균·최댓값만으로는 소수의 느린 요청이 나머지 표본에 묻힌다(O05). 이 절대 ms를 넘는
+    /** 평균·최댓값만으로는 소수의 느린 요청이 나머지 표본에 묻힌다. 이 절대 ms를 넘는
      * 요청은 몇 건인지 따로 센다 — 퍼센타일 전체를 계산하는 무거운 방식 대신, 기존 스타일과
      * 일관된 카운터 하나만 더한다. */
     private static final long DEFAULT_SLOW_THRESHOLD_MILLIS = 3000;

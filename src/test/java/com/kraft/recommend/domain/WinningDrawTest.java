@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * {@link WinningDraw#applyDetails}의 부가 정보 정합성 검사(B14). 자동 수집 경로
+ * {@link WinningDraw#applyDetails}의 부가 정보 정합성 검사. 자동 수집 경로
  * ({@code DhLotteryClient})는 이미 범위 밖 보너스 번호를 null로 거르지만, 운영자가 직접
  * 넣는 수동/CSV 반영 경로는 그 방어를 거치지 않는다 — 이 검사가 그 경로의 최후 방어선이다.
  */

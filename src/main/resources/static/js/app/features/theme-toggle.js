@@ -8,7 +8,7 @@ import { readItem, writeItem } from '../core/storage.js';
  * theme-init.js(별도 파일, defer 없이 head에서 동기 실행)가 첫 페인트 전에 같은 저장
  * 키(kraft:theme)로 <html>의 data-theme·data-bs-theme을 이미 정해 둔 상태에서 시작한다 —
  * 이 모듈은 그 초기 상태에 맞춰 버튼 문구를 맞추고, 이후 클릭과 시스템 설정 변경에
- * 반응한다. 저장 키·순서·적용 로직은 theme-init.js가 window.kraftTheme으로 내놓은 것을 그대로 쓴다(FE-31).
+ * 반응한다. 저장 키·순서·적용 로직은 theme-init.js가 window.kraftTheme으로 내놓은 것을 그대로 쓴다.
  */
 const LABELS = { system: '테마: 시스템', light: '테마: 밝게', dark: '테마: 어둡게' };
 

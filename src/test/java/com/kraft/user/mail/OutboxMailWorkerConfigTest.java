@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * O05: {@code app.mail.max-concurrent-sends=0}은 {@link java.util.concurrent.Semaphore}가
+ * {@code app.mail.max-concurrent-sends=0}은 {@link java.util.concurrent.Semaphore}가
  * 영원히 획득되지 않는 조용한 정지로 이어지고, 음수 {@code batch-size}는 {@code claimBatch}의
  * SQL {@code LIMIT}에서 예외를 낸다. 둘 다 기동 시점에 막는지 확인한다.
  */

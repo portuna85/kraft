@@ -36,7 +36,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class RecommendationFetchService {
 
     /**
-     * 한 번의 실행에서 연속으로 따라잡는 최대 회차 수(B14). 앱이 여러 주 내려가 있었다면 검증
+     * 한 번의 실행에서 연속으로 따라잡는 최대 회차 수. 앱이 여러 주 내려가 있었다면 검증
      * 구간이 여러 회차만큼 뒤처질 수 있는데, 이 상한은 한 번에 과도한 요청을 보내지 않기 위한
      * 안전판이다.
      */

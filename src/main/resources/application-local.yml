@@ -9,7 +9,7 @@
 # 프로젝트 루트에서 ./gradlew bootRun을 실행한다. local만 .env를 자동으로 읽으며,
 # 같은 이름의 OS 환경변수가 있으면 그 값이 우선한다.
 #
-# 로컬도 운영과 같은 Flyway + validate 경로를 쓴다(B05). 예전에는 ddl-auto: update였는데,
+# 로컬도 운영과 같은 Flyway + validate 경로를 쓴다. 예전에는 ddl-auto: update였는데,
 # 이는 컬럼·테이블 추가만 반영하고 삭제·타입 변경·제약 변경·데이터 삽입·트리거 생성은 전혀
 # 하지 못한다 — V20이 만드는 recommendation_history_state 시드 행과 버전 갱신 트리거는 순수
 # SQL 구성물이라 Hibernate 스키마 생성으로는 만들 수 없고, 그 결과 새 로컬 DB에서는
@@ -48,7 +48,7 @@ spring:
 
 logging:
   level:
-    # O06: show-sql은 System.out에 별도로 SQL을 찍는다 — 이 로거와 함께 켜 두면 같은 SQL이
+    # show-sql은 System.out에 별도로 SQL을 찍는다 — 이 로거와 함께 켜 두면 같은 SQL이
     # 두 번 출력된다. 로거 하나로 합쳤다(application-test.yml과 동일).
     org.hibernate.SQL: debug
 

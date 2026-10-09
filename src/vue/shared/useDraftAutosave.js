@@ -74,7 +74,7 @@ export function useDraftAutosave(storageKey, draft, options = {}) {
         timer = setTimeout(flush, DEBOUNCE_MS);
     }
 
-    /** 대기 중인 저장이 있으면 지금 쓴다. 페이지를 떠나기 직전 마지막 800ms 입력을 잃지 않게 한다(FE-36). */
+    /** 대기 중인 저장이 있으면 지금 쓴다. 페이지를 떠나기 직전 마지막 800ms 입력을 잃지 않게 한다. */
     function flush() {
         if (!timer) {
             return;

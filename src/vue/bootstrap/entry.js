@@ -1,4 +1,4 @@
-// Bootstrap JS 중 이 앱이 쓰는 Modal·Toast만 담아 전역 `bootstrap`으로 노출한다(FE-06).
+// Bootstrap JS 중 이 앱이 쓰는 Modal·Toast만 담아 전역 `bootstrap`으로 노출한다.
 //
 // 예전에는 bootstrap.min.js(60KB, 전 컴포넌트)를 classic script로 통째로 커밋해 모든 페이지에서
 // 받았다. 이 앱은 core/bootstrap-ui.js가 감싸는 Modal·Toast만 쓰므로(드롭다운·툴팁·팝오버를

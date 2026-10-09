@@ -2,7 +2,7 @@
 import { nextTick, reactive, watch } from 'vue';
 
 /**
- * 서버 검증 실패(A-BE-07의 `errors[]`)를 입력칸 옆 오류로 옮긴다(A-FE-08).
+ * 서버 검증 실패(A-BE-07의 `errors[]`)를 입력칸 옆 오류로 옮긴다.
  *
  * 예전에는 "title: 제목은 필수입니다." 같은 한 문장을 통째로 배너에 띄워, 어느 칸이
  * 문제인지 화면에서 알 수 없었고 스크린 리더가 해당 입력으로 이동할 방법도 없었다. 이제
@@ -50,7 +50,7 @@ export function useFieldErrors() {
     }
 
     /**
-     * 폼 값(reactive)의 각 필드를 지켜보다가 사용자가 고치면 그 필드의 서버 오류만 지운다(FE-37).
+     * 폼 값(reactive)의 각 필드를 지켜보다가 사용자가 고치면 그 필드의 서버 오류만 지운다.
      * 예전에는 다음 `apply`·`clear`까지 오류 표시가 남아, 이미 고친 칸이 계속 붉게 보였다.
      *
      * @param {Record<string, unknown>} source

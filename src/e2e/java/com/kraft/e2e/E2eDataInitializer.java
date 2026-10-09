@@ -47,11 +47,11 @@ import java.util.stream.IntStream;
 public class E2eDataInitializer implements ApplicationRunner {
 
     /**
-     * 시드 계정의 단일 출처(OPS-36). Playwright 쪽 e2e/fixtures.js도 같은 파일을 읽는다 — 이메일·이름·비밀번호를
+     * 시드 계정의 단일 출처. Playwright 쪽 e2e/fixtures.js도 같은 파일을 읽는다 — 이메일·이름·비밀번호를
      * JS와 Java에 따로 적어 두면 한쪽만 바뀌어 로그인이 조용히 어긋난다. 비밀번호는 정책(8자 이상,
      * 대·소문자·특수문자)을 만족해야 한다.
      * <p>
-     * pwchange는 비밀번호 변경 시나리오 전용이다(OPS-04). 비밀번호를 실제로 바꾸고 모든 세션을 끊는 테스트가
+     * pwchange는 비밀번호 변경 시나리오 전용이다. 비밀번호를 실제로 바꾸고 모든 세션을 끊는 테스트가
      * admin을 쓰면, 변경과 복원 사이에서 실패했을 때 같은 샤드의 나머지 테스트가 줄줄이 로그인에 실패했다.
      */
     private static final String ACCOUNTS_RESOURCE = "e2e-accounts.json";
@@ -112,7 +112,7 @@ public class E2eDataInitializer implements ApplicationRunner {
     }
 
     /**
-     * 당첨 이력 1..{@value #SEEDED_ROUNDS}회를 실제 수입 경로(RecommendationHistoryImporter)로 넣는다(OPS-15).
+     * 당첨 이력 1..{@value #SEEDED_ROUNDS}회를 실제 수입 경로(RecommendationHistoryImporter)로 넣는다.
      * 이 프로파일은 Flyway 없이 엔티티로 스키마를 만들어 V20이 심는 상태 행이 없으므로 먼저 만든다. 이력이
      * 없으면 /recommend가 항상 503이라 성공 경로를 라우트 가로채기로만 검증할 수 있었다.
      * 번호는 회차마다 결정적으로 달라지되 항상 서로 다른 6개(1~42)다.

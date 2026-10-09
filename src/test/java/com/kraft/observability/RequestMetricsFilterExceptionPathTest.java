@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 /**
- * O05: {@link RequestMetricsFilterTest}의 "예외로 끝난 요청" 테스트는
+ * {@link RequestMetricsFilterTest}의 "예외로 끝난 요청" 테스트는
  * {@code response.setStatus(...)}로 상태를 미리 세팅해 둔 뒤 필터만 단독으로 부른다 — 실제
  * 운영에서 최종 상태를 정하는 쪽(Spring의 {@code @RestControllerAdvice} 예외 변환)은 이 필터보다
  * "뒤"에서 도는데, 그 실제 변환 경로를 지나지 않으므로 어긋남이 있어도 이 단위 테스트만으로는
@@ -49,7 +49,7 @@ class RequestMetricsFilterExceptionPathTest {
         static class ThrowingController {
             @GetMapping("/test-observability/boom")
             public String boom() {
-                throw new IllegalStateException("의도적으로 던진 예외 — O05 검증용");
+                throw new IllegalStateException("의도적으로 던진 예외 — 검증용");
             }
         }
     }

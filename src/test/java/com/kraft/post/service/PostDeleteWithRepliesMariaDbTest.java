@@ -98,7 +98,7 @@ class PostDeleteWithRepliesMariaDbTest extends MariaDbIntegrationTest {
     }
 
     @Test
-    @DisplayName("COR-01 회귀: 작성자가 답글이 여러 개 달린 게시글을 삭제해도 소프트 삭제만 되고, 영구 삭제도 FK 위반이 나지 않는다")
+    @DisplayName("회귀: 작성자가 답글이 여러 개 달린 게시글을 삭제해도 소프트 삭제만 되고, 영구 삭제도 FK 위반이 나지 않는다")
     void authorDelete_withParentsAndReplies_succeedsWithoutForeignKeyViolation() {
         Post post = seedPostWithParentsAndReplies();
         Long postId = post.getId();

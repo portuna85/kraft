@@ -39,7 +39,7 @@ public class ObservabilityConfig {
      * 단계에서 끝나는 응답이 통계에 잡히지 않는다 — 세션이 통째로 깨져 403이 쏟아지는 상황이
      * 바로 알아야 할 상황인데, 그때 오히려 지표가 조용해진다.
      * <p>
-     * {@link RequestIdFilter}보다는 하나 뒤 순서다(BE-28) — 그래야 이 필터를 포함해 이 요청이
+     * {@link RequestIdFilter}보다는 하나 뒤 순서다 — 그래야 이 필터를 포함해 이 요청이
      * 지나가는 모든 로거가 상관관계 id를 이미 MDC에서 볼 수 있다.
      */
     @Bean
@@ -53,7 +53,7 @@ public class ObservabilityConfig {
     }
 
     /**
-     * 요청마다 상관관계 id를 MDC에 심는다(BE-28, {@link RequestIdFilter}). 다른 모든 필터·
+     * 요청마다 상관관계 id를 MDC에 심는다({@link RequestIdFilter}). 다른 모든 필터·
      * 로거보다 먼저 실행되어야 하므로 가장 이른 순서를 그대로 쓴다.
      */
     @Bean
@@ -83,8 +83,7 @@ public class ObservabilityConfig {
 
     /**
      * {@code app.metrics.alert-email}이 비어 있으면(기본값, 로컬 등) {@link AlertMailer#disabled()}와
-     * 동등하게 동작한다 — 관리자 주소를 설정하지 않은 환경에서 별도 분기 없이 조용히 꺼진다
-     * (A-OPS-02).
+     * 동등하게 동작한다 — 관리자 주소를 설정하지 않은 환경에서 별도 분기 없이 조용히 꺼진다.
      */
     @Bean
     public AlertMailer alertMailer(EmailSender emailSender,

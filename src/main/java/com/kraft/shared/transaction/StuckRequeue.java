@@ -8,11 +8,11 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * 처리 도중 프로세스가 죽어 PROCESSING·SENDING인 채로 남은 작업을 대기열로 되돌리는 배치 반복(BE-36).
+ * 처리 도중 프로세스가 죽어 PROCESSING·SENDING인 채로 남은 작업을 대기열로 되돌리는 배치 반복.
  * 메일 아웃박스와 세션 폐기 태스크가 같은 모양의 루프를 따로 갖고 있던 것을 한 곳에 둔다.
  * <p>
  * 적체 전체를 한 트랜잭션에 다 로딩하면 그만큼 heap과 잠금 시간이 늘어나므로 한 번에 {@value #BATCH_SIZE}건씩
- * 조회하고(B10·B11), 한 호출에서는 최대 {@value #MAX_BATCHES}번만 돈다 — 남은 적체는 다음 주기가 이어받는다.
+ * 조회하고, 한 호출에서는 최대 {@value #MAX_BATCHES}번만 돈다 — 남은 적체는 다음 주기가 이어받는다.
  * 호출한 쪽이 이미 연 트랜잭션 안에서 실행한다.
  */
 public final class StuckRequeue {

@@ -84,7 +84,7 @@ class RecommendationHistoryProviderTest {
 
         RecommendationHistorySnapshot snapshot = provider.currentReadySnapshot();
 
-        // 운영에서는 V20의 DB 트리거가 version을 올린다 — 그 일을 테스트가 직접 한다(HIST-04/05).
+        // 운영에서는 V20의 DB 트리거가 version을 올린다 — 그 일을 테스트가 직접 한다.
         org.springframework.test.util.ReflectionTestUtils.setField(state, "version", 4L);
         em.persistAndFlush(state);
 

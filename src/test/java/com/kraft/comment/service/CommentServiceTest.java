@@ -216,7 +216,7 @@ class CommentServiceTest {
 
     /** 2단계 댓글: 페이지에 실린 최상위 댓글의 답글이 배치로 함께 채워지는지 본다. */
     @Test
-    @DisplayName("F13/2단계: findInitialPageForView는 각 최상위 댓글에 그 답글을 채워 돌려준다")
+    @DisplayName("findInitialPageForView는 각 최상위 댓글에 그 답글을 채워 돌려준다")
     void findInitialPageForView_attachesRepliesToEachTopLevelComment() {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment topLevel = commentOf(owner, 100L);
@@ -236,14 +236,14 @@ class CommentServiceTest {
     }
 
     /**
-     * COR-05 회귀: 예전에는 한 페이지 전체(여러 부모 합산)에서 가져오는 답글 총량에 500이라는
+     * 회귀: 예전에는 한 페이지 전체(여러 부모 합산)에서 가져오는 답글 총량에 500이라는
      * 상한 하나를 뒀다 — 한 부모가 답글을 아주 많이 갖고 있으면 그 부모가 상한을 혼자 다 써서,
      * 같은 페이지의 다른 부모는 새로고침을 해도 자신의 답글에 영영 도달하지 못했다. 지금은
      * 부모마다 따로 조회하므로(부모별 최대 20개 + hasMoreReplies) 한 부모의 답글 수가 다른
      * 부모의 조회에 영향을 주지 않는다.
      */
     @Test
-    @DisplayName("COR-05: 한 부모의 답글이 아주 많아도(옛 전역 상한을 혼자 넘는 규모) 다른 부모는 자신의 답글을 그대로 받는다")
+    @DisplayName("한 부모의 답글이 아주 많아도(옛 전역 상한을 혼자 넘는 규모) 다른 부모는 자신의 답글을 그대로 받는다")
     void findInitialPageForView_fetchesRepliesPerParentIndependently() {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment parentA = commentOf(owner, 100L);
@@ -275,7 +275,7 @@ class CommentServiceTest {
     }
 
     @Test
-    @DisplayName("COR-05: findRepliesPage는 afterId 이후의 답글을 페이지로 반환한다(답글 더 보기)")
+    @DisplayName("findRepliesPage는 afterId 이후의 답글을 페이지로 반환한다(답글 더 보기)")
     void findRepliesPage_returnsNextPageOfReplies() {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment parent = commentOf(owner, 100L);
@@ -286,7 +286,7 @@ class CommentServiceTest {
         CommentPageDto result = commentService.findRepliesPage(100L, 320L, authOf(owner));
 
         assertThat(result.comments()).extracting(CommentViewDto::id).containsExactly(321L);
-        // A-BE-13: 답글 더 보기는 항상 후속 페이지라 전체 개수를 다시 세지 않는다.
+        // 답글 더 보기는 항상 후속 페이지라 전체 개수를 다시 세지 않는다.
         assertThat(result.totalCount()).isNull();
         assertThat(result.hasMore()).isFalse();
     }
@@ -307,11 +307,11 @@ class CommentServiceTest {
     }
 
     /**
-     * B12: 화면이 받아간 버전과 지금 버전이 같으면 저장을 허용한다 — VersionCheck과
+     * 화면이 받아간 버전과 지금 버전이 같으면 저장을 허용한다 — VersionCheck과
      * 같은 계약.
      */
     @Test
-    @DisplayName("B12: 받아간 버전과 현재 버전이 같으면 저장을 허용한다")
+    @DisplayName("받아간 버전과 현재 버전이 같으면 저장을 허용한다")
     void update_whenVersionMatches_updatesContent() {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
@@ -326,12 +326,12 @@ class CommentServiceTest {
     }
 
     /**
-     * B12: 화면이 받아간 버전이 지금 버전과 다르면(그 사이 다른 곳에서 먼저 저장됨)
+     * 화면이 받아간 버전이 지금 버전과 다르면(그 사이 다른 곳에서 먼저 저장됨)
      * ObjectOptimisticLockingFailureException을 던지고 내용은 바뀌지 않는다 —
      * ApiExceptionHandler가 이를 409로 변환한다.
      */
     @Test
-    @DisplayName("B12: 받아간 버전이 현재 버전과 다르면 충돌로 거절하고 내용은 바뀌지 않는다")
+    @DisplayName("받아간 버전이 현재 버전과 다르면 충돌로 거절하고 내용은 바뀌지 않는다")
     void update_whenVersionMismatches_throwsOptimisticLockingFailureAndDoesNotModify() {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
@@ -398,7 +398,7 @@ class CommentServiceTest {
      * 먼저 명시적으로 지워야 FK 위반이 나지 않는다.
      */
     @Test
-    @DisplayName("delete: 답글이 없으면 행 자체를 지우고 A-BE-01 이벤트를 발행한다")
+    @DisplayName("delete: 답글이 없으면 행 자체를 지우고 이벤트를 발행한다")
     void delete_whenNoReplies_hardDeletesAndPublishesEvent() {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
@@ -465,7 +465,7 @@ class CommentServiceTest {
     }
 
     @Test
-    @DisplayName("F13: findInitialPageForView는 21개 중 20개만 반환하고 hasMore=true, totalCount는 별도로 담는다")
+    @DisplayName("findInitialPageForView는 21개 중 20개만 반환하고 hasMore=true, totalCount는 별도로 담는다")
     void findInitialPageForView_capsAtPageSizeAndReportsHasMore() {
         User owner = userWithEmail("owner@example.com", 1L);
         List<Comment> twentyOne = IntStream.rangeClosed(1, 21)
@@ -482,7 +482,7 @@ class CommentServiceTest {
     }
 
     @Test
-    @DisplayName("F13: findNextPageForView는 afterId 커서를 그대로 리포지토리에 전달한다")
+    @DisplayName("findNextPageForView는 afterId 커서를 그대로 리포지토리에 전달한다")
     void findNextPageForView_passesAfterIdCursorToRepository() {
         given(postRepository.existsVisibleById(1L)).willReturn(true);
         given(commentRepository.findPageByPostIdAsc(1L, 20L, PageRequest.of(0, 21))).willReturn(List.of());
@@ -491,7 +491,7 @@ class CommentServiceTest {
 
         assertThat(result.comments()).isEmpty();
         assertThat(result.hasMore()).isFalse();
-        // A-BE-13: 후속 페이지는 전체 개수를 다시 세지 않는다(countByPostId를 부르지 않는다).
+        // 후속 페이지는 전체 개수를 다시 세지 않는다(countByPostId를 부르지 않는다).
         assertThat(result.totalCount()).isNull();
         verify(commentRepository).findPageByPostIdAsc(1L, 20L, PageRequest.of(0, 21));
         verify(commentRepository, never()).countByPostId(any());

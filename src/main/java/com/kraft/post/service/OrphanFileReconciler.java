@@ -39,7 +39,7 @@ public class OrphanFileReconciler {
 
     static final Duration GRACE_PERIOD = Duration.ofHours(1);
 
-    /** 대장 존재 여부를 한 번에 묻는 청크 크기(B11). 파일마다 따로 조회하지 않는다. */
+    /** 대장 존재 여부를 한 번에 묻는 청크 크기. 파일마다 따로 조회하지 않는다. */
     private static final int EXISTS_CHECK_CHUNK_SIZE = 500;
 
     private final PostImageRepository postImageRepository;
@@ -55,8 +55,7 @@ public class OrphanFileReconciler {
      * {@code Stream.toList()}로 한 번에 메모리에 모은 뒤 청크로 나눠 처리했다 — 디렉터리에
      * 파일이 아주 많이 쌓이면(예: 정리가 한동안 막혀 있던 경우) 그 목록 자체가 heap을 크게
      * 잡아먹는다. 이제는 스트림을 지연 반복자(iterator)로 훑으며 500개씩 처리하고, 이 상한에
-     * 닿으면 남은 파일은 다음 주기로 미룬다({@link #skipOffset}이 그 "이어서 볼 지점"이다,
-     * BE-18).
+     * 닿으면 남은 파일은 다음 주기로 미룬다({@link #skipOffset}이 그 "이어서 볼 지점"이다).
      */
     // 필드 기본값도 함께 둔다 — 테스트는 OrphanFileReconcilerTest처럼 Spring 없이
     // 생성자로 직접 만들어 @Value가 주입되지 않는다. 기본값이 없으면 int 기본값 0이 남아
@@ -65,7 +64,7 @@ public class OrphanFileReconciler {
     private int maxFilesPerRun = 50_000;
 
     /**
-     * "이어서 볼 지점"(BE-18) — 지난 주기가 상한에 걸려 끝까지 못 봤으면, 이번 주기는 그
+     * "이어서 볼 지점" — 지난 주기가 상한에 걸려 끝까지 못 봤으면, 이번 주기는 그
      * 뒤부터 이어서 본다. 단일 인스턴스 필드라 재시작하면 0으로 돌아가지만(끝에서부터 다시
      * 도는 것뿐), 그 정도는 이 정리 작업의 최후 수단 성격에 비춰 괜찮다.
      */
@@ -113,7 +112,7 @@ public class OrphanFileReconciler {
         deleted += deleteUnknown(chunk);
 
         // 이번 주기가 상한에 걸려 끝까지 못 봤으면(reachedEnd=false), 다음 주기는 이번에 본
-        // 구간 바로 뒤부터 이어서 본다(BE-18) — 그렇지 않으면 앞쪽이 전부 대장에 등록된
+        // 구간 바로 뒤부터 이어서 본다 — 그렇지 않으면 앞쪽이 전부 대장에 등록된
         // 정상 파일일 때, 그 뒤에 있는 진짜 고아 파일에 영원히 도달하지 못한다(알려진 파일은
         // 지워지지 않아 다음 주기에도 같은 앞부분이 그대로 반복된다). 끝까지 다 봤으면
         // 다음 주기는 처음부터 다시 — 오래된 파일이 그 사이 지워져 순서가 달라졌을 수 있고,
@@ -125,7 +124,7 @@ public class OrphanFileReconciler {
         return deleted;
     }
 
-    /** 청크 전체를 한 번에 물어 대장에 있는 파일명 집합을 구한다(B11) — 파일마다 따로 existsByFileName을 부르지 않는다. */
+    /** 청크 전체를 한 번에 물어 대장에 있는 파일명 집합을 구한다 — 파일마다 따로 existsByFileName을 부르지 않는다. */
     private int deleteUnknown(List<Path> chunk) {
         if (chunk.isEmpty()) {
             return 0;

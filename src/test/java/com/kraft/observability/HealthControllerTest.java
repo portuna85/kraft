@@ -43,7 +43,7 @@ class HealthControllerTest {
     }
 
     @Test
-    @DisplayName("healthz는 떠 있는 jar의 빌드를 X-Kraft-Build 헤더로 알린다(OPS-12)")
+    @DisplayName("healthz는 떠 있는 jar의 빌드를 X-Kraft-Build 헤더로 알린다")
     void healthz_exposesBuildVersionHeader() {
         assertThat(controller(Duration.ofSeconds(2)).healthz().getHeaders().getFirst("X-Kraft-Build"))
                 .isEqualTo("abc1234");
@@ -123,7 +123,7 @@ class HealthControllerTest {
                 return controller.readyz(loopbackRequest());
             });
             // 두 번째 요청이 진행 중인 검사를 기다리는 상태(future.get)에 들어갈 때까지 기다린다. 고정 sleep 대신
-            // 스레드 상태를 본다(OPS-35).
+            // 스레드 상태를 본다.
             org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(5)).until(() ->
                     secondThread.get() != null && secondThread.get().getState() == Thread.State.TIMED_WAITING);
             releaseConnection.countDown();
@@ -137,7 +137,7 @@ class HealthControllerTest {
         verify(dataSource, times(1)).getConnection();
     }
 
-    /** A-SEC-04: 루프백이 아니면 검사조차 하지 않고 404를 준다. */
+    /** 루프백이 아니면 검사조차 하지 않고 404를 준다. */
     @ParameterizedTest(name = "원격 주소 [{0}]는 404다")
     @ValueSource(strings = {"203.0.113.7", "10.0.0.5", "::ffff:127.0.0.1"})
     @DisplayName("readyz: 루프백이 아닌 요청은 404이고 DB를 확인하지 않는다")

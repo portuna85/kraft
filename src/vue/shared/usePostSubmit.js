@@ -7,7 +7,7 @@ import * as flash from '@ui/flash.js';
  */
 
 /**
- * 글 등록·수정 제출의 공통 흐름(FE-12): 사진 업로드 → 요청 → 오류 안내.
+ * 글 등록·수정 제출의 공통 흐름: 사진 업로드 → 요청 → 오류 안내.
  * 예전에는 PostSaveApp.vue와 PostEditApp.vue가 진행 문구·재시도 안내·세션 만료 문구까지 거의 같은
  * 코드를 따로 갖고 있었다. 두 화면의 차이는 이 함수에 넘기는 값으로만 남는다.
  *
@@ -53,7 +53,7 @@ export function usePostSubmit({ saving, progressText, picture, applyFieldErrors,
                 progressText.value = '이미지 업로드 중…';
                 const url = await picture.resolveUrl();
                 if (!url) {
-                    // 파일을 골랐는데 URL이 없다 = 업로드 중 선택이 바뀌었다(FE-02). 그대로 보내면
+                    // 파일을 골랐는데 URL이 없다 = 업로드 중 선택이 바뀌었다. 그대로 보내면
                     // 사진이 빠지거나 기존 사진이 지워지므로 멈추고 다시 확인하게 한다.
                     fail(`선택한 이미지가 바뀌었습니다. 이미지를 확인한 뒤 다시 "${verb}"을 눌러 주세요.`);
                     return;
@@ -77,7 +77,7 @@ export function usePostSubmit({ saving, progressText, picture, applyFieldErrors,
         } catch (error) {
             progressText.value = null;
             saving.value = false;
-            // 긴 글을 쓰는 동안 세션이 끊기면 이 시점에야 403/로그인 리다이렉트로 드러난다(A-FE-12).
+            // 긴 글을 쓰는 동안 세션이 끊기면 이 시점에야 403/로그인 리다이렉트로 드러난다.
             // 자동 임시 저장이 내용을 지키고 있으니 그 사실부터 알린다.
             const kind = /** @type {any} */ (error)?.kind;
             if (kind === 'forbidden' || kind === 'auth') {

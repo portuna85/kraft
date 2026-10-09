@@ -22,10 +22,10 @@ import java.time.LocalDateTime;
         @Index(name = "IX_POSTS_CATEGORY_ID", columnList = "category, id"),
         @Index(name = "IX_POSTS_VIEW_COUNT", columnList = "view_count DESC, id DESC"),
         // V31__posts_created_at_view_count_index.sql. 인기글이 "최근 글 중 조회수 상위"로
-        // 바뀌면서(A-BE-10) created_at 조건 + view_count 정렬을 함께 쓰는 쿼리가 생겼다.
+        // 바뀌면서 created_at 조건 + view_count 정렬을 함께 쓰는 쿼리가 생겼다.
         @Index(name = "IX_POSTS_CREATED_AT_VIEW_COUNT", columnList = "created_at, view_count DESC, id DESC"),
         // V35__posts_updated_at_index.sql. sort=updatedAt(최근 수정순) 목록이 filesort 없이
-        // 읽히게 한다(BE-07).
+        // 읽히게 한다.
         @Index(name = "IX_POSTS_UPDATED_AT_ID", columnList = "updated_at DESC, id DESC"),
         @Index(name = "IX_POSTS_CATEGORY_UPDATED_AT_ID", columnList = "category, updated_at DESC, id DESC"),
         // V41__posts_visibility_and_pin.sql. 목록 COUNT가 deleted_at·blinded_at 조건을 더해도
@@ -52,7 +52,7 @@ public class Post extends BaseEntity {
     private String picture;
 
     /**
-     * picture의 실제 픽셀 크기(A-FE-09) — 상세 화면이 {@code <img width height>}를 채워
+     * picture의 실제 픽셀 크기 — 상세 화면이 {@code <img width height>}를 채워
      * 레이아웃 이동(CLS)을 줄이는 데만 쓴다. picture가 없으면(글에 사진이 없으면) 둘 다
      * null이다. V32 이전에 저장된 글도 null로 남는다 — 소급 채움은 하지 않는다(다시 열람할
      * 때 값이 없다는 것만 다를 뿐 동작에는 지장이 없다).
@@ -91,7 +91,7 @@ public class Post extends BaseEntity {
     /**
      * null이 아니면 소프트 삭제된 글이다. 보관 기간이 지나면 {@code PostService.purge}가 행을 지운다.
      * <p>
-     * 아래 세 상태 컬럼은 {@code viewCount}와 같은 이유로 {@code updatable = false}다(COR-04) —
+     * 아래 세 상태 컬럼은 {@code viewCount}와 같은 이유로 {@code updatable = false}다 —
      * 일반 UPDATE에 실리면 편집 flush가 관리자의 숨김·고정·복구를 옛 값으로 되돌리고, 상태만
      * 바꿔도 version·updatedAt이 올라 열려 있던 편집 탭이 가짜 충돌을 받는다. 바꿀 때는
      * {@code PostRepository}의 전용 UPDATE만 쓴다.
@@ -148,7 +148,7 @@ public class Post extends BaseEntity {
         return pinnedUntil != null && pinnedUntil.isAfter(now);
     }
 
-    /** 서버가 측정한 크기로 클라이언트가 보낸 값을 덮어쓴다(BE-24). */
+    /** 서버가 측정한 크기로 클라이언트가 보낸 값을 덮어쓴다. */
     public void updatePictureSize(int width, int height) {
         this.pictureWidth = width;
         this.pictureHeight = height;

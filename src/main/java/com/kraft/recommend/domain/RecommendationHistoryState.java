@@ -13,8 +13,7 @@ import java.time.LocalDateTime;
 
 /**
  * 이력 버전·검증 기준 회차를 담는 단일 행(id=1, V20__recommendation_history.sql). version은
- * {@code recommendation_winning_draws}의 INSERT/UPDATE/DELETE 트리거가 증가시킨다(HIST-04/05
- * — 같은 회차 정정·삭제도 버전 변경으로 감지). 메타데이터(이 엔티티 자체 필드) 변경도 버전
+ * {@code recommendation_winning_draws}의 INSERT/UPDATE/DELETE 트리거가 증가시킨다(같은 회차 정정·삭제도 버전 변경으로 감지). 메타데이터(이 엔티티 자체 필드) 변경도 버전
  * 증가 대상이므로 갱신 절차는 항상 트리거를 거치는 DML로 수행해야 한다.
  */
 @Getter

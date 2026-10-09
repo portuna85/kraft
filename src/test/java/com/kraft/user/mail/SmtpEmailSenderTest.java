@@ -33,7 +33,7 @@ class SmtpEmailSenderTest {
     }
 
     @Test
-    @DisplayName("From은 app.mail.from을 쓰고, 비어 있으면 SMTP 로그인 계정으로 물러난다 (BE-45)")
+    @DisplayName("From은 app.mail.from을 쓰고, 비어 있으면 SMTP 로그인 계정으로 물러난다")
     void send_setsFromFromConfigOrSmtpUsername() {
         sender.send("user@example.com", "s", "t");
         new SmtpEmailSender(javaMailSender, " ", "login@example.com").send("user@example.com", "s", "t");

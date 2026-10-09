@@ -166,7 +166,7 @@ class HealthReporterTest {
     }
 
     /**
-     * O04: drain()이 이미 비워 버린 HTTP 스냅숏을, 그 뒤에 도는 DB 집계 조회 하나의 실패로
+     * drain()이 이미 비워 버린 HTTP 스냅숏을, 그 뒤에 도는 DB 집계 조회 하나의 실패로
      * 통째로 잃던 문제를 고친다. 이제 DB 집계는 항목별로 감싸져 있어, 실패한 항목만
      * diskFreeBytes와 같은 "-1=측정 불가"로 남고 HTTP 스냅숏은 그대로 보고된다.
      */
@@ -242,7 +242,7 @@ class HealthReporterTest {
     }
 
     /**
-     * O05: 평균 응답이 기준 안이어도, 그 평균에 묻힌 소수의 느린 요청이 있으면 따로 잡아야
+     * 평균 응답이 기준 안이어도, 그 평균에 묻힌 소수의 느린 요청이 있으면 따로 잡아야
      * 한다 — RequestMetrics의 slowThresholdMillis(테스트 설정 기준 3000ms)를 넘는 요청 수가
      * HealthSnapshot까지 그대로 전달되고, 기준을 넘기면 breaches에 올라오는지 본다.
      */

@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 /**
- * {@link FixedWindowRateLimiter}의 한도·창 만료·키 상한 동작(BE-13). 로그인·가입·글쓰기 속도
+ * {@link FixedWindowRateLimiter}의 한도·창 만료·키 상한 동작. 로그인·가입·글쓰기 속도
  * 제한이 모두 이 클래스 위에 있는데 전용 테스트가 없었다.
  */
 class FixedWindowRateLimiterTest {
@@ -48,7 +48,7 @@ class FixedWindowRateLimiterTest {
     }
 
     @Test
-    @DisplayName("BE-13: 키가 가득 차도 한 번만 요청하고 지나간 키를 비워 새 사용자를 받는다")
+    @DisplayName("키가 가득 차도 한 번만 요청하고 지나간 키를 비워 새 사용자를 받는다")
     void whenFull_evictsSingleHitKeysAndAdmitsNewKey() {
         FixedWindowRateLimiter limiter = new FixedWindowRateLimiter("test", 5, LONG_WINDOW, 100);
         for (int i = 0; i < 100; i++) {
@@ -63,7 +63,7 @@ class FixedWindowRateLimiterTest {
     }
 
     @Test
-    @DisplayName("BE-13: 가득 차서 비울 때도 한도에 걸려 제한 중인 키의 카운터는 지우지 않는다")
+    @DisplayName("가득 차서 비울 때도 한도에 걸려 제한 중인 키의 카운터는 지우지 않는다")
     void whenFull_keepsCountersOfKeysBeingThrottled() {
         FixedWindowRateLimiter limiter = new FixedWindowRateLimiter("test", 3, LONG_WINDOW, 100);
         for (int i = 0; i < 4; i++) {
@@ -81,7 +81,7 @@ class FixedWindowRateLimiterTest {
     }
 
     @Test
-    @DisplayName("BE-13: 모든 키가 활발히 쓰이는 중이면(비울 키가 없으면) 새 키는 거절하고 기존 키는 계속 센다")
+    @DisplayName("모든 키가 활발히 쓰이는 중이면(비울 키가 없으면) 새 키는 거절하고 기존 키는 계속 센다")
     void whenFullOfActiveKeys_rejectsNewKeyAndKeepsExistingCounts() {
         FixedWindowRateLimiter limiter = new FixedWindowRateLimiter("test", 5, LONG_WINDOW, 10);
         for (int i = 0; i < 10; i++) {

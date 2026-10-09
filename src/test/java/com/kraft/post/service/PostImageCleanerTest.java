@@ -64,12 +64,12 @@ class PostImageCleanerTest {
         then(batchRunner).should(org.mockito.Mockito.atLeastOnce()).cleanPendingDeletionsBatch(anyLong());
         then(batchRunner).should(org.mockito.Mockito.atLeastOnce())
                 .claimExpiredOrphansBatch(anyLong(), any(LocalDateTime.class));
-        // COR-06: 선점된 id는 (선점과 별도 트랜잭션인) 실제 삭제로 넘겨져야 한다.
+        // 선점된 id는 (선점과 별도 트랜잭션인) 실제 삭제로 넘겨져야 한다.
         then(batchRunner).should().cleanPendingDeletionsFor(List.of(9L));
     }
 
     @Test
-    @DisplayName("B06: 배치가 한 페이지를 꽉 채우면 마지막 id를 이어서 다음 배치를 부르고, 덜 채우면 멈춘다")
+    @DisplayName("배치가 한 페이지를 꽉 채우면 마지막 id를 이어서 다음 배치를 부르고, 덜 채우면 멈춘다")
     void cleanPendingDeletions_whenBatchFillsAPage_continuesFromLastId() {
         given(batchRunner.cleanPendingDeletionsBatch(0L))
                 .willReturn(new PostImageCleanupBatchRunner.BatchResult(

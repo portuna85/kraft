@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * 상세 화면 조회수를 올릴지 판단한다(전체 리뷰 2026-09-26 A-BE-04 1단계). 새로고침·봇·링크
+ * 상세 화면 조회수를 올릴지 판단한다. 새로고침·봇·링크
  * 미리보기(메신저가 URL을 긁어 가는 요청)·같은 방문자의 재방문이 전부 조회수를 1씩 올리던
  * 것을 줄인다 — 인기글·조회순 정렬이 봇 트래픽에 좌우되지 않게 한다.
  * <p>
@@ -73,7 +73,7 @@ public class PostViewDedup {
             viewed.put(postId, now);
         }
         boolean pruned = viewed.entrySet().removeIf(entry -> isStale(entry.getValue(), now));
-        // 맵이 실제로 바뀐 경우에만 다시 심는다(BE-15) — 조회마다 세션 속성을 쓰면 세션 UPDATE가 매번
+        // 맵이 실제로 바뀐 경우에만 다시 심는다 — 조회마다 세션 속성을 쓰면 세션 UPDATE가 매번
         // 한 번 더 생긴다. 바뀌었을 때는 갱신한 맵을 다시 심어야 Spring Session JDBC가 변경을 직렬화해
         // 저장한다(꺼내 온 참조를 제자리에서만 바꾸면 "바뀌지 않은 속성"으로 보일 수 있다).
         if (shouldCount || pruned) {
@@ -152,7 +152,7 @@ public class PostViewDedup {
         cookie.setMaxAge(COOKIE_MAX_AGE_SECONDS);
         cookie.setHttpOnly(true);
         // 이 앱은 로컬 개발이 평문 HTTP라(application.yml) Secure를 무조건 걸면 로컬에서
-        // 쿠키가 아예 저장되지 않는다. 운영은 항상 HTTPS 프록시 뒤에 있다(BE-01, request.isSecure()가
+        // 쿠키가 아예 저장되지 않는다. 운영은 항상 HTTPS 프록시 뒤에 있다(request.isSecure()가
         // native forward-headers 전략 덕분에 프록시 뒤에서도 실제 프로토콜을 반영한다).
         cookie.setSecure(request.isSecure());
         response.addCookie(cookie);

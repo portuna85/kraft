@@ -66,13 +66,13 @@ class RecommendationRateLimiterTest {
     }
 
     /**
-     * B13: compute() 안에서 증가시킨 뒤 밖에서 공유 AtomicInteger를 다시 읽으면, 동시 요청이
+     * compute() 안에서 증가시킨 뒤 밖에서 공유 AtomicInteger를 다시 읽으면, 동시 요청이
      * 그 사이 값을 더 올려 한도 안에서 들어온 요청도 거절될 수 있었다. 같은 클라이언트에
      * 한도보다 훨씬 많은 스레드를 동시에 밀어 넣어, 허용된 개수가 정확히 한도만큼인지 확인한다
      * — 재현 전 코드는 경쟁이 걸리면 이보다 적게 허용될 수 있었다.
      */
     @Test
-    @DisplayName("B13: 동시 요청이 몰려도 허용되는 개수는 정확히 설정한 한도만큼이다")
+    @DisplayName("동시 요청이 몰려도 허용되는 개수는 정확히 설정한 한도만큼이다")
     void tryAcquire_underConcurrency_allowsExactlyTheConfiguredLimit() throws InterruptedException {
         int limit = 20;
         int concurrentRequests = 200;
@@ -111,14 +111,14 @@ class RecommendationRateLimiterTest {
     }
 
     /**
-     * B13: {@code windows.size() > 10_000}인 동안 요청마다 비상 청소(O(n) 전체 스캔)가 매번
+     * {@code windows.size() > 10_000}인 동안 요청마다 비상 청소(O(n) 전체 스캔)가 매번
      * 실행되지 않고 쿨다운 간격으로 제한되는지 확인한다. 서로 다른 클라이언트로 10,001개를
      * 채운 뒤 바로 이어지는 두 번의 {@code tryAcquire} 호출이 거의 동시에 일어나도 청소가
      * 한 번만 실행되어야 한다 — 직접 관측할 수는 없으므로, 최소한 반복 호출이 예외 없이
      * 빠르게 끝나는지(과도한 반복 스캔으로 인한 지연이 없는지)로 간접 확인한다.
      */
     @Test
-    @DisplayName("B13: map이 10,000개를 넘어도 매 요청마다 전체 스캔을 반복하지 않는다")
+    @DisplayName("map이 10,000개를 넘어도 매 요청마다 전체 스캔을 반복하지 않는다")
     void tryAcquire_whenMapExceedsThreshold_doesNotRescanOnEveryRequest() {
         RecommendationRateLimiter limiter = new RecommendationRateLimiter(30);
         for (int i = 0; i < 10_001; i++) {

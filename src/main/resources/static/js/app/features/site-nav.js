@@ -39,7 +39,7 @@ export function init() {
         : null;
 
     if (toggle && nav) {
-        // 서버는 펼친 채로 내려보낸다. 여기서 접으면서 CSS의 "준비 전 임시 접힘"을 이어받는다(FE-21).
+        // 서버는 펼친 채로 내려보낸다. 여기서 접으면서 CSS의 "준비 전 임시 접힘"을 이어받는다.
         nav.hidden = true;
         document.documentElement.classList.add('js-ready');
 

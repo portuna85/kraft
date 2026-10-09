@@ -93,7 +93,7 @@ class RequestMetricsConcurrencyTest {
     }
 
     /**
-     * O04: HealthReporter.collect()가 주기마다 drain()으로 비우므로, "동시 기록이 도는 동안
+     * HealthReporter.collect()가 주기마다 drain()으로 비우므로, "동시 기록이 도는 동안
      * 여러 번 드레인한 스냅숏을 모두 더한 값"이 "그동안 실제로 기록을 시도한 건수"와 거의
      * 같아야 관측치를 믿을 수 있다 — 위쪽 테스트들은 개별 스냅숏의 내부 일관성
      * (errors&lt;=requests)만 보고, 드레인 여러 번에 걸쳐 건수 자체가 새거나 겹치지 않는지는

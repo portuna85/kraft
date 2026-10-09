@@ -1,4 +1,4 @@
-// 시각 표시 로직 테스트(FE-11). `npm run test:unit`.
+// 시각 표시 로직 테스트. `npm run test:unit`.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { formatDateTime } from './datetime.js';

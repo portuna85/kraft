@@ -7,7 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * {@link LottoPrizeTax}의 구간별 원천징수 계산을 확인한다. 비과세 기준은 동행복권 공식
- * 안내를 따라 200만원이다(B17).
+ * 안내를 따라 200만원이다.
  */
 class LottoPrizeTaxTest {
 
@@ -19,7 +19,7 @@ class LottoPrizeTaxTest {
     }
 
     @Test
-    @DisplayName("B17: 200만원을 1원이라도 넘으면 비과세가 아니라 22% 구간이 적용된다")
+    @DisplayName("200만원을 1원이라도 넘으면 비과세가 아니라 22% 구간이 적용된다")
     void justAboveThreshold_entersLowerBracket() {
         // 2,000,001 * 22% = 440,000(원 단위 절사)
         long amount = 2_000_001L;

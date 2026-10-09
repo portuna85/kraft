@@ -58,7 +58,7 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     /**
      * 서비스가 던지는 사용자 입력·상태 검증 실패({@link BusinessValidationException})를 400으로 변환한다
      * (예: 이메일 중복 가입, 허용되지 않는 파일 형식). 메시지 끝의 내부 식별자({@code " id=123"})는
-     * 로그에만 남기고 응답에서는 자른다(BE-28).
+     * 로그에만 남기고 응답에서는 자른다.
      */
     @ExceptionHandler(BusinessValidationException.class)
     public ProblemDetail handleBusinessValidation(BusinessValidationException e) {
@@ -71,7 +71,7 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
     /**
      * 그 밖의 {@link IllegalArgumentException}(Spring {@code Assert}·JDK 파싱 오류·Hibernate 인자 검사 등)은
-     * 우리 서비스가 의도한 검증 실패가 아니라 프로그래밍 오류다(A-SEC-05, BE-12). 예전에는 메시지에 한글이
+     * 우리 서비스가 의도한 검증 실패가 아니라 프로그래밍 오류다. 예전에는 메시지에 한글이
      * 있는지로 400/500을 갈랐으나, 이제 타입으로 가른다. 일반 문구로 감추고 스택 트레이스를 남긴다.
      */
     @ExceptionHandler(IllegalArgumentException.class)
@@ -81,7 +81,7 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     /**
-     * 디스크 읽기·쓰기·삭제 실패(A-BE-12). 사용자 잘못이 아니라 서버 환경 문제이므로 500으로
+     * 디스크 읽기·쓰기·삭제 실패. 사용자 잘못이 아니라 서버 환경 문제이므로 500으로
      * 나간다 — {@code IllegalArgumentException}으로 던지던 예전 방식은 이 상황을 400으로
      * 집계해 5xx 경보에 잡히지 않게 했다.
      */
@@ -92,9 +92,9 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     /**
-     * "대상 없음"(게시글·댓글·신고·회원 등)을 404로 변환한다(BE-07). {@code PostNotFoundException}도
-     * {@link NotFoundException}을 상속하므로 이 핸들러가 처리한다(BE-29). 메시지 끝의 내부 식별자
-     * ({@code " id=123"})는 로그에만 남기고 응답에서는 자른다(BE-28).
+     * "대상 없음"(게시글·댓글·신고·회원 등)을 404로 변환한다. {@code PostNotFoundException}도
+     * {@link NotFoundException}을 상속하므로 이 핸들러가 처리한다. 메시지 끝의 내부 식별자
+     * ({@code " id=123"})는 로그에만 남기고 응답에서는 자른다.
      */
     @ExceptionHandler(NotFoundException.class)
     public ProblemDetail handleNotFound(NotFoundException e) {
@@ -121,7 +121,7 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
     /**
      * 검증된 당첨 이력이 준비되지 않았거나(비어 있음·누락·미검증) 생성 도중 버전이 바뀐
-     * 경우(503, HIST-03/HIST-04). 이력 미준비는 추천 API만 실패시키고 게시판 전체 기동에는
+     * 경우(503). 이력 미준비는 추천 API만 실패시키고 게시판 전체 기동에는
      * 영향을 주지 않는다.
      */
     @ExceptionHandler(RecommendationHistoryNotReadyException.class)
@@ -159,7 +159,7 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         List<FieldErrorDto> errors = ex.getBindingResult().getFieldErrors().stream()
                 .map(fieldError -> new FieldErrorDto(fieldError.getField(), fieldError.getDefaultMessage()))
                 .toList();
-        // detail은 필드명 없이 첫 오류 메시지만 담는다(A-BE-07) — 예전에는 "title: 제목은
+        // detail은 필드명 없이 첫 오류 메시지만 담는다 — 예전에는 "title: 제목은
         // 필수입니다., content: ..."처럼 영문 필드명과 이어 붙여 사용자에게 내부 필드명이
         // 그대로 노출됐다. 필드별 오류는 errors 확장 속성으로 따로 싣는다(A-FE-08이 읽는다).
         // 이 detail만 읽는 옛 클라이언트도 여전히 동작한다.
@@ -203,7 +203,7 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
      * 대신 처리하지만(그 경우도 403), 이 애노테이션이 있으면 다른 오류들과 동일한 JSON 형식으로
      * 통일된다.
      */
-    /** 메시지 끝의 {@code " id=123"}·{@code " fileName=..."} 같은 내부 식별자를 잘라낸다(A-SEC-05). */
+    /** 메시지 끝의 {@code " id=123"}·{@code " fileName=..."} 같은 내부 식별자를 잘라낸다. */
     private static final java.util.regex.Pattern TRAILING_INTERNAL_ID =
             java.util.regex.Pattern.compile("\\s+(?:[a-z]+)?[iI]d=\\S+$");
     private static final java.util.regex.Pattern TRAILING_IDENTIFIER = java.util.regex.Pattern.compile("\\s+\\w+=\\S+$");
@@ -310,7 +310,7 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
      * 미루면, 예외가 정상적인 요청 처리 흐름 안에서 발생해 이 핸들러가 413 JSON 본문을
      * 온전히 내려줄 수 있다 — 재검증으로 확인 완료.</li>
      * </ol>
-     * {@link ResponseEntityExceptionHandler}를 상속한 뒤부터(OBS-04)는 이 타입도 부모의
+     * {@link ResponseEntityExceptionHandler}를 상속한 뒤부터는 이 타입도 부모의
      * {@code handleException} 매핑에 이미 포함되어 있어, 새 {@code @ExceptionHandler}
      * 메서드 대신 부모의 같은 메서드를 오버라이드한다 — 그렇지 않으면 기동 시점에
      * "Ambiguous @ExceptionHandler"로 실패한다({@link #handleMethodArgumentNotValid}와 같은

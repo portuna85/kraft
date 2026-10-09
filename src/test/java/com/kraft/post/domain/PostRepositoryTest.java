@@ -50,7 +50,7 @@ class PostRepositoryTest {
     }
 
     /**
-     * B10: search 자체는 고정 ORDER BY를 두지 않고 pageable의 Sort에 정렬을 전적으로
+     * search 자체는 고정 ORDER BY를 두지 않고 pageable의 Sort에 정렬을 전적으로
      * 맡긴다 — 실제 정렬 보정({@code PostSortPolicy.effectiveSort})은
      * {@code PostService.findAllDesc}가 담당하므로, 이 리포지토리 테스트는 그 서비스가
      * 넘기는 것과 같은 형태(id 내림차순 Sort)를 직접 전달한다.
@@ -73,7 +73,7 @@ class PostRepositoryTest {
     }
 
     @Test
-    @DisplayName("search: F11 · content 컬럼을 SELECT 결과에 싣지 않는다")
+    @DisplayName("search: content 컬럼을 SELECT 결과에 싣지 않는다")
     void search_doesNotSelectContentColumn() {
         postRepository.save(Post.builder().title("제목").content("본문").user(user).build());
         em.flush();
@@ -110,7 +110,7 @@ class PostRepositoryTest {
     }
 
     /**
-     * BE-08: COUNT 없는 검색은 같은 조건에서 {@code search}와 같은 행을 같은 순서로 돌려줘야 한다
+     * COUNT 없는 검색은 같은 조건에서 {@code search}와 같은 행을 같은 순서로 돌려줘야 한다
      * (WHERE 절은 두 쿼리가 상수를 공유하지만, 실제 DB 결과로 한 번 더 못 박는다).
      */
     @Test
@@ -171,7 +171,7 @@ class PostRepositoryTest {
     }
 
     /**
-     * B10: viewCount 정렬 + id 동점 처리를 실제 DB로 확인한다. 예전에는 리포지토리의 고정
+     * viewCount 정렬 + id 동점 처리를 실제 DB로 확인한다. 예전에는 리포지토리의 고정
      * {@code ORDER BY p.id DESC}가 먼저라 이 Sort가 반환 순서에 전혀 반영되지 않았다.
      */
     @Test
@@ -205,7 +205,7 @@ class PostRepositoryTest {
         em.flush();
         em.clear();
 
-        // searchContent=true(제목+내용, A-BE-02 2단계)일 때만 본문 매치도 포함한다.
+        // searchContent=true(제목+내용)일 때만 본문 매치도 포함한다.
         Page<PostRowDto> page = postRepository.search("kraft", null, true, PageRequest.of(0, 10));
 
         assertThat(page.getContent()).extracting(PostRowDto::id)
@@ -213,7 +213,7 @@ class PostRepositoryTest {
     }
 
     @Test
-    @DisplayName("search: A-BE-02 2단계 · searchContent=false(기본값)면 본문 매치는 제외하고 제목만 본다")
+    @DisplayName("search: searchContent=false(기본값)면 본문 매치는 제외하고 제목만 본다")
     void search_withSearchContentFalse_matchesTitleOnly() {
         Post titleMatch = postRepository.save(Post.builder().title("Kraft 소개").content("내용").user(user).build());
         postRepository.save(Post.builder().title("공지").content("KRAFT 업데이트 안내").user(user).build());
@@ -226,7 +226,7 @@ class PostRepositoryTest {
     }
 
     /**
-     * A-BE-02 1단계: 이스케이프된 {@code \%}·{@code \_}는 리터럴 문자로만 매치돼야 한다 —
+     * 이스케이프된 {@code \%}·{@code \_}는 리터럴 문자로만 매치돼야 한다 —
      * PostService.normalize가 이스케이프해 넘기는 값을 이 쿼리의 {@code ESCAPE '\'}가
      * 실제로 해석하는지 확인한다(리포지토리 자체는 이스케이프하지 않고 그대로 LIKE에 싣는다).
      */
@@ -282,7 +282,7 @@ class PostRepositoryTest {
     }
 
     @Test
-    @DisplayName("findTopByViewCountDesc: since 이전에 작성된 글은 조회수가 높아도 제외한다(A-BE-10)")
+    @DisplayName("findTopByViewCountDesc: since 이전에 작성된 글은 조회수가 높아도 제외한다")
     void findTopByViewCountDesc_excludesPostsCreatedBeforeSince() {
         Post old = postRepository.save(Post.builder().title("옛 인기글").content("c").user(user).build());
         postRepository.increaseViewCount(old.getId());
@@ -349,7 +349,7 @@ class PostRepositoryTest {
     void update_updatesUpdatedAtAfterFlush() {
         Post saved = postRepository.save(Post.builder().title("t").content("c").user(user).build());
         em.flush();
-        // 타임스탬프 해상도에 기대 sleep하는 대신, 저장된 updatedAt을 한 시간 전으로 옮겨 두고 다시 읽는다(OPS-35).
+        // 타임스탬프 해상도에 기대 sleep하는 대신, 저장된 updatedAt을 한 시간 전으로 옮겨 두고 다시 읽는다.
         em.getEntityManager().createNativeQuery("UPDATE posts SET updated_at = :ts WHERE id = :id")
                 .setParameter("ts", LocalDateTime.now().minusHours(1))
                 .setParameter("id", saved.getId())

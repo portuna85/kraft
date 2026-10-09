@@ -43,7 +43,7 @@ public class SecurityConfig {
 
     /**
      * 이 빈이 없으면 {@code ProviderManager}가 인증 성공·실패를 이벤트로 발행하지 않는다 —
-     * {@link LoginLockoutService}(A-SEC-08)가 듣는 이벤트가 그것이다.
+     * {@link LoginLockoutService}가 듣는 이벤트가 그것이다.
      */
     @Bean
     public AuthenticationEventPublisher authenticationEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
@@ -133,7 +133,7 @@ public class SecurityConfig {
                                 "/users/password-reset", "/users/verify", "/users/verify/result",
                                 "/healthz", "/readyz", "/error", "/error/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/posts/update/*").permitAll()
-                        // 버전 접두사가 붙은 정적 자원(/{버전}/js/... — FE-01, spring.web.resources.chain).
+                        // 버전 접두사가 붙은 정적 자원(/{버전}/js/..., spring.web.resources.chain).
                         // 접두사(빌드 SHA)는 배포마다 달라 경로 패턴으로 연다.
                         .requestMatchers(HttpMethod.GET, "/*/js/**", "/*/css/**", "/*/images/**").permitAll()
                         // 글쓰기 화면은 익명에게도 열려 있고 화면이 안내를 보여준다.
@@ -172,7 +172,7 @@ public class SecurityConfig {
                 .headers(headers -> headers
                         .frameOptions(frame -> frame.sameOrigin())
                         // 이 앱은 전 화면이 자체 호스팅 CSS·JS만 쓴다(외부 CDN·폰트·인라인
-                        // 스크립트·인라인 스타일이 전혀 없다 — F08 이후로 jQuery·Bootstrap도
+                        // 스크립트·인라인 스타일이 전혀 없다 — jQuery·Bootstrap도
                         // 직접 서빙한다) — 그래서 'self' 하나로 거의 모든 지시어를 막을 수
                         // 있다. img-src에 data:와 blob:을 더한다 —
                         // favicon이 data: URI이고, 이미지 첨부 미리보기(useImageUpload.js)가
@@ -194,18 +194,18 @@ public class SecurityConfig {
                                         // TLS는 앞단 프록시가 종단하므로 평문 HTTP로 이 앱에 닿을 일은
                                         // 원래도 없어야 하지만, HSTS의 첫 방문 창(프록시 설정 오류 등)을
                                         // 보완한다 — http: 링크가 섞여 있어도 브라우저가 https:로
-                                        // 바꿔 요청한다(A-SEC-12).
+                                        // 바꿔 요청한다.
                                         + "upgrade-insecure-requests"))
                         .referrerPolicy(referrer -> referrer
                                 .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
                         // 이 앱은 카메라·마이크·위치·결제 API를 전혀 쓰지 않는다 — 뭔가 알 수 없는
                         // 경로로 삽입된 스크립트가 있더라도 이 기능들을 아예 요청조차 못 하게
-                        // 막아 둔다(A-SEC-12).
+                        // 막아 둔다.
                         .permissionsPolicyHeader(permissions -> permissions
                                 .policy("camera=(), microphone=(), geolocation=(), payment=()"))
                         // 이 앱을 여는 탭이 새로 연 다른 오리진 탭의 window 참조를 갖지 못하게
                         // 격리한다 — 탭 간 참조를 이용한 일부 사이드 채널·리버스 탭내빙 공격을
-                        // 막는다(A-SEC-12). frame-ancestors 'self'와 별개로, 이쪽은 반대 방향
+                        // 막는다. frame-ancestors 'self'와 별개로, 이쪽은 반대 방향
                         // (이 앱이 새로 여는 창)을 막는다.
                         .crossOriginOpenerPolicy(coop -> coop
                                 .policy(CrossOriginOpenerPolicyHeaderWriter.CrossOriginOpenerPolicy.SAME_ORIGIN))
@@ -257,7 +257,7 @@ public class SecurityConfig {
      * 값이 앱 내부 경로로 확정되지 않거나({@link SafeRedirect#internalPath}) 로그인 화면 자기
      * 자신을 가리키면 기본값 "/"로 이동한다.
      * <p>
-     * 로그인 성공 시 회원 번호를 세션 속성으로 심는다(B02) — {@code SessionRevoker#revokeAll}이
+     * 로그인 성공 시 회원 번호를 세션 속성으로 심는다 — {@code SessionRevoker#revokeAll}이
      * 탈퇴 후 같은 이메일로 재가입한 다른 계정의 세션과 구분하는 데 쓴다.
      */
     private AuthenticationSuccessHandler redirectAwareSuccessHandler() {

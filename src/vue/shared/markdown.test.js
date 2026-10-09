@@ -144,7 +144,7 @@ test('목록과 문단이 빈 줄로 나뉘면 각각 다른 블록이다', () =
     assert.equal(blocks[2].type, 'p');
 });
 
-test('닫히지 않은 기호가 아주 많아도 선형 시간에 끝난다 (FE-25)', () => {
+test('닫히지 않은 기호가 아주 많아도 선형 시간에 끝난다', () => {
     for (const unit of ['[', '`', '*', '**', '[a](']) {
         const input = unit.repeat(Math.floor(10000 / unit.length));
         const started = performance.now();

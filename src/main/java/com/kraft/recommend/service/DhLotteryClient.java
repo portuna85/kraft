@@ -39,7 +39,7 @@ import java.util.Map;
  * DB·트랜잭션을 전혀 모른다 — 회차 하나를 조회하는 것만 담당하며,
  * {@link RecommendationAutoFetchScheduler}와 백필 러너가 함께 재사용한다.
  * <p>
- * 연속 실패 시 호출을 멈추는 서킷은 따로 두지 않는다(A-OPS-08 검토 결과) — 두 호출자
+ * 연속 실패 시 호출을 멈추는 서킷은 따로 두지 않는다(검토 결과) — 두 호출자
  * 모두 {@code Unavailable}을 받으면 그 실행에서 즉시 멈추고 다음 예약/재실행으로 넘긴다
  * ({@link RecommendationAutoFetchScheduler#fetchLatestIfDue}, 백필 러너의
  * {@code backfill()}). 이미 "한 번 막히면 그 자리에서 멈춘다"가 보장돼 있어, 클라이언트
@@ -54,7 +54,7 @@ public class DhLotteryClient {
 
     /**
      * 기본 User-Agent(자바 HTTP 클라이언트의 익명 문자열) 대신 이 서비스를 식별하고 연락할 수
-     * 있는 값을 보낸다(A-OPS-08). 비공식 엔드포인트를 여러 사용자를 대신해 정기적으로 두드리는
+     * 있는 값을 보낸다. 비공식 엔드포인트를 여러 사용자를 대신해 정기적으로 두드리는
      * 입장에서, 문제가 생겼을 때(봇 차단, 트래픽 문의) 상대가 누구인지 알 수 있게 하는 최소한의
      * 예의다 — 차단을 피하려는 위장이 아니라 그 반대다.
      * <p>
@@ -66,7 +66,7 @@ public class DhLotteryClient {
 
     private final RestClient restClient;
     /**
-     * 마지막으로 받은 배치. {@code volatile} 참조를 통째로 교체한다(A-BE-15) —
+     * 마지막으로 받은 배치. {@code volatile} 참조를 통째로 교체한다 —
      * {@code RecommendationHistoryProvider.cached}와 같은 패턴이다. 이전에는
      * {@code ConcurrentHashMap}을 {@code clear()}한 뒤 {@code put()}을 반복해 채웠는데, 그
      * 구간 전체가 원자적이지 않았다 — 같은 JVM에서 두 스레드가 동시에 {@link #fetchRound}를
@@ -143,7 +143,7 @@ public class DhLotteryClient {
                 requestedRoundExists = true;
             }
             try {
-                // 번호 필드는 nullable Integer다(B04) — List.of는 null 원소에서 즉시
+                // 번호 필드는 nullable Integer다 — List.of는 null 원소에서 즉시
                 // NullPointerException을 던지므로, 그 검사도 다른 행을 오염시키지 않도록 이
                 // try 안에서 함께 잡는다. 바깥에 있으면 이 메서드의 "예외를 던지지 않는다"는
                 // 계약이 깨지고 배치 전체 처리가 중단된다.

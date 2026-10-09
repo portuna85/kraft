@@ -22,7 +22,7 @@ public record PostSaveRequestDto(
         String picture,
 
         // 업로드 응답(ImageUploadResponseDto)이 돌려준 실제 픽셀 크기를 화면이 그대로 되돌려
-        // 보낸다(A-FE-09) — <img width height>로 레이아웃 이동(CLS)을 줄이는 용도일 뿐이라
+        // 보낸다 — <img width height>로 레이아웃 이동(CLS)을 줄이는 용도일 뿐이라
         // picture와의 정합성을 서버가 다시 검증하지는 않는다. 값이 틀려도 레이아웃만
         // 어긋날 뿐 보안·데이터 문제로 이어지지 않는다.
         @Positive(message = "이미지 폭은 양수여야 합니다.")

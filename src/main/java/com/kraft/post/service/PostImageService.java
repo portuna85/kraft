@@ -65,15 +65,15 @@ public class PostImageService {
     private String uploadDir;
 
     /**
-     * 저장한 공개 URL과 원본 픽셀 크기(A-FE-09) — 상세 화면이 {@code <img width height>}를
-     * 채워 레이아웃 이동(CLS)을 줄이는 데 쓴다. 축소(A-FE-06)는 클라이언트가 업로드 전에
+     * 저장한 공개 URL과 원본 픽셀 크기 — 상세 화면이 {@code <img width height>}를
+     * 채워 레이아웃 이동(CLS)을 줄이는 데 쓴다. 축소는 클라이언트가 업로드 전에
      * 하므로, 여기서 읽는 크기는 이미 그 축소가 끝난 뒤의(즉 실제로 저장되는) 크기다.
      */
     public record StoredImage(String url, int width, int height, long sizeBytes) {
     }
 
     public StoredImage store(MultipartFile file) {
-        // 업로드를 바이트로 한 번만 읽어 검증·메타데이터 제거·저장이 같은 버퍼를 쓴다(BE-21) —
+        // 업로드를 바이트로 한 번만 읽어 검증·메타데이터 제거·저장이 같은 버퍼를 쓴다 —
         // 예전에는 MultipartFile 스트림을 단계마다 다시 열었다. 5MB 상한을 넘기 전에는 읽지 않는다.
         byte[] original = readUpload(file);
         // 검증이 소문자로 정규화한 확장자를 그대로 파일명에 쓴다. 예전에는 검증만 소문자로 하고
@@ -83,9 +83,9 @@ public class PostImageService {
         String filename = UUID.randomUUID() + "." + validated.extension();
 
         Path target = Path.of(uploadDir).resolve(filename);
-        // GPS 좌표 등 위치·기기 정보가 담긴 메타데이터를 재인코딩 없이 제거한 뒤 저장한다(A-SEC-10).
+        // GPS 좌표 등 위치·기기 정보가 담긴 메타데이터를 재인코딩 없이 제거한 뒤 저장한다.
         byte[] stripped = ImageMetadataStripper.strip(original, validated.extension());
-        // 최종 경로에 바로 쓰면 도중에 프로세스가 죽을 때 반쯤 쓰인 파일이 공개 URL에 남는다(BE-22).
+        // 최종 경로에 바로 쓰면 도중에 프로세스가 죽을 때 반쯤 쓰인 파일이 공개 URL에 남는다.
         // 같은 디렉터리의 임시 파일에 다 쓴 뒤 원자적으로 옮긴다.
         Path temp = target.resolveSibling("." + filename + ".tmp");
         try {
@@ -94,7 +94,7 @@ public class PostImageService {
             Files.move(temp, target, StandardCopyOption.ATOMIC_MOVE);
         } catch (IOException e) {
             deleteQuietly(temp);
-            // 사용자 입력이 아니라 서버 디스크 문제다(A-BE-12) — 400이 아니라 500으로 나가야
+            // 사용자 입력이 아니라 서버 디스크 문제다 — 400이 아니라 500으로 나가야
             // 5xx 경보에 잡힌다.
             throw new StorageException("이미지 저장에 실패했습니다.", e);
         }
@@ -201,7 +201,7 @@ public class PostImageService {
      * <li>실제 크기를 읽어 픽셀 수 상한을 넘는지 — 파일은 작지만 압축을 풀면 거대한
      * 이미지(decompression bomb)를 걸러낸다. JPG/PNG/GIF는 {@link ImageIO}가, WEBP는
      * JDK 기본 ImageIO에 디코더가 없어 컨테이너 헤더를 직접 읽는
-     * {@link #validateWebpPixelCount}가 담당한다(F04).</li>
+     * {@link #validateWebpPixelCount}가 담당한다.</li>
      * </ol>
      */
     private Dimensions validateRealImage(byte[] data, String extension) {
@@ -237,7 +237,7 @@ public class PostImageService {
      * <p>
      * WEBP는 표준 JDK ImageIO에 디코더가 없어({@code readers.hasNext()}가 false) 이 경로를
      * 타지 않는다 — {@link #validateWebpPixelCount}가 컨테이너 헤더를 직접 읽어 같은 상한을
-     * 적용한다(F04). 예전에는 여기서 그냥 건너뛰어, WEBP는 시그니처만 맞으면 픽셀 수 제한
+     * 적용한다. 예전에는 여기서 그냥 건너뛰어, WEBP는 시그니처만 맞으면 픽셀 수 제한
      * 없이 올라갔다.
      */
     /** 픽셀 크기. 0은 "읽지 못함"이다 — 리더가 없거나 스트림을 못 열었을 때뿐이고, 그때는

@@ -34,8 +34,8 @@ public class PostApiController {
     private final WriteRateLimiters rateLimiters;
 
     /**
-     * 이메일 인증만 통과하면 스팸 봇 하나로 게시판 전체를 덮을 수 있었다(전체 리뷰
-     * 2026-09-26 A-SEC-06) — 분당·시간당 두 창을 함께 건다({@code WriteRateLimiters}).
+     * 이메일 인증만 통과하면 스팸 봇 하나로 게시판 전체를 덮을 수 있었다.
+     * 분당·시간당 두 창을 함께 건다({@code WriteRateLimiters}).
      */
     @PostMapping("/api/v1/posts")
     public ResponseEntity<?> save(@Valid @RequestBody PostSaveRequestDto requestDto, Authentication authentication) {
@@ -73,7 +73,7 @@ public class PostApiController {
 
     /**
      * "더 보기"(load-more.js)가 이어 받는 페이지도 검색어를 실을 수 있어, SSR 검색(
-     * {@code PostPageController.index})과 같은 IP 기준 속도 제한을 건다(A-SEC-06).
+     * {@code PostPageController.index})과 같은 IP 기준 속도 제한을 건다.
      */
     @GetMapping("/api/v1/posts")
     public ResponseEntity<?> findAll(@PageableDefault(size = 10) Pageable pageable,

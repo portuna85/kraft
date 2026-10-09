@@ -16,7 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@link SecurityConfig}가 붙이는 CSP·Referrer-Policy·HSTS를 확인한다.
  * <p>
  * 이 앱은 전 화면이 자체 호스팅 CSS·JS만 쓴다 — 외부 CDN·폰트도, 인라인 스크립트·스타일도
- * 없다(F08 이후로 jQuery·Bootstrap도 직접 서빙한다. 마운트 실패 안내도 이 작업에서 인라인
+ * 없다(이후로 jQuery·Bootstrap도 직접 서빙한다. 마운트 실패 안내도 이 작업에서 인라인
  * {@code <script>}에서 {@code /js/mount-failure.js}로 뺐다). 그래서 {@code default-src 'self'}
  * 하나로 거의 모든 지시어를 막을 수 있다.
  */
@@ -28,7 +28,7 @@ class SecurityHeadersTest {
     private MockMvc mockMvc;
 
     @Test
-    @DisplayName("SEC-05: 응답에 CSP가 self 기준으로 붙는다")
+    @DisplayName("응답에 CSP가 self 기준으로 붙는다")
     void response_hasContentSecurityPolicy() throws Exception {
         mockMvc.perform(get("/recommend"))
                 .andExpect(status().isOk())
@@ -41,7 +41,7 @@ class SecurityHeadersTest {
     }
 
     @Test
-    @DisplayName("A-SEC-12: 쓰지 않는 브라우저 기능을 Permissions-Policy로 막는다")
+    @DisplayName("쓰지 않는 브라우저 기능을 Permissions-Policy로 막는다")
     void response_hasPermissionsPolicy() throws Exception {
         mockMvc.perform(get("/recommend"))
                 .andExpect(status().isOk())
@@ -52,7 +52,7 @@ class SecurityHeadersTest {
     }
 
     @Test
-    @DisplayName("A-SEC-12: 다른 오리진 탭과 window 참조를 격리한다")
+    @DisplayName("다른 오리진 탭과 window 참조를 격리한다")
     void response_hasCrossOriginOpenerPolicy() throws Exception {
         mockMvc.perform(get("/recommend"))
                 .andExpect(status().isOk())
@@ -60,7 +60,7 @@ class SecurityHeadersTest {
     }
 
     @Test
-    @DisplayName("SEC-05: 응답에 Referrer-Policy가 strict-origin-when-cross-origin으로 붙는다")
+    @DisplayName("응답에 Referrer-Policy가 strict-origin-when-cross-origin으로 붙는다")
     void response_hasReferrerPolicy() throws Exception {
         mockMvc.perform(get("/recommend"))
                 .andExpect(status().isOk())
@@ -73,7 +73,7 @@ class SecurityHeadersTest {
      * 이 테스트가 실패해야 정상이다: MockMvc 요청은 HTTPS가 아니다).
      */
     @Test
-    @DisplayName("SEC-05: HTTPS가 아닌 요청에도 HSTS가 붙는다(프록시 뒤에서도 항상 적용)")
+    @DisplayName("HTTPS가 아닌 요청에도 HSTS가 붙는다(프록시 뒤에서도 항상 적용)")
     void response_hasHstsEvenOverPlainHttp() throws Exception {
         mockMvc.perform(get("/recommend"))
                 .andExpect(status().isOk())

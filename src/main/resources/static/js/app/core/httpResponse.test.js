@@ -1,4 +1,4 @@
-// httpResponse.parse()의 순수 로직 테스트(A-QA-08). `npm run test:unit`.
+// httpResponse.parse()의 순수 로직 테스트. `npm run test:unit`.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ApiError, parse } from './httpResponse.js';

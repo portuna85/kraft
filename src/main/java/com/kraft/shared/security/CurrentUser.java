@@ -15,7 +15,7 @@ import java.util.Optional;
  * 그 사이 가입한 새 계정을 옛 세션의 주인으로 착각한다 — userId는 로그인 시점에 세션에 고정된
  * 값이라 이 문제가 없다.
  * <p>
- * principal이 KraftUserDetails가 아니면 미인증으로 본다(A-QA-02) — 실제 운영 로그인은
+ * principal이 KraftUserDetails가 아니면 미인증으로 본다 — 실제 운영 로그인은
  * {@code UserDetailsServiceImpl}이 항상 KraftUserDetails를 principal로 만들므로, 그 외의
  * principal 타입은 운영에서 나올 수 없는 형태다. 이메일 해시로 다시 조회하던 예전 폴백은
  * principal 이름이 회원 id로 바뀐 뒤로는 운영에서 절대 타지 않는 죽은 코드였다(테스트에는
@@ -46,7 +46,7 @@ public final class CurrentUser {
     }
 
     /**
-     * @throws NotFoundException 계정을 찾지 못하면(탈퇴 등, BE-07), 또는 principal이
+     * @throws NotFoundException 계정을 찾지 못하면(탈퇴 등), 또는 principal이
      *                            KraftUserDetails가 아니면(운영에서는 일어나지 않는다).
      */
     public static User require(Authentication authentication, UserRepository userRepository) {

@@ -12,12 +12,12 @@ public interface RecommendationHistoryStateRepository extends JpaRepository<Reco
      * 검증 기준 메타데이터를 갱신하고 {@code version}도 함께 올린다. V20 트리거는
      * {@code recommendation_winning_draws}의 DML에만 걸려 있어, 회차 데이터 변경 없이
      * 검증 기준·출처만 재확인하는 갱신(예: 동일 이력 재검증)은 트리거만으로는 버전이 오르지
-     * 않는다. 이 쿼리 자체가 {@code version}을 올려 HIST-04/05("메타데이터 변경도 버전 증가
-     * 대상")를 만족시킨다. 엔티티를 로드해 통째로 저장(save)하지 않고 필요한 컬럼만 직접
+     * 않는다. 이 쿼리 자체가 {@code version}을 올려 "메타데이터 변경도 버전 증가
+     * 대상" 규칙을 만족시킨다. 엔티티를 로드해 통째로 저장(save)하지 않고 필요한 컬럼만 직접
      * UPDATE하는 이유는 동시 갱신 시 메모리에 캐시된 옛 값으로 다른 트랜잭션의 변경을
      * 덮어쓰지 않기 위함이다.
      * <p>
-     * {@code WHERE}에 {@code :verifiedThroughRound >= s.verifiedThroughRound}를 둔다(B14) —
+     * {@code WHERE}에 {@code :verifiedThroughRound >= s.verifiedThroughRound}를 둔다 —
      * 이게 없으면 오래 걸린 백필이 그 사이 더 앞서 나간 자동 수집의 검증 구간을 뒤로 되돌릴
      * 수 있었다(예: 자동 수집이 이미 600회차까지 검증해 뒀는데, 그보다 먼저 시작된 500회차
      * 기준 백필이 늦게 끝나며 검증 구간을 500으로 덮어씀). 검증 구간을 의도적으로 줄이는

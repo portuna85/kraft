@@ -33,7 +33,7 @@ public class RecommendationService {
 
         List<LottoNumbers> combos = candidateGenerator.generate(count, snapshot);
 
-        // HIST-04/05: 생성 도중 이력이 바뀌었으면(정정·삭제 포함) 결과를 버린다.
+        // 생성 도중 이력이 바뀌었으면(정정·삭제 포함) 결과를 버린다.
         historyProvider.verifyUnchanged(snapshot);
 
         List<RecommendationItemDto> items = new ArrayList<>();

@@ -84,7 +84,7 @@ class UserRepositoryTest {
     @DisplayName("name 유니크 제약: 이메일이 달라도 같은 이름은 두 번 저장되지 않는다")
     void save_duplicateName_violatesUniqueConstraint() {
         // existsByName() 사전 검사와 INSERT 사이의 경쟁은 DB 제약만이 막을 수 있다. 예전에는
-        // 이 제약이 없어 서로 다른 이메일이 같은 이름을 갖는 상태가 실제로 저장됐다(F09).
+        // 이 제약이 없어 서로 다른 이메일이 같은 이름을 갖는 상태가 실제로 저장됐다.
         userRepository.saveAndFlush(user("같은닉네임", "one@example.com"));
 
         assertThatThrownBy(() -> userRepository.saveAndFlush(user("같은닉네임", "two@example.com")))

@@ -33,7 +33,7 @@ function initialState() {
     return { server, parent, comments, deletedIds: new Set(), total: 1 + 25 };
 }
 
-test('F02: 새 답글을 쓴 뒤 답글 더 보기로 아직 받지 않은 답글이 빠짐없이·중복 없이 온다', () => {
+test('새 답글을 쓴 뒤 답글 더 보기로 아직 받지 않은 답글이 빠짐없이·중복 없이 온다', () => {
     const { server, parent, deletedIds } = initialState();
 
     server.add(126);
@@ -48,7 +48,7 @@ test('F02: 새 답글을 쓴 뒤 답글 더 보기로 아직 받지 않은 답�
     assert.equal(parent.replyCount, 26);
 });
 
-test('F03: 답글 추가 → 답글 삭제 → 부모 삭제에서 매 단계 개수가 서버와 같고 마지막은 0이다', () => {
+test('답글 추가 → 답글 삭제 → 부모 삭제에서 매 단계 개수가 서버와 같고 마지막은 0이다', () => {
     const { server, parent, comments, deletedIds } = initialState();
     let total = 26;
 
@@ -70,7 +70,7 @@ test('F03: 답글 추가 → 답글 삭제 → 부모 삭제에서 매 단계 �
     assert.equal(comments.length, 0);
 });
 
-test('F02·F03: 답글 더 보기 응답이 늦게 와도 그 사이 삭제한 답글이 되살아나지 않고 개수도 그대로다', () => {
+test('답글 더 보기 응답이 늦게 와도 그 사이 삭제한 답글이 되살아나지 않고 개수도 그대로다', () => {
     const { server, parent, comments, deletedIds } = initialState();
     let total = 26;
 
@@ -90,7 +90,7 @@ test('F02·F03: 답글 더 보기 응답이 늦게 와도 그 사이 삭제한 �
     assert.equal(total, 1 + server.count());
 });
 
-test('F02: 로드된 마지막 답글을 지워도 커서가 뒤로 가지 않아 같은 답글을 다시 받지 않는다', () => {
+test('로드된 마지막 답글을 지워도 커서가 뒤로 가지 않아 같은 답글을 다시 받지 않는다', () => {
     const { server, parent, comments, deletedIds } = initialState();
 
     server.remove(120);
@@ -108,7 +108,7 @@ test('초기 답글이 없는 부모는 처음부터 받는다', () => {
     assert.equal(replyAfterId(parent), '');
 });
 
-test('A-BE-06: 답글이 있는 최상위 댓글의 소프트 삭제는 행·답글·개수를 그대로 두고 내용만 비운다', () => {
+test('답글이 있는 최상위 댓글의 소프트 삭제는 행·답글·개수를 그대로 두고 내용만 비운다', () => {
     const { comments, parent } = initialState();
 
     const applied = applySoftDelete(comments, 100);
@@ -122,7 +122,7 @@ test('A-BE-06: 답글이 있는 최상위 댓글의 소프트 삭제는 행·답
     assert.equal(parent.replyCount, 25);
 });
 
-test('A-BE-06: 목록에 없는 id의 소프트 삭제는 아무 일도 하지 않는다', () => {
+test('목록에 없는 id의 소프트 삭제는 아무 일도 하지 않는다', () => {
     const { comments } = initialState();
 
     assert.equal(applySoftDelete(comments, 999), false);

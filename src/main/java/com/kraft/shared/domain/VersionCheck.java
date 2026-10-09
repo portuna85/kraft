@@ -1,7 +1,7 @@
 package com.kraft.shared.domain;
 
 /**
- * 수정 요청이 기준으로 삼은 버전과 지금 DB의 버전이 다르면, 그 사이 다른 곳에서 저장이 일어난 것이다(F11).
+ * 수정 요청이 기준으로 삼은 버전과 지금 DB의 버전이 다르면, 그 사이 다른 곳에서 저장이 일어난 것이다.
  * 글·댓글 수정이 같은 규칙을 쓰므로 한 곳에 둔다. 던지는 {@link PreconditionFailedException}은
  * {@code ApiExceptionHandler}가 412로 변환한다 — 이 검사를 통과한 뒤 저장 시점(flush)에 겹친 저장이 있었다면
  * JPA가 던지는 낙관적 잠금 예외가 409로 나간다.

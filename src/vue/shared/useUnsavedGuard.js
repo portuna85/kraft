@@ -3,7 +3,7 @@ import { onMounted, onUnmounted } from 'vue';
 
 /**
  * 편집 중 브라우저 탭을 닫거나 다른 주소로 이동하면(뒤로 가기 포함) 입력한 내용이 그대로
- * 사라지는 것을 막는다(F05, FE-18). PostEditApp.vue에만 있던 로직을 추출해 PostSaveApp.vue
+ * 사라지는 것을 막는다. PostEditApp.vue에만 있던 로직을 추출해 PostSaveApp.vue
  * (새 글 작성)에도 같은 보호를 준다 — 예전에는 새 글 작성에는 이 가드가 아예 없어서, 다
  * 쓴 글을 실수로 새로고침하면 아무 경고 없이 사라졌다.
  *

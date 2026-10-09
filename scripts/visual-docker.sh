@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 시각 회귀 기준선을 CI와 같은 환경(공식 Playwright Docker 이미지, Linux)에서 만들거나 검사한다(OPS-05).
+# 시각 회귀 기준선을 CI와 같은 환경(공식 Playwright Docker 이미지, Linux)에서 만들거나 검사한다.
 #
 #   scripts/visual-docker.sh update   # 기준선(-chromium-linux.png)을 새로 만들어 e2e/*-snapshots에 복사
 #   scripts/visual-docker.sh check    # 현재 기준선과 비교만 한다(CI의 visual 잡과 같은 조건)

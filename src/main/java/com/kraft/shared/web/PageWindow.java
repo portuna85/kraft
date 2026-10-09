@@ -26,7 +26,7 @@ public record PageWindow(
     private static final int WINDOW_SIZE = 5;
 
     /**
-     * 전체 페이지 수를 모를 때(검색, BE-08) 쓰는 창. 번호 목록 없이 이전·다음만 있고
+     * 전체 페이지 수를 모를 때(검색) 쓰는 창. 번호 목록 없이 이전·다음만 있고
      * {@code totalPages}는 0이다. 화면은 {@code displayPage}("N페이지")만 보여 준다.
      *
      * @param page    현재 페이지(0-기반)

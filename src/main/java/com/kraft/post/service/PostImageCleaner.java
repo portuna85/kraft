@@ -25,7 +25,7 @@ import java.util.List;
  * 파일 삭제에 실패하면 행을 남긴다. 다음 주기에 다시 시도하게 하려는 것이다.
  * <p>
  * 배치 하나(최대 {@link #CLEANUP_BATCH_SIZE}행)의 실제 조회·삭제·트랜잭션은
- * {@link PostImageCleanupBatchRunner}가 맡는다(B06) — 이 클래스는 그 배치를 몇 번 반복할지
+ * {@link PostImageCleanupBatchRunner}가 맡는다 — 이 클래스는 그 배치를 몇 번 반복할지
  * (id 커서 진행, {@link #MAX_BATCHES_PER_CYCLE} 상한)만 결정하는 반복문이며, 그 자체는
  * {@code @Transactional}이 아니다. 배치 호출은 매번 주입받은 빈의 프록시를 거치므로,
  * {@link PostImageCleanupBatchRunner}의 {@code REQUIRES_NEW}가 배치마다 실제로 새 트랜잭션을
@@ -41,7 +41,7 @@ public class PostImageCleaner {
     static final Duration ORPHAN_TTL = Duration.ofHours(24);
 
     /**
-     * 한 배치에서 조회·처리하는 최대 개수(B10). 대상이 이보다 많으면 여러 번 나눠 부른다 — 전체를
+     * 한 배치에서 조회·처리하는 최대 개수. 대상이 이보다 많으면 여러 번 나눠 부른다 — 전체를
      * 한 트랜잭션에 다 로딩하면 적체가 많을수록 그 주기의 heap·잠금 시간이 함께 늘어난다.
      * 테스트가 배치 경계를 직접 확인할 수 있도록 패키지 가시성으로 둔다.
      */
@@ -49,7 +49,7 @@ public class PostImageCleaner {
 
     /**
      * 한 주기 안에서 최대 이만큼의 배치만 돈다. 계속 실패하는 행이 있으면(파일 삭제 실패 등)
-     * id 커서가 그 행을 지나쳐 진행하므로(B06) 예전처럼 같은 행에 무한히 걸리지는 않지만,
+     * id 커서가 그 행을 지나쳐 진행하므로 예전처럼 같은 행에 무한히 걸리지는 않지만,
      * 그래도 대기열 전체를 한 주기에서 다 처리한다는 보장은 아니므로 상한을 둔다 — 남은
      * 적체는 다음 주기가 이어받는다.
      */

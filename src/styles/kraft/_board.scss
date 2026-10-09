@@ -75,7 +75,7 @@
     background-color: var(--kraft-surface-subtle);
 }
 
-// 고정 공지(A-BE-05). 색만으로 구분하지 않는다 — 행 안의 📌 이모지 + 스크린리더용
+// 고정 공지. 색만으로 구분하지 않는다 — 행 안의 📌 이모지 + 스크린리더용
 // "공지" 텍스트가 이미 있으므로, 이 배경은 눈으로 훑을 때 한 번 더 도와주는 보조 신호다.
 .post-list--pinned .post-list__item {
     background-color: var(--kraft-surface-subtle);

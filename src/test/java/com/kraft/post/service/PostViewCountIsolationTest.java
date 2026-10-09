@@ -87,7 +87,7 @@ class PostViewCountIsolationTest {
     }
 
     @Test
-    @DisplayName("F02: 겹친 열람·편집에서 편집 내용이 보존되고 조회수도 함께 올라간다")
+    @DisplayName("겹친 열람·편집에서 편집 내용이 보존되고 조회수도 함께 올라간다")
     void viewAndEditOverlap_keepsEditedContentAndCountsView() {
         Long id = savePost("원래 제목", "원래 내용", Category.FREE);
 
@@ -113,13 +113,13 @@ class PostViewCountIsolationTest {
     }
 
     /**
-     * COR-04 회귀: 위 테스트와 반대 순서다. 편집이 게시글을 먼저 읽어 옛 조회수(0)를 쥔 채로,
+     * 회귀: 위 테스트와 반대 순서다. 편집이 게시글을 먼저 읽어 옛 조회수(0)를 쥔 채로,
      * 그 사이 다른 트랜잭션이 조회수를 올리고 커밋한 뒤에야 편집이 flush된다.
      * {@code Post.viewCount}에 {@code updatable = false}가 없다면, 편집의 전체 컬럼 UPDATE가
      * 편집 시작 시점의 옛 조회수를 그대로 실어 방금 커밋된 증가를 되돌렸을 것이다.
      */
     @Test
-    @DisplayName("COR-04 회귀: 편집이 옛 조회수를 쥐고 있어도, 그 사이 커밋된 조회수 증가를 되돌리지 않는다")
+    @DisplayName("회귀: 편집이 옛 조회수를 쥐고 있어도, 그 사이 커밋된 조회수 증가를 되돌리지 않는다")
     void editHoldingStaleViewCount_doesNotRevertConcurrentViewIncrement() {
         Long id = savePost("원래 제목", "원래 내용", Category.FREE);
         // findByIdForView는 호출 자체가 조회수를 올리므로 쓰지 않는다 — version만 필요하다.
@@ -146,7 +146,7 @@ class PostViewCountIsolationTest {
     }
 
     @Test
-    @DisplayName("F11: 상세를 여러 번 열어도 최종수정일은 그대로다")
+    @DisplayName("상세를 여러 번 열어도 최종수정일은 그대로다")
     void view_doesNotTouchUpdatedAt() {
         Long id = savePost("제목", "내용", Category.FREE);
         LocalDateTime before = postRepository.findById(id).orElseThrow().getUpdatedAt();
@@ -173,7 +173,7 @@ class PostViewCountIsolationTest {
     }
 
     @Test
-    @DisplayName("F02: 편집을 시작한 뒤 다른 곳에서 저장되면 충돌로 거절한다")
+    @DisplayName("편집을 시작한 뒤 다른 곳에서 저장되면 충돌로 거절한다")
     void update_withStaleVersion_isRejected() {
         Long id = savePost("제목", "내용", Category.FREE);
         Long versionAtEditStart = postQueryService.findByIdForView(id, owner).version();

@@ -185,11 +185,11 @@ class BackupRestoreRehearsalTest {
     }
 
     /**
-     * deploy/backup.sh의 덤프 명령과 같은 모양(gzip 압축, OPS-G3/OPS-C4)으로 맞춘다.
+     * deploy/backup.sh의 덤프 명령과 같은 모양(gzip 압축)으로 맞춘다.
      * <p>
      * 완전히 같지는 않다 — 운영은 {@code docker compose exec} 컨테이너 안에서 root 계정을
      * {@code MYSQL_PWD}로 쓰는데, 이 테스트는 Testcontainers가 만든 앱 계정(-p 인자)을 그대로
-     * 쓴다(OPS-C4, [확인 필요]) — {@code MariaDBContainer}가 root 자격 증명을 별도로 노출하지
+     * 쓴다([확인 필요]) — {@code MariaDBContainer}가 root 자격 증명을 별도로 노출하지
      * 않아, 트리거 {@code DEFINER}·권한 차이까지 이 테스트가 검증하지는 못한다.
      */
     private Path backupDatabase() {

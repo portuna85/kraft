@@ -26,7 +26,7 @@ siteNav.init();
  * `selector`에 맞는 요소가 있을 때만 `load()`가 돌려주는 모듈을 불러와 `init()`을 부른다.
  *
  * `load`는 `() => import('./features/x.js')`처럼 **문자열 리터럴 경로**를 가진 함수여야 한다 —
- * 이 파일은 Vite로 번들되는데(FE-03·FE-05), 변수로 만든 경로는 번들러가 모듈을 찾지 못해
+ * 이 파일은 Vite로 번들되는데, 변수로 만든 경로는 번들러가 모듈을 찾지 못해
  * 배포본에서 404가 된다. 번들러가 각 기능을 별도 청크로 쪼개 주므로 "필요한 페이지에서만
  * 받는다"는 성질은 그대로다.
  *
@@ -57,18 +57,18 @@ loadIf('#btn-logout, #changePasswordModal, #withdrawModal, #resendVerificationMo
 // 글이어도 댓글 영역이 있는 페이지라면 항상 최초 DOM에 존재하므로 이 경우를 메운다.
 // '#post-app, #comments-app'은 그 Vue 아일랜드가 마운트하는 자리 자체라, Vue 청크 로드가
 // 늦어져 트리거 버튼이 아직 그려지기 전이어도
-// post-update.html이 서버에서 항상 먼저 렌더링하므로 이 셀렉터만은 확실히 존재한다(F06).
+// post-update.html이 서버에서 항상 먼저 렌더링하므로 이 셀렉터만은 확실히 존재한다.
 loadIf('[data-target-kind], #comments-heading, #post-app, #comments-app', () => import('./features/delete-confirm.js'), 'features/delete-confirm.js');
 
 // 목록 "더 보기"(10단계). 마지막 페이지거나 글이 없으면 index.html이 버튼 자체를 렌더링하지
 // 않는다.
 loadIf('#btn-load-more', () => import('./features/load-more.js'), 'features/load-more.js');
 
-// 이메일 인증 확인 화면: 메일 링크의 프래그먼트 토큰을 폼에 채운다(BE-04).
+// 이메일 인증 확인 화면: 메일 링크의 프래그먼트 토큰을 폼에 채운다.
 loadIf('#verify-confirm-form', () => import('./features/verify-confirm.js'), 'features/verify-confirm.js');
 
 // 관리자 "추천 이력 수집" 화면의 "지금 수집" 버튼.
 loadIf('#btn-fetch-now', () => import('./features/admin-fetch.js'), 'features/admin-fetch.js');
 
-// 다크 모드 토글(11단계). 모든 페이지의 헤더에 항상 있어 동적 import 왕복 없이 정적으로 불러온다(FE-46).
+// 다크 모드 토글(11단계). 모든 페이지의 헤더에 항상 있어 동적 import 왕복 없이 정적으로 불러온다.
 themeToggle.init();

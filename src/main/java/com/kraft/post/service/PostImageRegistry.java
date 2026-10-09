@@ -43,7 +43,7 @@ public class PostImageRegistry {
      * 호출로 나뉘어 있어, 같은 계정의 동시 업로드 두 건이 모두 검사를 통과한 뒤 각자 등록될 수
      * 있었다. 지금은 같은 트랜잭션 안에서 계정 행 자체를
      * 먼저 잠그고(B07이 추가한 {@link UserRepository#findByIdForUpdate}) 그 안에서 검사·등록까지
-     * 끝낸다(B03). 이전에는 이 계정의 기존 {@code PostImage} 행을 전부 잠갔는데, 이미지가 없는
+     * 끝낸다. 이전에는 이 계정의 기존 {@code PostImage} 행을 전부 잠갔는데, 이미지가 없는
      * 계정은 잠글 행이 없어 첫 업로드 두 건이 경쟁을 통과할 수 있었고, 이미지가 많은 계정은 매
      * 업로드마다 그 행 전체를 잠그는 비용을 치렀다. User 행은 항상 존재하므로 두 문제 모두
      * 사라진다.
@@ -52,7 +52,7 @@ public class PostImageRegistry {
         validateQuotaAndRegister(url, owner, sizeBytes, null, null);
     }
 
-    /** 서버가 측정한 픽셀 크기까지 대장에 남기는 등록(BE-24). */
+    /** 서버가 측정한 픽셀 크기까지 대장에 남기는 등록. */
     @Transactional
     public void validateQuotaAndRegister(String url, User owner, long sizeBytes, Integer width, Integer height) {
         userRepository.findByIdForUpdate(owner.getId());
@@ -110,7 +110,7 @@ public class PostImageRegistry {
         if (image.isAttachedToOtherThan(post)) {
             throw new BusinessValidationException("이미 다른 게시글에서 사용 중인 이미지입니다. 이미지를 다시 올려 주세요.");
         }
-        // 삭제가 예약된 이미지는 정리 작업이 파일을 지우는 도중일 수 있다(B01). 상태만으로
+        // 삭제가 예약된 이미지는 정리 작업이 파일을 지우는 도중일 수 있다. 상태만으로
         // 막아 두면, 정리 작업이 파일 삭제 전 조건부로 선점한 뒤에는 이 이미지를 다시 연결할
         // 방법이 아예 없어져 정리와 연결 사이의 경쟁이 성립하지 않는다.
         if (image.getStatus() == PostImageStatus.PENDING_DELETE) {
@@ -123,7 +123,7 @@ public class PostImageRegistry {
                 : Optional.of(new MeasuredSize(image.getWidth(), image.getHeight()));
     }
 
-    /** 업로드 때 서버가 측정한 픽셀 크기. 게시글의 {@code <img width height>}는 클라이언트 값이 아니라 이 값을 쓴다(BE-24). */
+    /** 업로드 때 서버가 측정한 픽셀 크기. 게시글의 {@code <img width height>}는 클라이언트 값이 아니라 이 값을 쓴다. */
     public record MeasuredSize(int width, int height) {
     }
 

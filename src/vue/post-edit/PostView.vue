@@ -8,7 +8,7 @@ import MarkdownBody from '../shared/MarkdownBody.vue';
 import PostAdminBar from './PostAdminBar.vue';
 
 /**
- * 게시글 읽기 화면(FE-12): 본문·글자 크기·공유·추천·신고/수정/삭제 버튼. 편집 폼은 PostEditApp이 맡고,
+ * 게시글 읽기 화면: 본문·글자 크기·공유·추천·신고/수정/삭제 버튼. 편집 폼은 PostEditApp이 맡고,
  * 이 컴포넌트는 "수정"을 누르면 `edit`만 알린다. 추천은 서버가 반환한 상태만 반영한다.
  */
 const props = defineProps({
@@ -18,7 +18,7 @@ const props = defineProps({
 });
 defineEmits(['edit']);
 
-// 로그인 후 이 글로 돌아오게 한다(FE-16) — navbar의 로그인 링크와 같은 규칙
+// 로그인 후 이 글로 돌아오게 한다 — navbar의 로그인 링크와 같은 규칙
 // (NavModelAdvice.currentPath)이다. 예전에는 href="/login"만 써서 로그인 뒤 홈으로 떨어졌다.
 const loginHref = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
 
@@ -56,7 +56,7 @@ function setFontScaleIndex(index) {
 
 /**
  * navigator.share가 있으면(iOS Safari·Android Chrome) 네이티브 공유 시트를 먼저 띄운다
- * (A-FE-14) — 메시지 앱으로 바로 보내기 같은, 클립보드 복사보다 나은 경로를 그 플랫폼이
+ * — 메시지 앱으로 바로 보내기 같은, 클립보드 복사보다 나은 경로를 그 플랫폼이
  * 이미 제공하기 때문이다. 없는 브라우저(대부분의 데스크톱)는 기존 클립보드 복사로 물러선다.
  * 사용자가 공유 시트를 취소하면 AbortError가 나는데, 이때는 클립보드로도 대신 복사하지
  * 않는다 — 취소는 "공유하지 않겠다"는 의사 표시라 조용히 끝나는 것이 맞고, 그런데도 뭔가
@@ -156,7 +156,7 @@ defineExpose({ focusEditButton: () => editButton.value?.focus() });
       v-if="post.picture"
       class="post-image"
     >
-      <!-- 상세 본문 이미지는 대개 첫 화면(LCP 후보)이다(A-FE-09). 크기를 알면(V32 이후
+      <!-- 상세 본문 이미지는 대개 첫 화면(LCP 후보)이다. 크기를 알면(V32 이후
            저장된 글) eager+높은 우선순위로 바꾸고 width/height로 레이아웃 이동(CLS)을
            막는다 — 크기를 모르는 옛 글은 이전 동작(lazy, 속성 없음) 그대로 둔다. -->
       <img

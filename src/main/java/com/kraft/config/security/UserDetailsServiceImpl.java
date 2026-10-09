@@ -37,8 +37,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     }
 
     /**
-     * 이메일 인증 직후 같은 세션의 권한을 즉시 갱신하는 데 쓴다(전체 리뷰 2026-09-26 A-BE-08,
-     * {@code UserPageController}). 로그인 때와 달리 여기서는 이미 회원 id를 알고 있으므로
+     * 이메일 인증 직후 같은 세션의 권한을 즉시 갱신하는 데 쓴다({@code UserPageController}). 로그인 때와 달리 여기서는 이미 회원 id를 알고 있으므로
      * 이메일을 복호화·정규화·재해시할 필요가 없다.
      */
     public UserDetails loadUserById(Long userId) {
@@ -48,8 +47,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     }
 
     private static UserDetails toUserDetails(User user) {
-        // username(=Authentication.getName())은 이제 회원 id다(BE-04). 이메일은 principal에
-        // 싣지 않는다 — 세션 BLOB에 평문으로 직렬화되기 때문이다(F01). 필요한 곳은 CurrentUser로
+        // username(=Authentication.getName())은 이제 회원 id다. 이메일은 principal에
+        // 싣지 않는다 — 세션 BLOB에 평문으로 직렬화되기 때문이다. 필요한 곳은 CurrentUser로
         // DB에서 읽는다. 화면 표시용 닉네임은 displayName으로 싣는다.
         return new KraftUserDetails(
                 user.getId(),

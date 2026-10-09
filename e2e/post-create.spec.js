@@ -10,7 +10,7 @@ test('글을 등록하면 목록에 보이고 완료 메시지가 뜬다', async
     await page.locator('#content').fill('E2E가 작성한 본문입니다.');
     await page.locator('#btn-save').click();
 
-    // 목록이 아니라 방금 등록한 글로 바로 이동한다(전체 리뷰 2026-09-26 A-FE-02).
+    // 목록이 아니라 방금 등록한 글로 바로 이동한다.
     await page.waitForURL(/\/posts\/update\/\d+$/);
     await expect(page.locator('#flash')).toContainText('글이 등록되었습니다.');
     await expect(page.locator('#post-title-text')).toHaveText(title);
@@ -92,7 +92,7 @@ test('이미지 업로드를 기다리는 동안 입력이 잠기고, 그 사이
 });
 
 /**
- * 본문 서버 검증 오류가 textarea 자체에 연결되어야 한다(FE-01). 예전에는 aria-invalid가
+ * 본문 서버 검증 오류가 textarea 자체에 연결되어야 한다. 예전에는 aria-invalid가
  * MarkdownToolbar의 루트 div에 붙어, 스크린리더가 입력칸과 오류를 이어 읽지 못했다.
  */
 test('본문 서버 검증 오류가 textarea의 aria-invalid·aria-describedby에 연결된다', async ({ page }) => {

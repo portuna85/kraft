@@ -205,13 +205,13 @@ class PostServiceTest {
 
         assertThat(post.getPicture()).isEqualTo("/images/new.png");
         verify(postImageRegistry).attach("/images/new.png", owner, post);
-        // 파일을 직접 지우지 않는다. 트랜잭션이 롤백되면 예약도 사라져 기존 이미지가 보존된다(F05).
+        // 파일을 직접 지우지 않는다. 트랜잭션이 롤백되면 예약도 사라져 기존 이미지가 보존된다.
         verify(postImageRegistry).markForDeletion("/images/old.png");
         verify(postImageService, never()).deleteIfExists(any());
     }
 
     @Test
-    @DisplayName("update: 새 이미지의 크기는 클라이언트가 보낸 값이 아니라 서버가 측정한 값을 쓴다 (BE-24)")
+    @DisplayName("update: 새 이미지의 크기는 클라이언트가 보낸 값이 아니라 서버가 측정한 값을 쓴다")
     void update_whenPictureChanges_usesServerMeasuredSize() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
@@ -413,7 +413,7 @@ class PostServiceTest {
                 .hasMessageContaining("id=999");
     }
 
-    /** 정렬 없는 요청은 서비스가 id 내림차순 Sort를 채운 뒤 리포지토리로 넘긴다(B10). */
+    /** 정렬 없는 요청은 서비스가 id 내림차순 Sort를 채운 뒤 리포지토리로 넘긴다. */
     private static Pageable idDescOf(Pageable requested) {
         return PageRequest.of(requested.getPageNumber(), requested.getPageSize(), Sort.by(Sort.Direction.DESC, "id"));
     }
@@ -454,7 +454,7 @@ class PostServiceTest {
     }
 
     /**
-     * BE-08: 검색어가 있으면 COUNT를 세지 않는다(LIKE '%kw%'는 인덱스를 못 타서 COUNT가 항상 전체
+     * 검색어가 있으면 COUNT를 세지 않는다(LIKE '%kw%'는 인덱스를 못 타서 COUNT가 항상 전체
      * 스캔이다). 전체 건수는 null이고 다음 페이지 유무만 안다.
      */
     @Test
@@ -516,7 +516,7 @@ class PostServiceTest {
     }
 
     /**
-     * A-BE-02 1단계: 이스케이프하지 않으면 사용자가 입력한 {@code %}·{@code _}가 그대로
+     * 이스케이프하지 않으면 사용자가 입력한 {@code %}·{@code _}가 그대로
      * LIKE 와일드카드로 해석된다 — {@code q=%}는 전체 목록과 같아지고 {@code q=_}는 모든
      * 글과 일치한다. PostRepository.search의 {@code ESCAPE '\'}와 짝을 이룬다.
      */
@@ -533,7 +533,7 @@ class PostServiceTest {
     }
 
     /**
-     * A-BE-02 1단계: 1글자 검색어는 선행 와일드카드 LIKE에서 사실상 전체 스캔과 같은 대량의
+     * 1글자 검색어는 선행 와일드카드 LIKE에서 사실상 전체 스캔과 같은 대량의
      * 행을 매치시킨다 — 검색어가 없는 것으로 보고 전체 목록을 보여준다.
      */
     @Test
@@ -561,7 +561,7 @@ class PostServiceTest {
     }
 
     /**
-     * B10: viewCount·updatedAt 정렬을 요청하면 그 컬럼이 주 정렬로 리포지토리에 전달되고,
+     * viewCount·updatedAt 정렬을 요청하면 그 컬럼이 주 정렬로 리포지토리에 전달되고,
      * id 내림차순이 동점 처리로 끝에 붙어야 한다 — 예전에는 리포지토리 JPQL의 고정
      * ORDER BY p.id DESC가 항상 먼저라 이 정렬이 반환 순서에 전혀 반영되지 않았다.
      */
@@ -594,7 +594,7 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("findPinned: 고정된 글을 댓글 수와 함께 반환한다(A-BE-05)")
+    @DisplayName("findPinned: 고정된 글을 댓글 수와 함께 반환한다")
     void findPinned_returnsPinnedPostsWithCommentCounts() {
         User owner = userWithEmail("owner@example.com", 1L);
         PostRowDto row = rowOf(owner, 1L);
@@ -630,7 +630,7 @@ class PostServiceTest {
         var result = postQueryService.findByIdForView(100L, authOf(owner));
 
         // 조회수 증가는 전용 UPDATE 한 문장이다. 엔티티를 바꿔 변경 감지에 맡기면 제목·본문까지
-        // 함께 UPDATE에 실려 겹친 편집을 되돌린다(F02). 실제 증가분은 PostViewCountIsolationTest가
+        // 함께 UPDATE에 실려 겹친 편집을 되돌린다. 실제 증가분은 PostViewCountIsolationTest가
         // 진짜 DB로 검증한다 — mock 리포지토리로는 관찰할 수 없는 지점이다.
         var inOrder = org.mockito.Mockito.inOrder(postRepository);
         inOrder.verify(postRepository).increaseViewCount(100L);
@@ -807,7 +807,7 @@ class PostServiceTest {
         var result = postQueryService.findByIdForView(100L, null);
 
         assertThat(result.likedByMe()).isFalse();
-        // 익명은 어떤 회원 id와도 일치하지 않는 값으로 한 번만 센다(BE-05).
+        // 익명은 어떤 회원 id와도 일치하지 않는 값으로 한 번만 센다.
         verify(postLikeRepository).summarize(100L, PostLikeRepository.NO_USER_ID);
         verify(postLikeRepository, never()).existsByPostIdAndUserId(any(), any());
     }
@@ -829,7 +829,7 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("findByIdForView(countView=false): A-BE-04 중복 방문 판정에 따라 조회수를 올리지 않는다")
+    @DisplayName("findByIdForView(countView=false): 중복 방문 판정에 따라 조회수를 올리지 않는다")
     void findByIdForView_whenCountViewFalse_doesNotIncreaseViewCount() {
         User owner = userWithEmail("owner@example.com", 1L);
         Post post = postOf(owner, 100L);
@@ -892,13 +892,13 @@ class PostServiceTest {
     }
 
     /**
-     * B09: 무엇이 "중복이라 흡수해도 되는 예외"인지는 {@code PostLikeWriter.isDuplicateLikeConstraint}가
+     * 무엇이 "중복이라 흡수해도 되는 예외"인지는 {@code PostLikeWriter.isDuplicateLikeConstraint}가
      * 실제 제약 이름을 보고 판단한다(PostLikeWriterTest가 실제 DB로 검증). PostService는 그
      * 판정 결과를 그대로 따를 뿐이므로, 여기서는 판정이 false일 때 예외가 삼켜지지 않고
      * 전파되는지만 확인한다 — FK 위반을 "이미 추천됨"으로 위장하지 않는다는 뜻이다.
      */
     @Test
-    @DisplayName("B09: 중복 제약이 아닌 실패는 PostService가 그대로 전파한다")
+    @DisplayName("중복 제약이 아닌 실패는 PostService가 그대로 전파한다")
     void setLike_whenInsertFailsForNonDuplicateReason_propagatesException() {
         User user = userWithEmail("liker@example.com", 2L);
         Post post = postOf(user, 100L);
@@ -914,7 +914,7 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("B09: 검사와 INSERT 사이에 같은 추천이 들어와도(유니크 제약 위반) 성공으로 처리한다")
+    @DisplayName("검사와 INSERT 사이에 같은 추천이 들어와도(유니크 제약 위반) 성공으로 처리한다")
     void setLike_whenConcurrentInsertWins_treatsAsSuccess() {
         User user = userWithEmail("liker@example.com", 2L);
         Post post = postOf(user, 100L);

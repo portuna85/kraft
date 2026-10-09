@@ -82,7 +82,7 @@ export function useRecommendation() {
             // 다음 행동을 덧붙인다(describeFailure).
             status.value = 'error';
             errorMessage.value = describeFailure(apiError.body?.code, messageOf(error));
-            // 오류는 화면의 role="alert"가 낭독하므로 polite 영역에는 싣지 않는다(FE-34).
+            // 오류는 화면의 role="alert"가 낭독하므로 polite 영역에는 싣지 않는다.
         }
     }
 

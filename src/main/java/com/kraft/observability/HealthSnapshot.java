@@ -23,20 +23,20 @@ import java.util.stream.Collectors;
  *                      끝나, 관측 자체가 실패한 주기가 "이상 없음"과 로그상 구분되지 않았다.
  * @param mailFailed    재시도를 모두 소진한 메일. {@code -1}의 뜻은 mailPending과 같다
  * @param slowRequests  고정 임계값(RequestMetrics의 slowThresholdMillis, 기본 3000ms)을 넘은
- *                      요청 수(O05). 평균·최댓값만으로는 소수의 느린 요청이 다수의 빠른 요청에
+ *                      요청 수. 평균·최댓값만으로는 소수의 느린 요청이 다수의 빠른 요청에
  *                      묻힌다 — 이 값은 그 소수를 직접 센다.
  * @param sessionRevocationFailed 재시도를 모두 소진해 사람이 봐야 하는 세션 폐기 태스크
- *                      수(O03). {@code -1}의 뜻은 mailPending과 같다.
- * @param imageDeleteBacklog 삭제 예약됐지만 아직 실제로 지우지 못한 이미지 파일 수(O03).
+ *                      수. {@code -1}의 뜻은 mailPending과 같다.
+ * @param imageDeleteBacklog 삭제 예약됐지만 아직 실제로 지우지 못한 이미지 파일 수.
  *                      {@code -1}의 뜻은 mailPending과 같다.
  * @param recommendationHistoryAgeHours 추천 이력 검증 기준(verifiedAt)이 마지막으로 갱신된
- *                      지 지난 시간(O03). 상태 행이 없거나 한 번도 검증되지 않았으면 {@code -1}.
+ *                      지 지난 시간. 상태 행이 없거나 한 번도 검증되지 않았으면 {@code -1}.
  *                      {@code recommendEnabled}가 참이면 이 -1은 "측정 실패"가 아니라
  *                      "이력이 아직 준비되지 않음"을 뜻하므로 {@link #breaches}가 별도 문구로
  *                      남긴다 — 기능이 꺼져 있으면(false) 애초에 이력이 없는 게 정상이라 남기지
  *                      않는다.
  * @param recommendEnabled {@code app.recommend.enabled}. recommendationHistoryAgeHours의
- *                      -1을 "정상(기능 꺼짐)"과 "미준비(기능 켜짐)"로 구분하는 데만 쓴다(OBS-01).
+ *                      -1을 "정상(기능 꺼짐)"과 "미준비(기능 켜짐)"로 구분하는 데만 쓴다.
  */
 public record HealthSnapshot(
         long requests,
@@ -95,7 +95,7 @@ public record HealthSnapshot(
     }
 
     /**
-     * {@link #breaches}와 같은 판정에서 항목별 안정된 식별자만 뽑는다(A-OPS-02). 메시지
+     * {@link #breaches}와 같은 판정에서 항목별 안정된 식별자만 뽑는다. 메시지
      * 문자열은 수치가 매번 달라 알림 억제 키로 쓸 수 없다("HTTP 오류율 12.3%"와 "15.0%"는
      * 같은 문제인데 문자열은 다르다) — {@link AlertMailer}가 "같은 종류는 1시간에 1회"를
      * 판단할 때 이 식별자를 쓴다.

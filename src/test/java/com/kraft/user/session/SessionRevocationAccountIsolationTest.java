@@ -24,7 +24,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * B02: 탈퇴 후 같은 이메일로 재가입한 계정의 세션이, 옛 계정의 지연된 세션 폐기 태스크로 잘못
+ * 탈퇴 후 같은 이메일로 재가입한 계정의 세션이, 옛 계정의 지연된 세션 폐기 태스크로 잘못
  * 지워지지 않는지 <b>실제</b> 세션 저장소·로그인 흐름으로 검증한다. {@link SessionRevoker}를
  * 목으로 대체하지 않는다 — 세션 속성({@code KRAFT_USER_ID}) 기반 계정 구분 자체가 검증 대상이다.
  * <p>
@@ -61,7 +61,7 @@ class SessionRevocationAccountIsolationTest {
     }
 
     @Test
-    @DisplayName("B02: 탈퇴 후 재가입한 계정의 세션은 옛 계정의 지연된 폐기 태스크로 지워지지 않는다")
+    @DisplayName("탈퇴 후 재가입한 계정의 세션은 옛 계정의 지연된 폐기 태스크로 지워지지 않는다")
     void staleRevocationTaskDoesNotRevokeTheNewAccountsSession() throws Exception {
         User oldAccount = userRepository.save(User.builder()
                 .name("old-account")
@@ -93,14 +93,14 @@ class SessionRevocationAccountIsolationTest {
     }
 
     /**
-     * COR-02 회귀: 폐기 태스크가 아직 <b>실행되기 전</b>(enqueue조차 하지 않은, 순수하게
+     * 회귀: 폐기 태스크가 아직 <b>실행되기 전</b>(enqueue조차 하지 않은, 순수하게
      * 옛 세션이 아직 살아 있는 시점) 옛 계정의 세션으로 같은 이메일의 새 계정의 글을
      * 관리(수정·삭제)할 수 있으면 안 된다. 옛 방식(이메일 문자열 비교)은 두 계정이 같은
      * 이메일을 공유하는 이 창에서 소유자 판정이 그대로 통과했다 — OwnershipPolicy가 이제는
      * 로그인 시점에 세션에 고정된 userId로 판정하므로, 이메일이 같아도 다른 계정으로 남는다.
      */
     @Test
-    @DisplayName("COR-02 회귀: 탈퇴·재가입 사이 옛 세션은 같은 이메일 새 계정의 글을 관리할 수 없다")
+    @DisplayName("회귀: 탈퇴·재가입 사이 옛 세션은 같은 이메일 새 계정의 글을 관리할 수 없다")
     void staleSessionCannotManageNewAccountsPostEvenWithSameEmail() throws Exception {
         userRepository.save(User.builder()
                 .name("old-account-2")
@@ -126,7 +126,7 @@ class SessionRevocationAccountIsolationTest {
 
         // 옛 세션은 새 계정의 글을 수정·삭제할 수 없어야 한다(둘 다 같은 이메일이라도).
         // 수정은 PostService.update가 소유권을 보기 전에 작성자(옛 계정, 탈퇴 상태) 조회부터
-        // 막혀 404다(CurrentUser.require가 NotFoundException을 던진다, BE-07) — delete는
+        // 막혀 404다(CurrentUser.require가 NotFoundException을 던진다) — delete는
         // 작성자 조회 없이 소유권만 보므로 403이다. 상태 코드는 다르지만 둘 다 실제로
         // 거절된다는 점이 이 테스트의 핵심이다.
         int updateStatus = mockMvc.perform(put("/api/v1/posts/" + postId)

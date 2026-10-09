@@ -26,7 +26,7 @@
         <div class="card-kraft" sec:authorize="isAuthenticated()" th:if="${writeBlockReason == null}">
             <script type="application/json" id="post-save-initial-data" th:utext="${postSaveInitialJson}"></script>
             <div id="post-save-app"></div>
-            <!-- post-save.js가 정적으로 import하는 청크를 모두 미리 받아 둔다(FE-04). 이게 없으면
+            <!-- post-save.js가 정적으로 import하는 청크를 모두 미리 받아 둔다. 이게 없으면
                  브라우저가 post-save.js를 내려받아 파싱한 뒤에야 import를 발견해 청크를 요청하므로
                  왕복이 하나 더 든다. runtime은 Vue 런타임과 작은 공용 모듈, post-shared는
                  글 작성·수정이 함께 쓰는 폼 코드다. 어떤 청크를 미리 받아야 하는지는

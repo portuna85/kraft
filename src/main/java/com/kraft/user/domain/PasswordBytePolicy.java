@@ -4,7 +4,7 @@ import com.kraft.shared.exception.BusinessValidationException;
 import java.nio.charset.StandardCharsets;
 
 /**
- * 비밀번호의 실제 저장 계약은 문자 수가 아니라 UTF-8 바이트 수다(B15).
+ * 비밀번호의 실제 저장 계약은 문자 수가 아니라 UTF-8 바이트 수다.
  * <p>
  * DTO의 {@code @Size(max = 72)}는 문자 수만 본다. 그런데 실제 저장에 쓰이는
  * {@code PasswordEncoderFactories.createDelegatingPasswordEncoder()}(BCrypt)는 72

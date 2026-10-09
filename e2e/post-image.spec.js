@@ -108,11 +108,11 @@ test('이미지를 붙여 글을 등록하면 상세에 그 이미지가 보인�
     await page.locator('#picture').setInputFiles(pngFile());
     await page.locator('#btn-save').click();
 
-    // 등록 후 목록이 아니라 방금 쓴 글로 바로 이동한다(전체 리뷰 2026-09-26 A-FE-02).
+    // 등록 후 목록이 아니라 방금 쓴 글로 바로 이동한다.
     await page.waitForURL(/\/posts\/update\/\d+$/);
     const img = page.locator('.post-image img');
     await expect(img).toHaveAttribute('src', /^\/images\//);
-    // A-FE-09: 서버가 검증 때 읽은 실제 픽셀 크기(1×1 고정 픽스처)가 CLS 방지용
+    // 서버가 검증 때 읽은 실제 픽셀 크기(1×1 고정 픽스처)가 CLS 방지용
     // width/height로 그대로 내려온다 — eager 로딩·높은 우선순위로도 바뀐다.
     await expect(img).toHaveAttribute('width', '1');
     await expect(img).toHaveAttribute('height', '1');
@@ -120,7 +120,7 @@ test('이미지를 붙여 글을 등록하면 상세에 그 이미지가 보인�
     await expect(img).toHaveAttribute('fetchpriority', 'high');
 });
 
-test('A-FE-09: 이미지를 그대로 두고 제목만 고치면 크기 정보가 그대로 남는다', async ({ page }) => {
+test('이미지를 그대로 두고 제목만 고치면 크기 정보가 그대로 남는다', async ({ page }) => {
     const title = uniqueTitle('이미지수정');
 
     await page.goto('/posts/save');
@@ -141,7 +141,7 @@ test('A-FE-09: 이미지를 그대로 두고 제목만 고치면 크기 정보�
 });
 
 /**
- * A-FE-06: 5MB를 훌쩍 넘는 원본도 브라우저에서 축소된 뒤 통과한다.
+ * 5MB를 훌쩍 넘는 원본도 브라우저에서 축소된 뒤 통과한다.
  *
  * 업로드 파일은 무압축 BMP(가로세로 3000×2000, 약 18MB)다. 확장자는 .png로 속이지만
  * 문제가 되지 않는다 — 브라우저의 createImageBitmap은 파일 이름이 아니라 실제 바이트로
@@ -243,7 +243,7 @@ test('저장이 실패한 뒤 다시 눌러도 이미지를 재업로드하지 �
 
 /**
  * 파일을 고른 직후 축소가 끝나기 전에는 file이 비어 있어, 그 사이 제출하면 사진 없이
- * 저장됐다(FE-02). 축소 중에는 제출 버튼을 막고, 끝나면 풀어야 한다.
+ * 저장됐다. 축소 중에는 제출 버튼을 막고, 끝나면 풀어야 한다.
  */
 test('이미지 축소가 끝나기 전에는 등록 버튼이 잠기고 끝나면 풀린다', async ({ page }) => {
     // 모바일처럼 느린 축소를 흉내 낸다 — 테스트가 풀어 줄 때까지 createImageBitmap을 보류한다.

@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * 세션 폐기 태스크를 실제로 처리한다(B06).
+ * 세션 폐기 태스크를 실제로 처리한다.
  * <p>
  * 비밀번호 변경·재설정·탈퇴 커밋 직후 {@code AfterCommit}에서 {@link #attemptNow}로 한 번
  * 곧바로 시도한다(빠른 경로) — 대부분의 요청은 여기서 끝난다. 그 시도가 실패하거나(세션
@@ -30,7 +30,7 @@ public class SessionRevocationWorker {
     /**
      * {@code false}면 예약 실행과 {@link #attemptNow}(커밋 직후 빠른 경로) 모두 막는다.
      * 이메일 키 교체(rekey) 창에서 계정 상태가 바뀌는 중에 이 워커가 끼어들지 않게 하려고
-     * 도입했다(O02) — {@code application-rekey.yml}이 이 플래그를 끈다.
+     * 도입했다 — {@code application-rekey.yml}이 이 플래그를 끈다.
      */
     @Value("${app.session-revocation.enabled:true}")
     private boolean enabled;
@@ -60,8 +60,8 @@ public class SessionRevocationWorker {
      * 폐기 자체(빠른 DB 작업)만큼만 늘어난다. 실패해도 태스크는 이미 커밋되어 있으므로
      * {@link #drainScheduled}가 이어받는다.
      * <p>
-     * 동기로 유지한다(비동기 디스패치는 BE-09 검토 중 시도했다가 되돌렸다) — 비밀번호 변경·
-     * 재설정·탈퇴 응답이 세션이 실제로 끊긴 뒤에 돌아온다는 것이 F04의 핵심 보장이다.
+     * 동기로 유지한다(비동기 디스패치는 시도했다가 되돌렸다) — 비밀번호 변경·
+     * 재설정·탈퇴 응답이 세션이 실제로 끊긴 뒤에 돌아온다는 것이 이 워커의 핵심 보장이다.
      * {@code claimSpecific}/{@code processOne}이 여는 {@code REQUIRES_NEW} 커넥션은 이
      * 메서드가 실행되는 짧은 시간만 추가로 물린다.
      * <p>
@@ -96,7 +96,7 @@ public class SessionRevocationWorker {
      * 종료된 지 오래된 DONE/FAILED 행을 지운다. 처리 자체와는 다른 관심사이므로
      * {@code enabled} 플래그와 무관하게 항상 돈다 — 상태·시각 기준 bulk delete라 엔티티를
      * 로드하지 않으므로 rekey 창에도 안전하다. {@code retentionEnabled}로만 따로 끌 수
-     * 있다(OBS-05).
+     * 있다.
      */
     @Scheduled(initialDelayString = "${app.session-revocation.retention-initial-delay-ms:120000}",
             fixedDelayString = "${app.session-revocation.retention-interval-ms:86400000}")

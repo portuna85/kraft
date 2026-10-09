@@ -187,7 +187,7 @@ class SecurityConfigTest {
     }
 
     @Test
-    @DisplayName("로그인 연속 실패 5번 뒤에는 비밀번호가 맞아도 잠겨서 실패한다(A-SEC-08)")
+    @DisplayName("로그인 연속 실패 5번 뒤에는 비밀번호가 맞아도 잠겨서 실패한다")
     void login_afterFiveFailures_locksAccountEvenWithCorrectPassword() throws Exception {
         for (int i = 0; i < LoginLockoutService.LOCK_THRESHOLD; i++) {
             mockMvc.perform(post("/login")

@@ -26,7 +26,7 @@ repositories {
     mavenCentral()
 }
 
-// Java 포맷 게이트(OPS-33). 규칙은 일부러 최소로 둔다 — 미사용 import, 줄 끝 공백, 파일 끝 줄바꿈만 본다.
+// Java 포맷 게이트. 규칙은 일부러 최소로 둔다 — 미사용 import, 줄 끝 공백, 파일 끝 줄바꿈만 본다.
 // 전체를 google-java-format 같은 도구로 다시 쓰면 15k줄이 한 번에 바뀌어 blame·리뷰가 망가진다. 줄바꿈은
 // git의 autocrlf 설정과 무관하게 LF로 고정한다(저장소의 .editorconfig·.gitattributes와 같다).
 // `./gradlew spotlessCheck`로 확인하고 `./gradlew spotlessApply`로 고친다. CI가 spotlessCheck를 돌린다.
@@ -53,7 +53,7 @@ configurations[e2e.runtimeOnlyConfigurationName].extendsFrom(configurations.runt
 
 // Mockito가 인라인 모킹에 쓰는 바이트코드 조작 에이전트를 테스트 실행 중에 동적으로(자기
 // 자신을) 붙인다 — JDK가 "A Java agent has been loaded dynamically … will be disallowed by
-// default in a future release"로 경고하는 경로다(OPS-A8, 향후 JDK에서는 실패로 바뀐다).
+// default in a future release"로 경고하는 경로다(향후 JDK에서는 실패로 바뀐다).
 // Mockito 공식 안내대로 별도 구성에서 mockito-core만 받아 -javaagent로 미리 붙여, 테스트가
 // 스스로 에이전트를 붙이지 않게 한다.
 val mockitoAgent = configurations.create("mockitoAgent")
@@ -68,7 +68,7 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-session-jdbc")
-    // 홈 화면 인기글처럼 요청마다 다시 계산할 필요가 없는 값을 짧게 캐시한다(BE-25).
+    // 홈 화면 인기글처럼 요청마다 다시 계산할 필요가 없는 값을 짧게 캐시한다.
     implementation("org.springframework.boot:spring-boot-starter-cache")
     implementation("com.github.ben-manes.caffeine:caffeine")
     implementation("org.springframework.boot:spring-boot-starter-mail")
@@ -95,7 +95,7 @@ dependencies {
     mockitoAgent("org.mockito:mockito-core") { isTransitive = false }
 }
 
-// 두 산출물 모두 버전이 붙지 않는 고정 파일명을 쓴다(OPS-E3) — 예전에는 기본값
+// 두 산출물 모두 버전이 붙지 않는 고정 파일명을 쓴다 — 예전에는 기본값
 // (kraft-0.0.1-SNAPSHOT(.jar|-e2e.jar))이 그대로 CI 워크플로·playwright.config.js에
 // 하드코딩되어 있어, 버전을 올리면(project.version) 세 곳을 함께 고쳐야 했다.
 tasks.named<BootJar>("bootJar") {
@@ -116,7 +116,7 @@ tasks.jar {
     enabled = false
 }
 
-// 정적 자원의 고정 버전 문자열(FE-01). /js/**에 대한 Spring 리소스 체인의 FixedVersionStrategy가
+// 정적 자원의 고정 버전 문자열. /js/**에 대한 Spring 리소스 체인의 FixedVersionStrategy가
 // 이 값을 URL 접두사로 쓴다 — 배포마다 커밋이 바뀌면 값도 바뀌므로 장기 캐시(immutable)를 걸어도
 // 새 배포의 자원이 항상 새 경로로 요청된다. git이 없는 환경(예: 소스 tarball 빌드)에서는
 // project.version으로 폴백한다. application.yml의 "@buildVersion@" 토큰만 치환하며(Ant 스타일),
@@ -129,7 +129,7 @@ val gitCommit: String = try {
     version.toString()
 }
 
-// 커밋하지 않은 변경이 있으면 변경 내용의 해시를 붙인다(OPS-30). 커밋 SHA만 쓰면 같은 SHA에서 코드를
+// 커밋하지 않은 변경이 있으면 변경 내용의 해시를 붙인다. 커밋 SHA만 쓰면 같은 SHA에서 코드를
 // 고쳐 가며 빌드해도 /js 경로 버전이 그대로라 브라우저가 옛 캐시를 쓴다. 같은 변경이면 같은 값이라
 // 반복 빌드는 캐시를 그대로 쓰고, 변경이 바뀌면 값도 바뀐다. 추적 파일 변경만 본다(깨끗한 CI 체크아웃은
 // 영향이 없다 — 배포 확인(X-Kraft-Build)도 SHA 그대로다).
@@ -156,15 +156,15 @@ tasks.processResources {
     filesMatching("application.yml") {
         filter(ReplaceTokens::class, "tokens" to resourceTokens)
     }
-    // static/js 안의 *.test.js(A-QA-08)는 node --test로만 실행하는 순수 로직 단위 테스트다.
+    // static/js 안의 *.test.js는 node --test로만 실행하는 순수 로직 단위 테스트다.
     // 배포 정적 자원으로 나갈 이유가 없다 — src/vue의 테스트가 vite build 대상에서 빠지는 것과 같다.
     exclude("**/*.test.js")
     // static/js/app은 주석이 달린 원본 소스다. 배포되는 것은 Vite가 번들·압축한 vue-dist/main.js와
-    // 그 청크다(FE-03·FE-05) — 원본을 jar에 같이 넣으면 같은 코드를 두 번 싣고, 번들되지 않은
+    // 그 청크다 — 원본을 jar에 같이 넣으면 같은 코드를 두 번 싣고, 번들되지 않은
     // 복사본이 /js/app/**로 그대로 서빙된다.
     exclude("static/js/app/**")
 
-    // 정적 텍스트 자원(js·css·svg)을 빌드할 때 한 번 gzip으로 압축해 옆에 .gz로 둔다(FE-24).
+    // 정적 텍스트 자원(js·css·svg)을 빌드할 때 한 번 gzip으로 압축해 옆에 .gz로 둔다.
     // application.yml의 spring.web.resources.chain.compressed가 클라이언트가 gzip을 받을 때 이 파일을
     // 그대로 내려준다 — 요청마다 CPU로 압축하지 않고, 최대 압축률(레벨 9)을 쓸 수 있다. 소스
     // 트리는 건드리지 않는다(build/ 아래 산출물만). 1KB 미만이거나 줄지 않으면 만들지 않는다.
@@ -192,7 +192,7 @@ tasks.processResources {
 }
 
 tasks.withType<Test> {
-    // -PdockerTests=exclude|only로 Docker(Testcontainers) 테스트를 나누거나 그것만 돌린다(OPS-07).
+    // -PdockerTests=exclude|only로 Docker(Testcontainers) 테스트를 나누거나 그것만 돌린다.
     // 기본값(all)은 전부 돈다 — 로컬 `gradlew test`는 예전과 같다. CI는 빠른 H2 테스트와 느린
     // Docker 테스트를 서로 다른 잡에서 병렬로 돌려 배포 전 크리티컬 패스를 줄인다. 태그는
     // @Tag("docker")이고, MariaDbIntegrationTest 기반 클래스와 두 리허설 테스트가 가진다.
@@ -246,7 +246,7 @@ tasks.jacocoTestReport {
     }))
 }
 
-// CI(환경변수 CI)이거나 -Pcoverage를 줄 때만 test 뒤에 리포트를 만든다(OPS-29). 로컬에서 test를 돌릴
+// CI(환경변수 CI)이거나 -Pcoverage를 줄 때만 test 뒤에 리포트를 만든다. 로컬에서 test를 돌릴
 // 때마다 만들면 매번 느려지는 데 비해 보는 일이 드물다. 로컬에서 필요하면 `./gradlew test -Pcoverage`
 // 또는 `./gradlew jacocoTestReport`.
 tasks.test {

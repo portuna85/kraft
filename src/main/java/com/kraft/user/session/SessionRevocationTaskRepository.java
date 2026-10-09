@@ -53,7 +53,7 @@ public interface SessionRevocationTaskRepository extends JpaRepository<SessionRe
 
     /**
      * 처리 도중 프로세스가 죽으면 PROCESSING인 채로 오래 남는다. requeueStuck이 이 목록을
-     * 배치로 나눠 집는다(B11) — {@code OutboxMailRepository.findByStatusAndUpdatedAtBefore}와
+     * 배치로 나눠 집는다 — {@code OutboxMailRepository.findByStatusAndUpdatedAtBefore}와
      * 같은 이유로 {@code Pageable}을 받는다. 대량 적체 시 전체를 한 번에 로딩하지 않는다.
      * <p>
      * 비관적 쓰기 잠금은 위 {@link #findByIdAndOwnerTokenAndStatus}(processOne 전용) 참고.
@@ -62,7 +62,7 @@ public interface SessionRevocationTaskRepository extends JpaRepository<SessionRe
     List<SessionRevocationTask> findByStatusAndUpdatedAtBefore(
             SessionRevocationTaskStatus status, LocalDateTime threshold, Pageable pageable);
 
-    /** 관측용 집계(O03) — 재시도를 모두 소진해 사람이 봐야 하는 태스크 수. */
+    /** 관측용 집계 — 재시도를 모두 소진해 사람이 봐야 하는 태스크 수. */
     long countByStatus(SessionRevocationTaskStatus status);
 
     /** 보관 기한이 지난 종료 상태(DONE/FAILED) 행을 지운다. */

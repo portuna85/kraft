@@ -14,9 +14,9 @@ import lombok.NoArgsConstructor;
  * <p>
  * 이 엔티티가 파일명·업로더·연결된 게시글·상태를 기록해 두 가지를 가능하게 한다:
  * <ul>
- * <li>게시글 저장 시 "이 이미지를 이 사람이 올렸는가"를 검사한다(F01).</li>
+ * <li>게시글 저장 시 "이 이미지를 이 사람이 올렸는가"를 검사한다.</li>
  * <li>삭제를 {@link PostImageStatus#PENDING_DELETE} 표시로 예약해, 실제 파일 삭제를
- * DB 커밋 이후로 미루고 실패 시 재시도할 수 있게 한다(F05).</li>
+ * DB 커밋 이후로 미루고 실패 시 재시도할 수 있게 한다.</li>
  * </ul>
  */
 @Getter
@@ -28,7 +28,7 @@ import lombok.NoArgsConstructor;
                 // V6__image_quota_and_search_indexes.sql. 엔티티에 선언이 없어 ddl-auto: update로
                 // 만든 기존 DB에는 이 인덱스가 생기지 않았다.
                 @Index(name = "IX_POST_IMAGES_OWNER", columnList = "owner_id"),
-                // 업로드 쿼터 합계(sumSizeBytesByOwnerId)가 테이블을 다시 읽지 않고 인덱스만으로 계산한다(V40, BE-26).
+                // 업로드 쿼터 합계(sumSizeBytesByOwnerId)가 테이블을 다시 읽지 않고 인덱스만으로 계산한다(V40).
                 @Index(name = "IX_POST_IMAGES_OWNER_STATUS_SIZE", columnList = "owner_id, status, size_bytes"),
                 // PostImageRepository의 상태 기반 배치 조회·claimExpiredOrphanForDeletion이
                 // status·created_at·id를 함께 쓴다(V23).
@@ -65,7 +65,7 @@ public class PostImage extends BaseEntity {
     @Column(name = "size_bytes", nullable = false)
     private long sizeBytes;
 
-    /** 업로드할 때 서버가 읽은 픽셀 크기(BE-24). 읽지 못했거나 이 컬럼 도입 전 행이면 null이다. */
+    /** 업로드할 때 서버가 읽은 픽셀 크기. 읽지 못했거나 이 컬럼 도입 전 행이면 null이다. */
     @Column(name = "width")
     private Integer width;
 

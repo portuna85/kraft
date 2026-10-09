@@ -4,7 +4,7 @@ import { POST } from '@core/constants.js';
 import MarkdownToolbar from './MarkdownToolbar.vue';
 
 /**
- * 글쓰기·수정 폼이 함께 쓰는 입력 칸(제목·분류·내용·사진)과 선택한 사진 미리보기(FE-12).
+ * 글쓰기·수정 폼이 함께 쓰는 입력 칸(제목·분류·내용·사진)과 선택한 사진 미리보기.
  * 예전에는 PostSaveApp.vue와 PostEditApp.vue가 같은 마크업을 각자 갖고 있었다.
  *
  * 두 화면의 id는 서로 달라야 한다(수정 화면은 글 보기 영역과 한 문서에 함께 있고, E2E도 id로 고른다) —

@@ -50,7 +50,7 @@ class PostImageCleanupBatchRunnerTest {
     }
 
     @Test
-    @DisplayName("B01: 조건부 선점이 0행이면(그 사이 연결됨) 그 id는 선점 결과에서 빠진다")
+    @DisplayName("조건부 선점이 0행이면(그 사이 연결됨) 그 id는 선점 결과에서 빠진다")
     void claimExpiredOrphansBatch_whenClaimFails_excludesThatId() {
         given(postImageRepository.findAllByStatusAndCreatedAtBeforeAndIdGreaterThanOrderByIdAsc(
                 eq(PostImageStatus.ORPHAN), any(LocalDateTime.class), eq(0L), any(Pageable.class)))
@@ -64,13 +64,13 @@ class PostImageCleanupBatchRunnerTest {
         assertThat(result.claimedIds()).isEmpty();
         assertThat(result.pageSize()).isEqualTo(1);
         assertThat(result.lastId()).isEqualTo(1L);
-        // COR-06: 이 메서드는 선점만 한다 — 파일·행 삭제는 이 메서드 책임이 아니다.
+        // 이 메서드는 선점만 한다 — 파일·행 삭제는 이 메서드 책임이 아니다.
         then(postImageService).should(never()).deleteIfExists(anyString());
         then(postImageRepository).should(never()).delete(any(PostImage.class));
     }
 
     @Test
-    @DisplayName("COR-06: 선점에 성공한 id만 선점 결과에 담기고, 파일은 이 메서드에서 지우지 않는다")
+    @DisplayName("선점에 성공한 id만 선점 결과에 담기고, 파일은 이 메서드에서 지우지 않는다")
     void claimExpiredOrphansBatch_whenClaimSucceeds_returnsClaimedIdWithoutDeletingFile() {
         given(postImageRepository.findAllByStatusAndCreatedAtBeforeAndIdGreaterThanOrderByIdAsc(
                 eq(PostImageStatus.ORPHAN), any(LocalDateTime.class), eq(0L), any(Pageable.class)))

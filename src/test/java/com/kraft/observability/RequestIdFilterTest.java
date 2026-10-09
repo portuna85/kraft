@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 /**
- * 전체 리뷰 2026-09-26 A-SEC-03: 클라이언트가 보낸 {@code X-Request-Id}를 형식 검증 없이
+ * 클라이언트가 보낸 {@code X-Request-Id}를 형식 검증 없이
  * 그대로 로그·응답에 싣지 않는다.
  */
 class RequestIdFilterTest {
@@ -25,7 +25,7 @@ class RequestIdFilterTest {
             "550e8400-e29b-41d4-a716-446655440000",
             "a.b_c-D9",
     })
-    @DisplayName("A-SEC-03: 허용된 형식의 요청 헤더 값은 그대로 채택한다")
+    @DisplayName("허용된 형식의 요청 헤더 값은 그대로 채택한다")
     void validHeader_isKeptAsIs(String requestId) throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("X-Request-Id", requestId);
@@ -44,7 +44,7 @@ class RequestIdFilterTest {
             "한글아이디",
             "<script>alert(1)</script>",
     })
-    @DisplayName("A-SEC-03: 형식에 맞지 않는 헤더 값은 새 id로 대체한다")
+    @DisplayName("형식에 맞지 않는 헤더 값은 새 id로 대체한다")
     void invalidHeader_isReplacedWithGeneratedId(String requestId) throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("X-Request-Id", requestId);
@@ -58,7 +58,7 @@ class RequestIdFilterTest {
     }
 
     @Test
-    @DisplayName("A-SEC-03: 지나치게 긴 헤더 값(64자 초과)은 새 id로 대체한다")
+    @DisplayName("지나치게 긴 헤더 값(64자 초과)은 새 id로 대체한다")
     void oversizedHeader_isReplaced() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("X-Request-Id", "a".repeat(65));

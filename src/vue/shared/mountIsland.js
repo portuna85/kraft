@@ -2,7 +2,7 @@
 import { createApp } from 'vue';
 
 /**
- * Vue 아일랜드 진입점(각 mount.js)이 공통으로 하는 일을 한데 묶는다(FE-17).
+ * Vue 아일랜드 진입점(각 mount.js)이 공통으로 하는 일을 한데 묶는다.
  *
  * 예전에는 절반의 아일랜드(signup·forgot-password·password-reset·recommend)가 마운트 가드
  * 자체가 없었고, JSON을 검증하던 나머지(comments·post-edit·post-save)도 `createApp().mount()`

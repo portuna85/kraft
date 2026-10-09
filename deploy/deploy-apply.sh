@@ -24,7 +24,7 @@ BACKUP_DIR="$APP_DIR/backups"
 JAR="$APP_DIR/kraft.jar"
 INCOMING="$APP_DIR/kraft.jar.incoming"
 PREVIOUS="$APP_DIR/kraft.jar.prev"
-# 배포에 성공한 jar를 커밋 SHA 이름으로 최근 N개 보관한다(OPS-02). .prev는 직전 1세대뿐이라
+# 배포에 성공한 jar를 커밋 SHA 이름으로 최근 N개 보관한다. .prev는 직전 1세대뿐이라
 # 두 번 연속 문제가 있는 배포가 나가면 마지막 정상 jar로 돌아갈 방법이 없었다. 수동 롤백:
 #   ls -1t /opt/kraft/app/releases/            # 골라서
 #   cp -p /opt/kraft/app/releases/<파일> /opt/kraft/app/kraft.jar && sudo systemctl restart kraft
@@ -33,24 +33,24 @@ PREVIOUS="$APP_DIR/kraft.jar.prev"
 RELEASES_DIR="$APP_DIR/releases"
 KEEP_RELEASES=5
 # OOM 때 JVM이 남기는 힙 덤프(kraft.service의 HeapDumpPath). 복호화된 이메일·비밀 값이 들어 있고
-# 힙 크기만큼 커서(OPS-21) 최근 몇 개만 남기고 지운다.
+# 힙 크기만큼 커서 최근 몇 개만 남기고 지운다.
 HEAPDUMP_DIR=/opt/kraft/heapdumps
 KEEP_HEAPDUMPS=3
 # 빌드 타깃 JDK(build.gradle.kts의 toolchain). 운영은 OS의 /usr/bin/java로 실행하므로(kraft.service)
-# 서버의 java가 이보다 낮으면 새 jar가 기동하지 못한다(OPS-11).
+# 서버의 java가 이보다 낮으면 새 jar가 기동하지 못한다.
 REQUIRED_JAVA_MAJOR=25
 LOCK_FILE="$APP_DIR/deploy.lock"
 LOG=/opt/kraft/deploy.log
 # /readyz는 템플릿 렌더링 없이 컨텍스트 기동과 DB 커넥션 검증(제한 시간 2초)만 본다 — DB에
 # 붙지 못하면 503이다. 예전에는 무조건 200인 /healthz를 써서, DB에
 # 연결하지 못하는 jar도 배포·롤백 성공으로 기록될 수 있었다. 예전에 썼던 GET /(게시글 목록
-# 전체 렌더)보다는 여전히 가볍다(OPS-G5) — 이 루프가 재시작마다 최대 30회 반복된다.
+# 전체 렌더)보다는 여전히 가볍다 — 이 루프가 재시작마다 최대 30회 반복된다.
 HEALTH_URL=http://127.0.0.1:8080/readyz
 LIVENESS_URL=http://127.0.0.1:8080/healthz
 # 정상 jar보다 훨씬 넉넉한 수신 상한(아래 1번) — 손상되었거나 다른 목적의 대용량 전송이
 # 디스크를 무한정 채우지 않게 한다.
 MAX_JAR_SIZE=524288000  # 500MB
-# 수신 jar + 롤백용 .prev + 보관본 + DB 스냅샷이 한 번에 디스크에 있게 된다(OPS-26). 최악의
+# 수신 jar + 롤백용 .prev + 보관본 + DB 스냅샷이 한 번에 디스크에 있게 된다. 최악의
 # jar 크기 3배(약 1.5GB)가 비어 있지 않으면 쓰다 가득 차 반쯤 쓰인 파일을 남기기 전에 멈춘다.
 MIN_FREE_KB=$(( MAX_JAR_SIZE * 3 / 1024 ))
 
@@ -74,7 +74,7 @@ if ! flock -n 200; then
     exit 1
 fi
 
-# 잠금을 얻은 뒤에만 정리 트랩을 건다(전체 리뷰 2026-09-26 OPS-01) — 잠금 실패로 곧장
+# 잠금을 얻은 뒤에만 정리 트랩을 건다 — 잠금 실패로 곧장
 # exit 1하는 위 경로에서 이 트랩이 걸려 있으면, 지금 막 포기한 이 프로세스가 진행 중인
 # 다른 배포의 $INCOMING(같은 경로)을 지워 버린다. 잠금을 쥔 뒤에는 $INCOMING이 이
 # 프로세스 소유가 되므로 안전하게 정리할 수 있다.
@@ -88,7 +88,7 @@ trap 'rm -f "$INCOMING"' EXIT
 # 클라이언트가 보낸 문자열(커밋 SHA)은 **절대 실행하지 않는다.** 로그에 남길 용도로만
 # 쓰며, 안전한 문자만 남기고 길이도 자른다.
 RAW_ARG=$(printf '%s' "${SSH_ORIGINAL_COMMAND:-unknown}" | tr -cd 'a-zA-Z0-9._/-')
-# CI는 "<커밋 SHA 40자>-<jar의 SHA-256 64자>"를 보낸다(OPS-13). 이 모양이면 앞은 로그·보관 파일 이름용
+# CI는 "<커밋 SHA 40자>-<jar의 SHA-256 64자>"를 보낸다. 이 모양이면 앞은 로그·보관 파일 이름용
 # REF로, 뒤는 받은 jar와 대조할 값으로 쓴다. 모양이 다르면(옛 CI·수동 실행) 예전처럼 문자열 전체를
 # REF로 쓰고 대조는 건너뛴다. 정규식으로 16진수만 받으므로 이 값이 명령으로 실행될 일은 없다.
 EXPECTED_SHA256=""
@@ -128,7 +128,7 @@ UNZIP_LISTING=$(unzip -l "$INCOMING" 2>/dev/null) || fail "압축이 깨졌다"
 # 자체가 전송 중 깨졌을 수 있다. -t는 모든
 # 항목을 실제로 풀어 CRC를 대조하므로 그런 손상까지 여기서 걸러낸다.
 unzip -t "$INCOMING" >/dev/null 2>&1 || fail "CRC 무결성 검사 실패 — 항목이 손상되었다"
-# 위 검사는 "jar로서 온전한가"만 본다. CI가 만든 바로 그 파일인지는 SHA-256으로 대조한다(OPS-13) —
+# 위 검사는 "jar로서 온전한가"만 본다. CI가 만든 바로 그 파일인지는 SHA-256으로 대조한다 —
 # 전송 중 잘리거나 바뀌었거나 다른 아티팩트가 올라온 경우를 잡는다. 값은 같은 SSH 채널로 오므로 배포 키
 # 자체가 유출된 공격자(jar와 해시를 함께 만들어 보낼 수 있다)까지 막지는 못한다 — 그건 forced command와
 # 키 보관이 맡는다.
@@ -141,7 +141,7 @@ else
 fi
 log "검증 통과"
 
-# 2-1. 서버의 JVM이 이 jar를 돌릴 수 있는지(OPS-11). 아직 아무것도 바꾸기 전이라 여기서 멈추면 운영은
+# 2-1. 서버의 JVM이 이 jar를 돌릴 수 있는지. 아직 아무것도 바꾸기 전이라 여기서 멈추면 운영은
 #      그대로다. 버전을 읽지 못하면(출력 형식이 달라진 경우 등) 막지 않고 경고만 남긴다 — 확인
 #      실패가 정상 배포를 막으면 안 된다.
 JAVA_SPEC=$(/usr/bin/java -XshowSettings:properties -version 2>&1     | awk -F'= ' '/java.specification.version/ {print $2; exit}' | tr -d ' ' || true)
@@ -194,7 +194,7 @@ log "jar 교체 완료"
 # 150초를 쓴다(응답이 즉시 오면 그 회차에서 바로 끝난다 — "최대 60초"라던 예전 계산은
 # curl 자체의 대기 시간을 빠뜨렸다).
 #
-# /readyz가 404면 readiness가 없던 버전의 jar다(F04 이전). 롤백으로 그 jar를 되살린 경우에만
+# /readyz가 404면 readiness가 없던 버전의 jar다. 롤백으로 그 jar를 되살린 경우에만
 # 생기므로 그때는 예전 기준인 /healthz로 판정한다 — 그러지 않으면 정상 기동한 이전 jar를
 # "롤백 실패"로 잘못 기록한다. 503(DB 미준비)은 폴백하지 않는다.
 wait_for_health() {
@@ -240,7 +240,7 @@ if [ "$healthy" = 1 ]; then
     else
         log "경고: 롤백용 jar 보관에 실패했다(배포 자체는 성공)"
     fi
-    # 오래된 힙 덤프를 지운다(OPS-21). 정리 실패가 배포 성공을 뒤집지 않는다.
+    # 오래된 힙 덤프를 지운다. 정리 실패가 배포 성공을 뒤집지 않는다.
     if [ -d "$HEAPDUMP_DIR" ]; then
         ls -1t "$HEAPDUMP_DIR"/*.hprof 2>/dev/null | tail -n +$((KEEP_HEAPDUMPS + 1)) | xargs -r rm -f || true
     fi
@@ -253,7 +253,7 @@ log "헬스체크 실패. 이전 jar로 되돌린다"
 if [ -f "$PREVIOUS" ]; then
     # 실패한 jar를 그냥 지우지 않고 남겨 둔다 — 왜 헬스체크에 실패했는지 나중에 jar 자체를
     # 들여다볼 수 있어야 한다. 다만 무한히 쌓이지는 않게, 배포 전
-    # 스냅샷과 같은 기준(최근 10개)으로 오래된 것부터 지운다(OPS-G2) — 실패 jar 하나가
+    # 스냅샷과 같은 기준(최근 10개)으로 오래된 것부터 지운다 — 실패 jar 하나가
     # 수십MB라 방치하면 디스크를 채운다.
     mv "$JAR" "$APP_DIR/kraft.jar.failed-$STAMP"
     ls -1t "$APP_DIR"/kraft.jar.failed-* 2>/dev/null | tail -n +11 | xargs -r rm -f

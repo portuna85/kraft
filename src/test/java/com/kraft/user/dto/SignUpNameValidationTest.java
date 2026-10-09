@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** 표시 이름의 보이지 않는 문자 거부(BE-47). */
+/** 표시 이름의 보이지 않는 문자 거부. */
 class SignUpNameValidationTest {
 
     private static final String PASSWORD = "Aa!12345678";

@@ -117,7 +117,7 @@ async function save() {
         return;
     }
     // 요청에 실제로 보낸 값과 updated 이벤트에 담는 값이 갈리지 않도록, 시작 시점에 한 번만
-    // 읽어 둔다(F02) — 예전에는 요청 본문은 이 시점의 draftContent를, emit은 await가 끝난
+    // 읽어 둔다 — 예전에는 요청 본문은 이 시점의 draftContent를, emit은 await가 끝난
     // 뒤의 draftContent를 따로 읽었다. textarea가 saving 중 비활성화돼 일반 입력으로는 그
     // 사이 값이 바뀌지 않지만, 프로그램에 의한 변경까지 막는 방어적 조치다.
     const content = draftContent.value;
@@ -125,9 +125,9 @@ async function save() {
     saving.value = true;
     try {
         const saved = await api.put(`${API.COMMENTS}/${props.comment.id}`, { content }, {
-            // 편집을 시작할 때 받아간 버전을 If-Match로 보낸다. 서버는 기준 버전 없는 수정을 받지 않는다(F11) —
+            // 편집을 시작할 때 받아간 버전을 If-Match로 보낸다. 서버는 기준 버전 없는 수정을 받지 않는다 —
             // 방금 이 화면에서 만든 댓글·답글도 등록 응답(CommentViewDto)의 version을 그대로 들고 있다. 그 사이
-            // 다른 곳에서 저장됐으면 서버가 412로 거절한다(B12).
+            // 다른 곳에서 저장됐으면 서버가 412로 거절한다.
             headers: ifMatchHeaders(requestVersion),
         });
         // 서버가 실제로 반영한 version을 그대로 쓴다 — 예전에는
@@ -152,7 +152,7 @@ async function loadMoreReplies() {
         return;
     }
     // 화면 배열의 마지막 id가 아니라 서버 페이지로 받은 마지막 답글 id를 쓴다 — 이 화면에서
-    // 새로 쓴 답글이 배열 끝에 있으면 그 사이 아직 받지 않은 답글을 건너뛴다(F02).
+    // 새로 쓴 답글이 배열 끝에 있으면 그 사이 아직 받지 않은 답글을 건너뛴다.
     const afterId = replyAfterId(props.comment);
     loadingMoreReplies.value = true;
     try {
@@ -236,7 +236,7 @@ async function moderate(action) {
           class="text-muted me-1"
         >[숨김]</small>{{ comment.content }}
       </p>
-      <!-- 행동 버튼 줄은 한 번만 그린다(FE-28). 삭제된 댓글은 답글만, 내 댓글은 수정·삭제, 남의 댓글은 신고를
+      <!-- 행동 버튼 줄은 한 번만 그린다. 삭제된 댓글은 답글만, 내 댓글은 수정·삭제, 남의 댓글은 신고를
            앞에 두고, 답글 버튼은 모두 같은 자리 하나에서 그린다. -->
       <div
         v-if="hasActions"
@@ -339,7 +339,7 @@ async function moderate(action) {
         </button>
       </div>
     </form>
-    <!-- 같은 이유(F11). canManage가 아닌 사람은 애초에 editing을 true로 만들 경로가 없지만
+    <!-- 같은 이유. canManage가 아닌 사람은 애초에 editing을 true로 만들 경로가 없지만
          (수정 버튼 자체가 canManage일 때만 그려진다), 방어적으로 조건에 함께 넣는다. -->
     <form
       v-if="editing && comment.canManage"
@@ -398,7 +398,7 @@ async function moderate(action) {
       />
     </ul>
 
-    <!-- 부모 하나당 답글을 일부만 내려받았을 때만 보인다(comment.hasMoreReplies, COR-05). -->
+    <!-- 부모 하나당 답글을 일부만 내려받았을 때만 보인다(comment.hasMoreReplies). -->
     <button
       v-if="!isReply && comment.hasMoreReplies"
       type="button"

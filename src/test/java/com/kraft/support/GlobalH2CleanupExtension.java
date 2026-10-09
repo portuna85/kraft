@@ -42,7 +42,7 @@ public class GlobalH2CleanupExtension implements BeforeEachCallback {
             "comments", "post_likes", "post_images",
             "email_verification_tokens", "password_reset_tokens",
             "outbox_mails", "session_revocation_tasks",
-            // 추천 이력과 수집 시도 기록, Spring Session(속성이 세션을 FK로 가리킨다)도 비운다(OPS-08) —
+            // 추천 이력과 수집 시도 기록, Spring Session(속성이 세션을 FK로 가리킨다)도 비운다 —
             // 빠져 있으면 한 클래스가 남긴 회차·세션이 다른 클래스의 기대를 흔든다.
             "recommendation_fetch_attempts", "recommendation_winning_draws", "recommendation_history_state",
             "SPRING_SESSION_ATTRIBUTES", "SPRING_SESSION",
@@ -78,7 +78,7 @@ public class GlobalH2CleanupExtension implements BeforeEachCallback {
                 jdbcTemplate.execute("DELETE FROM " + table);
             } catch (DataAccessException e) {
                 // 이 컨텍스트의 스키마에 그 테이블이 없는 경우(슬라이스 테스트)만 건너뛴다. 예전에는 모든
-                // 예외를 삼켜, 테이블 이름이 틀리거나 FK 위반이 나도 정리가 조용히 아무것도 하지 않았다(OPS-09).
+                // 예외를 삼켜, 테이블 이름이 틀리거나 FK 위반이 나도 정리가 조용히 아무것도 하지 않았다.
                 if (!isTableNotFound(e)) {
                     throw e;
                 }

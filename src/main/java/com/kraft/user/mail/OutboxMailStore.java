@@ -88,7 +88,7 @@ public class OutboxMailStore {
      * 이미 지워졌거나 만료되었다면 이 아웃박스 행은 더 이상 보낼 이유가 없는 옛 링크다 —
      * 재시도하지 않고 즉시 FAILED로 남긴다.
      * <p>
-     * {@code ownerToken}이 지금도 이 행의 소유자와 같을 때만 값을 꺼낸다(B05). 정체
+     * {@code ownerToken}이 지금도 이 행의 소유자와 같을 때만 값을 꺼낸다. 정체
      * 재큐잉({@link #requeueStuck})이 이 행을 다른 워커에게 넘긴 뒤에도 원래 워커가 뒤늦게
      * 이 메서드를 부를 수 있는데, 그때는 소유권이 이미 없으므로 빈 값을 돌려주어 늦게 도착한
      * 결과가 새 소유자의 처리를 밀어내지 못하게 한다.
@@ -113,7 +113,7 @@ public class OutboxMailStore {
         if (mail.getToken() == null) {
             return true;
         }
-        // outbox_mails.token은 평문이지만 조회 테이블은 해시만 들고 있다(SEC-04) — 같은
+        // outbox_mails.token은 평문이지만 조회 테이블은 해시만 들고 있다 — 같은
         // 해시 함수로 변환해야 비교가 된다.
         String tokenHash = EmailHasher.sha512Hex(mail.getToken());
         return switch (mail.getKind()) {
@@ -126,7 +126,7 @@ public class OutboxMailStore {
     }
 
     /**
-     * {@code ownerToken}과 {@code status=SENDING}이 지금도 유지될 때만 반영한다(B05) — 재선점되었거나 그 사이 재큐잉으로 상태가 바뀐 행의 결과를 덮지 않는다.
+     * {@code ownerToken}과 {@code status=SENDING}이 지금도 유지될 때만 반영한다 — 재선점되었거나 그 사이 재큐잉으로 상태가 바뀐 행의 결과를 덮지 않는다.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markSent(Long id, String ownerToken) {
@@ -136,7 +136,7 @@ public class OutboxMailStore {
     }
 
     /**
-     * {@code ownerToken}과 {@code status=SENDING}이 지금도 유지될 때만 반영한다(B05) — 재선점되었거나 그 사이 재큐잉으로 상태가 바뀐 행의 결과를 덮지 않는다.
+     * {@code ownerToken}과 {@code status=SENDING}이 지금도 유지될 때만 반영한다 — 재선점되었거나 그 사이 재큐잉으로 상태가 바뀐 행의 결과를 덮지 않는다.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markFailed(Long id, String error, String ownerToken) {
@@ -149,7 +149,7 @@ public class OutboxMailStore {
      * 발송 도중 프로세스가 죽으면 그 메일은 SENDING인 채로 남아 아무도 다시 집지 않는다.
      * 오래된 것은 PENDING으로 되돌려 재시도 대상에 넣는다.
      * <p>
-     * 소유권 표시({@code ownerToken})도 함께 비운다(B05) — 원래 워커가 프로세스만 멈췄을 뿐
+     * 소유권 표시({@code ownerToken})도 함께 비운다 — 원래 워커가 프로세스만 멈췄을 뿐
      * 뒤늦게 살아나 {@code markSent}/{@code markFailed}를 호출할 수 있는데, 그때는 이미
      * 이전 소유자가 아니므로 그 결과가 새로 이 메일을 집은 워커의 처리를 덮으면 안 된다.
      */

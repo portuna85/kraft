@@ -75,7 +75,7 @@ class PostApiControllerTest {
     @MockitoBean
     private WriteRateLimiters rateLimiters;
 
-    /** A-SEC-06 제한기는 이 슬라이스의 관심사가 아니다 — 기본으로 항상 통과시킨다. */
+    /** 쓰기 속도 제한기는 이 슬라이스의 관심사가 아니다 — 기본으로 항상 통과시킨다. */
     @BeforeEach
     void allowAllRateLimits() {
         given(rateLimiters.tryAcquirePost(any())).willReturn(true);
@@ -96,11 +96,11 @@ class PostApiControllerTest {
     }
 
     /**
-     * BE-08: 검색 응답은 전체 건수를 세지 않는다. 모르는 값은 0이 아니라 null이어야 클라이언트가
+     * 검색 응답은 전체 건수를 세지 않는다. 모르는 값은 0이 아니라 null이어야 클라이언트가
      * "결과 0건"과 구분한다. "더 보기"(load-more.js)가 쓰는 page·last는 그대로 있다.
      */
     @Test
-    @DisplayName("BE-08: 검색 응답은 totalElements·totalPages가 null이고 page·last는 그대로다")
+    @DisplayName("검색 응답은 totalElements·totalPages가 null이고 page·last는 그대로다")
     void listPosts_searchResponseHasNullTotals() throws Exception {
         given(postQueryService.findAllDesc(any(Pageable.class), eq("공지"), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 2, 10, null, null, false, false));
@@ -127,7 +127,7 @@ class PostApiControllerTest {
     }
 
     @Test
-    @DisplayName("A-BE-02 2단계: GET /api/v1/posts?scope=all 은 제목+내용 검색(true)으로 전달한다")
+    @DisplayName("GET /api/v1/posts?scope=all 은 제목+내용 검색(true)으로 전달한다")
     void listPosts_withScopeAll_searchesContentToo() throws Exception {
         given(postQueryService.findAllDesc(any(Pageable.class), eq("공지"), any(), eq(true)))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
@@ -138,7 +138,7 @@ class PostApiControllerTest {
         verify(postQueryService).findAllDesc(any(Pageable.class), eq("공지"), any(), eq(true));
     }
 
-    /** A-SEC-06: q 없는 일반 목록 열람은 검색 제한기를 건드리지 않는다. */
+    /** q 없는 일반 목록 열람은 검색 제한기를 건드리지 않는다. */
     @Test
     @DisplayName("GET /api/v1/posts 는 q가 없으면 검색 속도 제한을 검사하지 않는다")
     void listPosts_withoutKeyword_skipsSearchRateLimit() throws Exception {
@@ -163,7 +163,7 @@ class PostApiControllerTest {
     }
 
     @Test
-    @DisplayName("F12: GET /api/v1/posts?sort=content,desc 는 허용되지 않는 정렬이라 400을 반환한다")
+    @DisplayName("GET /api/v1/posts?sort=content,desc 는 허용되지 않는 정렬이라 400을 반환한다")
     void listPosts_withDisallowedSort_returns400BadRequest() throws Exception {
         mockMvc.perform(get("/api/v1/posts").param("sort", "content,desc"))
                 .andExpect(status().isBadRequest());
@@ -172,7 +172,7 @@ class PostApiControllerTest {
     }
 
     @Test
-    @DisplayName("F12: GET /api/v1/posts?sort=viewCount,desc 는 허용된 정렬이라 그대로 처리된다")
+    @DisplayName("GET /api/v1/posts?sort=viewCount,desc 는 허용된 정렬이라 그대로 처리된다")
     void listPosts_withAllowedSort_isProcessed() throws Exception {
         given(postQueryService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
@@ -275,7 +275,7 @@ class PostApiControllerTest {
                 .andExpect(content().string("1"));
     }
 
-    /** A-SEC-06: 속도 제한에 걸리면 서비스는 호출되지 않고 429를 돌려준다. */
+    /** 속도 제한에 걸리면 서비스는 호출되지 않고 429를 돌려준다. */
     @Test
     @DisplayName("POST /api/v1/posts 는 속도 제한에 걸리면 429이고 서비스는 호출되지 않는다")
     void savePost_whenRateLimited_returns429AndDoesNotCallService() throws Exception {
@@ -377,7 +377,7 @@ class PostApiControllerTest {
     }
 
     @Test
-    @DisplayName("F11: PUT /api/v1/posts/{id} 에 기준 버전(If-Match도 본문 version도)이 없으면 428이고 서비스는 호출되지 않는다")
+    @DisplayName("PUT /api/v1/posts/{id} 에 기준 버전(If-Match도 본문 version도)이 없으면 428이고 서비스는 호출되지 않는다")
     void updatePost_withoutAnyVersion_returns428() throws Exception {
         mockMvc.perform(put("/api/v1/posts/1")
                         .with(user("tester@example.com"))

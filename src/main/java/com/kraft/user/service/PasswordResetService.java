@@ -57,7 +57,7 @@ public class PasswordResetService {
     private final OutboxMailStore outboxMailStore;
     private final OutboxMailWorker outboxMailWorker;
     private final ExpiredTokenPurger expiredTokenPurger;
-    /** 해시 계산을 끝낸 뒤 토큰 소비와 비밀번호 변경만 짧은 트랜잭션으로 묶는 데 쓴다(BE-09). */
+    /** 해시 계산을 끝낸 뒤 토큰 소비와 비밀번호 변경만 짧은 트랜잭션으로 묶는 데 쓴다. */
     private final TransactionTemplate transactionTemplate;
 
     /**
@@ -73,9 +73,9 @@ public class PasswordResetService {
             log.info("가입되지 않은 주소로 비밀번호 재설정을 요청했습니다. email={}", EmailMasker.mask(email));
             return;
         }
-        // 쿨다운 검사와 재발급을 계정 단위로 직렬화한다(B07) — 그래야 두 동시 요청이 같은
+        // 쿨다운 검사와 재발급을 계정 단위로 직렬화한다 — 그래야 두 동시 요청이 같은
         // "마지막 발송 시각"을 동시에 읽고 둘 다 쿨다운을 통과하는 경쟁이 없어진다. 잠금
-        // 조회 결과를 실제로 쓴다(BE-15) — 지금은 id만 더 읽지만, 결과를 버리는 습관을
+        // 조회 결과를 실제로 쓴다 — 지금은 id만 더 읽지만, 결과를 버리는 습관을
         // 남겨 두면 나중에 다른 필드를 추가하는 사람이 같은 함정에 빠질 수 있다.
         user = userRepository.findByIdForUpdate(user.getId()).orElse(user);
 
@@ -87,7 +87,7 @@ public class PasswordResetService {
         // 옛 링크는 이 시점에 무효가 된다. 메일함에 여러 개가 살아 있지 않게 한다.
         tokenRepository.deleteByUserId(user.getId());
 
-        // 평문 token은 이 메서드를 벗어나지 않는다(SEC-04) — 조회 테이블에는 해시만 남고,
+        // 평문 token은 이 메서드를 벗어나지 않는다 — 조회 테이블에는 해시만 남고,
         // 메일 본문 링크를 만들 유일한 평문 사본은 outbox_mails에 실려 발송될 때까지만 산다.
         String token = UUID.randomUUID().toString();
         tokenRepository.save(PasswordResetToken.builder()
@@ -105,7 +105,7 @@ public class PasswordResetService {
      * 링크의 토큰으로 새 비밀번호를 정한다. 여기서는 반대로 <b>실패 이유를 분명히</b> 알려준다 —
      * 이미 링크를 받은 사람에게 "만료됐는지 잘못된 링크인지"를 감추면 다시 시도할 길이 없다.
      * <p>
-     * 소비(삭제)를 비밀번호 변경보다 먼저, 그리고 <b>조건부로</b> 한다(B07). 같은 토큰이 동시에
+     * 소비(삭제)를 비밀번호 변경보다 먼저, 그리고 <b>조건부로</b> 한다. 같은 토큰이 동시에
      * 두 번 들어오면 {@code deleteByIdAndToken}의 DB 행 잠금이 정확히 하나만 성공시킨다 —
      * 이긴 쪽만 비밀번호를 바꿔, 두 요청 모두 성공한 것처럼 보이는 경쟁을 막는다.
      */
@@ -122,7 +122,7 @@ public class PasswordResetService {
             throw new BusinessValidationException("재설정 링크가 만료되었습니다. 다시 요청해 주세요.");
         }
 
-        // BCrypt는 트랜잭션 밖에서 계산한다(BE-09). 토큰이 유효한 요청만 이 비용을 낸다.
+        // BCrypt는 트랜잭션 밖에서 계산한다. 토큰이 유효한 요청만 이 비용을 낸다.
         String encodedPassword = userService.encodeNewPassword(newPassword);
         Long tokenId = resetToken.getId();
         Long userId = resetToken.getUser().getId();

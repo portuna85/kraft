@@ -19,7 +19,7 @@ export default defineConfig({
     testDir: './e2e',
 
     /**
-     * 시각 회귀 스펙(visual*.spec.js)은 기준 이미지가 만든 환경의 폰트 렌더링에 묶인다(OPS-05).
+     * 시각 회귀 스펙(visual*.spec.js)은 기준 이미지가 만든 환경의 폰트 렌더링에 묶인다.
      * 기준선은 CI와 같은 Docker 이미지(mcr.microsoft.com/playwright, Linux)에서 만든
      * `-chromium-linux.png`이고, 일반 e2e 샤드는 이 스펙을 건너뛴다(CI=1). 별도 `visual` 잡이
      * VISUAL=1로 이 스펙만 돌린다.
@@ -43,12 +43,12 @@ export default defineConfig({
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 1 : 0,
     // CI는 JSON 결과도 남긴다 — retries: 1이 flaky 테스트를 조용히 통과시키지 않도록 e2e 잡이
-    // 이 파일의 stats.flaky를 요약에 적는다(OPS-34). 통과로 치지만 눈에는 보인다.
+    // 이 파일의 stats.flaky를 요약에 적는다. 통과로 치지만 눈에는 보인다.
     reporter: process.env.CI
         ? [['html', { open: 'never' }], ['github'], ['json', { outputFile: 'playwright-results.json' }]]
         : 'list',
 
-    // 스크린샷 비교 허용치(OPS-37). 폰트 힌팅 등으로 몇 픽셀은 늘 흔들려서 모든 비교가 공유한다.
+    // 스크린샷 비교 허용치. 폰트 힌팅 등으로 몇 픽셀은 늘 흔들려서 모든 비교가 공유한다.
     expect: {
         toHaveScreenshot: { maxDiffPixelRatio: 0.01 },
     },

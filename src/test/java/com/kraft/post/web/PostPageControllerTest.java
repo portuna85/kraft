@@ -77,7 +77,7 @@ class PostPageControllerTest {
     private PostViewDedup postViewDedup;
 
     /**
-     * A-SEC-06 검색 제한기·A-BE-04 중복 방문 판정은 이 슬라이스의 관심사가 아니다 — 기본으로
+     * 검색 제한기·중복 방문 판정은 이 슬라이스의 관심사가 아니다 — 기본으로
      * 항상 통과(=조회수를 센다)시킨다.
      */
     @BeforeEach
@@ -124,14 +124,14 @@ class PostPageControllerTest {
     }
 
     /**
-     * F09: PageWindow는 표시용 페이지 번호를 [0, totalPages-1]로 보정하지만, 실제 조회는
+     * PageWindow는 표시용 페이지 번호를 [0, totalPages-1]로 보정하지만, 실제 조회는
      * 요청받은 원래 page 그대로 돈다 — 글이 있는데도 범위를 넘는 page를 요청하면(예: 처리 중
      * 다른 글이 지워져 페이지 수가 줄어든 경우) 빈 목록과, 그중 어느 것도 "현재"로 표시되지
      * 않는 페이지네이션이 동시에 보였다. 검색어·분류를 유지한 채 유효한 마지막 페이지로
      * 보내는지 확인한다.
      */
     @Test
-    @DisplayName("F09: 글은 있지만 범위를 넘는 page를 요청하면 유효한 마지막 페이지로 보낸다")
+    @DisplayName("글은 있지만 범위를 넘는 page를 요청하면 유효한 마지막 페이지로 보낸다")
     void index_withOutOfRangePageButPostsExist_redirectsToLastValidPage() throws Exception {
         given(postQueryService.findAllDesc(any(Pageable.class), eq("키워드"), eq(Category.NOTICE), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 5, 10, 42L, 5, false, true));
@@ -143,11 +143,11 @@ class PostPageControllerTest {
     }
 
     /**
-     * BE-08: 검색어가 있으면 전체 건수를 세지 않는다(totalElements/totalPages == null). 화면은 총 건수
+     * 검색어가 있으면 전체 건수를 세지 않는다(totalElements/totalPages == null). 화면은 총 건수
      * 없이도 렌더링되어야 하고, 번호 목록 대신 이전·다음과 "N페이지"만 보여야 한다.
      */
     @Test
-    @DisplayName("BE-08: 검색 결과(총 건수 없음)는 총 개수·번호 목록 없이 이전·다음과 N페이지만 그린다")
+    @DisplayName("검색 결과(총 건수 없음)는 총 개수·번호 목록 없이 이전·다음과 N페이지만 그린다")
     void index_searchResultsWithoutTotals_rendersPrevNextOnly() throws Exception {
         PostsListResponseDto row = new PostsListResponseDto(new PostRowDto(
                 1L, "검색 결과 글", "작성자", LocalDateTime.of(2026, 10, 1, 9, 0),
@@ -168,7 +168,7 @@ class PostPageControllerTest {
     }
 
     @Test
-    @DisplayName("BE-08: 검색 결과가 한 페이지에 다 들어오면(첫 페이지, 다음 없음) pager를 그리지 않는다")
+    @DisplayName("검색 결과가 한 페이지에 다 들어오면(첫 페이지, 다음 없음) pager를 그리지 않는다")
     void index_singlePageOfSearchResults_hasNoPager() throws Exception {
         PostsListResponseDto row = new PostsListResponseDto(new PostRowDto(
                 1L, "검색 결과 글", "작성자", LocalDateTime.of(2026, 10, 1, 9, 0),
@@ -184,7 +184,7 @@ class PostPageControllerTest {
     }
 
     @Test
-    @DisplayName("BE-08: 검색 결과가 없으면(총 건수 없음) '검색 조건에 맞는 게시글이 없습니다'를 보여준다")
+    @DisplayName("검색 결과가 없으면(총 건수 없음) '검색 조건에 맞는 게시글이 없습니다'를 보여준다")
     void index_emptySearchWithoutTotals_showsNoMatchMessage() throws Exception {
         given(postQueryService.findAllDesc(any(Pageable.class), eq("없는검색어"), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, null, null, true, true));
@@ -197,11 +197,11 @@ class PostPageControllerTest {
     }
 
     /**
-     * BE-08: 총 페이지 수를 모르므로 "마지막 페이지"로 보낼 수 없다 — 빈 결과인 범위 밖 페이지는
+     * 총 페이지 수를 모르므로 "마지막 페이지"로 보낼 수 없다 — 빈 결과인 범위 밖 페이지는
      * 검색어·분류·정렬을 유지한 채 첫 페이지(page 생략)로 보낸다.
      */
     @Test
-    @DisplayName("BE-08: 검색 결과가 빈 범위 밖 page는 검색 조건을 유지한 채 첫 페이지로 보낸다")
+    @DisplayName("검색 결과가 빈 범위 밖 page는 검색 조건을 유지한 채 첫 페이지로 보낸다")
     void index_searchBeyondLastPage_redirectsToFirstPageKeepingFilters() throws Exception {
         given(postQueryService.findAllDesc(any(Pageable.class), eq("키워드"), eq(Category.NOTICE), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 7, 10, null, null, false, true));
@@ -216,7 +216,7 @@ class PostPageControllerTest {
     }
 
     @Test
-    @DisplayName("BE-08: 검색어 없는 목록의 범위 밖 page는 기존처럼 마지막 페이지로 보낸다(총 건수가 있다)")
+    @DisplayName("검색어 없는 목록의 범위 밖 page는 기존처럼 마지막 페이지로 보낸다(총 건수가 있다)")
     void index_listWithTotals_stillRedirectsToLastPage() throws Exception {
         given(postQueryService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 9, 10, 25L, 3, false, true));
@@ -252,7 +252,7 @@ class PostPageControllerTest {
     }
 
     @Test
-    @DisplayName("A-BE-02 2단계: GET /?q=...&scope=all 은 제목+내용 검색으로 전달하고 searchContent 모델 값도 true다")
+    @DisplayName("GET /?q=...&scope=all 은 제목+내용 검색으로 전달하고 searchContent 모델 값도 true다")
     void index_withScopeAll_searchesContentTooAndExposesModelFlag() throws Exception {
         given(postQueryService.findAllDesc(any(Pageable.class), eq("키워드"), any(), eq(true)))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
@@ -266,7 +266,7 @@ class PostPageControllerTest {
     }
 
     @Test
-    @DisplayName("A-BE-02 2단계: scope 파라미터가 없으면 제목만(false)으로 검색하고 모델 값도 false다")
+    @DisplayName("scope 파라미터가 없으면 제목만(false)으로 검색하고 모델 값도 false다")
     void index_withoutScope_defaultsToTitleOnly() throws Exception {
         given(postQueryService.findAllDesc(any(Pageable.class), eq("키워드"), any(), eq(false)))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
@@ -277,7 +277,7 @@ class PostPageControllerTest {
                 .andExpect(model().attribute("searchContent", false));
     }
 
-    /** A-SEC-06: q 없는 일반 목록 열람은 검색 제한기를 건드리지 않는다. */
+    /** q 없는 일반 목록 열람은 검색 제한기를 건드리지 않는다. */
     @Test
     @DisplayName("GET / 는 q가 없으면 검색 속도 제한을 검사하지 않는다")
     void index_withoutKeyword_skipsSearchRateLimit() throws Exception {
@@ -302,7 +302,7 @@ class PostPageControllerTest {
     }
 
     @Test
-    @DisplayName("F12: GET /?sort=content,desc 는 허용되지 않는 정렬을 무시하고 기본 정렬로 렌더링한다")
+    @DisplayName("GET /?sort=content,desc 는 허용되지 않는 정렬을 무시하고 기본 정렬로 렌더링한다")
     void index_withDisallowedSort_ignoresSortAndRendersWithDefault() throws Exception {
         given(postQueryService.findAllDesc(any(Pageable.class), any(), any(), anyBoolean()))
                 .willReturn(new PostsPageResponseDto(List.of(), 0, 10, 0L, 0, true, true));
@@ -502,7 +502,7 @@ class PostPageControllerTest {
     }
 
     @Test
-    @DisplayName("F12: 편집 취소가 분류를 되돌릴 수 있도록 원본 분류를 Vue 초기 상태(JSON)로 내려준다")
+    @DisplayName("편집 취소가 분류를 되돌릴 수 있도록 원본 분류를 Vue 초기 상태(JSON)로 내려준다")
     void postsUpdate_rendersOriginalCategoryForCancel() throws Exception {
         given(postQueryService.findByIdForView(eq(1L), nullable(Authentication.class), anyBoolean()))
                 .willReturn(new PostViewDto(1L, "제목", "내용", null, null, null, "작성자", true, Category.QNA, 0L, 0L, false, 0L));

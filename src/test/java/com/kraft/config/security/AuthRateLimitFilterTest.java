@@ -25,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@link AuthRateLimitFilter}는 싱글턴 빈이라 메모리 카운터가 테스트 메서드 사이에 그대로
  * 남는다 — 특히 로그인 IP 제한기는 모든 로그인 테스트가 같은 MockMvc 기본 IP(127.0.0.1)를
  * 공유해 서로의 한도를 갉아먹는다. 예전에는 메서드마다 컨텍스트를 새로 띄워 초기화했지만(7번,
- * 약 4초), 이제 {@code @BeforeEach}에서 제한기만 {@link AuthRateLimitFilter#reset()}으로 비운다(OPS-10).
+ * 약 4초), 이제 {@code @BeforeEach}에서 제한기만 {@link AuthRateLimitFilter#reset()}으로 비운다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc

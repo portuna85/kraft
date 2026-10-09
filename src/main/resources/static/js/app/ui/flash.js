@@ -32,7 +32,7 @@ const MESSAGES = {
     COMMENT_SAVED: { text: '댓글이 등록되었습니다.', type: 'success' },
     COMMENT_UPDATED: { text: '댓글이 수정되었습니다.', type: 'success' },
     COMMENT_DELETED: { text: '댓글이 삭제되었습니다.', type: 'success' },
-    // 이미 가입된 이메일이어도 같은 문구를 쓴다(A-SEC-01 계정 열거 방지) — "가입이
+    // 이미 가입된 이메일이어도 같은 문구를 쓴다(계정 열거 방지) — "가입이
     // 완료되었습니다"처럼 신규 가입을 확정하는 표현은 피한다.
     SIGNUP_DONE: { text: '요청을 받았습니다. 메일함을 확인해 주세요.', type: 'success' },
     PASSWORD_CHANGED: { text: '비밀번호가 변경되었습니다. 다시 로그인해 주세요.', type: 'success' },

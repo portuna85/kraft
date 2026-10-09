@@ -68,8 +68,8 @@ class UserApiControllerTest {
     private static final Long TESTER_ID = 1L;
 
     /**
-     * 세션 principal은 회원 id다(BE-04) — {@code CurrentUser.require}는 principal이
-     * {@link KraftUserDetails}가 아니면 미인증으로 본다(A-QA-02). 그래서
+     * 세션 principal은 회원 id다 — {@code CurrentUser.require}는 principal이
+     * {@link KraftUserDetails}가 아니면 미인증으로 본다. 그래서
      * {@code with(user("tester@example.com"))}처럼 문자열 username만으로 인증을 흉내 내면
      * 안 되고, 운영과 같은 모양의 principal을 직접 만들어 써야 한다.
      */
@@ -160,7 +160,7 @@ class UserApiControllerTest {
     }
 
     @Test
-    @DisplayName("A-SEC-01: 이메일이 이미 가입되어 있어도 신규 가입과 같은 200을 주고 인증 메일은 보내지 않는다(계정 열거 방지)")
+    @DisplayName("이메일이 이미 가입되어 있어도 신규 가입과 같은 200을 주고 인증 메일은 보내지 않는다(계정 열거 방지)")
     void signUp_whenEmailAlreadyExists_returnsSameResponseAsNewSignUpWithoutVerificationMail() throws Exception {
         given(userService.signUp(any(), any(), any())).willReturn(false);
 
@@ -298,7 +298,7 @@ class UserApiControllerTest {
     }
 
     @Test
-    @DisplayName("A-FE-12: GET /api/v1/users/me/ping 은 미인증이면 로그인 페이지로 리다이렉트된다")
+    @DisplayName("GET /api/v1/users/me/ping 은 미인증이면 로그인 페이지로 리다이렉트된다")
     void ping_whenUnauthenticated_redirectsToLoginPage() throws Exception {
         mockMvc.perform(get("/api/v1/users/me/ping"))
                 .andExpect(status().is3xxRedirection())
@@ -306,7 +306,7 @@ class UserApiControllerTest {
     }
 
     @Test
-    @DisplayName("A-FE-12: GET /api/v1/users/me/ping 은 인증만 되어 있으면 204를 반환한다(CSRF 불필요 — GET)")
+    @DisplayName("GET /api/v1/users/me/ping 은 인증만 되어 있으면 204를 반환한다(CSRF 불필요 — GET)")
     void ping_whenAuthenticated_returns204NoContent() throws Exception {
         mockMvc.perform(get("/api/v1/users/me/ping")
                         .with(authenticatedTester()))

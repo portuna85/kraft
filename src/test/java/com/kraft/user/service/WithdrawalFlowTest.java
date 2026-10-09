@@ -112,7 +112,7 @@ class WithdrawalFlowTest {
      * 유일성 제약에 걸려 탈퇴 자체가 실패했다.
      */
     @Test
-    @DisplayName("F10: 다른 계정이 대체 이름을 이미 쓰고 있어도 탈퇴된다")
+    @DisplayName("다른 계정이 대체 이름을 이미 쓰고 있어도 탈퇴된다")
     void withdraw_whenReplacementNameTaken_stillSucceeds() {
         String replacementName = "탈퇴한 사용자" + user.getId();
         User squatter = userRepository.save(User.builder()
@@ -135,7 +135,7 @@ class WithdrawalFlowTest {
     }
 
     @Test
-    @DisplayName("F10: 다른 계정이 대체 이메일을 이미 쓰고 있어도 탈퇴된다")
+    @DisplayName("다른 계정이 대체 이메일을 이미 쓰고 있어도 탈퇴된다")
     void withdraw_whenReplacementEmailTaken_stillSucceeds() {
         String replacementEmail = "withdrawn-" + user.getId() + "@kraft.invalid";
         User squatter = userRepository.save(User.builder()
@@ -157,7 +157,7 @@ class WithdrawalFlowTest {
     }
 
     @Test
-    @DisplayName("F10: 탈퇴 대체 이름·이메일 공간은 새 가입에 쓸 수 없다")
+    @DisplayName("탈퇴 대체 이름·이메일 공간은 새 가입에 쓸 수 없다")
     void signUp_withReservedNameOrEmail_isRejected() {
         assertThatThrownBy(() -> userService.signUp("탈퇴한 사용자999999", "fresh-" + UUID.randomUUID() + "@example.com", "BrandNew1!"))
                 .isInstanceOf(IllegalArgumentException.class)

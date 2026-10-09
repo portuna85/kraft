@@ -15,7 +15,7 @@ import java.util.List;
 
 /**
  * {@link PostImageCleaner}가 한 주기 안에서 부르는 한 배치(최대
- * {@link PostImageCleaner#CLEANUP_BATCH_SIZE}행) 실행부를 별도 빈으로 분리했다(B06).
+ * {@link PostImageCleaner#CLEANUP_BATCH_SIZE}행) 실행부를 별도 빈으로 분리했다.
  * <p>
  * 예전에는 {@code PostImageCleaner.clean()}이 {@code @Transactional}인 채로 같은 객체 안의
  * {@code cleanPendingDeletions()}/{@code cleanExpiredOrphans()}를 직접 호출했다(self-invocation).
@@ -45,7 +45,7 @@ class PostImageCleanupBatchRunner {
 
     /**
      * 삭제가 예약된 파일 한 배치를 지운다. id 커서로 이전 배치의 마지막 id 다음부터 조회해,
-     * 계속 실패해 상태가 그대로인 행이 다음 배치 조회를 막지 않게 한다(B06 추가 발견) —
+     * 계속 실패해 상태가 그대로인 행이 다음 배치 조회를 막지 않게 한다(추가 발견) —
      * 매번 같은 페이지(0)를 다시 보면 실패 행이 항상 맨 앞을 차지해
      * 뒤쪽 정상 행이 한 주기 내내 굶을 수 있었다.
      */
@@ -84,9 +84,9 @@ class PostImageCleanupBatchRunner {
 
     /**
      * ORPHAN 조회와 실제 파일 삭제 사이에 다른 트랜잭션이 같은 이미지를 게시글에 연결(ATTACHED로
-     * 전이)할 수 있다(B01). {@link PostImageRepository#claimExpiredOrphanForDeletion}로 "지금도
+     * 전이)할 수 있다. {@link PostImageRepository#claimExpiredOrphanForDeletion}로 "지금도
      * 여전히 ORPHAN인가"를 원자적으로 다시 확인해, 그 사이 연결된 이미지는 건드리지 않고 건너뛴다.
-     * id 커서를 쓰는 이유는 위 {@link #cleanPendingDeletionsBatch}와 같다(B06).
+     * id 커서를 쓰는 이유는 위 {@link #cleanPendingDeletionsBatch}와 같다.
      * <p>
      * <b>여기서는 선점만 하고 파일은 지우지 않는다</b>. 예전에는 이 메서드
      * 하나가 선점과 파일 삭제를 모두 한 트랜잭션(REQUIRES_NEW) 안에서 했다 — 배치 마지막에 그

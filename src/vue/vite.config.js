@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /**
- * Vue 없이 동작하는 작은 공용 모듈. 모든 페이지의 main.js(plain JS 진입점, FE-03·FE-05)와 Vue
+ * Vue 없이 동작하는 작은 공용 모듈. 모든 페이지의 main.js(plain JS 진입점)와 Vue
  * 아일랜드가 함께 쓰므로 한 청크("core")에 묶는다 — Vue 런타임과 같은 청크에 두면 Vue를 쓰지
  * 않는 페이지(로그인·목록 등)도 main.js 때문에 Vue를 내려받게 된다.
  * 새 공용 모듈이 생겨 별도 청크로 떨어지면 check-preload.mjs가 그 청크가 preload되지 않았다고
@@ -27,7 +27,7 @@ const CORE_MODULES = [
 ];
 
 /**
- * Vue를 import하는 작은 공용 모듈. Vue 런타임과 같은 "runtime" 청크에 묶는다(FE-04).
+ * Vue를 import하는 작은 공용 모듈. Vue 런타임과 같은 "runtime" 청크에 묶는다.
  * 따로 두면 각각이 진입 스크립트를 파싱한 뒤에야 발견되는 2단 워터폴이 된다.
  */
 const SMALL_VUE_MODULES = [
@@ -56,7 +56,7 @@ export default defineConfig({
         },
     },
     // 모든 컴포넌트가 <script setup>만 쓰고 Options API(data()/methods/mixins 등)를 쓰지
-    // 않는다(FE-06) — 그런데 plugin-vue는 이 플래그가 없으면 __VUE_OPTIONS_API__ 기본값을
+    // 않는다 — 그런데 plugin-vue는 이 플래그가 없으면 __VUE_OPTIONS_API__ 기본값을
     // true로 두어, 런타임 청크에 한 번도 안 쓰는 Options API 지원 코드가 그대로 번들된다.
     // 프로덕션 개발자 도구 연결·하이드레이션 불일치 상세 정보도 함께 끈다(둘 다 운영 빌드에서
     // 쓰지 않는다 — 서버가 HTML을 하이드레이션하지 않고 각 아일랜드를 처음부터 클라이언트에서
@@ -87,10 +87,10 @@ export default defineConfig({
                 signup: resolve(__dirname, 'signup/mount.js'),
                 'forgot-password': resolve(__dirname, 'forgot-password/mount.js'),
                 'password-reset': resolve(__dirname, 'password-reset/mount.js'),
-                // Modal·Toast만 담아 전역 bootstrap으로 노출하는 번들(FE-06). 템플릿 footer가
+                // Modal·Toast만 담아 전역 bootstrap으로 노출하는 번들. 템플릿 footer가
                 // 모듈 스크립트로 불러온다 — Vue 아일랜드가 아니라 모든 페이지 공통이다.
                 bootstrap: resolve(__dirname, 'bootstrap/entry.js'),
-                // 모든 페이지의 plain JS 진입점(FE-03·FE-05). 예전에는 번들 없이 /js/app/main.js를
+                // 모든 페이지의 plain JS 진입점. 예전에는 번들 없이 /js/app/main.js를
                 // 그대로 내보내, core/·ui/ 모듈이 Vue 아일랜드 번들 안의 복사본과 따로 두 번 내려가고
                 // 실행됐다. 같은 빌드로 묶으면 청크를 공유하고 압축된다. 각 기능(features/*)은
                 // main.js의 동적 import라 해당 페이지에서만 받는다. 주석이 달린 원본은
@@ -101,7 +101,7 @@ export default defineConfig({
                 entryFileNames: '[name].js',
                 // 글 작성·수정 화면이 함께 쓰는 공용 청크는 Rollup이 첫 모듈 이름(DraftRestoreBanner)을
                 // 우연히 붙인다 — 이름이 모듈 그래프에 따라 바뀌면 템플릿의 modulepreload가 조용히
-                // 어긋나므로(FE-33) 고정 이름을 준다. check-preload.mjs가 어긋나면 빌드를 실패시킨다.
+                // 어긋나므로 고정 이름을 준다. check-preload.mjs가 어긋나면 빌드를 실패시킨다.
                 chunkFileNames: (chunk) => (
                     chunk.moduleIds.some((id) => id.endsWith('/shared/DraftRestoreBanner.vue'))
                         ? 'chunks/post-shared.js'
@@ -115,11 +115,11 @@ export default defineConfig({
                 // 바뀌면 조용히 어긋난다. 이름을 고정해 그 경로 자체를
                 // 없애고, scripts/check-preload.mjs가 그래도 어긋나면 빌드를 실패시킨다.
                 //
-                // FE-04: 거의 모든 페이지가 쓰는 작은 Vue 모듈(폼 오류 composable 등)도 같은 청크에
+                // 거의 모든 페이지가 쓰는 작은 Vue 모듈(폼 오류 composable 등)도 같은 청크에
                 // 넣는다. 따로 두면 각각이 진입 스크립트를 파싱한 뒤에야 발견되는 2단 워터폴이 되고,
                 // 1KB짜리 청크 하나하나가 왕복 한 번이다.
                 //
-                // FE-03·FE-05: Vue를 쓰지 않는 작은 공용 모듈(core/·ui/의 http·dom·flash·toast 등)은
+                // Vue를 쓰지 않는 작은 공용 모듈(core/·ui/의 http·dom·flash·toast 등)은
                 // "core" 청크로 따로 묶는다. runtime에 넣으면 main.js가 모든 페이지에서 Vue
                 // 런타임을 끌어온다. Vue 페이지 템플릿은 runtime과 core를 함께 preload한다.
                 manualChunks(id) {

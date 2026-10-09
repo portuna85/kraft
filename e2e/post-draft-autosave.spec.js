@@ -4,7 +4,7 @@ test.use({ storageState: storageStateFor('user') });
 
 /**
  * localStorage에 이 조각을 포함한 키가 있는지 확인한다. 키에는 회원 id가 들어가므로
- * (kraft:draft:{userId}:post-save, 전체 리뷰 2026-09-26 A-FE-03) 접두사 대신 ':post-save'·
+ * (kraft:draft:{userId}:post-save) 접두사 대신 ':post-save'·
  * ':post-edit:'처럼 화면 종류를 가리키는 조각으로 찾는다.
  */
 async function hasDraftKey(page, marker) {
@@ -19,7 +19,7 @@ async function createOwnPost(page, title) {
     await page.locator('#title').fill(title);
     await page.locator('#content').fill('자동 임시 저장 테스트용 본문입니다.');
     await page.locator('#btn-save').click();
-    // 등록 후 목록이 아니라 방금 쓴 글로 바로 이동한다(전체 리뷰 2026-09-26 A-FE-02).
+    // 등록 후 목록이 아니라 방금 쓴 글로 바로 이동한다.
     await page.waitForURL(/\/posts\/update\/\d+$/);
 }
 
@@ -113,7 +113,7 @@ test.describe('편집 — 자동 임시 저장', () => {
         await expect.poll(() => hasDraftKey(page, ':post-edit:')).toBe(true);
 
         await page.locator('#btn-update').click();
-        // 저장 후 이동은 편집 중이던 바로 그 URL로 돌아간다(전체 리뷰 2026-09-26 A-FE-02)이라
+        // 저장 후 이동은 편집 중이던 바로 그 URL로 돌아간다이라
         // waitForURL은 URL이 안 바뀌므로 곧바로(저장이 끝나기 전에) 통과해 버린다 — 실제로
         // 새로고침이 끝났다는 신호(플래시 메시지, 자동 재시도되는 assertion)로 기다린다.
         await expect(page.locator('#flash')).toContainText('글이 수정되었습니다.');
@@ -140,11 +140,11 @@ test.describe('편집 — 자동 임시 저장', () => {
         const content = '자동 임시 저장 테스트용 본문입니다.'; // createOwnPost가 쓰는 본문과 맞춘다.
         await createOwnPost(page, title);
 
-        // 키에는 회원 id가 들어간다(전체 리뷰 2026-09-26 A-FE-03) — 직접 조립하지 않고, 실제
+        // 키에는 회원 id가 들어간다 — 직접 조립하지 않고, 실제
         // 편집 흐름을 한 번 거쳐 이 화면이 실제로 쓰는 키를 알아낸다.
         await page.locator('#btn-edit').click();
         await page.locator('#content').fill('키를 알아내기 위한 임시 변경입니다.');
-        // 디바운스(800ms) 뒤 저장될 때까지 고정 대기 없이 기다린다(OPS-17).
+        // 디바운스(800ms) 뒤 저장될 때까지 고정 대기 없이 기다린다.
         await expect.poll(() => hasDraftKey(page, ':post-edit:'), { message: '편집 초안 키를 찾아야 한다' }).toBe(true);
         const draftKey = await page.evaluate(() =>
             Object.keys(window.localStorage).find((key) => key.includes(':post-edit:')));

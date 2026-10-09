@@ -21,7 +21,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * 비밀번호 변경·재설정·탈퇴 뒤 세션 폐기를 영속 태스크로 남긴다(B06).
+ * 비밀번호 변경·재설정·탈퇴 뒤 세션 폐기를 영속 태스크로 남긴다.
  * <p>
  * 커밋 직후 {@code AfterCommit}이 곧바로 한 번 처리를 시도하지만(빠른 경로), 그 시도가
  * 실패하거나 시도 도중 프로세스가 죽으면 이 행이 DB에 남아 {@code SessionRevocationWorker}의
@@ -82,7 +82,7 @@ public class SessionRevocationTask extends BaseEntity {
         this.lastError = error == null ? null : error.substring(0, Math.min(error.length(), 500));
     }
 
-    /** 정체 재큐잉 전용(B06). 이전 소유자의 지연된 처리가 새 소유자의 결과를 덮지 않게 한다. */
+    /** 정체 재큐잉 전용. 이전 소유자의 지연된 처리가 새 소유자의 결과를 덮지 않게 한다. */
     public void releaseOwnership() {
         this.ownerToken = null;
     }

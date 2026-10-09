@@ -64,12 +64,12 @@ class RecommendationHistoryImporterTest {
     }
 
     /**
-     * B14: 더 앞서 나간 검증 구간(예: 자동 수집이 이미 5회차까지 검증)을, 그보다 늦게 끝난
+     * 더 앞서 나간 검증 구간(예: 자동 수집이 이미 5회차까지 검증)을, 그보다 늦게 끝난
      * 백필(예: 3회차 기준으로 시작한 작업)이 조용히 되돌리면 안 된다. draws 반영 자체는
      * 되더라도 검증 구간만은 지켜야 하므로 예외로 알린다.
      */
     @Test
-    @DisplayName("B14: 검증 구간을 이미 기록된 것보다 뒤로 되돌리려 하면 거부하고 검증 구간은 그대로 유지된다")
+    @DisplayName("검증 구간을 이미 기록된 것보다 뒤로 되돌리려 하면 거부하고 검증 구간은 그대로 유지된다")
     void verifiedThroughRoundRegression_rejectedAndStateUnchanged() {
         importer.importHistory(List.of(
                 new ImportedDraw(1, List.of(1, 2, 3, 4, 5, 6)),

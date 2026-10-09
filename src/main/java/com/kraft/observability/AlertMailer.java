@@ -9,7 +9,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * {@link HealthReporter}가 기준을 넘긴 것을 발견하면 관리자에게 메일로 알린다(A-OPS-02).
+ * {@link HealthReporter}가 기준을 넘긴 것을 발견하면 관리자에게 메일로 알린다.
  * <p>
  * 기존 {@code OutboxMail}(회원 1명 + 고정 템플릿 4종, DB 대기열)은 의도적으로 재사용하지
  * 않는다 — 장애 요약은 매번 다른 자유 형식 본문이고 특정 회원에 묶이지도 않아, 그 설계와

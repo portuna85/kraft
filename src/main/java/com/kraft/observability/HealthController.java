@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * ({@code build.yml}의 "Smoke test")는 이 엔드포인트가 아니라 번호 추천 화면({@code /recommend})을 찌른다.
  * {@code SecurityConfig}가 모든 요청을 permitAll로 열어두므로 별도 보안 설정은 필요 없다.
  * <p>
- * {@code /readyz}는 루프백에서만 응답한다(전체 리뷰 2026-09-26 A-SEC-04) — 배포 스크립트가
+ * {@code /readyz}는 루프백에서만 응답한다 — 배포 스크립트가
  * 항상 {@code 127.0.0.1}로만 부르므로 외부에 열 이유가 없다. 열어 두면 외부에서 빠르게
  * 반복 호출해 커넥션 풀(단일 DB 확인마다 하나씩)을 점유하거나, 응답 코드로 DB 장애 여부를
  * 외부에 드러낼 수 있다. {@code server.forward-headers-strategy: native}(application.yml)라
@@ -52,8 +52,8 @@ public class HealthController {
     // 돌려받는다. 가상 스레드라 멈춘 검사가 쌓여도 플랫폼 스레드를 잡아먹지 않는다.
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
     // 동시에 들어온 /readyz 요청이 각자 새 DB 커넥션 검사를 띄우면, 검사 자체가 요청 수만큼
-    // 풀을 잡아먹어 정작 확인하려던 "풀이 막혔는가"를 검사가 스스로 재현한다(전체 리뷰
-    // 2026-09-26 BE-01). 진행 중인 검사가 있으면 새로 만들지 않고 그 결과를 함께 기다린다 —
+    // 풀을 잡아먹어 정작 확인하려던 "풀이 막혔는가"를 검사가 스스로 재현한다.
+    // 진행 중인 검사가 있으면 새로 만들지 않고 그 결과를 함께 기다린다 —
     // 타임아웃도 각자 자기 것으로 재되, 공유 중인 future는 다른 대기자를 위해 취소하지 않는다.
     private final AtomicReference<CompletableFuture<Boolean>> inFlightCheck = new AtomicReference<>();
 
@@ -68,7 +68,7 @@ public class HealthController {
     }
 
     /**
-     * 본문은 비우고, 떠 있는 jar의 빌드(커밋)만 {@code X-Kraft-Build} 헤더로 알린다(OPS-12) —
+     * 본문은 비우고, 떠 있는 jar의 빌드(커밋)만 {@code X-Kraft-Build} 헤더로 알린다 —
      * 배포 후 스모크 테스트가 "응답한다"가 아니라 "방금 푸시한 빌드가 응답한다"를 확인하게 한다.
      * 커밋 SHA는 비밀이 아니고 공개 저장소 이력과 같은 정보다.
      */

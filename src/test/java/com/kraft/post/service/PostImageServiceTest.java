@@ -48,7 +48,7 @@ class PostImageServiceTest {
     }
 
     @Test
-    @DisplayName("A-FE-09: store가 실제 픽셀 크기를 돌려준다(CLS 방지용 img width/height)")
+    @DisplayName("store가 실제 픽셀 크기를 돌려준다(CLS 방지용 img width/height)")
     void store_returnsActualPixelDimensions() {
         MockMultipartFile file = new MockMultipartFile("file", "photo.png", "image/png", TestImages.pngBytes(64, 32));
 
@@ -101,7 +101,7 @@ class PostImageServiceTest {
     }
 
     @Test
-    @DisplayName("A-SEC-10: 저장 파일에서 EXIF(GPS 등) 메타데이터가 사라진다")
+    @DisplayName("저장 파일에서 EXIF(GPS 등) 메타데이터가 사라진다")
     void store_stripsExifMetadataFromSavedFile() throws IOException {
         // ImageIO가 만든 순수 JPEG(EXIF 없음) 바로 뒤(SOI 다음)에 GPS 태그가 든 APP1을
         // 끼워 넣는다 — JPEG는 SOI 뒤 마커 순서를 엄격히 강제하지 않고, PostImageService의
@@ -150,7 +150,7 @@ class PostImageServiceTest {
     }
 
     @Test
-    @DisplayName("store: 업로드를 한 번만 읽고 열어 둔 입력 스트림이 없다 (BE-21)")
+    @DisplayName("store: 업로드를 한 번만 읽고 열어 둔 입력 스트림이 없다")
     void store_readsUploadOnceAndLeavesNoOpenStream() {
         CloseTrackingMultipartFile file =
                 new CloseTrackingMultipartFile("file", "photo.png", "image/png", TestImages.pngBytes(1, 1));

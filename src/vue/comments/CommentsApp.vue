@@ -28,7 +28,7 @@ const props = defineProps({
     initialHasMore: { type: Boolean, required: true },
 });
 
-// 로그인 후 이 글로 돌아오게 한다(FE-16) — navbar의 로그인 링크와 같은 규칙이다
+// 로그인 후 이 글로 돌아오게 한다 — navbar의 로그인 링크와 같은 규칙이다
 // (NavModelAdvice.currentPath). 예전에는 href="/login"만 써서 로그인 뒤 홈으로 떨어졌다.
 const loginHref = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
 
@@ -86,7 +86,7 @@ async function loadMore() {
         mergeComments(page.comments);
         // 요청이 진행되는 동안 등록/답글/삭제가 없었을 때만 이 응답의 totalCount를 믿는다.
         // 그사이 변경이 있었다면 로컬에서 이미 정확히 증감된 값을 유지한다. 서버가 이 값을
-        // 아예 생략(null)할 수도 있다(A-BE-13) — "더 보기" 후속 페이지는 다시 세지 않으므로,
+        // 아예 생략(null)할 수도 있다 — "더 보기" 후속 페이지는 다시 세지 않으므로,
         // 그때도 로컬 값을 그대로 둔다.
         if (mutationSeq.value === seqAtStart && page.totalCount != null) {
             totalCount.value = page.totalCount;
@@ -152,7 +152,7 @@ function onUpdated({ id, content, version }) {
     const target = findCommentById(id);
     if (target) {
         target.content = content;
-        // 성공한 저장이 올린 새 버전을 반영해 둔다(B12/F02) — 그렇지 않으면 같은 댓글을
+        // 성공한 저장이 올린 새 버전을 반영해 둔다 — 그렇지 않으면 같은 댓글을
         // 새로고침 없이 다시 수정할 때 이미 반영된 자신의 편집을 낡은 버전으로 오인해
         // 불필요한 충돌(412)이 난다.
         if (version !== undefined) {
@@ -164,7 +164,7 @@ function onUpdated({ id, content, version }) {
 
 /**
  * 답글 등록 성공 시 그 부모의 replies에 붙인다(CommentItem이 emit). 부모의 답글 커서는
- * 움직이지 않는다 — 새 답글 id로 커서를 앞당기면 아직 받지 않은 답글을 건너뛴다(F02).
+ * 움직이지 않는다 — 새 답글 id로 커서를 앞당기면 아직 받지 않은 답글을 건너뛴다.
  */
 function onReplied({ parentId, reply }) {
     const parent = comments.find((c) => String(c.id) === String(parentId));
@@ -178,7 +178,7 @@ function onReplied({ parentId, reply }) {
 
 /**
  * 답글 더 보기 응답을 그 부모의 replies에 합친다.
- * 중복·삭제된 답글을 거르고 부모의 답글 커서를 서버 페이지 기준으로 전진시킨다(F02).
+ * 중복·삭제된 답글을 거르고 부모의 답글 커서를 서버 페이지 기준으로 전진시킨다.
  */
 function onMoreRepliesLoaded({ parentId, replies, hasMore }) {
     const parent = comments.find((c) => String(c.id) === String(parentId));
@@ -191,7 +191,7 @@ function onMoreRepliesLoaded({ parentId, replies, hasMore }) {
 // 삭제는 게시글과 공유하는 모달(delete-confirm.js)이 처리하고, 끝나면 이 이벤트로 알려온다.
 function onExternalDelete(event) {
     const { id, softDeleted } = event.detail;
-    // 답글이 있는 최상위 댓글은 행을 지우지 않고 내용만 비운다(A-BE-06) — 목록에서 제거하지
+    // 답글이 있는 최상위 댓글은 행을 지우지 않고 내용만 비운다 — 목록에서 제거하지
     // 않고 "삭제된 댓글입니다"로 바꿔 보여준다. 전체 개수는 바뀌지 않는다(행이 그대로 있다).
     if (softDeleted) {
         applySoftDelete(comments, id);
@@ -199,7 +199,7 @@ function onExternalDelete(event) {
     }
     // 최상위 댓글이면 그 답글까지 통째로 사라진다 — DB에 CASCADE를 걸지 않고 서비스가 답글을
     // 먼저 명시적으로 지우므로(CommentService.delete), 전체 개수도 서버 기준 답글 수까지 함께
-    // 뺀다. 답글이면 부모의 replyCount도 함께 줄인다(F03). 규칙은 commentState.applyDelete.
+    // 뺀다. 답글이면 부모의 replyCount도 함께 줄인다. 규칙은 commentState.applyDelete.
     const removed = applyDelete(comments, id, deletedIds);
     if (removed > 0) {
         totalCount.value -= removed;
@@ -255,7 +255,7 @@ onUnmounted(() => window.removeEventListener('kraft:comment-deleted', onExternal
   >
     댓글 더 보기
   </button>
-  <!-- 같은 오류를 토스트(assertive)가 이미 낭독하므로 role="alert"를 또 두지 않는다(FE-34). -->
+  <!-- 같은 오류를 토스트(assertive)가 이미 낭독하므로 role="alert"를 또 두지 않는다. -->
   <p
     v-if="loadError"
     class="comments__load-error"

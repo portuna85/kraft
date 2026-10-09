@@ -67,7 +67,7 @@ public class SessionRevocationStore {
         taskRepository.findByIdAndOwnerTokenAndStatus(id, ownerToken, SessionRevocationTaskStatus.PROCESSING)
                 .ifPresentOrElse(task -> {
                     try {
-                        // 세션 principal 이름은 회원 id다(BE-04) — 회원 번호는 불변이라 탈퇴·재가입
+                        // 세션 principal 이름은 회원 id다 — 회원 번호는 불변이라 탈퇴·재가입
                         // 뒤에도 다른 계정의 세션을 잘못 지우지 않는다.
                         sessionRevoker.revokeAll(String.valueOf(task.getUser().getId()), task.getUser().getId());
                         task.markDone();
@@ -81,7 +81,7 @@ public class SessionRevocationStore {
     /**
      * 처리 도중 프로세스가 죽으면 그 태스크는 PROCESSING인 채로 남아 아무도 다시 집지 않는다.
      * 오래된 것은 PENDING으로 되돌리고 소유권 표시도 비운다. 대량 적체를 한 번에 전부
-     * 로딩하지 않고 배치로 나눠 처리한다(B11) — {@code OutboxMailStore.requeueStuck}과 같은
+     * 로딩하지 않고 배치로 나눠 처리한다 — {@code OutboxMailStore.requeueStuck}과 같은
      * 패턴이다.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)

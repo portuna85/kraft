@@ -186,7 +186,7 @@ class DhLotteryClientTest {
     }
 
     /**
-     * B04: 번호 필드는 nullable Integer다. null 필드가 있는 행 하나 때문에 fetchRound 전체가
+     * 번호 필드는 nullable Integer다. null 필드가 있는 행 하나 때문에 fetchRound 전체가
      * (예외를 던지지 않는다는 계약을 어기고) NPE로 죽지 않고, 그 행만 건너뛰어야 한다.
      */
     @Test

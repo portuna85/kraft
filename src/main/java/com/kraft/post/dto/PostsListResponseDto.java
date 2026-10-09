@@ -8,7 +8,7 @@ public record PostsListResponseDto(
         String title,
         String author,
         LocalDateTime createdAt,
-        // 하위 호환을 위해 필드 자체는 남기지만(A-BE-11), 화면은 이제 createdAt + modified를
+        // 하위 호환을 위해 필드 자체는 남기지만, 화면은 이제 createdAt + modified를
         // 쓴다. modifiedDate를 지우면 이 응답을 이미 캐시했거나 직접 보는 외부 소비자가
         // 있을 때 조용히 깨진다 — 필드를 더하는 쪽이 안전하다.
         LocalDateTime modifiedDate,

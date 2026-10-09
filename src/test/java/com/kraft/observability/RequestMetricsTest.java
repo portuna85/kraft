@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * O05: 평균·최댓값만으로는 소수의 느린 요청이 다수의 빠른 요청에 묻힌다. 고정 임계값을 넘는
+ * 평균·최댓값만으로는 소수의 느린 요청이 다수의 빠른 요청에 묻힌다. 고정 임계값을 넘는
  * 요청 수를 별도로 세는 카운터가 정확한지 확인한다.
  */
 class RequestMetricsTest {

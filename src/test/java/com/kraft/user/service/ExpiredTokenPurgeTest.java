@@ -61,7 +61,7 @@ class ExpiredTokenPurgeTest {
     }
 
     @Test
-    @DisplayName("F08: 만료된 링크로 인증을 시도하면 예외가 나도 토큰은 DB에서 사라진다")
+    @DisplayName("만료된 링크로 인증을 시도하면 예외가 나도 토큰은 DB에서 사라진다")
     void verify_withExpiredToken_actuallyRemovesItFromDatabase() {
         String token = saveToken(LocalDateTime.now().minusHours(1));
 
@@ -87,7 +87,7 @@ class ExpiredTokenPurgeTest {
     }
 
     @Test
-    @DisplayName("F08: 아무도 누르지 않아 방치된 만료 토큰은 정리 배치가 치운다")
+    @DisplayName("아무도 누르지 않아 방치된 만료 토큰은 정리 배치가 치운다")
     void purgeExpired_removesAbandonedExpiredTokens() {
         String expired = saveToken(LocalDateTime.now().minusDays(2));
         String valid = saveToken(LocalDateTime.now().plusHours(1));

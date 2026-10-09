@@ -7,7 +7,7 @@ async function createOwnPost(page, title, content) {
     await page.locator('#title').fill(title);
     await page.locator('#content').fill(content);
     await page.locator('#btn-save').click();
-    // 등록 후 목록이 아니라 방금 쓴 글로 바로 이동한다(전체 리뷰 2026-09-26 A-FE-02).
+    // 등록 후 목록이 아니라 방금 쓴 글로 바로 이동한다.
     await page.waitForURL(/\/posts\/update\/\d+$/);
 }
 

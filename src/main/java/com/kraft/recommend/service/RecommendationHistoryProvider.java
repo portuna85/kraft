@@ -33,9 +33,9 @@ public class RecommendationHistoryProvider {
     private volatile RecommendationHistorySnapshot cached;
 
     /**
-     * 준비되지 않은 이력이면 {@link RecommendationHistoryNotReadyException}을 던진다
-     * (HIST-03). 준비된 스냅샷 하나를 반환하며, 호출자는 생성이 끝난 뒤 반드시
-     * {@link #verifyUnchanged(RecommendationHistorySnapshot)}로 재확인해야 한다(HIST-04).
+     * 준비되지 않은 이력이면 {@link RecommendationHistoryNotReadyException}을 던진다.
+     * 준비된 스냅샷 하나를 반환하며, 호출자는 생성이 끝난 뒤 반드시
+     * {@link #verifyUnchanged(RecommendationHistorySnapshot)}로 재확인해야 한다.
      */
     @Transactional(readOnly = true)
     public RecommendationHistorySnapshot currentReadySnapshot() {
@@ -47,7 +47,7 @@ public class RecommendationHistoryProvider {
     }
 
     /**
-     * 샘플링 후 DB 버전을 다시 확인한다(HIST-04/HIST-05). 도중에 이력이 바뀌었으면(정정·삭제
+     * 샘플링 후 DB 버전을 다시 확인한다. 도중에 이력이 바뀌었으면(정정·삭제
      * 포함) 결과를 버리게 한다 — 호출자는 이미 만든 결과를 응답하지 않아야 한다.
      */
     @Transactional(readOnly = true)
@@ -59,7 +59,7 @@ public class RecommendationHistoryProvider {
     }
 
     /**
-     * 락 없이 버전만 먼저 비교한다(BE-10) — 캐시가 최신이면(대부분의 요청) 여기서 바로
+     * 락 없이 버전만 먼저 비교한다 — 캐시가 최신이면(대부분의 요청) 여기서 바로
      * 끝나므로, 동시 요청들이 {@link #refresh}의 {@code synchronized}에서 서로를 기다리며
      * 커넥션을 쥔 채 대기하지 않는다. 잠금은 실제로 다시 읽어야 할 때만 진입한다.
      */
