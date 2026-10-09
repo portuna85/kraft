@@ -3,11 +3,7 @@ package com.kraft.recommend.domain;
 import java.time.Instant;
 import java.util.Set;
 
-/**
- * 특정 시점에 읽은 당첨 이력의 불변 스냅샷. {@code RecommendationHistoryProvider}가
- * {@code volatile} 참조로 통째로 교체한다(01문서 6절). 하나의 요청은 반드시 같은 스냅샷
- * 참조만 사용해야 한다.
- */
+/** 특정 시점에 읽은 당첨 이력의 불변 스냅샷. {@code RecommendationHistoryProvider}가 {@code volatile} 참조로 통째로 교체하며, 한 요청은 반드시 같은 스냅샷만 써야 한다. */
 public record RecommendationHistorySnapshot(
         Set<Long> winningMasks,
         int roundCount,
@@ -17,22 +13,12 @@ public record RecommendationHistorySnapshot(
         Instant loadedAt
 ) {
 
-    /**
-     * {@code winningMasks}를 항상 불변 집합으로 저장한다. 이 스냅샷은
-     * {@code RecommendationHistoryProvider}가 {@code volatile} 참조로 여러 요청에 공유하므로,
-     * 호출부가 돌려받은 집합을 바꾸면 다른 요청까지 영향을 받을 수 있다 — 실제로 그런 변조가
-     * 확인된 것은 아니고, 경계에서 방어적으로 막아 둔다.
-     */
+    /** {@code winningMasks}는 여러 요청이 공유하므로 경계에서 방어적으로 불변 집합으로 저장한다. */
     public RecommendationHistorySnapshot {
         winningMasks = Set.copyOf(winningMasks);
     }
 
-    /**
-     * 1회부터 검증 기준 회차까지 누락 없이 이어져야 하고, 이력이 비어 있지
-     * 않아야 한다. round_count는 DB에 실제로 존재하는 회차 수이며, verifiedThroughRound와
-     * 일치해야 "누락 없음"을 뜻한다(연속성은 Importer가 반영 시점에 보장하고, 여기서는 그
-     * 결과인 카운트 일치로 재확인한다).
-     */
+    /** 1회부터 검증 기준 회차까지 누락 없이 이어지고 비어 있지 않은지 — round_count(실제 회차 수)가 verifiedThroughRound와 일치하면 "누락 없음"이다(연속성은 Importer가 반영 시점에 보장). */
     public boolean isReady() {
         return roundCount > 0
                 && verifiedThroughRound > 0

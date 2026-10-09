@@ -17,13 +17,9 @@ import javax.sql.DataSource;
 import java.time.Duration;
 
 /**
- * 관측 구성요소를 한곳에서 조립한다.
- * <p>
- * 이들을 {@code @Component}로 두지 않는 이유는 <b>슬라이스 테스트</b> 때문이다.
- * {@code @WebMvcTest}는 컨트롤러와 함께 {@code Filter} 빈을 끌어오지만 일반 컴포넌트는
- * 가져오지 않는다. 필터만 @Component였을 때 {@code RequestMetrics}를 찾지 못해 웹 슬라이스
- * 테스트 60여 개가 컨텍스트 로딩 단계에서 전부 깨졌다. {@code @Configuration}은 슬라이스에서
- * 통째로 제외되므로, 여기 모아 두면 관측 장치가 웹 슬라이스에 끼어들지 않는다.
+ * 관측 구성요소를 한곳에서 조립한다. {@code @Component} 대신 {@code @Configuration}에 모으는 이유는 슬라이스 테스트다 —
+ * {@code @WebMvcTest}는 {@code Filter} 빈만 끌어오고 일반 컴포넌트는 가져오지 않아, 필터만 컴포넌트였을 때
+ * {@code RequestMetrics}를 못 찾아 웹 슬라이스 테스트 60여 개가 깨졌다. {@code @Configuration}은 슬라이스에서 제외된다.
  */
 @Configuration
 @EnableConfigurationProperties(MetricsProperties.class)
@@ -35,12 +31,8 @@ public class ObservabilityConfig {
     }
 
     /**
-     * 보안 필터 체인(order -100)보다 <b>앞</b>에 둔다. 뒤에 두면 인증 실패·CSRF 거부처럼 필터
-     * 단계에서 끝나는 응답이 통계에 잡히지 않는다 — 세션이 통째로 깨져 403이 쏟아지는 상황이
-     * 바로 알아야 할 상황인데, 그때 오히려 지표가 조용해진다.
-     * <p>
-     * {@link RequestIdFilter}보다는 하나 뒤 순서다 — 그래야 이 필터를 포함해 이 요청이
-     * 지나가는 모든 로거가 상관관계 id를 이미 MDC에서 볼 수 있다.
+     * 보안 필터 체인(order -100)보다 앞에 둔다(인증 실패·CSRF 거부 응답도 통계에 잡히게). {@link RequestIdFilter}보다
+     * 하나 뒤라야 이 필터를 포함한 모든 로거가 상관관계 id를 MDC에서 본다.
      */
     @Bean
     public FilterRegistrationBean<RequestMetricsFilter> requestMetricsFilter(
@@ -52,10 +44,7 @@ public class ObservabilityConfig {
         return registration;
     }
 
-    /**
-     * 요청마다 상관관계 id를 MDC에 심는다({@link RequestIdFilter}). 다른 모든 필터·
-     * 로거보다 먼저 실행되어야 하므로 가장 이른 순서를 그대로 쓴다.
-     */
+    /** 요청마다 상관관계 id를 MDC에 심는다({@link RequestIdFilter}). 다른 필터·로거보다 먼저여야 해 가장 이른 순서다. */
     @Bean
     public FilterRegistrationBean<RequestIdFilter> requestIdFilter() {
         FilterRegistrationBean<RequestIdFilter> registration =
@@ -81,10 +70,7 @@ public class ObservabilityConfig {
                 dataSource, uploadDir, alertMailer, properties, recommendEnabled, recommendationFetchStatus);
     }
 
-    /**
-     * {@code app.metrics.alert-email}이 비어 있으면(기본값, 로컬 등) {@link AlertMailer#disabled()}와
-     * 동등하게 동작한다 — 관리자 주소를 설정하지 않은 환경에서 별도 분기 없이 조용히 꺼진다.
-     */
+    /** {@code app.metrics.alert-email}이 비어 있으면 {@link AlertMailer#disabled()}와 같이 조용히 꺼진다. */
     @Bean
     public AlertMailer alertMailer(EmailSender emailSender,
                                    @Value("${app.metrics.alert-email:}") String alertEmail,

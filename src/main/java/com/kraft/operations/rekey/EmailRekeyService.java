@@ -13,30 +13,15 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 저장된 모든 이메일을 옛 키에서 새 키로 다시 암호화한다.
- *
- * <h3>왜 필요한가</h3>
- * 키가 유출되면 바꿔야 한다. 그런데 {@code users.email}은 키로 암호화되어 있고 조회에 쓰는
- * {@code email_hmac}은 이메일 암호화 키가 아니라 별도 pepper로 만든다. 그래서 키만 갈아 끼우면 <b>로그인은 계속 되는데
- * 저장된 이메일만 전부 읽을 수 없는</b> 상태가 되고, 그 사실은 한참 뒤에야 드러난다.
- *
- * <h3>왜 엔티티가 아니라 {@link JdbcTemplate}인가</h3>
- * 컨텍스트의 {@code EmailAttributeConverter}는 <b>새 키</b>로 만들어진다. 엔티티로 읽는 순간
- * 아직 변환되지 않은 행에서 복호화 예외가 난다. 이 도구는 암호문을 <b>문자열 그대로</b> 읽고 써야 한다.
- *
- * <h3>한 행을 처리하는 절차</h3>
- * <ol>
- * <li>새 키로 복호화해 본다 — 되면 이미 변환된 행이므로 건너뛴다(<b>재실행 안전</b>)</li>
- * <li>옛 키로 복호화한다 — 실패하면 그 id를 알리고 <b>멈춘다</b></li>
- * <li>평문의 HMAC이 그 행의 {@code email_hmac}와 같은지 확인한다</li>
- * <li>새 키로 암호화해 UPDATE 한다</li>
- * </ol>
- * 3번이 이 도구의 핵심이다. {@code email_hmac}은 키와 무관해 교체 전후로 변하지 않는 불변값이라,
- * 이것과 대조하면 "평문이 온전히 살아남았는가"를 <b>주소를 한 번도 꺼내 보지 않고</b> 증명할 수 있다.
+ * 저장된 모든 이메일을 옛 키에서 새 키로 다시 암호화한다. 키만 갈아 끼우면 로그인은 되는데 저장된 이메일을
+ * 읽을 수 없게 된다({@code email_hmac}는 별도 pepper로 만들어 키와 무관하다).
  * <p>
- * 행마다 즉시 커밋한다(오토커밋). 전체를 한 트랜잭션으로 묶는 것보다 중단에 강하다 — 중간에
- * 프로세스가 죽어도 1번 덕분에 다시 돌리면 남은 것만 처리한다. 키 교체 도중 중단은 <b>일어날
- * 일</b>이라고 보고 설계했다.
+ * 엔티티가 아니라 {@link JdbcTemplate}을 쓴다 — 컨텍스트의 {@code EmailAttributeConverter}는 새 키로 만들어져,
+ * 아직 변환되지 않은 행을 엔티티로 읽으면 복호화 예외가 난다. 암호문을 문자열 그대로 읽고 쓴다.
+ * <p>
+ * 한 행: ① 새 키로 복호화되면 이미 변환된 행이라 건너뛴다(재실행 안전) ② 옛 키로 복호화(실패하면 id를 알리고
+ * 멈춘다) ③ 평문의 HMAC을 {@code email_hmac}와 대조(주소를 꺼내 보지 않고 온전함을 증명) ④ 새 키로 UPDATE.
+ * 행마다 즉시 커밋하므로 중간에 죽어도 다시 돌리면 남은 것만 처리한다.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -88,10 +73,7 @@ public class EmailRekeyService {
         return new Result(converted, alreadyDone);
     }
 
-    /**
-     * 두 키가 같으면 전 계정을 같은 키로 다시 쓰는 무의미한 작업이 된다. 옛 키 환경변수를
-     * 깜빡하고 실행했을 때 조용히 "성공"으로 끝나는 것이 가장 나쁜 결과라, 아무것도 하지 않고 막는다.
-     */
+    /** 두 키가 같으면 무의미한 재작성이다 — 옛 키 환경변수를 빠뜨렸을 때 조용히 "성공"하지 않게 막는다. */
     private static void requireUsableKeys(String oldKey, String newKey) {
         if (!StringUtils.hasText(oldKey) || !StringUtils.hasText(newKey)) {
             throw new IllegalArgumentException("옛 키와 새 키를 모두 지정해야 합니다.");
@@ -111,8 +93,7 @@ public class EmailRekeyService {
     private boolean rekeyRow(long id, String cipher, String emailHmac, TextEncryptor from, TextEncryptor to) {
         String alreadyNew = decryptOrNull(to, cipher);
         if (alreadyNew != null) {
-            // 이미 새 키로 읽히는 행도 email_hmac와 대조한다 — 그렇지 않으면 우연히 새 키로도
-            // "복호화만" 성공하고 내용은 다른 행(예: 수동 복구 과정의 실수)을 조용히 건너뛰게 된다.
+            // 이미 새 키로 읽히는 행도 email_hmac와 대조한다(복호화만 우연히 성공한 다른 내용을 건너뛰지 않게).
             if (!EmailHasher.hmacHex(alreadyNew).equals(emailHmac)) {
                 throw new IllegalStateException(
                         "이미 새 키로 읽히지만 email_hmac와 일치하지 않는 행이 있습니다. userId=" + id);
@@ -122,7 +103,7 @@ public class EmailRekeyService {
 
         String plain = decryptOrNull(from, cipher);
         if (plain == null) {
-            // 여기서 멈추지 않으면 나머지를 조용히 덮어써 원인을 영영 알 수 없게 된다.
+            // 멈추지 않으면 나머지를 덮어써 원인을 알 수 없게 된다.
             throw new IllegalStateException(
                     "어느 키로도 복호화되지 않는 행이 있습니다. 옛 키가 맞는지 확인하세요. userId=" + id);
         }
@@ -136,11 +117,9 @@ public class EmailRekeyService {
     }
 
     /**
-     * {@link #rekeyAll}이 끝난 뒤 전체 행을 새 키로 다시 훑어 검증한다. rekeyAll 안의 대조는
-     * "이번에 건드린 행"만 보증하므로, 실행 도중 다른 경로(수동 SQL 등)로 email이 바뀌었거나
-     * 새 키로도 우연히 복호화는 되지만 내용이 어긋나는 행이 있는지는 별도로 확인해야 한다.
+     * {@link #rekeyAll} 뒤 전체 행을 새 키로 다시 훑어 검증한다(rekeyAll의 대조는 이번에 건드린 행만 보증한다).
      *
-     * @param newKey rekeyAll에서 쓴 것과 같은 새 키
+     * @param newKey rekeyAll에서 쓴 새 키
      */
     public VerifyResult verifyAll(String newKey) {
         TextEncryptor to = EmailEncryption.encryptor(newKey);

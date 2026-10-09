@@ -4,19 +4,10 @@ import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 
 /**
- * 업로드된 이미지에서 위치·기기 정보가 담길 수 있는 메타데이터를 재인코딩 없이 제거한다.
- * 휴대폰 JPEG의 EXIF에는 GPS 좌표·기기 모델·촬영 시각이
- * 들어 있는데, 예전에는 검증만 하고 원본 바이트를 그대로 저장·공개해 누구나 다운로드해
- * 확인할 수 있었다.
- * <p>
- * 세그먼트·청크만 걸러내고 픽셀 데이터는 건드리지 않는다 — 재인코딩하면 화질이 떨어지고
- * {@link WebpStructure}처럼 이미 이 저장소가 컨테이너 구조를 직접 읽는 방식과도 맞지 않는다.
- * 다만 JPEG의 EXIF Orientation 태그가 통째로 사라지면 세로로 찍은 사진이 눕혀 보이므로,
- * 그 값만 남긴 최소 EXIF 블록을 다시 만든다.
- * <p>
- * 파싱 중 무엇이든 예상과 다르면(형식이 이상하거나 손상된 경우) 원본을 그대로 돌려준다 —
- * 이 클래스가 하는 일은 부가적인 방어이지, {@code PostImageService.validate()}가 이미 확인한
- * "실제 이미지인가"를 다시 판정하는 것이 아니다. 실패해도 업로드 자체를 막을 이유는 없다.
+ * 업로드 이미지에서 위치·기기 정보(EXIF의 GPS·기기 모델·촬영 시각 등)를 재인코딩 없이 제거한다. 세그먼트·청크만
+ * 걸러 픽셀은 건드리지 않는다. JPEG은 Orientation 태그만 남긴 최소 EXIF를 다시 만든다(없애면 세로 사진이
+ * 눕는다). 파싱 중 예상과 다르면 원본을 그대로 돌려준다 — 부가 방어일 뿐 유효성 판정은
+ * {@code PostImageService.validate()}의 몫이다.
  */
 final class ImageMetadataStripper {
 
@@ -45,11 +36,7 @@ final class ImageMetadataStripper {
     private static final int MARKER_APP1 = 0xE1;
     private static final int MARKER_APP13 = 0xED;
 
-    /**
-     * SOI 뒤 세그먼트를 하나씩 읽다가 SOS(스캔 시작)를 만나면 그 뒤 전부(엔트로피 코딩된
-     * 픽셀 데이터 + EOI)를 그대로 복사하고 멈춘다 — 그 구간은 파싱할 필요도, 메타데이터가
-     * 들어갈 자리도 없다. APP1(대개 EXIF, 가끔 XMP)과 APP13(Photoshop IRB/IPTC)만 없앤다.
-     */
+    /** SOS(스캔 시작)를 만나면 그 뒤(픽셀 데이터)를 그대로 복사하고 멈춘다. APP1(EXIF·XMP)과 APP13(IPTC)만 뺀다. */
     private static byte[] stripJpeg(byte[] data) {
         if (data.length < 4 || (data[0] & 0xFF) != 0xFF || (data[1] & 0xFF) != MARKER_SOI) {
             return data;
@@ -61,7 +48,7 @@ final class ImageMetadataStripper {
 
         while (pos + 4 <= data.length) {
             if ((data[pos] & 0xFF) != 0xFF) {
-                // 마커가 아닌 곳에 도달했다 — 구조를 신뢰할 수 없으니 손대지 않는다.
+                // 구조를 신뢰할 수 없으니 손대지 않는다.
                 return data;
             }
             int marker = data[pos + 1] & 0xFF;
@@ -86,15 +73,11 @@ final class ImageMetadataStripper {
             }
             pos = segmentEnd;
         }
-        // SOS를 못 찾고 파일이 끝났다 — 잘렸거나 예상과 다른 구조이니 원본을 그대로 쓴다.
+        // SOS 없이 끝났다 — 원본을 그대로 쓴다.
         return data;
     }
 
-    /**
-     * APP1 페이로드가 EXIF(TIFF)이고 Orientation(태그 0x0112)이 기본값(1)이 아니면, 그 값
-     * 하나만 담은 최소 APP1 세그먼트를 새로 만든다. 그 외에는(XMP APP1, Orientation 없음·
-     * 기본값) 완전히 없애도 되므로 {@code null}을 돌려준다.
-     */
+    /** EXIF의 Orientation(0x0112)이 기본값(1)이 아니면 그 값만 담은 최소 APP1을 만든다. 그 외에는 null(통째로 뺀다). */
     private static byte[] orientationOnlyApp1(byte[] data, int payloadStart, int payloadEnd) {
         int tiffStart = payloadStart + 6;
         if (payloadEnd - payloadStart < 8
@@ -201,12 +184,7 @@ final class ImageMetadataStripper {
     private static final byte[] PNG_SIGNATURE =
             { (byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n' };
 
-    /**
-     * 청크를 하나씩 훑어 메타데이터 청크만 뺀다({@link #PNG_METADATA_CHUNKS}). {@code iTXt}는
-     * XMP(작성 도구·편집 이력)를, {@code zTXt}는 압축된 텍스트를 담을 수 있어 {@code tEXt}와
-     * 같이 뺀다. 남기는 청크는 CRC까지 그대로 복사하므로(내용을 바꾸지 않았다) 다시 계산할
-     * 필요가 없다. 색 재현에 필요한 {@code iCCP} 등은 남긴다.
-     */
+    /** 메타데이터 청크({@link #PNG_METADATA_CHUNKS})만 뺀다. 남기는 청크는 CRC까지 그대로 복사하고, 색 재현용 {@code iCCP} 등은 남긴다. */
     private static byte[] stripPng(byte[] data) {
         if (data.length < PNG_SIGNATURE.length || !startsWith(data, PNG_SIGNATURE)) {
             return data;
@@ -242,10 +220,7 @@ final class ImageMetadataStripper {
 
     // ── WEBP ────────────────────────────────────────────────────────────────
 
-    /**
-     * RIFF 청크 중 {@code EXIF}·{@code XMP }(뒤에 공백 포함, 4글자)만 빼고, 전체 크기가
-     * 바뀌었으니 RIFF 헤더의 크기 필드를 다시 쓴다.
-     */
+    /** RIFF의 {@code EXIF}·{@code XMP }(공백 포함 4글자) 청크를 빼고 RIFF 크기 필드를 다시 쓴다. */
     private static byte[] stripWebp(byte[] data) {
         if (data.length < 12 || !"RIFF".equals(new String(data, 0, 4, StandardCharsets.US_ASCII))
                 || !"WEBP".equals(new String(data, 8, 4, StandardCharsets.US_ASCII))) {
@@ -282,10 +257,8 @@ final class ImageMetadataStripper {
     // ── GIF ─────────────────────────────────────────────────────────────────
 
     /**
-     * GIF 블록을 훑어 Comment Extension(0x21 0xFE)과, 반복 횟수·애니메이션 버퍼가 아닌
-     * Application Extension(0x21 0xFF — XMP 등 임의 데이터를 담을 수 있다)을 뺀다.
-     * 이미지·Graphic Control(프레임 지연)·Plain Text 블록과 {@code NETSCAPE2.0}/{@code ANIMEXTS1.0}
-     * 확장은 그대로 복사하므로 애니메이션은 유지된다. 구조가 예상과 다르면 원본을 돌려준다.
+     * Comment Extension(0x21 0xFE)과 애니메이션용이 아닌 Application Extension(0x21 0xFF — XMP 등)을 뺀다.
+     * {@code NETSCAPE2.0}/{@code ANIMEXTS1.0}은 남겨 애니메이션을 유지한다. 구조가 예상과 다르면 원본을 돌려준다.
      */
     private static byte[] stripGif(byte[] data) {
         if (data.length < 13 || data[0] != 'G' || data[1] != 'I' || data[2] != 'F') {
@@ -339,7 +312,7 @@ final class ImageMetadataStripper {
                 return data;
             }
         }
-        // Trailer 없이 끝났다 — 잘린 파일이니 손대지 않는다.
+        // Trailer 없이 끝난 잘린 파일은 손대지 않는다.
         return data;
     }
 

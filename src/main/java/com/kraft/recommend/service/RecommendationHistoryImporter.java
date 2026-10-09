@@ -19,13 +19,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 검증된 당첨 이력을 운영 절차로 반영하는 내부 경계(02문서 3절). 공개 REST 엔드포인트나
- * 관리자 화면은 없다 — {@code com.kraft.operations.recommendimport.RecommendationImportRunner}
- * 같은 일회성 도구에서만 호출한다.
- * <p>
- * 원자료(어디서 구했는지는 호출자 책임)를 받아 전부 검증한 뒤에만 DB에 쓴다. 검증을 쓰기보다
- * 먼저 전부 끝내므로, 검증 실패 시나리오는 트랜잭션 롤백에 기대지 않고도 "아무것도 쓰지
- * 않음"을 보장한다(부분 반영 금지).
+ * 검증된 당첨 이력을 운영 절차로 반영하는 내부 경계. 공개 엔드포인트나 관리자 화면은 없고, 일회성 도구
+ * ({@code com.kraft.operations.recommendimport.RecommendationImportRunner})와 자동 수집만 부른다. 전부 검증한 뒤에만 쓰므로
+ * 검증 실패 시 트랜잭션 롤백에 기대지 않고도 아무것도 쓰지 않는다(부분 반영 금지).
  */
 @Service
 @RequiredArgsConstructor
@@ -46,16 +42,14 @@ public class RecommendationHistoryImporter {
         LocalDateTime now = LocalDateTime.now();
         int inserted = 0;
         int updated = 0;
-        // 회차마다 findById를 부르면 전체 백필(약 1,200회차)에서 쿼리가 그만큼 나간다 —
-        // 한 번에 읽어 둔다. 관리되는 인스턴스라 아래 변경 감지는 그대로 동작한다.
+        // 회차마다 findById를 부르면 전체 백필(약 1,200회차)에서 쿼리가 그만큼 나가므로 한 번에 읽어 둔다.
         Map<Integer, WinningDraw> existingByRound = new HashMap<>();
         winningDrawRepository.findAllById(validated.stream().map(ValidatedDraw::roundNo).toList())
                 .forEach(draw -> existingByRound.put(draw.getRoundNo(), draw));
         for (ValidatedDraw draw : validated) {
             WinningDraw existing = existingByRound.get(draw.roundNo());
             if (existing != null) {
-                // 관리되는 인스턴스를 직접 바꾼다 — 새 인스턴스로 save()(merge)하면 변경이
-                // 조용히 유실될 수 있다(WinningDraw.replaceNumbers 주석 참고).
+                // 관리되는 인스턴스를 직접 바꾼다(새 인스턴스를 save(merge)하면 변경이 유실될 수 있다 — WinningDraw.replaceNumbers).
                 existing.replaceNumbers(draw.numbers(), now);
                 existing.applyDetails(draw.details());
                 updated++;
@@ -71,10 +65,7 @@ public class RecommendationHistoryImporter {
             }
         }
 
-        // 이 UPDATE는 검증 구간을 뒤로 되돌리는 값이면 0행을 갱신한다 — 더 앞서 나간
-        // 다른 수입(예: 늦게 끝난 백필보다 먼저 완료된 자동 수집)의 검증 구간을 조용히
-        // 되돌리지 않는다. 여기서 멈추지 않으면 draws는 이미 반영됐는데 검증 구간만 뒤로
-        // 밀린 채 아무 일도 없었던 것처럼 보고될 수 있다.
+        // 검증 구간을 뒤로 되돌리는 값이면 0행이 갱신된다 — 더 앞서 나간 다른 수입(예: 먼저 끝난 자동 수집)의 구간을 되돌리지 않는다.
         int metadataUpdated = stateRepository.updateVerificationMetadata(verifiedThroughRound, sourceReference, now);
         if (metadataUpdated == 0) {
             throw new RecommendationImportException("VERIFICATION_REGRESSION",
@@ -87,11 +78,7 @@ public class RecommendationHistoryImporter {
         return new Result(inserted, updated, verifiedThroughRound);
     }
 
-    /**
-     * {@link #importHistory}와 같은 형식·중복·범위·연속성 검증을 수행하지만 아무것도 쓰지
-     * 않는다. 운영자가 실제 반영 전에 CSV를 미리 확인할 수 있게 한다(운영 절차 문서 참고).
-     * 검증 실패 시 {@link #importHistory}와 동일한 {@link RecommendationImportException}을 던진다.
-     */
+    /** {@link #importHistory}와 같은 검증을 하되 아무것도 쓰지 않는다(운영자가 반영 전에 CSV를 미리 확인). 실패하면 같은 예외를 던진다. */
     @Transactional(readOnly = true)
     public DryRunResult dryRunValidate(List<ImportedDraw> draws, int verifiedThroughRound) {
         List<ValidatedDraw> validated = validate(draws, verifiedThroughRound);
@@ -136,8 +123,7 @@ public class RecommendationHistoryImporter {
             validated.add(new ValidatedDraw(draw.roundNo(), numbers.numbers(), draw.details()));
         }
 
-        // 회차마다 existsById를 부르는 대신 구간 전체를 한 번에 조회한다 — 왕복 수가
-        // verifiedThroughRound에 비례해 늘어나지 않는다.
+        // 구간 전체를 한 번에 조회한다(왕복 수가 verifiedThroughRound에 비례하지 않게).
         Set<Integer> existingRounds = new HashSet<>(winningDrawRepository.findRoundNosBetween(1, verifiedThroughRound));
         for (int round = 1; round <= verifiedThroughRound; round++) {
             boolean inInput = seenRounds.contains(round);

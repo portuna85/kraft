@@ -21,16 +21,9 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 /**
- * B02의 최후 수단. 업로드 디렉터리의 파일과 {@code post_images} 대장을 대조해, 대장에 없는
- * 파일만 지운다.
- * <p>
- * {@code PostService.uploadImage}는 파일을 저장한 뒤 대장에 등록하고, 등록이 메서드 안에서
- * 실패하면 곧바로 보상 삭제하며, 반환 이후 바깥 트랜잭션의 최종 커밋이 실패하면
- * {@code OnRollback}이 보상 삭제를 시도한다. 그래도 커밋 직후 프로세스가 종료되는 등 두
- * 장치 모두 놓치는 경우가 있을 수 있어, 이 주기 작업이 디스크를 직접 훑어 마지막으로 대조한다.
- * <p>
- * 업로드가 진행 중인 파일을 지우지 않도록, 생성된 지 유예시간이 지난 파일만 대상으로 한다 —
- * 파일 저장과 대장 등록 사이의 정상적인 짧은 간극까지 정리 대상으로 삼으면 안 된다.
+ * 업로드 디렉터리의 파일과 {@code post_images} 대장을 대조해 대장에 없는 파일만 지우는 최후 수단. {@code PostService.uploadImage}의
+ * 보상 삭제와 {@code OnRollback}이 놓치는 경우(커밋 직후 프로세스 종료 등)를 디스크를 직접 훑어 잡는다. 업로드 진행 중인
+ * 파일을 지우지 않도록 유예시간이 지난 파일만 대상으로 한다.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -51,23 +44,14 @@ public class OrphanFileReconciler {
     private boolean enabled;
 
     /**
-     * 한 주기가 볼 파일 수의 상한. 예전에는 유예시간을 지난 후보 전체를
-     * {@code Stream.toList()}로 한 번에 메모리에 모은 뒤 청크로 나눠 처리했다 — 디렉터리에
-     * 파일이 아주 많이 쌓이면(예: 정리가 한동안 막혀 있던 경우) 그 목록 자체가 heap을 크게
-     * 잡아먹는다. 이제는 스트림을 지연 반복자(iterator)로 훑으며 500개씩 처리하고, 이 상한에
-     * 닿으면 남은 파일은 다음 주기로 미룬다({@link #skipOffset}이 그 "이어서 볼 지점"이다).
+     * 한 주기가 볼 파일 수의 상한. 후보를 지연 반복자로 훑으며 500개씩 처리하고, 상한에 닿으면 남은 파일은 다음 주기로
+     * 미룬다({@link #skipOffset}). 필드 기본값도 둔다 — Spring 없이 생성자로 만드는 테스트에서는 {@code @Value}가
+     * 주입되지 않아 0이 되면 하나도 못 본다.
      */
-    // 필드 기본값도 함께 둔다 — 테스트는 OrphanFileReconcilerTest처럼 Spring 없이
-    // 생성자로 직접 만들어 @Value가 주입되지 않는다. 기본값이 없으면 int 기본값 0이 남아
-    // "이번 주기에 하나도 못 본다"는 뜻이 되어 기존 테스트가 전부 깨진다.
     @Value("${app.upload.reconcile-max-files-per-run:50000}")
     private int maxFilesPerRun = 50_000;
 
-    /**
-     * "이어서 볼 지점" — 지난 주기가 상한에 걸려 끝까지 못 봤으면, 이번 주기는 그
-     * 뒤부터 이어서 본다. 단일 인스턴스 필드라 재시작하면 0으로 돌아가지만(끝에서부터 다시
-     * 도는 것뿐), 그 정도는 이 정리 작업의 최후 수단 성격에 비춰 괜찮다.
-     */
+    /** 지난 주기가 상한에 걸려 끝까지 못 봤으면 이번에는 그 뒤부터 이어 본다. 재시작하면 0으로 돌아가지만 최후 수단 작업에는 괜찮다. */
     private volatile long skipOffset = 0;
 
     @Scheduled(initialDelayString = "${app.upload.reconcile-initial-delay-ms:1800000}",
@@ -111,12 +95,8 @@ public class OrphanFileReconciler {
         }
         deleted += deleteUnknown(chunk);
 
-        // 이번 주기가 상한에 걸려 끝까지 못 봤으면(reachedEnd=false), 다음 주기는 이번에 본
-        // 구간 바로 뒤부터 이어서 본다 — 그렇지 않으면 앞쪽이 전부 대장에 등록된
-        // 정상 파일일 때, 그 뒤에 있는 진짜 고아 파일에 영원히 도달하지 못한다(알려진 파일은
-        // 지워지지 않아 다음 주기에도 같은 앞부분이 그대로 반복된다). 끝까지 다 봤으면
-        // 다음 주기는 처음부터 다시 — 오래된 파일이 그 사이 지워져 순서가 달라졌을 수 있고,
-        // 앞쪽도 주기적으로 다시 대조해야 한다.
+        // 상한에 걸려 끝까지 못 봤으면 다음 주기는 이어서 본다(앞쪽이 전부 정상 파일이면 뒤의 고아에 영원히 못 닿는다).
+        // 끝까지 봤으면 처음부터 다시 돈다(앞쪽도 주기적으로 대조해야 한다).
         skipOffset = reachedEnd ? 0 : skipOffset + scanned;
 
         log.info("업로드 디렉터리 대조를 마쳤습니다. scanned={}, deleted={}, maxFilesPerRun={}, nextSkipOffset={}",

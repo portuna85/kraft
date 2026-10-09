@@ -24,7 +24,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Controller
 public class UserPageController {
 
-    /** 상태가 없는 객체라 요청마다 새로 만들 이유가 없다. SecurityConfig가 따로 등록한 빈은 없다. */
+    /** 상태 없는 객체라 재사용한다. */
     private static final HttpSessionSecurityContextRepository SESSION_CONTEXT_REPOSITORY =
             new HttpSessionSecurityContextRepository();
 
@@ -51,13 +51,8 @@ public class UserPageController {
     }
 
     /**
-     * 메일의 링크가 여는 화면. 토큰은 여기서 검사하지 않는다 — 화면을 그리는 것만으로 토큰을
-     * 쓴 셈이 되면 안 되고(메일 미리보기·링크 검사기가 대신 눌러 버린다), 판정은 새 비밀번호와
-     * 함께 오는 저장 요청에서 한 번만 한다.
-     * <p>
-     * 토큰은 쿼리 문자열이 아니라 URL 프래그먼트(#token=...)로 온다 — 브라우저가
-     * 프래그먼트를 서버로 보내지 않으므로 이 메서드는 토큰 값을 아예 받지 않는다. 화면
-     * (Vue의 password-reset/mount.js)이 {@code location.hash}에서 직접 읽는다.
+     * 메일의 링크가 여는 화면. 토큰은 검사하지 않는다 — 그리는 것만으로 소비되면 메일 미리보기·링크 검사기가 대신
+     * 써 버린다. 토큰은 URL 프래그먼트라 서버로 오지 않으며, 화면(password-reset/mount.js)이 {@code location.hash}에서 읽는다.
      */
     @GetMapping("/users/password-reset")
     public String passwordReset(Model model) {
@@ -66,14 +61,9 @@ public class UserPageController {
     }
 
     /**
-     * 메일의 인증 링크가 여는 화면. 여기서는 토큰을 소비하지 않는다 — 화면을 그리는 것만으로
-     * 인증이 끝나 버리면, 사용자보다 먼저 링크를 여는 메일 보안 스캐너·미리보기가 토큰을 대신
-     * 써 버린다. "이메일 인증 완료하기" 버튼을 누른 사용자의
-     * 명시적 POST에서만 실제로 소비한다.
-     * <p>
-     * 새 메일의 토큰은 URL 프래그먼트(#token=...)로 와서 서버는 볼 수 없다 — 화면의
-     * {@code verify-confirm.js}가 location.hash에서 읽어 폼에 채운다. 쿼리 문자열은
-     * 이 변경 전에 발송된 메일의 옛 링크(24시간 유효)를 위한 하위 호환이다.
+     * 메일의 인증 링크가 여는 화면. 토큰을 소비하지 않는다 — 그리는 것만으로 인증되면 메일 보안 스캐너가 대신 써
+     * 버린다. 사용자가 버튼을 눌러 보내는 POST에서만 소비한다. 새 메일의 토큰은 프래그먼트라 화면
+     * ({@code verify-confirm.js})이 읽어 폼에 채우고, 쿼리 문자열은 옛 메일 링크(24시간 유효)를 위한 하위 호환이다.
      */
     @GetMapping("/users/verify")
     public String verifyEmailConfirm(@RequestParam(required = false) String token, Model model) {
@@ -82,11 +72,7 @@ public class UserPageController {
         return "user/verify-confirm";
     }
 
-    /**
-     * 확인 화면의 버튼이 제출하는 실제 인증 요청. 결과를 flash attribute로 실어
-     * {@code GET /users/verify/result}로 리다이렉트한다(PRG) — 그래야 인증 직후 새로고침해도
-     * "이미 사용된 링크"로 다시 제출되지 않는다.
-     */
+    /** 인증 요청. 결과를 flash attribute로 실어 결과 화면으로 리다이렉트한다(PRG) — 새로고침해도 다시 제출되지 않는다. */
     @PostMapping("/users/verify")
     public String verifyEmailSubmit(@RequestParam String token, Authentication authentication,
                                      HttpServletRequest request, HttpServletResponse response,
@@ -104,7 +90,7 @@ public class UserPageController {
 
     @GetMapping("/users/verify/result")
     public String verifyEmailResult(Model model) {
-        // flash attribute 없이 직접 들어온 경우(북마크·새로고침) — 판정할 근거가 없다.
+        // flash 없이 직접 들어온 경우(북마크·새로고침)는 판정할 근거가 없다.
         if (!model.containsAttribute("success")) {
             model.addAttribute("success", false);
             model.addAttribute("message", "인증 처리 결과를 확인할 수 없습니다. 인증 메일의 링크를 다시 열어 주세요.");
@@ -114,11 +100,8 @@ public class UserPageController {
     }
 
     /**
-     * 인증 성공이 지금 이 요청의 세션 권한에도 곧바로 반영되게 한다 — 그러지 않으면 로그인한 GUEST가 이 화면에서 인증을 마쳐도 "인증 메일
-     * 재발송" 같은 GUEST 전용 메뉴가 로그아웃 전까지 계속 보인다.
-     * <p>
-     * 지금 세션이 방금 승격된 바로 그 계정일 때만 갱신한다 — 다른 기기·다른 계정의 세션은
-     * 건드리지 않고, 다음 로그인 때 자연히 반영된다(현행 유지).
+     * 인증 성공을 지금 요청의 세션 권한에도 곧바로 반영한다(아니면 GUEST 전용 메뉴가 로그아웃 전까지 남는다).
+     * 세션이 방금 승격된 바로 그 계정일 때만 갱신하고, 다른 기기·계정은 다음 로그인 때 반영된다.
      */
     private void refreshSessionAuthoritiesIfSameAccount(Authentication authentication, Long verifiedUserId,
                                                          HttpServletRequest request, HttpServletResponse response) {
@@ -127,9 +110,7 @@ public class UserPageController {
             return;
         }
         UserDetails refreshed = userDetailsService.loadUserById(verifiedUserId);
-        // 일반 로그인은 AuthenticationManager가 인증 뒤 credentials를 지우지만 이 경로는 그 단계를
-        // 거치지 않는다 — 지우지 않으면 DB에서 다시 읽은 BCrypt 해시가 principal 그대로 JDBC
-        // 세션 테이블에 직렬화된다.
+        // 일반 로그인과 달리 이 경로는 credentials를 지우지 않으므로, 지우지 않으면 BCrypt 해시가 세션 테이블에 직렬화된다.
         if (refreshed instanceof CredentialsContainer container) {
             container.eraseCredentials();
         }

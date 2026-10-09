@@ -13,13 +13,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 소프트 삭제된 지 보관 기간이 지난 게시글을 영구 삭제한다. 관리자가 복구할 수 있는 기간이 끝났으므로
- * 행과 딸린 댓글·추천을 지우고 이미지는 삭제 예약으로 넘긴다({@link PostService#purge}).
- * <p>
- * 글 하나를 지우는 일은 {@code PostService.purge}가 자기 트랜잭션으로 한다 — 이 클래스에는
- * {@code @Transactional}을 붙이지 않는다. 한 건이 실패(예: MariaDB 데드락)해도 앞서 지운 글이
- * 롤백되지 않고, 그 한 건만 다음 주기에 다시 시도된다. 실패한 행을 같은 실행에서 계속 다시 읽지
- * 않도록 offset이 아니라 id 커서로 나아간다.
+ * 소프트 삭제 후 보관 기간이 지난 게시글을 영구 삭제한다({@link PostService#purge}). 글 하나는 {@code PostService.purge}의 자기
+ * 트랜잭션으로 지워, 한 건이 실패(예: 데드락)해도 앞서 지운 글이 롤백되지 않고 그 한 건만 다음 주기에 다시 시도된다 — 그래서 이
+ * 클래스에는 {@code @Transactional}을 붙이지 않는다. 실패한 행을 계속 다시 읽지 않게 offset이 아니라 id 커서로 나아간다.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -48,10 +44,7 @@ public class PostPurger {
         purgeDeletedBefore(LocalDateTime.now().minus(Duration.ofDays(retentionDays)));
     }
 
-    /**
-     * {@code threshold} 이전에 삭제된 글을 모두 영구 삭제하고 지운 수를 돌려준다. 시각을 받는 것은
-     * 보관 기간 경계를 테스트가 직접 정하기 위해서다.
-     */
+    /** {@code threshold} 이전에 삭제된 글을 모두 영구 삭제하고 지운 수를 돌려준다(시각을 받는 것은 테스트가 보관 기간 경계를 정하기 위해서다). */
     int purgeDeletedBefore(LocalDateTime threshold) {
         int purged = 0;
         int failed = 0;

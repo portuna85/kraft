@@ -7,30 +7,14 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
- * 가벼운 마크다운(12단계)의 서버 측 파서. {@code src/vue/shared/markdown.js}의
- * {@code parseMarkdown}을 그대로 자바로 옮긴 것이다 — 상세 화면은 Vue가 마운트하기 전(또는
- * 마운트에 실패했을 때) 서버가 먼저 본문을 그리는데(post-update.html의 post-ssr), 지금까지는
- * 이 자리에 원문을 그대로 찍어 {@code **굵게**} 같은 문법이 그대로 보였다(13단계에서 고침).
+ * {@code src/vue/shared/markdown.js}의 {@code parseMarkdown}을 자바로 옮긴 서버 측 파서. Vue가 마운트하기 전
+ * (또는 실패했을 때) 서버가 본문을 먼저 그리는 데 쓴다. 결과는 {@link Map}·{@link List}·{@link String}만으로
+ * 이루어진 JSON 모양의 AST라, Thymeleaf 프래그먼트(layout/markdown.html)가 맵 접근만으로 그리고 공용 픽스처
+ * ({@code src/test/resources/markdown/cases.json})로 자바·JS 테스트가 같은 결과를 비교할 수 있다.
  * <p>
- * 결과 AST는 자바 레코드가 아니라 {@link Map}·{@link List}·{@link String}만으로 이루어진
- * JSON과 같은 모양이다(markdown.js가 만드는 것과 같은 구조 — 블록은
- * {@code {type, children|items}}, 인라인은 문자열 그대로거나
- * {@code {type, text|children|href}}). 이렇게 두면
- * <ul>
- *   <li>Thymeleaf 프래그먼트(layout/markdown.html)가 맵 접근({@code node.type})만으로
- *       그릴 수 있고,</li>
- *   <li>{@code src/test/resources/markdown/cases.json} 공용 픽스처를 자바·JS 양쪽 테스트가
- *       각자의 JSON 파서로 읽어 이 메서드의 결과와 그대로 {@code equals()} 비교할 수 있다
- *       (별도의 JSON↔레코드 매핑 코드가 필요 없다).</li>
- * </ul>
- * 두 구현이 갈라지면 SSR과 Vue가 마운트한 뒤의 모양이 달라지므로, 로직을 바꿀 때는 반드시
- * 두 파일을 같이 고치고 공용 픽스처로 양쪽 테스트가 같은 결과를 내는지 함께 확인한다
- * (MarkdownParserTest, markdown.test.js).
- * <p>
- * 지원 문법과 규칙은 markdown.js 상단 주석과 동일하다: 문단·글머리 목록·번호 목록,
- * {@code **굵게**}·{@code *기울임*}·{@code `코드`}·{@code [글자](주소)}(http/https만 링크,
- * 나머지 스킴은 평문). HTML 태그는 전혀 해석하지 않고 글자 그대로 남긴다 — 렌더링하는 쪽
- * (layout/markdown.html)이 {@code th:text}만 쓰므로 별도 이스케이프 없이도 안전하다.
+ * 두 구현이 갈라지면 SSR과 마운트 뒤 모양이 달라지므로 로직을 바꿀 때는 두 파일을 같이 고치고 양쪽 테스트
+ * (MarkdownParserTest, markdown.test.js)를 확인한다. 지원 문법은 markdown.js 상단 주석과 같다(문단·목록·굵게·
+ * 기울임·코드·http/https 링크). HTML은 해석하지 않고 글자 그대로 둔다 — 렌더 쪽이 {@code th:text}만 써서 안전하다.
  */
 public final class MarkdownParser {
 
@@ -82,13 +66,7 @@ public final class MarkdownParser {
         return node("p", "children", parseInline(String.join("\n", lines)));
     }
 
-    /**
-     * 같은 문자열에서 다음 위치 검색을 되풀이하는 {@code indexOf}를 줄인다. 닫히지 않은
-     * {@code [}·{@code `}·{@code *}가 많으면 열린 기호마다 끝까지 스캔해 O(n²)이 되는데, 찾는 위치는 항상
-     * 앞에서 뒤로만 움직이므로 직전 결과를 재사용할 수 있다 — 직전에 {@code from0}부터 찾아 {@code found}를
-     * 얻었다면, 새 {@code from}이 {@code [from0, found]}(없으면 {@code from0} 이후 전부)에 있을 때 결과는 같다.
-     * 결과는 {@code indexOf}와 항상 동일하다.
-     */
+    /** 같은 문자열에서 앞으로만 움직이는 {@code indexOf} 반복(닫히지 않은 기호가 많으면 O(n²))을 직전 결과 재사용으로 줄인다. 결과는 {@code indexOf}와 같다. */
     private static final class NextOccurrence {
         private final String needle;
         private int cachedFrom = -1;

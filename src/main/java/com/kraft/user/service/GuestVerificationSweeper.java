@@ -15,16 +15,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * B08의 최후 수단. 회원가입 직후 {@code UserApiController}가 {@code sendVerificationEmailSafely}를
- * 호출하지만, 그 트랜잭션의 토큰 저장이 실패하거나(리포지토리 오류) <b>최종 커밋 자체</b>가
- * 실패하면 계정만 남고 인증 메일은 대기열에 한 번도 들어가지 못한다 — 메서드 안 catch로는 커밋
- * 실패를 잡을 수 없다. 사용자가 직접 "재발송"을 누르면 복구되지만,
- * 누르지 않으면 영원히 GUEST로 남는다.
- * <p>
- * 이 주기 작업이 가입 후 유예시간이 지나도록 인증 토큰도 아웃박스 메일도 하나도 없는 GUEST
- * 계정을 찾아 {@link EmailVerificationService#sendVerificationEmail}을 대신 호출한다. 이미
- * 정상적으로 메일이 나간 계정은 대상이 아니다(토큰이나 아웃박스 행이 있으므로 조회에 걸리지
- * 않는다) — 정상 재발송(resend)의 쿨다운 정책과는 무관하다.
+ * 가입 직후 인증 메일 대기열 등록이 누락된 계정의 최후 수단. {@code sendVerificationEmailSafely}가 토큰 저장 실패나 최종 커밋
+ * 실패를 잡지 못하면 계정만 남고 메일이 한 번도 큐에 들어가지 못한다. 이 주기 작업이 유예시간이 지나도 인증 토큰도 아웃박스
+ * 메일도 없는 GUEST를 찾아 {@link EmailVerificationService#sendVerificationEmail}을 대신 부른다(정상 재발송의 쿨다운과는
+ * 무관하다).
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -34,13 +28,7 @@ public class GuestVerificationSweeper {
     private final UserRepository userRepository;
     private final EmailVerificationService emailVerificationService;
 
-    /**
-     * rekey(이메일 키 교체) 중에는 꺼야 한다 — 이 스윕이 {@code User} 엔티티를 읽는
-     * 순간 JPA의 {@code EmailAttributeConverter}가 현재 설정된 키로 {@code email}을 즉시
-     * 복호화하는데, {@code rekeyAll}이 아직 변환하지 못한(옛 키로 남은) GUEST 행이 조회
-     * 결과에 섞이면 그 행을 엔티티로 매핑하는 순간 복호화가 실패한다
-     * ({@code BackupRestoreRehearsalTest}가 같은 종류의 실패를 이미 실증했다).
-     */
+    /** rekey(이메일 키 교체) 중에는 꺼야 한다 — 아직 변환되지 않은(옛 키) 행을 엔티티로 읽는 순간 복호화가 실패한다({@code BackupRestoreRehearsalTest}가 실증). */
     @Value("${app.verification.sweep-enabled:true}")
     private boolean enabled;
 

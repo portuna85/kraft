@@ -23,7 +23,7 @@ public class CommentApiController {
     private final CommentService commentService;
     private final WriteRateLimiters rateLimiters;
 
-    /** 이메일 인증만 통과하면 무제한으로 빠르게 쓸 수 있었다. */
+    /** 작성은 속도를 제한한다({@code WriteRateLimiters}). */
     @PostMapping("/api/v1/posts/{postId}/comments")
     public ResponseEntity<?> save(@PathVariable Long postId, @Valid @RequestBody CommentSaveRequestDto requestDto,
                                    Authentication authentication) {
@@ -33,15 +33,7 @@ public class CommentApiController {
         return ResponseEntity.ok(commentService.save(postId, authentication, requestDto));
     }
 
-    /**
-     * 상세 화면 "더 보기"가 쓰는 커서 페이지. {@code canManage}는 화면 전용 필드라 인증 정보로
-     * 요청자별 권한을 판정한다.
-     * <p>
-     * 예전에는 익명 GET으로 게시글의 댓글·답글 전체를 한 번에 반환하는 별도 API
-     * ({@code GET /api/v1/posts/{postId}/comments}, {@code findByPostId})가 있었다 —
-     * 이 커서 API와 별개로 존재했고, 프런트엔드 어디서도 호출하지 않았다. 답글이 많이 달린
-     * 공개 게시글을 대상으로 익명 요청 한 번에 무제한 양을 응답할 수 있어 폐기했다.
-     */
+    /** 상세 화면 "더 보기"의 커서 페이지. {@code canManage}는 화면 전용 필드라 인증 정보로 요청자별 권한을 판정한다. */
     @GetMapping("/api/v1/posts/{postId}/comments/page")
     public CommentPageDto page(@PathVariable Long postId,
                                 @RequestParam(required = false) Long afterId,
@@ -49,11 +41,7 @@ public class CommentApiController {
         return commentService.findNextPageForView(postId, afterId, authentication);
     }
 
-    /**
-     * "답글 더 보기" — 최초 페이지·다른 부모가 답글 개수 상한을 먼저 써도
-     * 이 부모의 남은 답글에 항상 도달할 수 있어야 한다. 게시글 목록 GET과 같은 이유로 익명도
-     * 볼 수 있게 연다(SecurityConfig).
-     */
+    /** "답글 더 보기" — 개수 상한에 걸려도 남은 답글에 항상 닿아야 한다. 게시글 목록 GET처럼 익명도 볼 수 있다(SecurityConfig). */
     @GetMapping("/api/v1/comments/{parentId}/replies")
     public CommentPageDto replies(@PathVariable Long parentId,
                                    @RequestParam(required = false) Long afterId,
@@ -61,10 +49,7 @@ public class CommentApiController {
         return commentService.findRepliesPage(parentId, afterId, authentication);
     }
 
-    /**
-     * 글 수정과 같은 계약이다 — 기준 버전은 {@code If-Match}(목록의 각 댓글이 들고 있는 {@code version})로
-     * 보내고, 다르면 412, 없으면 428이다. 응답의 ETag는 저장 뒤의 새 버전이다.
-     */
+    /** 글 수정과 같은 계약: 기준 버전은 {@code If-Match}(각 댓글의 {@code version})로 보내며 다르면 412, 없으면 428, 응답 ETag는 저장 뒤의 새 버전이다. */
     @PutMapping("/api/v1/comments/{id}")
     public ResponseEntity<CommentViewDto> update(@PathVariable Long id,
                                                   @Valid @RequestBody CommentUpdateRequestDto requestDto,

@@ -8,16 +8,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 업로드된 이미지 파일 한 개의 대장(臺帳). {@code Post.picture}는 클라이언트가 요청 본문에
- * 그대로 실어 보내는 문자열이라 그것만으로는 "누가 올린 파일인지"를 알 수 없었다 — 그래서
- * 자기 게시글에 다른 사람의 이미지 URL을 넣고 그 글을 지우면 남의 파일이 사라졌다.
- * <p>
- * 이 엔티티가 파일명·업로더·연결된 게시글·상태를 기록해 두 가지를 가능하게 한다:
- * <ul>
- * <li>게시글 저장 시 "이 이미지를 이 사람이 올렸는가"를 검사한다.</li>
- * <li>삭제를 {@link PostImageStatus#PENDING_DELETE} 표시로 예약해, 실제 파일 삭제를
- * DB 커밋 이후로 미루고 실패 시 재시도할 수 있게 한다.</li>
- * </ul>
+ * 업로드된 이미지 파일 한 개의 대장. {@code Post.picture}는 클라이언트가 보낸 문자열이라 누가 올렸는지 알 수
+ * 없으므로, 파일명·업로더·연결된 글·상태를 기록해 게시글 저장 시 소유권을 검사하고, 삭제를
+ * {@link PostImageStatus#PENDING_DELETE}로 예약해 실제 파일 삭제를 커밋 이후로 미루고 실패 시 재시도한다.
  */
 @Getter
 @Entity
@@ -25,8 +18,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "post_images",
         uniqueConstraints = @UniqueConstraint(name = "UK_POST_IMAGE_FILE_NAME", columnNames = "file_name"),
         indexes = {
-                // V6__image_quota_and_search_indexes.sql. 엔티티에 선언이 없어 ddl-auto: update로
-                // 만든 기존 DB에는 이 인덱스가 생기지 않았다.
+                // 인덱스는 Flyway(V6·V23·V40)와 일치해야 한다 — MariaDbMigrationTest가 대조한다.
                 @Index(name = "IX_POST_IMAGES_OWNER", columnList = "owner_id"),
                 // 업로드 쿼터 합계(sumSizeBytesByOwnerId)가 테이블을 다시 읽지 않고 인덱스만으로 계산한다(V40).
                 @Index(name = "IX_POST_IMAGES_OWNER_STATUS_SIZE", columnList = "owner_id, status, size_bytes"),
@@ -40,11 +32,7 @@ public class PostImage extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /**
-     * {@code PostImageService.store()}가 만든 {@code uuid.ext}. 공개 URL({@code /images/uuid.ext})이
-     * 아니라 파일명만 저장한다 — URL 접두어는 서빙 방식이 바뀌면 달라질 수 있는 표현이고,
-     * 소유권의 실제 대상은 디스크 위의 파일 하나이기 때문이다.
-     */
+    /** {@code PostImageService.store()}가 만든 {@code uuid.ext}. URL 접두어는 서빙 방식에 따라 바뀔 수 있어 파일명만 저장한다. */
     @Column(name = "file_name", nullable = false, length = 200)
     private String fileName;
 
@@ -72,12 +60,7 @@ public class PostImage extends BaseEntity {
     @Column(name = "height")
     private Integer height;
 
-    /**
-     * 동시 첨부 경쟁을 막는다. 예전에는 조회 후 상태만 바꾸는 방식이라, 같은 미연결 이미지를
-     * 서로 다른 두 게시글이 동시에 붙이면 둘 다 검사를 통과해 마지막에 쓴 쪽이 조용히 이겼다.
-     * 낙관적 잠금이 있으면 나중에 flush되는 쪽이 {@code OptimisticLockingFailureException}으로
-     * 실패한다.
-     */
+    /** 동시 첨부 경쟁을 막는 낙관적 잠금 — 같은 미연결 이미지를 두 글이 동시에 붙이면 나중 flush가 실패한다. */
     @Version
     private long version;
 
@@ -98,10 +81,7 @@ public class PostImage extends BaseEntity {
         this.status = PostImageStatus.ATTACHED;
     }
 
-    /**
-     * 삭제를 예약한다. {@code post_id}를 함께 비우는 이유는, 게시글을 지우는 흐름에서 이 행이
-     * 남아 있으면 {@code FK_POST_IMAGES_POST} 제약이 게시글 삭제를 막기 때문이다.
-     */
+    /** 삭제를 예약한다. 게시글 삭제가 {@code FK_POST_IMAGES_POST}에 막히지 않게 {@code post_id}도 비운다. */
     public void markForDeletion() {
         this.post = null;
         this.status = PostImageStatus.PENDING_DELETE;

@@ -17,16 +17,10 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 
 /**
- * 로그인 연속 실패에 대한 계정 단위 누적 방어. 지금까지는
- * {@code AuthRateLimitFilter}가 분당 요청 횟수만 막아, IP를 바꿔가며 시도하면 하루
- * 14,400회까지 시도할 수 있었다 — 이건 IP와 무관하게 <b>계정</b>에 실패를 쌓는다.
- * <p>
- * {@code DaoAuthenticationProvider}가 발행하는 인증 이벤트를 듣는다. 계정이 존재하지 않으면
- * (가입 여부를 드러내지 않기 위해 {@code hideUserNotFoundExceptions}가 이것도 자격 증명
- * 실패로 감춘다) 잠글 대상이 없으므로 조용히 지나간다. 이미 잠긴 계정은
- * {@link UserDetailsServiceImpl}이 {@code accountNonLocked=false}로 돌려 비밀번호를 보기도
- * 전에 {@link org.springframework.security.authentication.LockedException}으로 거절되므로,
- * 이 리스너까지 오지 않는다 — 그래서 잠긴 동안에는 실패 횟수가 더 늘지 않는다.
+ * 로그인 연속 실패에 대한 계정 단위 누적 방어({@code AuthRateLimitFilter}의 분당 제한은 IP를 바꾸면 우회된다).
+ * {@code DaoAuthenticationProvider}의 인증 이벤트를 듣는다. 없는 계정은 잠글 대상이 없어 조용히 지나가고, 이미 잠긴 계정은
+ * {@link UserDetailsServiceImpl}이 {@code accountNonLocked=false}로 돌려 비밀번호를 보기 전에 거절되므로 잠긴 동안은 실패가
+ * 더 쌓이지 않는다.
  */
 @RequiredArgsConstructor
 @Service
@@ -61,10 +55,7 @@ public class LoginLockoutService {
         }
     }
 
-    /**
-     * 카운터·잠금을 엔티티가 아니라 원자적 UPDATE로 갱신한다(P1-5) — 같은 계정에 동시 실패가
-     * 몰려도 {@code @Version} 충돌 예외나 증가분 유실이 없다.
-     */
+    /** 카운터·잠금을 원자적 UPDATE로 갱신한다 — 같은 계정에 동시 실패가 몰려도 {@code @Version} 충돌이나 증가분 유실이 없다. */
     private void recordFailure(User user) {
         Long id = user.getId();
         userRepository.incrementFailedLogins(id);
@@ -77,8 +68,7 @@ public class LoginLockoutService {
         long minutes = Math.min(MAX_LOCK_MINUTES, 1L << Math.min(attempts - LOCK_THRESHOLD, 10));
         userRepository.extendLock(id, LocalDateTime.now().plus(Duration.ofMinutes(minutes)));
 
-        // 임계를 처음 넘는 순간에만 알린다 — 잠긴 동안에는 더 실패가 쌓이지 않으니 매번 다시
-        // 보낼 일도 없다. 쿨다운·예산은 enqueueNotice가 지킨다(P0-4).
+        // 임계를 처음 넘는 순간에만 알린다(쿨다운·예산은 enqueueNotice가 지킨다).
         if (attempts == LOCK_THRESHOLD) {
             outboxMailStore.enqueueNotice(user, OutboxMailKind.LOGIN_ATTEMPTS_WARNING);
         }

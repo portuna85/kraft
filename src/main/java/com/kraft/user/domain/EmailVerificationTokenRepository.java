@@ -12,10 +12,7 @@ public interface EmailVerificationTokenRepository extends JpaRepository<EmailVer
 
     Optional<EmailVerificationToken> findByTokenHash(String tokenHash);
 
-    /**
-     * 파생 삭제 대신 한 문장으로 지운다 —
-     * 예전 주석의 "한 번에"는 실제로는 건별 조회·삭제였다.
-     */
+    /** 파생 삭제 대신 한 문장으로 지운다. */
     @Modifying(flushAutomatically = true)
     @Query("DELETE FROM EmailVerificationToken t WHERE t.user.id = :userId")
     void deleteByUserId(@Param("userId") Long userId);

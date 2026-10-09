@@ -20,27 +20,12 @@ import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 
 /**
- * 아웃박스에 쌓인 메일을 실제로 보낸다.
- *
- * <h3>왜 이렇게까지 나누는가</h3>
- * "커밋 이후에 보내면 되지 않나"로는 부족하다. Spring은 {@code afterCommit} 콜백을
- * {@code cleanupAfterCompletion}<b>보다 먼저</b> 실행하므로, 그 안에서 SMTP를 기다리면
- * <b>DB 커넥션은 여전히 잡힌 채</b>다. 커넥션을 정말 놓으려면 발송이 그 트랜잭션 바깥,
- * 다른 실행 흐름에서 일어나야 한다.
- *
- * <h3>한 통을 보내는 절차</h3>
- * <ol>
- * <li>{@code claimBatch} — 짧은 트랜잭션에서 PENDING을 SENDING으로 바꾸고 id만 받는다</li>
- * <li>{@code load} — 짧은 트랜잭션에서 수신 주소·토큰을 평범한 값으로 꺼낸다</li>
- * <li><b>발송 — 어떤 트랜잭션에도 속하지 않는다</b></li>
- * <li>{@code markSent} / {@code markFailed} — 다시 짧은 트랜잭션</li>
- * </ol>
- * 3번 동안 DB 커넥션은 풀에 돌아가 있다. 메일 서버가 15초를 끌어도 다른 요청이 막히지 않는다.
- *
- * <h3>언제 도는가</h3>
- * 가입·재발송 직후 {@code @Async}로 한 번(사용자가 오래 기다리지 않게), 그리고 주기적으로 한 번
- * (앱이 내려갔거나 그때 실패한 것을 위해). 둘이 동시에 돌아도 {@code claimBatch}의 행 잠금
- * ({@code FOR UPDATE SKIP LOCKED}) 덕분에 같은 메일을 두 번 집지 않는다.
+ * 아웃박스 메일을 보낸다. 선점({@code claimBatch})·적재({@code load})·결과 기록({@code markSent}/
+ * {@code markFailed})은 각각 짧은 트랜잭션이고, SMTP 발송은 어떤 트랜잭션에도 속하지 않는다 —
+ * {@code afterCommit}에서 보내도 커넥션은 아직 잡혀 있기 때문이다.
+ * <p>
+ * 가입·재발송 직후 {@code @Async}로 한 번, 그리고 주기적으로 돈다. 겹쳐 돌아도
+ * {@code FOR UPDATE SKIP LOCKED}로 같은 메일을 두 번 집지 않는다.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -56,11 +41,7 @@ public class OutboxMailWorker {
     @Value("${app.mail.batch-size:20}")
     private int batchSize;
 
-    /**
-     * {@code false}면 예약 실행뿐 아니라 가입·재발송 직후의 {@code drainAsync}도 함께
-     * 막는다 — "전체 발송 중지" 스위치다({@link #drain} 참고). 예약만 멈추고 즉시 발송은
-     * 유지하고 싶다면 이 플래그가 아니라 {@code app.mail.drain-interval-ms}를 크게 둔다.
-     */
+    /** {@code false}면 예약·즉시 발송을 모두 멈춘다(보관 기간 정리는 별개). */
     @Value("${app.mail.enabled:true}")
     private boolean enabled;
 
@@ -72,39 +53,18 @@ public class OutboxMailWorker {
     @Value("${app.mail.retention-days:30}")
     private int retentionDays;
 
-    /**
-     * {@code cleanupOldTerminal}만의 별도 스위치. {@code enabled}와 무관하게
-     * 항상 돌게 만든 것은 의도한 설계이지만({@link #cleanupOldTerminal} 참고), 그 사실이
-     * {@code app.mail.enabled: false}만 보고 "메일 관련 예약 작업을 전부 껐다"고 오해하기
-     * 쉽게 만든다. 정리만 따로 끄고 싶을 때(또는 그 반대로 검사할 때) 이 플래그를 쓴다.
-     */
+    /** {@link #cleanupOldTerminal} 전용 스위치. {@code enabled}로는 꺼지지 않는다. */
     @Value("${app.mail.retention-enabled:true}")
     private boolean retentionEnabled = true;
 
-    /**
-     * 한 배치 안에서 동시에 SMTP로 보내는 최대 개수. 예전에는 배치 전체를 순차로 보내
-     * 사실상 동시성이 1이었다 — 느린 메일 서버 하나가 뒤 순서 메일의 임대 시간을 모두
-     * 잡아먹었다.
-     */
+    /** 동시에 SMTP로 보내는 최대 개수(프로세스 전체). */
     @Value("${app.mail.max-concurrent-sends:5}")
     private int maxConcurrentSends;
 
-    /**
-     * {@code drain()} 호출마다 새로 만들지 않고 이 인스턴스가 사는 동안 하나를 공유한다.
-     * 예전에는 배치마다 새 Semaphore를 만들어, 가입 직후의 {@code drainAsync}와 예약 실행
-     * {@code drainScheduled}가 겹치면 각자 5개씩 동시에 보내 프로세스 전체의 동시 발송 수가
-     * {@code maxConcurrentSends}를 넘을 수 있었다. claimBatch의 행 잠금은 같은 메일을 두 번
-     * 집지 않게 할 뿐, 서로 다른 메일을 처리하는 두 drain 호출의 총 동시성은 막지 못한다.
-     */
+    /** 모든 {@code drain()} 호출이 공유한다 — 겹쳐 돌아도 총 동시 발송 수가 상한을 넘지 않게. */
     private Semaphore sendPermits;
 
-    /**
-     * {@code maxConcurrentSends=0}이면 {@link Semaphore}가 영원히 획득되지 않아 모든
-     * 배치가 조용히 멈춘다(예외도, 로그도 없다) — 발송이 끊긴 원인을 찾기 훨씬 어렵다.
-     * {@code batchSize}는 {@code claimBatch}의 SQL {@code LIMIT}에 그대로 들어가므로 음수는
-     * DB 드라이버 예외로 이어진다. 둘 다 기동 시점에 막아 실행 중 조용히 멈추거나 늦게
-     * 터지지 않게 한다.
-     */
+    /** 0 이하 설정은 기동 시 막는다 — 동시성 0이면 발송이 조용히 멈추고, 음수 batchSize는 SQL LIMIT 오류다. */
     @PostConstruct
     void initSendPermits() {
         if (maxConcurrentSends < 1) {
@@ -129,32 +89,17 @@ public class OutboxMailWorker {
         if (!enabled) {
             return;
         }
-        // 정체 재처리는 예약 경로에서만 한다 — 예전에는 drain() 안에 있어 가입·재발송
-        // 폭주 시 겹쳐 도는 drainAsync 호출마다 매번 잠금 스캔(requeueStuck)이 함께 돌았다.
-        // 정체 재처리는 "발송 도중 프로세스가 죽어 SENDING인 채 남은 것"을 되돌리는 안전망일
-        // 뿐이라 빈도가 중요하지 않다 — 예약 주기 한 번이면 충분하다.
+        // 정체(SENDING인 채 남은 행) 재처리는 안전망이라 예약 경로에서만 한다.
         store.requeueStuck(LocalDateTime.now().minus(Duration.ofMillis(stuckAfterMs)));
         drain();
     }
 
     /**
-     * {@code enabled} 검사를 예약 실행에서만 하던 것을 여기로 옮겼다. 예전에는
-     * {@code app.mail.enabled=false}로 꺼도 가입 직후 {@code drainAsync}가 그대로 발송을
-     * 진행했다 — 공유 진입점에서 한 번만 검사하면 두 경로 모두 같은 규칙을 따른다.
+     * 한 배치를 선점해 가상 스레드로 동시에 보내고, 배치가 끝날 때까지 기다린다. 두 진입점 모두 여기서
+     * {@code enabled}를 검사한다.
      * <p>
-     * 배치 안의 발송은 {@code maxConcurrentSends}로 제한한 가상 스레드로 동시에 실행한다.
-     * 각 발송은 서로 다른 메일이라 순서를 지킬 이유가 없고, 이 메서드는 배치 전체가 끝날
-     * 때까지 기다린 뒤 반환한다(호출자가 "이번 배치는 끝났다"고 가정할 수 있어야 한다).
-     * <p>
-     * 임대 토큰은 호출마다 새로 만든다 — 예전에는 이 워커 인스턴스가
-     * 생성될 때 만든 토큰 하나를 모든 drain() 호출이 공유했다. 그러면 정체 재큐잉이 어떤 행의
-     * 소유권을 비운 뒤, 같은 워커 인스턴스가 곧바로 그 행을 다시 집으면 새 시도도 똑같은
-     * (예전과 동일한) 토큰을 쓰게 되어, 그사이 뒤늦게 도착한 이전 시도의 결과가 "지금도 내
-     * 토큰"으로 오인되어 새 시도를 덮어쓸 수 있었다. 매번 새 UUID를 쓰면 이 창이 사라진다.
-     * <p>
-     * 겹쳐 도는 drain() 호출 자체는 막지 않는다(가입 폭주 시 흔함) — {@link #sendPermits}가
-     * 이미 모든 drain 호출이 공유하는 총 동시성 상한이라, 겹쳐도 안전하고 서로 다른
-     * 메일을 나눠 처리해 오히려 전체 처리량에 도움이 된다.
+     * 임대 토큰은 호출마다 새로 만든다 — 공유하면 재선점된 행에 늦게 도착한 이전 시도의 결과가 새 시도를
+     * 덮어쓸 수 있다. 겹친 호출은 막지 않는다({@link #sendPermits}가 총 동시성을 제한한다).
      */
     public void drain() {
         if (!enabled) {
@@ -192,11 +137,7 @@ public class OutboxMailWorker {
         }
     }
 
-    /**
-     * 종료된 지 오래된 SENT/FAILED 행을 지운다. 발송 자체와는 다른 관심사이므로
-     * {@code enabled} 플래그와 무관하게 항상 돈다 — 발송을 끄더라도 이력 정리는 계속되어야
-     * 테이블이 무한정 자라지 않는다. {@code retentionEnabled}로만 따로 끌 수 있다.
-     */
+    /** 오래된 SENT/FAILED 행을 지운다. 발송을 꺼도 테이블이 자라지 않게 {@code enabled}와 무관하다. */
     @Scheduled(initialDelayString = "${app.mail.retention-initial-delay-ms:60000}",
             fixedDelayString = "${app.mail.retention-interval-ms:86400000}")
     public void cleanupOldTerminal() {
@@ -215,15 +156,10 @@ public class OutboxMailWorker {
             emailSender.send(mail.to(), subject(mail.kind()), body(mail.kind(), mail.token()));
             store.markSent(mail.id(), mail.ownerToken());
         } catch (Exception e) {
-            // 한 통이 실패해도 나머지는 계속 보낸다. 원인은 행에 남겨 다음 차례에 다시 시도한다.
-            //
-            // 실제 SMTP 실패 메시지는 종종 수신자 주소를 그대로 담는다(예:
-            // "Failed messages: ...: user@example.com: 550 ...") — 여기서 알고 있는 수신자
-            // 주소(mail.to())만 정확히 가려서 로그·lastError 어느 쪽에도 원문이 남지 않게 한다.
-            // 메시지의 나머지 진단 정보(도메인·오류 코드 등)는 그대로 둔다.
+            // 한 통이 실패해도 나머지는 계속 보내고, 원인을 행에 남겨 다시 시도한다.
+            // SMTP 오류 메시지에 담긴 수신자 주소는 가린다.
             String maskedMessage = maskRecipient(e.getMessage(), mail.to());
-            // e를 그대로 로거에 넘기지 않는다 — SLF4J가 예외 자체의(가려지지 않은) 메시지를
-            // 스택 트레이스 첫 줄에 그대로 찍는다. 대신 예외 타입 + 가린 메시지만 남긴다.
+            // e를 로거에 넘기면 가리지 않은 메시지가 찍히므로 타입과 가린 메시지만 남긴다.
             log.warn("메일 발송에 실패했습니다. outboxMailId={}, exceptionType={}, detail={}",
                     mail.id(), e.getClass().getSimpleName(), maskedMessage);
             store.markFailed(mail.id(), maskedMessage, mail.ownerToken());
@@ -246,21 +182,13 @@ public class OutboxMailWorker {
         };
     }
 
-    /**
-     * 본문은 링크 하나와 유효 시간이 전부다. 누가 요청했는지·어떤 계정인지는 적지 않는다 —
-     * 메일이 잘못 배달되어도 그 자체로는 알려주는 것이 없어야 한다.
-     */
+    /** 본문은 링크와 유효 시간뿐이다 — 잘못 배달돼도 계정 정보가 드러나지 않게. */
     private String body(OutboxMailKind kind, String token) {
         return switch (kind) {
-            // 비밀번호 재설정과 같은 이유로 프래그먼트(#)에 싣는다 — 쿼리 문자열은 프록시·
-            // 접근 로그·브라우저 기록에 남는다. 이미 발송된 옛 ?token= 링크는 24시간 동안 계속
-            // 열리므로 UserPageController가 쿼리도 함께 받는다.
+            // 토큰은 프래그먼트(#)에 싣는다 — 서버·프록시 접근 로그에 남지 않는다.
             case VERIFY_EMAIL -> "아래 링크를 클릭해 이메일 인증을 완료해 주세요:\n"
                     + BaseUrl.normalize(baseUrl) + "/users/verify#token=" + token
                     + "\n\n이 링크는 24시간 동안 유효합니다.";
-            // 토큰을 쿼리 문자열이 아니라 프래그먼트(#)로 싣는다 — 프래그먼트는
-            // 브라우저가 서버·프록시로 전송하지 않으므로 nginx 접근 로그에 1회용 토큰이
-            // 남지 않는다. PasswordResetApp.vue가 location.hash에서 읽는다.
             case PASSWORD_RESET -> "아래 링크에서 새 비밀번호를 정해 주세요:\n"
                     + BaseUrl.normalize(baseUrl) + "/users/password-reset#token=" + token
                     + "\n\n이 링크는 30분 동안 한 번만 사용할 수 있습니다."

@@ -33,10 +33,7 @@ public class PostApiController {
     private final PostQueryService postQueryService;
     private final WriteRateLimiters rateLimiters;
 
-    /**
-     * 이메일 인증만 통과하면 스팸 봇 하나로 게시판 전체를 덮을 수 있었다.
-     * 분당·시간당 두 창을 함께 건다({@code WriteRateLimiters}).
-     */
+    /** 작성은 분당·시간당 두 창으로 속도를 제한한다({@code WriteRateLimiters}) — 이메일 인증만 통과하면 봇 하나로 게시판을 덮을 수 있다. */
     @PostMapping("/api/v1/posts")
     public ResponseEntity<?> save(@Valid @RequestBody PostSaveRequestDto requestDto, Authentication authentication) {
         if (!rateLimiters.tryAcquirePost(authentication)) {
@@ -45,10 +42,7 @@ public class PostApiController {
         return ResponseEntity.ok(postService.save(authentication, requestDto));
     }
 
-    /**
-     * 수정은 어느 버전을 기준으로 고치는지 {@code If-Match}로 밝혀야 한다 — 다르면 412, 아무 기준도 없으면 428이다.
-     * 응답의 ETag는 저장 뒤의 새 버전이라 화면이 다음 수정의 기준으로 쓸 수 있다.
-     */
+    /** 수정은 {@code If-Match}로 기준 버전을 밝혀야 한다(다르면 412, 없으면 428). 응답 ETag는 저장 뒤의 새 버전이다. */
     @PutMapping("/api/v1/posts/{id}")
     public ResponseEntity<Long> update(@PathVariable Long id, @Valid @RequestBody PostUpdateRequestDto requestDto,
                                         @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch,
@@ -71,10 +65,7 @@ public class PostApiController {
         return ResponseEntity.ok().eTag(EntityTags.of(body.version())).body(body);
     }
 
-    /**
-     * "더 보기"(load-more.js)가 이어 받는 페이지도 검색어를 실을 수 있어, SSR 검색(
-     * {@code PostPageController.index})과 같은 IP 기준 속도 제한을 건다.
-     */
+    /** "더 보기"(load-more.js)도 검색어를 실을 수 있어, SSR 검색({@code PostPageController.index})과 같은 IP 기준 속도 제한을 건다. */
     @GetMapping("/api/v1/posts")
     public ResponseEntity<?> findAll(@PageableDefault(size = 10) Pageable pageable,
                                       @RequestParam(required = false) String q,
@@ -88,10 +79,7 @@ public class PostApiController {
         return ResponseEntity.ok(postQueryService.findAllDesc(pageable, q, category, SearchScope.isContent(scope)));
     }
 
-    /**
-     * 업로드는 저장한 파일을 업로더와 함께 대장에 기록해야 하므로(소유권 검사의 근거)
-     * 파일 저장만 하는 {@code PostImageService} 대신 {@code PostService}를 거친다.
-     */
+    /** 업로드는 업로더를 대장에 기록해야 하므로(소유권 검사의 근거) 파일 저장만 하는 {@code PostImageService}가 아니라 {@code PostService}를 거친다. */
     @PostMapping(value = "/api/v1/posts/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> uploadImage(@RequestParam("file") MultipartFile file,
                                           Authentication authentication) {
@@ -101,10 +89,7 @@ public class PostApiController {
         return ResponseEntity.ok(new ImageUploadResponseDto(postService.uploadImage(file, authentication)));
     }
 
-    /**
-     * 추천 상태를 요청한 값으로 맞춘다. 토글이 아니라 원하는 최종 상태를 받으므로 같은 요청이
-     * 여러 번 도달해도 결과가 같다.
-     */
+    /** 추천 상태를 요청한 최종 값으로 맞춘다(토글이 아니라 멱등). */
     @PutMapping("/api/v1/posts/{id}/like")
     public PostLikeResponseDto setLike(@PathVariable Long id,
                                         @Valid @RequestBody PostLikeRequestDto requestDto,

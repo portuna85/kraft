@@ -8,13 +8,7 @@ import org.springframework.security.core.Authentication;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * "공지(NOTICE) 분류는 관리자만 쓸 수 있다"는 제품 정책. 예전에는 서버에 이 제한이 없어
- * 일반 사용자도 NOTICE로 글을 쓸 수 있었다.
- * <p>
- * 화면에서도 관리자가 아니면 NOTICE 옵션을 렌더링하지 않지만, 그것은 안내일 뿐이고
- * 실제 경계는 생성·수정 양쪽에서 이 정책이 잡는다.
- */
+/** "공지(NOTICE) 분류는 관리자만 쓸 수 있다"는 제품 정책. 화면이 NOTICE 옵션을 숨기는 것은 안내일 뿐이고, 실제 경계는 생성·수정 양쪽에서 이 정책이 잡는다. */
 public final class CategoryPolicy {
 
     private CategoryPolicy() {

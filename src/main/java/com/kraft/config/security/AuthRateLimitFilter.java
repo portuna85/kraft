@@ -16,14 +16,9 @@ import java.io.IOException;
 import java.util.Locale;
 
 /**
- * 로그인·가입·비밀번호 재설정·인증 메일 재발송에 IP(로그인은 계정도 함께)별 분당 요청 제한을
- * 적용한다. 추천 제한기와 같은 {@link FixedWindowRateLimiter}를 재사용한다.
- * {@code UsernamePasswordAuthenticationFilter}보다 먼저 등록해, 무차별 대입 시도가 인증 로직까지
- * 가지 않고 여기서 먼저 걸리게 한다({@code SecurityConfig}).
- * <p>
- * {@code app.auth.rate-limit.enabled}가 false면 모든 검사를 건너뛴다 — 테스트·E2E처럼 같은
- * IP에서 로그인을 반복하는 환경이 이 필터 때문에 흔들리지 않도록 test·e2e 프로파일에서는
- * 기본으로 꺼 둔다.
+ * 로그인·가입·비밀번호 재설정·인증 메일 재발송에 IP(로그인은 계정도)별 분당 요청 제한을 건다({@link FixedWindowRateLimiter}).
+ * {@code UsernamePasswordAuthenticationFilter}보다 먼저 등록해 무차별 대입이 인증 로직까지 가지 않게 한다. {@code enabled}가
+ * false면(test·e2e 기본) 같은 IP에서 반복하는 환경이 흔들리지 않도록 모든 검사를 건너뛴다.
  */
 public class AuthRateLimitFilter extends OncePerRequestFilter {
 
@@ -32,7 +27,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     private static final String SIGNUP_PATH = "/api/v1/users";
     private static final String PASSWORD_RESET_PATH = "/api/v1/users/password-reset";
     private static final String RESEND_PATH = "/api/v1/users/me/verify-email/resend";
-    /** 메일 링크의 이메일 인증 확인(폼 POST). 토큰이 122비트라 추측은 현실적이지 않지만 무제한 시도를 막는다(P2-3). */
+    /** 메일 링크의 이메일 인증 확인(폼 POST) — 토큰 추측은 비현실적이지만 무제한 시도는 막는다. */
     private static final String VERIFY_CONFIRM_PATH = "/users/verify";
 
     private final boolean enabled;
@@ -74,9 +69,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         if (LOGIN_PATH.equals(path)) {
             boolean ipOk = loginIpLimiter.tryAcquire(ip);
             boolean accountOk = true;
-            // IP 제한에 이미 걸렸으면 계정 리미터는 건드리지 않는다 — 그렇지 않으면
-            // 클라이언트가 매 요청 다른 username을 보내는 것만으로 계정 리미터의 맵을
-            // 무제한으로 키운 뒤 IP 창이 풀리는 순간 쌓아 둔 이름 중 아무거나로 재시도할 수 있다.
+            // IP 제한에 이미 걸렸으면 계정 제한기는 건드리지 않는다(매번 다른 username을 보내 맵을 무제한으로 키우지 못하게).
             if (ipOk) {
                 String username = request.getParameter("username");
                 if (username != null && !username.isBlank()) {
@@ -133,11 +126,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         resendLimiter.reset();
     }
 
-    /**
-     * 실측 없이는 한도가 맞는지 알 수 없다 — 다섯 제한기의 허용/거부 집계를 주기적으로 남긴다
-     * (RecommendationRateLimiter와 같은 이유). 창이 비어 있어도(제한기를 끈 프로파일 포함)
-     * 호출 비용은 무시할 만하다.
-     */
+    /** 다섯 제한기의 허용/거부 집계를 주기적으로 남겨 한도 조정의 근거로 삼는다. */
     @Scheduled(fixedDelayString = "${app.auth.rate-limit.report-interval-ms:600000}")
     public void reportAndCleanup() {
         long now = System.currentTimeMillis();

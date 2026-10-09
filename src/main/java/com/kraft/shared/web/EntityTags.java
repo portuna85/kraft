@@ -3,18 +3,13 @@ package com.kraft.shared.web;
 import com.kraft.shared.exception.PreconditionRequiredException;
 
 /**
- * 엔티티 버전(낙관적 잠금)을 HTTP ETag·If-Match로 옮기는 규칙.
- * <p>
- * ETag는 강한 형태({@code "3"})로 낸다. If-Match는 강한 비교를 쓰므로(RFC 9110 §13.1.1) 약한 ETag({@code W/"3"})는
- * 어떤 값과도 일치할 수 없다. 다만 들어오는 값은 {@code W/} 접두사를 관대하게 받는다 — 압축·프록시가 강한
- * ETag를 약한 것으로 바꿀 수 있어서다.
+ * 엔티티 버전(낙관적 잠금)을 HTTP ETag·If-Match로 옮기는 규칙. ETag는 강한 형태({@code "3"})로 낸다 — If-Match는 강한
+ * 비교(RFC 9110 §13.1.1)라 약한 ETag는 어떤 값과도 일치하지 못한다. 들어오는 값은 {@code W/} 접두사를 관대하게
+ * 받는다(압축·프록시가 강한 ETag를 약하게 바꿀 수 있다).
  */
 public final class EntityTags {
 
-    /**
-     * 어떤 버전과도 일치하지 않는 값. 형식이 틀리거나 여러 값을 나열한 {@code If-Match}를 "일치 없음"으로 다뤄
-     * 서비스의 버전 검사가 그대로 412를 내게 한다(버전은 0 이상이다).
-     */
+    /** 어떤 버전과도 일치하지 않는 값 — 형식이 틀리거나 여러 값을 나열한 {@code If-Match}를 "일치 없음"으로 다뤄 버전 검사가 412를 내게 한다. */
     static final long NO_MATCH = -1L;
 
     private EntityTags() {
@@ -26,12 +21,10 @@ public final class EntityTags {
     }
 
     /**
-     * 수정 요청의 기준 버전을 {@code If-Match} 헤더에서 읽는다. 헤더가 없으면 428이다 — 기준 없이 받으면 오래된
-     * 화면이 다른 사람의 저장을 말없이 덮어쓴다. 배포 직전까지 열려 있던 옛 화면은 헤더 없이 본문
-     * {@code version}만 보내는데, 그 요청도 428로 거절되고 화면에는 새로고침 안내가 뜬다(본문 {@code version}은
-     * 더 이상 읽지 않는다).
+     * 수정 요청의 기준 버전을 {@code If-Match}에서 읽는다. 헤더가 없으면 428이다 — 기준 없이 받으면 오래된 화면이 다른
+     * 사람의 저장을 말없이 덮어쓴다(본문 {@code version}은 더 이상 읽지 않는다).
      *
-     * @return 기준 버전. {@code If-Match: *}는 "존재하기만 하면 된다"는 뜻이라 {@code null}(검사 생략)이다.
+     * @return 기준 버전. {@code If-Match: *}는 검사 생략이라 {@code null}이다.
      * @throws PreconditionRequiredException 헤더가 없거나 비어 있을 때
      */
     public static Long expectedVersion(String ifMatch) {

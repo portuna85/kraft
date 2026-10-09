@@ -9,20 +9,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 /**
- * 요청 하나의 상태 코드와 걸린 시간을 {@link RequestMetrics}에 적는다.
+ * 요청 하나의 상태 코드와 걸린 시간을 {@link RequestMetrics}에 적는다. 보안 필터 체인(order -100)보다 앞에 등록한다
+ * ({@link ObservabilityConfig}) — 뒤에 두면 인증 실패·CSRF 거부처럼 필터 단계에서 끝나는 응답이 통계에서 빠진다.
  * <p>
- * 보안 필터 체인(order -100)보다 앞에 등록한다({@link ObservabilityConfig}). 뒤에 두면 인증 실패·CSRF 거부처럼 필터
- * 단계에서 끝나는 응답이 통계에 잡히지 않는다 — 세션이 통째로 깨져 403이 쏟아지는 상황이
- * 바로 알아야 할 상황인데, 그때 오히려 지표가 조용해진다.
- * <p>
- * 정적 자원은 세지 않는다. CSS·JS·이미지는 대부분 304로 끝나고 수가 압도적이라, 함께 세면
- * 실제 화면·API의 오류율이 묻혀 버린다 — 오류율을 보는 목적 자체가 사라진다.
- * <p>
- * 템플릿이 실제로 내보내는 JS 주소는 {@code /js/...}가 아니라 고정 버전이 앞에 붙은
- * {@code /{버전}/js/...}다({@code spring.web.resources.chain.strategy.fixed}). 예전에는
- * 이 형태를 놓쳐 첫 방문의 JS 요청이 전부 앱 요청으로 섞였다.
- * 설정된 그 버전 하나만 인정한다 — 임의의 {@code /무엇/js/}를 빼면 앱 경로의 오류까지 지표에서
- * 사라질 수 있다.
+ * 정적 자원은 세지 않는다(대부분 304라 수가 압도적이어서 실제 화면·API의 오류율이 묻힌다). 템플릿이 내보내는 JS는
+ * {@code /{버전}/js/...}({@code spring.web.resources.chain.strategy.fixed})라 설정된 그 버전 하나만 인정한다 —
+ * 임의의 {@code /무엇/js/}를 빼면 앱 경로의 오류까지 사라질 수 있다.
  */
 public class RequestMetricsFilter extends OncePerRequestFilter {
 
@@ -53,12 +45,8 @@ public class RequestMetricsFilter extends OncePerRequestFilter {
     }
 
     /**
-     * 알려진 한계: 아래 요청 밖으로 던져진 예외가 있으면 {@code response.getStatus()}는 이
-     * {@code finally}가 도는 시점의 값을 읽는다. 서블릿 컨테이너가 예외를 실제 5xx 응답으로
-     * 바꾸는 처리(스프링의 예외 → 상태 변환, {@code /error} 재디스패치 등)가 이 필터 바깥,
-     * 더 나중에 일어날 수 있어 그 최종 상태를 여기서는 확정적으로 알 수 없다. 정확히 맞추려면 상태를 추정하는 임시방편을 넣기보다 서블릿
-     * 컨테이너·Spring MVC의 예외 처리 순서 자체를 다시 설계해야 하므로, 이번에는 한계로만
-     * 남겨 둔다.
+     * 알려진 한계: 요청 밖으로 던져진 예외는 서블릿 컨테이너/Spring이 5xx로 바꾸는 시점이 이 필터보다 나중일 수 있어,
+     * {@code finally}에서 읽는 상태가 최종 값이 아닐 수 있다. 맞추려면 예외 처리 순서를 다시 설계해야 해 한계로만 둔다.
      */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)

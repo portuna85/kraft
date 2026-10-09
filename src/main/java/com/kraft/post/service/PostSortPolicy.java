@@ -8,13 +8,9 @@ import org.springframework.data.domain.Sort;
 import java.util.Set;
 
 /**
- * 게시글 목록의 {@code sort} 파라미터 허용 목록.
- * <p>
- * {@code PostRepository.search}는 JPQL에 고정 {@code ORDER BY}를 두지 않고 {@link Pageable}의
- * {@link Sort}에 정렬을 전적으로 맡긴다({@link #effectiveSort} 참고). 검증 없이 받으면
- * {@code ?sort=content,desc}처럼 인덱스 없는 TEXT 컬럼 정렬을 클라이언트가 강제할 수 있다.
- * 허용 목록은 {@code Post} 엔티티에서 정렬이
- * 안전한 컬럼만 둔다.
+ * 게시글 목록 {@code sort} 파라미터의 허용 목록. {@code PostRepository.search}는 정렬을 {@link Pageable}의 {@link Sort}에
+ * 전적으로 맡기므로({@link #effectiveSort}), 검증 없이 받으면 {@code ?sort=content,desc}처럼 인덱스 없는 TEXT 컬럼 정렬을
+ * 강제할 수 있다. 정렬이 안전한 컬럼만 둔다.
  */
 public final class PostSortPolicy {
 
@@ -30,12 +26,7 @@ public final class PostSortPolicy {
         }
     }
 
-    /**
-     * 허용되지 않는 정렬이면 정렬 없이(unsorted) page/size만 유지한 {@link Pageable}을
-     * 돌려준다 — 리포지토리에는 기본 정렬이 없으므로, 이어서 {@link #effectiveSort}가 이
-     * unsorted 상태를 id 내림차순으로 채운다. 화면 요청은 URL을 직접 조작한 경우까지 오류
-     * 화면으로 보낼 필요가 없어 거부 대신 무시한다.
-     */
+    /** 허용되지 않는 정렬이면 정렬 없는 page/size만 남긴다(화면 요청은 URL 조작도 오류 없이 무시한다). {@link #effectiveSort}가 이어서 id 내림차순으로 채운다. */
     public static Pageable sanitize(Pageable pageable) {
         if (isAllowed(pageable.getSort())) {
             return pageable;
@@ -48,16 +39,9 @@ public final class PostSortPolicy {
     }
 
     /**
-     * 실제 정렬에 쓸 {@link Sort}를 만든다. {@code PostRepository.search}는 예전에
-     * {@code ORDER BY p.id DESC}를 JPQL에 직접 박아 두고 있었는데, Spring Data가 여기서 만든
-     * Sort를 그 <b>뒤에</b> 덧붙인다 — id가 고유해 동점이 나지 않으므로 viewCount·updatedAt을
-     * 요청해도 반환 순서가 전혀 바뀌지 않았다. 이제 리포지토리 JPQL에서 고정 ORDER BY를
-     * 빼고, 이 메서드가 만든 Sort만으로 정렬한다.
-     * <p>
-     * 정렬을 지정하지 않으면(빈 Sort) 기존 기본값(id 내림차순)을 그대로 쓴다. id가 아닌
-     * 정렬을 요청하면 그 기준을 주 정렬로 삼고, updatedAt처럼 값이 같을 수 있는 컬럼을 위해
-     * id 내림차순을 동점 처리(tie-breaker)로 끝에 덧붙인다. 이미 id를 직접 포함한 요청은
-     * 그대로 둔다(id ASC 요청까지 뒤집지 않는다).
+     * 실제 정렬에 쓸 {@link Sort}. 정렬이 없으면 id 내림차순, id가 아닌 정렬이면 id 내림차순을 tie-breaker로 덧붙이고,
+     * 이미 id를 포함한 요청은 그대로 둔다. 리포지토리 JPQL에 고정 ORDER BY를 두지 않는 이유는 Spring Data가 Sort를 그 뒤에
+     * 덧붙여, id가 고유하니 요청한 정렬이 반환 순서에 반영되지 않기 때문이다.
      */
     public static Sort effectiveSort(Sort requested) {
         if (requested.isUnsorted()) {

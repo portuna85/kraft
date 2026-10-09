@@ -15,9 +15,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * 세션 폐기 태스크의 DB 쪽만 담당한다. 아웃박스 메일과 달리 실제 폐기 작업({@link SessionRevoker})도
- * 그 자체가 DB(세션 저장소) 작업이라 SMTP처럼 트랜잭션 밖으로 뺄 이유는 없다 — 그래서 claim과
- * 처리를 분리하는 것은 동시 선점 방지 목적일 뿐이다.
+ * 세션 폐기 태스크의 DB 쪽. 폐기 자체({@link SessionRevoker})도 세션 저장소 DB 작업이라 SMTP처럼 트랜잭션 밖으로 뺄 이유가
+ * 없다 — claim과 처리를 나누는 것은 동시 선점을 막기 위해서다.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -30,10 +29,7 @@ public class SessionRevocationStore {
     @Value("${app.session-revocation.max-attempts:5}")
     private int maxAttempts;
 
-    /**
-     * 비밀번호 변경·재설정·탈퇴와 <b>같은 트랜잭션</b> 안에서 태스크를 만든다(REQUIRES_NEW가
-     * 아니다) — DB 변경과 이 태스크는 함께 커밋되거나 함께 사라져야 한다.
-     */
+    /** 비밀번호 변경·재설정·탈퇴와 같은 트랜잭션에서 태스크를 만든다(REQUIRES_NEW 아님) — DB 변경과 함께 커밋되거나 사라져야 한다. */
     @Transactional
     public Long enqueue(User user) {
         return taskRepository.save(SessionRevocationTask.builder()
@@ -58,17 +54,13 @@ public class SessionRevocationStore {
         return ids;
     }
 
-    /**
-     * {@code ownerToken}이 지금도 이 태스크의 소유자와 같을 때만 처리한다. 정체 재큐잉이 소유권을
-     * 넘긴 뒤에는 원래 소유자가 뒤늦게 이 메서드를 불러도 아무 일도 하지 않는다.
-     */
+    /** {@code ownerToken}이 지금도 소유자일 때만 처리한다(재큐잉 뒤 늦게 온 원래 소유자는 아무것도 하지 않는다). */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void processOne(Long id, String ownerToken) {
         taskRepository.findByIdAndOwnerTokenAndStatus(id, ownerToken, SessionRevocationTaskStatus.PROCESSING)
                 .ifPresentOrElse(task -> {
                     try {
-                        // 세션 principal 이름은 회원 id다 — 회원 번호는 불변이라 탈퇴·재가입
-                        // 뒤에도 다른 계정의 세션을 잘못 지우지 않는다.
+                        // principal 이름은 회원 id다 — 불변이라 탈퇴·재가입 뒤에도 다른 계정의 세션을 잘못 지우지 않는다.
                         sessionRevoker.revokeAll(String.valueOf(task.getUser().getId()), task.getUser().getId());
                         task.markDone();
                     } catch (RuntimeException e) {
@@ -78,12 +70,7 @@ public class SessionRevocationStore {
                 }, () -> log.info("이미 다른 워커가 재선점했거나 끝난 태스크라 건너뜁니다. taskId={}", id));
     }
 
-    /**
-     * 처리 도중 프로세스가 죽으면 그 태스크는 PROCESSING인 채로 남아 아무도 다시 집지 않는다.
-     * 오래된 것은 PENDING으로 되돌리고 소유권 표시도 비운다. 대량 적체를 한 번에 전부
-     * 로딩하지 않고 배치로 나눠 처리한다 — {@code OutboxMailStore.requeueStuck}과 같은
-     * 패턴이다.
-     */
+    /** 처리 도중 죽어 PROCESSING으로 남은 오래된 태스크를 PENDING으로 되돌리고 소유권도 비운다(배치 처리 — {@code OutboxMailStore.requeueStuck}과 같은 패턴). */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int requeueStuck(LocalDateTime threshold) {
         return StuckRequeue.run(

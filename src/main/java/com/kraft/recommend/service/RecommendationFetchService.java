@@ -21,25 +21,17 @@ import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * 동행복권에서 최신 회차를 받아 반영하는 한 번의 실행. 예약 실행({@link RecommendationAutoFetchScheduler})과
- * 관리자 화면의 "지금 수집"이 같은 코드를 쓴다. 한 번에 한 실행만 돈다 — 예약과 수동 실행이
- * 겹치거나 버튼이 연달아 눌려도 같은 회차를 두 번 받지 않는다.
- * <p>
- * {@link DhLotteryClient}의 조회 결과 중 {@code Unavailable}(전송 오류·봇 차단·검증 실패)은
- * {@code NotYetDrawn}과 구분해 WARN으로 남긴다 — 둘을 같은 로그로 묶으면 "이번 주는 원래
- * 조용히 넘어간 것"과 "매번 막히고 있어 사람이 봐야 하는 것"을 나중에 구분할 수 없다.
- * 시도마다 DB에 기록을 남겨(recommendation_fetch_attempts) 재시작해도 이력과 연속 실패 횟수가 남는다.
+ * 동행복권에서 최신 회차를 받아 반영하는 한 번의 실행. 예약 실행({@link RecommendationAutoFetchScheduler})과 관리자 화면의
+ * "지금 수집"이 같은 코드를 쓰며, 한 번에 한 실행만 돈다(겹치거나 버튼을 연달아 눌러도 같은 회차를 두 번 받지 않는다).
+ * {@code Unavailable}(전송 오류·봇 차단·검증 실패)은 {@code NotYetDrawn}과 구분해 WARN으로 남기고, 시도마다 DB에 기록해
+ * 재시작해도 이력과 연속 실패 횟수가 남는다.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class RecommendationFetchService {
 
-    /**
-     * 한 번의 실행에서 연속으로 따라잡는 최대 회차 수. 앱이 여러 주 내려가 있었다면 검증
-     * 구간이 여러 회차만큼 뒤처질 수 있는데, 이 상한은 한 번에 과도한 요청을 보내지 않기 위한
-     * 안전판이다.
-     */
+    /** 한 번의 실행에서 연속으로 따라잡는 최대 회차 수(앱이 여러 주 내려가 있었을 때 과도한 요청을 막는 안전판). */
     static final int MAX_CATCHUP_ROUNDS = 10;
 
     /** 상태 복원에 되돌아볼 최근 시도 수. 연속 실패가 이보다 길면 이 값으로 잘려 보인다. */
@@ -76,7 +68,7 @@ public class RecommendationFetchService {
         try {
             restoreFrom(attemptRepository.findAllByOrderByIdDesc(PageRequest.of(0, RESTORE_WINDOW)));
         } catch (RuntimeException e) {
-            // 상태 복원 실패가 앱 기동을 막을 이유는 없다 — 연속 실패 횟수를 0에서 다시 센다.
+            // 복원 실패가 기동을 막을 이유는 없다 — 연속 실패 횟수를 0에서 다시 센다.
             log.warn("수집 시도 기록으로 상태를 복원하지 못했습니다. 메모리 상태는 비어 있습니다.", e);
         }
     }

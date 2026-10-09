@@ -10,36 +10,18 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * 보낼 메일을 DB에 적어 두는 대기열(아웃박스).
- * <p>
- * 예전에는 회원가입 트랜잭션 안에서 SMTP를 그대로 호출했다. {@code application.yml}의 연결·읽기·
- * 쓰기 타임아웃이 각각 5초라, 메일 서버가 굼뜨면 <b>DB 커넥션 하나를 최대 15초 붙잡은 채</b>
- * 기다렸다. 동시에 몇 명만 가입해도 커넥션 풀이 마르는 구조였다.
- * <p>
- * 이제 트랜잭션 안에서는 이 행을 만들기만 하고, 실제 발송은 {@code OutboxMailWorker}가
- * <b>어떤 트랜잭션에도 속하지 않은 채</b> 수행한다. 덤으로 재시도와 발송 상태가 생긴다.
- * <p>
- * 수신 주소와 본문을 컬럼에 담지 않는 것은 의도다. 이메일은 {@code users.email}에 암호화해
- * 저장하는데 아웃박스에 평문으로 또 적으면 그 보호가 무의미해진다. 대신 회원과 토큰만 가리키고,
- * 보낼 때 그 자리에서 주소와 본문을 만든다.
- * <p>
- * {@link OutboxMailKind}로 메일 종류(이메일 인증·비밀번호 재설정 등)를 구분하고, 본문은
- * {@code OutboxMailWorker}가 종류별로 만든다.
+ * 보낼 메일을 DB에 적어 두는 대기열(아웃박스). 트랜잭션 안에서는 이 행만 만들고, 실제 발송은
+ * {@code OutboxMailWorker}가 트랜잭션 밖에서 한다(재시도·상태 포함). 수신 주소와 본문은 컬럼에 담지 않는다 —
+ * 암호화해 둔 {@code users.email}을 평문으로 또 적으면 보호가 무의미해지므로, 회원과 토큰만 가리키고 보낼 때
+ * 만든다. 종류별 본문은 {@link OutboxMailKind}로 구분한다.
  */
 @Getter
 @Entity
 @NoArgsConstructor
 @Table(name = "outbox_mails", indexes = {
-        // 엔티티에 선언이 없어 ddl-auto: update로 만든 기존 DB에는 이 인덱스들이 생기지
-        // 않았다.
         @Index(name = "IX_OUTBOX_MAILS_STATUS_ID", columnList = "status, id"), // V7
         @Index(name = "IX_OUTBOX_MAILS_STATUS_UPDATED", columnList = "status, updated_at"), // V7
-        // V7의 IX_OUTBOX_MAILS_USER(user_id, id)는 V23에서 지웠다 — 아래 USER_KIND가 왼쪽
-        // 접두사로 이미 포함해 남는 쓰기 비용만 만들었다.
         @Index(name = "IX_OUTBOX_MAILS_USER_KIND", columnList = "user_id, kind, id"), // V14
-        // V15의 IX_OUTBOX_MAILS_STATUS_NEXT_ATTEMPT(status, next_attempt_at)는 V25에서
-        // 지웠다 — claim 쿼리는 next_attempt_at을 필터로만 쓰고 실제 정렬은 id라, 위의
-        // STATUS_ID(status, id)가 이미 이 쿼리를 커버한다.
 })
 public class OutboxMail extends BaseEntity {
 
@@ -51,13 +33,7 @@ public class OutboxMail extends BaseEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    /**
-     * 본문에 실을 인증 토큰. 토큰 테이블의 행이 지워져도 이 값으로 링크를 만든다. 발송이
-     * 끝나면(SENT/FAILED) {@code markSent}/{@code markFailed}/{@code markStale}이 비운다.
-     * 더는 필요 없는 평문을 이 테이블의 보관 기간(기본 30일,
-     * OutboxMailWorker.retentionDays) 동안 그대로 남겨 둘 이유가 없다. PENDING으로 돌아가
-     * 재시도할 때는(다음 시도에서 다시 필요하므로) 비우지 않는다.
-     */
+    /** 본문에 실을 인증 토큰(평문). 발송이 끝나면(SENT/FAILED) 비워 보관 기간 동안 평문이 남지 않게 하고, 재시도(PENDING)에는 유지한다. */
     @Column(length = 100)
     private String token;
 
@@ -79,13 +55,10 @@ public class OutboxMail extends BaseEntity {
 
     private LocalDateTime sentAt;
 
-    /**
-     * 다음 재시도가 가능한 시각(지수 백오프). null이면 즉시 재시도 대상이다 — 아직 한 번도
-     * 실패하지 않은 새 메일이 이 상태다.
-     */
+    /** 다음 재시도가 가능한 시각(지수 백오프). null이면 즉시 재시도 대상(새 메일)이다. */
     private LocalDateTime nextAttemptAt;
 
-    /** 어느 워커 인스턴스가 선점했는지. 운영 로그 추적용이며 발송 로직은 이 값을 보지 않는다. */
+    /** 선점한 워커의 임대 토큰. 결과 반영 시 소유권 확인에 쓴다. */
     @Column(length = 36)
     private String ownerToken;
 
@@ -113,11 +86,7 @@ public class OutboxMail extends BaseEntity {
         this.token = null;
     }
 
-    /**
-     * 실패를 기록한다. 남은 기회가 있으면 다시 PENDING으로 돌려 다음 차례에 집게 하고,
-     * 다 썼으면 FAILED로 끝낸다. PENDING으로 돌아갈 때는 {@code 2^attempts}분(최대 60분)
-     * 뒤로 다음 시도 시각을 미뤄, 계속 실패하는 메일이 매 주기 배치 자리를 차지하지 않게 한다.
-     */
+    /** 실패를 기록한다. 기회가 남으면 PENDING으로 돌리고 {@code 2^attempts}분(최대 60분) 뒤로 미루며, 다 쓰면 FAILED로 끝낸다. */
     public void markFailed(String error, int maxAttempts) {
         this.status = attempts >= maxAttempts ? OutboxMailStatus.FAILED : OutboxMailStatus.PENDING;
         this.lastError = error == null ? null : error.substring(0, Math.min(error.length(), 500));
@@ -137,11 +106,7 @@ public class OutboxMail extends BaseEntity {
         this.token = null;
     }
 
-    /**
-     * 정체 재큐잉 전용. 이전 소유자가 뒤늦게 markSent/markFailed를 불러도 소유권 표시가
-     * 이미 비어 있으므로(더는 그 워커의 ownerToken과 같지 않으므로) 그 결과가 새 소유자의
-     * 처리를 덮지 않는다.
-     */
+    /** 정체 재큐잉 전용. 소유권을 비워, 뒤늦게 온 이전 소유자의 markSent/markFailed가 새 소유자의 처리를 덮지 못하게 한다. */
     public void releaseOwnership() {
         this.ownerToken = null;
     }

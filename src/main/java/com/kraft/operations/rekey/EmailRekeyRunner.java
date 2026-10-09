@@ -11,16 +11,14 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
- * {@code rekey} 프로파일로 앱을 띄우면 이메일 키 교체를 한 번 수행하고 종료한다.
+ * {@code rekey} 프로파일로 앱을 띄우면 이메일 키 교체를 한 번 수행하고 종료한다(성공 0, 실패 1).
  *
  * <pre>
  * java -jar kraft.jar --spring.profiles.active=rekey
  * </pre>
  *
- * 전용 프로파일로 가둔 이유는 <b>실수로 돌 일이 없게</b> 하기 위해서다. {@code local}·{@code prod}
- * 어디에도 이 빈이 활성화될 경로가 없다. <b>DB 백업(deploy/backup.sh)이 선행 조건</b>이다.
- * <p>
- * 끝나면 종료 코드를 남기고 내려간다(성공 0, 실패 1). 서비스로 남지 않으므로 배치처럼 쓸 수 있다.
+ * 실수로 돌 일이 없게 전용 프로파일로 가뒀다({@code local}·{@code prod}에는 이 빈이 활성화될 경로가 없다). DB 백업
+ * (deploy/backup.sh)이 선행 조건이다.
  */
 @Slf4j
 @RequiredArgsConstructor

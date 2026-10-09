@@ -4,14 +4,9 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 /**
- * 목록 화면의 페이지 이동 표시에 필요한 값을 미리 계산한 화면 모델.
- * <p>
- * 전체 페이지 번호를 모두 출력하면 페이지가 많을 때 화면 폭을 넘기므로, 현재 페이지 주변의
- * 연속된 번호 최대 {@value #WINDOW_SIZE}개만 노출한다. Thymeleaf 표현식에서 계산하지 않고
- * 여기서 끝내는 이유는 경계 보정(첫·마지막·범위 초과 페이지) 규칙을 단위 테스트로 고정하기
- * 위해서다.
- * <p>
- * 모든 페이지 번호는 요청과 동일한 <b>0-기반</b>이다. 화면에 1부터 표시하는 변환은 템플릿이 한다.
+ * 목록의 페이지 이동 표시 값을 미리 계산한 모델. 현재 페이지 주변의 연속된 번호 최대 {@value #WINDOW_SIZE}개만 노출하며, 경계
+ * 보정(첫·마지막·범위 초과) 규칙을 템플릿이 아니라 여기서 끝내 단위 테스트로 고정한다. 페이지 번호는 모두 0-기반이다(1부터
+ * 표시하는 변환은 템플릿).
  */
 public record PageWindow(
         List<Integer> pages,
@@ -26,8 +21,7 @@ public record PageWindow(
     private static final int WINDOW_SIZE = 5;
 
     /**
-     * 전체 페이지 수를 모를 때(검색) 쓰는 창. 번호 목록 없이 이전·다음만 있고
-     * {@code totalPages}는 0이다. 화면은 {@code displayPage}("N페이지")만 보여 준다.
+     * 전체 페이지 수를 모를 때(검색)의 창: 번호 목록 없이 이전·다음만 있고 {@code totalPages}는 0이다.
      *
      * @param page    현재 페이지(0-기반)
      * @param hasNext 다음 페이지가 있는지(Slice의 {@code hasNext})

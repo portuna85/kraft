@@ -19,31 +19,15 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 동행복권의 비공식·내부용 회차 조회 주소 하나만 알고 있는 얇은 클라이언트. 공식 문서화된
- * API가 아니다 — 응답 형식이 예고 없이 바뀔 수 있다(실제로 예전에 쓰던
- * {@code common.do?method=getLottoNumber}는 어느 시점부터 요청과 무관하게 홈페이지로
- * 302 리다이렉트만 돌려주게 되었다 — curl과 실제 브라우저 세션 모두에서 재현 확인).
- * 지금은 로또6/45 추첨결과 화면(신규 SPA)이 내부적으로 쓰는
- * {@code lt645/selectPstLt645InfoNew.do}를 대신 쓴다.
+ * 동행복권 추첨결과 화면이 내부적으로 쓰는 비공식 주소({@code lt645/selectPstLt645InfoNew.do}) 하나를 부르는
+ * 얇은 클라이언트. 공식 API가 아니라 응답 형식이 예고 없이 바뀔 수 있다. DB·트랜잭션은 모른다.
  * <p>
- * 이 주소는 회차 하나가 아니라 요청한 회차를 포함한 최근 10개 회차를 한 번에 돌려준다
- * (범위를 벗어나면 1회차 쪽으로 잘림). 그래서 {@link #fetchRound(int)}는 매번 새로 HTTP
- * 요청을 보내는 대신, 마지막으로 받은 배치를 {@code cache}에 담아 두고 이미 받아 온 회차는
- * 캐시에서 바로 돌려준다 — 백필처럼 회차를 순차로 조회할 때 실제 요청 수를 최대 1/10로
- * 줄이기 위함이다. 새 배치를 받으면 이전 캐시는 버린다(이 클래스가 필요한 건 "다음에 조회할
- * 회차"뿐이라 전체 이력을 누적해 들고 있을 이유가 없다).
+ * 이 주소는 요청한 회차를 포함한 최근 10개 회차를 한 번에 주므로, 마지막 배치를 {@code cache}에 담아 순차
+ * 조회(백필) 때 요청 수를 줄인다. 결과는 예외가 아니라 {@link FetchOutcome}으로 구분한다(추첨 전 vs 신뢰할 수
+ * 없는 응답).
  * <p>
- * 그래도 "성공"과 "실패"는 예외가 아니라 {@link FetchOutcome}로 명시적으로 구분해, 호출자가
- * 실패 종류(아직 추첨 전 vs 신뢰할 수 없는 응답)를 혼동하지 않게 한다.
- * <p>
- * DB·트랜잭션을 전혀 모른다 — 회차 하나를 조회하는 것만 담당하며,
- * {@link RecommendationAutoFetchScheduler}와 백필 러너가 함께 재사용한다.
- * <p>
- * 연속 실패 시 호출을 멈추는 서킷은 따로 두지 않는다(검토 결과) — 두 호출자
- * 모두 {@code Unavailable}을 받으면 그 실행에서 즉시 멈추고 다음 예약/재실행으로 넘긴다
- * ({@link RecommendationAutoFetchScheduler#fetchLatestIfDue}, 백필 러너의
- * {@code backfill()}). 이미 "한 번 막히면 그 자리에서 멈춘다"가 보장돼 있어, 클라이언트
- * 안에 같은 것을 또 두면 두 곳에서 같은 결정을 내리는 코드가 생긴다.
+ * 연속 실패 서킷은 두지 않는다 — 호출자({@link RecommendationAutoFetchScheduler}, 백필 러너)가 이미
+ * {@code Unavailable}에서 그 실행을 멈춘다.
  */
 @Slf4j
 @Component
@@ -53,27 +37,13 @@ public class DhLotteryClient {
     private static final String PATH = "/lt645/selectPstLt645InfoNew.do?srchDir=center&srchLtEpsd={drwNo}";
 
     /**
-     * 기본 User-Agent(자바 HTTP 클라이언트의 익명 문자열) 대신 이 서비스를 식별하고 연락할 수
-     * 있는 값을 보낸다. 비공식 엔드포인트를 여러 사용자를 대신해 정기적으로 두드리는
-     * 입장에서, 문제가 생겼을 때(봇 차단, 트래픽 문의) 상대가 누구인지 알 수 있게 하는 최소한의
-     * 예의다 — 차단을 피하려는 위장이 아니라 그 반대다.
-     * <p>
-     * ASCII만 쓴다 — HTTP 헤더 값에 비ASCII(한글)가 있으면 상대 서버의 방화벽(Spring
-     * StrictHttpFirewall)이 {@code RequestRejectedException}으로 요청을 거부해 500이 돌아와,
-     * 예전에는 자동 수집·백필이 매번 {@code HTTP_ERROR}로 멈췄다(회차 1244 수집 실패).
+     * 이 서비스를 식별할 수 있는 User-Agent(위장이 아니라 문제 시 상대가 연락할 수 있게). ASCII만 쓴다 —
+     * 비ASCII 헤더는 상대 방화벽이 거부해 500이 돌아온다.
      */
     static final String USER_AGENT = "kraft-recommend-bot/1.0 (+https://kraft.io.kr; lottery round lookup for number recommendation, scheduled up to 4 times a week)";
 
     private final RestClient restClient;
-    /**
-     * 마지막으로 받은 배치. {@code volatile} 참조를 통째로 교체한다 —
-     * {@code RecommendationHistoryProvider.cached}와 같은 패턴이다. 이전에는
-     * {@code ConcurrentHashMap}을 {@code clear()}한 뒤 {@code put()}을 반복해 채웠는데, 그
-     * 구간 전체가 원자적이지 않았다 — 같은 JVM에서 두 스레드가 동시에 {@link #fetchRound}를
-     * 부르면 한쪽이 지운 직후·채우는 도중을 다른 쪽이 읽어 방금 받은 배치가 비어 보일 수
-     * 있었다. 자동 수집(예약)과 백필(보통 별도 프로세스)이 겹칠 일은 드물지만, 겹치지 않는다는
-     * 보장은 이 클래스 밖에 있다.
-     */
+    /** 마지막으로 받은 배치. 채우는 도중이 보이지 않게 {@code volatile} 참조를 통째로 교체한다. */
     private volatile Map<Integer, ImportedDraw> cache = Map.of();
 
     @Autowired
@@ -83,9 +53,7 @@ public class DhLotteryClient {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(Duration.ofMillis(connectTimeoutMs));
         requestFactory.setReadTimeout(Duration.ofMillis(readTimeoutMs));
-        // RestClient.Builder는 spring-boot-starter-restclient가 있어야 자동 구성되는 빈이라 이
-        // 프로젝트 의존성에는 없다 — 새 의존성을 추가하는 대신 직접 만든다(HTTP 클라이언트
-        // 하나만 필요한 이 용도에는 충분하다).
+        // RestClient.Builder 빈은 starter-restclient가 있어야 하므로 직접 만든다.
         this.restClient = RestClient.builder()
                 .baseUrl(BASE_URL)
                 .requestFactory(requestFactory)
@@ -93,20 +61,12 @@ public class DhLotteryClient {
                 .build();
     }
 
-    /**
-     * 테스트 전용 — 이미 구성된(예: {@code MockRestServiceServer}에 바인딩된) {@link RestClient}를
-     * 그대로 쓴다. 위 생성자처럼 타임아웃용 {@code requestFactory}를 다시 덮어쓰면 목 서버 바인딩이
-     * 사라지므로, 이 경로는 그런 재설정을 하지 않는다.
-     */
+    /** 테스트 전용 — 목 서버에 바인딩된 {@link RestClient}를 그대로 쓴다(requestFactory를 덮어쓰면 바인딩이 사라진다). */
     DhLotteryClient(RestClient restClient) {
         this.restClient = restClient;
     }
 
-    /**
-     * 지정한 회차 하나를 조회한다. 이 메서드는 예외를 던지지 않는다(전송 오류·비-JSON 응답·
-     * 검증 실패를 모두 {@link FetchOutcome.Unavailable}로 흡수한다) — 호출자가 매번
-     * try/catch 없이 세 가지 결과만 분기하면 되게 하기 위함이다.
-     */
+    /** 회차 하나를 조회한다. 예외를 던지지 않고 모든 실패를 {@link FetchOutcome.Unavailable}로 흡수한다. */
     public FetchOutcome fetchRound(int drwNo) {
         ImportedDraw cached = cache.get(drwNo);
         if (cached != null) {
@@ -123,8 +83,7 @@ public class DhLotteryClient {
             log.warn("동행복권 회차 {} 조회 실패(전송 오류): {}", drwNo, e.getMessage());
             return new FetchOutcome.Unavailable("HTTP_ERROR: " + e.getMessage());
         } catch (Exception e) {
-            // 홈페이지로 리다이렉트되는 등 JSON이 아닌 응답(HTML 등)이 오면 메시지 컨버터가
-            // 여기서 실패한다.
+            // 홈페이지 리다이렉트 등 JSON이 아닌 응답은 메시지 컨버터가 여기서 실패한다.
             log.warn("동행복권 회차 {} 조회 실패(응답을 JSON으로 해석할 수 없음): {}", drwNo, e.getMessage());
             return new FetchOutcome.Unavailable("UNPARSEABLE_RESPONSE: " + e.getMessage());
         }
@@ -143,10 +102,7 @@ public class DhLotteryClient {
                 requestedRoundExists = true;
             }
             try {
-                // 번호 필드는 nullable Integer다 — List.of는 null 원소에서 즉시
-                // NullPointerException을 던지므로, 그 검사도 다른 행을 오염시키지 않도록 이
-                // try 안에서 함께 잡는다. 바깥에 있으면 이 메서드의 "예외를 던지지 않는다"는
-                // 계약이 깨지고 배치 전체 처리가 중단된다.
+                // 번호는 nullable이라 List.of가 NPE를 던진다 — 한 행이 배치 전체를 깨지 않게 try 안에서 잡는다.
                 List<Integer> numbers = new ArrayList<>(List.of(
                         item.tm1WnNo(), item.tm2WnNo(), item.tm3WnNo(),
                         item.tm4WnNo(), item.tm5WnNo(), item.tm6WnNo()));
@@ -156,7 +112,7 @@ public class DhLotteryClient {
                 log.warn("동행복권 회차 {} 응답의 번호가 유효하지 않음: {}", item.ltEpsd(), e.getMessage());
             }
         }
-        // 다 채운 뒤 한 번에 교체한다 — 이 대입 전까지는 다른 스레드가 여전히 이전 배치를 본다.
+        // 다 채운 뒤 한 번에 교체한다.
         cache = Map.copyOf(nextBatch);
 
         if (!requestedRoundExists) {
@@ -169,11 +125,7 @@ public class DhLotteryClient {
         return new FetchOutcome.Success(draw);
     }
 
-    /**
-     * 화면 표시용 부가 정보({@link DrawDetails})를 만든다. 개별 필드가 이상해도(범위 밖
-     * 보너스 번호, 해석 안 되는 날짜) 그 필드만 null로 남기고 나머지는 살린다 — 부가 정보
-     * 하나가 깨졌다고 본번호 6개 이력 반영까지 막을 이유가 없다.
-     */
+    /** 화면 표시용 부가 정보. 이상한 필드는 null로 두고 나머지는 살린다(본번호 반영을 막지 않는다). */
     private DrawDetails buildDetails(DhLotteryDrawItem item) {
         Integer bonus = item.bnsWnNo();
         if (bonus != null && (bonus < LottoNumbers.MIN || bonus > LottoNumbers.MAX)) {
@@ -198,12 +150,7 @@ public class DhLotteryClient {
     record DhLotteryBatchData(List<DhLotteryDrawItem> list) {
     }
 
-    /**
-     * 당첨자 인원수 이상의 등수별 상세(2등 이하, 누적 판매액 등)는 이 기능에 필요 없어 매핑하지
-     * 않는다(알 수 없는 필드는 무시됨). {@code bnsWnNo}(보너스 번호)·{@code ltRflYmd}(추첨일,
-     * yyyyMMdd)·{@code rnk1WnNope}(1등 당첨자 수)·{@code rnk1WnAmt}(1등 1인당 당첨금)는
-     * 화면 표시 전용 부가 정보({@link DrawDetails})로만 쓰인다.
-     */
+    /** 필요한 필드만 매핑한다. 보너스·추첨일(yyyyMMdd)·1등 당첨자 수/금액은 표시 전용({@link DrawDetails})이다. */
     record DhLotteryDrawItem(
             int ltEpsd,
             Integer tm1WnNo, Integer tm2WnNo, Integer tm3WnNo,

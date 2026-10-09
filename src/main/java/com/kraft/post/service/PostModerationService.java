@@ -12,10 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
 /**
- * 관리자만 하는 게시글 상태 변경(복구·숨김·숨김 해제·고정). 호출 경로가 {@code /api/v1/admin/**}라 권한은
- * {@code SecurityConfig}가 판정한다 — 이 서비스는 권한을 다시 묻지 않는다.
- * <p>
- * 클래스 기본값이 읽기 전용이 아니라, 쓰기 메서드마다 {@code @Transactional}을 명시한다.
+ * 관리자만 하는 게시글 상태 변경(복구·숨김·숨김 해제·고정). 경로가 {@code /api/v1/admin/**}라 권한은 {@code SecurityConfig}가
+ * 판정한다. 클래스 기본값이 읽기 전용이 아니라 쓰기 메서드마다 {@code @Transactional}을 명시한다.
  */
 @RequiredArgsConstructor
 @Service
@@ -26,10 +24,7 @@ public class PostModerationService {
 
     private final PostRepository postRepository;
 
-    /**
-     * 소프트 삭제된 글을 되돌린다. 삭제 때 닫힌 신고는 다시 열지 않는다 — 처리 기록이므로 그대로 둔다.
-     * 삭제된 글이 아니면(없거나 이미 복구됨) 글이 없는 것으로 답한다.
-     */
+    /** 소프트 삭제된 글을 되돌린다. 삭제된 글이 아니면(없거나 이미 복구됨) 글이 없는 것으로 답한다. */
     @Caching(evict = {
             @CacheEvict(value = "pinnedPosts", allEntries = true),
             @CacheEvict(value = "popularPosts", allEntries = true)
@@ -41,10 +36,7 @@ public class PostModerationService {
         }
     }
 
-    /**
-     * 글을 숨긴다. 삭제와 달리 내용과 댓글이 그대로 남고 {@link #unblindPost}로 되돌릴 수 있다. 이미 숨겨진
-     * 글은 조용히 넘어간다(두 관리자가 겹쳐 눌러도 같은 결과다). 없거나 삭제된 글이면 글이 없는 것으로 답한다.
-     */
+    /** 글을 숨긴다(내용·댓글은 남고 {@link #unblindPost}로 되돌린다). 이미 숨겨졌으면 조용히 넘어가고, 없거나 삭제된 글이면 글이 없는 것으로 답한다. */
     @Caching(evict = {
             @CacheEvict(value = "pinnedPosts", allEntries = true),
             @CacheEvict(value = "popularPosts", allEntries = true)
@@ -70,11 +62,9 @@ public class PostModerationService {
     }
 
     /**
-     * 글을 {@code until}까지 목록 상단에 고정한다. 이미 고정된 글이면 기한만 바뀐다.
-     * <p>
-     * 목록 상단에는 {@link PostQueryService#PINNED_LIMIT}개까지만 보이므로 그보다 많이 고정하지 못하게 한다 —
-     * 넘치는 글은 고정했는데도 보이지 않아 관리자를 헷갈리게 한다. 기한은 지금부터 {@link #MAX_PIN_DAYS}일
-     * 이내여야 한다. 삭제되거나 숨겨진 글은 고정할 수 없다(글이 없는 것으로 답한다).
+     * 글을 {@code until}까지 목록 상단에 고정한다(이미 고정된 글은 기한만 바뀐다). 상단에는
+     * {@link PostQueryService#PINNED_LIMIT}개까지만 보이므로 그보다 많이 고정하지 못하게 하고, 기한은 지금부터
+     * {@link #MAX_PIN_DAYS}일 이내여야 한다. 삭제·숨겨진 글은 고정할 수 없다.
      */
     @Caching(evict = {
             @CacheEvict(value = "pinnedPosts", allEntries = true),

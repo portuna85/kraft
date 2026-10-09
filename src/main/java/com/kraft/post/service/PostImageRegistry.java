@@ -17,11 +17,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * {@code post_images} 대장을 다루는 서비스. 파일 자체를 읽고 쓰는 일은 {@link PostImageService}가
- * 그대로 맡고, 여기서는 "누가 올린 파일인지 / 어느 게시글에 붙어 있는지 / 지워도 되는지"만 다룬다.
- * <p>
- * 두 관심사를 나눈 이유는 {@link PostImageService}가 DB 없이 임시 디렉터리만으로 검증 가능한
- * 순수 파일 유틸리티로 남는 편이 낫기 때문이다(기존 {@code PostImageServiceTest} 15개가 그렇게 돈다).
+ * {@code post_images} 대장 서비스: 누가 올린 파일인지, 어느 글에 붙어 있는지, 지워도 되는지를 다룬다. 파일
+ * 자체는 {@link PostImageService}가 맡아, 그쪽이 DB 없이 임시 디렉터리만으로 검증되는 순수 유틸로 남는다.
  */
 @RequiredArgsConstructor
 @Service
@@ -36,17 +33,10 @@ public class PostImageRegistry {
     private final PostImageService postImageService;
 
     /**
-     * 업로드 파일을 검사하고 대장에 올린다. 이 시점에는 아직 어떤 게시글에도 속하지 않으므로
-     * ORPHAN이다.
-     * <p>
-     * 예전에는 용량 검사({@code validateQuota})와 등록({@code register})이 서로 다른 트랜잭션
-     * 호출로 나뉘어 있어, 같은 계정의 동시 업로드 두 건이 모두 검사를 통과한 뒤 각자 등록될 수
-     * 있었다. 지금은 같은 트랜잭션 안에서 계정 행 자체를
-     * 먼저 잠그고(B07이 추가한 {@link UserRepository#findByIdForUpdate}) 그 안에서 검사·등록까지
-     * 끝낸다. 이전에는 이 계정의 기존 {@code PostImage} 행을 전부 잠갔는데, 이미지가 없는
-     * 계정은 잠글 행이 없어 첫 업로드 두 건이 경쟁을 통과할 수 있었고, 이미지가 많은 계정은 매
-     * 업로드마다 그 행 전체를 잠그는 비용을 치렀다. User 행은 항상 존재하므로 두 문제 모두
-     * 사라진다.
+     * 업로드 파일을 검사해 대장에 올린다(아직 어떤 글에도 속하지 않으므로 ORPHAN). 계정 행
+     * ({@link UserRepository#findByIdForUpdate})을 먼저 잠그고 용량 검사·등록을 같은 트랜잭션에서 끝내 동시 업로드가
+     * 둘 다 검사를 통과하는 경쟁을 막는다. 계정 행은 항상 있어, 이미지가 없는 계정의 첫 업로드도 막고 이미지 행
+     * 전체를 잠그는 비용도 없다.
      */
     public void validateQuotaAndRegister(String url, User owner, long sizeBytes) {
         validateQuotaAndRegister(url, owner, sizeBytes, null, null);
@@ -75,20 +65,16 @@ public class PostImageRegistry {
                 .width(width)
                 .height(height)
                 .build());
-        // 이 메서드 안에서는 저장이 성공해도, 반환 이후 이 트랜잭션의 최종 커밋 자체가 실패할
-        // 수 있다 — 그 실패는
-        // 여기 catch로 잡을 수 없다. BE-23로 파일 쓰기가 이 트랜잭션 밖(PostService.uploadImage)
-        // 으로 옮겨가면서, 그 보상도 이 트랜잭션을 실제로 갖고 있는 여기로 함께 옮겼다.
+        // 커밋이 나중에 실패할 수 있어 catch로는 못 잡는다. 파일은 이 트랜잭션 밖(PostService.uploadImage)에서
+        // 쓰이므로 보상을 여기서 건다.
         OnRollback.run(() -> postImageService.deleteIfExists(url));
     }
 
     /**
-     * 게시글 저장·수정에서 {@code picture}로 넘어온 이미지를 그 게시글에 연결한다.
-     * 이것이 F01의 실제 경계다 — 업로드한 본인의 파일이고, 다른 게시글이 이미 쓰고 있지 않을 때만
-     * 통과한다. {@code /images/UUID} 형식만 확인하는 방식으로는 막을 수 없다.
+     * 게시글 저장·수정의 {@code picture}를 그 글에 연결한다. 업로드한 본인의 파일이고 다른 글이 쓰고 있지 않을
+     * 때만 통과하는 실제 경계다({@code /images/UUID} 형식 검사로는 못 막는다).
      *
-     * @param uploader 지금 요청을 보낸 사용자. 게시글 작성자가 아니라 <b>업로더</b>와 비교해야
-     *                 관리자가 남의 글을 수정할 때도 자기 이미지만 붙일 수 있다.
+     * @param uploader 요청한 사용자. 글 작성자가 아니라 <b>업로더</b>와 비교해야 관리자도 자기 이미지만 붙인다.
      */
     @Transactional
     public Optional<MeasuredSize> attach(String url, User uploader, Post post) {
@@ -110,9 +96,7 @@ public class PostImageRegistry {
         if (image.isAttachedToOtherThan(post)) {
             throw new BusinessValidationException("이미 다른 게시글에서 사용 중인 이미지입니다. 이미지를 다시 올려 주세요.");
         }
-        // 삭제가 예약된 이미지는 정리 작업이 파일을 지우는 도중일 수 있다. 상태만으로
-        // 막아 두면, 정리 작업이 파일 삭제 전 조건부로 선점한 뒤에는 이 이미지를 다시 연결할
-        // 방법이 아예 없어져 정리와 연결 사이의 경쟁이 성립하지 않는다.
+        // 삭제 예약된 이미지는 정리 작업이 선점한 뒤라 다시 연결할 수 없다.
         if (image.getStatus() == PostImageStatus.PENDING_DELETE) {
             throw new BusinessValidationException("삭제 예정인 이미지입니다. 이미지를 다시 올려 주세요.");
         }
@@ -127,12 +111,7 @@ public class PostImageRegistry {
     public record MeasuredSize(int width, int height) {
     }
 
-    /**
-     * 이미지 하나의 삭제를 예약하고 그 이미지의 id를 돌려준다. 실제 파일은 건드리지 않으므로,
-     * 이 트랜잭션이 롤백되면 예약도 함께 사라지고 파일은 그대로 남는다.
-     * 돌려준 id는 커밋 직후 정리 작업을 <b>이 이미지로만</b> 좁히는 데 쓴다 — 전체 삭제
-     * 대기열을 매번 훑지 않기 위해서다.
-     */
+    /** 이미지 하나의 삭제를 예약하고 id를 돌려준다. 파일은 건드리지 않아 롤백되면 예약도 사라진다. 이 id로 커밋 직후 정리를 좁힌다. */
     @Transactional
     public Optional<Long> markForDeletion(String url) {
         String fileName = PostImageService.fileNameOf(url);
@@ -146,11 +125,7 @@ public class PostImageRegistry {
                 });
     }
 
-    /**
-     * 게시글에 붙은 이미지 전부의 삭제를 예약하고 그 id 목록을 돌려준다. 게시글 삭제 직전에
-     * 부른다 — {@code post_id}를 비우는 UPDATE가 게시글 DELETE보다 먼저 DB에 도달해야 FK
-     * 제약에 걸리지 않으므로, 표시 후 곧바로 flush한다.
-     */
+    /** 게시글에 붙은 이미지 전부의 삭제를 예약해 id를 돌려준다. {@code post_id}를 비우는 UPDATE가 글 DELETE보다 먼저 닿도록 곧바로 flush한다(FK). */
     @Transactional
     public List<Long> markPostImagesForDeletion(Long postId) {
         List<PostImage> images = postImageRepository.findAllByPostId(postId);

@@ -7,11 +7,7 @@ import com.kraft.post.domain.Post;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-/**
- * 게시글 상세 <b>화면 전용</b> 응답. 공개 REST 응답({@link PostResponseDto})에 권한 필드를
- * 추가하지 않기 위해 별도로 둔다 — 화면은 서버가 판정한 {@code canManagePost}로 관리 버튼을
- * 노출하고, API는 기존 계약을 그대로 유지한다.
- */
+/** 게시글 상세 <b>화면 전용</b> 응답. 공개 REST 응답({@link PostResponseDto})에 권한 필드를 더하지 않으려 따로 두며, 화면은 서버가 판정한 {@code canManagePost}로 관리 버튼을 노출한다. */
 public record PostViewDto(
         Long id,
         String title,
@@ -30,14 +26,11 @@ public record PostViewDto(
         Long version,
         /** 소프트 삭제된 글이다. 관리자만 이 글을 열 수 있어, 화면이 "삭제됨" 표시와 복구 버튼을 그린다. */
         boolean deleted,
-        /** 관리자가 숨긴 글이다(신고 처리). 관리자만 이 글을 열 수 있어, 화면이 숨김 표시와 해제 버튼을 그린다. */
+        /** 관리자가 숨긴 글. 관리자만 열 수 있어 화면이 숨김 표시와 해제 버튼을 그린다. */
         boolean blinded,
         /** 관리자 권한. 복구 같은 관리 버튼 노출에 쓴다 — 서버가 판정한 값만 믿는다. */
         boolean canModerate,
-        /**
-         * 이 글이 고정 중이면 그 기한. 기한이 지났거나 고정하지 않았으면 null이다. 서버 시간대(KST)의
-         * 오프셋을 실어 보낸다 — 오프셋이 없으면 브라우저가 자기 시간대로 해석한다({@code CommentViewDto.createdAt}과 같은 이유).
-         */
+        /** 고정 중이면 그 기한(아니면 null). 서버 시간대(KST) 오프셋을 실어 보낸다({@code CommentViewDto.createdAt}과 같은 이유). */
         OffsetDateTime pinnedUntil
 ) {
 

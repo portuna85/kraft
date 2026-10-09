@@ -20,12 +20,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * 아웃박스의 DB 쪽만 담당한다. <b>여기에는 SMTP 호출이 하나도 없다</b> — 그것이 이 클래스가
- * 따로 있는 이유다.
- * <p>
- * 발송 한 통은 "집기 → 보내기 → 결과 적기" 세 단계로 나뉘는데, 가운데 단계만 트랜잭션 밖에
- * 있어야 한다. 그러려면 앞뒤 단계가 각자 <b>독립된 짧은 트랜잭션</b>이어야 하므로 전부
- * {@code REQUIRES_NEW}로 연다. 작업자({@code OutboxMailWorker})가 큰 트랜잭션 하나로 감싸면
+ * 아웃박스의 DB 쪽만 담당한다(SMTP 호출 없음). "집기 → 보내기 → 결과 적기" 중 가운데만 트랜잭션 밖이어야
+ * 하므로 앞뒤 단계는 각자 독립된 짧은 트랜잭션({@code REQUIRES_NEW})이다. 작업자가 큰 트랜잭션으로 감싸면
  * 분리한 의미가 없어진다.
  */
 @Slf4j
@@ -49,24 +45,15 @@ public class OutboxMailStore {
     private final FixedWindowRateLimiter noticeBudget =
             new FixedWindowRateLimiter("notice-mail-budget", NOTICE_BUDGET_PER_HOUR, Duration.ofHours(1).toMillis());
 
-    /**
-     * 보낼 메일을 대기열에 넣는다. <b>호출한 쪽의 트랜잭션에 참여한다</b>(REQUIRES_NEW가 아니다) —
-     * 인증 토큰 저장과 이 행은 함께 커밋되거나 함께 사라져야 한다. 토큰만 남고 메일이 없거나,
-     * 그 반대가 되면 안 된다.
-     */
+    /** 메일을 대기열에 넣는다. 호출자의 트랜잭션에 참여한다 — 토큰 저장과 함께 커밋되거나 사라져야 한다. */
     @Transactional
     public void enqueue(User user, String token, OutboxMailKind kind) {
         outboxMailRepository.save(OutboxMail.builder().user(user).token(token).kind(kind).build());
     }
 
     /**
-     * 보낼 것들을 집어 SENDING으로 바꾸고 id를 돌려준다.
-     * <p>
-     * 예전에는 평범한 SELECT 후 엔티티 상태만 바꿨는데, 그 사이에는 아무 잠금도 없어 예약
-     * 실행과 {@code drainAsync}가 동시에 돌면 둘 다 같은 PENDING 행을 집어 중복 발송할 수
-     * 있었다. 지금은 {@code SELECT ... FOR UPDATE SKIP LOCKED}로 행을 먼저 잠그고, 그 잠금이
-     * 유지되는 같은 트랜잭션 안에서 곧바로 UPDATE로 SENDING을 확정한다. 두 번째 선점 시도는
-     * 이미 잠긴 행을 건너뛰므로 겹치는 id를 돌려받지 않는다.
+     * 보낼 것들을 집어 SENDING으로 바꾸고 id를 돌려준다. {@code FOR UPDATE SKIP LOCKED}로 잠근 같은
+     * 트랜잭션에서 UPDATE하므로 동시에 돌아도 같은 행을 두 번 집지 않는다.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public List<Long> claimBatch(int batchSize, String ownerToken) {
@@ -80,18 +67,9 @@ public class OutboxMailStore {
     }
 
     /**
-     * 보내는 데 필요한 값만 평범한 문자열로 꺼낸다. 여기서 꺼내 두어야 SMTP를 부를 때
-     * 영속성 컨텍스트도 커넥션도 필요 없다 — 지연 로딩된 회원 이메일을 그 시점에 읽으면
-     * 트랜잭션이 다시 열린다.
-     * <p>
-     * 발송 직전 토큰이 여전히 유효한지도 함께 확인한다. 탈퇴·재발급으로 토큰 테이블의 행이
-     * 이미 지워졌거나 만료되었다면 이 아웃박스 행은 더 이상 보낼 이유가 없는 옛 링크다 —
-     * 재시도하지 않고 즉시 FAILED로 남긴다.
-     * <p>
-     * {@code ownerToken}이 지금도 이 행의 소유자와 같을 때만 값을 꺼낸다. 정체
-     * 재큐잉({@link #requeueStuck})이 이 행을 다른 워커에게 넘긴 뒤에도 원래 워커가 뒤늦게
-     * 이 메서드를 부를 수 있는데, 그때는 소유권이 이미 없으므로 빈 값을 돌려주어 늦게 도착한
-     * 결과가 새 소유자의 처리를 밀어내지 못하게 한다.
+     * 발송에 필요한 값만 평범한 값으로 꺼낸다(SMTP 때 영속성 컨텍스트·커넥션이 필요 없게). 토큰이 이미
+     * 재발급·만료됐으면 옛 링크라 재시도 없이 FAILED로 남긴다. {@code ownerToken}이 지금도 소유자일 때만
+     * 꺼내며, 재큐잉({@link #requeueStuck}) 뒤 늦게 온 이전 워커는 빈 값을 받는다.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Optional<PendingMail> load(Long id, String ownerToken) {
@@ -108,13 +86,11 @@ public class OutboxMailStore {
     }
 
     private boolean isTokenStillValid(OutboxMail mail) {
-        // 토큰이 없는 종류(A-SEC-08의 로그인 시도 경고 등)는 재발급·만료라는 개념 자체가
-        // 없다 — 대기열에 들어간 이상 그대로 보낸다.
+        // 토큰이 없는 종류(로그인 시도 경고 등)는 만료 개념이 없다.
         if (mail.getToken() == null) {
             return true;
         }
-        // outbox_mails.token은 평문이지만 조회 테이블은 해시만 들고 있다 — 같은
-        // 해시 함수로 변환해야 비교가 된다.
+        // outbox의 토큰은 평문이고 조회 테이블은 해시라 같은 함수로 변환해 비교한다.
         String tokenHash = EmailHasher.sha512Hex(mail.getToken());
         return switch (mail.getKind()) {
             case VERIFY_EMAIL -> emailVerificationTokenRepository.findByTokenHash(tokenHash)
@@ -125,9 +101,7 @@ public class OutboxMailStore {
         };
     }
 
-    /**
-     * {@code ownerToken}과 {@code status=SENDING}이 지금도 유지될 때만 반영한다 — 재선점되었거나 그 사이 재큐잉으로 상태가 바뀐 행의 결과를 덮지 않는다.
-     */
+    /** {@code ownerToken}과 SENDING이 유지될 때만 반영한다 — 재선점·재큐잉된 행의 결과를 덮지 않는다. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markSent(Long id, String ownerToken) {
         outboxMailRepository.findSendingByIdAndOwnerTokenForUpdate(id, ownerToken).ifPresentOrElse(
@@ -135,9 +109,7 @@ public class OutboxMailStore {
                 () -> log.info("이미 다른 워커가 재선점했거나 상태가 바뀐 메일이라 발송 성공을 반영하지 않습니다. outboxMailId={}", id));
     }
 
-    /**
-     * {@code ownerToken}과 {@code status=SENDING}이 지금도 유지될 때만 반영한다 — 재선점되었거나 그 사이 재큐잉으로 상태가 바뀐 행의 결과를 덮지 않는다.
-     */
+    /** {@link #markSent}와 같은 조건으로 실패를 반영한다. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markFailed(Long id, String error, String ownerToken) {
         outboxMailRepository.findSendingByIdAndOwnerTokenForUpdate(id, ownerToken).ifPresentOrElse(
@@ -146,12 +118,8 @@ public class OutboxMailStore {
     }
 
     /**
-     * 발송 도중 프로세스가 죽으면 그 메일은 SENDING인 채로 남아 아무도 다시 집지 않는다.
-     * 오래된 것은 PENDING으로 되돌려 재시도 대상에 넣는다.
-     * <p>
-     * 소유권 표시({@code ownerToken})도 함께 비운다 — 원래 워커가 프로세스만 멈췄을 뿐
-     * 뒤늦게 살아나 {@code markSent}/{@code markFailed}를 호출할 수 있는데, 그때는 이미
-     * 이전 소유자가 아니므로 그 결과가 새로 이 메일을 집은 워커의 처리를 덮으면 안 된다.
+     * 발송 도중 죽어 SENDING으로 남은 오래된 메일을 재시도 대상으로 되돌린다. {@code ownerToken}도 비워,
+     * 뒤늦게 살아난 원래 워커의 결과가 새 소유자의 처리를 덮지 못하게 한다.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int requeueStuck(LocalDateTime threshold) {
@@ -170,9 +138,8 @@ public class OutboxMailStore {
     }
 
     /**
-     * 수신자가 유발하지 않은 안내 메일(계정 존재·로그인 시도 경고)을 쿨다운과 전체 시간당 예산
-     * 안에서만 큐에 넣는다(P0-4). 남의 주소로 가입/로그인을 반복해 그 메일함을 채우거나 SMTP
-     * 일일 쿼터를 소진시키는 것을 막는다. 호출한 쪽의 응답은 큐잉 여부와 무관하게 같아야 한다.
+     * 수신자가 유발하지 않은 안내 메일(계정 존재·로그인 시도 경고)을 쿨다운과 시간당 예산 안에서만 넣는다
+     * (남의 메일함 폭격·SMTP 쿼터 소진 방지). 호출자의 응답은 큐잉 여부와 무관하게 같아야 한다.
      *
      * @return 실제로 큐에 넣었으면 {@code true}
      */
@@ -204,7 +171,7 @@ public class OutboxMailStore {
                 List.of(OutboxMailStatus.SENT, OutboxMailStatus.FAILED), threshold);
     }
 
-    /** 발송에 필요한 값만 담은 꾸러미. 엔티티를 트랜잭션 밖으로 들고 나가지 않으려는 것이다. */
+    /** 발송에 필요한 값만 담은 꾸러미(엔티티를 트랜잭션 밖으로 내보내지 않는다). */
     public record PendingMail(Long id, String to, String token, OutboxMailKind kind, String ownerToken) {
     }
 }

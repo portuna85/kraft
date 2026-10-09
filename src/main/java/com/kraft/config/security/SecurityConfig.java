@@ -41,19 +41,13 @@ public class SecurityConfig {
         return PasswordEncoderFactories.createDelegatingPasswordEncoder();
     }
 
-    /**
-     * 이 빈이 없으면 {@code ProviderManager}가 인증 성공·실패를 이벤트로 발행하지 않는다 —
-     * {@link LoginLockoutService}가 듣는 이벤트가 그것이다.
-     */
+    /** 이 빈이 있어야 인증 성공·실패 이벤트가 발행된다({@link LoginLockoutService}가 듣는다). */
     @Bean
     public AuthenticationEventPublisher authenticationEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
         return new DefaultAuthenticationEventPublisher(applicationEventPublisher);
     }
 
-    /**
-     * 로그인·가입·비밀번호 재설정·인증 메일 재발송의 요청 제한. 별도 빈으로
-     * 두어 {@code @Scheduled}(허용/거부 집계 보고)가 Spring에 의해 실행되게 한다.
-     */
+    /** 인증 관련 요청 제한. 빈으로 두어야 그 안의 {@code @Scheduled} 집계 보고가 돈다. */
     @Bean
     public AuthRateLimitFilter authRateLimitFilter(
             @Value("${app.auth.rate-limit.enabled:true}") boolean enabled,
@@ -67,14 +61,7 @@ public class SecurityConfig {
                 passwordResetPerMinute, resendPerMinute, objectMapper);
     }
 
-    /**
-     * 일반 {@code Filter} 빈은 Spring Boot가 서블릿 컨테이너에도 자동 등록한다(기본
-     * urlPatterns {@code /*}) — 아래 {@link #filterChain}이 이미 이 필터를 보안 체인의 정확한
-     * 위치(UsernamePasswordAuthenticationFilter 앞)에 등록하므로, 서블릿 컨테이너 등록은
-     * 같은 요청을 한 번 더(순서 보장 없이) 태우기만 할 뿐이다.
-     * {@code OncePerRequestFilter}라 두 번째 실행은 조용히 no-op이지만, 의도치 않은 이중
-     * 등록 자체를 막는다.
-     */
+    /** 필터 빈의 서블릿 컨테이너 자동 등록을 끈다 — 보안 체인에만 정확한 위치로 등록한다. */
     @Bean
     public FilterRegistrationBean<AuthRateLimitFilter> authRateLimitFilterRegistration(
             AuthRateLimitFilter authRateLimitFilter) {
@@ -85,20 +72,8 @@ public class SecurityConfig {
     }
 
     /**
-     * 정적 자원(CSS·JS·업로드 이미지) 전용 체인. 아래 {@link #filterChain}보다 먼저 매칭되도록
-     * {@code @Order(0)}을 준다({@code securityMatcher}로 좁혀 둔 체인이 항상 먼저 검사되어야
-     * 원래 체인의 catch-all에 걸리지 않는다).
-     * <p>
-     * 이 체인이 있는 이유는 캐싱이다. 기본 {@code HeadersConfigurer}는 모든 응답에
-     * {@code Cache-Control: no-cache, no-store, max-age=0, must-revalidate}를 붙이는데, 이건
-     * 로그인 상태가 섞여 나오는 페이지 응답에는 맞지만 CSS·JS·업로드 이미지처럼 사용자와 무관한
-     * 정적 파일에는 맞지 않는다. 정적 리소스 핸들러가 세팅한 {@code Cache-Control}
-     * (application.yml의 {@code spring.web.resources.cache.*})을 이 라이터가 덮어써 버려서
-     * 브라우저가 매 페이지 이동마다 같은 파일을 다시 받고 있었다.
-     * <p>
-     * {@code web.ignoring()}으로 아예 필터 체인 밖에 두지 않는 이유는, 그러면
-     * {@code X-Content-Type-Options}·{@code X-Frame-Options} 같은 나머지 보안 헤더까지 함께
-     * 사라지기 때문이다. 여기서는 캐시 헤더 라이터만 끈다.
+     * 정적 자원 전용 체인({@code @Order(0)}). 기본 {@code Cache-Control: no-store}가 정적 자원의 캐시 헤더를
+     * 덮어쓰지 않게 캐시 헤더 라이터만 끈다. {@code web.ignoring()}은 다른 보안 헤더까지 없애므로 쓰지 않는다.
      */
     @Bean
     @Order(0)
@@ -119,48 +94,35 @@ public class SecurityConfig {
             throws Exception {
         http
                 .addFilterBefore(authRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-                // CSRF 토큰을 세션이 아니라 쿠키에 둔다(P1-6). 모든 화면의 헤더가 _csrf 메타를
-                // 렌더링하는데, 세션 저장소는 익명 GET마다 토큰을 저장하려 세션(SPRING_SESSION
-                // 행)을 만들어 봇 트래픽만으로 테이블이 불어났다. JS는 계속 메타의 값을 쓰므로
-                // HttpOnly 그대로 둔다(스크립트가 쿠키를 읽을 일이 없다).
+                // CSRF 토큰은 쿠키에 둔다 — 세션 저장소는 익명 GET마다 세션 행을 만든다.
+                // JS는 메타 태그 값을 쓰므로 쿠키는 HttpOnly 그대로.
                 .csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository()))
                 .authorizeHttpRequests(auth -> auth
-                        // 정적 자원(/css, /js, /images)은 위 staticResourceChain이 먼저 처리한다.
-                        // 기본은 인증 필요(P1-7) — 새 엔드포인트가 검사를 빠뜨려도 공개되지 않는다.
-                        // 공개 화면·자원은 아래에 명시한다.
+                        // 기본은 인증 필요 — 공개 경로만 아래에 명시한다.
                         .requestMatchers("/", "/community", "/recommend", "/robots.txt", "/sitemap.xml",
                                 "/login", "/signup", "/forgot-password",
                                 "/users/password-reset", "/users/verify", "/users/verify/result",
                                 "/healthz", "/readyz", "/error", "/error/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/posts/update/*").permitAll()
-                        // 버전 접두사가 붙은 정적 자원(/{버전}/js/..., spring.web.resources.chain).
-                        // 접두사(빌드 SHA)는 배포마다 달라 경로 패턴으로 연다.
+                        // 버전(빌드 SHA) 접두사가 붙은 정적 자원.
                         .requestMatchers(HttpMethod.GET, "/*/js/**", "/*/css/**", "/*/images/**").permitAll()
                         // 글쓰기 화면은 익명에게도 열려 있고 화면이 안내를 보여준다.
                         .requestMatchers("/posts/save").permitAll()
                         .requestMatchers("/api/v1/users").permitAll()
-                        // 비밀번호를 잊은 사람은 로그인할 수 없다. 이 두 경로만 열어 두고,
-                        // 실제 경계는 메일로 보낸 1회용 토큰이 잡는다(PasswordResetService).
+                        // 실제 경계는 메일로 보낸 1회용 토큰이다(PasswordResetService).
                         .requestMatchers("/api/v1/users/password-reset", "/api/v1/users/password-reset/confirm")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/posts/**").permitAll()
-                        // 답글 더 보기도 게시글 목록·상세 GET과 같은
-                        // 이유로 익명 열람을 허용한다 — 댓글 자체가 로그인 없이도 보이므로,
-                        // 그 뒤에 숨어 있던 답글만 로그인해야 볼 수 있으면 어색하다.
+                        // 댓글처럼 답글도 익명 열람을 허용한다.
                         .requestMatchers(HttpMethod.GET, "/api/v1/comments/*/replies").permitAll()
-                        // 번호 추천 생성은 비저장·공개 기능이라 로그인 여부와 무관하게 동일하게
-                        // 동작한다(02문서 7절). 이 경로 하나만 열고 /api/v1/numbers/** 전체를
-                        // 미리 공개하지 않는다. permitAll은 CSRF 비활성화가 아니다 — 세션·폼
-                        // 로그인·CSRF 정책은 그대로 유지된다.
+                        // 번호 추천은 공개 기능. 이 경로만 연다(CSRF는 그대로 검사한다).
                         .requestMatchers(HttpMethod.POST, "/api/v1/numbers/recommend").permitAll()
-                        // 신고 처리는 관리자만 한다. 화면(/admin/**)과 API(/api/v1/admin/**)를
-                        // 같은 규칙으로 막아, 화면을 감추는 것으로 끝내지 않는다.
+                        // 관리자 화면과 API를 같은 규칙으로 막는다.
                         .requestMatchers("/admin/**", "/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/**").authenticated()
                         .anyRequest().authenticated()
                 )
-                // 보호된 경로에 익명으로 닿아도 원래 요청을 세션에 저장하지 않는다 — 봇이 임의 경로를
-                // 훑어도 세션 행이 생기지 않는다. 로그인 후 복귀는 ?redirect= 파라미터가 맡는다.
+                // 원래 요청을 세션에 저장하지 않는다(봇이 세션 행을 만들지 못하게). 복귀는 ?redirect=가 맡는다.
                 .requestCache(cache -> cache.requestCache(new NullRequestCache()))
                 .formLogin(form -> form
                         .loginPage("/login")
@@ -171,15 +133,8 @@ public class SecurityConfig {
                 )
                 .headers(headers -> headers
                         .frameOptions(frame -> frame.sameOrigin())
-                        // 이 앱은 전 화면이 자체 호스팅 CSS·JS만 쓴다(외부 CDN·폰트·인라인
-                        // 스크립트·인라인 스타일이 전혀 없다 — jQuery·Bootstrap도
-                        // 직접 서빙한다) — 그래서 'self' 하나로 거의 모든 지시어를 막을 수
-                        // 있다. img-src에 data:와 blob:을 더한다 —
-                        // favicon이 data: URI이고, 이미지 첨부 미리보기(useImageUpload.js)가
-                        // 업로드 전 로컬 파일을 URL.createObjectURL로 만든 blob: URL로 보여준다
-                        // (E2E post-image.spec.js가 이 CSP 위반을 실제로 잡아냈다). frame-ancestors는
-                        // 위 frameOptions(SAMEORIGIN)의 CSP 버전으로, 오래된 브라우저를 위해
-                        // X-Frame-Options와 함께 둔다.
+                        // 외부 CDN·인라인 스크립트·스타일이 없어 'self'로 충분하다. img-src의 data:는
+                        // favicon, blob:은 업로드 전 미리보기(useImageUpload.js)용.
                         .contentSecurityPolicy(csp -> csp.policyDirectives(
                                 "default-src 'self'; "
                                         + "script-src 'self'; "
@@ -191,38 +146,23 @@ public class SecurityConfig {
                                         + "frame-ancestors 'self'; "
                                         + "base-uri 'self'; "
                                         + "object-src 'none'; "
-                                        // TLS는 앞단 프록시가 종단하므로 평문 HTTP로 이 앱에 닿을 일은
-                                        // 원래도 없어야 하지만, HSTS의 첫 방문 창(프록시 설정 오류 등)을
-                                        // 보완한다 — http: 링크가 섞여 있어도 브라우저가 https:로
-                                        // 바꿔 요청한다.
+                                        // HSTS 첫 방문 전에도 http: 링크를 https:로 바꿔 요청하게 한다.
                                         + "upgrade-insecure-requests"))
                         .referrerPolicy(referrer -> referrer
                                 .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
-                        // 이 앱은 카메라·마이크·위치·결제 API를 전혀 쓰지 않는다 — 뭔가 알 수 없는
-                        // 경로로 삽입된 스크립트가 있더라도 이 기능들을 아예 요청조차 못 하게
-                        // 막아 둔다.
+                        // 쓰지 않는 강력한 기능은 아예 막는다.
                         .permissionsPolicyHeader(permissions -> permissions
                                 .policy("camera=(), microphone=(), geolocation=(), payment=()"))
-                        // 이 앱을 여는 탭이 새로 연 다른 오리진 탭의 window 참조를 갖지 못하게
-                        // 격리한다 — 탭 간 참조를 이용한 일부 사이드 채널·리버스 탭내빙 공격을
-                        // 막는다. frame-ancestors 'self'와 별개로, 이쪽은 반대 방향
-                        // (이 앱이 새로 여는 창)을 막는다.
+                        // 다른 오리진 창과 window 참조를 끊는다(탭내빙 방지).
                         .crossOriginOpenerPolicy(coop -> coop
                                 .policy(CrossOriginOpenerPolicyHeaderWriter.CrossOriginOpenerPolicy.SAME_ORIGIN))
-                        // TLS는 앞단 리버스 프록시가 종단한다. server.forward-headers-strategy는
-                        // native로 설정돼 있어(application.yml) request.isSecure()가 프록시 뒤에서도
-                        // 실제 프로토콜을 반영하지만, 그래도 기본 매처(isSecure) 대신 항상 붙이는
-                        // 쪽을 유지한다 — 이 헤더는 평문 HTTP 응답에 실려도 브라우저가 무시하므로
-                        // (사양상 보안 컨텍스트가 아니면 적용하지 않는다), 프록시 헤더 설정이
-                        // 어긋나는 경로가 생겨도 HSTS 자체는 안전하게 항상 적용된다.
+                        // 프록시 헤더 설정이 어긋나도 빠지지 않게 isSecure와 무관하게 항상 붙인다
+                        // (평문 응답의 HSTS는 브라우저가 무시하므로 안전하다).
                         .httpStrictTransportSecurity(hsts -> hsts
                                 .includeSubDomains(true)
                                 .maxAgeInSeconds(31536000)
                                 .requestMatcher(request -> true))
-                        // 검색 결과에 나올 이유가 없는 화면(로그인·가입·비밀번호·인증·관리자·
-                        // 글쓰기)과 API 응답은 색인하지 않게 한다.
-                        // 템플릿 meta 대신 헤더로 붙이는 이유: 모델을 거치지 않는 응답(JSON·오류)
-                        // 에도 같은 규칙이 적용되고, 경로 목록이 이 한 곳에 모인다.
+                        // 색인할 이유가 없는 화면·API에 noindex. meta 대신 헤더라 JSON·오류 응답에도 붙는다.
                         .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(
                                 SecurityConfig::isNoindexPath,
                                 new StaticHeadersWriter("X-Robots-Tag", "noindex, nofollow")))
@@ -249,16 +189,8 @@ public class SecurityConfig {
     }
 
     /**
-     * 로그인 폼(`/login`)이 어느 화면에서 왔는지는 네비게이션의 "로그인" 링크가 현재 경로를
-     * {@code ?redirect=}로 실어 보내고, 로그인 폼의 히든 필드가 POST까지 그대로 옮겨온다.
-     * 이 앱은 페이지 전체를 항상 {@code permitAll}로 열어두므로(보호된 화면에 접근했다가
-     * 강제로 로그인 페이지로 튕겨나가는 경로가 없음) Spring Security 기본 {@code RequestCache}가
-     * 채워질 일이 없다 — 그래서 그 메커니즘 대신 이 파라미터 하나로 직접 "원래 위치"를 구현한다.
-     * 값이 앱 내부 경로로 확정되지 않거나({@link SafeRedirect#internalPath}) 로그인 화면 자기
-     * 자신을 가리키면 기본값 "/"로 이동한다.
-     * <p>
-     * 로그인 성공 시 회원 번호를 세션 속성으로 심는다 — {@code SessionRevoker#revokeAll}이
-     * 탈퇴 후 같은 이메일로 재가입한 다른 계정의 세션과 구분하는 데 쓴다.
+     * 로그인 후 {@code ?redirect=}(내부 경로만, {@link SafeRedirect#internalPath})로 돌아간다. 없거나
+     * 로그인 화면이면 "/". 회원 번호를 세션에 심어 {@code SessionRevoker#revokeAll}이 계정을 구분하게 한다.
      */
     private AuthenticationSuccessHandler redirectAwareSuccessHandler() {
         return (request, response, authentication) -> {
@@ -275,17 +207,8 @@ public class SecurityConfig {
     }
 
     /**
-     * 로그아웃 성공 시 로그아웃을 요청한 그 페이지로 되돌아간다. Referer가 같은 오리진일 때만
-     * 신뢰하고, 없거나 외부 도메인이면 "/"로 안전하게 대체한다(오픈 리다이렉트 방지).
-     * <p>
-     * 두 가지 예외가 있다:
-     * <ul>
-     * <li>{@code next} 파라미터가 있으면 그곳으로 보낸다 — 로그아웃 폼(layout/footer.html)이
-     * 목적지를 지정할 수 있게 하는 값이다. 로그인 성공 후 복귀와 똑같이
-     * {@link SafeRedirect#internalPath}로 앱 내부 경로임을 확인한 뒤에만 신뢰한다.</li>
-     * <li>게시글 등록 화면(`/posts/save`) — 로그아웃하면 익명 사용자가 되어 "글 등록" 자체가
-     * 더는 의미가 없는 화면이므로 "/"로 보낸다.</li>
-     * </ul>
+     * 로그아웃 후 {@code next}(내부 경로만) 또는 같은 오리진 Referer로 돌아간다. 글쓰기 화면이나
+     * 외부 Referer면 "/"(오픈 리다이렉트 방지).
      */
     private LogoutSuccessHandler refererLogoutSuccessHandler() {
         return (request, response, authentication) -> {

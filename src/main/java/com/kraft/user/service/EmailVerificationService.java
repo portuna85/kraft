@@ -26,10 +26,8 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * 회원가입 후 "GUEST → USER" 승격을 위한 이메일 인증 토큰 발급·검증을 담당한다.
- * <p>
- * 메일은 여기서 보내지 않는다. 대기열({@link OutboxMailStore})에 넣기만 하고 실제 발송은
- * {@link OutboxMailWorker}가 트랜잭션 밖에서 한다 — 그 이유는 {@link #sendVerificationEmail} 참고.
+ * GUEST → USER 승격을 위한 이메일 인증 토큰 발급·검증. 메일은 대기열({@link OutboxMailStore})에 넣기만 하고
+ * 실제 발송은 {@link OutboxMailWorker}가 트랜잭션 밖에서 한다.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -50,31 +48,17 @@ public class EmailVerificationService {
     private final ExpiredTokenPurger expiredTokenPurger;
 
     /**
-     * 자기 자신의 프록시. {@link #sendVerificationEmailSafely}가 self-invocation으로
-     * {@link #sendVerificationEmail}을 직접 부르면 그 메서드의 {@code @Transactional}이
-     * 적용되지 않고(프록시를 거치지 않으므로) 호출자의 트랜잭션(또는 무트랜잭션)을 그대로
-     * 쓴다 — 과거에는 둘 다 같은 트랜잭션을 썼는데, 안에서 DB 예외가 나면 그 트랜잭션이
-     * rollback-only로 표시되고, catch로 잡아도 메서드가 정상 반환하는 순간 커밋을 시도하다
-     * {@code UnexpectedRollbackException}이 던져져 회원가입 응답이 500이 됐다(계정 생성
-     * 자체는 이미 별도 트랜잭션으로 커밋되어 있었는데도). {@code self}를 거치면
-     * {@code sendVerificationEmail}이 독립된 새 트랜잭션을 열고, 그 트랜잭션만 rollback-only가
-     * 되므로 여기서 잡은 예외가 더 이상 밖으로 새지 않는다.
+     * 자기 자신의 프록시. self-invocation은 {@code @Transactional}을 건너뛰어 같은 트랜잭션이 rollback-only가
+     * 되고, catch로 잡아도 반환 시 {@code UnexpectedRollbackException}으로 가입 응답이 500이 된다.
+     * 프록시를 거치면 독립 트랜잭션이 열려 예외가 밖으로 새지 않는다.
      */
     @Lazy
     @Autowired
     private EmailVerificationService self;
 
     /**
-     * 인증 토큰을 만들고 메일을 <b>대기열에 넣는다.</b> 실제 발송은 이 트랜잭션이 커밋된 뒤
-     * 별도 흐름에서 일어난다.
-     * <p>
-     * 예전에는 여기서 SMTP를 그대로 호출했다. 연결·읽기·쓰기 타임아웃이 각각 5초라 메일 서버가
-     * 굼뜨면 <b>DB 커넥션 하나를 최대 15초 붙잡은 채</b> 기다렸고, 동시에 몇 명만 가입해도
-     * 커넥션 풀이 말랐다.
-     * <p>
-     * 발송을 단순히 {@code afterCommit}으로 미루는 것으로는 부족하다 — Spring은 그 콜백을
-     * 커넥션을 반납하는 {@code cleanupAfterCompletion}<b>보다 먼저</b> 실행하므로 커넥션은 여전히
-     * 잡혀 있다. 그래서 발송을 {@code @Async}로 다른 스레드에 넘겨 완전히 떼어 놓는다.
+     * 인증 토큰을 만들고 메일을 대기열에 넣는다. SMTP는 커밋 후 {@code @Async}로 따로 돈다 —
+     * {@code afterCommit}에서 보내도 커넥션은 아직 잡혀 있어, 메일 서버가 느리면 풀이 마른다.
      */
     @Transactional
     public void sendVerificationEmail(String rawEmail) {
@@ -82,9 +66,7 @@ public class EmailVerificationService {
         User user = userRepository.findByEmailHmac(EmailHasher.hmacHex(email))
                 .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. email=" + EmailMasker.mask(email)));
 
-        // 탈퇴 계정은 조회 조건에서도 걸러야 하지만(UserRepository.findGuestsMissingVerificationMail
-        // 참고), 이 메서드 자체도 거부한다 — 호출 경로가 늘어도 같은 규칙이 적용되게 한다.
-        // withdraw()는 role을 바꾸지 않으므로 탈퇴한 GUEST도 이 검사 없이는 통과했을 것이다.
+        // withdraw()는 role을 바꾸지 않아 탈퇴한 GUEST도 통과하므로 여기서도 거부한다.
         if (user.isWithdrawn()) {
             throw new BusinessValidationException("탈퇴한 회원입니다. email=" + EmailMasker.mask(email));
         }
@@ -92,13 +74,7 @@ public class EmailVerificationService {
         issueTokenAndEnqueue(user);
     }
 
-    /**
-     * 토큰을 만들어 저장하고 메일을 대기열에 넣는 실제 동작. 이미 회원을 손에 쥔 호출자
-     * ({@link #resend})는 {@link #sendVerificationEmail}처럼 이메일로 다시 찾을 필요가 없다 — 여기로 바로 들어온다.
-     * <p>
-     * 평문 token은 이 메서드를 벗어나지 않는다 — 조회 테이블에는 해시만 남고,
-     * 메일 본문 링크를 만들 유일한 평문 사본은 outbox_mails에 실려 발송될 때까지만 산다.
-     */
+    /** 토큰 저장 + 메일 대기열 적재. 토큰 테이블에는 해시만 남고 평문은 발송될 때까지만 outbox에 산다. */
     private void issueTokenAndEnqueue(User user) {
         String token = UUID.randomUUID().toString();
         tokenRepository.save(EmailVerificationToken.builder()
@@ -107,28 +83,16 @@ public class EmailVerificationService {
                 .expiresAt(LocalDateTime.now().plus(TOKEN_TTL))
                 .build());
 
-        // 토큰과 대기열 행은 같은 트랜잭션에서 함께 커밋된다. 한쪽만 남는 일이 없어야 한다.
+        // 토큰과 대기열 행은 같은 트랜잭션에서 커밋된다.
         outboxMailStore.enqueue(user, token, OutboxMailKind.VERIFY_EMAIL);
 
-        // 커밋이 끝난 뒤 다른 스레드에서 보낸다. 사용자가 주기 작업을 기다리지 않아도 된다.
         AfterCommit.run(outboxMailWorker::drainAsync);
     }
 
     /**
-     * 회원가입 직후 호출하는 안전 버전. 예외를 흡수해 회원가입 응답 자체가 실패하지 않게 한다 —
-     * 이미 생성된 회원 정보는 그대로 유효하며, 인증 메일이 오지 않았다면 {@link #resend}로 다시
-     * 요청할 수 있다.
-     * <p>
-     * 이 메서드가 막아 주는 것이 이제 SMTP 오류는 아니다. 발송은 대기열에 들어간 뒤 별도 흐름에서
-     * 일어나므로 여기까지 올라오지 않는다. 남은 것은 토큰·대기열 저장이 실패하는 경우다.
-     * <p>
-     * {@code @Transactional}을 붙이지 않는다 — {@link #self}를 통해 부르는
-     * {@link #sendVerificationEmail}이 자신의 독립된 새 트랜잭션을 열게 하기 위해서다. 예전에는
-     * 이 메서드도 {@code @Transactional}이었는데, 내부에서 {@code sendVerificationEmail(email)}을
-     * self-invocation(프록시를 거치지 않는 직접 호출)으로 불러 같은 트랜잭션을 공유했다. 그
-     * 안에서 DB 예외가 나면 그 트랜잭션이 rollback-only로 표시되고, catch로 잡아도 이 메서드가
-     * 정상 반환하는 순간 커밋을 시도하다 {@code UnexpectedRollbackException}이 던져져 회원가입
-     * 응답이 500이 됐다(계정 생성 자체는 이미 별도 트랜잭션으로 커밋되어 있었는데도).
+     * 가입 직후 쓰는 안전 버전: 토큰·대기열 저장 실패를 흡수해 가입 응답이 실패하지 않게 한다
+     * (인증 메일은 {@link #resend}로 다시 받을 수 있다). {@code @Transactional}을 붙이지 않는다 —
+     * {@link #self}로 부른 {@link #sendVerificationEmail}이 독립 트랜잭션을 열어야 한다.
      */
     public void sendVerificationEmailSafely(String email) {
         try {
@@ -139,16 +103,11 @@ public class EmailVerificationService {
     }
 
     /**
-     * 만료된 토큰은 {@link ExpiredTokenPurger}가 <b>별도 트랜잭션에서</b> 지운다. 여기서 바로
-     * {@code tokenRepository.delete()}를 부르면, 이어지는 예외가 이 쓰기 트랜잭션을 롤백시키면서
-     * 삭제까지 되돌려 만료 토큰이 그대로 남았다.
-     * <p>
-     * 소비(삭제)를 승격보다 먼저, 그리고 <b>조건부로</b> 한다. 같은 토큰이 동시에 두 번
-     * 들어오면 {@code deleteByIdAndToken}의 DB 행 잠금이 정확히 하나만 성공시킨다 — 이긴
-     * 쪽만 승격을 실행해, 두 요청 모두 성공한 것처럼 보이는 경쟁을 막는다.
+     * 토큰을 검증하고 회원을 승격한다. 만료 토큰은 {@link ExpiredTokenPurger}가 별도 트랜잭션에서 지운다
+     * (여기서 지우면 이어지는 예외가 삭제까지 롤백한다). 소비는 승격 전에 조건부로 해, 같은 토큰이 동시에
+     * 들어와도 행 잠금으로 한 요청만 성공한다.
      *
-     * @return 승격된 회원의 id. 호출자({@code UserPageController})가 지금 요청의 세션이 같은
-     *         계정이면 권한을 즉시 갱신하는 데 쓴다.
+     * @return 승격된 회원의 id(호출자가 같은 세션의 권한을 즉시 갱신하는 데 쓴다)
      */
     @Transactional
     public Long verify(String token) {
@@ -171,22 +130,12 @@ public class EmailVerificationService {
     }
 
     /**
-     * 사용자가 명시적으로 재발송을 요청했을 때 호출한다. 이미 인증된(Role이 GUEST가 아닌) 계정은
-     * 대상이 아니므로 거부한다. 재발송 전 기존 토큰을 지워, 같은 사용자에 대해 유효한 토큰이
-     * 여러 개 쌓이지 않게 한다.
-     * <p>
-     * 짧은 간격의 반복 요청은 막는다. 버튼을 연타하면 메일이 그만큼 쌓이는데, 재발송이 기존 토큰을
-     * 지우므로 <b>먼저 도착한 링크들이 전부 무효가 된다</b> — 받는 사람은 여러 통을 받고 그중
-     * 마지막 하나만 동작하는 상황이 된다. 발송 비용보다 이 혼란이 더 문제다.
-     * <p>
-     * 세션 principal은 이미 불변 회원 id다 — 예전에는 컨트롤러가 그 id로
-     * 회원을 찾아 이메일을 복호화한 뒤, 여기서 그 이메일을 다시 정규화·해시해 같은 회원을
-     * 한 번 더 찾았다. id를 바로 받으면 그 왕복 없이 아래의 쿨다운 잠금 조회 하나로 끝난다.
+     * 인증 메일 재발송(GUEST만). 기존 토큰을 지우므로 먼저 보낸 링크는 무효가 된다 — 연타하면 여러 통 중
+     * 마지막만 동작하는 혼란이 생겨 쿨다운으로 막는다.
      */
     @Transactional
     public void resend(Long userId) {
-        // 쿨다운 검사와 재발급을 계정 단위로 직렬화한다 — 그래야 두 동시 요청이 같은
-        // "마지막 발송 시각"을 동시에 읽고 둘 다 쿨다운을 통과하는 경쟁이 없어진다.
+        // 계정 행을 잠가 쿨다운 검사와 재발급을 직렬화한다(동시 요청이 둘 다 통과하는 경쟁 방지).
         User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. userId=" + userId));
 

@@ -19,26 +19,16 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * 생존(liveness)과 준비(readiness)를 나눈 경량 헬스 엔드포인트.
+ * 생존(liveness)과 준비(readiness)를 나눈 경량 헬스 엔드포인트. 본문은 없고 실패 원인은 로그에만 남긴다.
  * <ul>
- *   <li>{@code /healthz} — 애플리케이션 컨텍스트가 떠서 요청을 받을 수 있는지만 본다. DB 등 외부 의존성은 보지 않는다.</li>
- *   <li>{@code /readyz} — 여기에 더해 DB 커넥션을 얻어 검증까지 되는지 제한 시간 안에 본다.
- *       준비되면 200, 아니면 503. 배포 스크립트
- *       ({@code deploy/deploy-apply.sh}의 {@code wait_for_health})가 새 jar와 롤백한 jar의 성공
- *       판정에 쓴다 — 예전에는 무조건 200인 {@code /healthz}로 판정해, DB에 붙지 못하는 jar도
- *       배포 성공으로 기록될 수 있었다.</li>
+ *   <li>{@code /healthz} — 컨텍스트가 떠서 요청을 받을 수 있는지만 본다(DB 등 외부 의존성은 보지 않는다).</li>
+ *   <li>{@code /readyz} — 더해서 DB 커넥션을 제한 시간 안에 검증한다(200/503). 배포 스크립트
+ *       ({@code deploy/deploy-apply.sh}의 {@code wait_for_health})가 새 jar와 롤백한 jar의 성공 판정에 쓴다.</li>
  * </ul>
- * 두 응답 모두 본문이 없다 — 실패 원인(자격 증명·호스트·드라이버 메시지)은 로그에만 남긴다.
- * 외부 HTTP 호출이나 추천 생성처럼 비싼 작업은 readiness에 넣지 않는다. 외부 스모크 테스트
- * ({@code build.yml}의 "Smoke test")는 이 엔드포인트가 아니라 번호 추천 화면({@code /recommend})을 찌른다.
- * {@code SecurityConfig}가 모든 요청을 permitAll로 열어두므로 별도 보안 설정은 필요 없다.
- * <p>
- * {@code /readyz}는 루프백에서만 응답한다 — 배포 스크립트가
- * 항상 {@code 127.0.0.1}로만 부르므로 외부에 열 이유가 없다. 열어 두면 외부에서 빠르게
- * 반복 호출해 커넥션 풀(단일 DB 확인마다 하나씩)을 점유하거나, 응답 코드로 DB 장애 여부를
- * 외부에 드러낼 수 있다. {@code server.forward-headers-strategy: native}(application.yml)라
- * 프록시 뒤에서도 {@code request.getRemoteAddr()}가 실제 클라이언트 IP를 반영한다 — 루프백이
- * 아닌 주소는 프록시를 거치지 않고 직접 도달했거나, 프록시가 실제 IP를 그대로 넘긴 것이다.
+ * {@code /readyz}는 루프백에서만 응답한다 — 배포 스크립트만 {@code 127.0.0.1}로 부르고, 외부에 열면 반복 호출로
+ * 풀을 점유하거나 응답 코드로 DB 장애를 드러낼 수 있다({@code forward-headers-strategy: native}라 프록시 뒤에서도
+ * {@code getRemoteAddr()}가 실제 IP다). 외부 HTTP 호출이나 추천 생성 같은 비싼 작업은 readiness에 넣지 않으며,
+ * 외부 스모크 테스트({@code build.yml})는 {@code /recommend}를 찌른다.
  */
 @Slf4j
 @RestController
@@ -48,13 +38,10 @@ public class HealthController {
 
     private final DataSource dataSource;
     private final Duration timeout;
-    // 커넥션 풀이 막혀 getConnection()이 풀 대기 시간만큼 멈춰도 요청 스레드는 제한 시간에
-    // 돌려받는다. 가상 스레드라 멈춘 검사가 쌓여도 플랫폼 스레드를 잡아먹지 않는다.
+    // getConnection()이 풀 대기로 멈춰도 요청 스레드는 제한 시간에 돌려받는다(가상 스레드라 멈춘 검사가 쌓여도 부담이 없다).
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
-    // 동시에 들어온 /readyz 요청이 각자 새 DB 커넥션 검사를 띄우면, 검사 자체가 요청 수만큼
-    // 풀을 잡아먹어 정작 확인하려던 "풀이 막혔는가"를 검사가 스스로 재현한다.
-    // 진행 중인 검사가 있으면 새로 만들지 않고 그 결과를 함께 기다린다 —
-    // 타임아웃도 각자 자기 것으로 재되, 공유 중인 future는 다른 대기자를 위해 취소하지 않는다.
+    // 동시 /readyz 요청이 각자 검사를 띄우면 검사가 풀을 잡아먹어 "풀이 막혔는가"를 스스로 재현한다.
+    // 진행 중인 검사가 있으면 결과를 함께 기다린다(타임아웃은 각자, 공유 future는 취소하지 않는다).
     private final AtomicReference<CompletableFuture<Boolean>> inFlightCheck = new AtomicReference<>();
 
     private final String buildVersion;
@@ -67,11 +54,7 @@ public class HealthController {
         this.buildVersion = buildVersion;
     }
 
-    /**
-     * 본문은 비우고, 떠 있는 jar의 빌드(커밋)만 {@code X-Kraft-Build} 헤더로 알린다 —
-     * 배포 후 스모크 테스트가 "응답한다"가 아니라 "방금 푸시한 빌드가 응답한다"를 확인하게 한다.
-     * 커밋 SHA는 비밀이 아니고 공개 저장소 이력과 같은 정보다.
-     */
+    /** 본문 없이 떠 있는 jar의 빌드(커밋)만 {@code X-Kraft-Build}로 알린다 — 배포 후 스모크 테스트가 "방금 푸시한 빌드가 응답한다"를 확인한다. */
     @GetMapping("/healthz")
     public ResponseEntity<Void> healthz() {
         return ResponseEntity.ok().header(BUILD_HEADER, buildVersion).build();
@@ -80,7 +63,7 @@ public class HealthController {
     @GetMapping("/readyz")
     public ResponseEntity<Void> readyz(HttpServletRequest request) {
         if (!isLoopback(request.getRemoteAddr())) {
-            // 존재를 알리지 않는다 — 403이 아니라 404다(다른 경로들과 구분되지 않게).
+            // 존재를 알리지 않으려 403이 아니라 404.
             return ResponseEntity.notFound().build();
         }
         CompletableFuture<Boolean> check = currentOrNewCheck();
@@ -98,11 +81,7 @@ public class HealthController {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
     }
 
-    /**
-     * 진행 중인 검사가 있으면 그것을 재사용하고, 없거나 이미 끝났으면 새로 시작한다. 새로
-     * 시작한 검사는 끝나는 즉시 자기 자신을 참조에서 걷어 내(compareAndSet) 다음 요청이 새
-     * 검사를 시작할 수 있게 한다 — 다른 검사가 이미 그 자리를 대체했다면 건드리지 않는다.
-     */
+    /** 진행 중인 검사를 재사용하고, 없거나 끝났으면 새로 시작한다. 끝나면 자기 자신을 걷어 낸다(그 사이 다른 검사가 대체했다면 건드리지 않는다). */
     private CompletableFuture<Boolean> currentOrNewCheck() {
         return inFlightCheck.updateAndGet(existing -> {
             if (existing != null && !existing.isDone()) {

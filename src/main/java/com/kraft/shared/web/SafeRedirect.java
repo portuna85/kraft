@@ -7,14 +7,9 @@ import java.net.URISyntaxException;
 import java.util.Locale;
 
 /**
- * 로그인·로그아웃 후 돌아갈 주소가 정말 이 앱 안인지 판정하는 순수 정적 유틸리티.
- * {@code OwnershipPolicy}·{@code WriteAccessPolicy}와 같은 스타일이다.
- * <p>
- * 예전에는 {@code startsWith("/") && !startsWith("//")} 문자열 검사만 했는데, 이 규칙은
- * 브라우저의 URL 해석 규칙과 다르다 — {@code /\attacker.example/path}는 이 검사를 통과하지만
- * WHATWG URL 파서는 {@code //}와 똑같이 취급해 외부 호스트로 읽는다. Referer도
- * {@code startsWith(baseUrl)}로 비교해서 {@code http://localhost.attacker.example/}가
- * {@code http://localhost}와 같은 오리진으로 인정됐다.
+ * 로그인·로그아웃 후 돌아갈 주소가 이 앱 안인지 판정하는 순수 정적 유틸. 문자열 검사만으로는 브라우저의 URL 해석과
+ * 어긋난다 — {@code /\attacker.example}은 WHATWG 파서가 {@code //}처럼 외부 호스트로 읽고, Referer를
+ * {@code startsWith(baseUrl)}로 비교하면 {@code http://localhost.attacker.example}을 같은 오리진으로 착각한다.
  */
 public final class SafeRedirect {
 
@@ -22,10 +17,8 @@ public final class SafeRedirect {
     }
 
     /**
-     * 앱 내부 경로로 확정할 수 있으면 그 값을, 아니면 {@code fallback}을 돌려준다.
-     * <p>
-     * 통과 조건은 네 가지다: {@code /}로 시작하고, {@code //}로 시작하지 않고, 역슬래시나
-     * 제어문자를 포함하지 않고, URI로 파싱했을 때 scheme과 authority가 모두 없을 것.
+     * 앱 내부 경로로 확정되면 그 값을, 아니면 {@code fallback}을 돌려준다. 조건: {@code /}로 시작하고 {@code //}로
+     * 시작하지 않으며, 역슬래시·제어문자가 없고, URI로 파싱했을 때 scheme과 authority가 없을 것.
      */
     public static String internalPath(String candidate, String fallback) {
         if (candidate == null || candidate.isBlank()) {
@@ -34,8 +27,7 @@ public final class SafeRedirect {
         if (!candidate.startsWith("/") || candidate.startsWith("//")) {
             return fallback;
         }
-        // 역슬래시는 브라우저가 "/"와 같게 취급하므로 "/\host"가 "//host"가 된다. 제어문자는
-        // 파서마다 무시하거나 잘라내 해석이 갈리고, 응답 헤더 분리에도 쓰인다. 둘 다 거부한다.
+        // 역슬래시는 브라우저가 "/"로 취급해 "/\host"가 "//host"가 되고, 제어문자는 파서마다 해석이 갈리며 헤더 분리에도 쓰인다.
         if (hasBackslashOrControlChar(candidate)) {
             return fallback;
         }
@@ -53,9 +45,8 @@ public final class SafeRedirect {
     }
 
     /**
-     * Referer가 이 요청과 같은 오리진일 때만 그 경로(path + query)를, 아니면 {@code null}을
-     * 돌려준다. scheme·host·유효 포트를 각각 비교하며, 통과해도 원본 문자열이 아니라 경로만
-     * 쓴다 — 오리진 판정과 실제 리다이렉트 대상이 어긋날 여지를 남기지 않기 위해서다.
+     * Referer가 이 요청과 같은 오리진(scheme·host·유효 포트)일 때만 그 경로(path + query)를, 아니면 {@code null}을
+     * 돌려준다. 원본 문자열이 아니라 경로만 써서 오리진 판정과 리다이렉트 대상이 어긋나지 않게 한다.
      */
     public static String sameOriginPathOf(String referer, HttpServletRequest request) {
         if (referer == null || referer.isBlank() || request == null) {

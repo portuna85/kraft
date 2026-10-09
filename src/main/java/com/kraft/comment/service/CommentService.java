@@ -34,18 +34,10 @@ import java.util.Map;
 @Transactional(readOnly = true)
 public class CommentService {
 
-    /**
-     * 커서 페이지 한 번에 내려주는 댓글 수. 상세 화면 최초 렌더와 "더 보기"가 함께 쓴다.
-     */
+    /** 커서 페이지 한 번에 내려주는 댓글 수(최초 렌더와 "더 보기" 공용). */
     private static final int PAGE_SIZE = 20;
 
-    /**
-     * 최초 페이지에서 최상위 댓글 하나당 함께 내려주는 답글 수. 예전에는
-     * 페이지 전체(여러 부모 합산)에서 가져오는 답글 총량에만 상한(500)을 뒀다 — 한 부모에
-     * 답글이 그 상한을 넘거나, 다른 부모가 그 상한을 먼저 다 쓰면 남은 답글에 새로고침으로도
-     * 영원히 도달할 수 없었다. 부모별로 이 개수만큼만 먼저 보여주고, 넘는 만큼은
-     * {@code hasMoreReplies}로 표시해 "답글 더 보기"({@link #findRepliesPage})가 이어받는다.
-     */
+    /** 최초 페이지에서 최상위 댓글 하나당 함께 내려주는 답글 수. 넘는 만큼은 {@link #findRepliesPage}가 잇는다. */
     private static final int INITIAL_REPLIES_PER_PARENT = 20;
 
     /** "답글 더 보기" 한 번에 내려주는 개수. */
@@ -55,17 +47,10 @@ public class CommentService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
 
-    /**
-     * 응답에 확정된 id·createdAt·version을 모두 실어 돌려준다.
-     * 예전에는 id만 돌려줘서, 화면이 새 댓글을 {@code new Date().toISOString()}(UTC)과
-     * version 없이 직접 만들어 반영했다 — 그 버전 없는 댓글은 새로고침 전까지 낡은 화면 검사를
-     * 건너뛰었고, 시각도 서버가 나중에 돌려주는 값과 새로고침 전후로 다르게 보였다.
-     * {@code saveAndFlush}로 DB가 실제로 확정한 값(감사 필드의 createdAt 포함)을 그 자리에서
-     * 곧바로 읽는다.
-     */
+    /** 저장하고 DB가 확정한 id·createdAt·version을 담아 돌려준다({@code saveAndFlush}). */
     @Transactional
     public CommentViewDto save(Long postId, Authentication authentication, CommentSaveRequestDto requestDto) {
-        // 댓글에는 글과의 연관만 필요하다 — TEXT 본문까지 읽는 findById 대신 존재만 확인하고 참조를 쓴다.
+        // 글 본문(TEXT)을 읽지 않고 존재만 확인해 참조를 쓴다.
         if (!postRepository.existsVisibleById(postId)) {
             throw new PostNotFoundException(postId);
         }
@@ -77,10 +62,7 @@ public class CommentService {
         return viewOf(saved, authentication);
     }
 
-    /**
-     * 2단계까지만 허용한다 — 답글 자신에게는 답글을 달 수 없다. parentId가 가리키는 댓글이
-     * 다른 게시글 소속이면(URL을 조작해 다른 글의 댓글 id를 보낸 경우) 함께 거절한다.
-     */
+    /** 2단계까지만 허용한다. 다른 글의 댓글을 부모로 지정하면(id 조작) 거절한다. */
     private Comment resolveParent(Long postId, Long parentId) {
         if (parentId == null) {
             return null;
@@ -96,17 +78,10 @@ public class CommentService {
     }
 
     /**
-     * 정지된 계정도 이 경로로 자신의 기존 댓글을 계속 바꿀 수 있었다 — 작성만 작성 정책을
-     * 검사하고 수정은 소유권만 봤기 때문이다. 삭제는 의도적으로 그대로 둔다 — 정지된
-     * 사용자도 자신의 댓글을 지우는 것까지 막지는 않는다.
-     * <p>
-     * 확정된 version을 응답에 실어 돌려준다 — 예전에는 id만 돌려줘서,
-     * 화면이 "받았던 version + 1"로 다음 버전을 추측했다. 내용이 실제로 바뀌지 않으면
-     * Hibernate가 UPDATE 자체를 내지 않아 버전이 그대로인데, 그 추측은 +1로 어긋나 바로 다음
-     * 정상 수정이 가짜 충돌을 받았다. flush로 실제 반영 여부와 무관하게 지금 DB가 들고 있는
-     * version을 그 자리에서 읽는다. 기준 버전은 컨트롤러가 {@code If-Match} 헤더에서 읽어 넘긴다.
+     * 댓글을 수정하고 확정된 version을 돌려준다. 내용이 그대로면 UPDATE가 나가지 않아 버전이 안 오르므로,
+     * flush 후 지금 DB의 version을 읽어 담는다.
      *
-     * @param expectedVersion 이 버전을 기준으로 고친다는 뜻. {@code null}이면 검사하지 않는다.
+     * @param expectedVersion {@code If-Match}의 기준 버전. {@code null}이면 검사하지 않는다.
      */
     @Transactional
     public CommentViewDto update(Long id, CommentUpdateRequestDto requestDto, Long expectedVersion,
@@ -126,13 +101,8 @@ public class CommentService {
     }
 
     /**
-     * 답글이 있는 최상위 댓글을 지우면 남이 단 답글까지 함께 사라졌다.
-     * 답글이 있으면 행을 지우지 않고 소프트 삭제(내용을 비우고 {@code deletedAt}만 남김)해
-     * 답글을 그대로 둔다. 답글이 없으면(또는 답글 자신이면 — 3단계 금지라 답글에는 답글이
-     * 없다) 지금처럼 행 자체를 지운다.
-     * <p>
-     * 관리자가 신고를 처리하며 지우는 경로도 같은 규칙을 그대로 탄다 — 답글이 달린 신고
-     * 대상을 관리자가 지워도 남의 답글까지 함께 사라지면 안 되는 것은 같다.
+     * 답글이 있으면 행을 남기고 소프트 삭제(내용 비움)해 남의 답글이 함께 사라지지 않게 하고, 없으면
+     * 행을 지운다(관리자 삭제도 같은 규칙).
      */
     @Transactional
     public CommentDeleteResultDto delete(Long id, Authentication authentication) {
@@ -141,8 +111,7 @@ public class CommentService {
         OwnershipPolicy.validateOwner(authentication, comment.getUser(), id);
         requireNotBlindedUnlessAdmin(comment, authentication);
         if (comment.isDeleted()) {
-            // 이미 삭제된 댓글에 대한 재요청(예: 다른 탭에서 먼저 지운 경우)은
-            // 조용히 넘어간다 — 화면은 어느 쪽이든 "삭제됨"으로 보여준다.
+            // 이미 삭제된 댓글의 재요청(다른 탭에서 먼저 지운 경우)은 조용히 넘어간다.
             return new CommentDeleteResultDto(id, true);
         }
 
@@ -152,27 +121,21 @@ public class CommentService {
             return new CommentDeleteResultDto(id, true);
         }
 
-        // 최상위 댓글이면 그 답글을 먼저 지운다 — DB에 cascade를 걸지 않았으므로(Comment.parent
-        // 주석 참고) 그대로 두면 FK 위반이 난다. 답글 자신을 지울 때는 이 호출이 0건을 지우고
-        // 끝난다. 위에서 이미 답글 수를 셌으므로(replyCount == 0) 사실상 항상 0건이지만,
-        // 그 사이 다른 답글이 달렸을 극히 드문 경쟁까지 방어적으로 커버한다.
+        // DB cascade가 없어 답글을 먼저 지운다(Comment.parent 참고). 위에서 이미 0개를 확인했지만
+        // 그 사이 답글이 달리는 경쟁에 대한 방어다.
         commentRepository.deleteAllByParentId(id);
         commentRepository.delete(comment);
         return new CommentDeleteResultDto(id, false);
     }
 
-    /**
-     * 상세 화면 최초 진입 시 첫 페이지(최대 {@link #PAGE_SIZE}개)만 내려준다. 나머지는
-     * {@link #findNextPageForView}로 "더 보기"가 이어 받는다.
-     */
+    /** 상세 화면 최초 진입용 첫 페이지. 나머지는 {@link #findNextPageForView}가 잇는다. */
     public CommentPageDto findInitialPageForView(Long postId, Authentication authentication) {
         return pageForView(postId, null, authentication);
     }
 
     /** 커서({@code afterId}) 이후 다음 페이지. {@code afterId}는 마지막으로 받은 댓글의 id다. */
     public CommentPageDto findNextPageForView(Long postId, Long afterId, Authentication authentication) {
-        // 삭제된 글의 댓글은 API로도 읽을 수 없다(관리자 제외). 최초 페이지는 글 상세가 이미 글의
-        // 삭제 여부를 판정한 뒤 부르므로 여기서 다시 묻지 않는다(쿼리 수를 늘리지 않는다).
+        // 삭제된 글의 댓글은 관리자 외에는 읽을 수 없다(최초 페이지는 글 상세가 이미 판정했다).
         if (!OwnershipPolicy.isAdmin(authentication) && !postRepository.existsVisibleById(postId)) {
             throw new PostNotFoundException(postId);
         }
@@ -180,13 +143,8 @@ public class CommentService {
     }
 
     /**
-     * {@code PAGE_SIZE + 1}개를 가져와 {@code PAGE_SIZE}를 넘으면 마지막 한 개를 잘라내고
-     * {@code hasMore=true}로 표시한다 — 별도의 COUNT 쿼리 없이 "다음이 있는지"를 판정한다.
-     * 화면에 보여줄 전체 개수는 이와 별개로 {@code countByPostId}를 조회해 담는다.
-     * <p>
-     * 답글은 부모마다 최대 {@link #INITIAL_REPLIES_PER_PARENT}개만 함께 내려준다. 부모 수만큼(최대 {@link #PAGE_SIZE}회) 별도 조회가 도는 대신, 어떤 부모의
-     * 답글도 영영 숨겨지지 않는다는 것을 보장한다 — 이 페이지의 최상위 댓글 수 자체가 이미
-     * {@code PAGE_SIZE}로 작게 제한되어 있어 그 반복 횟수도 함께 작다.
+     * {@code PAGE_SIZE + 1}개를 가져와 초과분으로 {@code hasMore}를 판정한다(COUNT 불필요). 답글은 부모마다
+     * 최대 {@link #INITIAL_REPLIES_PER_PARENT}개를 한 번의 배치 조회로 함께 담는다.
      */
     private CommentPageDto pageForView(Long postId, Long afterId, Authentication authentication) {
         List<Comment> fetched = commentRepository.findPageByPostIdAsc(postId, afterId, PageRequest.of(0, PAGE_SIZE + 1));
@@ -195,16 +153,13 @@ public class CommentService {
 
         List<Long> topLevelIds = page.stream().map(Comment::getId).toList();
         Map<Long, Long> replyCounts = commentRepository.countRepliesByParentIdIn(topLevelIds);
-        // 부모마다 따로 부르지 않고 이 페이지의 최상위 댓글 전체를 대상으로 한 번에
-        // 가져온다 — 최대 페이지당 20회이던 쿼리가 이 한 번으로 줄어든다.
         Map<Long, List<Comment>> repliesByParent =
                 commentRepository.findInitialRepliesGroupedByParentIdIn(topLevelIds, INITIAL_REPLIES_PER_PARENT);
 
         List<CommentViewDto> views = page.stream()
                 .map(comment -> withInitialReplies(comment, authentication, replyCounts, repliesByParent))
                 .toList();
-        // afterId가 있으면 "더 보기"로 이어받는 후속 페이지다 — 전체 개수는 최초 페이지에서
-        // 이미 받았으므로 다시 세지 않는다. 화면이 로컬로 유지한 값을 그대로 쓴다.
+        // 후속 페이지는 전체 개수를 다시 세지 않는다(화면이 로컬로 유지한다).
         Long totalCount = afterId == null ? commentRepository.countByPostId(postId) : null;
         return new CommentPageDto(views, totalCount, hasMore);
     }
@@ -220,11 +175,7 @@ public class CommentService {
         return viewOf(comment, authentication).withReplies(replies, replyCount, hasMoreReplies);
     }
 
-    /**
-     * "답글 더 보기" — {@code afterId} 이후의 답글을 최대
-     * {@link #REPLIES_PAGE_SIZE}개 반환한다. 존재하지 않거나 답글이 없는 부모 id를 넘기면
-     * 빈 페이지를 돌려준다(읽기 전용 조회라 별도의 404로 구분하지 않는다).
-     */
+    /** "답글 더 보기": {@code afterId} 이후 답글을 최대 {@link #REPLIES_PAGE_SIZE}개. 없는 부모면 빈 페이지. */
     public CommentPageDto findRepliesPage(Long parentId, Long afterId, Authentication authentication) {
         commentRepository.findById(parentId).ifPresent(parent -> requirePostVisible(parent, authentication));
         List<Comment> fetched = commentRepository.findRepliesByParentIdAsc(
@@ -235,15 +186,11 @@ public class CommentService {
         List<CommentViewDto> views = page.stream()
                 .map(reply -> viewOf(reply, authentication))
                 .toList();
-        // "답글 더 보기"는 항상 후속 페이지다 — 최초 답글 수는 이미 withInitialReplies가 배치로
-        // 계산해 부모 댓글에 실어 보냈고, 화면도 이 값을 읽지 않는다.
+        // 항상 후속 페이지라 전체 개수는 담지 않는다.
         return new CommentPageDto(views, null, hasMore);
     }
 
-    /**
-     * 소프트 삭제된 글 아래의 댓글은 관리자만 만질 수 있다. 일반 사용자에게는 글과 함께 사라진 것과
-     * 같으므로 글이 없는 것으로 답한다.
-     */
+    /** 삭제·숨김된 글 아래의 댓글은 관리자만 만질 수 있고, 일반 사용자에게는 글이 없는 것으로 답한다. */
     private void requirePostVisible(Comment comment, Authentication authentication) {
         Post post = comment.getPost();
         if (post != null && (post.isDeleted() || post.isBlinded()) && !OwnershipPolicy.isAdmin(authentication)) {
@@ -251,10 +198,7 @@ public class CommentService {
         }
     }
 
-    /**
-     * 관리자가 숨긴 댓글은 작성자도 고치거나 지울 수 없다 — 숨김 상태는 관리자만 바꾼다. 신고된 내용을
-     * 작성자가 지우거나 고쳐 증거를 없애는 일을 막는다.
-     */
+    /** 관리자가 숨긴 댓글은 작성자도 고치거나 지울 수 없다(증거 인멸 방지). */
     private void requireNotBlindedUnlessAdmin(Comment comment, Authentication authentication) {
         if (comment.isBlinded() && !OwnershipPolicy.isAdmin(authentication)) {
             throw new AccessDeniedException("관리자가 숨긴 댓글은 수정·삭제할 수 없습니다. id=" + comment.getId());
@@ -267,10 +211,7 @@ public class CommentService {
                 OwnershipPolicy.isAdmin(authentication), List.of(), 0L, false);
     }
 
-    /**
-     * 댓글을 숨긴다. 내용은 그대로 두고 {@link #unblind}로 되돌릴 수 있다. 이미 소프트 삭제된 댓글은 숨길 것이
-     * 없고, 이미 숨겨졌으면 조용히 넘어간다 — 두 관리자가 겹쳐 눌러도 같은 결과다.
-     */
+    /** 댓글을 숨긴다({@link #unblind}로 되돌림). 삭제됐거나 이미 숨겨졌으면 조용히 넘어간다. */
     @Transactional
     public void blind(Long id) {
         Comment comment = findComment(id);

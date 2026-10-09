@@ -38,10 +38,8 @@ import java.util.function.UnaryOperator;
 public class UserService {
 
     /**
-     * 탈퇴한 계정의 대체 이름·이메일 공간. 새 가입은 이 공간을 쓸 수
-     * 없다 — 예전에는 누군가 "탈퇴한 사용자123"이나 "withdrawn-123@kraft.invalid"로 먼저 가입해
-     * 두면 123번 회원의 탈퇴가 유일성 제약에 걸려 실패했다. {@code .invalid}는 실제로 존재할 수
-     * 없는 예약 최상위 도메인(RFC 2606)이라 정상 사용자가 막히지 않는다.
+     * 탈퇴 계정의 대체 이름·이메일 공간. 새 가입이 이 공간을 쓰면 탈퇴가 유일성 제약에 걸리므로 막는다.
+     * {@code .invalid}는 예약 도메인(RFC 2606)이라 정상 사용자와 겹치지 않는다.
      */
     static final String WITHDRAWN_NAME_PREFIX = "탈퇴한 사용자";
     static final String WITHDRAWN_EMAIL_DOMAIN = "@kraft.invalid";
@@ -61,18 +59,14 @@ public class UserService {
     private final TransactionTemplate transactionTemplate;
 
     /**
-     * @return 새로 계정을 만들었으면 {@code true}. 이미 가입된 이메일이면 {@code false}를
-     * 돌려주지만, 호출한 쪽(컨트롤러)은 이 값과 무관하게 <b>같은 응답</b>을 내려야 한다 —
-     * 응답이 갈리면 그 자체로 이메일 가입 여부를 확인하는 도구가 된다({@code PasswordResetService}가
-     * 항상 204를 주는 것과 같은 이유).
-     * <p>
-     * BCrypt 해시(약 100ms)는 트랜잭션 밖에서 계산한다 — 그동안 DB 커넥션을 쥐고 있지 않게
-     * 하려는 것이다. 그래서 이 메서드 자체는 트랜잭션 없이 실행하고, 쓰기만 짧은 트랜잭션으로 묶는다.
+     * BCrypt(약 100ms)는 트랜잭션 밖에서 계산하고 쓰기만 짧은 트랜잭션으로 묶는다.
+     *
+     * @return 새 계정을 만들었으면 {@code true}. 호출자는 이 값과 무관하게 같은 응답을 내려야 한다
+     * (응답이 갈리면 이메일 가입 여부가 드러난다).
      */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public boolean signUp(String name, String email, String rawPassword) {
-        // 대소문자·앞뒤 공백만 다른 이메일이 별개 계정으로 가입되지 않도록 정규화부터
-        // 한다 — 이후의 해시·저장이 전부 이 값을 쓴다.
+        // 대소문자·공백만 다른 이메일이 별개 계정이 되지 않게 먼저 정규화한다.
         email = EmailPolicy.normalize(email);
         if (name != null && name.strip().startsWith(WITHDRAWN_NAME_PREFIX)) {
             throw new BusinessValidationException("사용할 수 없는 이름입니다. '" + WITHDRAWN_NAME_PREFIX + "'로 시작하는 이름은 탈퇴한 계정 표시에 쓰입니다.");
@@ -80,15 +74,13 @@ public class UserService {
         if (email.endsWith(WITHDRAWN_EMAIL_DOMAIN)) {
             throw new BusinessValidationException("사용할 수 없는 이메일 주소입니다.");
         }
-        // 닉네임 중복은 공개 정보라(다른 사람 글에 그대로 보인다) 지금처럼 즉시 알려도 된다 —
-        // 계정 열거 방지가 필요한 것은 이메일뿐이다.
+        // 닉네임은 공개 정보라 중복을 바로 알려도 된다(열거 방지는 이메일만).
         if (userRepository.existsByName(name)) {
             throw new BusinessValidationException("이미 사용중인 이름입니다. name=" + name);
         }
         PasswordBytePolicy.validate(rawPassword);
 
-        // 비밀번호 해시를 분기보다 먼저 계산한다(P1-8) — 예전에는 새 계정만 이 비싼 해시를 거쳐,
-        // 응답이 빠르면 "이미 가입된 주소"라는 사실이 시간으로 드러났다.
+        // 분기 전에 해시한다 — 응답 시간으로 가입 여부가 드러나지 않게.
         String encodedPassword = passwordEncoder.encode(rawPassword);
 
         final String normalizedEmail = email;
@@ -99,11 +91,9 @@ public class UserService {
     private boolean saveNewUser(String name, String email, String encodedPassword) {
         Optional<User> existing = userRepository.findByEmailHmac(EmailHasher.hmacHex(email));
         if (existing.isPresent()) {
-            // 쿨다운·시간당 예산 안에서만 큐에 넣는다(P0-4) — 남의 주소로 가입을 반복해 그 메일함을
-            // 채우지 못하게. 큐잉 여부와 무관하게 응답은 같다.
+            // 쿨다운·시간당 예산 안에서만 큐에 넣는다(남의 메일함 폭격 방지). 응답은 같다.
             if (outboxMailStore.enqueueNotice(existing.get(), OutboxMailKind.ACCOUNT_EXISTS)) {
-                // 가입·재설정과 같은 관례: 예약 주기(최대 수십 초)까지 기다리지 않고 커밋 직후
-                // 바로 한 번 드레인한다 — 그러지 않으면 이 안내 메일이 다음 주기 전까지 쌓여 있는다.
+                // 다음 예약 주기를 기다리지 않고 커밋 직후 한 번 보낸다.
                 AfterCommit.run(outboxMailWorker::drainAsync);
             }
             return false;
@@ -121,18 +111,8 @@ public class UserService {
     }
 
     /**
-     * 회원정보 변경은 비밀번호 변경만 가능하다는 기획 의도(User.java 클래스 주석)에 따라,
-     * 반드시 현재 비밀번호를 확인한 뒤에만 새 비밀번호로 바꾼다.
-     * <p>
-     * 세션 principal은 이미 불변 회원 id다 — 호출한 쪽(컨트롤러)이
-     * {@code CurrentUser}로 이미 찾아 둔 회원의 id를 그대로 넘긴다. 예전에는 여기서 이메일을
-     * 다시 정규화·해시해 같은 회원을 한 번 더 찾았는데, 컨트롤러가 이미 복호화한 이메일을
-     * 다시 암호화 컬럼 조회 경로로 되돌리는 낭비였다.
-     * <p>
-     * 변경이 <b>커밋된 뒤</b> 이 계정의 모든 세션을 서버에서 폐기하도록 영속 태스크를 남긴다
-     * ({@link #revokeSessionsAfterCommit}). 브라우저 JS의 후속 로그아웃에 맡기던 예전 방식은
-     * API 직접 호출이나 후속 요청 실패에 무력했고 다른 기기의 세션도 남겼다.
-     * 커밋 이후로 미루는 이유는, 변경이 롤백되면 세션도 그대로 유지되어야 하기 때문이다.
+     * 현재 비밀번호를 확인한 뒤 바꾸고, 커밋 후 이 계정의 모든 세션을 서버에서 폐기한다
+     * ({@link #revokeSessionsAfterCommit}). 롤백되면 세션도 유지된다.
      */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void changePassword(Long userId, String currentPassword, String newPassword) {
@@ -147,10 +127,7 @@ public class UserService {
         });
     }
 
-    /**
-     * 현재 비밀번호를 확인하고, 확인에 쓴 저장 해시를 돌려준다. 읽기와 BCrypt 비교는 트랜잭션 밖이다 —
-     * 쓰기 트랜잭션에서 {@link #reloadIfUnchanged}가 이 해시가 그대로인지 다시 확인한다.
-     */
+    /** 트랜잭션 밖에서 현재 비밀번호를 확인하고, 확인에 쓴 저장 해시를 돌려준다. */
     private String verifiedPasswordHash(Long userId, String currentPassword) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. userId=" + userId));
@@ -161,11 +138,7 @@ public class UserService {
         return storedHash;
     }
 
-    /**
-     * 쓰기 트랜잭션 안에서 회원을 다시 읽고, 비밀번호 확인 이후 그 해시가 바뀌지 않았는지 본다.
-     * 확인과 쓰기 사이에 다른 요청이 비밀번호를 바꿨다면(예전에는 한 트랜잭션이라 생기지 않던 틈)
-     * 옛 비밀번호로 얻은 승인을 쓰지 못하게 거절한다.
-     */
+    /** 쓰기 트랜잭션에서 다시 읽어, 확인 이후 비밀번호가 바뀌었으면 거절한다(옛 승인 재사용 방지). */
     private User reloadIfUnchanged(Long userId, String verifiedHash) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("존재하지 않는 회원입니다. userId=" + userId));
@@ -176,32 +149,22 @@ public class UserService {
     }
 
     /**
-     * 현재 비밀번호를 묻지 않고 새 비밀번호를 정한다. 메일로 받은 1회용 토큰을 이미 검증한
-     * {@link PasswordResetService}만 부른다 — 이 메서드에 인증 경로가 하나 더 생기면 그 토큰
-     * 검사를 건너뛰는 길이 생기므로, 호출자는 여기 하나로 유지한다.
-     * <p>
-     * 세션을 모두 폐기하는 것은 비밀번호 변경과 같다. 비밀번호를 잊었다는 것은 이미 남이
-     * 쓰고 있을 수 있다는 뜻이기도 하다.
+     * 현재 비밀번호 없이 바꾸고 세션을 모두 폐기한다. 토큰을 검증한 {@link PasswordResetService}만 부른다
+     * (다른 호출자가 생기면 토큰 검사를 우회하는 길이 된다).
      */
     @Transactional
     public void resetPassword(Long userId, String newPassword) {
         resetPasswordEncoded(userId, encodeNewPassword(newPassword));
     }
 
-    /**
-     * 새 비밀번호를 검증하고 해시한다. BCrypt(약 100ms)를 트랜잭션 밖에서 계산하려는 호출자
-     * (재설정 서비스)가 쓴다 — 그동안 DB 커넥션을 쥐고 있지 않게 하려고 트랜잭션 없이 실행한다.
-     */
+    /** 새 비밀번호를 검증·해시한다. BCrypt 동안 커넥션을 쥐지 않게 트랜잭션 없이 돈다. */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public String encodeNewPassword(String newPassword) {
         PasswordBytePolicy.validate(newPassword);
         return passwordEncoder.encode(newPassword);
     }
 
-    /**
-     * {@link #encodeNewPassword}로 미리 해시한 값을 저장하고 세션을 폐기한다. 호출자의 트랜잭션에
-     * 참여한다 — 토큰 소비와 함께 커밋되거나 함께 사라져야 한다.
-     */
+    /** 미리 해시한 값을 저장하고 세션을 폐기한다. 토큰 소비와 같은 트랜잭션에 참여한다. */
     @Transactional
     public void resetPasswordEncoded(Long userId, String encodedPassword) {
         User user = userRepository.findById(userId)
@@ -211,19 +174,8 @@ public class UserService {
     }
 
     /**
-     * 회원 탈퇴. 글과 댓글은 남기고 그 사람을 가리키는 값만 지운다 — 남의 댓글이 달린 글이나
-     * 대화의 맥락까지 함께 사라지지 않게 하려는 것이다(V9 주석 참고). 화면에는 익명 이름으로
-     * 보인다.
-     * <p>
-     * 비밀번호를 한 번 더 확인하는 이유는 되돌릴 수 없는 작업이기 때문이다. 자리를 비운 사이
-     * 남이 눌러 계정을 없애는 일도 이 확인이 막는다.
-     * <p>
-     * 이메일이 익명 주소로 바뀌므로 원래 주소로 다시 가입할 수 있다. 보낼 예정이던 메일과
-     * 남아 있던 링크들은 함께 지운다 — 없는 계정으로 가는 메일이고, 지우지 않으면 탈퇴 후에도
-     * 옛 링크로 무언가 할 수 있는 길이 남는다.
-     * <p>
-     * 세션 principal은 이미 불변 회원 id다 — {@link #changePassword}와 같은
-     * 이유로 이메일이 아니라 id를 받는다.
+     * 회원 탈퇴. 글·댓글은 남기고(대화 맥락 보존) 개인 식별 값만 익명으로 바꾼다. 되돌릴 수 없어 비밀번호를
+     * 다시 확인한다. 대기 메일과 남은 토큰은 지워 탈퇴 후 옛 링크가 동작하지 않게 한다.
      */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void withdraw(Long userId, String currentPassword) {
@@ -244,11 +196,7 @@ public class UserService {
         });
     }
 
-    /**
-     * 탈퇴 표시 이름. 기본은 "탈퇴한 사용자{id}"다. 예약어 제한이 생기기 전에 가입한 다른 계정이
-     * 그 이름을 이미 쓰고 있으면 짧은 무작위 접미사를 붙인다 — 새 가입만 막고 기존 충돌
-     * 데이터를 그대로 두면 그 회원은 영영 탈퇴할 수 없다.
-     */
+    /** "탈퇴한 사용자{id}". 기존 계정이 이미 쓰고 있으면 무작위 접미사를 붙인다. */
     private String replacementName(Long userId) {
         String base = WITHDRAWN_NAME_PREFIX + userId;
         return firstUnused(base, candidate -> userRepository.existsByName(candidate), suffix -> base + "-" + suffix);
@@ -277,14 +225,8 @@ public class UserService {
     }
 
     /**
-     * 지금 글을 쓸 수 없는 이유. 쓸 수 있으면 빈 값이다.
-     * <p>
-     * 화면이 "폼을 보여줄지"를 정할 때 쓴다. 서버가 거절할 것을 화면이 미리 같은 규칙으로
-     * 판단해야, 다 쓰고 나서야 이유를 알게 되는 흐름이 생기지 않는다. 판정 자체는 작성
-     * 경로와 같은 {@link WriteAccessPolicy}가 하므로 두 경로가 갈라지지 않는다.
-     * <p>
-     * 회원은 principal의 불변 id로 찾는다({@link CurrentUser}) — principal은 이메일을 들고 있지
-     * 않다. 미인증이거나 계정을 찾지 못하면 빈 값이다.
+     * 지금 글을 쓸 수 없는 이유(쓸 수 있거나 미인증이면 빈 값). 화면이 폼을 보여줄지 정할 때 쓰며,
+     * 작성 경로와 같은 {@link WriteAccessPolicy}로 판정한다.
      */
     public Optional<String> writeBlockReason(Authentication authentication) {
         return Optional.ofNullable(CurrentUser.userIdOrNull(authentication, userRepository))
@@ -300,11 +242,8 @@ public class UserService {
     }
 
     /**
-     * 세션 폐기를 영속 태스크로 남기고(같은 트랜잭션에서 커밋), 커밋 직후 곧바로 한 번 처리를
-     * 시도한다. 예전에는 {@code AfterCommit}에서 즉시 폐기만 시도하고 실패하면 그냥
-     * 로그로만 남겼다 — 세션 저장소 장애나 그 직후 프로세스 종료로 폐기가 유실되면 복구할
-     * 방법이 없었다. 태스크가 DB에 남아 있으므로 실패해도 {@link SessionRevocationWorker}의
-     * 주기 작업이 최종적으로 완수한다.
+     * 세션 폐기를 같은 트랜잭션의 영속 태스크로 남기고 커밋 직후 한 번 시도한다. 실패해도
+     * {@link SessionRevocationWorker}가 끝내 처리한다.
      */
     private void revokeSessionsAfterCommit(User user) {
         Long taskId = sessionRevocationStore.enqueue(user);

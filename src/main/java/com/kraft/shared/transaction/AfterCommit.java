@@ -5,15 +5,8 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
- * "DB 커밋이 끝난 뒤에 실행한다"를 한 줄로 쓰기 위한 순수 정적 유틸리티.
- * {@link OwnershipPolicy}·{@link WriteAccessPolicy}와 같은 스타일이다.
- * <p>
- * 파일 삭제와 세션 폐기는 DB 트랜잭션에 참여하지 않는다. 트랜잭션 안에서 먼저 실행하면
- * 이후 커밋이 실패해도 되돌아오지 않아, 게시글은 남았는데 이미지 파일만 사라지거나
- * 비밀번호는 그대로인데 세션만 끊기는 상태가 된다. 그래서 이런 작업은
- * 전부 커밋 이후로 미룬다.
- * <p>
- * 트랜잭션 밖에서 호출하면 등록할 동기화 지점이 없으므로 즉시 실행한다.
+ * "DB 커밋이 끝난 뒤에 실행한다"를 한 줄로 쓰는 순수 정적 유틸. 파일 삭제·세션 폐기처럼 DB 트랜잭션에 참여하지 않는 작업을 먼저
+ * 실행하면 이후 커밋이 실패해도 되돌릴 수 없어 DB와 외부 상태가 어긋나므로 커밋 이후로 미룬다. 트랜잭션 밖에서는 즉시 실행한다.
  */
 @Slf4j
 public final class AfterCommit {
@@ -30,12 +23,8 @@ public final class AfterCommit {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                // Spring은 afterCommit 콜백이 던진 예외를 그대로 호출한 트랜잭션 메서드
-                // 밖으로 전파한다 — DB는 이미 커밋되었는데도 응답은 500이 된다. 비밀번호 변경
-                // 뒤 세션 폐기가 실패하는 경우가 실제 사례다: 비밀번호는 이미 바뀌었는데
-                // 사용자는 요청 전체가 실패했다고 믿고 옛 비밀번호로 재시도하게 된다. 여기서
-                // 잡아 로그로만 남긴다 — 실패를 완전히 숨기지 않으면서도, 이미 끝난 DB 변경을
-                // 실패로 보이게 하지 않는다.
+                // afterCommit 콜백의 예외는 호출한 메서드 밖으로 전파돼, DB는 이미 커밋됐는데 응답이 500이 된다(예: 비밀번호는
+                // 바뀌었는데 세션 폐기 실패로 사용자가 옛 비밀번호로 재시도). 잡아서 로그로만 남긴다.
                 try {
                     action.run();
                 } catch (RuntimeException e) {

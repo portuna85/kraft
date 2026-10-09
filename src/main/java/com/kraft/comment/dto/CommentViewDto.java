@@ -7,15 +7,11 @@ import java.time.ZoneId;
 import java.util.List;
 
 /**
- * 댓글 <b>화면 전용</b> 응답. 커서 페이지 API가 이 형태로만 응답하며, 화면에만 댓글별
- * {@code canManage}를 내려 관리 버튼 노출을 서버 판정에 맞춘다.
- * <p>
- * {@code parentId}가 null이면 최상위 댓글이고, {@code replies}에 처음 로드된 답글 일부가
- * 실린다. {@code replyCount}는 그 부모의 실제 총 답글 수이고, {@code hasMoreReplies}가
- * true면 {@code replies}에 다 담지 못한 답글이 더 있다는 뜻이다 — 화면은
- * 이때 {@code GET /api/v1/comments/{parentId}/replies}로 이어서 받아 온다. 답글 자신은
- * 2단계까지만 허용하므로 답글 항목의 {@code replies}·{@code replyCount}·{@code hasMoreReplies}는
- * 항상 빈 값이다.
+ * 댓글 <b>화면 전용</b> 응답(커서 페이지 API가 이 형태로만 응답). 댓글별 {@code canManage}로 관리 버튼 노출을 서버
+ * 판정에 맞춘다. 최상위 댓글({@code parentId}가 null)은 처음 로드된 답글 일부를 {@code replies}에 싣고,
+ * {@code replyCount}는 실제 총 답글 수, {@code hasMoreReplies}가 true면
+ * {@code GET /api/v1/comments/{parentId}/replies}로 이어 받는다. 답글 항목의 {@code replies}·{@code replyCount}·
+ * {@code hasMoreReplies}는 항상 빈 값이다(2단계까지).
  */
 public record CommentViewDto(
         Long id,
@@ -23,36 +19,17 @@ public record CommentViewDto(
         Long parentId,
         String content,
         String author,
-        /**
-         * 서버 시간대의 오프셋을 실어 보낸다. {@code Comment.createdAt}은
-         * DB·서버 저장용 {@code LocalDateTime}이라 오프셋이 없다 — 그 값을 오프셋 없이 그대로
-         * JSON으로 내려보내면, 클라이언트의 {@code new Date(iso)}가 그 문자열을 "브라우저의"
-         * 로컬 시간으로 해석한다. 반면 화면이 새 댓글을 즉시 반영할 때 직접 만든
-         * {@code new Date().toISOString()}은 UTC다 — 같은 순간인데 새로고침 전후로 다르게
-         * 표시됐다. 서버 시간대로 명시적인 오프셋을 붙이면 클라이언트가 어느 경로로 값을
-         * 받든 같은 순간으로 해석한다.
-         */
+        /** 서버 시간대 오프셋을 붙여 보낸다 — 오프셋 없는 LocalDateTime은 클라이언트가 브라우저 로컬 시간으로 해석하고, 직접 만든 UTC 값과 어긋난다. */
         OffsetDateTime createdAt,
         boolean canManage,
         List<CommentViewDto> replies,
         long replyCount,
         boolean hasMoreReplies,
-        /**
-         * 편집 충돌 감지에 쓰는 낙관적 잠금 버전. 저장 요청의 {@code version}에 이 값을
-         * 그대로 실어 보내면, 그 사이 다른 저장이 있었을 때 서버가 409로 거절한다.
-         */
+        /** 편집 충돌 감지용 낙관적 잠금 버전. 저장 요청에 그대로 실어 보내면 그 사이 다른 저장이 있었을 때 409로 거절된다. */
         Long version,
-        /**
-         * 답글이 있어 행은 남기고 내용만 비운 것이다. true면
-         * {@code content}는 항상 빈 문자열이고, 화면은 "삭제된 댓글입니다"로 바꿔 보여주며
-         * 수정·삭제·신고 버튼을 숨긴다.
-         */
+        /** 답글이 있어 행은 남기고 내용만 비운 댓글. true면 {@code content}는 빈 문자열이고 화면은 "삭제된 댓글입니다"로 바꿔 수정·삭제 버튼을 숨긴다. */
         boolean deleted,
-        /**
-         * 관리자가 숨긴 댓글이다(신고 처리). 관리자가 아닌 사람에게는 {@code content}가 항상 빈 문자열이고
-         * {@code canManage}도 false다 — 화면은 "관리자가 숨긴 댓글입니다"로 바꿔 보여준다. 관리자는 원문을
-         * 그대로 받아 숨김 표시와 해제 버튼을 본다.
-         */
+        /** 관리자가 숨긴 댓글. 관리자가 아니면 {@code content}가 빈 문자열이고 {@code canManage}도 false다(화면은 "관리자가 숨긴 댓글입니다"). 관리자는 원문과 해제 버튼을 본다. */
         boolean blinded,
         /** 관리자 권한. 숨김 해제 같은 관리 버튼 노출에 쓴다 — 서버가 판정한 값만 믿는다. */
         boolean canModerate

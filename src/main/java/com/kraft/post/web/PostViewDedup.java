@@ -17,17 +17,9 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * 상세 화면 조회수를 올릴지 판단한다. 새로고침·봇·링크
- * 미리보기(메신저가 URL을 긁어 가는 요청)·같은 방문자의 재방문이 전부 조회수를 1씩 올리던
- * 것을 줄인다 — 인기글·조회순 정렬이 봇 트래픽에 좌우되지 않게 한다.
- * <p>
- * 로그인 사용자는 세션에, 익명 사용자는 쿠키에 "최근 본 글"을 담는다. 세션은 Spring Session
- * JDBC가 서버에 보관하지만, 익명 방문자마다 세션을 새로 만들면(현재 앱은 인증된 요청에만
- * 세션이 생긴다) 공개 게시판의 방문마다 세션 테이블에 행이 쌓인다 — 그래서 익명은 쿠키 하나로
- * 가볍게 처리한다.
- * <p>
- * 쓰기(버퍼링)는 이 클래스의 범위가 아니다 — 카운트 여부만 정하고, 실제 반영은 여전히
- * {@code PostService.findByIdForView}의 즉시 UPDATE가 맡는다.
+ * 상세 화면 조회수를 올릴지 판단한다(새로고침·봇·링크 미리보기·재방문이 조회수를 부풀리지 않게). 로그인 사용자는
+ * 세션에, 익명은 쿠키에 "최근 본 글"을 담는다 — 익명마다 세션을 만들면 방문마다 세션 행이 쌓인다. 카운트 여부만
+ * 정하고 반영은 {@code PostService.findByIdForView}의 즉시 UPDATE가 맡는다.
  */
 @Component
 public class PostViewDedup {
@@ -44,10 +36,7 @@ public class PostViewDedup {
     private static final int MAX_COOKIE_ENTRIES = 50;
     private static final int COOKIE_MAX_AGE_SECONDS = (int) WINDOW.getSeconds();
 
-    /**
-     * @return 이번 요청에서 조회수를 올려야 하면 {@code true}. 판단하는 과정에서 세션·쿠키
-     * 상태를 최신 방문 시각으로 갱신한다(응답에 쿠키를 다시 써야 할 수도 있어 {@code response}가 필요하다).
-     */
+    /** @return 이번 요청에서 조회수를 올려야 하면 true. 판단하며 세션·쿠키의 최근 방문 시각을 갱신한다(쿠키는 응답에 다시 쓴다). */
     public boolean shouldCount(HttpServletRequest request, HttpServletResponse response,
                                 Long postId, Authentication authentication) {
         String userAgent = request.getHeader("User-Agent");
@@ -73,9 +62,7 @@ public class PostViewDedup {
             viewed.put(postId, now);
         }
         boolean pruned = viewed.entrySet().removeIf(entry -> isStale(entry.getValue(), now));
-        // 맵이 실제로 바뀐 경우에만 다시 심는다 — 조회마다 세션 속성을 쓰면 세션 UPDATE가 매번
-        // 한 번 더 생긴다. 바뀌었을 때는 갱신한 맵을 다시 심어야 Spring Session JDBC가 변경을 직렬화해
-        // 저장한다(꺼내 온 참조를 제자리에서만 바꾸면 "바뀌지 않은 속성"으로 보일 수 있다).
+        // 맵이 바뀐 경우에만 다시 심는다(조회마다 쓰면 세션 UPDATE가 늘고, 제자리 변경만으로는 Spring Session이 변경을 감지하지 못할 수 있다).
         if (shouldCount || pruned) {
             session.setAttribute(SESSION_ATTRIBUTE, viewed);
         }
@@ -110,9 +97,8 @@ public class PostViewDedup {
     }
 
     /**
-     * 쿠키 값 형식: {@code postId:epochSeconds}를 {@code |}로 이은 문자열.
-     * 쉼표는 Tomcat의 RFC 6265 쿠키 검증에서 거절되므로 응답에 쓰지 않는다.
-     * 기존 쉼표 형식도 읽고, 형식이나 시간 범위가 이상하면 그 항목만 버린다.
+     * 쿠키 값: {@code postId:epochSeconds}를 {@code |}로 이은 문자열(쉼표는 Tomcat이 거절하지만 옛 형식은 읽는다).
+     * 형식이나 시간 범위가 이상한 항목만 버린다.
      */
     private Map<Long, Instant> parseCookie(HttpServletRequest request) {
         Map<Long, Instant> viewed = new HashMap<>();
@@ -151,9 +137,7 @@ public class PostViewDedup {
         cookie.setPath("/");
         cookie.setMaxAge(COOKIE_MAX_AGE_SECONDS);
         cookie.setHttpOnly(true);
-        // 이 앱은 로컬 개발이 평문 HTTP라(application.yml) Secure를 무조건 걸면 로컬에서
-        // 쿠키가 아예 저장되지 않는다. 운영은 항상 HTTPS 프록시 뒤에 있다(request.isSecure()가
-        // native forward-headers 전략 덕분에 프록시 뒤에서도 실제 프로토콜을 반영한다).
+        // 로컬 개발은 평문 HTTP라 Secure를 무조건 걸면 쿠키가 저장되지 않는다(운영은 프록시 뒤라 isSecure가 실제 프로토콜을 반영한다).
         cookie.setSecure(request.isSecure());
         response.addCookie(cookie);
     }

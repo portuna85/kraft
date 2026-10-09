@@ -8,16 +8,10 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 
 /**
- * {@code POST /api/v1/numbers/recommend} 전용 IP당 분당 요청 제한(02문서 6절). 실제 카운팅
- * 로직은 {@link FixedWindowRateLimiter}로 옮겨 로그인·가입 등 다른 경로에서도 재사용한다.
- * 단일 인스턴스
- * 메모리 카운터이며, 추천 도입을 이유로 Redis 등 공유 저장소를 선행 도입하지 않는다. 다중
- * 인스턴스에서 공유 제한이 필요해지면 그때 검토한다.
- * <p>
- * 한도는 {@code app.recommend.rate-limit.requests-per-minute}로 재배포 없이 조정할 수 있다
- * (운영 준비 — 실측 트래픽에 맞춰 값만 바꿀 수 있어야 한다). 다만 30/분은 여전히 실측 전
- * 초기값이다(02문서 6절) — {@link #reportAndCleanup()}이 남기는 허용/거부 집계가 그 실측
- * 근거가 된다.
+ * {@code POST /api/v1/numbers/recommend} 전용 IP당 분당 요청 제한. 실제 카운팅은 {@link FixedWindowRateLimiter}에 위임한다.
+ * 단일 인스턴스 메모리 카운터이며 공유 저장소는 쓰지 않는다. 한도는 재배포 없이
+ * {@code app.recommend.rate-limit.requests-per-minute}로 조정하고(30/분은 실측 전 초기값), {@link #reportAndCleanup()}의
+ * 허용/거부 집계가 근거가 된다.
  */
 @Component
 public class RecommendationRateLimiter {

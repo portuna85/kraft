@@ -10,17 +10,9 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 
 /**
- * 게시글·댓글·업로드 작성과 검색에 계정(또는 IP) 기준 속도 제한을 건다.
- * 로그인·가입 등은 이미 {@code AuthRateLimitFilter}가 지키지만,
- * 인증을 마친 계정은 이 제한이 생기기 전까지 무제한으로 빠르게 쓸 수 있었다 — 이메일 인증만
- * 통과하면 스팸 봇 하나로 게시판 전체를 덮을 수 있었다.
- * <p>
- * {@link RecommendationRateLimiter}·{@code AuthRateLimitFilter}와 같은
- * {@link FixedWindowRateLimiter}를 재사용하고, 값은 재배포 없이 조정할 수 있게
- * {@code app.write.rate-limit.*}로 뺐다 — 실측 전 초기값이며,
- * {@link #reportAndCleanup()}이 남기는 허용/거부 집계가 조정 근거가 된다.
- * <p>
- * 관리자는 제외한다 — 공지 작성 같은 운영 작업이 이 제한에 걸리면 안 된다.
+ * 게시글·댓글·업로드 작성과 검색에 계정(또는 IP) 기준 속도 제한을 건다. {@link FixedWindowRateLimiter}를 쓰고, 값은 재배포 없이
+ * 조정하도록 {@code app.write.rate-limit.*}로 뺐다(실측 전 초기값 — {@link #reportAndCleanup()}의 집계가 근거). 관리자는
+ * 제외한다(공지 작성 같은 운영 작업이 걸리면 안 된다).
  */
 @Slf4j
 @Component
@@ -51,12 +43,7 @@ public class WriteRateLimiters {
         this.search = new FixedWindowRateLimiter("검색", searchPerMinuteLimit, MINUTE_MILLIS);
     }
 
-    /**
-     * 게시글 작성. 분당·시간당 두 창을 함께 검사한다 — 순서와 무관하게 항상 둘 다
-     * {@code tryAcquire}를 호출한다(카운트 자체는 시도마다 늘어야 하므로, 분당 제한에 이미
-     * 걸린 시도도 시간당 예산을 함께 소모한다 — 빠르게 반복하는 시도가 시간당 한도로도
-     * 더 빨리 막히게 하려는 의도다).
-     */
+    /** 게시글 작성. 분당·시간당을 항상 둘 다 검사한다(분당에 걸린 시도도 시간당 예산을 소모해, 빠른 반복이 시간당 한도로도 더 빨리 막힌다). */
     public boolean tryAcquirePost(Authentication authentication) {
         if (!enabled || OwnershipPolicy.isAdmin(authentication)) {
             return true;
@@ -84,7 +71,7 @@ public class WriteRateLimiters {
         return !enabled || OwnershipPolicy.isAdmin(authentication);
     }
 
-    /** 실측 없이는 한도가 맞는지 알 수 없다 — 다섯 제한기의 허용/거부 집계를 주기적으로 남긴다. */
+    /** 다섯 제한기의 허용/거부 집계를 주기적으로 남긴다. */
     @Scheduled(fixedDelayString = "${app.write.rate-limit.report-interval-ms:600000}")
     public void reportAndCleanup() {
         long now = Instant.now().toEpochMilli();

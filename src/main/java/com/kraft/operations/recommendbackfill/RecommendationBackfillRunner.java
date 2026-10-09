@@ -19,9 +19,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * {@code recommend-backfill} 프로파일로 앱을 띄우면 동행복권에서 1회부터(또는 이미 반영된
- * 다음 회차부터) 지정한 회차까지 순차적으로 조회해 반영하고 종료한다. 최초 이력이 없는
- * 상태에서 한 번, 또는 자동 수집이 한동안 실패해 공백이 생겼을 때 다시 쓴다.
+ * {@code recommend-backfill} 프로파일로 앱을 띄우면 동행복권에서 1회부터(또는 이미 반영된 다음 회차부터) 지정한
+ * 회차까지 순차 조회해 반영하고 종료한다. 최초 이력이 없을 때, 또는 자동 수집이 오래 실패해 공백이 생겼을 때 쓴다.
  *
  * <pre>
  * java -jar kraft.jar --spring.profiles.active=prod,recommend-backfill \
@@ -29,20 +28,12 @@ import java.util.List;
  *   --app.recommend.backfill.chunk-size=50 \
  *   --app.recommend.backfill.request-delay-ms=300
  * </pre>
- * {@code prod}를 함께 켜야 데이터소스가 잡힌다 — {@code application-recommend-backfill.yml}은
- * 이 실행 동안 다른 주기 작업을 끄는 것만 담당한다.
- *
- * 동행복권의 회차 조회 주소는 비공식·내부용이라 중간에 봇 차단 등으로 막힐 수 있다. 그래서
- * 전체를 한 트랜잭션으로 묶지 않고 {@code chunk-size} 회차씩 끊어 커밋한다 — 막히더라도
- * 이미 확인된 구간은 남아 재실행 시 그 다음 회차부터 이어간다. 요청 사이에는
- * {@code request-delay-ms}만큼 쉬어 한 사이트에 부담을 주지 않는다.
+ * {@code prod}를 함께 켜야 데이터소스가 잡힌다({@code application-recommend-backfill.yml}은 다른 주기 작업만 끈다).
  * <p>
- * {@code --app.recommend.backfill.dry-run=true}를 주면 조회만 하고 어떤 청크도 커밋하지
- * 않는다 — 연결·응답 형식을 미리 확인하는 용도다.
- * <p>
- * 전용 프로파일로 가둔 이유는 {@link com.kraft.operations.rekey.EmailRekeyRunner}와 같다.
- * 끝나면 종료 코드를 남기고 내려간다 — 요청한 회차까지 모두 채웠으면 0, 중간에 멈췄으면 1
- * (실패가 아니라 "다시 실행하라"는 신호다. 재실행하면 남은 회차부터 자동으로 이어간다).
+ * 조회 주소가 비공식이라 막힐 수 있으므로 {@code chunk-size} 회차씩 끊어 커밋한다 — 막혀도 확인된 구간은 남고 재실행하면
+ * 그 다음 회차부터 이어간다. 요청 사이에 {@code request-delay-ms}만큼 쉰다. {@code dry-run=true}면 조회만 하고 커밋하지
+ * 않는다. 전용 프로파일로 가둔 이유는 {@link com.kraft.operations.rekey.EmailRekeyRunner}와 같다. 종료 코드는 모두
+ * 채웠으면 0, 중간에 멈췄으면 1(실패가 아니라 "다시 실행하라"는 신호)이다.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -75,8 +66,7 @@ public class RecommendationBackfillRunner implements ApplicationRunner {
 
     /** package-private: 테스트가 {@code System.exit}를 거치지 않고 종료 코드만 직접 확인한다. */
     int backfill() {
-        // 잘못된 인자로 몇 시간짜리 백필을 돌리다 뒤늦게 실패를 알아채는 일이 없게, 시작 전에
-        // 검사한다.
+        // 잘못된 인자로 오래 돌다 실패하지 않게 시작 전에 검사한다.
         if (chunkSize <= 0) {
             log.error("chunk-size는 1 이상이어야 합니다. 입력값={}", chunkSize);
             return 1;
@@ -163,11 +153,7 @@ public class RecommendationBackfillRunner implements ApplicationRunner {
         };
     }
 
-    /**
-     * @return 정상적으로 다 쉬었으면(또는 쉴 필요가 없었으면) true, 인터럽트로 중단됐으면 false.
-     * 예전에는 인터럽트를 받아도 플래그만 다시 세우고 반복문을 계속 돌았다 — 종료 신호(예:
-     * 배포 중 프로세스 강제 종료)를 받고도 다음 회차 요청을 계속 내보냈다.
-     */
+    /** @return 다 쉬었으면 true, 인터럽트로 중단됐으면 false(종료 신호를 받고도 다음 요청을 내보내지 않게). */
     private boolean sleep(long millis) {
         if (millis <= 0) {
             return true;

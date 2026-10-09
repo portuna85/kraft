@@ -32,28 +32,16 @@ public class UserApiController {
     private final PasswordResetService passwordResetService;
     private final UserRepository userRepository;
 
-    /**
-     * 가입·재설정 요청의 응답 시간 하한(P1-8). 가입된 주소와 아닌 주소의 처리 시간 격차를 가린다.
-     * 필드 주입인 이유는 생성자 시그니처(테스트가 직접 만든다)를 바꾸지 않기 위해서다.
-     */
+    /** 가입·재설정 요청의 응답 시간 하한 — 가입된 주소와 아닌 주소의 처리 시간 격차를 가린다. 생성자 시그니처(테스트가 직접 만든다)를 바꾸지 않으려 필드 주입이다. */
     @Value("${app.auth.min-response-millis:250}")
     private long minResponseMillis;
 
-    /**
-     * 로그인 사용자 대상 서비스 메서드는 이메일이 아니라 이 id를 받는다 — 세션
-     * principal이 이미 불변 회원 id이므로, 컨트롤러가 이메일을 복호화해 넘기고
-     * 서비스가 그 이메일을 다시 정규화·해시해 같은 회원을 한 번 더 찾는 왕복이 필요 없다.
-     * {@code CurrentUser.require}가 탈퇴 여부도 함께 걸러 준다.
-     */
+    /** 로그인 사용자 대상 서비스는 이메일이 아니라 세션 principal의 불변 회원 id를 받는다. {@code CurrentUser.require}가 탈퇴 여부도 거른다. */
     private Long currentUserId(Authentication authentication) {
         return CurrentUser.require(authentication, userRepository).getId();
     }
 
-    /**
-     * 계정 열거 방지 — 이미 가입된 이메일이어도 신규 가입과 같은 응답(200, 빈 본문)을
-     * 준다. 새로 만든 계정에만 인증 메일을 보낸다 — 이미 있는 계정에는 {@code UserService.signUp}이
-     * 별도의 안내 메일을 큐에 넣는다.
-     */
+    /** 이미 가입된 이메일이어도 신규 가입과 같은 응답(200)을 준다(계정 열거 방지). 새 계정에만 인증 메일을 보내고, 기존 계정에는 {@code UserService.signUp}이 안내 메일을 큐에 넣는다. */
     @PostMapping("/api/v1/users")
     public ResponseEntity<Void> signUp(@Valid @RequestBody SignUpRequestDto requestDto) {
         long start = System.nanoTime();
@@ -72,10 +60,7 @@ public class UserApiController {
         return ResponseEntity.noContent().build();
     }
 
-    /**
-     * 회원 탈퇴. 글과 댓글은 남고 작성자만 익명이 된다({@code UserService.withdraw}).
-     * 성공하면 이 계정의 모든 세션이 폐기된다.
-     */
+    /** 회원 탈퇴. 글과 댓글은 남고 작성자만 익명이 되며({@code UserService.withdraw}), 이 계정의 모든 세션이 폐기된다. */
     @DeleteMapping("/api/v1/users/me")
     public ResponseEntity<Void> withdraw(@Valid @RequestBody WithdrawRequestDto requestDto,
                                           Authentication authentication) {
@@ -83,10 +68,7 @@ public class UserApiController {
         return ResponseEntity.noContent().build();
     }
 
-    /**
-     * 비밀번호 재설정 링크를 요청한다. 가입되지 않은 주소든 요청 제한에 걸렸든 <b>항상 204</b>다 —
-     * 응답이 갈리면 그것만으로 가입 여부를 확인할 수 있게 된다({@code PasswordResetService}).
-     */
+    /** 비밀번호 재설정 링크를 요청한다. 미가입이든 제한에 걸렸든 항상 204다(응답이 갈리면 가입 여부가 드러난다). */
     @PostMapping("/api/v1/users/password-reset")
     public ResponseEntity<Void> requestPasswordReset(@Valid @RequestBody PasswordResetRequestDto requestDto) {
         long start = System.nanoTime();
@@ -108,14 +90,7 @@ public class UserApiController {
         return ResponseEntity.noContent().build();
     }
 
-    /**
-     * 아무 일도 하지 않는다 — 인증된 요청이라는 사실 자체가 목적이다. 글쓰기·편집
-     * 화면이 오래 열려 있는 동안 이 엔드포인트를 주기적으로 불러 세션을 연장한다. Spring
-     * Session은 인증이 걸린 요청이 오면 그 세션의 마지막 접근 시각을 갱신해 만료 시각을
-     * 뒤로 미룬다({@code server.servlet.session.timeout}) — 이 엔드포인트는 그 갱신을
-     * 일으키는 것 말고는 아무 상태도 바꾸지 않는다. DB 조회조차 하지 않는다(회원을 다시
-     * 찾을 이유가 없다).
-     */
+    /** 세션 연장용 — 인증된 요청이면 Spring Session이 만료 시각을 미룬다. 오래 열린 글쓰기·편집 화면이 주기적으로 부르며, 상태 변경도 DB 조회도 없다. */
     @GetMapping("/api/v1/users/me/ping")
     public ResponseEntity<Void> ping() {
         return ResponseEntity.noContent().build();

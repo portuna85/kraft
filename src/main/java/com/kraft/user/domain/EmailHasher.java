@@ -9,9 +9,8 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
 /**
- * 이메일 조회·중복확인용 SHA-512 해시. {@code User.email}은 AES로 암호화되어 등호 조회가
- * 불가능하므로, 동일한 이메일이 항상 동일한 해시를 갖는 이 값을 별도 컬럼({@code email_hash})에
- * 저장해 조회·유니크 제약에 사용한다.
+ * 이메일 조회·중복확인용 해시. {@code User.email}은 AES로 암호화돼 등호 조회가 안 되므로, 같은 이메일이 항상 같은 값을
+ * 갖는 별도 컬럼으로 조회·유니크 제약을 건다.
  */
 public final class EmailHasher {
 
@@ -22,14 +21,13 @@ public final class EmailHasher {
     static final int MIN_PEPPER_LENGTH = 16;
 
     private static volatile byte[] pepper;
-    /** 키를 이미 넣어 둔 Mac. 호출마다 getInstance·init 하는 대신 복제해 쓴다 — Mac은 스레드 안전하지 않아 복제본을 쓴다. */
+    /** 키를 넣어 둔 Mac. 호출마다 init하는 대신 복제해 쓴다(Mac은 스레드 안전하지 않다). */
     private static volatile Mac macPrototype;
 
     /**
-     * 기동 시 한 번 설정한다({@link EmailHmacConfiguration}). {@code User}의 JPA 콜백이 정적으로
-     * 부르는 구조라 주입 대신 정적 보관을 쓴다. 비어 있으면 설정하지 않은 것으로 본다 —
-     * 이메일 HMAC 없이 도는 최소 슬라이스 테스트와 rekey 도구를 위한 것이고, 운영은
-     * {@code EMAIL_HASH_PEPPER}가 필수라 이 경로로 오지 않는다.
+     * 기동 시 한 번 설정한다({@link EmailHmacConfiguration}). {@code User}의 JPA 콜백이 정적으로 부르는 구조라 주입 대신
+     * 정적 보관이다. 비어 있으면 미설정으로 본다(HMAC 없이 도는 최소 슬라이스 테스트와 rekey 도구용 — 운영은
+     * {@code EMAIL_HASH_PEPPER}가 필수).
      */
     public static void configurePepper(String value) {
         if (value == null || value.isBlank()) {
@@ -55,10 +53,7 @@ public final class EmailHasher {
         return pepper != null;
     }
 
-    /**
-     * 이메일 조회용 HMAC-SHA256(pepper, email)의 소문자 16진수. 토큰 해시는 122비트 난수라
-     * 사전 대입 대상이 아니므로 {@link #sha512Hex}를 그대로 쓴다.
-     */
+    /** 이메일 조회용 HMAC-SHA256(pepper, email)의 소문자 16진수. 토큰 해시는 122비트 난수라 사전 대입 대상이 아니므로 {@link #sha512Hex}를 쓴다. */
     public static String hmacHex(String email) {
         Mac prototype = macPrototype;
         if (prototype == null) {
@@ -72,13 +67,7 @@ public final class EmailHasher {
         }
     }
 
-    /**
-     * 이 메서드는 로그인마다(회원 조회) 그리고 {@code User}의 모든 insert/update마다
-     * ({@code @PrePersist}/{@code @PreUpdate}) 호출되는 뜨거운 경로다. 바이트 64개마다
-     * {@code String.format("%02x", ...)}를 반복하던 것은 서식 문자열을 매번 다시 해석하는
-     * 비용이 든다. {@link HexFormat}은 같은
-     * 소문자·구분자 없는 16진수를 바이트 배열 전체에 대해 한 번에 만든다.
-     */
+    /** SHA-512 소문자 16진수. 로그인마다, {@code User}의 모든 insert/update마다 도는 뜨거운 경로라 {@code String.format} 반복 대신 {@link HexFormat}으로 한 번에 만든다. */
     public static String sha512Hex(String value) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-512");
