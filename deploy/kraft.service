@@ -1,41 +1,30 @@
-# 설치(최초 1회, 사람이 직접): 이 파일을 서버의 /etc/systemd/system/kraft.service로 복사하거나
-# 심볼릭 링크한 뒤 `sudo systemctl daemon-reload && sudo systemctl enable --now kraft`.
-# deploy-apply.sh는 배포마다 `systemctl restart kraft`만 하므로(설치는 하지 않는다) 유닛 파일
-# 자체를 바꿨다면 서버에서 다시 daemon-reload가 필요하다.
+# 설치(최초 1회, 사람이 직접): 이 파일을 서버의 /etc/systemd/system/kraft.service로 복사하거나 심볼릭 링크한 뒤
+# `sudo systemctl daemon-reload && sudo systemctl enable --now kraft`. deploy-apply.sh는 배포마다 restart만 하므로 유닛 파일을 바꿨다면 서버에서 다시 daemon-reload가 필요하다.
 [Unit]
 Description=Kraft (Spring Boot)
-# DB가 docker compose로 뜬다면 그 서비스가 먼저 올라와 있어야 한다. 실제 유닛 이름이
-# 다르면(docker.service 등) 이 줄을 서버 환경에 맞게 고친다.
+# DB가 docker compose로 뜬다면 그 서비스가 먼저 올라와 있어야 한다. 유닛 이름이 다르면(docker.service 등) 이 줄을 고친다.
 After=network-online.target docker.service
 Wants=network-online.target
 
 [Service]
 Type=simple
-# 비루트로 실행한다 — 이 계정이 배포 키가 쓰는 계정과 같을 필요는 없다.
-# deploy-apply.sh가 $APP_DIR 아래 파일을 이 계정 소유로 쓸 수 있어야 한다.
+# 비루트로 실행한다(배포 키 계정과 같을 필요는 없지만 deploy-apply.sh가 $APP_DIR 아래 파일을 이 계정 소유로 쓸 수 있어야 한다).
 User=kraft
 Group=kraft
 WorkingDirectory=/opt/kraft/app
-# 힙 덤프(OOM 때)에는 복호화된 이메일과 비밀 값이 들어 있다. 같은 서버의 다른 계정이 읽지 못하게
-# 이 프로세스가 만드는 파일을 소유자만 읽고 쓰게 한다.
+# 힙 덤프(OOM 때)에는 복호화된 이메일과 비밀 값이 들어 있다 — 이 프로세스가 만드는 파일을 소유자만 읽고 쓰게 한다.
 UMask=0077
 EnvironmentFile=/opt/kraft/app/.env
 
-# DB가 뜰 때까지 최대 60초 기다린 뒤 기동한다. After=docker.service만으로는 DB 컨테이너가 연결을
-# 받을 준비가 됐다는 보장이 없어, 서버를 재부팅하면 앱이 DB보다 먼저 떠 Flyway·커넥션 풀이 실패하고
-# Restart=on-failure가 몇 번 돌 때까지 불필요한 실패 로그가 남았다. 대상은 EnvironmentFile의 DB_URL
-# (jdbc:mariadb://호스트:포트/…)에서 읽는다 — 포트를 따로 적어 두지 않는다. 앞의 `-`는 이 단계가 실패해도
-# (60초가 지나도 응답이 없거나 DB_URL 모양이 달라도) 기동을 막지 않는다는 뜻이다: 예전과 같이 일단 띄운다.
+# DB가 뜰 때까지 최대 60초 기다린 뒤 기동한다(After=docker.service만으로는 DB 컨테이너가 연결을 받을 준비가 됐다는 보장이 없어, 재부팅 때 앱이 DB보다
+# 먼저 떠 Flyway·커넥션 풀이 실패했다). 대상은 EnvironmentFile의 DB_URL에서 읽는다. 앞의 `-`는 이 단계가 실패해도 기동을 막지 않는다는 뜻이다.
 # systemd가 `$`를 먼저 해석하므로 셸 변수는 `$$`로 쓴다.
 ExecStartPre=-/bin/bash -c 'u="$${DB_URL#*//}"; hp="$${u%%%%/*}"; h="$${hp%%%%:*}"; p="$${hp##*:}"; [ "$$p" = "$$hp" ] && p=3306; for i in $$(seq 1 30); do (echo > /dev/tcp/$$h/$$p) 2>/dev/null && exit 0; sleep 2; done; echo "DB($$h:$$p)가 60초 안에 응답하지 않았다. 그래도 기동한다" >&2; exit 1'
 # ExecStartPre의 대기(최대 60초)가 기동 제한 시간에 더해지므로 기본 90초보다 늘린다.
 TimeoutStartSec=180
 
-# -XX:MaxRAMPercentage는 -Xmx를 고정 값으로 박아 두지 않아, 인스턴스 크기를 바꿔도 이
-# 유닛 파일을 다시 손대지 않아도 된다. 힙이 아니라도(메타스페이스·스레드 스택·다이렉트
-# 버퍼) OOM은 일어날 수 있으므로, 남는 몫을 50%로 넉넉히 둔다.
-# ExitOnOutOfMemoryError는 절반쯤 망가진 JVM이 애매하게 계속 도는 대신, systemd가 바로
-# 재시작하도록 깨끗하게 죽는다. HeapDumpPath는 그 직전 상태를 사후에 볼 수 있게 남긴다.
+# -XX:MaxRAMPercentage는 -Xmx를 박지 않아 인스턴스 크기를 바꿔도 유닛을 손대지 않아도 된다(힙 밖 메모리용으로 남는 몫을 50%로 넉넉히 둔다).
+# ExitOnOutOfMemoryError는 반쯤 망가진 JVM이 계속 돌지 않고 깨끗이 죽어 systemd가 재시작하게 하고, HeapDumpPath는 그 직전 상태를 남긴다.
 ExecStart=/usr/bin/java \
     -XX:MaxRAMPercentage=50.0 \
     -XX:+ExitOnOutOfMemoryError \
@@ -47,15 +36,11 @@ ExecStart=/usr/bin/java \
 Restart=on-failure
 RestartSec=5
 
-# 종료는 SIGTERM 뒤 30초까지만 기다린다. 이 시간은 deploy-apply.sh의 헬스체크 대기(최악 약 150초, 기동
-# 쪽)와 무관하다 — 정상적인 JVM 종료(진행 중이던 outbox 발송·이미지 정리 배치 마무리)는 보통 몇 초면 끝난다.
-# 너무 짧으면 SIGKILL로 강제 종료되어 그 배치가 다음 커밋 없이 끊길 수 있다(예전 주석이 150초보다
-# 길게 잡았다고 적었지만 실제 값은 30초였다).
+# 종료는 SIGTERM 뒤 30초까지만 기다린다(진행 중이던 outbox 발송·이미지 정리 배치 마무리는 보통 몇 초). 너무 짧으면 SIGKILL로 배치가 끊긴다.
 TimeoutStopSec=30
 KillSignal=SIGTERM
 
-# 커널·마운트 네임스페이스 샌드박싱. 앱이 실제로 쓰는 쓰기 경로만 명시적으로 열어 둔다 —
-# 그 밖의 파일시스템은 ProtectSystem=strict로 읽기 전용이 된다.
+# 커널·마운트 네임스페이스 샌드박싱 — 앱이 실제로 쓰는 쓰기 경로만 열고 나머지 파일시스템은 ProtectSystem=strict로 읽기 전용이다.
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true

@@ -1,27 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-    로그 파일 분리 정책.
+    로그 파일 분리 정책. 파일은 logs/ 아래(.gitignore)에 남고 매일 또는 20MB를 넘길 때 회전해 logs/archive/*.log.gz로 압축 보관한다. 파일마다 totalSizeCap이 있어
+    합계가 약 700MB를 넘지 않는다(주 로그 300MB, error·sql·security 100MB, email·metrics 50MB).
 
-    - kraft.log        : 전체 애플리케이션 로그(콘솔과 동일한 내용, INFO 이상). Hibernate SQL은
-                          너무 시끄러워서 여기에는 안 남기고 kraft-sql.log로 분리한다(아래 참고).
-    - kraft-error.log  : ERROR 레벨만 모아서 빠르게 장애를 훑어볼 수 있게 별도로 남긴다.
-                          어떤 로거에서 나온 것이든(Hibernate 포함) 전부 여기에 모인다.
-    - kraft-sql.log    : org.hibernate.SQL / org.hibernate.orm.jdbc.bind. additivity="false"라
-                          kraft.log에는 안 섞이고 콘솔·이 파일에만 남는다(개발 편의용, 레벨은
-                          logging.level.org.hibernate.SQL로 각 application-*.yml에서 켠다).
-    - kraft-security.log : org.springframework.security. kraft.log에도 그대로 섞여 남고(둘 다
-                          보고 싶을 때가 있어서), 이 파일에는 그 로그만 따로도 모인다.
-    - kraft-email.log  : com.kraft.user.service와 com.kraft.user.mail(인증 발급·재발송·SMTP)만 따로
-                          모은다 — 이메일 발송 문제를 조사할 때 다른 로그에 섞이지 않게 하기 위해서다.
-
-    - kraft-metrics.log : com.kraft.observability(주기 상태 점검) 전용. additivity="false"라
-                          kraft.log에는 안 섞인다 — 5분마다 남는 정상 보고가 다른 로그를 밀어내지
-                          않게 하기 위해서다. 다만 ERROR(임계 초과)는 kraft-error.log에도 남는다.
-
-    파일은 logs/ 아래에 남고(.gitignore에 등록됨), 매일 또는 20MB를 넘길 때 회전해
-    logs/archive/*.log.gz로 압축 보관한다. 파일마다 totalSizeCap이 있어 합계가 약 700MB를 넘지
-    않는다(예전에는 6개가 각각 500MB라 최대 3GB) — 주 로그 300MB, error·sql·security
-    100MB, email·metrics 50MB.
+    - kraft.log          : 전체 애플리케이션 로그(INFO 이상, 콘솔과 같은 내용). Hibernate SQL은 너무 시끄러워 kraft-sql.log로 분리한다.
+    - kraft-error.log    : ERROR만 모아 장애를 빠르게 훑는다(어떤 로거에서 나온 것이든).
+    - kraft-sql.log      : org.hibernate.SQL / org.hibernate.orm.jdbc.bind. additivity="false"라 kraft.log에는 안 섞인다(레벨은 각 application-*.yml의 logging.level.org.hibernate.SQL).
+    - kraft-security.log : org.springframework.security. kraft.log에도 그대로 남고 이 파일에도 따로 모인다.
+    - kraft-email.log    : com.kraft.user.service·com.kraft.user.mail(인증 발급·재발송·SMTP) — 이메일 발송 문제를 조사할 때 다른 로그에 섞이지 않게.
+    - kraft-metrics.log  : com.kraft.observability(주기 상태 점검). additivity="false"라 5분마다 남는 정상 보고가 kraft.log를 밀어내지 않고, ERROR(임계 초과)는 kraft-error.log에도 남는다.
 -->
 <configuration>
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
@@ -117,8 +104,7 @@
         </encoder>
     </appender>
 
-    <!-- additivity="false": kraft.log(루트)에는 안 남기고 콘솔 + 전용 파일에만 남긴다.
-         레벨은 각 application-*.yml의 logging.level.org.hibernate.SQL이 결정한다. -->
+    <!-- additivity="false": kraft.log(루트)에는 안 남기고 콘솔 + 전용 파일에만 남긴다. 레벨은 각 application-*.yml의 logging.level.org.hibernate.SQL이 정한다. -->
     <logger name="org.hibernate.SQL" additivity="false">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="SQL_FILE"/>
@@ -147,19 +133,15 @@
         <appender-ref ref="EMAIL_FILE"/>
     </logger>
 
-    <!-- additivity="false": 5분마다 남는 정상 보고로 kraft.log를 채우지 않는다.
-         임계를 넘긴 ERROR만 ERROR_FILE에 함께 남아 장애를 훑을 때 보인다. -->
+    <!-- additivity="false": 5분마다 남는 정상 보고로 kraft.log를 채우지 않는다. ERROR만 ERROR_FILE에 함께 남는다. -->
     <logger name="com.kraft.observability" additivity="false">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="METRICS_FILE"/>
         <appender-ref ref="ERROR_FILE"/>
     </logger>
 
-    <!-- prod는 systemd(deploy/kraft.service)로 뜨고 StandardOutput을 따로 지정하지
-         않으므로 journald가 stdout을 기본으로 수집한다. CONSOLE과 FILE(kraft.log)이 같은
-         내용을 두 곳(journal + 파일)에 중복해서 남기게 되므로, prod에서는 CONSOLE을 뺀다 —
-         파일 쪽(FILE·ERROR_FILE)이 이미 회전·보관 정책을 갖춘 원본이다. 다른 프로파일
-         (local·test)은 콘솔에서 바로 보는 편이 개발에 더 유용해 그대로 둔다. -->
+    <!-- prod는 systemd로 뜨고 stdout을 journald가 수집하므로 CONSOLE이 FILE과 같은 내용을 중복으로 남긴다 — prod에서는 CONSOLE을 뺀다(파일 쪽이 회전·보관 정책을 갖춘
+         원본). local·test는 콘솔에서 바로 보는 편이 유용해 그대로 둔다. -->
     <springProfile name="prod">
         <root level="INFO">
             <appender-ref ref="FILE"/>

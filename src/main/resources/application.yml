@@ -1,27 +1,17 @@
-# 정적 자원(CSS·JS)을 gzip으로 압축해 보낸다. 텍스트 계열만 대상으로 하고(이미지·폰트는
-# 이미 압축된 형식이라 다시 압축해도 줄지 않는다), 너무 작은 응답은 압축 오버헤드가 더
-# 크므로 1KB 미만은 그대로 보낸다.
+# 텍스트 계열만 gzip으로 압축한다(이미지·폰트는 이미 압축돼 있고, 1KB 미만은 오버헤드가 더 크다).
 server:
   compression:
     enabled: true
     mime-types: text/html,text/css,text/javascript,application/javascript,application/json,image/svg+xml
     min-response-size: 1024
-  # TLS는 앞단 리버스 프록시가 종단하고 이 앱은 평문 HTTP로 프록시와만 통신한다.
-  # native 전략은 톰캣의 RemoteIpValve를 구성해 X-Forwarded-For/-Proto 등을 remoteip.internal-proxies
-  # 에 해당하는 발신지에서만 신뢰한다 — 그래야 request.getRemoteAddr()/isSecure()가 실제
-  # 클라이언트 값을 반환하고, AuthRateLimitFilter 등의 "IP당" 제한이 실제 IP 단위로 걸린다.
-  # internal-proxies는 배포 환경의 리버스 프록시 주소로 반드시 맞춰야 한다 — 기본값(사설망
-  # 대역)은 프록시가 같은 사설망에 있다는 가정이며, 신뢰 범위를 넓히면 클라이언트가 헤더를
-  # 위조해 다른 IP인 척할 수 있다.
+  # TLS는 앞단 리버스 프록시가 종단한다. native 전략은 톰캣 RemoteIpValve로 X-Forwarded-*를 internal-proxies에서 온 것만 신뢰해
+  # request.getRemoteAddr()/isSecure()가 실제 클라이언트 값을 주고 "IP당" 제한이 실제 IP 단위로 걸린다. internal-proxies는
+  # 배포 환경의 프록시 주소로 맞춘다(기본값은 사설망 대역 — 신뢰 범위를 넓히면 클라이언트가 헤더를 위조할 수 있다).
   forward-headers-strategy: native
   servlet:
     session:
-      # 기본값(30분)에 기대지 않고 명시한다 — 긴 글을 쓰는 동안 세션이 끊겨 "등록"
-      # 시점에야 403으로 실패하는 사례가 있었다. 자동 임시 저장이 내용을 지키긴 하지만, 그
-      # 전에 세션이 오래 버티는 편이 사용자에게 더 낫다.
-      # server.servlet 아래여야 한다 — spring.servlet.session.timeout은 존재하지 않는
-      # 프로퍼티라 조용히 무시되어 실제로는 30분이었다. Spring Session JDBC도
-      # 이 값을 기본 maxInactiveInterval로 쓴다.
+      # 긴 글을 쓰는 동안 세션이 끊겨 등록 시점에야 403이 나지 않게 기본값(30분)을 늘린다. server.servlet 아래여야 한다
+      # (spring.servlet.session.timeout은 없는 프로퍼티라 무시된다). Spring Session JDBC도 이 값을 쓴다.
       timeout: 2h
   tomcat:
     remoteip:
@@ -34,11 +24,8 @@ spring:
   profiles:
     default: local
 
-  # 인기글처럼 요청마다 다시 계산할 필요가 없는 값을 짧게 캐시한다. 이 스펙은 모든
-  # 캐시의 기본값이다 — popularPosts·pinnedPosts가 그대로 따른다. maximumSize는 캐시 이름이
-  # 몇 개 안 돼 작게 잡아도 충분하다. expireAfterWrite 45초는 "너무 낡은 인기글을 보여주지 않는다"와
-  # "트래픽이 몰려도 DB를 매번 두드리지 않는다" 사이의 절충값이다. 고정 글(pinnedPosts)은 글을
-  # 쓰거나 고칠 때 바로 비운다.
+  # 인기글처럼 요청마다 다시 계산할 필요가 없는 값을 짧게 캐시한다(모든 캐시의 기본 스펙). 45초는 "낡은 인기글을 보이지 않는다"와
+  # "DB를 매번 두드리지 않는다" 사이의 절충이고, 고정 글(pinnedPosts)은 글을 쓰거나 고칠 때 바로 비운다.
   cache:
     caffeine:
       spec: maximumSize=500,expireAfterWrite=45s
@@ -47,32 +34,24 @@ spring:
     open-in-view: false
     properties:
       hibernate:
-        # IN(:ids) 목록 크기가 요청마다 달라지면(예: countRepliesByParentIdIn) 쿼리 플랜 캐시가
-        # 매번 새 SQL로 어긋난다 — 패딩을 켜면 크기를 2의 거듭제곱 등으로 맞춰 재사용한다.
+        # IN(:ids) 크기가 요청마다 달라지면 쿼리 플랜 캐시가 어긋난다 — 패딩으로 크기를 맞춰 재사용한다.
         query:
           in_clause_parameter_padding: true
-        # 지연 로딩된 연관(post.user 등)을 엔티티마다 한 번씩 조회하는 대신 배치로 묶는
-        # 안전망. 이미 fetch join된 경로에는 영향 없다.
+        # 지연 로딩 연관(post.user 등)을 엔티티마다 조회하는 대신 배치로 묶는 안전망(fetch join된 경로엔 영향 없음).
         default_batch_fetch_size: 50
-        # 시간은 KST로 고정한다(KraftApplication.ZONE_ID). JDBC가 LocalDateTime을 읽고 쓸 때도 같은
-        # 시간대를 쓰게 해, 서버·DB 세션의 시간대가 달라도 저장되는 값이 바뀌지 않는다.
+        # 시간은 KST로 고정한다(KraftApplication.ZONE_ID). JDBC도 같은 시간대를 써 서버·DB 세션 시간대와 무관하게 저장값이 같다.
         jdbc:
           time_zone: Asia/Seoul
 
   data:
     web:
       pageable:
-        # 클라이언트가 size= 파라미터로 임의의 큰 페이지를 요청하지 못하게 상한을 둔다.
-        # 기존 테스트의 최대 사용값(50)과 같다.
+        # 클라이언트가 size=로 임의의 큰 페이지를 요청하지 못하게 상한을 둔다.
         max-page-size: 50
 
   flyway:
-    # 기본값은 끔이다. test(H2, create-drop)는 Hibernate가 엔티티 매핑으로 스키마를 직접
-    # 만들므로 여기서 끈 채로 둔다 — 두 스키마 관리자가 같은 DB를 동시에 건드리면 예측하기
-    # 어려워지기 때문이다(예전 local은 create-drop이라 Flyway가 만든 테이블을 Hibernate가
-    # 다시 지웠다). local(Docker MariaDB)과 운영(application-prod.yml)은 각자
-    # spring.flyway.enabled: true로 이 기본값을 덮어써 Flyway + validate 경로를 쓴다 —
-    # 두 환경 모두 같은 DB 엔진이라 스키마 관리 방식도 동일해야 한다.
+    # 기본은 끔이다. test(H2, create-drop)는 Hibernate가 스키마를 만들므로 두 스키마 관리자가 같은 DB를 건드리지 않게 끈다.
+    # local(Docker MariaDB)과 운영은 각자 true로 덮어써 Flyway + validate를 쓴다 — 같은 DB 엔진이라 관리 방식도 같아야 한다.
     enabled: false
 
   session:
@@ -80,14 +59,10 @@ spring:
 
   web:
     resources:
-      # 정적 자원을 URL 버전으로 구분해 장기 캐시를 건다. /js/**는 빌드마다 바뀌는
-      # 고정 버전 문자열(build.gradle.kts의 buildVersion, 보통 git 커밋 SHA)을 경로 접두사로
-      # 받는다 — Vue 산출물은 리뷰 가능한 diff를 위해 파일명 자체에 해시를 넣지 않으므로,
-      # 상대 경로 import가 그대로 살아 있는 경로 버전 방식을 쓴다(콘텐츠 해시 방식은 JS
-      # 내부의 import 지정자까지 재작성하지 않아 쓸 수 없다). /css/**는 콘텐츠 해시로
-      # 충분하다(JS처럼 서로를 상대 경로로 import하지 않는다). 템플릿은 th:href/th:src로
-      # @{...} 링크를 만들어야 ResourceUrlEncodingFilter가 실제 요청 경로를 이 버전이
-      # 붙은 URL로 치환한다 — 하드코딩된 href="/js/..."는 이 메커니즘을 타지 않는다.
+      # 정적 자원을 URL 버전으로 구분해 장기 캐시한다. /js/**는 빌드마다 바뀌는 고정 버전(build.gradle.kts의 buildVersion, 보통 git SHA)을
+      # 경로 접두사로 받는다 — Vue 산출물은 파일명에 해시를 넣지 않고, 콘텐츠 해시 방식은 JS 내부 import 지정자를 재작성하지 못해 쓸 수
+      # 없다. /css/**는 콘텐츠 해시로 충분하다. 템플릿은 th:href/th:src의 @{...}로 링크를 만들어야 ResourceUrlEncodingFilter가
+      # 버전 URL로 치환한다(하드코딩한 href="/js/..."는 타지 않는다).
       chain:
         enabled: true
         # 빌드가 만든 .gz(build.gradle.kts의 processResources)를 클라이언트가 gzip을 받을 때 그대로
@@ -108,15 +83,10 @@ spring:
           cache-public: true
           immutable: true
 
-  # 모든 프로파일(local 포함, 2026-09-11부터)이 실제 SMTP로 인증 메일을 보낸다(SmtpEmailSender).
-  # 값에 기본값을 둔 이유: spring.mail.host는 @ConditionalOnProperty로 JavaMailSender 자동
-  # 구성 여부를 가르는데, 이 Spring Boot 버전은 값이 없는 플레이스홀더를 조건 평가 시점에
-  # PlaceholderResolutionException으로 던진다(gradlew test 실측 — DataSource처럼 리터럴
-  # 문자열을 그대로 넘기며 조용히 통과하지 않음). 기본값(localhost)을 주면 빈은 항상 만들어지고,
-  # JavaMailSenderImpl은 빈 생성 시점에 실제로 연결하지 않으므로 기동은 항상 성공한다 — 메일을
-  # 실제로 보내는 시점(회원가입·재발송)에만, 값이 없거나 틀리면 그때 실패가 드러난다.
-  # 로컬에서 실제로 받아보려면 MAIL_HOST/MAIL_PORT/MAIL_USERNAME/MAIL_PASSWORD를 OS 환경변수로
-  # 지정한 뒤 실행한다(.env.example 참고 — DB 접속 정보와 같은 .env 파일에서 함께 로드한다).
+  # 모든 프로파일이 실제 SMTP로 인증 메일을 보낸다(SmtpEmailSender). 값에 기본값을 둔 이유: spring.mail.host는 JavaMailSender 자동
+  # 구성 조건에 쓰이는데, 값 없는 플레이스홀더는 조건 평가 시점에 PlaceholderResolutionException을 던진다. 기본값(localhost)이면
+  # 빈은 항상 만들어지고 실제 연결은 메일을 보낼 때만 하므로, 값이 틀리면 그때서야 실패가 드러난다. 로컬에서 받아보려면
+  # MAIL_HOST/PORT/USERNAME/PASSWORD를 OS 환경변수로 지정한다(.env.example 참고).
   mail:
     host: ${MAIL_HOST:localhost}
     port: ${MAIL_PORT:587}
@@ -134,49 +104,34 @@ spring:
 
   servlet:
     multipart:
-      # 게시글 사진 업로드의 실제 수신 한도. 설정이 없으면 Spring Boot 기본값이
-      # max-file-size=1MB로 적용되어, PostImageService의 5MB 검사와 화면 안내("최대 5MB")에
-      # 닿기도 전에 1MB 초과 파일이 컨테이너에서 거절된다(용량 안내 대신 알 수 없는 오류).
-      #
-      # 값을 5MB로 "딱 맞추지" 않는 이유: 경계값에서 컨테이너가 먼저 거절하면 서비스가 내는
-      # "파일 크기는 5MB를 초과할 수 없습니다."와 다른 경로의 오류가 섞인다. 컨테이너 한도를
-      # 한 단계 위에 두어 5MB 규칙의 판정자를 PostImageService 하나로 일원화한다.
-      # 그보다 큰 요청은 ApiExceptionHandler가 413으로 받아낸다.
+      # 사진 업로드의 실제 수신 한도. 설정이 없으면 기본 1MB라 PostImageService의 5MB 검사·화면 안내("최대 5MB")에 닿기 전에 컨테이너가
+      # 거절한다. 5MB로 딱 맞추지 않고 한 단계 위(6MB)로 둬 5MB 규칙의 판정자를 PostImageService 하나로 일원화하고, 더 큰 요청은
+      # ApiExceptionHandler가 413으로 받는다.
       max-file-size: 6MB
       max-request-size: 7MB
-      # 파싱을 컨트롤러가 파일 파라미터에 실제로 접근하는 시점까지 미룬다. 이게 없으면
-      # DispatcherServlet이 핸들러 진입 전에 멀티파트 전체를 즉시 읽다가 한도를 넘겨 커넥션이
-      # 리셋되고, ApiExceptionHandler가 413을 내려주기도 전에 클라이언트는 본문 없는 응답만
-      # 받는다(로컬 실측으로 확인 — ApiExceptionHandler.handleUploadTooLarge() 주석 참고).
+      # 파싱을 파일 파라미터 접근 시점까지 미룬다 — 아니면 한도를 넘길 때 핸들러 진입 전에 연결이 리셋되어 413 본문 없이 끊긴다.
       resolve-lazily: true
 
   task:
     scheduling:
       shutdown:
-        # 재배포 때 systemctl restart가 이미 진행 중인 예약 작업(outbox 발송, 이미지 정리
-        # 배치 등)을 SIGTERM으로 그대로 끊지 않고, 진행 중인 작업이 끝날 때까지 잠깐
-        # 기다리게 한다. deploy/kraft.service의 TimeoutStopSec(30s)보다 짧게 잡아,
-        # 이 대기가 다 차기 전에 systemd의 강제 종료(SIGKILL)로 넘어가지 않게 한다.
+        # 재배포 때 systemctl restart가 진행 중인 예약 작업(outbox 발송, 이미지 정리 등)을 끊지 않고 끝나길 기다린다.
+        # deploy/kraft.service의 TimeoutStopSec(30s)보다 짧게 잡아 SIGKILL로 넘어가지 않게 한다.
         await-termination: true
         await-termination-period: 25s
 
   threads:
     virtual:
-      # 가상 스레드(Java 21+ Project Loom) 활성화. 톰캣 요청 처리·@Async 등 Spring Boot가
-      # 관리하는 실행기를 플랫폼 스레드 풀 대신 가상 스레드로 구동한다. 이 프로젝트는
-      # Java 25 툴체인을 쓰므로(build.gradle.kts) 별도 준비 없이 바로 켤 수 있다.
+      # 가상 스레드: 톰캣 요청 처리·@Async 등 Spring Boot 실행기를 플랫폼 스레드 풀 대신 가상 스레드로 구동한다(Java 25 툴체인).
       enabled: true
 
 app:
-  # 이 jar를 만든 커밋(build.gradle.kts의 buildVersion, 보통 짧은 git SHA). /healthz가
-  # X-Kraft-Build 헤더로 내려주고, CI의 배포 후 확인이 방금 푸시한 커밋과 비교한다.
+  # 이 jar를 만든 커밋(buildVersion, 보통 짧은 git SHA). /healthz가 X-Kraft-Build로 내려주고 CI의 배포 후 확인이 비교한다.
   build-version: "@buildVersion@"
   mail:
-    # 발신 주소(From). 비워 두면 spring.mail.username(SMTP 로그인 계정)을 쓴다. SPF/DMARC가 맞는
-    # 도메인의 주소여야 스팸함으로 덜 간다.
+    # 발신 주소(From). 비우면 spring.mail.username을 쓴다. SPF/DMARC가 맞는 도메인이어야 스팸함으로 덜 간다.
     from: ${MAIL_FROM:}
-    # 메일 발송은 DB 트랜잭션 밖에서 처리한다(OutboxMailWorker). 가입·재발송 직후 한 번 보내고,
-    # 그때 실패했거나 앱이 내려가 있던 것을 주기 작업이 다시 시도한다.
+    # 메일 발송은 DB 트랜잭션 밖에서 한다(OutboxMailWorker): 가입·재발송 직후 한 번, 실패했거나 앱이 내려가 있던 것은 주기 작업이 다시.
     enabled: true
     batch-size: 20
     max-attempts: 5
@@ -186,29 +141,24 @@ app:
     stuck-after-ms: 300000
     # 한 배치 안에서 동시에 SMTP로 보내는 최대 개수.
     max-concurrent-sends: 5
-    # 종료 상태(SENT/FAILED) 행의 보관 기한과 정리 주기. 코드 기본값(30일)과 같은 값을
-    # 명시적으로 적어, 실제 운영값이 무엇인지 이 파일만 보고 알 수 있게 한다.
+    # 종료 상태(SENT/FAILED) 행의 보관 기한과 정리 주기(코드 기본값과 같은 값을 적어 운영값을 이 파일에서 보이게).
     retention-days: 30
     retention-initial-delay-ms: 60000
     retention-interval-ms: 86400000
 
   verification:
-    # 만료된 인증 토큰을 지우는 주기(ExpiredTokenPurger). 코드 기본값과 같은 값을
-    # 명시적으로 적어 둔다.
+    # 만료된 인증 토큰 정리 주기(ExpiredTokenPurger, 코드 기본값과 같은 값).
     purge-enabled: true
     purge-initial-delay-ms: 900000
     purge-interval-ms: 86400000
-    # 가입 직후 인증 메일 대기열 등록의 최종 커밋이 실패해 메일이 한 번도 큐에 들어가지
-    # 못한 GUEST 계정을 찾아 복구하는 최후 수단(GuestVerificationSweeper). 가입 직후
-    # 진행 중인 트랜잭션을 건드리지 않도록 유예시간을 둔다.
+    # 가입 직후 인증 메일 대기열 등록이 누락된 GUEST를 복구하는 최후 수단(GuestVerificationSweeper). 진행 중인 가입을 건드리지 않게 유예시간을 둔다.
     sweep-grace-minutes: 10
     sweep-batch-size: 50
     sweep-initial-delay-ms: 600000
     sweep-interval-ms: 1800000
 
   post:
-    # 소프트 삭제된 글을 이 기간이 지나면 영구 삭제한다(PostPurger). 그 사이에는 관리자가 복구할 수
-    # 있다. 코드 기본값과 같은 값을 명시적으로 적어 둔다.
+    # 소프트 삭제된 글을 이 기간 뒤 영구 삭제한다(PostPurger, 그동안 관리자가 복구할 수 있다). 코드 기본값과 같은 값.
     purge-retention-days: 30
     purge-enabled: true
     purge-batch-size: 100
@@ -216,9 +166,8 @@ app:
     purge-interval-ms: 86400000
 
   session-revocation:
-    # 비밀번호 변경·재설정·탈퇴 커밋 직후 세션 폐기를 영속 태스크로 남긴다. 대부분은
-    # 커밋 직후 빠른 경로에서 바로 끝나고, 실패하거나 그 직후 프로세스가 죽은 것만 이 주기
-    # 작업이 다시 집는다. outbox_mails와 같은 claim/재시도 구조를 그대로 쓴다.
+    # 세션 폐기를 영속 태스크로 남긴다. 대부분 커밋 직후 빠른 경로에서 끝나고, 실패했거나 프로세스가 죽은 것만 이 주기 작업이
+    # 다시 집는다(outbox_mails와 같은 claim/재시도 구조).
     max-attempts: 5
     batch-size: 20
     drain-initial-delay-ms: 60000
@@ -230,9 +179,8 @@ app:
     retention-interval-ms: 86400000
 
   metrics:
-    # 앱이 스스로 상태를 점검해 logs/kraft-metrics.log에 한 줄씩 남긴다. 기준을 넘기면 ERROR로
-    # 올려 logs/kraft-error.log에도 남는다. 외부 수집기나 상태 확인 엔드포인트에 의존하지 않는다
-    # — 이 앱은 호스트에서 직접 실행되어 프로브를 찌를 오케스트레이터가 없다.
+    # 앱이 스스로 상태를 점검해 logs/kraft-metrics.log에 한 줄씩 남기고, 기준을 넘기면 ERROR로 logs/kraft-error.log에도 남긴다
+    # (프로브를 찌를 오케스트레이터가 없다).
     enabled: true
     initial-delay-ms: 60000
     interval-ms: 300000
@@ -247,58 +195,46 @@ app:
     disk-free-bytes: 1073741824
     mail-pending: 20
     mail-failed: 0
-    # 평균·최댓값만으로는 소수의 느린 요청이 묻힌다. 이 절대 ms를 넘는 요청 수를 따로
-    # 세고(slow-request-ms), 그 건수가 이 기준(slow-requests)을 넘으면 알린다.
+    # 평균·최댓값에 묻히는 소수의 느린 요청: slow-request-ms를 넘는 건수를 세고, slow-requests를 넘으면 알린다.
     slow-request-ms: 3000
     slow-requests: 5
-    # 기준을 넘기면 관리자에게 메일로도 알린다(AlertMailer). 비워 두면(기본값)
-    # 로그만 남기고 메일은 보내지 않는다 — 로컬은 이 기본값 그대로 둔다. 운영 주소는
-    # application-prod.yml에서 채운다. 같은 종류(예: 오류율 초과)는 이 간격(기본 1시간)에
-    # 한 번만 보낸다 — 반복해서 울리는 같은 문제로 메일함을 채우지 않기 위해서다.
+    # 기준을 넘기면 관리자에게 메일로도 알린다(AlertMailer). 비우면(기본값, 로컬) 로그만 남긴다 — 운영 주소는 application-prod.yml.
+    # 같은 종류는 이 간격(기본 1시간)에 한 번만 보낸다.
     alert-email: ""
     alert-cooldown-ms: 3600000
 
   upload:
-    # 게시글 사진 업로드 저장 경로(상대 경로는 애플리케이션 실행 위치 기준). 운영 환경에서
-    # 컨테이너 재배포 시 파일이 유실될 수 있으므로(임시 파일시스템), 영구 볼륨을 마운트하거나
-    # 오브젝트 스토리지로 교체하는 것을 권장한다(이번 범위에서는 로컬 디스크로 구현).
+    # 사진 업로드 저장 경로(상대 경로는 실행 위치 기준). 임시 파일시스템이면 재배포 때 유실될 수 있어 영구 볼륨이나 오브젝트 스토리지를 권장한다.
     dir: uploads/images
-    # 삭제 예약(PENDING_DELETE)·만료된 미연결(ORPHAN) 이미지 파일을 치우는 주기 작업.
-    # 삭제 예약분은 게시글 수정·삭제 커밋 직후에도 곧바로 한 번 정리되므로, 이 주기는
-    # "그때 실패했거나 프로세스가 죽어서 남은 것"을 다시 시도하는 안전망이다.
+    # 삭제 예약(PENDING_DELETE)·만료된 미연결(ORPHAN) 이미지 정리. 예약분은 커밋 직후에도 한 번 정리되므로 이 주기는 실패·프로세스 종료분의 안전망이다.
     cleanup-enabled: true
     cleanup-initial-delay-ms: 600000
     cleanup-interval-ms: 3600000
-    # 디스크-대장 대조(OrphanFileReconciler). 파일 저장은 됐는데 대장 등록·최종 커밋이
-    # 실패해 대장 없는 파일이 남는 경우의 최후 수단이다. cleanup보다 드물게 돌아도 충분하다.
+    # 디스크-대장 대조(OrphanFileReconciler) — 파일은 저장됐는데 대장 등록이 실패해 남은 파일의 최후 수단이라 cleanup보다 드물어도 충분하다.
     reconcile-enabled: true
     reconcile-initial-delay-ms: 1800000
     reconcile-interval-ms: 3600000
-    # 한 주기가 볼 파일 수의 상한. 정리가 한동안 막혀 후보가 아주 많이
-    # 쌓여도, 상한을 넘는 나머지는 이번 주기에서 건드리지 않고 다음 주기로 미룬다.
+    # 한 주기가 볼 파일 수의 상한(넘는 나머지는 다음 주기로).
     reconcile-max-files-per-run: 50000
   recommend:
-    # 기능 전체 스위치. 끄면 /recommend·POST /api/v1/numbers/recommend가 컨트롤러 빈 자체가
-    # 등록되지 않아 404가 되고, navbar의 '번호 추천' 링크도 함께 사라진다(운영 준비 — 이미
-    # 배포된 기능을 끄는 스위치이지 옵트인이 아니므로 기본값은 true).
+    # 기능 전체 스위치. 끄면 /recommend·POST /api/v1/numbers/recommend 빈이 등록되지 않아 404가 되고 navbar 링크도 사라진다.
     enabled: true
     auto-fetch:
-      # 매주 토 21:30·22:00, 일 06:00·07:00(KST)에 동행복권에서 최신 회차를 받아온다
-      # (RecommendationAutoFetchScheduler). 끄면 이력 갱신은 recommend-backfill 프로파일로만
-      # 가능하다 — /recommend·API 자체는 이 스위치와 무관하게 계속 동작한다.
+      # 매주 토 21:30·22:00, 일 06:00·07:00(KST)에 최신 회차를 받아온다(RecommendationAutoFetchScheduler). 끄면 이력 갱신은
+      # recommend-backfill 프로파일로만 가능하고 /recommend·API는 계속 동작한다.
       enabled: true
     dhlottery:
       connect-timeout-ms: 5000
       read-timeout-ms: 10000
     rate-limit:
-      # IP당 분당 요청 한도(02문서 6절 초기 검토값). 실측 트래픽에 맞춰 재배포 없이 조정한다.
+      # IP당 분당 요청 한도(실측 트래픽에 맞춰 재배포 없이 조정).
       requests-per-minute: 30
-      # 허용/거부 집계를 로그로 남기는 주기 — 위 한도를 실측 근거로 조정할지 판단하는 데 쓴다.
+      # 허용/거부 집계를 로그로 남기는 주기 — 한도 조정 근거.
       report-interval-ms: 600000
 
   auth:
     rate-limit:
-      # 로그인·가입·비밀번호 재설정·인증 메일 재발송에 적용하는 분당 요청 한도. 추천 제한기와 같은 초기 검토값이며, 실측 트래픽에 맞춰 재배포 없이 조정한다.
+      # 로그인·가입·비밀번호 재설정·인증 메일 재발송의 분당 요청 한도(초기 검토값, 재배포 없이 조정).
       enabled: true
       login-per-minute: 20
       login-account-per-minute: 10
@@ -309,10 +245,7 @@ app:
 
   write:
     rate-limit:
-      # 게시글·댓글·신고·업로드·검색에 적용하는 계정(검색은 IP) 기준 속도 제한.
-      # 로그인·가입은 위 auth.rate-limit이 이미 지키지만, 인증을 마친
-      # 계정은 이 제한이 생기기 전까지 무제한으로 빠르게 쓸 수 있었다. 실측 전 초기값이며,
-      # WriteRateLimiters.reportAndCleanup의 허용/거부 집계가 조정 근거가 된다.
+      # 게시글·댓글·업로드·검색의 계정(검색은 IP) 기준 속도 제한(실측 전 초기값 — WriteRateLimiters.reportAndCleanup 집계가 조정 근거).
       enabled: true
       post-per-minute: 3
       post-per-hour: 20
@@ -321,14 +254,11 @@ app:
       search-per-minute: 60
       report-interval-ms: 600000
 
-  # 이메일 인증 링크를 만들 때 붙일 기본 URL. 운영에서는 실제 배포 도메인으로 덮어써야 한다
-  # (application-prod.yml 참고).
+  # 이메일 인증 링크의 기본 URL. 운영에서는 실제 도메인으로 덮어쓴다(application-prod.yml).
   base-url: http://localhost:8080
 
-# 요청 상관관계 id를 로그 줄마다 남긴다(RequestIdFilter). 전체 패턴을 새로 쓰는 대신
-# LOG_LEVEL_PATTERN만 이 값으로 바꿔치기한다 — logback-spring.xml의 모든 appender가 이미
-# ${FILE_LOG_PATTERN}을 통해 이 값을 참조하므로, 콘솔·파일 모두 한 곳만 바꾸면 함께 반영된다.
-# 요청과 무관한 로그(예약 작업 등)는 MDC가 비어 있어 대괄호 안이 빈 채로 찍힌다.
+# 요청 상관관계 id를 로그 줄마다 남긴다(RequestIdFilter). LOG_LEVEL_PATTERN만 바꾸면 logback-spring.xml의 모든 appender
+# (${FILE_LOG_PATTERN})에 반영된다. 요청과 무관한 로그는 대괄호가 빈 채로 찍힌다.
 logging:
   pattern:
     level: "%5p [%X{requestId:-}]"

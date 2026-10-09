@@ -1,8 +1,5 @@
-# 운영 프로파일. --spring.profiles.active=prod 로 명시적으로 활성화해야 한다.
-# 자격 증명은 파일에 하드코딩하지 않고 환경변수(DB_URL, DB_USERNAME, DB_PASSWORD)로 주입한다.
-# 값이 없으면 플레이스홀더 "${DB_URL}" 문자열이 그대로 드라이버에 전달되어 컨텍스트 기동
-# 시점에 실패한다(실측: "Driver org.mariadb.jdbc.Driver claims to not accept jdbcUrl,
-# ${DB_URL}") — 운영 자격 증명 없이는 절대 기동되지 않는 의도된 fail-fast 동작이다.
+# 운영 프로파일(--spring.profiles.active=prod 로 명시적으로 활성화). 자격 증명은 환경변수(DB_URL, DB_USERNAME, DB_PASSWORD)로만 받는다 —
+# 값이 없으면 플레이스홀더 문자열이 드라이버에 전달되어 기동 시점에 실패한다(의도된 fail-fast).
 spring:
   datasource:
     url: ${DB_URL}
@@ -10,20 +7,16 @@ spring:
     password: ${DB_PASSWORD}
     driver-class-name: org.mariadb.jdbc.Driver
     hikari:
-      # 기본값(풀 10, 대기 30초)은 after-commit 콜백이 커밋 스레드가 반납하기 전에 두 번째
-      # 커넥션을 잡는 경로(AfterCommit 참고)와 가상 스레드(동시 요청에 플랫폼 스레드
-      # 상한이 없음)가 겹치면 버스트 시 전부가 서로를 기다리며 풀을 고갈시킬 수 있다.
-      # 대기 시간을 줄여 그런 정체를 30초가 아니라 5초 안에 실패로 드러낸다.
+      # 기본값(풀 10, 대기 30초)에서는 after-commit 콜백(AfterCommit 참고)과 가상 스레드가 겹친 버스트에 풀이 고갈될 수 있다.
+      # 대기 시간을 5초로 줄여 정체를 빨리 실패로 드러낸다.
       maximum-pool-size: 20
       connection-timeout: 5000
-      # max-lifetime(기본 30분)이 운영 MariaDB의 wait_timeout보다 짧아야, 서버가 먼저 끊어
-      # 버린 죽은 커넥션을 Hikari가 살아있다고 믿고 내줬다가 실패하는 일이 없다([확인 필요]). 운영 DB에서 SHOW VARIABLES LIKE 'wait_timeout'으로 확인한 뒤, 그 값보다
-      # 충분히 짧게 이 항목을 명시하는 것을 권장한다 — 기본값(30분)이 이미 더 짧다면 변경 불필요.
+      # max-lifetime(기본 30분)이 운영 MariaDB의 wait_timeout보다 짧아야 서버가 먼저 끊은 죽은 커넥션을 내주지 않는다. [확인 필요]
+      # SHOW VARIABLES LIKE 'wait_timeout'으로 확인해, 기본값이 더 짧지 않다면 이 항목을 그보다 짧게 명시한다.
 
   jpa:
     hibernate:
-      # 운영 스키마는 Flyway(아래)가 관리한다. 애플리케이션이 스키마를 만들거나 지우지
-      # 않는다 — 스키마가 엔티티 매핑과 불일치하면 기동 자체가 실패한다(의도된 동작).
+      # 운영 스키마는 Flyway가 관리하고 애플리케이션은 만들지도 지우지도 않는다 — 엔티티 매핑과 불일치하면 기동이 실패한다.
       ddl-auto: validate
     show-sql: false
     properties:
@@ -31,17 +24,13 @@ spring:
         session:
           events:
             log:
-              # 이 값(ms)보다 느린 쿼리만 로그로 남긴다 — 매 쿼리를 남기는 show-sql과 달리
-              # 운영에서 상시 켜 둘 수 있다.
+              # 이 값(ms)보다 느린 쿼리만 남긴다(매 쿼리를 남기는 show-sql과 달리 상시 켤 수 있다).
               LOG_QUERIES_SLOWER_THAN_MS: 200
 
   flyway:
     enabled: true
-    # 운영 DB는 이미 Flyway가 baseline을 마쳤고 flyway_schema_history가 있다(V38까지 적용됨). 예전에는
-    # 스키마가 있는 기존 DB에 처음 연결할 때를 위해 baseline-on-migrate를 켜 뒀지만, 켜 둔 채로
-    # DB_URL이 잘못된 DB(이미 스키마가 있고 이력 테이블은 없는 다른 DB)를 가리키면 그 DB를 V1로
-    # baseline 처리하고 V2부터 적용해 버린다. 이제 이력 테이블이 없으면 기동에 실패한다.
-    # 완전히 새로 만드는 빈 DB는 baseline 없이 V1부터 그대로 실행되므로 영향이 없다.
+    # 운영 DB는 이미 baseline을 마쳤다. baseline-on-migrate를 켜 두면 DB_URL이 이력 테이블 없는 다른 DB를 가리킬 때 그 DB를 V1로
+    # baseline하고 V2부터 적용해 버리므로 끈다(이력 테이블이 없으면 기동 실패). 빈 DB는 V1부터 그대로 실행된다.
     baseline-on-migrate: false
 
   session:
@@ -58,35 +47,21 @@ server:
   servlet:
     session:
       cookie:
-        # server.forward-headers-strategy로 request.isSecure()가 프록시 뒤에서도
-        # 실제 프로토콜을 반영하게 됐으므로, 세션 쿠키에 Secure를 강제해도 로컬 개발
-        # (application.yml, HTTP)에는 영향이 없다. 이 속성은 spring.servlet이 아니라
-        # server.servlet 아래여야 바인딩된다(— 예전에는
-        # spring.servlet.session.cookie.secure로 잘못 놓여 있어 어떤 프로퍼티에도 매핑되지
-        # 않고 조용히 무시됐다).
+        # forward-headers-strategy 덕에 프록시 뒤에서도 isSecure()가 실제 프로토콜을 반영하므로 Secure를 강제해도 로컬(HTTP)에는
+        # 영향이 없다. server.servlet 아래여야 바인딩된다.
         secure: true
 
 app:
-  # 이메일 인증 링크에 사용할 실제 배포 도메인. 반드시 환경변수로 지정해야 한다(기본값 없음 —
-  # 지정하지 않으면 인증 링크에 "${APP_BASE_URL}" 문자열이 그대로 들어가는 명백한 오류가 되어
-  # 눈에 띄게 실패한다).
+  # 이메일 인증 링크의 실제 배포 도메인. 환경변수로 지정해야 한다(기본값 없음 — 빠뜨리면 링크에 "${APP_BASE_URL}"이 그대로 들어가 눈에 띄게 실패한다).
   base-url: ${APP_BASE_URL}
   metrics:
-    # 상태 이상 메일을 받을 관리자 주소. base-url과 달리 기본값을 빈 문자열로
-    # 두어, 설정하지 않아도 기동은 그대로 되고 알림만 조용히 꺼진다 — 이 주소가 없다고
-    # 서비스를 막을 이유는 없다. 실제로 알림을 받으려면 METRICS_ALERT_EMAIL 환경변수를
-    # 채운다.
+    # 상태 이상 메일을 받을 관리자 주소. 기본값은 빈 문자열이라 설정하지 않아도 기동하고 알림만 꺼진다(METRICS_ALERT_EMAIL로 채운다).
     alert-email: ${METRICS_ALERT_EMAIL:}
   security:
-    # User.email 컬럼 AES 암호화 키. 기본값 없음 — 지정하지 않으면 기동 자체가 실패한다
-    # (의도된 fail-fast). 유출되면 저장된 모든 이메일을 복호화할 수 있으므로 DB_URL·MAIL_HOST와
-    # 동일한 등급의 비밀로 취급해 관리한다.
-    #
-    # 이 값만 갈아 끼우면 안 된다. 기존 암호문을 읽을 수 없게 되는데 조회에 쓰는 email_hash는
-    # 키를 쓰지 않아 로그인은 계속 되므로, 이메일만 깨진 것을 한참 뒤에야 알게 된다. 교체가
-    # 필요하면 앱을 내리고 rekey 프로파일로 재암호화한다(application-rekey.yml 참고).
+    # User.email AES 암호화 키. 기본값 없음 — 없으면 기동 실패(fail-fast). 유출되면 저장된 모든 이메일을 복호화할 수 있으므로
+    # DB_URL·MAIL_HOST와 같은 등급의 비밀이다. 이 값만 바꾸면 안 된다 — 기존 암호문을 못 읽는데 조회는 email_hmac로 하므로
+    # 로그인은 되어 한참 뒤에야 깨진 걸 안다. 교체는 앱을 내리고 rekey 프로파일로 재암호화한다(application-rekey.yml).
     email-encryption-key: ${EMAIL_ENCRYPTION_KEY}
-    # 이메일 조회용 HMAC-SHA256의 pepper(P0-3). 기본값 없음 — 지정하지 않으면 기동이 실패한다.
-    # EMAIL_ENCRYPTION_KEY와 다른 값을 쓰고, 백업과 분리해 따로 보관한다. 잃으면 이메일 조회가
-    # 되지 않으므로 키와 같은 등급으로 다룬다. 바꾸려면 hmac-backfill 도구로 다시 채워야 한다.
+    # 이메일 조회용 HMAC-SHA256 pepper. 기본값 없음. 암호화 키와 다른 값을 쓰고 백업과 분리해 보관하며, 잃으면 이메일 조회가 안 되므로
+    # 키와 같은 등급이다. 바꾸려면 hmac-backfill 도구로 다시 채운다.
     email-hash-pepper: ${EMAIL_HASH_PEPPER}

@@ -4,13 +4,9 @@
 #
 #   verify-backup.sh [백업 디렉터리]
 #
-# 인자가 없으면 /opt/kraft/app/backups/full 아래 가장 최근 백업을 본다. 읽기만 한다 — DB·
-# 업로드 디렉터리·서비스는 건드리지 않는다. 확인하는 것:
-#   - manifest.txt의 크기·SHA-256이 실제 파일과 같은지(보관·전송 중 손상, 다른 백업과 섞임)
-#   - db.sql.gz의 gzip 무결성, uploads.tar.gz의 tar 목록을 끝까지 읽을 수 있는지
-#   - KEY-NOTICE.txt와 키 식별자가 있는지(어느 키로 복호화해야 하는지)
-# 백업 파일이 "열리는지"까지만 본다. 실제로 복원되는지는 격리 환경 복구 리허설로 확인한다
-# (deploy/RESTORE.md, BackupRestoreRehearsalTest).
+# 인자가 없으면 /opt/kraft/app/backups/full 아래 가장 최근 백업을 본다. 읽기만 한다. 확인하는 것: manifest.txt의 크기·SHA-256이 실제 파일과 같은지
+# (보관·전송 중 손상, 다른 백업과 섞임), db.sql.gz의 gzip 무결성, uploads.tar.gz의 tar 목록, KEY-NOTICE.txt와 키 식별자. 파일이 "열리는지"까지만 보며
+# 실제 복원은 격리 환경 복구 리허설로 확인한다(BackupRestoreRehearsalTest).
 set -euo pipefail
 
 BACKUP_ROOT=/opt/kraft/app/backups/full

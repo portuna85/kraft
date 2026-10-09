@@ -1,18 +1,13 @@
-# 추천 이력 백필 전용 프로파일. --spring.profiles.active=recommend-backfill 로만 활성화된다.
-# RecommendationBackfillRunner의 실행 방법은 그 클래스의 javadoc을 본다.
-#
-# 한 번 수행하고 종료 코드를 남기며 내려간다. 서비스로 남지 않는다.
+# 추천 이력 백필 전용 프로파일(--spring.profiles.active=recommend-backfill 로만 활성화). 실행 방법은 RecommendationBackfillRunner
+# javadoc을 본다. 한 번 수행하고 종료 코드를 남기며 내려간다.
 server:
   port: -1
 
 app:
-  # 백필이 도는 동안 다른 주기 작업이 끼어들 이유가 없다 — application-rekey.yml과 같은
-  # 원칙이다. 이 도구가 건드리는 것은 추천 이력 테이블뿐이지만, 무관한 스케줄러를 한 실행에
-  # 섞지 않는다.
+  # 백필이 도는 동안 무관한 주기 작업은 끈다(application-rekey.yml과 같은 원칙).
   mail:
     enabled: false
-    # 발송과 별개로 보관기간 정리는 enabled와 무관하게 항상 돈다(OutboxMailWorker) — 이 파일의 원칙(무관한 스케줄러를 섞지 않는다)대로
-    # 이 창에서는 따로 끈다.
+    # 발송과 별개로 보관기간 정리는 enabled와 무관하게 돌므로(OutboxMailWorker) 따로 끈다.
     retention-enabled: false
   upload:
     cleanup-enabled: false
@@ -27,8 +22,7 @@ app:
     # 같은 이유로 세션 폐기 태스크의 보관기간 정리도 끈다(SessionRevocationWorker).
     retention-enabled: false
   recommend:
-    # 이 실행 자체가 이력을 채우는 작업이다 — 매주 자동 수집 스케줄이 같은 테이블을 향해
-    # 동시에 돌면 서로의 진행 상황을 어지럽힐 수 있다.
+    # 이 실행이 이력을 채우는 작업이라, 자동 수집이 같은 테이블로 동시에 돌면 진행 상황이 엉킨다.
     auto-fetch:
       enabled: false
   post:

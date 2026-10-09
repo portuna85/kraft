@@ -1,22 +1,13 @@
-# Playwright E2E 전용 프로파일.
-#
-# E2E는 Docker(MariaDB)도 SMTP도 없이 떠야 하므로 H2 인메모리와 가짜 메일 발송기를 쓴다.
-# --spring.profiles.active=e2e 로 명시할 때만 활성화되며, 이 프로파일에서만 존재하는 빈들은
-# 전부 @Profile("e2e")로 잠가 두었다(E2eDataInitializer, RecordingEmailSender, E2eMailController).
-#
-# 왜 기존 test 프로파일을 재사용하지 않는가: src/test/resources/application-test.yml은 테스트
-# 런타임 클래스패스에만 있어 java -jar 로 띄운 JAR에서는 보이지 않는다.
-#
-# 이 설정과 시드·가짜 메일 빈은 bootE2eJar에만 들어간다. 운영 bootJar에는 포함되지 않는다.
+# Playwright E2E 전용 프로파일. Docker(MariaDB)도 SMTP도 없이 떠야 하므로 H2 인메모리와 가짜 메일 발송기를 쓴다. --spring.profiles.active=e2e로 명시할 때만 활성화되고,
+# 이 프로파일에만 있는 빈(E2eDataInitializer, RecordingEmailSender, E2eMailController)은 @Profile("e2e")로 잠갔다. test 프로파일을 재사용하지 않는 이유: application-test.yml은
+# 테스트 런타임 클래스패스에만 있어 java -jar로 띄운 JAR에서는 보이지 않는다. 이 설정과 시드·가짜 메일 빈은 bootE2eJar에만 들어가고 운영 bootJar에는 없다.
 server:
   # 개발 중 띄워 둔 bootRun(기본 8080)과 부딪히지 않게 한 칸 옆으로 둔다.
   port: 8081
 
 spring:
   datasource:
-    # DB_CLOSE_DELAY=-1: 마지막 커넥션이 닫혀도 JVM이 살아 있는 동안 DB를 유지한다.
-    # MODE=MariaDB가 흉내 내지 못하는 것들은 application-test.yml의 같은 자리 주석 참고
-    # — 읽기 전용 트랜잭션 제약, 자기참조 FK 검사 시점, 제약 이름 형식.
+    # DB_CLOSE_DELAY=-1: 마지막 커넥션이 닫혀도 JVM이 살아 있는 동안 DB를 유지한다. MODE=MariaDB가 흉내 내지 못하는 것은 application-test.yml 주석 참고.
     url: jdbc:h2:mem:kraft-e2e;MODE=MariaDB;DB_CLOSE_DELAY=-1
     driver-class-name: org.h2.Driver
     username: sa
@@ -40,11 +31,8 @@ logging:
     org.hibernate.SQL: warn
 
 app:
-  # playwright.config.js의 baseURL과 호스트 문자열까지 정확히 맞춘다 — "localhost"와
-  # "127.0.0.1"은 같은 기기를 가리켜도 브라우저에는 다른 출처(origin)라, 메일 링크를 이
-  # 값으로 만들면 로그인 중인 브라우저의 세션 쿠키가 실리지 않는다. 이메일 인증 성공이
-  # "지금 로그인된 세션"의 권한을 즉시 갱신하는 흐름이
-  # 실제로는 항상 "다른 세션"으로 오판하게 되어 e2e가 그 경로를 검증하지 못했다.
+  # playwright.config.js의 baseURL과 호스트 문자열까지 맞춘다 — "localhost"와 "127.0.0.1"은 브라우저에 다른 출처라, 메일 링크가 다르면 로그인 세션 쿠키가 실리지 않아
+  # 인증 성공이 세션 권한을 즉시 갱신하는 흐름을 검증하지 못한다.
   base-url: http://127.0.0.1:8081
   # 여러 spec이 같은 IP(로컬 호스트)에서 로그인·가입을 반복하므로 꺼 둔다.
   auth:
@@ -65,8 +53,6 @@ app:
     email-encryption-key: e2e-only-key-not-a-secret
     email-hash-pepper: e2e-only-hash-pepper-not-a-secret
   recommend:
-    # 이 스케줄러는 절대 시각(cron)으로 도는 탓에 다른 주기 작업처럼 initial-delay로
-    # 미룰 수 없다 — 실행 시각과 우연히 겹치면 e2e 스위트 도중 외부 동행복권 사이트로
-    # 실제 요청을 보낸다.
+    # 이 스케줄러는 절대 시각(cron)이라 initial-delay로 미룰 수 없다 — 겹치면 e2e 도중 외부 동행복권 사이트로 실제 요청을 보낸다.
     auto-fetch:
       enabled: false
