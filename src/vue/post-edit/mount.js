@@ -11,9 +11,7 @@ mountIsland({
     mountPoint,
     component: PostEditApp,
     props: () => {
-        // JSON이 없거나 깨졌거나 모양이 다르면 PostEditApp이 곧바로
-        // post.title·categoryOptions[0]을 참조하므로 그건 안전한 기본 상태가 아니다 — 여기서
-        // 먼저 걸러 props 자체를 만들지 않는다.
+        // JSON이 없거나 깨졌거나 모양이 다르면 PostEditApp이 곧바로 post.title·categoryOptions[0]을 참조해 죽으므로, 여기서 먼저 걸러 props 자체를 만들지 않는다.
         const initial = parsePageData('post-initial-data',
             (parsed) => parsed?.post && typeof parsed.post.title === 'string' && Array.isArray(parsed.categoryOptions));
         if (!initial) {

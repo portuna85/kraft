@@ -9,11 +9,8 @@ import { useFieldErrors } from '../shared/useFieldErrors.js';
 /**
  * 메일 링크로 들어온 사람이 새 비밀번호를 정하는 화면.
  *
- * 토큰은 URL 프래그먼트(#token=...)에서 읽어 mount.js가 props로 건넨 값을 그대로 돌려보낸다. 유효한지·만료됐는지는 저장 요청에서
- * 서버가 판정한다 — 화면을 여는 것만으로 토큰이 소모되면 메일 미리보기나 링크 검사기가 대신
- * 눌러 버릴 수 있다.
- *
- * 확인란 불일치 검사는 가입 화면과 같은 규칙을 쓴다 — `usePasswordConfirm`으로 공유한다.
+ * 토큰은 URL 프래그먼트(#token=...)에서 읽어 mount.js가 props로 건넨 값을 그대로 돌려보낸다. 유효한지·만료됐는지는 저장 요청에서 서버가 판정한다 — 화면을 여는 것만으로 토큰이 소모되면 메일 미리보기나 링크 검사기가 대신 눌러 버릴 수 있다.
+ * 확인란 불일치 검사는 가입 화면과 같은 규칙이다(`usePasswordConfirm`으로 공유).
  */
 const props = defineProps({
     token: { type: String, default: '' },

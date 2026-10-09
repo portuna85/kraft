@@ -3,8 +3,7 @@
 /* ==========================================================================
    게시글 읽기 / 편집
    ========================================================================== */
-// 목록의 .post-list__category(1px 8px, $fs-2xs)와 같은 배지였는데 여기만 2px 10px,
-// 0.75rem으로 살짝 더 컸다. 밀도를 올리는 방향과 반대라 작은 쪽으로 맞춘다(_board.scss 참고).
+// 목록의 .post-list__category와 같은 배지다(_board.scss 참고).
 .post-category {
     display: inline-block;
     padding: 1px 8px;
@@ -16,8 +15,7 @@
     margin-bottom: var(--kraft-space-2);
 }
 
-// 넓은 화면(>=lg) 크기는 _board.scss의 .page-title·.board-head__title과 같은 블록에서
-// 함께 정의한다(세 제목이 같은 992px 규칙을 반복하고 있었다).
+// 넓은 화면(>=lg) 크기는 _board.scss의 .page-title·.board-head__title과 같은 블록에서 함께 정의한다.
 .post-title {
     font-size: $fs-heading;
     font-weight: 700;
@@ -38,21 +36,16 @@
     padding: var(--kraft-space-6);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
-    // 글자크기 조절 버튼(PostEditApp.vue)이 이 변수만 바꾼다. 변수가 없으면(예: 스크립트
-    // 실패) 기존과 같은 1rem으로 떨어진다.
+    // 글자크기 조절 버튼(PostView.vue)이 이 변수만 바꾼다. 변수가 없으면(스크립트 실패) 1rem이다.
     font-size: var(--kraft-post-font-size, 1rem);
     line-height: 1.75;
     margin-bottom: var(--kraft-space-4);
-    // PlayForum 비교(문서 5.2): 부모(.kraft-main--narrow, 960px) 폭을 그대로 쓰면 한 줄에
-    // 너무 많은 글자가 실린다. ch는 글자크기(가-/가+)에 비례해 같이 늘고 줄어든다.
-    // 제목·바이라인은 카드가 아닌 일반 텍스트 흐름이라 그대로 960px를 쓴다 — 카드형
-    // 본문 영역만 좁아지는 것은 의도된 차이다.
+    // 부모(.kraft-main--narrow, 960px) 폭을 그대로 쓰면 한 줄에 너무 많은 글자가 실린다. ch는 글자크기(가-/가+)에 비례해 같이 늘고 줄어든다.
+    // 제목·바이라인은 카드가 아닌 일반 텍스트 흐름이라 960px를 그대로 쓴다 — 카드형 본문 영역만 좁아지는 것은 의도된 차이다.
     max-width: 70ch;
 }
 
-// 12단계(가벼운 마크다운): 서식이 생긴 문단·목록·코드에 맞는 간격. white-space: pre-wrap을
-// 끈다 — 문단 안 줄바꿈은 이제 파서가 명시적으로 만든 <br>로만 나타나므로(markdown.js),
-// pre-wrap까지 같이 켜 두면 <br> 앞뒤의 원본 개행 문자가 줄바꿈을 두 번 만든다.
+// 서식이 생긴 문단·목록·코드에 맞는 간격. white-space: pre-wrap을 끈다 — 문단 안 줄바꿈은 파서가 명시적으로 만든 <br>로만 나타나므로(markdown.js), pre-wrap까지 켜 두면 <br> 앞뒤의 원본 개행 문자가 줄바꿈을 두 번 만든다.
 .post-body--md {
     white-space: normal;
 }
@@ -83,9 +76,7 @@
     font-size: 0.9em;
 }
 
-// 글자크기 조절 버튼 묶음. 본문 바로 위, 좁은 버튼 3개.
-// PlayForum 비교(문서 4.2): 제목 영역(분류·제목·바이라인·이 버튼들) 아래 구분선을 둬 본문
-// 진입점을 나타낸다. .board-search·.popular-posts와 같은 --kraft-border 토큰을 재사용한다.
+// 글자크기 조절 버튼 묶음(본문 바로 위, 좁은 버튼 3개). 아래 구분선은 제목 영역(분류·제목·바이라인·이 버튼들)과 본문의 경계를 나타내며 .board-search·.popular-posts와 같은 --kraft-border 토큰을 쓴다.
 .post-font-controls {
     display: flex;
     align-items: center;
@@ -118,9 +109,7 @@
     margin-bottom: var(--kraft-space-6);
 }
 
-// 추천 버튼의 선택 상태. Bootstrap의 .btn-outline-primary는 .is-active에 아무 의미도
-// 주지 않으므로(자체 활성 클래스는 .active), 이 규칙이 없으면 추천을 눌러도 시각적으로
-// "선택됨"이 보이지 않는다. .post-font-controls__btn.is-active와 같은 토큰 조합을 쓴다.
+// 추천 버튼의 선택 상태. Bootstrap의 .btn-outline-primary는 .is-active에 아무 의미도 주지 않으므로(자체 활성 클래스는 .active) 이 규칙이 없으면 추천해도 "선택됨"이 보이지 않는다. .post-font-controls__btn.is-active와 같은 토큰 조합을 쓴다.
 .post-like.is-active {
     background-color: var(--kraft-warn-bg);
     color: var(--kraft-warn-text);

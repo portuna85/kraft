@@ -5,11 +5,8 @@ const DEFAULT_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7일
 const DEBOUNCE_MS = 800;
 
 /**
- * 글쓰기·수정 화면의 자동 임시 저장. useUnsavedGuard(이탈 경고)를 대체하지 않고 나란히
- * 쓴다 — 그쪽은 "잃을 수 있다고 경고", 이쪽은 "잃어도 되찾을 수 있게" 한다.
- *
- * 사진은 File/blob URL이라 직렬화할 수 없으므로 다루지 않는다 — 호출자는 title·content·
- * category 같은 직렬화 가능한 필드만 담는다.
+ * 글쓰기·수정 화면의 자동 임시 저장. useUnsavedGuard(이탈 경고)와 나란히 쓴다 — 그쪽은 "잃을 수 있다고 경고", 이쪽은 "잃어도 되찾을 수 있게" 한다.
+ * 사진은 File/blob URL이라 직렬화할 수 없으므로 다루지 않는다 — 호출자는 직렬화 가능한 필드(title·content·category)만 담는다.
  *
  * @param {string} storageKey
  * @param {import('vue').Reactive<Record<string, unknown>>} draft
@@ -17,9 +14,7 @@ const DEBOUNCE_MS = 800;
  */
 export function useDraftAutosave(storageKey, draft, options = {}) {
     const ttlMs = options.ttlMs ?? DEFAULT_TTL_MS;
-    // window.localStorage 속성 접근 자체가 던질 수 있어(safeLocalStorage 참고) 여기서
-    // 직접 읽지 않는다 — 이 기본값은 컴포넌트 setup() 도중 평가되므로, 여기서 던지면 try로
-    // 감쌀 곳이 없어 Vue 마운트 전체가 실패한다.
+    // window.localStorage 속성 접근 자체가 던질 수 있어(safeLocalStorage 참고) 직접 읽지 않는다 — 이 기본값은 setup() 도중 평가되므로 여기서 던지면 try로 감쌀 곳이 없어 Vue 마운트 전체가 실패한다.
     const storage = options.storage ?? safeLocalStorage();
 
     const available = ref(false);
@@ -27,8 +22,7 @@ export function useDraftAutosave(storageKey, draft, options = {}) {
     let timer = /** @type {ReturnType<typeof setTimeout> | null} */ (null);
 
     /**
-     * 저장된 초안이 있고, 지금 보여줄 만한 값이면(isUseless가 false) 배너를 띄운다.
-     * 마운트 시(또는 PostEditApp의 편집 진입 시) 한 번만 호출한다.
+     * 저장된 초안이 있고 지금 보여줄 만한 값이면(isUseless가 false) 배너를 띄운다. 마운트 시(또는 PostEditApp의 편집 진입 시) 한 번만 호출한다.
      *
      * @param {(stored: Record<string, unknown>) => boolean} isUseless
      */
@@ -61,9 +55,7 @@ export function useDraftAutosave(storageKey, draft, options = {}) {
     }
 
     /**
-     * draft가 바뀔 때마다 호출한다(watch(draft, () => autosave.schedule(), { deep: true })).
-     * 사용자가 뭔가 입력했다는 뜻이므로 배너가 떠 있었다면 치운다 — 무시하고 새로 쓰기
-     * 시작한 것으로 본다.
+     * draft가 바뀔 때마다 호출한다(watch(draft, () => autosave.schedule(), { deep: true })). 사용자가 입력했다는 뜻이므로 배너가 떠 있었다면 치운다(무시하고 새로 쓰기 시작한 것으로 본다).
      */
     function schedule() {
         available.value = false;

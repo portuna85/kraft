@@ -9,8 +9,7 @@
     padding: 0;
 }
 
-// 카드 모양(테두리·radius·padding·margin)은 _comments.scss의 .comment-list__item과
-// 완전히 같아 그쪽에서 함께 선언한다.
+// 카드 모양(테두리·radius·padding·margin)은 _comments.scss의 .comment-list__item과 같아 그쪽에서 함께 선언한다.
 
 .admin-list__head {
     display: flex;

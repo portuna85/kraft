@@ -9,10 +9,9 @@
         </th:block>
         </body>
 
-    flash는 항상 main의 맨 앞(h1 앞)에 둔다 — 페이지마다 h1 앞뒤로 달랐다.
+    flash는 항상 main의 맨 앞(h1 앞)에 둔다.
 
-    선택 항목은 이 호출을 th:with로 감싸 지역 변수로 넘긴다(th:replace가 같은 요소의 th:with보다
-    먼저 처리되므로 바깥 th:block에 둔다).
+    선택 항목은 이 호출을 바깥 th:block의 th:with로 감싸 지역 변수로 넘긴다(th:replace가 같은 요소의 th:with보다 먼저 처리된다).
       shellClass : shell에 덧붙일 클래스 (예: kraft-shell--with-aside)
       aside      : main 옆에 둘 조각 (~{::aside})
       afterMain  : shell 밖, 푸터 앞에 둘 조각

@@ -3,8 +3,7 @@
 /* ==========================================================================
    글쓰기: 선택한 이미지 미리보기 / 업로드·저장 진행 상태
    ========================================================================== */
-// 작성자는 입력할 것이 없는 값이라(로그인 계정으로 서버가 자동 지정) 채울 단계가 아니라
-// 제목 아래 안내문구로만 보여준다. .text-muted(Bootstrap 유틸리티)와 함께 쓴다.
+// 작성자는 입력할 값이 아니라(로그인 계정으로 서버가 자동 지정) 제목 아래 안내문구로만 보여준다. .text-muted(Bootstrap 유틸리티)와 함께 쓴다.
 .post-form__byline {
     font-size: $fs-sm;
     margin-bottom: var(--kraft-space-3);
@@ -46,8 +45,7 @@
     color: var(--kraft-text-muted);
 }
 
-// 자동 임시 저장 복원 배너. .picture-preview와 같은 표면(연한 배경 + 테두리)이지만, "행동이
-// 필요한 안내"라는 점을 구분하려고 왼쪽에 강조색 선을 하나 더 준다.
+// 자동 임시 저장 복원 배너. .picture-preview와 같은 표면(연한 배경 + 테두리)이지만 "행동이 필요한 안내"임을 구분하려고 왼쪽에 강조색 선을 하나 더 준다.
 .draft-banner {
     display: flex;
     flex-wrap: wrap;
@@ -74,10 +72,7 @@
     flex-shrink: 0;
 }
 
-// 12단계(가벼운 마크다운) 툴바. textarea 위에 서식 버튼 + 작성/미리보기 전환을 얹는다.
-// 13단계: 서식 버튼(role="toolbar")과 작성/미리보기 전환(role="group")을 서로 다른 종류의
-// 조작으로 나눠 두 줄로 배치한다 — 한 줄에 이어 붙이면 시각적으로는 하나의 묶음처럼
-// 보여 툴바 패턴(화살표 이동)과 일반 탭 이동이 섞여 있다는 걸 알아채기 어렵다.
+// 마크다운 툴바. textarea 위에 서식 버튼(role="toolbar")과 작성/미리보기 전환(role="group")을 얹는다. 서로 다른 종류의 조작이라 두 줄로 나눈다 — 한 줄에 이으면 툴바 패턴(화살표 이동)과 일반 탭 이동이 섞여 있다는 걸 알아채기 어렵다.
 .markdown-toolbar__bar,
 .markdown-toolbar__view-switch {
     display: flex;
@@ -93,8 +88,7 @@
     border-color: var(--kraft-secondary);
 }
 
-// display:none 대신 화면에서만 지운다 — required 검증에서 빠지면 안 되는 이유는
-// MarkdownToolbar.vue의 주석 참고.
+// display:none 대신 화면에서만 지운다 — required 검증에서 빠지면 안 되는 이유는 MarkdownToolbar.vue의 주석 참고.
 .markdown-toolbar__textarea--hidden {
     position: absolute;
     width: 1px;

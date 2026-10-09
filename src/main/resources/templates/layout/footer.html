@@ -8,8 +8,7 @@
 </div>
 
 <div th:fragment="footer">
-    <!--/* 사이트 공통 푸터. 서비스의 성격(과거 데이터 조회·통계)과 확률 고지를 모든 화면 끝에 한 번
-           둔다. 링크는 내비게이션과 같은 규칙(추천 기능을 끄면 추천 링크도 감춘다)을 따른다. */-->
+    <!--/* 사이트 공통 푸터. 서비스 성격(과거 데이터 조회·통계)과 확률 고지를 모든 화면 끝에 둔다. 링크는 내비게이션과 같은 규칙(추천 기능을 끄면 추천 링크도 감춘다)을 따른다. */-->
     <footer class="kraft-footer">
         <div class="kraft-footer__inner">
             <p class="kraft-footer__brand">Kraft<span class="kraft-footer__dot" aria-hidden="true">.</span></p>
@@ -23,10 +22,7 @@
         </div>
     </footer>
 
-    <!-- 로그아웃은 CSRF 토큰이 필요한 POST라 감춰 둔 폼으로 보낸다. 헤더의 로그아웃 버튼이
-         이 폼을 제출한다(features/account.js).
-         next 히든 필드는 없앴다 — 비밀번호 변경이 /login으로 직접 이동하도록 바뀌면서
-         아무도 채우지 않게 됐고, 빈 값은 SecurityConfig에서 Referer 규칙으로 넘어간다. -->
+    <!-- 로그아웃은 CSRF 토큰이 필요한 POST라 감춰 둔 폼으로 보낸다. 헤더의 로그아웃 버튼이 이 폼을 제출한다(features/account.js). next 필드가 없으면 SecurityConfig가 Referer 규칙으로 이동 위치를 정한다. -->
     <form id="logout-form" th:action="@{/logout}" method="post" hidden>
         <input type="hidden" th:name="${_csrf?.parameterName}" th:value="${_csrf?.token}" />
     </form>
@@ -44,10 +40,7 @@
 
     <!-- 글·댓글 화면에서만 쓰는 모달. 오류 페이지는 slimFooter=true로 건너뛴다. -->
     <th:block th:unless="${slimFooter}">
-    <!--
-      게시글·댓글이 함께 쓰는 삭제 확인 모달. 제목과 본문 문구는 대상에 따라 JS가 바꾸고,
-      기본 포커스는 "취소"에 둔다.
-    -->
+    <!-- 게시글·댓글이 함께 쓰는 삭제 확인 모달. 제목과 본문 문구는 대상에 따라 JS가 바꾸고, 기본 포커스는 "취소"에 둔다. -->
     <div class="modal fade" id="confirmDeleteModal" tabindex="-1"
          aria-labelledby="confirmDeleteModalLabel">
         <div class="modal-dialog">
@@ -66,12 +59,7 @@
         </div>
     </div>
 
-    <!--
-      비밀번호 변경 모달. 별도 화면(/users/me/password)을 없애고 어느 화면에서든 헤더의
-      "비밀번호 변경"으로 바로 열도록 바꿨다. 오류는 화면 이동이 없으므로 flash가 아니라
-      모달 안에서 보여준다(#change-password-error). 성공하면 로그인 화면으로 보낸다 — 세션 폐기는
-      서버가 하므로(UserService.changePassword) 화면에서 로그아웃을 따로 호출하지 않는다.
-    -->
+    <!-- 비밀번호 변경 모달. 오류는 화면 이동이 없으므로 flash가 아니라 모달 안(#change-password-error)에서 보여주고, 성공하면 로그인 화면으로 보낸다(세션 폐기는 서버가 한다 — UserService.changePassword). -->
     </th:block>
 
     <div sec:authorize="isAuthenticated()" class="modal fade" id="changePasswordModal" tabindex="-1"
@@ -85,8 +73,7 @@
                 <div class="modal-body">
                     <div id="change-password-error" class="flash flash--danger" role="alert" hidden></div>
                     <p class="text-muted">변경하면 자동으로 로그아웃되고 로그인 화면으로 이동합니다.</p>
-                    <!--/* 진짜 submit이라 Enter로도 제출되고 required·minlength가 먼저 걸린다.
-                           제출 버튼은 모달 푸터에 있어 form 속성으로 이 폼과 연결한다. */-->
+                    <!--/* 진짜 submit이라 Enter로도 제출되고 required·minlength가 먼저 걸린다. 제출 버튼은 모달 푸터에 있어 form 속성으로 연결한다. */-->
                     <form id="change-password-form">
                         <div class="mb-3">
                             <label for="currentPassword">현재 비밀번호</label>
@@ -94,9 +81,7 @@
                                    autocomplete="current-password" required>
                         </div>
                         <div class="mb-3">
-                            <!--/* id="newPassword"가 아니다 — 비밀번호 재설정 페이지(PasswordResetApp.vue)에도
-                                   같은 id의 입력이 있어, 로그인한 사람이 재설정 링크를 열면 한 문서에 id가
-                                   중복될 수 있었다. 화면별로 구분한다. */-->
+                            <!--/* id="newPassword"가 아니다 — 비밀번호 재설정 페이지(PasswordResetApp.vue)에도 같은 id의 입력이 있어 한 문서에 id가 중복될 수 있다. */-->
                             <label for="changeNewPassword">새 비밀번호 (8자 이상 72자 이하, 대문자·소문자·특수문자 포함)</label>
                             <input type="password" class="form-control" id="changeNewPassword"
                                    autocomplete="new-password" required>
@@ -113,11 +98,7 @@
     </div>
 
     <th:block th:unless="${slimFooter}">
-    <!--
-      회원 탈퇴 확인 모달. 되돌릴 수 없으므로 현재 비밀번호를 한 번 더 받는다.
-      글과 댓글은 남고 작성자만 익명이 된다는 점을 여기서 분명히 알린다 — "탈퇴하면 내 글도
-      사라진다"고 기대했다가 뒤늦게 알게 되면 안 된다.
-    -->
+    <!-- 회원 탈퇴 확인 모달. 되돌릴 수 없으므로 현재 비밀번호를 한 번 더 받는다. 글과 댓글은 남고 작성자만 익명이 된다는 점을 여기서 분명히 알린다. -->
     </th:block>
 
     <div sec:authorize="isAuthenticated()" class="modal fade" id="withdrawModal" tabindex="-1"
@@ -150,7 +131,7 @@
         </div>
     </div>
 
-    <!-- 인증 메일 재발송 확인 모달. 누르는 즉시 메일이 나가던 것을 한 번 확인받도록 바꿨다. -->
+    <!-- 인증 메일 재발송 확인 모달. 이전 인증 링크가 무효가 되므로 한 번 확인받는다. -->
     <div sec:authorize="hasRole('GUEST')" class="modal fade" id="resendVerificationModal" tabindex="-1"
          aria-labelledby="resendVerificationModalLabel">
         <div class="modal-dialog">
@@ -172,22 +153,15 @@
     </div>
 
     <!--
-      Bootstrap JS 중 이 앱이 쓰는 Modal·Toast만 담은 번들(src/vue/bootstrap/entry.js). 예전에는
-      bootstrap.min.js(60KB, 전 컴포넌트)를 통째로 커밋해 불러왔다. 필요한 컴포넌트만 node_modules에서
-      번들하므로 약 25KB(gzip 8KB)이고 버전은 package-lock.json이 고정한다. Popper가 필요한
-      컴포넌트(드롭다운·툴팁·팝오버)는 쓰지 않는다.
-
-      이 서버가 직접 제공한다 — CDN 장애가 모달·토스트 UI 전체를 죽이는 단일
-      장애점이었다. 모듈 스크립트라 파싱을 막지 않고, 아래 main.js보다 먼저 선언되어 같은 순서로
-      실행된다 — 전역 bootstrap은 모달·토스트를 실제로 여는 시점(사용자 조작)에 이미 있다.
+      Bootstrap JS 중 이 앱이 쓰는 Modal·Toast만 담은 번들(src/vue/bootstrap/entry.js). 필요한 컴포넌트만 node_modules에서 번들해 약 25KB(gzip 8KB)이고 버전은 package-lock.json이 고정한다.
+      Popper가 필요한 컴포넌트(드롭다운·툴팁·팝오버)는 쓰지 않는다. 이 서버가 직접 제공하므로 CDN 장애가 UI 전체를 죽이지 않는다.
+      모듈 스크립트라 파싱을 막지 않고 아래 main.js보다 먼저 선언돼 같은 순서로 실행되므로, 모달·토스트를 여는 시점(사용자 조작)에는 전역 bootstrap이 이미 있다.
       core/bootstrap-ui.js는 이 전역이 없어도 예외 대신 경고만 남긴다.
     -->
     <script type="module" th:src="@{/js/vue-dist/bootstrap.js}"></script>
 
-    <!-- 앱 코드(plain JS). static/js/app의 원본을 Vite가 번들·압축한 것이다 — Vue
-         아일랜드와 같은 빌드라 core/·ui/ 모듈을 한 벌만 내려받고 실행한다. 각 기능은 해당 페이지에서만
-         동적으로 받는다. 진입점만 버전이 붙은 경로로 요청하면 된다 — 그 안의 상대 경로 import는
-         브라우저가 이 응답의 실제 URL을 기준으로 풀어, 같은 버전 접두사를 자동으로 물려받는다.
+    <!-- 앱 코드(plain JS). static/js/app의 원본을 Vite가 번들·압축한 것으로, Vue 아일랜드와 같은 빌드라 core/·ui/ 모듈을 한 벌만 받는다. 각 기능은 해당 페이지에서만 동적으로 받는다.
+         진입점만 버전이 붙은 경로로 요청하면 된다 — 안의 상대 경로 import는 브라우저가 이 응답의 실제 URL 기준으로 풀어 같은 버전 접두사를 물려받는다.
          core 청크는 진입점이 파싱된 뒤에야 발견되는 2단 워터폴이 되지 않게 미리 받는다. -->
     <link rel="modulepreload" th:href="@{/js/vue-dist/chunks/core.js}" />
     <script type="module" th:src="@{/js/vue-dist/main.js}"></script>

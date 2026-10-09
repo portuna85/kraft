@@ -16,24 +16,19 @@ import DraftRestoreBanner from '../shared/DraftRestoreBanner.vue';
 import PostView from './PostView.vue';
 
 /**
- * 게시글 보기와 편집 전환. 읽기 화면은 PostView, 입력 칸은 PostFormFields, 사진 업로드부터
- * 오류 안내까지의 제출 흐름은 usePostSubmit이 맡고(등록 화면과 공유), 여기에는 편집 상태·초안·
- * 이탈 방지·수정 요청만 남는다.
+ * 게시글 보기와 편집 전환. 읽기 화면은 PostView, 입력 칸은 PostFormFields, 사진 업로드부터 오류 안내까지의 제출 흐름은 usePostSubmit(등록 화면과 공유)이 맡고,
+ * 여기에는 편집 상태·초안·이탈 방지·수정 요청만 남는다.
  */
 const props = defineProps({
     post: { type: /** @type {import('vue').PropType<import('../shared/types.js').PostViewDto>} */ (Object), required: true },
     categoryOptions: { type: /** @type {import('vue').PropType<import('../shared/types.js').CategoryOption[]>} */ (Array), required: true },
     authenticated: { type: Boolean, required: true },
-    // 자동 임시 저장 키를 계정별로 분리하는 데만 쓴다. 편집
-    // 폼 자체가 로그인·소유권을 요구하므로 실제로는 항상 값이 있다. null이면(value == null이라
-    // Vue가 타입 검사를 건너뛴다) 아래에서 초안 기능을 끈다.
+    // 자동 임시 저장 키를 계정별로 분리하는 데만 쓴다. 편집 폼이 로그인·소유권을 요구하므로 실제로는 항상 값이 있다. null이면(Vue가 타입 검사를 건너뛴다) 초안 기능을 끈다.
     userId: { type: Number, default: null },
 });
 
 const mode = ref('view'); // 'view' | 'edit'
-// 편집 폼은 처음 편집을 누를 때 마운트한다. 글을 읽기만 하는 방문자(작성자 본인 포함)에게
-// 툴바·미리보기·사진 입력까지 달린 폼 전체를 매번 만들 이유가 없다. 한 번 열린 뒤에는 v-show로
-// 유지해 입력 중이던 내용이 보기/편집을 오가도 사라지지 않는다.
+// 편집 폼은 처음 편집을 누를 때 마운트한다 — 읽기만 하는 방문자에게 툴바·미리보기·사진 입력까지 달린 폼을 만들 이유가 없다. 한 번 열린 뒤에는 v-show로 유지해 입력 중이던 내용이 보기/편집을 오가도 사라지지 않는다.
 const editMounted = ref(false);
 const original = reactive({
     title: props.post.title,
@@ -52,8 +47,7 @@ const form = ref(/** @type {InstanceType<typeof PostFormFields> | null} */ (null
 const { fieldErrors, apply: applyFieldErrors, clearOnEdit } = useFieldErrors();
 clearOnEdit(draft);
 
-// 과거에 분류 필드가 여기서 빠져 있던 적이 있다(회귀). 필드를 하나씩 나열하는 대신
-// original/draft의 키를 순회해서, 필드가 늘어나도 비교에서 빠지는 일이 구조적으로 없게 한다.
+// 필드를 나열하지 않고 original/draft의 키를 순회해, 필드가 늘어도 비교에서 빠지지 않게 한다.
 const isDirty = computed(() =>
     Object.keys(original).some((key) => draft[key] !== original[key])
     || picture.removedExisting.value
@@ -61,19 +55,14 @@ const isDirty = computed(() =>
 );
 
 /**
- * 편집 중 브라우저 탭을 닫거나 다른 주소로 이동하면(뒤로 가기 포함) 입력한 내용이 그대로
- * 사라진다 — "취소" 버튼은 confirm()으로 막지만, 그 경로 밖의 이탈은 아무 안내도 없었다.
- * 저장에 성공해 스스로 이동할 때는 이 확인을 띄우지 않는다(unsavedGuard.allowNavigation()).
+ * 편집 중 탭을 닫거나 다른 주소로 이동하면(뒤로 가기 포함) 입력한 내용이 사라지므로 이탈 전에 확인한다("취소" 버튼은 별도로 confirm()으로 막는다).
+ * 저장에 성공해 스스로 이동할 때는 띄우지 않는다(unsavedGuard.allowNavigation()).
  */
 const unsavedGuard = useUnsavedGuard(isDirty);
 
-// 자동 임시 저장(이탈 경고를 대체하지 않고 나란히 쓴다 — useDraftAutosave.js 참고). 사진은
-// 직렬화할 수 없어 제목·분류·내용만 담는다. 글마다 따로 기억하도록 키에 id를 넣는다.
+// 자동 임시 저장(이탈 경고와 나란히 쓴다 — useDraftAutosave.js 참고). 사진은 직렬화할 수 없어 제목·분류·내용만 담고, 글마다 따로 기억하도록 키에 id를 넣는다.
 //
-// 회원 id도 함께 넣는다 — 예전 키(kraft:draft:post-edit:{id})는
-// 사용자 구분이 없어, 공용 PC에서 다른 계정이 같은 글을 편집하다 만 초안을 그대로 보게 될 수
-// 있었다. userId가 없으면(편집 폼 자체가 로그인·소유권을 요구하므로 실제로는 일어나지 않는다)
-// storage를 null로 둬 초안 기능 자체를 건너뛴다.
+// 키에 회원 id도 넣어, 공용 PC에서 다른 계정의 초안이 보이지 않게 한다. userId가 없으면(실제로는 일어나지 않는다) storage를 null로 둬 초안 기능을 건너뛴다.
 const LEGACY_DRAFT_KEY = `kraft:draft:post-edit:${props.post.id}`;
 const draftKey = props.userId != null
     ? `kraft:draft:${props.userId}:post-edit:${props.post.id}`
@@ -83,8 +72,7 @@ const autosave = useDraftAutosave(draftKey, draft, {
 });
 useSessionKeepAlive();
 
-// 편집 모드일 때만 저장한다 — 조회 모드에서는 draft가 항상 original과 같아 저장할 이유가
-// 없고, 마운트 시점에 곧바로 저장소를 건드리지도 않는다.
+// 편집 모드일 때만 저장한다 — 조회 모드에서는 draft가 항상 original과 같아 저장할 이유가 없고, 마운트 시점에 저장소를 건드리지도 않는다.
 watch(draft, () => {
     if (mode.value === 'edit') {
         autosave.schedule();
@@ -114,8 +102,7 @@ async function startEdit() {
     autosave.checkAvailable((stored) =>
         stored.title === original.title && stored.content === original.content && stored.category === original.category,
     );
-    // 옛(사용자 구분 없는) 키에 남아 있을 수 있는 초안은 지운다 — 다음 사용자에게 보이지
-    // 않게 한다. 지금 쓸 키가 바로 그 옛 키이면(userId 없음) 건드리지 않는다.
+    // 사용자 구분이 없던 옛 키에 남은 초안은 지운다(다음 사용자에게 보이지 않게). 지금 쓸 키가 그 옛 키이면(userId 없음) 건드리지 않는다.
     if (props.userId != null) {
         clearDraft(safeLocalStorage(), LEGACY_DRAFT_KEY);
     }
@@ -151,8 +138,7 @@ const { submit } = usePostSubmit({
 });
 
 function onSubmit() {
-    // 업로드를 기다리는 동안 입력을 잠그지만(:disabled="saving"), 등록 화면과 동일하게
-    // 제출 시점 값을 한 번 더 스냅샷으로 고정해 둔다 — 최종 요청은 항상 이 스냅샷을 쓴다.
+    // 업로드를 기다리는 동안 입력을 잠그지만(:disabled="saving"), 등록 화면과 같이 제출 시점 값을 스냅샷으로 고정해 최종 요청에 쓴다.
     const snapshot = { title: draft.title, content: draft.content, category: draft.category };
     // 기준 버전은 요청 본문이 아니라 If-Match 헤더로만 보낸다 — 이 값도 제출 시점에 고정해 둔다.
     const baseVersion = version.value;
@@ -166,8 +152,7 @@ function onSubmit() {
                 pictureWidth: props.post.pictureWidth ?? null,
                 pictureHeight: props.post.pictureHeight ?? null,
             },
-        // 편집을 시작할 때 받아간 버전(baseVersion)을 If-Match로 보내 "이 버전을 기준으로 고친다"고
-        // 밝힌다. 그 사이 다른 곳에서 저장됐으면 서버가 412로 거절한다(저장 시점에 겹치면 409).
+        // 편집을 시작할 때 받아간 버전(baseVersion)을 If-Match로 보낸다. 그 사이 다른 곳에서 저장됐으면 서버가 412로 거절한다(저장 시점에 겹치면 409).
         send: (pictureFields) => api.put(
             `${API.POSTS}/${props.post.id}`,
             { ...snapshot, ...pictureFields },
@@ -178,8 +163,7 @@ function onSubmit() {
             flash.set('POST_UPDATED');
             unsavedGuard.allowNavigation();
             autosave.discard();
-            // 목록으로 튕기지 않고 같은 글(이 화면 자신의 URL)을 새로고침한다 — 서버가 다시 그린 화면이 방금 저장한 제목·본문·버전을
-            // 그대로 보여준다.
+            // 목록으로 보내지 않고 같은 글을 새로고침한다 — 서버가 다시 그린 화면이 방금 저장한 제목·본문·버전을 보여준다.
             window.location.href = `/posts/update/${props.post.id}`;
         },
     });
@@ -252,10 +236,7 @@ function onSubmit() {
       </template>
     </PostFormFields>
 
-    <!-- v-show(display:none) 대신 항상 렌더링한 채 텍스트만 바꾼다 — 라이브 리전이
-         display:none 상태였다가 나타나는 것과 동시에 내용이 채워지면, 스크린 리더 구현에
-         따라 그 변화를 놓칠 수 있다. 비어 있을 때는 내용이 없어 화면에 거의 티가 나지
-         않는다. -->
+    <!-- v-show(display:none) 대신 항상 렌더링한 채 텍스트만 바꾼다 — display:none이었다가 나타나는 것과 동시에 내용이 채워지면 스크린 리더 구현에 따라 라이브 리전의 변화를 놓칠 수 있다. -->
     <p
       id="post-update-progress"
       class="form-progress"

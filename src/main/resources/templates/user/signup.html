@@ -8,12 +8,10 @@
     <th:block th:fragment="content">
         <h1 class="page-title">회원가입</h1>
 
-        <!--/* 가입 폼은 Vue 아일랜드(src/vue/signup)가 그린다. 서버가 내려줄 초기 상태는 없고,
-               제출은 REST API로만 오간다. */-->
+        <!--/* 가입 폼은 Vue 아일랜드(src/vue/signup)가 그린다. 서버가 내려줄 초기 상태는 없고, 제출은 REST API로만 오간다. */-->
         <div class="card-kraft">
             <div id="signup-app"></div>
-            <!-- signup.js가 정적으로 import하는 공유 청크(Vue 런타임 포함)를 미리
-                 받아 둔다 — 이 화면은 자기 코드(2.5KB)보다 이 청크가 훨씬 크다. -->
+            <!-- signup.js가 정적으로 import하는 공유 청크(Vue 런타임 포함)를 미리 받아 둔다 — 이 화면은 자기 코드보다 이 청크가 훨씬 크다. -->
             <link rel="modulepreload" th:href="@{/js/vue-dist/chunks/runtime.js}" />
             <link rel="modulepreload" th:href="@{/js/vue-dist/chunks/core.js}" />
             <script type="module" th:src="@{/js/vue-dist/signup.js}" data-mount-fallback="signup-app"></script>

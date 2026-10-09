@@ -7,15 +7,12 @@ import * as flash from '@ui/flash.js';
  */
 
 /**
- * 글 등록·수정 제출의 공통 흐름: 사진 업로드 → 요청 → 오류 안내.
- * 예전에는 PostSaveApp.vue와 PostEditApp.vue가 진행 문구·재시도 안내·세션 만료 문구까지 거의 같은
- * 코드를 따로 갖고 있었다. 두 화면의 차이는 이 함수에 넘기는 값으로만 남는다.
+ * 글 등록·수정 제출의 공통 흐름: 사진 업로드 → 요청 → 오류 안내. 두 화면(PostSaveApp·PostEditApp)의 차이는 이 함수에 넘기는 값으로만 남는다.
  *
  *  - 파일을 새로 골랐으면 업로드한다(재시도해도 같은 파일을 다시 올리지 않는 캐시는 useImageUpload.resolveUrl).
  *  - 고르지 않았으면 `fallbackPicture()`가 정한 값을 쓴다(등록: 사진 없음, 수정: 기존 사진 유지·삭제).
  *
- * 폼 값의 스냅샷은 호출한 쪽이 `submit`을 부르기 전에 떠 둔다 — 업로드를 기다리는 동안 입력을 잠그지만
- * 최종 요청은 항상 제출 시점의 값을 써야 한다.
+ * 폼 값의 스냅샷은 호출한 쪽이 `submit`을 부르기 전에 떠 둔다 — 업로드를 기다리는 동안 입력을 잠그지만 최종 요청은 제출 시점의 값을 써야 한다.
  *
  * @param {object} options
  * @param {import('vue').Ref<boolean>} options.saving
@@ -53,8 +50,7 @@ export function usePostSubmit({ saving, progressText, picture, applyFieldErrors,
                 progressText.value = '이미지 업로드 중…';
                 const url = await picture.resolveUrl();
                 if (!url) {
-                    // 파일을 골랐는데 URL이 없다 = 업로드 중 선택이 바뀌었다. 그대로 보내면
-                    // 사진이 빠지거나 기존 사진이 지워지므로 멈추고 다시 확인하게 한다.
+                    // 파일을 골랐는데 URL이 없다 = 업로드 중 선택이 바뀌었다. 그대로 보내면 사진이 빠지거나 기존 사진이 지워지므로 멈추고 다시 확인하게 한다.
                     fail(`선택한 이미지가 바뀌었습니다. 이미지를 확인한 뒤 다시 "${verb}"을 눌러 주세요.`);
                     return;
                 }
@@ -77,8 +73,7 @@ export function usePostSubmit({ saving, progressText, picture, applyFieldErrors,
         } catch (error) {
             progressText.value = null;
             saving.value = false;
-            // 긴 글을 쓰는 동안 세션이 끊기면 이 시점에야 403/로그인 리다이렉트로 드러난다.
-            // 자동 임시 저장이 내용을 지키고 있으니 그 사실부터 알린다.
+            // 긴 글을 쓰는 동안 세션이 끊기면 이 시점에야 403/로그인 리다이렉트로 드러난다. 자동 임시 저장이 내용을 지키고 있으니 그 사실부터 알린다.
             const kind = /** @type {any} */ (error)?.kind;
             if (kind === 'forbidden' || kind === 'auth') {
                 flash.showError('로그인이 만료되었습니다. 작성 중인 내용은 임시 저장되어 있으니, 다시 로그인한 뒤 이어서 쓸 수 있습니다.');

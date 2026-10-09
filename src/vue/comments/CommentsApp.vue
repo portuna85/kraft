@@ -8,17 +8,13 @@ import CommentItem from './CommentItem.vue';
 import { applyDelete, applyRepliesPage, applyReplyCreated, applySoftDelete, initReplyCursor } from './commentState.js';
 
 /**
- * 댓글 목록 전체. 서버가 최초 렌더링 시 canManage까지 계산해 내려준 목록(initialComments)을
- * 그대로 초기 상태로 쓰고, 이후 생성·수정·삭제는 각 요청의 응답을 받은 뒤에야 로컬 상태를
- * 채운다 — 응답 전에 미리 반영하는 낙관적 갱신이 아니라, 성공이 확인된 결과로 다시 조회하지
- * 않고 그 자리에서 패치하는 것이다. 새로고침하면 서버가 다시
- * 정확한 canManage를 계산해 주므로 정합성 문제는 없다.
+ * 댓글 목록 전체. 서버가 최초 렌더링 때 canManage까지 계산해 내려준 목록을 초기 상태로 쓰고, 생성·수정·삭제는 각 요청의 성공 응답을 받은 뒤에야 로컬 상태를 그 자리에서
+ * 패치한다(낙관적 갱신이 아니다). 새로고침하면 서버가 다시 정확한 canManage를 계산한다.
  */
 const props = defineProps({
     postId: { type: String, required: true },
     authenticated: { type: Boolean, required: true },
-    // 이메일 인증까지 끝난 회원만 댓글을 쓸 수 있다(WriteAccessPolicy). 로그인만 한 GUEST에게
-    // 입력창을 보여주면 다 쓰고 등록을 눌러야 거절 사유를 알게 되므로, 글쓰기 화면처럼 먼저 알린다.
+    // 이메일 인증까지 끝난 회원만 쓸 수 있다(WriteAccessPolicy). 로그인만 한 GUEST에게 입력창을 보이면 등록 뒤에야 거절 사유를 알게 되므로 먼저 알린다.
     canWrite: { type: Boolean, required: true },
     // 쓸 수 없는 이유. 서버가 작성 경로와 같은 규칙으로 만든 문장을 그대로 보여준다.
     writeBlockReason: { type: String, default: '' },
@@ -28,8 +24,7 @@ const props = defineProps({
     initialHasMore: { type: Boolean, required: true },
 });
 
-// 로그인 후 이 글로 돌아오게 한다 — navbar의 로그인 링크와 같은 규칙이다
-// (NavModelAdvice.currentPath). 예전에는 href="/login"만 써서 로그인 뒤 홈으로 떨어졌다.
+// 로그인 후 이 글로 돌아오게 한다(navbar의 로그인 링크와 같은 규칙 — NavModelAdvice.currentPath).
 const loginHref = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
 
 const comments = reactive([...props.initialComments]);
@@ -37,28 +32,19 @@ comments.forEach(initReplyCursor);
 const totalCount = ref(props.initialTotalCount);
 const hasMore = ref(props.initialHasMore);
 const loadingMore = ref(false);
-// 토스트는 지나가고 나면 사라지므로, 더 보기 버튼이 화면 밖에 있었거나 토스트를 놓친
-// 사용자를 위해 버튼 자리에 계속 보이는 실패 상태를 따로 둔다(문서 5.2).
+// 토스트는 지나가면 사라지므로, 토스트를 놓친 사용자를 위해 버튼 자리에 계속 보이는 실패 상태를 둔다.
 const loadError = ref(false);
-// 삭제로 배열에서 항목이 빠져도 "다음 페이지"의 기준은 항상 마지막으로 받아 온 댓글의 id여야
-// 한다 — comments 배열 자체에서 매번 다시 구하면 삭제 직후 잘못된 커서를 보낼 수 있다.
-// Array.prototype.at()은 iOS 15.4부터 지원된다 — 이 프로젝트의 지원 하한(iOS 15)과 어긋나므로
-// 인덱스로 직접 접근한다.
+// 다음 페이지 기준은 항상 마지막으로 받아 온 댓글의 id다 — comments 배열에서 매번 구하면 삭제 직후 잘못된 커서를 보낸다. Array.prototype.at()은 iOS 15.4부터라 인덱스로 접근한다.
 const lastLoadedId = ref(props.initialComments[props.initialComments.length - 1]?.id ?? null);
 const newContent = ref('');
 const saving = ref(false);
 
-// 등록·답글·삭제처럼 totalCount를 로컬에서 증감시키는 동작이 있을 때마다 올린다. loadMore()가
-// 응답을 받은 시점에 이 값이 요청 시작 때와 다르면, 그 사이 등록/답글/삭제가 있었다는 뜻이므로
-// 이미 정확한 로컬 totalCount를 낡은 page.totalCount로 덮어쓰지 않는다.
+// totalCount를 로컬에서 증감하는 동작(등록·답글·삭제)마다 올린다. loadMore() 응답 시점에 요청 시작 때와 다르면 그 사이 변경이 있었다는 뜻이라, 정확한 로컬 값을 낡은 page.totalCount로 덮지 않는다.
 const mutationSeq = ref(0);
-// 삭제된 댓글·답글 id. 삭제 요청과 겹쳐 진행 중이던 "더 보기"/"답글 더 보기" 응답에 그
-// 항목이 다시 들어있어도 되살아나지 않게 막고, 같은 삭제 알림이 두 번 와도 한 번만 센다.
+// 삭제한 댓글·답글 id. 삭제와 겹친 "더 보기" 응답에 그 항목이 다시 있어도 되살리지 않고, 같은 삭제 알림이 두 번 와도 한 번만 센다.
 const deletedIds = reactive(new Set());
 
-// 등록 응답을 받은 뒤 로컬에 추가한 새 댓글과 "더 보기"로 받아 온 서버 페이지가 겹칠 수 있다
-// (같은 댓글이 새 등록 응답과 다음 페이지 응답 양쪽에 나타남). id 기준으로 중복을 걸러내고
-// 항상 오름차순을 유지해, 이미 들어와 있는 항목을 다시 push하지 않는다.
+// 등록 응답으로 추가한 새 댓글과 "더 보기" 응답의 서버 페이지가 겹칠 수 있다 — id로 중복을 거르고 오름차순을 유지한다.
 function mergeComments(newItems) {
     const existingIds = new Set(comments.map((c) => String(c.id)));
     for (const item of newItems) {
@@ -84,10 +70,7 @@ async function loadMore() {
             `${API.POSTS}/${props.postId}/comments/page?afterId=${lastLoadedId.value}`,
         );
         mergeComments(page.comments);
-        // 요청이 진행되는 동안 등록/답글/삭제가 없었을 때만 이 응답의 totalCount를 믿는다.
-        // 그사이 변경이 있었다면 로컬에서 이미 정확히 증감된 값을 유지한다. 서버가 이 값을
-        // 아예 생략(null)할 수도 있다 — "더 보기" 후속 페이지는 다시 세지 않으므로,
-        // 그때도 로컬 값을 그대로 둔다.
+        // 요청 중 등록/답글/삭제가 없었을 때만 응답의 totalCount를 믿는다(변경이 있었다면 로컬 값을 유지). 후속 페이지는 서버가 null로 생략할 수도 있다.
         if (mutationSeq.value === seqAtStart && page.totalCount != null) {
             totalCount.value = page.totalCount;
         }
@@ -107,20 +90,16 @@ async function save() {
     if (saving.value) {
         return;
     }
-    // 요청이 진행되는 동안 입력창을 막아 두므로(:disabled="saving"), 응답이 올 때까지
-    // content는 바뀌지 않는다 — 서버에 보낸 값과 화면에 표시하는 값을 같은 스냅샷으로 고정한다.
+    // 입력창이 요청 중 비활성화되어 content가 바뀌지 않으므로, 서버에 보낸 값과 화면에 표시하는 값을 같은 스냅샷으로 고정한다.
     const content = newContent.value;
     saving.value = true;
     try {
         const saved = await api.post(`${API.POSTS}/${props.postId}/comments`, {
             content,
         });
-        // 서버가 확정한 id·author·createdAt·version을 그대로 쓴다 — 예전에는 시각을 직접 만들어(new Date().toISOString(), UTC) 반영했는데,
-        // 새로고침 후 서버가 돌려주는 값과 표시가 달랐다. version이 없어 새로고침 전에 이
-        // 댓글을 바로 수정하면 낡은 화면 검사를 건너뛰는 문제도 있었다.
+        // 서버가 확정한 id·author·createdAt·version을 그대로 쓴다(직접 만든 시각은 새로고침 뒤 표시가 달랐고, version이 없으면 새로고침 전 수정이 낡은 화면 검사를 건너뛰었다).
         mergeComments([saved]);
-        // lastLoadedId는 건드리지 않는다 — 아직 안 불러온 더 오래된 댓글이 있다면(hasMore),
-        // 새 댓글의 id로 커서를 앞당기면 "더 보기"가 그 구간을 건너뛰게 된다.
+        // lastLoadedId는 건드리지 않는다 — 새 댓글 id로 커서를 앞당기면 아직 안 불러온 더 오래된 댓글 구간을 "더 보기"가 건너뛴다.
         totalCount.value += 1;
         mutationSeq.value += 1;
         if (newContent.value === content) {
@@ -152,9 +131,7 @@ function onUpdated({ id, content, version }) {
     const target = findCommentById(id);
     if (target) {
         target.content = content;
-        // 성공한 저장이 올린 새 버전을 반영해 둔다 — 그렇지 않으면 같은 댓글을
-        // 새로고침 없이 다시 수정할 때 이미 반영된 자신의 편집을 낡은 버전으로 오인해
-        // 불필요한 충돌(412)이 난다.
+        // 저장이 올린 새 버전을 반영한다 — 아니면 새로고침 없이 다시 수정할 때 자신의 편집을 낡은 버전으로 오인해 불필요한 충돌(412)이 난다.
         if (version !== undefined) {
             target.version = version;
         }
@@ -162,10 +139,7 @@ function onUpdated({ id, content, version }) {
     flash.showNow('COMMENT_UPDATED');
 }
 
-/**
- * 답글 등록 성공 시 그 부모의 replies에 붙인다(CommentItem이 emit). 부모의 답글 커서는
- * 움직이지 않는다 — 새 답글 id로 커서를 앞당기면 아직 받지 않은 답글을 건너뛴다.
- */
+/** 답글 등록 성공 시 그 부모의 replies에 붙인다(CommentItem이 emit). 새 답글 id로 커서를 앞당기면 아직 받지 않은 답글을 건너뛰므로 커서는 움직이지 않는다. */
 function onReplied({ parentId, reply }) {
     const parent = comments.find((c) => String(c.id) === String(parentId));
     if (parent && !applyReplyCreated(parent, reply)) {
@@ -176,10 +150,7 @@ function onReplied({ parentId, reply }) {
     flash.showNow('COMMENT_SAVED');
 }
 
-/**
- * 답글 더 보기 응답을 그 부모의 replies에 합친다.
- * 중복·삭제된 답글을 거르고 부모의 답글 커서를 서버 페이지 기준으로 전진시킨다.
- */
+/** 답글 더 보기 응답을 그 부모의 replies에 합친다(중복·삭제된 답글을 거르고 커서를 서버 페이지 기준으로 전진). */
 function onMoreRepliesLoaded({ parentId, replies, hasMore }) {
     const parent = comments.find((c) => String(c.id) === String(parentId));
     if (!parent) {
@@ -191,15 +162,12 @@ function onMoreRepliesLoaded({ parentId, replies, hasMore }) {
 // 삭제는 게시글과 공유하는 모달(delete-confirm.js)이 처리하고, 끝나면 이 이벤트로 알려온다.
 function onExternalDelete(event) {
     const { id, softDeleted } = event.detail;
-    // 답글이 있는 최상위 댓글은 행을 지우지 않고 내용만 비운다 — 목록에서 제거하지
-    // 않고 "삭제된 댓글입니다"로 바꿔 보여준다. 전체 개수는 바뀌지 않는다(행이 그대로 있다).
+    // 답글이 있는 최상위 댓글은 행을 지우지 않고 내용만 비운다 — "삭제된 댓글입니다"로 바꿔 보이며 전체 개수는 그대로다.
     if (softDeleted) {
         applySoftDelete(comments, id);
         return;
     }
-    // 최상위 댓글이면 그 답글까지 통째로 사라진다 — DB에 CASCADE를 걸지 않고 서비스가 답글을
-    // 먼저 명시적으로 지우므로(CommentService.delete), 전체 개수도 서버 기준 답글 수까지 함께
-    // 뺀다. 답글이면 부모의 replyCount도 함께 줄인다. 규칙은 commentState.applyDelete.
+    // 최상위 댓글은 답글까지 통째로 사라지므로(CommentService.delete) 전체 개수에서 서버 기준 답글 수까지 함께 빼고, 답글이면 부모의 replyCount도 줄인다(규칙: commentState.applyDelete).
     const removed = applyDelete(comments, id, deletedIds);
     if (removed > 0) {
         totalCount.value -= removed;

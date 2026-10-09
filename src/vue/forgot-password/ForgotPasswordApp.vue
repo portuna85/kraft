@@ -8,10 +8,7 @@ import { useFieldErrors } from '../shared/useFieldErrors.js';
 /**
  * 비밀번호 재설정 링크 요청.
  *
- * 성공·실패를 가리지 않고 <b>같은 안내</b>를 보여준다. 가입되지 않은 주소라고 알려주면
- * 그것만으로 "이 주소가 가입되어 있다"를 확인하는 도구가 되기 때문이다. 서버도 같은 이유로
- * 항상 204를 준다(PasswordResetService).
- *
+ * 성공·실패를 가리지 않고 <b>같은 안내</b>를 보여준다 — 가입되지 않은 주소라고 알려주면 "이 주소가 가입되어 있다"를 확인하는 도구가 되기 때문이다. 서버도 같은 이유로 항상 204를 준다(PasswordResetService).
  * 입력 형식 오류(400)만은 그대로 보여준다 — 그것은 계정 정보가 아니라 사용자가 고칠 입력이다.
  */
 const email = ref('');
@@ -31,12 +28,9 @@ async function onSubmit() {
     try {
         await api.post(API.PASSWORD_RESET, { email: snapshot.email });
         sent.value = true;
-        // 이 화면은 성공해도 페이지 이동이 없다 — 실패 후 재시도해 성공하면, 이전 시도가
-        // 남긴 #flash 오류 배너가 지워지지 않은 채 완료 안내와 함께 남는다.
+        // 이 화면은 성공해도 페이지 이동이 없다 — 실패 후 재시도해 성공하면 이전 시도가 남긴 #flash 오류 배너가 완료 안내와 함께 남으므로 지운다.
         flash.hide();
-        // 폼이 사라지고 완료 안내로 바뀐다 — role="status"만으로는 스크린리더가 그 순간
-        // 읽어주지 않을 수 있어, 게시글 추천/추천 결과와 같은 패턴으로
-        // 안내 문단에 포커스를 옮긴다.
+        // 폼이 사라지고 완료 안내로 바뀐다 — role="status"만으로는 스크린리더가 그 순간 읽어주지 않을 수 있어 안내 문단에 포커스를 옮긴다.
         await nextTick();
         doneHeading.value?.focus();
     } catch (error) {

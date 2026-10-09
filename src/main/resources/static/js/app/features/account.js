@@ -18,9 +18,7 @@ export function init() {
     ['changePasswordModal', 'withdrawModal', 'resendVerificationModal'].forEach(bindFocusReturn);
 }
 
-// 세 계정 모달(비밀번호 변경·회원 탈퇴·인증 메일 재발송) 모두 열 때 누르고 있던 버튼으로
-// 돌아가야 키보드 사용자가 위치를 잃지 않는다(문서 5.4, confirm-dialog.js·delete-confirm.js와
-// 같은 규칙). Bootstrap 자체는 트리거로의 포커스 복귀를 해 주지 않으므로 각 모달에 직접 건다.
+// 세 계정 모달 모두 열 때 누르고 있던 버튼으로 돌아가야 키보드 사용자가 위치를 잃지 않는다(Bootstrap은 트리거 복귀를 해 주지 않아 직접 건다).
 function bindFocusReturn(elementId) {
     const element = byId(elementId);
     if (!element) {
@@ -45,32 +43,20 @@ function initLogout() {
         return;
     }
 
-    // requestSubmit()이 아니라 submit()을 쓴다 — 전자는 Safari 16+이고 이 프로젝트의 지원
-    // 범위는 iOS 15부터다. 이 폼에는 submit 핸들러도 검증할 입력도 없어 차이가 없다.
+    // requestSubmit()은 Safari 16+이고 지원 범위가 iOS 15부터라 submit()을 쓴다(이 폼에는 submit 핸들러도 검증할 입력도 없다).
     on(button, 'click', () => {
-        // 이 계정의 초안을 지운다 — 다음에 이 브라우저로 로그인하는 사람이 볼 수
-        // 없게 한다. 서버 요청(폼 제출) 전에 해도 안전하다 — 실패해도 로그아웃은 어차피
-        // 진행되고, 초안은 지워져도 큰 손실이 아니다.
+        // 다음에 이 브라우저로 로그인하는 사람이 볼 수 없게 이 계정의 초안을 지운다(실패해도 로그아웃은 진행되고 초안 손실은 크지 않다).
         clearAllDrafts();
         form.submit();
     });
 }
 
 /**
- * 비밀번호 변경 모달. 별도 화면이 없어졌으므로 어느 화면에서든 헤더의 "비밀번호 변경"으로 열린다.
- *
- * 폼의 submit에 건다 — 예전처럼 버튼 click에만 걸면 Enter로 제출할 수 없고 required·minlength도
- * 걸리지 않는다. 제출 버튼은 모달 푸터에 있어 form 속성으로 연결된다.
- *
- * 오류는 화면 이동이 없으니 배너가 아니라 모달 안에서 보여준다(모달이 #flash를 덮는다).
- * 성공하면 로그인 화면으로 보낸다 — 로그아웃을 여기서 하지 않는 이유는 서버가 변경을 커밋한 뒤
- * 이 계정의 모든 세션을 이미 폐기했기 때문이다(UserService.changePassword). 예전처럼 JS가
- * 이어서 /logout을 호출하면 이미 없는 세션 때문에 CSRF·세션 검사에 걸린다.
+ * 비밀번호 변경 모달(어느 화면에서든 헤더의 "비밀번호 변경"으로 열린다). 폼의 submit에 걸어 Enter 제출과 required·minlength가 동작하고, 제출 버튼은 모달 푸터에서 form 속성으로 연결된다.
+ * 오류는 화면 이동이 없으니 모달 안에서 보여주고, 성공하면 로그인 화면으로 보낸다 — 서버가 커밋 후 이 계정의 모든 세션을 이미 폐기했으므로(UserService.changePassword) JS가 /logout을 이어 부르지 않는다.
  */
-// 모달을 열 때마다 올린다. 요청 시작 시점의 값을 스냅샷 떠 두면, 응답이 왔을 때 사용자가
-// 이미 모달을 닫고 다시 열어(폼을 reset한) 새 시도를 시작했는지 구분할 수 있다 — 낡은 실패를
-// 방금 새로 연 폼 위에 덮어씌우지 않는다. 성공 시의 이동은 세대와 무관하게
-// 항상 실행한다 — 서버가 이미 세션을 폐기했으므로 화면 상태와 무관하게 반드시 옮겨야 한다.
+// 모달을 열 때마다 올린다. 요청 시작 때의 값을 스냅샷 떠 두면 응답이 왔을 때 모달을 닫았다 다시 연 새 시도인지 구분할 수 있다 — 낡은 실패를 새 폼에 덮어씌우지 않는다.
+// 성공 시 이동은 세대와 무관하게 항상 한다(서버가 이미 세션을 폐기했다).
 let changePasswordGeneration = 0;
 
 function initChangePassword() {
@@ -113,8 +99,7 @@ function hideModalError() {
 
 async function changePassword(openedAt) {
     const button = must(buttonById('btn-change-password'), 'btn-change-password');
-    // disabled 버튼은 클릭은 막아도 같은 폼 안 입력창에서 Enter를 누른 submit까지 막지는
-    // 않는다 — 이미 진행 중이면 함수 자체가 재진입을 거부해야 한다.
+    // disabled 버튼은 클릭만 막고 입력창에서 Enter로 제출하는 경로는 막지 못하므로 함수 자체가 재진입을 거부한다.
     if (button.disabled) {
         return;
     }
@@ -139,11 +124,7 @@ async function changePassword(openedAt) {
 }
 
 /**
- * 회원 탈퇴 모달. 되돌릴 수 없는 작업이라 비밀번호를 한 번 더 받는다.
- *
- * 비밀번호 변경과 같은 자리에서 같은 규칙을 쓴다 — 오류는 화면 이동이 없으니 모달 안에서
- * 보여주고(모달이 #flash를 덮는다), 성공하면 서버가 이미 세션을 폐기했으므로 로그인 화면으로
- * 보낸다. 탈퇴 안내는 그 화면에서 flash로 한 번 보인다.
+ * 회원 탈퇴 모달. 되돌릴 수 없어 비밀번호를 한 번 더 받는다. 비밀번호 변경과 같은 규칙이다 — 오류는 모달 안에서, 성공하면(서버가 세션을 폐기했으므로) 로그인 화면으로 보내고 탈퇴 안내는 거기서 flash로 한 번 보인다.
  */
 // changePasswordGeneration과 같은 이유.
 let withdrawGeneration = 0;
@@ -206,13 +187,8 @@ async function withdraw(openedAt) {
 }
 
 /**
- * 인증 메일 재발송 모달. 버튼을 누르는 즉시 메일이 나가던 것을 한 번 확인받도록 바꿨다 —
- * 재발송은 이전 토큰을 무효로 만들기 때문이다.
- * <p>
- * changePassword·withdraw와 달리 generation 가드를 두지 않는다(검토 결과). 그 둘의
- * generation은 "모달을 닫고 다시 열었는데 이전 시도의 오류가 새 폼 위에 남는 것"을 막는데,
- * 이 모달은 입력 필드가 없고 오류를 모달 안이 아니라 전역 토스트로만 보여줘 다시 열어도
- * 남을 "이전 폼 상태" 자체가 없다. setBusy(false)만 재진입을 허용하면 충분하다.
+ * 인증 메일 재발송 모달. 재발송이 이전 토큰을 무효로 만들어 한 번 확인받는다. changePassword·withdraw와 달리 generation 가드를 두지 않는다 — 입력 필드가 없고 오류를
+ * 모달 안이 아니라 전역 토스트로만 보여줘 다시 열어도 남을 "이전 폼 상태"가 없으며, setBusy(false)만 재진입을 허용하면 충분하다.
  */
 function initResendVerification() {
     const button = buttonById('btn-confirm-resend');

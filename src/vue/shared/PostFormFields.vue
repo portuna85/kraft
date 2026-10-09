@@ -5,14 +5,10 @@ import MarkdownToolbar from './MarkdownToolbar.vue';
 
 /**
  * 글쓰기·수정 폼이 함께 쓰는 입력 칸(제목·분류·내용·사진)과 선택한 사진 미리보기.
- * 예전에는 PostSaveApp.vue와 PostEditApp.vue가 같은 마크업을 각자 갖고 있었다.
  *
- * 두 화면의 id는 서로 달라야 한다(수정 화면은 글 보기 영역과 한 문서에 함께 있고, E2E도 id로 고른다) —
- * 그래서 idPrefix('' 또는 'edit-')를 받아 분류·사진·오류 요소의 id에 붙인다. 제목과 내용 입력의
- * id는 두 화면 모두 `title`·`content`로 같다.
+ * 두 화면의 id는 서로 달라야 한다(수정 화면은 글 보기 영역과 한 문서에 함께 있고, E2E도 id로 고른다) — 그래서 idPrefix('' 또는 'edit-')를 받아 분류·사진·오류 요소의 id에 붙인다. 제목과 내용 입력의 id는 두 화면 모두 `title`·`content`로 같다.
  *
- * 값은 `v-model:title`·`v-model:category`·`v-model:content`로 주고받는다. 제출·초안·이탈 방지는 이 컴포넌트가
- * 모른다 — 부모(App)가 맡는다.
+ * 값은 `v-model:title`·`v-model:category`·`v-model:content`로 주고받는다. 제출·초안·이탈 방지는 부모(App)가 맡는다.
  */
 const props = defineProps({
     idPrefix: { type: String, default: '' },

@@ -17,15 +17,12 @@
     }
 }
 
-/* Bootstrap 5에는 .form-group이 없어 .mb-3로 바꿨다(간격 유틸리티가 그 역할을 한다).
-   폼 라벨 스타일은 계속 필요하므로 폼 안의 label을 직접 가리킨다(.form-label은 템플릿이 쓰지 않는다). */
+/* Bootstrap 5에는 .form-group이 없어(.mb-3 유틸리티가 간격을 맡는다) 폼 안의 label을 직접 가리킨다(.form-label은 템플릿이 쓰지 않는다). */
 .card-kraft form label,
 .modal-body form label,
 .comment-form label {
     font-weight: 600;
     color: var(--kraft-text);
-    // 원래 0.92rem이었다 — 다른 곳에 쓰이지 않는 값이라 가장 가까운 스케일 토큰으로
-    // 흡수한다(_tokens.scss 참고). 0.02rem 차이라 눈에 보이는 변화는 없다.
     font-size: $fs-sm;
 }
 
@@ -35,8 +32,7 @@
     border-radius: var(--kraft-radius-control);
 }
 
-// 텍스트 입력과 셀렉트는 WCAG 1.4.11(컨트롤 3:1)을 위해 진한 테두리를 쓴다. 셀렉트는 예전에 Bootstrap
-// 기본 연회색을 그대로 썼다.
+// 텍스트 입력과 셀렉트는 WCAG 1.4.11(컨트롤 3:1)을 위해 진한 테두리를 쓴다.
 .form-control,
 .form-select {
     border-color: var(--kraft-control-border);
@@ -56,8 +52,7 @@ textarea.form-control {
     resize: vertical;
 }
 
-// textarea.form-control(요소+클래스)이 .post-edit__textarea(클래스 하나)보다 명시도가 높아
-// 이 규칙이 늘 이겨 버렸다 — 240/360px 의도가 적용되지 않고 항상 120px이었다. 변형 선택자에 요소·기본 클래스를 함께 명시해 명시도를 올려서 이기게 한다.
+// textarea.form-control(요소+클래스)이 .post-edit__textarea(클래스 하나)보다 명시도가 높아 늘 이기므로, 변형 선택자에 요소·기본 클래스를 함께 명시해 명시도를 올린다(그렇지 않으면 240/360px이 적용되지 않고 항상 120px이다).
 textarea.form-control.post-edit__textarea {
     min-height: 240px;
 }

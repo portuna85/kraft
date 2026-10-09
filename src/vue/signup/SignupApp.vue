@@ -7,19 +7,11 @@ import { usePasswordConfirm } from '../shared/usePasswordConfirm.js';
 import { useFieldErrors } from '../shared/useFieldErrors.js';
 
 /**
- * 회원가입 폼.
+ * 회원가입 폼. "가입하기"는 진짜 submit이라 Enter 제출과 required·type=email 같은 브라우저 기본 검증이 먼저 걸리고, 통과한 뒤에야 onSubmit이 돈다.
  *
- * 예전에는 "가입하기"가 type=button이고 JS가 click에만 걸려 있어, Enter로 제출할 수도 없고
- * required·type=email 같은 브라우저 기본 검증도 전혀 걸리지 않았다.
- * 여기서는 진짜 submit을 쓴다 — 브라우저가 필수·형식·길이를 먼저 잡고, 통과한 뒤에야
- * onSubmit이 돈다.
+ * 비밀번호 확인 불일치는 서버에 물어볼 필요가 없는 입력 오류라 해당 필드 옆에서 알리고 포커스를 옮긴다. 이메일 중복 같은 서버 판정은 폼 전체에 걸리는 오류라 배너에 띄운다.
  *
- * 비밀번호 확인 불일치는 서버에 물어볼 필요가 없는 입력 오류라 해당 필드 옆에서 알리고
- * 포커스를 옮긴다. 반면 이메일 중복 같은 서버 판정은 폼 전체에 걸리는 오류라 배너에 띄운다.
- *
- * 이름·이메일은 앞뒤 공백을 떼지만 비밀번호는 그대로 보낸다. 예전 valueOf()는 비밀번호까지
- * 잘라내 사용자가 입력한 것과 다른 값이 저장됐다 — 로그인 폼은 서버로 원문을 보내므로
- * 양쪽이 어긋날 수 있었다.
+ * 이름·이메일은 앞뒤 공백을 떼지만 비밀번호는 그대로 보낸다 — 잘라내면 사용자가 입력한 것과 다른 값이 저장되고, 로그인 폼은 원문을 보내므로 양쪽이 어긋난다.
  */
 const form = reactive({
     name: '',
@@ -51,8 +43,7 @@ async function onSubmit() {
     }
 
     saving.value = true;
-    // 버튼이 비활성화되는 동안에도 입력란 자체는 잠그지 않으므로, 응답을 기다리는 사이
-    // 사용자가 값을 고치더라도 이번 요청은 제출 시점 스냅샷을 그대로 쓴다.
+    // 버튼이 비활성화되는 동안에도 입력란은 잠그지 않으므로, 응답을 기다리는 사이 값을 고치더라도 이번 요청은 제출 시점 스냅샷을 쓴다.
     const snapshot = { name: form.name, email: form.email, password: form.password };
     try {
         await api.post(API.USERS, {
@@ -63,8 +54,7 @@ async function onSubmit() {
         flash.set('SIGNUP_DONE');
         window.location.href = '/login';
     } catch (error) {
-        // 필드별 오류가 있으면 입력칸 옆에서 알린다. 이메일 중복처럼 필드 하나로
-        // 좁혀지지 않는 서버 판정에는 errors가 없으므로 그때만 배너로 보여준다.
+        // 필드별 오류가 있으면 입력칸 옆에서 알린다. 이메일 중복처럼 필드 하나로 좁혀지지 않는 서버 판정에는 errors가 없으므로 그때만 배너로 보여준다.
         const handledByField = await applyFieldErrors(error, {
             name: nameInput, email: emailInput, password: passwordInput,
         });
@@ -82,8 +72,7 @@ async function onSubmit() {
     @submit.prevent="onSubmit"
   >
     <div class="mb-3">
-      <!-- 이 값은 게시글·댓글 작성자로 누구에게나 보인다. 예전
-           라벨 "이름"은 실명을 넣으라는 뜻으로 읽힐 수 있었다. -->
+      <!-- 이 값은 게시글·댓글 작성자로 누구에게나 보인다. 라벨 "이름"은 실명을 넣으라는 뜻으로 읽힐 수 있어 "공개 닉네임"이라 부른다. -->
       <label for="name">공개 닉네임</label>
       <input
         id="name"
@@ -158,8 +147,7 @@ async function onSubmit() {
     </div>
     <div class="mb-3">
       <label for="passwordConfirm">비밀번호 확인</label>
-      <!-- 서버 검증과 어긋나지 않도록 여기에는 minlength를 걸지 않는다. 확인란의 판정 기준은
-           "위와 같은가"뿐이고, 길이·복잡도는 password 쪽과 서버가 본다. -->
+      <!-- 서버 검증과 어긋나지 않도록 minlength를 걸지 않는다. 확인란의 판정 기준은 "위와 같은가"뿐이고 길이·복잡도는 password 쪽과 서버가 본다. -->
       <input
         id="passwordConfirm"
         ref="confirmInput"

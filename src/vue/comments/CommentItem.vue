@@ -8,12 +8,8 @@ import { showToast } from '@ui/toast.js';
 import { replyAfterId } from './commentState.js';
 
 /**
- * 댓글 한 건의 읽기뷰/인라인 수정폼. 삭제 버튼은 여기서 처리하지 않는다 — 게시글과 댓글이
- * 함께 쓰는 공용 삭제 모달(delete-confirm.js)이 document 위임으로 이 버튼을 그대로 집어간다.
- * <p>
- * 답글(2단계 댓글) 자신을 그릴 때도 같은 컴포넌트를 재사용한다({@code isReply=true}) — "답글"
- * 버튼만 숨겨 3단계(답글의 답글)를 UI 단에서도 막는다. 서버가 최종 판정자다
- * (CommentService.save의 resolveParent).
+ * 댓글 한 건의 읽기뷰/인라인 수정폼. 삭제 버튼은 여기서 처리하지 않는다 — 게시글과 공용인 삭제 모달(delete-confirm.js)이 document 위임으로 집어간다.
+ * 답글(2단계)도 같은 컴포넌트로 그리며({@code isReply=true}) "답글" 버튼을 숨겨 3단계를 UI에서도 막는다. 최종 판정은 서버다(CommentService.resolveParent).
  */
 const props = defineProps({
     comment: { type: /** @type {import('vue').PropType<import('../shared/types.js').CommentViewDto>} */ (Object), required: true },
@@ -46,9 +42,7 @@ async function startReply() {
     replyTextarea.value?.focus();
 }
 
-// 취소·저장 성공 모두 폼을 닫는다 — 게시글 편집처럼 그 트리거 버튼으로 포커스를 되돌리지
-// 않으면, 방금까지 포커스를 갖고 있던 입력창·저장 버튼이 v-show로 숨겨진 채 여전히 활성
-// 요소로 남는다.
+// 취소·저장 성공 모두 폼을 닫는다 — 트리거 버튼으로 포커스를 되돌리지 않으면 숨겨진 입력창·저장 버튼이 여전히 활성 요소로 남는다.
 async function returnFocusToReplyButton() {
     await nextTick();
     replyButton.value?.focus();
@@ -73,9 +67,7 @@ async function saveReply() {
             content,
             parentId: props.comment.id,
         });
-        // 서버가 확정한 id·createdAt·version을 그대로 쓴다 —
-        // 직접 만든 시각은 새로고침 전후로 다르게 보였고, version이 없으면 그 답글을
-        // 새로고침 전에 다시 수정할 때 서버 검사를 건너뛰었다.
+        // 서버가 확정한 id·createdAt·version을 그대로 쓴다(직접 만든 시각은 새로고침 뒤 달라 보였고, version이 없으면 새로고침 전 수정이 서버 검사를 건너뛰었다).
         emit('replied', {
             parentId: props.comment.id,
             reply: saved,
@@ -102,9 +94,7 @@ async function returnFocusToEditButton() {
 }
 
 async function cancelEdit() {
-    // 저장 요청이 진행 중일 때 취소하면 폼은 사라지지만 응답은 그대로 도착해, 이미 취소한
-    // 내용으로 되돌아온다. 버튼은
-    // saving일 때 비활성화되지만, 방어적으로 여기서도 막는다.
+    // 저장 요청 중 취소하면 폼은 사라져도 응답이 도착해 취소한 내용으로 되돌아온다 — 버튼은 saving일 때 비활성화되지만 방어적으로 여기서도 막는다.
     if (saving.value) {
         return;
     }
@@ -116,23 +106,16 @@ async function save() {
     if (saving.value) {
         return;
     }
-    // 요청에 실제로 보낸 값과 updated 이벤트에 담는 값이 갈리지 않도록, 시작 시점에 한 번만
-    // 읽어 둔다 — 예전에는 요청 본문은 이 시점의 draftContent를, emit은 await가 끝난
-    // 뒤의 draftContent를 따로 읽었다. textarea가 saving 중 비활성화돼 일반 입력으로는 그
-    // 사이 값이 바뀌지 않지만, 프로그램에 의한 변경까지 막는 방어적 조치다.
+    // 요청에 보낸 값과 updated 이벤트에 담는 값이 갈리지 않게 시작 시점에 한 번만 읽는다(프로그램에 의한 변경까지 막는 방어).
     const content = draftContent.value;
     const requestVersion = props.comment.version;
     saving.value = true;
     try {
         const saved = await api.put(`${API.COMMENTS}/${props.comment.id}`, { content }, {
-            // 편집을 시작할 때 받아간 버전을 If-Match로 보낸다. 서버는 기준 버전 없는 수정을 받지 않는다 —
-            // 방금 이 화면에서 만든 댓글·답글도 등록 응답(CommentViewDto)의 version을 그대로 들고 있다. 그 사이
-            // 다른 곳에서 저장됐으면 서버가 412로 거절한다.
+            // 편집을 시작할 때 받아간 버전을 If-Match로 보낸다(서버는 기준 버전 없는 수정을 받지 않는다 — 방금 만든 댓글도 등록 응답의 version을 들고 있다). 그 사이 저장됐으면 412.
             headers: ifMatchHeaders(requestVersion),
         });
-        // 서버가 실제로 반영한 version을 그대로 쓴다 — 예전에는
-        // "성공했으니 +1"로 추측했는데, 내용이 실제로 바뀌지 않으면 DB의 버전이 그대로라
-        // 그 추측이 어긋나 다음 정상 수정이 가짜 충돌(412)을 받았다.
+        // 서버가 실제로 반영한 version을 쓴다 — "+1" 추측은 내용이 바뀌지 않아 DB 버전이 그대로일 때 어긋나 다음 정상 수정이 가짜 충돌(412)을 받는다.
         emit('updated', { id: props.comment.id, content: saved.content, version: saved.version });
         editing.value = false;
         await returnFocusToEditButton();
@@ -143,16 +126,14 @@ async function save() {
     }
 }
 
-// 답글 더 보기. 최초 페이지는 부모 하나당 답글을 일부만(서버 상수
-// INITIAL_REPLIES_PER_PARENT) 내려준다 — comment.hasMoreReplies가 true면 이어서 부른다.
+// 답글 더 보기. 최초 페이지는 부모당 답글을 일부만 내려주므로(서버 INITIAL_REPLIES_PER_PARENT) comment.hasMoreReplies가 true면 이어서 부른다.
 const loadingMoreReplies = ref(false);
 
 async function loadMoreReplies() {
     if (loadingMoreReplies.value) {
         return;
     }
-    // 화면 배열의 마지막 id가 아니라 서버 페이지로 받은 마지막 답글 id를 쓴다 — 이 화면에서
-    // 새로 쓴 답글이 배열 끝에 있으면 그 사이 아직 받지 않은 답글을 건너뛴다.
+    // 화면 배열의 마지막 id가 아니라 서버 페이지로 받은 마지막 답글 id를 쓴다 — 새로 쓴 답글이 끝에 있으면 아직 받지 않은 답글을 건너뛴다.
     const afterId = replyAfterId(props.comment);
     loadingMoreReplies.value = true;
     try {
@@ -178,8 +159,7 @@ const hasActions = computed(() => (
 const moderating = ref(false);
 
 /**
- * 댓글을 숨기거나('blind') 숨김을 푼다('unblind'). 관리자만 쓰고, 성공하면 서버가 새로 렌더링한 화면으로 다시
- * 불러온다.
+ * 댓글을 숨기거나('blind') 숨김을 푼다('unblind'). 관리자만 쓰며, 성공하면 서버가 새로 렌더링한 화면으로 다시 불러온다.
  *
  * @param {'blind' | 'unblind'} action
  */
@@ -213,8 +193,7 @@ async function moderate(action) {
           <time :datetime="comment.createdAt">{{ formatDateTime(comment.createdAt) }}</time>
         </small>
       </div>
-      <!-- 답글이 있어 행은 남기고 내용만 비운 댓글이다. 수정·삭제·신고는
-           숨기고, 답글은 계속 달 수 있게 둔다(대화가 이어질 수 있어야 한다). -->
+      <!-- 답글이 있어 행은 남기고 내용만 비운 댓글 — 수정·삭제는 숨기고 답글은 계속 달 수 있게 둔다(대화가 이어져야 한다). -->
       <p
         v-if="comment.deleted"
         class="comment-list__content comment-list__content--deleted text-muted"
@@ -236,8 +215,7 @@ async function moderate(action) {
           class="text-muted me-1"
         >[숨김]</small>{{ comment.content }}
       </p>
-      <!-- 행동 버튼 줄은 한 번만 그린다. 삭제된 댓글은 답글만, 내 댓글은 수정·삭제, 남의 댓글은 신고를
-           앞에 두고, 답글 버튼은 모두 같은 자리 하나에서 그린다. -->
+      <!-- 행동 버튼 줄은 한 번만 그린다: 삭제된 댓글은 답글만, 내 댓글은 수정·삭제, 답글 버튼은 모두 같은 자리 하나에서. -->
       <div
         v-if="hasActions"
         class="btn-group-gap comment-actions"
@@ -282,8 +260,7 @@ async function moderate(action) {
         >
           숨김 해제
         </button>
-        <!-- 답글은 최상위 댓글에만 보인다 — isReply면 이 버튼 자체를 그리지 않아 3단계(답글의
-             답글)를 UI 단에서도 막는다. 최종 판정은 서버가 한다(CommentService.resolveParent). -->
+        <!-- 답글 버튼은 최상위 댓글에만 보인다(isReply면 그리지 않아 3단계를 UI에서도 막는다). 최종 판정은 서버(CommentService.resolveParent). -->
         <button
           v-if="!isReply && canWrite"
           ref="replyButton"
@@ -297,9 +274,7 @@ async function moderate(action) {
       </div>
     </div>
 
-    <!-- 열렸을 때만 마운트한다(v-show가 아니라 v-if) — 답글 폼은 열림 여부와 무관하게 항상
-         DOM에 있었다. draftContent/replyContent는 컴포넌트 setup 스코프의
-         ref라 폼이 사라져도 값 자체는 남는다. -->
+    <!-- 열렸을 때만 마운트한다(v-if). draftContent/replyContent는 setup 스코프의 ref라 폼이 사라져도 값은 남는다. -->
     <form
       v-if="!isReply && replying"
       class="comment-reply-form"
@@ -339,8 +314,7 @@ async function moderate(action) {
         </button>
       </div>
     </form>
-    <!-- 같은 이유. canManage가 아닌 사람은 애초에 editing을 true로 만들 경로가 없지만
-         (수정 버튼 자체가 canManage일 때만 그려진다), 방어적으로 조건에 함께 넣는다. -->
+    <!-- canManage가 아니면 editing을 true로 만들 경로가 없지만(수정 버튼 자체가 canManage일 때만 그려진다) 방어적으로 조건에 함께 넣는다. -->
     <form
       v-if="editing && comment.canManage"
       class="comment-edit-form"
@@ -380,8 +354,7 @@ async function moderate(action) {
       </div>
     </form>
 
-    <!-- 답글 목록. 2단계뿐이므로 재귀는 여기서 끝난다 — isReply=true로 넘겨 답글 자신에게는
-         "답글" 버튼도, 또 다른 중첩 목록도 그려지지 않는다. -->
+    <!-- 답글 목록. 2단계뿐이라 재귀는 여기서 끝난다 — isReply=true로 넘겨 답글에는 "답글" 버튼도 중첩 목록도 그려지지 않는다. -->
     <ul
       v-if="!isReply && comment.replies && comment.replies.length > 0"
       class="comment-list comment-list__replies"

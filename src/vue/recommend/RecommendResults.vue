@@ -7,9 +7,8 @@ import { formatAll, formatCombination, letterOf } from './recommendRequest.js';
 import RecommendIcon from './RecommendIcon.vue';
 
 /**
- * 번호 추천 화면의 오른쪽 카드("02 / 결과"). 제목(h2)은 결과가 없을 때도 항상 있다 — 성공 후 포커스가 그리로
- * 옮겨 가고, 스크린리더 사용자가 결과 영역을 찾는 기준이 된다. 알림(이력 준비 중·오류)과 이전 결과가 함께
- * 있을 수 있다: 재시도가 실패해도 이전 결과는 남는다.
+ * 번호 추천 화면의 오른쪽 카드("02 / 결과"). 제목(h2)은 결과가 없을 때도 항상 있다 — 성공 후 포커스가 그리로 옮겨 가고, 스크린리더 사용자가 결과 영역을 찾는 기준이 된다.
+ * 알림(이력 준비 중·오류)과 이전 결과가 함께 있을 수 있다: 재시도가 실패해도 이전 결과는 남는다.
  */
 const props = defineProps({
     result: {
@@ -29,8 +28,7 @@ let resetTimer = 0;
 onBeforeUnmount(() => window.clearTimeout(resetTimer));
 
 /**
- * 클릭 핸들러 안에서 바로 복사한다(클립보드는 사용자 제스처가 필요하다). 성공·실패는 토스트가 알린다 —
- * 토스트가 이미 aria-live 영역이라 따로 낭독 영역을 두지 않는다(이중 낭독 방지).
+ * 클릭 핸들러 안에서 바로 복사한다(클립보드는 사용자 제스처가 필요하다). 성공·실패는 토스트가 알린다 — 토스트가 이미 aria-live 영역이라 따로 낭독 영역을 두지 않는다(이중 낭독 방지).
  *
  * @param {string} text
  * @param {number | 'all'} key

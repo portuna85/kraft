@@ -5,16 +5,11 @@ import { applyMarkup, nextToolbarIndex } from './markdownToolbar.js';
 import MarkdownBody from './MarkdownBody.vue';
 
 /**
- * 글쓰기·수정 폼의 본문 입력 위에 얹는 마크다운 툴바(12단계). `PostSaveApp.vue`·
- * `PostEditApp.vue`가 같은 컴포넌트를 쓴다 — `v-model`로 `draft.content`를 그대로
- * 바꾸므로 자동 임시 저장(8단계)과 그대로 맞물린다.
+ * 글쓰기·수정 폼의 본문 입력 위에 얹는 마크다운 툴바. `PostSaveApp.vue`·`PostEditApp.vue`가 같이 쓰며, `v-model`로 `draft.content`를 그대로 바꾸므로 자동 임시 저장과 맞물린다.
  *
- * textarea는 이 컴포넌트가 직접 그린다(슬롯이 아니다) — 선택 영역(selectionStart/End)을
- * 읽고 커서를 되돌리려면 같은 컴포넌트 안에서 ref로 붙잡고 있어야 한다.
+ * textarea는 슬롯이 아니라 이 컴포넌트가 직접 그린다 — 선택 영역(selectionStart/End)을 읽고 커서를 되돌리려면 같은 컴포넌트 안에서 ref로 붙잡고 있어야 한다.
  *
- * 13단계: 서식 버튼 묶음을 WAI-ARIA 툴바 패턴(role="toolbar" + roving tabindex)으로
- * 바꿨다 — 이전에는 버튼 8개가 각각 Tab 정지였다. 작성/미리보기 전환은 서식과 다른
- * 종류의 조작이라 별도 role="group"으로 뺐다. Ctrl/⌘+B·I 단축키를 추가했다.
+ * 서식 버튼 묶음은 WAI-ARIA 툴바 패턴(role="toolbar" + roving tabindex)이다. 작성/미리보기 전환은 서식과 다른 종류의 조작이라 별도 role="group"으로 뺐다. Ctrl/⌘+B·I 단축키를 지원한다.
  */
 const props = defineProps({
     modelValue: { type: String, required: true },
@@ -22,8 +17,7 @@ const props = defineProps({
     disabled: { type: Boolean, default: false },
     maxlength: { type: Number, default: POST.CONTENT_MAX_LENGTH },
     placeholder: { type: String, default: '' },
-    // 서버 검증 오류가 이 필드를 가리킬 때 부모가 넘긴다. 예전에는 aria-invalid를 attr로
-    // 넘겨 루트 div에 붙었다 — textarea에 직접 걸리도록 명시적인 prop으로 받는다.
+    // 서버 검증 오류가 이 필드를 가리킬 때 부모가 넘긴다. aria-invalid가 루트 div가 아니라 textarea에 직접 걸리도록 명시적인 prop으로 받는다.
     invalid: { type: Boolean, default: false },
     // 오류 메시지 요소의 id. 서식 도움말(hintId)과 함께 aria-describedby에 합쳐진다.
     describedby: { type: String, default: undefined },
@@ -44,9 +38,7 @@ const TOOLS = [
     { kind: 'link', label: '링크', aria: '링크' },
 ];
 
-// roving tabindex: 이 인덱스의 버튼만 tabindex="0"이고 나머지는 "-1"이다. 툴바에 처음
-// Tab으로 들어오면 항상 첫 버튼에서 시작한다(마지막 사용 버튼을 기억하지 않는다 — 예측
-// 가능성을 우선한다).
+// roving tabindex: 이 인덱스의 버튼만 tabindex="0"이다. 툴바에 처음 Tab으로 들어오면 항상 첫 버튼에서 시작한다(마지막 사용 버튼을 기억하지 않는다 — 예측 가능성을 우선한다).
 const activeToolIndex = ref(0);
 const toolButtons = ref(/** @type {HTMLButtonElement[]} */ ([]));
 
@@ -95,15 +87,9 @@ function onTextareaKeydown(event) {
     }
 }
 
-// v-show(display:none) 대신 시각적으로만 가린다 — display:none인 요소는 브라우저의 폼
-// 검증 대상에서 빠진다(제약 검증 제외 규칙). 미리보기 상태로 등록을 눌러도 내용이 비어
-// 있으면 required가 그대로 막아야 하므로, 이 textarea는 미리보기 상태에서도 계속 검증
-// 대상으로 DOM에 남아 있어야 한다.
-//
-// 대신 tabindex="-1"·aria-hidden="true"로 일반적인 탐색·스크린 리더 낭독에서는 뺀다.
-// 브라우저가 제출 시 이 필드를 invalid로 판단하면(내용이 비어 있으면) 자동으로 포커스를
-// 시도하는데, 그 시점엔 여전히 시각적으로 숨겨져 있어 사용자가 아무 반응도 못 본다 —
-// invalid 이벤트에서 먼저 작성 모드로 돌아온 뒤 우리가 직접 포커스한다.
+// v-show(display:none) 대신 시각적으로만 가린다 — display:none인 요소는 브라우저 폼 검증 대상에서 빠지는데, 미리보기 상태로 등록을 눌러도 내용이 비어 있으면 required가 막아야 한다.
+// 대신 tabindex="-1"·aria-hidden="true"로 탐색·스크린 리더 낭독에서는 뺀다. 브라우저는 제출 시 invalid 필드에 자동으로 포커스를 시도하는데 그때 시각적으로 숨겨져 있으면
+// 사용자가 아무 반응도 못 보므로, invalid 이벤트에서 먼저 작성 모드로 돌아온 뒤 직접 포커스한다.
 function onInvalid() {
     mode.value = 'write';
     nextTick(() => {
@@ -111,8 +97,7 @@ function onInvalid() {
     });
 }
 
-// 서버 검증 오류가 이 필드를 가리킬 때 부모가 포커스를 옮길 수 있게 한다 —
-// onInvalid와 같은 이유로 먼저 작성 모드로 돌아와야 실제로 보이는 textarea에 포커스가 간다.
+// 서버 검증 오류가 이 필드를 가리킬 때 부모가 포커스를 옮길 수 있게 한다 — onInvalid와 같은 이유로 먼저 작성 모드로 돌아온다.
 defineExpose({
     focus() {
         mode.value = 'write';
@@ -187,8 +172,7 @@ defineExpose({
       @keydown="onTextareaKeydown"
       @invalid="onInvalid"
     />
-    <!-- v-show가 아니라 v-if다 — 숨겨 둔 채로도 키 입력마다 parseMarkdown이 돌았다. 미리보기를
-         켤 때만 렌더링(=파싱)한다. -->
+    <!-- v-show가 아니라 v-if다 — 숨겨 둔 채로는 키 입력마다 parseMarkdown이 돈다. 미리보기를 켤 때만 렌더링(=파싱)한다. -->
     <div
       v-if="mode === 'preview'"
       class="markdown-toolbar__preview post-body post-body--md"

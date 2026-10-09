@@ -24,8 +24,7 @@ import {
  */
 
 /**
- * 번호 추천 화면의 상태와 생성 흐름을 담는다. 추천 개수는 화면이 고른 값을 그대로 요청에 싣는다
- * ({@link buildRequest}). 응답 순서 번호로, 늦게 도착한 이전 요청의 결과를 무시한다.
+ * 번호 추천 화면의 상태와 생성 흐름을 담는다. 추천 개수는 화면이 고른 값을 그대로 요청에 싣고({@link buildRequest}), 응답 순서 번호로 늦게 도착한 이전 요청의 결과를 무시한다.
  */
 export function useRecommendation() {
     const status = ref('idle'); // idle | generating | ready | history-not-ready | error
@@ -77,9 +76,7 @@ export function useRecommendation() {
                 return;
             }
 
-            // ProblemDetail의 detail은 이미 한국어 사용자 문구다(ApiExceptionHandler). 본문이 없는
-            // 403(CSRF·세션 만료)은 http.js가 고정 안내 문구를 채워 준다. 사용자가 조치할 수 있는 오류에는
-            // 다음 행동을 덧붙인다(describeFailure).
+            // ProblemDetail의 detail은 이미 한국어 사용자 문구다(ApiExceptionHandler). 본문이 없는 403(CSRF·세션 만료)은 http.js가 고정 안내 문구를 채운다. 조치할 수 있는 오류에는 다음 행동을 덧붙인다(describeFailure).
             status.value = 'error';
             errorMessage.value = describeFailure(apiError.body?.code, messageOf(error));
             // 오류는 화면의 role="alert"가 낭독하므로 polite 영역에는 싣지 않는다.

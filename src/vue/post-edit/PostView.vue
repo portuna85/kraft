@@ -8,8 +8,7 @@ import MarkdownBody from '../shared/MarkdownBody.vue';
 import PostAdminBar from './PostAdminBar.vue';
 
 /**
- * 게시글 읽기 화면: 본문·글자 크기·공유·추천·신고/수정/삭제 버튼. 편집 폼은 PostEditApp이 맡고,
- * 이 컴포넌트는 "수정"을 누르면 `edit`만 알린다. 추천은 서버가 반환한 상태만 반영한다.
+ * 게시글 읽기 화면: 본문·글자 크기·공유·추천·수정/삭제 버튼. 편집 폼은 PostEditApp이 맡고, 이 컴포넌트는 "수정"을 누르면 `edit`만 알린다. 추천은 서버가 반환한 상태만 반영한다.
  */
 const props = defineProps({
     post: { type: /** @type {import('vue').PropType<import('../shared/types.js').PostViewDto>} */ (Object), required: true },
@@ -18,8 +17,7 @@ const props = defineProps({
 });
 defineEmits(['edit']);
 
-// 로그인 후 이 글로 돌아오게 한다 — navbar의 로그인 링크와 같은 규칙
-// (NavModelAdvice.currentPath)이다. 예전에는 href="/login"만 써서 로그인 뒤 홈으로 떨어졌다.
+// 로그인 후 이 글로 돌아오게 한다 — navbar의 로그인 링크와 같은 규칙(NavModelAdvice.currentPath)이다.
 const loginHref = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
 
 const liked = ref(props.post.likedByMe);
@@ -27,9 +25,7 @@ const likeCount = ref(props.post.likeCount);
 const liking = ref(false);
 const editButton = ref(/** @type {HTMLButtonElement | null} */ (null));
 
-// 글자크기 조절: 3단계(작게/보통/크게), 세션을 넘어 유지하도록 localStorage에 기억한다.
-// localStorage 접근이 막힌 환경(프라이빗 모드 등)에서도 화면은 기본값으로 그대로 동작해야
-// 하므로 읽기·쓰기 모두 조용히 실패를 삼킨다.
+// 글자크기 조절: 3단계(작게/보통/크게)를 세션을 넘어 localStorage에 기억한다. 저장소가 막힌 환경(프라이빗 모드 등)에서도 기본값으로 동작해야 하므로 읽기·쓰기 실패를 조용히 삼킨다.
 const FONT_SCALE_STORAGE_KEY = 'kraft:post-font-scale';
 const FONT_SCALES = ['0.875rem', '1rem', '1.125rem'];
 const DEFAULT_FONT_SCALE_INDEX = 1;
@@ -55,12 +51,8 @@ function setFontScaleIndex(index) {
 }
 
 /**
- * navigator.share가 있으면(iOS Safari·Android Chrome) 네이티브 공유 시트를 먼저 띄운다
- * — 메시지 앱으로 바로 보내기 같은, 클립보드 복사보다 나은 경로를 그 플랫폼이
- * 이미 제공하기 때문이다. 없는 브라우저(대부분의 데스크톱)는 기존 클립보드 복사로 물러선다.
- * 사용자가 공유 시트를 취소하면 AbortError가 나는데, 이때는 클립보드로도 대신 복사하지
- * 않는다 — 취소는 "공유하지 않겠다"는 의사 표시라 조용히 끝나는 것이 맞고, 그런데도 뭔가
- * 복사됐다는 토스트가 뜨면 오히려 혼란스럽다.
+ * navigator.share가 있으면(iOS Safari·Android Chrome) 네이티브 공유 시트를 먼저 띄운다 — 메시지 앱으로 바로 보내기처럼 클립보드 복사보다 나은 경로를 그 플랫폼이 이미 제공한다.
+ * 없는 브라우저(대부분의 데스크톱)는 클립보드 복사로 물러선다. 공유 시트를 취소하면 AbortError가 나는데, 취소는 "공유하지 않겠다"는 의사 표시라 클립보드로 대신 복사하지 않고 조용히 끝낸다.
  */
 async function shareLink() {
     if (navigator.share) {
@@ -156,9 +148,7 @@ defineExpose({ focusEditButton: () => editButton.value?.focus() });
       v-if="post.picture"
       class="post-image"
     >
-      <!-- 상세 본문 이미지는 대개 첫 화면(LCP 후보)이다. 크기를 알면(V32 이후
-           저장된 글) eager+높은 우선순위로 바꾸고 width/height로 레이아웃 이동(CLS)을
-           막는다 — 크기를 모르는 옛 글은 이전 동작(lazy, 속성 없음) 그대로 둔다. -->
+      <!-- 상세 본문 이미지는 대개 첫 화면(LCP 후보)이다. 크기를 알면(V32 이후 저장된 글) eager+높은 우선순위로 바꾸고 width/height로 레이아웃 이동(CLS)을 막는다 — 크기를 모르는 옛 글은 lazy, 속성 없음 그대로 둔다. -->
       <img
         :src="post.picture"
         :width="post.pictureWidth ?? undefined"
@@ -181,7 +171,7 @@ defineExpose({ focusEditButton: () => editButton.value?.focus() });
       </button>
     </div>
 
-    <!-- 삭제된 글(관리자에게만 열린다)에는 추천·신고·수정·삭제를 두지 않는다 — 복구만 할 수 있다. -->
+    <!-- 삭제된 글(관리자에게만 열린다)에는 추천·수정·삭제를 두지 않는다 — 복구만 할 수 있다. -->
     <div
       v-if="authenticated && !post.deleted"
       class="btn-group-gap post-actions"

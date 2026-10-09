@@ -1,19 +1,13 @@
 <!DOCTYPE HTML>
 <html xmlns:th="http://www.thymeleaf.org">
 <!--
-    13단계: 가벼운 마크다운(12단계, src/vue/shared/markdown.js)을 서버가 먼저 그리는 본문
-    (post-update.html의 post-ssr, Vue가 마운트하기 전·마운트 실패 시 보이는 화면)에도
-    적용한다. MarkdownParser(com.kraft.post.markdown)가 markdown.js와 같은 모양의 AST를
-    만들어 모델에 담고, 이 프래그먼트가 그 AST를 th:each/th:text로만 그린다 — th:utext는
-    쓰지 않는다. Vue 쪽(MarkdownBody.vue·MarkdownInline.vue)이 만드는 태그·클래스와
-    똑같이 맞춘다: <p>/<ul>/<ol>/<li>/<strong>/<em>/<code>/<a>뿐, 감싸는 요소가 없다.
-    AST는 markdown.js와 같은 JSON 모양(Map 기반)이다 — 블록은 {type, children|items},
-    인라인은 문자열 그대로거나 {type, text|children|href} — 그래서 td:switch 대신
-    instanceof로 문자열/맵을 먼저 구분한다(문자열에는 .type 같은 속성이 없어 접근하면
-    예외가 난다). 아래 일반 HTML 주석(<!-- -->)은 th:if로 걸러지지 않고 매 반복마다 그대로
-    출력에 남으므로, 설명은 전부 th:each 루프 밖(여기)에 모아 둔다 — a 태그의 rel·target은
-    Vue 쪽(MarkdownInline.vue)과 같다: 검색엔진에 평판을 넘기지 않고(nofollow), 사용자가
-    만든 콘텐츠임을 표시하며(ugc), 새 탭에서 열어도 opener를 통한 역참조를 막는다.
+    가벼운 마크다운(src/vue/shared/markdown.js)을 서버가 먼저 그리는 본문(post-update.html의 post-ssr — Vue가 마운트하기 전·마운트 실패 시 보이는 화면)용 프래그먼트다.
+    MarkdownParser(com.kraft.post.markdown)가 markdown.js와 같은 모양의 AST를 만들어 모델에 담고, 이 프래그먼트가 그 AST를 th:each/th:text로만 그린다 — th:utext는 쓰지 않는다.
+    Vue 쪽(MarkdownBody.vue·MarkdownInline.vue)이 만드는 태그·클래스와 똑같이 맞춘다: p/ul/ol/li/strong/em/code/a뿐, 감싸는 요소가 없다.
+    AST는 markdown.js와 같은 JSON 모양(Map 기반)이다 — 블록은 {type, children|items}, 인라인은 문자열 그대로거나 {type, text|children|href} — 그래서 th:switch 대신
+    instanceof로 문자열/맵을 먼저 구분한다(문자열에는 .type 같은 속성이 없어 접근하면 예외가 난다).
+    일반 HTML 주석은 th:if로 걸러지지 않고 매 반복마다 출력에 남으므로, 설명은 전부 th:each 루프 밖(여기)에 모은다.
+    a 태그의 rel·target은 Vue 쪽(MarkdownInline.vue)과 같다: 검색엔진에 평판을 넘기지 않고(nofollow), 사용자가 만든 콘텐츠임을 표시하며(ugc), 새 탭에서 열어도 opener를 통한 역참조를 막는다.
 -->
 <body>
     <th:block th:fragment="blocks(nodes)">

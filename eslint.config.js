@@ -4,16 +4,11 @@ import vuePlugin from 'eslint-plugin-vue';
 import compat from 'eslint-plugin-compat';
 
 /**
- * 정적 검사 설정.
- *
- * IDE에만 뜨고 어디에도 기록되지 않던 경고들(`Unresolved variable or type bootstrap`,
- * `'var' is used instead of 'let' or 'const'` 등)을 규칙으로 고정해, 고쳐야 할 목록이
- * 눈에 보이고 다시 쌓이지 않게 한다.
+ * 정적 검사 설정. IDE에만 뜨고 기록되지 않던 경고(`Unresolved variable or type bootstrap`, `'var' is used instead of 'let' or 'const'` 등)를 규칙으로 고정해, 고쳐야 할 목록이 보이고 다시 쌓이지 않게 한다.
  */
 export default [
     {
-        // vue-dist는 Vite가 만든 산출물, vendor는 그대로 복사해 온 외부 라이브러리라
-        // 둘 다 사람이 손대지 않는다 — 검사 대상에서 뺀다.
+        // vue-dist는 Vite가 만든 산출물이라 사람이 손대지 않으므로 검사 대상에서 뺀다.
         ignores: [
             'node_modules/**',
             'build/**',
@@ -32,10 +27,7 @@ export default [
             sourceType: 'module',
             globals: {
                 ...globals.browser,
-                // Bootstrap은 src/vue/bootstrap/entry.js가 올려주는 전역이다(footer.html 참고,
-                // Modal·Toast만). plain JS는 번들하지 않아 직접 import할 수 없고, Vue 번들과
-                // 인스턴스가 갈라지지 않게 한 곳에서만 만든다. 여기 선언해 두면 "Unresolved
-                // variable or type bootstrap"이 사라진다.
+                // Bootstrap은 src/vue/bootstrap/entry.js가 올려주는 전역이다(footer.html 참고, Modal·Toast만). plain JS는 직접 import하지 않고 이 전역을 쓰며, 인스턴스는 한 곳에서만 만든다.
                 bootstrap: 'readonly',
             },
         },
@@ -47,11 +39,8 @@ export default [
             'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
         },
     },
-    // 이 앱이 주장하는 지원 하한(iOS 15, package.json의 browserslist)을 순수 JS에도
-    // 강제한다. Vue 산출물은 vite.config.js의 target: 'ios15'가 esbuild 변환으로 이미 맞추지만,
-    // 이 폴더는 번들링 없이 그대로 서빙되므로 새 문법·런타임 API를 걸러 줄 도구가 없었다 —
-    // 지금까지는 코드 주석으로만 피해 왔다(CommentsApp.vue의 .at() 회피 등). languageOptions는
-    // 위 블록의 bootstrap 전역 선언과 합쳐지도록 여기서는 plugins·rules만 추가한다.
+    // 이 앱이 주장하는 지원 하한(iOS 15, package.json의 browserslist)을 JS에도 강제한다. vite.config.js의 target: 'ios15'는 문법만 낮추고 새 런타임 API(CommentsApp.vue의 .at() 회피 등)는 걸러 주지 못한다.
+    // languageOptions는 위 블록의 bootstrap 전역 선언과 합쳐지도록 여기서는 plugins·rules만 추가한다.
     {
         files: ['src/main/resources/static/js/**/*.js', 'src/vue/**/*.{js,vue}'],
         plugins: { compat },
@@ -65,8 +54,7 @@ export default [
         languageOptions: {
             ecmaVersion: 2022,
             sourceType: 'module',
-            // 스펙 파일은 Node에서 돌지만 page.evaluate() 콜백 안은 브라우저 컨텍스트라
-            // document·window를 정당하게 쓴다. 둘 다 허용한다.
+            // 스펙 파일은 Node에서 돌지만 page.evaluate() 콜백 안은 브라우저 컨텍스트라 document·window를 쓴다. 둘 다 허용한다.
             globals: { ...globals.node, ...globals.browser, bootstrap: 'readonly' },
         },
         rules: {
@@ -78,7 +66,6 @@ export default [
     },
 
     // Vue 아일랜드 소스. vite.config.js는 Node에서, 나머지(.vue/composable)는 브라우저에서 돈다.
-    // vue-dist는 Vite가 만든 산출물(사람이 손대지 않음)이라 정적 검사 대상에서 제외한다.
     {
         files: ['src/vue/**/*.js'],
         ignores: ['src/vue/vite.config.js'],
@@ -105,8 +92,7 @@ export default [
             globals: { ...globals.node },
         },
     },
-    // eslint-plugin-vue의 flat/recommended는 여러 config 조각(파서 설정·규칙)으로 이뤄진
-    // 배열이다. 프로젝트 전역이 아니라 src/vue/**/*.vue에만 적용되도록 각 조각에 files를 씌운다.
+    // eslint-plugin-vue의 flat/recommended는 여러 config 조각(파서 설정·규칙)의 배열이다. 프로젝트 전역이 아니라 src/vue/**/*.vue에만 적용되도록 각 조각에 files를 씌운다.
     ...vuePlugin.configs['flat/recommended'].map((config) => ({
         ...config,
         files: ['src/vue/**/*.vue'],
@@ -116,8 +102,7 @@ export default [
         languageOptions: {
             globals: {
                 ...globals.browser,
-                // <script setup> 컴파일러 매크로. 실제 함수가 아니라 컴파일 타임에 사라지는
-                // 문법이라 import 없이 쓰지만, no-undef 입장에서는 선언되지 않은 전역이다.
+                // <script setup> 컴파일러 매크로. 컴파일 타임에 사라지는 문법이라 import 없이 쓰지만 no-undef 입장에서는 선언되지 않은 전역이다.
                 defineProps: 'readonly',
                 defineEmits: 'readonly',
                 defineExpose: 'readonly',
@@ -128,9 +113,7 @@ export default [
             },
         },
         rules: {
-            // eslint-plugin-vue의 flat/recommended는 vue/* 규칙만 준다 — <script> 안의 순수 JS
-            // 로직(미정의 변수, 미사용 변수)은 core 규칙이 없으면 검사되지 않는다. .js 블록과
-            // 같은 규칙 세트를 맞춘다.
+            // flat/recommended는 vue/* 규칙만 주므로, <script> 안의 순수 JS 로직(미정의·미사용 변수)을 보려면 core 규칙이 필요하다. .js 블록과 같은 규칙 세트를 맞춘다.
             ...js.configs.recommended.rules,
             'no-var': 'error',
             'prefer-const': 'error',

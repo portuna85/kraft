@@ -1,9 +1,8 @@
 // @ts-check
 
 /**
- * Vue 아일랜드가 서버에서 받는 데이터의 모양. 필드는 서버 DTO와
- * 맞춘다 — 이름을 바꾸면 이 파일도 함께 고쳐야 vue-tsc가 화면 쪽 불일치를 잡는다.
- * 런타임 코드는 없다. JSDoc에서 {@code import('../shared/types.js').CommentViewDto}처럼 참조한다.
+ * Vue 아일랜드가 서버에서 받는 데이터의 모양. 필드는 서버 DTO와 맞추며, 이름이 바뀌면 이 파일도 고쳐야 vue-tsc가 화면 쪽 불일치를 잡는다. 런타임 코드는 없다
+ * (JSDoc에서 import('../shared/types.js').CommentViewDto처럼 참조한다).
  */
 
 /**

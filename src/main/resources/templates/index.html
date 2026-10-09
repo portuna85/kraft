@@ -32,8 +32,7 @@
             <input type="search" id="search-q" name="q" class="form-control board-search__input"
                    placeholder="검색어" th:value="${q}">
             <label for="search-scope" class="visually-hidden">검색 범위</label>
-            <!-- 기본값은 제목만이다 — 본문(TEXT)까지 뒤지는
-                 선행 와일드카드 LIKE가 이 검색에서 가장 비용이 큰 부분이라, 필요할 때만 켠다. -->
+            <!-- 기본값은 제목만이다 — 본문(TEXT)까지 뒤지는 선행 와일드카드 LIKE가 이 검색에서 가장 비용이 크므로 필요할 때만 켠다. -->
             <select id="search-scope" name="scope" class="form-select board-search__scope"
                     th:classappend="${searchContent} ? ' is-active' : ''">
                 <option value="" th:selected="${!searchContent}">제목만</option>
@@ -47,10 +46,7 @@
                         th:selected="${category == c}"></option>
             </select>
             <label for="search-sort" class="visually-hidden">정렬</label>
-            <!-- 서버가 실제로 허용하는 정렬(PostSortPolicy.ALLOWED_PROPERTIES)만 선택지로 둔다 —
-                 §5.1 "서버가 제공하지 않는 정렬 옵션을 동작 가능한 필터처럼 추가하지 않는다"를
-                 지킨다. 댓글수·추천수는 Post 엔티티 컬럼이 아니라(별도 테이블 집계) 이번에는
-                 뺐다. -->
+            <!-- 서버가 실제로 허용하는 정렬(PostSortPolicy.ALLOWED_PROPERTIES)만 선택지로 둔다. 댓글수·추천수는 Post 엔티티 컬럼이 아니라(별도 테이블 집계) 뺐다. -->
             <select id="search-sort" name="sort" class="form-select board-search__sort"
                     th:classappend="${currentSort != null} ? ' is-active' : ''">
                 <option value="" th:selected="${currentSort == null}">최신 등록순</option>
@@ -71,10 +67,8 @@
             <a class="board-filter-summary__reset" href="/community">초기화</a>
         </div>
 
-        <!-- 공지 고정 영역. 검색·분류로 좁히지 않은 첫 페이지에만 뜬다
-             (PostPageController.showPinned). 본목록과 별도 조회라 페이지 계산(totalElements)에
-             섞이지 않는다 — 행 모양은 본목록과 같은 post/post-row 조각을 쓴다. 더 보기가
-             붙이는 행만 JS(load-more.js buildRow)가 따로 만들므로 마크업을 바꾸면 거기도 맞춘다. -->
+        <!-- 공지 고정 영역. 검색·분류로 좁히지 않은 첫 페이지에만 뜬다(PostPageController.showPinned). 본목록과 별도 조회라 페이지 계산(totalElements)에 섞이지 않는다.
+             행 모양은 본목록과 같은 post/post-row 조각을 쓴다. 더 보기가 붙이는 행만 JS(load-more.js buildRow)가 따로 만들므로 마크업을 바꾸면 거기도 맞춘다. -->
         <ul class="post-list post-list--pinned" th:if="${!#lists.isEmpty(pinnedPosts)}"
             aria-label="고정된 공지">
             <!--/* th:each와 th:replace를 한 태그에 두면 replace가 먼저 평가되어 post가 비어 있다 */-->
@@ -93,12 +87,8 @@
             </th:block>
         </ul>
 
-        <!--/* 빈 상태는 세 가지를 구분한다: 검색·분류로 걸러서 남은 것이 없는 경우, 게시판에
-               글이 하나도 없는 경우, 요청한 페이지만 비어 있는 경우. 예전에는 앞의 두 가지가
-               같은 문구("아직 게시글이 없습니다")를 써서, 검색이 빗나갔을 뿐인데 게시판이 텅
-               빈 것처럼 읽혔다. totalElements는 필터를 적용한 뒤의 수라 둘을 구분하지 못한다.
-               검색 중에는 totalElements가 null이다 — 범위 밖 페이지는 컨트롤러가 첫 페이지로
-               보내므로 빈 목록이면 곧 "조건에 맞는 글이 없음"이다. */-->
+        <!--/* 빈 상태는 세 가지를 구분한다: 검색·분류로 걸러서 남은 것이 없는 경우, 게시판에 글이 하나도 없는 경우, 요청한 페이지만 비어 있는 경우.
+               totalElements는 필터를 적용한 뒤의 수라 앞의 둘을 구분하지 못한다. 검색 중에는 totalElements가 null이다 — 범위 밖 페이지는 컨트롤러가 첫 페이지로 보내므로 빈 목록이면 곧 "조건에 맞는 글이 없음"이다. */-->
         <div class="empty-state"
              th:if="${#lists.isEmpty(posts) and (postsPage.totalElements == null or postsPage.totalElements == 0)
                       and (!#strings.isEmpty(q) or category != null)}">
@@ -117,9 +107,7 @@
             <a href="/community" class="btn btn-outline-primary">첫 페이지로 이동</a>
         </div>
 
-        <!-- 10단계: "더 보기"는 기존 페이지 이동과 공존한다(점진적 향상) — JS가 없으면 버튼이
-             숨겨진 채로 남아 페이지 이동만 보인다. JSON API(/api/v1/posts)를 그대로 재사용해
-             새 API를 만들지 않는다(static/js/app/features/load-more.js). -->
+        <!-- "더 보기"는 기존 페이지 이동과 공존한다(점진적 향상) — JS가 없으면 버튼이 숨겨진 채로 남아 페이지 이동만 보인다. JSON API(/api/v1/posts)를 재사용한다(static/js/app/features/load-more.js). -->
         <div class="board-load-more" th:if="${!#lists.isEmpty(posts) and !postsPage.last}">
             <button type="button" id="btn-load-more" class="btn btn-outline-primary" hidden
                     th:attr="data-next-page=${postsPage.page + 1}, data-q=${q}, data-category=${category}, data-sort=${currentSort}, data-scope=${searchContent} ? 'all' : ''">
@@ -128,9 +116,7 @@
             <p id="load-more-status" class="board-load-more__status" aria-live="polite"></p>
         </div>
 
-        <!-- 13단계: data-total-pages·data-role="next"·번호마다의 data-page는 "더 보기"가 이
-             pager를 갱신할 때 쓴다(static/js/app/features/load-more.js) — 더 보기 전에는
-             아무 의미가 없는, JS 전용 훅이다. -->
+        <!-- data-total-pages·data-role="next"·번호마다의 data-page는 "더 보기"가 이 pager를 갱신할 때 쓰는 JS 전용 훅이다(static/js/app/features/load-more.js). -->
         <!--/* 전체 페이지 수를 모르는 검색 결과(totalPages == null)는 번호 목록·"/ 전체" 없이
                이전·다음과 "N페이지"만 둔다. 첫 페이지이면서 다음도 없으면 이동할 곳이 없어 그리지 않는다. */-->
         <nav class="pager"
@@ -166,9 +152,7 @@
         </nav>
     </th:block>
     <th:block th:fragment="board-aside">
-    <!-- 인기글은 목록과 같은 줄의 보조 열에 둔다(992px 이상). DOM을 한 벌만 두기 위해 좁은
-         화면에서는 이 aside 전체가 목록·페이지 이동 아래로 내려간다 — 화면 순서와 키보드
-         순서가 같아지도록 CSS order로 끌어올리지 않는다. -->
+    <!-- 인기글은 목록과 같은 줄의 보조 열에 둔다(992px 이상). DOM을 한 벌만 두므로 좁은 화면에서는 이 aside 전체가 목록·페이지 이동 아래로 내려간다 — 화면 순서와 키보드 순서가 같도록 CSS order로 끌어올리지 않는다. -->
     <aside class="kraft-aside" aria-label="게시판 보조 정보">
         <section class="popular-posts" th:if="${!#lists.isEmpty(popularPosts)}" aria-labelledby="popular-heading">
             <h2 id="popular-heading" class="kraft-aside__title">인기글</h2>

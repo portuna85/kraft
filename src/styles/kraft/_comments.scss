@@ -18,8 +18,7 @@
     padding: 0;
 }
 
-// .admin-list__item(_admin-list.scss)과 속성이 완전히 같은 카드 모양이다.
-// 한 곳에서만 선언하고 관리자 목록은 이 셀렉터에 합류한다.
+// .admin-list__item(_admin-list.scss)과 속성이 완전히 같은 카드 모양이라 한 곳에서만 선언하고 관리자 목록은 이 셀렉터에 합류한다.
 .comment-list__item,
 .admin-list__item {
     border: 1px solid var(--kraft-border);
@@ -51,8 +50,7 @@ textarea.form-control.comment-edit__textarea {
     min-height: 80px;
 }
 
-// 답글(2단계 댓글)은 그 부모 카드 안에서 들여써서 종속 관계를 보여준다. 새 색상·간격
-// 체계는 만들지 않는다 — 기존 .comment-list의 여백만 왼쪽에 더한다.
+// 답글(2단계 댓글)은 부모 카드 안에서 들여써서 종속 관계를 보여준다. 새 색상·간격 체계는 만들지 않고 기존 .comment-list의 여백만 왼쪽에 더한다.
 .comment-list__replies {
     margin-top: var(--kraft-space-2);
     margin-bottom: 0;
@@ -63,8 +61,7 @@ textarea.form-control.comment-edit__textarea {
     color: var(--kraft-text-muted);
 }
 
-// 더 보기 실패는 토스트로도 알리지만, 토스트는 지나가면 사라지므로 버튼 자리에 계속
-// 보이는 안내를 따로 둔다(comments__empty와 달리 실패임을 danger 색으로 구분한다).
+// 더 보기 실패는 토스트로도 알리지만 토스트는 지나가면 사라지므로, 버튼 자리에 계속 보이는 안내를 따로 둔다(comments__empty와 달리 실패임을 danger 색으로 구분한다).
 .comments__load-error {
     color: var(--kraft-danger);
     margin-bottom: var(--kraft-space-4);

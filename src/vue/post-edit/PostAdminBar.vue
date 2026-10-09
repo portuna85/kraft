@@ -6,10 +6,8 @@ import { formatDateTime } from '@core/datetime.js';
 import { showToast } from '@ui/toast.js';
 
 /**
- * 관리자에게만 보이는 게시글 상태 줄 — 소프트 삭제된 글의 "삭제됨" 표시와 복구 버튼, 숨겨진 글의 "숨김"
- * 표시와 숨김 해제 버튼, 그리고 보통 글의 기한 고정과 숨기기를 맡는다. 노출 여부
- * (post.canModerate)는 서버가 판정한 값이고, 모든 API도 서버가 관리자인지 다시 확인한다. 삭제된 글은
- * 복구가 먼저다(삭제된 글의 숨김은 풀 수 없고 고정할 수도 없다).
+ * 관리자에게만 보이는 게시글 상태 줄 — 소프트 삭제된 글의 "삭제됨" 표시와 복구 버튼, 숨겨진 글의 "숨김" 표시와 숨김 해제 버튼, 보통 글의 기한 고정과 숨기기를 맡는다.
+ * 노출 여부(post.canModerate)는 서버가 판정한 값이고 모든 API도 서버가 관리자인지 다시 확인한다. 삭제된 글은 복구가 먼저다(삭제된 글의 숨김은 풀 수 없고 고정할 수도 없다).
  */
 const props = defineProps({
     post: { type: /** @type {import('vue').PropType<import('../shared/types.js').PostViewDto>} */ (Object), required: true },
@@ -18,9 +16,7 @@ const props = defineProps({
 const busy = ref(false);
 
 /**
- * 고정 기한 입력의 기본값 — 지금부터 7일 뒤를 한국 시간(서버 기준) 벽시계로 쓴다. `datetime-local`은 시간대
- * 없는 값을 만들고 서버도 KST로 읽으므로, 브라우저 시간대가 아니라 KST로 맞춰 둬야 해외에서 열어도 어긋나지
- * 않는다.
+ * 고정 기한 입력의 기본값 — 지금부터 7일 뒤를 한국 시간(서버 기준) 벽시계로 쓴다. `datetime-local`은 시간대 없는 값을 만들고 서버도 KST로 읽으므로, 브라우저 시간대가 아니라 KST로 맞춰야 해외에서 열어도 어긋나지 않는다.
  */
 function defaultPinUntil() {
     return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)

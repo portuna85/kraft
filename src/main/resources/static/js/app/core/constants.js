@@ -1,14 +1,7 @@
 /**
- * 서버와 맞춰야 하는 값들.
+ * 서버와 맞춰야 하는 값들. 서버(`PostImageService` 등)와의 중복은 언어가 달라 없앨 수 없으므로, 어긋나면 `UploadPolicySyncTest`가 깨지게 해 한쪽만 고치는 일을 막는다.
  *
- * 예전에는 이 상수들이 postEdit·postForm 두 곳에 그대로 복사되어 있었고, 서버의
- * `PostImageService`에도 같은 값이 또 있었다(3중 중복). 화면 쪽은 여기 하나로 모았다.
- *
- * 서버와의 중복은 언어가 달라 없앨 수 없지만, 어긋나면 `UploadPolicySyncTest`가 깨지도록
- * 해 두었다 — 한쪽만 고치는 일을 막기 위해서다.
- *
- * 중요: 여기 있는 검사는 **왕복을 줄이기 위한 편의**일 뿐 서버 검증을 대체하지 않는다.
- * 실제 판정은 항상 서버가 내린다(매직 바이트 검사, 픽셀 수 제한, 계정별 저장량까지).
+ * 중요: 여기 있는 검사는 **왕복을 줄이기 위한 편의**일 뿐 서버 검증을 대체하지 않는다. 실제 판정은 항상 서버가 내린다(매직 바이트 검사, 픽셀 수 제한, 계정별 저장량까지).
  */
 
 export const UPLOAD = {
@@ -16,11 +9,8 @@ export const UPLOAD = {
     ALLOWED_EXTENSIONS: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
 
     /**
-     * 아이폰 기본 촬영 포맷(HEIC/HEIF). 허용 목록에 없어서가 아니라 "받아봐야 대부분의
-     * 브라우저에서 보이지 않기 때문"에 막는 것이라, 일반 형식 오류와 다른 안내를 준다.
-     *
-     * 서버는 이름만 바꾼 HEIC까지 잡으려고 더 넓은 집합(heix·mif1 등 10종)을 파일 내용으로
-     * 검사한다. 화면은 확장자만 보므로 여기가 더 좁은 것은 의도된 차이다.
+     * 아이폰 기본 촬영 포맷(HEIC/HEIF). 허용 목록에 없어서가 아니라 "받아봐야 대부분의 브라우저에서 보이지 않기 때문"에 막는 것이라 일반 형식 오류와 다른 안내를 준다.
+     * 서버는 이름만 바꾼 HEIC까지 잡으려고 더 넓은 집합(heix·mif1 등 10종)을 파일 내용으로 검사한다. 화면은 확장자만 보므로 여기가 더 좁은 것은 의도된 차이다.
      */
     HEIF_EXTENSIONS: ['heic', 'heif'],
 };
@@ -48,21 +38,12 @@ export const API = {
     ADMIN_RECOMMENDATION_FETCH: '/api/v1/admin/recommendations/fetch',
 };
 
-/**
- * 가입·비밀번호 변경·재설정 세 DTO(SignUpRequestDto, ChangePasswordRequestDto,
- * PasswordResetConfirmDto)가 공통으로 쓰는 @Size(min=8, max=72)와 맞춘 값이다. 여기서는
- * 왕복을 줄이는 편의일 뿐이고, 실제 바이트 기준 판정은 서버의 PasswordBytePolicy가 최종
- * 결정한다 — 문자 수 72와 UTF-8 바이트 수 72는 다르다(한글 1자=3바이트).
- */
 export const POST = {
-    /**
-     * 본문 최대 길이. 서버의 ContentPolicy.POST_CONTENT_MAX_LENGTH와 맞춘 값이다 — textarea의
-     * maxlength와 마크다운 툴바의 자르기가 모두 이 값 하나를 쓴다. 한쪽만 고치면
-     * UploadPolicySyncTest가 실패한다.
-     */
+    /** 본문 최대 길이. 서버의 ContentPolicy.POST_CONTENT_MAX_LENGTH와 맞춘 값이다 — textarea의 maxlength와 마크다운 툴바의 자르기가 모두 이 값을 쓴다. 한쪽만 고치면 UploadPolicySyncTest가 실패한다. */
     CONTENT_MAX_LENGTH: 10_000,
 };
 
+/** 가입·비밀번호 변경·재설정 세 DTO가 공통으로 쓰는 @Size(min=8, max=72)와 맞춘 값이다. 여기서는 왕복을 줄이는 편의일 뿐이고, 실제 판정은 서버의 PasswordBytePolicy가 UTF-8 바이트 기준으로 한다 — 문자 수 72와 바이트 수 72는 다르다(한글 1자=3바이트). */
 export const PASSWORD = {
     MIN_LENGTH: 8,
     MAX_LENGTH: 72,

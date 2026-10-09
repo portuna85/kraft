@@ -4,12 +4,10 @@
 <body>
 
 <!--/*
-    최신 회차 당첨 결과 조각. 홈과 번호 추천 화면이 함께 쓴다(예전에는 두 템플릿에 거의 같은 블록이 따로 있어
-    라벨("세후 예상"/"세후 예상 금액")과 클래스 접두사가 화면마다 달랐다).
+    최신 회차 당첨 결과 조각. 번호 추천 화면이 쓴다.
 
     값은 모두 DB에서 온다. 추첨일·보너스·당첨금은 null일 수 있어(V21 이전 회차) 각각 있을 때만 그린다.
-    세후 금액은 원천징수 세율로 계산한 표시용 추정치다(LottoPrizeTax) — "실수령액"은 확정액으로 읽혀 "세후 예상
-    금액"으로 쓴다. 호출하는 쪽이 draw가 null이면 이 조각을 부르지 않는다.
+    세후 금액은 원천징수 세율로 계산한 표시용 추정치다(LottoPrizeTax) — "실수령액"은 확정액으로 읽혀 "세후 예상 금액"으로 쓴다. 호출하는 쪽이 draw가 null이면 이 조각을 부르지 않는다.
 */-->
 <section th:fragment="latestDraw(draw)" class="latest-draw" aria-labelledby="latest-draw-title">
     <h2 id="latest-draw-title" class="latest-draw__title">

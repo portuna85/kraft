@@ -1,18 +1,13 @@
 @use "tokens" as *;
 
 /* ==========================================================================
-   로또 공 — 홈·번호 추천이 함께 쓴다.
-   ".lotto-ball*"가 공용 이름이다. 최신 회차 카드(.latest-draw)도 여기 둔다 — 두 화면이 같은 조각
-   (templates/lotto/latest-draw.html)을 쓰기 때문이다.
+   로또 공(".lotto-ball*")과 최신 회차 카드(.latest-draw). 번호 추천 화면이 같은 조각(templates/lotto/latest-draw.html)과 함께 쓴다.
    ========================================================================== */
 
-// 구간별 공 색. 라이트·다크에서 값이 같다(참고 디자인도 같다). 참고 사이트의 색 중 파랑·빨강·회색·초록은
-// 흰 글자를 올리면 3.4~4.4:1이라 16px 굵은 글자 기준(4.5:1)에 못 미쳐, 눈으로는 거의 같게 조금만 진하게
-// 했다(파랑 #4784d8→#3b73c4, 빨강 #d76878→#be4a5d, 회색 #737e95→#667189, 초록 #398663→#2f7a58).
-// 노랑은 어두운 글자라 참고 값 그대로 7.8:1이다. 공은 aria-hidden이거나 숫자가 따로 읽혀 axe가 대비를 보지
-// 않으므로, 이 값은 ballColor.test.js가 4.5:1(글자)·3:1(다크 카드 위 윤곽)을 검사한다.
-// 서버 쪽 구간 경계는 LottoBallColor.java, 화면 쪽은 src/vue/recommend/ballColor.js이고
-// LottoBallColorJsSyncTest가 둘을 맞춘다.
+// 구간별 공 색. 라이트·다크에서 값이 같다(참고 디자인도 같다). 참고 사이트의 색 중 파랑·빨강·회색·초록은 흰 글자를 올리면 3.4~4.4:1이라 16px 굵은 글자 기준(4.5:1)에 못 미쳐,
+// 눈으로는 거의 같게 조금만 진하게 했다(파랑 #4784d8→#3b73c4, 빨강 #d76878→#be4a5d, 회색 #737e95→#667189, 초록 #398663→#2f7a58). 노랑은 어두운 글자라 참고 값 그대로 7.8:1이다.
+// 공은 aria-hidden이거나 숫자가 따로 읽혀 axe가 대비를 보지 않으므로, 이 값은 ballColor.test.js가 4.5:1(글자)·3:1(다크 카드 위 윤곽)을 검사한다.
+// 서버 쪽 구간 경계는 LottoBallColor.java, 화면 쪽은 src/vue/recommend/ballColor.js이고 LottoBallColorJsSyncTest가 둘을 맞춘다.
 :root {
     --kraft-ball-yellow-bg: #e9b23e;
     --kraft-ball-yellow-fg: #322500;
@@ -87,7 +82,7 @@
     box-shadow: 0 0 0 2px var(--kraft-surface), 0 0 0 3px var(--kraft-text-muted);
 }
 
-/* 최신 회차 카드. 홈과 번호 추천 화면이 같은 조각을 쓴다. */
+/* 최신 회차 카드. */
 .latest-draw {
     border: 1px solid var(--kraft-border);
     border-radius: var(--kraft-radius-surface);

@@ -23,9 +23,7 @@
     margin: 0 0 var(--kraft-space-1);
 }
 
-// 페이지·게시판·게시글 제목(.post-title은 _post.scss) 세 곳이 각자 같은 992px 블록을
-// 반복하고 있었다. 셀렉터를 한데 모아 한 번만 선언한다 — 파일은 나뉘어 있어도 컴파일
-// 결과는 이전과 동일하다(build:css diff 없음).
+// 페이지·게시판·게시글 제목(.post-title은 _post.scss)이 같은 992px 블록을 쓰도록 셀렉터를 모아 한 번만 선언한다.
 @include from($bp-lg) {
     .page-title,
     .board-head__title,
@@ -75,21 +73,16 @@
     background-color: var(--kraft-surface-subtle);
 }
 
-// 고정 공지. 색만으로 구분하지 않는다 — 행 안의 📌 이모지 + 스크린리더용
-// "공지" 텍스트가 이미 있으므로, 이 배경은 눈으로 훑을 때 한 번 더 도와주는 보조 신호다.
+// 고정 공지. 색만으로 구분하지 않는다 — 📌 이모지와 스크린리더용 "공지" 텍스트가 이미 있어, 이 배경은 눈으로 훑을 때의 보조 신호다.
 .post-list--pinned .post-list__item {
     background-color: var(--kraft-surface-subtle);
 }
 
 .post-list__title {
-    // PlayForum 비교(문서 4.1): 상세의 .post-title(700)만큼 굵지는 않되, 본문 기본 굵기(400)와
-    // 보조정보($fs-xs·--kraft-text-muted)보다는 뚜렷이 도드라지게 한다.
+    // 상세의 .post-title(700)만큼 굵지는 않되, 본문(400)과 보조정보보다는 도드라지게 한다.
     font-weight: 600;
     font-size: 1rem;
-    // 본문의 line-height:1.6(_base.scss)을 그대로 물려받으면 1rem × 1.6 = 25.6px로 소수점
-    // 줄 높이가 된다. .post-list__item이 <768px에서 flex-column으로 이 제목·메타 정보를
-    // 쌓을 때, 형제 요소들의 소수점 줄 높이가 함께 누적되어 행 전체 높이가 실행마다 1px
-    // 흔들리는 원인이었다(.post-list__meta 주석 참고). 정수로 떨어지는 배수를 쓴다.
+    // 본문 line-height:1.6을 물려받으면 소수점 줄 높이(25.6px)가 되어, flex-column(<768px)에서 형제들의 소수점이 누적돼 행 높이가 실행마다 1px 흔들린다(.post-list__meta 참고). 정수로 떨어지는 배수를 쓴다.
     line-height: 1.25;
     color: var(--kraft-text);
     text-decoration: none;
@@ -111,11 +104,8 @@
     gap: var(--kraft-space-1) var(--kraft-space-3);
     color: var(--kraft-text-muted);
     font-size: $fs-xs;
-    // 본문(line-height:1.6, _base.scss)을 그대로 물려받으면 0.8rem × 1.6 = 20.48px로
-    // 소수점 줄 높이가 된다. .post-list__item이 flex-column(<768px)이나 grid(≥768px)로
-    // 이 요소를 여러 형제와 함께 쌓을 때, 소수점이 누적되다 실행마다 다른 지점에서
-    // 반올림되어 행 전체 높이가 1px 흔들리는 것을 실제로 겪었다(Chromium의 서브픽셀
-    // 레이아웃 반올림). 정수 픽셀로 떨어지는 배수를 써서 애초에 소수점이 생기지 않게 한다.
+    // 본문 line-height:1.6을 물려받으면 0.8rem × 1.6 = 20.48px처럼 소수점 줄 높이가 된다. flex-column(<768px)·grid(≥768px)에서 형제와 쌓일 때 소수점이 누적되다
+    // 실행마다 다르게 반올림되어 행 높이가 1px 흔들렸다(Chromium 서브픽셀 레이아웃). 정수 픽셀이 되는 배수를 쓴다.
     line-height: 1.25;
 }
 
@@ -128,8 +118,7 @@
     font-size: $fs-xs;
     // .post-list__meta와 같은 이유로 정수 배수 줄 높이를 쓴다.
     line-height: 1.25;
-    // 자릿수가 바뀌어도 숫자 폭이 흔들리지 않게 한다 — 좁은 열(≥768px)에서 자릿수가
-    // 늘어날 때마다 옆 칸과의 정렬이 어긋나 보이는 것을 막는다.
+    // 자릿수가 바뀌어도 숫자 폭이 흔들리지 않게 한다(좁은 열에서 옆 칸과 정렬이 어긋나는 것을 막는다).
     font-variant-numeric: tabular-nums;
 }
 
@@ -162,8 +151,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--kraft-space-2);
-    // PlayForum 비교(문서 4.2): 같은 화면의 .popular-posts·.post-list는 배경+테두리로 묶여
-    // 있는데 검색 폼만 배경 없이 떠 있었다. 같은 "박스형 묶음" 언어로 맞춘다.
+    // 같은 화면의 .popular-posts·.post-list와 같은 박스형 묶음으로 맞춘다.
     background-color: var(--kraft-surface);
     border: 1px solid var(--kraft-border);
     border-radius: var(--kraft-radius);
@@ -187,17 +175,14 @@
     flex: 0 1 130px;
 }
 
-// PlayForum 비교(문서 4.3): 활성 필터를 강조색으로 표시한다. 헤더의
-// .kraft-actions__link.is-current, 페이지네이션의 .pager__page.is-current와 같은 관례.
+// 활성 필터를 강조색으로 표시한다(헤더 .kraft-actions__link.is-current, 페이지네이션 .pager__page.is-current와 같은 관례).
 .board-search__category.is-active,
 .board-search__sort.is-active,
 .board-search__scope.is-active {
     border-color: var(--kraft-primary);
 }
 
-// 검색어·분류 조건이 적용된 채 목록을 보고 있다는 사실을 검색 폼 바로 아래에서 알려준다.
-// 둘 다 없으면 이 블록 자체를 렌더링하지 않는다(index.html의 th:if) — "전체 게시글"을
-// 중복해서 보여줄 필요가 없다.
+// 검색어·분류 조건이 적용된 채 목록을 보고 있음을 검색 폼 아래에서 알려준다. 둘 다 없으면 렌더링하지 않는다(index.html의 th:if).
 .board-filter-summary {
     display: flex;
     flex-wrap: wrap;
@@ -223,9 +208,7 @@
     margin-left: auto;
 }
 
-// 인기글은 .kraft-aside(_shell.scss) 안에서 이용 안내와 한 카드를 나눠 쓴다. 카드 안에
-// 카드를 또 겹치지 않도록 자체 배경·테두리 없이 아래 구분선과 여백으로만 구역을 나눈다.
-// 제목은 이용 안내와 같은 .kraft-aside__title을 쓴다.
+// 인기글은 .kraft-aside(_shell.scss) 안에서 이용 안내와 한 카드를 나눠 쓴다. 카드 안의 카드를 피하려 자체 배경·테두리 없이 구분선과 여백으로만 나눈다. 제목은 .kraft-aside__title.
 .popular-posts {
     padding-bottom: var(--kraft-space-4);
     margin-bottom: var(--kraft-space-4);
@@ -247,16 +230,14 @@
     gap: var(--kraft-space-2);
 }
 
-// PlayForum 비교(문서 4.3): 순번에도 기존 강조색 토큰을 반복시킨다.
+// 순번에도 강조색 토큰을 쓴다.
 .popular-posts__item::marker {
     color: var(--kraft-warn-text);
     font-weight: 700;
 }
 
 .popular-posts__item a {
-    // PlayForum 비교(문서 4.4): 굵기를 지정하지 않으면(기본 400) 일반 목록 제목
-    // (.post-list__title, 600)보다 오히려 약해 보인다. 같은 굵기로 맞춰 "인기"라는
-    // 중요도를 드러낸다. 밀도(크기)는 그대로 둔다.
+    // 굵기를 지정하지 않으면(400) 일반 목록 제목(.post-list__title, 600)보다 약해 보여 같은 굵기로 맞춘다. 크기는 그대로 둔다.
     font-weight: 600;
     color: var(--kraft-text);
     text-decoration: none;
@@ -276,12 +257,9 @@
     flex-shrink: 0;
 }
 
-// 768px부터는 표 형태다. 열 폭은 --post-list-cols 하나로 선언해 head·item(아래 두 선택자)이
-// 함께 참조한다 — 예전에는 같은 6열 값이 이 두 곳에 그대로 두 번 적혀 있었다.
+// 768px부터는 표 형태다. 열 폭은 --post-list-cols 하나로 선언해 head·item이 함께 참조한다.
 //
-// 768~991px 구간은 992px 이상보다 좁게 잡는다. 이전 값(64/120/144/56/56, gap 12px)은 고정
-// 폭만 460px를 선점해 이 구간에서 제목이 쓸 수 있는 폭이 276px밖에 남지 않았다 — 인벤 참고로
-// 조밀한 목록을 만들려던 것과 반대로, 오히려 가장 좁은 화면에서 제목이 가장 눌리는 역설이었다.
+// 768~991px 구간은 992px 이상보다 열을 좁게 잡는다 — 고정 폭이 460px를 선점하면 이 구간에서 제목이 쓸 폭이 276px밖에 남지 않는다.
 @include from($bp-md) {
     .post-list {
         --post-list-cols: 44px minmax(0, 1fr) 88px 104px 40px 40px;
@@ -305,25 +283,18 @@
 
     .post-list__item {
         align-items: center;
-        // 좌우 여백(16px)은 위 기본 규칙(.post-list__item)의 padding 단축 속성에서 그대로
-        // 물려받는다. 세로만 8px로 줄여 표 형태의 밀도를 올린다 — 인벤 같은 목록형 게시판이
-        // 한 화면에 더 많은 글을 보여주는 방식이다.
+        // 좌우 여백(16px)은 기본 규칙의 padding 단축 속성에서 물려받는다. 세로만 8px로 줄여 표 형태의 밀도를 올린다.
         padding-block: var(--kraft-space-2);
     }
 
     .post-list__title {
         font-size: $fs-md;
-        // 표 형태에서는 한 줄로 충분하다. 2줄까지 허용하던 모바일 카드와 달리, 여기서는
-        // 다음 줄이 다음 행과 헷갈리지 않아야 한다.
+        // 표 형태에서는 한 줄로 충분하다(2줄이면 다음 행과 헷갈린다).
         -webkit-line-clamp: 1;
     }
 
-    // 6열 grid에 래퍼 없이 author·date를 나란히 두려면 이 span이 grid 아이템이 되어야 한다.
-    // display:contents는 일부 스크린리더에서 요소를 접근성 트리에서 제외하는 것으로 알려져
-    // 있지만, 이 span 자체는 의미(role)를 갖지 않는 순수 레이아웃 래퍼라 트리에서 빠져도
-    // 안의 텍스트(작성자·날짜)는 그대로 읽힌다 — 실제 정보 손실은 없다. 래퍼를 없애 버리면
-    // 이 span이 <768px에서 맡는 역할(작성자·날짜를 한 줄로 묶는 flex 행, 아래 기본 규칙)이
-    // 함께 사라지므로 유지한다.
+    // 6열 grid에 래퍼 없이 author·date를 나란히 두려면 이 span이 grid 아이템이어야 한다. display:contents는 일부 스크린리더에서 요소를 접근성 트리에서 빼지만,
+    // 이 span은 role이 없는 순수 레이아웃 래퍼라 안의 텍스트는 그대로 읽힌다. 래퍼를 없애면 <768px에서 작성자·날짜를 한 줄로 묶는 flex 행 역할이 사라지므로 유지한다.
     .post-list__meta {
         display: contents;
     }
@@ -341,7 +312,7 @@
     }
 }
 
-// 992px 이상은 폭이 넉넉하므로 원래 열 폭(64/120/144/56/56)을 그대로 쓴다.
+// 992px 이상은 폭이 넉넉해 열 폭을 넓힌다.
 @include from($bp-lg) {
     .post-list {
         --post-list-cols: 64px minmax(0, 1fr) 120px 144px 56px 56px;
@@ -367,8 +338,7 @@
     margin-bottom: var(--kraft-space-4);
 }
 
-// 10단계: "더 보기" 버튼. JS 로드 전에는 버튼이 hidden이라 이 블록 전체가 빈 여백처럼
-// 보이지 않도록 상태 문구가 없을 때는 높이를 차지하지 않는다(:empty).
+// "더 보기" 버튼. JS 로드 전에는 버튼이 hidden이라 빈 여백처럼 보이지 않도록 상태 문구가 없으면 높이를 차지하지 않는다(:empty).
 .board-load-more {
     text-align: center;
     margin-bottom: var(--kraft-space-4);

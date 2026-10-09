@@ -6,9 +6,8 @@
 #
 # 사전 조건: Docker, 그리고 ./gradlew bootE2eJar로 만든 build/libs/kraft-e2e.jar.
 #
-# 작업 폴더를 마운트하지 않고 컨테이너로 복사한다 — 컨테이너 안의 `npm ci`가 호스트(예: Windows)의
-# node_modules를 리눅스 바이너리로 덮어쓰지 않게 하기 위해서다. JDK는 이미지에 없어 Temurin 25를
-# 내려받는다(CI의 setup-java와 같은 배포판).
+# 작업 폴더를 마운트하지 않고 컨테이너로 복사한다 — 컨테이너 안의 `npm ci`가 호스트(예: Windows)의 node_modules를 리눅스 바이너리로 덮어쓰지 않게 한다.
+# JDK는 이미지에 없어 Temurin 25를 내려받는다(CI의 setup-java와 같은 배포판).
 set -euo pipefail
 
 mode="${1:-}"
@@ -47,8 +46,7 @@ docker exec -w /work -e CI=1 -e VISUAL=1 -e PATH="/opt/jdk/bin:/usr/local/sbin:/
     "$name" npx playwright test --project=chromium visual $flags || status=$?
 
 if [ "$mode" = update ]; then
-    # 새로 만든 리눅스 기준선만 가져온다. 폴더를 하나씩 적어 두면 새 시각 스펙(예: visual-recommend)의 기준선이
-    # 조용히 빠진다 — 컨테이너 안의 *-snapshots 폴더를 전부 훑는다.
+    # 새로 만든 리눅스 기준선만 가져온다. 폴더를 하나씩 적으면 새 시각 스펙의 기준선이 조용히 빠지므로 컨테이너 안의 *-snapshots 폴더를 전부 훑는다.
     for dir in $(docker exec "$name" bash -c 'cd /work && ls -d e2e/*-snapshots' | tr -d '\r'); do
         mkdir -p "$dir"
         docker exec "$name" bash -c "ls /work/$dir/*-linux.png" | tr -d '\r' | while read -r f; do

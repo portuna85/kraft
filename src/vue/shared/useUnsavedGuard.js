@@ -2,14 +2,10 @@
 import { onMounted, onUnmounted } from 'vue';
 
 /**
- * 편집 중 브라우저 탭을 닫거나 다른 주소로 이동하면(뒤로 가기 포함) 입력한 내용이 그대로
- * 사라지는 것을 막는다. PostEditApp.vue에만 있던 로직을 추출해 PostSaveApp.vue
- * (새 글 작성)에도 같은 보호를 준다 — 예전에는 새 글 작성에는 이 가드가 아예 없어서, 다
- * 쓴 글을 실수로 새로고침하면 아무 경고 없이 사라졌다.
+ * 편집 중 브라우저 탭을 닫거나 다른 주소로 이동하면(뒤로 가기 포함) 입력한 내용이 그대로 사라지는 것을 막는다(글 작성·수정 화면 공용).
  *
  * @param {import('vue').Ref<boolean> | import('vue').ComputedRef<boolean>} isDirty
- * @returns {{ allowNavigation: () => void }} 저장에 성공해 스스로 이동할 때
- *   `allowNavigation()`을 불러 확인창을 띄우지 않게 한다.
+ * @returns {{ allowNavigation: () => void }} 저장에 성공해 스스로 이동할 때 `allowNavigation()`을 불러 확인창을 띄우지 않게 한다.
  */
 export function useUnsavedGuard(isDirty) {
     let allowed = false;
