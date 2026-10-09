@@ -33,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * (2) 돌려받은 값을 직접 바꾸려 하면 실제로 막히는지.
  */
 @DataJpaTest
-class B14DefensiveCopyIntegrationTest {
+class DefensiveCopyIntegrationTest {
 
     @Autowired
     private TestEntityManager em;
