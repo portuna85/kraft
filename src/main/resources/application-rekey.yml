@@ -4,7 +4,7 @@
 #
 # EMAIL_ENCRYPTION_KEY(새 키)와 EMAIL_ENCRYPTION_KEY_OLD(옛 키)를 함께 지정해야 하며, 둘이
 # 같으면 EmailRekeyService가 아무것도 하지 않고 실패한다. 저장된 모든 이메일을 다시 쓰는
-# 작업이므로 README "백업·복구"의 절차대로 DB 백업을 먼저 받는다.
+# 작업이므로 DB 백업(deploy/backup.sh)을 먼저 받는다.
 #
 # 한 번 수행하고 종료 코드를 남기며 내려간다(EmailRekeyRunner). 서비스로 남지 않는다.
 spring:
@@ -33,7 +33,7 @@ spring:
       initialize-schema: never
 
 # HTTP 포트를 열지 않는다. 운영 중인 앱을 내리지 않고 실행하더라도 포트가 부딪히지 않는다.
-# (다만 이 도구는 앱을 내린 상태에서 돌리는 것을 전제로 한다 — README 절차 참고.)
+# (다만 이 도구는 앱을 내린 상태에서 돌리는 것을 전제로 한다.)
 server:
   port: -1
 

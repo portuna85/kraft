@@ -40,13 +40,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * README "백업·복구" 절차를 실제로 밟아 본다 (개선 보고서 "백업·복구" 공백).
+ * 백업·복구 절차를 실제로 밟아 본다 (개선 보고서 "백업·복구" 공백).
  *
  * <h3>왜 필요한가</h3>
  * 백업 명령은 문서에 있었지만 <b>그것으로 정말 복구되는지는 아무도 확인하지 않았다.</b>
  * 백업이 쓸모없다는 사실을 장애 당일에 알게 되는 것이 가장 나쁜 결과다.
  * <p>
- * README는 "세 가지를 같은 시점으로 함께" 보관하라고 말한다 — DB 덤프, {@code uploads/images/},
+ * 백업은 "세 가지를 같은 시점으로 함께" 보관해야 한다 — DB 덤프, {@code uploads/images/},
  * 그리고 {@code EMAIL_ENCRYPTION_KEY}. 여기서는 그 주장을 <b>실행되는 형태</b>로 바꾼다.
  * 셋을 모두 갖추면 복구되고, <b>하나라도 빠지면 어떻게 망가지는지</b>를 함께 고정한다.
  * 후자가 없으면 "왜 세 개나 챙겨야 하는가"가 설득되지 않는다.
@@ -97,7 +97,7 @@ class BackupRestoreRehearsalTest {
     }
 
     /**
-     * README가 키를 백업 대상에 넣은 이유를 고정한다.
+     * 키를 백업 대상에 넣는 이유를 고정한다.
      * <p>
      * 키를 잃으면 <b>DB 복구 자체는 성공한다</b> — SQL로 보면 행이 그대로 있다. 그런데 앱은
      * 그 회원을 <b>읽어 올 수조차 없다.</b> 복호화가 엔티티를 만드는 시점에 일어나므로
@@ -130,7 +130,7 @@ class BackupRestoreRehearsalTest {
     }
 
     /**
-     * README의 "DB만 되돌리면 {@code post_images} 행은 있는데 파일이 없는 상태가 될 수 있습니다"를
+     * "DB만 되돌리면 {@code post_images} 행은 있는데 파일이 없는 상태가 될 수 있다"는 점을
      * 그대로 확인한다. 이 상태는 앱이 오류를 내지 않아 더 위험하다 — 글은 열리고 이미지만 깨진다.
      */
     @Test

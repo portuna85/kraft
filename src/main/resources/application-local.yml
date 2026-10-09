@@ -7,7 +7,7 @@
 #
 # 실행 전: 루트 .env를 준비하고 docker compose up -d --wait mariadb 로 DB를 띄운 뒤,
 # 프로젝트 루트에서 ./gradlew bootRun을 실행한다. local만 .env를 자동으로 읽으며,
-# 같은 이름의 OS 환경변수가 있으면 그 값이 우선한다(README.md 참고).
+# 같은 이름의 OS 환경변수가 있으면 그 값이 우선한다.
 #
 # 로컬도 운영과 같은 Flyway + validate 경로를 쓴다(B05). 예전에는 ddl-auto: update였는데,
 # 이는 컬럼·테이블 추가만 반영하고 삭제·타입 변경·제약 변경·데이터 삽입·트리거 생성은 전혀
@@ -19,7 +19,7 @@
 # 이 설정은 Flyway 도입 전에 Hibernate가 만든 기존 볼륨을 자동으로 baseline하지 않는다.
 # 그런 볼륨에는 flyway_schema_history가 없으므로 기동이 실패한다. 임의 버전으로 baseline하면
 # 이미 적용된 DDL을 다시 실행하거나, 아직 적용되지 않은 마이그레이션을 건너뛸 수 있다.
-# 기존 데이터가 있으면 README의 "기존 로컬 DB 전환" 절차에 따라 상태를 먼저 확인한다.
+# 기존 데이터가 있으면 flyway_schema_history와 실제 스키마 상태를 먼저 확인한다.
 spring:
   config:
     import: "optional:file:./.env[.properties]"

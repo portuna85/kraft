@@ -37,7 +37,7 @@ import java.util.List;
  * {@code BackupRestoreRehearsalTest}·{@code MariaDbUpgradeRehearsalTest}는 DB 전체를 덤프·복구하거나
  * 기존 DB를 만들어 전환하는 것 자체가 검증 대상이라 이 클래스를 쓰지 않고 자기 컨테이너를 둔다.
  * <p>
- * Docker가 없으면 클래스 전체를 건너뛴다({@code disabledWithoutDocker}) — README가 안내하는 대로
+ * Docker가 없으면 클래스 전체를 건너뛴다({@code disabledWithoutDocker}) — 그래서
  * Docker 없이도 {@code gradlew test}가 그대로 돈다. {@code @Tag("docker")}는 Gradle이 이 테스트들을
  * 빠른 H2 테스트와 따로 돌릴 수 있게 한다(OPS-07).
  */

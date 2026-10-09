@@ -67,8 +67,8 @@ import static org.hamcrest.Matchers.containsString;
  * <li>운영 프로파일과 같은 경로로 게시글·이미지 대장·댓글을 읽고 쓸 수 있다.</li>
  * </ol>
  * <p>
- * Docker가 없으면 클래스 전체를 건너뛴다({@code disabledWithoutDocker}). 그래야 README가
- * 안내하는 대로 Docker 없이도 {@code gradlew test}가 그대로 돈다. CI(ubuntu-latest)에는
+ * Docker가 없으면 클래스 전체를 건너뛴다({@code disabledWithoutDocker}). 그래야
+ * Docker 없이도 {@code gradlew test}가 그대로 돈다. CI(ubuntu-latest)에는
  * Docker가 있으므로 실제로 실행된다.
  */
 class MariaDbMigrationTest extends MariaDbIntegrationTest {

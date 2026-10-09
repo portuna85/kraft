@@ -19,7 +19,7 @@ on:
   push:
     branches: ['**']
     # 문서만 바뀐 푸시가 운영을 재시작하지 않게 한다(OPS-01) — main 푸시는 곧 배포라서,
-    # README 한 줄이 systemctl restart(=JVM 기동 동안의 중단)로 이어졌다. 코드와 문서가 함께
+    # 문서 한 줄이 systemctl restart(=JVM 기동 동안의 중단)로 이어졌다. 코드와 문서가 함께
     # 바뀐 커밋은 하나라도 무시 대상이 아닌 파일이 있으면 평소대로 돈다.
     paths-ignore:
       - '**.md'
@@ -57,7 +57,7 @@ jobs:
       - name: Shellcheck deploy scripts
         run: shellcheck -S warning deploy/*.sh
 
-      # 마이그레이션 규칙(A-OPS-03, src/main/resources/db/migration/README.md)을 지킨다.
+      # 마이그레이션 규칙(A-OPS-03: 확장→배포→수축)을 지킨다.
       #
       # 1) 이미 있던 V*.sql을 수정·삭제·이름 변경하면 **실패**시킨다(OPS-03). Flyway는 적용된
       #    파일의 체크섬을 기록하므로, 고치면 운영이 기동에 실패하고 배포가 롤백된다. 바꾸려면
@@ -90,7 +90,7 @@ jobs:
           new_files=$(git diff --name-only --diff-filter=A "$base" HEAD -- 'src/main/resources/db/migration/V*.sql')
           for f in $new_files; do
             if grep -iE 'drop[[:space:]]+(column|table|index)|rename[[:space:]]+(column|table)|change[[:space:]]+column|modify[[:space:]]+column|truncate' "$f" > /dev/null; then
-              echo "::warning file=$f::파괴적 DDL이 있습니다 — 확장→배포→수축 규칙(db/migration/README.md)을 지켰는지 확인하세요."
+              echo "::warning file=$f::파괴적 DDL이 있습니다 — 확장→배포→수축 규칙을 지켰는지 확인하세요."
             fi
           done
 

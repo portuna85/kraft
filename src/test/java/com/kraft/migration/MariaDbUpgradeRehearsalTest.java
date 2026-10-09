@@ -34,8 +34,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * {@link MariaDbMigrationTest}와 역할이 다르다. 그쪽은 <b>빈 DB</b>에서 V1~V7이 순서대로
  * 성공하는지를 본다. 하지만 실제 첫 배포에서 마주치는 DB는 비어 있지 않다 — {@code local}
  * 프로파일이 {@code ddl-auto: update}로 만들어 둔 스키마에 계정과 게시글이 들어 있다.
- * 그 DB에 운영 설정을 적용하는 경로는 지금까지 README가 "배포 전 같은 설정으로 1회
- * 리허설해야 합니다"라며 <b>사람에게 맡겨 둔</b> 유일한 배포 위험이었다.
+ * 그 DB에 운영 설정을 적용하는 경로는 지금까지 "배포 전 같은 설정으로 1회
+ * 리허설해야 한다"며 <b>사람에게 맡겨 둔</b> 유일한 배포 위험이었다.
  * <p>
  * 여기서 고정하는 것은 두 문장이다:
  * <ol>

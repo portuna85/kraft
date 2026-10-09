@@ -18,8 +18,7 @@ import org.springframework.stereotype.Component;
  * </pre>
  *
  * 전용 프로파일로 가둔 이유는 <b>실수로 돌 일이 없게</b> 하기 위해서다. {@code local}·{@code prod}
- * 어디에도 이 빈이 활성화될 경로가 없다. 자세한 절차는 README "백업·복구"에 있다 —
- * <b>DB 백업이 선행 조건</b>이다.
+ * 어디에도 이 빈이 활성화될 경로가 없다. <b>DB 백업(deploy/backup.sh)이 선행 조건</b>이다.
  * <p>
  * 끝나면 종료 코드를 남기고 내려간다(성공 0, 실패 1). 서비스로 남지 않으므로 배치처럼 쓸 수 있다.
  */
