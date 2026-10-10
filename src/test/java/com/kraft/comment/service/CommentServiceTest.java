@@ -33,6 +33,8 @@ import java.util.stream.IntStream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -216,9 +218,8 @@ class CommentServiceTest {
         Comment topLevel = commentOf(owner, 100L);
         Comment reply = replyOf(owner, 200L, topLevel);
         given(commentRepository.findPageByPostIdAsc(1L, null, PageRequest.of(0, 21))).willReturn(List.of(topLevel));
-        given(commentRepository.countRepliesByParentIdIn(List.of(100L))).willReturn(Map.of(100L, 1L));
-        given(commentRepository.findInitialRepliesGroupedByParentIdIn(List.of(100L), 20))
-                .willReturn(Map.of(100L, List.of(reply)));
+        given(commentRepository.findInitialReplies(List.of(100L), 20))
+                .willReturn(new CommentRepository.InitialReplies(Map.of(100L, List.of(reply)), Map.of(100L, 1L)));
         given(commentRepository.countByPostId(1L)).willReturn(2L);
 
         CommentPageDto result = commentService.findInitialPageForView(1L, authOf(owner));
@@ -243,13 +244,12 @@ class CommentServiceTest {
         given(commentRepository.findPageByPostIdAsc(1L, null, PageRequest.of(0, 21)))
                 .willReturn(List.of(parentA, parentB));
         // A는 답글이 600개다 — 한 부모가 전역 상한(500)을 혼자 넘는 규모.
-        given(commentRepository.countRepliesByParentIdIn(List.of(100L, 101L)))
-                .willReturn(Map.of(100L, 600L, 101L, 1L));
         List<Comment> firstTwentyOfA = IntStream.range(0, 20)
                 .mapToObj(i -> replyOf(owner, 300L + i, parentA))
                 .toList();
-        given(commentRepository.findInitialRepliesGroupedByParentIdIn(List.of(100L, 101L), 20))
-                .willReturn(Map.of(100L, firstTwentyOfA, 101L, List.of(replyB)));
+        given(commentRepository.findInitialReplies(List.of(100L, 101L), 20))
+                .willReturn(new CommentRepository.InitialReplies(Map.of(100L, firstTwentyOfA, 101L, List.of(replyB)),
+                        Map.of(100L, 600L, 101L, 1L)));
         given(commentRepository.countByPostId(1L)).willReturn(622L);
 
         CommentPageDto result = commentService.findInitialPageForView(1L, authOf(owner));
@@ -450,6 +450,8 @@ class CommentServiceTest {
                 .toList();
         given(commentRepository.findPageByPostIdAsc(1L, null, PageRequest.of(0, 21))).willReturn(twentyOne);
         given(commentRepository.countByPostId(1L)).willReturn(30L);
+        given(commentRepository.findInitialReplies(anyList(), anyInt()))
+                .willReturn(CommentRepository.InitialReplies.EMPTY);
 
         CommentPageDto result = commentService.findInitialPageForView(1L, authOf(owner));
 
@@ -537,8 +539,7 @@ class CommentServiceTest {
         User author = userWithEmail("author@example.com", 1L);
         Comment comment = blindedCommentOf(author, 5L);
         given(commentRepository.findPageByPostIdAsc(1L, null, PageRequest.of(0, 21))).willReturn(List.of(comment));
-        given(commentRepository.countRepliesByParentIdIn(List.of(5L))).willReturn(Map.of());
-        given(commentRepository.findInitialRepliesGroupedByParentIdIn(List.of(5L), 20)).willReturn(Map.of());
+        given(commentRepository.findInitialReplies(List.of(5L), 20)).willReturn(CommentRepository.InitialReplies.EMPTY);
 
         // 작성자 본인도 일반 사용자와 같다 — 숨긴 내용을 다시 볼 수 없다.
         CommentViewDto asAuthor = commentService.findInitialPageForView(1L, authOf(author)).comments().get(0);

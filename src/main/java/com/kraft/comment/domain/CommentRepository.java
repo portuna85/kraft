@@ -29,28 +29,40 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
                                             Pageable pageable);
 
     /**
-     * 부모별 상위 {@code limitPerParent}개 답글 id를 {@code ROW_NUMBER() OVER (PARTITION BY ...)}로 한 번에
-     * 뽑는다. 엔티티는 {@link #findAllByIdInWithUser}로 따로 가져온다(네이티브 쿼리에 JOIN FETCH가 어렵다).
+     * 부모별 상위 {@code limitPerParent}개 답글 id와 그 부모의 전체 답글 수를 {@code ROW_NUMBER()}·{@code COUNT(*) OVER (PARTITION BY ...)}로
+     * 한 번에 뽑는다(행: {@code [id, total]}). 엔티티는 {@link #findAllByIdInWithUser}로 따로 가져온다(네이티브 쿼리에 JOIN FETCH가 어렵다).
      */
-    @Query(value = "SELECT id FROM ("
-            + "SELECT id, ROW_NUMBER() OVER (PARTITION BY parent_id ORDER BY id ASC) AS rn "
+    @Query(value = "SELECT id, total FROM ("
+            + "SELECT id, ROW_NUMBER() OVER (PARTITION BY parent_id ORDER BY id ASC) AS rn, "
+            + "COUNT(*) OVER (PARTITION BY parent_id) AS total "
             + "FROM comments WHERE parent_id IN :parentIds"
             + ") ranked WHERE rn <= :limitPerParent", nativeQuery = true)
-    List<Long> findTopReplyIdsPerParent(@Param("parentIds") List<Long> parentIds,
-                                         @Param("limitPerParent") int limitPerParent);
+    List<Object[]> findTopReplyIdsWithTotalPerParent(@Param("parentIds") List<Long> parentIds,
+                                                      @Param("limitPerParent") int limitPerParent);
 
-    /** 부모 id별 답글 목록(오름차순)을 배치로 돌려준다. 답글이 없는 부모는 키가 없다. */
-    default Map<Long, List<Comment>> findInitialRepliesGroupedByParentIdIn(List<Long> parentIds, int limitPerParent) {
+    /** 부모별 처음 답글(오름차순)과 전체 답글 수. 답글이 없는 부모는 두 맵 모두 키가 없다. */
+    record InitialReplies(Map<Long, List<Comment>> repliesByParent, Map<Long, Long> totalByParent) {
+        public static final InitialReplies EMPTY = new InitialReplies(Map.of(), Map.of());
+    }
+
+    default InitialReplies findInitialReplies(List<Long> parentIds, int limitPerParent) {
         if (parentIds.isEmpty()) {
-            return Map.of();
+            return InitialReplies.EMPTY;
         }
-        List<Long> ids = findTopReplyIdsPerParent(parentIds, limitPerParent);
-        if (ids.isEmpty()) {
-            return Map.of();
+        List<Object[]> rows = findTopReplyIdsWithTotalPerParent(parentIds, limitPerParent);
+        if (rows.isEmpty()) {
+            return InitialReplies.EMPTY;
         }
-        return findAllByIdInWithUser(ids).stream()
+        Map<Long, Long> totalById = new java.util.HashMap<>();
+        for (Object[] row : rows) {
+            totalById.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
+        }
+        Map<Long, List<Comment>> byParent = findAllByIdInWithUser(List.copyOf(totalById.keySet())).stream()
                 .sorted(Comparator.comparing(Comment::getId))
                 .collect(Collectors.groupingBy(c -> c.getParent().getId()));
+        Map<Long, Long> totals = new java.util.HashMap<>();
+        byParent.forEach((parentId, replies) -> totals.put(parentId, totalById.get(replies.get(0).getId())));
+        return new InitialReplies(byParent, totals);
     }
 
     /**

@@ -27,7 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
 @RequiredArgsConstructor
 @Service
@@ -152,12 +151,11 @@ public class CommentService {
         List<Comment> page = hasMore ? fetched.subList(0, PAGE_SIZE) : fetched;
 
         List<Long> topLevelIds = page.stream().map(Comment::getId).toList();
-        Map<Long, Long> replyCounts = commentRepository.countRepliesByParentIdIn(topLevelIds);
-        Map<Long, List<Comment>> repliesByParent =
-                commentRepository.findInitialRepliesGroupedByParentIdIn(topLevelIds, INITIAL_REPLIES_PER_PARENT);
+        CommentRepository.InitialReplies initial =
+                commentRepository.findInitialReplies(topLevelIds, INITIAL_REPLIES_PER_PARENT);
 
         List<CommentViewDto> views = page.stream()
-                .map(comment -> withInitialReplies(comment, authentication, replyCounts, repliesByParent))
+                .map(comment -> withInitialReplies(comment, authentication, initial))
                 .toList();
         // 후속 페이지는 전체 개수를 다시 세지 않는다(화면이 로컬로 유지한다).
         Long totalCount = afterId == null ? commentRepository.countByPostId(postId) : null;
@@ -165,15 +163,15 @@ public class CommentService {
     }
 
     private CommentViewDto withInitialReplies(Comment comment, Authentication authentication,
-                                               Map<Long, Long> replyCounts,
-                                               Map<Long, List<Comment>> repliesByParent) {
-        long replyCount = replyCounts.getOrDefault(comment.getId(), 0L);
-        List<CommentViewDto> replies = repliesByParent.getOrDefault(comment.getId(), List.of()).stream()
+                                               CommentRepository.InitialReplies initial) {
+        long replyCount = initial.totalByParent().getOrDefault(comment.getId(), 0L);
+        List<CommentViewDto> replies = initial.repliesByParent().getOrDefault(comment.getId(), List.of()).stream()
                 .map(reply -> viewOf(reply, authentication))
                 .toList();
         boolean hasMoreReplies = replyCount > replies.size();
         return viewOf(comment, authentication).withReplies(replies, replyCount, hasMoreReplies);
     }
+
 
     /** "답글 더 보기": {@code afterId} 이후 답글을 최대 {@link #REPLIES_PAGE_SIZE}개. 없는 부모면 빈 페이지. */
     public CommentPageDto findRepliesPage(Long parentId, Long afterId, Authentication authentication) {
