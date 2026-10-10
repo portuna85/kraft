@@ -17,6 +17,7 @@
     "lint": "eslint src/main/resources/static/js e2e src/vue scripts playwright.config.js eslint.config.js && npm run typecheck && npm run typecheck:vue",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "e2e:local": "node scripts/e2e-local.mjs",
     "visual:check": "bash scripts/visual-docker.sh check",
     "visual:update": "bash scripts/visual-docker.sh update",
     "typecheck": "tsc --noEmit -p jsconfig.json",
