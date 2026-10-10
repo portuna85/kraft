@@ -18,8 +18,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "post_images",
         uniqueConstraints = @UniqueConstraint(name = "UK_POST_IMAGE_FILE_NAME", columnNames = "file_name"),
         indexes = {
-                // 인덱스는 Flyway(V6·V23·V40)와 일치해야 한다 — MariaDbMigrationTest가 대조한다.
-                @Index(name = "IX_POST_IMAGES_OWNER", columnList = "owner_id"),
+                // 인덱스는 Flyway(V6·V23·V40·V44)와 일치해야 한다 — MariaDbMigrationTest가 대조한다.
                 // 업로드 쿼터 합계(sumSizeBytesByOwnerId)가 테이블을 다시 읽지 않고 인덱스만으로 계산한다(V40).
                 @Index(name = "IX_POST_IMAGES_OWNER_STATUS_SIZE", columnList = "owner_id, status, size_bytes"),
                 // PostImageRepository의 상태 기반 배치 조회·claimExpiredOrphanForDeletion이

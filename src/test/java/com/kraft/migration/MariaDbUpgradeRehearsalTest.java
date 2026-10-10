@@ -113,13 +113,13 @@ class MariaDbUpgradeRehearsalTest {
         JdbcTemplate jdbc = jdbc(url);
 
         // 기대 목록에서 뺀 인덱스: 마이그레이션(V23·V25)이 지우면서 엔티티 선언도 지웠으므로 ddl-auto: update로 만든 DB에는 생기지 않는다 — IX_OUTBOX_MAILS_USER(IX_OUTBOX_MAILS_USER_KIND가 왼쪽 접두사로 포함),
-        // IX_COMMENTS_POST(다른 인덱스가 왼쪽 접두사로 포함), IX_OUTBOX_MAILS_STATUS_NEXT_ATTEMPT(IX_OUTBOX_MAILS_STATUS_ID가 claim 쿼리를 커버), IX_USERS_WITHDRAWN_AT(단독으로 쓰는 쿼리가 없음).
+        // IX_COMMENTS_POST(다른 인덱스가 왼쪽 접두사로 포함), IX_OUTBOX_MAILS_STATUS_NEXT_ATTEMPT(IX_OUTBOX_MAILS_STATUS_ID가 claim 쿼리를 커버), IX_USERS_WITHDRAWN_AT(단독으로 쓰는 쿼리가 없음), IX_POST_IMAGES_OWNER(V44, OWNER_STATUS_SIZE가 왼쪽 접두사로 포함).
         // reports 테이블과 users.suspended_until도 엔티티에서 빠졌다(V43이 DB의 테이블·컬럼도 지웠다).
         Map<String, List<String>> expectedIndexesByTable = Map.of(
                 "users", List.of("IX_USERS_ROLE_CREATED_AT"),
                 "posts", List.of("IX_POSTS_CATEGORY_ID", "IX_POSTS_VIEW_COUNT"),
                 "comments", List.of("IX_COMMENTS_POST_PARENT_ID"),
-                "post_images", List.of("IX_POST_IMAGES_OWNER", "IX_POST_IMAGES_STATUS_CREATED_AT_ID"),
+                "post_images", List.of("IX_POST_IMAGES_OWNER_STATUS_SIZE", "IX_POST_IMAGES_STATUS_CREATED_AT_ID"),
                 "email_verification_tokens", List.of("IX_EVT_EXPIRES_AT"),
                 "password_reset_tokens", List.of("IX_PASSWORD_RESET_TOKENS_EXPIRES_AT", "IX_PASSWORD_RESET_TOKENS_USER"),
                 "outbox_mails", List.of(
