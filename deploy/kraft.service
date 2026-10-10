@@ -24,12 +24,16 @@ ExecStartPre=-/bin/bash -c 'u="$${DB_URL#*//}"; hp="$${u%%%%/*}"; h="$${hp%%%%:*
 TimeoutStartSec=180
 
 # -XX:MaxRAMPercentage는 -Xmx를 박지 않아 인스턴스 크기를 바꿔도 유닛을 손대지 않아도 된다(힙 밖 메모리용으로 남는 몫을 50%로 넉넉히 둔다).
+# AOTCache는 deploy-apply.sh가 배포마다 만드는 클래스 로딩 캐시다(기동 시간 단축). 파일이 없거나 jar·JVM 옵션과 맞지 않으면 JVM이 경고만 남기고 캐시 없이 뜬다.
+# -Xlog는 GC·세이프포인트 정지를 logs/gc.log에 남긴다(최대 5×10MB) — 느린 요청 경보가 울렸을 때 JVM 정지 여부를 가린다.
 # ExitOnOutOfMemoryError는 반쯤 망가진 JVM이 계속 돌지 않고 깨끗이 죽어 systemd가 재시작하게 하고, HeapDumpPath는 그 직전 상태를 남긴다.
 ExecStart=/usr/bin/java \
     -XX:MaxRAMPercentage=50.0 \
     -XX:+ExitOnOutOfMemoryError \
     -XX:+HeapDumpOnOutOfMemoryError \
     -XX:HeapDumpPath=/opt/kraft/heapdumps \
+    -XX:AOTCache=/opt/kraft/app/kraft.aot \
+    -Xlog:gc*,safepoint:file=/opt/kraft/app/logs/gc.log:time,uptime,level,tags:filecount=5,filesize=10m \
     -jar /opt/kraft/app/kraft.jar \
     --spring.profiles.active=prod
 

@@ -140,15 +140,30 @@ fi
 mv "$INCOMING" "$JAR"
 log "jar 교체 완료"
 
-# 헬스체크 대기 루프. 롤백 뒤 복구 확인에도 같은 기준을 쓴다(기준을 낮추면 응답하지 않는 jar를 성공으로 남긴다). 최대 2초(sleep) + 3초(curl 타임아웃)
-# = 5초 × 30회, 최악 약 150초다.
+# 4-1. AOT 캐시 학습(선택). 새 jar로 컨텍스트만 한 번 띄웠다 닫아 클래스 로딩·링크 결과를 kraft.aot에 남기면 kraft.service가 -XX:AOTCache로 읽어
+#      재시작 시간이 줄어든다. 캐시는 jar와 JVM 옵션이 같을 때만 쓰이므로(다르면 JVM이 무시한다) 배포마다 새로 만들고, 실패해도 배포를 막지 않는다.
+#      운영 상태를 건드리지 않게 포트는 임의(0), Flyway는 끄고 스키마 검증은 건너뛴다(마이그레이션은 아래 재시작에서 평소처럼 적용된다).
+AOT_CACHE="$APP_DIR/kraft.aot"
+rm -f "$AOT_CACHE"
+if ( set -a; . "$APP_DIR/.env"; set +a
+     timeout 180 /usr/bin/java -XX:MaxRAMPercentage=50.0 -XX:AOTCacheOutput="$AOT_CACHE" -Dspring.context.exit=onRefresh \
+         -jar "$JAR" --spring.profiles.active=prod --server.port=0 --spring.flyway.enabled=false \
+         --spring.jpa.hibernate.ddl-auto=none ) >>"$LOG" 2>&1; then
+    log "AOT 캐시 생성: $(du -h "$AOT_CACHE" 2>/dev/null | cut -f1)"
+else
+    rm -f "$AOT_CACHE"
+    log "경고: AOT 캐시를 만들지 못했다. 캐시 없이 기동한다(기동이 조금 느려질 뿐이다)"
+fi
+
+# 헬스체크 대기 루프. 롤백 뒤 복구 확인에도 같은 기준을 쓴다(기준을 낮추면 응답하지 않는 jar를 성공으로 남긴다). 최대 1초(sleep) + 3초(curl 타임아웃)
+# = 4초 × 40회, 최악 약 160초다.
 #
 # /readyz가 404면 readiness가 없던 버전의 jar(롤백으로 되살린 경우)라 /healthz로 판정한다 — 아니면 정상 기동한 이전 jar를 롤백 실패로 기록한다. 503(DB 미준비)은 폴백하지 않는다.
 wait_for_health() {
     local start code
     start=$(date +%s)
-    for _ in $(seq 1 30); do
-        sleep 2
+    for _ in $(seq 1 40); do
+        sleep 1
         code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 3 "$HEALTH_URL" 2>/dev/null) || true
         if [ "$code" = 200 ]; then
             log "헬스체크 통과 (경과 $(( $(date +%s) - start ))초)"
@@ -167,7 +182,7 @@ wait_for_health() {
 healthy=0
 if sudo /usr/bin/systemctl restart kraft; then
     log "재시작 요청됨. 기동을 기다린다"
-    # 6. 헬스체크. 실제 최악 대기는 이 루프(약 150초)에 재시작 요청·jar 언패킹·JVM 기동 시간이 더해진다.
+    # 6. 헬스체크. 실제 최악 대기는 이 루프(약 160초)에 재시작 요청·jar 언패킹·JVM 기동 시간이 더해진다.
     if wait_for_health; then
         healthy=1
     fi
