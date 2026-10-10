@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public interface CommentRepository extends JpaRepository<Comment, Long> {
@@ -92,6 +93,10 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     /** 여러 id를 작성자와 함께 한 번에 조회한다(N+1 방지). */
     @Query("SELECT c FROM Comment c JOIN FETCH c.user WHERE c.id IN :ids")
     List<Comment> findAllByIdInWithUser(@Param("ids") List<Long> ids);
+
+    /** 수정·삭제 경로용: 작성자와 게시글을 한 쿼리로 가져와 권한·공개 여부 검사의 지연 로딩을 없앤다. */
+    @Query("SELECT c FROM Comment c JOIN FETCH c.user JOIN FETCH c.post WHERE c.id = :id")
+    Optional<Comment> findByIdWithUserAndPost(@Param("id") Long id);
 
     @Query("SELECT c.post.id AS postId, COUNT(c) AS count FROM Comment c WHERE c.post.id IN :postIds GROUP BY c.post.id")
     List<PostCommentCount> countGroupedByPostIdIn(@Param("postIds") List<Long> postIds);

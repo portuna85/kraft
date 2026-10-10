@@ -160,7 +160,7 @@ class CommentServiceTest {
         given(postRepository.existsVisibleById(1L)).willReturn(true);
         given(postRepository.getReferenceById(1L)).willReturn(post);
         given(userRepository.findById(1L)).willReturn(Optional.of(author));
-        given(commentRepository.findById(100L)).willReturn(Optional.of(parent));
+        given(commentRepository.findByIdWithUserAndPost(100L)).willReturn(Optional.of(parent));
         Comment savedReply = replyOf(author, 200L, parent);
         given(commentRepository.saveAndFlush(any(Comment.class))).willReturn(savedReply);
 
@@ -183,7 +183,7 @@ class CommentServiceTest {
         given(postRepository.existsVisibleById(1L)).willReturn(true);
         given(postRepository.getReferenceById(1L)).willReturn(post);
         given(userRepository.findById(1L)).willReturn(Optional.of(author));
-        given(commentRepository.findById(200L)).willReturn(Optional.of(existingReply));
+        given(commentRepository.findByIdWithUserAndPost(200L)).willReturn(Optional.of(existingReply));
 
         assertThatThrownBy(() -> commentService.save(1L, authOf(author), new CommentSaveRequestDto("답글의 답글", 200L)))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -201,7 +201,7 @@ class CommentServiceTest {
         given(postRepository.existsVisibleById(1L)).willReturn(true);
         given(postRepository.getReferenceById(1L)).willReturn(postOf(1L));
         given(userRepository.findById(1L)).willReturn(Optional.of(author));
-        given(commentRepository.findById(300L)).willReturn(Optional.of(parentOnAnotherPost));
+        given(commentRepository.findByIdWithUserAndPost(300L)).willReturn(Optional.of(parentOnAnotherPost));
 
         assertThatThrownBy(() -> commentService.save(1L, authOf(author), new CommentSaveRequestDto("답글", 300L)))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -287,7 +287,7 @@ class CommentServiceTest {
     void update_whenAuthor_updatesContent() {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
-        given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
+        given(commentRepository.findByIdWithUserAndPost(100L)).willReturn(Optional.of(comment));
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
 
         CommentViewDto result = commentService.update(100L, new CommentUpdateRequestDto("수정된 댓글"), null,
@@ -304,7 +304,7 @@ class CommentServiceTest {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
         ReflectionTestUtils.setField(comment, "version", 5L);
-        given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
+        given(commentRepository.findByIdWithUserAndPost(100L)).willReturn(Optional.of(comment));
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
 
         commentService.update(100L, new CommentUpdateRequestDto("수정된 댓글"), 5L,
@@ -320,7 +320,7 @@ class CommentServiceTest {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
         ReflectionTestUtils.setField(comment, "version", 5L);
-        given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
+        given(commentRepository.findByIdWithUserAndPost(100L)).willReturn(Optional.of(comment));
         given(userRepository.findById(1L)).willReturn(Optional.of(owner));
 
         assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("수정된 댓글"), 4L,
@@ -336,7 +336,7 @@ class CommentServiceTest {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
         User intruder = userWithEmail("intruder@example.com", 2L);
-        given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
+        given(commentRepository.findByIdWithUserAndPost(100L)).willReturn(Optional.of(comment));
         given(userRepository.findById(2L)).willReturn(Optional.of(intruder));
 
         assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("해킹"), null,
@@ -353,7 +353,7 @@ class CommentServiceTest {
         Comment comment = commentOf(owner, 100L);
         User admin = User.builder().name("admin").email("admin@example.com").password("encoded").role(Role.ADMIN).build();
         ReflectionTestUtils.setField(admin, "id", 2L);
-        given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
+        given(commentRepository.findByIdWithUserAndPost(100L)).willReturn(Optional.of(comment));
         given(userRepository.findById(2L)).willReturn(Optional.of(admin));
 
         commentService.update(100L, new CommentUpdateRequestDto("관리자 수정"), null,
@@ -367,7 +367,7 @@ class CommentServiceTest {
     void delete_whenNotAuthor_throwsAccessDeniedExceptionAndDoesNotDelete() {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
-        given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
+        given(commentRepository.findByIdWithUserAndPost(100L)).willReturn(Optional.of(comment));
 
         assertThatThrownBy(() -> commentService.delete(100L, authOf(2L, "intruder@example.com", Role.USER)))
                 .isInstanceOf(AccessDeniedException.class);
@@ -382,7 +382,7 @@ class CommentServiceTest {
     void delete_whenNoReplies_hardDeletesAndPublishesEvent() {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
-        given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
+        given(commentRepository.findByIdWithUserAndPost(100L)).willReturn(Optional.of(comment));
         given(commentRepository.countRepliesByParentIdIn(List.of(100L))).willReturn(Map.of());
 
         var result = commentService.delete(100L, authOf(owner));
@@ -400,7 +400,7 @@ class CommentServiceTest {
     void delete_whenHasReplies_softDeletesAndKeepsRow() {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
-        given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
+        given(commentRepository.findByIdWithUserAndPost(100L)).willReturn(Optional.of(comment));
         given(commentRepository.countRepliesByParentIdIn(List.of(100L))).willReturn(Map.of(100L, 2L));
 
         var result = commentService.delete(100L, authOf(owner));
@@ -417,7 +417,7 @@ class CommentServiceTest {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
         comment.softDelete();
-        given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
+        given(commentRepository.findByIdWithUserAndPost(100L)).willReturn(Optional.of(comment));
 
         var result = commentService.delete(100L, authOf(owner));
 
@@ -432,7 +432,7 @@ class CommentServiceTest {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 100L);
         comment.softDelete();
-        given(commentRepository.findById(100L)).willReturn(Optional.of(comment));
+        given(commentRepository.findByIdWithUserAndPost(100L)).willReturn(Optional.of(comment));
         given(userRepository.findById(any())).willReturn(Optional.of(owner));
 
         assertThatThrownBy(() -> commentService.update(100L, new CommentUpdateRequestDto("수정 시도"), null,
@@ -482,7 +482,7 @@ class CommentServiceTest {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 5L);
         ReflectionTestUtils.setField(comment.getPost(), "deletedAt", java.time.LocalDateTime.now());
-        given(commentRepository.findById(5L)).willReturn(Optional.of(comment));
+        given(commentRepository.findByIdWithUserAndPost(5L)).willReturn(Optional.of(comment));
 
         assertThatThrownBy(() -> commentService.update(5L, new CommentUpdateRequestDto("새 내용"), 0L, authOf(owner)))
                 .isInstanceOf(PostNotFoundException.class);
@@ -494,7 +494,7 @@ class CommentServiceTest {
         User author = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(author, 5L);
         ReflectionTestUtils.setField(comment.getPost(), "deletedAt", java.time.LocalDateTime.now());
-        given(commentRepository.findById(5L)).willReturn(Optional.of(comment));
+        given(commentRepository.findByIdWithUserAndPost(5L)).willReturn(Optional.of(comment));
         given(commentRepository.countRepliesByParentIdIn(List.of(5L))).willReturn(Map.of());
 
         commentService.delete(5L, authOf(9L, "admin@example.com", Role.ADMIN));
@@ -521,7 +521,7 @@ class CommentServiceTest {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment parent = commentOf(owner, 5L);
         ReflectionTestUtils.setField(parent.getPost(), "deletedAt", java.time.LocalDateTime.now());
-        given(commentRepository.findById(5L)).willReturn(Optional.of(parent));
+        given(commentRepository.findByIdWithUserAndPost(5L)).willReturn(Optional.of(parent));
 
         assertThatThrownBy(() -> commentService.findRepliesPage(5L, null, authOf(1L, "u@example.com", Role.USER)))
                 .isInstanceOf(PostNotFoundException.class);
@@ -561,7 +561,7 @@ class CommentServiceTest {
     void updateAndDelete_whenBlindedAndAuthor_areForbidden() {
         User author = userWithEmail("author@example.com", 1L);
         Comment comment = blindedCommentOf(author, 5L);
-        given(commentRepository.findById(5L)).willReturn(Optional.of(comment));
+        given(commentRepository.findByIdWithUserAndPost(5L)).willReturn(Optional.of(comment));
         given(userRepository.findById(1L)).willReturn(Optional.of(author));
 
         assertThatThrownBy(() -> commentService.update(5L, new CommentUpdateRequestDto("새 내용"), 0L, authOf(author)))
@@ -579,8 +579,8 @@ class CommentServiceTest {
         Comment live = commentOf(author, 5L);
         Comment softDeleted = commentOf(author, 6L);
         softDeleted.softDelete();
-        given(commentRepository.findById(5L)).willReturn(Optional.of(live));
-        given(commentRepository.findById(6L)).willReturn(Optional.of(softDeleted));
+        given(commentRepository.findByIdWithUserAndPost(5L)).willReturn(Optional.of(live));
+        given(commentRepository.findByIdWithUserAndPost(6L)).willReturn(Optional.of(softDeleted));
 
         commentService.blind(5L);
         commentService.blind(6L);
@@ -604,7 +604,7 @@ class CommentServiceTest {
         User owner = userWithEmail("owner@example.com", 1L);
         Comment comment = commentOf(owner, 5L);
         ReflectionTestUtils.setField(comment.getPost(), "blindedAt", java.time.LocalDateTime.now());
-        given(commentRepository.findById(5L)).willReturn(Optional.of(comment));
+        given(commentRepository.findByIdWithUserAndPost(5L)).willReturn(Optional.of(comment));
 
         assertThatThrownBy(() -> commentService.update(5L, new CommentUpdateRequestDto("새 내용"), 0L, authOf(owner)))
                 .isInstanceOf(PostNotFoundException.class);

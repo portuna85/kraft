@@ -175,7 +175,7 @@ public class CommentService {
 
     /** "답글 더 보기": {@code afterId} 이후 답글을 최대 {@link #REPLIES_PAGE_SIZE}개. 없는 부모면 빈 페이지. */
     public CommentPageDto findRepliesPage(Long parentId, Long afterId, Authentication authentication) {
-        commentRepository.findById(parentId).ifPresent(parent -> requirePostVisible(parent, authentication));
+        commentRepository.findByIdWithUserAndPost(parentId).ifPresent(parent -> requirePostVisible(parent, authentication));
         List<Comment> fetched = commentRepository.findRepliesByParentIdAsc(
                 parentId, afterId, PageRequest.of(0, REPLIES_PAGE_SIZE + 1));
         boolean hasMore = fetched.size() > REPLIES_PAGE_SIZE;
@@ -228,7 +228,7 @@ public class CommentService {
     }
 
     private Comment findComment(Long id) {
-        return commentRepository.findById(id)
+        return commentRepository.findByIdWithUserAndPost(id)
                 .orElseThrow(() -> new NotFoundException("해당 댓글이 없습니다. id=" + id));
     }
 
