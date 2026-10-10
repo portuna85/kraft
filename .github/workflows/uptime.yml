@@ -1,0 +1,19 @@
+# 외부에서 운영 사이트의 /healthz를 주기적으로 확인한다. 앱 내부 알림(HealthReporter → AlertMailer)은 서버·프록시·JVM이 통째로 죽거나
+# DNS·TLS가 깨지면 보낼 주체가 없으므로, 응답이 없으면 이 잡이 실패해 저장소 소유자에게 Actions 실패 알림이 간다.
+name: uptime
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  healthz:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      # 일시적인 네트워크 오류로 알림이 울리지 않게 두 번 더 시도한다.
+      - name: Check /healthz
+        run: curl --fail --silent --show-error --max-time 10 --retry 2 --retry-delay 5 --retry-all-errors https://kraft.io.kr/healthz
