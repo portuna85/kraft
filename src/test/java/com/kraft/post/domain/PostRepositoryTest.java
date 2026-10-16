@@ -368,7 +368,7 @@ class PostRepositoryTest {
                 .extracting(PostRowDto::id).containsExactly(kept.getId());
         assertThat(postRepository.findPinned(LocalDateTime.now(), PageRequest.of(0, 10)))
                 .extracting(PostRowDto::id).containsExactly(kept.getId());
-        assertThat(postRepository.findSitemapRows(PageRequest.of(0, 10)))
+        assertThat(postRepository.findSitemapRowsAfter(0L, PageRequest.of(0, 10)))
                 .extracting(PostRepository.SitemapRow::getId).containsExactly(kept.getId());
         assertThat(postRepository.findRelated(Category.NOTICE, kept.getId(), PageRequest.of(0, 10))).isEmpty();
         assertThat(postRepository.findAllByIdInWithUser(List.of(kept.getId(), gone.getId())))
@@ -452,7 +452,7 @@ class PostRepositoryTest {
                 .extracting(PostRowDto::id).containsExactly(kept.getId());
         assertThat(postRepository.findPinned(LocalDateTime.now(), PageRequest.of(0, 10)))
                 .extracting(PostRowDto::id).containsExactly(kept.getId());
-        assertThat(postRepository.findSitemapRows(PageRequest.of(0, 10)))
+        assertThat(postRepository.findSitemapRowsAfter(0L, PageRequest.of(0, 10)))
                 .extracting(PostRepository.SitemapRow::getId).containsExactly(kept.getId());
         assertThat(postRepository.findRelated(Category.NOTICE, kept.getId(), PageRequest.of(0, 10))).isEmpty();
         assertThat(postRepository.existsVisibleById(hidden.getId())).isFalse();

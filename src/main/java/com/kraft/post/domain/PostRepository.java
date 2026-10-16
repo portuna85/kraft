@@ -103,8 +103,10 @@ public interface PostRepository extends JpaRepository<Post, Long> {
         LocalDateTime getUpdatedAt();
     }
 
-    @Query("SELECT p.id AS id, p.updatedAt AS updatedAt FROM Post p WHERE " + VISIBLE + "ORDER BY p.id")
-    List<SitemapRow> findSitemapRows(Pageable pageable);
+    /** id가 {@code afterId}보다 큰 공개 글을 id 순으로 — sitemap을 id 구간(keyset)으로 나눠 읽는다. */
+    @Query("SELECT p.id AS id, p.updatedAt AS updatedAt FROM Post p WHERE " + VISIBLE
+            + "AND p.id > :afterId ORDER BY p.id")
+    List<SitemapRow> findSitemapRowsAfter(@Param("afterId") long afterId, Pageable pageable);
 
     /** 여러 id를 작성자와 함께 한 번에 조회한다(N+1 방지). */
     @Query("SELECT p FROM Post p JOIN FETCH p.user WHERE p.id IN :ids AND p.deletedAt IS NULL")

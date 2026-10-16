@@ -99,7 +99,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository()))
                 .authorizeHttpRequests(auth -> auth
                         // 기본은 인증 필요 — 공개 경로만 아래에 명시한다.
-                        .requestMatchers("/", "/community", "/recommend", "/robots.txt", "/sitemap.xml",
+                        .requestMatchers("/", "/community", "/recommend", "/robots.txt", "/sitemap.xml", "/sitemap-posts-*.xml",
                                 "/login", "/signup", "/forgot-password",
                                 "/users/password-reset", "/users/verify", "/users/verify/result",
                                 "/healthz", "/readyz", "/error", "/error/**").permitAll()

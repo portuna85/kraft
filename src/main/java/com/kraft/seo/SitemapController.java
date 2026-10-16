@@ -6,6 +6,7 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Duration;
@@ -29,6 +30,16 @@ public class SitemapController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.maxAge(Duration.ofMinutes(10)).cachePublic())
                 .body(sitemapService.sitemapXml());
+    }
+
+    /** 글이 많아 {@code /sitemap.xml}이 index가 됐을 때 그 index가 가리키는 게시글 구간. 모르는 경계는 404다. */
+    @GetMapping(value = "/sitemap-posts-{afterId}.xml", produces = MediaType.APPLICATION_XML_VALUE)
+    public ResponseEntity<String> postsChunk(@PathVariable long afterId) {
+        return sitemapService.postsChunkXml(afterId)
+                .map(xml -> ResponseEntity.ok()
+                        .cacheControl(CacheControl.maxAge(Duration.ofMinutes(10)).cachePublic())
+                        .body(xml))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping(value = "/robots.txt", produces = MediaType.TEXT_PLAIN_VALUE)
