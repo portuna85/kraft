@@ -15,7 +15,8 @@ const DEBOUNCE_MS = 800;
 export function useDraftAutosave(storageKey, draft, options = {}) {
     const ttlMs = options.ttlMs ?? DEFAULT_TTL_MS;
     // window.localStorage 속성 접근 자체가 던질 수 있어(safeLocalStorage 참고) 직접 읽지 않는다 — 이 기본값은 setup() 도중 평가되므로 여기서 던지면 try로 감쌀 곳이 없어 Vue 마운트 전체가 실패한다.
-    const storage = options.storage ?? safeLocalStorage();
+    // 명시적 null은 "저장 끔"(호출부가 userId를 못 얻은 경우)이라 기본 저장소로 대체하지 않는다 — undefined(옵션 미지정)만 기본값을 쓴다.
+    const storage = options.storage === undefined ? safeLocalStorage() : options.storage;
 
     const available = ref(false);
     let pendingRestore = /** @type {Record<string, unknown> | null} */ (null);

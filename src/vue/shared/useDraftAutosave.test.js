@@ -47,3 +47,45 @@ test('discard 뒤의 flush는 지운 초안을 되살리지 않는다', () => {
 
     assert.equal(readDraft(storage, 'k', 1000), null);
 });
+
+function stubWindowStorage() {
+    const calls = { get: 0, set: 0, remove: 0 };
+    globalThis.window = {
+        localStorage: {
+            getItem: () => { calls.get++; return null; },
+            setItem: () => { calls.set++; },
+            removeItem: () => { calls.remove++; },
+        },
+    };
+    return calls;
+}
+
+test('storage: null은 저장을 끄고 기본 localStorage를 건드리지 않는다', () => {
+    const calls = stubWindowStorage();
+    try {
+        const autosave = useDraftAutosave('k', reactive({ title: 'x' }), { storage: null });
+
+        autosave.checkAvailable(() => false);
+        autosave.schedule();
+        autosave.flush();
+        autosave.discard();
+
+        assert.deepEqual(calls, { get: 0, set: 0, remove: 0 });
+    } finally {
+        delete globalThis.window;
+    }
+});
+
+test('storage 옵션을 생략하면 기본 localStorage를 쓴다', () => {
+    const calls = stubWindowStorage();
+    try {
+        const autosave = useDraftAutosave('k', reactive({ title: 'x' }));
+
+        autosave.schedule();
+        autosave.flush();
+
+        assert.equal(calls.set, 1);
+    } finally {
+        delete globalThis.window;
+    }
+});
