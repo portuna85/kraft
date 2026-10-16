@@ -65,3 +65,6 @@ app:
     # 이메일 조회용 HMAC-SHA256 pepper. 기본값 없음. 암호화 키와 다른 값을 쓰고 백업과 분리해 보관하며, 잃으면 이메일 조회가 안 되므로
     # 키와 같은 등급이다. 바꾸려면 hmac-backfill 도구로 다시 채운다.
     email-hash-pepper: ${EMAIL_HASH_PEPPER}
+    # 기동 직후 최근·오래된 계정으로 pepper가 DB의 email_hmac와 맞는지 대조하고, 틀리면 기동을 실패시킨다(EmailPepperStartupVerifier). pepper를 의도적으로
+    # 교체하는 작업 중에만 false로 끈다.
+    verify-email-pepper-on-startup: ${VERIFY_EMAIL_PEPPER_ON_STARTUP:true}
