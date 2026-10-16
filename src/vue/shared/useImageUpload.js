@@ -105,6 +105,9 @@ export function useImageUpload({ initialUrl = null } = {}) {
     }
 
     function clear() {
+        // 진행 중 축소도 취소한다 — 토큰을 비우지 않으면 끝난 축소가 비운 file을 다시 채운다.
+        currentSelectionToken = null;
+        processing.value = false;
         file.value = null;
         uploadedUrl.value = null;
         uploadedWidth.value = null;
@@ -210,7 +213,11 @@ export function useImageUpload({ initialUrl = null } = {}) {
         return uploadedUrl.value;
     }
 
-    onUnmounted(revokePreview);
+    onUnmounted(() => {
+        // 언마운트 뒤 끝난 축소가 revoke된 뒤에 새 object URL을 만들어 누수시키지 않게 진행 중 선택도 무효화한다.
+        currentSelectionToken = null;
+        revokePreview();
+    });
 
     return {
         file,

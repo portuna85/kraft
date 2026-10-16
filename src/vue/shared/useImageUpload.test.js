@@ -100,3 +100,39 @@ test('축소 중에 선택을 해제하면 늦게 끝난 축소가 file을 되�
     assert.equal(picture.hasFile.value, false);
     assert.equal(picture.processing.value, false);
 });
+
+test('축소 중에 clear()를 호출하면 늦게 끝난 축소가 file을 되살리지 못한다', async () => {
+    const releases = controllableBitmap();
+    const picture = useImageUpload();
+
+    const pending = picture.onFileSelected(png('a.png'));
+    picture.clear();
+    assert.equal(picture.processing.value, false);
+    assert.equal(picture.hasFile.value, false);
+
+    releases[0]();
+    await pending;
+
+    assert.equal(picture.hasFile.value, false);
+    assert.equal(picture.previewUrl.value, null);
+    assert.equal(picture.processing.value, false);
+});
+
+test('clear() 뒤에 새로 고른 파일은 취소된 이전 축소가 끝나도 지워지지 않는다', async () => {
+    const releases = controllableBitmap();
+    const picture = useImageUpload();
+
+    const first = picture.onFileSelected(png('first.png'));
+    picture.clear();
+    const second = picture.onFileSelected(png('second.png'));
+
+    releases[0]();
+    await first;
+    assert.equal(picture.processing.value, true, '취소된 첫 축소가 새 선택의 processing을 끄면 안 된다');
+    assert.equal(picture.hasFile.value, false);
+
+    releases[1]();
+    await second;
+    assert.equal(picture.file.value?.name, 'second.png');
+    assert.equal(picture.processing.value, false);
+});
