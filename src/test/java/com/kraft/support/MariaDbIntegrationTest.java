@@ -29,7 +29,7 @@ import java.util.List;
  * <p>
  * 컨테이너를 공유하므로 테스트 사이의 데이터가 섞이지 않게 {@link #resetData}가 매 테스트 전에
  * 비운다. 마이그레이션이 시드로 넣는 {@code recommendation_history_state}(id=1)는 지우지 않고
- * 초기값으로 되돌린다.
+ * 초기값으로 되돌리고, 잠금 전용 {@code post_pin_lock}(id=1)은 그대로 둔다.
  * <p>
  * {@code BackupRestoreRehearsalTest}·{@code MariaDbUpgradeRehearsalTest}는 DB 전체를 덤프·복구하거나
  * 기존 DB를 만들어 전환하는 것 자체가 검증 대상이라 이 클래스를 쓰지 않고 자기 컨테이너를 둔다.
@@ -55,6 +55,8 @@ public abstract class MariaDbIntegrationTest {
     /** 마이그레이션 이력·시드를 보존할 테이블. 앞의 것은 건드리지 않고 뒤의 것은 값을 되돌린다. */
     private static final String FLYWAY_HISTORY = "flyway_schema_history";
     private static final String HISTORY_STATE = "recommendation_history_state";
+    /** 고정 상한 직렬화용 잠금 행(V45가 시드). 비우지 않는다. */
+    private static final String PIN_LOCK = "post_pin_lock";
 
     @TestConfiguration(proxyBeanMethods = false)
     static class ContainerConfig {
@@ -85,7 +87,8 @@ public abstract class MariaDbIntegrationTest {
             try (Statement statement = connection.createStatement()) {
                 statement.execute("SET FOREIGN_KEY_CHECKS = 0");
                 for (String table : tables) {
-                    if (!table.equalsIgnoreCase(FLYWAY_HISTORY) && !table.equalsIgnoreCase(HISTORY_STATE)) {
+                    if (!table.equalsIgnoreCase(FLYWAY_HISTORY) && !table.equalsIgnoreCase(HISTORY_STATE)
+                            && !table.equalsIgnoreCase(PIN_LOCK)) {
                         // TRUNCATE는 DELETE 트리거를 실행하지 않는다 — 이력 version이 따로 올라가지 않는다.
                         statement.execute("TRUNCATE TABLE `" + table + "`");
                     }

@@ -2,6 +2,8 @@ package com.kraft.post.service;
 
 import com.kraft.post.domain.Post;
 import com.kraft.post.domain.PostNotFoundException;
+import com.kraft.post.domain.PostPinLock;
+import com.kraft.post.domain.PostPinLockRepository;
 import com.kraft.post.domain.PostRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -26,11 +28,15 @@ class PostModerationServiceTest {
     @Mock
     private PostRepository postRepository;
 
+    @Mock
+    private PostPinLockRepository pinLockRepository;
+
     private PostModerationService service;
 
     @BeforeEach
     void setUp() {
-        service = new PostModerationService(postRepository);
+        service = new PostModerationService(postRepository, pinLockRepository);
+        org.mockito.Mockito.lenient().when(pinLockRepository.lockForUpdate()).thenReturn(Optional.of(PostPinLock.singleton()));
     }
 
     private static Post post() {
@@ -122,5 +128,64 @@ class PostModerationServiceTest {
 
         assertThatThrownBy(() -> service.pin(1L, until)).isInstanceOf(PostNotFoundException.class);
         assertThatThrownBy(() -> service.unpin(2L)).isInstanceOf(PostNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("pin: 개수를 세기 전에 먼저 잠금 행을 잡아 다른 고정과 직렬화한다")
+    void pin_locksBeforeCounting() {
+        LocalDateTime until = LocalDateTime.now().plusDays(7);
+        given(postRepository.countPinnedExcluding(eq(1L), any())).willReturn(0L);
+        given(postRepository.pin(1L, until)).willReturn(1);
+
+        service.pin(1L, until);
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(pinLockRepository, postRepository);
+        order.verify(pinLockRepository).lockForUpdate();
+        order.verify(postRepository).countPinnedExcluding(eq(1L), any());
+        order.verify(postRepository).pin(1L, until);
+    }
+
+    @Test
+    @DisplayName("잠금 행이 없는 환경에서는 만든 뒤 다시 잠근다")
+    void lockRow_isCreatedWhenMissing() {
+        given(pinLockRepository.lockForUpdate()).willReturn(Optional.empty(), Optional.of(PostPinLock.singleton()));
+        given(postRepository.countPinnedExcluding(eq(1L), any())).willReturn(0L);
+        given(postRepository.pin(eq(1L), any())).willReturn(1);
+
+        service.pin(1L, LocalDateTime.now().plusDays(1));
+
+        org.mockito.Mockito.verify(pinLockRepository).saveAndFlush(any(PostPinLock.class));
+        org.mockito.Mockito.verify(pinLockRepository, org.mockito.Mockito.times(2)).lockForUpdate();
+    }
+
+    @Test
+    @DisplayName("restore·unblindPost: 되살아난 글의 고정이 상한을 넘기면 그 글의 고정만 풀고 복구·해제는 성공한다")
+    void reactivation_overLimit_unpinsOnlyReactivatedPost() {
+        given(postRepository.restore(1L)).willReturn(1);
+        given(postRepository.unblind(2L)).willReturn(1);
+        given(postRepository.countPinnedExcluding(any(), any())).willReturn((long) PostQueryService.PINNED_LIMIT);
+        given(postRepository.countPinned(any())).willReturn((long) PostQueryService.PINNED_LIMIT + 1);
+
+        service.restore(1L);
+        service.unblindPost(2L);
+
+        org.mockito.Mockito.verify(postRepository).unpin(1L);
+        org.mockito.Mockito.verify(postRepository).unpin(2L);
+    }
+
+    @Test
+    @DisplayName("restore·unblindPost: 상한 안이거나 되살아난 글이 고정 중이 아니면 고정을 건드리지 않는다")
+    void reactivation_withinLimitOrNotPinned_keepsPins() {
+        given(postRepository.restore(1L)).willReturn(1);
+        given(postRepository.unblind(2L)).willReturn(1);
+        // 1번: 고정 중이지만 다른 고정이 4개라 상한 안. 2번: 이 글은 고정이 아니라(전체 수 = 다른 글 수) 다른 글이 이미 5개여도 무관.
+        given(postRepository.countPinnedExcluding(eq(1L), any())).willReturn(4L);
+        given(postRepository.countPinned(any())).willReturn(5L, 5L);
+        given(postRepository.countPinnedExcluding(eq(2L), any())).willReturn(5L);
+
+        service.restore(1L);
+        service.unblindPost(2L);
+
+        org.mockito.Mockito.verify(postRepository, org.mockito.Mockito.never()).unpin(any());
     }
 }

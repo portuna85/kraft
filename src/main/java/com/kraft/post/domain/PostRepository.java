@@ -92,6 +92,10 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query("SELECT COUNT(p) FROM Post p WHERE " + VISIBLE + "AND p.pinnedUntil > :now AND p.id <> :excludeId")
     long countPinnedExcluding(@Param("excludeId") Long excludeId, @Param("now") LocalDateTime now);
 
+    /** 지금 고정 중인(보이는 글 중 기한이 남은) 글 수. */
+    @Query("SELECT COUNT(p) FROM Post p WHERE " + VISIBLE + "AND p.pinnedUntil > :now")
+    long countPinned(@Param("now") LocalDateTime now);
+
     /** sitemap용 최소 프로젝션 — 본문(TEXT)과 작성자를 읽지 않는다. */
     interface SitemapRow {
         Long getId();
