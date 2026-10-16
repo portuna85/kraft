@@ -176,6 +176,12 @@ public class RecommendationFetchService {
             String reason = String.valueOf(e.getReason());
             record(trigger, Outcome.FAILED, target, reason);
             return reason;
+        } catch (RuntimeException e) {
+            // 예상하지 못한 실행 예외(DB 반영 실패 등)도 관측에서 빠지지 않게 실패로 남긴다. Error는 잡지 않는다.
+            log.error("회차 {} 자동 반영 중 예상하지 못한 오류. 다음 예약 시각에 다시 시도합니다.", target, e);
+            String reason = "UNEXPECTED_ERROR: " + e.getClass().getSimpleName();
+            record(trigger, Outcome.FAILED, target, reason);
+            return reason;
         }
     }
 

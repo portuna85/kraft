@@ -173,4 +173,23 @@ class RecommendationFetchServiceTest {
         assertThat(fetchStatus.lastSuccessAt()).isNull();
         assertThat(fetchStatus.lastFailureAt()).isNull();
     }
+
+    @Test
+    @DisplayName("반영 중 예상하지 못한 실행 예외가 나도 FAILED로 한 번만 기록하고 연속 실패를 센다")
+    void unexpectedImportException_isRecordedAsFailureOnce() {
+        givenVerifiedThrough(10);
+        ImportedDraw draw = new ImportedDraw(11, List.of(1, 2, 3, 4, 5, 6));
+        given(dhLotteryClient.fetchRound(11)).willReturn(new DhLotteryClient.FetchOutcome.Success(draw));
+        given(importer.importHistory(any(), anyInt(), any())).willThrow(new IllegalArgumentException("boom"));
+
+        RunResult result = service().run(Trigger.SCHEDULED);
+
+        assertThat(result.status()).isEqualTo(RunResult.Status.FAILED);
+        assertThat(fetchStatus.consecutiveFailures()).isEqualTo(1);
+        ArgumentCaptor<RecommendationFetchAttempt> saved = ArgumentCaptor.forClass(RecommendationFetchAttempt.class);
+        verify(attemptRepository).save(saved.capture());
+        assertThat(saved.getValue().getOutcome()).isEqualTo(Outcome.FAILED);
+        assertThat(saved.getValue().getDetail()).isEqualTo("UNEXPECTED_ERROR: IllegalArgumentException");
+        assertThat(saved.getValue().getRoundNo()).isEqualTo(11);
+    }
 }

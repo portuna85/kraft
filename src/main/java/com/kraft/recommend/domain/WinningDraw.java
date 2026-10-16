@@ -117,11 +117,12 @@ public class WinningDraw implements Persistable<Integer> {
     }
 
     /**
-     * 화면 표시 전용 부가 정보를 반영한다(null이면 이미 알던 값을 지우지 않으려 아무것도 하지 않는다). 자동 수집은
-     * {@code DhLotteryClient}가 범위 밖 보너스를 거르지만 수동/CSV 반영은 거치지 않으므로, 값이 있으면 여기서도 최소한의
-     * 정합성(범위·중복·음수)을 확인한다. DB CHECK 제약은 운영 마이그레이션 검토가 필요해 두지 않았다.
+     * 부가 정보의 정합성(범위·중복·음수)을 확인한다. 엔티티에 적용하기 전 단계(반영 검증, dry-run)에서도 같은 규칙을 쓰도록 정적으로 둔다.
+     *
+     * @param numbers 이 회차의 본번호(보너스와 겹치면 안 된다)
+     * @throws IllegalArgumentException 값이 어긋날 때
      */
-    public void applyDetails(DrawDetails details) {
+    public static void validateDetails(Integer roundNo, List<Integer> numbers, DrawDetails details) {
         if (details == null) {
             return;
         }
@@ -131,7 +132,7 @@ public class WinningDraw implements Persistable<Integer> {
                 throw new IllegalArgumentException(
                         "보너스 번호가 범위를 벗어났습니다: round=" + roundNo + ", bonusNo=" + bonus);
             }
-            if (numbers().contains(bonus)) {
+            if (numbers.contains(bonus)) {
                 throw new IllegalArgumentException(
                         "보너스 번호가 본번호와 중복됩니다: round=" + roundNo + ", bonusNo=" + bonus);
             }
@@ -144,8 +145,20 @@ public class WinningDraw implements Persistable<Integer> {
             throw new IllegalArgumentException(
                     "1등 당첨금은 음수일 수 없습니다: round=" + roundNo + ", amount=" + details.firstPrizeAmount());
         }
+    }
 
-        this.bonusNo = bonus;
+    /**
+     * 화면 표시 전용 부가 정보를 반영한다(null이면 이미 알던 값을 지우지 않으려 아무것도 하지 않는다). 자동 수집은
+     * {@code DhLotteryClient}가 범위 밖 보너스를 거르지만 수동/CSV 반영은 거치지 않으므로, 값이 있으면 여기서도 최소한의
+     * 정합성(범위·중복·음수)을 확인한다. DB CHECK 제약은 운영 마이그레이션 검토가 필요해 두지 않았다.
+     */
+    public void applyDetails(DrawDetails details) {
+        if (details == null) {
+            return;
+        }
+        validateDetails(roundNo, numbers(), details);
+
+        this.bonusNo = details.bonusNo();
         this.drawDate = details.drawDate();
         this.firstPrizeWinnerCount = details.firstPrizeWinnerCount();
         this.firstPrizeAmount = details.firstPrizeAmount();

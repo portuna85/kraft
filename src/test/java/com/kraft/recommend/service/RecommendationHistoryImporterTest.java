@@ -234,4 +234,33 @@ class RecommendationHistoryImporterTest {
                 .isInstanceOf(RecommendationImportException.class);
         assertThat(winningDrawRepository.count()).isZero();
     }
+
+    @Test
+    @DisplayName("본번호와 겹치는 보너스·음수 당첨자 수는 INVALID_DETAILS 도메인 실패이고 아무것도 쓰지 않는다")
+    void invalidDetails_areRejectedAsImportFailureWithoutWriting() {
+        List<ImportedDraw> duplicateBonus = List.of(new ImportedDraw(1, List.of(1, 2, 3, 4, 5, 6),
+                new DrawDetails(6, null, null, null)));
+        List<ImportedDraw> negativeWinners = List.of(new ImportedDraw(1, List.of(1, 2, 3, 4, 5, 6),
+                new DrawDetails(7, null, -1, null)));
+        List<ImportedDraw> negativeAmount = List.of(new ImportedDraw(1, List.of(1, 2, 3, 4, 5, 6),
+                new DrawDetails(7, null, 1, -5L)));
+
+        for (List<ImportedDraw> draws : List.of(duplicateBonus, negativeWinners, negativeAmount)) {
+            assertThatThrownBy(() -> importer.importHistory(draws, 1, "test-source"))
+                    .isInstanceOf(RecommendationImportException.class)
+                    .extracting(e -> ((RecommendationImportException) e).getReason()).isEqualTo("INVALID_DETAILS");
+        }
+        assertThat(winningDrawRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("dry-run도 실제 반영과 같은 부가 정보 규칙으로 실패한다")
+    void dryRun_appliesSameDetailsRule() {
+        List<ImportedDraw> draws = List.of(new ImportedDraw(1, List.of(1, 2, 3, 4, 5, 6),
+                new DrawDetails(6, null, null, null)));
+
+        assertThatThrownBy(() -> importer.dryRunValidate(draws, 1))
+                .isInstanceOf(RecommendationImportException.class)
+                .extracting(e -> ((RecommendationImportException) e).getReason()).isEqualTo("INVALID_DETAILS");
+    }
 }

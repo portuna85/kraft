@@ -120,6 +120,13 @@ public class RecommendationHistoryImporter {
                 throw new RecommendationImportException("INVALID_NUMBERS",
                         "회차 " + draw.roundNo() + "의 번호가 올바르지 않습니다: " + e.getMessage());
             }
+            try {
+                // 엔티티에 적용하다 던지면 호출자가 모르는 예외로 번지므로 검증 단계에서 같은 규칙으로 도메인 실패로 바꾼다(dry-run도 같은 규칙을 거친다).
+                WinningDraw.validateDetails(draw.roundNo(), numbers.numbers(), draw.details());
+            } catch (IllegalArgumentException e) {
+                throw new RecommendationImportException("INVALID_DETAILS",
+                        "회차 " + draw.roundNo() + "의 부가 정보가 올바르지 않습니다: " + e.getMessage());
+            }
             validated.add(new ValidatedDraw(draw.roundNo(), numbers.numbers(), draw.details()));
         }
 
