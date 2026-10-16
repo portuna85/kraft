@@ -202,4 +202,65 @@ class DhLotteryClientTest {
         assertThat(otherRound).isInstanceOf(DhLotteryClient.FetchOutcome.Success.class);
         assertThat(((DhLotteryClient.FetchOutcome.Success) otherRound).draw().roundNo()).isEqualTo(1242);
     }
+
+    private DhLotteryClient.FetchOutcome fetchWithBody(String body) {
+        MockRestServiceServer[] serverOut = new MockRestServiceServer[1];
+        DhLotteryClient client = newClient(serverOut);
+        serverOut[0].expect(requestTo(BASE_URL + "/lt645/selectPstLt645InfoNew.do?srchDir=center&srchLtEpsd=1241"))
+                .andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
+        return client.fetchRound(1241);
+    }
+
+    @Test
+    @DisplayName("빈 객체·data 없음·list 없음처럼 구조가 없는 200 응답은 NotYetDrawn이 아니라 Unavailable이다")
+    void unavailable_whenResponseStructureIsMissing() {
+        for (String body : new String[]{"{}", "{\"resultCode\":null,\"data\":null}", "{\"data\":{}}", "{\"data\":{\"list\":null}}"}) {
+            assertThat(fetchWithBody(body)).as(body).isInstanceOf(DhLotteryClient.FetchOutcome.Unavailable.class);
+        }
+    }
+
+    @Test
+    @DisplayName("본문이 비어 있는 200 응답은 Unavailable이다")
+    void unavailable_whenBodyIsEmpty() {
+        assertThat(fetchWithBody("")).isInstanceOf(DhLotteryClient.FetchOutcome.Unavailable.class);
+    }
+
+    @Test
+    @DisplayName("resultCode가 명시적 오류를 알리면 data가 있어도 Unavailable이다")
+    void unavailable_whenProviderReportsError() {
+        DhLotteryClient.FetchOutcome outcome = fetchWithBody("""
+                {"resultCode":"ERROR","resultMessage":"점검 중","data":null}
+                """);
+
+        assertThat(outcome).isInstanceOfSatisfying(DhLotteryClient.FetchOutcome.Unavailable.class,
+                unavailable -> assertThat(unavailable.reason()).contains("PROVIDER_ERROR", "ERROR", "점검 중"));
+    }
+
+    @Test
+    @DisplayName("resultCode가 SUCCESS이거나 비어 있으면 정상 응답으로 읽는다")
+    void success_whenResultCodeIsSuccessOrBlank() {
+        String item = """
+                "data":{"list":[{"ltEpsd":1241,"tm1WnNo":7,"tm2WnNo":13,"tm3WnNo":16,"tm4WnNo":23,"tm5WnNo":24,"tm6WnNo":43,"bnsWnNo":9}]}""";
+
+        assertThat(fetchWithBody("{\"resultCode\":\"SUCCESS\"," + item + "}")).isInstanceOf(DhLotteryClient.FetchOutcome.Success.class);
+        assertThat(fetchWithBody("{\"resultCode\":\"\"," + item + "}")).isInstanceOf(DhLotteryClient.FetchOutcome.Success.class);
+    }
+
+    @Test
+    @DisplayName("list에 null 항목이 섞여 있으면 예외 없이 Unavailable이다")
+    void unavailable_whenListContainsNullItem() {
+        DhLotteryClient.FetchOutcome outcome = fetchWithBody("""
+                {"resultCode":null,"data":{"list":[null,
+                  {"ltEpsd":1241,"tm1WnNo":7,"tm2WnNo":13,"tm3WnNo":16,"tm4WnNo":23,"tm5WnNo":24,"tm6WnNo":43,"bnsWnNo":9}]}}
+                """);
+
+        assertThat(outcome).isInstanceOf(DhLotteryClient.FetchOutcome.Unavailable.class);
+    }
+
+    @Test
+    @DisplayName("구조가 정상인 빈 목록은 아직 추첨 전으로 본다")
+    void notYetDrawn_whenListIsEmptyButWellFormed() {
+        assertThat(fetchWithBody("{\"resultCode\":null,\"data\":{\"list\":[]}}"))
+                .isInstanceOf(DhLotteryClient.FetchOutcome.NotYetDrawn.class);
+    }
 }

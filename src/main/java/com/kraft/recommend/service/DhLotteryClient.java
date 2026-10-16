@@ -88,12 +88,13 @@ public class DhLotteryClient {
             return new FetchOutcome.Unavailable("UNPARSEABLE_RESPONSE: " + e.getMessage());
         }
 
-        List<DhLotteryDrawItem> items = response == null || response.data() == null
-                ? List.of()
-                : response.data().list();
-        if (items == null) {
-            items = List.of();
+        // 구조가 없는 응답을 빈 목록으로 바꾸면 "요청 회차가 없다 = 추첨 전"으로 오인해 성공에 준하는 기록을 남긴다 — 오류와 정상적인 미추첨을 가른다.
+        String structureProblem = structureProblem(response);
+        if (structureProblem != null) {
+            log.warn("동행복권 회차 {} 응답을 신뢰할 수 없음: {}", drwNo, structureProblem);
+            return new FetchOutcome.Unavailable(structureProblem);
         }
+        List<DhLotteryDrawItem> items = response.data().list();
 
         Map<Integer, ImportedDraw> nextBatch = new HashMap<>();
         boolean requestedRoundExists = false;
@@ -125,6 +126,29 @@ public class DhLotteryClient {
         return new FetchOutcome.Success(draw);
     }
 
+    /**
+     * 응답이 "회차 목록을 담은 정상 응답"의 모양인지 본다. 정상 응답의 {@code resultCode}는 비어 있어 {@code SUCCESS}를 필수로 요구하지 않고,
+     * 비어 있지도 {@code SUCCESS}도 아닌 값만 공급자의 명시적 오류로 본다.
+     *
+     * @return 문제가 없으면 null, 있으면 {@link FetchOutcome.Unavailable}의 사유
+     */
+    private static String structureProblem(DhLotteryBatchResponse response) {
+        if (response == null) {
+            return "EMPTY_RESPONSE";
+        }
+        String code = response.resultCode();
+        if (code != null && !code.isBlank() && !"SUCCESS".equalsIgnoreCase(code.trim())) {
+            return "PROVIDER_ERROR: code=" + code + ", message=" + response.resultMessage();
+        }
+        if (response.data() == null || response.data().list() == null) {
+            return "MISSING_DRAW_LIST";
+        }
+        if (response.data().list().stream().anyMatch(java.util.Objects::isNull)) {
+            return "NULL_DRAW_ITEM";
+        }
+        return null;
+    }
+
     /** 화면 표시용 부가 정보. 이상한 필드는 null로 두고 나머지는 살린다(본번호 반영을 막지 않는다). */
     private DrawDetails buildDetails(DhLotteryDrawItem item) {
         Integer bonus = item.bnsWnNo();
@@ -143,7 +167,7 @@ public class DhLotteryClient {
         return new DrawDetails(bonus, drawDate, item.rnk1WnNope(), item.rnk1WnAmt());
     }
 
-    /** {@code data.list}만 쓴다 — {@code resultCode}·{@code resultMessage}는 성공 시 비어 있다. */
+    /** {@code data.list}를 쓰고, {@code resultCode}·{@code resultMessage}는 성공 시 비어 있어 명시적 오류를 가려내는 데만 쓴다. */
     record DhLotteryBatchResponse(String resultCode, String resultMessage, DhLotteryBatchData data) {
     }
 
