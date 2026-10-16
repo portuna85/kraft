@@ -510,14 +510,14 @@ class PostApiControllerTest {
     }
 
     @Test
-    @DisplayName("PUT /api/v1/posts/{id} 는 If-Match만 기준으로 삼고(본문 version은 무시), 약한 표기(W/)와 *도 받는다")
+    @DisplayName("PUT /api/v1/posts/{id} 는 If-Match만 기준으로 삼고(본문 version은 무시), *는 검사를 생략한다")
     void updatePost_usesOnlyIfMatch() throws Exception {
         given(postService.update(any(), any(PostUpdateRequestDto.class), any(), any(Authentication.class)))
                 .willReturn(new PostService.PostUpdateResult(1L, 9L));
 
         mockMvc.perform(put("/api/v1/posts/1")
                         .with(user("tester@example.com")).with(csrf())
-                        .header("If-Match", "W/\"7\"")
+                        .header("If-Match", "\"7\"")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"제목\",\"content\":\"내용\",\"version\":2}"))
                 .andExpect(status().isOk());
@@ -532,6 +532,21 @@ class PostApiControllerTest {
                         .content(UPDATE_BODY_WITHOUT_VERSION))
                 .andExpect(status().isOk());
         verify(postService).update(eq(2L), any(PostUpdateRequestDto.class), isNull(), any(Authentication.class));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/posts/{id} 는 약한 ETag(W/)를 어떤 버전과도 일치하지 않는 값으로 넘겨 412가 되게 한다")
+    void updatePost_withWeakIfMatch_neverMatchesAnyVersion() throws Exception {
+        given(postService.update(eq(1L), any(PostUpdateRequestDto.class), eq(-1L), any(Authentication.class)))
+                .willThrow(new com.kraft.shared.domain.PreconditionFailedException(Post.class, 1L));
+
+        mockMvc.perform(put("/api/v1/posts/1")
+                        .with(user("tester@example.com")).with(csrf())
+                        .header("If-Match", "W/\"7\"")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(UPDATE_BODY_WITHOUT_VERSION))
+                .andExpect(status().isPreconditionFailed())
+                .andExpect(jsonPath("$.code").value("EDIT_CONFLICT"));
     }
 
     @Test

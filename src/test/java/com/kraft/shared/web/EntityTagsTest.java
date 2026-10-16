@@ -16,12 +16,18 @@ class EntityTagsTest {
     }
 
     @Test
-    @DisplayName("expectedVersion: 강한 표기와 약한 표기(W/) 모두 같은 버전으로 읽는다")
-    void expectedVersion_readsStrongAndWeakForms() {
+    @DisplayName("expectedVersion: 강한 표기를 버전으로 읽는다")
+    void expectedVersion_readsStrongForm() {
         assertThat(EntityTags.expectedVersion("\"3\"")).isEqualTo(3L);
-        assertThat(EntityTags.expectedVersion("W/\"3\"")).isEqualTo(3L);
         assertThat(EntityTags.expectedVersion("  \"12\"  ")).isEqualTo(12L);
         assertThat(EntityTags.expectedVersion("\"0\"")).isZero();
+    }
+
+    @Test
+    @DisplayName("expectedVersion: 약한 ETag(W/)는 If-Match의 강한 비교에서 일치하지 않는다(RFC 9110 §13.1.1)")
+    void expectedVersion_weakEtag_neverMatches() {
+        assertThat(EntityTags.expectedVersion("W/\"3\"")).isEqualTo(EntityTags.NO_MATCH);
+        assertThat(EntityTags.expectedVersion("w/\"3\"")).isEqualTo(EntityTags.NO_MATCH);
     }
 
     @Test
