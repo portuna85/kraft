@@ -70,9 +70,9 @@ public class RecommendationHistoryImporter {
         if (metadataUpdated == 0) {
             throw new RecommendationImportException("VERIFICATION_REGRESSION",
                     "요청한 verifiedThroughRound(" + verifiedThroughRound + ")가 이미 기록된 검증 구간보다 "
-                            + "앞서지 않습니다 — 더 나중에 검증된 이력이 이미 있습니다. 회차 데이터는 "
-                            + "반영됐지만(inserted=" + inserted + ", updated=" + updated + "), 검증 구간은 "
-                            + "바뀌지 않았습니다. 의도적으로 구간을 줄여야 한다면 별도 운영 절차를 따르세요.");
+                            + "앞서지 않습니다 — 더 나중에 검증된 이력이 이미 있습니다. 이 예외로 트랜잭션이 "
+                            + "롤백되어 회차 데이터(inserted=" + inserted + ", updated=" + updated + ")와 검증 구간 모두 "
+                            + "반영되지 않았습니다. 의도적으로 구간을 줄여야 한다면 별도 운영 절차를 따르세요.");
         }
 
         return new Result(inserted, updated, verifiedThroughRound);
