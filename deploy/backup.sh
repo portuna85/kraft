@@ -39,11 +39,12 @@ fail() {
 # fail()을 거치지 않고 set -e로 죽는 경로에도 임시 디렉터리를 남기지 않는다(mv 뒤에는 TMP_DEST가 없어 완성된 백업을 건드리지 않는다).
 trap '[ -n "$TMP_DEST" ] && rm -rf "$TMP_DEST"' EXIT
 
-# .env의 EMAIL_ENCRYPTION_KEY를 되돌릴 수 없는 짧은 식별자로 바꾼다(printf로만 파이프에 흘려 ps에 드러나지 않는다). 항목이 없으면 "unknown"을 남기고
-# 계속한다 — 키 식별이 안 된다는 사실도 복구 때 알아야 한다.
-key_fingerprint() {
-    local line value
-    line=$(grep -m1 -E '^(export[[:space:]]+)?EMAIL_ENCRYPTION_KEY=' "$APP_DIR/.env" || true)
+# .env의 비밀 값(인자로 받은 변수 이름)을 되돌릴 수 없는 짧은 식별자로 바꾼다(printf로만 파이프에 흘려 ps에 드러나지 않는다). 항목이 없으면 "unknown"을
+# 남기고 계속한다 — 식별이 안 된다는 사실도 복구 때 알아야 한다. 이메일 복호화 키(EMAIL_ENCRYPTION_KEY)와 계정 조회용 HMAC pepper(EMAIL_HASH_PEPPER)는
+# 서로 다른 값이라 둘 다 같은 방식으로 남긴다 — 키만 맞고 pepper가 다르면 이메일은 복호화돼도 로그인·조회가 실패한다.
+env_fingerprint() {
+    local name=$1 line value
+    line=$(grep -m1 -E "^(export[[:space:]]+)?${name}=" "$APP_DIR/.env" || true)
     if [ -z "$line" ]; then
         echo unknown
         return
@@ -100,19 +101,23 @@ fi
 
 # 3. 암호화 키는 이 백업에 복사하지 않는다(평문 사본을 늘리면 유출 표면만 넓어진다). 대신 "이 시점에 쓰인 키가 어느 것인지"를 키 식별자(.env 값의
 #    SHA-256 앞 16자리, 원문 복원 불가)로 남긴다 — 복구 때 보관소의 후보 키로 같은 지문을 만들어 대조한다.
-KEY_FINGERPRINT=$(key_fingerprint)
+KEY_FINGERPRINT=$(env_fingerprint EMAIL_ENCRYPTION_KEY)
+PEPPER_FINGERPRINT=$(env_fingerprint EMAIL_HASH_PEPPER)
 {
     echo "백업 시점: $(date -Is)"
-    echo "EMAIL_ENCRYPTION_KEY는 이 백업에 포함하지 않는다."
+    echo "EMAIL_ENCRYPTION_KEY와 EMAIL_HASH_PEPPER는 이 백업에 포함하지 않는다."
     echo "키 식별자(SHA-256 앞 16자리): $KEY_FINGERPRINT"
-    echo "복구 시 이 시점에 운영 중이던 키(위 식별자와 같은 것)를 별도 보관소에서 가져와야 한다."
-    echo "DB·업로드·키 셋을 같은 시점(위 백업 시점)으로 맞출 것 — 하나만 최신본을 쓰면 복호화 실패."
+    echo "pepper 식별자(SHA-256 앞 16자리): $PEPPER_FINGERPRINT"
+    echo "복구 시 이 시점에 운영 중이던 키와 pepper(위 식별자와 같은 것)를 별도 보관소에서 가져와야 한다."
+    echo "pepper가 다르면 이메일은 복호화돼도 계정 조회(로그인·메일 대상 찾기)가 실패하고, pepper를 바꾸려면 전체 HMAC 재계산이 필요하다."
+    echo "DB·업로드·키·pepper 셋을 같은 시점(위 백업 시점)으로 맞출 것 — 하나만 최신본을 쓰면 복호화·조회 실패."
 } > "$TMP_DEST/KEY-NOTICE.txt"
 
 # 4. manifest — 이 백업이 정확히 무엇을 담았는지 복구 시점에 대조할 근거. 해시는 전송·보관 중 손상을 잡는다.
 {
     echo "backup_timestamp=$(date -Is)"
     echo "email_key_fingerprint=$KEY_FINGERPRINT"
+    echo "email_pepper_fingerprint=$PEPPER_FINGERPRINT"
     echo "db_sql_gz_bytes=$(stat -c%s "$TMP_DEST/db.sql.gz")"
     echo "db_sql_gz_sha256=$(sha256sum "$TMP_DEST/db.sql.gz" | cut -d' ' -f1)"
     if [ -f "$TMP_DEST/uploads.tar.gz" ]; then

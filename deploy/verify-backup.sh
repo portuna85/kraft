@@ -5,7 +5,7 @@
 #   verify-backup.sh [백업 디렉터리]
 #
 # 인자가 없으면 /opt/kraft/app/backups/full 아래 가장 최근 백업을 본다. 읽기만 한다. 확인하는 것: manifest.txt의 크기·SHA-256이 실제 파일과 같은지
-# (보관·전송 중 손상, 다른 백업과 섞임), db.sql.gz의 gzip 무결성, uploads.tar.gz의 tar 목록, KEY-NOTICE.txt와 키 식별자. 파일이 "열리는지"까지만 보며
+# (보관·전송 중 손상, 다른 백업과 섞임), db.sql.gz의 gzip 무결성, uploads.tar.gz의 tar 목록, KEY-NOTICE.txt와 키·pepper 식별자. 파일이 "열리는지"까지만 보며
 # 실제 복원은 격리 환경 복구 리허설로 확인한다(BackupRestoreRehearsalTest).
 set -euo pipefail
 
@@ -82,6 +82,16 @@ elif [ "$fingerprint" = unknown ]; then
     bad "키 식별자가 unknown — 백업 당시 .env에서 EMAIL_ENCRYPTION_KEY를 찾지 못했다"
 else
     ok "키 식별자: $fingerprint (보관소의 키와 대조: printf '%s' \"\$KEY\" | sha256sum | cut -c1-16)"
+fi
+
+pepper_fingerprint=$(manifest_value email_pepper_fingerprint)
+if [ -z "$pepper_fingerprint" ]; then
+    # pepper 식별자를 남기기 전 버전의 backup.sh가 만든 백업. 실패로 치지 않되 알린다.
+    ok "pepper 식별자 없음 — 이전 버전 백업. 복구에 쓸 EMAIL_HASH_PEPPER는 백업 시점 기준으로 보관소에서 골라야 한다"
+elif [ "$pepper_fingerprint" = unknown ]; then
+    bad "pepper 식별자가 unknown — 백업 당시 .env에서 EMAIL_HASH_PEPPER를 찾지 못했다"
+else
+    ok "pepper 식별자: $pepper_fingerprint (보관소의 pepper와 대조: printf '%s' \"\$PEPPER\" | sha256sum | cut -c1-16)"
 fi
 
 if [ "$errors" -gt 0 ]; then
