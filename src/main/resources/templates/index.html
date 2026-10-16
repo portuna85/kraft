@@ -77,8 +77,9 @@
             </th:block>
         </ul>
 
-        <!-- 목록은 하나의 데이터로만 렌더링한다. 열 정렬은 넓은 화면에서 CSS Grid가 담당한다. -->
-        <ul class="post-list" th:if="${!#lists.isEmpty(posts)}">
+        <!-- 목록은 하나의 데이터로만 렌더링한다. 열 정렬은 넓은 화면에서 CSS Grid가 담당한다.
+             id="post-list"는 더 보기(load-more.js)가 행을 붙일 대상이다 — 위 고정 공지 목록도 post-list class를 쓰므로 class로는 구분할 수 없다. -->
+        <ul class="post-list" id="post-list" th:if="${!#lists.isEmpty(posts)}">
             <li class="post-list__head" aria-hidden="true">
                 <span>번호</span><span>제목</span><span>작성자</span><span>등록일</span><span>조회</span><span>댓글</span>
             </li>

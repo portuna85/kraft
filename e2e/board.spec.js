@@ -249,6 +249,23 @@ test.describe('더 보기', () => {
         await expect(appended.locator('.post-list__category')).toHaveText('자유');
     });
 
+    test('고정 공지가 있어도 새 글은 일반 목록에만 붙고 공지 영역은 그대로다', async ({ page }) => {
+        await createPosts(page, 11, uniqueTitle('공지공존'));
+
+        // 검색·분류 없는 첫 페이지에서만 고정 공지 영역이 뜬다.
+        await page.goto('/community');
+        const pinned = page.locator('.post-list--pinned .post-list__item');
+        const regular = page.locator('#post-list .post-list__item');
+        await expect(pinned.first()).toBeVisible();
+        const pinnedCount = await pinned.count();
+        const regularBefore = await regular.count();
+
+        await page.locator('#btn-load-more').click();
+
+        await expect(regular).not.toHaveCount(regularBefore);
+        await expect(pinned).toHaveCount(pinnedCount);
+    });
+
     test('버튼을 누르면 새로 붙은 첫 글의 제목으로 포커스가 이동한다', async ({ page }) => {
         const prefix = uniqueTitle('포커스');
         await createPosts(page, 11, prefix);

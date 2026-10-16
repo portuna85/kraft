@@ -16,7 +16,8 @@ import { formatDateTime } from '../core/datetime.js';
 export function init() {
     const button = /** @type {HTMLButtonElement | null} */ (byId('btn-load-more'));
     const status = byId('load-more-status');
-    const list = qs('.post-list');
+    // 고정 공지 목록도 .post-list class라 class로 고르면 공지가 있을 때 그쪽이 먼저 잡힌다 — 일반 목록의 고정 id로 고른다.
+    const list = byId('post-list');
     if (!button || !status || !list) {
         return;
     }
