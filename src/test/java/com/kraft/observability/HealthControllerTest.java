@@ -132,6 +132,57 @@ class HealthControllerTest {
         verify(dataSource, times(1)).getConnection();
     }
 
+    @Test
+    @DisplayName("readyz: 비어 있는 슬롯에서 여러 요청이 정확히 동시에 시작해도 DB 확인은 한 번만 시작된다")
+    void readyz_simultaneousStartOnEmptySlot_startsSingleDatabaseCheck() throws Exception {
+        int callerCount = 8;
+        CountDownLatch releaseConnection = new CountDownLatch(1);
+        given(dataSource.getConnection()).willAnswer(invocation -> {
+            releaseConnection.await(5, TimeUnit.SECONDS);
+            return connection;
+        });
+        given(connection.isValid(anyInt())).willReturn(true);
+
+        HealthController controller = controller(Duration.ofSeconds(5));
+        java.util.concurrent.CyclicBarrier barrier = new java.util.concurrent.CyclicBarrier(callerCount);
+        ExecutorService callers = Executors.newFixedThreadPool(callerCount);
+        try {
+            java.util.List<Future<ResponseEntity<Void>>> responses = new java.util.ArrayList<>();
+            for (int i = 0; i < callerCount; i++) {
+                responses.add(callers.submit(() -> {
+                    barrier.await(5, TimeUnit.SECONDS);
+                    return controller.readyz(loopbackRequest());
+                }));
+            }
+            // 모두 검사 결과를 기다리는 상태로 들어간 뒤에 풀어 준다.
+            org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(5)).until(() -> barrier.getNumberWaiting() == 0);
+            Thread.sleep(200);
+            releaseConnection.countDown();
+
+            for (Future<ResponseEntity<Void>> response : responses) {
+                assertThat(response.get(5, TimeUnit.SECONDS).getStatusCode()).isEqualTo(HttpStatus.OK);
+            }
+        } finally {
+            callers.shutdownNow();
+        }
+
+        verify(dataSource, times(1)).getConnection();
+    }
+
+    @Test
+    @DisplayName("readyz: 검사가 끝난 뒤의 요청은 결과를 재사용하지 않고 새로 확인한다")
+    void readyz_afterCheckCompletes_startsFreshCheck() throws Exception {
+        given(dataSource.getConnection()).willReturn(connection);
+        given(connection.isValid(anyInt())).willReturn(true);
+        HealthController controller = controller(Duration.ofSeconds(2));
+
+        controller.readyz(loopbackRequest());
+        org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(2)).untilAsserted(() ->
+                assertThat(controller.readyz(loopbackRequest()).getStatusCode()).isEqualTo(HttpStatus.OK));
+
+        verify(dataSource, org.mockito.Mockito.atLeast(2)).getConnection();
+    }
+
     /** 루프백이 아니면 검사조차 하지 않고 404를 준다. */
     @ParameterizedTest(name = "원격 주소 [{0}]는 404다")
     @ValueSource(strings = {"203.0.113.7", "10.0.0.5", "::ffff:127.0.0.1"})

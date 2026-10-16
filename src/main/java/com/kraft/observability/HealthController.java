@@ -81,16 +81,37 @@ public class HealthController {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
     }
 
-    /** 진행 중인 검사를 재사용하고, 없거나 끝났으면 새로 시작한다. 끝나면 자기 자신을 걷어 낸다(그 사이 다른 검사가 대체했다면 건드리지 않는다). */
+    /**
+     * 진행 중인 검사를 재사용하고, 없거나 끝났으면 새로 시작한다. 끝나면 자기 자신을 걷어 낸다(그 사이 다른 검사가 대체했다면 건드리지 않는다).
+     * <p>
+     * 비어 있는 슬롯을 두 요청이 동시에 보더라도 검사가 둘 뜨지 않도록, 검사를 띄우기 전에 아직 끝나지 않은 future를 CAS로 먼저 설치하고
+     * 이긴 요청만 실제 검사를 시작한다. {@code updateAndGet}의 함수는 경쟁 시 다시 실행될 수 있어 검사 시작 같은 부수효과를 넣을 수 없다.
+     */
     private CompletableFuture<Boolean> currentOrNewCheck() {
-        return inFlightCheck.updateAndGet(existing -> {
+        while (true) {
+            CompletableFuture<Boolean> existing = inFlightCheck.get();
             if (existing != null && !existing.isDone()) {
                 return existing;
             }
-            CompletableFuture<Boolean> next = CompletableFuture.supplyAsync(this::databaseReachable, executor);
-            next.whenComplete((result, error) -> inFlightCheck.compareAndSet(next, null));
-            return next;
-        });
+            CompletableFuture<Boolean> mine = new CompletableFuture<>();
+            if (!inFlightCheck.compareAndSet(existing, mine)) {
+                continue;
+            }
+            mine.whenComplete((result, error) -> inFlightCheck.compareAndSet(mine, null));
+            try {
+                executor.execute(() -> {
+                    try {
+                        mine.complete(databaseReachable());
+                    } catch (Throwable t) {
+                        mine.completeExceptionally(t);
+                    }
+                });
+            } catch (RuntimeException e) {
+                // 실행기가 거절하면 슬롯에 영원히 끝나지 않는 future가 남지 않게 실패로 닫는다.
+                mine.completeExceptionally(e);
+            }
+            return mine;
+        }
     }
 
     private static boolean isLoopback(String remoteAddr) {
