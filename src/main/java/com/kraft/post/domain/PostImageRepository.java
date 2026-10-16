@@ -23,6 +23,11 @@ public interface PostImageRepository extends JpaRepository<PostImage, Long> {
 
     List<PostImage> findAllByPostId(Long postId);
 
+    /** 이 파일이 숨김·삭제된 글에 붙어 있는지 — 그렇다면 공개 {@code /images/**}로 내려주지 않는다({@code HiddenPostImageInterceptor}). 글에 붙지 않았거나 모르는 파일이면 false다. */
+    @Query("SELECT COUNT(i) > 0 FROM PostImage i JOIN i.post p WHERE i.fileName = :fileName "
+            + "AND (p.deletedAt IS NOT NULL OR p.blindedAt IS NOT NULL)")
+    boolean isAttachedToHiddenPost(@Param("fileName") String fileName);
+
     List<PostImage> findAllByIdInAndStatus(List<Long> ids, PostImageStatus status);
 
     /** id 커서 배치 조회: 이전 배치 마지막 id보다 큰 것만 가져와, 계속 실패하는 행에 막히지 않고 진행한다. */

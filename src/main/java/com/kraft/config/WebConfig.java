@@ -1,9 +1,12 @@
 package com.kraft.config;
 
+import com.kraft.post.service.PostImageVisibility;
 import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.CacheControl;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -15,13 +18,27 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * {@code app.upload.dir}에 저장된 게시글 업로드 이미지를 {@code /images/**}로 서빙한다.
- * 이 경로는 {@code SecurityConfig}에 이미 permitAll로 등록돼 있어 별도 보안 설정이 필요 없다.
+ * 이 경로는 {@code SecurityConfig}에 이미 permitAll로 등록돼 있어 별도 보안 설정이 필요 없다. 다만 숨김·삭제된 글에 붙은 이미지는
+ * {@link HiddenPostImageInterceptor}가 404로 막는다(이 체인은 비인증 정적 체인이라 관리자도 예외 없이 막힌다).
  */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
     @Value("${app.upload.dir}")
     private String uploadDir;
+
+    // @WebMvcTest 슬라이스에는 서비스·저장소 빈이 없다 — 판정기가 있을 때만 인터셉터를 건다.
+    private final ObjectProvider<PostImageVisibility> imageVisibility;
+
+    public WebConfig(ObjectProvider<PostImageVisibility> imageVisibility) {
+        this.imageVisibility = imageVisibility;
+    }
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        imageVisibility.ifAvailable(visibility -> registry
+                .addInterceptor(new HiddenPostImageInterceptor(visibility)).addPathPatterns("/images/**"));
+    }
 
     @PostConstruct
     void ensureUploadDirExists() {
