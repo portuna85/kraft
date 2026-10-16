@@ -41,10 +41,63 @@ function storageKeyFor(button) {
     return `kraft:load-more:${parts.join('&')}`;
 }
 
+/** 저장 형식이 바뀌면 올린다 — 다른 버전으로 저장된 값은 복원하지 않고 버린다. */
+const SAVED_STATE_VERSION = 1;
+/** 복원 데이터를 믿는 기간. 이보다 오래된 목록은 숨김·삭제·수정된 글의 메타데이터가 낡았을 수 있어 새로 불러오게 한다. */
+const SAVED_STATE_TTL_MS = 30 * 60 * 1000;
+
+function isCount(value) {
+    return typeof value === 'number' && Number.isInteger(value) && value >= 0;
+}
+
+function isSavedPost(post) {
+    return !!post && typeof post === 'object'
+        && Number.isSafeInteger(post.id)
+        && typeof post.title === 'string'
+        && typeof post.category === 'string'
+        && typeof post.author === 'string'
+        && typeof post.createdAt === 'string'
+        && isCount(post.viewCount)
+        && isCount(post.commentCount);
+}
+
+/**
+ * sessionStorage에 남은 문자열을 검증해 복원 가능한 상태로 돌려준다. 깨진 JSON·다른 버전·만료·모양이 어긋난 값은 모두 null이다.
+ * 복원 데이터는 이 모듈이 이전에 쓴 값이지만, 배포로 형식이 바뀌었거나 손상됐을 수 있어 init이 중단되지 않도록 쓰기 전에 구조를 확인한다.
+ *
+ * @param {string | null} raw
+ * @param {number} startPage
+ * @param {number} [now]
+ * @returns {{ startPage: number, posts: object[], nextPage: string, isLast: boolean } | null}
+ */
+export function parseSavedState(raw, startPage, now = Date.now()) {
+    if (!raw) {
+        return null;
+    }
+    let saved;
+    try {
+        saved = JSON.parse(raw);
+    } catch {
+        return null;
+    }
+    if (!saved || typeof saved !== 'object'
+        || saved.version !== SAVED_STATE_VERSION
+        || saved.startPage !== startPage
+        || typeof saved.savedAt !== 'number' || now - saved.savedAt > SAVED_STATE_TTL_MS || saved.savedAt > now
+        || typeof saved.isLast !== 'boolean'
+        || typeof saved.nextPage !== 'string' || !/^\d+$/.test(saved.nextPage)
+        || !Array.isArray(saved.posts) || !saved.posts.every(isSavedPost)) {
+        return null;
+    }
+    return saved;
+}
+
 /** sessionStorage 접근이 막힌 환경(프라이빗 모드 등)에서도 더 보기는 동작해야 하므로 저장·복원 실패를 조용히 삼킨다(draftStorage.js와 같은 관례). */
 function saveLoadedState(button, startPage, loadedPosts, isLast) {
     try {
         window.sessionStorage.setItem(storageKeyFor(button), JSON.stringify({
+            version: SAVED_STATE_VERSION,
+            savedAt: Date.now(),
             startPage,
             posts: loadedPosts,
             nextPage: button.dataset.nextPage,
@@ -58,12 +111,17 @@ function saveLoadedState(button, startPage, loadedPosts, isLast) {
 function restoreLoadedState(button, status, list, startPage, seenIds) {
     let saved;
     try {
-        const raw = window.sessionStorage.getItem(storageKeyFor(button));
-        saved = raw ? JSON.parse(raw) : null;
+        const key = storageKeyFor(button);
+        const raw = window.sessionStorage.getItem(key);
+        saved = parseSavedState(raw, startPage);
+        if (raw && !saved) {
+            // 못 쓰는 값은 남겨 두면 매번 다시 검사하게 된다 — 버리고 처음 상태로 둔다.
+            window.sessionStorage.removeItem(key);
+        }
     } catch {
         return;
     }
-    if (!saved || saved.startPage !== startPage) {
+    if (!saved) {
         return;
     }
 
@@ -128,7 +186,7 @@ async function loadMore(button, status, list, startPage, seenIds) {
         button.dataset.nextPage = String(result.page + 1);
     }
 
-    const previouslyLoaded = readLoadedPosts(button);
+    const previouslyLoaded = readLoadedPosts(button, startPage);
     saveLoadedState(button, startPage, [...previouslyLoaded, ...newPosts], result.last);
 
     // 방금 붙은 첫 행의 제목으로 포커스를 옮긴다(화면이 늘어났음과 위치를 함께 알린다). 붙은 행이 없으면(전부 중복이거나, last=false인데 빈 페이지) 포커스는 두고 상태 문구로만 알린다.
@@ -146,11 +204,10 @@ async function loadMore(button, status, list, startPage, seenIds) {
 }
 
 /** saveLoadedState가 남긴 이번 조건의 누적 목록. 없거나 읽을 수 없으면 빈 배열이다. */
-function readLoadedPosts(button) {
+function readLoadedPosts(button, startPage) {
     try {
         const raw = window.sessionStorage.getItem(storageKeyFor(button));
-        const saved = raw ? JSON.parse(raw) : null;
-        return saved?.posts ?? [];
+        return parseSavedState(raw, startPage)?.posts ?? [];
     } catch {
         return [];
     }
