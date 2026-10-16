@@ -94,6 +94,14 @@ else
     ok "pepper 식별자: $pepper_fingerprint (보관소의 pepper와 대조: printf '%s' \"\$PEPPER\" | sha256sum | cut -c1-16)"
 fi
 
+# 참고 정보. 판정에는 쓰지 않는다 — 복구 때 앱 빌드·스키마 버전을 맞추고, DB 덤프와 이미지 수집이 겹친 구간을 가늠하는 근거다.
+if [ -n "$(manifest_value flyway_version)" ]; then
+    ok "참고: flyway_version=$(manifest_value flyway_version), app_build=$(manifest_value app_build)"
+    ok "참고: DB 덤프 $(manifest_value db_dump_started_at) ~ $(manifest_value db_dump_finished_at), 이미지 $(manifest_value uploads_started_at) ~ $(manifest_value uploads_finished_at)"
+else
+    ok "참고: 시점·버전 기록 없음 — 이전 버전 백업"
+fi
+
 if [ "$errors" -gt 0 ]; then
     echo "검증 실패: $errors 건" >&2
     exit 1

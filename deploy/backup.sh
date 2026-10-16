@@ -18,6 +18,10 @@ UPLOAD_DIR="$APP_DIR/uploads/images"
 BACKUP_DIR="$APP_DIR/backups/full"
 # BACKUP_DIR 밖에 둔다 — 안에 두면 "오래된 백업 정리"의 ls 목록에 걸려 실제로 보장되는 백업 개수가 하나 줄어든다.
 LOCK_FILE="$APP_DIR/backup.lock"
+# deploy-apply.sh와 공유하는 운영 잠금. 백업이 DB를 덤프하는 동안 배포가 새 jar를 띄워 Flyway DDL을 실행하거나, 배포가 DB 스냅샷·재시작을 하는 동안 백업이 업로드 디렉터리를
+# 훑는 중첩을 막는다. 일반 사용자의 쓰기(글·이미지)까지 막지는 않는다 — 그건 아래 2번의 시점 차이로 남는다. 상대가 끝나기를 최대 OPS_LOCK_WAIT초 기다린다.
+OPS_LOCK_FILE="$APP_DIR/ops.lock"
+OPS_LOCK_WAIT=900
 LOG=/opt/kraft/backup.log
 # 오래된 백업 정리 기준. 날짜만으로 지우면 며칠 연속 실패하다 한 번 성공했을 때 그 사이 백업이 한꺼번에 지워질 수 있어, 나이와 무관하게 최신 KEEP_MIN개는
 # 남기고 그보다 오래된 것 중 KEEP_DAYS를 넘긴 것만 지운다.
@@ -67,6 +71,11 @@ if ! flock -n 200; then
     exit 1
 fi
 
+exec 201>"$OPS_LOCK_FILE"
+if ! flock -w "$OPS_LOCK_WAIT" 201; then
+    fail "배포 등 다른 운영 작업이 ${OPS_LOCK_WAIT}초가 지나도록 끝나지 않아 이번 백업을 건너뛴다"
+fi
+
 # 지난 실행이 잠금 없이(수동 kill 등) 남긴 임시 디렉터리를 먼저 치운다.
 STAMP=$(date +%Y%m%d-%H%M%S)
 TMP_DEST="$BACKUP_DIR/.tmp-$STAMP"
@@ -75,10 +84,12 @@ find "$BACKUP_DIR" -mindepth 1 -maxdepth 1 -type d -name '.tmp-*' -mtime +1 -pri
     | while read -r stale; do log "지난 실행이 남긴 임시 디렉터리 삭제: $stale"; done
 mkdir -p "$TMP_DEST"
 
+BACKUP_STARTED_AT=$(date -Is)
 log "───── 백업 시작 ($STAMP) ─────"
 
 # 1. DB 덤프. db 이름·root 비밀번호는 호스트 .env를 다시 grep하지 않고 컨테이너에 이미 주입된 환경변수(MARIADB_DATABASE·MARIADB_ROOT_PASSWORD)를
 #    쓴다 — 비밀번호가 -p 인자로 ps에 찍히지 않고(MYSQL_PWD는 환경변수일 뿐), grep|cut 파이프가 pipefail에서 조용히 죽는 경로도 없다.
+DB_DUMP_STARTED_AT=$(date -Is)
 if ! (cd "$APP_DIR" && docker compose --env-file .env exec -T mariadb \
         sh -c 'MYSQL_PWD="$MARIADB_ROOT_PASSWORD" exec mariadb-dump -uroot --single-transaction "$MARIADB_DATABASE"') \
         2>>"$LOG" | gzip > "$TMP_DEST/db.sql.gz"; then
@@ -87,10 +98,22 @@ fi
 [ -s "$TMP_DEST/db.sql.gz" ] || fail "덤프가 비어 있다"
 # gzip 스트림이 중간에 잘리면(덤프 도중 컨테이너 재시작) -s 검사는 통과하므로 압축 무결성까지 검증한다.
 gzip -t "$TMP_DEST/db.sql.gz" || fail "덤프 파일이 손상되었다(gzip 무결성 검사 실패) — 잘렸을 수 있다"
+DB_DUMP_FINISHED_AT=$(date -Is)
 log "DB 덤프 완료: $(stat -c%s "$TMP_DEST/db.sql.gz") 바이트(gzip)"
+
+# 덤프 시점의 스키마 버전과 실행 중인 빌드. 복구 때 "이 DB에는 어느 앱 빌드를 맞춰야 하는가"를 manifest로 대조한다. 못 구해도 백업은 계속한다(unknown).
+FLYWAY_VERSION=$(cd "$APP_DIR" && docker compose --env-file .env exec -T mariadb \
+    sh -c 'MYSQL_PWD="$MARIADB_ROOT_PASSWORD" exec mariadb -uroot -N -B "$MARIADB_DATABASE" -e "SELECT MAX(CAST(version AS UNSIGNED)) FROM flyway_schema_history WHERE success = 1"' \
+    2>>"$LOG" | tr -d '\r' | head -n1 || true)
+[ -n "$FLYWAY_VERSION" ] || FLYWAY_VERSION=unknown
+APP_BUILD=$(curl -fsS -m 5 -D - -o /dev/null http://127.0.0.1:8080/healthz 2>/dev/null | tr -d '\r' \
+    | awk -F': ' 'tolower($1) == "x-kraft-build" {print $2; exit}' || true)
+[ -n "$APP_BUILD" ] || APP_BUILD=unknown
 
 # 2. 업로드 이미지. DB는 --single-transaction으로 일관되지만 tar는 별도 시점에 파일시스템을 훑으므로, 그 짧은 창(수 초)에 이미지가 올라오거나 지워지면
 #    post_images와 정확히 같은 순간이 아닐 수 있다. 서비스를 멈추지 않는 한 남는 경합이라 감수한다(완전한 일관성은 쓰기 중지·파일시스템 스냅샷이 필요하다).
+#    이 창은 manifest의 db_dump_*·uploads_* 시각으로 남긴다 — 복구 뒤 "참조하는데 없는 이미지"를 이 구간의 변경과 대조할 수 있다.
+UPLOADS_STARTED_AT=$(date -Is)
 if [ -d "$UPLOAD_DIR" ]; then
     tar -czf "$TMP_DEST/uploads.tar.gz" -C "$(dirname "$UPLOAD_DIR")" "$(basename "$UPLOAD_DIR")"
     [ -s "$TMP_DEST/uploads.tar.gz" ] || fail "업로드 이미지 백업이 비어 있다"
@@ -98,6 +121,8 @@ if [ -d "$UPLOAD_DIR" ]; then
 else
     log "경고: 업로드 디렉터리($UPLOAD_DIR)가 없다 — 아직 이미지가 없는 새 서버일 수 있다"
 fi
+
+UPLOADS_FINISHED_AT=$(date -Is)
 
 # 3. 암호화 키는 이 백업에 복사하지 않는다(평문 사본을 늘리면 유출 표면만 넓어진다). 대신 "이 시점에 쓰인 키가 어느 것인지"를 키 식별자(.env 값의
 #    SHA-256 앞 16자리, 원문 복원 불가)로 남긴다 — 복구 때 보관소의 후보 키로 같은 지문을 만들어 대조한다.
@@ -116,6 +141,13 @@ PEPPER_FINGERPRINT=$(env_fingerprint EMAIL_HASH_PEPPER)
 # 4. manifest — 이 백업이 정확히 무엇을 담았는지 복구 시점에 대조할 근거. 해시는 전송·보관 중 손상을 잡는다.
 {
     echo "backup_timestamp=$(date -Is)"
+    echo "backup_started_at=$BACKUP_STARTED_AT"
+    echo "db_dump_started_at=$DB_DUMP_STARTED_AT"
+    echo "db_dump_finished_at=$DB_DUMP_FINISHED_AT"
+    echo "uploads_started_at=$UPLOADS_STARTED_AT"
+    echo "uploads_finished_at=$UPLOADS_FINISHED_AT"
+    echo "flyway_version=$FLYWAY_VERSION"
+    echo "app_build=$APP_BUILD"
     echo "email_key_fingerprint=$KEY_FINGERPRINT"
     echo "email_pepper_fingerprint=$PEPPER_FINGERPRINT"
     echo "db_sql_gz_bytes=$(stat -c%s "$TMP_DEST/db.sql.gz")"

@@ -31,6 +31,10 @@ KEEP_HEAPDUMPS=3
 # 빌드 타깃 JDK(build.gradle.kts의 toolchain). 운영은 OS의 /usr/bin/java로 실행하므로 서버의 java가 이보다 낮으면 새 jar가 기동하지 못한다.
 REQUIRED_JAVA_MAJOR=25
 LOCK_FILE="$APP_DIR/deploy.lock"
+# backup.sh와 공유하는 운영 잠금. 배포 중 새 jar가 Flyway DDL을 실행하는 동안 백업이 DB를 덤프하거나, 백업이 도는 동안 서비스가 재시작되는 중첩을 막는다.
+# 백업이 끝나기를 최대 OPS_LOCK_WAIT초 기다린다(백업은 보통 수 분).
+OPS_LOCK_FILE="$APP_DIR/ops.lock"
+OPS_LOCK_WAIT=900
 LOG=/opt/kraft/deploy.log
 # /readyz는 컨텍스트 기동과 DB 커넥션 검증(제한 시간 2초)만 본다 — DB에 붙지 못하면 503이다. 이 루프가 재시작마다 최대 30회 반복되므로 템플릿을 렌더하지 않는 가벼운 엔드포인트를 쓴다.
 HEALTH_URL=http://127.0.0.1:8080/readyz
@@ -55,6 +59,12 @@ fail() {
 exec 200>"$LOCK_FILE"
 if ! flock -n 200; then
     log "다른 배포가 이미 진행 중이다. 이번 요청은 그대로 종료한다"
+    exit 1
+fi
+
+exec 201>"$OPS_LOCK_FILE"
+if ! flock -w "$OPS_LOCK_WAIT" 201; then
+    log "백업 등 다른 운영 작업이 ${OPS_LOCK_WAIT}초가 지나도록 끝나지 않아 이번 배포를 포기한다"
     exit 1
 fi
 
