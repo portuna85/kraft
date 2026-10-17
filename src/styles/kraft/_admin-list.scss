@@ -11,6 +11,12 @@
 
 // 카드 모양(테두리·radius·padding·margin)은 _comments.scss의 .comment-list__item과 같아 그쪽에서 함께 선언한다.
 
+// 일시·회차·횟수가 줄마다 같은 자리에 정렬되어 읽히도록 숫자 폭을 고정한다.
+.admin-list__head,
+.admin-list__detail {
+    font-variant-numeric: tabular-nums;
+}
+
 .admin-list__head {
     display: flex;
     flex-wrap: wrap;
