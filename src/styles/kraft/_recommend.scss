@@ -258,27 +258,42 @@
     list-style: none;
 }
 
+// 768px 미만은 라벨·복사를 윗줄 양끝에 두고 여섯 공을 다음 줄 전체 폭에 놓는다(공 38px×6+간격 = 268px는 390px 화면의 한 줄 가용 폭 약 200px를 넘는다).
+// 복사 버튼만 포커스를 받고 공은 aria-hidden이라 시각 순서가 DOM 순서와 달라도 키보드 순서는 어긋나지 않는다.
 .recommend__item {
     display: grid;
     grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+    grid-template-areas:
+        "letter . copy"
+        "balls balls balls";
     align-items: center;
-    gap: var(--kraft-space-3);
+    gap: var(--kraft-space-2) var(--kraft-space-3);
     padding: var(--kraft-space-3) var(--kraft-space-4);
     border-radius: var(--kraft-radius);
     background-color: var(--kraft-surface-subtle);
 }
 
+@include from($bp-md) {
+    .recommend__item {
+        grid-template-areas: "letter balls copy";
+        gap: var(--kraft-space-3);
+    }
+}
+
 .recommend__letter {
+    grid-area: letter;
     color: var(--kraft-text-muted);
     font-weight: 700;
 }
 
 .recommend__item .lotto-balls {
+    grid-area: balls;
     justify-content: center;
     margin: 0;
 }
 
 .recommend__copy {
+    grid-area: copy;
     display: inline-flex;
     align-items: center;
     justify-content: center;

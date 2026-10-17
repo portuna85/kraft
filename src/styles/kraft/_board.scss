@@ -159,20 +159,39 @@
     margin-bottom: var(--kraft-space-4);
 }
 
-.board-search__input {
+// 라벨은 각 컨트롤 위에 보이게 둔다. 컨트롤 폭은 래퍼(.board-search__field)가 정하고 컨트롤은 래퍼를 채운다.
+.board-search__field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--kraft-space-1);
+    min-width: 0;
+}
+
+.board-search__label {
+    color: var(--kraft-text-muted);
+    font-size: $fs-xs;
+    font-weight: 600;
+}
+
+.board-search__field--q {
     flex: 1 1 200px;
 }
 
-.board-search__category {
+.board-search__field--category {
     flex: 0 1 160px;
 }
 
-.board-search__sort {
+.board-search__field--sort {
     flex: 0 1 140px;
 }
 
-.board-search__scope {
+.board-search__field--scope {
     flex: 0 1 130px;
+}
+
+// 라벨 줄만큼 내려온 컨트롤 줄에 검색 버튼을 맞춘다.
+.board-search__submit {
+    align-self: flex-end;
 }
 
 // 활성 필터를 강조색으로 표시한다(헤더 .kraft-actions__link.is-current, 페이지네이션 .pager__page.is-current와 같은 관례).
@@ -312,15 +331,18 @@
     }
 }
 
-// 992px 이상은 폭이 넉넉해 열 폭을 넓힌다.
+// 992~1199px는 안내 열(220px)이 함께 놓여 목록 폭이 684px 안팎이다. 넓은 열(440px)을 쓰면 제목이 150px까지 줄어 768px(약 314px)보다 오히려 좁아지므로 간격만 넓히고 열은 768px 값을 유지한다.
 @include from($bp-lg) {
-    .post-list {
-        --post-list-cols: 64px minmax(0, 1fr) 120px 144px 56px 56px;
-    }
-
     .post-list__head,
     .post-list__item {
         gap: var(--kraft-space-3);
+    }
+}
+
+// 1200px 이상은 폭이 넉넉해 열 폭을 넓힌다.
+@include from($bp-xl) {
+    .post-list {
+        --post-list-cols: 64px minmax(0, 1fr) 120px 144px 56px 56px;
     }
 }
 

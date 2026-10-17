@@ -28,32 +28,40 @@
         <p class="board-head__desc">최근 등록 순으로 게시글을 확인하세요.</p>
 
         <form class="board-search" method="get" action="/community">
-            <label for="search-q" class="visually-hidden">검색어</label>
-            <input type="search" id="search-q" name="q" class="form-control board-search__input"
-                   placeholder="검색어" th:value="${q}">
-            <label for="search-scope" class="visually-hidden">검색 범위</label>
-            <!-- 기본값은 제목만이다 — 본문(TEXT)까지 뒤지는 선행 와일드카드 LIKE가 이 검색에서 가장 비용이 크므로 필요할 때만 켠다. -->
-            <select id="search-scope" name="scope" class="form-select board-search__scope"
-                    th:classappend="${searchContent} ? ' is-active' : ''">
-                <option value="" th:selected="${!searchContent}">제목만</option>
-                <option value="all" th:selected="${searchContent}">제목+내용</option>
-            </select>
-            <label for="search-category" class="visually-hidden">분류</label>
-            <select id="search-category" name="category" class="form-select board-search__category"
-                    th:classappend="${category != null} ? ' is-active' : ''">
-                <option value="" th:selected="${category == null}">전체 분류</option>
-                <option th:each="c : ${categories}" th:value="${c}" th:text="${c.title}"
-                        th:selected="${category == c}"></option>
-            </select>
-            <label for="search-sort" class="visually-hidden">정렬</label>
-            <!-- 서버가 실제로 허용하는 정렬(PostSortPolicy.ALLOWED_PROPERTIES)만 선택지로 둔다. 댓글수·추천수는 Post 엔티티 컬럼이 아니라(별도 테이블 집계) 뺐다. -->
-            <select id="search-sort" name="sort" class="form-select board-search__sort"
-                    th:classappend="${currentSort != null} ? ' is-active' : ''">
-                <option value="" th:selected="${currentSort == null}">최신 등록순</option>
-                <option value="viewCount,desc" th:selected="${currentSort == 'viewCount,desc'}">조회순</option>
-                <option value="updatedAt,desc" th:selected="${currentSort == 'updatedAt,desc'}">최근 수정순</option>
-            </select>
-            <button type="submit" class="btn btn-outline-primary">검색</button>
+            <div class="board-search__field board-search__field--q">
+                <label for="search-q" class="board-search__label">검색어</label>
+                <input type="search" id="search-q" name="q" class="form-control board-search__input"
+                       placeholder="검색어" th:value="${q}">
+            </div>
+            <div class="board-search__field board-search__field--scope">
+                <label for="search-scope" class="board-search__label">검색 범위</label>
+                <!-- 기본값은 제목만이다 — 본문(TEXT)까지 뒤지는 선행 와일드카드 LIKE가 이 검색에서 가장 비용이 크므로 필요할 때만 켠다. -->
+                <select id="search-scope" name="scope" class="form-select board-search__scope"
+                        th:classappend="${searchContent} ? ' is-active' : ''">
+                    <option value="" th:selected="${!searchContent}">제목만</option>
+                    <option value="all" th:selected="${searchContent}">제목+내용</option>
+                </select>
+            </div>
+            <div class="board-search__field board-search__field--category">
+                <label for="search-category" class="board-search__label">분류</label>
+                <select id="search-category" name="category" class="form-select board-search__category"
+                        th:classappend="${category != null} ? ' is-active' : ''">
+                    <option value="" th:selected="${category == null}">전체 분류</option>
+                    <option th:each="c : ${categories}" th:value="${c}" th:text="${c.title}"
+                            th:selected="${category == c}"></option>
+                </select>
+            </div>
+            <div class="board-search__field board-search__field--sort">
+                <label for="search-sort" class="board-search__label">정렬</label>
+                <!-- 서버가 실제로 허용하는 정렬(PostSortPolicy.ALLOWED_PROPERTIES)만 선택지로 둔다. 댓글수·추천수는 Post 엔티티 컬럼이 아니라(별도 테이블 집계) 뺐다. -->
+                <select id="search-sort" name="sort" class="form-select board-search__sort"
+                        th:classappend="${currentSort != null} ? ' is-active' : ''">
+                    <option value="" th:selected="${currentSort == null}">최신 등록순</option>
+                    <option value="viewCount,desc" th:selected="${currentSort == 'viewCount,desc'}">조회순</option>
+                    <option value="updatedAt,desc" th:selected="${currentSort == 'updatedAt,desc'}">최근 수정순</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-outline-primary board-search__submit">검색</button>
         </form>
 
         <div class="board-filter-summary" th:if="${!#strings.isEmpty(q) or category != null or currentSort != null}">
