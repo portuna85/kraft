@@ -173,20 +173,21 @@
     font-weight: 600;
 }
 
+// 992~1199px는 목록 열이 684px 안팎(안쪽 652px)이라 컨트롤 기준 폭 합이 이를 넘으면 정렬·검색 버튼이 둘째 줄로 접힌다. 셀렉트가 글자를 자르지 않는 선까지만 기준 폭을 줄여 한 줄에 둔다.
 .board-search__field--q {
-    flex: 1 1 200px;
+    flex: 1 1 140px;
 }
 
 .board-search__field--category {
-    flex: 0 1 160px;
-}
-
-.board-search__field--sort {
     flex: 0 1 140px;
 }
 
+.board-search__field--sort {
+    flex: 0 1 150px;
+}
+
 .board-search__field--scope {
-    flex: 0 1 130px;
+    flex: 0 1 120px;
 }
 
 // 라벨 줄만큼 내려온 컨트롤 줄에 검색 버튼을 맞춘다.
