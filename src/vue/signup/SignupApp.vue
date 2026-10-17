@@ -122,7 +122,13 @@ async function onSubmit() {
       </div>
     </div>
     <div class="mb-3">
-      <label for="password">비밀번호 ({{ PASSWORD.HINT }})</label>
+      <label for="password">비밀번호</label>
+      <div
+        id="password-hint"
+        class="form-text"
+      >
+        {{ PASSWORD.HINT }}
+      </div>
       <input
         id="password"
         ref="passwordInput"
@@ -135,7 +141,7 @@ async function onSubmit() {
         autocomplete="new-password"
         :minlength="PASSWORD.MIN_LENGTH"
         :maxlength="PASSWORD.MAX_LENGTH"
-        aria-describedby="password-error"
+        aria-describedby="password-hint password-error"
         required
       >
       <div

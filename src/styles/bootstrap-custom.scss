@@ -15,8 +15,10 @@
 // 다크 모드. JS가 html에 [data-bs-theme=dark]를 함께 건다(theme-init.js·theme-toggle.js). $color-mode-type 기본값(data)을 쓴다 — media-query 방식은 Kraft의 명시적 토글(밝게 고정)과 충돌한다.
 $enable-dark-mode: true;
 
-// Kraft 표면 반경 토큰(--kraft-radius-surface, 12px)과 맞춘다. variables 임포트보다 먼저 둬야 기본값(0.5rem)이 적용되기 전에 덮어쓴다.
-$modal-content-border-radius: 0.75rem;
+// Kraft 반경 토큰과 맞춘다. 모달은 카드와 같은 표면이라 --kraft-radius-surface(1.2rem), 로그인 alert는 자체 .flash와 같은 --kraft-radius-control(0.56rem)이다.
+// 두 값은 :root 토큰(style.scss)과 따로 컴파일되므로 토큰을 바꾸면 여기도 함께 바꾼다. variables 임포트보다 먼저 둬야 기본값이 적용되기 전에 덮어쓴다.
+$modal-content-border-radius: 1.2rem;
+$alert-border-radius: 0.56rem;
 
 @import "variables";
 

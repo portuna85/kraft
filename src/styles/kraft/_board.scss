@@ -103,10 +103,10 @@
     flex-wrap: wrap;
     gap: var(--kraft-space-1) var(--kraft-space-3);
     color: var(--kraft-text-muted);
-    font-size: $fs-xs;
-    // 본문 line-height:1.6을 물려받으면 0.8rem × 1.6 = 20.48px처럼 소수점 줄 높이가 된다. flex-column(<768px)·grid(≥768px)에서 형제와 쌓일 때 소수점이 누적되다
-    // 실행마다 다르게 반올림되어 행 높이가 1px 흔들렸다(Chromium 서브픽셀 레이아웃). 정수 픽셀이 되는 배수를 쓴다.
-    line-height: 1.25;
+    font-size: $fs-meta;
+    // 본문 line-height:1.6을 물려받으면 0.875rem × 1.6 = 22.4px처럼 소수점 줄 높이가 된다. flex-column(<768px)·grid(≥768px)에서 형제와 쌓일 때 소수점이 누적되다
+    // 실행마다 다르게 반올림되어 행 높이가 1px 흔들렸다(Chromium 서브픽셀 레이아웃). 정수 픽셀이 되는 배수(14px × 1.5 = 21px)를 쓴다.
+    line-height: 1.5;
 }
 
 .post-list__author {

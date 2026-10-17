@@ -145,7 +145,7 @@
     gap: var(--kraft-space-2);
     margin: var(--kraft-space-5) 0;
     color: var(--kraft-text-muted);
-    font-size: $fs-xs;
+    font-size: $fs-meta;
 }
 
 .recommend__info .recommend__icon {
@@ -179,7 +179,7 @@
 .recommend__disclaimer {
     margin: var(--kraft-space-3) 0 0;
     color: var(--kraft-text-muted);
-    font-size: $fs-xs;
+    font-size: $fs-meta;
 }
 
 /* ---- 결과 ---- */
@@ -316,7 +316,7 @@
     gap: var(--kraft-space-2);
     margin: var(--kraft-space-4) 0 0;
     color: var(--kraft-text-muted);
-    font-size: $fs-xs;
+    font-size: $fs-meta;
 }
 
 .recommend__history-basis .recommend__icon {

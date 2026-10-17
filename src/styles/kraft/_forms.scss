@@ -26,6 +26,14 @@
     font-size: $fs-sm;
 }
 
+// 라벨 바로 아래 보조 설명(비밀번호 규칙). 라벨 뒤에 올 때만 적용해 입력 아래 도움말(.form-text) 등 다른 쓰임은 건드리지 않는다.
+label + .form-text {
+    margin-top: 0;
+    margin-bottom: var(--kraft-space-2);
+    color: var(--kraft-text-muted);
+    font-size: $fs-meta;
+}
+
 .form-control,
 .form-select {
     min-height: 44px;

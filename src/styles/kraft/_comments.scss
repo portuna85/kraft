@@ -1,3 +1,5 @@
+@use "tokens" as *;
+
 /* ==========================================================================
    댓글
    ========================================================================== */
@@ -51,10 +53,17 @@ textarea.form-control.comment-edit__textarea {
 }
 
 // 답글(2단계 댓글)은 부모 카드 안에서 들여써서 종속 관계를 보여준다. 새 색상·간격 체계는 만들지 않고 기존 .comment-list의 여백만 왼쪽에 더한다.
+// 좁은 화면에서는 들여쓰기를 12px로 줄여 작성자·본문 폭을 확보하고, 768px부터 24px로 둔다.
 .comment-list__replies {
     margin-top: var(--kraft-space-2);
     margin-bottom: 0;
-    margin-left: var(--kraft-space-6);
+    margin-left: var(--kraft-space-3);
+}
+
+@include from($bp-md) {
+    .comment-list__replies {
+        margin-left: var(--kraft-space-6);
+    }
 }
 
 .comments__login-hint {
