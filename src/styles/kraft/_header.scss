@@ -285,9 +285,9 @@
         min-height: 40px;
     }
 
-    // 768~991px는 브랜드(서비스 라벨 포함)와 메뉴가 한 줄을 나눠 쓴다. 긴 닉네임이 220px를 차지하면 메뉴가 둘째 줄로 밀려 헤더가 71px에서 119px로 커지므로 이 구간만 좁힌다.
+    // 768~991px는 브랜드(서비스 라벨 포함)와 메뉴가 한 줄을 나눠 쓴다. 긴 닉네임이 220px를 차지하면 메뉴가 둘째 줄로 밀려 헤더가 71px에서 119px로 커지므로 이 구간만 좁힌다(768px에서 약 104px까지 한 줄이 유지되는 것을 측정했고, 폰트 차이에 대비해 96px로 둔다).
     .kraft-actions__name {
-        max-width: 88px;
+        max-width: 96px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
