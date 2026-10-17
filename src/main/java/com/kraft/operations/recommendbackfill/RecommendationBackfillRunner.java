@@ -31,8 +31,8 @@ import java.util.List;
  * {@code prod}를 함께 켜야 데이터소스가 잡힌다({@code application-recommend-backfill.yml}은 다른 주기 작업만 끈다).
  * <p>
  * 조회 주소가 비공식이라 막힐 수 있으므로 {@code chunk-size} 회차씩 끊어 커밋한다 — 막혀도 확인된 구간은 남고 재실행하면
- * 그 다음 회차부터 이어간다. 요청 사이에 {@code request-delay-ms}만큼 쉰다. {@code dry-run=true}면 조회만 하고 커밋하지
- * 않는다. 전용 프로파일로 가둔 이유는 {@link com.kraft.operations.rekey.EmailRekeyRunner}와 같다. 종료 코드는 모두
+ * 그 다음 회차부터 이어간다. 요청 사이에 {@code request-delay-ms}만큼 쉰다. {@code dry-run=true}면 커밋하지 않는 대신 청크마다
+ * {@link RecommendationHistoryImporter#dryRunValidate}로 실제 반영과 같은 검증(번호·상세 정보·누락 회차)을 돌려 본다. 전용 프로파일로 가둔 이유는 {@link com.kraft.operations.rekey.EmailRekeyRunner}와 같다. 종료 코드는 모두
  * 채웠으면 0, 중간에 멈췄으면 1(실패가 아니라 "다시 실행하라"는 신호)이다.
  */
 @Slf4j
@@ -57,6 +57,12 @@ public class RecommendationBackfillRunner implements ApplicationRunner {
 
     @Value("${app.recommend.backfill.dry-run:false}")
     private boolean dryRun;
+
+    /**
+     * dry-run에서 이미 검증을 통과한 회차들. 커밋하지 않으므로 DB에는 앞 청크가 없어, 다음 청크를 따로 검증하면 "누락된 회차"로 거절된다 —
+     * 실제 반영이라면 앞 청크가 DB에 있었을 것이므로 지금까지 통과한 회차를 함께 넘겨 같은 조건을 흉내 낸다.
+     */
+    private final List<ImportedDraw> dryRunAccepted = new ArrayList<>();
 
     @Override
     public void run(ApplicationArguments args) {
@@ -128,9 +134,7 @@ public class RecommendationBackfillRunner implements ApplicationRunner {
             return true;
         }
         if (dryRun) {
-            log.info("[dry-run] 회차 {}까지 {}건 조회 확인. 커밋하지 않습니다.", verifiedThroughRound, chunk.size());
-            chunk.clear();
-            return true;
+            return dryRunChunk(chunk, verifiedThroughRound);
         }
         try {
             RecommendationHistoryImporter.Result result =
@@ -141,6 +145,25 @@ public class RecommendationBackfillRunner implements ApplicationRunner {
             return true;
         } catch (RecommendationImportException e) {
             log.error("회차 {}까지 청크 반영에 실패했습니다 [{}]: {}", verifiedThroughRound, e.getReason(), e.getMessage());
+            return false;
+        }
+    }
+
+    /** 커밋하지 않고 {@link RecommendationHistoryImporter#dryRunValidate}만 돌린다. 검증에 실패하면 실제 반영과 같이 false. */
+    private boolean dryRunChunk(List<ImportedDraw> chunk, int verifiedThroughRound) {
+        List<ImportedDraw> validating = new ArrayList<>(dryRunAccepted);
+        validating.addAll(chunk);
+        try {
+            RecommendationHistoryImporter.DryRunResult result =
+                    importer.dryRunValidate(validating, verifiedThroughRound);
+            log.info("[dry-run] 회차 {}까지 {}건 검증 통과(커밋하지 않음{}).", verifiedThroughRound, chunk.size(),
+                    result == null ? "" : ", 신규 " + result.wouldInsert() + "건·정정 " + result.wouldUpdate() + "건 예상");
+            dryRunAccepted.addAll(chunk);
+            chunk.clear();
+            return true;
+        } catch (RecommendationImportException e) {
+            log.error("[dry-run] 회차 {}까지 청크가 반영 검증에 실패합니다 [{}]: {}",
+                    verifiedThroughRound, e.getReason(), e.getMessage());
             return false;
         }
     }

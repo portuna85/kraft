@@ -2,6 +2,7 @@ package com.kraft.operations.recommendbackfill;
 
 import com.kraft.recommend.domain.RecommendationHistoryState;
 import com.kraft.recommend.domain.RecommendationHistoryStateRepository;
+import com.kraft.recommend.domain.RecommendationImportException;
 import com.kraft.recommend.service.DhLotteryClient;
 import com.kraft.recommend.service.ImportedDraw;
 import com.kraft.recommend.service.RecommendationHistoryImporter;
@@ -162,7 +163,7 @@ class RecommendationBackfillRunnerTest {
     }
 
     @Test
-    @DisplayName("dry-run이면 조회만 하고 커밋하지 않는다")
+    @DisplayName("dry-run이면 커밋하지 않고 검증만 돌린다")
     void dryRun_neverCommits() {
         given(stateRepository.findById(1)).willReturn(Optional.empty());
         given(dhLotteryClient.fetchRound(1)).willReturn(successOf(1));
@@ -175,5 +176,45 @@ class RecommendationBackfillRunnerTest {
 
         assertThat(exitCode).isEqualTo(0);
         verify(importer, Mockito.never()).importHistory(any(), anyInt(), any());
+        verify(importer).dryRunValidate(
+                List.of(new ImportedDraw(1, List.of(1, 2, 3, 4, 5, 6)), new ImportedDraw(2, List.of(1, 2, 3, 4, 5, 6))), 2);
+    }
+
+    @Test
+    @DisplayName("dry-run 검증이 실패하면 실제 반영과 같이 종료코드 1이고 다음 회차를 조회하지 않는다")
+    void dryRun_validationFailure_stopsWithExitCode1() {
+        given(stateRepository.findById(1)).willReturn(Optional.empty());
+        given(dhLotteryClient.fetchRound(1)).willReturn(successOf(1));
+        given(importer.dryRunValidate(any(), anyInt()))
+                .willThrow(new RecommendationImportException("INVALID_DETAILS", "보너스 번호 중복"));
+
+        RecommendationBackfillRunner runner = runner(3, 1);
+        ReflectionTestUtils.setField(runner, "dryRun", true);
+
+        int exitCode = runner.backfill();
+
+        assertThat(exitCode).isEqualTo(1);
+        Mockito.verify(dhLotteryClient, Mockito.never()).fetchRound(2);
+        verify(importer, Mockito.never()).importHistory(any(), anyInt(), any());
+    }
+
+    @Test
+    @DisplayName("dry-run은 앞 청크가 DB에 없어도 지금까지 통과한 회차를 함께 검증해 누락 회차로 오판하지 않는다")
+    void dryRun_laterChunks_includeEarlierAcceptedRounds() {
+        given(stateRepository.findById(1)).willReturn(Optional.empty());
+        given(dhLotteryClient.fetchRound(1)).willReturn(successOf(1));
+        given(dhLotteryClient.fetchRound(2)).willReturn(successOf(2));
+        given(dhLotteryClient.fetchRound(3)).willReturn(successOf(3));
+
+        RecommendationBackfillRunner runner = runner(3, 2);
+        ReflectionTestUtils.setField(runner, "dryRun", true);
+
+        int exitCode = runner.backfill();
+
+        assertThat(exitCode).isEqualTo(0);
+        // 2번째 청크(회차 3)는 DB에 없는 1·2회차를 포함해 검증해야 MISSING_ROUND가 나지 않는다.
+        org.mockito.ArgumentCaptor<List<ImportedDraw>> captor = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(importer, Mockito.times(2)).dryRunValidate(captor.capture(), anyInt());
+        assertThat(captor.getAllValues().get(1)).extracting(ImportedDraw::roundNo).containsExactly(1, 2, 3);
     }
 }
