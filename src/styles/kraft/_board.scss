@@ -93,6 +93,12 @@
     overflow-wrap: anywhere;
 }
 
+// 띄어쓰기 없는 긴 제목(URL 등)은 분류 배지 뒤 공백에서 줄이 바뀌어 첫 줄이 배지만 남고, 1줄 말줄임(≥768px)에서는 글자 없이 "…"만 보였다. 제목 글자는 어디서든 끊을 수 있게 한다.
+// 한국어는 어절 단위 대신 글자 단위로 끊기지만 말줄임 위치만 달라지고, 영어 제목은 단어 중간에서 잘릴 수 있다. 마크업이 같은 load-more.js buildRow의 행에도 적용된다.
+.post-list__title > span:last-child {
+    word-break: break-all;
+}
+
 .post-list__title:hover {
     color: var(--kraft-primary);
     text-decoration: underline;
