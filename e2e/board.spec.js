@@ -54,6 +54,8 @@ test('등록만 하고 수정하지 않은 글에는 "(수정됨)"이 붙지 않
     await page.locator('#content').fill('수정하지 않을 본문입니다.');
     await page.locator('#btn-save').click();
     await page.waitForURL(/\/posts\/update\/\d+$/);
+    // 상세 화면의 동적 import·스타일 로딩이 끝나기 전에 떠나면 WebKit이 취소된 로드를 콘솔 오류로 남겨 fixture의 콘솔 오류 검사에 걸린다.
+    await page.waitForLoadState('networkidle');
 
     await page.goto(`/community?q=${encodeURIComponent(title)}`);
     const row = page.locator('.post-list__item').filter({ hasText: title });
@@ -356,7 +358,9 @@ test.describe('더 보기', () => {
         await page.goto('/community?category=FREE');
         await expect(page.locator('.board-head__count')).toContainText('총');
         const pager = page.locator('nav.pager');
-        await expect(pager.locator('.pager__numbers')).toBeVisible();
+        // 번호 목록은 768px 이상에서만 보이고(_pager.scss), 그 미만에서는 같은 정보를 "N / M" 상태 문구로 보여 준다.
+        const showsNumbers = (page.viewportSize()?.width ?? 0) >= 768;
+        await expect(pager.locator(showsNumbers ? '.pager__numbers' : '.pager__status')).toBeVisible();
         await expect(pager.locator('.pager__status')).toHaveText(/^\s*1 \/ \d+\s*$/);
         await expect(pager.locator('.pager__page[data-page="0"]')).toHaveAttribute('aria-current', 'page');
 
