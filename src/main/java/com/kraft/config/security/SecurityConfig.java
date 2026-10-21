@@ -90,7 +90,8 @@ public class SecurityConfig {
 
     @Bean
     @Order(1)
-    public SecurityFilterChain filterChain(HttpSecurity http, AuthRateLimitFilter authRateLimitFilter)
+    public SecurityFilterChain filterChain(HttpSecurity http, AuthRateLimitFilter authRateLimitFilter,
+            @Value("${app.security.csp-upgrade-insecure-requests:true}") boolean upgradeInsecureRequests)
             throws Exception {
         http
                 .addFilterBefore(authRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
@@ -145,9 +146,10 @@ public class SecurityConfig {
                                         + "form-action 'self'; "
                                         + "frame-ancestors 'self'; "
                                         + "base-uri 'self'; "
-                                        + "object-src 'none'; "
-                                        // HSTS 첫 방문 전에도 http: 링크를 https:로 바꿔 요청하게 한다.
-                                        + "upgrade-insecure-requests"))
+                                        + "object-src 'none'"
+                                        // HSTS 첫 방문 전에도 http: 링크를 https:로 바꿔 요청하게 한다. 기본은 켜짐이고 운영은 이 설정을 두지 않는다.
+                                        // e2e 프로파일만 끈다 — 평문 http://127.0.0.1로 뜨는 서버에서 WebKit이 CSS·JS를 https로 올려 요청하면 TLS가 없어 모두 실패한다.
+                                        + (upgradeInsecureRequests ? "; upgrade-insecure-requests" : "")))
                         .referrerPolicy(referrer -> referrer
                                 .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
                         // 쓰지 않는 강력한 기능은 아예 막는다.

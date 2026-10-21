@@ -50,6 +50,8 @@ app:
   verification:
     purge-enabled: false
   security:
+    # 평문 http://127.0.0.1:8081로 뜨므로 CSP upgrade-insecure-requests를 끈다. 켜 두면 WebKit이 하위 자원을 https로 올려 SSL 오류로 CSS·JS가 로드되지 않는다(Chromium은 loopback을 예외로 둔다).
+    csp-upgrade-insecure-requests: false
     email-encryption-key: e2e-only-key-not-a-secret
     email-hash-pepper: e2e-only-hash-pepper-not-a-secret
   recommend:
