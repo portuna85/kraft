@@ -56,6 +56,9 @@ export default defineConfig({
         sourcemap: false,
         // 지원 하한(iOS 15)을 실제 빌드 설정에 연결한다. 이보다 새 문법은 변환하거나 경고하지만 런타임 API(Array.prototype.at() 등)는 폴리필하지 않으므로 소스에서 직접 걷어냈다.
         target: 'ios15',
+        // 동적 import에 Vite가 붙이는 프리로드 헬퍼를 끈다. base가 '/'라 헬퍼가 /js/vue-dist/ 접두어 없는 /chunks/x.js를 요청해 404(비로그인은 /login HTML 리다이렉트)가 났고,
+        // 브라우저가 그 실패를 콘솔 오류로 남겼다. 공용 청크의 modulepreload는 템플릿이 하드코딩하고 check-preload.mjs가 검증하므로 헬퍼가 없어도 로딩 순서는 같다.
+        modulePreload: false,
         rollupOptions: {
             input: {
                 // 화면별 마운트 진입점을 여기 추가한다(각 페이지는 필요한 번들만 로드한다).
